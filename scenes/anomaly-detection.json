@@ -468,7 +468,7 @@
       "range": [
         [
           -2,
-          22
+          23.5
         ],
         [
           -6,
@@ -481,12 +481,12 @@
       ],
       "camera": {
         "position": [
-          5.15,
+          7.0,
           2.9,
-          11.8
+          13.5
         ],
         "target": [
-          5.15,
+          7.0,
           2.9,
           0
         ]
@@ -495,12 +495,12 @@
         {
           "name": "Both",
           "position": [
-            10,
+            11.5,
             2.5,
-            25
+            27.0
           ],
           "target": [
-            10,
+            11.5,
             2.5,
             0
           ],
@@ -509,12 +509,12 @@
         {
           "name": "Readings",
           "position": [
-            6,
+            7.0,
             3.5,
-            13
+            16.0
           ],
           "target": [
-            6,
+            7.0,
             3.5,
             0
           ],
@@ -523,12 +523,12 @@
         {
           "name": "Counts",
           "position": [
-            17,
+            19.5,
             3,
             9
           ],
           "target": [
-            17,
+            19.5,
             3,
             0
           ],
@@ -703,7 +703,16 @@
                 }
               ],
               "label": "60 readings · blue kσ · green MAD · amber Tukey",
-              "prompt": "The z-rule's fences: mean plus and minus k standard deviations, with the mean itself drawn faintly between them. Blue is the colour of the non-robust family throughout this lesson. Both fences and the centre line are live expressions, so they move the instant either slider moves."
+              "prompt": "The z-rule's fences: mean plus and minus k standard deviations, with the mean itself drawn faintly between them. Blue is the colour of the non-robust family throughout this lesson. Both fences and the centre line are live expressions, so they move the instant either slider moves. The right-hand blue axis relabels the SAME rows as the left one in units of the classical z-score, (v - mean)/sd; nothing is plotted against it, so the two scales cannot disagree about where a reading sits. It is recomputed live, so as contamination inflates sd the z axis compresses and a reading that was 4 sigma out slides toward 2.",
+              "rightAxes": [
+                {
+                  "fromPrimaryExpr": "(value - adMeanV(contam)) / adStdV(contam)",
+                  "title": "$z$",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#42a5f5"
+                }
+              ]
             }
           ],
           "camera": {
@@ -810,7 +819,16 @@
                 }
               ],
               "label": "60 readings · blue kσ · green MAD · amber Tukey",
-              "prompt": "Two overlays on the same plot area. Blue points are readings the k-sigma rule flags. RED points are planted outliers the rule MISSED -- the ones inside their own fence. At contamination 8 there are six red points and two blue. Both series hide their non-members with a sentinel of 999, which falls outside the chart's fixed domain and is therefore not drawn."
+              "prompt": "Two overlays on the same plot area. Blue points are readings the k-sigma rule flags. RED points are planted outliers the rule MISSED -- the ones inside their own fence. At contamination 8 there are six red points and two blue. Both series hide their non-members with a sentinel of 999, which falls outside the chart's fixed domain and is therefore not drawn. The right-hand blue axis relabels the SAME rows as the left one in units of the classical z-score, (v - mean)/sd; nothing is plotted against it, so the two scales cannot disagree about where a reading sits. It is recomputed live, so as contamination inflates sd the z axis compresses and a reading that was 4 sigma out slides toward 2.",
+              "rightAxes": [
+                {
+                  "fromPrimaryExpr": "(value - adMeanV(contam)) / adStdV(contam)",
+                  "title": "$z$",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#42a5f5"
+                }
+              ]
             }
           ],
           "info": [
@@ -938,7 +956,23 @@
                 }
               ],
               "label": "60 readings · blue kσ · green MAD · amber Tukey",
-              "prompt": "The robust fences, in green. The band between them is the region the modified z-score calls normal. Compare its width against the blue fences at the same k: at contamination 8 the green band is about 23 units wide and the blue one about 64. Green is the colour of the robust family throughout the lesson."
+              "prompt": "The robust fences, in green. The band between them is the region the modified z-score calls normal. Compare its width against the blue fences at the same k: at contamination 8 the green band is about 23 units wide and the blue one about 64. Green is the colour of the robust family throughout the lesson. The right-hand blue axis relabels the SAME rows as the left one in units of the classical z-score, (v - mean)/sd; nothing is plotted against it, so the two scales cannot disagree about where a reading sits. It is recomputed live, so as contamination inflates sd the z axis compresses and a reading that was 4 sigma out slides toward 2. The green axis is the same trick for the modified z-score, (v - median)/(1.4826 MAD). Reading one point across both right-hand axes is the whole lesson of this scene: the same value is extreme on the robust scale and unremarkable on the classical one.",
+              "rightAxes": [
+                {
+                  "fromPrimaryExpr": "(value - adMeanV(contam)) / adStdV(contam)",
+                  "title": "$z$",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#42a5f5"
+                },
+                {
+                  "fromPrimaryExpr": "(value - adMedV(contam)) / adSigmaHat(contam)",
+                  "title": "$z_{\\mathrm{rob}}$",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#66bb6a"
+                }
+              ]
             }
           ],
           "info": [
@@ -972,7 +1006,7 @@
               "id": "counts",
               "type": "chart",
               "origin": [
-                13.5,
+                16.0,
                 1.5,
                 0
               ],
@@ -1167,7 +1201,23 @@
                 }
               ],
               "label": "60 readings · blue kσ · green MAD · amber Tukey",
-              "prompt": "Tukey's fences in amber. They sit closer in than the MAD fences at k = 3 because 1.5 IQR is about 2.7 sigma under normality, not 3. Quartiles have breakdown point 1/4, so these hold at 8 of 60 contamination but would break above 25%."
+              "prompt": "Tukey's fences in amber. They sit closer in than the MAD fences at k = 3 because 1.5 IQR is about 2.7 sigma under normality, not 3. Quartiles have breakdown point 1/4, so these hold at 8 of 60 contamination but would break above 25%. The right-hand blue axis relabels the SAME rows as the left one in units of the classical z-score, (v - mean)/sd; nothing is plotted against it, so the two scales cannot disagree about where a reading sits. It is recomputed live, so as contamination inflates sd the z axis compresses and a reading that was 4 sigma out slides toward 2. The green axis is the same trick for the modified z-score, (v - median)/(1.4826 MAD). Reading one point across both right-hand axes is the whole lesson of this scene: the same value is extreme on the robust scale and unremarkable on the classical one.",
+              "rightAxes": [
+                {
+                  "fromPrimaryExpr": "(value - adMeanV(contam)) / adStdV(contam)",
+                  "title": "$z$",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#42a5f5"
+                },
+                {
+                  "fromPrimaryExpr": "(value - adMedV(contam)) / adSigmaHat(contam)",
+                  "title": "$z_{\\mathrm{rob}}$",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#66bb6a"
+                }
+              ]
             }
           ],
           "camera": {
@@ -3505,7 +3555,7 @@
                 }
               ],
               "label": "annulus · red = planted · purple = the ν level set",
-              "prompt": "208 points on an annulus of radius 2.4 with sd 0.22, plus eight planted: four in the hole at roughly the origin and four well outside. The two purple curves are the outer and inner walls of the nu-quantile level set of the Gaussian kernel density, each traced by bisection at 128 angles and read back by interpolation -- the checker verifies that every drawn vertex sits on the level set to 1e-6. At nu = 0.1 and gamma = 0.5 the inner wall runs near radius 1.05 to 1.32 and the outer near 2.91 to 3.09, and all eight planted points fall outside."
+              "prompt": "208 points on an annulus of radius 2.4 with sd 0.22, plus eight planted: four in the hole at roughly the origin and four well outside. The two purple curves are the outer and inner walls of the nu-quantile level set of the Gaussian kernel density, each traced by bisection at 128 angles and read back by interpolation -- the boundary is bisected at 128 angles and the curve between them is linear interpolation, so only the vertices that land on a cache angle are exact -- the checker asserts the level-set identity to 1e-6 at those angles, not at every drawn vertex. At nu = 0.1 and gamma = 0.5 the inner wall runs near radius 1.05 to 1.32 and the outer near 2.91 to 3.09, and all eight planted points fall outside."
             }
           ],
           "info": [
@@ -3550,8 +3600,8 @@
         {
           "id": "gamma",
           "title": "γ, and the boundary that memorises its training set",
-          "description": "Now drag **$\\gamma$**.\n\n**Small $\\gamma$** — wide kernels. Every point's influence reaches far, the density is smooth, and the boundary becomes a blob that ignores the hole entirely. Underfitting: the model of normal is too generous and the four points in the middle go undetected.\n\n**Large $\\gamma$** — narrow kernels. Each point only supports density in its immediate vicinity, and the boundary collapses onto the training points themselves, shrink-wrapping individual observations and the gaps between them.\n\nThat second failure is worth sitting with. At large $\\gamma$ the detector has near-perfect *training* behaviour — every training point is inside, everything else is out — and has learned nothing. A **new** normal observation, landing a little away from any training point, is flagged.\n\nThis is ordinary overfitting, in a setting where you usually have no labelled validation set to catch it with. Which is the real difficulty of one-class methods: **the model-selection problem has no clean answer when you cannot measure generalisation.** In practice: hold out clean data if you have any, watch the flag *rate* rather than the flag *set*, and prefer the smoother model when in doubt.",
-          "prompt": "The overfitting step, and it should be dragged rather than read. Small gamma: the kernel is wide, the density smooths over the hole, the boundary becomes a blob and the four planted points in the centre stop being detected -- underfitting made visible. Large gamma: the boundary shrink-wraps individual training points and the region fragments. The deep point is the one about model selection: at large gamma training behaviour is near-perfect and generalisation is destroyed, and unlike supervised learning there is usually no labelled validation set to reveal it. Concrete advice if asked: hold out clean data when you have it, monitor the FLAG RATE over time rather than the flag set, prefer the smoother model, and note that scikit-learn's 'scale' heuristic sets gamma from the feature variance for exactly this reason. Note also that nu and gamma interact -- nu fixes the fraction rejected at whatever gamma you chose, so changing gamma changes WHICH points are rejected without changing how many.",
+          "description": "Now drag **$\\gamma$**.\n\n**Small $\\gamma$** — wide kernels. Every point's influence reaches far, the density is smooth, and the boundary becomes a blob that ignores the hole entirely. Underfitting: the model of normal is too generous and the four points in the middle go undetected.\n\n**Large $\\gamma$** — narrow kernels. Each point only supports density in its immediate vicinity, and the boundary collapses onto the training points themselves, shrink-wrapping individual observations and the gaps between them.\n\n*How the curve is drawn:* each of the 128 rays keeps its first crossing outward and its last crossing inward, so what you see is the **outer and inner wall of a single annulus**. Once large $\\gamma$ genuinely fragments the level set into islands, the rays have more crossings than the two that are kept and the drawn curve stops being the level set. Read the large-$\\gamma$ picture as *the boundary is breaking up*, not as a faithful outline of the pieces.\n\nThat second failure is worth sitting with. At large $\\gamma$ the detector has near-perfect *training* behaviour — every training point is inside, everything else is out — and has learned nothing. A **new** normal observation, landing a little away from any training point, is flagged.\n\nThis is ordinary overfitting, in a setting where you usually have no labelled validation set to catch it with. Which is the real difficulty of one-class methods: **the model-selection problem has no clean answer when you cannot measure generalisation.** In practice: hold out clean data if you have any, watch the flag *rate* rather than the flag *set*, and prefer the smoother model when in doubt.",
+          "prompt": "The overfitting step, and it should be dragged rather than read. Small gamma: the kernel is wide, the density smooths over the hole, the boundary becomes a blob and the four planted points in the centre stop being detected -- underfitting made visible. Large gamma: the boundary shrink-wraps individual training points and the region fragments. Be straight about the rendering if asked: the tracer keeps one crossing pair per ray, so it draws a single annulus and CANNOT outline disconnected islands; past the point of fragmentation the drawn curve is indicative, not the true level set. The deep point is the one about model selection: at large gamma training behaviour is near-perfect and generalisation is destroyed, and unlike supervised learning there is usually no labelled validation set to reveal it. Concrete advice if asked: hold out clean data when you have it, monitor the FLAG RATE over time rather than the flag set, prefer the smoother model, and note that scikit-learn's 'scale' heuristic sets gamma from the feature variance for exactly this reason. Note also that nu and gamma interact -- nu fixes the fraction rejected at whatever gamma you chose, so changing gamma changes WHICH points are rejected without changing how many.",
           "info": [
             {
               "id": "iso-info",
@@ -4070,7 +4120,7 @@
             "id": "p4-recurrence",
             "type": "step",
             "label": "The external path length satisfies a standard recurrence",
-            "math": "\\htmlClass{hl-c}{c(n)} = \\frac{2}{n}\\sum_{i=1}^{n-1} \\htmlClass{hl-c}{c(i)} + \\frac{2(n-1)}{n}, \\qquad \\htmlClass{hl-c}{c(1)} = 0",
+            "math": "\\htmlClass{hl-c}{c(n)} = \\frac{1}{n}\\sum_{i=1}^{n-1} \\htmlClass{hl-c}{c(i)} + \\frac{2(n-1)}{n}, \\qquad \\htmlClass{hl-c}{c(1)} = 0",
             "highlights": {
               "c": {
                 "color": "blue",
@@ -4078,7 +4128,7 @@
               }
             },
             "justification": "Averaging the depth of an unsuccessful search over both subtrees, weighted by the uniform subtree-size distribution, and adding one edge for the current node on each of the $n-1$ non-root insertions.",
-            "explanation": "The $2(n-1)/n$ term is the cost of descending past the root; the sum is the recursive cost below it.",
+            "explanation": "The $2(n-1)/n$ term is the cost of descending past the root; the sum is the recursive cost below it, and the $1/n$ is the split probability from the step above. Check it against the closed form: $c(3) = \\tfrac13 c(1) + \\tfrac13 c(2) + \\tfrac43 = \\tfrac53$, which is $2H_2 - \\tfrac43$.",
             "semanticGraph": {
               "graph": {
                 "nodes": [
@@ -4086,7 +4136,7 @@
                     "id": "c0___equals_1",
                     "type": "relation",
                     "op": "equals",
-                    "subexpr": "c(n) = \\frac{2}{n}\\sum_{i=1}^{n-1} c(i) + \\frac{2(n-1)}{n}"
+                    "subexpr": "c(n) = \\frac{1}{n}\\sum_{i=1}^{n-1} c(i) + \\frac{2(n-1)}{n}"
                   },
                   {
                     "id": "c0___c_2",
@@ -4104,28 +4154,16 @@
                     "id": "c0___add_3",
                     "type": "operator",
                     "op": "add",
-                    "subexpr": "\\frac{1}{n} 2 \\sum_{i=1}^{n - 1} c{\\left(i \\right)} + \\frac{1}{n} 2 \\left(n - 1\\right)"
+                    "subexpr": "\\frac{1}{n} 2 \\left(n - 1\\right) + \\frac{1}{n} \\sum_{i=1}^{n - 1} c{\\left(i \\right)}"
                   },
                   {
                     "id": "c0___multiply_4",
                     "type": "operator",
                     "op": "multiply",
-                    "subexpr": "\\frac{1}{n} 2 \\sum_{i=1}^{n - 1} c{\\left(i \\right)}"
+                    "subexpr": "\\frac{1}{n} \\sum_{i=1}^{n - 1} c{\\left(i \\right)}"
                   },
                   {
-                    "id": "c0___multiply_5",
-                    "type": "operator",
-                    "op": "multiply",
-                    "subexpr": "\\frac{1}{n} 2"
-                  },
-                  {
-                    "id": "c0___num_6",
-                    "type": "number",
-                    "label": "2",
-                    "subexpr": "2"
-                  },
-                  {
-                    "id": "c0___power_7",
+                    "id": "c0___power_5",
                     "type": "operator",
                     "latex": "\\dfrac{1}{(\\cdot)}",
                     "op": "power",
@@ -4139,76 +4177,76 @@
                     "subexpr": "i"
                   },
                   {
-                    "id": "c0___num_9",
+                    "id": "c0___num_7",
                     "type": "number",
                     "label": "1",
                     "subexpr": "1"
                   },
                   {
-                    "id": "c0___add_10",
+                    "id": "c0___add_8",
                     "type": "operator",
                     "op": "add",
                     "subexpr": "n - 1"
                   },
                   {
-                    "id": "c0___num_11",
+                    "id": "c0___num_9",
                     "type": "number",
                     "label": "-1",
                     "subexpr": "-1"
                   },
                   {
-                    "id": "c0___equals_12",
+                    "id": "c0___equals_10",
                     "type": "relation",
                     "op": "equals",
                     "subexpr": "i = 1"
                   },
                   {
-                    "id": "c0___sum_8",
+                    "id": "c0___sum_6",
                     "type": "operator",
                     "op": "sum",
                     "with_respect_to": "i",
-                    "lower_bound": "__num_9",
-                    "upper_bound": "__add_10",
+                    "lower_bound": "__num_7",
+                    "upper_bound": "__add_8",
                     "subexpr": "\\sum_{i=1}^{n - 1} c{\\left(i \\right)}"
                   },
                   {
-                    "id": "c0___c_13",
+                    "id": "c0___c_11",
                     "type": "function",
                     "op": "c",
                     "subexpr": "c{\\left(i \\right)}"
                   },
                   {
-                    "id": "c0___multiply_14",
+                    "id": "c0___multiply_12",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\frac{1}{n} 2 \\left(n - 1\\right)"
                   },
                   {
-                    "id": "c0___multiply_15",
+                    "id": "c0___multiply_13",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "2 \\left(n - 1\\right)"
                   },
                   {
-                    "id": "c0___num_16",
+                    "id": "c0___num_14",
                     "type": "number",
                     "label": "2",
                     "subexpr": "2"
                   },
                   {
-                    "id": "c0___add_17",
+                    "id": "c0___add_15",
                     "type": "operator",
                     "op": "add",
                     "subexpr": "n - 1"
                   },
                   {
-                    "id": "c0___num_18",
+                    "id": "c0___num_16",
                     "type": "number",
                     "label": "-1",
                     "subexpr": "-1"
                   },
                   {
-                    "id": "c0___power_19",
+                    "id": "c0___power_17",
                     "type": "operator",
                     "latex": "\\dfrac{1}{(\\cdot)}",
                     "op": "power",
@@ -4250,66 +4288,54 @@
                     "to": "c0___equals_1"
                   },
                   {
-                    "from": "c0___num_6",
-                    "to": "c0___multiply_5",
-                    "semantic": "direct",
-                    "weight": 1.0
+                    "from": "n",
+                    "to": "c0___power_5"
+                  },
+                  {
+                    "from": "c0___power_5",
+                    "to": "c0___multiply_4"
                   },
                   {
                     "from": "n",
-                    "to": "c0___power_7"
+                    "to": "c0___add_8"
                   },
                   {
-                    "from": "c0___power_7",
-                    "to": "c0___multiply_5"
-                  },
-                  {
-                    "from": "c0___multiply_5",
-                    "to": "c0___multiply_4",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "n",
-                    "to": "c0___add_10"
-                  },
-                  {
-                    "from": "c0___num_11",
-                    "to": "c0___add_10"
+                    "from": "c0___num_9",
+                    "to": "c0___add_8"
                   },
                   {
                     "from": "i",
-                    "to": "c0___sum_8",
+                    "to": "c0___sum_6",
                     "role": "wrt"
                   },
                   {
                     "from": "i",
-                    "to": "c0___equals_12"
+                    "to": "c0___equals_10"
                   },
                   {
-                    "from": "c0___num_9",
-                    "to": "c0___equals_12"
+                    "from": "c0___num_7",
+                    "to": "c0___equals_10"
                   },
                   {
-                    "from": "c0___equals_12",
-                    "to": "c0___sum_8",
+                    "from": "c0___equals_10",
+                    "to": "c0___sum_6",
                     "role": "lb"
                   },
                   {
-                    "from": "c0___add_10",
-                    "to": "c0___sum_8",
+                    "from": "c0___add_8",
+                    "to": "c0___sum_6",
                     "role": "ub"
                   },
                   {
                     "from": "i",
-                    "to": "c0___c_13"
+                    "to": "c0___c_11"
                   },
                   {
-                    "from": "c0___c_13",
-                    "to": "c0___sum_8"
+                    "from": "c0___c_11",
+                    "to": "c0___sum_6"
                   },
                   {
-                    "from": "c0___sum_8",
+                    "from": "c0___sum_6",
                     "to": "c0___multiply_4",
                     "semantic": "direct",
                     "weight": 1.0
@@ -4319,41 +4345,41 @@
                     "to": "c0___add_3"
                   },
                   {
+                    "from": "c0___num_14",
+                    "to": "c0___multiply_13",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "n",
+                    "to": "c0___add_15"
+                  },
+                  {
                     "from": "c0___num_16",
-                    "to": "c0___multiply_15",
+                    "to": "c0___add_15"
+                  },
+                  {
+                    "from": "c0___add_15",
+                    "to": "c0___multiply_13",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "c0___multiply_13",
+                    "to": "c0___multiply_12",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "n",
-                    "to": "c0___add_17"
+                    "to": "c0___power_17"
                   },
                   {
-                    "from": "c0___num_18",
-                    "to": "c0___add_17"
+                    "from": "c0___power_17",
+                    "to": "c0___multiply_12"
                   },
                   {
-                    "from": "c0___add_17",
-                    "to": "c0___multiply_15",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "c0___multiply_15",
-                    "to": "c0___multiply_14",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "n",
-                    "to": "c0___power_19"
-                  },
-                  {
-                    "from": "c0___power_19",
-                    "to": "c0___multiply_14"
-                  },
-                  {
-                    "from": "c0___multiply_14",
+                    "from": "c0___multiply_12",
                     "to": "c0___add_3"
                   },
                   {
@@ -6176,37 +6202,18 @@
         "prompt": "The proof behind the scene's punchline, and the same computation as the medical-test problem in the Conditional Probability lesson -- make the link explicitly, because a student who has seen that one already has this. The structure is: TPR and FPR are CONDITIONAL on the true class and are therefore properties of the detector; precision conditions the other way and therefore needs the prior. The limit in the final step is the operational fact: for any fixed detector with FPR > 0, precision tends to zero as the base rate does, at rate TPR*pi/FPR. The corollary about which lever to pull is the actionable part: d(precision)/d(FPR) dominates d(precision)/d(TPR) at small pi, so halving FPR roughly doubles precision while improving TPR barely registers.",
         "steps": [
           {
-            "id": "p6-defs",
             "type": "definition",
-            "label": "What the detector controls, and what it does not",
-            "math": "\\htmlClass{hl-tpr}{\\mathrm{TPR}} = P(\\hat{A} \\mid A), \\qquad \\htmlClass{hl-fpr}{\\mathrm{FPR}} = P(\\hat{A} \\mid \\lnot A), \\qquad \\htmlClass{hl-pi}{\\pi} = P(A)",
-            "highlights": {
-              "tpr": {
-                "color": "blue",
-                "label": "TPR — conditional on a true anomaly"
-              },
-              "fpr": {
-                "color": "orange",
-                "label": "FPR — conditional on a true normal"
-              },
-              "pi": {
-                "color": "red",
-                "label": "π — the base rate, a fact about the world"
-              }
-            },
-            "justification": "$\\hat{A}$ is the event that the detector flags; $A$ that the point really is anomalous.",
-            "explanation": "Both rates condition **on the truth**. That is what makes them properties of the detector: they are measured separately within each class, so the mix of classes cannot affect them. $\\pi$ is not yours.",
             "semanticGraph": {
               "graph": {
                 "nodes": [
                   {
-                    "id": "c0___equals_1",
+                    "id": "__equals_1",
                     "type": "relation",
                     "op": "equals",
-                    "subexpr": "TPR = P(\\hat{A}, \\hat{A})"
+                    "subexpr": "TPR = P(D \\mid A)"
                   },
                   {
-                    "id": "c0___multiply_2",
+                    "id": "__multiply_2",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "T P R",
@@ -6221,7 +6228,7 @@
                     "subexpr": "T"
                   },
                   {
-                    "id": "c0___multiply_3",
+                    "id": "__multiply_3",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "P R"
@@ -6239,25 +6246,96 @@
                     "subexpr": "R"
                   },
                   {
-                    "id": "c0___P_4",
+                    "id": "__P_4",
                     "type": "function",
                     "op": "P",
-                    "subexpr": "P{\\left(\\hat{A},\\hat{A} \\right)}"
+                    "subexpr": "P{\\left(D \\mid A \\right)}"
+                  },
+                  {
+                    "id": "D",
+                    "type": "scalar",
+                    "latex": "D",
+                    "subexpr": "D"
                   },
                   {
                     "id": "A",
                     "type": "scalar",
-                    "latex": "\\hat{A}",
-                    "subexpr": "\\hat{A}"
+                    "latex": "A",
+                    "subexpr": "A"
+                  }
+                ],
+                "edges": [
+                  {
+                    "from": "T",
+                    "to": "__multiply_2",
+                    "semantic": "direct",
+                    "weight": 1.0
                   },
                   {
-                    "id": "c1___equals_1",
+                    "from": "P",
+                    "to": "__multiply_3",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "R",
+                    "to": "__multiply_3",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__multiply_3",
+                    "to": "__multiply_2",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__multiply_2",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "D",
+                    "to": "__P_4"
+                  },
+                  {
+                    "from": "A",
+                    "to": "__P_4",
+                    "role": "condition"
+                  },
+                  {
+                    "from": "__P_4",
+                    "to": "__equals_1"
+                  }
+                ],
+                "classification": {
+                  "kind": "algebraic"
+                }
+              }
+            },
+            "id": "p6-defs-tpr",
+            "label": "What the detector controls (1): the hit rate",
+            "math": "\\htmlClass{hl-tpr}{\\mathrm{TPR}} = P(D \\mid A)",
+            "highlights": {
+              "tpr": {
+                "color": "blue",
+                "label": "TPR — conditional on a true anomaly"
+              }
+            },
+            "explanation": "$D$ is the event that the detector raises an alert; $A$ is the event that the item really is anomalous. TPR conditions **on the truth** — it is measured only among the true anomalies, so the mix of classes cannot move it."
+          },
+          {
+            "type": "definition",
+            "semanticGraph": {
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "__equals_1",
                     "type": "relation",
                     "op": "equals",
-                    "subexpr": "FPR = P(\\hat{A}, \\lnot \\hat{A})"
+                    "subexpr": "FPR = P(D \\mid \\lnot A)"
                   },
                   {
-                    "id": "c1___multiply_2",
+                    "id": "__multiply_2",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "F P R",
@@ -6272,22 +6350,40 @@
                     "subexpr": "F"
                   },
                   {
-                    "id": "c1___multiply_3",
+                    "id": "__multiply_3",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "P R"
                   },
                   {
-                    "id": "c1___P_4",
-                    "type": "function",
-                    "op": "P",
-                    "subexpr": "P{\\left(\\hat{A},\\hat{A} \\lnot \\right)}"
+                    "id": "P",
+                    "type": "scalar",
+                    "latex": "P",
+                    "subexpr": "P"
                   },
                   {
-                    "id": "c1___multiply_5",
+                    "id": "R",
+                    "type": "scalar",
+                    "latex": "R",
+                    "subexpr": "R"
+                  },
+                  {
+                    "id": "__P_4",
+                    "type": "function",
+                    "op": "P",
+                    "subexpr": "P{\\left(D \\mid A \\lnot \\right)}"
+                  },
+                  {
+                    "id": "D",
+                    "type": "scalar",
+                    "latex": "D",
+                    "subexpr": "D"
+                  },
+                  {
+                    "id": "__multiply_5",
                     "type": "operator",
                     "op": "multiply",
-                    "subexpr": "\\hat{A} \\lnot"
+                    "subexpr": "\\lnot A"
                   },
                   {
                     "id": "lnot",
@@ -6296,10 +6392,93 @@
                     "subexpr": "\\lnot"
                   },
                   {
-                    "id": "c2___equals_1",
+                    "id": "A",
+                    "type": "scalar",
+                    "latex": "A",
+                    "subexpr": "A"
+                  }
+                ],
+                "edges": [
+                  {
+                    "from": "F",
+                    "to": "__multiply_2",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "P",
+                    "to": "__multiply_3",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "R",
+                    "to": "__multiply_3",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__multiply_3",
+                    "to": "__multiply_2",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__multiply_2",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "D",
+                    "to": "__P_4"
+                  },
+                  {
+                    "from": "lnot",
+                    "to": "__multiply_5",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "A",
+                    "to": "__multiply_5",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__multiply_5",
+                    "to": "__P_4",
+                    "role": "condition"
+                  },
+                  {
+                    "from": "__P_4",
+                    "to": "__equals_1"
+                  }
+                ],
+                "classification": {
+                  "kind": "algebraic"
+                }
+              }
+            },
+            "id": "p6-defs-fpr",
+            "label": "What the detector controls (2): the false-alarm rate",
+            "math": "\\htmlClass{hl-fpr}{\\mathrm{FPR}} = P(D \\mid \\lnot A)",
+            "highlights": {
+              "fpr": {
+                "color": "orange",
+                "label": "FPR — conditional on a true normal"
+              }
+            },
+            "explanation": "Measured only among the true normals, for the same reason. TPR and FPR together are the detector's operating point, and they are the only two numbers on this page you can change by training."
+          },
+          {
+            "type": "definition",
+            "semanticGraph": {
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "__equals_1",
                     "type": "relation",
                     "op": "equals",
-                    "subexpr": "\\pi = P(\\hat{A})"
+                    "subexpr": "\\pi = P(A)"
                   },
                   {
                     "id": "pi",
@@ -6311,141 +6490,53 @@
                     "highlight": "pi"
                   },
                   {
-                    "id": "c2___P_2",
+                    "id": "__P_2",
                     "type": "function",
                     "op": "P",
-                    "subexpr": "P{\\left(\\hat{A} \\right)}"
+                    "subexpr": "P{\\left(A \\right)}"
+                  },
+                  {
+                    "id": "A",
+                    "type": "scalar",
+                    "latex": "A",
+                    "subexpr": "A"
                   }
                 ],
                 "edges": [
                   {
-                    "from": "T",
-                    "to": "c0___multiply_2",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "P",
-                    "to": "c0___multiply_3",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "R",
-                    "to": "c0___multiply_3",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "c0___multiply_3",
-                    "to": "c0___multiply_2",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "c0___multiply_2",
-                    "to": "c0___equals_1"
-                  },
-                  {
-                    "from": "A",
-                    "to": "c0___P_4"
-                  },
-                  {
-                    "from": "A",
-                    "to": "c0___P_4"
-                  },
-                  {
-                    "from": "c0___P_4",
-                    "to": "c0___equals_1"
-                  },
-                  {
-                    "from": "F",
-                    "to": "c1___multiply_2",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "P",
-                    "to": "c1___multiply_3",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "R",
-                    "to": "c1___multiply_3",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "c1___multiply_3",
-                    "to": "c1___multiply_2",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "c1___multiply_2",
-                    "to": "c1___equals_1"
-                  },
-                  {
-                    "from": "A",
-                    "to": "c1___P_4"
-                  },
-                  {
-                    "from": "lnot",
-                    "to": "c1___multiply_5",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "A",
-                    "to": "c1___multiply_5",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "c1___multiply_5",
-                    "to": "c1___P_4"
-                  },
-                  {
-                    "from": "c1___P_4",
-                    "to": "c1___equals_1"
-                  },
-                  {
                     "from": "pi",
-                    "to": "c2___equals_1"
+                    "to": "__equals_1"
                   },
                   {
                     "from": "A",
-                    "to": "c2___P_2"
+                    "to": "__P_2"
                   },
                   {
-                    "from": "c2___P_2",
-                    "to": "c2___equals_1"
+                    "from": "__P_2",
+                    "to": "__equals_1"
                   }
                 ],
                 "classification": {
-                  "kind": "statements",
-                  "count": 3,
-                  "clauses": [
-                    {
-                      "kind": "algebraic"
-                    },
-                    {
-                      "kind": "algebraic"
-                    },
-                    {
-                      "kind": "algebraic"
-                    }
-                  ]
+                  "kind": "algebraic"
                 }
               }
-            }
+            },
+            "id": "p6-defs-pi",
+            "label": "What the detector does not control",
+            "math": "\\htmlClass{hl-pi}{\\pi} = P(A)",
+            "highlights": {
+              "pi": {
+                "color": "red",
+                "label": "π — the base rate, a fact about the world"
+              }
+            },
+            "explanation": "The base rate is a fact about the world you are pointing the detector at. **$\\pi$ is not yours** — but as the last step shows, the population you choose to score is."
           },
           {
             "id": "p6-total",
             "type": "step",
             "label": "How often anything is flagged at all",
-            "math": "P(\\hat{A}) = \\htmlClass{hl-tpr}{\\mathrm{TPR}}\\,\\htmlClass{hl-pi}{\\pi} + \\htmlClass{hl-fpr}{\\mathrm{FPR}}\\,(1 - \\htmlClass{hl-pi}{\\pi})",
+            "math": "P(D) = \\htmlClass{hl-tpr}{\\mathrm{TPR}}\\,\\htmlClass{hl-pi}{\\pi} + \\htmlClass{hl-fpr}{\\mathrm{FPR}}\\,(1 - \\htmlClass{hl-pi}{\\pi})",
             "highlights": {
               "tpr": {
                 "color": "blue",
@@ -6469,19 +6560,19 @@
                     "id": "__equals_1",
                     "type": "relation",
                     "op": "equals",
-                    "subexpr": "P(\\hat{A}) = TPR\\,\\pi + FPR\\,(1 - \\pi)"
+                    "subexpr": "P(D) = TPR\\,\\pi + FPR\\,(1 - \\pi)"
                   },
                   {
                     "id": "__P_2",
                     "type": "function",
                     "op": "P",
-                    "subexpr": "P{\\left(\\hat{A} \\right)}"
+                    "subexpr": "P{\\left(D \\right)}"
                   },
                   {
-                    "id": "A",
+                    "id": "D",
                     "type": "scalar",
-                    "latex": "\\hat{A}",
-                    "subexpr": "\\hat{A}"
+                    "latex": "D",
+                    "subexpr": "D"
                   },
                   {
                     "id": "__add_3",
@@ -6579,7 +6670,7 @@
                 ],
                 "edges": [
                   {
-                    "from": "A",
+                    "from": "D",
                     "to": "__P_2"
                   },
                   {
@@ -6685,7 +6776,7 @@
             "id": "p6-bayes",
             "type": "step",
             "label": "Invert the conditioning",
-            "math": "\\text{precision} = P(A \\mid \\hat{A}) = \\frac{P(\\hat{A} \\mid A)\\,P(A)}{P(\\hat{A})} = \\frac{\\htmlClass{hl-tpr}{\\mathrm{TPR}}\\,\\htmlClass{hl-pi}{\\pi}}{\\htmlClass{hl-tpr}{\\mathrm{TPR}}\\,\\htmlClass{hl-pi}{\\pi} + \\htmlClass{hl-fpr}{\\mathrm{FPR}}\\,(1 - \\htmlClass{hl-pi}{\\pi})}",
+            "math": "\\text{precision} = P(A \\mid D) = \\frac{P(D \\mid A)\\,P(A)}{P(D)} = \\frac{\\htmlClass{hl-tpr}{\\mathrm{TPR}}\\,\\htmlClass{hl-pi}{\\pi}}{\\htmlClass{hl-tpr}{\\mathrm{TPR}}\\,\\htmlClass{hl-pi}{\\pi} + \\htmlClass{hl-fpr}{\\mathrm{FPR}}\\,(1 - \\htmlClass{hl-pi}{\\pi})}",
             "highlights": {
               "tpr": {
                 "color": "blue",
@@ -6717,37 +6808,43 @@
                     "id": "s1___P_1",
                     "type": "function",
                     "op": "P",
-                    "subexpr": "P(\\hat{A} \\mid \\hat{A})"
+                    "subexpr": "P(A \\mid D)"
                   },
                   {
                     "id": "A",
                     "type": "scalar",
-                    "latex": "\\hat{A}",
-                    "subexpr": "\\hat{A}"
+                    "latex": "A",
+                    "subexpr": "A"
+                  },
+                  {
+                    "id": "D",
+                    "type": "scalar",
+                    "latex": "D",
+                    "subexpr": "D"
                   },
                   {
                     "id": "s2___multiply_1",
                     "type": "operator",
                     "op": "multiply",
-                    "subexpr": "\\frac{P(\\hat{A} \\mid \\hat{A})\\,P(\\hat{A})}{P(\\hat{A})}"
+                    "subexpr": "\\frac{P(D \\mid A)\\,P(A)}{P(D)}"
                   },
                   {
                     "id": "s2___multiply_2",
                     "type": "operator",
                     "op": "multiply",
-                    "subexpr": "P{\\left(\\hat{A} \\mid \\hat{A} \\right)} P{\\left(\\hat{A} \\right)}"
+                    "subexpr": "P{\\left(D \\mid A \\right)} P{\\left(A \\right)}"
                   },
                   {
                     "id": "s2___P_3",
                     "type": "function",
                     "op": "P",
-                    "subexpr": "P{\\left(\\hat{A} \\mid \\hat{A} \\right)}"
+                    "subexpr": "P{\\left(D \\mid A \\right)}"
                   },
                   {
                     "id": "s2___P_4",
                     "type": "function",
                     "op": "P",
-                    "subexpr": "P{\\left(\\hat{A} \\right)}"
+                    "subexpr": "P{\\left(A \\right)}"
                   },
                   {
                     "id": "s2___power_5",
@@ -6755,13 +6852,13 @@
                     "latex": "\\dfrac{1}{(\\cdot)}",
                     "op": "power",
                     "exponent": "-1",
-                    "subexpr": "\\frac{1}{P{\\left(\\hat{A} \\right)}}"
+                    "subexpr": "\\frac{1}{P{\\left(D \\right)}}"
                   },
                   {
                     "id": "s2___P_6",
                     "type": "function",
                     "op": "P",
-                    "subexpr": "P{\\left(\\hat{A} \\right)}"
+                    "subexpr": "P{\\left(D \\right)}"
                   },
                   {
                     "id": "s3___multiply_1",
@@ -6892,7 +6989,7 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "subexpr": "\\text{precision} = P(A \\mid \\hat{A}) = \\frac{P(\\hat{A} \\mid A)\\,P(A)}{P(\\hat{A})} = \\frac{\\mathrm{TPR}\\,\\pi}{\\mathrm{TPR}\\,\\pi + \\mathrm{FPR}\\,(1 - \\pi)}"
+                    "subexpr": "\\text{precision} = P(A \\mid D) = \\frac{P(D \\mid A)\\,P(A)}{P(D)} = \\frac{\\mathrm{TPR}\\,\\pi}{\\mathrm{TPR}\\,\\pi + \\mathrm{FPR}\\,(1 - \\pi)}"
                   }
                 ],
                 "edges": [
@@ -6901,11 +6998,11 @@
                     "to": "s1___P_1"
                   },
                   {
-                    "from": "A",
+                    "from": "D",
                     "to": "s1___P_1"
                   },
                   {
-                    "from": "A",
+                    "from": "D",
                     "to": "s2___P_3"
                   },
                   {
@@ -6929,7 +7026,7 @@
                     "to": "s2___multiply_1"
                   },
                   {
-                    "from": "A",
+                    "from": "D",
                     "to": "s2___P_6"
                   },
                   {
@@ -7391,7 +7488,7 @@
             "id": "p6-lever",
             "type": "conclusion",
             "label": "Which lever to pull",
-            "math": "\\frac{\\partial\\,\\text{precision}}{\\partial\\,\\htmlClass{hl-fpr}{\\mathrm{FPR}}} \\Big/ \\frac{\\partial\\,\\text{precision}}{\\partial\\,\\htmlClass{hl-tpr}{\\mathrm{TPR}}} = -\\frac{1 - \\htmlClass{hl-pi}{\\pi}}{\\htmlClass{hl-pi}{\\pi}} \\;\\xrightarrow[\\htmlClass{hl-pi}{\\pi} \\to 0]{}\\; -\\infty",
+            "math": "\\frac{\\partial\\,\\text{precision}}{\\partial\\,\\htmlClass{hl-fpr}{\\mathrm{FPR}}} \\Big/ \\frac{\\partial\\,\\text{precision}}{\\partial\\,\\htmlClass{hl-tpr}{\\mathrm{TPR}}} = -\\frac{\\htmlClass{hl-tpr}{\\mathrm{TPR}}}{\\htmlClass{hl-fpr}{\\mathrm{FPR}}}, \\qquad \\htmlClass{hl-pi}{\\pi} \\text{ cancels}",
             "highlights": {
               "tpr": {
                 "color": "blue",
@@ -7407,36 +7504,36 @@
               }
             },
             "justification": "Differentiating the identity in $\\mathrm{TPR}$ and in $\\mathrm{FPR}$ and taking the ratio; the common denominator cancels.",
-            "explanation": "At $\\pi = 0.001$ precision is about a thousand times more sensitive to $\\mathrm{FPR}$ than to $\\mathrm{TPR}$. **Chase false positives, not recall** — and better still, change $\\pi$ itself by narrowing the population you score. Segmenting from \"all traffic\" to \"new accounts in their first hour\" can move the base rate by two orders of magnitude, which is more than any model will give you.",
+            "explanation": "The base rate cancels: the trade is set by **where you sit on the ROC curve**, not by how rare the anomaly is. At $\\mathrm{TPR} = 0.80$ and $\\mathrm{FPR} = 0.01$ the ratio is $-80$ — one absolute point of $\\mathrm{FPR}$ costs eighty times what the same point of $\\mathrm{TPR}$ buys. **Chase false positives, not recall.** $\\pi$ enters one step earlier, through $\\text{precision} \\sim (\\mathrm{TPR}/\\mathrm{FPR})\\,\\pi$: you cannot change the trade-off, but you *can* change $\\pi$ by narrowing the population you score. Going from \"all traffic\" to \"new accounts in their first hour\" can move the base rate by two orders of magnitude, which is more than any model will give you.",
             "semanticGraph": {
               "graph": {
                 "nodes": [
                   {
-                    "id": "__equals_1",
+                    "id": "c0___equals_1",
                     "type": "relation",
                     "op": "equals",
-                    "subexpr": "\\frac{\\partial\\,\\text{precision}}{\\partial\\,FPR} \\Big/ \\frac{\\partial\\,\\text{precision}}{\\partial\\,TPR} = -\\frac{1 - \\pi}{\\pi} \\;\\xrightarrow[\\pi \\to 0]{}\\; -\\infty"
+                    "subexpr": "\\frac{\\partial\\,\\text{precision}}{\\partial\\,FPR} \\Big/ \\frac{\\partial\\,\\text{precision}}{\\partial\\,TPR} = -\\frac{TPR}{FPR}"
                   },
                   {
-                    "id": "__multiply_2",
+                    "id": "c0___multiply_2",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial \\text{precision} \\frac{1}{\\partial F P R} Big \\frac{1}{\\text{precision} \\partial \\frac{1}{\\partial T P R}}"
                   },
                   {
-                    "id": "__multiply_3",
+                    "id": "c0___multiply_3",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial \\text{precision} \\frac{1}{\\partial F P R} Big"
                   },
                   {
-                    "id": "__multiply_4",
+                    "id": "c0___multiply_4",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial \\text{precision} \\frac{1}{\\partial F P R}"
                   },
                   {
-                    "id": "__multiply_5",
+                    "id": "c0___multiply_5",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial \\text{precision}"
@@ -7455,7 +7552,7 @@
                     "subexpr": "\\text{precision}"
                   },
                   {
-                    "id": "__power_6",
+                    "id": "c0___power_6",
                     "type": "operator",
                     "latex": "\\dfrac{1}{(\\cdot)}",
                     "op": "power",
@@ -7463,13 +7560,13 @@
                     "subexpr": "\\frac{1}{\\partial F P R}"
                   },
                   {
-                    "id": "__multiply_7",
+                    "id": "c0___multiply_7",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial F P R"
                   },
                   {
-                    "id": "__multiply_8",
+                    "id": "c0___multiply_8",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "F P R",
@@ -7484,7 +7581,7 @@
                     "subexpr": "F"
                   },
                   {
-                    "id": "__multiply_9",
+                    "id": "c0___multiply_9",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "P R"
@@ -7508,7 +7605,7 @@
                     "subexpr": "Big"
                   },
                   {
-                    "id": "__power_10",
+                    "id": "c0___power_10",
                     "type": "operator",
                     "latex": "\\dfrac{1}{(\\cdot)}",
                     "op": "power",
@@ -7516,19 +7613,19 @@
                     "subexpr": "\\frac{1}{\\text{precision} \\partial \\frac{1}{\\partial T P R}}"
                   },
                   {
-                    "id": "__multiply_11",
+                    "id": "c0___multiply_11",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial \\text{precision} \\frac{1}{\\partial T P R}"
                   },
                   {
-                    "id": "__multiply_12",
+                    "id": "c0___multiply_12",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial \\text{precision}"
                   },
                   {
-                    "id": "__power_13",
+                    "id": "c0___power_13",
                     "type": "operator",
                     "latex": "\\dfrac{1}{(\\cdot)}",
                     "op": "power",
@@ -7536,13 +7633,13 @@
                     "subexpr": "\\frac{1}{\\partial T P R}"
                   },
                   {
-                    "id": "__multiply_14",
+                    "id": "c0___multiply_14",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "\\partial T P R"
                   },
                   {
-                    "id": "__multiply_15",
+                    "id": "c0___multiply_15",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "T P R",
@@ -7557,46 +7654,60 @@
                     "subexpr": "T"
                   },
                   {
-                    "id": "__multiply_16",
+                    "id": "c0___multiply_16",
                     "type": "operator",
                     "op": "multiply",
                     "subexpr": "P R"
                   },
                   {
-                    "id": "__negation_17",
+                    "id": "c0___negation_17",
                     "type": "operator",
                     "op": "negation",
-                    "subexpr": "-\\xrightarrow \\frac{1}{\\pi} \\left(1 - \\pi\\right)"
+                    "subexpr": "-T P R \\frac{1}{F P R}"
                   },
                   {
-                    "id": "__multiply_18",
+                    "id": "c0___multiply_18",
                     "type": "operator",
                     "op": "multiply",
-                    "subexpr": "\\xrightarrow \\frac{1}{\\pi} \\left(1 - \\pi\\right)"
+                    "subexpr": "T P R \\frac{1}{F P R}"
                   },
                   {
-                    "id": "__multiply_19",
+                    "id": "c0___multiply_19",
                     "type": "operator",
                     "op": "multiply",
-                    "subexpr": "\\frac{1}{\\pi} \\left(1 - \\pi\\right)"
+                    "subexpr": "T P R"
                   },
                   {
-                    "id": "__add_20",
+                    "id": "c0___multiply_20",
                     "type": "operator",
-                    "op": "add",
-                    "subexpr": "1 - \\pi"
+                    "op": "multiply",
+                    "subexpr": "P R"
                   },
                   {
-                    "id": "__num_21",
-                    "type": "number",
-                    "label": "1",
-                    "subexpr": "1"
-                  },
-                  {
-                    "id": "__negation_22",
+                    "id": "c0___power_21",
                     "type": "operator",
-                    "op": "negation",
-                    "subexpr": "-\\pi"
+                    "latex": "\\dfrac{1}{(\\cdot)}",
+                    "op": "power",
+                    "exponent": "-1",
+                    "subexpr": "\\frac{1}{F P R}"
+                  },
+                  {
+                    "id": "c0___multiply_22",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "F P R"
+                  },
+                  {
+                    "id": "c0___multiply_23",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "P R"
+                  },
+                  {
+                    "id": "c1___multiply_1",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "\\pi \\text{ cancels}"
                   },
                   {
                     "id": "pi",
@@ -7608,224 +7719,262 @@
                     "highlight": "pi"
                   },
                   {
-                    "id": "__power_23",
-                    "type": "operator",
-                    "latex": "\\dfrac{1}{(\\cdot)}",
-                    "op": "power",
-                    "exponent": "-1",
-                    "subexpr": "\\frac{1}{\\pi}"
-                  },
-                  {
-                    "id": "xrightarrow",
-                    "type": "scalar",
-                    "latex": "\\xrightarrow",
-                    "subexpr": "\\xrightarrow"
+                    "id": "cancels",
+                    "type": "text",
+                    "label": " cancels",
+                    "latex": "\\text{ cancels}",
+                    "subexpr": "\\text{ cancels}"
                   }
                 ],
                 "edges": [
                   {
                     "from": "partial",
-                    "to": "__multiply_5",
+                    "to": "c0___multiply_5",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "precision",
-                    "to": "__multiply_5",
+                    "to": "c0___multiply_5",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_5",
-                    "to": "__multiply_4",
+                    "from": "c0___multiply_5",
+                    "to": "c0___multiply_4",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "partial",
-                    "to": "__multiply_7",
+                    "to": "c0___multiply_7",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "F",
-                    "to": "__multiply_8",
+                    "to": "c0___multiply_8",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "P",
-                    "to": "__multiply_9",
+                    "to": "c0___multiply_9",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "R",
-                    "to": "__multiply_9",
+                    "to": "c0___multiply_9",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_9",
-                    "to": "__multiply_8",
+                    "from": "c0___multiply_9",
+                    "to": "c0___multiply_8",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_8",
-                    "to": "__multiply_7",
+                    "from": "c0___multiply_8",
+                    "to": "c0___multiply_7",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_7",
-                    "to": "__power_6"
+                    "from": "c0___multiply_7",
+                    "to": "c0___power_6"
                   },
                   {
-                    "from": "__power_6",
-                    "to": "__multiply_4"
+                    "from": "c0___power_6",
+                    "to": "c0___multiply_4"
                   },
                   {
-                    "from": "__multiply_4",
-                    "to": "__multiply_3",
+                    "from": "c0___multiply_4",
+                    "to": "c0___multiply_3",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "Big",
-                    "to": "__multiply_3",
+                    "to": "c0___multiply_3",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_3",
-                    "to": "__multiply_2",
+                    "from": "c0___multiply_3",
+                    "to": "c0___multiply_2",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "partial",
-                    "to": "__multiply_12",
+                    "to": "c0___multiply_12",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "precision",
-                    "to": "__multiply_12",
+                    "to": "c0___multiply_12",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_12",
-                    "to": "__multiply_11",
+                    "from": "c0___multiply_12",
+                    "to": "c0___multiply_11",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "partial",
-                    "to": "__multiply_14",
+                    "to": "c0___multiply_14",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "T",
-                    "to": "__multiply_15",
+                    "to": "c0___multiply_15",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "P",
-                    "to": "__multiply_16",
+                    "to": "c0___multiply_16",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
                     "from": "R",
-                    "to": "__multiply_16",
+                    "to": "c0___multiply_16",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_16",
-                    "to": "__multiply_15",
+                    "from": "c0___multiply_16",
+                    "to": "c0___multiply_15",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_15",
-                    "to": "__multiply_14",
+                    "from": "c0___multiply_15",
+                    "to": "c0___multiply_14",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "__multiply_14",
-                    "to": "__power_13"
+                    "from": "c0___multiply_14",
+                    "to": "c0___power_13"
                   },
                   {
-                    "from": "__power_13",
-                    "to": "__multiply_11"
+                    "from": "c0___power_13",
+                    "to": "c0___multiply_11"
                   },
                   {
-                    "from": "__multiply_11",
-                    "to": "__power_10"
+                    "from": "c0___multiply_11",
+                    "to": "c0___power_10"
                   },
                   {
-                    "from": "__power_10",
-                    "to": "__multiply_2"
+                    "from": "c0___power_10",
+                    "to": "c0___multiply_2"
                   },
                   {
-                    "from": "__multiply_2",
-                    "to": "__equals_1"
+                    "from": "c0___multiply_2",
+                    "to": "c0___equals_1"
                   },
                   {
-                    "from": "__num_21",
-                    "to": "__add_20"
+                    "from": "T",
+                    "to": "c0___multiply_19",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "P",
+                    "to": "c0___multiply_20",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "R",
+                    "to": "c0___multiply_20",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "c0___multiply_20",
+                    "to": "c0___multiply_19",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "c0___multiply_19",
+                    "to": "c0___multiply_18",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "F",
+                    "to": "c0___multiply_22",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "P",
+                    "to": "c0___multiply_23",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "R",
+                    "to": "c0___multiply_23",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "c0___multiply_23",
+                    "to": "c0___multiply_22",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "c0___multiply_22",
+                    "to": "c0___power_21"
+                  },
+                  {
+                    "from": "c0___power_21",
+                    "to": "c0___multiply_18"
+                  },
+                  {
+                    "from": "c0___multiply_18",
+                    "to": "c0___negation_17"
+                  },
+                  {
+                    "from": "c0___negation_17",
+                    "to": "c0___equals_1"
                   },
                   {
                     "from": "pi",
-                    "to": "__negation_22"
-                  },
-                  {
-                    "from": "__negation_22",
-                    "to": "__add_20"
-                  },
-                  {
-                    "from": "__add_20",
-                    "to": "__multiply_19",
+                    "to": "c1___multiply_1",
                     "semantic": "direct",
                     "weight": 1.0
                   },
                   {
-                    "from": "pi",
-                    "to": "__power_23"
-                  },
-                  {
-                    "from": "__power_23",
-                    "to": "__multiply_19"
-                  },
-                  {
-                    "from": "__multiply_19",
-                    "to": "__multiply_18",
+                    "from": "cancels",
+                    "to": "c1___multiply_1",
                     "semantic": "direct",
                     "weight": 1.0
-                  },
-                  {
-                    "from": "xrightarrow",
-                    "to": "__multiply_18",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "__multiply_18",
-                    "to": "__negation_17"
-                  },
-                  {
-                    "from": "__negation_17",
-                    "to": "__equals_1"
                   }
                 ],
                 "classification": {
-                  "kind": "algebraic"
+                  "kind": "statements",
+                  "count": 2,
+                  "clauses": [
+                    {
+                      "kind": "algebraic"
+                    },
+                    {
+                      "kind": "algebraic"
+                    }
+                  ]
                 }
               }
             }

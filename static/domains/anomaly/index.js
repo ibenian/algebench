@@ -595,16 +595,19 @@
     }
 
     // A heatmap asks for the same few hundred grid points on every frame, and
-    // each one walks 100 trees. Memoise on the rounded coordinate pair; the
-    // map is cleared wholesale when it grows past a screenful so a sweeping
-    // query cannot leak.
+    // each one walks 100 trees, so memoise. The key is the exact coordinate
+    // pair, not a rounded one: a tree is discontinuous at every split plane,
+    // so two points a ten-thousandth apart can sit either side of one and
+    // must not share an answer. The repeated grid queries still hit exactly.
+    // The map is cleared wholesale when it grows past a screenful so a
+    // sweeping query cannot leak.
     const _depthMemo = new Map();
     const DEPTH_MEMO_MAX = 4096;
 
     /** Mean path length over the forest for an arbitrary point. */
     function adIsoDepth(tag, px, py) {
         const x = _num(px, 0), y = _num(py, 0);
-        const key = tag + '|' + x.toFixed(4) + '|' + y.toFixed(4);
+        const key = tag + '|' + x + '|' + y;
         const hit = _depthMemo.get(key);
         if (hit !== undefined) return hit;
         const f = _iso(tag);
@@ -706,6 +709,10 @@
             const f = r => adKde(tag, r * ct, r * st, g) - thr;
             // Scan outward once, recording the first crossing up (the inner
             // wall of an annulus) and the last crossing down (the outer wall).
+            // This is deliberately a SINGLE-ANNULUS tracer: a ray through a
+            // fragmented level set crosses more than twice, and the extra
+            // crossings are dropped. Scene 4's large-gamma step says so rather
+            // than pretending the drawn curve outlines the islands.
             let f0 = f(0);
             let inLo = -1, inHi = -1, outLo = -1, outHi = -1;
             let prevR = 0, prevF = f0;
