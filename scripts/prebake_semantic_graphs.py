@@ -349,7 +349,12 @@ def analyze(spec):
         else:
             status = "stale"
             detail = "baked graph structure differs from fresh derivation"
-        if status != "valid":
+        # Only a step with NO graph is ever derived again: the server's autofill
+        # skips anything carrying sg.graph, and the Graph tab POSTs only when
+        # none is present. So `stale` and `errorBroken` cost nothing at runtime
+        # -- they mean a graph exists and is wrong, which is what outOfSync and
+        # the CI gate are for, not a derivation anyone pays for.
+        if not was_baked:
             if loc.level == "scene":
                 runtime_derive += dt
             else:
