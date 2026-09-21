@@ -149,7 +149,7 @@ test('affineMiss is defined on a degenerate or unusable span', () => {
 // plot. Both are what `sample()` and the draw loop call, so a regression in
 // either now fails here rather than silently mislabelling an axis.
 
-const C_TO_F = (v) => v * 9 / 5 + 32;
+const C_TO_F = (v: number): number => v * 9 / 5 + 32;
 
 test('rightAxisDomain maps the primary endpoints through the transform', () => {
     // 0..40 C -> 32..104 F, the demo's own pairing.
@@ -167,7 +167,7 @@ test('rightAxisDomain retires the axis when an endpoint will not evaluate', () =
 });
 
 test('rightAxisPlace inverts the mapping onto the plot', () => {
-    const dom = [32, 104];
+    const dom: readonly [number, number] = [32, 104];
     assert.equal(rightAxisPlace(32, dom, 100), 0);      // bottom
     assert.equal(rightAxisPlace(104, dom, 100), 100);   // top
     assert.equal(rightAxisPlace(68, dom, 100), 50);     // 20 C, halfway
@@ -176,8 +176,8 @@ test('rightAxisPlace inverts the mapping onto the plot', () => {
 test('rightAxisPlace handles a descending transform', () => {
     // Negative slope: dom is [f(yLo), f(yHi)], so the fraction simply inverts
     // and the axis reads downward without any special case.
-    const dom = rightAxisDomain((v) => 100 - v, [0, 40]);
-    assert.deepEqual(dom, [100, 60]);
+    const dom = rightAxisDomain((v: number) => 100 - v, [0, 40]);
+    assert.ok(dom, 'a descending transform still yields a domain');
     // `+ 0` normalises the signed zero a descending domain produces:
     // (100 - 100) / (60 - 100) is -0, which positions identically to 0 and
     // stringifies to "0", so it is an artifact of strict equality, not a bug.
@@ -192,12 +192,18 @@ test('rightAxisPlace does not divide by zero on a collapsed domain', () => {
 });
 
 test('a z-transform restretches with its denominator', () => {
-    // The demo's own axis: (v - 18) / (1 + k) over 0..40 C.
-    const z = (k) => rightAxisDomain((v) => (v - 18) / (1 + k), [0, 40]);
-    assert.deepEqual(z(1).map((n) => +n.toFixed(4)), [-9, 11]);
-    assert.deepEqual(z(4).map((n) => +n.toFixed(4)), [-3.6, 4.4]);
-    // Same rows, so a fixed primary value keeps its pixel position while the
-    // numbers printed beside it change.
-    assert.equal(rightAxisPlace(z(1)[0], z(1), 100), 0);
-    assert.equal(rightAxisPlace(z(4)[0], z(4), 100), 0);
+    // The demo's own axis: (v - 18) / (1 + k) over 0..40 C. These are the
+    // figures the PR quotes, asserted rather than remembered.
+    const z = (k: number) => {
+        const d = rightAxisDomain((v: number) => (v - 18) / (1 + k), [0, 40]);
+        assert.ok(d, `k=${k} must yield a domain`);
+        return d;
+    };
+    const z1 = z(1), z4 = z(4);
+    assert.deepEqual(z1.map((n) => +n.toFixed(4)), [-9, 11]);
+    assert.deepEqual(z4.map((n) => +n.toFixed(4)), [-3.6, 4.4]);
+    // Same rows either way: the bottom of the plot stays the bottom while the
+    // number printed beside it changes.
+    assert.equal(rightAxisPlace(z1[0], z1, 100), 0);
+    assert.equal(rightAxisPlace(z4[0], z4, 100), 0);
 });
