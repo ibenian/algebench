@@ -469,6 +469,28 @@ def main() -> int:
     assert_true('capacity: the detector is inverted at r=1, best at r=3, dead by r=10',
                 ratio[0] < 1 and ratio[1] > 1.8 and ratio[2] < 1.1,
                 f'ratios {[round(x, 2) for x in ratio]}')
+    # The inductive-bias claim in scene 4's markdown and its `kernel-prior`
+    # overlay: the RBF's bias is correct by construction on the radial data and
+    # cannot be made correct on the two-density one, at ANY bandwidth. Swept
+    # rather than asserted, because "no gamma does better" is the whole point.
+    GAMMAS = [0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8]
+    best = {}
+    for tag in ('ring', 'dense'):
+        n = run(f'[AD.adN("{tag}")]')[0]
+        lab = np.asarray(run(f'R(i => AD.adLabel("{tag}", i), {n})'), dtype=int)
+        k = int(lab.sum())
+        hits = []
+        for g in GAMMAS:
+            dens = np.asarray(run(
+                f'R(i => AD.adKde("{tag}", AD.adX("{tag}", i), AD.adY("{tag}", i), {g}), {n})'))
+            # lowest density = most anomalous; precision@k
+            hits.append(int(lab[np.argsort(dens)[:k]].sum()))
+        best[tag] = (max(hits), k)
+    assert_true(f'RBF prior fits the ring by construction ({best["ring"][0]} of {best["ring"][1]})',
+                best['ring'] == (8, 8), f'got {best["ring"]}')
+    assert_true(f'no gamma rescues it on dense ({best["dense"][0]} of {best["dense"][1]})',
+                best['dense'] == (2, 3), f'got {best["dense"]}')
+
     assert_true('always predicting "normal" beats the threshold on accuracy alone',
                 (1 - pi) > 0.9, f'the majority-class accuracy is {1 - pi:.3f}')
 
