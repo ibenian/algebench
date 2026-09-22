@@ -491,6 +491,23 @@ def main() -> int:
     assert_true(f'no gamma rescues it on dense ({best["dense"][0]} of {best["dense"][1]})',
                 best['dense'] == (2, 3), f'got {best["dense"]}')
 
+    # Scene 4's 'scales' strip plot and its overlay quote these spans. They are
+    # the whole argument for rank/standardise-before-averaging, so they are
+    # measured here rather than trusted.
+    spans = {}
+    for name, expr in (('isolation', 'AD.adIso("dense", i)'),
+                       ('LOF', 'AD.adLof("dense", i, 20)'),
+                       ('kNN', 'AD.adKnn("dense", i, 20)'),
+                       ('density', 'AD.adKdeScore("dense", i, 0.5)'),
+                       ('mahal', 'AD.adMahal("dense", i)')):
+        v = np.asarray(run(f'R(i => {expr}, AD.adN("dense"))'))
+        spans[name] = float(v.max() - v.min())
+    ratio = max(spans.values()) / min(spans.values())
+    check('LOF raw span (quoted as 4.26)', spans['LOF'], 4.26, 5e-3)
+    check('isolation raw span (quoted as 0.36)', spans['isolation'], 0.36, 5e-3)
+    assert_true(f'widest / narrowest raw span is 11.7x (got {ratio:.2f})',
+                abs(ratio - 11.7) < 0.05, f'spans {[(k, round(v, 3)) for k, v in spans.items()]}')
+
     assert_true('always predicting "normal" beats the threshold on accuracy alone',
                 (1 - pi) > 0.9, f'the majority-class accuracy is {1 - pi:.3f}')
 

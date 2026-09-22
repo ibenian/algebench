@@ -3739,102 +3739,108 @@
           ],
           "add": [
             {
-              "id": "scale-iso",
-              "type": "text",
-              "position": [
+              "id": "scales",
+              "type": "chart",
+              "origin": [
                 2.0,
-                5.5,
+                0.4,
                 0
               ],
-              "text": "isolation  →  (0, 1), ordinary at 0.5",
-              "color": "#ab47bc"
-            },
-            {
-              "id": "scale-lof",
-              "type": "text",
-              "position": [
-                2.0,
-                4.3,
-                0
+              "size": [
+                9.0,
+                6.0
               ],
-              "text": "LOF  →  around 1, unbounded above",
-              "color": "#66bb6a"
-            },
-            {
-              "id": "scale-knn",
-              "type": "text",
-              "position": [
-                2.0,
-                3.1,
-                0
+              "xDomain": [
+                0,
+                5.4
               ],
-              "text": "kNN distance  →  your feature units",
-              "color": "#ffa726"
-            },
-            {
-              "id": "scale-kde",
-              "type": "text",
-              "position": [
-                2.0,
-                1.9,
-                0
+              "yDomain": [
+                0.4,
+                5.6
               ],
-              "text": "kernel density  →  units of 1 / area",
-              "color": "#42a5f5"
-            },
-            {
-              "id": "scale-z",
-              "type": "text",
-              "position": [
-                2.0,
-                0.7,
-                0
+              "series": [
+                {
+                  "xExpr": "adIso('dense', i)",
+                  "yExpr": "5.0",
+                  "n": 153,
+                  "kind": "points",
+                  "size": 2,
+                  "color": "#ab47bc",
+                  "label": "isolation"
+                },
+                {
+                  "xExpr": "adLof('dense', i, 20)",
+                  "yExpr": "4.0",
+                  "n": 153,
+                  "kind": "points",
+                  "size": 2,
+                  "color": "#66bb6a",
+                  "label": "LOF"
+                },
+                {
+                  "xExpr": "adKnn('dense', i, 20)",
+                  "yExpr": "3.0",
+                  "n": 153,
+                  "kind": "points",
+                  "size": 2,
+                  "color": "#ffa726",
+                  "label": "kNN distance"
+                },
+                {
+                  "xExpr": "adKdeScore('dense', i, 0.5)",
+                  "yExpr": "2.0",
+                  "n": 153,
+                  "kind": "points",
+                  "size": 2,
+                  "color": "#42a5f5",
+                  "label": "kernel density"
+                },
+                {
+                  "xExpr": "adMahal('dense', i)",
+                  "yExpr": "1.0",
+                  "n": 153,
+                  "kind": "points",
+                  "size": 2,
+                  "color": "#ef5350",
+                  "label": "Mahalanobis"
+                }
               ],
-              "text": "modified z  →  robust sigmas",
-              "color": "#ef5350"
-            },
-            {
-              "id": "scale-rule",
-              "type": "text",
-              "position": [
-                2.0,
-                -1.2,
-                0
+              "axes": [
+                {
+                  "title": "raw score, the same 153 points",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 1)"
+                },
+                {
+                  "title": "",
+                  "ticks": 2,
+                  "labelExpr": "toFixed(value * 0, 0)"
+                }
               ],
-              "text": "Average these raw and the widest scale wins the vote.  Rank first.",
-              "color": "#ffca28"
-            },
-            {
-              "id": "scale-bar",
-              "type": "line",
-              "points": [
-                [
-                  1.8,
-                  -0.3,
-                  0
-                ],
-                [
-                  17.5,
-                  -0.3,
-                  0
-                ]
-              ],
-              "color": "#546e7a",
-              "opacity": 0.5
+              "label": "five detectors, one axis",
+              "prompt": "A strip plot: every one of the 153 'dense' points scored by five detectors, each detector on its own row, all sharing ONE x axis in raw units. The point is visible rather than asserted -- LOF spans 0.93 to 5.19 and Mahalanobis 0.24 to 4.40, while isolation occupies 0.36 to 0.72, about 7% of the axis. Average these raw and LOF and Mahalanobis decide every vote. The rows are named by the legend, not by the y axis, because a chart axis cannot carry categorical labels. Row order top to bottom: isolation, LOF, kNN distance, kernel density, Mahalanobis."
             }
           ],
           "camera": {
             "position": [
-              9.6,
-              2.15,
-              14.5
+              5.9,
+              3.0,
+              13.0
             ],
             "target": [
-              9.6,
-              2.15,
+              5.9,
+              3.0,
               0
             ]
-          }
+          },
+          "info": [
+            {
+              "id": "scale-rule",
+              "position": "top-right",
+              "title": "Scales, measured",
+              "content": "LOF spans **4.26**, isolation **0.36** — **11.7×**.\n\nAverage raw and LOF decides every vote."
+            }
+          ]
         }
       ],
       "proof": {
