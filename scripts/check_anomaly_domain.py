@@ -508,6 +508,20 @@ def main() -> int:
     assert_true(f'widest / narrowest raw span is 11.7x (got {ratio:.2f})',
                 abs(ratio - 11.7) < 0.05, f'spans {[(k, round(v, 3)) for k, v in spans.items()]}')
 
+    # Scene 5's matrix and its three readings. adDetAuc is computed live from
+    # the detectors, so the NUMBERS cannot drift -- but the CLAIMS made about
+    # their pattern can, and those are what the overlays assert.
+    auc = [[run(f'[AD.adDetAuc({c}, {r})]')[0] for c in range(3)] for r in range(5)]
+    wins = [max(range(5), key=lambda r: auc[r][c]) for c in range(3)]
+    assert_true('no detector wins all three datasets (the no-free-lunch claim)',
+                len(set(wins)) > 1, f'per-dataset winners {wins}')
+    check('Mahalanobis on ring is exactly chance', auc[4][2], 0.5, 1e-12)
+    assert_true('LOF is last on blob while winning dense and ring',
+                auc[1][0] == min(auc[r][0] for r in range(5))
+                and auc[1][1] == max(auc[r][1] for r in range(5))
+                and auc[1][2] == max(auc[r][2] for r in range(5)),
+                f'blob col {[round(auc[r][0], 3) for r in range(5)]}')
+
     assert_true('always predicting "normal" beats the threshold on accuracy alone',
                 (1 - pi) > 0.9, f'the majority-class accuracy is {1 - pi:.3f}')
 

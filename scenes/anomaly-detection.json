@@ -5190,309 +5190,126 @@
           ],
           "add": [
             {
-              "id": "zoo-recon",
-              "type": "text",
-              "position": [
-                2.0,
-                6.0,
-                0
+              "id": "nfl",
+              "type": "tensor",
+              "shape": [
+                5,
+                3
               ],
-              "text": "Reconstruction — AE, denoising AE, VAE",
-              "color": "#ab47bc"
-            },
-            {
-              "id": "zoo-recon-fail",
-              "type": "text",
-              "position": [
-                2.4,
+              "origin": [
                 5.0,
+                0.0,
                 0
               ],
-              "text": "fails by generalising onto the anomaly; VAE likelihood is a poor OOD score",
-              "color": "#78909c"
-            },
-            {
-              "id": "zoo-oneclass",
-              "type": "text",
-              "position": [
-                2.0,
-                3.6,
-                0
+              "cellSize": 1.3,
+              "gap": 0.06,
+              "valueExpr": "pow((adDetAuc(col, row) - 0.5) / 0.5, 4)",
+              "textExpr": "toFixed(adDetAuc(col, row), 3)",
+              "colorMap": "magma",
+              "colorDomain": [
+                0,
+                1
               ],
-              "text": "Deep one-class — DeepSVDD, DeepSAD",
-              "color": "#66bb6a"
-            },
-            {
-              "id": "zoo-oneclass-fail",
-              "type": "text",
-              "position": [
-                2.4,
-                2.6,
-                0
+              "axes": [
+                {
+                  "title": "",
+                  "labels": [
+                    "isolation",
+                    "LOF",
+                    "kNN distance",
+                    "kernel density $\\downarrow$",
+                    "Mahalanobis"
+                  ]
+                },
+                {
+                  "title": "dataset",
+                  "labels": [
+                    "blob\none cloud",
+                    "dense\ntwo densities",
+                    "ring\na hole"
+                  ]
+                }
               ],
-              "text": "fails by hypersphere collapse — a constant encoder wins unless the architecture forbids it",
-              "color": "#78909c"
-            },
-            {
-              "id": "zoo-ssl",
-              "type": "text",
-              "position": [
-                2.0,
-                1.2,
-                0
-              ],
-              "text": "Self-supervised — pretext tasks, contrastive, masked modelling",
-              "color": "#42a5f5"
-            },
-            {
-              "id": "zoo-ssl-fail",
-              "type": "text",
-              "position": [
-                2.4,
-                0.2,
-                0
-              ],
-              "text": "strongest deep family; all the design work is in choosing the pretext task",
-              "color": "#78909c"
-            },
-            {
-              "id": "zoo-knn",
-              "type": "text",
-              "position": [
-                2.0,
-                -1.4,
-                0
-              ],
-              "text": "Pretrained embedding + kNN — the baseline that keeps winning",
-              "color": "#ffca28"
-            },
-            {
-              "id": "zoo-knn-note",
-              "type": "text",
-              "position": [
-                2.4,
-                -2.4,
-                0
-              ],
-              "text": "not novel, so rarely the paper; frequently the number the paper cannot beat",
-              "color": "#78909c"
+              "label": "AUC-ROC · every detector on every dataset",
+              "prompt": "The no-free-lunch matrix, computed live by adDetAuc rather than pinned: AUC-ROC for each of five detectors on each of three datasets, by the Mann-Whitney identity. axes[0] is rows (detectors, top to bottom: isolation, LOF, kNN, kernel density, Mahalanobis), axes[1] is columns, ordered by WHAT THEY BREAK: 'blob' is one convex Gaussian cloud plus uniform outliers and nothing breaks on it; 'dense' is a tight cluster beside a loose one, which breaks any global radius; 'ring' is an annulus with four points in the hole, which breaks anything convex or centroid-based. The column labels name the shape, not just the tag. Colour is ((AUC - 0.5)/0.5)^4, not AUC: eleven of the fifteen cells are >= 0.94, so a linear map would put nearly all of them in the pale top of the ramp and hide the differences that matter. The power transform uses the whole ramp over the range that actually occurs, and chance (0.5) lands at exactly 0, the darkest cell, alone. The TEXT is always the true AUC. Kernel density is sign-flipped inside adDetAuc since low density is the anomalous case. The readings the three steps draw from it: no row is best everywhere (LOF wins dense and ring but is LAST on blob; isolation wins blob but is 4th on ring); plain kNN is within 0.001 of the best on two of three, which is the 'simple methods are hard to beat' point; and Mahalanobis on ring is 0.500, exactly chance, because the anomalies sit at the mean where an ellipse cannot exclude them."
             }
           ],
           "camera": {
             "position": [
-              3.3,
-              1.8,
-              13.5
+              5.7,
+              2.3,
+              14.5
             ],
             "target": [
-              3.3,
-              1.8,
+              5.7,
+              2.3,
               0
             ]
-          }
+          },
+          "info": [
+            {
+              "id": "nfl-read",
+              "position": "bottom-right",
+              "title": "kNN, the stubborn baseline",
+              "content": "**{{toFixed(adDetAuc(2, 2), 3)}}** ring · **{{toFixed(adDetAuc(0, 2), 3)}}** blob — rarely the paper, often the number it cannot beat."
+            }
+          ]
         },
         {
           "id": "sequences-and-llms",
           "title": "Sequences, foundation models, and where LLMs actually help",
           "description": "For time series the reconstruction idea becomes **forecast residual**: predict the next value from the past, score by the error. ARIMA, an LSTM and a Transformer are the same idea at three capacities — and they inherit the capacity trap above exactly.\n\nWorth knowing alongside:\n- **STL decomposition** — split into trend, season and remainder, score the remainder. Cheap, interpretable, and a strong baseline on anything with a calendar.\n- **Spectral Residual** — borrowed from visual saliency; very fast, very few knobs.\n- **Matrix profile** — compare every subsequence to every other. No training at all, and it finds collective anomalies like the one in this scene directly.\n\n## Foundation models\n\n**Time-series foundation models** are the real development of 2025–26: pretrained sequence models, adapted for detection with state-aware adapters or used as foundation autoencoders. They remove the per-series training loop, which was most of the operational cost, and they transfer to series you have little history for.\n\n## LLMs\n\nBe careful here, because the marketing and the evidence point in different directions.\n\nThe survey consensus is that **general-purpose LLMs underperform as primary time-series detectors**, and that placing one at the centre of a detection pipeline is usually unjustified. Numbers as text is a poor interface to numeric structure, and a detector you cannot calibrate is a detector you cannot operate.\n\nWhere they are genuinely good is **everything that happens after the score**:\n- explaining *which* features drove a flag, in the vocabulary of the domain;\n- correlating a flagged window with deploys, tickets and on-call notes;\n- drafting the incident summary;\n- asking the analyst the one clarifying question that resolves the ambiguity;\n- turning an analyst's \"no, that one's fine because…\" into a labelled example — which, per scene 1, is worth more than a better model.\n\n**Detection is numeric. Triage is linguistic.** Build the pipeline that way and both halves do what they are good at.",
           "prompt": "The sequence and foundation-model step, and the one most likely to be quoted out of context, so be precise. Forecast-residual detectors inherit the capacity trap exactly -- a forecaster good enough to predict the anomaly produces no residual. Name STL, Spectral Residual and the matrix profile as strong non-deep baselines; the matrix profile in particular finds collective anomalies like this scene's directly and needs no training. On foundation models: time-series foundation models are a genuine 2025-26 advance because they remove the per-series training loop and transfer to short-history series; state-aware adapters and foundation autoencoders are the current shape of that work. On LLMs: the survey consensus is that general-purpose LLMs underperform as primary detectors and that centring a pipeline on one is usually unjustified -- say this plainly, do not hedge it. Their real value is post-score: explanation, correlation with deploys and tickets, incident drafting, clarifying questions, and converting an analyst's verbal dismissal into a LABEL, which scene 1 established is worth more than a better model. Detection is numeric, triage is linguistic.",
-          "remove": [
-            {
-              "id": "zoo-recon"
-            },
-            {
-              "id": "zoo-recon-fail"
-            },
-            {
-              "id": "zoo-oneclass"
-            },
-            {
-              "id": "zoo-oneclass-fail"
-            },
-            {
-              "id": "zoo-ssl"
-            },
-            {
-              "id": "zoo-ssl-fail"
-            },
-            {
-              "id": "zoo-knn"
-            },
-            {
-              "id": "zoo-knn-note"
-            }
-          ],
-          "add": [
-            {
-              "id": "llm-numeric",
-              "type": "text",
-              "position": [
-                2.0,
-                4.6,
-                0
-              ],
-              "text": "Detection is numeric",
-              "color": "#42a5f5"
-            },
-            {
-              "id": "llm-numeric-list",
-              "type": "text",
-              "position": [
-                2.0,
-                3.4,
-                0
-              ],
-              "text": "forecast residual · STL remainder · spectral residual · matrix profile · TS foundation models",
-              "color": "#78909c"
-            },
-            {
-              "id": "llm-ling",
-              "type": "text",
-              "position": [
-                2.0,
-                1.6,
-                0
-              ],
-              "text": "Triage is linguistic",
-              "color": "#ffca28"
-            },
-            {
-              "id": "llm-ling-list",
-              "type": "text",
-              "position": [
-                2.0,
-                0.4,
-                0
-              ],
-              "text": "explain the flag · correlate with deploys and tickets · draft the incident · ask the clarifying question · capture the label",
-              "color": "#78909c"
-            },
-            {
-              "id": "llm-divider",
-              "type": "line",
-              "points": [
-                [
-                  1.8,
-                  2.6,
-                  0
-                ],
-                [
-                  19.0,
-                  2.6,
-                  0
-                ]
-              ],
-              "color": "#546e7a",
-              "opacity": 0.45
-            },
-            {
-              "id": "llm-verdict",
-              "type": "text",
-              "position": [
-                2.0,
-                -1.4,
-                0
-              ],
-              "text": "An LLM at the centre of the scoring loop is the common mistake.",
-              "color": "#ef5350"
-            }
-          ],
+          "remove": [],
+          "add": [],
           "camera": {
             "position": [
-              10.35,
-              1.6,
-              15.7
+              5.7,
+              2.3,
+              14.5
             ],
             "target": [
-              10.35,
-              1.6,
+              5.7,
+              2.3,
               0
             ]
-          }
+          },
+          "info": [
+            {
+              "id": "nfl-read",
+              "position": "bottom-right",
+              "title": "Detection is numeric",
+              "content": "Every cell is a **number** a detector emitted. An LLM belongs *after* it — never inside the scoring loop."
+            }
+          ]
         },
         {
           "id": "no-free-lunch",
           "title": "No free lunch — what to actually do",
           "description": "The large tabular benchmark, across 30 algorithms and 57 datasets, reports three things worth building your defaults on.\n\n1. **No unsupervised method wins everywhere.** Any ranking of detectors you read is a ranking on somebody else's data.\n2. **A little supervision beats a lot of architecture.** Semi-supervised methods with a handful of labelled anomalies outperform sophisticated unsupervised ones.\n3. **Simple methods are hard to beat.** Isolation Forest, kNN distance, and a pretrained embedding with kNN on top are all near the top and all cheap.\n\n## So, an honest default path\n\n1. **Look for labels first.** Thirty examples changes the problem. *(scene 1)*\n2. **Plot the thing.** Half of real anomaly detection is a chart nobody made.\n3. **Robust statistics** on the obvious univariate signals. *(scene 2)*\n4. **Isolation Forest** as the tabular default: fast, few knobs, survives dimension. *(scene 4)*\n5. **kNN or LOF** when locality matters and dimension is low. *(scene 3)*\n6. **A pretrained embedding + kNN** when the input is text, images or anything with a good encoder.\n7. **Train something deep** only when the above have failed *and you can demonstrate that they failed* — which needs scene 6.\n8. **An LLM for triage**, never for scoring.\n\n## Which brings us to the question nobody asked yet\n\nEvery method in this lesson emits a score. None of them emits a decision. And a score becomes a decision only when someone picks a threshold — at which point the base rate arrives, and everything that looked excellent in this scene may turn out to be unusable.\n\nThat is scene 6, and it is the one that decides whether any of this ships.",
           "prompt": "The synthesis. Deliver the three ADBench findings as priors rather than trivia: no universal winner, modest supervision beats architecture, simple methods are hard to beat. The eight-step default path is the most practically useful list in the lesson -- walk it with the student if they ask 'so what do I actually do'. Step 2, plot the thing, is not filler: a large share of real anomaly-detection work is a chart nobody made. Step 7 is the load-bearing one: train something deep only when the simple methods have failed AND you can demonstrate that they failed, which requires an evaluation protocol, which is scene 6. Close on the handoff -- every method in the lesson emits a score and none emits a decision, and the base rate is about to make some very good-looking detectors unusable.",
-          "remove": [
-            {
-              "id": "llm-numeric"
-            },
-            {
-              "id": "llm-numeric-list"
-            },
-            {
-              "id": "llm-ling"
-            },
-            {
-              "id": "llm-ling-list"
-            },
-            {
-              "id": "llm-divider"
-            },
-            {
-              "id": "llm-verdict"
-            }
-          ],
-          "add": [
-            {
-              "id": "nfl-1",
-              "type": "text",
-              "position": [
-                2.0,
-                5.0,
-                0
-              ],
-              "text": "1. No unsupervised method wins everywhere.",
-              "color": "#78909c"
-            },
-            {
-              "id": "nfl-2",
-              "type": "text",
-              "position": [
-                2.0,
-                3.8,
-                0
-              ],
-              "text": "2. A little supervision beats a lot of architecture.",
-              "color": "#66bb6a"
-            },
-            {
-              "id": "nfl-3",
-              "type": "text",
-              "position": [
-                2.0,
-                2.6,
-                0
-              ],
-              "text": "3. Simple methods are hard to beat.",
-              "color": "#42a5f5"
-            },
-            {
-              "id": "nfl-next",
-              "type": "text",
-              "position": [
-                2.0,
-                0.4,
-                0
-              ],
-              "text": "Every method here emits a score. None emits a decision.",
-              "color": "#ffca28"
-            }
-          ],
+          "remove": [],
+          "add": [],
           "camera": {
             "position": [
-              3.1,
-              2.7,
-              8.9
+              5.7,
+              2.3,
+              14.5
             ],
             "target": [
-              3.1,
-              2.7,
+              5.7,
+              2.3,
               0
             ]
-          }
+          },
+          "info": [
+            {
+              "id": "nfl-read",
+              "position": "bottom-right",
+              "title": "No free lunch, measured",
+              "content": "LOF is **last** on blob (**{{toFixed(adDetAuc(0, 1), 3)}}**). Mahalanobis on ring: **{{toFixed(adDetAuc(2, 4), 3)}}** — chance."
+            }
+          ]
         }
       ]
     },

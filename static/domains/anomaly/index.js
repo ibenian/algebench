@@ -1007,6 +1007,49 @@
     function adPrX(i, n) { return adRec(_rankT(i, n)); }
     function adPrY(i, n) { return adPrec(_rankT(i, n)); }
 
+    // ---- scene 5: the no-free-lunch matrix ---------------------------------
+
+    /** The five 2-D scorers, in the order scene 5's matrix draws them, each
+     *  paired with the SIGN that makes "larger = more anomalous" true. Kernel
+     *  density is the odd one out: a low density is the suspicious case. */
+    const NFL_DETS = [
+        ['isolation',      (t, i) => adIso(t, i),            +1],
+        ['LOF',            (t, i) => adLof(t, i, 20),        +1],
+        ['kNN distance',   (t, i) => adKnn(t, i, 20),        +1],
+        ['kernel density', (t, i) => adKdeScore(t, i, 0.5),  -1],
+        ['Mahalanobis',    (t, i) => adMahal(t, i),          +1],
+    ];
+    // Ordered by WHAT THEY BREAK, left to right: one convex cloud (nothing
+    // breaks), two densities (any global radius breaks), a hole (anything
+    // convex or centroid-based breaks). The matrix reads as a difficulty axis.
+    const NFL_TAGS = ['blob', 'dense', 'ring'];
+    const _nflCache = Object.create(null);
+
+    /** AUC-ROC of detector `det` on dataset `tag`, by the Mann-Whitney identity:
+     *  the probability that a random planted point outranks a random normal one,
+     *  with ties counting a half. Computed here rather than pinned into the
+     *  scene so the matrix cannot drift from the detectors it claims to score.
+     *  O(P*N) per cell, cached per (tag, det) -- the whole 5x3 matrix is 15
+     *  cells built once, not per frame. */
+    function adDetAuc(tagIdx, detIdx) {
+        const ti = _clampI(tagIdx, 0, NFL_TAGS.length - 1);
+        const di = _clampI(detIdx, 0, NFL_DETS.length - 1);
+        const key = ti + '|' + di;
+        const hit = _nflCache[key];
+        if (hit !== undefined) return hit;
+        const tag = NFL_TAGS[ti], [, f, sign] = NFL_DETS[di];
+        const d = _ds(tag), n = d.n;
+        const pos = [], neg = [];
+        for (let i = 0; i < n; i++) (d.lab[i] ? pos : neg).push(sign * f(tag, i));
+        let win = 0;
+        for (let a = 0; a < pos.length; a++)
+            for (let b = 0; b < neg.length; b++)
+                win += pos[a] > neg[b] ? 1 : (pos[a] === neg[b] ? 0.5 : 0);
+        const v = (pos.length && neg.length) ? win / (pos.length * neg.length) : 0;
+        _nflCache[key] = v;
+        return v;
+    }
+
     /** Areas, by the trapezoid rule over every distinct operating point. */
     function adAucRoc() {
         const e = _eval();
@@ -1059,6 +1102,7 @@
         // distance and density
         adKnn, adKnnMean, adLof, adMahal, adEuclid, adCovEig, adEllipse, adConc,
         // isolation and one-class
+        adDetAuc,
         adCPath, adIsoDepth, adIsoGrid, adIso, adKde, adKdeScore, adKdeQ, adKdeIn, adKdeR, adKdeRin, adKdeB,
         // reconstruction
         adSigN, adSig, adSigLabel, adRecon, adResid, adReconRmse, adReconRmseAnom,
