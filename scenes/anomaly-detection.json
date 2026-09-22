@@ -4813,7 +4813,7 @@
       "id": "learned-representations",
       "title": "Learned Representations — the AI Part",
       "description": "Reconstruction error as an anomaly score, the capacity trap that kills it, and an honest tour of what deep learning and foundation models did and did not solve.",
-      "markdown": "# Learned representations\n\nEvery method so far used the coordinates you were given. This scene learns new ones.\n\n## Reconstruction as a score\n\nTrain a model to compress and rebuild its input through a bottleneck. It can only learn to rebuild what it has seen often. So\n\n$$\\mathrm{score}(x) = \\lVert x - \\mathrm{decode}(\\mathrm{encode}(x)) \\rVert$$\n\nis an anomaly score. This is the **autoencoder** detector, and everything below is a variation on it.\n\nThe model on screen is a *linear* autoencoder — keep the $r$ lowest Fourier modes, discard the rest. Small enough to reason about, and it has every pathology the deep version has.\n\n## The zoo, and what each one is actually for\n\n| Family | Idea | Its characteristic failure |\n|---|---|---|\n| **Autoencoder** | Reconstruct through a bottleneck | Generalises too well and reconstructs the anomaly |\n| **Denoising AE** | Reconstruct a corrupted input | Better, and the corruption is another hyperparameter |\n| **VAE** | Probabilistic; score by likelihood | Likelihood is famously *not* a good OOD score |\n| **DeepSVDD** | Learn an embedding, minimise a hypersphere | Hypersphere collapse — a constant encoder scores perfectly |\n| **DeepSAD** | DeepSVDD plus a few labels | Needs those labels |\n| **AnoGAN / GANomaly** | Score by how hard the point is to generate | Unstable training; largely superseded |\n| **Self-supervised** | Pretext task; score by how badly it is solved | The pretext task is the whole design |\n| **Embedding + kNN** | Pretrained encoder, then scene 3 | Brutally effective, and rarely the paper |\n\n## Sequences\n\nFor time series the reconstruction idea becomes **forecast residual**: predict the next point from the past, score by the error. ARIMA → LSTM → Transformer is the same idea at three capacities. Alongside: **STL** decomposition (score the remainder), **Spectral Residual** (from the saliency literature), and the **matrix profile** (compare every subsequence to every other, no training at all).\n\n**Time-series foundation models** are where the field moved in 2025–26 — pretrained sequence models, adapted for detection (state-aware adapters, foundation autoencoders). They are a genuine improvement on training a model per series.\n\n**General-purpose LLMs as the detector are not.** The surveys are consistent: gains are limited, and putting an LLM at the centre of a detection pipeline is usually unjustified. Where they *do* earn their place is downstream — explaining a flagged window, correlating it with deploys and tickets, drafting the incident note, asking the analyst a clarifying question. Detection is numeric; triage is linguistic. Use each for what it is.\n\n## The result that should shape your priors\n\nAcross 30 algorithms and 57 datasets: **no unsupervised method wins everywhere**, and modest supervision beats elaborate architecture. A strong pretrained embedding with a kNN distance on top is a very hard baseline to beat, and it is not in most papers because it is not novel.",
+      "markdown": "# Learned representations\n\nEvery method so far used the coordinates you were given. This scene learns new ones.\n\n## Reconstruction as a score\n\nTrain a model to compress and rebuild its input through a bottleneck. It can only learn to rebuild what it has seen often. So\n\n$$\\mathrm{score}(x) = \\lVert x - \\mathrm{decode}(\\mathrm{encode}(x)) \\rVert$$\n\nis an anomaly score. This is the **autoencoder** detector, and everything below is a variation on it.\n\nThe model on screen is a *linear* autoencoder — keep the $r$ lowest Fourier modes, discard the rest. Small enough to reason about, and it has every pathology the deep version has.\n\n## The zoo, and what each one is actually for\n\n| Family | Idea | Its characteristic failure |\n|---|---|---|\n| **Autoencoder** | Reconstruct through a bottleneck | Generalises too well and reconstructs the anomaly |\n| **Denoising AE** | Reconstruct a corrupted input | Better, and the corruption is another hyperparameter |\n| **VAE** | Probabilistic; score by likelihood | Likelihood is famously *not* a good OOD score |\n| **DeepSVDD** | Learn an embedding, minimise a hypersphere | Hypersphere collapse — a constant encoder scores perfectly |\n| **DeepSAD** | DeepSVDD plus a few labels | Needs those labels |\n| **AnoGAN / GANomaly** | Score by how hard the point is to generate | Unstable training; largely superseded |\n| **Self-supervised** | Pretext task; score by how badly it is solved | The pretext task is the whole design |\n| **Embedding + kNN** | Pretrained encoder, then scene 3 | Brutally effective, and rarely the paper |\n\n## Sequences\n\nFor time series the reconstruction idea becomes **forecast residual**: predict the next point from the past, score by the error. ARIMA → LSTM → Transformer is the same idea at three capacities. Alongside: **STL** decomposition (score the remainder), **Spectral Residual** (from the saliency literature), and the **matrix profile** (compare every subsequence to every other, no training at all).\n\n**Time-series foundation models** are where the field moved in 2025–26 — pretrained sequence models, adapted for detection (state-aware adapters, foundation autoencoders). They are a genuine improvement on training a model per series.\n\n**General-purpose LLMs as the detector are not.** The surveys are consistent: gains are limited, and putting an LLM at the centre of a detection pipeline is usually unjustified. Where they *do* earn their place is downstream — explaining a flagged window, correlating it with deploys and tickets, drafting the incident note, asking the analyst a clarifying question. Detection is numeric; triage is linguistic. Use each for what it is.\n\n### What the matrix is measuring\n\nEvery cell is **AUC-ROC**, and it has a reading that needs no curve: it is the\nprobability that a random planted anomaly is ranked **above** a random normal point.\nThat is the Mann-Whitney form, and it is literally what `adDetAuc` computes —\n\n$$\\mathrm{AUC} \\;=\\; \\frac{1}{|P|\\,|N|}\\sum_{a \\in P}\\ \\sum_{b \\in N}\n\\Big(\\mathbb{1}[s_a > s_b] + \\tfrac12\\,\\mathbb{1}[s_a = s_b]\\Big)$$\n\nwith $P$ the planted points, $N$ the rest, and ties counting a half. So **1.0** means\nevery anomaly outranks every normal point, and **0.5** means the ranking carries no\ninformation at all — a coin flip, which is why the colour scale starts there rather\nthan at zero.\n\nTwo things it deliberately does *not* tell you, both of which scene 6 takes apart:\nit is **threshold-free**, so it says nothing about where to cut; and it is\n**insensitive to the base rate**, which is exactly why it stays flattering on problems\nwhere precision has already collapsed.\n\n## The result that should shape your priors\n\nAcross 30 algorithms and 57 datasets: **no unsupervised method wins everywhere**, and modest supervision beats elaborate architecture. A strong pretrained embedding with a kNN distance on top is a very hard baseline to beat, and it is not in most papers because it is not novel.",
       "prompt": "Scene 5 of six, and the one where the lesson has to be most careful not to oversell. The model is a LINEAR autoencoder -- keep the r lowest Fourier modes of a 128-sample signal -- chosen because it has every pathology the deep version has while remaining fully inspectable. The capacity argument is the scene's spine and the numbers are real: rmseAnom/rmse is 0.75 at r=1 (the anomaly window is LESS wrong than the rest of the signal, so the detector is inverted and would flag the normal parts), 1.98 at r=3 (peak contrast, the sweet spot), and 0.95 by r=10 (the model reconstructs the anomaly as well as the signal and the detector is dead). The signal carries Fourier modes 2 and 3, which is why r=3 is exactly enough. On the AI tour: be accurate about each failure mode, especially that VAE likelihood is a poor OOD score and that DeepSVDD can collapse to a constant encoder. On LLMs be direct -- the 2025-26 survey consensus is that general-purpose LLMs underperform as primary time-series detectors and that time-series FOUNDATION models are the real advance; LLMs earn their place in triage and explanation, not in scoring. Close on ADBench: 30 algorithms, 57 datasets, no universal winner, and embedding-plus-kNN is a very strong baseline.",
       "range": [
         [
@@ -5197,18 +5197,18 @@
                 3
               ],
               "origin": [
-                5.0,
+                4.4,
                 0.0,
                 0
               ],
-              "cellSize": 1.3,
+              "cellSize": 1.75,
               "gap": 0.06,
-              "valueExpr": "pow((adDetAuc(col, row) - 0.5) / 0.5, 4)",
+              "valueExpr": "adDetAuc(col, row)",
               "textExpr": "toFixed(adDetAuc(col, row), 3)",
               "colorMap": "magma",
               "colorDomain": [
-                0,
-                1
+                0.5,
+                1.0
               ],
               "axes": [
                 {
@@ -5219,7 +5219,8 @@
                     "kNN distance",
                     "kernel density $\\downarrow$",
                     "Mahalanobis"
-                  ]
+                  ],
+                  "color": "#e8eef5"
                 },
                 {
                   "title": "dataset",
@@ -5227,22 +5228,27 @@
                     "blob\none cloud",
                     "dense\ntwo densities",
                     "ring\na hole"
-                  ]
+                  ],
+                  "color": "#e8eef5"
                 }
               ],
               "label": "AUC-ROC · every detector on every dataset",
-              "prompt": "The no-free-lunch matrix, computed live by adDetAuc rather than pinned: AUC-ROC for each of five detectors on each of three datasets, by the Mann-Whitney identity. axes[0] is rows (detectors, top to bottom: isolation, LOF, kNN, kernel density, Mahalanobis), axes[1] is columns, ordered by WHAT THEY BREAK: 'blob' is one convex Gaussian cloud plus uniform outliers and nothing breaks on it; 'dense' is a tight cluster beside a loose one, which breaks any global radius; 'ring' is an annulus with four points in the hole, which breaks anything convex or centroid-based. The column labels name the shape, not just the tag. Colour is ((AUC - 0.5)/0.5)^4, not AUC: eleven of the fifteen cells are >= 0.94, so a linear map would put nearly all of them in the pale top of the ramp and hide the differences that matter. The power transform uses the whole ramp over the range that actually occurs, and chance (0.5) lands at exactly 0, the darkest cell, alone. The TEXT is always the true AUC. Kernel density is sign-flipped inside adDetAuc since low density is the anomalous case. The readings the three steps draw from it: no row is best everywhere (LOF wins dense and ring but is LAST on blob; isolation wins blob but is 4th on ring); plain kNN is within 0.001 of the best on two of three, which is the 'simple methods are hard to beat' point; and Mahalanobis on ring is 0.500, exactly chance, because the anomalies sit at the mean where an ellipse cannot exclude them."
+              "prompt": "The no-free-lunch matrix, computed live by adDetAuc rather than pinned: AUC-ROC for each of five detectors on each of three datasets, by the Mann-Whitney identity. axes[0] is rows (detectors, top to bottom: isolation, LOF, kNN, kernel density, Mahalanobis), axes[1] is columns, ordered by WHAT THEY BREAK: 'blob' is one convex Gaussian cloud plus uniform outliers and nothing breaks on it; 'dense' is a tight cluster beside a loose one, which breaks any global radius; 'ring' is an annulus with four points in the hole, which breaks anything convex or centroid-based. The column labels name the shape, not just the tag. Colour is the AUC itself, linearly over [0.5, 1.0] -- 0.5 because that IS chance, so the cold end means a coin flip rather than merely a weak result. Deliberately NOT a contrast-stretched transform: most of these detectors really are near-equal, and exaggerating a 0.012 gap would say they differ when they do not. The one cell that looks different is the one that is. Kernel density is sign-flipped inside adDetAuc since low density is the anomalous case. The readings the three steps draw from it: no row is best everywhere (LOF wins dense and ring but is LAST on blob; isolation wins blob but is 4th on ring); plain kNN is within 0.001 of the best on two of three, which is the 'simple methods are hard to beat' point; and Mahalanobis on ring is 0.500, exactly chance, because the anomalies sit at the mean where an ellipse cannot exclude them.",
+              "opacity": 1,
+              "shader": {
+                "ignorePlaneOpacity": true
+              }
             }
           ],
           "camera": {
             "position": [
-              5.7,
-              2.3,
-              14.5
+              5.4,
+              3.0,
+              17.0
             ],
             "target": [
-              5.7,
-              2.3,
+              5.4,
+              3.0,
               0
             ]
           },
@@ -5264,13 +5270,13 @@
           "add": [],
           "camera": {
             "position": [
-              5.7,
-              2.3,
-              14.5
+              5.4,
+              3.0,
+              17.0
             ],
             "target": [
-              5.7,
-              2.3,
+              5.4,
+              3.0,
               0
             ]
           },
@@ -5292,13 +5298,13 @@
           "add": [],
           "camera": {
             "position": [
-              5.7,
-              2.3,
-              14.5
+              5.4,
+              3.0,
+              17.0
             ],
             "target": [
-              5.7,
-              2.3,
+              5.4,
+              3.0,
               0
             ]
           },
