@@ -3765,8 +3765,7 @@
                   "n": 153,
                   "kind": "points",
                   "size": 2,
-                  "color": "#ab47bc",
-                  "label": "isolation"
+                  "color": "#ab47bc"
                 },
                 {
                   "xExpr": "adLof('dense', i, 20)",
@@ -3774,8 +3773,7 @@
                   "n": 153,
                   "kind": "points",
                   "size": 2,
-                  "color": "#66bb6a",
-                  "label": "LOF"
+                  "color": "#66bb6a"
                 },
                 {
                   "xExpr": "adKnn('dense', i, 20)",
@@ -3783,8 +3781,7 @@
                   "n": 153,
                   "kind": "points",
                   "size": 2,
-                  "color": "#ffa726",
-                  "label": "kNN distance"
+                  "color": "#ffa726"
                 },
                 {
                   "xExpr": "adKdeScore('dense', i, 0.5)",
@@ -3792,8 +3789,7 @@
                   "n": 153,
                   "kind": "points",
                   "size": 2,
-                  "color": "#42a5f5",
-                  "label": "kernel density"
+                  "color": "#42a5f5"
                 },
                 {
                   "xExpr": "adMahal('dense', i)",
@@ -3801,20 +3797,25 @@
                   "n": 153,
                   "kind": "points",
                   "size": 2,
-                  "color": "#ef5350",
-                  "label": "Mahalanobis"
+                  "color": "#ef5350"
                 }
               ],
               "axes": [
                 {
-                  "title": "raw score, the same 153 points",
+                  "title": "raw score  ·  $\\downarrow$ = low is anomalous",
                   "ticks": 7,
                   "labelExpr": "toFixed(value, 1)"
                 },
                 {
                   "title": "",
-                  "ticks": 2,
-                  "labelExpr": "toFixed(value * 0, 0)"
+                  "ticks": 5,
+                  "labels": [
+                    "Mahalanobis",
+                    "kernel density $\\downarrow$",
+                    "kNN distance",
+                    "LOF",
+                    "isolation"
+                  ]
                 }
               ],
               "label": "five detectors, one axis",

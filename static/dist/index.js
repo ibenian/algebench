@@ -10381,6 +10381,23 @@ function renderChart(el, view) {
 	const yLabelSrc = typeof yAxis?.labelExpr === "string" ? yAxis.labelExpr.trim() || null : null;
 	let xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
 	let yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
+	/**
+	* `labels` names the ticks positionally: entry k replaces tick k's text.
+	* The schema documents it on the shared axis item without the TENSOR ONLY
+	* marker that `labelExpr` carries, so a chart is expected to honour it and
+	* simply did not. It is what lets a chart carry a CATEGORICAL axis -- rows
+	* of a strip plot, say -- which no numeric tick text can express.
+	*
+	* Per the schema: extra labels are ignored, too few leaves the remainder
+	* unlabelled, and a non-string entry is skipped rather than stringified,
+	* so a stray number cannot print itself as a label.
+	*/
+	const axisLabels = (a) => {
+		const raw = a && a.labels;
+		return Array.isArray(raw) ? raw.map((v) => typeof v === "string" ? v : "") : null;
+	};
+	const xLabelList = axisLabels(xAxis);
+	const yLabelList = axisLabels(yAxis);
 	const xColor = parseColor(xAxis && xAxis.color || "#aabbcc");
 	const yColor = parseColor(yAxis && yAxis.color || "#aabbcc");
 	const rightSpecs = Array.isArray(chart.rightAxes) ? chart.rightAxes.slice(0, MAX_RIGHT_AXES) : [];
@@ -10739,8 +10756,8 @@ function renderChart(el, view) {
 		lastT = tSec;
 		const xt = niceTicks(xDom[0], xDom[1], xTickCount);
 		const yt = niceTicks(yDom[0], yDom[1], yTickCount);
-		const xLabels = xt.ticks.map((v) => tickText(xLabelFn, v, xt.step, tSec));
-		const yLabels = yt.ticks.map((v) => tickText(yLabelFn, v, yt.step, tSec));
+		const xLabels = xt.ticks.map((v, k) => xLabelList ? xLabelList[k] ?? "" : tickText(xLabelFn, v, xt.step, tSec));
+		const yLabels = yt.ticks.map((v, k) => yLabelList ? yLabelList[k] ?? "" : tickText(yLabelFn, v, yt.step, tSec));
 		const pointLabelKey = series.filter((s) => s.kind === "points" && s.pointLabelSrc).map((s) => s.pointLabels.map((label, i) => {
 			const [h, v] = toPlane(s.px[i], s.py[i]);
 			return `${label}\u0001${Math.round(h * pxPer * 2)}\u0001${Math.round(v * pxPer * 2)}`;
