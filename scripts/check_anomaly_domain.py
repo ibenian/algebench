@@ -147,6 +147,61 @@ def ref_c(n: int) -> float:
     return 2 * sum(1.0 / j for j in range(1, n)) - 2 * (n - 1) / n
 
 
+_M32 = 0xFFFFFFFF
+
+
+def _imul(a: int, b: int) -> int:
+    """JS Math.imul: the low 32 bits of a*b, read as signed."""
+    r = ((a & _M32) * (b & _M32)) & _M32
+    return r - 0x100000000 if r >= 0x80000000 else r
+
+
+def _s32(x: int) -> int:
+    x &= _M32
+    return x - 0x100000000 if x >= 0x80000000 else x
+
+
+def _splitmix32(seed: int):
+    """The module's PRNG, ported. Not pulled from the module on purpose: this
+    is the one check that regenerates its own data, so it verifies the
+    GENERATOR as well as the arithmetic."""
+    state = [_s32(seed)]
+
+    def nxt() -> float:
+        state[0] = _s32(state[0] + 0x9E3779B9)
+        t = state[0] & _M32
+        t ^= t >> 16
+        t = _imul(t, 0x21F0AAAD) & _M32
+        t ^= t >> 15
+        t = _imul(t, 0x735A2D97) & _M32
+        t ^= t >> 15
+        return (t & _M32) / 4294967296
+    return nxt
+
+
+def _seed_of(tag: str) -> int:
+    """FNV-1a over the tag, as the module does it."""
+    h = 0x811C9DC5
+    for ch in tag:
+        h = _imul(h ^ ord(ch), 0x01000193)
+    return _s32(h ^ 0x5EED1234)
+
+
+CONC_N = 120
+
+
+def ref_conc(d: int):
+    """Relative contrast (dmax - dmin) / dmin averaged over 120 uniform points
+    in d dimensions, plus the mean nearest and farthest distances."""
+    rng = _splitmix32(_seed_of('conc|' + str(d)))
+    p = np.array([rng() for _ in range(CONC_N * d)]).reshape(CONC_N, d)
+    dist = np.sqrt(((p[:, None, :] - p[None, :, :]) ** 2).sum(-1))
+    np.fill_diagonal(dist, np.nan)
+    lo = np.nanmin(dist, axis=1)
+    hi = np.nanmax(dist, axis=1)
+    return float(np.mean((hi - lo) / lo)), float(lo.mean()), float(hi.mean())
+
+
 def ref_knn(pts: np.ndarray, k: int) -> np.ndarray:
     d = np.linalg.norm(pts[:, None, :] - pts[None, :, :], axis=2)
     np.fill_diagonal(d, np.inf)
@@ -521,6 +576,20 @@ def main() -> int:
                 and auc[1][1] == max(auc[r][1] for r in range(5))
                 and auc[1][2] == max(auc[r][2] for r in range(5)),
                 f'blob col {[round(auc[r][0], 3) for r in range(5)]}')
+
+    # adConc drives scene 3's concentration plot and docs.json lists its values
+    # under verified_values -- but nothing verified them. This regenerates the
+    # seeded clouds from a PORT of the module's splitmix32 and FNV-1a rather
+    # than pulling them, so it checks the generator and the arithmetic at once.
+    print('\nparity - distance concentration (scene 3)')
+    for d in (2, 3, 5, 10, 20, 40, 64):
+        want = ref_conc(d)
+        got = run(f'[AD.adConc({d}, 0), AD.adConc({d}, 1), AD.adConc({d}, 2)]')
+        check(f'relative contrast at d={d}', got[0], want[0], 1e-9)
+        check(f'mean nearest / farthest at d={d}', got[1:], list(want[1:]), 1e-9)
+    assert_true('contrast falls monotonically with dimension (the curse, measured)',
+                all(ref_conc(a)[0] > ref_conc(b)[0]
+                    for a, b in ((2, 3), (3, 5), (5, 10), (10, 20), (20, 40), (40, 64))))
 
     assert_true('always predicting "normal" beats the threshold on accuracy alone',
                 (1 - pi) > 0.9, f'the majority-class accuracy is {1 - pi:.3f}')

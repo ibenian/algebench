@@ -318,6 +318,33 @@ interface BandSpec {
 const MAX_PAPER_PX = 2048;
 /** Right-hand axes beyond this are ignored; the margin has to fit them. */
 const MAX_RIGHT_AXES = 3;
+/**
+ * The static tick labels an axis contributes, or null when it contributes none.
+ *
+ * `labels` names the ticks POSITIONALLY: entry k replaces tick k's text. That
+ * is what lets a chart carry a categorical axis -- the rows of a strip plot,
+ * say -- which no numeric tick text can express.
+ *
+ * `hasLabelExpr` suppresses the array entirely, because the schema says
+ * `labelExpr` wins over `labels` when both are given and tensor.ts gates its
+ * static list the same way. Reading the array regardless would render a stale
+ * list and never evaluate the live expression.
+ *
+ * A non-string entry becomes '' rather than being stringified, so a stray
+ * number cannot print itself as a label.
+ */
+export function axisLabelList(axis: unknown, hasLabelExpr: boolean): string[] | null {
+    if (hasLabelExpr) return null;
+    const raw = axis && (axis as { labels?: unknown }).labels;
+    return Array.isArray(raw) ? raw.map(v => (typeof v === 'string' ? v : '')) : null;
+}
+
+/** Tick `k`'s static label: the k-th entry, or '' past the end of the list
+ *  (the schema's "too few leaves the remainder unlabelled"). */
+export function staticTickLabel(list: readonly string[], k: number): string {
+    return list[k] ?? '';
+}
+
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 const MAX_TICKS = 50;
 
@@ -483,27 +510,8 @@ export function renderChart(el: Element, view: MathBoxNode) {
     const yLabelSrc = typeof yAxis?.labelExpr === 'string' ? yAxis.labelExpr.trim() || null : null;
     let xLabelFn = compileOpt(xLabelSrc, 'axes[0].labelExpr');
     let yLabelFn = compileOpt(yLabelSrc, 'axes[1].labelExpr');
-    /**
-     * `labels` names the ticks positionally: entry k replaces tick k's text.
-     * The schema documents it on the shared axis item without the TENSOR ONLY
-     * marker that `labelExpr` carries, so a chart is expected to honour it and
-     * simply did not. It is what lets a chart carry a CATEGORICAL axis -- rows
-     * of a strip plot, say -- which no numeric tick text can express.
-     *
-     * Per the schema: extra labels are ignored, too few leaves the remainder
-     * unlabelled, and a non-string entry is skipped rather than stringified,
-     * so a stray number cannot print itself as a label.
-     */
-    const axisLabels = (a: typeof xAxis): string[] | null => {
-        const raw = a && (a as { labels?: unknown }).labels;
-        return Array.isArray(raw) ? raw.map(v => (typeof v === 'string' ? v : '')) : null;
-    };
-    // `labelExpr` wins over `labels` when both are given -- the schema says so
-    // and tensor.ts gates its static list the same way. Reading the array
-    // unconditionally would render a stale list and never evaluate the live
-    // expression, which is the opposite of the documented rule.
-    const xLabelList = xLabelSrc ? null : axisLabels(xAxis);
-    const yLabelList = yLabelSrc ? null : axisLabels(yAxis);
+    const xLabelList = axisLabelList(xAxis, !!xLabelSrc);
+    const yLabelList = axisLabelList(yAxis, !!yLabelSrc);
     const xColor = parseColor((xAxis && xAxis.color) || '#aabbcc') as Rgb3;
     const yColor = parseColor((yAxis && yAxis.color) || '#aabbcc') as Rgb3;
 
@@ -823,9 +831,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
         const xt = niceTicks(xDom[0], xDom[1], xTickCount);
         const yt = niceTicks(yDom[0], yDom[1], yTickCount);
         const xLabels = xt.ticks.map((v, k) =>
-            xLabelList ? (xLabelList[k] ?? '') : tickText(xLabelFn, v, xt.step, tSec));
+            xLabelList ? staticTickLabel(xLabelList, k) : tickText(xLabelFn, v, xt.step, tSec));
         const yLabels = yt.ticks.map((v, k) =>
-            yLabelList ? (yLabelList[k] ?? '') : tickText(yLabelFn, v, yt.step, tSec));
+            yLabelList ? staticTickLabel(yLabelList, k) : tickText(yLabelFn, v, yt.step, tSec));
         // Point labels live on the paper, so their positions and text join the
         // cache key. Half-pixel quantisation avoids repainting for motion too
         // small to be visible while sliders still feel immediate.
