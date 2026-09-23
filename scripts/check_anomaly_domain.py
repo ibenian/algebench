@@ -588,22 +588,29 @@ def main() -> int:
     # overlay: the RBF's bias is correct by construction on the radial data and
     # cannot be made correct on the two-density one, at ANY bandwidth. Swept
     # rather than asserted, because "no gamma does better" is the whole point.
-    GAMMAS = [0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8]
+    # A SAMPLED claim, so sample properly: 61 log-spaced gammas over four
+    # orders of magnitude, pulled in one node call per tag and ranked here.
+    # Eight hand-picked values could not support "no gamma does better", and
+    # the scene says that -- so the sweep is wide enough for the sentence, and
+    # the sentence says "swept", not "no gamma anywhere".
+    GAMMAS = [float(g) for g in np.logspace(-2, 2, 61)]
     best = {}
     for tag in ('ring', 'dense'):
         n = run(f'[AD.adN("{tag}")]')[0]
         lab = np.asarray(run(f'R(i => AD.adLabel("{tag}", i), {n})'), dtype=int)
         k = int(lab.sum())
-        hits = []
-        for g in GAMMAS:
-            dens = np.asarray(run(
-                f'R(i => AD.adKde("{tag}", AD.adX("{tag}", i), AD.adY("{tag}", i), {g}), {n})'))
-            # lowest density = most anomalous; precision@k
-            hits.append(int(lab[np.argsort(dens)[:k]].sum()))
+        glist = '[' + ','.join(repr(g) for g in GAMMAS) + ']'
+        dens = np.asarray(run(
+            f'{glist}.map(g => R(i => AD.adKde("{tag}", AD.adX("{tag}", i), '
+            f'AD.adY("{tag}", i), g), {n}))'))
+        # lowest density = most anomalous; precision@k, per gamma
+        hits = [int(lab[np.argsort(row)[:k]].sum()) for row in dens]
         best[tag] = (max(hits), k)
-    assert_true(f'RBF prior fits the ring by construction ({best["ring"][0]} of {best["ring"][1]})',
+    assert_true(f'RBF prior fits the ring by construction ({best["ring"][0]} of {best["ring"][1]}, '
+                f'{len(GAMMAS)} gammas swept)',
                 best['ring'] == (8, 8), f'got {best["ring"]}')
-    assert_true(f'no gamma rescues it on dense ({best["dense"][0]} of {best["dense"][1]})',
+    assert_true(f'no SWEPT gamma rescues it on dense ({best["dense"][0]} of {best["dense"][1]}, '
+                f'{len(GAMMAS)} gammas over 1e-2..1e2)',
                 best['dense'] == (2, 3), f'got {best["dense"]}')
 
     # Scene 4's 'scales' strip plot and its overlay quote these spans. They are
@@ -650,6 +657,17 @@ def main() -> int:
     assert_true('contrast falls monotonically with dimension (the curse, measured)',
                 all(ref_conc(a)[0] > ref_conc(b)[0]
                     for a, b in ((2, 3), (3, 5), (5, 10), (10, 20), (20, 40), (40, 64))))
+
+    # verified_values.ring_boundary claims all eight planted points fall
+    # OUTSIDE the level set. Nothing tested that: the wall checks sample
+    # densities along rays, which a regression in adKdeIn would not touch.
+    inside = run('R(i => AD.adKdeIn("ring", 200 + i, 0.1, 0.5), 8)')
+    assert_true('all 8 planted ring points fall outside the nu=0.1 boundary',
+                sum(inside) == 0, f'adKdeIn said inside for {sum(inside)} of them')
+    # and the converse, or "outside" would be trivially satisfiable
+    ring_in = run('R(i => AD.adKdeIn("ring", i, 0.1, 0.5), 200)')
+    assert_true(f'most ring points fall inside it ({sum(ring_in)} of 200)',
+                sum(ring_in) >= 170, f'only {sum(ring_in)} of 200 inside')
 
     assert_true('always predicting "normal" beats the threshold on accuracy alone',
                 (1 - pi) > 0.9, f'the majority-class accuracy is {1 - pi:.3f}')
