@@ -6,7 +6,11 @@ not a hand-drawn impression of one. This script makes that claim testable: it
 pulls the raw datasets out of static/domains/anomaly/index.js, recomputes the
 statistical, distance, density and evaluation scores FROM SCRATCH in NumPy from
 the textbook formula, and compares. A drift in either the data or the arithmetic
-fails here -- the data via a pinned digest of the whole seeded corpus.
+fails here. The data half is not a hash: the datasets are Box-Muller
+normals, whose transcendentals are not bit-identical across V8 versions,
+so the corpus is pinned as exact integer facts plus mean/std/min/max per
+array to 1e-9 -- see CORPUS_TOL. That catches a moved centre, a changed
+sigma, a different seed or a resized dataset, and tolerates libm.
 
 The Isolation Forest is the one exception, and it is deliberate: the trees are
 randomised, so a reimplementation cannot be compared pointwise. What is pinned
