@@ -3804,7 +3804,8 @@
                 {
                   "title": "raw score  ·  $\\downarrow$ = low is anomalous",
                   "ticks": 7,
-                  "labelExpr": "toFixed(value, 1)"
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#e8eef5"
                 },
                 {
                   "title": "",
@@ -3815,7 +3816,8 @@
                     "kNN distance",
                     "LOF",
                     "isolation"
-                  ]
+                  ],
+                  "color": "#e8eef5"
                 }
               ],
               "label": "five detectors, one axis",

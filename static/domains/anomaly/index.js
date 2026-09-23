@@ -528,13 +528,17 @@
      *  constantly, and the asymptotic is 27.6% low at n = 3 and 14.5% low at
      *  n = 4, which is precisely where it gets used most. It agrees to 0.1%
      *  by n = 128, so the cost of being exact is a memoised prefix sum.
-     *  Above HARMONIC_MAX the asymptotic is accurate to ~1e-13 and is used
-     *  so a stray huge argument cannot spin. */
+     *  Above HARMONIC_MAX the Euler-Maclaurin asymptotic takes over so a stray
+     *  huge argument cannot spin. It carries the -1/(12 m^2) term, not just
+     *  1/(2m): stopping at 1/(2m) leaves 8.33e-12 in H and, since c doubles it,
+     *  1.67e-11 in c(n) at the cutoff. With the term the c(n) error is 3.6e-15,
+     *  which is float64 round-off -- the next omitted term, 2/(120 m^4), is
+     *  1.7e-22 and cannot be represented anyway. */
     const EULER = 0.5772156649015329;
     const HARMONIC_MAX = 100000;
     const _harmonic = [0, 1];     // _harmonic[m] = H(m)
     function _H(m) {
-        if (m > HARMONIC_MAX) return Math.log(m) + EULER + 1 / (2 * m);
+        if (m > HARMONIC_MAX) return Math.log(m) + EULER + 1 / (2 * m) - 1 / (12 * m * m);
         for (let j = _harmonic.length; j <= m; j++) _harmonic[j] = _harmonic[j - 1] + 1 / j;
         return _harmonic[m];
     }
