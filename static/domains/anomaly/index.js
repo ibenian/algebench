@@ -26,10 +26,8 @@
  * what makes the whole library testable outside a browser and what keeps the
  * slider contract visible in the scene JSON rather than buried here.
  *
- * Datasets (tags):
- *   'metric'  1-D: 60 readings of a stable metric. The one dataset whose
- *             CONTENT depends on a parameter — adV(i, contam) injects
- *             `contam` large readings. Scene 2's whole argument.
+ * POINT-CLOUD TAGS. These four, and only these four, are what a `tag`
+ * argument means: adN, adX, adY, adLabel and every 2-D scorer take one.
  *   'blob'    2-D: one Gaussian cluster plus uniform contamination.
  *   'dense'   2-D: a tight cluster and a loose one, plus a point that sits
  *             between them. Global kNN calls the loose cluster anomalous;
@@ -39,8 +37,16 @@
  *   'ring'    2-D: an annulus with a few points in the hole and outside.
  *             Non-convex, so an ellipse cannot fence it; a kernel level set
  *             can. Scene 4.
- *   'eval'    labelled: 400 points, 8% anomalous, with a score attached, for
- *             the ROC / PR / confusion sweep. Scene 6.
+ *
+ * The other two seeded series are NOT point-cloud tags and have their own
+ * accessors. Passing their names to adN/adX/adY would silently hit the
+ * unknown-tag fallback below, so they are listed apart deliberately:
+ *   the METRIC  1-D: 60 readings, via adMetricN / adV(i, contam) / adPlanted.
+ *             The one series whose CONTENT depends on a parameter — contam
+ *             injects that many large readings. Scene 2's whole argument.
+ *   the EVAL SET  400 labelled points with a score attached, via adEvalN /
+ *             adScore / adEvalLabel, for the ROC / PR / confusion sweep.
+ *             Scene 6.
  *
  * Function groups: data access (adN, adX, adY, adLabel), the 1-D metric and
  * its robust statistics (adV ... adCountM), distance and density (adKnn, adLof,
@@ -100,6 +106,7 @@
     // ---- the datasets -----------------------------------------------------
 
     const _dsCache = Object.create(null);
+    const _warnedTags = new Set();
 
     /** Builds `tag` once. Returns { n, x: Float64Array, y: Float64Array,
      *  lab: Uint8Array } — lab is the PLANTED truth, not a detector's verdict. */
@@ -168,7 +175,18 @@
             }
         } else {
             // Unknown tag: a single standard cluster, so a typo degrades to a
-            // visible blob rather than to NaN.
+            // visible blob rather than to NaN. Degrading is right -- an
+            // expression must not take the scene down -- but it must not be
+            // SILENT: the blob is plausible, so a typo, or the metric and eval
+            // series being passed here by mistake, would otherwise draw a
+            // convincing picture of nothing. One warning per bad tag.
+            if (!_warnedTags.has(key)) {
+                _warnedTags.add(key);
+                console.warn(`anomaly domain: unknown dataset tag "${key}" — `
+                    + 'falling back to a generic 100-point cluster. Point-cloud '
+                    + 'tags are blob, dense, ellip, ring; the metric and eval '
+                    + 'series have their own accessors (adMetricN/adV, adEvalN/adScore).');
+            }
             n = 100;
             x = new Float64Array(n); y = new Float64Array(n); lab = new Uint8Array(n);
             for (let i = 0; i < n; i++) { x[i] = g(); y[i] = g(); }
