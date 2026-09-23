@@ -474,7 +474,10 @@ def main() -> int:
 
     # ---- reconstruction ----------------------------------------------------
     print('\nparity — reconstruction (scene 5)')
-    for r in (1, 3, 8, 24):
+    # 10 and 32 are here because scene 5's table QUOTES them; 8 and 24 are
+    # ordinary interior ranks. Leaving the quoted ones out let the parity
+    # check pass while the two rows the student reads went unverified.
+    for r in (1, 3, 8, 10, 24, 32):
         check(f'rank-{r} reconstruction', run(f'R(i => AD.adRecon(i, {r}), 128)'),
               ref_recon(sig, r), 1e-10)
         check(f'rank-{r} residual', run(f'R(i => AD.adResid(i, {r}), 128)'),
@@ -580,7 +583,21 @@ def main() -> int:
     assert_true('Mahalanobis reverses Euclidean order on the correlated cloud',
                 euc[a] > euc[b] and mah[a] < mah[b],
                 f'euclid {euc[a]:.2f} vs {euc[b]:.2f}, mahal {mah[a]:.2f} vs {mah[b]:.2f}')
-    ratio = [run(f'[AD.adReconRmseAnom({r}) / AD.adReconRmse({r})]')[0] for r in (1, 3, 10)]
+    # Scene 5's capacity table is printed to 2dp, so it is pinned to 2dp --
+    # every cell, not a band around it. The inequalities this replaces
+    # (ratio < 1, > 1.8, < 1.1) would have stayed green while the quoted 0.95
+    # drifted to 1.09, i.e. while the table on screen went wrong.
+    CAPACITY = {1: (2.21, 1.66, 0.75), 3: (0.36, 0.72, 1.98),
+                10: (0.29, 0.28, 0.95), 32: (0.22, 0.25, 1.13)}
+    got = run('[' + ','.join(
+        f'[AD.adReconRmse({r}), AD.adReconRmseAnom({r}), '
+        f'AD.adReconRmseAnom({r}) / AD.adReconRmse({r})]' for r in CAPACITY) + ']')
+    bad = [f'r={r}: {[round(x, 4) for x in row]} vs {want}'
+           for (r, want), row in zip(CAPACITY.items(), got)
+           if any(round(x, 2) != w for x, w in zip(row, want))]
+    assert_true("scene 5's capacity table is correct in every cell, to the 2dp it prints",
+                not bad, '; '.join(bad))
+    ratio = [got[i][2] for i in range(3)]
     assert_true('capacity: the detector is inverted at r=1, best at r=3, dead by r=10',
                 ratio[0] < 1 and ratio[1] > 1.8 and ratio[2] < 1.1,
                 f'ratios {[round(x, 2) for x in ratio]}')
