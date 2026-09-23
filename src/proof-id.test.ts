@@ -143,6 +143,7 @@ test('a bare scene\'s step proofs are reachable at the index the loader uses', a
     const lessonStep = collectAllProofs(
         { title: 'l', scenes: [{ id: 's', steps: [{ proof: sp }] }] } as never,
     ).find((e: { level: string }) => e.level === 'step');
+    assert.ok(lessonStep, 'a lesson still collects its step-level proof');
     assert.equal(lessonStep.sceneIndex, 0);
     assert.equal(_isProofInContext(lessonStep, 0, 0), true);
 });
