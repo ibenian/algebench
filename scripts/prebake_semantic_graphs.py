@@ -272,9 +272,16 @@ def iter_proof_steps(spec):
 
 
 def _existing_graph(step):
-    """Return the already-baked graph dict for a step, or ``None``."""
+    """Return the already-baked graph dict for a step, or ``None``.
+
+    Truthiness, not isinstance, to match `_autofill_semantic_graphs`
+    (server.py: ``if isinstance(sg, dict) and sg.get('graph')``). An EMPTY
+    graph dict is falsy there, so the server derives the step anyway -- and an
+    isinstance test here would call it baked, hiding it from the missing count
+    and billing none of the derivation it actually costs.
+    """
     sg = step.get("semanticGraph")
-    if isinstance(sg, dict) and isinstance(sg.get("graph"), dict):
+    if isinstance(sg, dict) and sg.get("graph"):
         return sg["graph"]
     return None
 
