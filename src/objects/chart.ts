@@ -498,8 +498,12 @@ export function renderChart(el: Element, view: MathBoxNode) {
         const raw = a && (a as { labels?: unknown }).labels;
         return Array.isArray(raw) ? raw.map(v => (typeof v === 'string' ? v : '')) : null;
     };
-    const xLabelList = axisLabels(xAxis);
-    const yLabelList = axisLabels(yAxis);
+    // `labelExpr` wins over `labels` when both are given -- the schema says so
+    // and tensor.ts gates its static list the same way. Reading the array
+    // unconditionally would render a stale list and never evaluate the live
+    // expression, which is the opposite of the documented rule.
+    const xLabelList = xLabelSrc ? null : axisLabels(xAxis);
+    const yLabelList = yLabelSrc ? null : axisLabels(yAxis);
     const xColor = parseColor((xAxis && xAxis.color) || '#aabbcc') as Rgb3;
     const yColor = parseColor((yAxis && yAxis.color) || '#aabbcc') as Rgb3;
 

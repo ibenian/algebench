@@ -3819,7 +3819,7 @@
                 }
               ],
               "label": "five detectors, one axis",
-              "prompt": "A strip plot: every one of the 153 'dense' points scored by five detectors, each detector on its own row, all sharing ONE x axis in raw units. The point is visible rather than asserted -- LOF spans 0.93 to 5.19 and Mahalanobis 0.24 to 4.40, while isolation occupies 0.36 to 0.72, about 7% of the axis. Average these raw and LOF and Mahalanobis decide every vote. The rows are named by the legend, not by the y axis, because a chart axis cannot carry categorical labels. Row order top to bottom: isolation, LOF, kNN distance, kernel density, Mahalanobis."
+              "prompt": "A strip plot: every one of the 153 'dense' points scored by five detectors, each detector on its own row, all sharing ONE x axis in raw units. The point is visible rather than asserted -- LOF spans 0.93 to 5.19 and Mahalanobis 0.24 to 4.40, while isolation occupies 0.36 to 0.72, about 7% of the axis. Average these raw and LOF and Mahalanobis decide every vote. The rows are named by the y axis via axes[1].labels, which names the ticks positionally; there is no legend, because with the axis labelled it would only repeat it. Row order top to bottom: isolation, LOF, kNN distance, kernel density, Mahalanobis."
             }
           ],
           "camera": {

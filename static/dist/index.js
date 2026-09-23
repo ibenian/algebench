@@ -10396,8 +10396,8 @@ function renderChart(el, view) {
 		const raw = a && a.labels;
 		return Array.isArray(raw) ? raw.map((v) => typeof v === "string" ? v : "") : null;
 	};
-	const xLabelList = axisLabels(xAxis);
-	const yLabelList = axisLabels(yAxis);
+	const xLabelList = xLabelSrc ? null : axisLabels(xAxis);
+	const yLabelList = yLabelSrc ? null : axisLabels(yAxis);
 	const xColor = parseColor(xAxis && xAxis.color || "#aabbcc");
 	const yColor = parseColor(yAxis && yAxis.color || "#aabbcc");
 	const rightSpecs = Array.isArray(chart.rightAxes) ? chart.rightAxes.slice(0, MAX_RIGHT_AXES) : [];
