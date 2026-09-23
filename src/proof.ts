@@ -220,6 +220,14 @@ function normalizeProofs(proofField: Proof | Proof[] | null | undefined): Proof[
 }
 
 /** Collect all proofs from the entire lesson spec. */
+/**
+ * The scene index a BARE scene (no `scenes`, just `elements`) is loaded under.
+ * scene-loader's `!isLessonFormat` path sets `currentSceneIndex = -1` and calls
+ * `loadProof(spec, -1, …)`, so proof entries for a bare scene must use the same
+ * value or they can never be in context.
+ */
+export const BARE_SCENE_INDEX = -1;
+
 export function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): ProofEntry[] {
     const all: ProofEntry[] = [];
     if (!lessonSpec) return all;
@@ -241,15 +249,24 @@ export function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined)
     // `iter_proof_steps`, which reports it once.
     const bareFallback = !lessonSpec.scenes && !!lessonSpec.elements;
     scenes.forEach((scene, si) => {
+        // A bare scene never travels through the lesson path: `isLessonFormat`
+        // requires a non-empty `scenes`, so scene-loader takes its
+        // `!isLessonFormat` branch, leaves `currentSceneIndex` at -1, and then
+        // calls `loadProof(spec, -1, …)`. Numbering this "scene" 0 would make
+        // `_isProofInContext` compare 0 === -1 and hide every step-level proof
+        // the instant the file loaded — traversal would still find them, which
+        // is why a traversal-only test cannot see this. Carry the index the
+        // loader actually uses.
+        const sceneIndex = bareFallback ? BARE_SCENE_INDEX : si;
         if (!bareFallback) {
             for (const p of normalizeProofs(scene.proof)) {
-                all.push({ level: 'scene', sceneIndex: si, proof: p });
+                all.push({ level: 'scene', sceneIndex, proof: p });
             }
         }
         if (scene.steps) {
             scene.steps.forEach((step, sti) => {
                 for (const p of normalizeProofs(step.proof)) {
-                    all.push({ level: 'step', sceneIndex: si, stepIndex: sti, proof: p });
+                    all.push({ level: 'step', sceneIndex, stepIndex: sti, proof: p });
                 }
             });
         }
@@ -258,7 +275,7 @@ export function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined)
 }
 
 /** Check if a proof entry is visible in the current context. */
-function _isProofInContext(entry: ProofEntry, sceneIndex: number, stepIndex: number): boolean {
+export function _isProofInContext(entry: ProofEntry, sceneIndex: number, stepIndex: number): boolean {
     if (entry.level === 'file') return true;
     if (entry.level === 'scene') return entry.sceneIndex === sceneIndex;
     if (entry.level === 'step') return entry.sceneIndex === sceneIndex && entry.stepIndex! <= stepIndex;

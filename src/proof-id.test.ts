@@ -115,3 +115,34 @@ test('collectAllProofs lists a bare scene\'s root proof once, not twice', async 
     const lesson = { title: 'l', scenes: [{ id: 's', proof, steps: [] }] } as never;
     assert.deepEqual(collectAllProofs(lesson).map((e: { level: string }) => e.level), ['scene']);
 });
+
+// REACHABILITY, not traversal. A bare file never takes scene-loader's lesson
+// path -- `isLessonFormat` demands a non-empty `scenes` -- so it loads with
+// `currentSceneIndex = -1` and `loadProof(spec, -1, …)`. When collectAllProofs
+// numbered that stand-in scene 0, `_isProofInContext` compared 0 === -1 and
+// every step-level proof was invisible from the moment the file loaded. The
+// traversal test above still passed throughout, because the entries were there
+// -- they just could never be in context. This asserts the real predicate.
+test('a bare scene\'s step proofs are reachable at the index the loader uses', async () => {
+    const { collectAllProofs, _isProofInContext, BARE_SCENE_INDEX } = await import('/proof.js');
+    const sp = { id: 'sp', steps: [{ label: 'L', math: 'y = 2' }] };
+    const bare = { title: 'bare', elements: [], steps: [{ proof: sp }, {}] } as never;
+
+    const entries = collectAllProofs(bare);
+    const step = entries.find((e: { level: string }) => e.level === 'step');
+    assert.ok(step, 'a step-level proof is collected');
+    assert.equal(step.sceneIndex, BARE_SCENE_INDEX);
+    assert.equal(BARE_SCENE_INDEX, -1, 'matches scene-loader\'s bare-file index');
+
+    // At the index the loader actually passes, the proof is in context once its
+    // step is reached -- and was not, before the fix.
+    assert.equal(_isProofInContext(step, BARE_SCENE_INDEX, 0), true);
+    // Still gated on the step being reached.
+    assert.equal(_isProofInContext(step, BARE_SCENE_INDEX, -1), false);
+    // And a real lesson is untouched: scene 0 stays 0.
+    const lessonStep = collectAllProofs(
+        { title: 'l', scenes: [{ id: 's', steps: [{ proof: sp }] }] } as never,
+    ).find((e: { level: string }) => e.level === 'step');
+    assert.equal(lessonStep.sceneIndex, 0);
+    assert.equal(_isProofInContext(lessonStep, 0, 0), true);
+});
