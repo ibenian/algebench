@@ -12408,8 +12408,10 @@ function collectAllProofs(lessonSpec) {
 		level: "file",
 		proof: p
 	});
-	(lessonSpec.scenes || (lessonSpec.elements ? [lessonSpec] : [])).forEach((scene, si) => {
-		for (const p of normalizeProofs(scene.proof)) all.push({
+	const scenes = lessonSpec.scenes || (lessonSpec.elements ? [lessonSpec] : []);
+	const bareFallback = !lessonSpec.scenes && !!lessonSpec.elements;
+	scenes.forEach((scene, si) => {
+		if (!bareFallback) for (const p of normalizeProofs(scene.proof)) all.push({
 			level: "scene",
 			sceneIndex: si,
 			proof: p

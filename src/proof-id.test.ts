@@ -99,3 +99,19 @@ test('the cap renders as a round 2 MB', () => {
     assert.equal(formatBytes(512), '512 B');
     assert.equal(formatBytes(1500), '1.5 KB');
 });
+
+// A bare single-scene file (elements, no scenes) stands in for its own scene,
+// so its root `proof` is the same object at both levels. Listing it twice put
+// a duplicate in the Math tab and disagreed with the prebaker's traversal,
+// which reports it once.
+test('collectAllProofs lists a bare scene\'s root proof once, not twice', async () => {
+    const { collectAllProofs } = await import('/proof.js');
+    const proof = { id: 'p', steps: [{ label: 'L', math: 'x = 1' }] };
+    const bare = { title: 'bare', elements: [], proof, steps: [] } as never;
+    const levels = collectAllProofs(bare).map((e: { level: string }) => e.level);
+    assert.deepEqual(levels, ['file']);
+
+    // a real lesson still reports its scene-level proof
+    const lesson = { title: 'l', scenes: [{ id: 's', proof, steps: [] }] } as never;
+    assert.deepEqual(collectAllProofs(lesson).map((e: { level: string }) => e.level), ['scene']);
+});

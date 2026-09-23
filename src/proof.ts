@@ -220,7 +220,7 @@ function normalizeProofs(proofField: Proof | Proof[] | null | undefined): Proof[
 }
 
 /** Collect all proofs from the entire lesson spec. */
-function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): ProofEntry[] {
+export function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): ProofEntry[] {
     const all: ProofEntry[] = [];
     if (!lessonSpec) return all;
 
@@ -235,9 +235,16 @@ function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): Proof
     // shapes; only `proof` and `steps` are read off the result either way.
     const scenes = (lessonSpec.scenes
         || (lessonSpec.elements ? [lessonSpec] : [])) as ProofLessonSpec['scenes'] & object[];
+    // In that fallback the "scene" IS the lesson, so its `proof` is the very
+    // object already pushed as a file-level entry above. Emitting it again
+    // listed one proof twice in the Math tab, and made this disagree with
+    // `iter_proof_steps`, which reports it once.
+    const bareFallback = !lessonSpec.scenes && !!lessonSpec.elements;
     scenes.forEach((scene, si) => {
-        for (const p of normalizeProofs(scene.proof)) {
-            all.push({ level: 'scene', sceneIndex: si, proof: p });
+        if (!bareFallback) {
+            for (const p of normalizeProofs(scene.proof)) {
+                all.push({ level: 'scene', sceneIndex: si, proof: p });
+            }
         }
         if (scene.steps) {
             scene.steps.forEach((step, sti) => {
