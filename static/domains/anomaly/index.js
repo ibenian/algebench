@@ -144,9 +144,13 @@
             }
         } else if (key === 'ellip') {
             // Correlated Gaussian: z1 along (1,1)/sqrt2 with sd 2.2, z2
-            // across with sd 0.35. Two planted points, one far along the
-            // ridge (Euclidean-far, Mahalanobis-near) and one just off it
-            // (Euclidean-near, Mahalanobis-far). The pair IS the lesson.
+            // across with sd 0.35. Two DISTINGUISHED points, and only the
+            // second is an anomaly: one far along the ridge (Euclidean-far,
+            // Mahalanobis-near, lab 0 -- it is the control, doing what every
+            // point does, just more of it) and one just off the ridge
+            // (Euclidean-near, Mahalanobis-far, lab 1). Elsewhere in this file
+            // "planted" means labelled anomalous; these two are not that, and
+            // the CONTRAST between them IS the lesson.
             const nIn = 160;
             n = nIn + 2;
             x = new Float64Array(n); y = new Float64Array(n); lab = new Uint8Array(n);
