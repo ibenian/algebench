@@ -9,7 +9,7 @@ const g = globalThis as unknown as { math: typeof mathjs; window: typeof globalT
 g.math = mathjs;
 g.window ??= globalThis;
 
-const { niceTicks, autoDomain, formatTick } = await import('/objects/chart.js');
+const { niceTicks, autoDomain, formatTick, axisLabelList, staticTickLabel } = await import('/objects/chart.js');
 
 test('niceTicks lands on multiples of 1, 2 or 5 times a power of ten', () => {
     assert.deepEqual(niceTicks(0, 1).ticks, [0, 0.2, 0.4, 0.6, 0.8, 1]);
@@ -217,4 +217,35 @@ test('affineMissSampled still flags a plainly curved transform', () => {
     const at = (t: number) => Math.pow(t * 40, 2);      // value^2 over 0..40
     const miss = affineMissSampled(at, 0, 1600);
     assert.ok(miss !== null && miss > 0.1, `expected a large miss, got ${miss}`);
+});
+
+test('axisLabelList reads a categorical labels array, coercing non-strings to blank', () => {
+    assert.deepEqual(axisLabelList({ labels: ['a', 'b', 'c'] }, false), ['a', 'b', 'c']);
+    // a stray number must not print itself as a label
+    assert.deepEqual(axisLabelList({ labels: ['a', 7, null, 'd'] }, false), ['a', '', '', 'd']);
+    assert.equal(axisLabelList({ labels: [] }, false)?.length, 0);
+});
+
+test('axisLabelList contributes nothing when the axis has no labels array', () => {
+    assert.equal(axisLabelList({}, false), null);
+    assert.equal(axisLabelList(undefined, false), null);
+    assert.equal(axisLabelList({ labels: 'not an array' }, false), null);
+});
+
+test('labelExpr wins over labels, so a declared expression suppresses the array', () => {
+    // the schema's rule, and the one tensor.ts follows: reading the array
+    // anyway would render a stale list and never evaluate the expression
+    assert.equal(axisLabelList({ labels: ['a', 'b'] }, true), null);
+    assert.equal(axisLabelList({ labels: ['a', 'b'] }, false)?.length, 2);
+});
+
+test('staticTickLabel maps positionally and leaves the remainder unlabelled', () => {
+    const list = ['first', 'second'];
+    assert.equal(staticTickLabel(list, 0), 'first');
+    assert.equal(staticTickLabel(list, 1), 'second');
+    // too few labels: the rest are blank, not undefined and not recycled
+    assert.equal(staticTickLabel(list, 2), '');
+    assert.equal(staticTickLabel(list, 99), '');
+    // extra labels are simply never asked for, which is "extra labels ignored"
+    assert.equal(staticTickLabel(['a', 'b', 'c'], 1), 'b');
 });

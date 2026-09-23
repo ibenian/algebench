@@ -10223,6 +10223,31 @@ function formatTick(v, step) {
 var MAX_PAPER_PX = 2048;
 /** Right-hand axes beyond this are ignored; the margin has to fit them. */
 var MAX_RIGHT_AXES = 3;
+/**
+* The static tick labels an axis contributes, or null when it contributes none.
+*
+* `labels` names the ticks POSITIONALLY: entry k replaces tick k's text. That
+* is what lets a chart carry a categorical axis -- the rows of a strip plot,
+* say -- which no numeric tick text can express.
+*
+* `hasLabelExpr` suppresses the array entirely, because the schema says
+* `labelExpr` wins over `labels` when both are given and tensor.ts gates its
+* static list the same way. Reading the array regardless would render a stale
+* list and never evaluate the live expression.
+*
+* A non-string entry becomes '' rather than being stringified, so a stray
+* number cannot print itself as a label.
+*/
+function axisLabelList(axis, hasLabelExpr) {
+	if (hasLabelExpr) return null;
+	const raw = axis && axis.labels;
+	return Array.isArray(raw) ? raw.map((v) => typeof v === "string" ? v : "") : null;
+}
+/** Tick `k`'s static label: the k-th entry, or '' past the end of the list
+*  (the schema's "too few leaves the remainder unlabelled"). */
+function staticTickLabel(list, k) {
+	return list[k] ?? "";
+}
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 var MAX_TICKS = 50;
 var PLANE_AXES = {
@@ -10381,6 +10406,8 @@ function renderChart(el, view) {
 	const yLabelSrc = typeof yAxis?.labelExpr === "string" ? yAxis.labelExpr.trim() || null : null;
 	let xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
 	let yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
+	const xLabelList = axisLabelList(xAxis, !!xLabelSrc);
+	const yLabelList = axisLabelList(yAxis, !!yLabelSrc);
 	const xColor = parseColor(xAxis && xAxis.color || "#aabbcc");
 	const yColor = parseColor(yAxis && yAxis.color || "#aabbcc");
 	const rightSpecs = Array.isArray(chart.rightAxes) ? chart.rightAxes.slice(0, MAX_RIGHT_AXES) : [];
@@ -10739,8 +10766,8 @@ function renderChart(el, view) {
 		lastT = tSec;
 		const xt = niceTicks(xDom[0], xDom[1], xTickCount);
 		const yt = niceTicks(yDom[0], yDom[1], yTickCount);
-		const xLabels = xt.ticks.map((v) => tickText(xLabelFn, v, xt.step, tSec));
-		const yLabels = yt.ticks.map((v) => tickText(yLabelFn, v, yt.step, tSec));
+		const xLabels = xt.ticks.map((v, k) => xLabelList ? staticTickLabel(xLabelList, k) : tickText(xLabelFn, v, xt.step, tSec));
+		const yLabels = yt.ticks.map((v, k) => yLabelList ? staticTickLabel(yLabelList, k) : tickText(yLabelFn, v, yt.step, tSec));
 		const pointLabelKey = series.filter((s) => s.kind === "points" && s.pointLabelSrc).map((s) => s.pointLabels.map((label, i) => {
 			const [h, v] = toPlane(s.px[i], s.py[i]);
 			return `${label}\u0001${Math.round(h * pxPer * 2)}\u0001${Math.round(v * pxPer * 2)}`;

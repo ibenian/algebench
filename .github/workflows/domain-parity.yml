@@ -1,0 +1,55 @@
+# The domain libraries under static/domains/ compute the scores a lesson puts on
+# screen. Their checkers recompute the statistical, distance, density and
+# evaluation scores from the textbook formula in NumPy and compare, and until
+# now nothing ran them — a lesson could claim "the scoring is real" while the
+# verifier that backs the claim sat unexecuted.
+#
+# What this job does NOT prove, because the checkers do not claim it either:
+#   - the Isolation Forest's trees are randomised, so they are covered by
+#     invariants (c(n), the score/depth identity, ranges, separation,
+#     determinism) rather than rebuilt; a bug in subsampling, axis choice or
+#     split construction would pass;
+#   - scene 5's detector matrix is checked by pattern assertions (no detector
+#     wins everywhere, Mahalanobis is exactly chance on 'ring') rather than by
+#     an independent reimplementation of all five detectors.
+name: Domain Parity
+
+on:
+  pull_request:
+    paths:
+      - 'static/domains/**'
+      - 'scripts/check_anomaly_domain.py'
+      - 'scripts/check_transformer_domain.py'
+  workflow_dispatch:
+
+jobs:
+  parity:
+    name: Domain scores match their definitions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # The checkers eval the domain JS in node to pull scores out of the real
+      # implementation, then compare against their own NumPy reference.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: pip install numpy
+
+      - name: Anomaly domain parity
+        run: python scripts/check_anomaly_domain.py
+
+      - name: Transformer domain parity
+        run: python scripts/check_transformer_domain.py

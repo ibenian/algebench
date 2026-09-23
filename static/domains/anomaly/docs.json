@@ -1,0 +1,163 @@
+{
+  "name": "anomaly",
+  "description": "Outlier-detection arithmetic computed from the actual definitions: the k-th nearest-neighbour distance, the LOF ratio of local reachability densities, the Mahalanobis form and its covariance ellipse, a real Isolation Forest with Liu's c(n) path-length normalisation, a Gaussian-kernel one-class level set, rank-r reconstruction error, and the full threshold sweep of a scored labelled set into ROC, PR and confusion counts. Functions are available in the expression sandbox after importing this domain. Importing a domain does NOT require unsafe: true.",
+  "honesty_note": "THE DATA IS SYNTHETIC AND PLANTED. Every dataset is drawn from a splitmix32 stream keyed on its string tag, and the 'anomalies' the detectors find were put there on purpose — the 'dense' strays, the 'ring' points in the hole, the flattened window in the signal, the 8% positive class in 'eval'. A lesson must say so on screen; claiming a detector discovered something the author planted is dishonest exactly where the lesson claims rigour. What is NOT invented is the SCORING: every score is the published definition, and scripts/check_anomaly_domain.py recomputes the statistical, distance, density and evaluation scores from scratch (the Isolation Forest's randomised trees are covered by invariants, not rebuilt) in NumPy and compares, so a drift in either the data or the arithmetic fails there.",
+  "implementation": {
+    "purity": "Every exported function is pure in its explicit arguments and reads no slider. A scene passes its sliders in — adLof('dense', i, k), adFenceZ(1, kz, contam) — which keeps the slider contract visible in the scene JSON and makes the whole library testable outside a browser. There is therefore no _init.",
+    "datasets": "POINT-CLOUD TAGS -- blob, dense, ellip, ring -- are what a `tag` argument means; adN/adX/adY/adLabel and every 2-D scorer take one, and any other string hits a generic 100-point fallback that now warns. The metric and the eval set are NOT tags: they have their own accessors (adMetricN/adV/adPlanted and adEvalN/adScore/adEvalLabel). The metric is 1-D, 60 readings ~ N(50, 3), with `contam` of them replaced from a FIXED list in a FIXED order so the slider adds outliers one at a time and never reshuffles. 'blob' 180 ~ N(0, I) plus 12 uniform points rejected inside radius 3. 'dense' 90 points at (-2.2, 0) sd 0.25, 60 at (2.4, 0) sd 1.0, and 3 planted strays. 'ellip' 160 points on a ridge at 45 degrees with sd 2.2 along and 0.35 across, plus one point far ALONG the ridge (Euclidean-far, Mahalanobis-near) and one just ACROSS it (Euclidean-near, Mahalanobis-far). 'ring' 200 points on an annulus of radius 2.4 sd 0.22, plus 4 in the hole and 4 outside. 'eval' 400 points, 8% anomalous, scores drawn from overlapping clipped normals and pre-sorted descending so every threshold sweep is a prefix scan. A signal of 128 samples carries Fourier modes 2 and 3 plus noise, with samples 74-82 flattened to a constant level: a COLLECTIVE anomaly whose individual values stay inside the global range, so no z-score can see it.",
+    "quantiles": "Linear-interpolation quantiles on an ascending array — NumPy's default. The MAD consistency constant is 1/Phi^{-1}(0.75) = 1.482602218505602, which is what makes 1.4826 * MAD an estimate of sigma for a normal.",
+    "lof": "Breunig et al. 2000 as written: reach-dist_k(a,b) = max(k-distance(b), d(a,b)); lrd_k(a) = 1 / mean over N_k(a) of reach-dist_k(a,b); LOF_k(a) = mean over N_k(a) of lrd_k(b) / lrd_k(a). Neighbour lists are computed exactly (O(n^2 log n) once per dataset, n a couple of hundred) and truncated at k = 40.",
+    "isolation_forest": "100 trees, each on a subsample of 128 points drawn without replacement by a partial Fisher-Yates, each node splitting on a uniformly random axis at a uniform point in that axis's observed range, to depth ceil(log2 psi). A node that runs out of depth or points contributes c(size) for the subtree it did not build — Liu's estimator, not an approximation of it. c(n) = 2H(n-1) - 2(n-1)/n with H summed EXACTLY (the ln+gamma asymptotic is 27.6% low at n=3, and depth-capped trees credit c(size) at small leaves constantly; it is used only above n=100000), and the score is 2^(-E[h(x)] / c(psi)).",
+    "one_class_boundary": "adKde is the Gaussian kernel density sum_j exp(-gamma ||x - x_j||^2) / n. adKdeQ is the nu-quantile of the training points' own densities, so declaring everything below it an outlier rejects APPROXIMATELY a nu fraction (an interpolated empirical quantile, with >= keeping ties, so nu = 0.1 rejects 0.101 of this training set). This is an operational analogue of a nu-SVM's nu, not the same guarantee: there nu is an upper bound on the training-error fraction and a lower bound on the support-vector fraction, and this is not an SVM. The drawn boundary is that level set, found by coarse scan plus 30 bisection steps along a ray; adKdeR gives the outer crossing and adKdeRin the inner one, so an annulus traces both walls. Only ONE crossing pair per ray is kept, so this traces a single annulus; when a high gamma fragments the level set into disconnected islands the extra crossings are dropped and the drawn curve is no longer the level set. This is the FULL-RANK version of the object a One-Class SVM approximates with a sparse set of support vectors, not a One-Class SVM; the lesson says so.",
+    "reconstruction": "adRecon keeps the mean plus the r lowest Fourier modes — a linear autoencoder of a periodic signal, and a true bottleneck. The capacity story is visible in the numbers: at r=1 the anomaly window is LESS wrong than the rest of the signal (ratio 0.75, the detector is inverted); at r=3 the contrast peaks (ratio 1.98); by r=10 the model reconstructs the anomaly as well as it reconstructs the signal (ratio 0.95) and the detector is dead. adPcaErr is the rank-1 PCA reconstruction error of a 2-D cloud — the distance from the first principal axis, in closed form from the covariance.",
+    "evaluation": "'eval' is sorted descending by score once, so adConf's prefix scan is exact at every threshold and adAucRoc / adAucPr are single passes (trapezoid over every distinct operating point, and average precision respectively). adPrecBayes is the base-rate identity in closed form and consults no dataset at all: hold TPR and FPR fixed, slide pi, and precision collapses while ROC-AUC does not move.",
+    "concentration": "adConc measures the curse of dimensionality instead of asserting it. For each dimension d, 120 points are drawn uniformly in the unit cube and each point's nearest and farthest neighbour are found exactly. The relative contrast (dmax - dmin) / dmin is what every distance-based detector depends on: it falls from 29.1 at d = 2 to 1.78 at d = 10, 0.96 at d = 20 and 0.44 at d = 64 — past about d = 20 the farthest neighbour is less than twice as far as the nearest, so 'far from its neighbours' has stopped distinguishing anything. At d = 1 the statistic is unstable (one near-coincident pair sends it into the thousands), so a scene should plot from d = 2. d is capped at 64.",
+    "caching": "Three caches make the scenes run at frame rate. Per-point kernel densities are computed once per (tag, gamma), so colouring 200 points by membership is a lookup rather than 40,000 exponentials a frame. The one-class boundary is traced once per (tag, nu, gamma) at 128 angles (48-step scan plus 30 bisections each, about two million exponentials, ~70 ms) and read back by linear interpolation between angles; at an exact grid angle the value is the bisected one, which is why the checker's level-set assertion holds to 1e-6. Isolation path lengths are memoised on the exact coordinate pair (a tree is discontinuous at each split plane, so rounding could merge two genuinely different scores), because a heatmap asks for the same few hundred grid points every frame and each one walks 100 trees; the memo is cleared wholesale past 4096 entries so a sweeping query cannot leak."
+  },
+  "verified_values": {
+    "note": "Asserted by scripts/check_anomaly_domain.py. If a change breaks one, the lesson's arithmetic is wrong, not the test.",
+    "mad_constant": "1.482602218505602 = 1 / Phi^{-1}(0.75)",
+    "c_of_128": "8.866294 — the Isolation Forest path-length normalisation at psi = 128 (exact harmonic sum, not the ln+gamma asymptotic)",
+    "masking": "At contam = 8 the 3-sigma z-rule flags 2 of the 8 planted outliers; the 3-sigma MAD rule flags all 8. The mean has been dragged to 53.50 and sigma to 10.63, while the median holds at 50.34 and 1.4826*MAD at 3.88.",
+    "knn_cannot_separate_dense": "At k = 20 the tight cluster's kNN distances have median 0.27, the loose cluster's median 1.30, and the three planted strays sit at 1.22, 2.97 and 1.84 — so no global kNN threshold catches all three strays without also flagging half the loose cluster.",
+    "lof_can": "At k = 20 LOF has median 1.10 on the tight cluster and 1.04 on the loose one (95th percentiles 1.44 and 1.69), while the strays sit at 3.46, 3.52 and 5.19. A threshold of 2 catches all three and nothing else.",
+    "mahalanobis_flips_the_order": "On 'ellip', the point along the ridge is Euclidean-distance 4.58 from the mean but Mahalanobis 2.28; the point across the ridge is Euclidean 1.98 but Mahalanobis 3.98. The two rules disagree about which point is the outlier, and Mahalanobis is right.",
+    "ring_boundary": "At nu = 0.1, gamma = 0.5 the level set has an inner wall near r = 1.05-1.32 and an outer wall near r = 2.91-3.09, and all 8 planted points fall outside it. On the simply connected 'blob' the inner wall is 0.",
+    "eval_curves": "AUC-ROC = 0.9252, average precision = 0.7955. At threshold 0.5: TP 21, FP 4, FN 11, TN 364 — precision 0.840, recall 0.656, accuracy 0.963. Always predicting 'normal' scores accuracy 0.920, which is the point.",
+    "base_rate_collapse": "adPrecBayes(0.8, 0.05, 0.08) = 0.5818; adPrecBayes(0.8, 0.05, 0.001) = 0.0158. Same detector, same ROC curve, 37x worse precision.",
+    "distance_concentration": "Relative contrast (dmax - dmin) / dmin on 120 uniform points: 29.10 at d = 2, 9.26 at d = 3, 4.24 at d = 5, 1.78 at d = 10, 0.96 at d = 20, 0.61 at d = 40, 0.44 at d = 64."
+  },
+  "note": "No function reads a slider, so none of the contracts below is required for the library to work — they are the slider IDs the shipped lesson uses and passes in as arguments. Functions clamp their index arguments, so an out-of-range row returns an edge value rather than NaN. Dataset tags are strings: an unknown tag degrades to a plain 100-point standard cluster rather than to NaN, so a typo is visible rather than silent.",
+  "functions": {
+    "adN": "adN(tag) — number of points in a dataset.",
+    "adX": "adX(tag, i) — x of point i.",
+    "adY": "adY(tag, i) — y of point i.",
+    "adLabel": "adLabel(tag, i) — 1 if point i was PLANTED as anomalous, else 0. Ground truth, not a verdict.",
+    "adMetricN": "adMetricN() — 60, the length of the 1-D metric series.",
+    "adV": "adV(i, contam) — reading i of the metric with `contam` outliers injected.",
+    "adPlanted": "adPlanted(i, contam) — 1 if reading i is one of the `contam` planted outliers. Ground truth, so a scene can show what a rule MISSED and not only what it caught.",
+    "adMeanV": "adMeanV(contam) — sample mean. Breakdown point 0.",
+    "adStdV": "adStdV(contam) — sample standard deviation, n-1 denominator. Breakdown point 0.",
+    "adMedV": "adMedV(contam) — median. Breakdown point 1/2.",
+    "adMadV": "adMadV(contam) — median absolute deviation from the median.",
+    "adSigmaHat": "adSigmaHat(contam) — 1.4826 * MAD, the robust estimate of sigma.",
+    "adQ1": "adQ1(contam) — first quartile.",
+    "adQ3": "adQ3(contam) — third quartile.",
+    "adIqr": "adIqr(contam) — Q3 - Q1.",
+    "adZv": "adZv(i, contam) — the classical z-score (v - mean) / sd. Breakdown point 0 in BOTH estimators: one point sent to infinity takes the mean with it, and the sd moves quadratically faster, so the fence it defines RETREATS past the very reading that moved it. That is masking, and it is what adModZv fixes.",
+    "adModZv": "adModZv(i, contam) — the modified z-score (v - median) / (1.4826 MAD). Both estimators have breakdown point 1/2, so up to half the sample can be corrupted before it moves arbitrarily. The 1.4826 is 1/Phi^-1(0.75), the constant that makes 1.4826 MAD consistent for sigma under normality -- without it the scale is right in spirit and 32.6% low, since MAD converges to Phi^-1(0.75) sigma = 0.6745 sigma.",
+    "adFenceZ": "adFenceZ(side, k, contam) — mean + side*k*sd. side +1 upper, -1 lower.",
+    "adFenceM": "adFenceM(side, k, contam) — median + side*k*1.4826*MAD.",
+    "adFenceT": "adFenceT(side, w, contam) — Tukey fence Q3 + w*IQR or Q1 - w*IQR; w = 1.5 is the usual whisker.",
+    "adCountZ": "adCountZ(k, contam) — readings the k-sigma z-rule flags.",
+    "adCountM": "adCountM(k, contam) — readings the k-sigma MAD rule flags.",
+    "adCountT": "adCountT(w, contam) — readings the Tukey rule flags.",
+    "adGrubbs": "adGrubbs(contam) — Grubbs' statistic G = max_i |v_i - mean| / s, the largest absolute z-score in the sample; the test statistic for 'is the most extreme point an outlier'. Watch it go the WRONG way as contamination rises: more outliers inflate s faster than they extend the numerator, so G falls from 5.32 at contam 1 to 3.62 at contam 8. A hypothesis test built on non-robust estimators is masked exactly like the rule it formalises.",
+    "adKnn": "adKnn(tag, i, k) — distance from point i to its k-th nearest neighbour (not the mean of the k; see adKnnMean). The simplest density proxy: large means the k-th neighbour is far, so the neighbourhood is sparse. It is an ABSOLUTE distance in feature units, which is its weakness -- when clusters differ in density, a normal point of the loose cluster scores higher than a genuine stray near the tight one, and no single threshold separates them. That failure is what adLof's ratio fixes.",
+    "adKnnMean": "adKnnMean(tag, i, k) — mean distance to the k nearest neighbours. Same idea as adKnn but averaged, so it is less jumpy when the k-th neighbour happens to sit on a gap. Same absolute-units weakness.",
+    "adLof": "adLof(tag, i, k) — Local Outlier Factor (Breunig et al., 2000). Asks whether i sits in a SPARSER place than its own neighbours do, which is not the same as being far from anything. Four steps. (1) k-distance(j) = distance from j to its k-th nearest neighbour. (2) Reachability: reach_k(i,j) = max(k-distance(j), d(i,j)) — a floor that stops one very close pair from exploding the density estimate. (3) Local reachability density: lrd(i) = k / sum_j reach_k(i,j) over the k nearest j. (4) LOF(i) = mean_j lrd(j) / lrd(i) — my neighbours' density divided by mine. ~1 means as crowded as its neighbourhood; >> 1 means locally sparse; < 1 means denser than its neighbours. Being a RATIO is the whole point: the absolute density of a region cancels, so a loose cluster and a tight one both score ~1 where adKnn would call every loose-cluster point an outlier. k is the bias -- below ~10 it is noisy, above the size of the smallest real cluster 'local' stops meaning anything.",
+    "adMahal": "adMahal(tag, i) — Mahalanobis distance from the SAMPLE mean, in the covariance metric: sqrt( (x-mu)^T S^-1 (x-mu) ), computed from the closed-form inverse of the 2x2 S. It is Euclidean distance after whitening, so it accounts for correlation and unequal variance -- an elongated cloud gets elliptical contours instead of circular ones (compare adEuclid). Two things it cannot do, both visible in this lesson: its contours are ELLIPSES, so it cannot exclude a hole (on 'ring' the points planted at the centre score as the most normal in the data), and mu and S are themselves estimated from contaminated data, so the outliers help define the metric that is supposed to catch them. MCD / Elliptic Envelope is the robust fix.",
+    "adEuclid": "adEuclid(tag, i) — plain Euclidean distance from the sample mean. Present as the control for adMahal: on a correlated cloud the two disagree about which points are extreme, and the checker pins that they reverse each other's order.",
+    "adCovEig": "adCovEig(tag, which, s) — the covariance ellipse: which 0 angle in radians, 1 semi-major, 2 semi-minor, 3 mean x, 4 mean y; s scales the axes (s = 2 is the 2-sigma contour).",
+    "adEllipse": "adEllipse(tag, theta, s, axis) — a point on the s-sigma covariance ellipse at parameter theta; axis 0 = x, 1 = y. The form an animated_polygon's vertices want.",
+    "adConc": "adConc(d, which) — distance concentration in d dimensions, measured on 120 seeded uniform points: which 0 the relative contrast (dmax - dmin) / dmin averaged over points, 1 the mean nearest distance, 2 the mean farthest. The curse of dimensionality, as a number rather than an assertion.",
+    "adCPath": "adCPath(n) — c(n) = 2H(n-1) - 2(n-1)/n, the expected unsuccessful-search path length in a BST of n nodes. H is summed exactly (memoised prefix); the ln+gamma asymptotic is used only above n = 100000.",
+    "adIsoDepth": "adIsoDepth(tag, x, y) — mean isolation path length over the forest at an ARBITRARY point, not only at a data point, which is what lets the heatmap score the whole plane. Walks all 100 trees; a node that ran out of depth or points credits c(size) for the subtree it did not build, which is Liu's estimator. Memoised on the exact coordinate pair.",
+    "adIsoGrid": "adIsoGrid(tag, x, y) — the Isolation Forest score 2^(-E[h]/c(psi)) at an arbitrary point. Near 1 isolated, near 0.5 ordinary.",
+    "adIso": "adIso(tag, i) — the Isolation Forest score at data point i, i.e. adIsoGrid evaluated at that point's coordinates. s = 2^(-E[h(x)]/c(psi)) in (0,1): s -> 1 means isolated in very few cuts, s ~ 0.5 means an ordinary point (E[h] = c(psi) exactly), s -> 0 means it took far longer than average to isolate.",
+    "adKde": "adKde(tag, x, y, gamma) — Gaussian RBF kernel sum, (1/n) sum_j exp(-gamma ||x - x_j||^2). NOT a normalised density: a 2-D Gaussian kernel needs a further factor gamma/pi, so this integrates to pi/gamma rather than 1. That is deliberate and harmless here, because the boundary compares this against a quantile OF THE SAME quantity and the constant cancels exactly -- but it is proportional to a KDE, not one. gamma is the inverse-square bandwidth: large gamma = narrow kernels = the estimate memorises individual points.",
+    "adKdeScore": "adKdeScore(tag, i, gamma) — the density at training point i, cached per (tag, gamma).",
+    "adKdeQ": "adKdeQ(tag, nu, gamma) — the nu-quantile of the training points' OWN densities; the one-class decision threshold. Quantiling the training scores is what turns nu into something operational -- declare everything below it an outlier and you reject approximately nu of the training set (0.101 at nu = 0.1 on 'ring'). Approximately, not exactly: it is an interpolated empirical quantile and the membership test keeps ties. This is an operational analogue of a nu-SVM's nu, not the same guarantee; there nu bounds the training-error fraction above and the support-vector fraction below.",
+    "adKdeIn": "adKdeIn(tag, i, nu, gamma) — 1 when training point i is inside the one-class boundary, 0 when it is rejected.",
+    "adKdeR": "adKdeR(tag, theta, nu, gamma, rMax) — radius of the OUTER boundary crossing along the ray at angle theta.",
+    "adKdeRin": "adKdeRin(tag, theta, nu, gamma, rMax) — radius of the INNER crossing (an annulus's hole); 0 for a simply connected region.",
+    "adKdeB": "adKdeB(tag, theta, nu, gamma, axis, wall) — x or y of the boundary point; axis 0 = x, 1 = y; wall 0 = outer, 1 = inner.",
+    "adSigN": "adSigN() — 128, the length of the signal.",
+    "adSig": "adSig(i) — the signal at sample i.",
+    "adSigLabel": "adSigLabel(i) — 1 inside the planted collective anomaly (samples 74-82).",
+    "adRecon": "adRecon(i, r) — the rank-r reconstruction at sample i (mean plus the r lowest Fourier modes).",
+    "adResid": "adResid(i, r) — |signal - reconstruction| at sample i; the anomaly score.",
+    "adReconRmse": "adReconRmse(r) — RMSE over the whole signal. Falls monotonically with capacity.",
+    "adReconRmseAnom": "adReconRmseAnom(r) — RMSE restricted to the planted window. When this falls as fast as adReconRmse, the model has learned the anomaly and the detector is dead.",
+    "adPcaErr": "adPcaErr(tag, i) — distance from point i to the first principal axis, i.e. |the component ACROSS the major axis| after rotating into the covariance eigenbasis. This is the reconstruction error of a rank-1 linear model: what you lose by describing the cloud with one direction. The linear ancestor of the autoencoder error in scene 5, and the reason that scene opens with PCA before anything is learned.",
+    "adPcaSurf": "adPcaSurf(tag, x, y) — the squared version of that error as a surface over the plane.",
+    "adEvalN": "adEvalN() — 400.",
+    "adScore": "adScore(i) — the i-th score of the labelled evaluation set, sorted descending.",
+    "adEvalLabel": "adEvalLabel(i) — that point's true label.",
+    "adConf": "adConf(t, cell) — confusion count at threshold t, flagging when score >= t. cell 0 TP, 1 FP, 2 FN, 3 TN. The scores are held sorted descending, so the count is a prefix scan rather than a pass over the data. Everything else in scene 6 -- adTpr, adFpr, adPrec, the curves -- is a ratio of these four numbers, which is why they are exposed individually.",
+    "adTpr": "adTpr(t) — true positive rate at threshold t: TP / P, the fraction of the ACTUAL ANOMALIES that get flagged. It conditions on the truth, so it is measured only among the positives and the class mix cannot move it. That is what makes it a property of the detector. Also called recall and sensitivity (adRec is an alias).",
+    "adFpr": "adFpr(t) — false positive rate at threshold t: FP / N, the fraction of the ACTUAL NORMALS wrongly flagged. Conditions on the truth like adTpr, so it is also a property of the detector. Note N is usually enormous in a real problem, so a tiny FPR still produces most of your alerts -- that is the arithmetic behind adPrecBayes.",
+    "adRec": "adRec(t) — recall; an alias of adTpr, present so a PR curve can be written in the names it is usually drawn with.",
+    "adPrec": "adPrec(t) — precision at threshold t: TP / (TP + FP), the fraction of the ALERTS that are real. Unlike adTpr and adFpr it conditions on the ALERT, not on the truth, so it cannot be computed without the base rate and it is NOT a property of the detector -- the same detector has different precision on a rarer population. Returns 1 when nothing is flagged, which is the usual convention and worth knowing before reading the top of a PR curve.",
+    "adAcc": "adAcc(t) — accuracy, (TP + TN) / n. Present so the lesson can show it staying high while the detector is useless: with a 1% base rate, always predicting 'normal' scores 99% and finds nothing. Never report it for an anomaly problem.",
+    "adFlagged": "adFlagged(t) — how many points are flagged at all; the alert volume.",
+    "adPrecAtK": "adPrecAtK(k) — precision among the top k scores: of the k highest-ranked points, how many are real. This is the metric that matches how detectors are actually run, because k is an alert budget -- how many items a human can look at in a day -- and not a probability threshold anyone chose.",
+    "adRocX": "adRocX(i, n) — FPR of the i-th of n operating points, swept by rank.",
+    "adRocY": "adRocY(i, n) — TPR of the same point.",
+    "adPrX": "adPrX(i, n) — recall of the i-th of n operating points.",
+    "adPrY": "adPrY(i, n) — precision of the same point.",
+    "adAucRoc": "adAucRoc() — area under the ROC curve, by the trapezoid rule over every distinct operating point. Reads as the probability that a random anomaly is ranked above a random normal, so it is threshold-free and, because both axes condition on the truth, INSENSITIVE TO THE BASE RATE. That invariance is the trap: it scores only anomaly-vs-normal PAIRS, and that pairwise ranking probability does not move when the class proportions do -- so it stays flattering under heavy imbalance while the operator drowns, because the COUNT of false positives grows with the number of normals even though the ranking statistic is unchanged. It can also hide a bimodal failure -- a detector that ranks half the anomalies first and half last averages to 0.5, the same number as chance. Pair it with adAucPr.",
+    "adAucPr": "adAucPr() — average precision, the PR-curve summary. Unlike adAucRoc it DOES move with the base rate, which is the point: its floor is the contamination rate rather than 0.5, so it reports what an operator experiences. It is the metric to lead with under imbalance, and the one that separates detectors that adAucRoc calls nearly identical.",
+    "adPrecBayes": "adPrecBayes(tpr, fpr, pi) — precision = TPR pi / (TPR pi + FPR (1 - pi)), i.e. Bayes' theorem with the two rates the detector controls on one side and the base rate on the other. PURE: it consults no dataset, so a scene can sweep pi and watch precision collapse for a FIXED detector. As pi -> 0, precision ~ (TPR/FPR) pi -> 0 for any detector that ever produces a false positive.",
+    "adFalseAlarms": "adFalseAlarms(fpr, pi, volume) — expected false alarms per period.",
+    "adDetAuc": "adDetAuc(datasetIdx, detectorIdx) — AUC-ROC of one detector on one dataset, by the Mann-Whitney identity: the probability that a random planted point outranks a random normal one, ties counting a half. datasetIdx 0 blob, 1 dense, 2 ring -- ordered by what they BREAK (one convex cloud, two densities, a hole). detectorIdx 0 isolation, 1 LOF, 2 kNN, 3 kernel density, 4 Mahalanobis; kernel density is sign-flipped internally since low density is the anomalous case. Computed live rather than pinned into the scene, so the no-free-lunch matrix cannot drift from the detectors it claims to score. O(P*N) per cell, cached per pair -- 15 cells built once, not per frame."
+  },
+  "sliderContracts": {
+    "contam": {
+      "description": "How many of the 60 metric readings are replaced by large ones, 0 to 8. Passed to every scene-2 function. The outliers come from a fixed list in a fixed order, so raising the slider adds one and disturbs none.",
+      "default": 0,
+      "scenes": [
+        2
+      ]
+    },
+    "kz": {
+      "description": "The fence width in standard deviations, shared by the z-rule and the MAD rule so the two are compared at the same k. 2 to 5.",
+      "default": 3,
+      "scenes": [
+        2
+      ]
+    },
+    "k": {
+      "description": "Neighbourhood size for adKnn and adLof, 2 to 40. Below about 10 LOF is noisy; above the size of the smallest real cluster it stops being local.",
+      "default": 20,
+      "scenes": [
+        3
+      ]
+    },
+    "nu": {
+      "description": "Target fraction of the training data the one-class boundary rejects, 0.01 to 0.4. The cutoff is an interpolated empirical quantile of the training points' own densities and `>=` keeps ties, so the realised rejection is APPROXIMATELY nu (nu = 0.1 rejects 0.101 of the 'ring' set). This is not the nu of a nu-SVM, where nu upper-bounds the training-error fraction and lower-bounds the support-vector fraction; the analogy is operational, and this is not an SVM.",
+      "default": 0.1,
+      "scenes": [
+        4
+      ]
+    },
+    "gamma": {
+      "description": "RBF kernel width parameter, 0.05 to 3. Small gamma gives a smooth, nearly convex boundary; large gamma lets the boundary shrink-wrap every point and memorise the training set.",
+      "default": 0.5,
+      "scenes": [
+        4
+      ]
+    },
+    "rank": {
+      "description": "Reconstruction capacity r: how many Fourier modes the model may keep, 1 to 32. The whole capacity argument lives on this slider.",
+      "default": 3,
+      "scenes": [
+        5
+      ]
+    },
+    "thr": {
+      "description": "Score threshold for the evaluation sweep, 0 to 1. Everything scoring at or above it is flagged.",
+      "default": 0.5,
+      "scenes": [
+        6
+      ]
+    },
+    "pi": {
+      "description": "Base rate — the true fraction of anomalies in the population, 0.0005 to 0.2, for the adPrecBayes identity. The detector's TPR and FPR are held fixed while this moves.",
+      "default": 0.08,
+      "scenes": [
+        6
+      ]
+    }
+  }
+}
