@@ -88,9 +88,15 @@ and `recommendReason`.
 Report to the user, clearly separating the categories:
 
 - **Valid** (N) — already baked and correct; nothing to do.
-- **Stale** (N) — baked graphs that no longer match the math; list them
-  (`scene.proof.step` + math preview). These are the riskiest: the lesson is
+- **Stale** (N) — baked graphs that no longer match the math; list them by
+  their `loc` label + math preview. These are the riskiest: the lesson is
   shipping graphs that disagree with their expressions.
+
+  `loc` is the greppable address and it encodes the LEVEL, which a bare
+  `scene.proof.step` triple cannot: `root.0.3` is a lesson-root proof,
+  `2.0.3` is scene 2's own proof, and `2s4.0.3` is the proof attached to
+  scene 2's step 4. The last two both read "2.0.3" as a triple, so quote
+  `loc` rather than reassembling one.
 - **Missing** (N) — derivable steps with no baked graph; list a few.
 - **errorBroken** (N) — a committed graph that no longer derives. **Flag these
   loudly** — a shipped lesson is carrying a graph the parser can't reproduce.
@@ -228,8 +234,9 @@ retries, default 2).
 
 The console line reports how many graphs it enriched, how many it left
 untouched, how many **failed**, and the size delta. In `--json`, per-graph
-failures are the **`errors`** array (each `{scene, proof, step, error}`), not a
-`failed` key; `len(errors)` is what the console prints as "failed", and a nonzero
+failures are the **`errors`** array (each
+`{scene, proof, step, level, ownerStep, loc, error}` — the same location shape
+as `changed` and as the main prebaker's `steps`), not a `failed` key; `len(errors)` is what the console prints as "failed", and a nonzero
 `errors` is the nonzero exit code. A failure is caught and counted — the rest
 still process; **re-run to retry** (each retry re-attempts only what's still
 unenriched).

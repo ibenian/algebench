@@ -336,7 +336,12 @@ async def enrich_all(spec, *, rebake, concurrency, retries):
             try:
                 out = await _enrich_graph(agent, graph, ctx, rebake=rebake)
             except Exception as e:  # noqa: BLE001 — isolate one bad step
+                # Same location shape as `changed` below and as the main
+                # prebaker's report. Without `level`/`ownerStep` a failed step
+                # cannot be told from a sibling: scene 2's own proof 0 and the
+                # proof on scene 2's step 4 both read "2.0" from the triple.
                 errors.append({"scene": loc.scene, "proof": loc.proof, "step": loc.k,
+                               "level": loc.level, "ownerStep": loc.owner_step,
                                "loc": loc.label,
                                "error": f"{type(e).__name__}: {str(e).strip()[:200]}"})
                 print(f"   ✗ [{loc.label}] enrich failed: {type(e).__name__}: {e}",
