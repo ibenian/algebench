@@ -147,3 +147,26 @@ test('a bare scene\'s step proofs are reachable at the index the loader uses', a
     assert.equal(lessonStep.sceneIndex, 0);
     assert.equal(_isProofInContext(lessonStep, 0, 0), true);
 });
+
+// `scenes: []` is a bare file to the renderer -- `isLessonFormat` requires
+// `scenes.length > 0`, asserted in scene-loader-pure.test.ts. A fallback that
+// tested only for a MISSING `scenes` left this shape with a truthy empty array,
+// so it got no stand-in scene and no step proofs at all: silently empty rather
+// than merely mis-indexed.
+test('an empty scenes array is treated as a bare file, not as a lesson', async () => {
+    const { collectAllProofs, BARE_SCENE_INDEX } = await import('/proof.js');
+    const sp = { id: 'sp', steps: [{ label: 'L', math: 'y = 2' }] };
+    const withEmpty = { title: 'b', elements: [], scenes: [], steps: [{ proof: sp }] } as never;
+
+    const entries = collectAllProofs(withEmpty);
+    const step = entries.find((e: { level: string }) => e.level === 'step');
+    assert.ok(step, 'scenes: [] still yields its step-level proof');
+    assert.equal(step.sceneIndex, BARE_SCENE_INDEX, 'and at the bare index');
+
+    // identical to the same file without the empty array
+    const noScenes = { title: 'b', elements: [], steps: [{ proof: sp }] } as never;
+    assert.deepEqual(
+        collectAllProofs(withEmpty).map((e: { level: string }) => e.level),
+        collectAllProofs(noScenes).map((e: { level: string }) => e.level),
+    );
+});

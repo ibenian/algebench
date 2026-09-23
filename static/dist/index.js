@@ -12407,8 +12407,9 @@ function collectAllProofs(lessonSpec) {
 		level: "file",
 		proof: p
 	});
-	const scenes = lessonSpec.scenes || (lessonSpec.elements ? [lessonSpec] : []);
-	const bareFallback = !lessonSpec.scenes && !!lessonSpec.elements;
+	const hasScenes = Array.isArray(lessonSpec.scenes) && lessonSpec.scenes.length > 0;
+	const scenes = hasScenes ? lessonSpec.scenes : lessonSpec.elements ? [lessonSpec] : [];
+	const bareFallback = !hasScenes && !!lessonSpec.elements;
 	scenes.forEach((scene, si) => {
 		const sceneIndex = bareFallback ? -1 : si;
 		if (!bareFallback) for (const p of normalizeProofs(scene.proof)) all.push({

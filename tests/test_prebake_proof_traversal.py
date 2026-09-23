@@ -170,3 +170,26 @@ def test_enrich_all_tags_each_result_with_its_own_address(monkeypatch):
     assert out["enriched"] == 3 and not out["errors"]
     # Each of the three carries its own address — one scene-level, two on a step.
     assert sorted(c["loc"] for c in out["changed"]) == ["0.0.0", "0s0.0.0", "0s0.0.1"]
+
+
+def test_empty_scenes_array_is_a_bare_file_not_a_lesson():
+    """`scenes: []` must walk like a bare file, matching the renderer.
+
+    `isLessonFormat` requires `scenes.length > 0`, so a spec carrying
+    `elements`, top-level `steps` and `scenes: []` is loaded through the
+    non-lesson path. Accepting `[]` as a lesson here walked an empty list and
+    silently emitted nothing -- the step proofs were not mis-placed, they were
+    absent.
+    """
+    proof = {"id": "sp", "steps": [{"label": "L", "math": "y = 2"}]}
+    with_empty = {"elements": [], "scenes": [], "steps": [{"proof": proof}]}
+    no_scenes = {"elements": [], "steps": [{"proof": proof}]}
+
+    got = list(iter_proof_steps(with_empty))
+    assert len(got) == 1, "scenes: [] still yields its step-level proof"
+    # and identically to the same file written without the empty array
+    assert [loc for loc, *_ in got] == [loc for loc, *_ in iter_proof_steps(no_scenes)]
+
+    # a real lesson is untouched
+    lesson = {"scenes": [{"id": "s", "steps": [{"proof": proof}]}]}
+    assert len(list(iter_proof_steps(lesson))) == 1

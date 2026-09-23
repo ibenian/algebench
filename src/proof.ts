@@ -241,13 +241,18 @@ export function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined)
     // A bare scene (no `scenes`, but `elements`) is treated as a one-scene lesson,
     // so `lessonSpec` itself stands in for the scene. The cast reconciles the two
     // shapes; only `proof` and `steps` are read off the result either way.
-    const scenes = (lessonSpec.scenes
-        || (lessonSpec.elements ? [lessonSpec] : [])) as ProofLessonSpec['scenes'] & object[];
+    // `isLessonFormat` requires a NON-EMPTY `scenes` (scene-loader-pure.test.ts
+    // asserts `!isLessonFormat({ scenes: [] })`), so `scenes: []` is loaded as a
+    // bare file. Testing only for a missing property would leave that shape with
+    // a truthy empty array here: no stand-in scene, no step proofs, silently.
+    const hasScenes = Array.isArray(lessonSpec.scenes) && lessonSpec.scenes.length > 0;
+    const scenes = (hasScenes ? lessonSpec.scenes
+        : (lessonSpec.elements ? [lessonSpec] : [])) as ProofLessonSpec['scenes'] & object[];
     // In that fallback the "scene" IS the lesson, so its `proof` is the very
     // object already pushed as a file-level entry above. Emitting it again
     // listed one proof twice in the Math tab, and made this disagree with
     // `iter_proof_steps`, which reports it once.
-    const bareFallback = !lessonSpec.scenes && !!lessonSpec.elements;
+    const bareFallback = !hasScenes && !!lessonSpec.elements;
     scenes.forEach((scene, si) => {
         // A bare scene never travels through the lesson path: `isLessonFormat`
         // requires a non-empty `scenes`, so scene-loader takes its

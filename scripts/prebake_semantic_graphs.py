@@ -251,7 +251,11 @@ def iter_proof_steps(spec):
     # treats the spec itself as that one scene, so its step-level proofs are
     # reachable. Its root-level proofs were already yielded above, and
     # `_walk` below only reads `steps`, so nothing is emitted twice.
-    if not isinstance(scenes_list, list):
+    # An EMPTY list counts as no scenes, matching the renderer: `isLessonFormat`
+    # demands `scenes.length > 0`, so `{elements, scenes: [], steps: [...]}` is
+    # loaded through the non-lesson path. Accepting `[]` as a lesson here walked
+    # nothing and silently missed that file's step proofs.
+    if not isinstance(scenes_list, list) or not scenes_list:
         scenes_list = [spec] if spec.get("elements") is not None else []
     for si, sc in enumerate(scenes_list):
         if not isinstance(sc, dict):
