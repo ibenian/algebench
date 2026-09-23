@@ -1,0 +1,45 @@
+# The domain libraries under static/domains/ compute every score a lesson puts
+# on screen. Their checkers recompute those scores from the textbook formula in
+# NumPy and compare, and until now nothing ran them — a lesson could claim "the
+# scoring is real" while the verifier that backs the claim sat unexecuted.
+name: Domain Parity
+
+on:
+  pull_request:
+    paths:
+      - 'static/domains/**'
+      - 'scripts/check_anomaly_domain.py'
+      - 'scripts/check_transformer_domain.py'
+  workflow_dispatch:
+
+jobs:
+  parity:
+    name: Domain scores match their definitions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # The checkers eval the domain JS in node to pull scores out of the real
+      # implementation, then compare against their own NumPy reference.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: pip install numpy
+
+      - name: Anomaly domain parity
+        run: python scripts/check_anomaly_domain.py
+
+      - name: Transformer domain parity
+        run: python scripts/check_transformer_domain.py
