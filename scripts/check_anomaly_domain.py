@@ -39,8 +39,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import hashlib
-
 import numpy as np
 
 REPO = Path(__file__).resolve().parent.parent
@@ -61,36 +59,48 @@ console.log(JSON.stringify(%EXPR%));
 _failures: list[str] = []
 
 
-# Pinned digest of the seeded corpus. The parity checks below read their
+# Drift detection for the seeded corpus. The parity checks below read their
 # reference inputs out of the module under test, which makes them a check of
 # the ARITHMETIC only: if the dataset generator drifted, `raw` would drift with
-# it and every comparison would still agree. Hashing the corpus closes that
-# hole -- a change to the PRNG, the sampler or any dataset's parameters moves
-# this digest and fails here, before the arithmetic is ever compared.
-# Regenerate deliberately (and say why in the commit) if the data is meant to
-# change. Canonicalised at 17 significant digits, which is the IEEE-754
-# guarantee that every float64 survives the round trip -- 15 does NOT: it
-# fails on ~94% of random binary64 values and genuinely collides distinct
-# ones (1.0000000000000002 and 1.0000000000000004 both print as "1"), which
-# would have let a drifting generator slip past this very check.
-CORPUS_DIGEST = '6c37ec383fb87d815e6eb6e0708e13ae8f001f9d5ab8a03428665b8ec7c86572'
+# it and every comparison would still agree. This closes that hole.
+#
+# It was a SHA-256 over the raw floats and that was wrong -- not too weak, too
+# strict. The datasets are Box-Muller normals, so their values run through
+# Math.log, Math.cos and Math.sin, and V8 does not produce those bit-identically
+# across versions: the digest passed on node 22.17 and failed on 22.23 in CI
+# while every arithmetic check still passed, because a hash cannot express a
+# tolerance. Rounding before hashing does not rescue it either -- with ~1e-16
+# of transcendental noise and a few thousand values, some value eventually
+# straddles a rounding boundary and the hash flips for nothing.
+#
+# So: the EXACT half is the integers, which are portable by construction, and
+# the FLOAT half is pinned summary statistics with a tolerance far above libm
+# noise and far below any real change. Moving a cluster's centre or sigma, the
+# seed, the contamination schedule or the sampler moves a mean or a range by
+# orders of magnitude more than 1e-9.
+CORPUS_TOL = 1e-9
 
-
-def _digest(obj) -> str:
-    """Stable SHA-256 over a nested structure of numbers."""
-    def canon(o):
-        if isinstance(o, dict):
-            return '{' + ','.join(f'{k}:{canon(o[k])}' for k in sorted(o)) + '}'
-        if isinstance(o, (list, tuple)) or isinstance(o, np.ndarray):
-            return '[' + ','.join(canon(v) for v in o) + ']'
-        if isinstance(o, (bool, np.bool_)):
-            return str(int(o))
-        if isinstance(o, (int, np.integer)):
-            return str(int(o))
-        return f'{float(o):.17g}'
-    return hashlib.sha256(canon(obj).encode()).hexdigest()
-
-
+# mean, std, min, max per array -- pinned from a deliberate regeneration.
+CORPUS_STATS = {
+    'ds.blob.x': [192.0, 0.042810798472, 1.282734408688, -4.924533381127, 4.136566885281],
+    'ds.blob.y': [192.0, -0.064823946947, 1.194205035306, -4.668372694869, 3.690807064995],
+    'ds.blob.lab': [192, 12, 0, 1],
+    'ds.dense.x': [153.0, -0.475668956926, 2.313560163165, -3.6, 4.996134582482],
+    'ds.dense.y': [153.0, 0.023133968549, 0.712916076533, -2.958636335328, 2.948596676123],
+    'ds.dense.lab': [153, 3, 0, 1],
+    'ds.ellip.x': [162.0, 0.001386687163, 1.427949010059, -4.451346142938, 4.211935306152],
+    'ds.ellip.y': [162.0, 0.024083139659, 1.467815394984, -4.713312632953, 3.598131163577],
+    'ds.ellip.lab': [162, 1, 0, 1],
+    'ds.ring.x': [208.0, -0.09371999538, 1.740314776797, -3.9, 4.1],
+    'ds.ring.y': [208.0, 0.198804394979, 1.685207139736, -4.0, 4.2],
+    'ds.ring.lab': [208, 8, 0, 1],
+    'metric': [540.0, 51.507596926894, 7.525671417253, 41.805492962814, 92.0],
+    'planted': [540, 36, 0, 1],
+    'sig': [128.0, 9.942731028241, 2.219453234995, 5.386376821552, 13.893802803929],
+    'sigLab': [128, 9, 0, 1],
+    'score': [400.0, 0.313116370368, 0.145929554226, 0.0, 1.0],
+    'evalLab': [400, 32, 0, 1],
+}
 def run(expr: str):
     """Evaluate a JS expression against the domain module, as parsed JSON."""
     js = HARNESS.replace('%DOMAIN%', json.dumps(str(DOMAIN))).replace('%EXPR%', expr)
@@ -246,6 +256,36 @@ def ref_recon(v: np.ndarray, r: int) -> np.ndarray:
     return out
 
 
+def _corpus_arrays(raw):
+    """The seeded corpus, flattened to (name, array) pairs."""
+    out = []
+    for t in sorted(raw['ds']):
+        for part in ('x', 'y', 'lab'):
+            out.append((f'ds.{t}.{part}', np.asarray(raw['ds'][t][part], dtype=float)))
+    for k in ('metric', 'planted'):
+        out.append((k, np.asarray(raw[k], dtype=float).ravel()))
+    for k in ('sig', 'sigLab', 'score', 'evalLab'):
+        out.append((k, np.asarray(raw[k], dtype=float)))
+    return out
+
+
+def _check_corpus(raw) -> None:
+    """Integers exactly, floats to CORPUS_TOL. See CORPUS_STATS above for why."""
+    for name, arr in _corpus_arrays(raw):
+        is_int = bool(np.all(arr == np.round(arr)))
+        if is_int:
+            # counts and label vectors: portable, so demand exactness
+            got = [len(arr), float(arr.sum()), float(arr.min()), float(arr.max())]
+        else:
+            got = [len(arr), float(arr.mean()), float(arr.std()),
+                   float(arr.min()), float(arr.max())]
+        want = CORPUS_STATS.get(name)
+        if want is None:
+            print(f'  !! CORPUS_STATS["{name}"] unpinned: {[round(v, 12) for v in got]}')
+            continue
+        check(f'corpus {name}', got, want, 0 if is_int else CORPUS_TOL)
+
+
 def main() -> int:
     if not DOMAIN.is_file():
         print(f'error: {DOMAIN} not found', file=sys.stderr)
@@ -278,13 +318,7 @@ def main() -> int:
         'evalLab: R(i => AD.adEvalLabel(i), AD.adEvalN())'
         '}'
     )
-    got_digest = _digest(raw)
-    if CORPUS_DIGEST == '__PIN_ME__':
-        print(f'  !! CORPUS_DIGEST is unpinned; set it to {got_digest}')
-    else:
-        assert_true('the seeded corpus matches its pinned digest',
-                    got_digest == CORPUS_DIGEST,
-                    f'got {got_digest}, pinned {CORPUS_DIGEST}')
+    _check_corpus(raw)
 
     ds = {t: {'pts': np.column_stack([raw['ds'][t]['x'], raw['ds'][t]['y']]),
               'lab': np.asarray(raw['ds'][t]['lab'], dtype=int)} for t in tags}
