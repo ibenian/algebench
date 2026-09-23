@@ -1,7 +1,17 @@
-# The domain libraries under static/domains/ compute every score a lesson puts
-# on screen. Their checkers recompute those scores from the textbook formula in
-# NumPy and compare, and until now nothing ran them — a lesson could claim "the
-# scoring is real" while the verifier that backs the claim sat unexecuted.
+# The domain libraries under static/domains/ compute the scores a lesson puts on
+# screen. Their checkers recompute the statistical, distance, density and
+# evaluation scores from the textbook formula in NumPy and compare, and until
+# now nothing ran them — a lesson could claim "the scoring is real" while the
+# verifier that backs the claim sat unexecuted.
+#
+# What this job does NOT prove, because the checkers do not claim it either:
+#   - the Isolation Forest's trees are randomised, so they are covered by
+#     invariants (c(n), the score/depth identity, ranges, separation,
+#     determinism) rather than rebuilt; a bug in subsampling, axis choice or
+#     split construction would pass;
+#   - scene 5's detector matrix is checked by pattern assertions (no detector
+#     wins everywhere, Mahalanobis is exactly chance on 'ring') rather than by
+#     an independent reimplementation of all five detectors.
 name: Domain Parity
 
 on:
