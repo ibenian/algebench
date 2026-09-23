@@ -273,21 +273,43 @@ def _corpus_arrays(raw):
     return out
 
 
-def _check_corpus(raw) -> None:
-    """Integers exactly, floats to CORPUS_TOL. See CORPUS_STATS above for why."""
-    for name, arr in _corpus_arrays(raw):
-        is_int = bool(np.all(arr == np.round(arr)))
-        if is_int:
-            # counts and label vectors: portable, so demand exactness
-            got = [len(arr), float(arr.sum()), float(arr.min()), float(arr.max())]
-        else:
-            got = [len(arr), float(arr.mean()), float(arr.std()),
+def _corpus_stats(arr):
+    """Integers get exact facts; floats get the shape of the distribution."""
+    is_int = bool(np.all(arr == np.round(arr)))
+    if is_int:
+        return True, [len(arr), float(arr.sum()), float(arr.min()), float(arr.max())]
+    return False, [len(arr), float(arr.mean()), float(arr.std()),
                    float(arr.min()), float(arr.max())]
-        want = CORPUS_STATS.get(name)
-        if want is None:
-            print(f'  !! CORPUS_STATS["{name}"] unpinned: {[round(v, 12) for v in got]}')
+
+
+def _check_corpus(raw) -> None:
+    """Integers exactly, floats to CORPUS_TOL. See CORPUS_STATS above for why.
+
+    Coverage is asserted BEFORE the values are. An unpinned field used to warn
+    and continue, so a new or renamed dataset output could be entirely
+    unchecked while the run still went green -- the guarantee regressing in
+    silence, which is the failure mode this whole block exists to prevent. A
+    stale pin is the same hole from the other side: an output that disappears
+    leaves an entry nothing compares against, and the count still looks right.
+    """
+    arrays = _corpus_arrays(raw)
+    got_names = {name for name, _ in arrays}
+    unpinned = sorted(got_names - set(CORPUS_STATS))
+    stale = sorted(set(CORPUS_STATS) - got_names)
+    if unpinned:
+        print('  !! pin these, then re-run:')
+        for name, arr in arrays:
+            if name in unpinned:
+                print(f"       '{name}': {[round(v, 12) for v in _corpus_stats(arr)[1]]},")
+    assert_true(f'every corpus array is pinned ({len(got_names)} arrays)',
+                not unpinned and not stale,
+                f'unpinned: {unpinned or "none"} / stale pins: {stale or "none"}')
+
+    for name, arr in arrays:
+        if name not in CORPUS_STATS:
             continue
-        check(f'corpus {name}', got, want, 0 if is_int else CORPUS_TOL)
+        is_int, got = _corpus_stats(arr)
+        check(f'corpus {name}', got, CORPUS_STATS[name], 0 if is_int else CORPUS_TOL)
 
 
 def main() -> int:
