@@ -131,7 +131,7 @@ test('automatic matching restarts every paragraph, list item, table row and head
 
 test('malformed entries are dropped, not fatal (review #4089506131)', () => {
     const bad = { BAD: null, STR: 'x', ARR: [1], MAD: { term: 5, aliases: ['m.a.d.', 7], markdown: 'ok' } } as unknown as Glossary;
-    assert.deepEqual(sanitizeGlossary(bad), { MAD: { aliases: ['m.a.d.'], markdown: 'ok' } });
+    assert.deepEqual({ ...sanitizeGlossary(bad) }, { MAD: { aliases: ['m.a.d.'], markdown: 'ok' } });
     // The matcher and resolver survive a raw malformed glossary too.
     assert.doesNotThrow(() => buildGlossaryMatcher(bad, 3));
     assert.equal(resolveGlossaryKey(bad, 'm.a.d.'), 'MAD');
@@ -174,4 +174,12 @@ test('clearing the active glossary stops explicit markers resolving (review #408
     assert.equal(extractActiveGlossaryTerms('{{glossary:MAD}}').terms.length, 1);
     setActiveGlossary(null);
     assert.equal(extractActiveGlossaryTerms('{{glossary:MAD}}').terms.length, 0);
+});
+
+test('a "__proto__" key is an ordinary entry, not a prototype swap', () => {
+    const raw = JSON.parse('{"__proto__": {"markdown": "p"}, "MAD": {"markdown": "m"}}');
+    const g = sanitizeGlossary(raw);
+    assert.equal(Object.getPrototypeOf(g), null);
+    assert.deepEqual(Object.keys(g).sort(), ['MAD', '__proto__']);
+    assert.equal(resolveGlossaryKey(g, 'toString'), null);
 });

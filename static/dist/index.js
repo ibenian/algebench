@@ -1059,7 +1059,7 @@ var GLOSSARY_MARKER_RE = /\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}/g;
 *  lesson JSON and from every imported domain's docs.json, so a malformed
 *  entry must cost that entry, not the render of every scene using it. */
 function sanitizeGlossary(raw) {
-	const out = {};
+	const out = Object.create(null);
 	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
 	for (const [key, e] of Object.entries(raw)) {
 		if (!key.trim() || !e || typeof e !== "object" || Array.isArray(e)) continue;
@@ -11678,7 +11678,14 @@ async function loadGlossary(domains, entries) {
 	const names = Array.isArray(domains) ? domains.filter((n) => typeof n === "string") : [];
 	const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
 	if (gen !== _loadGen) return;
-	setActiveGlossary(Object.assign({}, ...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries)));
+	const merged = Object.create(null);
+	for (const g of [...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries)]) for (const [k, v] of Object.entries(g)) Object.defineProperty(merged, k, {
+		value: v,
+		enumerable: true,
+		writable: true,
+		configurable: true
+	});
+	setActiveGlossary(merged);
 	hideGlossaryTip();
 }
 /** Drop the active glossary (no scene loaded), cancelling any load in flight. */
@@ -11797,7 +11804,8 @@ function _fill(tip, key, entry) {
 }
 function _show(anchor) {
 	const key = anchor.dataset.glossaryKey || "";
-	const entry = getActiveGlossary()[key];
+	const g = getActiveGlossary();
+	const entry = Object.prototype.hasOwnProperty.call(g, key) ? g[key] : void 0;
 	if (!entry || anchor.getClientRects().length === 0) return;
 	_cancelHide();
 	const level = _levelOf(anchor) + 1;

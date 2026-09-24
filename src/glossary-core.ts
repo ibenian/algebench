@@ -42,7 +42,9 @@ export interface GlossaryMatcher {
  *  lesson JSON and from every imported domain's docs.json, so a malformed
  *  entry must cost that entry, not the render of every scene using it. */
 export function sanitizeGlossary(raw: unknown): Glossary {
-    const out: Glossary = {};
+    // Prototype-free: a JSON key "__proto__" is then an ordinary entry, not a
+    // prototype swap, and no lookup can land on Object.prototype members.
+    const out: Glossary = Object.create(null);
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
     for (const [key, e] of Object.entries(raw as Record<string, unknown>)) {
         if (!key.trim() || !e || typeof e !== 'object' || Array.isArray(e)) continue;

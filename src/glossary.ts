@@ -49,7 +49,11 @@ export async function loadGlossary(domains: unknown, entries?: unknown): Promise
     // cannot erase a good entry of the same key from another.
     const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
     if (gen !== _loadGen) return;
-    const merged: Glossary = Object.assign({}, ...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries));
+    const merged: Glossary = Object.create(null);
+    for (const g of [...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries)]) {
+        // defineProperty, not assignment: a "__proto__" key stays an own entry.
+        for (const [k, v] of Object.entries(g)) Object.defineProperty(merged, k, { value: v, enumerable: true, writable: true, configurable: true });
+    }
     setActiveGlossary(merged);
     hideGlossaryTip();
 }
@@ -185,7 +189,8 @@ function _fill(tip: Tip, key: string, entry: GlossaryEntry): void {
 
 function _show(anchor: HTMLElement): void {
     const key = anchor.dataset.glossaryKey || '';
-    const entry = getActiveGlossary()[key];
+    const g = getActiveGlossary();
+    const entry = Object.prototype.hasOwnProperty.call(g, key) ? g[key] : undefined;
     // No entry, or a term that isn't rendered (a hidden tab) — nothing to anchor to.
     if (!entry || anchor.getClientRects().length === 0) return;
     _cancelHide();
