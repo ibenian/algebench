@@ -11,7 +11,7 @@
 // lesson's `import` list and its `glossary`.
 
 import { renderKaTeX, renderMarkdown, makeAiAskButton } from '/labels.js';
-import { getActiveGlossary, glossaryTermName, sanitizeGlossary, setActiveGlossary } from '/glossary-core.js';
+import { getActiveGlossary, glossaryTermName, sanitizeGlossary, setActiveGlossary, stripGlossaryMarkers } from '/glossary-core.js';
 import type { Glossary, GlossaryEntry } from '/glossary-core.js';
 
 // ----- Loading -----
@@ -158,7 +158,7 @@ function _fill(tip: Tip, key: string, entry: GlossaryEntry): void {
     title.innerHTML = renderKaTeX(name, false, { glossary: false });
     head.appendChild(title);
     head.appendChild(makeAiAskButton('ai-ask-btn glossary-ask-btn', `Ask AI about ${name}`,
-        () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
+        () => (entry.prompt && stripGlossaryMarkers(entry.prompt)) || `Explain "${name}" in the context of what I'm looking at.`));
     tip.el.appendChild(head);
     if (entry.markdown) {
         const body = document.createElement('div');

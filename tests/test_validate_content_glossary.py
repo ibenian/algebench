@@ -65,3 +65,14 @@ def test_malformed_entries_are_reported_not_fatal(tmp_path):
                       'scenes[0].markdown: {{glossary:Y}} has no glossary entry']
     assert 'glossary.B: not an object — the entry is ignored' in warnings
     assert any(w.startswith('glossary.A.aliases: must be a list of strings') for w in warnings)
+
+
+def test_imported_domain_definitions_are_checked(tmp_path):
+    root = _domains(tmp_path, 'dom', {'X': {'markdown': 'uses {{glossary:missing}}'},
+                                      'Y': {'markdown': 'uses {{glossary:gone}}'}})
+    # Y is replaced by the lesson's own entry, so its domain definition is never shown.
+    data = {'title': 't', 'import': ['dom'], 'glossary': {'Y': {'markdown': 'fine'}},
+            'scenes': [{'title': 's'}]}
+    errors, _, checked = check_glossary(data, root)
+    assert checked == 1
+    assert errors == ['domains/dom/docs.json:glossary.X.markdown: {{glossary:missing}} has no glossary entry']

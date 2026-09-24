@@ -154,3 +154,10 @@ test('a literal sentinel or class in the source is never restored as a term (rev
     assert.match(html, /class="glossary-term glossary-k-0"/);
     assert.equal((html.match(/data-glossary-key=/g) || []).length, 1);
 });
+
+test('links with parens, reference links and bare URLs stay protected (review #4089725319)', () => {
+    assert.equal(mark('[doc](https://host/a_(x)/MAD) MAD', 3), '[doc](https://host/a_(x)/MAD) [MAD|MAD]');
+    assert.equal(mark('[the MAD][ref] MAD', 3), '[the MAD][ref] [MAD|MAD]');
+    assert.equal(mark('see [ref]: https://x/MAD\n\nMAD', 3), 'see [ref]: https://x/MAD\n\n[MAD|MAD]');
+    assert.equal(mark('https://host/MAD and MAD', 3), 'https://host/MAD and [MAD|MAD]');
+});

@@ -171,7 +171,8 @@ export function segmentGlossaryText(
 // Regions of markdown source the matcher must never touch, in priority order:
 // fenced code, display math, inline code, inline math, render sentinels
 // (`%%MATH_BLOCK_n%%` and friends), images/links (text and URL), autolinks
-// and raw HTML tags. A marker inside any of these is left verbatim. Links and
+// and raw HTML tags, reference-style links and definitions, and bare URLs
+// (marked autolinks them). A marker inside any of these is left verbatim. Links and
 // tags may span lines (`<abbr\n title="MAD">`), so they run to their closing
 // delimiter across newlines.
 const PROTECTED_RE = new RegExp([
@@ -181,9 +182,15 @@ const PROTECTED_RE = new RegExp([
     '`+[^`]*?`+',
     '\\$[^$\\n]+\\$',
     '%%[A-Z_]+\\d+%%',
-    '!?\\[[^\\]]*\\]\\([^)]*\\)',
+    // inline link or image; the URL may hold one level of balanced parens
+    '!?\\[[^\\]]*\\]\\((?:[^()]|\\([^()]*\\))*\\)',
+    // reference-style link, and a link reference definition line
+    '!?\\[[^\\]]*\\]\\[[^\\]]*\\]',
+    '^[ \\t]*\\[[^\\]]+\\]:[^\\n]*',
     '<[a-zA-Z/!][^>]*>',
-].join('|'), 'g');
+    // bare URLs, which marked autolinks into an href
+    '(?:https?://|www\\.)[^\\s<>]+',
+].join('|'), 'gm');
 
 // A paragraph boundary in markdown source: a blank line, or a line break
 // before a heading, list item or table row — each renders as its own block,

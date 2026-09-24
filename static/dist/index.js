@@ -1189,9 +1189,12 @@ var PROTECTED_RE = new RegExp([
 	"`+[^`]*?`+",
 	"\\$[^$\\n]+\\$",
 	"%%[A-Z_]+\\d+%%",
-	"!?\\[[^\\]]*\\]\\([^)]*\\)",
-	"<[a-zA-Z/!][^>]*>"
-].join("|"), "g");
+	"!?\\[[^\\]]*\\]\\((?:[^()]|\\([^()]*\\))*\\)",
+	"!?\\[[^\\]]*\\]\\[[^\\]]*\\]",
+	"^[ \\t]*\\[[^\\]]+\\]:[^\\n]*",
+	"<[a-zA-Z/!][^>]*>",
+	"(?:https?://|www\\.)[^\\s<>]+"
+].join("|"), "gm");
 var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
 var MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
 var MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-([a-z0-9]+)-(\d+)([^"]*)"/g;
@@ -11772,7 +11775,7 @@ function _fill(tip, key, entry) {
 	title.className = "glossary-tip-title";
 	title.innerHTML = renderKaTeX$1(name, false, { glossary: false });
 	head.appendChild(title);
-	head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
+	head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt && stripGlossaryMarkers(entry.prompt) || `Explain "${name}" in the context of what I'm looking at.`));
 	tip.el.appendChild(head);
 	if (entry.markdown) {
 		const body = document.createElement("div");

@@ -638,10 +638,8 @@ def sanitize_glossary(raw):
     return out
 
 
-def load_glossary(data, domains_dir=DOMAINS_DIR):
-    """The glossary the app builds for this file: each imported domain's
-    docs.json `glossary`, in import order, under the file's own `glossary`."""
-    merged = {}
+def _domain_glossaries(data, domains_dir=DOMAINS_DIR):
+    """(name, sanitized glossary) for each imported domain, in import order."""
     for name in data.get('import', []) or []:
         if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_\-]+', name):
             continue
@@ -651,7 +649,15 @@ def load_glossary(data, domains_dir=DOMAINS_DIR):
         except (OSError, ValueError):
             continue
         if isinstance(docs_data, dict):
-            merged.update(sanitize_glossary(docs_data.get('glossary')))
+            yield name, sanitize_glossary(docs_data.get('glossary'))
+
+
+def load_glossary(data, domains_dir=DOMAINS_DIR):
+    """The glossary the app builds for this file: each imported domain's
+    docs.json `glossary`, in import order, under the file's own `glossary`."""
+    merged = {}
+    for _name, g in _domain_glossaries(data, domains_dir):
+        merged.update(g)
     merged.update(sanitize_glossary(data.get('glossary')))
     return merged
 
@@ -689,12 +695,25 @@ def check_glossary(data, domains_dir=DOMAINS_DIR):
     entry without a definition, or a key markdown would mangle, warns."""
     errors, warnings = [], []
     glossary = load_glossary(data, domains_dir)
+    # Definitions an imported domain contributes are rendered in tooltips too,
+    # so check their markers — except where the file's own entry replaces them.
+    own_keys = set(sanitize_glossary(data.get('glossary')))
+    sources = [('', data)]
+    shown = {}
+    for name, g in _domain_glossaries(data, domains_dir):
+        for key, entry in g.items():
+            if key not in own_keys:
+                shown[key] = (name, entry)
+    for key, (name, entry) in shown.items():
+        sources.append((f'domains/{name}/docs.json:glossary.{key}', entry))
     checked = 0
-    for path, text in _iter_strings(data):
-        for m in GLOSSARY_MARKER_RE.finditer(text):
-            checked += 1
-            if resolve_glossary_key(glossary, m.group(1)) is None:
-                errors.append(f'{path}: {m.group(0)} has no glossary entry')
+    for prefix, obj in sources:
+        for path, text in _iter_strings(obj):
+            for m in GLOSSARY_MARKER_RE.finditer(text):
+                checked += 1
+                if resolve_glossary_key(glossary, m.group(1)) is None:
+                    where = f'{prefix}.{path}' if prefix and path else (prefix or path)
+                    errors.append(f'{where}: {m.group(0)} has no glossary entry')
     own = data.get('glossary')
     if isinstance(own, dict):
         for key, entry in own.items():
