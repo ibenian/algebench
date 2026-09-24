@@ -5014,7 +5014,7 @@ function setupRollDrag(container) {
 		cameraState.arcballInertiaQ = null;
 		cancelBallFlash();
 		hideArcballBall();
-		dragPivot = pivotUnder(e.clientX, e.clientY);
+		dragPivot = !!(cameraState.followCamState || cameraState.cameraExprState) ? null : pivotUnder(e.clientX, e.clientY);
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
 			axis,
@@ -5232,10 +5232,34 @@ function setupProjectionToggle() {
 		btn.addEventListener("click", () => switchProjection(btn.dataset.proj));
 	});
 }
+var PINCH_ZOOM_PER_DELTA = .02;
+var PINCH_MAX_STEP = 1.5;
+function pinchZoom(deltaY) {
+	if (!cameraState.camera || !cameraState.controls) return;
+	const raw = Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
+	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
+	const ctrl = cameraState.controls;
+	const cam = cameraState.camera;
+	if (cam.isOrthographicCamera) {
+		cam.zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, (cam.zoom || 1) * factor));
+		cam.updateProjectionMatrix();
+	} else {
+		const offset = cam.position.clone().sub(ctrl.target);
+		const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, offset.length() / factor));
+		cam.position.copy(ctrl.target).add(offset.setLength(Math.max(dist, 1e-6)));
+	}
+	ctrl.update();
+}
 function setupTrackpadPan() {
 	const canvas = cameraState.renderer && cameraState.renderer.domElement;
 	if (!canvas) return;
 	canvas.addEventListener("wheel", (e) => {
+		if (e.ctrlKey && e.deltaMode === 0) {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			pinchZoom(e.deltaY);
+			return;
+		}
 		if (e.ctrlKey || e.deltaMode !== 0) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();

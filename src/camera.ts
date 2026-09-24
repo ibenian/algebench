@@ -853,7 +853,11 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // maps the pointer onto the ball, which is centred on this pivot.
         cancelBallFlash();
         hideArcballBall();
-        dragPivot = pivotUnder(e.clientX, e.clientY);
+        // A follow cam (or an expression-driven view) re-pins the target to
+        // what it tracks every frame, so a pivot elsewhere would fight it:
+        // there the drag keeps turning about the target, as it always did.
+        const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
+        dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
         if (axisClass) document.body.classList.add(axisClass);
         // A pivot slide still running would keep lerping the target out from
@@ -1124,10 +1128,46 @@ export function setupProjectionToggle(): void {
 
 // ----- Trackpad Two-Finger Pan -----
 
+// Pinch-to-zoom arrives as a wheel event with ctrlKey set (the browser's own
+// convention for trackpad pinch). OrbitControls turns each such event into one
+// fixed 5% step whatever its size, so zoom speed tracked the event *rate* —
+// which falls with frame rate, and a heavy scene at 25 fps barely moved. Zoom
+// by the pinch's actual travel instead: exp(-deltaY * k), so the same finger
+// motion gives the same zoom at any frame rate.
+const PINCH_ZOOM_PER_DELTA = 0.02;   // a pinch that doubles finger spread zooms ~4x
+const PINCH_MAX_STEP = 1.5;          // one event, e.g. a Ctrl+wheel notch, is capped at 1.5x
+
+function pinchZoom(deltaY: number): void {
+    if (!cameraState.camera || !cameraState.controls) return;
+    const raw = Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
+    const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));   // >1 zooms in
+    const ctrl = cameraState.controls as unknown as {
+        target: Vector3; minDistance?: number; maxDistance?: number;
+        minZoom?: number; maxZoom?: number; update(): void;
+    };
+    const cam = cameraState.camera;
+    if (cam.isOrthographicCamera) {
+        const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, (cam.zoom || 1) * factor));
+        cam.zoom = zoom;
+        cam.updateProjectionMatrix!();
+    } else {
+        const offset = cam.position.clone().sub(ctrl.target);
+        const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, offset.length() / factor));
+        cam.position.copy(ctrl.target).add(offset.setLength(Math.max(dist, 1e-6)));
+    }
+    ctrl.update();
+}
+
 export function setupTrackpadPan(): void {
     const canvas = cameraState.renderer && cameraState.renderer.domElement;
     if (!canvas) return;
     canvas.addEventListener('wheel', (e) => {
+        if (e.ctrlKey && e.deltaMode === 0) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            pinchZoom(e.deltaY);
+            return;
+        }
         if (e.ctrlKey || e.deltaMode !== 0) return;
         e.preventDefault();
         e.stopImmediatePropagation();
