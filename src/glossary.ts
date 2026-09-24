@@ -246,6 +246,17 @@ export function installGlossaryTooltip(): void {
         for (const r of records) {
             for (const n of r.addedNodes) if (n.nodeType === 1) _demoteWithin(n as Element);
         }
+        // A re-render (a new caption, an overlay update, a scene change) can
+        // remove the term an open tip is anchored to; that tip and those above
+        // it would otherwise stay up, pinned, over nothing.
+        for (let i = 0; i < _depth; i++) {
+            const a = _tips[i]!.anchor;
+            if (a && !a.isConnected) {
+                _closeFrom(i);
+                if (!_depth) { _cancelHide(); _pinned = false; }
+                break;
+            }
+        }
     }).observe(document.body, { childList: true, subtree: true });
     document.addEventListener('mouseover', (e) => {
         const term = _termOf(e.target);

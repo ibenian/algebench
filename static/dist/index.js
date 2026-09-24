@@ -11845,6 +11845,17 @@ function installGlossaryTooltip() {
 	_demoteWithin(document.body);
 	new MutationObserver((records) => {
 		for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) _demoteWithin(n);
+		for (let i = 0; i < _depth; i++) {
+			const a = _tips[i].anchor;
+			if (a && !a.isConnected) {
+				_closeFrom(i);
+				if (!_depth) {
+					_cancelHide();
+					_pinned = false;
+				}
+				break;
+			}
+		}
 	}).observe(document.body, {
 		childList: true,
 		subtree: true
@@ -14395,6 +14406,7 @@ async function loadScene(spec) {
 	setActiveVirtualTimeExpr(spec, -1);
 	setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
 	if (!spec) clearGlossary();
+	else hideGlossaryTip();
 	updateTitle(spec);
 	updateExplanationPanel(spec);
 	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
