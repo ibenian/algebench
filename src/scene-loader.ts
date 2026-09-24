@@ -1017,7 +1017,15 @@ export function isLessonFormat(spec: unknown) {
     return s && Array.isArray(s.scenes) && s.scenes.length > 0;
 }
 
+// Bumped by every loadLesson. Loading awaits (the trust dialog, domain
+// scripts, domain glossaries), so two loads can overlap; a load that resumes
+// after a newer one has started must stop there, or it would render its own
+// lesson against the newer lesson's glossary, threshold and domains.
+let _lessonLoadGen = 0;
+
 export async function loadLesson(spec: LessonSpec | null | undefined): Promise<void> {
+    const load = ++_lessonLoadGen;
+    const superseded = () => load !== _lessonLoadGen;
     // --- Trust check ---
     sceneState._sceneJsTrustState = null;
     sceneState._sceneJsIssues = [];
@@ -1033,6 +1041,7 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
                 'This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.';
             const imports = Array.isArray(spec.import) ? spec.import : [];
             const trusted = await showTrustDialog(explanation, imports);
+            if (superseded()) return;
             sceneState._sceneJsTrustState = trusted ? 'trusted' : 'untrusted';
         }
     }
@@ -1057,7 +1066,9 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
         stopAutoPlay();
         sceneState._activeDomainFunctions = {};
         await importDomains(spec && spec.import);
+        if (superseded()) return;
         await loadGlossary(spec && spec.import, spec && spec.glossary);
+        if (superseded()) return;
         setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
         updateDockVisibility();
         loadScene(spec);
@@ -1069,7 +1080,9 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
     sceneState.visitedSteps = new Set();
     stopAutoPlay();
     await importDomains(spec!.import);
+    if (superseded()) return;
     await loadGlossary(spec!.import, spec!.glossary);
+    if (superseded()) return;
     // One threshold for the whole lesson, set before anything renders — the
     // scene tree shows every scene's titles at once, so it cannot vary by scene.
     setGlossaryThreshold(spec!.glossaryMatchThreshold);

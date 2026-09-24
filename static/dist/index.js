@@ -14569,7 +14569,10 @@ function isLessonFormat(spec) {
 	const s = spec;
 	return s && Array.isArray(s.scenes) && s.scenes.length > 0;
 }
+var _lessonLoadGen = 0;
 async function loadLesson(spec) {
+	const load = ++_lessonLoadGen;
+	const superseded = () => load !== _lessonLoadGen;
 	sceneState._sceneJsTrustState = null;
 	sceneState._sceneJsIssues = [];
 	sceneState._sceneIsUnsafe = false;
@@ -14578,7 +14581,11 @@ async function loadLesson(spec) {
 		sceneState._sceneIsUnsafe = spec.unsafe === true;
 		sceneState._sceneUnsafeExplanation = spec.unsafeExplanation || "";
 		const scanned = scanSpecForUnsafeJs(spec);
-		if (sceneState._sceneIsUnsafe || scanned) sceneState._sceneJsTrustState = await showTrustDialog(spec.unsafeExplanation || "This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.", Array.isArray(spec.import) ? spec.import : []) ? "trusted" : "untrusted";
+		if (sceneState._sceneIsUnsafe || scanned) {
+			const trusted = await showTrustDialog(spec.unsafeExplanation || "This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.", Array.isArray(spec.import) ? spec.import : []);
+			if (superseded()) return;
+			sceneState._sceneJsTrustState = trusted ? "trusted" : "untrusted";
+		}
 	}
 	updateJsTrustPill();
 	window._algebenchUpdateJsTrustPill = updateJsTrustPill;
@@ -14598,7 +14605,9 @@ async function loadLesson(spec) {
 		stopAutoPlay();
 		sceneState._activeDomainFunctions = {};
 		await importDomains(spec && spec.import);
+		if (superseded()) return;
 		await loadGlossary(spec && spec.import, spec && spec.glossary);
+		if (superseded()) return;
 		setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
 		updateDockVisibility$1();
 		loadScene(spec);
@@ -14610,7 +14619,9 @@ async function loadLesson(spec) {
 	sceneState.visitedSteps = /* @__PURE__ */ new Set();
 	stopAutoPlay();
 	await importDomains(spec.import);
+	if (superseded()) return;
 	await loadGlossary(spec.import, spec.glossary);
+	if (superseded()) return;
 	setGlossaryThreshold(spec.glossaryMatchThreshold);
 	buildSceneTree$1(spec);
 	updateDockVisibility$1();
