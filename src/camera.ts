@@ -478,6 +478,18 @@ function twistAboutAxis(q: Quaternion, axis: Vector3): void {
     else q.normalize();
 }
 
+/**
+ * The rotation pivot's depth along the view axis. Perspective scale at a point
+ * depends on this camera-space depth, not on its straight-line distance: the
+ * two agree only on the view axis, and a drag pivot is usually off it.
+ */
+function pivotDepth(): number {
+    const cam = cameraState.camera!;
+    cam.updateMatrixWorld();
+    const local = rotationCentre().clone().applyMatrix4(cam.matrixWorldInverse);
+    return Math.max(-local.z, 0.001);
+}
+
 /** World units per screen pixel at the rotation pivot. */
 function worldPerPixelAtTarget(): number {
     if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
@@ -485,7 +497,7 @@ function worldPerPixelAtTarget(): number {
     if (cameraState.camera.isOrthographicCamera) {
         return Math.abs((cameraState.camera.top! - cameraState.camera.bottom!) / h);
     }
-    const dist = Math.max(cameraState.camera.position.distanceTo(rotationCentre()), 0.001);
+    const dist = pivotDepth();
     const fov = ((cameraState.camera.fov || 75) * Math.PI) / 180;
     return (2 * dist * Math.tan(fov / 2)) / h;
 }
@@ -503,7 +515,7 @@ function arcballWorldRadius(pixels: number): number {
     if (!cameraState.camera || !cameraState.controls) return pixels;
     const perPixel = worldPerPixelAtTarget();
     if (cameraState.camera.isOrthographicCamera) return pixels * perPixel;
-    const dist = Math.max(cameraState.camera.position.distanceTo(rotationCentre()), 1e-6);
+    const dist = pivotDepth();
     return dist * Math.sin(Math.atan((pixels * perPixel) / dist));
 }
 
@@ -853,9 +865,12 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // maps the pointer onto the ball, which is centred on this pivot.
         cancelBallFlash();
         hideArcballBall();
-        // A follow cam (or an expression-driven view) re-pins the target to
-        // what it tracks every frame, so a pivot elsewhere would fight it:
-        // there the drag keeps turning about the target, as it always did.
+        // A follow cam re-pins the target to what it tracks every frame, so a
+        // pivot elsewhere would fight it: there the drag turns about the
+        // target, as it always did. An expression-driven view rewrites the
+        // whole camera every frame and overrides any drag (true before this
+        // change too); it gets no drag pivot either, rather than a pivot that
+        // would be thrown away one frame later.
         const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
         dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };

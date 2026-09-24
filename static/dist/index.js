@@ -4728,12 +4728,23 @@ function twistAboutAxis(q, axis) {
 	if (q.lengthSq() < 1e-12) q.set(0, 0, 0, 1);
 	else q.normalize();
 }
+/**
+* The rotation pivot's depth along the view axis. Perspective scale at a point
+* depends on this camera-space depth, not on its straight-line distance: the
+* two agree only on the view axis, and a drag pivot is usually off it.
+*/
+function pivotDepth() {
+	const cam = cameraState.camera;
+	cam.updateMatrixWorld();
+	const local = rotationCentre().clone().applyMatrix4(cam.matrixWorldInverse);
+	return Math.max(-local.z, .001);
+}
 /** World units per screen pixel at the rotation pivot. */
 function worldPerPixelAtTarget() {
 	if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
 	const h = Math.max(cameraState.renderer.domElement?.clientHeight || 1, 1);
 	if (cameraState.camera.isOrthographicCamera) return Math.abs((cameraState.camera.top - cameraState.camera.bottom) / h);
-	const dist = Math.max(cameraState.camera.position.distanceTo(rotationCentre()), .001);
+	const dist = pivotDepth();
 	const fov = (cameraState.camera.fov || 75) * Math.PI / 180;
 	return 2 * dist * Math.tan(fov / 2) / h;
 }
@@ -4750,7 +4761,7 @@ function arcballWorldRadius(pixels) {
 	if (!cameraState.camera || !cameraState.controls) return pixels;
 	const perPixel = worldPerPixelAtTarget();
 	if (cameraState.camera.isOrthographicCamera) return pixels * perPixel;
-	const dist = Math.max(cameraState.camera.position.distanceTo(rotationCentre()), 1e-6);
+	const dist = pivotDepth();
 	return dist * Math.sin(Math.atan(pixels * perPixel / dist));
 }
 var ballHelper = null;
@@ -17837,9 +17848,38 @@ function pivotPointAt(clientX, clientY) {
 		if (id && isHidden(id)) continue;
 		return h.point.clone();
 	}
-	const hit = pickAt(clientX, clientY);
-	if (!hit) return null;
-	return hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+	return nearestAnchorAt(clientX, clientY);
+}
+/**
+* The anchor of the element nearest a pixel (within PICK_PX), or of the label
+* under it — for elements a raycast cannot hit (points, lines, curves, axes).
+* Unlike pickAt's fallback this has no Ask-AI eligibility filter: an unlabelled
+* point with no `prompt` is still something to turn the view about.
+*/
+function nearestAnchorAt(clientX, clientY) {
+	if (!state.camera || !_canvas) return null;
+	const rect = _canvas.getBoundingClientRect();
+	if (!rect.width || !rect.height) return null;
+	const lh = labelHitTest(clientX, clientY);
+	if (lh && !isHidden(lh.id)) return worldAnchor(lh.id, state.elementRegistry[lh.id]);
+	const localX = clientX - rect.left, localY = clientY - rect.top;
+	const nearest = (accept) => {
+		let best = null, bestD = PICK_PX;
+		for (const [id, reg] of Object.entries(state.elementRegistry)) {
+			if (!accept(id)) continue;
+			const anchor = worldAnchor(id, reg);
+			if (!anchor) continue;
+			const p = projectToScreen(anchor, rect);
+			if (!p) continue;
+			const d = Math.hypot(p.x - localX, p.y - localY);
+			if (d < bestD) {
+				bestD = d;
+				best = anchor;
+			}
+		}
+		return best;
+	};
+	return nearest(isPickable) ?? nearest((id) => !isHidden(id));
 }
 /** Resolve the element under a client-space point: raycast first, then fall back
 *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point

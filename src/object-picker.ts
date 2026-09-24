@@ -308,9 +308,39 @@ function pivotPointAt(clientX: number, clientY: number): Vector3 | null {
         if (id && isHidden(id)) continue;
         return h.point.clone();
     }
-    const hit = pickAt(clientX, clientY);
-    if (!hit) return null;
-    return hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+    return nearestAnchorAt(clientX, clientY);
+}
+
+/**
+ * The anchor of the element nearest a pixel (within PICK_PX), or of the label
+ * under it — for elements a raycast cannot hit (points, lines, curves, axes).
+ * Unlike pickAt's fallback this has no Ask-AI eligibility filter: an unlabelled
+ * point with no `prompt` is still something to turn the view about.
+ */
+function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
+    if (!state.camera || !_canvas) return null;
+    const rect = _canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const lh = labelHitTest(clientX, clientY);
+    if (lh && !isHidden(lh.id)) return worldAnchor(lh.id, state.elementRegistry[lh.id]);
+    const localX = clientX - rect.left, localY = clientY - rect.top;
+    const nearest = (accept: (id: string) => boolean): Vector3 | null => {
+        let best: Vector3 | null = null, bestD = PICK_PX;
+        for (const [id, reg] of Object.entries(state.elementRegistry)) {
+            if (!accept(id)) continue;
+            const anchor = worldAnchor(id, reg);
+            if (!anchor) continue;
+            const p = projectToScreen(anchor, rect);
+            if (!p) continue;
+            const d = Math.hypot(p.x - localX, p.y - localY);
+            if (d < bestD) { bestD = d; best = anchor; }
+        }
+        return best;
+    };
+    // Named content first, so a press on a labelled point pivots on exactly
+    // that point rather than on an axis or vector tail anchored beside it;
+    // then anything visible, which is what reaches the unlabelled ones.
+    return nearest(isPickable) ?? nearest((id) => !isHidden(id));
 }
 
 /** Resolve the element under a client-space point: raycast first, then fall back
