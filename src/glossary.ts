@@ -11,7 +11,7 @@
 // lesson's `import` list and its `glossary`.
 
 import { renderKaTeX, renderMarkdown, makeAiAskButton } from '/labels.js';
-import { getActiveGlossary, glossaryTermName, sanitizeGlossary, setActiveGlossary, stripGlossaryMarkers } from '/glossary-core.js';
+import { getActiveGlossary, glossaryTermName, sanitizeGlossary, setActiveGlossary, setGlossaryThreshold, stripGlossaryMarkers } from '/glossary-core.js';
 import type { Glossary, GlossaryEntry } from '/glossary-core.js';
 
 // ----- Loading -----
@@ -62,6 +62,7 @@ export async function loadGlossary(domains: unknown, entries?: unknown): Promise
 export function clearGlossary(): void {
     ++_loadGen;
     setActiveGlossary(null);
+    setGlossaryThreshold(undefined);
     hideGlossaryTip();
 }
 

@@ -207,6 +207,10 @@ export interface LessonFormat {
   import?: string[];
   glossary?: Glossary;
   /**
+   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
+   */
+  glossaryMatchThreshold?: number;
+  /**
    * When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.
    */
   unsafe?: boolean;
@@ -451,10 +455,6 @@ export interface Scene {
    * Markdown content for the explanation/documentation panel. Supports KaTeX math via $inline$ and $$display$$ delimiters.
    */
   markdown?: string;
-  /**
-   * Automatic glossary matching for this scene: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list item, table row and heading each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
-   */
-  glossaryMatchThreshold?: number;
   /**
    * System prompt for the AI chat tutor in this scene. Tells the AI what/how to teach. Example: "You are a patient tutor helping a student understand Bayes' theorem..."
    */
@@ -1707,7 +1707,7 @@ export interface SingleSceneFormat {
   import?: string[];
   glossary?: Glossary1;
   /**
-   * Automatic glossary matching for this scene: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list item, table row and heading each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
+   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
    */
   glossaryMatchThreshold?: number;
   /**

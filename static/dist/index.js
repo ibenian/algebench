@@ -1287,7 +1287,7 @@ function setActiveGlossary(glossary) {
 	active.glossary = sanitizeGlossary(glossary);
 	active.dirty = true;
 }
-/** `glossaryMatchThreshold` of the current scene. Absent or non-positive
+/** `glossaryMatchThreshold` of the loaded lesson. Absent or non-positive
 *  turns automatic matching off; explicit markers still render. */
 function setGlossaryThreshold(n) {
 	const t = typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
@@ -11693,6 +11693,7 @@ async function loadGlossary(domains, entries) {
 function clearGlossary() {
 	++_loadGen;
 	setActiveGlossary(null);
+	setGlossaryThreshold(void 0);
 	hideGlossaryTip();
 }
 var _tips = [];
@@ -14413,7 +14414,6 @@ async function loadScene(spec) {
 	};
 	setActiveSceneFunctions(spec);
 	setActiveVirtualTimeExpr(spec, -1);
-	setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
 	if (!spec) clearGlossary();
 	else hideGlossaryTip();
 	updateTitle(spec);
@@ -14599,6 +14599,7 @@ async function loadLesson(spec) {
 		sceneState._activeDomainFunctions = {};
 		await importDomains(spec && spec.import);
 		await loadGlossary(spec && spec.import, spec && spec.glossary);
+		setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
 		updateDockVisibility$1();
 		loadScene(spec);
 		return;
@@ -14610,7 +14611,7 @@ async function loadLesson(spec) {
 	stopAutoPlay();
 	await importDomains(spec.import);
 	await loadGlossary(spec.import, spec.glossary);
-	setGlossaryThreshold(spec.scenes && spec.scenes[0] && spec.scenes[0].glossaryMatchThreshold);
+	setGlossaryThreshold(spec.glossaryMatchThreshold);
 	buildSceneTree$1(spec);
 	updateDockVisibility$1();
 	navigateTo$1(0, -1);
@@ -14692,7 +14693,6 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			title: scene.title,
 			description: scene.description,
 			markdown: scene.markdown,
-			glossaryMatchThreshold: scene.glossaryMatchThreshold,
 			range: scene.range,
 			scale: scene.scale,
 			camera: scene.camera,

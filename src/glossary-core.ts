@@ -313,8 +313,8 @@ export function stripGlossaryMath(tex: string): string {
 
 // ----- Active glossary -----
 //
-// One glossary is active at a time — the loaded lesson's — with the current
-// scene's match threshold. renderMarkdown / renderKaTeX consult it when a
+// One glossary is active at a time — the loaded lesson's — with its match
+// threshold. renderMarkdown / renderKaTeX consult it when a
 // caller opts in with `{ glossary: true }`.
 
 const active: { glossary: Glossary; threshold: number | null; matcher: GlossaryMatcher | null; dirty: boolean } = {
@@ -326,7 +326,7 @@ export function setActiveGlossary(glossary: unknown): void {
     active.dirty = true;
 }
 
-/** `glossaryMatchThreshold` of the current scene. Absent or non-positive
+/** `glossaryMatchThreshold` of the loaded lesson. Absent or non-positive
  *  turns automatic matching off; explicit markers still render. */
 export function setGlossaryThreshold(n: unknown): void {
     const t = typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : null;

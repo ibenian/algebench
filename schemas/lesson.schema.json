@@ -36,6 +36,11 @@
           "$ref": "#/$defs/glossary",
           "description": "Lesson-wide glossary. Layered over the glossaries of imported domains; a lesson entry wins on a shared key."
         },
+        "glossaryMatchThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
+        },
         "unsafe": {
           "type": "boolean",
           "description": "When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.",
@@ -102,7 +107,7 @@
         "glossaryMatchThreshold": {
           "type": "integer",
           "minimum": 1,
-          "description": "Automatic glossary matching for this scene: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list item, table row and heading each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
+          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
         },
         "unsafe": {
           "type": "boolean",
@@ -190,11 +195,6 @@
         "markdown": {
           "type": "string",
           "description": "Markdown content for the explanation/documentation panel. Supports KaTeX math via $inline$ and $$display$$ delimiters."
-        },
-        "glossaryMatchThreshold": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Automatic glossary matching for this scene: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list item, table row and heading each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
         },
         "prompt": {
           "type": "string",

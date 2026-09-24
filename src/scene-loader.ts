@@ -139,7 +139,6 @@ export interface SceneSpec {
     title?: string;
     description?: string;
     markdown?: string;
-    glossaryMatchThreshold?: number;
     range?: number[][];
     scale?: number[];
     camera?: StepCamera;
@@ -179,6 +178,7 @@ export interface LessonSpec extends SceneSpec {
     scenes?: SceneSpec[];
     import?: string[];
     glossary?: Glossary;
+    glossaryMatchThreshold?: number;
     unsafe?: boolean;
     unsafeExplanation?: string;
 }
@@ -888,10 +888,8 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     sceneState.sceneData = { ...lessonData, ...sceneData };
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
-    // Before anything renders: the scene's threshold decides auto-matching.
     // No scene at all (an empty or failed load) also means no glossary: the
     // previous lesson's entries must not keep resolving markers or tooltips.
-    setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
     // A scene load re-renders the text every open tip is anchored to.
     if (!spec) clearGlossary();
     else hideGlossaryTip();
@@ -1060,6 +1058,7 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
         sceneState._activeDomainFunctions = {};
         await importDomains(spec && spec.import);
         await loadGlossary(spec && spec.import, spec && spec.glossary);
+        setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
         updateDockVisibility();
         loadScene(spec);
         return;
@@ -1071,9 +1070,9 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
     stopAutoPlay();
     await importDomains(spec!.import);
     await loadGlossary(spec!.import, spec!.glossary);
-    // The tree renders every scene title now, before navigateTo loads scene 0;
-    // without this it would match against the previous lesson's threshold.
-    setGlossaryThreshold(spec!.scenes && spec!.scenes[0] && spec!.scenes[0].glossaryMatchThreshold);
+    // One threshold for the whole lesson, set before anything renders — the
+    // scene tree shows every scene's titles at once, so it cannot vary by scene.
+    setGlossaryThreshold(spec!.glossaryMatchThreshold);
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);
@@ -1173,7 +1172,6 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             title: scene.title,
             description: scene.description,
             markdown: scene.markdown,
-            glossaryMatchThreshold: scene.glossaryMatchThreshold,
             range: scene.range,
             scale: scene.scale,
             camera: scene.camera,
