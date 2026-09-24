@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 const {
     buildGlossaryMatcher, extractGlossaryTerms, restoreGlossaryTerms, resolveGlossaryKey,
-    stripGlossaryMarkers, setActiveGlossary, setGlossaryThreshold, extractActiveGlossaryTerms,
+    stripGlossaryMarkers, stripGlossaryMath, setActiveGlossary, setGlossaryThreshold, extractActiveGlossaryTerms,
 } = await import('/glossary-core.js');
 type Glossary = import('/glossary-core.js').Glossary;
 
@@ -59,10 +59,31 @@ test('word boundaries: no match inside a longer word', () => {
     assert.equal(mark('MADness and kernels', 3), 'MADness and kernels');
 });
 
-test('math, code spans and HTML attributes are never touched', () => {
-    const src = 'Use $\\mathrm{MAD}(x)$ via `MAD()` <span title="MAD">x</span> then MAD.';
-    assert.equal(mark(src, 3), 'Use $\\mathrm{MAD}(x)$ via `MAD()` <span title="MAD">x</span> then [MAD|MAD].');
+test('code spans, HTML attributes and bare math symbols are never touched', () => {
+    const src = 'Use $MAD(x)$ via `MAD()` <span title="MAD">x</span> then MAD.';
+    assert.equal(mark(src, 3), 'Use $MAD(x)$ via `MAD()` <span title="MAD">x</span> then [MAD|MAD].');
     assert.equal(mark('$$MAD = 1$$ and ```\nMAD\n``` MAD', 3), '$$MAD = 1$$ and ```\nMAD\n``` [MAD|MAD]');
+});
+
+test('a whole \\mathrm / \\operatorname / \\text name inside math is wrapped', () => {
+    const { text, terms } = extractGlossaryTerms('$1.4826\\,\\mathrm{MAD}$', G, buildGlossaryMatcher(G, 3));
+    assert.equal(text, '$1.4826\\,\\htmlClass{glossary-term glossary-k-0}{\\mathrm{MAD}}$');
+    assert.deepEqual(terms, [{ text: 'MAD', key: 'MAD' }]);
+    // once per paragraph, shared with the prose
+    assert.equal(mark('MAD is $\\operatorname{MAD}$', 3), '[MAD|MAD] is $\\operatorname{MAD}$');
+    // a partial name, or a name below the threshold, is left alone
+    assert.equal(mark('$\\mathrm{MADx}$ $\\mathrm{MAD}$', 4), '$\\mathrm{MADx}$ $\\mathrm{MAD}$');
+});
+
+test('explicit markers are never linked inside math', () => {
+    assert.equal(mark('${{glossary:MAD}}$', null), '${{glossary:MAD}}$');
+    assert.equal(mark('$\\mathrm{MAD}$', null), '$\\mathrm{MAD}$');
+});
+
+test('restore turns a math wrapper class into term attributes; strip undoes the wrap', () => {
+    const html = restoreGlossaryTerms('<span class="enclosing glossary-term glossary-k-0">M</span>', [{ text: 'MAD', key: 'MAD' }]);
+    assert.equal(html, '<span class="enclosing glossary-term" data-glossary-key="MAD" tabindex="0" role="button" aria-haspopup="dialog">M</span>');
+    assert.equal(stripGlossaryMath('1.4\\,\\htmlClass{glossary-term glossary-k-3}{\\mathrm{MAD}}'), '1.4\\,\\mathrm{MAD}');
 });
 
 test('markers inside protected regions stay verbatim', () => {

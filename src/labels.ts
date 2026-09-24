@@ -5,7 +5,7 @@
 
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
-import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers } from '/glossary-core.js';
+import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers, stripGlossaryMath } from '/glossary-core.js';
 
 export const AI_SPARKLE_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11"><path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
 
@@ -774,11 +774,11 @@ export function elementToMarkdown(el: Element): string {
         const ann = dispEl.querySelector('annotation[encoding="application/x-tex"]');
         // A KaTeX annotation always carries text; `!` keeps a malformed one
         // throwing rather than emitting the string "undefined" into the markdown.
-        if (ann) dispEl.replaceWith(`$$${ann.textContent!.trim()}$$`);
+        if (ann) dispEl.replaceWith(`$$${stripGlossaryMath(ann.textContent!.trim())}$$`);
     });
     clone.querySelectorAll('.katex').forEach((inlineEl) => {
         const ann = inlineEl.querySelector('annotation[encoding="application/x-tex"]');
-        if (ann) inlineEl.replaceWith(`$${ann.textContent!.trim()}$`);
+        if (ann) inlineEl.replaceWith(`$${stripGlossaryMath(ann.textContent!.trim())}$`);
     });
     return clone.textContent!.trim();
 }

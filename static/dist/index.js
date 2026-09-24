@@ -1170,8 +1170,14 @@ var PROTECTED_RE = new RegExp([
 	"<[a-zA-Z/!][^>\\n]*>"
 ].join("|"), "g");
 var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
-/** Replace glossary terms in markdown source with `%%GLOSSARY_n%%` sentinels.
-*  Automatic matches link a term once per paragraph. */
+var MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
+var MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-(\d+)([^"]*)"/g;
+function isMathRegion(region) {
+	return region.startsWith("$");
+}
+/** Replace glossary terms in markdown source with `%%GLOSSARY_n%%` sentinels
+*  (prose) or `\htmlClass` wrappers (names inside math). Automatic matches
+*  link a term once per paragraph; explicit markers are prose-only. */
 function extractGlossaryTerms(src, glossary, matcher) {
 	const terms = [];
 	if (!src || !matcher && src.indexOf("{{glossary:") === -1) return {
@@ -1189,11 +1195,23 @@ function extractGlossaryTerms(src, glossary, matcher) {
 		used = /* @__PURE__ */ new Set();
 		return piece;
 	}).join("");
+	const subMath = (math) => math.replace(MATH_NAME_RE, (whole, name) => {
+		const text = name.trim();
+		const cand = (matcher.byLower.get(text.toLowerCase()) || []).find((c) => !c.caseSensitive || c.text === text);
+		if (!cand || used.has(cand.key)) return whole;
+		used.add(cand.key);
+		terms.push({
+			text,
+			key: cand.key
+		});
+		return `\\htmlClass{glossary-term glossary-k-${terms.length - 1}}{${whole}}`;
+	});
 	let out = "";
 	let last = 0;
 	PROTECTED_RE.lastIndex = 0;
 	for (let m = PROTECTED_RE.exec(src); m; m = PROTECTED_RE.exec(src)) {
-		out += sub(src.slice(last, m.index)) + m[0];
+		out += sub(src.slice(last, m.index));
+		out += matcher && isMathRegion(m[0]) ? subMath(m[0]) : m[0];
 		last = m.index + m[0].length;
 	}
 	out += sub(src.slice(last));
@@ -1209,13 +1227,23 @@ function escapeHtmlText(s) {
 function glossaryTermHtml(term) {
 	return `<span class="glossary-term" data-glossary-key="${escapeHtmlText(term.key || "")}" tabindex="0" role="button" aria-haspopup="dialog">${escapeHtmlText(term.text)}</span>`;
 }
-/** Swap the sentinels in rendered HTML for term spans. */
+/** Swap the sentinels in rendered HTML for term spans, and give the spans
+*  KaTeX made for names inside math their term attributes. */
 function restoreGlossaryTerms(html, terms) {
 	if (!terms.length) return html;
 	return html.replace(/%%GLOSSARY_(\d+)%%/g, (m, idx) => {
 		const term = terms[+idx];
 		return term ? glossaryTermHtml(term) : m;
+	}).replace(MATH_TERM_CLASS_RE, (m, before, idx, after) => {
+		const term = terms[+idx];
+		if (!term) return m;
+		return `class="${before}glossary-term${after}" data-glossary-key="${escapeHtmlText(term.key || "")}" tabindex="0" role="button" aria-haspopup="dialog"`;
 	});
+}
+/** Remove the math wrappers from TeX — for the TeX annotation KaTeX keeps,
+*  which is read back as source by speech and Ask AI. */
+function stripGlossaryMath(tex) {
+	return tex.replace(/\\htmlClass\{glossary-term glossary-k-\d+\}\{(\\[a-z]+\{[^{}]+\})\}/g, "$1");
 }
 var active = {
 	glossary: {},
@@ -1893,11 +1921,11 @@ function elementToMarkdown(el) {
 	const clone = el.cloneNode(true);
 	clone.querySelectorAll(".katex-display").forEach((dispEl) => {
 		const ann = dispEl.querySelector("annotation[encoding=\"application/x-tex\"]");
-		if (ann) dispEl.replaceWith(`$$${ann.textContent.trim()}$$`);
+		if (ann) dispEl.replaceWith(`$$${stripGlossaryMath(ann.textContent.trim())}$$`);
 	});
 	clone.querySelectorAll(".katex").forEach((inlineEl) => {
 		const ann = inlineEl.querySelector("annotation[encoding=\"application/x-tex\"]");
-		if (ann) inlineEl.replaceWith(`$${ann.textContent.trim()}$`);
+		if (ann) inlineEl.replaceWith(`$${stripGlossaryMath(ann.textContent.trim())}$`);
 	});
 	return clone.textContent.trim();
 }

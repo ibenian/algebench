@@ -165,11 +165,25 @@ const PROTECTED_RE = new RegExp([
 // so each gets its own first appearance of a term.
 const PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
 
+// Inside math only automatic matching runs, and only on a name set as a whole
+// text-style group — `\mathrm{MAD}`, `\operatorname{LOF}`, `\text{base rate}`.
+// Bare symbols (`x`, `\nu`) are never touched. A match is wrapped in
+// `\htmlClass{glossary-term glossary-k-N}{...}`, which KaTeX renders as an
+// extra enclosing span without changing the layout; restoreGlossaryTerms()
+// then turns the class into a term's attributes.
+const MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
+const MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-(\d+)([^"]*)"/g;
+
+function isMathRegion(region: string): boolean {
+    return region.startsWith('$');
+}
+
 /** Terms pulled out of one source block, indexed by their sentinel number. */
 export type GlossaryTerms = GlossarySegment[];
 
-/** Replace glossary terms in markdown source with `%%GLOSSARY_n%%` sentinels.
- *  Automatic matches link a term once per paragraph. */
+/** Replace glossary terms in markdown source with `%%GLOSSARY_n%%` sentinels
+ *  (prose) or `\htmlClass` wrappers (names inside math). Automatic matches
+ *  link a term once per paragraph; explicit markers are prose-only. */
 export function extractGlossaryTerms(
     src: string,
     glossary: Glossary,
@@ -193,11 +207,21 @@ export function extractGlossaryTerms(
             return piece;
         })
         .join('');
+    const subMath = (math: string): string => math.replace(MATH_NAME_RE, (whole, name: string) => {
+        const text = name.trim();
+        const cand = (matcher!.byLower.get(text.toLowerCase()) || [])
+            .find((c) => !c.caseSensitive || c.text === text);
+        if (!cand || used.has(cand.key)) return whole;
+        used.add(cand.key);
+        terms.push({ text, key: cand.key });
+        return `\\htmlClass{glossary-term glossary-k-${terms.length - 1}}{${whole}}`;
+    });
     let out = '';
     let last = 0;
     PROTECTED_RE.lastIndex = 0;
     for (let m = PROTECTED_RE.exec(src); m; m = PROTECTED_RE.exec(src)) {
-        out += sub(src.slice(last, m.index)) + m[0];
+        out += sub(src.slice(last, m.index));
+        out += matcher && isMathRegion(m[0]) ? subMath(m[0]) : m[0];
         last = m.index + m[0].length;
     }
     out += sub(src.slice(last));
@@ -215,13 +239,27 @@ export function glossaryTermHtml(term: GlossarySegment): string {
         + `aria-haspopup="dialog">${escapeHtmlText(term.text)}</span>`;
 }
 
-/** Swap the sentinels in rendered HTML for term spans. */
+/** Swap the sentinels in rendered HTML for term spans, and give the spans
+ *  KaTeX made for names inside math their term attributes. */
 export function restoreGlossaryTerms(html: string, terms: GlossaryTerms): string {
     if (!terms.length) return html;
-    return html.replace(/%%GLOSSARY_(\d+)%%/g, (m, idx: string) => {
-        const term = terms[+idx];
-        return term ? glossaryTermHtml(term) : m;
-    });
+    return html
+        .replace(/%%GLOSSARY_(\d+)%%/g, (m, idx: string) => {
+            const term = terms[+idx];
+            return term ? glossaryTermHtml(term) : m;
+        })
+        .replace(MATH_TERM_CLASS_RE, (m, before: string, idx: string, after: string) => {
+            const term = terms[+idx];
+            if (!term) return m;
+            return `class="${before}glossary-term${after}" data-glossary-key="${escapeHtmlText(term.key || '')}" `
+                + 'tabindex="0" role="button" aria-haspopup="dialog"';
+        });
+}
+
+/** Remove the math wrappers from TeX — for the TeX annotation KaTeX keeps,
+ *  which is read back as source by speech and Ask AI. */
+export function stripGlossaryMath(tex: string): string {
+    return tex.replace(/\\htmlClass\{glossary-term glossary-k-\d+\}\{(\\[a-z]+\{[^{}]+\})\}/g, '$1');
 }
 
 // ----- Active glossary -----
