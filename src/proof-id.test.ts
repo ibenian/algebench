@@ -99,3 +99,96 @@ test('the cap renders as a round 2 MB', () => {
     assert.equal(formatBytes(512), '512 B');
     assert.equal(formatBytes(1500), '1.5 KB');
 });
+
+// A bare single-scene file (elements, no scenes) stands in for its own scene,
+// so its root `proof` is the same object at both levels. Listing it twice put
+// a duplicate in the Math tab and disagreed with the prebaker's traversal,
+// which reports it once.
+test('collectAllProofs lists a bare scene\'s root proof once, not twice', async () => {
+    const { collectAllProofs } = await import('/proof.js');
+    const proof = { id: 'p', steps: [{ label: 'L', math: 'x = 1' }] };
+    const bare = { title: 'bare', elements: [], proof, steps: [] } as never;
+    const levels = collectAllProofs(bare).map((e: { level: string }) => e.level);
+    assert.deepEqual(levels, ['file']);
+
+    // a real lesson still reports its scene-level proof
+    const lesson = { title: 'l', scenes: [{ id: 's', proof, steps: [] }] } as never;
+    assert.deepEqual(collectAllProofs(lesson).map((e: { level: string }) => e.level), ['scene']);
+});
+
+// REACHABILITY, not traversal. A bare file never takes scene-loader's lesson
+// path -- `isLessonFormat` demands a non-empty `scenes` -- so it loads with
+// `currentSceneIndex = -1` and `loadProof(spec, -1, …)`. When collectAllProofs
+// numbered that stand-in scene 0, `_isProofInContext` compared 0 === -1 and
+// every step-level proof was invisible from the moment the file loaded. The
+// traversal test above still passed throughout, because the entries were there
+// -- they just could never be in context. This asserts the real predicate.
+test('a bare scene\'s step proofs are reachable at the index the loader uses', async () => {
+    const { collectAllProofs, _isProofInContext, BARE_SCENE_INDEX } = await import('/proof.js');
+    const sp = { id: 'sp', steps: [{ label: 'L', math: 'y = 2' }] };
+    const bare = { title: 'bare', elements: [], steps: [{ proof: sp }, {}] } as never;
+
+    const entries = collectAllProofs(bare);
+    const step = entries.find((e: { level: string }) => e.level === 'step');
+    assert.ok(step, 'a step-level proof is collected');
+    assert.equal(step.sceneIndex, BARE_SCENE_INDEX);
+    assert.equal(BARE_SCENE_INDEX, -1, 'matches scene-loader\'s bare-file index');
+
+    // At the index the loader actually passes, the proof is in context once its
+    // step is reached -- and was not, before the fix.
+    assert.equal(_isProofInContext(step, BARE_SCENE_INDEX, 0), true);
+    // Still gated on the step being reached.
+    assert.equal(_isProofInContext(step, BARE_SCENE_INDEX, -1), false);
+    // And a real lesson is untouched: scene 0 stays 0.
+    const lessonStep = collectAllProofs(
+        { title: 'l', scenes: [{ id: 's', steps: [{ proof: sp }] }] } as never,
+    ).find((e: { level: string }) => e.level === 'step');
+    assert.ok(lessonStep, 'a lesson still collects its step-level proof');
+    assert.equal(lessonStep.sceneIndex, 0);
+    assert.equal(_isProofInContext(lessonStep, 0, 0), true);
+});
+
+// `scenes: []` is a bare file to the renderer -- `isLessonFormat` requires
+// `scenes.length > 0`, asserted in scene-loader-pure.test.ts. A fallback that
+// tested only for a MISSING `scenes` left this shape with a truthy empty array,
+// so it got no stand-in scene and no step proofs at all: silently empty rather
+// than merely mis-indexed.
+test('an empty scenes array is treated as a bare file, not as a lesson', async () => {
+    const { collectAllProofs, BARE_SCENE_INDEX } = await import('/proof.js');
+    const sp = { id: 'sp', steps: [{ label: 'L', math: 'y = 2' }] };
+    const withEmpty = { title: 'b', elements: [], scenes: [], steps: [{ proof: sp }] } as never;
+
+    const entries = collectAllProofs(withEmpty);
+    const step = entries.find((e: { level: string }) => e.level === 'step');
+    assert.ok(step, 'scenes: [] still yields its step-level proof');
+    assert.equal(step.sceneIndex, BARE_SCENE_INDEX, 'and at the bare index');
+
+    // identical to the same file without the empty array
+    const noScenes = { title: 'b', elements: [], steps: [{ proof: sp }] } as never;
+    assert.deepEqual(
+        collectAllProofs(withEmpty).map((e: { level: string }) => e.level),
+        collectAllProofs(noScenes).map((e: { level: string }) => e.level),
+    );
+});
+
+// A scene that builds everything in its steps has no base `elements` at all --
+// scene-loader says so in as many words ("has no base elements but is not
+// empty") and the schema requires only `title`. Gating the bare-scene stand-in
+// on `elements` dropped every step proof in such a file, so the stand-in now
+// mirrors the loader: whatever `isLessonFormat` rejects IS the scene.
+test('a steps-only bare file still yields its step proofs', async () => {
+    const { collectAllProofs, BARE_SCENE_INDEX } = await import('/proof.js');
+    const sp = { id: 'sp', steps: [{ label: 'L', math: 'y = 2' }] };
+    const stepsOnly = { title: 'b', steps: [{ proof: sp }] } as never;
+
+    const step = collectAllProofs(stepsOnly).find((e: { level: string }) => e.level === 'step');
+    assert.ok(step, 'no `elements` is not a reason to drop a step proof');
+    assert.equal(step.sceneIndex, BARE_SCENE_INDEX);
+
+    // and it is still counted once, not twice, when a root proof is present too
+    const withRoot = { title: 'b', proof: sp, steps: [{ proof: sp }] } as never;
+    assert.deepEqual(
+        collectAllProofs(withRoot).map((e: { level: string }) => e.level),
+        ['file', 'step'],
+    );
+});

@@ -12400,7 +12400,6 @@ function normalizeProofs(proofField) {
 	if (proofField == null) return [];
 	return Array.isArray(proofField) ? proofField : [proofField];
 }
-/** Collect all proofs from the entire lesson spec. */
 function collectAllProofs(lessonSpec) {
 	const all = [];
 	if (!lessonSpec) return all;
@@ -12408,16 +12407,20 @@ function collectAllProofs(lessonSpec) {
 		level: "file",
 		proof: p
 	});
-	(lessonSpec.scenes || (lessonSpec.elements ? [lessonSpec] : [])).forEach((scene, si) => {
-		for (const p of normalizeProofs(scene.proof)) all.push({
+	const hasScenes = Array.isArray(lessonSpec.scenes) && lessonSpec.scenes.length > 0;
+	const scenes = hasScenes ? lessonSpec.scenes : [lessonSpec];
+	const bareFallback = !hasScenes;
+	scenes.forEach((scene, si) => {
+		const sceneIndex = bareFallback ? -1 : si;
+		if (!bareFallback) for (const p of normalizeProofs(scene.proof)) all.push({
 			level: "scene",
-			sceneIndex: si,
+			sceneIndex,
 			proof: p
 		});
 		if (scene.steps) scene.steps.forEach((step, sti) => {
 			for (const p of normalizeProofs(step.proof)) all.push({
 				level: "step",
-				sceneIndex: si,
+				sceneIndex,
 				stepIndex: sti,
 				proof: p
 			});

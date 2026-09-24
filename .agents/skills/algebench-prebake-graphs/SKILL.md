@@ -72,9 +72,20 @@ The report classifies every proof step that has `math`:
 
 Key fields: `counts`, `needsPrebake` (= stale + missing), `outOfSync`
 (= stale + errorBroken — committed graphs the current parser can't reproduce;
-the CI gate), `deriveSeconds` (full bake cost), `runtimeDeriveSeconds` (cost
-the server still pays on every load — what baking eliminates), `recommendPrebake`,
-and `recommendReason`.
+the CI gate), `deriveSeconds` (full bake cost), `recommendPrebake`, and
+`recommendReason`, plus **two separate derive costs**:
+
+| field | who pays it | when |
+|---|---|---|
+| `runtimeDeriveSeconds` | the server's autofill | **every load**, SCENE-level steps only — this is what baking eliminates and what `recommendPrebake` weighs |
+| `onDemandDeriveSeconds` | the Graph tab, per round trip | only when a reader opens a ROOT- or STEP-level proof whose graph is missing |
+
+They are disjoint, deliberately: root/step work is **excluded** from
+`runtimeDeriveSeconds` because the server's autofill never does it. Reporting
+the two as one number would either inflate the per-load cost or hide the
+round-trip cost entirely, so quote whichever the question is about — and note
+that an error-only record costs nothing on demand, because the Graph tab shows
+the banner without posting.
 
 > **CI:** `--validate --fail-on-stale` exits non-zero **only** when
 > `outOfSync > 0`. The `validate-prebaked-graphs.yml` workflow runs it on
@@ -88,9 +99,15 @@ and `recommendReason`.
 Report to the user, clearly separating the categories:
 
 - **Valid** (N) — already baked and correct; nothing to do.
-- **Stale** (N) — baked graphs that no longer match the math; list them
-  (`scene.proof.step` + math preview). These are the riskiest: the lesson is
+- **Stale** (N) — baked graphs that no longer match the math; list them by
+  their `loc` label + math preview. These are the riskiest: the lesson is
   shipping graphs that disagree with their expressions.
+
+  `loc` is the greppable address and it encodes the LEVEL, which a bare
+  `scene.proof.step` triple cannot: `root.0.3` is a lesson-root proof,
+  `2.0.3` is scene 2's own proof, and `2s4.0.3` is the proof attached to
+  scene 2's step 4. The last two both read "2.0.3" as a triple, so quote
+  `loc` rather than reassembling one.
 - **Missing** (N) — derivable steps with no baked graph; list a few.
 - **errorBroken** (N) — a committed graph that no longer derives. **Flag these
   loudly** — a shipped lesson is carrying a graph the parser can't reproduce.
@@ -228,8 +245,9 @@ retries, default 2).
 
 The console line reports how many graphs it enriched, how many it left
 untouched, how many **failed**, and the size delta. In `--json`, per-graph
-failures are the **`errors`** array (each `{scene, proof, step, error}`), not a
-`failed` key; `len(errors)` is what the console prints as "failed", and a nonzero
+failures are the **`errors`** array (each
+`{scene, proof, step, level, ownerStep, loc, error}` — the same location shape
+as `changed` and as the main prebaker's `steps`), not a `failed` key; `len(errors)` is what the console prints as "failed", and a nonzero
 `errors` is the nonzero exit code. A failure is caught and counted — the rest
 still process; **re-run to retry** (each retry re-attempts only what's still
 unenriched).

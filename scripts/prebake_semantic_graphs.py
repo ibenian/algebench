@@ -8,6 +8,16 @@ every load — seconds of CPU on a constrained host. Pre-baking runs those
 derivations *offline* and writes the resulting ``{"graph": {...}}`` blocks
 into the JSON, so the server skips them entirely and the lesson loads fast.
 
+Proofs live at three levels and this script bakes all of them, matching
+``collectAllProofs`` in src/proof.ts: the lesson root, a scene, and a scene
+*step*. Note the asymmetry with the server, which fills scene-level proofs
+only — so a root- or step-level proof is never derived at load, and without
+baking its graph costs a ``POST /api/graph/from-latex`` round-trip the first
+time a reader opens the Graph tab on it. The load-time figures this script
+reports come from the server's own autofill and therefore move only for
+scene-level proofs; baking the other two levels buys the round-trip, not the
+load time.
+
 This script reuses the *exact* backend derivation + highlight-overlay
 pipeline, so a baked graph is byte-identical to what the server would have
 produced — baking only changes *when* the work happens, never the result.
@@ -58,6 +68,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import NamedTuple
 
 from _json_format import dumps_compact_leaves
 
@@ -164,32 +175,143 @@ def _derive_step_graph(step):
     return result, None, time.perf_counter() - t0
 
 
-def _iter_steps(spec):
-    """Yield ``(scene_idx, proof_idx, step_idx, step_dict)`` for every proof
-    step in a scene spec. Mirrors the traversal in the server's autofill."""
+class ProofLoc(NamedTuple):
+    """Where a proof step lives, at any of the three levels the renderer
+    supports (``collectAllProofs``, src/proof.ts).
+
+    ``scene`` and ``owner_step`` are ``None`` when they do not apply, which is
+    what distinguishes the levels:
+
+        scene=None, owner_step=None   a lesson-root proof
+        scene=i,    owner_step=None   a scene-level proof
+        scene=i,    owner_step=j      a proof attached to scene i's step j
+
+    ``proof`` indexes within that container (a container may hold an array of
+    proofs) and ``k`` indexes the step within the proof. The four together are
+    unique across the whole spec, which a bare ``(scene, proof, step)`` triple
+    was not once step-level proofs are included: scene 2's own proof 0 and the
+    proof on scene 2's step 4 would both have read ``2.0``.
+    """
+    scene: object        # int | None
+    owner_step: object   # int | None
+    proof: int
+    k: int
+
+    @property
+    def level(self):
+        if self.scene is None:
+            return "root"
+        return "step" if self.owner_step is not None else "scene"
+
+    @property
+    def label(self):
+        """Compact, greppable address — ``root.0.3``, ``2.0.3``, ``2s4.0.3``."""
+        if self.scene is None:
+            where = "root"
+        elif self.owner_step is None:
+            where = str(self.scene)
+        else:
+            where = f"{self.scene}s{self.owner_step}"
+        return f"{where}.{self.proof}.{self.k}"
+
+
+def iter_proof_steps(spec):
+    """Yield ``(ProofLoc, scene_or_None, proof, step)`` for every proof step in
+    a lesson spec, at all three levels the renderer reads.
+
+    Order mirrors ``collectAllProofs`` in src/proof.ts: lesson-root proofs
+    first, then, per scene, that scene's own proofs followed by the proofs
+    attached to each of its steps.
+
+    This deliberately covers MORE than the server's ``_autofill_semantic_graphs``,
+    which walks scene-level proofs only. A root- or step-level proof is never
+    filled at load time, so without baking its graph is derived on demand —
+    a round-trip to ``POST /api/graph/from-latex`` the first time a reader
+    opens the Graph tab on it. Baking removes that round-trip, and the
+    renderer picks the baked graph up at every level.
+    """
     if not isinstance(spec, dict):
         return
-    scenes_list = spec.get("scenes")
-    if not isinstance(scenes_list, list):
-        return
-    for si, sc in enumerate(scenes_list):
-        if not isinstance(sc, dict):
-            continue
-        for pi, proof in enumerate(_normalize_proofs(sc.get("proof"))):
+
+    def _walk(container, scene_idx, owner_step_idx, scene_obj):
+        if not isinstance(container, dict):
+            return
+        for pi, proof in enumerate(_normalize_proofs(container.get("proof"))):
             steps = proof.get("steps")
             if not isinstance(steps, list):
                 continue
             for ki, step in enumerate(steps):
                 if isinstance(step, dict):
-                    yield si, pi, ki, step
+                    yield ProofLoc(scene_idx, owner_step_idx, pi, ki), scene_obj, proof, step
+
+    yield from _walk(spec, None, None, None)
+
+    scenes_list = spec.get("scenes")
+    # A bare single-scene file has `elements` and no `scenes`; the renderer
+    # treats the spec itself as that one scene, so its step-level proofs are
+    # reachable. Its root-level proofs were already yielded above, and
+    # `_walk` below only reads `steps`, so nothing is emitted twice.
+    # An EMPTY list counts as no scenes, matching the renderer: `isLessonFormat`
+    # demands `scenes.length > 0`, so `{elements, scenes: [], steps: [...]}` is
+    # loaded through the non-lesson path. Accepting `[]` as a lesson here walked
+    # nothing and silently missed that file's step proofs.
+    if not isinstance(scenes_list, list) or not scenes_list:
+        # No `elements` precondition: the renderer hands anything
+        # `isLessonFormat` rejects straight to `loadScene(spec)`, and a scene
+        # that builds everything in its steps has no base elements at all. The
+        # schema requires only `title`. Gating on `elements` silently dropped
+        # every step proof in a steps-only file.
+        scenes_list = [spec]
+    for si, sc in enumerate(scenes_list):
+        if not isinstance(sc, dict):
+            continue
+        if sc is not spec:
+            yield from _walk(sc, si, None, sc)
+        scene_steps = sc.get("steps")
+        if not isinstance(scene_steps, list):
+            continue
+        # For the bare fallback `sc` IS the spec, and the browser's
+        # buildEnrichContext resolves its scene from `lesson.scenes`, which
+        # such a file does not have — so it sends no scene context at all.
+        # Passing `sc` here would instead send the root title/description as
+        # BOTH lesson and scene context, which is not what the live UI does.
+        scene_obj = None if sc is spec else sc
+        for sti, scene_step in enumerate(scene_steps):
+            yield from _walk(scene_step, si, sti, scene_obj)
 
 
 def _existing_graph(step):
-    """Return the already-baked graph dict for a step, or ``None``."""
+    """Return the already-baked graph dict for a step, or ``None``.
+
+    Truthiness, not isinstance, to match `_autofill_semantic_graphs`
+    (server.py: ``if isinstance(sg, dict) and sg.get('graph')``). An EMPTY
+    graph dict is falsy there, so the server derives the step anyway -- and an
+    isinstance test here would call it baked, hiding it from the missing count
+    and billing none of the derivation it actually costs.
+    """
     sg = step.get("semanticGraph")
-    if isinstance(sg, dict) and isinstance(sg.get("graph"), dict):
+    if isinstance(sg, dict) and sg.get("graph"):
         return sg["graph"]
     return None
+
+
+def _error_record(step):
+    """True when a step carries a ``semanticGraph.error`` and no graph.
+
+    The two consumers disagree about these. ``_autofill_semantic_graphs``
+    skips only on ``sg.graph``, so at load it retries an error-only step and
+    pays the failed parse again. ``renderCurrentStepGraph`` checks ``sg.error``
+    first and shows the banner without POSTing, so on demand it costs nothing.
+    """
+    sg = step.get("semanticGraph")
+    # Truthiness on `graph`, matching `_existing_graph` and the server: an EMPTY
+    # graph dict is falsy to both, and `renderCurrentStepGraph` checks `sg.error`
+    # whenever the graph is falsy and returns WITHOUT posting. An isinstance test
+    # called `{error, graph: {}}` a non-error record, so it was billed to
+    # `onDemandDeriveSeconds` for a round trip that never happens -- while the
+    # identical `{error}` with no graph key was billed nothing.
+    return (isinstance(sg, dict) and isinstance(sg.get("error"), dict)
+            and not sg.get("graph"))
 
 
 def _structural_signature(graph):
@@ -230,9 +352,15 @@ def analyze(spec):
     counts = {"valid": 0, "stale": 0, "missing": 0,
               "errorUnbaked": 0, "errorBroken": 0}
     total_derive = 0.0    # cost to re-derive every step (the full bake cost)
-    runtime_derive = 0.0  # cost the server still pays at load: steps without a
-                          # valid baked graph (missing/stale/error are re-derived)
-    for si, pi, ki, step in _iter_steps(spec):
+    runtime_derive = 0.0  # cost the server pays AT LOAD. `_autofill_semantic_graphs`
+                          # walks scenes[*].proof only, so only scene-level steps
+                          # without a valid baked graph land here.
+    ondemand_derive = 0.0 # the same work for root- and step-level proofs, which
+                          # the server never fills: it is paid on the first
+                          # POST /api/graph/from-latex when a reader opens the
+                          # Graph tab, not on load. Kept out of the prebake
+                          # recommendation so an unopened tab cannot ask for a bake.
+    for loc, _scene, _proof, step in iter_proof_steps(spec):
         math_src = step.get("math")
         if not math_src or not isinstance(math_src, str):
             continue
@@ -256,11 +384,27 @@ def analyze(spec):
         else:
             status = "stale"
             detail = "baked graph structure differs from fresh derivation"
-        if status != "valid":
-            runtime_derive += dt
+        # Only a step with NO graph is ever derived again: the server's autofill
+        # skips anything carrying sg.graph, and the Graph tab POSTs only when
+        # none is present. So `stale` and `errorBroken` cost nothing at runtime
+        # -- they mean a graph exists and is wrong, which is what outOfSync and
+        # the CI gate are for, not a derivation anyone pays for.
+        if not was_baked:
+            if loc.level == "scene":
+                # The server retries regardless of an error record, so it pays
+                # even for a step it will only fail to parse again.
+                runtime_derive += dt
+            elif not _error_record(step):
+                # The Graph tab shows the banner and returns without POSTing,
+                # so an error-only root/step record costs nothing on demand.
+                ondemand_derive += dt
         counts[status] += 1
         steps_report.append({
-            "scene": si, "proof": pi, "step": ki,
+            # `scene`/`proof`/`step` keep their original meaning (step is
+            # the index WITHIN the proof). `level`, `ownerStep` and `loc`
+            # are what disambiguate a step-level proof from its scene's own.
+            "scene": loc.scene, "proof": loc.proof, "step": loc.k,
+            "level": loc.level, "ownerStep": loc.owner_step, "loc": loc.label,
             "mathPreview": (math_src[:60] + "…") if len(math_src) > 60 else math_src,
             "status": status,
             "detail": detail,
@@ -293,6 +437,7 @@ def analyze(spec):
         "outOfSync": out_of_sync,
         "deriveSeconds": round(total_derive, 2),
         "runtimeDeriveSeconds": round(runtime_derive, 2),
+        "onDemandDeriveSeconds": round(ondemand_derive, 2),
         "recommendPrebake": recommend,
         "recommendReason": reason,
         "steps": steps_report,
@@ -306,7 +451,7 @@ def bake(spec, *, only_all=False):
     _graph_service.clear_cache()
     baked, skipped_valid, errors = 0, 0, 0
     changed = []
-    for si, pi, ki, step in _iter_steps(spec):
+    for loc, _scene, _proof, step in iter_proof_steps(spec):
         math_src = step.get("math")
         if not math_src or not isinstance(math_src, str):
             continue
@@ -325,7 +470,9 @@ def bake(spec, *, only_all=False):
             continue
         step["semanticGraph"] = {"graph": fresh}
         baked += 1
-        changed.append({"scene": si, "proof": pi, "step": ki})
+        changed.append({"scene": loc.scene, "proof": loc.proof, "step": loc.k,
+                        "level": loc.level, "ownerStep": loc.owner_step,
+                        "loc": loc.label})
     return {"baked": baked, "skippedValid": skipped_valid, "errors": errors, "changed": changed}
 
 
@@ -345,10 +492,13 @@ def _print_human(report, path):
           f"broken={c['errorBroken']}  unsupported={c['errorUnbaked']}")
     for s in report["steps"]:
         if s["status"] != "valid":
-            print(f"   {icon[s['status']]} [{s['scene']}.{s['proof']}.{s['step']}] "
+            print(f"   {icon[s['status']]} [{s['loc']}] "
                   f"{s['status']:<12} {s['mathPreview']}")
     if report["outOfSync"]:
         print(f"   ✗ {report['outOfSync']} committed graph(s) out of sync (stale or broken)")
+    if report.get("onDemandDeriveSeconds"):
+        print(f"   ℹ️  {report['onDemandDeriveSeconds']}s of root/step-level derivation is "
+              f"paid on first Graph-tab open, not at load")
     print(f"   → recommend prebake: {'YES' if report['recommendPrebake'] else 'no'} "
           f"({report['recommendReason']})")
 

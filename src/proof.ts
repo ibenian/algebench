@@ -220,7 +220,15 @@ function normalizeProofs(proofField: Proof | Proof[] | null | undefined): Proof[
 }
 
 /** Collect all proofs from the entire lesson spec. */
-function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): ProofEntry[] {
+/**
+ * The scene index a BARE scene (no `scenes`, just `elements`) is loaded under.
+ * scene-loader's `!isLessonFormat` path sets `currentSceneIndex = -1` and calls
+ * `loadProof(spec, -1, …)`, so proof entries for a bare scene must use the same
+ * value or they can never be in context.
+ */
+export const BARE_SCENE_INDEX = -1;
+
+export function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): ProofEntry[] {
     const all: ProofEntry[] = [];
     if (!lessonSpec) return all;
 
@@ -233,16 +241,43 @@ function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): Proof
     // A bare scene (no `scenes`, but `elements`) is treated as a one-scene lesson,
     // so `lessonSpec` itself stands in for the scene. The cast reconciles the two
     // shapes; only `proof` and `steps` are read off the result either way.
-    const scenes = (lessonSpec.scenes
-        || (lessonSpec.elements ? [lessonSpec] : [])) as ProofLessonSpec['scenes'] & object[];
+    // `isLessonFormat` requires a NON-EMPTY `scenes` (scene-loader-pure.test.ts
+    // asserts `!isLessonFormat({ scenes: [] })`), so `scenes: []` is loaded as a
+    // bare file. Testing only for a missing property would leave that shape with
+    // a truthy empty array here: no stand-in scene, no step proofs, silently.
+    // Mirror scene-loader exactly: anything `isLessonFormat` rejects is handed
+    // to `loadScene(spec)`, so the spec IS the scene — no `elements`
+    // precondition. A scene that builds everything in its steps legitimately has
+    // no base elements ("has no base elements but is not empty", scene-loader),
+    // and the schema requires only `title`; gating on `elements` dropped every
+    // step proof in such a file.
+    const hasScenes = Array.isArray(lessonSpec.scenes) && lessonSpec.scenes.length > 0;
+    const scenes = (hasScenes ? lessonSpec.scenes
+        : [lessonSpec]) as ProofLessonSpec['scenes'] & object[];
+    // In that fallback the "scene" IS the lesson, so its `proof` is the very
+    // object already pushed as a file-level entry above. Emitting it again
+    // listed one proof twice in the Math tab, and made this disagree with
+    // `iter_proof_steps`, which reports it once.
+    const bareFallback = !hasScenes;
     scenes.forEach((scene, si) => {
-        for (const p of normalizeProofs(scene.proof)) {
-            all.push({ level: 'scene', sceneIndex: si, proof: p });
+        // A bare scene never travels through the lesson path: `isLessonFormat`
+        // requires a non-empty `scenes`, so scene-loader takes its
+        // `!isLessonFormat` branch, leaves `currentSceneIndex` at -1, and then
+        // calls `loadProof(spec, -1, …)`. Numbering this "scene" 0 would make
+        // `_isProofInContext` compare 0 === -1 and hide every step-level proof
+        // the instant the file loaded — traversal would still find them, which
+        // is why a traversal-only test cannot see this. Carry the index the
+        // loader actually uses.
+        const sceneIndex = bareFallback ? BARE_SCENE_INDEX : si;
+        if (!bareFallback) {
+            for (const p of normalizeProofs(scene.proof)) {
+                all.push({ level: 'scene', sceneIndex, proof: p });
+            }
         }
         if (scene.steps) {
             scene.steps.forEach((step, sti) => {
                 for (const p of normalizeProofs(step.proof)) {
-                    all.push({ level: 'step', sceneIndex: si, stepIndex: sti, proof: p });
+                    all.push({ level: 'step', sceneIndex, stepIndex: sti, proof: p });
                 }
             });
         }
@@ -251,7 +286,7 @@ function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): Proof
 }
 
 /** Check if a proof entry is visible in the current context. */
-function _isProofInContext(entry: ProofEntry, sceneIndex: number, stepIndex: number): boolean {
+export function _isProofInContext(entry: ProofEntry, sceneIndex: number, stepIndex: number): boolean {
     if (entry.level === 'file') return true;
     if (entry.level === 'scene') return entry.sceneIndex === sceneIndex;
     if (entry.level === 'step') return entry.sceneIndex === sceneIndex && entry.stepIndex! <= stepIndex;
