@@ -1539,7 +1539,9 @@ window.algebenchSpeakText = function(text, onEnd) {
 async function speakText(text: string, { explicit = false }: { explicit?: boolean } = {}): Promise<void> {
     if (selectedTtsMode === 'silent' && !explicit) return;
 
-    const clean = text
+    // Every spoken path lands here, so glossary markers are spoken as their
+    // plain text whichever caller forgot to strip them.
+    const clean = stripGlossaryMarkers(text)
         .replace(/```[\s\S]*?```/g, '')
         .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
         .replace(/[📍🤖👤]/gu, '')

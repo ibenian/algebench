@@ -3105,7 +3105,7 @@ function setupDocSpeakButtons() {
 			return;
 		}
 		const contentEl = document.getElementById("explanation-content");
-		const text = overlayState.currentSpec && overlayState.currentSpec.markdown ? overlayState.currentSpec.markdown : contentEl.dataset.markdown || contentEl.textContent;
+		const text = overlayState.currentSpec && overlayState.currentSpec.markdown ? stripGlossaryMarkers(overlayState.currentSpec.markdown) : contentEl.dataset.markdown || contentEl.textContent;
 		if (!text || !text.trim()) return;
 		if (typeof window.algebenchSpeakText === "function") {
 			speakBtn.textContent = "⏹ Stop";
@@ -27482,7 +27482,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 };
 async function speakText(text, { explicit = false } = {}) {
 	if (selectedTtsMode === "silent" && !explicit) return;
-	const clean = text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
+	const clean = stripGlossaryMarkers(text).replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
 	if (!clean) return;
 	const myId = ++ttsRequestId;
 	ttsPausedByUser = false;

@@ -271,7 +271,7 @@ export function setupDocSpeakButtons(): void {
 
         const contentEl = document.getElementById('explanation-content')!;
         const text = (overlayState.currentSpec && overlayState.currentSpec.markdown)
-            ? overlayState.currentSpec.markdown
+            ? stripGlossaryMarkers(overlayState.currentSpec.markdown)
             : (contentEl.dataset.markdown || contentEl.textContent);
 
         if (!text || !text.trim()) return;
