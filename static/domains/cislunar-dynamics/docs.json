@@ -118,5 +118,185 @@
     "https://www.nasa.gov/artemis-ii-press-kit/",
     "https://www.nasa.gov/mission/artemis-ii/",
     "https://svs.gsfc.nasa.gov/api/5610"
-  ]
+  ],
+  "glossary": {
+    "TLI": {
+      "term": "translunar injection",
+      "aliases": [
+        "translunar injection",
+        "translunar injection burn",
+        "TLI burn"
+      ],
+      "markdown": "The burn that raises a parking orbit's apogee out to the Moon's distance. In Artemis II, Orion's service module performs it after the Earth-orbit setup.",
+      "prompt": "Explain the translunar injection burn: what it changes about the orbit and roughly how much delta-v it takes."
+    },
+    "free-return trajectory": {
+      "term": "free-return trajectory",
+      "aliases": [
+        "free-return",
+        "free return",
+        "free-return path"
+      ],
+      "markdown": "A figure-eight path around the Moon whose lunar flyby bends the trajectory back toward Earth with no major burn — a built-in safe return if an engine fails.",
+      "prompt": "Explain the free-return trajectory and why it is a safety choice for a crewed flyby."
+    },
+    "gravity assist": {
+      "term": "gravity assist",
+      "aliases": [
+        "gravity-assist"
+      ],
+      "markdown": "A flyby that bends a spacecraft's path using a body's gravity. Relative to the Moon the speed in and out is the same; relative to Earth the direction — and the speed — change.",
+      "prompt": "Explain how a gravity assist changes a trajectory without burning propellant, and whose frame the speed is conserved in."
+    },
+    "lunar flyby": {
+      "term": "lunar flyby",
+      "markdown": "Passing close to the Moon without orbiting or landing. Artemis II swings around the far side at a few thousand miles altitude.",
+      "prompt": "Explain what happens during Artemis II's lunar flyby."
+    },
+    "SOI": {
+      "term": "sphere of influence",
+      "aliases": [
+        "sphere of influence"
+      ],
+      "markdown": "The region where the Moon's gravity dominates the motion, radius about $66{,}000$ km, found from $r \\approx a\\,(m/M)^{2/5}$. Patched-conic models switch from Earth-centred to Moon-centred there.",
+      "prompt": "Explain the Moon's sphere of influence and how patched-conic trajectory models use it."
+    },
+    "rocket equation": {
+      "term": "Tsiolkovsky rocket equation",
+      "aliases": [
+        "Tsiolkovsky rocket equation",
+        "Tsiolkovsky"
+      ],
+      "markdown": "$\\Delta v = v_e \\ln\\dfrac{m_0}{m_f}$ — the velocity change available from burning propellant down from initial mass $m_0$ to final mass $m_f$. The logarithm is why staging pays.",
+      "prompt": "Explain the Tsiolkovsky rocket equation and why its logarithm makes staging necessary."
+    },
+    "delta-v": {
+      "term": "delta-v",
+      "aliases": [
+        "Δv",
+        "delta v"
+      ],
+      "markdown": "$\\Delta v$ — the total change in velocity a vehicle can make, or a manoeuvre needs. Mission planning is a $\\Delta v$ budget: every burn spends from it.",
+      "prompt": "Explain delta-v as the currency of spaceflight."
+    },
+    "specific impulse": {
+      "term": "specific impulse",
+      "aliases": [
+        "Isp"
+      ],
+      "markdown": "$I_{sp}$ — thrust per unit weight of propellant burned per second, in seconds. $v_e = I_{sp}\\,g_0$: higher $I_{sp}$ gives more $\\Delta v$ from the same propellant.",
+      "prompt": "Explain specific impulse and how it links to exhaust velocity and the rocket equation."
+    },
+    "staging": {
+      "term": "staging",
+      "markdown": "Dropping empty tanks and engines once their propellant is spent, so later burns don't have to accelerate dead mass. Each stage restarts the rocket equation with a lighter vehicle.",
+      "prompt": "Explain why rockets use stages, using the rocket equation."
+    },
+    "SLS": {
+      "term": "Space Launch System",
+      "aliases": [
+        "Space Launch System"
+      ],
+      "markdown": "NASA's heavy-lift rocket for Artemis. Block 1 has a core stage with four RS-25 engines, two five-segment solid rocket boosters, and the ICPS upper stage.",
+      "prompt": "Explain the Space Launch System's configuration and what each part does."
+    },
+    "SRB": {
+      "term": "solid rocket booster",
+      "aliases": [
+        "solid rocket booster",
+        "solid rocket boosters",
+        "SRBs"
+      ],
+      "markdown": "Strap-on boosters burning solid propellant. SLS's two five-segment SRBs provide most of the thrust at liftoff and separate about two minutes in.",
+      "prompt": "Explain solid rocket boosters and why SLS relies on them at liftoff."
+    },
+    "RS-25": {
+      "term": "RS-25",
+      "markdown": "The hydrogen–oxygen engine of the SLS core stage — the former Space Shuttle main engine. Four of them run for the whole core-stage burn.",
+      "prompt": "Explain the RS-25 engine and its role on SLS."
+    },
+    "ICPS": {
+      "term": "Interim Cryogenic Propulsion Stage",
+      "aliases": [
+        "Interim Cryogenic Propulsion Stage"
+      ],
+      "markdown": "SLS Block 1's upper stage, powered by one RL10 engine. On Artemis II it performs the Earth-orbit setup burns before separating from Orion.",
+      "prompt": "Explain the ICPS and what it does on Artemis II."
+    },
+    "Orion": {
+      "term": "Orion",
+      "markdown": "NASA's crew spacecraft: a crew module, the European Service Module, and a launch abort system. Only the crew module returns to Earth.",
+      "prompt": "Explain Orion's parts and which of them come home."
+    },
+    "ESM": {
+      "term": "European Service Module",
+      "aliases": [
+        "European Service Module",
+        "service module"
+      ],
+      "markdown": "Orion's service module, built for ESA. It supplies propulsion, power, water and air, and its main engine performs the translunar injection burn.",
+      "prompt": "Explain the European Service Module and what it provides Orion."
+    },
+    "LAS": {
+      "term": "launch abort system",
+      "aliases": [
+        "launch abort system"
+      ],
+      "markdown": "The tower on top of Orion that can pull the crew module away from a failing rocket. It is jettisoned once the rocket has climbed past the need for it.",
+      "prompt": "Explain Orion's launch abort system and when it is used."
+    },
+    "apogee": {
+      "term": "apogee",
+      "aliases": [
+        "apoapsis"
+      ],
+      "markdown": "The point of an Earth orbit farthest from Earth's centre, where the spacecraft moves slowest.",
+      "prompt": "Explain apogee and why burns there raise the opposite side of the orbit."
+    },
+    "perigee": {
+      "term": "perigee",
+      "aliases": [
+        "perigee raise"
+      ],
+      "markdown": "The point of an Earth orbit closest to Earth's centre, where the spacecraft moves fastest.",
+      "prompt": "Explain perigee and what a perigee-raise burn does."
+    },
+    "periapsis": {
+      "term": "periapsis",
+      "aliases": [
+        "perilune",
+        "pericynthion"
+      ],
+      "markdown": "The closest point of an orbit to whatever body it is centred on — perigee for Earth, perilune for the Moon.",
+      "prompt": "Explain periapsis and how it is used in describing a lunar flyby."
+    },
+    "cislunar": {
+      "term": "cislunar space",
+      "aliases": [
+        "cislunar space"
+      ],
+      "markdown": "The region between Earth and the Moon's orbit, where both bodies' gravity matters.",
+      "prompt": "Explain cislunar space and why trajectories there are harder to model than simple orbits."
+    },
+    "LOX": {
+      "term": "liquid oxygen",
+      "aliases": [
+        "liquid oxygen",
+        "LH2",
+        "liquid hydrogen"
+      ],
+      "markdown": "The oxidizer for SLS's hydrogen engines, stored at about $90$ K; paired with liquid hydrogen (LH2) at about $20$ K.",
+      "prompt": "Explain why hydrogen and oxygen engines need cryogenic propellants."
+    },
+    "entry interface": {
+      "term": "entry interface",
+      "markdown": "The conventional altitude where atmospheric entry begins, about $120$ km ($400{,}000$ ft).",
+      "prompt": "Explain entry interface and why lunar-return entry is faster than a return from orbit."
+    },
+    "heat shield": {
+      "term": "heat shield",
+      "markdown": "Orion's ablative shield, about $5$ m across, protects the crew module during a lunar-return entry at about $11$ km/s.",
+      "prompt": "Explain how Orion's heat shield handles a lunar-return entry."
+    }
+  }
 }

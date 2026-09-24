@@ -37,5 +37,152 @@
     "entryPeakG(), entryPeakGT(), entryPeakHeat(), entryPeakHeatT(), entryEndTime()",
     "entryCorridorLo(), entryCorridorHi(), entryOutcome()",
     "entryVehicleName(), entryVehicleMission(), entryVehicleMass(), entryVehicleArea(), entryVehicleCd(), entryVehicleBeta(), entryVehicleLD(), entryVehicleSpeed(), entryVehicleNominalGamma(), entryChuteAlt()"
-  ]
+  ],
+  "glossary": {
+    "entry interface": {
+      "term": "entry interface",
+      "markdown": "The conventional altitude where atmospheric entry begins, about $120$ km ($400{,}000$ ft); entry speed and flight-path angle are quoted here.",
+      "prompt": "Explain what entry interface is and why entry conditions are specified there."
+    },
+    "ballistic coefficient": {
+      "term": "ballistic coefficient",
+      "markdown": "$\\beta = \\dfrac{m}{C_D A}$ — mass per unit drag area. A high $\\beta$ slices deeper into the atmosphere before slowing; a low $\\beta$ decelerates high up where the air is thin.",
+      "prompt": "Explain the ballistic coefficient and how it changes where and how hard a vehicle decelerates."
+    },
+    "scale height": {
+      "term": "scale height",
+      "markdown": "The height $H$ over which air density falls by a factor of $e$: $\\rho = \\rho_0 e^{-h/H}$. For Earth's lower atmosphere $H \\approx 7$–$8.5$ km.",
+      "prompt": "Explain the atmospheric scale height and what the exponential atmosphere model assumes."
+    },
+    "exponential atmosphere": {
+      "term": "exponential atmosphere",
+      "markdown": "The model $\\rho(h) = \\rho_0\\, e^{-h/H}$: density falls by a constant factor for every scale height $H$ of altitude. It follows from hydrostatic balance at constant temperature.",
+      "prompt": "Explain the exponential atmosphere model and where it breaks down."
+    },
+    "stagnation point": {
+      "term": "stagnation point",
+      "markdown": "The point on the vehicle's nose where the oncoming flow is brought to rest. Pressure and heating peak there.",
+      "prompt": "Explain the stagnation point and why heating is highest there."
+    },
+    "bow shock": {
+      "term": "bow shock",
+      "aliases": [
+        "detached bow shock"
+      ],
+      "markdown": "A curved shock wave standing ahead of a blunt body in hypersonic flow. The gas crossing it is compressed and heated to thousands of kelvin, and a blunt nose keeps that hot layer detached from the surface.",
+      "prompt": "Explain the detached bow shock and why blunt capsules survive entry better than sharp ones."
+    },
+    "adiabatic compression": {
+      "term": "adiabatic compression",
+      "markdown": "Compression too fast for heat to leave, so the work done on the gas all goes into its temperature. Entry heating is mostly this compression in the shock layer — not friction.",
+      "prompt": "Explain why entry heating comes from adiabatic compression rather than friction."
+    },
+    "skip entry": {
+      "term": "skip entry",
+      "markdown": "An entry that uses lift to climb back out of the atmosphere after a first dip, then re-enters. It spreads the heating and deceleration over two passes and extends range.",
+      "prompt": "Explain skip entry, why a capsule might skip, and when an unplanned skip is dangerous."
+    },
+    "entry corridor": {
+      "term": "entry corridor",
+      "aliases": [
+        "corridor"
+      ],
+      "markdown": "The band of flight-path angles that works. Too shallow and the vehicle skips out or lingers; too steep and deceleration or heating exceeds what crew and heat shield can take.",
+      "prompt": "Explain the entry corridor and what sets its steep and shallow limits."
+    },
+    "flight-path angle": {
+      "term": "flight-path angle",
+      "aliases": [
+        "flight path angle"
+      ],
+      "markdown": "$\\gamma$ — the angle between the velocity and the local horizontal. Negative means descending; entry angles are typically a few degrees below horizontal.",
+      "prompt": "Explain the flight-path angle and why a few degrees makes such a difference at entry."
+    },
+    "lift-to-drag ratio": {
+      "term": "lift-to-drag ratio",
+      "aliases": [
+        "lift-to-drag",
+        "L/D"
+      ],
+      "markdown": "$L/D$ — how much lift the vehicle makes per unit drag. Even a capsule's small $L/D$ (about $0.3$) is enough to steer by rolling the lift vector.",
+      "prompt": "Explain the lift-to-drag ratio and how a capsule uses a small L/D to control its entry."
+    },
+    "bank angle": {
+      "term": "bank angle",
+      "markdown": "The roll of the lift vector about the velocity. Banking tilts lift away from vertical, trading altitude control for sideways steering.",
+      "prompt": "Explain how a capsule uses bank angle to control its entry without changing its shape."
+    },
+    "heat shield": {
+      "term": "heat shield",
+      "markdown": "The protective layer on the vehicle's forward face. Ablative shields char and erode, carrying heat away with the material they shed.",
+      "prompt": "Explain how ablative heat shields protect entry vehicles."
+    },
+    "g-load": {
+      "term": "g-load",
+      "aliases": [
+        "g-loads",
+        "g load"
+      ],
+      "markdown": "Deceleration expressed in multiples of Earth gravity $g_0 = 9.81$ m/s². Crewed entries aim to stay within a few g.",
+      "prompt": "Explain g-load during entry and what limits a crewed vehicle can tolerate."
+    },
+    "dynamic pressure": {
+      "term": "dynamic pressure",
+      "markdown": "$q = \\tfrac12 \\rho v^2$ — the pressure scale of the oncoming flow. Drag is $D = q\\, C_D A$.",
+      "prompt": "Explain dynamic pressure and how it sets drag and structural loads."
+    },
+    "drag coefficient": {
+      "term": "drag coefficient",
+      "markdown": "$C_D$ — the dimensionless factor in $D = \\tfrac12 \\rho v^2 C_D A$ that captures how the shape resists the flow.",
+      "prompt": "Explain the drag coefficient and how shape changes it."
+    },
+    "terminal velocity": {
+      "term": "terminal velocity",
+      "markdown": "The speed where drag equals weight, so the vehicle stops accelerating: $v_t = \\sqrt{\\dfrac{2 m g}{\\rho\\, C_D A}}$. It rises with altitude as the air thins.",
+      "prompt": "Explain terminal velocity and why it depends on altitude."
+    },
+    "Mach number": {
+      "term": "Mach number",
+      "aliases": [
+        "Mach"
+      ],
+      "markdown": "Speed divided by the local speed of sound. Entry begins at Mach $25$ or more; shocks form wherever the flow is supersonic.",
+      "prompt": "Explain the Mach number and what changes as a vehicle slows through the speed of sound."
+    },
+    "LEO": {
+      "term": "low Earth orbit",
+      "aliases": [
+        "low Earth orbit"
+      ],
+      "markdown": "Orbits roughly $160$–$2{,}000$ km up. A return from LEO starts entry at about $7.8$ km/s, slower than a return from the Moon at about $11$ km/s.",
+      "prompt": "Explain why returning from low Earth orbit is gentler than returning from the Moon."
+    },
+    "ODE": {
+      "term": "ordinary differential equation",
+      "aliases": [
+        "ordinary differential equation"
+      ],
+      "markdown": "An equation for how quantities change with one variable (here time). The entry model is a set of ODEs for speed, flight-path angle and altitude, integrated step by step.",
+      "prompt": "Explain the ordinary differential equations behind a point-mass entry model and how they are solved numerically."
+    },
+    "parachute": {
+      "term": "parachute",
+      "aliases": [
+        "drogue",
+        "drogue chute"
+      ],
+      "markdown": "Deployed only after the vehicle has slowed well below the speed of sound; a small drogue usually stabilises and slows it before the main chutes open.",
+      "prompt": "Explain why parachutes deploy late in entry and what the drogue chute is for."
+    },
+    "Apollo": {
+      "term": "Apollo",
+      "markdown": "NASA's crewed lunar programme (1961–1972). Its capsules returned from the Moon at about $11$ km/s and flew guided entries using a small lift-to-drag ratio.",
+      "prompt": "Explain how Apollo capsules re-entered from the Moon."
+    },
+    "Orion": {
+      "term": "Orion",
+      "markdown": "NASA's crew capsule for Artemis. Its $5$ m heat shield is the largest flown on a crewed capsule, and it returns from the Moon at about $11$ km/s.",
+      "prompt": "Explain how Orion re-enters the atmosphere on a lunar return."
+    }
+  }
 }

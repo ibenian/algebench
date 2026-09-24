@@ -493,5 +493,171 @@
     "tfProb(i,v)": "softmax(logits / tf_temp)[v] at slot i: the model's distribution for the token AFTER slot i (causal). Sums to 1 over v.",
     "tfArgmax(i)": "Index of the most probable vocabulary entry at slot i (independent of temperature). Feed it to tfVocabToken for the word.",
     "tfEntropy(i)": "Shannon entropy in bits of the slot-i distribution: -> 0 as tf_temp -> 0, -> log2(tfVocabN()) as tf_temp -> infinity."
+  },
+  "glossary": {
+    "token": {
+      "term": "token",
+      "aliases": [
+        "tokens"
+      ],
+      "markdown": "One unit of input text — a word or word piece — mapped to an integer ID from a fixed vocabulary before the model sees it.",
+      "prompt": "Explain what a token is and why models work on token IDs rather than characters."
+    },
+    "embedding": {
+      "term": "embedding",
+      "aliases": [
+        "embeddings",
+        "embedding matrix",
+        "token embedding"
+      ],
+      "markdown": "A learned vector for each token ID, stored as the rows of an embedding matrix of shape vocabulary $\\times\\ d_{\\text{model}}$. Looking up a token means taking its row.",
+      "prompt": "Explain token embeddings and why looking one up is just selecting a row of a matrix."
+    },
+    "positional encoding": {
+      "term": "positional encoding",
+      "aliases": [
+        "positional encodings",
+        "PE"
+      ],
+      "markdown": "A vector added to each token's embedding that depends only on its position, so attention — which on its own ignores order — can tell positions apart. The original Transformer uses fixed sinusoids.",
+      "prompt": "Explain why transformers need positional encoding and how sinusoidal encodings work."
+    },
+    "RoPE": {
+      "term": "rotary position embedding",
+      "aliases": [
+        "rotary position embedding",
+        "rotary positional embedding"
+      ],
+      "markdown": "Encodes position by **rotating** each pair of query and key coordinates by an angle proportional to the position. A query–key dot product then depends only on the *relative* offset between the two positions.",
+      "prompt": "Explain rotary position embedding (RoPE) and why rotating queries and keys makes attention depend on relative position."
+    },
+    "attention": {
+      "term": "attention",
+      "aliases": [
+        "self-attention",
+        "attention mechanism"
+      ],
+      "markdown": "Each position builds its output as a weighted average of value vectors, weighted by how well its query matches every key: $\\mathrm{softmax}\\!\\left(QK^\\top / \\sqrt{d_k}\\right) V$.",
+      "prompt": "Explain the attention mechanism step by step: scores, scaling, softmax, and mixing values."
+    },
+    "scaled dot-product attention": {
+      "term": "scaled dot-product attention",
+      "markdown": "$\\mathrm{Attention}(Q,K,V) = \\mathrm{softmax}\\!\\left(\\dfrac{QK^\\top}{\\sqrt{d_k}}\\right) V$. Dividing by $\\sqrt{d_k}$ keeps the scores' spread from growing with the key dimension, so softmax doesn't saturate.",
+      "prompt": "Explain why attention scores are divided by sqrt(d_k)."
+    },
+    "query": {
+      "term": "query",
+      "aliases": [
+        "queries",
+        "query vector",
+        "query vectors"
+      ],
+      "markdown": "A projection $q = x W_Q$ of a token's vector: what this position is looking for. Its dot product with each key scores how relevant that position is.",
+      "prompt": "Explain the role of the query vector in attention."
+    },
+    "key vector": {
+      "term": "key",
+      "aliases": [
+        "key vectors"
+      ],
+      "markdown": "A projection $k = x W_K$ of a token's vector: what this position offers to be matched on. Queries are compared against keys.",
+      "prompt": "Explain the role of the key vector in attention and how it differs from the value."
+    },
+    "value vector": {
+      "term": "value",
+      "aliases": [
+        "value vectors"
+      ],
+      "markdown": "A projection $v = x W_V$ of a token's vector: the content that gets mixed into the output, weighted by attention.",
+      "prompt": "Explain the role of the value vector in attention."
+    },
+    "softmax": {
+      "term": "softmax",
+      "markdown": "$\\mathrm{softmax}(z)_i = \\dfrac{e^{z_i}}{\\sum_j e^{z_j}}$ — turns a row of scores into positive weights that sum to $1$. Large gaps make it nearly one-hot.",
+      "prompt": "Explain softmax, why it is used on attention scores, and why it saturates for large inputs."
+    },
+    "causal mask": {
+      "term": "causal mask",
+      "aliases": [
+        "causal masking"
+      ],
+      "markdown": "Sets the score of every future position to $-\\infty$ **before** the softmax, so each token attends only to itself and earlier tokens. Masking after the softmax would leave weights that no longer sum to $1$.",
+      "prompt": "Explain the causal mask, why it must be applied before softmax, and what goes wrong if it is applied after."
+    },
+    "multi-head attention": {
+      "term": "multi-head attention",
+      "aliases": [
+        "multi-head"
+      ],
+      "markdown": "Several attention heads run in parallel on smaller projections; their outputs are concatenated and projected back to $d_{\\text{model}}$. Each head can learn a different pattern.",
+      "prompt": "Explain multi-head attention and why several small heads beat one large one."
+    },
+    "attention head": {
+      "term": "attention head",
+      "aliases": [
+        "attention heads",
+        "head"
+      ],
+      "markdown": "One independent attention computation with its own $W_Q$, $W_K$, $W_V$ projections.",
+      "prompt": "Explain what a single attention head computes."
+    },
+    "dot product": {
+      "term": "dot product",
+      "markdown": "$a \\cdot b = \\sum_i a_i b_i = \\lVert a\\rVert \\lVert b\\rVert \\cos\\theta$ — large when two vectors point the same way. Attention scores are query–key dot products.",
+      "prompt": "Explain the dot product geometrically and why it measures similarity in attention."
+    },
+    "projection": {
+      "term": "projection",
+      "aliases": [
+        "projections",
+        "projection matrix",
+        "weight matrix"
+      ],
+      "markdown": "Multiplying by a learned weight matrix ($W_Q$, $W_K$, $W_V$) to map a token vector into the query, key or value space.",
+      "prompt": "Explain the query, key and value projection matrices and what they learn."
+    },
+    "residual connection": {
+      "term": "residual connection",
+      "aliases": [
+        "residual",
+        "residual stream"
+      ],
+      "markdown": "Adding a sub-layer's input back to its output, $x + f(x)$. It keeps a direct path for information and gradients through a deep stack.",
+      "prompt": "Explain residual connections in transformers and why they help deep networks train."
+    },
+    "logit": {
+      "term": "logit",
+      "aliases": [
+        "logits"
+      ],
+      "markdown": "An unnormalised score before softmax. The model's final logits, one per vocabulary token, become next-token probabilities.",
+      "prompt": "Explain logits and how they become probabilities."
+    },
+    "PCA": {
+      "term": "principal component analysis",
+      "aliases": [
+        "principal component analysis"
+      ],
+      "markdown": "Finds the orthogonal directions of greatest variance in a set of vectors. Projecting onto the top two or three is a common way to picture high-dimensional embeddings — at the cost of the dimensions left out.",
+      "prompt": "Explain PCA and what is lost when a 4-D embedding is shown in 2-D or 3-D."
+    },
+    "permutation equivariance": {
+      "term": "permutation equivariance",
+      "aliases": [
+        "permutation-equivariant",
+        "permutation equivariant"
+      ],
+      "markdown": "Shuffling the input tokens shuffles the outputs the same way and changes nothing else. Attention without positional information has this property — it cannot see order.",
+      "prompt": "Explain why attention without positional encoding is permutation-equivariant and why that is a problem for language."
+    },
+    "feed-forward": {
+      "term": "feed-forward network",
+      "aliases": [
+        "feed-forward network",
+        "MLP"
+      ],
+      "markdown": "The per-position two-layer MLP that follows attention in each transformer block; it transforms each token's vector independently.",
+      "prompt": "Explain the feed-forward sub-layer in a transformer block."
+    }
   }
 }
