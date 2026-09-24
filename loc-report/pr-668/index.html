@@ -113,8 +113,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `feat/domain-glossaries` |
-| **Commit** | `85cd9ff` |
-| **Date** | 2026-09-24 19:20:12 -0400 |
+| **Commit** | `d9acf4f` |
+| **Date** | 2026-09-24 23:56:29 +0000 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -123,7 +123,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "src", "tests", "backend", "static", "scripts", "(other)", "docs", "schemas", "themes"]
-  bar [73642, 40261, 25119, 23539, 11897, 9471, 8400, 4205, 2725, 317]
+  bar [73642, 40261, 25119, 23539, 11903, 9471, 8400, 4205, 2725, 317]
 ```
 
 ## By Directory
@@ -134,19 +134,19 @@ xychart-beta horizontal
 | `src/` | 40,261 | 9,878 | 3,784 |
 | `tests/` | 25,119 | 1,981 | 5,383 |
 | `backend/` | 23,539 | 4,107 | 3,539 |
-| `static/` | 11,897 | 1,439 | 669 |
+| `static/` | 11,903 | 1,439 | 669 |
 | `scripts/` | 9,471 | 1,368 | 1,312 |
 | `(other)/` | 8,400 | 0 | 0 |
 | `docs/` | 4,205 | 9,773 | 3,154 |
 | `schemas/` | 2,725 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **199,576** | **28,546** | **17,842** |
+| **Total** | **199,582** | **28,546** | **17,842** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "TypeScript", "CSS", "JavaScript", "HTML", "Shell", "YAML", "BASH", "Dockerfile", "TOML"]
-  bar [87596, 54483, 40410, 6860, 2739, 2302, 463, 29, 16, 16, 2]
+  bar [87602, 54483, 40410, 6860, 2739, 2302, 463, 29, 16, 16, 2]
 ```
 
 ## Summary by Language
@@ -155,7 +155,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JSON                     77        87602        87596            0            6
+ JSON                     77        87608        87602            0            6
  Python                  267        70725        54483         6361         9881
  TypeScript              122        54140        40410         9940         3790
  CSS                       9         7946         6860          715          371
@@ -182,7 +182,7 @@ xychart-beta horizontal
  |- XML                    1          228          185           43            0
  (Total)                            21027         2366        14174         4487
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   596       251395       199576        32622        19197
+ Total                   596       251401       199582        32622        19197
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -335,10 +335,10 @@ xychart-beta horizontal
  |atmospheric-entry/index.js          373          335            8           30
  |ins/astrodynamics/index.js          228          198           10           20
 ─────────────────────────────────────────────────────────────────────────────────
- JSON                      5         1564         1564            0            0
+ JSON                      5         1570         1570            0            0
 ─────────────────────────────────────────────────────────────────────────────────
  |ains/transformer/docs.json          663          663            0            0
- |islunar-dynamics/docs.json          302          302            0            0
+ |islunar-dynamics/docs.json          308          308            0            0
  |ns/astrodynamics/docs.json          248          248            0            0
  |tmospheric-entry/docs.json          188          188            0            0
  |/domains/anomaly/docs.json          163          163            0            0
@@ -366,7 +366,7 @@ xychart-beta horizontal
  |- BASH                                3            3            0            0
  /home/runner/work/algebench/algebench/static/proof-animation/README.md             46            0           38            8
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   143        67928        52158        11317         4453
+ Total                   143        67934        52164        11317         4453
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -606,9 +606,9 @@ xychart-beta horizontal
  |completion/domains/base.py           49           34            2           13
  |ts/test_grounding_score.py           48           33            4           11
  |nd/experts/test_dataset.py           44           33            0           11
- |/backend/model/__init__.py           31           29            0            2
  |nd/semantic_graph/cache.py           41           29            0           12
  |semantic_graph/id_utils.py           35           29            1            5
+ |/backend/model/__init__.py           31           29            0            2
  |ackend/experts/__init__.py           34           28            0            6
  |end/experts/cas_workers.py           41           27            0           14
  |ompletion/domains/logic.py           32           24            0            8
