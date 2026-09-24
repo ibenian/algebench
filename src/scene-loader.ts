@@ -16,8 +16,8 @@ import type { Vec3 } from '/coords.js';
 import { clearLabels } from '/labels.js';
 import { scanSpecForUnsafeJs, showTrustDialog, updateJsTrustPill } from '/trust.js';
 import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from '/expr.js';
-import { loadGlossary } from '/glossary.js';
-import { setGlossaryThreshold } from '/glossary-core.js';
+import { hideGlossaryTip, loadGlossary } from '/glossary.js';
+import { setActiveGlossary, setGlossaryThreshold } from '/glossary-core.js';
 import { clearWorldStarfield, clearWorldSkybox, configureWorldStarfield } from '/objects/skybox.js';
 import { updateFollowAngleLockButtonState } from '/follow-cam.js';
 import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
@@ -889,7 +889,13 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
     // Before anything renders: the scene's threshold decides auto-matching.
+    // No scene at all (an empty or failed load) also means no glossary: the
+    // previous lesson's entries must not keep resolving markers or tooltips.
     setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
+    if (!spec) {
+        setActiveGlossary(null);
+        hideGlossaryTip();
+    }
     updateTitle(spec);
     updateExplanationPanel(spec);
     loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);

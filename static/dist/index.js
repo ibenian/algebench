@@ -1192,7 +1192,7 @@ var PROTECTED_RE = new RegExp([
 	"!?\\[[^\\]]*\\]\\((?:[^()]|\\([^()]*\\))*\\)",
 	"!?\\[[^\\]]*\\]\\[[^\\]]*\\]",
 	"^[ \\t]*\\[[^\\]]+\\]:[^\\n]*",
-	"<[a-zA-Z/!][^>]*>",
+	"<[a-zA-Z/!](?:[^>\"']|\"[^\"]*\"|'[^']*')*>",
 	"(?:https?://|www\\.)[^\\s<>]+"
 ].join("|"), "gm");
 var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
@@ -14385,6 +14385,10 @@ async function loadScene(spec) {
 	setActiveSceneFunctions(spec);
 	setActiveVirtualTimeExpr(spec, -1);
 	setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
+	if (!spec) {
+		setActiveGlossary(null);
+		hideGlossaryTip();
+	}
 	updateTitle(spec);
 	updateExplanationPanel(spec);
 	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);

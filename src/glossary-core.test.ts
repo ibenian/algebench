@@ -161,3 +161,15 @@ test('links with parens, reference links and bare URLs stay protected (review #4
     assert.equal(mark('see [ref]: https://x/MAD\n\nMAD', 3), 'see [ref]: https://x/MAD\n\n[MAD|MAD]');
     assert.equal(mark('https://host/MAD and MAD', 3), 'https://host/MAD and [MAD|MAD]');
 });
+
+test('a quoted > inside an HTML attribute keeps the tag protected (review #4089914006)', () => {
+    assert.equal(mark('<span title="> MAD">x</span> MAD', 3), '<span title="> MAD">x</span> [MAD|MAD]');
+    assert.equal(mark("<span title='a > MAD'>x</span> MAD", 3), "<span title='a > MAD'>x</span> [MAD|MAD]");
+});
+
+test('clearing the active glossary stops explicit markers resolving (review #4089914026)', () => {
+    setActiveGlossary(G);
+    assert.equal(extractActiveGlossaryTerms('{{glossary:MAD}}').terms.length, 1);
+    setActiveGlossary(null);
+    assert.equal(extractActiveGlossaryTerms('{{glossary:MAD}}').terms.length, 0);
+});

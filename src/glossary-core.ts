@@ -187,7 +187,8 @@ const PROTECTED_RE = new RegExp([
     // reference-style link, and a link reference definition line
     '!?\\[[^\\]]*\\]\\[[^\\]]*\\]',
     '^[ \\t]*\\[[^\\]]+\\]:[^\\n]*',
-    '<[a-zA-Z/!][^>]*>',
+    // raw HTML tag; a quoted attribute value may itself contain `>`
+    '<[a-zA-Z/!](?:[^>"\']|"[^"]*"|\'[^\']*\')*>',
     // bare URLs, which marked autolinks into an href
     '(?:https?://|www\\.)[^\\s<>]+',
 ].join('|'), 'gm');
