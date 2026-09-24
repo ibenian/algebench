@@ -72,9 +72,20 @@ The report classifies every proof step that has `math`:
 
 Key fields: `counts`, `needsPrebake` (= stale + missing), `outOfSync`
 (= stale + errorBroken — committed graphs the current parser can't reproduce;
-the CI gate), `deriveSeconds` (full bake cost), `runtimeDeriveSeconds` (cost
-the server still pays on every load — what baking eliminates), `recommendPrebake`,
-and `recommendReason`.
+the CI gate), `deriveSeconds` (full bake cost), `recommendPrebake`, and
+`recommendReason`, plus **two separate derive costs**:
+
+| field | who pays it | when |
+|---|---|---|
+| `runtimeDeriveSeconds` | the server's autofill | **every load**, SCENE-level steps only — this is what baking eliminates and what `recommendPrebake` weighs |
+| `onDemandDeriveSeconds` | the Graph tab, per round trip | only when a reader opens a ROOT- or STEP-level proof whose graph is missing |
+
+They are disjoint, deliberately: root/step work is **excluded** from
+`runtimeDeriveSeconds` because the server's autofill never does it. Reporting
+the two as one number would either inflate the per-load cost or hide the
+round-trip cost entirely, so quote whichever the question is about — and note
+that an error-only record costs nothing on demand, because the Graph tab shows
+the banner without posting.
 
 > **CI:** `--validate --fail-on-stale` exits non-zero **only** when
 > `outOfSync > 0`. The `validate-prebaked-graphs.yml` workflow runs it on

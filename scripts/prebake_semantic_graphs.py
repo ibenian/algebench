@@ -304,8 +304,14 @@ def _error_record(step):
     first and shows the banner without POSTing, so on demand it costs nothing.
     """
     sg = step.get("semanticGraph")
+    # Truthiness on `graph`, matching `_existing_graph` and the server: an EMPTY
+    # graph dict is falsy to both, and `renderCurrentStepGraph` checks `sg.error`
+    # whenever the graph is falsy and returns WITHOUT posting. An isinstance test
+    # called `{error, graph: {}}` a non-error record, so it was billed to
+    # `onDemandDeriveSeconds` for a round trip that never happens -- while the
+    # identical `{error}` with no graph key was billed nothing.
     return (isinstance(sg, dict) and isinstance(sg.get("error"), dict)
-            and not isinstance(sg.get("graph"), dict))
+            and not sg.get("graph"))
 
 
 def _structural_signature(graph):

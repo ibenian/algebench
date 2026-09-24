@@ -16,7 +16,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.prebake_semantic_graphs import ProofLoc, iter_proof_steps
+from scripts.prebake_semantic_graphs import (
+    ProofLoc,
+    _error_record,
+    _existing_graph,
+    iter_proof_steps,
+)
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -214,3 +219,29 @@ def test_steps_only_bare_file_still_yields_its_step_proofs():
     # a real lesson is untouched
     lesson = {"scenes": [{"id": "s", "steps": [{"proof": proof}]}]}
     assert len(list(iter_proof_steps(lesson))) == 1
+
+
+def test_an_empty_graph_dict_is_an_error_record_not_a_billable_step():
+    """`{error, graph: {}}` must bill exactly like `{error}` with no graph key.
+
+    Both are identical to the two consumers: the server's autofill skips on
+    truthy `sg.graph`, and `renderCurrentStepGraph` checks `sg.error` whenever
+    the graph is falsy and returns WITHOUT posting. `_error_record` used
+    `isinstance`, so an empty dict counted as a graph, the record was called
+    non-error, and a root/step step was charged to `onDemandDeriveSeconds` for
+    a round trip that never happens.
+    """
+    with_empty = {"semanticGraph": {"error": {"m": 1}, "graph": {}}}
+    no_key = {"semanticGraph": {"error": {"m": 1}}}
+
+    # neither carries a usable graph ...
+    assert _existing_graph(with_empty) is None
+    assert _existing_graph(no_key) is None
+    # ... and both are error records, so neither is billed on demand
+    assert _error_record(with_empty) is True
+    assert _error_record(no_key) is True
+
+    # a real graph is still a graph, and is not an error record
+    real = {"semanticGraph": {"error": {"m": 1}, "graph": {"nodes": []}}}
+    assert _existing_graph(real) == {"nodes": []}
+    assert _error_record(real) is False
