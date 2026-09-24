@@ -1054,6 +1054,25 @@ function _normalizeUpVector(up) {
 //#region src/glossary-core.ts
 /** `{{glossary:KEY}}` or `{{glossary:KEY|shown text}}`. */
 var GLOSSARY_MARKER_RE = /\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}/g;
+/** Keep only well-formed entries: an object per key, with string `term`,
+*  `markdown` and `prompt` and a string-only `aliases`. Glossaries come from
+*  lesson JSON and from every imported domain's docs.json, so a malformed
+*  entry must cost that entry, not the render of every scene using it. */
+function sanitizeGlossary(raw) {
+	const out = {};
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+	for (const [key, e] of Object.entries(raw)) {
+		if (!key.trim() || !e || typeof e !== "object" || Array.isArray(e)) continue;
+		const src = e;
+		const entry = {};
+		if (typeof src.term === "string") entry.term = src.term;
+		if (Array.isArray(src.aliases)) entry.aliases = src.aliases.filter((a) => typeof a === "string");
+		if (typeof src.markdown === "string") entry.markdown = src.markdown;
+		if (typeof src.prompt === "string") entry.prompt = src.prompt;
+		out[key] = entry;
+	}
+	return out;
+}
 /** Display name of an entry: its `term`, else the key. */
 function glossaryTermName(key, entry) {
 	return entry && entry.term || key;
@@ -1065,11 +1084,14 @@ function resolveGlossaryKey(glossary, raw) {
 	if (!name) return null;
 	if (Object.prototype.hasOwnProperty.call(glossary, name)) return name;
 	const lower = name.toLowerCase();
-	for (const [key, entry] of Object.entries(glossary)) if ([
-		key,
-		entry.term,
-		...entry.aliases || []
-	].some((n) => typeof n === "string" && n.toLowerCase() === lower)) return key;
+	for (const [key, entry] of Object.entries(glossary)) {
+		if (!entry || typeof entry !== "object") continue;
+		if ([
+			key,
+			entry.term,
+			...Array.isArray(entry.aliases) ? entry.aliases : []
+		].some((n) => typeof n === "string" && n.toLowerCase() === lower)) return key;
+	}
 	return null;
 }
 /** Replace every marker with the text it displays — for speech, AI prompts
@@ -1090,10 +1112,11 @@ function escapeRegExp(s) {
 function buildGlossaryMatcher(glossary, threshold) {
 	const byLower = /* @__PURE__ */ new Map();
 	for (const [key, entry] of Object.entries(glossary)) {
+		if (!entry || typeof entry !== "object") continue;
 		const names = /* @__PURE__ */ new Set([
 			key,
 			entry.term,
-			...entry.aliases || []
+			...Array.isArray(entry.aliases) ? entry.aliases : []
 		]);
 		for (const n of names) {
 			if (typeof n !== "string") continue;
@@ -1166,8 +1189,8 @@ var PROTECTED_RE = new RegExp([
 	"`+[^`]*?`+",
 	"\\$[^$\\n]+\\$",
 	"%%[A-Z_]+\\d+%%",
-	"!?\\[[^\\]\\n]*\\]\\([^)\\n]*\\)",
-	"<[a-zA-Z/!][^>\\n]*>"
+	"!?\\[[^\\]]*\\]\\([^)]*\\)",
+	"<[a-zA-Z/!][^>]*>"
 ].join("|"), "g");
 var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
 var MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
@@ -1252,7 +1275,7 @@ var active = {
 	dirty: false
 };
 function setActiveGlossary(glossary) {
-	active.glossary = glossary || {};
+	active.glossary = sanitizeGlossary(glossary);
 	active.dirty = true;
 }
 /** `glossaryMatchThreshold` of the current scene. Absent or non-positive
@@ -11643,14 +11666,13 @@ function _fetchDomainGlossary(name) {
 async function loadGlossary(domains, entries) {
 	const names = Array.isArray(domains) ? domains.filter((n) => typeof n === "string") : [];
 	const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
-	const merged = Object.assign({}, ...fromDomains);
-	if (entries && typeof entries === "object" && !Array.isArray(entries)) Object.assign(merged, entries);
-	setActiveGlossary(merged);
+	setActiveGlossary(Object.assign({}, ...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries)));
 	hideGlossaryTip();
 }
 var _tips = [];
 var _depth = 0;
 var _pinned = false;
+var _restoringFocus = false;
 var _hideTimer$2 = null;
 function _tipId(level) {
 	return level === 0 ? "glossary-tip" : `glossary-tip-${level}`;
@@ -11797,6 +11819,7 @@ function installGlossaryTooltip() {
 		if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
 	});
 	document.addEventListener("focusin", (e) => {
+		if (_restoringFocus) return;
 		const term = _termOf(e.target);
 		if (term) _show(term);
 	});
@@ -11834,7 +11857,14 @@ function installGlossaryTooltip() {
 				_cancelHide();
 				_pinned = false;
 			}
-			if (back) back.focus();
+			if (back && document.activeElement !== back) {
+				_restoringFocus = true;
+				try {
+					back.focus();
+				} finally {
+					_restoringFocus = false;
+				}
+			}
 		}
 	});
 	document.addEventListener("scroll", (e) => {

@@ -43,3 +43,11 @@ def test_warns_on_missing_definition_and_underscore_key(tmp_path):
     _, warnings, _ = check_glossary(data, tmp_path)
     assert any('base_rate' in w and 'underscore' in w for w in warnings)
     assert any('glossary.nu: no markdown definition' == w for w in warnings)
+
+
+def test_markers_inside_glossary_definitions_are_checked(tmp_path):
+    data = {'title': 't', 'glossary': {'RBF': {'markdown': 'See {{glossary:missing}} and {{glossary:RBF}}.'}},
+            'scenes': [{'title': 's'}]}
+    errors, _, checked = check_glossary(data, tmp_path)
+    assert checked == 2
+    assert errors == ['glossary.RBF.markdown: {{glossary:missing}} has no glossary entry']

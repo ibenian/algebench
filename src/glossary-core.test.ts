@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 const {
     buildGlossaryMatcher, extractGlossaryTerms, restoreGlossaryTerms, resolveGlossaryKey,
-    stripGlossaryMarkers, stripGlossaryMath, setActiveGlossary, setGlossaryThreshold, extractActiveGlossaryTerms,
+    stripGlossaryMarkers, stripGlossaryMath, sanitizeGlossary, setActiveGlossary, setGlossaryThreshold, extractActiveGlossaryTerms,
 } = await import('/glossary-core.js');
 type Glossary = import('/glossary-core.js').Glossary;
 
@@ -124,4 +124,22 @@ test('automatic matching restarts every paragraph, list item, table row and head
     assert.equal(mark('| MAD | MAD |\n| MAD | x |', 3), '| [MAD|MAD] | MAD |\n| [MAD|MAD] | x |');
     assert.equal(mark('## MAD\nMAD here', 3), '## [MAD|MAD]\nMAD here');
     assert.equal(mark('MAD wraps\nonto MAD', 3), '[MAD|MAD] wraps\nonto MAD');
+});
+
+test('malformed entries are dropped, not fatal (review #4089506131)', () => {
+    const bad = { BAD: null, STR: 'x', ARR: [1], MAD: { term: 5, aliases: ['m.a.d.', 7], markdown: 'ok' } } as unknown as Glossary;
+    assert.deepEqual(sanitizeGlossary(bad), { MAD: { aliases: ['m.a.d.'], markdown: 'ok' } });
+    // The matcher and resolver survive a raw malformed glossary too.
+    assert.doesNotThrow(() => buildGlossaryMatcher(bad, 3));
+    assert.equal(resolveGlossaryKey(bad, 'm.a.d.'), 'MAD');
+    setActiveGlossary(bad);
+    setGlossaryThreshold(3);
+    assert.equal(extractActiveGlossaryTerms('MAD here').terms.length, 1);
+    setActiveGlossary({});
+    setGlossaryThreshold(undefined);
+});
+
+test('links and HTML tags spanning lines stay protected (review #4089506215)', () => {
+    assert.equal(mark('<abbr\n title="MAD">x</abbr> MAD', 3), '<abbr\n title="MAD">x</abbr> [MAD|MAD]');
+    assert.equal(mark('[the\nMAD](https://x/MAD) MAD', 3), '[the\nMAD](https://x/MAD) [MAD|MAD]');
 });

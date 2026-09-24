@@ -659,9 +659,8 @@ def _iter_strings(obj, path=''):
     if isinstance(obj, str):
         yield path, obj
     elif isinstance(obj, dict):
+        # Glossary definitions are rendered too, so their markers are checked.
         for k, v in obj.items():
-            if k == 'glossary':
-                continue
             yield from _iter_strings(v, f'{path}.{k}' if path else k)
     elif isinstance(obj, list):
         for i, v in enumerate(obj):

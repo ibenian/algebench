@@ -36,6 +36,26 @@ export interface GlossaryMatcher {
     byLower: Map<string, Candidate[]>;
 }
 
+/** Keep only well-formed entries: an object per key, with string `term`,
+ *  `markdown` and `prompt` and a string-only `aliases`. Glossaries come from
+ *  lesson JSON and from every imported domain's docs.json, so a malformed
+ *  entry must cost that entry, not the render of every scene using it. */
+export function sanitizeGlossary(raw: unknown): Glossary {
+    const out: Glossary = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const [key, e] of Object.entries(raw as Record<string, unknown>)) {
+        if (!key.trim() || !e || typeof e !== 'object' || Array.isArray(e)) continue;
+        const src = e as Record<string, unknown>;
+        const entry: GlossaryEntry = {};
+        if (typeof src.term === 'string') entry.term = src.term;
+        if (Array.isArray(src.aliases)) entry.aliases = src.aliases.filter((a): a is string => typeof a === 'string');
+        if (typeof src.markdown === 'string') entry.markdown = src.markdown;
+        if (typeof src.prompt === 'string') entry.prompt = src.prompt;
+        out[key] = entry;
+    }
+    return out;
+}
+
 /** Display name of an entry: its `term`, else the key. */
 export function glossaryTermName(key: string, entry: GlossaryEntry | undefined): string {
     return (entry && entry.term) || key;
@@ -49,7 +69,8 @@ export function resolveGlossaryKey(glossary: Glossary, raw: string): string | nu
     if (Object.prototype.hasOwnProperty.call(glossary, name)) return name;
     const lower = name.toLowerCase();
     for (const [key, entry] of Object.entries(glossary)) {
-        const names = [key, entry.term, ...(entry.aliases || [])];
+        if (!entry || typeof entry !== 'object') continue;
+        const names = [key, entry.term, ...(Array.isArray(entry.aliases) ? entry.aliases : [])];
         if (names.some((n) => typeof n === 'string' && n.toLowerCase() === lower)) return key;
     }
     return null;
@@ -78,7 +99,8 @@ function escapeRegExp(s: string): string {
 export function buildGlossaryMatcher(glossary: Glossary, threshold: number): GlossaryMatcher | null {
     const byLower = new Map<string, Candidate[]>();
     for (const [key, entry] of Object.entries(glossary)) {
-        const names = new Set([key, entry.term, ...(entry.aliases || [])]);
+        if (!entry || typeof entry !== 'object') continue;
+        const names = new Set([key, entry.term, ...(Array.isArray(entry.aliases) ? entry.aliases : [])]);
         for (const n of names) {
             if (typeof n !== 'string') continue;
             const text = n.trim();
@@ -148,7 +170,9 @@ export function segmentGlossaryText(
 // Regions of markdown source the matcher must never touch, in priority order:
 // fenced code, display math, inline code, inline math, render sentinels
 // (`%%MATH_BLOCK_n%%` and friends), images/links (text and URL), autolinks
-// and raw HTML tags. A marker inside any of these is left verbatim.
+// and raw HTML tags. A marker inside any of these is left verbatim. Links and
+// tags may span lines (`<abbr\n title="MAD">`), so they run to their closing
+// delimiter across newlines.
 const PROTECTED_RE = new RegExp([
     '```[\\s\\S]*?```',
     '~~~[\\s\\S]*?~~~',
@@ -156,8 +180,8 @@ const PROTECTED_RE = new RegExp([
     '`+[^`]*?`+',
     '\\$[^$\\n]+\\$',
     '%%[A-Z_]+\\d+%%',
-    '!?\\[[^\\]\\n]*\\]\\([^)\\n]*\\)',
-    '<[a-zA-Z/!][^>\\n]*>',
+    '!?\\[[^\\]]*\\]\\([^)]*\\)',
+    '<[a-zA-Z/!][^>]*>',
 ].join('|'), 'g');
 
 // A paragraph boundary in markdown source: a blank line, or a line break
@@ -272,8 +296,8 @@ const active: { glossary: Glossary; threshold: number | null; matcher: GlossaryM
     glossary: {}, threshold: null, matcher: null, dirty: false,
 };
 
-export function setActiveGlossary(glossary: Glossary | null | undefined): void {
-    active.glossary = glossary || {};
+export function setActiveGlossary(glossary: unknown): void {
+    active.glossary = sanitizeGlossary(glossary);
     active.dirty = true;
 }
 

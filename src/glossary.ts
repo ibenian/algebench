@@ -11,7 +11,7 @@
 // lesson's `import` list and its `glossary`.
 
 import { renderKaTeX, renderMarkdown, makeAiAskButton } from '/labels.js';
-import { getActiveGlossary, glossaryTermName, setActiveGlossary } from '/glossary-core.js';
+import { getActiveGlossary, glossaryTermName, sanitizeGlossary, setActiveGlossary } from '/glossary-core.js';
 import type { Glossary, GlossaryEntry } from '/glossary-core.js';
 
 // ----- Loading -----
@@ -40,11 +40,10 @@ function _fetchDomainGlossary(name: string): Promise<Glossary> {
  *  result the active glossary. Unknown or malformed inputs contribute nothing. */
 export async function loadGlossary(domains: unknown, entries?: unknown): Promise<void> {
     const names = Array.isArray(domains) ? domains.filter((n): n is string => typeof n === 'string') : [];
+    // Each source is sanitised on its own, so a malformed entry in one
+    // cannot erase a good entry of the same key from another.
     const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
-    const merged: Glossary = Object.assign({}, ...fromDomains);
-    if (entries && typeof entries === 'object' && !Array.isArray(entries)) {
-        Object.assign(merged, entries as Glossary);
-    }
+    const merged: Glossary = Object.assign({}, ...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries));
     setActiveGlossary(merged);
     hideGlossaryTip();
 }
@@ -60,6 +59,7 @@ interface Tip { el: HTMLDivElement; anchor: HTMLElement | null; }
 const _tips: Tip[] = [];   // elements are created once per level and reused
 let _depth = 0;            // how many of them are open
 let _pinned = false;
+let _restoringFocus = false;   // Escape handing focus back to a term
 let _hideTimer: ReturnType<typeof setTimeout> | null = null;
 
 function _tipId(level: number): string {
@@ -222,6 +222,7 @@ export function installGlossaryTooltip(): void {
         if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
     });
     document.addEventListener('focusin', (e) => {
+        if (_restoringFocus) return;
         const term = _termOf(e.target);
         if (term) _show(term);
     });
@@ -254,11 +255,16 @@ export function installGlossaryTooltip(): void {
             return;
         }
         if (e.key === 'Escape' && _depth) {
-            // Close the topmost tip only, and return focus to its term.
+            // Close the topmost tip only, and return focus to its term. That
+            // focus() fires focusin on the term, which would reopen the tip
+            // Escape just closed; the flag makes the handler skip it.
             const back = _tips[_depth - 1]!.anchor;
             _closeFrom(_depth - 1);
             if (!_depth) { _cancelHide(); _pinned = false; }
-            if (back) back.focus();
+            if (back && document.activeElement !== back) {
+                _restoringFocus = true;
+                try { back.focus(); } finally { _restoringFocus = false; }
+            }
         }
     });
     // Tips are fixed-position: follow their terms while the page or a doc
