@@ -159,5 +159,102 @@
         6
       ]
     }
+  },
+  "glossary": {
+    "MAD": {
+      "term": "median absolute deviation",
+      "aliases": [
+        "median absolute deviations"
+      ],
+      "markdown": "$\\mathrm{MAD} = \\operatorname{median}_i \\lvert x_i - \\operatorname{median}(x)\\rvert$\n\nA robust spread: scaled by $1.4826$ it estimates $\\sigma$ for Gaussian data, yet a handful of wild points barely move it — its **breakdown point** is 50%.",
+      "prompt": "Explain the median absolute deviation (MAD): how it is computed, why it is scaled by 1.4826, and why it resists outliers where the standard deviation does not."
+    },
+    "breakdown point": {
+      "term": "breakdown point",
+      "markdown": "The largest fraction of the data that can be replaced by arbitrary values before an estimator can be dragged arbitrarily far. The mean's is $0\\%$; the median's and MAD's is $50\\%$.",
+      "prompt": "Explain the breakdown point of an estimator, and compare the mean, the standard deviation, the median and the MAD."
+    },
+    "z-score": {
+      "term": "z-score",
+      "aliases": [
+        "z-scores",
+        "standard score"
+      ],
+      "markdown": "$z = \\dfrac{x - \\bar x}{s}$ — how many standard deviations a point sits from the mean. Both $\\bar x$ and $s$ are pulled by the very outliers it is meant to flag.",
+      "prompt": "Explain the z-score as an outlier test and why masking makes it fail when the outliers themselves inflate the mean and standard deviation."
+    },
+    "kNN": {
+      "term": "k-nearest-neighbour distance",
+      "aliases": [
+        "k-NN",
+        "k nearest neighbours"
+      ],
+      "markdown": "The distance from a point to its $k$-th nearest neighbour. Large means isolated — but only relative to a single global scale, which is why it struggles when clusters have different densities.",
+      "prompt": "Explain the k-th nearest neighbour distance as an anomaly score, how k is chosen, and where it fails on data with clusters of different density."
+    },
+    "LOF": {
+      "term": "Local Outlier Factor",
+      "aliases": [
+        "local outlier factor"
+      ],
+      "markdown": "The ratio of a point's neighbours' local reachability density to its own. $\\mathrm{LOF}\\approx 1$ means as dense as its neighbourhood; $\\mathrm{LOF}\\gg 1$ means locally sparse, whatever the global scale.",
+      "prompt": "Explain the Local Outlier Factor: reachability distance, local reachability density, and why the ratio adapts to clusters of different density."
+    },
+    "Mahalanobis": {
+      "term": "Mahalanobis distance",
+      "aliases": [
+        "Mahalanobis distance"
+      ],
+      "markdown": "$d_M(x) = \\sqrt{(x-\\mu)^\\top \\Sigma^{-1} (x-\\mu)}$ — distance measured in the data's own covariance, so its level sets are ellipses aligned with the spread.",
+      "prompt": "Explain the Mahalanobis distance, why it uses the inverse covariance, and how outliers contaminate the covariance estimate it depends on."
+    },
+    "Isolation Forest": {
+      "term": "Isolation Forest",
+      "aliases": [
+        "iForest"
+      ],
+      "markdown": "Random axis-aligned splits isolate a point; anomalies take fewer splits. The score normalises the mean path length by $c(n)$, the average path of an unsuccessful BST search.",
+      "prompt": "Explain how an Isolation Forest scores anomalies by path length, and what the c(n) normalisation is for."
+    },
+    "RBF": {
+      "term": "Gaussian RBF kernel",
+      "aliases": [
+        "radial basis function",
+        "Gaussian kernel",
+        "RBF kernel"
+      ],
+      "markdown": "$k_\\gamma(x,x') = e^{-\\gamma\\lVert x-x'\\rVert^2}$\n\nA **choice**, not a result — it asserts that nearness is radial and means the same thing everywhere. That is an inductive bias.",
+      "prompt": "Explain the Gaussian RBF kernel: what it assumes, why isotropy and a single bandwidth are an inductive bias, and when that bias is wrong."
+    },
+    "SVM": {
+      "term": "one-class SVM",
+      "aliases": [
+        "one-class SVM",
+        "support vector machine"
+      ],
+      "markdown": "Finds a boundary in kernel feature space that encloses most of the data; $\\nu$ upper-bounds the fraction of training points left outside.",
+      "prompt": "Explain the one-class SVM: what the boundary means, the role of nu, and how the kernel bandwidth gamma shapes it."
+    },
+    "ROC": {
+      "term": "ROC curve",
+      "aliases": [
+        "ROC curve"
+      ],
+      "markdown": "True-positive rate against false-positive rate as the threshold sweeps. Blind to the base rate, so it can look excellent where precision is poor.",
+      "prompt": "Explain the ROC curve and AUC, and why they can look excellent on a rare-positive problem where precision is poor."
+    },
+    "AUC": {
+      "term": "area under the ROC curve",
+      "markdown": "The probability that a random positive outscores a random negative. Threshold-free — and base-rate-free, which is both its strength and its trap.",
+      "prompt": "Explain ROC AUC as a ranking probability and why it ignores the base rate."
+    },
+    "base rate": {
+      "term": "base rate",
+      "aliases": [
+        "prevalence"
+      ],
+      "markdown": "The fraction of cases that are truly positive. At a low base rate even a small false-positive rate swamps the true positives, so precision collapses.",
+      "prompt": "Explain the base rate and why a low base rate makes precision collapse even for a detector with a small false-positive rate."
+    }
   }
 }

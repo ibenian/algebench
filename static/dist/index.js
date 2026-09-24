@@ -1051,6 +1051,203 @@ function _normalizeUpVector(up) {
 	return v.normalize();
 }
 //#endregion
+//#region src/glossary-core.ts
+/** `{{glossary:KEY}}` or `{{glossary:KEY|shown text}}`. */
+var GLOSSARY_MARKER_RE = /\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}/g;
+/** Display name of an entry: its `term`, else the key. */
+function glossaryTermName(key, entry) {
+	return entry && entry.term || key;
+}
+/** Resolve an explicit marker's key: exact key first, then any key, term or
+*  alias case-insensitively. Returns the canonical key, or null. */
+function resolveGlossaryKey(glossary, raw) {
+	const name = raw.trim();
+	if (!name) return null;
+	if (Object.prototype.hasOwnProperty.call(glossary, name)) return name;
+	const lower = name.toLowerCase();
+	for (const [key, entry] of Object.entries(glossary)) if ([
+		key,
+		entry.term,
+		...entry.aliases || []
+	].some((n) => typeof n === "string" && n.toLowerCase() === lower)) return key;
+	return null;
+}
+/** Replace every marker with the text it displays — for speech, AI prompts
+*  and anything else that reads the source rather than the rendered page. */
+function stripGlossaryMarkers(text) {
+	if (typeof text !== "string" || text.indexOf("{{glossary:") === -1) return text;
+	return text.replace(GLOSSARY_MARKER_RE, (_m, key, shown) => (shown || key).trim());
+}
+function isAcronym(s) {
+	return !/\p{Ll}/u.test(s) && /\p{Lu}/u.test(s);
+}
+function escapeRegExp(s) {
+	return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+/** Compile the auto-matcher: every key, term and alias at least `threshold`
+*  characters long, longest first so `Gaussian RBF kernel` beats `RBF`.
+*  Returns null when nothing qualifies. */
+function buildGlossaryMatcher(glossary, threshold) {
+	const byLower = /* @__PURE__ */ new Map();
+	for (const [key, entry] of Object.entries(glossary)) {
+		const names = /* @__PURE__ */ new Set([
+			key,
+			entry.term,
+			...entry.aliases || []
+		]);
+		for (const n of names) {
+			if (typeof n !== "string") continue;
+			const text = n.trim();
+			if ([...text].length < threshold) continue;
+			const lower = text.toLowerCase();
+			const list = byLower.get(lower) || [];
+			list.push({
+				key,
+				text,
+				caseSensitive: isAcronym(text)
+			});
+			byLower.set(lower, list);
+		}
+	}
+	if (byLower.size === 0) return null;
+	const alts = [...byLower.values()].map((list) => list[0].text).sort((a, b) => b.length - a.length).map(escapeRegExp);
+	return {
+		re: new RegExp(`(?<![\\p{L}\\p{N}_])(?:${alts.join("|")})(?![\\p{L}\\p{N}_])`, "giu"),
+		byLower
+	};
+}
+function autoSegments(text, matcher, used) {
+	if (!matcher || !text) return text ? [{ text }] : [];
+	const out = [];
+	let last = 0;
+	matcher.re.lastIndex = 0;
+	for (let m = matcher.re.exec(text); m; m = matcher.re.exec(text)) {
+		const hit = m[0];
+		const cand = (matcher.byLower.get(hit.toLowerCase()) || []).find((c) => !c.caseSensitive || c.text === hit);
+		if (!cand || used.has(cand.key)) continue;
+		used.add(cand.key);
+		if (m.index > last) out.push({ text: text.slice(last, m.index) });
+		out.push({
+			text: hit,
+			key: cand.key
+		});
+		last = m.index + hit.length;
+	}
+	if (last < text.length) out.push({ text: text.slice(last) });
+	return out;
+}
+/** Split one unprotected run of source into plain and term segments.
+*  Explicit markers always link (or fall back to their plain text when
+*  unresolved); automatic matches link only a key's first appearance in
+*  the paragraph, tracked in `used`. */
+function segmentGlossaryText(text, glossary, matcher, used) {
+	const out = [];
+	let last = 0;
+	GLOSSARY_MARKER_RE.lastIndex = 0;
+	for (let m = GLOSSARY_MARKER_RE.exec(text); m; m = GLOSSARY_MARKER_RE.exec(text)) {
+		out.push(...autoSegments(text.slice(last, m.index), matcher, used));
+		const raw = m[1];
+		const key = resolveGlossaryKey(glossary, raw);
+		const shown = (m[2] || raw).trim();
+		out.push(key ? {
+			text: shown,
+			key
+		} : { text: shown });
+		if (key) used.add(key);
+		last = m.index + m[0].length;
+	}
+	out.push(...autoSegments(text.slice(last), matcher, used));
+	return out;
+}
+var PROTECTED_RE = new RegExp([
+	"```[\\s\\S]*?```",
+	"~~~[\\s\\S]*?~~~",
+	"\\$\\$[\\s\\S]+?\\$\\$",
+	"`+[^`]*?`+",
+	"\\$[^$\\n]+\\$",
+	"%%[A-Z_]+\\d+%%",
+	"!?\\[[^\\]\\n]*\\]\\([^)\\n]*\\)",
+	"<[a-zA-Z/!][^>\\n]*>"
+].join("|"), "g");
+var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
+/** Replace glossary terms in markdown source with `%%GLOSSARY_n%%` sentinels.
+*  Automatic matches link a term once per paragraph. */
+function extractGlossaryTerms(src, glossary, matcher) {
+	const terms = [];
+	if (!src || !matcher && src.indexOf("{{glossary:") === -1) return {
+		text: src,
+		terms
+	};
+	let used = /* @__PURE__ */ new Set();
+	const subRun = (plain) => segmentGlossaryText(plain, glossary, matcher, used).map((s) => {
+		if (!s.key) return s.text;
+		terms.push(s);
+		return `%%GLOSSARY_${terms.length - 1}%%`;
+	}).join("");
+	const sub = (plain) => plain.split(PARAGRAPH_BREAK_RE).map((piece, i) => {
+		if (i % 2 === 0) return subRun(piece);
+		used = /* @__PURE__ */ new Set();
+		return piece;
+	}).join("");
+	let out = "";
+	let last = 0;
+	PROTECTED_RE.lastIndex = 0;
+	for (let m = PROTECTED_RE.exec(src); m; m = PROTECTED_RE.exec(src)) {
+		out += sub(src.slice(last, m.index)) + m[0];
+		last = m.index + m[0].length;
+	}
+	out += sub(src.slice(last));
+	return {
+		text: out,
+		terms
+	};
+}
+function escapeHtmlText(s) {
+	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+/** The HTML for one marked term. */
+function glossaryTermHtml(term) {
+	return `<span class="glossary-term" data-glossary-key="${escapeHtmlText(term.key || "")}" tabindex="0" role="button" aria-haspopup="dialog">${escapeHtmlText(term.text)}</span>`;
+}
+/** Swap the sentinels in rendered HTML for term spans. */
+function restoreGlossaryTerms(html, terms) {
+	if (!terms.length) return html;
+	return html.replace(/%%GLOSSARY_(\d+)%%/g, (m, idx) => {
+		const term = terms[+idx];
+		return term ? glossaryTermHtml(term) : m;
+	});
+}
+var active = {
+	glossary: {},
+	threshold: null,
+	matcher: null,
+	dirty: false
+};
+function setActiveGlossary(glossary) {
+	active.glossary = glossary || {};
+	active.dirty = true;
+}
+/** `glossaryMatchThreshold` of the current scene. Absent or non-positive
+*  turns automatic matching off; explicit markers still render. */
+function setGlossaryThreshold(n) {
+	const t = typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
+	if (t !== active.threshold) {
+		active.threshold = t;
+		active.dirty = true;
+	}
+}
+function getActiveGlossary() {
+	return active.glossary;
+}
+/** Extract terms from `src` against the active glossary. */
+function extractActiveGlossaryTerms(src) {
+	if (active.dirty) {
+		active.matcher = active.threshold == null ? null : buildGlossaryMatcher(active.glossary, active.threshold);
+		active.dirty = false;
+	}
+	return extractGlossaryTerms(src, active.glossary, active.matcher);
+}
+//#endregion
 //#region src/labels.ts
 var AI_SPARKLE_SVG = "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" width=\"11\" height=\"11\"><path d=\"M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z\"/></svg>";
 function escapeHtml$2(s) {
@@ -1107,7 +1304,13 @@ function stripHtmlMacros(s) {
 function normLatex(s) {
 	return (s || "").replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, "$1").replace(/\\le(?![a-zA-Z])/g, "\\leq").replace(/\\ge(?![a-zA-Z])/g, "\\geq").replace(/[\s{}]/g, "");
 }
-function renderKaTeX$1(text, displayMode) {
+function renderKaTeX$1(text, displayMode, opts) {
+	if (!text) return "";
+	if (opts && opts.glossary === false) return _renderKaTeX(stripGlossaryMarkers(text), displayMode);
+	const { text: src, terms } = extractActiveGlossaryTerms(text);
+	return restoreGlossaryTerms(_renderKaTeX(src, displayMode), terms);
+}
+function _renderKaTeX(text, displayMode) {
 	if (!text) return "";
 	const tables = [];
 	const withTables = text.replace(/^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm, (_match, headerLine, _sepLine, bodyBlock) => {
@@ -1149,9 +1352,9 @@ function renderKaTeX$1(text, displayMode) {
 		const cellStyle = "padding:3px 8px;border:1px solid rgba(255,255,255,0.15)";
 		const thStyle = "padding:3px 8px;border:1px solid rgba(255,255,255,0.15);font-weight:bold;background:rgba(255,255,255,0.06)";
 		let html = `<table style="${tableStyle}"><thead><tr>`;
-		html += headers.map((h) => `<th style="${thStyle}">${renderKaTeX$1(h, false)}</th>`).join("");
+		html += headers.map((h) => `<th style="${thStyle}">${_renderKaTeX(h, false)}</th>`).join("");
 		html += "</tr></thead><tbody>";
-		for (const row of rows) html += "<tr>" + row.map((c) => `<td style="${cellStyle}">${renderKaTeX$1(c, false)}</td>`).join("") + "</tr>";
+		for (const row of rows) html += "<tr>" + row.map((c) => `<td style="${cellStyle}">${_renderKaTeX(c, false)}</td>`).join("") + "</tr>";
 		html += "</tbody></table>";
 		tables.push(html);
 		return `\x01T${tables.length - 1}\x01`;
@@ -1163,7 +1366,7 @@ function renderKaTeX$1(text, displayMode) {
 			"0.95em",
 			"0.88em"
 		][hashes.length - 1];
-		headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX$1(content, false)}</div>`);
+		headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${_renderKaTeX(content, false)}</div>`);
 		return `\x01H${headings.length - 1}\x01`;
 	});
 	const codeSpans = [];
@@ -1206,7 +1409,7 @@ function renderKaTeX$1(text, displayMode) {
 					"0.88em"
 				][hm[1].length - 1]};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
 				if (t === "---") return "<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0\">";
-				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${renderKaTeX$1(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${renderKaTeX$1(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
 				return li < lines.length - 1 ? inline + "<br>" : inline;
 			}).join("");
 		} else if (seg.startsWith("$$")) {
@@ -1236,8 +1439,13 @@ function renderKaTeX$1(text, displayMode) {
 		}
 	}).join("");
 }
-function renderMarkdown$1(md) {
+function renderMarkdown$1(md, opts) {
 	if (!md) return "";
+	if (opts && opts.glossary === false) return _renderMarkdown(stripGlossaryMarkers(md));
+	const { text, terms } = extractActiveGlossaryTerms(md);
+	return restoreGlossaryTerms(_renderMarkdown(text), terms);
+}
+function _renderMarkdown(md) {
 	const mathBlocks = [];
 	let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex) => {
 		mathBlocks.push({
@@ -2758,7 +2966,7 @@ function updateExplanationPanel(spec) {
 	const toggle = document.getElementById("explain-toggle");
 	if (spec && spec.markdown) {
 		content.innerHTML = renderMarkdown$1(spec.markdown);
-		content.dataset.markdown = spec.markdown;
+		content.dataset.markdown = stripGlossaryMarkers(spec.markdown);
 		injectAskButtons(content);
 	} else content.innerHTML = "<p style=\"color: rgba(180,180,200,0.5); font-style: italic;\">No explanation available for this scene.</p>";
 	panel.classList.remove("hidden");
@@ -2872,8 +3080,8 @@ function updateTitle(spec) {
 	if (spec && spec.title) titleEl.innerHTML = renderKaTeX$1(spec.title, false);
 	else titleEl.innerHTML = "AlgeBench";
 	if (spec && spec.description) {
-		descEl.dataset.markdown = spec.description;
-		const descText = spec.description;
+		const descText = stripGlossaryMarkers(spec.description);
+		descEl.dataset.markdown = descText;
 		const btn = makeAiAskButton("ai-ask-btn", "Ask AI to explain this scene", () => "Can you explain this scene:\n" + descText.trim());
 		fillBoardOverlay(descEl, renderKaTeX$1(spec.description, false), btn);
 		resetSceneDescPosition(descEl);
@@ -3018,6 +3226,7 @@ function _evalInfoExpr(expr) {
 function _replaceDoubleBraceExprs(template, evaluator) {
 	if (typeof template !== "string" || template.indexOf("{{") === -1) return template;
 	return template.replace(/\{\{([\s\S]*?)\}\}/g, (_m, expr) => {
+		if (/^\s*glossary:/.test(expr)) return _m;
 		const v = evaluator(expr);
 		return v == null ? _m : String(v);
 	});
@@ -3103,7 +3312,7 @@ function _migrateOldOverlayKeys(id) {
 	return geom;
 }
 function _makeItemAiBtn(item) {
-	return makeAiAskButton("info-overlay-ai-btn", "Ask AI about this", () => "Can you explain this:\n" + resolveInfoContent(item.content).trim());
+	return makeAiAskButton("info-overlay-ai-btn", "Ask AI about this", () => "Can you explain this:\n" + stripGlossaryMarkers(resolveInfoContent(item.content)).trim());
 }
 function _makeDockBtn(item) {
 	const b = document.createElement("button");
@@ -3867,8 +4076,9 @@ function updateStepCaption(scene, stepIdx) {
 	if (stepIdx >= 0 && scene.steps && scene.steps[stepIdx] && scene.steps[stepIdx].description) text = scene.steps[stepIdx].description;
 	else if (stepIdx === -1 && scene.description) text = scene.description;
 	if (text) {
-		el.dataset.markdown = text;
-		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${text}"`);
+		const plain = stripGlossaryMarkers(text);
+		el.dataset.markdown = plain;
+		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${plain}"`);
 		fillBoardOverlay(el, renderMarkdown$1(text), btn);
 		el.style.opacity = String(overlayState.displayParams.overlayOpacity);
 		resetCaptionPosition(el);
@@ -8872,7 +9082,7 @@ function rasterLatex(src, fontPx, color) {
 	const h = getHost();
 	h.style.font = `${size}px ${FAMILY}`;
 	h.style.color = color;
-	h.innerHTML = renderKaTeX$1(src, false);
+	h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
 	for (const m of h.querySelectorAll(".katex-mathml")) m.remove();
 	const box = h.getBoundingClientRect();
 	const w = Math.ceil(box.width), ht = Math.ceil(box.height);
@@ -8984,7 +9194,7 @@ function measureLatex(src) {
 	else {
 		const h = getHost();
 		h.style.font = `100px ${FAMILY}`;
-		h.innerHTML = renderKaTeX$1(src, false);
+		h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
 		for (const el of h.querySelectorAll(".katex-mathml")) el.remove();
 		const box = h.getBoundingClientRect();
 		h.innerHTML = "";
@@ -11361,6 +11571,181 @@ function updateJsTrustPill() {
 		if (_issuesPanelToggleFn) _issuesPanelToggleFn(document.getElementById("json-viewer-issues"));
 	} : null;
 	pill.style.cursor = pillClickable ? "pointer" : "";
+}
+//#endregion
+//#region src/glossary.ts
+var _domainGlossaries = /* @__PURE__ */ new Map();
+function _fetchDomainGlossary(name) {
+	let p = _domainGlossaries.get(name);
+	if (!p) {
+		p = fetch(`/api/domains/${encodeURIComponent(name)}`).then((r) => r.ok ? r.json() : {}).then((docs) => {
+			const g = docs && docs.glossary;
+			return g && typeof g === "object" && !Array.isArray(g) ? g : {};
+		}).catch((err) => {
+			console.warn(`[glossary] could not load glossary of domain "${name}":`, err);
+			return {};
+		});
+		_domainGlossaries.set(name, p);
+	}
+	return p;
+}
+/** Merge the glossaries of `domains` (in order) under `entries`, and make the
+*  result the active glossary. Unknown or malformed inputs contribute nothing. */
+async function loadGlossary(domains, entries) {
+	const names = Array.isArray(domains) ? domains.filter((n) => typeof n === "string") : [];
+	const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
+	const merged = Object.assign({}, ...fromDomains);
+	if (entries && typeof entries === "object" && !Array.isArray(entries)) Object.assign(merged, entries);
+	setActiveGlossary(merged);
+	hideGlossaryTip();
+}
+var _tip = null;
+var _anchor = null;
+var _pinned = false;
+var _hideTimer$2 = null;
+function _cancelHide() {
+	if (_hideTimer$2) {
+		clearTimeout(_hideTimer$2);
+		_hideTimer$2 = null;
+	}
+}
+function _scheduleHide() {
+	if (_pinned || _anchor && document.activeElement === _anchor) return;
+	_cancelHide();
+	_hideTimer$2 = setTimeout(hideGlossaryTip, 180);
+}
+function _ensureTip() {
+	if (_tip) return _tip;
+	const tip = document.createElement("div");
+	tip.id = "glossary-tip";
+	tip.className = "glossary-tip hidden";
+	tip.setAttribute("role", "dialog");
+	tip.addEventListener("mouseenter", _cancelHide);
+	tip.addEventListener("mouseleave", _scheduleHide);
+	tip.addEventListener("focusout", (e) => {
+		const to = e.relatedTarget;
+		if (!to || !tip.contains(to) && to !== _anchor) _scheduleHide();
+	});
+	document.body.appendChild(tip);
+	_tip = tip;
+	return tip;
+}
+function _position(tip, anchor) {
+	const r = anchor.getBoundingClientRect();
+	const margin = 8;
+	tip.style.left = "0px";
+	tip.style.top = "0px";
+	const tw = tip.offsetWidth;
+	const th = tip.offsetHeight;
+	const below = r.bottom + 6;
+	const top = below + th + margin > window.innerHeight && r.top - 6 - th >= margin ? r.top - 6 - th : below;
+	const left = Math.min(Math.max(margin, r.left), window.innerWidth - tw - margin);
+	tip.style.left = `${Math.max(margin, left)}px`;
+	tip.style.top = `${Math.max(margin, top)}px`;
+}
+function _show(anchor) {
+	const key = anchor.dataset.glossaryKey || "";
+	const entry = getActiveGlossary()[key];
+	if (!entry) return;
+	_cancelHide();
+	const tip = _ensureTip();
+	if (_anchor !== anchor) {
+		const name = glossaryTermName(key, entry);
+		tip.innerHTML = "";
+		const head = document.createElement("div");
+		head.className = "glossary-tip-head";
+		const title = document.createElement("span");
+		title.className = "glossary-tip-title";
+		title.innerHTML = renderKaTeX$1(name, false, { glossary: false });
+		head.appendChild(title);
+		head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
+		const body = document.createElement("div");
+		body.className = "glossary-tip-body";
+		body.innerHTML = entry.markdown ? renderMarkdown$1(entry.markdown, { glossary: false }) : "";
+		tip.appendChild(head);
+		if (entry.markdown) tip.appendChild(body);
+		tip.setAttribute("aria-label", name);
+		if (_anchor) _anchor.removeAttribute("aria-describedby");
+		_anchor = anchor;
+		anchor.setAttribute("aria-describedby", "glossary-tip");
+	}
+	tip.classList.remove("hidden");
+	anchor.setAttribute("aria-expanded", "true");
+	_position(tip, anchor);
+}
+function hideGlossaryTip() {
+	_cancelHide();
+	_pinned = false;
+	if (_tip) _tip.classList.add("hidden");
+	if (_anchor) {
+		_anchor.setAttribute("aria-expanded", "false");
+		_anchor.removeAttribute("aria-describedby");
+	}
+	_anchor = null;
+}
+var _CONTROL_SEL = "button, a, input, select, textarea, label, summary";
+function _termOf(target) {
+	const term = target instanceof Element ? target.closest(".glossary-term") : null;
+	return term && !(term.parentElement && term.parentElement.closest(_CONTROL_SEL)) ? term : null;
+}
+var _installed = false;
+/** Wire the delegated listeners. Idempotent — safe for any page to call. */
+function installGlossaryTooltip() {
+	if (_installed) return;
+	_installed = true;
+	document.addEventListener("mouseover", (e) => {
+		const term = _termOf(e.target);
+		if (term && !(_pinned && _anchor !== term)) _show(term);
+	});
+	document.addEventListener("mouseout", (e) => {
+		if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
+	});
+	document.addEventListener("focusin", (e) => {
+		const term = _termOf(e.target);
+		if (term) _show(term);
+	});
+	document.addEventListener("focusout", (e) => {
+		if (!_termOf(e.target)) return;
+		const to = e.relatedTarget;
+		if (!(to && _tip && _tip.contains(to))) setTimeout(_scheduleHide, 0);
+	});
+	document.addEventListener("click", (e) => {
+		const term = _termOf(e.target);
+		if (term) {
+			if (_pinned && _anchor === term) {
+				hideGlossaryTip();
+				return;
+			}
+			_show(term);
+			_pinned = true;
+			return;
+		}
+		if (_tip && !_tip.contains(e.target)) hideGlossaryTip();
+	}, true);
+	document.addEventListener("keydown", (e) => {
+		const term = _termOf(e.target);
+		if (term && (e.key === "Enter" || e.key === " ")) {
+			e.preventDefault();
+			_show(term);
+			_pinned = true;
+			return;
+		}
+		if (e.key === "Escape" && _anchor && _tip && !_tip.classList.contains("hidden")) {
+			const back = _anchor;
+			hideGlossaryTip();
+			back.focus();
+		}
+	});
+	document.addEventListener("scroll", (e) => {
+		if (!_anchor || !_tip || _tip.classList.contains("hidden")) return;
+		if (e.target instanceof Node && _tip.contains(e.target)) return;
+		const r = _anchor.getBoundingClientRect();
+		if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) hideGlossaryTip();
+		else _position(_tip, _anchor);
+	}, true);
+	window.addEventListener("resize", () => {
+		if (_anchor) hideGlossaryTip();
+	});
 }
 //#endregion
 //#region src/context-browser.ts
@@ -13829,6 +14214,7 @@ async function loadScene(spec) {
 	};
 	setActiveSceneFunctions(spec);
 	setActiveVirtualTimeExpr(spec, -1);
+	setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
 	updateTitle(spec);
 	updateExplanationPanel(spec);
 	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
@@ -14011,6 +14397,7 @@ async function loadLesson(spec) {
 		stopAutoPlay();
 		sceneState._activeDomainFunctions = {};
 		await importDomains(spec && spec.import);
+		await loadGlossary(spec && spec.import, spec && spec.glossary);
 		updateDockVisibility$1();
 		loadScene(spec);
 		return;
@@ -14021,6 +14408,7 @@ async function loadLesson(spec) {
 	sceneState.visitedSteps = /* @__PURE__ */ new Set();
 	stopAutoPlay();
 	await importDomains(spec.import);
+	await loadGlossary(spec.import, spec.glossary);
 	buildSceneTree$1(spec);
 	updateDockVisibility$1();
 	navigateTo$1(0, -1);
@@ -14102,6 +14490,7 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			title: scene.title,
 			description: scene.description,
 			markdown: scene.markdown,
+			glossaryMatchThreshold: scene.glossaryMatchThreshold,
 			range: scene.range,
 			scale: scene.scale,
 			camera: scene.camera,
@@ -17607,6 +17996,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupCaptionDrag();
 	setupSceneDescDrag();
 	setupBoardOverlays();
+	installGlossaryTooltip();
 	setupTensorCellPop();
 	setupJsonViewer();
 	setupContextStatusPopup();
@@ -26511,7 +26901,7 @@ function addChatMessage(role, content, toolCalls) {
 	body.className = "msg-body";
 	if (typeof renderKaTeX === "function" && typeof renderMarkdown === "function") body.innerHTML = role === "user" ? renderKaTeX(content, false) : renderMarkdown(content);
 	else body.textContent = content;
-	body.dataset.markdown = content;
+	body.dataset.markdown = stripGlossaryMarkers(content);
 	msgDiv.appendChild(body);
 	if (role === "assistant") {
 		const SVG_SPEAKER = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"12\" height=\"12\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z\"/></svg>";

@@ -518,6 +518,8 @@ def check_overlays(data):
                 checked += 1
                 placeholders = re.findall(r'\{\{([^}]+)\}\}', content)
                 for ph in placeholders:
+                    if ph.strip().startswith('glossary:'):
+                        continue  # a glossary marker, checked by check_glossary
                     # Simple identifier check — complex expressions are fine
                     ph_ids = extract_identifiers(ph)
                     unknown = ph_ids - BUILTIN_VARS - active_sliders
@@ -612,6 +614,81 @@ def check_semantic_graphs(data):
 
 # ---- Main ----
 
+# ---- Glossary checks (issue #665) ----
+
+GLOSSARY_MARKER_RE = re.compile(r'\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}')
+DOMAINS_DIR = Path(__file__).resolve().parent.parent / 'static' / 'domains'
+
+
+def load_glossary(data, domains_dir=DOMAINS_DIR):
+    """The glossary the app builds for this file: each imported domain's
+    docs.json `glossary`, in import order, under the file's own `glossary`."""
+    merged = {}
+    for name in data.get('import', []) or []:
+        if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_\-]+', name):
+            continue
+        docs = domains_dir / name / 'docs.json'
+        try:
+            g = json.loads(docs.read_text()).get('glossary')
+        except (OSError, ValueError):
+            continue
+        if isinstance(g, dict):
+            merged.update(g)
+    own = data.get('glossary')
+    if isinstance(own, dict):
+        merged.update(own)
+    return merged
+
+
+def resolve_glossary_key(glossary, raw):
+    """Mirror of resolveGlossaryKey in src/glossary-core.ts."""
+    name = raw.strip()
+    if name in glossary:
+        return name
+    lower = name.lower()
+    for key, entry in glossary.items():
+        names = [key]
+        if isinstance(entry, dict):
+            names += [entry.get('term')] + list(entry.get('aliases') or [])
+        if any(isinstance(n, str) and n.lower() == lower for n in names):
+            return key
+    return None
+
+
+def _iter_strings(obj, path=''):
+    if isinstance(obj, str):
+        yield path, obj
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == 'glossary':
+                continue
+            yield from _iter_strings(v, f'{path}.{k}' if path else k)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            yield from _iter_strings(v, f'{path}[{i}]')
+
+
+def check_glossary(data, domains_dir=DOMAINS_DIR):
+    """Every explicit {{glossary:KEY}} marker must resolve to an entry; an
+    entry without a definition, or a key markdown would mangle, warns."""
+    errors, warnings = [], []
+    glossary = load_glossary(data, domains_dir)
+    checked = 0
+    for path, text in _iter_strings(data):
+        for m in GLOSSARY_MARKER_RE.finditer(text):
+            checked += 1
+            if resolve_glossary_key(glossary, m.group(1)) is None:
+                errors.append(f'{path}: {m.group(0)} has no glossary entry')
+    own = data.get('glossary')
+    if isinstance(own, dict):
+        for key, entry in own.items():
+            if '_' in key:
+                warnings.append(f'glossary.{key}: underscore in key — markdown may read it as emphasis')
+            if isinstance(entry, dict) and not entry.get('markdown'):
+                warnings.append(f'glossary.{key}: no markdown definition')
+    return errors, warnings, checked
+
+
 def validate_file(path, fix=False):
     """Run all content checks on a single file. Returns (errors, warnings, fixes, stats)."""
     try:
@@ -668,6 +745,12 @@ def validate_file(path, fix=False):
     warnings.extend(sg_warnings)
     stats['semantic_graphs'] = (sg_count, len(sg_warnings))
 
+    # Glossary
+    gl_errors, gl_warnings, gl_count = check_glossary(data)
+    errors.extend(gl_errors)
+    warnings.extend(gl_warnings)
+    stats['glossary'] = (gl_count, len(gl_errors), len(gl_warnings))
+
     # Apply fixes if requested
     if fix and fixes:
         text = path.read_text()
@@ -688,6 +771,7 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     te, tw = stats.get('tensors', (0, 0))
     oc, ow = stats.get('overlays', (0, 0))
     gc, gw = stats.get('semantic_graphs', (0, 0))
+    lc, le, lw = stats.get('glossary', (0, 0, 0))
 
     def status(errs, warns=0):
         if errs:
@@ -717,6 +801,8 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     print(f'  Overlays:    {status(0, ow)} ({oc} checked)')
     if gc > 0:
         print(f'  Graphs:      {status(0, gw)} ({gc} checked)')
+    if lc or le or lw:
+        print(f'  Glossary:    {status(le, lw)} ({lc} marker{"s" if lc != 1 else ""} checked)')
 
     if fixes:
         print(f'\n  ⚠️  Auto-fixable ({len(fixes)}):')

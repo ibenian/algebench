@@ -16,6 +16,8 @@ import type { Vec3 } from '/coords.js';
 import { clearLabels } from '/labels.js';
 import { scanSpecForUnsafeJs, showTrustDialog, updateJsTrustPill } from '/trust.js';
 import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from '/expr.js';
+import { loadGlossary } from '/glossary.js';
+import { setGlossaryThreshold } from '/glossary-core.js';
 import { clearWorldStarfield, clearWorldSkybox, configureWorldStarfield } from '/objects/skybox.js';
 import { updateFollowAngleLockButtonState } from '/follow-cam.js';
 import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
@@ -27,7 +29,7 @@ import { validateProofData } from '/proof-animation/validate-proof.js';
 import type { Material, Mesh, Scene } from 'three';
 import type { Label3D } from '/labels.js';
 import type { SceneSlider, SliderDef, AnimExprEntry } from '/sliders.js';
-import type { Element } from '/types/lesson.js';
+import type { Element, Glossary } from '/types/lesson.js';
 import type { Proof } from '/proof.js';
 
 /**
@@ -137,6 +139,7 @@ export interface SceneSpec {
     title?: string;
     description?: string;
     markdown?: string;
+    glossaryMatchThreshold?: number;
     range?: number[][];
     scale?: number[];
     camera?: StepCamera;
@@ -175,6 +178,7 @@ interface ProofFile {
 export interface LessonSpec extends SceneSpec {
     scenes?: SceneSpec[];
     import?: string[];
+    glossary?: Glossary;
     unsafe?: boolean;
     unsafeExplanation?: string;
 }
@@ -884,6 +888,8 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     sceneState.sceneData = { ...lessonData, ...sceneData };
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
+    // Before anything renders: the scene's threshold decides auto-matching.
+    setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
     updateTitle(spec);
     updateExplanationPanel(spec);
     loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
@@ -1048,6 +1054,7 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
         stopAutoPlay();
         sceneState._activeDomainFunctions = {};
         await importDomains(spec && spec.import);
+        await loadGlossary(spec && spec.import, spec && spec.glossary);
         updateDockVisibility();
         loadScene(spec);
         return;
@@ -1058,6 +1065,7 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
     sceneState.visitedSteps = new Set();
     stopAutoPlay();
     await importDomains(spec!.import);
+    await loadGlossary(spec!.import, spec!.glossary);
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);
@@ -1157,6 +1165,7 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             title: scene.title,
             description: scene.description,
             markdown: scene.markdown,
+            glossaryMatchThreshold: scene.glossaryMatchThreshold,
             range: scene.range,
             scale: scene.scale,
             camera: scene.camera,

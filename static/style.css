@@ -4826,3 +4826,54 @@ body.rotating-axis-z, body.rotating-axis-z * {
     font-size: 0.9em;
 }
 body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important; user-select: none; }
+
+/* Glossary terms and their tooltip (issue #665) */
+.glossary-term {
+    text-decoration: underline dotted color-mix(in srgb, var(--accent-color) 70%, transparent);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    cursor: help;
+    border-radius: 2px;
+}
+.glossary-term:hover,
+.glossary-term[aria-expanded="true"] {
+    background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+.glossary-term:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-color) 70%, transparent);
+    outline-offset: 1px;
+}
+/* Inside a control the term is plain text: the control keeps its click. */
+:is(button, a, label, summary) .glossary-term {
+    text-decoration: none;
+    cursor: inherit;
+    background: none;
+}
+.glossary-tip {
+    position: fixed;
+    z-index: 10000;
+    max-width: min(360px, calc(100vw - 16px));
+    max-height: 50vh;
+    overflow: auto;
+    padding: 8px 10px 10px;
+    background: var(--panel-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm), 0 6px 24px rgba(0, 0, 0, 0.35);
+    font-size: 13px;
+    line-height: 1.45;
+}
+.glossary-tip.hidden { display: none; }
+.glossary-tip-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 600;
+}
+.glossary-tip .glossary-ask-btn { opacity: 1; top: 0; }
+.glossary-tip-body { margin-top: 4px; }
+.glossary-tip-body > :first-child { margin-top: 0; }
+.glossary-tip-body > :last-child { margin-bottom: 0; }
+.glossary-tip-body p { margin: 4px 0; }

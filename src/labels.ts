@@ -5,6 +5,7 @@
 
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
+import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers } from '/glossary-core.js';
 
 export const AI_SPARKLE_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11"><path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
 
@@ -70,7 +71,28 @@ export function normLatex(s: string | null | undefined): string {
 
 // ----- KaTeX rendering -----
 
-export function renderKaTeX(text: string | null | undefined, displayMode?: boolean): string {
+/** Render options shared by renderKaTeX and renderMarkdown. */
+export interface RenderOptions {
+    /** Link terms of the active lesson glossary — explicit `{{glossary:KEY}}`
+     *  markers, plus automatic matches when the scene sets a threshold. On by
+     *  default so every visible text surface gets it; pass `false` where the
+     *  output is not interactive text (canvas rasters) or is itself a
+     *  glossary definition — markers then render as their plain text. */
+    glossary?: boolean;
+}
+
+export function renderKaTeX(text: string | null | undefined, displayMode?: boolean, opts?: RenderOptions): string {
+    if (!text) return '';
+    if (opts && opts.glossary === false) return _renderKaTeX(stripGlossaryMarkers(text), displayMode);
+    // Terms are matched on the source, then restored into the output.
+    const { text: src, terms } = extractActiveGlossaryTerms(text);
+    return restoreGlossaryTerms(_renderKaTeX(src, displayMode), terms);
+}
+
+// Nested calls (table cells, headings, bold/italic runs) go straight here: the
+// glossary pass already ran once over the whole source, so a term inside a
+// cell is a sentinel by now and must not be re-matched as a block of its own.
+function _renderKaTeX(text: string | null | undefined, displayMode?: boolean): string {
     if (!text) return '';
     // Pre-pass 1: extract markdown tables (before $ splitting, since cells contain LaTeX).
     // Each table is rendered independently (cells get renderKaTeX) and replaced with a sentinel.
@@ -103,10 +125,10 @@ export function renderKaTeX(text: string | null | undefined, displayMode?: boole
             const cellStyle = 'padding:3px 8px;border:1px solid rgba(255,255,255,0.15)';
             const thStyle = cellStyle + ';font-weight:bold;background:rgba(255,255,255,0.06)';
             let html = `<table style="${tableStyle}"><thead><tr>`;
-            html += headers.map((h: string) => `<th style="${thStyle}">${renderKaTeX(h, false)}</th>`).join('');
+            html += headers.map((h: string) => `<th style="${thStyle}">${_renderKaTeX(h, false)}</th>`).join('');
             html += '</tr></thead><tbody>';
             for (const row of rows) {
-                html += '<tr>' + row.map((c: string) => `<td style="${cellStyle}">${renderKaTeX(c, false)}</td>`).join('') + '</tr>';
+                html += '<tr>' + row.map((c: string) => `<td style="${cellStyle}">${_renderKaTeX(c, false)}</td>`).join('') + '</tr>';
             }
             html += '</tbody></table>';
             tables.push(html);
@@ -117,7 +139,7 @@ export function renderKaTeX(text: string | null | undefined, displayMode?: boole
     const headings: string[] = [];
     let prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_m: string, hashes: string, content: string) => {
         const sz = ['1.05em', '0.95em', '0.88em'][hashes.length - 1];
-        headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX(content, false)}</div>`);
+        headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${_renderKaTeX(content, false)}</div>`);
         return `\x01H${headings.length - 1}\x01`;
     });
     // Pre-pass 3: extract `code` spans so asterisks inside them
@@ -173,8 +195,8 @@ export function renderKaTeX(text: string | null | undefined, displayMode?: boole
                 }
                 if (t === '---') return '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0">';
                 const inline = line
-                    .replace(/\x01B(\d+)\x01/g, (_m: string, idx: string) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`)
-                    .replace(/\x01I(\d+)\x01/g, (_m: string, idx: string) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`)
+                    .replace(/\x01B(\d+)\x01/g, (_m: string, idx: string) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`)
+                    .replace(/\x01I(\d+)\x01/g, (_m: string, idx: string) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`)
                     .replace(/\x01C(\d+)\x01/g, (_m: string, idx: string) => `<code>${codeSpans[+idx]}</code>`)
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -195,8 +217,15 @@ export function renderKaTeX(text: string | null | undefined, displayMode?: boole
 
 // ----- Markdown rendering (LaTeX-safe two-pass) -----
 
-export function renderMarkdown(md: string | null | undefined): string {
+export function renderMarkdown(md: string | null | undefined, opts?: RenderOptions): string {
     if (!md) return '';
+    if (opts && opts.glossary === false) return _renderMarkdown(stripGlossaryMarkers(md));
+    // Terms are matched on the source, then restored into the output.
+    const { text, terms } = extractActiveGlossaryTerms(md);
+    return restoreGlossaryTerms(_renderMarkdown(text), terms);
+}
+
+function _renderMarkdown(md: string): string {
     const mathBlocks: { tex: string; display: boolean }[] = [];
 
     let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m: string, tex: string) => {
