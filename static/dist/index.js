@@ -1194,15 +1194,19 @@ var PROTECTED_RE = new RegExp([
 ].join("|"), "g");
 var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
 var MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
-var MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-(\d+)([^"]*)"/g;
+var MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-([a-z0-9]+)-(\d+)([^"]*)"/g;
 function isMathRegion(region) {
 	return region.startsWith("$");
+}
+/** A fresh, empty term list with its own random sentinel tag. */
+function newGlossaryTerms(tag = "g" + Math.random().toString(36).slice(2, 10)) {
+	return Object.assign([], { tag });
 }
 /** Replace glossary terms in markdown source with `%%GLOSSARY_n%%` sentinels
 *  (prose) or `\htmlClass` wrappers (names inside math). Automatic matches
 *  link a term once per paragraph; explicit markers are prose-only. */
 function extractGlossaryTerms(src, glossary, matcher) {
-	const terms = [];
+	const terms = newGlossaryTerms();
 	if (!src || !matcher && src.indexOf("{{glossary:") === -1) return {
 		text: src,
 		terms
@@ -1211,7 +1215,7 @@ function extractGlossaryTerms(src, glossary, matcher) {
 	const subRun = (plain) => segmentGlossaryText(plain, glossary, matcher, used).map((s) => {
 		if (!s.key) return s.text;
 		terms.push(s);
-		return `%%GLOSSARY_${terms.length - 1}%%`;
+		return `%%GLOSSARY_${terms.tag}_${terms.length - 1}%%`;
 	}).join("");
 	const sub = (plain) => plain.split(PARAGRAPH_BREAK_RE).map((piece, i) => {
 		if (i % 2 === 0) return subRun(piece);
@@ -1227,7 +1231,7 @@ function extractGlossaryTerms(src, glossary, matcher) {
 			text,
 			key: cand.key
 		});
-		return `\\htmlClass{glossary-term glossary-k-${terms.length - 1}}{${whole}}`;
+		return `\\htmlClass{glossary-term glossary-k-${terms.tag}-${terms.length - 1}}{${whole}}`;
 	});
 	let out = "";
 	let last = 0;
@@ -1250,15 +1254,17 @@ function escapeHtmlText(s) {
 function glossaryTermHtml(term) {
 	return `<span class="glossary-term" data-glossary-key="${escapeHtmlText(term.key || "")}" tabindex="0" role="button" aria-haspopup="dialog">${escapeHtmlText(term.text)}</span>`;
 }
-/** Swap the sentinels in rendered HTML for term spans, and give the spans
-*  KaTeX made for names inside math their term attributes. */
+/** Swap this pass's sentinels in rendered HTML for term spans, and give the
+*  spans KaTeX made for names inside math their term attributes. Only
+*  sentinels carrying `terms.tag` are touched. */
 function restoreGlossaryTerms(html, terms) {
 	if (!terms.length) return html;
-	return html.replace(/%%GLOSSARY_(\d+)%%/g, (m, idx) => {
+	const sentinel = new RegExp(`%%GLOSSARY_${terms.tag}_(\\d+)%%`, "g");
+	return html.replace(sentinel, (m, idx) => {
 		const term = terms[+idx];
 		return term ? glossaryTermHtml(term) : m;
-	}).replace(MATH_TERM_CLASS_RE, (m, before, idx, after) => {
-		const term = terms[+idx];
+	}).replace(MATH_TERM_CLASS_RE, (m, before, tag, idx, after) => {
+		const term = tag === terms.tag ? terms[+idx] : void 0;
 		if (!term) return m;
 		return `class="${before}glossary-term${after}" data-glossary-key="${escapeHtmlText(term.key || "")}" tabindex="0" role="button" aria-haspopup="dialog"`;
 	});
@@ -1266,7 +1272,7 @@ function restoreGlossaryTerms(html, terms) {
 /** Remove the math wrappers from TeX — for the TeX annotation KaTeX keeps,
 *  which is read back as source by speech and Ask AI. */
 function stripGlossaryMath(tex) {
-	return tex.replace(/\\htmlClass\{glossary-term glossary-k-\d+\}\{(\\[a-z]+\{[^{}]+\})\}/g, "$1");
+	return tex.replace(/\\htmlClass\{glossary-term glossary-k-[a-z0-9]+-\d+\}\{(\\[a-z]+\{[^{}]+\})\}/g, "$1");
 }
 var active = {
 	glossary: {},

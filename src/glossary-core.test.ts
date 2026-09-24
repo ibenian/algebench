@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 const {
     buildGlossaryMatcher, extractGlossaryTerms, restoreGlossaryTerms, resolveGlossaryKey,
-    stripGlossaryMarkers, stripGlossaryMath, sanitizeGlossary, setActiveGlossary, setGlossaryThreshold, extractActiveGlossaryTerms,
+    stripGlossaryMarkers, stripGlossaryMath, sanitizeGlossary, newGlossaryTerms, setActiveGlossary, setGlossaryThreshold, extractActiveGlossaryTerms,
 } = await import('/glossary-core.js');
 type Glossary = import('/glossary-core.js').Glossary;
 
@@ -20,7 +20,7 @@ const G: Glossary = {
 function mark(src: string, threshold: number | null, g: Glossary = G): string {
     const matcher = threshold == null ? null : buildGlossaryMatcher(g, threshold);
     const { text, terms } = extractGlossaryTerms(src, g, matcher);
-    return text.replace(/%%GLOSSARY_(\d+)%%/g, (_m, i: string) => `[${terms[+i]!.text}|${terms[+i]!.key}]`);
+    return text.replace(new RegExp(`%%GLOSSARY_${terms.tag}_(\\d+)%%`, 'g'), (_m, i: string) => `[${terms[+i]!.text}|${terms[+i]!.key}]`);
 }
 
 test('explicit markers link by key, term or alias, with optional shown text', () => {
@@ -67,8 +67,8 @@ test('code spans, HTML attributes and bare math symbols are never touched', () =
 
 test('a whole \\mathrm / \\operatorname / \\text name inside math is wrapped', () => {
     const { text, terms } = extractGlossaryTerms('$1.4826\\,\\mathrm{MAD}$', G, buildGlossaryMatcher(G, 3));
-    assert.equal(text, '$1.4826\\,\\htmlClass{glossary-term glossary-k-0}{\\mathrm{MAD}}$');
-    assert.deepEqual(terms, [{ text: 'MAD', key: 'MAD' }]);
+    assert.equal(text, `$1.4826\\,\\htmlClass{glossary-term glossary-k-${terms.tag}-0}{\\mathrm{MAD}}$`);
+    assert.deepEqual([...terms], [{ text: 'MAD', key: 'MAD' }]);
     // once per paragraph, shared with the prose
     assert.equal(mark('MAD is $\\operatorname{MAD}$', 3), '[MAD|MAD] is $\\operatorname{MAD}$');
     // a partial name, or a name below the threshold, is left alone
@@ -81,9 +81,10 @@ test('explicit markers are never linked inside math', () => {
 });
 
 test('restore turns a math wrapper class into term attributes; strip undoes the wrap', () => {
-    const html = restoreGlossaryTerms('<span class="enclosing glossary-term glossary-k-0">M</span>', [{ text: 'MAD', key: 'MAD' }]);
+    const terms = Object.assign(newGlossaryTerms('gt1'), [{ text: 'MAD', key: 'MAD' }]);
+    const html = restoreGlossaryTerms('<span class="enclosing glossary-term glossary-k-gt1-0">M</span>', terms);
     assert.equal(html, '<span class="enclosing glossary-term" data-glossary-key="MAD" tabindex="0" role="button" aria-haspopup="dialog">M</span>');
-    assert.equal(stripGlossaryMath('1.4\\,\\htmlClass{glossary-term glossary-k-3}{\\mathrm{MAD}}'), '1.4\\,\\mathrm{MAD}');
+    assert.equal(stripGlossaryMath('1.4\\,\\htmlClass{glossary-term glossary-k-gt1-3}{\\mathrm{MAD}}'), '1.4\\,\\mathrm{MAD}');
 });
 
 test('markers inside protected regions stay verbatim', () => {
@@ -95,7 +96,7 @@ test('links (text and URL) are protected', () => {
 });
 
 test('restore escapes term text and key into the span', () => {
-    const html = restoreGlossaryTerms('<p>%%GLOSSARY_0%%</p>', [{ text: 'a<b', key: 'k"1' }]);
+    const html = restoreGlossaryTerms('<p>%%GLOSSARY_gt2_0%%</p>', Object.assign(newGlossaryTerms('gt2'), [{ text: 'a<b', key: 'k"1' }]));
     assert.match(html, /data-glossary-key="k&quot;1"/);
     assert.match(html, />a&lt;b<\/span>/);
     assert.match(html, /class="glossary-term"/);
@@ -142,4 +143,14 @@ test('malformed entries are dropped, not fatal (review #4089506131)', () => {
 test('links and HTML tags spanning lines stay protected (review #4089506215)', () => {
     assert.equal(mark('<abbr\n title="MAD">x</abbr> MAD', 3), '<abbr\n title="MAD">x</abbr> [MAD|MAD]');
     assert.equal(mark('[the\nMAD](https://x/MAD) MAD', 3), '[the\nMAD](https://x/MAD) [MAD|MAD]');
+});
+
+test('a literal sentinel or class in the source is never restored as a term (review #4089649927)', () => {
+    const src = 'MAD and the text %%GLOSSARY_0%% and <b class="glossary-term glossary-k-0">x</b>';
+    const { text, terms } = extractGlossaryTerms(src, G, buildGlossaryMatcher(G, 3));
+    assert.equal(terms.length, 1);
+    const html = restoreGlossaryTerms(text, terms);
+    assert.match(html, /%%GLOSSARY_0%%/);
+    assert.match(html, /class="glossary-term glossary-k-0"/);
+    assert.equal((html.match(/data-glossary-key=/g) || []).length, 1);
 });
