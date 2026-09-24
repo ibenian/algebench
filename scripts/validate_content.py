@@ -620,6 +620,24 @@ GLOSSARY_MARKER_RE = re.compile(r'\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}')
 DOMAINS_DIR = Path(__file__).resolve().parent.parent / 'static' / 'domains'
 
 
+def sanitize_glossary(raw):
+    """Mirror of sanitizeGlossary in src/glossary-core.ts: keep only object
+    entries, string term/markdown/prompt, and string-only aliases. Glossaries
+    are raw lesson and docs.json content, so a malformed entry must be
+    reported, never crash the validator."""
+    out = {}
+    if not isinstance(raw, dict):
+        return out
+    for key, entry in raw.items():
+        if not isinstance(key, str) or not key.strip() or not isinstance(entry, dict):
+            continue
+        clean = {k: entry[k] for k in ('term', 'markdown', 'prompt') if isinstance(entry.get(k), str)}
+        if isinstance(entry.get('aliases'), list):
+            clean['aliases'] = [a for a in entry['aliases'] if isinstance(a, str)]
+        out[key] = clean
+    return out
+
+
 def load_glossary(data, domains_dir=DOMAINS_DIR):
     """The glossary the app builds for this file: each imported domain's
     docs.json `glossary`, in import order, under the file's own `glossary`."""
@@ -629,14 +647,12 @@ def load_glossary(data, domains_dir=DOMAINS_DIR):
             continue
         docs = domains_dir / name / 'docs.json'
         try:
-            g = json.loads(docs.read_text()).get('glossary')
+            docs_data = json.loads(docs.read_text())
         except (OSError, ValueError):
             continue
-        if isinstance(g, dict):
-            merged.update(g)
-    own = data.get('glossary')
-    if isinstance(own, dict):
-        merged.update(own)
+        if isinstance(docs_data, dict):
+            merged.update(sanitize_glossary(docs_data.get('glossary')))
+    merged.update(sanitize_glossary(data.get('glossary')))
     return merged
 
 
@@ -649,7 +665,8 @@ def resolve_glossary_key(glossary, raw):
     for key, entry in glossary.items():
         names = [key]
         if isinstance(entry, dict):
-            names += [entry.get('term')] + list(entry.get('aliases') or [])
+            aliases = entry.get('aliases')
+            names += [entry.get('term')] + (aliases if isinstance(aliases, list) else [])
         if any(isinstance(n, str) and n.lower() == lower for n in names):
             return key
     return None
@@ -681,9 +698,15 @@ def check_glossary(data, domains_dir=DOMAINS_DIR):
     own = data.get('glossary')
     if isinstance(own, dict):
         for key, entry in own.items():
+            if not isinstance(entry, dict):
+                warnings.append(f'glossary.{key}: not an object — the entry is ignored')
+                continue
             if '_' in key:
                 warnings.append(f'glossary.{key}: underscore in key — markdown may read it as emphasis')
-            if isinstance(entry, dict) and not entry.get('markdown'):
+            if 'aliases' in entry and not (isinstance(entry['aliases'], list)
+                                           and all(isinstance(a, str) for a in entry['aliases'])):
+                warnings.append(f'glossary.{key}.aliases: must be a list of strings — non-strings are ignored')
+            if not entry.get('markdown'):
                 warnings.append(f'glossary.{key}: no markdown definition')
     return errors, warnings, checked
 

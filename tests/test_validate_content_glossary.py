@@ -51,3 +51,17 @@ def test_markers_inside_glossary_definitions_are_checked(tmp_path):
     errors, _, checked = check_glossary(data, tmp_path)
     assert checked == 2
     assert errors == ['glossary.RBF.markdown: {{glossary:missing}} has no glossary entry']
+
+
+def test_malformed_entries_are_reported_not_fatal(tmp_path):
+    root = _domains(tmp_path, 'dom', {'X': {'aliases': 1, 'markdown': 'x'}, 'Y': None})
+    data = {'title': 't', 'import': ['dom'],
+            'glossary': {'A': {'aliases': {'b': 1}, 'markdown': 'a'}, 'B': 'not an object'},
+            'scenes': [{'title': 's', 'markdown': '{{glossary:A}} {{glossary:X}} {{glossary:B}} {{glossary:Y}}'}]}
+    errors, warnings, checked = check_glossary(data, root)
+    assert checked == 4
+    # A and X resolve; B and Y are dropped exactly as the app's sanitizer drops them.
+    assert errors == ['scenes[0].markdown: {{glossary:B}} has no glossary entry',
+                      'scenes[0].markdown: {{glossary:Y}} has no glossary entry']
+    assert 'glossary.B: not an object — the entry is ignored' in warnings
+    assert any(w.startswith('glossary.A.aliases: must be a list of strings') for w in warnings)
