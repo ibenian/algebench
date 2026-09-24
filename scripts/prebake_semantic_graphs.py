@@ -256,7 +256,12 @@ def iter_proof_steps(spec):
     # loaded through the non-lesson path. Accepting `[]` as a lesson here walked
     # nothing and silently missed that file's step proofs.
     if not isinstance(scenes_list, list) or not scenes_list:
-        scenes_list = [spec] if spec.get("elements") is not None else []
+        # No `elements` precondition: the renderer hands anything
+        # `isLessonFormat` rejects straight to `loadScene(spec)`, and a scene
+        # that builds everything in its steps has no base elements at all. The
+        # schema requires only `title`. Gating on `elements` silently dropped
+        # every step proof in a steps-only file.
+        scenes_list = [spec]
     for si, sc in enumerate(scenes_list):
         if not isinstance(sc, dict):
             continue

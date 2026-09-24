@@ -12408,8 +12408,8 @@ function collectAllProofs(lessonSpec) {
 		proof: p
 	});
 	const hasScenes = Array.isArray(lessonSpec.scenes) && lessonSpec.scenes.length > 0;
-	const scenes = hasScenes ? lessonSpec.scenes : lessonSpec.elements ? [lessonSpec] : [];
-	const bareFallback = !hasScenes && !!lessonSpec.elements;
+	const scenes = hasScenes ? lessonSpec.scenes : [lessonSpec];
+	const bareFallback = !hasScenes;
 	scenes.forEach((scene, si) => {
 		const sceneIndex = bareFallback ? -1 : si;
 		if (!bareFallback) for (const p of normalizeProofs(scene.proof)) all.push({

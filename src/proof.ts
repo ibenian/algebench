@@ -245,14 +245,20 @@ export function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined)
     // asserts `!isLessonFormat({ scenes: [] })`), so `scenes: []` is loaded as a
     // bare file. Testing only for a missing property would leave that shape with
     // a truthy empty array here: no stand-in scene, no step proofs, silently.
+    // Mirror scene-loader exactly: anything `isLessonFormat` rejects is handed
+    // to `loadScene(spec)`, so the spec IS the scene — no `elements`
+    // precondition. A scene that builds everything in its steps legitimately has
+    // no base elements ("has no base elements but is not empty", scene-loader),
+    // and the schema requires only `title`; gating on `elements` dropped every
+    // step proof in such a file.
     const hasScenes = Array.isArray(lessonSpec.scenes) && lessonSpec.scenes.length > 0;
     const scenes = (hasScenes ? lessonSpec.scenes
-        : (lessonSpec.elements ? [lessonSpec] : [])) as ProofLessonSpec['scenes'] & object[];
+        : [lessonSpec]) as ProofLessonSpec['scenes'] & object[];
     // In that fallback the "scene" IS the lesson, so its `proof` is the very
     // object already pushed as a file-level entry above. Emitting it again
     // listed one proof twice in the Math tab, and made this disagree with
     // `iter_proof_steps`, which reports it once.
-    const bareFallback = !hasScenes && !!lessonSpec.elements;
+    const bareFallback = !hasScenes;
     scenes.forEach((scene, si) => {
         // A bare scene never travels through the lesson path: `isLessonFormat`
         // requires a non-empty `scenes`, so scene-loader takes its

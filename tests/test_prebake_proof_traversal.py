@@ -193,3 +193,24 @@ def test_empty_scenes_array_is_a_bare_file_not_a_lesson():
     # a real lesson is untouched
     lesson = {"scenes": [{"id": "s", "steps": [{"proof": proof}]}]}
     assert len(list(iter_proof_steps(lesson))) == 1
+
+
+def test_steps_only_bare_file_still_yields_its_step_proofs():
+    """No `elements` is not a reason to drop a step proof.
+
+    scene-loader hands anything `isLessonFormat` rejects to `loadScene(spec)`,
+    and a scene that builds everything in its steps "has no base elements but
+    is not empty". The schema requires only `title`. Gating the bare-scene
+    stand-in on `elements` silently dropped every step proof in such a file.
+    """
+    proof = {"id": "sp", "steps": [{"label": "L", "math": "y = 2"}]}
+    steps_only = {"title": "b", "steps": [{"proof": proof}]}
+    assert len(list(iter_proof_steps(steps_only))) == 1
+
+    # still once, not twice, when a root proof is present as well
+    with_root = {"title": "b", "proof": proof, "steps": [{"proof": proof}]}
+    assert len(list(iter_proof_steps(with_root))) == 2
+
+    # a real lesson is untouched
+    lesson = {"scenes": [{"id": "s", "steps": [{"proof": proof}]}]}
+    assert len(list(iter_proof_steps(lesson))) == 1

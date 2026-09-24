@@ -170,3 +170,25 @@ test('an empty scenes array is treated as a bare file, not as a lesson', async (
         collectAllProofs(noScenes).map((e: { level: string }) => e.level),
     );
 });
+
+// A scene that builds everything in its steps has no base `elements` at all --
+// scene-loader says so in as many words ("has no base elements but is not
+// empty") and the schema requires only `title`. Gating the bare-scene stand-in
+// on `elements` dropped every step proof in such a file, so the stand-in now
+// mirrors the loader: whatever `isLessonFormat` rejects IS the scene.
+test('a steps-only bare file still yields its step proofs', async () => {
+    const { collectAllProofs, BARE_SCENE_INDEX } = await import('/proof.js');
+    const sp = { id: 'sp', steps: [{ label: 'L', math: 'y = 2' }] };
+    const stepsOnly = { title: 'b', steps: [{ proof: sp }] } as never;
+
+    const step = collectAllProofs(stepsOnly).find((e: { level: string }) => e.level === 'step');
+    assert.ok(step, 'no `elements` is not a reason to drop a step proof');
+    assert.equal(step.sceneIndex, BARE_SCENE_INDEX);
+
+    // and it is still counted once, not twice, when a root proof is present too
+    const withRoot = { title: 'b', proof: sp, steps: [{ proof: sp }] } as never;
+    assert.deepEqual(
+        collectAllProofs(withRoot).map((e: { level: string }) => e.level),
+        ['file', 'step'],
+    );
+});
