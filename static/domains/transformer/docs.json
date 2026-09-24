@@ -556,7 +556,7 @@
       "prompt": "Explain the role of the query vector in attention."
     },
     "key vector": {
-      "term": "key",
+      "term": "key vector",
       "aliases": [
         "key vectors"
       ],
@@ -564,7 +564,7 @@
       "prompt": "Explain the role of the key vector in attention and how it differs from the value."
     },
     "value vector": {
-      "term": "value",
+      "term": "value vector",
       "aliases": [
         "value vectors"
       ],

@@ -281,12 +281,10 @@
     "LOX": {
       "term": "liquid oxygen",
       "aliases": [
-        "liquid oxygen",
-        "LH2",
-        "liquid hydrogen"
+        "liquid oxygen"
       ],
-      "markdown": "The oxidizer for SLS's hydrogen engines, stored at about $90$ K; paired with liquid hydrogen (LH2) at about $20$ K.",
-      "prompt": "Explain why hydrogen and oxygen engines need cryogenic propellants."
+      "markdown": "The oxidizer for SLS's hydrogen–oxygen engines, stored at about $90$ K.",
+      "prompt": "Explain liquid oxygen as a rocket oxidizer and why it must be kept cryogenic."
     },
     "entry interface": {
       "term": "entry interface",
@@ -297,6 +295,14 @@
       "term": "heat shield",
       "markdown": "Orion's ablative shield, about $5$ m across, protects the crew module during a lunar-return entry at about $11$ km/s.",
       "prompt": "Explain how Orion's heat shield handles a lunar-return entry."
+    },
+    "LH2": {
+      "term": "liquid hydrogen",
+      "aliases": [
+        "liquid hydrogen"
+      ],
+      "markdown": "The fuel for SLS's core-stage RS-25 engines and the ICPS's RL10, stored at about $20$ K. Hydrogen gives the highest specific impulse of common chemical propellants, but its low density needs very large tanks.",
+      "prompt": "Explain liquid hydrogen as a rocket fuel: why it gives high specific impulse and what its low density costs."
     }
   }
 }
