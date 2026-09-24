@@ -207,12 +207,33 @@ function _termOf(target: EventTarget | null): HTMLElement | null {
     return term && !(term.parentElement && term.parentElement.closest(_CONTROL_SEL)) ? term : null;
 }
 
+// Terms are matched on source text, so the renderer cannot know that a
+// caller will put its output inside a control (a camera-view button filled
+// by renderKaTeX, an authored <a> or <button>). There the term stays plain
+// text, so strip what makes it look interactive — above all `tabindex`, or it
+// is a keyboard stop that does nothing.
+function _demoteInControl(term: Element): void {
+    if (!term.parentElement || !term.parentElement.closest(_CONTROL_SEL)) return;
+    for (const a of ['tabindex', 'role', 'aria-haspopup', 'aria-expanded']) term.removeAttribute(a);
+}
+
+function _demoteWithin(root: Element): void {
+    if (root.matches('.glossary-term[tabindex]')) _demoteInControl(root);
+    root.querySelectorAll('.glossary-term[tabindex]').forEach(_demoteInControl);
+}
+
 let _installed = false;
 
 /** Wire the delegated listeners. Idempotent — safe for any page to call. */
 export function installGlossaryTooltip(): void {
     if (_installed) return;
     _installed = true;
+    _demoteWithin(document.body);
+    new MutationObserver((records) => {
+        for (const r of records) {
+            for (const n of r.addedNodes) if (n.nodeType === 1) _demoteWithin(n as Element);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
     document.addEventListener('mouseover', (e) => {
         const term = _termOf(e.target);
         // While pinned, only a term inside an open tip may open (stacked).

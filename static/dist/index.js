@@ -11815,11 +11815,31 @@ function _termOf(target) {
 	const term = target instanceof Element ? target.closest(".glossary-term") : null;
 	return term && !(term.parentElement && term.parentElement.closest(_CONTROL_SEL)) ? term : null;
 }
+function _demoteInControl(term) {
+	if (!term.parentElement || !term.parentElement.closest(_CONTROL_SEL)) return;
+	for (const a of [
+		"tabindex",
+		"role",
+		"aria-haspopup",
+		"aria-expanded"
+	]) term.removeAttribute(a);
+}
+function _demoteWithin(root) {
+	if (root.matches(".glossary-term[tabindex]")) _demoteInControl(root);
+	root.querySelectorAll(".glossary-term[tabindex]").forEach(_demoteInControl);
+}
 var _installed = false;
 /** Wire the delegated listeners. Idempotent — safe for any page to call. */
 function installGlossaryTooltip() {
 	if (_installed) return;
 	_installed = true;
+	_demoteWithin(document.body);
+	new MutationObserver((records) => {
+		for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) _demoteWithin(n);
+	}).observe(document.body, {
+		childList: true,
+		subtree: true
+	});
 	document.addEventListener("mouseover", (e) => {
 		const term = _termOf(e.target);
 		if (term && (!_pinned || _levelOf(term) >= 0 || _tips[0].anchor === term)) _show(term);
