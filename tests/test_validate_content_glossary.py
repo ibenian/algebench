@@ -76,3 +76,14 @@ def test_imported_domain_definitions_are_checked(tmp_path):
     errors, _, checked = check_glossary(data, root)
     assert checked == 1
     assert errors == ['domains/dom/docs.json:glossary.X.markdown: {{glossary:missing}} has no glossary entry']
+
+
+def test_domain_entries_get_the_same_warnings(tmp_path):
+    root = _domains(tmp_path, 'dom', {'base_rate': {'markdown': 'x'}, 'nu': {}, 'Z': {'markdown': 'z'}, 'W': {}})
+    # W is replaced by the file's own entry, so the domain's empty W is never shown.
+    data = {'title': 't', 'import': ['dom'], 'glossary': {'W': {'markdown': 'w'}}, 'scenes': [{'title': 's'}]}
+    _, warnings, _ = check_glossary(data, root)
+    assert warnings == [
+        'domains/dom/docs.json:glossary.base_rate: underscore in key — markdown may read it as emphasis',
+        'domains/dom/docs.json:glossary.nu: no markdown definition',
+    ]

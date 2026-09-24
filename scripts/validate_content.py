@@ -727,6 +727,14 @@ def check_glossary(data, domains_dir=DOMAINS_DIR):
                 warnings.append(f'glossary.{key}.aliases: must be a list of strings — non-strings are ignored')
             if not entry.get('markdown'):
                 warnings.append(f'glossary.{key}: no markdown definition')
+    # The same content warnings for domain entries this file shows unchanged.
+    # They are already sanitised, so only the content checks apply.
+    for key, (name, entry) in shown.items():
+        where = f'domains/{name}/docs.json:glossary.{key}'
+        if '_' in key:
+            warnings.append(f'{where}: underscore in key — markdown may read it as emphasis')
+        if not entry.get('markdown'):
+            warnings.append(f'{where}: no markdown definition')
     return errors, warnings, checked
 
 
