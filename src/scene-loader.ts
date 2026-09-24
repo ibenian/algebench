@@ -1071,6 +1071,9 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
     stopAutoPlay();
     await importDomains(spec!.import);
     await loadGlossary(spec!.import, spec!.glossary);
+    // The tree renders every scene title now, before navigateTo loads scene 0;
+    // without this it would match against the previous lesson's threshold.
+    setGlossaryThreshold(spec!.scenes && spec!.scenes[0] && spec!.scenes[0].glossaryMatchThreshold);
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);

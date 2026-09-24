@@ -143,3 +143,12 @@ test('an empty message is treated the same as null', () => {
     assert.deepEqual(sent, []);
     assert.equal(panel.classList.contains('hidden'), true);
 });
+
+test('glossary markers are stripped from every Ask AI message', () => {
+    reset();
+    ask('c', 't', () => 'Explain the {{glossary:MAD}} step and {{glossary:RBF|the kernel}}').click();
+    assert.deepEqual(sent, ['Explain the MAD step and the kernel']);
+    reset();
+    ask('c', 't', () => 'Explain {{glossary:MAD}}').click({ metaKey: true });
+    assert.equal(chatInput.value, 'Explain MAD');
+});

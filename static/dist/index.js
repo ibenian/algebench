@@ -1183,10 +1183,10 @@ function segmentGlossaryText(text, glossary, matcher, used) {
 	return out;
 }
 var PROTECTED_RE = new RegExp([
-	"```[\\s\\S]*?```",
-	"~~~[\\s\\S]*?~~~",
+	"^[ ]{0,3}(`{3,}|~{3,})[^\\n]*(?:\\n[\\s\\S]*?(?:\\n[ ]{0,3}\\1[ \\t]*$|(?![\\s\\S]))|(?![\\s\\S]))",
+	"(?<![^\\n]\\n)^(?: {4}|\\t)[^\\n]*(?:\\n(?:(?: {4}|\\t)[^\\n]*|[ \\t]*(?=\\n)))*",
 	"\\$\\$[\\s\\S]+?\\$\\$",
-	"`+[^`]*?`+",
+	"(`+)(?!`)[\\s\\S]*?(?<!`)\\2(?!`)",
 	"\\$[^$\\n]+\\$",
 	"%%[A-Z_]+\\d+%%",
 	"!?\\[[^\\]]*\\]\\((?:[^()]|\\([^()]*\\))*\\)",
@@ -1916,7 +1916,8 @@ function makeAiAskButton(className, title, getMessage) {
 	btn.innerHTML = AI_SPARKLE_SVG;
 	btn.addEventListener("click", (e) => {
 		e.stopPropagation();
-		const message = getMessage();
+		const raw = getMessage();
+		const message = raw ? stripGlossaryMarkers(raw) : raw;
 		if (!message) return;
 		openChatPanel();
 		if (e.metaKey || e.ctrlKey) {
@@ -11827,7 +11828,7 @@ function hideGlossaryTip() {
 	_pinned = false;
 	_closeFrom(0);
 }
-var _CONTROL_SEL = "button, a, input, select, textarea, label, summary";
+var _CONTROL_SEL = "button, a, input, select, textarea, label, summary, #labels-container";
 function _termOf(target) {
 	const term = target instanceof Element ? target.closest(".glossary-term") : null;
 	return term && !(term.parentElement && term.parentElement.closest(_CONTROL_SEL)) ? term : null;
@@ -14609,6 +14610,7 @@ async function loadLesson(spec) {
 	stopAutoPlay();
 	await importDomains(spec.import);
 	await loadGlossary(spec.import, spec.glossary);
+	setGlossaryThreshold(spec.scenes && spec.scenes[0] && spec.scenes[0].glossaryMatchThreshold);
 	buildSceneTree$1(spec);
 	updateDockVisibility$1();
 	navigateTo$1(0, -1);

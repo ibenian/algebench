@@ -4851,7 +4851,7 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
     z-index: 1;
 }
 /* Inside a control the term is plain text: the control keeps its click. */
-:is(button, a, label, summary) .glossary-term {
+:is(button, a, label, summary, #labels-container) .glossary-term {
     text-decoration: none;
     cursor: inherit;
     background: none;

@@ -721,7 +721,10 @@ export function makeAiAskButton(
     btn.innerHTML = AI_SPARKLE_SVG;
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const message = getMessage();
+        // Messages are built from source text (labels, descriptions), so
+        // glossary markers are stripped here once for every Ask AI button.
+        const raw = getMessage();
+        const message = raw ? stripGlossaryMarkers(raw) : raw;
         if (!message) return;
         openChatPanel();
         if (e.metaKey || e.ctrlKey) {

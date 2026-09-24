@@ -183,3 +183,17 @@ test('a "__proto__" key is an ordinary entry, not a prototype swap', () => {
     assert.deepEqual(Object.keys(g).sort(), ['MAD', '__proto__']);
     assert.equal(resolveGlossaryKey(g, 'toString'), null);
 });
+
+test('code blocks of every form stay protected (review 5300065110)', () => {
+    // longer fences, info strings, and a fence closed only by a same-length run
+    assert.equal(mark('````\nMAD\n```\nMAD\n````\nMAD', 3), '````\nMAD\n```\nMAD\n````\n[MAD|MAD]');
+    assert.equal(mark('```js\nx = MAD\n```\nMAD', 3), '```js\nx = MAD\n```\n[MAD|MAD]');
+    // an unclosed fence runs to the end of the text, as markdown renders it
+    assert.equal(mark('MAD\n```\nunclosed MAD fence', 3), '[MAD|MAD]\n```\nunclosed MAD fence');
+    // indented code block after a blank line
+    assert.equal(mark('Intro\n\n    MAD in code\n\nMAD', 3), 'Intro\n\n    MAD in code\n\n[MAD|MAD]');
+    // a code span with a backtick inside, delimited by a double run
+    assert.equal(mark('a `` x`MAD `` b MAD', 3), 'a `` x`MAD `` b [MAD|MAD]');
+    // an indented line that continues a paragraph is not code
+    assert.equal(mark('MAD wraps\n    onto MAD', 3), '[MAD|MAD] wraps\n    onto MAD');
+});

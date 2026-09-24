@@ -178,10 +178,16 @@ export function segmentGlossaryText(
 // tags may span lines (`<abbr\n title="MAD">`), so they run to their closing
 // delimiter across newlines.
 const PROTECTED_RE = new RegExp([
-    '```[\\s\\S]*?```',
-    '~~~[\\s\\S]*?~~~',
+    // fenced code: a run of 3+ backticks or tildes, up to a closing fence of
+    // the same run, or to the end of the text when unclosed (markdown then
+    // renders everything after it as code). Group 1 is the opening run.
+    '^[ ]{0,3}(`{3,}|~{3,})[^\\n]*(?:\\n[\\s\\S]*?(?:\\n[ ]{0,3}\\1[ \\t]*$|(?![\\s\\S]))|(?![\\s\\S]))',
+    // indented code block: 4+ spaces or a tab, starting after a blank line
+    '(?<![^\\n]\\n)^(?: {4}|\\t)[^\\n]*(?:\\n(?:(?: {4}|\\t)[^\\n]*|[ \\t]*(?=\\n)))*',
     '\\$\\$[\\s\\S]+?\\$\\$',
-    '`+[^`]*?`+',
+    // inline code: a backtick run closed by a run of the same length, so
+    // `` a`b `` is one span. Group 2 is the opening run.
+    '(`+)(?!`)[\\s\\S]*?(?<!`)\\2(?!`)',
     '\\$[^$\\n]+\\$',
     '%%[A-Z_]+\\d+%%',
     // inline link or image; the URL may hold one level of balanced parens

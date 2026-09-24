@@ -218,7 +218,9 @@ export function hideGlossaryTip(): void {
 
 // A term rendered inside a control (a camera-view button, a link) stays plain
 // text: the control keeps its own click, and nested interactives are invalid.
-const _CONTROL_SEL = 'button, a, input, select, textarea, label, summary';
+// The 3D label layer joins them: it takes no pointer events (the scene under
+// it must stay draggable), so a term there could never be hovered.
+const _CONTROL_SEL = 'button, a, input, select, textarea, label, summary, #labels-container';
 
 function _termOf(target: EventTarget | null): HTMLElement | null {
     const term = target instanceof Element ? target.closest<HTMLElement>('.glossary-term') : null;
