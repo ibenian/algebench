@@ -123,7 +123,9 @@ test('automatic matching restarts every paragraph, list item, table row and head
     assert.equal(mark('MAD one. MAD two.\n\nMAD three.', 3), '[MAD|MAD] one. MAD two.\n\n[MAD|MAD] three.');
     assert.equal(mark('- MAD a\n- MAD b', 3), '- [MAD|MAD] a\n- [MAD|MAD] b');
     assert.equal(mark('| MAD | MAD |\n| MAD | x |', 3), '| [MAD|MAD] | MAD |\n| [MAD|MAD] | x |');
-    assert.equal(mark('## MAD\nMAD here', 3), '## [MAD|MAD]\nMAD here');
+    // a heading is a block of its own: the paragraph under it links again (review #4090002730)
+    assert.equal(mark('## MAD\nMAD here', 3), '## [MAD|MAD]\n[MAD|MAD] here');
+    assert.equal(mark('Intro MAD\n## MAD\nMAD here', 3), 'Intro [MAD|MAD]\n## [MAD|MAD]\n[MAD|MAD] here');
     assert.equal(mark('MAD wraps\nonto MAD', 3), '[MAD|MAD] wraps\nonto MAD');
 });
 

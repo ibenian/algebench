@@ -1195,7 +1195,7 @@ var PROTECTED_RE = new RegExp([
 	"<[a-zA-Z/!](?:[^>\"']|\"[^\"]*\"|'[^']*')*>",
 	"(?:https?://|www\\.)[^\\s<>]+"
 ].join("|"), "gm");
-var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
+var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|))|(?<=(?:^|\n)[ \t]*#{1,6}\s[^\n]*)\n)/;
 var MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
 var MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-([a-z0-9]+)-(\d+)([^"]*)"/g;
 function isMathRegion(region) {
@@ -11670,12 +11670,21 @@ function _fetchDomainGlossary(name) {
 	}
 	return p;
 }
+var _loadGen = 0;
 /** Merge the glossaries of `domains` (in order) under `entries`, and make the
 *  result the active glossary. Unknown or malformed inputs contribute nothing. */
 async function loadGlossary(domains, entries) {
+	const gen = ++_loadGen;
 	const names = Array.isArray(domains) ? domains.filter((n) => typeof n === "string") : [];
 	const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
+	if (gen !== _loadGen) return;
 	setActiveGlossary(Object.assign({}, ...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries)));
+	hideGlossaryTip();
+}
+/** Drop the active glossary (no scene loaded), cancelling any load in flight. */
+function clearGlossary() {
+	++_loadGen;
+	setActiveGlossary(null);
 	hideGlossaryTip();
 }
 var _tips = [];
@@ -14385,10 +14394,7 @@ async function loadScene(spec) {
 	setActiveSceneFunctions(spec);
 	setActiveVirtualTimeExpr(spec, -1);
 	setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
-	if (!spec) {
-		setActiveGlossary(null);
-		hideGlossaryTip();
-	}
+	if (!spec) clearGlossary();
 	updateTitle(spec);
 	updateExplanationPanel(spec);
 	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);

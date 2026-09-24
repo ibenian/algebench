@@ -193,10 +193,11 @@ const PROTECTED_RE = new RegExp([
     '(?:https?://|www\\.)[^\\s<>]+',
 ].join('|'), 'gm');
 
-// A paragraph boundary in markdown source: a blank line, or a line break
-// before a heading, list item or table row — each renders as its own block,
-// so each gets its own first appearance of a term.
-const PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|)))/;
+// A paragraph boundary in markdown source: a blank line, a line break before
+// a heading, list item or table row, or the line break after a heading line
+// (a heading is one line; what follows is a new block). Each block gets its
+// own first appearance of a term.
+const PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|))|(?<=(?:^|\n)[ \t]*#{1,6}\s[^\n]*)\n)/;
 
 // Inside math only automatic matching runs, and only on a name set as a whole
 // text-style group — `\mathrm{MAD}`, `\operatorname{LOF}`, `\text{base rate}`.

@@ -36,15 +36,28 @@ function _fetchDomainGlossary(name: string): Promise<Glossary> {
     return p;
 }
 
+// Bumped by every load and clear: a load whose domain fetches resolve after
+// a newer load (or a clear) has started must not overwrite its result.
+let _loadGen = 0;
+
 /** Merge the glossaries of `domains` (in order) under `entries`, and make the
  *  result the active glossary. Unknown or malformed inputs contribute nothing. */
 export async function loadGlossary(domains: unknown, entries?: unknown): Promise<void> {
+    const gen = ++_loadGen;
     const names = Array.isArray(domains) ? domains.filter((n): n is string => typeof n === 'string') : [];
     // Each source is sanitised on its own, so a malformed entry in one
     // cannot erase a good entry of the same key from another.
     const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
+    if (gen !== _loadGen) return;
     const merged: Glossary = Object.assign({}, ...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries));
     setActiveGlossary(merged);
+    hideGlossaryTip();
+}
+
+/** Drop the active glossary (no scene loaded), cancelling any load in flight. */
+export function clearGlossary(): void {
+    ++_loadGen;
+    setActiveGlossary(null);
     hideGlossaryTip();
 }
 
