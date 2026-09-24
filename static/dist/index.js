@@ -4618,6 +4618,36 @@ var ARCBALL_RADIUS_FRACTION = .25;
 var ARCBALL_OUTSIDE_RADIANS = 1.2;
 /** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
 var MAX_INERTIA_RADIANS_PER_FRAME = .05;
+/** The drag's pivot, or null to turn about the orbit target. */
+var dragPivot = null;
+/** Finds the scene point under a pixel; object-picker registers it at setup
+*  (a direct import would be circular — it already imports this module). */
+var pivotPicker = null;
+function setRotationPivotPicker(fn) {
+	pivotPicker = fn;
+}
+/** The point rotation turns about right now. */
+function rotationCentre() {
+	return dragPivot ?? cameraState.controls.target;
+}
+/**
+* The pivot for a drag pressed at a pixel: the geometry under it, or — over
+* empty space — the point under it at the orbit target's depth.
+*/
+function pivotUnder(clientX, clientY) {
+	const hit = pivotPicker ? pivotPicker(clientX, clientY) : null;
+	if (hit) return hit;
+	if (!cameraState.camera || !cameraState.controls || !cameraState.renderer) return null;
+	const rect = cameraState.renderer.domElement.getBoundingClientRect();
+	if (rect.width <= 0 || rect.height <= 0) return null;
+	const ndc = new THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+	const ray = new THREE.Raycaster();
+	ray.setFromCamera(ndc, cameraState.camera);
+	const facing = new THREE.Vector3();
+	cameraState.camera.getWorldDirection(facing);
+	const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(facing, cameraState.controls.target);
+	return ray.ray.intersectPlane(plane, new THREE.Vector3());
+}
 /**
 * Where the ball sits on screen (its centre and pixel radius). The canvas rect
 * comes back with it: measuring it is the one layout read here, and callers
@@ -4628,7 +4658,7 @@ function arcballScreenDisc() {
 	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
 	const rect = cameraState.renderer.domElement.getBoundingClientRect();
 	if (rect.width <= 0 || rect.height <= 0) return null;
-	const ndc = cameraState.controls.target.clone().project(cameraState.camera);
+	const ndc = rotationCentre().clone().project(cameraState.camera);
 	return {
 		cx: rect.left + (ndc.x * .5 + .5) * rect.width,
 		cy: rect.top + (-ndc.y * .5 + .5) * rect.height,
@@ -4653,8 +4683,9 @@ function screenToArcball(clientX, clientY) {
 	if (!disc || !cameraState.camera || !cameraState.renderer) return new THREE.Vector3(0, 0, 1);
 	const rect = disc.rect;
 	const radius = arcballWorldRadius(disc.r);
-	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
-	const centre = new THREE.Vector3(0, 0, -dist);
+	cameraState.camera.updateMatrixWorld();
+	const centre = rotationCentre().clone().applyMatrix4(cameraState.camera.matrixWorldInverse);
+	const dist = Math.max(centre.length(), 1e-6);
 	const ndcX = (clientX - rect.left) / rect.width * 2 - 1;
 	const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
 	let origin;
@@ -4697,12 +4728,12 @@ function twistAboutAxis(q, axis) {
 	if (q.lengthSq() < 1e-12) q.set(0, 0, 0, 1);
 	else q.normalize();
 }
-/** World units per screen pixel at the orbit pivot. */
+/** World units per screen pixel at the rotation pivot. */
 function worldPerPixelAtTarget() {
 	if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
 	const h = Math.max(cameraState.renderer.domElement?.clientHeight || 1, 1);
 	if (cameraState.camera.isOrthographicCamera) return Math.abs((cameraState.camera.top - cameraState.camera.bottom) / h);
-	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), .001);
+	const dist = Math.max(cameraState.camera.position.distanceTo(rotationCentre()), .001);
 	const fov = (cameraState.camera.fov || 75) * Math.PI / 180;
 	return 2 * dist * Math.tan(fov / 2) / h;
 }
@@ -4719,7 +4750,7 @@ function arcballWorldRadius(pixels) {
 	if (!cameraState.camera || !cameraState.controls) return pixels;
 	const perPixel = worldPerPixelAtTarget();
 	if (cameraState.camera.isOrthographicCamera) return pixels * perPixel;
-	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
+	const dist = Math.max(cameraState.camera.position.distanceTo(rotationCentre()), 1e-6);
 	return dist * Math.sin(Math.atan(pixels * perPixel / dist));
 }
 var ballHelper = null;
@@ -4774,7 +4805,7 @@ function showArcballBall() {
 		cameraState.three.scene.add(ballHelper);
 	}
 	ballHelper.scale.setScalar(radius);
-	ballHelper.position.copy(cameraState.controls.target);
+	ballHelper.position.copy(rotationCentre());
 }
 function hideArcballBall() {
 	if (!ballHelper) return;
@@ -4803,7 +4834,7 @@ function showGrabMarker(pt) {
 		cameraState.three.scene.add(grabHelper);
 	}
 	const world = pt.clone().applyQuaternion(cameraState.camera.quaternion).multiplyScalar(radius);
-	grabHelper.position.copy(cameraState.controls.target).add(world);
+	grabHelper.position.copy(rotationCentre()).add(world);
 	grabHelper.scale.setScalar(worldPerPixelAtTarget() * 6);
 }
 function hideGrabMarker() {
@@ -4820,18 +4851,29 @@ function applyArcballOrbit(prevPt, currPt, axis = null) {
 	if (axis) twistAboutAxis(q, axis);
 	applyCameraSpaceRotation(q);
 }
-/** Turn the camera about its pivot by `q`, a rotation given in camera space. */
+/**
+* Turn the view by `worldQ` about the rotation pivot. Camera and orbit target
+* move together, rigidly, so the view keeps looking where it did relative to
+* the scene and only the pivot stays put. With no drag pivot this is the old
+* turn about the target, which then does not move.
+*/
+function turnAboutPivot(worldQ) {
+	if (!cameraState.camera || !cameraState.controls) return;
+	const pivot = rotationCentre().clone();
+	const target = cameraState.controls.target.clone().sub(pivot).applyQuaternion(worldQ).add(pivot);
+	const position = cameraState.camera.position.clone().sub(pivot).applyQuaternion(worldQ).add(pivot);
+	cameraState.camera.up.applyQuaternion(worldQ).normalize();
+	cameraState.camera.position.copy(position);
+	cameraState.controls.target.copy(target);
+	cameraState.camera.lookAt(target);
+	cameraState.controls.update();
+}
+/** Turn the view about its pivot by `q`, a rotation given in camera space. */
 function applyCameraSpaceRotation(q) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	const camQ = cameraState.camera.quaternion.clone();
 	const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
-	const target = cameraState.controls.target.clone();
-	const offset = cameraState.camera.position.clone().sub(target);
-	offset.applyQuaternion(worldQ);
-	cameraState.camera.up.applyQuaternion(worldQ).normalize();
-	cameraState.camera.position.copy(target).add(offset);
-	cameraState.camera.lookAt(target);
-	cameraState.controls.update();
+	turnAboutPivot(worldQ);
 	showArcballBall();
 	cameraState.arcballLastMoveTime = performance.now();
 	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(worldQ, .5) : worldQ.clone();
@@ -4872,13 +4914,7 @@ function startArcballInertia() {
 			cameraState.arcballInertiaId = null;
 			return;
 		}
-		const tgt = cameraState.controls.target.clone();
-		const offset = cameraState.camera.position.clone().sub(tgt);
-		offset.applyQuaternion(cameraState.arcballInertiaQ);
-		cameraState.camera.up.applyQuaternion(cameraState.arcballInertiaQ).normalize();
-		cameraState.camera.position.copy(tgt).add(offset);
-		cameraState.camera.lookAt(tgt);
-		cameraState.controls.update();
+		turnAboutPivot(cameraState.arcballInertiaQ);
 		cameraState.arcballInertiaQ.slerp(identity, slerpT);
 		cameraState.arcballInertiaId = requestAnimationFrame(step);
 	}
@@ -4931,6 +4967,7 @@ function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 	}
 	cameraState.arcballInertiaQ = null;
 	cancelPivotMove();
+	dragPivot = null;
 	const start = cameraState.controls.target.clone();
 	const end = world.clone();
 	if (duration <= 0 || start.distanceTo(end) < 1e-6) {
@@ -4975,6 +5012,9 @@ function setupRollDrag(container) {
 			cameraState.arcballInertiaId = null;
 		}
 		cameraState.arcballInertiaQ = null;
+		cancelBallFlash();
+		hideArcballBall();
+		dragPivot = pivotUnder(e.clientX, e.clientY);
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
 			axis,
@@ -17753,8 +17793,9 @@ function rayHits(clientX, clientY, known) {
 	return _raycaster.intersectObjects(pickableMeshes(), false);
 }
 /**
-* Where a double-click should put the orbit pivot: the nearest point of solid
-* geometry under the cursor.
+* Where the view should turn about for a press or double-click here: the
+* nearest point of solid geometry under the cursor. A rotation drag uses it
+* as its pivot (see camera.ts), a double-click to recentre the view.
 *
 * Deliberately wider than `pickAt`. The Ask-AI button only offers itself for
 * elements an author opted in (`prompt`) or that carry a label, which is the
@@ -18141,6 +18182,7 @@ function setupObjectPicker() {
 	if (!state.renderer || !state.renderer.domElement) return;
 	_canvas = state.renderer.domElement;
 	_raycaster = new THREE.Raycaster();
+	setRotationPivotPicker(pivotPointAt);
 	_canvas.addEventListener("pointerdown", (e) => {
 		if (e.button !== 0) return;
 		const hit = pickTensorCell(e.clientX, e.clientY);

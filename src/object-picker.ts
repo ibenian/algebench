@@ -22,7 +22,7 @@
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 import { makeAiAskButton } from '/labels.js';
-import { setOrbitPivot } from '/camera.js';
+import { setOrbitPivot, setRotationPivotPicker } from '/camera.js';
 import type { AppState } from '/state.js';
 import type { Vec3 } from '/coords.js';
 import type { Label3D } from '/labels.js';
@@ -284,8 +284,9 @@ function rayHits(clientX: number, clientY: number, known?: DOMRect) {
 }
 
 /**
- * Where a double-click should put the orbit pivot: the nearest point of solid
- * geometry under the cursor.
+ * Where the view should turn about for a press or double-click here: the
+ * nearest point of solid geometry under the cursor. A rotation drag uses it
+ * as its pivot (see camera.ts), a double-click to recentre the view.
  *
  * Deliberately wider than `pickAt`. The Ask-AI button only offers itself for
  * elements an author opted in (`prompt`) or that carry a label, which is the
@@ -712,6 +713,8 @@ export function setupObjectPicker() {
     if (!state.renderer || !state.renderer.domElement) return;
     _canvas = state.renderer.domElement;
     _raycaster = new THREE.Raycaster();
+    // A rotation drag turns about whatever it presses on.
+    setRotationPivotPicker(pivotPointAt);
     // A press on a bound lattice cell scrubs that cell instead of orbiting:
     // capture phase, so it runs before the camera controls' own listener and
     // can stop the event reaching them.
@@ -727,9 +730,11 @@ export function setupObjectPicker() {
         _latticePop = true;
         beginCellScrub(hit.bind, hit.row, hit.col, e.clientX, e.pointerId, _canvas!);
     }, { capture: true });
-    // Double-click an object to turn the view about it from then on. The pivot
-    // goes where the ray actually met the geometry, so double-clicking the far
-    // end of a long vector pivots there rather than at its anchor.
+    // Double-click an object to centre the view on it (the orbit target slides
+    // there). Rotation no longer needs this: every drag turns about the point
+    // it presses on (camera.ts). The point is where the ray actually met the
+    // geometry, so double-clicking the far end of a long vector centres there
+    // rather than at its anchor.
     _canvas.addEventListener('dblclick', (e) => {
         if (e.button !== 0) return;
         const point = pivotPointAt(e.clientX, e.clientY);
