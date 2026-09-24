@@ -4843,6 +4843,13 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
     outline: 2px solid color-mix(in srgb, var(--accent-color) 70%, transparent);
     outline-offset: 1px;
 }
+/* A term inside KaTeX: a fraction or root stacks its rows as positioned
+   boxes, and a later row wins the hit test over a term in the denominator.
+   Lift the term above them. No offset, so the math layout is unchanged. */
+.katex .glossary-term {
+    position: relative;
+    z-index: 1;
+}
 /* Inside a control the term is plain text: the control keeps its click. */
 :is(button, a, label, summary) .glossary-term {
     text-decoration: none;

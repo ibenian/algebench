@@ -2382,7 +2382,7 @@
           "id": "accuracy-lies",
           "title": "Accuracy, and the model that beats you by doing nothing",
           "description": "The confusion matrix, live. Note the scale: **TN dominates everything**, because $92\\%$ of the data is normal and most of it scores low.\n\nThat domination is what makes accuracy useless. Accuracy is $(\\mathrm{TP} + \\mathrm{TN})/N$, and $\\mathrm{TN}$ alone is already $0.92$ of $N$ if you flag nothing at all.\n\n$$\\text{accuracy of } \\texttt{return NORMAL} = 1 - \\pi = 0.920$$\n\nThe detector at threshold $0.5$ scores $0.963$. It has bought you **four points of accuracy** over a constant — and at a real base rate of $0.1\\%$ the constant scores $0.999$ and no detector can beat it by more than a rounding error.\n\nAny metric a constant can win is not measuring your detector. Delete it from the report.",
-          "prompt": "The accuracy demolition. Make the comparison explicit and numeric: the constant predictor scores 1 - pi = 0.920 on this set, the detector at threshold 0.5 scores 0.963, so the whole model is worth 4.3 accuracy points. At a realistic base rate of 0.001 the constant scores 0.999 and the gap vanishes into rounding. The general rule is the takeaway -- any metric a constant predictor can win is not measuring your detector. The confusion tensor's colour scale is deliberately clipped at 60 so that TP, FP and FN remain readable next to a TN in the hundreds; the printed numbers are exact and the student should read those rather than the colours.",
+          "prompt": "The accuracy demolition. Make the comparison explicit and numeric: the constant predictor scores 1 - pi = 0.920 on this set, the detector at threshold 0.5 scores 0.963, so the whole model is worth 4.3 accuracy points. At a realistic base rate of 0.001 the constant scores 0.999 and the gap vanishes into rounding. The general rule is the takeaway -- any metric a constant predictor can win is not measuring your detector. The confusion tensor colours correct cells green and errors red, clipped at 60 so that TP, FP and FN remain readable next to a TN in the hundreds; the printed numbers are exact and the student should read those rather than the colours.",
           "add": [
             {
               "id": "confusion",
@@ -2391,22 +2391,29 @@
               "origin": [11.5, 4.5, 0],
               "cellSize": 1.9,
               "gap": 0.06,
-              "valueExpr": "adConf(thr, row * 2 + col)",
-              "textExpr": "adConf(thr, row * 2 + col)",
-              "colorMap": "blueRed",
-              "colorDomain": [0, 60],
+              "valueExpr": "(row == col ? 1 : -1) * min(adConf(thr, row * 2 + col), 60)",
+              "textExpr": "concat(row == 0 ? (col == 0 ? 'TP' : 'FP') : (col == 0 ? 'FN' : 'TN'), ' ', adConf(thr, row * 2 + col))",
+              "colorMap": {"stops": [
+                {"t": 0, "color": "#ff2d55"},
+                {"t": 0.3, "color": "#ff7a45"},
+                {"t": 0.5, "color": "#f2f4f8"},
+                {"t": 0.7, "color": "#5eead4"},
+                {"t": 1, "color": "#22d36b"}
+              ]},
+              "colorDomain": [-60, 60],
+              "shader": {"ignorePlaneOpacity": true},
               "axes": [
                 {
                   "title": "predicted",
                   "labels": ["flagged", "not flagged"]
                 },
                 {
-                  "title": "",
-                  "labels": ["", ""]
+                  "title": "actual",
+                  "labels": ["anomaly", "normal"]
                 }
               ],
               "label": "TP · FP / FN · TN",
-              "prompt": "The 2x2 confusion matrix at the current threshold: top-left TP, top-right FP, bottom-left FN, bottom-right TN. The colour domain is clipped at 60 on purpose -- TN runs into the hundreds and an honest shared scale would render the other three cells identical. The printed numbers are exact. At threshold 0.5 the cells are 21, 4, 11, 364."
+              "prompt": "The 2x2 confusion matrix at the current threshold: rows are the prediction (flagged, not flagged), columns the truth (anomaly, normal), so top-left TP, top-right FP, bottom-left FN, bottom-right TN. Correct cells are green and errors red, deeper with the count; the colour is clipped at 60 on purpose -- TN runs into the hundreds and an honest shared scale would render the other three cells identical. The printed numbers are exact. At threshold 0.5 the cells are 21, 4, 11, 364."
             }
           ],
           "info": [

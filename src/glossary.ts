@@ -12,7 +12,7 @@
 
 import { renderKaTeX, renderMarkdown, makeAiAskButton } from '/labels.js';
 import { getActiveGlossary, glossaryTermName, setActiveGlossary } from '/glossary-core.js';
-import type { Glossary } from '/glossary-core.js';
+import type { Glossary, GlossaryEntry } from '/glossary-core.js';
 
 // ----- Loading -----
 
@@ -50,11 +50,35 @@ export async function loadGlossary(domains: unknown, entries?: unknown): Promise
 }
 
 // ----- Tooltip -----
+//
+// Tips form a stack: a term inside a definition links too, and opening it
+// stacks a second tip above the first (then a third, ...). Opening a term at
+// level k closes everything above k. Index 0 is the tip for a term on the page.
 
-let _tip: HTMLDivElement | null = null;
-let _anchor: HTMLElement | null = null;
+interface Tip { el: HTMLDivElement; anchor: HTMLElement | null; }
+
+const _tips: Tip[] = [];   // elements are created once per level and reused
+let _depth = 0;            // how many of them are open
 let _pinned = false;
 let _hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+function _tipId(level: number): string {
+    return level === 0 ? 'glossary-tip' : `glossary-tip-${level}`;
+}
+
+/** Level of the open tip containing `node`, or -1 when it is on the page. */
+function _levelOf(node: Node | null): number {
+    for (let i = _depth - 1; i >= 0; i--) if (node && _tips[i]!.el.contains(node)) return i;
+    return -1;
+}
+
+/** Keyboard focus sits on an open tip's term, or inside an open tip. */
+function _focusHeld(): boolean {
+    const a = document.activeElement;
+    if (!a) return false;
+    for (let i = 0; i < _depth; i++) if (_tips[i]!.anchor === a || _tips[i]!.el.contains(a)) return true;
+    return false;
+}
 
 function _cancelHide(): void {
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
@@ -63,26 +87,40 @@ function _cancelHide(): void {
 function _scheduleHide(): void {
     // Pinned by a click, or held by keyboard focus: a pointer that happens to
     // rest over a scrolling panel must not close it.
-    if (_pinned || (_anchor && document.activeElement === _anchor)) return;
+    if (_pinned || _focusHeld()) return;
     _cancelHide();
     _hideTimer = setTimeout(hideGlossaryTip, 180);
 }
 
-function _ensureTip(): HTMLDivElement {
-    if (_tip) return _tip;
-    const tip = document.createElement('div');
-    tip.id = 'glossary-tip';
-    tip.className = 'glossary-tip hidden';
-    tip.setAttribute('role', 'dialog');
-    tip.addEventListener('mouseenter', _cancelHide);
-    tip.addEventListener('mouseleave', _scheduleHide);
-    tip.addEventListener('focusout', (e) => {
-        const to = e.relatedTarget as Node | null;
-        if (!to || (!tip.contains(to) && to !== _anchor)) _scheduleHide();
-    });
-    document.body.appendChild(tip);
-    _tip = tip;
+function _ensureTip(level: number): Tip {
+    let tip = _tips[level];
+    if (tip) return tip;
+    const el = document.createElement('div');
+    el.id = _tipId(level);
+    el.className = 'glossary-tip hidden';
+    el.style.zIndex = String(10000 + level);
+    el.setAttribute('role', 'dialog');
+    el.addEventListener('mouseenter', _cancelHide);
+    el.addEventListener('mouseleave', _scheduleHide);
+    el.addEventListener('focusout', () => setTimeout(_scheduleHide, 0));
+    document.body.appendChild(el);
+    tip = { el, anchor: null };
+    _tips[level] = tip;
     return tip;
+}
+
+/** Close the tips at `level` and above. */
+function _closeFrom(level: number): void {
+    for (let i = level; i < _depth; i++) {
+        const tip = _tips[i]!;
+        tip.el.classList.add('hidden');
+        if (tip.anchor) {
+            tip.anchor.setAttribute('aria-expanded', 'false');
+            tip.anchor.removeAttribute('aria-describedby');
+        }
+        tip.anchor = null;
+    }
+    _depth = Math.min(_depth, level);
 }
 
 function _position(tip: HTMLElement, anchor: HTMLElement): void {
@@ -101,47 +139,63 @@ function _position(tip: HTMLElement, anchor: HTMLElement): void {
     tip.style.top = `${Math.max(margin, top)}px`;
 }
 
+// A definition that mentions its own term must not link back to itself.
+function _unlinkSelf(body: HTMLElement, key: string): void {
+    body.querySelectorAll<HTMLElement>('.glossary-term').forEach((t) => {
+        if (t.dataset.glossaryKey !== key) return;
+        t.classList.remove('glossary-term');
+        for (const a of ['data-glossary-key', 'tabindex', 'role', 'aria-haspopup']) t.removeAttribute(a);
+    });
+}
+
+function _fill(tip: Tip, key: string, entry: GlossaryEntry): void {
+    const name = glossaryTermName(key, entry);
+    tip.el.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'glossary-tip-head';
+    const title = document.createElement('span');
+    title.className = 'glossary-tip-title';
+    title.innerHTML = renderKaTeX(name, false, { glossary: false });
+    head.appendChild(title);
+    head.appendChild(makeAiAskButton('ai-ask-btn glossary-ask-btn', `Ask AI about ${name}`,
+        () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
+    tip.el.appendChild(head);
+    if (entry.markdown) {
+        const body = document.createElement('div');
+        body.className = 'glossary-tip-body';
+        body.innerHTML = renderMarkdown(entry.markdown);
+        _unlinkSelf(body, key);
+        tip.el.appendChild(body);
+    }
+    tip.el.setAttribute('aria-label', name);
+}
+
 function _show(anchor: HTMLElement): void {
     const key = anchor.dataset.glossaryKey || '';
     const entry = getActiveGlossary()[key];
-    if (!entry) return;
+    // No entry, or a term that isn't rendered (a hidden tab) — nothing to anchor to.
+    if (!entry || anchor.getClientRects().length === 0) return;
     _cancelHide();
-    const tip = _ensureTip();
-    if (_anchor !== anchor) {
-        const name = glossaryTermName(key, entry);
-        tip.innerHTML = '';
-        const head = document.createElement('div');
-        head.className = 'glossary-tip-head';
-        const title = document.createElement('span');
-        title.className = 'glossary-tip-title';
-        title.innerHTML = renderKaTeX(name, false, { glossary: false });
-        head.appendChild(title);
-        head.appendChild(makeAiAskButton('ai-ask-btn glossary-ask-btn', `Ask AI about ${name}`,
-            () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
-        const body = document.createElement('div');
-        body.className = 'glossary-tip-body';
-        body.innerHTML = entry.markdown ? renderMarkdown(entry.markdown, { glossary: false }) : '';
-        tip.appendChild(head);
-        if (entry.markdown) tip.appendChild(body);
-        tip.setAttribute('aria-label', name);
-        if (_anchor) _anchor.removeAttribute('aria-describedby');
-        _anchor = anchor;
-        anchor.setAttribute('aria-describedby', 'glossary-tip');
+    const level = _levelOf(anchor) + 1;
+    const tip = _ensureTip(level);
+    if (level < _depth && tip.anchor === anchor) {
+        _closeFrom(level + 1);
+    } else {
+        _closeFrom(level);
+        _fill(tip, key, entry);
+        tip.anchor = anchor;
+        anchor.setAttribute('aria-describedby', tip.el.id);
+        _depth = level + 1;
     }
-    tip.classList.remove('hidden');
+    tip.el.classList.remove('hidden');
     anchor.setAttribute('aria-expanded', 'true');
-    _position(tip, anchor);
+    _position(tip.el, anchor);
 }
 
 export function hideGlossaryTip(): void {
     _cancelHide();
     _pinned = false;
-    if (_tip) _tip.classList.add('hidden');
-    if (_anchor) {
-        _anchor.setAttribute('aria-expanded', 'false');
-        _anchor.removeAttribute('aria-describedby');
-    }
-    _anchor = null;
+    _closeFrom(0);
 }
 
 // A term rendered inside a control (a camera-view button, a link) stays plain
@@ -161,7 +215,8 @@ export function installGlossaryTooltip(): void {
     _installed = true;
     document.addEventListener('mouseover', (e) => {
         const term = _termOf(e.target);
-        if (term && !(_pinned && _anchor !== term)) _show(term);
+        // While pinned, only a term inside an open tip may open (stacked).
+        if (term && (!_pinned || _levelOf(term) >= 0 || _tips[0]!.anchor === term)) _show(term);
     });
     document.addEventListener('mouseout', (e) => {
         if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
@@ -172,23 +227,23 @@ export function installGlossaryTooltip(): void {
     });
     document.addEventListener('focusout', (e) => {
         if (!_termOf(e.target)) return;
-        const to = e.relatedTarget as Node | null;
-        // Deferred so activeElement has moved off the term by the time it runs.
-        if (!(to && _tip && _tip.contains(to))) setTimeout(_scheduleHide, 0);
+        // Deferred so activeElement has moved on by the time it runs.
+        setTimeout(_scheduleHide, 0);
     });
-    // Tap / click pins the tip open (touch has no hover); a second click on
-    // the same term, a click elsewhere, Escape or a scroll closes it. The
-    // click is not swallowed: a term inside a clickable row (a scene in the
-    // navigation tree) still triggers the row.
+    // Tap / click pins the tips open (touch has no hover); a second click on
+    // the same term, a click outside every tip, Escape or a scroll closes
+    // them. The click is not swallowed: a term inside a clickable row (a
+    // scene in the navigation tree) still triggers the row.
     document.addEventListener('click', (e) => {
         const term = _termOf(e.target);
         if (term) {
-            if (_pinned && _anchor === term) { hideGlossaryTip(); return; }
+            const level = _levelOf(term) + 1;
+            if (_pinned && level < _depth && _tips[level]!.anchor === term) { _closeFrom(level); if (!_depth) _pinned = false; return; }
             _show(term);
             _pinned = true;
             return;
         }
-        if (_tip && !_tip.contains(e.target as Node)) hideGlossaryTip();
+        if (_depth && _levelOf(e.target as Node) < 0) hideGlossaryTip();
     }, true);
     document.addEventListener('keydown', (e) => {
         const term = _termOf(e.target);
@@ -198,22 +253,28 @@ export function installGlossaryTooltip(): void {
             _pinned = true;
             return;
         }
-        if (e.key === 'Escape' && _anchor && _tip && !_tip.classList.contains('hidden')) {
-            const back = _anchor;
-            hideGlossaryTip();
-            back.focus();
+        if (e.key === 'Escape' && _depth) {
+            // Close the topmost tip only, and return focus to its term.
+            const back = _tips[_depth - 1]!.anchor;
+            _closeFrom(_depth - 1);
+            if (!_depth) { _cancelHide(); _pinned = false; }
+            if (back) back.focus();
         }
     });
-    // The tip is fixed-position: follow the term while the page or a doc
-    // panel scrolls, and close it once the term leaves the viewport. Focusing
-    // a term scrolls it into view, so hiding on any scroll would close a tip
-    // the keyboard just opened.
+    // Tips are fixed-position: follow their terms while the page or a doc
+    // panel scrolls, and close a tip (and those above it) once its term leaves
+    // the viewport. Focusing a term scrolls it into view, so hiding on any
+    // scroll would close a tip the keyboard just opened.
     document.addEventListener('scroll', (e) => {
-        if (!_anchor || !_tip || _tip.classList.contains('hidden')) return;
-        if (e.target instanceof Node && _tip.contains(e.target)) return;
-        const r = _anchor.getBoundingClientRect();
-        if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) hideGlossaryTip();
-        else _position(_tip, _anchor);
+        if (!_depth) return;
+        const inTip = _levelOf(e.target instanceof Node ? e.target : null);
+        for (let i = inTip + 1; i < _depth; i++) {
+            const tip = _tips[i]!;
+            const r = tip.anchor!.getBoundingClientRect();
+            if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) { _closeFrom(i); break; }
+            _position(tip.el, tip.anchor!);
+        }
+        if (!_depth) { _cancelHide(); _pinned = false; }
     }, true);
-    window.addEventListener('resize', () => { if (_anchor) hideGlossaryTip(); });
+    window.addEventListener('resize', () => { if (_depth) hideGlossaryTip(); });
 }

@@ -10022,14 +10022,18 @@ function renderTensor(el, _view) {
 		ctx.textBaseline = "middle";
 		ctx.fillText(txt, cx, cy);
 	}
-	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center") {
-		if (!txt || wPx < 2 || hPx < 2) return;
+	/** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above
+	*  `maxFontPx`; returns the size used (0 when nothing was drawn). */
+	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center", maxFontPx = Infinity) {
+		if (!txt || wPx < 2 || hPx < 2) return 0;
+		const fontPx = Math.min(maxFontPx, fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx));
 		drawLatex(ctx, txt, cx, cy, {
-			fontPx: fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx),
+			fontPx,
 			color,
 			align,
 			rotate: rotate ? -Math.PI / 2 : 0
 		});
+		return fontPx;
 	}
 	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
 	const keyParts = [];
@@ -10069,16 +10073,33 @@ function renderTensor(el, _view) {
 		if (key === textLayer.lastKey) return;
 		textLayer.lastKey = key;
 		ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
+		const hW = .92 * px, vW = vBand * px - .35 * px, glyphH = LABEL_GLYPH / .62 * px;
+		const axisPx = (texts, n, wPx) => {
+			let m = Infinity;
+			if (texts && wPx >= 2) {
+				for (let i = 0; i < n; i++) if (texts[i]) m = Math.min(m, fitLatexPx(texts[i], wPx, glyphH));
+			}
+			return m;
+		};
+		const hPx = axisPx(hTexts, cols, hW);
+		const vPx = axisPx(vTexts, rows, vW);
+		const labelPx = Math.min(hPx, vPx);
 		if (hTexts) {
 			const band = LABEL_BAND * px;
-			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, .92 * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
+			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, hW, glyphH, cssColor(hColor), false, "center", hPx);
 		}
-		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
-		if (vTexts) {
-			const band = vBand * px;
-			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, band - .35 * px, LABEL_GLYPH / .62 * px, cssColor(vColor), false, "right");
+		if (vTexts) for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, vW, glyphH, cssColor(vColor), false, "right", vPx);
+		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor), false, "center", labelPx);
+		if (vTitle && planeLabels) {
+			let titleX = TITLE_BAND * px / 2;
+			if (vTexts && Number.isFinite(vPx)) {
+				let widest = 0;
+				for (const t of vTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
+				const beside = ox - .2 * px - widest * vPx / 100 - .9 * Math.min(vPx, labelPx);
+				titleX = Math.max(titleX, beside);
+			}
+			drawFitted(ctx, vTitle, titleX, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true, "center", labelPx);
 		}
-		if (vTitle && planeLabels) drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true);
 		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			const txt = texts[cell];
@@ -11627,10 +11648,25 @@ async function loadGlossary(domains, entries) {
 	setActiveGlossary(merged);
 	hideGlossaryTip();
 }
-var _tip = null;
-var _anchor = null;
+var _tips = [];
+var _depth = 0;
 var _pinned = false;
 var _hideTimer$2 = null;
+function _tipId(level) {
+	return level === 0 ? "glossary-tip" : `glossary-tip-${level}`;
+}
+/** Level of the open tip containing `node`, or -1 when it is on the page. */
+function _levelOf(node) {
+	for (let i = _depth - 1; i >= 0; i--) if (node && _tips[i].el.contains(node)) return i;
+	return -1;
+}
+/** Keyboard focus sits on an open tip's term, or inside an open tip. */
+function _focusHeld() {
+	const a = document.activeElement;
+	if (!a) return false;
+	for (let i = 0; i < _depth; i++) if (_tips[i].anchor === a || _tips[i].el.contains(a)) return true;
+	return false;
+}
 function _cancelHide() {
 	if (_hideTimer$2) {
 		clearTimeout(_hideTimer$2);
@@ -11638,25 +11674,41 @@ function _cancelHide() {
 	}
 }
 function _scheduleHide() {
-	if (_pinned || _anchor && document.activeElement === _anchor) return;
+	if (_pinned || _focusHeld()) return;
 	_cancelHide();
 	_hideTimer$2 = setTimeout(hideGlossaryTip, 180);
 }
-function _ensureTip() {
-	if (_tip) return _tip;
-	const tip = document.createElement("div");
-	tip.id = "glossary-tip";
-	tip.className = "glossary-tip hidden";
-	tip.setAttribute("role", "dialog");
-	tip.addEventListener("mouseenter", _cancelHide);
-	tip.addEventListener("mouseleave", _scheduleHide);
-	tip.addEventListener("focusout", (e) => {
-		const to = e.relatedTarget;
-		if (!to || !tip.contains(to) && to !== _anchor) _scheduleHide();
-	});
-	document.body.appendChild(tip);
-	_tip = tip;
+function _ensureTip(level) {
+	let tip = _tips[level];
+	if (tip) return tip;
+	const el = document.createElement("div");
+	el.id = _tipId(level);
+	el.className = "glossary-tip hidden";
+	el.style.zIndex = String(1e4 + level);
+	el.setAttribute("role", "dialog");
+	el.addEventListener("mouseenter", _cancelHide);
+	el.addEventListener("mouseleave", _scheduleHide);
+	el.addEventListener("focusout", () => setTimeout(_scheduleHide, 0));
+	document.body.appendChild(el);
+	tip = {
+		el,
+		anchor: null
+	};
+	_tips[level] = tip;
 	return tip;
+}
+/** Close the tips at `level` and above. */
+function _closeFrom(level) {
+	for (let i = level; i < _depth; i++) {
+		const tip = _tips[i];
+		tip.el.classList.add("hidden");
+		if (tip.anchor) {
+			tip.anchor.setAttribute("aria-expanded", "false");
+			tip.anchor.removeAttribute("aria-describedby");
+		}
+		tip.anchor = null;
+	}
+	_depth = Math.min(_depth, level);
 }
 function _position(tip, anchor) {
 	const r = anchor.getBoundingClientRect();
@@ -11671,45 +11723,61 @@ function _position(tip, anchor) {
 	tip.style.left = `${Math.max(margin, left)}px`;
 	tip.style.top = `${Math.max(margin, top)}px`;
 }
+function _unlinkSelf(body, key) {
+	body.querySelectorAll(".glossary-term").forEach((t) => {
+		if (t.dataset.glossaryKey !== key) return;
+		t.classList.remove("glossary-term");
+		for (const a of [
+			"data-glossary-key",
+			"tabindex",
+			"role",
+			"aria-haspopup"
+		]) t.removeAttribute(a);
+	});
+}
+function _fill(tip, key, entry) {
+	const name = glossaryTermName(key, entry);
+	tip.el.innerHTML = "";
+	const head = document.createElement("div");
+	head.className = "glossary-tip-head";
+	const title = document.createElement("span");
+	title.className = "glossary-tip-title";
+	title.innerHTML = renderKaTeX$1(name, false, { glossary: false });
+	head.appendChild(title);
+	head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
+	tip.el.appendChild(head);
+	if (entry.markdown) {
+		const body = document.createElement("div");
+		body.className = "glossary-tip-body";
+		body.innerHTML = renderMarkdown$1(entry.markdown);
+		_unlinkSelf(body, key);
+		tip.el.appendChild(body);
+	}
+	tip.el.setAttribute("aria-label", name);
+}
 function _show(anchor) {
 	const key = anchor.dataset.glossaryKey || "";
 	const entry = getActiveGlossary()[key];
-	if (!entry) return;
+	if (!entry || anchor.getClientRects().length === 0) return;
 	_cancelHide();
-	const tip = _ensureTip();
-	if (_anchor !== anchor) {
-		const name = glossaryTermName(key, entry);
-		tip.innerHTML = "";
-		const head = document.createElement("div");
-		head.className = "glossary-tip-head";
-		const title = document.createElement("span");
-		title.className = "glossary-tip-title";
-		title.innerHTML = renderKaTeX$1(name, false, { glossary: false });
-		head.appendChild(title);
-		head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
-		const body = document.createElement("div");
-		body.className = "glossary-tip-body";
-		body.innerHTML = entry.markdown ? renderMarkdown$1(entry.markdown, { glossary: false }) : "";
-		tip.appendChild(head);
-		if (entry.markdown) tip.appendChild(body);
-		tip.setAttribute("aria-label", name);
-		if (_anchor) _anchor.removeAttribute("aria-describedby");
-		_anchor = anchor;
-		anchor.setAttribute("aria-describedby", "glossary-tip");
+	const level = _levelOf(anchor) + 1;
+	const tip = _ensureTip(level);
+	if (level < _depth && tip.anchor === anchor) _closeFrom(level + 1);
+	else {
+		_closeFrom(level);
+		_fill(tip, key, entry);
+		tip.anchor = anchor;
+		anchor.setAttribute("aria-describedby", tip.el.id);
+		_depth = level + 1;
 	}
-	tip.classList.remove("hidden");
+	tip.el.classList.remove("hidden");
 	anchor.setAttribute("aria-expanded", "true");
-	_position(tip, anchor);
+	_position(tip.el, anchor);
 }
 function hideGlossaryTip() {
 	_cancelHide();
 	_pinned = false;
-	if (_tip) _tip.classList.add("hidden");
-	if (_anchor) {
-		_anchor.setAttribute("aria-expanded", "false");
-		_anchor.removeAttribute("aria-describedby");
-	}
-	_anchor = null;
+	_closeFrom(0);
 }
 var _CONTROL_SEL = "button, a, input, select, textarea, label, summary";
 function _termOf(target) {
@@ -11723,7 +11791,7 @@ function installGlossaryTooltip() {
 	_installed = true;
 	document.addEventListener("mouseover", (e) => {
 		const term = _termOf(e.target);
-		if (term && !(_pinned && _anchor !== term)) _show(term);
+		if (term && (!_pinned || _levelOf(term) >= 0 || _tips[0].anchor === term)) _show(term);
 	});
 	document.addEventListener("mouseout", (e) => {
 		if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
@@ -11734,21 +11802,22 @@ function installGlossaryTooltip() {
 	});
 	document.addEventListener("focusout", (e) => {
 		if (!_termOf(e.target)) return;
-		const to = e.relatedTarget;
-		if (!(to && _tip && _tip.contains(to))) setTimeout(_scheduleHide, 0);
+		setTimeout(_scheduleHide, 0);
 	});
 	document.addEventListener("click", (e) => {
 		const term = _termOf(e.target);
 		if (term) {
-			if (_pinned && _anchor === term) {
-				hideGlossaryTip();
+			const level = _levelOf(term) + 1;
+			if (_pinned && level < _depth && _tips[level].anchor === term) {
+				_closeFrom(level);
+				if (!_depth) _pinned = false;
 				return;
 			}
 			_show(term);
 			_pinned = true;
 			return;
 		}
-		if (_tip && !_tip.contains(e.target)) hideGlossaryTip();
+		if (_depth && _levelOf(e.target) < 0) hideGlossaryTip();
 	}, true);
 	document.addEventListener("keydown", (e) => {
 		const term = _termOf(e.target);
@@ -11758,21 +11827,35 @@ function installGlossaryTooltip() {
 			_pinned = true;
 			return;
 		}
-		if (e.key === "Escape" && _anchor && _tip && !_tip.classList.contains("hidden")) {
-			const back = _anchor;
-			hideGlossaryTip();
-			back.focus();
+		if (e.key === "Escape" && _depth) {
+			const back = _tips[_depth - 1].anchor;
+			_closeFrom(_depth - 1);
+			if (!_depth) {
+				_cancelHide();
+				_pinned = false;
+			}
+			if (back) back.focus();
 		}
 	});
 	document.addEventListener("scroll", (e) => {
-		if (!_anchor || !_tip || _tip.classList.contains("hidden")) return;
-		if (e.target instanceof Node && _tip.contains(e.target)) return;
-		const r = _anchor.getBoundingClientRect();
-		if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) hideGlossaryTip();
-		else _position(_tip, _anchor);
+		if (!_depth) return;
+		const inTip = _levelOf(e.target instanceof Node ? e.target : null);
+		for (let i = inTip + 1; i < _depth; i++) {
+			const tip = _tips[i];
+			const r = tip.anchor.getBoundingClientRect();
+			if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) {
+				_closeFrom(i);
+				break;
+			}
+			_position(tip.el, tip.anchor);
+		}
+		if (!_depth) {
+			_cancelHide();
+			_pinned = false;
+		}
 	}, true);
 	window.addEventListener("resize", () => {
-		if (_anchor) hideGlossaryTip();
+		if (_depth) hideGlossaryTip();
 	});
 }
 //#endregion
