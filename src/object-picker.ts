@@ -342,8 +342,23 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
         }
         return best;
     };
-    const nodeShown = (node: unknown) => {
-        try { return (node as { get(k: string): unknown }).get('visible') !== false; } catch { return true; }
+    // Hiding an element (a step's remove, the legend) hides its tracker's
+    // MathBox group, not each node — so a node's own `visible` says nothing.
+    // Only elements with an id can be hidden, and their tracker lists exactly
+    // which entries are theirs: collect those and skip them. (Id-less elements
+    // are only ever removed, which takes their entries out of the lists.)
+    const hiddenEntries = new Set<unknown>();
+    for (const [id, reg] of Object.entries(state.elementRegistry)) {
+        if (!isHidden(id)) continue;
+        const t = (reg.tracker || {}) as Record<string, unknown>;
+        for (const key of ['pointNodes', 'lineNodes', 'axisLineNodes', 'vectorLineNodes']) {
+            const list = t[key];
+            if (Array.isArray(list)) for (const e of list) hiddenEntries.add(e);
+        }
+    }
+    const nodeShown = (entry: { node?: unknown } | null | undefined) => {
+        if (!entry || hiddenEntries.has(entry)) return false;
+        try { return (entry.node as { get(k: string): unknown }).get('visible') !== false; } catch { return true; }
     };
     // Elements with no id have no registry entry. The scene-wide entries the
     // renderers push exist for every point, axis and line — base scene or
@@ -358,13 +373,13 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
             if (d < bestD) { bestD = d; best = world; }
         };
         for (const e of state.pointNodes) {
-            if (!e.pivotPoints || !nodeShown(e.node)) continue;
+            if (!e.pivotPoints || !nodeShown(e)) continue;
             for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
         }
         // Lines, curves and vectors drawn as MathBox lines: their entry's
         // anchor, static or live (an animated line's moves every frame).
         for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
-            if (!e || !nodeShown(e.node)) continue;
+            if (!nodeShown(e)) continue;
             let pos: unknown = e.anchorDataPos;
             if (!pos && typeof e.anchorDataPosFn === 'function') {
                 try { pos = (e.anchorDataPosFn as () => unknown)(); } catch { pos = null; }
@@ -374,7 +389,7 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
             }
         }
         for (const e of state.axisLineNodes) {
-            if (!e.pivotSegment || !ray || !nodeShown(e.node)) continue;
+            if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
             // The point of the axis closest to the pointer's ray, in 3D — a
             // fraction measured along its *screen* image is not the same
             // fraction in the world under perspective.

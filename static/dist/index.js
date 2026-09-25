@@ -17919,9 +17919,24 @@ function nearestAnchorAt(clientX, clientY) {
 		}
 		return best;
 	};
-	const nodeShown = (node) => {
+	const hiddenEntries = /* @__PURE__ */ new Set();
+	for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (!isHidden(id)) continue;
+		const t = reg.tracker || {};
+		for (const key of [
+			"pointNodes",
+			"lineNodes",
+			"axisLineNodes",
+			"vectorLineNodes"
+		]) {
+			const list = t[key];
+			if (Array.isArray(list)) for (const e of list) hiddenEntries.add(e);
+		}
+	}
+	const nodeShown = (entry) => {
+		if (!entry || hiddenEntries.has(entry)) return false;
 		try {
-			return node.get("visible") !== false;
+			return entry.node.get("visible") !== false;
 		} catch {
 			return true;
 		}
@@ -17938,11 +17953,11 @@ function nearestAnchorAt(clientX, clientY) {
 			}
 		};
 		for (const e of state.pointNodes) {
-			if (!e.pivotPoints || !nodeShown(e.node)) continue;
+			if (!e.pivotPoints || !nodeShown(e)) continue;
 			for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
 		}
 		for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
-			if (!e || !nodeShown(e.node)) continue;
+			if (!nodeShown(e)) continue;
 			let pos = e.anchorDataPos;
 			if (!pos && typeof e.anchorDataPosFn === "function") try {
 				pos = e.anchorDataPosFn();
@@ -17952,7 +17967,7 @@ function nearestAnchorAt(clientX, clientY) {
 			if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === "number" && Number.isFinite(c))) tryPoint(new THREE.Vector3(...dataToWorld(pos)));
 		}
 		for (const e of state.axisLineNodes) {
-			if (!e.pivotSegment || !ray || !nodeShown(e.node)) continue;
+			if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
 			const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0]));
 			const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1]));
 			tryPoint(new THREE.Vector3(...closestOnSegmentToRay(ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
