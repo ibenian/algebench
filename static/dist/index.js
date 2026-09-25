@@ -17893,7 +17893,12 @@ function nearestAnchorAt(clientX, clientY) {
 	const rect = _canvas.getBoundingClientRect();
 	if (!rect.width || !rect.height) return null;
 	const lh = labelHitTest(clientX, clientY);
-	if (lh && !isHidden(lh.id)) return worldAnchor(lh.id, state.elementRegistry[lh.id]);
+	if (lh && !isHidden(lh.id)) {
+		const reg = state.elementRegistry[lh.id];
+		const own = (reg?.tracker || {}).pointNodes;
+		const pt = own && own.length === 1 && own[0].pivotPoints && own[0].pivotPoints.length === 1 ? own[0].pivotPoints[0] : null;
+		return pt ? new THREE.Vector3(...dataToWorld(pt)) : worldAnchor(lh.id, reg);
+	}
 	const localX = clientX - rect.left, localY = clientY - rect.top;
 	let ray = null;
 	if (_raycaster) {
@@ -17941,7 +17946,7 @@ function nearestAnchorAt(clientX, clientY) {
 			return true;
 		}
 	};
-	const staticGeometry = () => {
+	const staticGeometry = (kind) => {
 		let best = null, bestD = PICK_PX;
 		const tryPoint = (world) => {
 			const p = projectToScreen(world, rect);
@@ -17952,9 +17957,12 @@ function nearestAnchorAt(clientX, clientY) {
 				best = world;
 			}
 		};
-		for (const e of state.pointNodes) {
-			if (!e.pivotPoints || !nodeShown(e)) continue;
-			for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
+		if (kind === "points") {
+			for (const e of state.pointNodes) {
+				if (!e.pivotPoints || !nodeShown(e)) continue;
+				for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
+			}
+			return best;
 		}
 		for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
 			if (!nodeShown(e)) continue;
@@ -17974,7 +17982,7 @@ function nearestAnchorAt(clientX, clientY) {
 		}
 		return best;
 	};
-	return nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry();
+	return staticGeometry("points") ?? nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry("lines");
 }
 /** Resolve the element under a client-space point: raycast first, then fall back
 *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point

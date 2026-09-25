@@ -322,7 +322,15 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
     const rect = _canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     const lh = labelHitTest(clientX, clientY);
-    if (lh && !isHidden(lh.id)) return worldAnchor(lh.id, state.elementRegistry[lh.id]);
+    if (lh && !isHidden(lh.id)) {
+        // A point's label sits offset from it (renderPoint puts it 0.2 above):
+        // a press on the label means the point, so pivot on the point itself.
+        const reg = state.elementRegistry[lh.id];
+        const own = ((reg?.tracker || {}) as { pointNodes?: { pivotPoints?: number[][] }[] }).pointNodes;
+        const pt = own && own.length === 1 && own[0]!.pivotPoints && own[0]!.pivotPoints.length === 1
+            ? own[0]!.pivotPoints[0]! : null;
+        return pt ? new THREE.Vector3(...dataToWorld(pt as Vec3)) : worldAnchor(lh.id, reg);
+    }
     const localX = clientX - rect.left, localY = clientY - rect.top;
     let ray: import('three').Ray | null = null;
     if (_raycaster) {
@@ -364,7 +372,7 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
     // renderers push exist for every point, axis and line — base scene or
     // step, with an id or not — so they are searched last: point positions,
     // line anchors, and the nearest point along each axis.
-    const staticGeometry = (): Vector3 | null => {
+    const staticGeometry = (kind: 'points' | 'lines'): Vector3 | null => {
         let best: Vector3 | null = null, bestD = PICK_PX;
         const tryPoint = (world: Vector3) => {
             const p = projectToScreen(world, rect);
@@ -372,9 +380,12 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
             const d = Math.hypot(p.x - localX, p.y - localY);
             if (d < bestD) { bestD = d; best = world; }
         };
-        for (const e of state.pointNodes) {
-            if (!e.pivotPoints || !nodeShown(e)) continue;
-            for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
+        if (kind === 'points') {
+            for (const e of state.pointNodes) {
+                if (!e.pivotPoints || !nodeShown(e)) continue;
+                for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
+            }
+            return best;
         }
         // Lines, curves and vectors drawn as MathBox lines: their entry's
         // anchor, static or live (an animated line's moves every frame).
@@ -400,11 +411,12 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
         }
         return best;
     };
-    // Named content first, so a press on a labelled point pivots on exactly
-    // that point rather than on an axis or vector tail anchored beside it;
-    // then anything registered and visible; then static points and axes,
-    // which reaches the ones with no id or label at all.
-    return nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry();
+    // Point markers first, at their true positions — the registry's generic
+    // anchor for a labelled point is its label, offset from the point. Then
+    // named content (so a press near a labelled element beats an axis or a
+    // vector tail beside it), anything registered and visible, and last the
+    // line anchors and axis segments, which reach the id-less ones.
+    return staticGeometry('points') ?? nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry('lines');
 }
 
 /** Resolve the element under a client-space point: raycast first, then fall back
