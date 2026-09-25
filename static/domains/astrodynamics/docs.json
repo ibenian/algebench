@@ -152,5 +152,97 @@
       "sliderDeps": ["Rp","Gs","Mx","h","h_target","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
       "example": "orbitOutcome(t, 2)"
     }
+  },
+  "glossary": {
+    "gravity turn": {
+      "term": "gravity turn",
+      "markdown": "A launch profile that pitches the rocket over slightly early and then lets gravity bend the path toward horizontal. Thrust stays along the velocity, so the vehicle turns without steering losses or large sideways loads.",
+      "prompt": "Explain the gravity turn: why rockets pitch over early, and why letting gravity do the turning is efficient."
+    },
+    "circularization": {
+      "term": "circularization burn",
+      "aliases": [
+        "circularization burn",
+        "circularize",
+        "circularise",
+        "circularisation"
+      ],
+      "markdown": "A burn at apogee that raises the tangential speed to the local circular-orbit speed $v = \\sqrt{\\mu / r}$, lifting perigee until the orbit is round.",
+      "prompt": "Explain the circularization burn: why it happens at apogee, and how much speed it needs to add."
+    },
+    "circular orbit": {
+      "term": "circular orbit",
+      "markdown": "An orbit whose radius never changes. Gravity supplies exactly the centripetal force, so $v = \\sqrt{\\mu / r}$ — about $7.7$ km/s in low Earth orbit.",
+      "prompt": "Explain why a circular orbit needs exactly the speed sqrt(mu/r), and what happens if you are slightly slower or faster."
+    },
+    "apogee": {
+      "term": "apogee",
+      "aliases": [
+        "apoapsis"
+      ],
+      "markdown": "The point of an Earth orbit farthest from Earth's centre, where the vehicle moves slowest.",
+      "prompt": "Explain apogee, and why burns to raise the opposite side of the orbit are done there."
+    },
+    "perigee": {
+      "term": "perigee",
+      "aliases": [
+        "periapsis"
+      ],
+      "markdown": "The point of an Earth orbit closest to Earth's centre, where the vehicle moves fastest. A perigee inside the atmosphere means the orbit decays.",
+      "prompt": "Explain perigee, and why perigee altitude decides whether an orbit is stable."
+    },
+    "delta-v": {
+      "term": "delta-v",
+      "aliases": [
+        "Δv",
+        "delta v"
+      ],
+      "markdown": "$\\Delta v$ — the total change in velocity a vehicle can make, or a manoeuvre needs. Mission planning is a $\\Delta v$ budget: every burn spends from it.",
+      "prompt": "Explain delta-v as the currency of spaceflight, and how it relates to the rocket equation."
+    },
+    "specific impulse": {
+      "term": "specific impulse",
+      "aliases": [
+        "Isp"
+      ],
+      "markdown": "$I_{sp}$ — thrust per unit weight of propellant burned per second, in seconds. Exhaust speed is $v_e = I_{sp}\\, g_0$; higher $I_{sp}$ means more $\\Delta v$ from the same propellant.",
+      "prompt": "Explain specific impulse, its units, and how it links to exhaust velocity and delta-v."
+    },
+    "tangential speed": {
+      "term": "tangential speed",
+      "markdown": "The part of the velocity perpendicular to the radius — the 'sideways' speed that keeps a vehicle falling around the Earth instead of into it.",
+      "prompt": "Explain why tangential speed, not altitude, is what makes something stay in orbit."
+    },
+    "low Earth orbit": {
+      "term": "low Earth orbit",
+      "aliases": [
+        "LEO"
+      ],
+      "markdown": "Orbits roughly $160$–$2{,}000$ km up. The ISS flies at about $400$ km, moving at about $7.7$ km/s.",
+      "prompt": "Explain low Earth orbit and why getting there is mostly about speed, not height."
+    },
+    "ISS": {
+      "term": "International Space Station",
+      "markdown": "Crewed station in low Earth orbit at about $400$ km altitude, circling Earth roughly every $92$ minutes.",
+      "prompt": "Explain the ISS's orbit: its altitude, speed and period, and why it slowly decays."
+    },
+    "RL10": {
+      "term": "RL10",
+      "markdown": "A hydrogen–oxygen upper-stage engine (Aerojet Rocketdyne). Its vacuum specific impulse of roughly $450$–$465$ s is among the highest of any chemical rocket engine.",
+      "prompt": "Explain the RL10 engine and why hydrogen-oxygen upper stages have such high specific impulse."
+    },
+    "coast": {
+      "term": "coast phase",
+      "aliases": [
+        "coast phase"
+      ],
+      "markdown": "Engines off: the vehicle follows a ballistic arc under gravity alone, usually climbing from burnout toward apogee before the next burn.",
+      "prompt": "Explain the coast phase between burns and why launch profiles include one."
+    },
+    "time integration": {
+      "term": "time integration",
+      "markdown": "Stepping the equations of motion forward in small time steps to trace a trajectory. The engine here uses symplectic Euler, which keeps orbital energy from drifting over many orbits.",
+      "prompt": "Explain numerical time integration of orbits, and why a symplectic integrator keeps orbits from spiralling in or out."
+    }
   }
 }
