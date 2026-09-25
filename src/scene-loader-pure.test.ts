@@ -90,4 +90,3 @@ test('proofFileToLesson tolerates a proof file with no steps', () => {
   const lesson = proofFileToLesson({ title: 'Empty' }, 'x/y');
   assert.deepEqual(soleScene(lesson).proof.steps, []);
 });
-
