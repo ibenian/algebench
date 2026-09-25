@@ -4937,6 +4937,7 @@ function startArcballInertia() {
 	const identity = new THREE.Quaternion();
 	if (!cameraState.arcballInertiaQ || cameraState.arcballMomentum < .01 || performance.now() - cameraState.arcballLastMoveTime > 80 || cameraState.arcballInertiaQ.angleTo(identity) < 2e-4) {
 		cameraState.arcballInertiaQ = null;
+		dragPivot = null;
 		return;
 	}
 	const flick = cameraState.arcballInertiaQ.angleTo(identity);
@@ -4945,11 +4946,13 @@ function startArcballInertia() {
 	function step() {
 		if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
 			cameraState.arcballInertiaId = null;
+			dragPivot = null;
 			return;
 		}
 		if (cameraState.arcballInertiaQ.angleTo(identity) < 5e-5) {
 			cameraState.arcballInertiaQ = null;
 			cameraState.arcballInertiaId = null;
+			dragPivot = null;
 			return;
 		}
 		turnAboutPivot(cameraState.arcballInertiaQ);
@@ -5353,6 +5356,12 @@ function animateCamera$1(view, duration) {
 	duration = duration == null ? 800 : duration;
 	deactivateFollowCam();
 	deactivateExprCamera();
+	if (cameraState.arcballInertiaId) {
+		cancelAnimationFrame(cameraState.arcballInertiaId);
+		cameraState.arcballInertiaId = null;
+	}
+	cameraState.arcballInertiaQ = null;
+	dragPivot = null;
 	const targetView = cameraState.CAMERA_VIEWS[view];
 	if (!targetView || !cameraState.camera || !cameraState.controls) return;
 	const startPos = cameraState.camera.position.clone();
@@ -17875,12 +17884,20 @@ function rayHits(clientX, clientY, known) {
 function pivotPointAt(clientX, clientY) {
 	const hits = rayHits(clientX, clientY);
 	const map = hits.length ? buildMeshIdMap() : null;
+	let hit = null;
 	for (const h of hits) {
 		const id = map.get(h.object);
 		if (id && isHidden(id)) continue;
-		return h.point.clone();
+		hit = h.point.clone();
+		break;
 	}
-	return nearestAnchorAt(clientX, clientY);
+	const near = nearestAnchorAt(clientX, clientY);
+	if (!hit) return near ? near.world : null;
+	if (near && near.d <= PIVOT_MARKER_PX && state.camera) {
+		const eye = state.camera.position;
+		if (near.world.distanceTo(eye) < hit.distanceTo(eye)) return near.world;
+	}
+	return hit;
 }
 /**
 * The anchor of the element nearest a pixel (within PICK_PX), or of the label
@@ -17888,18 +17905,53 @@ function pivotPointAt(clientX, clientY) {
 * Unlike pickAt's fallback this has no Ask-AI eligibility filter: an unlabelled
 * point with no `prompt` is still something to turn the view about.
 */
+/** Screen-distance bias per tier of a candidate (see nearestAnchorAt). */
+var PIVOT_TIER_PX = 3;
+/** A marker this close to the press, and nearer the camera than the surface
+*  the ray met, is what was pressed (pivotPointAt). */
+var PIVOT_MARKER_PX = 6;
+/**
+* The anchor nearest a pixel (within PICK_PX) — for elements a raycast cannot
+* hit (points, lines, curves, axes) — with its screen distance.
+*
+* Every source contributes candidates and the closest one on screen wins. Each
+* carries a small bias by tier (point markers, then named content, anything
+* registered, line anchors and axes), so the order only settles near-ties: a
+* point 11 px away no longer beats an axis the pointer is directly on. A label
+* under the pointer stands for its element (a point's label means the point,
+* not the label position 0.2 above it) at half PICK_PX, so a marker right
+* under the pointer still beats a label that merely overlaps it.
+*/
 function nearestAnchorAt(clientX, clientY) {
 	if (!state.camera || !_canvas) return null;
 	const rect = _canvas.getBoundingClientRect();
 	if (!rect.width || !rect.height) return null;
+	const localX = clientX - rect.left, localY = clientY - rect.top;
+	let best = null;
+	let bestScore = Infinity;
+	const offerAt = (world, d, tier) => {
+		if (!world || d > PICK_PX) return;
+		const score = d + tier * PIVOT_TIER_PX;
+		if (score < bestScore) {
+			bestScore = score;
+			best = {
+				world,
+				d
+			};
+		}
+	};
+	const offer = (world, tier) => {
+		if (!world) return;
+		const p = projectToScreen(world, rect);
+		if (p) offerAt(world, Math.hypot(p.x - localX, p.y - localY), tier);
+	};
 	const lh = labelHitTest(clientX, clientY);
 	if (lh && !isHidden(lh.id)) {
 		const reg = state.elementRegistry[lh.id];
 		const own = (reg?.tracker || {}).pointNodes;
 		const pt = own && own.length === 1 && own[0].pivotPoints && own[0].pivotPoints.length === 1 ? own[0].pivotPoints[0] : null;
-		return pt ? new THREE.Vector3(...dataToWorld(pt)) : worldAnchor(lh.id, reg);
+		offerAt(pt ? new THREE.Vector3(...dataToWorld(pt)) : worldAnchor(lh.id, reg), PICK_PX / 2, 0);
 	}
-	const localX = clientX - rect.left, localY = clientY - rect.top;
 	let ray = null;
 	if (_raycaster) {
 		_raycaster.setFromCamera({
@@ -17908,22 +17960,6 @@ function nearestAnchorAt(clientX, clientY) {
 		}, state.camera);
 		ray = _raycaster.ray.clone();
 	}
-	const nearest = (accept) => {
-		let best = null, bestD = PICK_PX;
-		for (const [id, reg] of Object.entries(state.elementRegistry)) {
-			if (!accept(id)) continue;
-			const anchor = worldAnchor(id, reg);
-			if (!anchor) continue;
-			const p = projectToScreen(anchor, rect);
-			if (!p) continue;
-			const d = Math.hypot(p.x - localX, p.y - localY);
-			if (d < bestD) {
-				bestD = d;
-				best = anchor;
-			}
-		}
-		return best;
-	};
 	const hiddenEntries = /* @__PURE__ */ new Set();
 	for (const [id, reg] of Object.entries(state.elementRegistry)) {
 		if (!isHidden(id)) continue;
@@ -17946,43 +17982,31 @@ function nearestAnchorAt(clientX, clientY) {
 			return true;
 		}
 	};
-	const staticGeometry = (kind) => {
-		let best = null, bestD = PICK_PX;
-		const tryPoint = (world) => {
-			const p = projectToScreen(world, rect);
-			if (!p) return;
-			const d = Math.hypot(p.x - localX, p.y - localY);
-			if (d < bestD) {
-				bestD = d;
-				best = world;
-			}
-		};
-		if (kind === "points") {
-			for (const e of state.pointNodes) {
-				if (!e.pivotPoints || !nodeShown(e)) continue;
-				for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
-			}
-			return best;
+	for (const e of state.pointNodes) {
+		if (!e.pivotPoints || !nodeShown(e)) continue;
+		for (const pt of e.pivotPoints) offer(new THREE.Vector3(...dataToWorld(pt)), 1);
+	}
+	for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (isHidden(id)) continue;
+		offer(worldAnchor(id, reg), isPickable(id) ? 2 : 3);
+	}
+	for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
+		if (!nodeShown(e)) continue;
+		let pos = e.anchorDataPos;
+		if (!pos && typeof e.anchorDataPosFn === "function") try {
+			pos = e.anchorDataPosFn();
+		} catch {
+			pos = null;
 		}
-		for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
-			if (!nodeShown(e)) continue;
-			let pos = e.anchorDataPos;
-			if (!pos && typeof e.anchorDataPosFn === "function") try {
-				pos = e.anchorDataPosFn();
-			} catch {
-				pos = null;
-			}
-			if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === "number" && Number.isFinite(c))) tryPoint(new THREE.Vector3(...dataToWorld(pos)));
-		}
-		for (const e of state.axisLineNodes) {
-			if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
-			const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0]));
-			const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1]));
-			tryPoint(new THREE.Vector3(...closestOnSegmentToRay(ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
-		}
-		return best;
-	};
-	return staticGeometry("points") ?? nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry("lines");
+		if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === "number" && Number.isFinite(c))) offer(new THREE.Vector3(...dataToWorld(pos)), 4);
+	}
+	for (const e of state.axisLineNodes) {
+		if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
+		const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0]));
+		const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1]));
+		offer(new THREE.Vector3(...closestOnSegmentToRay(ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())), 4);
+	}
+	return best;
 }
 /** Resolve the element under a client-space point: raycast first, then fall back
 *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point

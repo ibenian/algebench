@@ -710,7 +710,9 @@ function startArcballInertia(): void {
     if (!cameraState.arcballInertiaQ || cameraState.arcballMomentum < 0.01 ||
         performance.now() - cameraState.arcballLastMoveTime > 80 ||
         cameraState.arcballInertiaQ.angleTo(identity) < 0.0002) {
-        cameraState.arcballInertiaQ = null; return;
+        cameraState.arcballInertiaQ = null;
+        dragPivot = null;   // no coast: the drag's pivot has nothing left to do
+        return;
     }
     // The coast replays the last pointer move once per frame, so a flick hands
     // it however far that one move turned the view — measured at 1.59 rad, and
@@ -724,10 +726,10 @@ function startArcballInertia(): void {
     const slerpT = Math.pow(0.01, cameraState.arcballMomentum);
     function step() {
         if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
-            cameraState.arcballInertiaId = null; return;
+            cameraState.arcballInertiaId = null; dragPivot = null; return;
         }
         if (cameraState.arcballInertiaQ.angleTo(identity) < 0.00005) {
-            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; return;
+            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; dragPivot = null; return;
         }
         // The coast keeps turning about the drag's own pivot.
         turnAboutPivot(cameraState.arcballInertiaQ);
@@ -1251,6 +1253,15 @@ export function animateCamera(view: string, duration?: number): void {
     duration = (duration == null) ? 800 : duration;
     deactivateFollowCam();
     deactivateExprCamera();
+    // A flick's coast still running would keep turning the view — and, about
+    // a drag pivot, dragging the orbit target with it — while this animation
+    // interpolates both: stop it, and drop the pivot it was turning about.
+    if (cameraState.arcballInertiaId) {
+        cancelAnimationFrame(cameraState.arcballInertiaId);
+        cameraState.arcballInertiaId = null;
+    }
+    cameraState.arcballInertiaQ = null;
+    dragPivot = null;
     const targetView = cameraState.CAMERA_VIEWS[view];
     if (!targetView || !cameraState.camera || !cameraState.controls) return;
 

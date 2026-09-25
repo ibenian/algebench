@@ -301,14 +301,25 @@ function pivotPointAt(clientX: number, clientY: number): Vector3 | null {
     // Built only once there is something to name, so a double-click on empty
     // space does not walk the whole registry on its way to the fallback.
     const map = hits.length ? buildMeshIdMap() : null;
+    let hit: Vector3 | null = null;
     for (const h of hits) {
         const id = map!.get(h.object);
         // A mesh switched off in the legend is not there to be aimed at, even
         // though three.js still counts it visible.
         if (id && isHidden(id)) continue;
-        return h.point.clone();
+        hit = h.point.clone();
+        break;
     }
-    return nearestAnchorAt(clientX, clientY);
+    const near = nearestAnchorAt(clientX, clientY);
+    if (!hit) return near ? near.world : null;
+    // The ray can pass a point, line or axis marker — which it cannot hit —
+    // and meet a surface behind it. A marker right under the pointer that is
+    // nearer the camera than that surface is what was pressed.
+    if (near && near.d <= PIVOT_MARKER_PX && state.camera) {
+        const eye = state.camera.position;
+        if (near.world.distanceTo(eye) < hit.distanceTo(eye)) return near.world;
+    }
+    return hit;
 }
 
 /**
@@ -317,39 +328,56 @@ function pivotPointAt(clientX: number, clientY: number): Vector3 | null {
  * Unlike pickAt's fallback this has no Ask-AI eligibility filter: an unlabelled
  * point with no `prompt` is still something to turn the view about.
  */
-function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
+/** Screen-distance bias per tier of a candidate (see nearestAnchorAt). */
+const PIVOT_TIER_PX = 3;
+/** A marker this close to the press, and nearer the camera than the surface
+ *  the ray met, is what was pressed (pivotPointAt). */
+const PIVOT_MARKER_PX = 6;
+
+/**
+ * The anchor nearest a pixel (within PICK_PX) — for elements a raycast cannot
+ * hit (points, lines, curves, axes) — with its screen distance.
+ *
+ * Every source contributes candidates and the closest one on screen wins. Each
+ * carries a small bias by tier (point markers, then named content, anything
+ * registered, line anchors and axes), so the order only settles near-ties: a
+ * point 11 px away no longer beats an axis the pointer is directly on. A label
+ * under the pointer stands for its element (a point's label means the point,
+ * not the label position 0.2 above it) at half PICK_PX, so a marker right
+ * under the pointer still beats a label that merely overlaps it.
+ */
+function nearestAnchorAt(clientX: number, clientY: number): { world: Vector3; d: number } | null {
     if (!state.camera || !_canvas) return null;
     const rect = _canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
+    const localX = clientX - rect.left, localY = clientY - rect.top;
+    let best: { world: Vector3; d: number } | null = null;
+    let bestScore = Infinity;
+    const offerAt = (world: Vector3 | null, d: number, tier: number) => {
+        if (!world || d > PICK_PX) return;
+        const score = d + tier * PIVOT_TIER_PX;
+        if (score < bestScore) { bestScore = score; best = { world, d }; }
+    };
+    const offer = (world: Vector3 | null, tier: number) => {
+        if (!world) return;
+        const p = projectToScreen(world, rect);
+        if (p) offerAt(world, Math.hypot(p.x - localX, p.y - localY), tier);
+    };
+
     const lh = labelHitTest(clientX, clientY);
     if (lh && !isHidden(lh.id)) {
-        // A point's label sits offset from it (renderPoint puts it 0.2 above):
-        // a press on the label means the point, so pivot on the point itself.
         const reg = state.elementRegistry[lh.id];
         const own = ((reg?.tracker || {}) as { pointNodes?: { pivotPoints?: number[][] }[] }).pointNodes;
         const pt = own && own.length === 1 && own[0]!.pivotPoints && own[0]!.pivotPoints.length === 1
             ? own[0]!.pivotPoints[0]! : null;
-        return pt ? new THREE.Vector3(...dataToWorld(pt as Vec3)) : worldAnchor(lh.id, reg);
+        offerAt(pt ? new THREE.Vector3(...dataToWorld(pt as Vec3)) : worldAnchor(lh.id, reg), PICK_PX / 2, 0);
     }
-    const localX = clientX - rect.left, localY = clientY - rect.top;
+
     let ray: import('three').Ray | null = null;
     if (_raycaster) {
         _raycaster.setFromCamera({ x: (localX / rect.width) * 2 - 1, y: -(localY / rect.height) * 2 + 1 } as unknown as Vector2, state.camera);
         ray = _raycaster.ray.clone();
     }
-    const nearest = (accept: (id: string) => boolean): Vector3 | null => {
-        let best: Vector3 | null = null, bestD = PICK_PX;
-        for (const [id, reg] of Object.entries(state.elementRegistry)) {
-            if (!accept(id)) continue;
-            const anchor = worldAnchor(id, reg);
-            if (!anchor) continue;
-            const p = projectToScreen(anchor, rect);
-            if (!p) continue;
-            const d = Math.hypot(p.x - localX, p.y - localY);
-            if (d < bestD) { bestD = d; best = anchor; }
-        }
-        return best;
-    };
     // Hiding an element (a step's remove, the legend) hides its tracker's
     // MathBox group, not each node — so a node's own `visible` says nothing.
     // Only elements with an id can be hidden, and their tracker lists exactly
@@ -368,55 +396,39 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
         if (!entry || hiddenEntries.has(entry)) return false;
         try { return (entry.node as { get(k: string): unknown }).get('visible') !== false; } catch { return true; }
     };
-    // Elements with no id have no registry entry. The scene-wide entries the
-    // renderers push exist for every point, axis and line — base scene or
-    // step, with an id or not — so they are searched last: point positions,
-    // line anchors, and the nearest point along each axis.
-    const staticGeometry = (kind: 'points' | 'lines'): Vector3 | null => {
-        let best: Vector3 | null = null, bestD = PICK_PX;
-        const tryPoint = (world: Vector3) => {
-            const p = projectToScreen(world, rect);
-            if (!p) return;
-            const d = Math.hypot(p.x - localX, p.y - localY);
-            if (d < bestD) { bestD = d; best = world; }
-        };
-        if (kind === 'points') {
-            for (const e of state.pointNodes) {
-                if (!e.pivotPoints || !nodeShown(e)) continue;
-                for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
-            }
-            return best;
+
+    // Tier 1 — point markers at their true positions (the registry's anchor
+    // for a labelled point is its label, offset from the point).
+    for (const e of state.pointNodes) {
+        if (!e.pivotPoints || !nodeShown(e)) continue;
+        for (const pt of e.pivotPoints) offer(new THREE.Vector3(...dataToWorld(pt as Vec3)), 1);
+    }
+    // Tiers 2 and 3 — named content, then anything registered and visible.
+    for (const [id, reg] of Object.entries(state.elementRegistry)) {
+        if (isHidden(id)) continue;
+        offer(worldAnchor(id, reg), isPickable(id) ? 2 : 3);
+    }
+    // Tier 4 — the scene-wide line and axis entries, which exist for every
+    // line and axis, with an id or not. Lines by their anchor (live for an
+    // animated line); an axis at the point closest to the pointer's ray, in 3D.
+    for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
+        if (!nodeShown(e)) continue;
+        let pos: unknown = e.anchorDataPos;
+        if (!pos && typeof e.anchorDataPosFn === 'function') {
+            try { pos = (e.anchorDataPosFn as () => unknown)(); } catch { pos = null; }
         }
-        // Lines, curves and vectors drawn as MathBox lines: their entry's
-        // anchor, static or live (an animated line's moves every frame).
-        for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
-            if (!nodeShown(e)) continue;
-            let pos: unknown = e.anchorDataPos;
-            if (!pos && typeof e.anchorDataPosFn === 'function') {
-                try { pos = (e.anchorDataPosFn as () => unknown)(); } catch { pos = null; }
-            }
-            if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === 'number' && Number.isFinite(c))) {
-                tryPoint(new THREE.Vector3(...dataToWorld(pos as Vec3)));
-            }
+        if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === 'number' && Number.isFinite(c))) {
+            offer(new THREE.Vector3(...dataToWorld(pos as Vec3)), 4);
         }
-        for (const e of state.axisLineNodes) {
-            if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
-            // The point of the axis closest to the pointer's ray, in 3D — a
-            // fraction measured along its *screen* image is not the same
-            // fraction in the world under perspective.
-            const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0] as Vec3));
-            const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1] as Vec3));
-            tryPoint(new THREE.Vector3(...closestOnSegmentToRay(
-                ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
-        }
-        return best;
-    };
-    // Point markers first, at their true positions — the registry's generic
-    // anchor for a labelled point is its label, offset from the point. Then
-    // named content (so a press near a labelled element beats an axis or a
-    // vector tail beside it), anything registered and visible, and last the
-    // line anchors and axis segments, which reach the id-less ones.
-    return staticGeometry('points') ?? nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry('lines');
+    }
+    for (const e of state.axisLineNodes) {
+        if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
+        const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0] as Vec3));
+        const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1] as Vec3));
+        offer(new THREE.Vector3(...closestOnSegmentToRay(
+            ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())), 4);
+    }
+    return best;
 }
 
 /** Resolve the element under a client-space point: raycast first, then fall back
