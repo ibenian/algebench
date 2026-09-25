@@ -316,6 +316,52 @@ const ARCBALL_OUTSIDE_RADIANS = 1.2;
 /** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
 const MAX_INERTIA_RADIANS_PER_FRAME = 0.05;
 
+// ----- Rotation pivot -----
+//
+// A drag turns the view about the point the pointer pressed on, not about the
+// orbit target. The target stays the centre of the view; the drag pivot is a
+// separate point, and the camera and its target turn together, rigidly, about
+// it — so the view does not jump when a drag starts, and what was grabbed
+// stays under the pointer. The pivot lives on through the inertia coast.
+
+/** The drag's pivot, or null to turn about the orbit target. */
+let dragPivot: Vector3 | null = null;
+
+/** Finds the scene point under a pixel; object-picker registers it at setup
+ *  (a direct import would be circular — it already imports this module). */
+let pivotPicker: ((clientX: number, clientY: number) => Vector3 | null) | null = null;
+
+export function setRotationPivotPicker(fn: (clientX: number, clientY: number) => Vector3 | null): void {
+    pivotPicker = fn;
+}
+
+/** The point rotation turns about right now. */
+function rotationCentre(): Vector3 {
+    return dragPivot ?? cameraState.controls!.target;
+}
+
+/**
+ * The pivot for a drag pressed at a pixel: the geometry under it, or — over
+ * empty space — the point under it at the orbit target's depth.
+ */
+function pivotUnder(clientX: number, clientY: number): Vector3 | null {
+    const hit = pivotPicker ? pivotPicker(clientX, clientY) : null;
+    if (hit) return hit;
+    if (!cameraState.camera || !cameraState.controls || !cameraState.renderer) return null;
+    const rect = cameraState.renderer.domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const ndc = new THREE.Vector2(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, cameraState.camera as unknown as Camera);
+    const facing = new THREE.Vector3();
+    (cameraState.camera as unknown as Camera).getWorldDirection(facing);
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(facing, cameraState.controls.target);
+    return ray.ray.intersectPlane(plane, new THREE.Vector3());
+}
+
 /**
  * Where the ball sits on screen (its centre and pixel radius). The canvas rect
  * comes back with it: measuring it is the one layout read here, and callers
@@ -332,9 +378,9 @@ function arcballScreenDisc(): { cx: number; cy: number; r: number; rect: DOMRect
     // would go straight into the camera, where nothing but a reload gets it
     // back out.
     if (rect.width <= 0 || rect.height <= 0) return null;
-    // The ball is centred on the orbit pivot, not on the viewport, so grabbing
-    // a point on it turns the same point that the rotation actually swings.
-    const ndc = cameraState.controls.target.clone().project(cameraState.camera as unknown as Camera);
+    // The ball is centred on the rotation pivot, not on the viewport, so
+    // grabbing a point on it turns the same point that the rotation swings.
+    const ndc = rotationCentre().clone().project(cameraState.camera as unknown as Camera);
     return {
         cx: rect.left + (ndc.x * 0.5 + 0.5) * rect.width,
         cy: rect.top  + (-ndc.y * 0.5 + 0.5) * rect.height,
@@ -360,12 +406,12 @@ function screenToArcball(clientX: number, clientY: number): Vector3 {
     if (!disc || !cameraState.camera || !cameraState.renderer) return new THREE.Vector3(0, 0, 1);
     const rect = disc.rect;
     const radius = arcballWorldRadius(disc.r);
-    const dist = Math.max(
-        cameraState.camera.position.distanceTo(cameraState.controls!.target), 1e-6);
 
-    // Camera space: the eye is at the origin looking down -Z, so the ball's
-    // centre is exactly `dist` away along -Z.
-    const centre = new THREE.Vector3(0, 0, -dist);
+    // Camera space: the eye is at the origin looking down -Z. The ball sits on
+    // the pivot, which is on the view axis only when it is the orbit target.
+    cameraState.camera.updateMatrixWorld();
+    const centre = rotationCentre().clone().applyMatrix4(cameraState.camera.matrixWorldInverse);
+    const dist = Math.max(centre.length(), 1e-6);
     const ndcX =  ((clientX - rect.left) / rect.width) * 2 - 1;
     const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
 
@@ -432,14 +478,29 @@ function twistAboutAxis(q: Quaternion, axis: Vector3): void {
     else q.normalize();
 }
 
-/** World units per screen pixel at the orbit pivot. */
+/**
+ * The rotation pivot's depth along the view axis. Perspective scale at a point
+ * depends on this camera-space depth, not on its straight-line distance: the
+ * two agree only on the view axis, and a drag pivot is usually off it.
+ */
+function pivotDepth(): number {
+    const cam = cameraState.camera!;
+    cam.updateMatrixWorld();
+    const local = rotationCentre().clone().applyMatrix4(cam.matrixWorldInverse);
+    return Math.max(-local.z, 0.001);
+}
+
+/** World units per screen pixel at the rotation pivot. */
 function worldPerPixelAtTarget(): number {
     if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
     const h = Math.max(cameraState.renderer.domElement?.clientHeight || 1, 1);
     if (cameraState.camera.isOrthographicCamera) {
-        return Math.abs((cameraState.camera.top! - cameraState.camera.bottom!) / h);
+        // The frustum spans (top - bottom) / zoom world units vertically —
+        // pinch and wheel zoom an orthographic camera through `zoom`.
+        const zoom = cameraState.camera.zoom || 1;
+        return Math.abs((cameraState.camera.top! - cameraState.camera.bottom!) / zoom / h);
     }
-    const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 0.001);
+    const dist = pivotDepth();
     const fov = ((cameraState.camera.fov || 75) * Math.PI) / 180;
     return (2 * dist * Math.tan(fov / 2)) / h;
 }
@@ -457,7 +518,7 @@ function arcballWorldRadius(pixels: number): number {
     if (!cameraState.camera || !cameraState.controls) return pixels;
     const perPixel = worldPerPixelAtTarget();
     if (cameraState.camera.isOrthographicCamera) return pixels * perPixel;
-    const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
+    const dist = pivotDepth();
     return dist * Math.sin(Math.atan((pixels * perPixel) / dist));
 }
 
@@ -531,7 +592,7 @@ function showArcballBall(): void {
     // A unit sphere scaled to size: the radius follows zoom without rebuilding
     // the geometry on every pointer move.
     ballHelper.scale.setScalar(radius);
-    ballHelper.position.copy(cameraState.controls.target);
+    ballHelper.position.copy(rotationCentre());
 }
 
 function hideArcballBall(): void {
@@ -565,7 +626,7 @@ function showGrabMarker(pt: Vector3): void {
     // The arcball point lives in camera space; carry it into world space with
     // the camera's own orientation, then push it out onto the ball's surface.
     const world = pt.clone().applyQuaternion(cameraState.camera.quaternion).multiplyScalar(radius);
-    grabHelper.position.copy(cameraState.controls.target).add(world);
+    grabHelper.position.copy(rotationCentre()).add(world);
     grabHelper.scale.setScalar(worldPerPixelAtTarget() * 6);
 }
 
@@ -593,19 +654,31 @@ function applyArcballOrbit(prevPt: Vector3, currPt: Vector3, axis: Vector3 | nul
     applyCameraSpaceRotation(q);
 }
 
-/** Turn the camera about its pivot by `q`, a rotation given in camera space. */
+/**
+ * Turn the view by `worldQ` about the rotation pivot. Camera and orbit target
+ * move together, rigidly, so the view keeps looking where it did relative to
+ * the scene and only the pivot stays put. With no drag pivot this is the old
+ * turn about the target, which then does not move.
+ */
+function turnAboutPivot(worldQ: Quaternion): void {
+    if (!cameraState.camera || !cameraState.controls) return;
+    const pivot = rotationCentre().clone();
+    const target = cameraState.controls.target.clone().sub(pivot).applyQuaternion(worldQ).add(pivot);
+    const position = cameraState.camera.position.clone().sub(pivot).applyQuaternion(worldQ).add(pivot);
+    cameraState.camera.up.applyQuaternion(worldQ).normalize();
+    cameraState.camera.position.copy(position);
+    cameraState.controls.target.copy(target);
+    cameraState.camera.lookAt(target);
+    cameraState.controls.update();
+}
+
+/** Turn the view about its pivot by `q`, a rotation given in camera space. */
 function applyCameraSpaceRotation(q: Quaternion): void {
     if (!cameraState.camera || !cameraState.controls) return;
     const camQ   = cameraState.camera.quaternion.clone();
     const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
 
-    const target = cameraState.controls.target.clone();
-    const offset = cameraState.camera.position.clone().sub(target);
-    offset.applyQuaternion(worldQ);
-    cameraState.camera.up.applyQuaternion(worldQ).normalize();
-    cameraState.camera.position.copy(target).add(offset);
-    cameraState.camera.lookAt(target);
-    cameraState.controls.update();
+    turnAboutPivot(worldQ);
 
     showArcballBall();
 
@@ -640,7 +713,9 @@ function startArcballInertia(): void {
     if (!cameraState.arcballInertiaQ || cameraState.arcballMomentum < 0.01 ||
         performance.now() - cameraState.arcballLastMoveTime > 80 ||
         cameraState.arcballInertiaQ.angleTo(identity) < 0.0002) {
-        cameraState.arcballInertiaQ = null; return;
+        cameraState.arcballInertiaQ = null;
+        dragPivot = null;   // no coast: the drag's pivot has nothing left to do
+        return;
     }
     // The coast replays the last pointer move once per frame, so a flick hands
     // it however far that one move turned the view — measured at 1.59 rad, and
@@ -654,18 +729,13 @@ function startArcballInertia(): void {
     const slerpT = Math.pow(0.01, cameraState.arcballMomentum);
     function step() {
         if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
-            cameraState.arcballInertiaId = null; return;
+            cameraState.arcballInertiaId = null; dragPivot = null; return;
         }
         if (cameraState.arcballInertiaQ.angleTo(identity) < 0.00005) {
-            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; return;
+            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; dragPivot = null; return;
         }
-        const tgt    = cameraState.controls.target.clone();
-        const offset = cameraState.camera.position.clone().sub(tgt);
-        offset.applyQuaternion(cameraState.arcballInertiaQ);
-        cameraState.camera.up.applyQuaternion(cameraState.arcballInertiaQ).normalize();
-        cameraState.camera.position.copy(tgt).add(offset);
-        cameraState.camera.lookAt(tgt);
-        cameraState.controls.update();
+        // The coast keeps turning about the drag's own pivot.
+        turnAboutPivot(cameraState.arcballInertiaQ);
         cameraState.arcballInertiaQ.slerp(identity, slerpT);
         cameraState.arcballInertiaId = requestAnimationFrame(step);
     }
@@ -732,6 +802,7 @@ export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS):
     }
     cameraState.arcballInertiaQ = null;
     cancelPivotMove();
+    dragPivot = null;
 
     const start = cameraState.controls.target.clone();
     const end   = world.clone();
@@ -794,6 +865,19 @@ export function setupRollDrag(container: HTMLElement | null): void {
             cameraState.arcballInertiaId = null;
         }
         cameraState.arcballInertiaQ = null;
+        // Turn about whatever was pressed on. Picked before the ball is shown
+        // (a flash from a double-click may still be up), and before the drag
+        // maps the pointer onto the ball, which is centred on this pivot.
+        cancelBallFlash();
+        hideArcballBall();
+        // A follow cam re-pins the target to what it tracks every frame, so a
+        // pivot elsewhere would fight it: there the drag turns about the
+        // target, as it always did. An expression-driven view rewrites the
+        // whole camera every frame and overrides any drag (true before this
+        // change too); it gets no drag pivot either, rather than a pivot that
+        // would be thrown away one frame later.
+        const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
+        dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
         if (axisClass) document.body.classList.add(axisClass);
         // A pivot slide still running would keep lerping the target out from
@@ -1064,10 +1148,61 @@ export function setupProjectionToggle(): void {
 
 // ----- Trackpad Two-Finger Pan -----
 
+// Pinch-to-zoom arrives as a wheel event with ctrlKey set (the browser's own
+// convention for trackpad pinch). OrbitControls turns each such event into one
+// fixed 5% step whatever its size, so zoom speed tracked the event *rate* —
+// which falls with frame rate, and a heavy scene at 25 fps barely moved. Zoom
+// by the pinch's actual travel instead: exp(-deltaY * k), so the same finger
+// motion gives the same zoom at any frame rate. A Ctrl+wheel notch steps.
+const PINCH_ZOOM_PER_DELTA = 0.02;   // a pinch that doubles finger spread zooms ~4x
+const PINCH_MAX_STEP = 20;           // safety limit only: never cap a real pinch
+// A mouse wheel held with Ctrl sends the same ctrlKey wheel event, but in
+// whole notches of ~100 (Chrome) or ~120 — a fixed step per notch, not the
+// pinch rule, or one notch would jump ~7x. A pinch's deltaY is continuous
+// (fractional, and small per event), so the two are told apart by that.
+const WHEEL_NOTCH_STEP = 1.2;
+
+function isWheelNotch(deltaY: number): boolean {
+    const a = Math.abs(deltaY);
+    return a >= 50 && Number.isInteger(a) && (a % 100 === 0 || a % 120 === 0 || a % 53 === 0);
+}
+
+function pinchZoom(deltaY: number): void {
+    if (!cameraState.camera || !cameraState.controls) return;
+    // A pinch zooms by its travel, uncapped in practice, so a fast pinch
+    // coalesced into few large events on a slow frame zooms as far as the
+    // same pinch at 60 fps.
+    const raw = isWheelNotch(deltaY)
+        ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100)))
+        : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
+    const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));   // >1 zooms in
+    const ctrl = cameraState.controls as unknown as {
+        target: Vector3; minDistance?: number; maxDistance?: number;
+        minZoom?: number; maxZoom?: number; update(): void;
+    };
+    const cam = cameraState.camera;
+    if (cam.isOrthographicCamera) {
+        const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, (cam.zoom || 1) * factor));
+        cam.zoom = zoom;
+        cam.updateProjectionMatrix!();
+    } else {
+        const offset = cam.position.clone().sub(ctrl.target);
+        const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, offset.length() / factor));
+        cam.position.copy(ctrl.target).add(offset.setLength(Math.max(dist, 1e-6)));
+    }
+    ctrl.update();
+}
+
 export function setupTrackpadPan(): void {
     const canvas = cameraState.renderer && cameraState.renderer.domElement;
     if (!canvas) return;
     canvas.addEventListener('wheel', (e) => {
+        if (e.ctrlKey && e.deltaMode === 0) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            pinchZoom(e.deltaY);
+            return;
+        }
         if (e.ctrlKey || e.deltaMode !== 0) return;
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -1136,6 +1271,15 @@ export function animateCamera(view: string, duration?: number): void {
     duration = (duration == null) ? 800 : duration;
     deactivateFollowCam();
     deactivateExprCamera();
+    // A flick's coast still running would keep turning the view — and, about
+    // a drag pivot, dragging the orbit target with it — while this animation
+    // interpolates both: stop it, and drop the pivot it was turning about.
+    if (cameraState.arcballInertiaId) {
+        cancelAnimationFrame(cameraState.arcballInertiaId);
+        cameraState.arcballInertiaId = null;
+    }
+    cameraState.arcballInertiaQ = null;
+    dragPivot = null;
     const targetView = cameraState.CAMERA_VIEWS[view];
     if (!targetView || !cameraState.camera || !cameraState.controls) return;
 

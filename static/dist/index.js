@@ -291,6 +291,33 @@ function dataLenToWorld(len) {
 	const sz = 2 * s[2] / (r[2][1] - r[2][0]);
 	return len * (sx + sy + sz) / 3;
 }
+/**
+* The point of segment AB closest to a ray (origin `o`, unit direction `v`):
+* the closest approach of the two lines, with the segment parameter clamped
+* to [0, 1]. If that point lies behind the ray's origin, the segment end
+* nearer the origin is returned instead. Used to pick where on an axis a
+* press lands — a fraction measured along the segment's screen image is not
+* the same fraction in the world under perspective.
+*/
+function closestOnSegmentToRay(o, v, A, B) {
+	const sub = (p, q) => [
+		p[0] - q[0],
+		p[1] - q[1],
+		p[2] - q[2]
+	];
+	const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+	const u = sub(B, A), w = sub(A, o);
+	const a = dot(u, u), b = dot(u, v), d = dot(u, w), e = dot(v, w);
+	const denom = a - b * b;
+	const t = Math.max(0, Math.min(1, denom > 1e-12 ? (b * e - d) / denom : 0));
+	const P = [
+		A[0] + t * u[0],
+		A[1] + t * u[1],
+		A[2] + t * u[2]
+	];
+	if (dot(sub(P, o), v) >= 0) return P;
+	return Math.hypot(...sub(A, o)) <= Math.hypot(...sub(B, o)) ? A.slice() : B.slice();
+}
 //#endregion
 //#region src/expr.ts
 var exprState = state;
@@ -4618,6 +4645,36 @@ var ARCBALL_RADIUS_FRACTION = .25;
 var ARCBALL_OUTSIDE_RADIANS = 1.2;
 /** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
 var MAX_INERTIA_RADIANS_PER_FRAME = .05;
+/** The drag's pivot, or null to turn about the orbit target. */
+var dragPivot = null;
+/** Finds the scene point under a pixel; object-picker registers it at setup
+*  (a direct import would be circular — it already imports this module). */
+var pivotPicker = null;
+function setRotationPivotPicker(fn) {
+	pivotPicker = fn;
+}
+/** The point rotation turns about right now. */
+function rotationCentre() {
+	return dragPivot ?? cameraState.controls.target;
+}
+/**
+* The pivot for a drag pressed at a pixel: the geometry under it, or — over
+* empty space — the point under it at the orbit target's depth.
+*/
+function pivotUnder(clientX, clientY) {
+	const hit = pivotPicker ? pivotPicker(clientX, clientY) : null;
+	if (hit) return hit;
+	if (!cameraState.camera || !cameraState.controls || !cameraState.renderer) return null;
+	const rect = cameraState.renderer.domElement.getBoundingClientRect();
+	if (rect.width <= 0 || rect.height <= 0) return null;
+	const ndc = new THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+	const ray = new THREE.Raycaster();
+	ray.setFromCamera(ndc, cameraState.camera);
+	const facing = new THREE.Vector3();
+	cameraState.camera.getWorldDirection(facing);
+	const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(facing, cameraState.controls.target);
+	return ray.ray.intersectPlane(plane, new THREE.Vector3());
+}
 /**
 * Where the ball sits on screen (its centre and pixel radius). The canvas rect
 * comes back with it: measuring it is the one layout read here, and callers
@@ -4628,7 +4685,7 @@ function arcballScreenDisc() {
 	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
 	const rect = cameraState.renderer.domElement.getBoundingClientRect();
 	if (rect.width <= 0 || rect.height <= 0) return null;
-	const ndc = cameraState.controls.target.clone().project(cameraState.camera);
+	const ndc = rotationCentre().clone().project(cameraState.camera);
 	return {
 		cx: rect.left + (ndc.x * .5 + .5) * rect.width,
 		cy: rect.top + (-ndc.y * .5 + .5) * rect.height,
@@ -4653,8 +4710,9 @@ function screenToArcball(clientX, clientY) {
 	if (!disc || !cameraState.camera || !cameraState.renderer) return new THREE.Vector3(0, 0, 1);
 	const rect = disc.rect;
 	const radius = arcballWorldRadius(disc.r);
-	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
-	const centre = new THREE.Vector3(0, 0, -dist);
+	cameraState.camera.updateMatrixWorld();
+	const centre = rotationCentre().clone().applyMatrix4(cameraState.camera.matrixWorldInverse);
+	const dist = Math.max(centre.length(), 1e-6);
 	const ndcX = (clientX - rect.left) / rect.width * 2 - 1;
 	const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
 	let origin;
@@ -4697,12 +4755,26 @@ function twistAboutAxis(q, axis) {
 	if (q.lengthSq() < 1e-12) q.set(0, 0, 0, 1);
 	else q.normalize();
 }
-/** World units per screen pixel at the orbit pivot. */
+/**
+* The rotation pivot's depth along the view axis. Perspective scale at a point
+* depends on this camera-space depth, not on its straight-line distance: the
+* two agree only on the view axis, and a drag pivot is usually off it.
+*/
+function pivotDepth() {
+	const cam = cameraState.camera;
+	cam.updateMatrixWorld();
+	const local = rotationCentre().clone().applyMatrix4(cam.matrixWorldInverse);
+	return Math.max(-local.z, .001);
+}
+/** World units per screen pixel at the rotation pivot. */
 function worldPerPixelAtTarget() {
 	if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
 	const h = Math.max(cameraState.renderer.domElement?.clientHeight || 1, 1);
-	if (cameraState.camera.isOrthographicCamera) return Math.abs((cameraState.camera.top - cameraState.camera.bottom) / h);
-	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), .001);
+	if (cameraState.camera.isOrthographicCamera) {
+		const zoom = cameraState.camera.zoom || 1;
+		return Math.abs((cameraState.camera.top - cameraState.camera.bottom) / zoom / h);
+	}
+	const dist = pivotDepth();
 	const fov = (cameraState.camera.fov || 75) * Math.PI / 180;
 	return 2 * dist * Math.tan(fov / 2) / h;
 }
@@ -4719,7 +4791,7 @@ function arcballWorldRadius(pixels) {
 	if (!cameraState.camera || !cameraState.controls) return pixels;
 	const perPixel = worldPerPixelAtTarget();
 	if (cameraState.camera.isOrthographicCamera) return pixels * perPixel;
-	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
+	const dist = pivotDepth();
 	return dist * Math.sin(Math.atan(pixels * perPixel / dist));
 }
 var ballHelper = null;
@@ -4774,7 +4846,7 @@ function showArcballBall() {
 		cameraState.three.scene.add(ballHelper);
 	}
 	ballHelper.scale.setScalar(radius);
-	ballHelper.position.copy(cameraState.controls.target);
+	ballHelper.position.copy(rotationCentre());
 }
 function hideArcballBall() {
 	if (!ballHelper) return;
@@ -4803,7 +4875,7 @@ function showGrabMarker(pt) {
 		cameraState.three.scene.add(grabHelper);
 	}
 	const world = pt.clone().applyQuaternion(cameraState.camera.quaternion).multiplyScalar(radius);
-	grabHelper.position.copy(cameraState.controls.target).add(world);
+	grabHelper.position.copy(rotationCentre()).add(world);
 	grabHelper.scale.setScalar(worldPerPixelAtTarget() * 6);
 }
 function hideGrabMarker() {
@@ -4820,18 +4892,29 @@ function applyArcballOrbit(prevPt, currPt, axis = null) {
 	if (axis) twistAboutAxis(q, axis);
 	applyCameraSpaceRotation(q);
 }
-/** Turn the camera about its pivot by `q`, a rotation given in camera space. */
+/**
+* Turn the view by `worldQ` about the rotation pivot. Camera and orbit target
+* move together, rigidly, so the view keeps looking where it did relative to
+* the scene and only the pivot stays put. With no drag pivot this is the old
+* turn about the target, which then does not move.
+*/
+function turnAboutPivot(worldQ) {
+	if (!cameraState.camera || !cameraState.controls) return;
+	const pivot = rotationCentre().clone();
+	const target = cameraState.controls.target.clone().sub(pivot).applyQuaternion(worldQ).add(pivot);
+	const position = cameraState.camera.position.clone().sub(pivot).applyQuaternion(worldQ).add(pivot);
+	cameraState.camera.up.applyQuaternion(worldQ).normalize();
+	cameraState.camera.position.copy(position);
+	cameraState.controls.target.copy(target);
+	cameraState.camera.lookAt(target);
+	cameraState.controls.update();
+}
+/** Turn the view about its pivot by `q`, a rotation given in camera space. */
 function applyCameraSpaceRotation(q) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	const camQ = cameraState.camera.quaternion.clone();
 	const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
-	const target = cameraState.controls.target.clone();
-	const offset = cameraState.camera.position.clone().sub(target);
-	offset.applyQuaternion(worldQ);
-	cameraState.camera.up.applyQuaternion(worldQ).normalize();
-	cameraState.camera.position.copy(target).add(offset);
-	cameraState.camera.lookAt(target);
-	cameraState.controls.update();
+	turnAboutPivot(worldQ);
 	showArcballBall();
 	cameraState.arcballLastMoveTime = performance.now();
 	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(worldQ, .5) : worldQ.clone();
@@ -4857,6 +4940,7 @@ function startArcballInertia() {
 	const identity = new THREE.Quaternion();
 	if (!cameraState.arcballInertiaQ || cameraState.arcballMomentum < .01 || performance.now() - cameraState.arcballLastMoveTime > 80 || cameraState.arcballInertiaQ.angleTo(identity) < 2e-4) {
 		cameraState.arcballInertiaQ = null;
+		dragPivot = null;
 		return;
 	}
 	const flick = cameraState.arcballInertiaQ.angleTo(identity);
@@ -4865,20 +4949,16 @@ function startArcballInertia() {
 	function step() {
 		if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
 			cameraState.arcballInertiaId = null;
+			dragPivot = null;
 			return;
 		}
 		if (cameraState.arcballInertiaQ.angleTo(identity) < 5e-5) {
 			cameraState.arcballInertiaQ = null;
 			cameraState.arcballInertiaId = null;
+			dragPivot = null;
 			return;
 		}
-		const tgt = cameraState.controls.target.clone();
-		const offset = cameraState.camera.position.clone().sub(tgt);
-		offset.applyQuaternion(cameraState.arcballInertiaQ);
-		cameraState.camera.up.applyQuaternion(cameraState.arcballInertiaQ).normalize();
-		cameraState.camera.position.copy(tgt).add(offset);
-		cameraState.camera.lookAt(tgt);
-		cameraState.controls.update();
+		turnAboutPivot(cameraState.arcballInertiaQ);
 		cameraState.arcballInertiaQ.slerp(identity, slerpT);
 		cameraState.arcballInertiaId = requestAnimationFrame(step);
 	}
@@ -4931,6 +5011,7 @@ function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 	}
 	cameraState.arcballInertiaQ = null;
 	cancelPivotMove();
+	dragPivot = null;
 	const start = cameraState.controls.target.clone();
 	const end = world.clone();
 	if (duration <= 0 || start.distanceTo(end) < 1e-6) {
@@ -4975,6 +5056,9 @@ function setupRollDrag(container) {
 			cameraState.arcballInertiaId = null;
 		}
 		cameraState.arcballInertiaQ = null;
+		cancelBallFlash();
+		hideArcballBall();
+		dragPivot = !!(cameraState.followCamState || cameraState.cameraExprState) ? null : pivotUnder(e.clientX, e.clientY);
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
 			axis,
@@ -5192,10 +5276,39 @@ function setupProjectionToggle() {
 		btn.addEventListener("click", () => switchProjection(btn.dataset.proj));
 	});
 }
+var PINCH_ZOOM_PER_DELTA = .02;
+var PINCH_MAX_STEP = 20;
+var WHEEL_NOTCH_STEP = 1.2;
+function isWheelNotch(deltaY) {
+	const a = Math.abs(deltaY);
+	return a >= 50 && Number.isInteger(a) && (a % 100 === 0 || a % 120 === 0 || a % 53 === 0);
+}
+function pinchZoom(deltaY) {
+	if (!cameraState.camera || !cameraState.controls) return;
+	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
+	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
+	const ctrl = cameraState.controls;
+	const cam = cameraState.camera;
+	if (cam.isOrthographicCamera) {
+		cam.zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, (cam.zoom || 1) * factor));
+		cam.updateProjectionMatrix();
+	} else {
+		const offset = cam.position.clone().sub(ctrl.target);
+		const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, offset.length() / factor));
+		cam.position.copy(ctrl.target).add(offset.setLength(Math.max(dist, 1e-6)));
+	}
+	ctrl.update();
+}
 function setupTrackpadPan() {
 	const canvas = cameraState.renderer && cameraState.renderer.domElement;
 	if (!canvas) return;
 	canvas.addEventListener("wheel", (e) => {
+		if (e.ctrlKey && e.deltaMode === 0) {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			pinchZoom(e.deltaY);
+			return;
+		}
 		if (e.ctrlKey || e.deltaMode !== 0) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
@@ -5251,6 +5364,12 @@ function animateCamera$1(view, duration) {
 	duration = duration == null ? 800 : duration;
 	deactivateFollowCam();
 	deactivateExprCamera();
+	if (cameraState.arcballInertiaId) {
+		cancelAnimationFrame(cameraState.arcballInertiaId);
+		cameraState.arcballInertiaId = null;
+	}
+	cameraState.arcballInertiaQ = null;
+	dragPivot = null;
 	const targetView = cameraState.CAMERA_VIEWS[view];
 	if (!targetView || !cameraState.camera || !cameraState.controls) return;
 	const startPos = cameraState.camera.position.clone();
@@ -5638,7 +5757,8 @@ function renderAxis(el, view) {
 			(start[0] + end[0]) / 2,
 			(start[1] + end[1]) / 2,
 			(start[2] + end[2]) / 2
-		]
+		],
+		pivotSegment: [start, end]
 	};
 	const axisW = resolveLineWidth(axisEntry);
 	axisEntry.node = view.array({
@@ -5956,7 +6076,11 @@ function renderPoint(el, view) {
 		size,
 		zBias: 5
 	});
-	pointState.pointNodes.push({ node: pointNode });
+	const pivotPoints = positions.filter((p) => Array.isArray(p) && p.length === 3 && p.every((c) => typeof c === "number" && Number.isFinite(c))).map((p) => p.slice());
+	pointState.pointNodes.push({
+		node: pointNode,
+		pivotPoints
+	});
 	if (label && positions.length === 1) addLabel3D(label, [
 		positions[0][0],
 		positions[0][1] + .2,
@@ -17753,8 +17877,9 @@ function rayHits(clientX, clientY, known) {
 	return _raycaster.intersectObjects(pickableMeshes(), false);
 }
 /**
-* Where a double-click should put the orbit pivot: the nearest point of solid
-* geometry under the cursor.
+* Where the view should turn about for a press or double-click here: the
+* nearest point of solid geometry under the cursor. A rotation drag uses it
+* as its pivot (see camera.ts), a double-click to recentre the view.
 *
 * Deliberately wider than `pickAt`. The Ask-AI button only offers itself for
 * elements an author opted in (`prompt`) or that carry a label, which is the
@@ -17767,14 +17892,129 @@ function rayHits(clientX, clientY, known) {
 function pivotPointAt(clientX, clientY) {
 	const hits = rayHits(clientX, clientY);
 	const map = hits.length ? buildMeshIdMap() : null;
+	let hit = null;
 	for (const h of hits) {
 		const id = map.get(h.object);
 		if (id && isHidden(id)) continue;
-		return h.point.clone();
+		hit = h.point.clone();
+		break;
 	}
-	const hit = pickAt(clientX, clientY);
-	if (!hit) return null;
-	return hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+	const near = nearestAnchorAt(clientX, clientY);
+	if (!hit) return near ? near.world : null;
+	if (near && near.d <= PIVOT_MARKER_PX && state.camera) {
+		const eye = state.camera.position;
+		if (near.world.distanceTo(eye) < hit.distanceTo(eye)) return near.world;
+	}
+	return hit;
+}
+/**
+* The anchor of the element nearest a pixel (within PICK_PX), or of the label
+* under it — for elements a raycast cannot hit (points, lines, curves, axes).
+* Unlike pickAt's fallback this has no Ask-AI eligibility filter: an unlabelled
+* point with no `prompt` is still something to turn the view about.
+*/
+/** Screen-distance bias per tier of a candidate (see nearestAnchorAt). */
+var PIVOT_TIER_PX = 3;
+/** A marker this close to the press, and nearer the camera than the surface
+*  the ray met, is what was pressed (pivotPointAt). */
+var PIVOT_MARKER_PX = 6;
+/**
+* The anchor nearest a pixel (within PICK_PX) — for elements a raycast cannot
+* hit (points, lines, curves, axes) — with its screen distance.
+*
+* Every source contributes candidates and the closest one on screen wins. Each
+* carries a small bias by tier (point markers, then named content, anything
+* registered, line anchors and axes), so the order only settles near-ties: a
+* point 11 px away no longer beats an axis the pointer is directly on. A label
+* under the pointer stands for its element (a point's label means the point,
+* not the label position 0.2 above it) at half PICK_PX, so a marker right
+* under the pointer still beats a label that merely overlaps it.
+*/
+function nearestAnchorAt(clientX, clientY) {
+	if (!state.camera || !_canvas) return null;
+	const rect = _canvas.getBoundingClientRect();
+	if (!rect.width || !rect.height) return null;
+	const localX = clientX - rect.left, localY = clientY - rect.top;
+	let best = null;
+	let bestScore = Infinity;
+	const offerAt = (world, d, tier) => {
+		if (!world || d > PICK_PX) return;
+		const score = d + tier * PIVOT_TIER_PX;
+		if (score < bestScore) {
+			bestScore = score;
+			best = {
+				world,
+				d
+			};
+		}
+	};
+	const offer = (world, tier) => {
+		if (!world) return;
+		const p = projectToScreen(world, rect);
+		if (p) offerAt(world, Math.hypot(p.x - localX, p.y - localY), tier);
+	};
+	const lh = labelHitTest(clientX, clientY);
+	if (lh && !isHidden(lh.id)) {
+		const reg = state.elementRegistry[lh.id];
+		const own = (reg?.tracker || {}).pointNodes;
+		const pt = own && own.length === 1 && own[0].pivotPoints && own[0].pivotPoints.length === 1 ? own[0].pivotPoints[0] : null;
+		offerAt(pt ? new THREE.Vector3(...dataToWorld(pt)) : worldAnchor(lh.id, reg), PICK_PX / 2, 0);
+	}
+	let ray = null;
+	if (_raycaster) {
+		_raycaster.setFromCamera({
+			x: localX / rect.width * 2 - 1,
+			y: -(localY / rect.height) * 2 + 1
+		}, state.camera);
+		ray = _raycaster.ray.clone();
+	}
+	const hiddenEntries = /* @__PURE__ */ new Set();
+	for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (!isHidden(id)) continue;
+		const t = reg.tracker || {};
+		for (const key of [
+			"pointNodes",
+			"lineNodes",
+			"axisLineNodes",
+			"vectorLineNodes"
+		]) {
+			const list = t[key];
+			if (Array.isArray(list)) for (const e of list) hiddenEntries.add(e);
+		}
+	}
+	const nodeShown = (entry) => {
+		if (!entry || hiddenEntries.has(entry)) return false;
+		try {
+			return entry.node.get("visible") !== false;
+		} catch {
+			return true;
+		}
+	};
+	for (const e of state.pointNodes) {
+		if (!e.pivotPoints || !nodeShown(e)) continue;
+		for (const pt of e.pivotPoints) offer(new THREE.Vector3(...dataToWorld(pt)), 1);
+	}
+	for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (isHidden(id)) continue;
+		offer(worldAnchor(id, reg), isPickable(id) ? 2 : 3);
+	}
+	for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
+		if (!nodeShown(e)) continue;
+		let pos = e.anchorDataPos;
+		if (!pos && typeof e.anchorDataPosFn === "function") try {
+			pos = e.anchorDataPosFn();
+		} catch {
+			pos = null;
+		}
+		if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === "number" && Number.isFinite(c))) offer(new THREE.Vector3(...dataToWorld(pos)), 4);
+	}
+	for (const e of state.axisLineNodes) {
+		if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
+		const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0]));
+		const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1]));
+		offer(new THREE.Vector3(...closestOnSegmentToRay(ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())), 4);
+	}
+	return best;
 }
 /** Resolve the element under a client-space point: raycast first, then fall back
 *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point
@@ -18141,6 +18381,7 @@ function setupObjectPicker() {
 	if (!state.renderer || !state.renderer.domElement) return;
 	_canvas = state.renderer.domElement;
 	_raycaster = new THREE.Raycaster();
+	setRotationPivotPicker(pivotPointAt);
 	_canvas.addEventListener("pointerdown", (e) => {
 		if (e.button !== 0) return;
 		const hit = pickTensorCell(e.clientX, e.clientY);

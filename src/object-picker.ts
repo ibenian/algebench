@@ -20,9 +20,9 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { dataToWorld } from '/coords.js';
+import { dataToWorld, closestOnSegmentToRay } from '/coords.js';
 import { makeAiAskButton } from '/labels.js';
-import { setOrbitPivot } from '/camera.js';
+import { setOrbitPivot, setRotationPivotPicker } from '/camera.js';
 import type { AppState } from '/state.js';
 import type { Vec3 } from '/coords.js';
 import type { Label3D } from '/labels.js';
@@ -284,8 +284,9 @@ function rayHits(clientX: number, clientY: number, known?: DOMRect) {
 }
 
 /**
- * Where a double-click should put the orbit pivot: the nearest point of solid
- * geometry under the cursor.
+ * Where the view should turn about for a press or double-click here: the
+ * nearest point of solid geometry under the cursor. A rotation drag uses it
+ * as its pivot (see camera.ts), a double-click to recentre the view.
  *
  * Deliberately wider than `pickAt`. The Ask-AI button only offers itself for
  * elements an author opted in (`prompt`) or that carry a label, which is the
@@ -300,16 +301,134 @@ function pivotPointAt(clientX: number, clientY: number): Vector3 | null {
     // Built only once there is something to name, so a double-click on empty
     // space does not walk the whole registry on its way to the fallback.
     const map = hits.length ? buildMeshIdMap() : null;
+    let hit: Vector3 | null = null;
     for (const h of hits) {
         const id = map!.get(h.object);
         // A mesh switched off in the legend is not there to be aimed at, even
         // though three.js still counts it visible.
         if (id && isHidden(id)) continue;
-        return h.point.clone();
+        hit = h.point.clone();
+        break;
     }
-    const hit = pickAt(clientX, clientY);
-    if (!hit) return null;
-    return hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+    const near = nearestAnchorAt(clientX, clientY);
+    if (!hit) return near ? near.world : null;
+    // The ray can pass a point, line or axis marker — which it cannot hit —
+    // and meet a surface behind it. A marker right under the pointer that is
+    // nearer the camera than that surface is what was pressed.
+    if (near && near.d <= PIVOT_MARKER_PX && state.camera) {
+        const eye = state.camera.position;
+        if (near.world.distanceTo(eye) < hit.distanceTo(eye)) return near.world;
+    }
+    return hit;
+}
+
+/**
+ * The anchor of the element nearest a pixel (within PICK_PX), or of the label
+ * under it — for elements a raycast cannot hit (points, lines, curves, axes).
+ * Unlike pickAt's fallback this has no Ask-AI eligibility filter: an unlabelled
+ * point with no `prompt` is still something to turn the view about.
+ */
+/** Screen-distance bias per tier of a candidate (see nearestAnchorAt). */
+const PIVOT_TIER_PX = 3;
+/** A marker this close to the press, and nearer the camera than the surface
+ *  the ray met, is what was pressed (pivotPointAt). */
+const PIVOT_MARKER_PX = 6;
+
+/**
+ * The anchor nearest a pixel (within PICK_PX) — for elements a raycast cannot
+ * hit (points, lines, curves, axes) — with its screen distance.
+ *
+ * Every source contributes candidates and the closest one on screen wins. Each
+ * carries a small bias by tier (point markers, then named content, anything
+ * registered, line anchors and axes), so the order only settles near-ties: a
+ * point 11 px away no longer beats an axis the pointer is directly on. A label
+ * under the pointer stands for its element (a point's label means the point,
+ * not the label position 0.2 above it) at half PICK_PX, so a marker right
+ * under the pointer still beats a label that merely overlaps it.
+ */
+function nearestAnchorAt(clientX: number, clientY: number): { world: Vector3; d: number } | null {
+    if (!state.camera || !_canvas) return null;
+    const rect = _canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const localX = clientX - rect.left, localY = clientY - rect.top;
+    let best: { world: Vector3; d: number } | null = null;
+    let bestScore = Infinity;
+    const offerAt = (world: Vector3 | null, d: number, tier: number) => {
+        if (!world || d > PICK_PX) return;
+        const score = d + tier * PIVOT_TIER_PX;
+        if (score < bestScore) { bestScore = score; best = { world, d }; }
+    };
+    const offer = (world: Vector3 | null, tier: number) => {
+        if (!world) return;
+        const p = projectToScreen(world, rect);
+        if (p) offerAt(world, Math.hypot(p.x - localX, p.y - localY), tier);
+    };
+
+    const lh = labelHitTest(clientX, clientY);
+    if (lh && !isHidden(lh.id)) {
+        const reg = state.elementRegistry[lh.id];
+        const own = ((reg?.tracker || {}) as { pointNodes?: { pivotPoints?: number[][] }[] }).pointNodes;
+        const pt = own && own.length === 1 && own[0]!.pivotPoints && own[0]!.pivotPoints.length === 1
+            ? own[0]!.pivotPoints[0]! : null;
+        offerAt(pt ? new THREE.Vector3(...dataToWorld(pt as Vec3)) : worldAnchor(lh.id, reg), PICK_PX / 2, 0);
+    }
+
+    let ray: import('three').Ray | null = null;
+    if (_raycaster) {
+        _raycaster.setFromCamera({ x: (localX / rect.width) * 2 - 1, y: -(localY / rect.height) * 2 + 1 } as unknown as Vector2, state.camera);
+        ray = _raycaster.ray.clone();
+    }
+    // Hiding an element (a step's remove, the legend) hides its tracker's
+    // MathBox group, not each node — so a node's own `visible` says nothing.
+    // Only elements with an id can be hidden, and their tracker lists exactly
+    // which entries are theirs: collect those and skip them. (Id-less elements
+    // are only ever removed, which takes their entries out of the lists.)
+    const hiddenEntries = new Set<unknown>();
+    for (const [id, reg] of Object.entries(state.elementRegistry)) {
+        if (!isHidden(id)) continue;
+        const t = (reg.tracker || {}) as Record<string, unknown>;
+        for (const key of ['pointNodes', 'lineNodes', 'axisLineNodes', 'vectorLineNodes']) {
+            const list = t[key];
+            if (Array.isArray(list)) for (const e of list) hiddenEntries.add(e);
+        }
+    }
+    const nodeShown = (entry: { node?: unknown } | null | undefined) => {
+        if (!entry || hiddenEntries.has(entry)) return false;
+        try { return (entry.node as { get(k: string): unknown }).get('visible') !== false; } catch { return true; }
+    };
+
+    // Tier 1 — point markers at their true positions (the registry's anchor
+    // for a labelled point is its label, offset from the point).
+    for (const e of state.pointNodes) {
+        if (!e.pivotPoints || !nodeShown(e)) continue;
+        for (const pt of e.pivotPoints) offer(new THREE.Vector3(...dataToWorld(pt as Vec3)), 1);
+    }
+    // Tiers 2 and 3 — named content, then anything registered and visible.
+    for (const [id, reg] of Object.entries(state.elementRegistry)) {
+        if (isHidden(id)) continue;
+        offer(worldAnchor(id, reg), isPickable(id) ? 2 : 3);
+    }
+    // Tier 4 — the scene-wide line and axis entries, which exist for every
+    // line and axis, with an id or not. Lines by their anchor (live for an
+    // animated line); an axis at the point closest to the pointer's ray, in 3D.
+    for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
+        if (!nodeShown(e)) continue;
+        let pos: unknown = e.anchorDataPos;
+        if (!pos && typeof e.anchorDataPosFn === 'function') {
+            try { pos = (e.anchorDataPosFn as () => unknown)(); } catch { pos = null; }
+        }
+        if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === 'number' && Number.isFinite(c))) {
+            offer(new THREE.Vector3(...dataToWorld(pos as Vec3)), 4);
+        }
+    }
+    for (const e of state.axisLineNodes) {
+        if (!e.pivotSegment || !ray || !nodeShown(e)) continue;
+        const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0] as Vec3));
+        const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1] as Vec3));
+        offer(new THREE.Vector3(...closestOnSegmentToRay(
+            ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())), 4);
+    }
+    return best;
 }
 
 /** Resolve the element under a client-space point: raycast first, then fall back
@@ -712,6 +831,8 @@ export function setupObjectPicker() {
     if (!state.renderer || !state.renderer.domElement) return;
     _canvas = state.renderer.domElement;
     _raycaster = new THREE.Raycaster();
+    // A rotation drag turns about whatever it presses on.
+    setRotationPivotPicker(pivotPointAt);
     // A press on a bound lattice cell scrubs that cell instead of orbiting:
     // capture phase, so it runs before the camera controls' own listener and
     // can stop the event reaching them.
@@ -727,9 +848,11 @@ export function setupObjectPicker() {
         _latticePop = true;
         beginCellScrub(hit.bind, hit.row, hit.col, e.clientX, e.pointerId, _canvas!);
     }, { capture: true });
-    // Double-click an object to turn the view about it from then on. The pivot
-    // goes where the ray actually met the geometry, so double-clicking the far
-    // end of a long vector pivots there rather than at its anchor.
+    // Double-click an object to centre the view on it (the orbit target slides
+    // there). Rotation no longer needs this: every drag turns about the point
+    // it presses on (camera.ts). The point is where the ray actually met the
+    // geometry, so double-clicking the far end of a long vector centres there
+    // rather than at its anchor.
     _canvas.addEventListener('dblclick', (e) => {
         if (e.button !== 0) return;
         const point = pivotPointAt(e.clientX, e.clientY);

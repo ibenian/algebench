@@ -46,11 +46,15 @@ interface LineNodeEntry {
     baseOpacity?: number;
     anchorDataPos?: number[];
     anchorDataPosFn?: unknown;
+    /** An axis's data-space start and end, for choosing a rotation pivot. */
+    pivotSegment?: number[][];
 }
 
 /** A MathBox point primitive's registry entry (src/objects/point.ts). */
 interface PointNodeEntry {
     node: MathBoxNode | null;
+    /** The point(s)' static data-space positions, for choosing a rotation pivot. */
+    pivotPoints?: number[][];
 }
 
 /** A mesh the scene loader can hide or dispose. `_hiddenByRemove` is the
