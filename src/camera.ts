@@ -14,6 +14,8 @@ import { renderKaTeX, updateLabels } from '/labels.js';
 // these imports will resolve once all modules are in place.
 import { runAnimUpdaters } from '/sliders.js';
 import { updateStatusBar } from '/overlay.js';
+import { Smoother, DEFAULT_SMOOTHING, isSmoothingMode } from '/smoothing.js';
+import type { SmoothingMode } from '/smoothing.js';
 import type { Camera, Quaternion, Scene, Vector3, WebGLRenderer } from 'three';
 import type { Vec3 } from '/coords.js';
 import type { Element, View } from '/types/lesson.js';
@@ -326,6 +328,8 @@ const MAX_INERTIA_RADIANS_PER_FRAME = 0.05;
 
 /** The drag's pivot, or null to turn about the orbit target. */
 let dragPivot: Vector3 | null = null;
+/** A rotation drag is under way (its pivot must not be dropped). */
+let orbitDragActive = false;
 
 /** Finds the scene point under a pixel; object-picker registers it at setup
  *  (a direct import would be circular — it already imports this module). */
@@ -678,7 +682,8 @@ function applyCameraSpaceRotation(q: Quaternion): void {
     const camQ   = cameraState.camera.quaternion.clone();
     const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
 
-    turnAboutPivot(worldQ);
+    if (rotSmoothers[0].mode === 'instant') turnAboutPivot(worldQ);
+    else pushSmoothedRotation(worldQ);
 
     showArcballBall();
 
@@ -704,6 +709,78 @@ function applyAxisRoll(dx: number): void {
         new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL));
 }
 
+/** A smoothing mode from `?<param>=`, else localStorage, else `fallback`. */
+function loadSmoothingMode(param: string, key: string, fallback: SmoothingMode = DEFAULT_SMOOTHING): SmoothingMode {
+    try {
+        const q = new URLSearchParams(location.search).get(param);
+        if (isSmoothingMode(q)) return q;
+        const saved = localStorage.getItem(key);
+        if (isSmoothingMode(saved)) return saved;
+    } catch { /* storage blocked */ }
+    return fallback;
+}
+
+function saveSmoothingMode(key: string, mode: SmoothingMode): void {
+    try { localStorage.setItem(key, mode); } catch { /* storage blocked */ }
+}
+
+// A drag's rotation can be smoothed like pinch zoom. Each pointer move adds
+// its world rotation, as a rotation vector (axis * angle), to a goal; one
+// smoother per component carries the view there frame by frame. Per-move
+// rotations are small, so summing their vectors composes them closely enough.
+// The mode is chosen in the settings panel, or ?rotsmooth=<mode> for a visit.
+const ROTATE_SMOOTHING_KEY = 'algebench.rotateSmoothing';
+const rotSmoother = () => new Smoother(loadSmoothingMode('rotsmooth', ROTATE_SMOOTHING_KEY));
+const rotSmoothers: [Smoother, Smoother, Smoother] = [rotSmoother(), rotSmoother(), rotSmoother()];
+let rotFrameId: number | null = null;
+let rotLastTime = 0;
+
+export function setRotateSmoothingMode(mode: SmoothingMode): void {
+    for (const s of rotSmoothers) { s.mode = mode; s.reset(); }
+    saveSmoothingMode(ROTATE_SMOOTHING_KEY, mode);
+}
+
+function pushSmoothedRotation(worldQ: Quaternion): void {
+    const q = worldQ.clone();
+    if (q.w < 0) q.set(-q.x, -q.y, -q.z, -q.w);   // the short way round
+    const half = Math.acos(Math.min(1, q.w));
+    const k = half > 1e-9 ? (2 * half) / Math.sin(half) : 2;
+    rotSmoothers[0].push(q.x * k);
+    rotSmoothers[1].push(q.y * k);
+    rotSmoothers[2].push(q.z * k);
+    if (rotFrameId === null) {
+        rotLastTime = performance.now();
+        rotFrameId = requestAnimationFrame(rotFrame);
+    }
+}
+
+function rotFrame(now: number): void {
+    const dt = (now - rotLastTime) / 1000;
+    rotLastTime = now;
+    const v = new THREE.Vector3(rotSmoothers[0].step(dt), rotSmoothers[1].step(dt), rotSmoothers[2].step(dt));
+    const angle = v.length();
+    if (angle > 0) turnAboutPivot(new THREE.Quaternion().setFromAxisAngle(v.divideScalar(angle), angle));
+    if (rotSmoothers.every(s => s.settled)) {
+        for (const s of rotSmoothers) s.reset();
+        rotFrameId = null;
+        releaseDragPivotIfIdle();
+        return;
+    }
+    rotFrameId = requestAnimationFrame(rotFrame);
+}
+
+/** Drop what's left of a smoothed turn, e.g. when a new drag takes over. */
+function haltSmoothedRotation(): void {
+    if (rotFrameId !== null) cancelAnimationFrame(rotFrameId);
+    rotFrameId = null;
+    for (const s of rotSmoothers) s.reset();
+}
+
+/** The drag pivot outlives the drag while a coast or a smoothed turn still uses it. */
+function releaseDragPivotIfIdle(): void {
+    if (!orbitDragActive && rotFrameId === null && !cameraState.arcballInertiaId) dragPivot = null;
+}
+
 function startArcballInertia(): void {
     if (cameraState.arcballInertiaId) {
         cancelAnimationFrame(cameraState.arcballInertiaId);
@@ -714,7 +791,7 @@ function startArcballInertia(): void {
         performance.now() - cameraState.arcballLastMoveTime > 80 ||
         cameraState.arcballInertiaQ.angleTo(identity) < 0.0002) {
         cameraState.arcballInertiaQ = null;
-        dragPivot = null;   // no coast: the drag's pivot has nothing left to do
+        releaseDragPivotIfIdle();   // no coast: the drag's pivot has nothing left to do
         return;
     }
     // The coast replays the last pointer move once per frame, so a flick hands
@@ -729,10 +806,10 @@ function startArcballInertia(): void {
     const slerpT = Math.pow(0.01, cameraState.arcballMomentum);
     function step() {
         if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
-            cameraState.arcballInertiaId = null; dragPivot = null; return;
+            cameraState.arcballInertiaId = null; releaseDragPivotIfIdle(); return;
         }
         if (cameraState.arcballInertiaQ.angleTo(identity) < 0.00005) {
-            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; dragPivot = null; return;
+            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; releaseDragPivotIfIdle(); return;
         }
         // The coast keeps turning about the drag's own pivot.
         turnAboutPivot(cameraState.arcballInertiaQ);
@@ -802,6 +879,7 @@ export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS):
     }
     cameraState.arcballInertiaQ = null;
     cancelPivotMove();
+    haltSmoothedRotation();
     dragPivot = null;
 
     const start = cameraState.controls.target.clone();
@@ -865,6 +943,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
             cameraState.arcballInertiaId = null;
         }
         cameraState.arcballInertiaQ = null;
+        haltSmoothedRotation();
         // Turn about whatever was pressed on. Picked before the ball is shown
         // (a flash from a double-click may still be up), and before the drag
         // maps the pointer onto the ball, which is centred on this pivot.
@@ -879,6 +958,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
         const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
         dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
+        orbitDragActive = true;
         if (axisClass) document.body.classList.add(axisClass);
         // A pivot slide still running would keep lerping the target out from
         // under this drag, which turns about that same target — the two would
@@ -910,6 +990,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
     function endOrbitDrag() {
         if (!orbitDrag) return;
         orbitDrag = null;
+        orbitDragActive = false;
         document.body.classList.remove('rotating-axis-x', 'rotating-axis-y', 'rotating-axis-z');
         hideArcballBall();
         hideGrabMarker();
@@ -1167,6 +1248,26 @@ function isWheelNotch(deltaY: number): boolean {
     return a >= 50 && Number.isInteger(a) && (a % 100 === 0 || a % 120 === 0 || a % 53 === 0);
 }
 
+// Each pinch event only moves a *goal*; a per-frame smoother carries the
+// camera there (see smoothing.ts for the modes). The mode is chosen in the
+// settings panel (saved in localStorage), or ?zoomsmooth=<mode> for a visit.
+const ZOOM_SMOOTHING_KEY = 'algebench.zoomSmoothing';
+const zoomSmoother = new Smoother(loadSmoothingMode('zoomsmooth', ZOOM_SMOOTHING_KEY));
+let zoomFrameId: number | null = null;
+let zoomLastTime = 0;
+
+function haltSmoothedZoom(): void {
+    if (zoomFrameId !== null) cancelAnimationFrame(zoomFrameId);
+    zoomFrameId = null;
+    zoomSmoother.reset();
+}
+
+export function setZoomSmoothingMode(mode: SmoothingMode): void {
+    zoomSmoother.mode = mode;
+    zoomSmoother.halt();
+    saveSmoothingMode(ZOOM_SMOOTHING_KEY, mode);
+}
+
 function pinchZoom(deltaY: number): void {
     if (!cameraState.camera || !cameraState.controls) return;
     // A pinch zooms by its travel, uncapped in practice, so a fast pinch
@@ -1176,26 +1277,73 @@ function pinchZoom(deltaY: number): void {
         ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100)))
         : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
     const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));   // >1 zooms in
+    zoomSmoother.push(Math.log(factor));
+    if (zoomSmoother.mode === 'instant') {
+        applyZoomFactor(Math.exp(zoomSmoother.step(0)));
+        zoomSmoother.reset();
+        return;
+    }
+    if (zoomFrameId === null) {
+        zoomLastTime = performance.now();
+        zoomFrameId = requestAnimationFrame(zoomFrame);
+    }
+}
+
+function zoomFrame(now: number): void {
+    const dt = (now - zoomLastTime) / 1000;
+    zoomLastTime = now;
+    const d = zoomSmoother.step(dt);
+    if (d !== 0 && !applyZoomFactor(Math.exp(d))) zoomSmoother.halt();   // hit a limit
+    if (zoomSmoother.settled) {
+        zoomSmoother.reset();
+        zoomFrameId = null;
+        return;
+    }
+    zoomFrameId = requestAnimationFrame(zoomFrame);
+}
+
+/** Scale the view by `factor` (>1 zooms in). False when a limit clamped it. */
+function applyZoomFactor(factor: number): boolean {
+    if (!cameraState.camera || !cameraState.controls) return false;
     const ctrl = cameraState.controls as unknown as {
         target: Vector3; minDistance?: number; maxDistance?: number;
         minZoom?: number; maxZoom?: number; update(): void;
     };
     const cam = cameraState.camera;
+    let free: boolean;
     if (cam.isOrthographicCamera) {
-        const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, (cam.zoom || 1) * factor));
+        const want = (cam.zoom || 1) * factor;
+        const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, want));
+        free = zoom === want;
         cam.zoom = zoom;
         cam.updateProjectionMatrix!();
     } else {
         const offset = cam.position.clone().sub(ctrl.target);
-        const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, offset.length() / factor));
+        const want = offset.length() / factor;
+        const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, want));
+        free = dist === want;
         cam.position.copy(ctrl.target).add(offset.setLength(Math.max(dist, 1e-6)));
     }
     ctrl.update();
+    return free;
+}
+
+/** Bind the settings panel's zoom and rotate smoothing selects. */
+function bindSmoothingSettings(): void {
+    const bind = (id: string, current: SmoothingMode, set: (m: SmoothingMode) => void) => {
+        const sel = document.getElementById(id) as HTMLSelectElement | null;
+        if (!sel) return;
+        sel.value = current;
+        sel.addEventListener('change', () => { if (isSmoothingMode(sel.value)) set(sel.value); });
+    };
+    bind('zoom-smoothing-select', zoomSmoother.mode, setZoomSmoothingMode);
+    bind('rotate-smoothing-select', rotSmoothers[0].mode, setRotateSmoothingMode);
 }
 
 export function setupTrackpadPan(): void {
     const canvas = cameraState.renderer && cameraState.renderer.domElement;
     if (!canvas) return;
+    bindSmoothingSettings();
     canvas.addEventListener('wheel', (e) => {
         if (e.ctrlKey && e.deltaMode === 0) {
             e.preventDefault();
@@ -1279,6 +1427,8 @@ export function animateCamera(view: string, duration?: number): void {
         cameraState.arcballInertiaId = null;
     }
     cameraState.arcballInertiaQ = null;
+    haltSmoothedRotation();
+    haltSmoothedZoom();
     dragPivot = null;
     const targetView = cameraState.CAMERA_VIEWS[view];
     if (!targetView || !cameraState.camera || !cameraState.controls) return;

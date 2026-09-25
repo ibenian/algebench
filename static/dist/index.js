@@ -4488,6 +4488,133 @@ function setupAboutPopup() {
 	});
 }
 //#endregion
+//#region src/smoothing.ts
+var SMOOTHING_MODES = [
+	"instant",
+	"lowpass",
+	"spring",
+	"ease-out",
+	"ease-in-out",
+	"min-jerk"
+];
+var DEFAULT_SMOOTHING = "min-jerk";
+var LOWPASS_TAU = .06;
+var SPRING_TIME = .08;
+var TWEEN_TIME = .18;
+var SETTLE_EPS = 1e-4;
+function isSmoothingMode(s) {
+	return typeof s === "string" && SMOOTHING_MODES.includes(s);
+}
+var Smoother = class {
+	constructor(mode = DEFAULT_SMOOTHING) {
+		this.pos = 0;
+		this.goal = 0;
+		this.vel = 0;
+		this.acc = 0;
+		this.t = 0;
+		this.from = 0;
+		this.c = [
+			0,
+			0,
+			0,
+			0,
+			0,
+			0
+		];
+		this.mode = mode;
+	}
+	/** Add `dLog` (= ln factor, >0 zooms in) to the goal. */
+	push(dLog) {
+		this.goal += dLog;
+		this.t = 0;
+		this.from = this.pos;
+		if (this.mode === "min-jerk") this.planQuintic();
+	}
+	/** Stop where we are (e.g. a distance limit was hit). */
+	halt() {
+		this.goal = this.pos;
+		this.vel = 0;
+		this.acc = 0;
+		this.t = 0;
+	}
+	/** Rebase to zero so values stay small over a long session. */
+	reset() {
+		this.pos = this.goal = this.vel = this.acc = this.t = 0;
+		this.from = 0;
+	}
+	get settled() {
+		return Math.abs(this.goal - this.pos) < SETTLE_EPS && Math.abs(this.vel) < SETTLE_EPS * 10;
+	}
+	/** Advance by `dt` seconds; returns the Δpos to apply this frame. */
+	step(dt) {
+		const dtc = Math.min(Math.max(dt, 0), .1);
+		const prev = this.pos;
+		switch (this.mode) {
+			case "instant":
+				this.pos = this.goal;
+				this.vel = 0;
+				break;
+			case "lowpass": {
+				const next = this.goal + (this.pos - this.goal) * Math.exp(-dtc / LOWPASS_TAU);
+				this.vel = dtc > 0 ? (next - this.pos) / dtc : 0;
+				this.pos = next;
+				break;
+			}
+			case "spring":
+				this.smoothDamp(dtc);
+				break;
+			case "ease-out":
+			case "ease-in-out": {
+				this.t = Math.min(this.t + dtc, TWEEN_TIME);
+				const u = this.t / TWEEN_TIME;
+				const e = this.mode === "ease-out" ? 1 - Math.pow(1 - u, 3) : u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+				const next = this.from + (this.goal - this.from) * e;
+				this.vel = dtc > 0 ? (next - this.pos) / dtc : 0;
+				this.pos = next;
+				break;
+			}
+			case "min-jerk": {
+				this.t = Math.min(this.t + dtc, TWEEN_TIME);
+				const [c0, c1, c2, c3, c4, c5] = this.c;
+				const t = this.t;
+				this.pos = c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * c5))));
+				this.vel = c1 + t * (2 * c2 + t * (3 * c3 + t * (4 * c4 + t * 5 * c5)));
+				this.acc = 2 * c2 + t * (6 * c3 + t * (12 * c4 + t * 20 * c5));
+				if (this.t >= TWEEN_TIME) {
+					this.pos = this.goal;
+					this.vel = this.acc = 0;
+				}
+				break;
+			}
+		}
+		if (this.settled) {
+			this.pos = this.goal;
+			this.vel = this.acc = 0;
+		}
+		return this.pos - prev;
+	}
+	smoothDamp(dt) {
+		const omega = 2 / SPRING_TIME;
+		const x = omega * dt;
+		const exp = 1 / (1 + x + .48 * x * x + .235 * x * x * x);
+		const change = this.pos - this.goal;
+		const temp = (this.vel + omega * change) * dt;
+		this.vel = (this.vel - omega * temp) * exp;
+		this.pos = this.goal + (change + temp) * exp;
+	}
+	planQuintic() {
+		const T = TWEEN_TIME, d = this.goal - this.pos, v0 = this.vel, a0 = this.acc;
+		this.c = [
+			this.pos,
+			v0,
+			a0 / 2,
+			(20 * d - 12 * v0 * T - 3 * a0 * T * T) / (2 * T ** 3),
+			(-30 * d + 16 * v0 * T + 3 * a0 * T * T) / (2 * T ** 4),
+			(12 * d - 6 * v0 * T - a0 * T * T) / (2 * T ** 5)
+		];
+	}
+};
+//#endregion
 //#region src/camera.ts
 var cameraState = state;
 var ABSTRACT_LINE_THICKNESS_FACTOR = 1 / 20;
@@ -4647,6 +4774,8 @@ var ARCBALL_OUTSIDE_RADIANS = 1.2;
 var MAX_INERTIA_RADIANS_PER_FRAME = .05;
 /** The drag's pivot, or null to turn about the orbit target. */
 var dragPivot = null;
+/** A rotation drag is under way (its pivot must not be dropped). */
+var orbitDragActive = false;
 /** Finds the scene point under a pixel; object-picker registers it at setup
 *  (a direct import would be circular — it already imports this module). */
 var pivotPicker = null;
@@ -4914,7 +5043,8 @@ function applyCameraSpaceRotation(q) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	const camQ = cameraState.camera.quaternion.clone();
 	const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
-	turnAboutPivot(worldQ);
+	if (rotSmoothers[0].mode === "instant") turnAboutPivot(worldQ);
+	else pushSmoothedRotation(worldQ);
 	showArcballBall();
 	cameraState.arcballLastMoveTime = performance.now();
 	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(worldQ, .5) : worldQ.clone();
@@ -4932,6 +5062,74 @@ function applyAxisRoll(dx) {
 	if (Math.abs(dx) < 1e-6) return;
 	applyCameraSpaceRotation(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL));
 }
+/** A smoothing mode from `?<param>=`, else localStorage, else `fallback`. */
+function loadSmoothingMode(param, key, fallback = DEFAULT_SMOOTHING) {
+	try {
+		const q = new URLSearchParams(location.search).get(param);
+		if (isSmoothingMode(q)) return q;
+		const saved = localStorage.getItem(key);
+		if (isSmoothingMode(saved)) return saved;
+	} catch {}
+	return fallback;
+}
+function saveSmoothingMode(key, mode) {
+	try {
+		localStorage.setItem(key, mode);
+	} catch {}
+}
+var ROTATE_SMOOTHING_KEY = "algebench.rotateSmoothing";
+var rotSmoother = () => new Smoother(loadSmoothingMode("rotsmooth", ROTATE_SMOOTHING_KEY));
+var rotSmoothers = [
+	rotSmoother(),
+	rotSmoother(),
+	rotSmoother()
+];
+var rotFrameId = null;
+var rotLastTime = 0;
+function setRotateSmoothingMode(mode) {
+	for (const s of rotSmoothers) {
+		s.mode = mode;
+		s.reset();
+	}
+	saveSmoothingMode(ROTATE_SMOOTHING_KEY, mode);
+}
+function pushSmoothedRotation(worldQ) {
+	const q = worldQ.clone();
+	if (q.w < 0) q.set(-q.x, -q.y, -q.z, -q.w);
+	const half = Math.acos(Math.min(1, q.w));
+	const k = half > 1e-9 ? 2 * half / Math.sin(half) : 2;
+	rotSmoothers[0].push(q.x * k);
+	rotSmoothers[1].push(q.y * k);
+	rotSmoothers[2].push(q.z * k);
+	if (rotFrameId === null) {
+		rotLastTime = performance.now();
+		rotFrameId = requestAnimationFrame(rotFrame);
+	}
+}
+function rotFrame(now) {
+	const dt = (now - rotLastTime) / 1e3;
+	rotLastTime = now;
+	const v = new THREE.Vector3(rotSmoothers[0].step(dt), rotSmoothers[1].step(dt), rotSmoothers[2].step(dt));
+	const angle = v.length();
+	if (angle > 0) turnAboutPivot(new THREE.Quaternion().setFromAxisAngle(v.divideScalar(angle), angle));
+	if (rotSmoothers.every((s) => s.settled)) {
+		for (const s of rotSmoothers) s.reset();
+		rotFrameId = null;
+		releaseDragPivotIfIdle();
+		return;
+	}
+	rotFrameId = requestAnimationFrame(rotFrame);
+}
+/** Drop what's left of a smoothed turn, e.g. when a new drag takes over. */
+function haltSmoothedRotation() {
+	if (rotFrameId !== null) cancelAnimationFrame(rotFrameId);
+	rotFrameId = null;
+	for (const s of rotSmoothers) s.reset();
+}
+/** The drag pivot outlives the drag while a coast or a smoothed turn still uses it. */
+function releaseDragPivotIfIdle() {
+	if (!orbitDragActive && rotFrameId === null && !cameraState.arcballInertiaId) dragPivot = null;
+}
 function startArcballInertia() {
 	if (cameraState.arcballInertiaId) {
 		cancelAnimationFrame(cameraState.arcballInertiaId);
@@ -4940,7 +5138,7 @@ function startArcballInertia() {
 	const identity = new THREE.Quaternion();
 	if (!cameraState.arcballInertiaQ || cameraState.arcballMomentum < .01 || performance.now() - cameraState.arcballLastMoveTime > 80 || cameraState.arcballInertiaQ.angleTo(identity) < 2e-4) {
 		cameraState.arcballInertiaQ = null;
-		dragPivot = null;
+		releaseDragPivotIfIdle();
 		return;
 	}
 	const flick = cameraState.arcballInertiaQ.angleTo(identity);
@@ -4949,13 +5147,13 @@ function startArcballInertia() {
 	function step() {
 		if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
 			cameraState.arcballInertiaId = null;
-			dragPivot = null;
+			releaseDragPivotIfIdle();
 			return;
 		}
 		if (cameraState.arcballInertiaQ.angleTo(identity) < 5e-5) {
 			cameraState.arcballInertiaQ = null;
 			cameraState.arcballInertiaId = null;
-			dragPivot = null;
+			releaseDragPivotIfIdle();
 			return;
 		}
 		turnAboutPivot(cameraState.arcballInertiaQ);
@@ -5011,6 +5209,7 @@ function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 	}
 	cameraState.arcballInertiaQ = null;
 	cancelPivotMove();
+	haltSmoothedRotation();
 	dragPivot = null;
 	const start = cameraState.controls.target.clone();
 	const end = world.clone();
@@ -5056,6 +5255,7 @@ function setupRollDrag(container) {
 			cameraState.arcballInertiaId = null;
 		}
 		cameraState.arcballInertiaQ = null;
+		haltSmoothedRotation();
 		cancelBallFlash();
 		hideArcballBall();
 		dragPivot = !!(cameraState.followCamState || cameraState.cameraExprState) ? null : pivotUnder(e.clientX, e.clientY);
@@ -5064,6 +5264,7 @@ function setupRollDrag(container) {
 			axis,
 			x: e.clientX
 		};
+		orbitDragActive = true;
 		if (axisClass) document.body.classList.add(axisClass);
 		cancelPivotMove();
 		cancelBallFlash();
@@ -5089,6 +5290,7 @@ function setupRollDrag(container) {
 	function endOrbitDrag() {
 		if (!orbitDrag) return;
 		orbitDrag = null;
+		orbitDragActive = false;
 		document.body.classList.remove("rotating-axis-x", "rotating-axis-y", "rotating-axis-z");
 		hideArcballBall();
 		hideGrabMarker();
@@ -5283,25 +5485,86 @@ function isWheelNotch(deltaY) {
 	const a = Math.abs(deltaY);
 	return a >= 50 && Number.isInteger(a) && (a % 100 === 0 || a % 120 === 0 || a % 53 === 0);
 }
+var ZOOM_SMOOTHING_KEY = "algebench.zoomSmoothing";
+var zoomSmoother = new Smoother(loadSmoothingMode("zoomsmooth", ZOOM_SMOOTHING_KEY));
+var zoomFrameId = null;
+var zoomLastTime = 0;
+function haltSmoothedZoom() {
+	if (zoomFrameId !== null) cancelAnimationFrame(zoomFrameId);
+	zoomFrameId = null;
+	zoomSmoother.reset();
+}
+function setZoomSmoothingMode(mode) {
+	zoomSmoother.mode = mode;
+	zoomSmoother.halt();
+	saveSmoothingMode(ZOOM_SMOOTHING_KEY, mode);
+}
 function pinchZoom(deltaY) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
 	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
+	zoomSmoother.push(Math.log(factor));
+	if (zoomSmoother.mode === "instant") {
+		applyZoomFactor(Math.exp(zoomSmoother.step(0)));
+		zoomSmoother.reset();
+		return;
+	}
+	if (zoomFrameId === null) {
+		zoomLastTime = performance.now();
+		zoomFrameId = requestAnimationFrame(zoomFrame);
+	}
+}
+function zoomFrame(now) {
+	const dt = (now - zoomLastTime) / 1e3;
+	zoomLastTime = now;
+	const d = zoomSmoother.step(dt);
+	if (d !== 0 && !applyZoomFactor(Math.exp(d))) zoomSmoother.halt();
+	if (zoomSmoother.settled) {
+		zoomSmoother.reset();
+		zoomFrameId = null;
+		return;
+	}
+	zoomFrameId = requestAnimationFrame(zoomFrame);
+}
+/** Scale the view by `factor` (>1 zooms in). False when a limit clamped it. */
+function applyZoomFactor(factor) {
+	if (!cameraState.camera || !cameraState.controls) return false;
 	const ctrl = cameraState.controls;
 	const cam = cameraState.camera;
+	let free;
 	if (cam.isOrthographicCamera) {
-		cam.zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, (cam.zoom || 1) * factor));
+		const want = (cam.zoom || 1) * factor;
+		const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, want));
+		free = zoom === want;
+		cam.zoom = zoom;
 		cam.updateProjectionMatrix();
 	} else {
 		const offset = cam.position.clone().sub(ctrl.target);
-		const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, offset.length() / factor));
+		const want = offset.length() / factor;
+		const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, want));
+		free = dist === want;
 		cam.position.copy(ctrl.target).add(offset.setLength(Math.max(dist, 1e-6)));
 	}
 	ctrl.update();
+	return free;
+}
+/** Bind the settings panel's zoom and rotate smoothing selects. */
+function bindSmoothingSettings() {
+	const bind = (id, current, set) => {
+		const sel = document.getElementById(id);
+		if (!sel) return;
+		sel.value = current;
+		sel.addEventListener("change", () => {
+			if (isSmoothingMode(sel.value)) set(sel.value);
+		});
+	};
+	bind("zoom-smoothing-select", zoomSmoother.mode, setZoomSmoothingMode);
+	bind("rotate-smoothing-select", rotSmoothers[0].mode, setRotateSmoothingMode);
 }
 function setupTrackpadPan() {
 	const canvas = cameraState.renderer && cameraState.renderer.domElement;
 	if (!canvas) return;
+	bindSmoothingSettings();
 	canvas.addEventListener("wheel", (e) => {
 		if (e.ctrlKey && e.deltaMode === 0) {
 			e.preventDefault();
@@ -5369,6 +5632,8 @@ function animateCamera$1(view, duration) {
 		cameraState.arcballInertiaId = null;
 	}
 	cameraState.arcballInertiaQ = null;
+	haltSmoothedRotation();
+	haltSmoothedZoom();
 	dragPivot = null;
 	const targetView = cameraState.CAMERA_VIEWS[view];
 	if (!targetView || !cameraState.camera || !cameraState.controls) return;
