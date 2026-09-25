@@ -900,6 +900,7 @@ export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS):
     cameraState.arcballInertiaQ = null;
     cancelPivotMove();
     haltSmoothedRotation();
+    haltSmoothedZoom();
     haltSmoothedPan();
     dragPivot = null;
 

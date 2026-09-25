@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Smoother, VectorSmoother, SMOOTHING_MODES } from './smoothing.ts';
+import { Smoother, VectorSmoother, SMOOTHING_MODES } from './smoothing.js';
 
 function run(s: Smoother, frames: number, dt = 1 / 60): number[] {
     const out: number[] = [];
@@ -65,4 +65,25 @@ test('VectorSmoother moves every component to its goal together', () => {
     for (let i = 0; i < 60; i++) v.step(1 / 60).forEach((d, k) => { sum[k]! += d; });
     assert.deepEqual(sum.map(x => +x.toFixed(9)), [1, -2, 0.5]);
     assert.ok(v.settled);
+});
+
+test('no mode carries past a goal pulled back mid-motion', () => {
+    for (const mode of SMOOTHING_MODES) {
+        for (let frames = 1; frames <= 10; frames++) {
+            for (const back of [0.02, 0.1, 0.3, 0.5, 1.5]) {
+                const s = new Smoother(mode);
+                s.push(1);
+                for (let i = 0; i < frames; i++) s.step(1 / 60);
+                const p0 = s.pos;
+                s.push(-back);
+                const lo = Math.min(p0, s.goal) - 1e-9, hi = Math.max(p0, s.goal) + 1e-9;
+                for (let i = 0; i < 60; i++) {
+                    s.step(1 / 60);
+                    assert.ok(s.pos >= lo && s.pos <= hi,
+                        `${mode}: ${frames}f, back ${back}: pos ${s.pos} outside [${lo}, ${hi}]`);
+                }
+                assert.ok(Math.abs(s.pos - s.goal) < 1e-9, `${mode} reached the goal`);
+            }
+        }
+    }
 });

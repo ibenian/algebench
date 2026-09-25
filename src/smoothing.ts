@@ -56,6 +56,9 @@ export class Smoother {
         this.goal += dLog;
         this.t = 0;
         this.from = this.pos;
+        // A goal now behind the motion (a pinch or drag reversing) must not be
+        // carried past by momentum: the reversal starts from rest.
+        if (this.vel * (this.goal - this.pos) < 0) { this.vel = 0; this.acc = 0; }
         if (this.mode === 'min-jerk') this.planQuintic();
     }
 
@@ -133,20 +136,51 @@ export class Smoother {
         const temp = (this.vel + omega * change) * dt;
         this.vel = (this.vel - omega * temp) * exp;
         this.pos = this.goal + (change + temp) * exp;
+        // SmoothDamp's own overshoot guard: carried velocity can take the
+        // spring past a goal that moved closer; stop on the goal instead.
+        if ((change < 0) === (this.pos > this.goal) && change !== 0) {
+            this.pos = this.goal;
+            this.vel = 0;
+        }
     }
 
     // Quintic from (pos, vel, acc) now to (goal, 0, 0) at TWEEN_TIME: the
     // minimum-jerk trajectory with those boundary conditions.
+    //
+    // Carried velocity that is large next to the remaining distance (a goal
+    // pulled in while moving fast) bends the quintic past the goal before it
+    // settles back. So the path must stay between here and the goal: if it
+    // would not, the carried velocity and acceleration are halved until it
+    // does, and dropped altogether as a last resort (rest-to-rest min-jerk
+    // is monotone).
     private planQuintic(): void {
-        const T = TWEEN_TIME, d = this.goal - this.pos, v0 = this.vel, a0 = this.acc;
-        this.c = [
-            this.pos,
-            v0,
-            a0 / 2,
-            (20 * d - 12 * v0 * T - 3 * a0 * T * T) / (2 * T ** 3),
-            (-30 * d + 16 * v0 * T + 3 * a0 * T * T) / (2 * T ** 4),
-            (12 * d - 6 * v0 * T - a0 * T * T) / (2 * T ** 5),
-        ];
+        const T = TWEEN_TIME, p0 = this.pos, d = this.goal - p0;
+        let v0 = this.vel, a0 = this.acc;
+        for (let attempt = 0; ; attempt++) {
+            if (attempt >= 8) { v0 = 0; a0 = 0; }
+            this.c = [
+                p0,
+                v0,
+                a0 / 2,
+                (20 * d - 12 * v0 * T - 3 * a0 * T * T) / (2 * T ** 3),
+                (-30 * d + 16 * v0 * T + 3 * a0 * T * T) / (2 * T ** 4),
+                (12 * d - 6 * v0 * T - a0 * T * T) / (2 * T ** 5),
+            ];
+            if ((v0 === 0 && a0 === 0) || this.quinticStaysBetween(p0, this.goal)) return;
+            v0 /= 2;
+            a0 /= 2;
+        }
+    }
+
+    private quinticStaysBetween(a: number, b: number): boolean {
+        const lo = Math.min(a, b) - 1e-9, hi = Math.max(a, b) + 1e-9;
+        const [c0, c1, c2, c3, c4, c5] = this.c;
+        for (let i = 1; i <= 32; i++) {
+            const t = (TWEEN_TIME * i) / 32;
+            const p = c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * c5))));
+            if (p < lo || p > hi) return false;
+        }
+        return true;
     }
 }
 

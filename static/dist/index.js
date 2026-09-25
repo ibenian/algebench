@@ -4528,6 +4528,10 @@ var Smoother = class {
 		this.goal += dLog;
 		this.t = 0;
 		this.from = this.pos;
+		if (this.vel * (this.goal - this.pos) < 0) {
+			this.vel = 0;
+			this.acc = 0;
+		}
 		if (this.mode === "min-jerk") this.planQuintic();
 	}
 	/** Stop where we are (e.g. a distance limit was hit). */
@@ -4601,17 +4605,41 @@ var Smoother = class {
 		const temp = (this.vel + omega * change) * dt;
 		this.vel = (this.vel - omega * temp) * exp;
 		this.pos = this.goal + (change + temp) * exp;
+		if (change < 0 === this.pos > this.goal && change !== 0) {
+			this.pos = this.goal;
+			this.vel = 0;
+		}
 	}
 	planQuintic() {
-		const T = TWEEN_TIME, d = this.goal - this.pos, v0 = this.vel, a0 = this.acc;
-		this.c = [
-			this.pos,
-			v0,
-			a0 / 2,
-			(20 * d - 12 * v0 * T - 3 * a0 * T * T) / (2 * T ** 3),
-			(-30 * d + 16 * v0 * T + 3 * a0 * T * T) / (2 * T ** 4),
-			(12 * d - 6 * v0 * T - a0 * T * T) / (2 * T ** 5)
-		];
+		const T = TWEEN_TIME, p0 = this.pos, d = this.goal - p0;
+		let v0 = this.vel, a0 = this.acc;
+		for (let attempt = 0;; attempt++) {
+			if (attempt >= 8) {
+				v0 = 0;
+				a0 = 0;
+			}
+			this.c = [
+				p0,
+				v0,
+				a0 / 2,
+				(20 * d - 12 * v0 * T - 3 * a0 * T * T) / (2 * T ** 3),
+				(-30 * d + 16 * v0 * T + 3 * a0 * T * T) / (2 * T ** 4),
+				(12 * d - 6 * v0 * T - a0 * T * T) / (2 * T ** 5)
+			];
+			if (v0 === 0 && a0 === 0 || this.quinticStaysBetween(p0, this.goal)) return;
+			v0 /= 2;
+			a0 /= 2;
+		}
+	}
+	quinticStaysBetween(a, b) {
+		const lo = Math.min(a, b) - 1e-9, hi = Math.max(a, b) + 1e-9;
+		const [c0, c1, c2, c3, c4, c5] = this.c;
+		for (let i = 1; i <= 32; i++) {
+			const t = TWEEN_TIME * i / 32;
+			const p = c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * c5))));
+			if (p < lo || p > hi) return false;
+		}
+		return true;
 	}
 };
 /** Three Smoothers in step, for a vector quantity (a pan offset, a rotation vector). */
@@ -5270,6 +5298,7 @@ function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 	cameraState.arcballInertiaQ = null;
 	cancelPivotMove();
 	haltSmoothedRotation();
+	haltSmoothedZoom();
 	haltSmoothedPan();
 	dragPivot = null;
 	const start = cameraState.controls.target.clone();
