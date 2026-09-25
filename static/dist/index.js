@@ -4770,7 +4770,10 @@ function pivotDepth() {
 function worldPerPixelAtTarget() {
 	if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
 	const h = Math.max(cameraState.renderer.domElement?.clientHeight || 1, 1);
-	if (cameraState.camera.isOrthographicCamera) return Math.abs((cameraState.camera.top - cameraState.camera.bottom) / h);
+	if (cameraState.camera.isOrthographicCamera) {
+		const zoom = cameraState.camera.zoom || 1;
+		return Math.abs((cameraState.camera.top - cameraState.camera.bottom) / zoom / h);
+	}
 	const dist = pivotDepth();
 	const fov = (cameraState.camera.fov || 75) * Math.PI / 180;
 	return 2 * dist * Math.tan(fov / 2) / h;
@@ -5274,10 +5277,15 @@ function setupProjectionToggle() {
 	});
 }
 var PINCH_ZOOM_PER_DELTA = .02;
-var PINCH_MAX_STEP = 1.5;
+var PINCH_MAX_STEP = 20;
+var WHEEL_NOTCH_STEP = 1.2;
+function isWheelNotch(deltaY) {
+	const a = Math.abs(deltaY);
+	return a >= 50 && Number.isInteger(a) && (a % 100 === 0 || a % 120 === 0 || a % 53 === 0);
+}
 function pinchZoom(deltaY) {
 	if (!cameraState.camera || !cameraState.controls) return;
-	const raw = Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
+	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
 	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
 	const ctrl = cameraState.controls;
 	const cam = cameraState.camera;

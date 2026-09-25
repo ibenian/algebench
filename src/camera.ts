@@ -495,7 +495,10 @@ function worldPerPixelAtTarget(): number {
     if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
     const h = Math.max(cameraState.renderer.domElement?.clientHeight || 1, 1);
     if (cameraState.camera.isOrthographicCamera) {
-        return Math.abs((cameraState.camera.top! - cameraState.camera.bottom!) / h);
+        // The frustum spans (top - bottom) / zoom world units vertically —
+        // pinch and wheel zoom an orthographic camera through `zoom`.
+        const zoom = cameraState.camera.zoom || 1;
+        return Math.abs((cameraState.camera.top! - cameraState.camera.bottom!) / zoom / h);
     }
     const dist = pivotDepth();
     const fov = ((cameraState.camera.fov || 75) * Math.PI) / 180;
@@ -1150,13 +1153,28 @@ export function setupProjectionToggle(): void {
 // fixed 5% step whatever its size, so zoom speed tracked the event *rate* —
 // which falls with frame rate, and a heavy scene at 25 fps barely moved. Zoom
 // by the pinch's actual travel instead: exp(-deltaY * k), so the same finger
-// motion gives the same zoom at any frame rate.
+// motion gives the same zoom at any frame rate. A Ctrl+wheel notch steps.
 const PINCH_ZOOM_PER_DELTA = 0.02;   // a pinch that doubles finger spread zooms ~4x
-const PINCH_MAX_STEP = 1.5;          // one event, e.g. a Ctrl+wheel notch, is capped at 1.5x
+const PINCH_MAX_STEP = 20;           // safety limit only: never cap a real pinch
+// A mouse wheel held with Ctrl sends the same ctrlKey wheel event, but in
+// whole notches of ~100 (Chrome) or ~120 — a fixed step per notch, not the
+// pinch rule, or one notch would jump ~7x. A pinch's deltaY is continuous
+// (fractional, and small per event), so the two are told apart by that.
+const WHEEL_NOTCH_STEP = 1.2;
+
+function isWheelNotch(deltaY: number): boolean {
+    const a = Math.abs(deltaY);
+    return a >= 50 && Number.isInteger(a) && (a % 100 === 0 || a % 120 === 0 || a % 53 === 0);
+}
 
 function pinchZoom(deltaY: number): void {
     if (!cameraState.camera || !cameraState.controls) return;
-    const raw = Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
+    // A pinch zooms by its travel, uncapped in practice, so a fast pinch
+    // coalesced into few large events on a slow frame zooms as far as the
+    // same pinch at 60 fps.
+    const raw = isWheelNotch(deltaY)
+        ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100)))
+        : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
     const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));   // >1 zooms in
     const ctrl = cameraState.controls as unknown as {
         target: Vector3; minDistance?: number; maxDistance?: number;
