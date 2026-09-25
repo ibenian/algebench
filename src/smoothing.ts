@@ -68,6 +68,10 @@ export class Smoother {
         this.vel = 0;
         this.acc = 0;
         this.t = 0;
+        // Tweens and the quintic run from `from` / their plan: restart both
+        // here, or the next step replays the old path from its start.
+        this.from = this.pos;
+        if (this.mode === 'min-jerk') this.planQuintic();
     }
 
     /** Rebase to zero so values stay small over a long session. */
@@ -114,7 +118,10 @@ export class Smoother {
                 this.t = Math.min(this.t + dtc, TWEEN_TIME);
                 const [c0, c1, c2, c3, c4, c5] = this.c;
                 const t = this.t;
-                this.pos = c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * c5))));
+                // planQuintic keeps the path in range at 32 samples; the clamp
+                // makes that exact, since an extremum could fall between them.
+                const lo = Math.min(this.from, this.goal), hi = Math.max(this.from, this.goal);
+                this.pos = Math.min(hi, Math.max(lo, c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * c5))))));
                 this.vel = c1 + t * (2 * c2 + t * (3 * c3 + t * (4 * c4 + t * 5 * c5)));
                 this.acc = 2 * c2 + t * (6 * c3 + t * (12 * c4 + t * 20 * c5));
                 if (this.t >= TWEEN_TIME) { this.pos = this.goal; this.vel = this.acc = 0; }

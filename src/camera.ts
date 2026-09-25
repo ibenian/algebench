@@ -950,6 +950,15 @@ export function setupRollDrag(container: HTMLElement | null): void {
         if ((e.button === 0 && e.shiftKey) || e.button === 2) {
             e.preventDefault();
             e.stopImmediatePropagation();
+            // The pan takes over the camera: a rotation still coasting or
+            // settling would keep turning the view under it.
+            if (cameraState.arcballInertiaId) {
+                cancelAnimationFrame(cameraState.arcballInertiaId);
+                cameraState.arcballInertiaId = null;
+            }
+            cameraState.arcballInertiaQ = null;
+            haltSmoothedRotation();
+            releaseDragPivotIfIdle();
             panDrag = { x: e.clientX, y: e.clientY };
             if (cameraState.controls) cameraState.controls.enabled = false;
             return;

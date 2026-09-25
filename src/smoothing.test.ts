@@ -49,13 +49,15 @@ test('spring and min-jerk keep velocity continuous across a retarget', () => {
     }
 });
 
-test('halt stops motion where it is', () => {
-    const s = new Smoother('spring');
-    s.push(1);
-    run(s, 3);
-    s.halt();
-    assert.equal(s.step(1 / 60), 0);
-    assert.ok(s.settled);
+test('halt stops motion where it is, in every mode', () => {
+    for (const mode of SMOOTHING_MODES) {
+        const s = new Smoother(mode);
+        s.push(1);
+        run(s, 3);
+        s.halt();
+        assert.equal(s.step(1 / 60), 0, `${mode} moved after halt`);
+        assert.ok(s.settled, `${mode} settled`);
+    }
 });
 
 test('VectorSmoother moves every component to its goal together', () => {

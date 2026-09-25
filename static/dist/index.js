@@ -4540,6 +4540,8 @@ var Smoother = class {
 		this.vel = 0;
 		this.acc = 0;
 		this.t = 0;
+		this.from = this.pos;
+		if (this.mode === "min-jerk") this.planQuintic();
 	}
 	/** Rebase to zero so values stay small over a long session. */
 	reset() {
@@ -4581,7 +4583,8 @@ var Smoother = class {
 				this.t = Math.min(this.t + dtc, TWEEN_TIME);
 				const [c0, c1, c2, c3, c4, c5] = this.c;
 				const t = this.t;
-				this.pos = c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * c5))));
+				const lo = Math.min(this.from, this.goal), hi = Math.max(this.from, this.goal);
+				this.pos = Math.min(hi, Math.max(lo, c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * c5))))));
 				this.vel = c1 + t * (2 * c2 + t * (3 * c3 + t * (4 * c4 + t * 5 * c5)));
 				this.acc = 2 * c2 + t * (6 * c3 + t * (12 * c4 + t * 20 * c5));
 				if (this.t >= TWEEN_TIME) {
@@ -5340,6 +5343,13 @@ function setupRollDrag(container) {
 		if (e.button === 0 && e.shiftKey || e.button === 2) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
+			if (cameraState.arcballInertiaId) {
+				cancelAnimationFrame(cameraState.arcballInertiaId);
+				cameraState.arcballInertiaId = null;
+			}
+			cameraState.arcballInertiaQ = null;
+			haltSmoothedRotation();
+			releaseDragPivotIfIdle();
 			panDrag = {
 				x: e.clientX,
 				y: e.clientY
