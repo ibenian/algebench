@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { dataToWorld, dataCameraToWorld, worldCameraToData, dataLenToWorld,
+import { closestOnSegmentToRay, dataToWorld, dataCameraToWorld, worldCameraToData, dataLenToWorld,
          isotropicScale, isDefaultScale } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import { state } from '/state.js';
@@ -179,4 +179,24 @@ test('a scale that says something is still honoured', () => {
     assert.equal(isDefaultScale([1, 1]), false);
     assert.equal(isDefaultScale(null), false);
     assert.equal(isDefaultScale('1,1,1'), false);
+});
+
+// ── closestOnSegmentToRay (rotation pivot on an axis, PR #669 review) ──
+const near = (p: number[], q: number[]) => p.every((x, i) => Math.abs(x - q[i]!) < 1e-9);
+
+test('closestOnSegmentToRay: a ray crossing the segment meets it there', () => {
+    // camera at z=10 looking down -z at x=2 on the x axis
+    assert.ok(near(closestOnSegmentToRay([2, 0, 10], [0, 0, -1], [-5, 0, 0], [5, 0, 0]), [2, 0, 0]));
+    // an oblique ray: closest approach, not the screen-space fraction
+    const d = Math.SQRT1_2;
+    assert.ok(near(closestOnSegmentToRay([0, 0, 4], [d, 0, -d], [-5, 0, 0], [5, 0, 0]), [4, 0, 0]));
+});
+
+test('closestOnSegmentToRay: clamps to the segment ends', () => {
+    assert.ok(near(closestOnSegmentToRay([9, 0, 10], [0, 0, -1], [-5, 0, 0], [5, 0, 0]), [5, 0, 0]));
+    assert.ok(near(closestOnSegmentToRay([-9, 1, 10], [0, 0, -1], [-5, 0, 0], [5, 0, 0]), [-5, 0, 0]));
+});
+
+test('closestOnSegmentToRay: a segment behind the origin gives its nearer end', () => {
+    assert.ok(near(closestOnSegmentToRay([0, 0, 0], [0, 0, 1], [1, 0, -3], [1, 0, -8]), [1, 0, -3]));
 });

@@ -291,6 +291,33 @@ function dataLenToWorld(len) {
 	const sz = 2 * s[2] / (r[2][1] - r[2][0]);
 	return len * (sx + sy + sz) / 3;
 }
+/**
+* The point of segment AB closest to a ray (origin `o`, unit direction `v`):
+* the closest approach of the two lines, with the segment parameter clamped
+* to [0, 1]. If that point lies behind the ray's origin, the segment end
+* nearer the origin is returned instead. Used to pick where on an axis a
+* press lands — a fraction measured along the segment's screen image is not
+* the same fraction in the world under perspective.
+*/
+function closestOnSegmentToRay(o, v, A, B) {
+	const sub = (p, q) => [
+		p[0] - q[0],
+		p[1] - q[1],
+		p[2] - q[2]
+	];
+	const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+	const u = sub(B, A), w = sub(A, o);
+	const a = dot(u, u), b = dot(u, v), d = dot(u, w), e = dot(v, w);
+	const denom = a - b * b;
+	const t = Math.max(0, Math.min(1, denom > 1e-12 ? (b * e - d) / denom : 0));
+	const P = [
+		A[0] + t * u[0],
+		A[1] + t * u[1],
+		A[2] + t * u[2]
+	];
+	if (dot(sub(P, o), v) >= 0) return P;
+	return Math.hypot(...sub(A, o)) <= Math.hypot(...sub(B, o)) ? A.slice() : B.slice();
+}
 //#endregion
 //#region src/expr.ts
 var exprState = state;
@@ -14058,7 +14085,8 @@ function renderStepAdd(elements, sliderDefs) {
 				type: el.type,
 				prompt: el.prompt || null,
 				label: elementDisplayName(el),
-				animState: result?._animState ?? null
+				animState: result?._animState ?? null,
+				pivot: pivotGeometryOf(el)
 			};
 		}
 	}
@@ -14093,6 +14121,59 @@ function applyTrackerInfoOverlays(tracker, step) {
 function undoTrackerInfoOverlays(tracker) {
 	if (!tracker.infoIds) return;
 	for (const id of tracker.infoIds) removeInfoOverlay(id);
+}
+/** A finite numeric [x, y, z], or null. */
+function vec3Of(v) {
+	return Array.isArray(v) && v.length === 3 && v.every((c) => typeof c === "number" && Number.isFinite(c)) ? v.slice() : null;
+}
+/**
+* Pivot geometry for elements whose trackers keep no position: a static
+* point's position(s), and an axis's start-to-end segment (mirroring
+* renderAxis). Everything else already exposes an anchor through its tracker.
+*/
+function pivotGeometryOf(el) {
+	const e = el;
+	if (el.type === "point") {
+		const points = (Array.isArray(e.positions) ? e.positions : [e.position ?? e.at ?? [
+			0,
+			0,
+			0
+		]]).map(vec3Of).filter((p) => !!p);
+		return points.length ? {
+			points,
+			segments: []
+		} : null;
+	}
+	if (el.type === "axis") {
+		const dir = {
+			x: [
+				1,
+				0,
+				0
+			],
+			y: [
+				0,
+				1,
+				0
+			],
+			z: [
+				0,
+				0,
+				1
+			]
+		}[e.axis || "x"] || [
+			1,
+			0,
+			0
+		];
+		const range = Array.isArray(e.range) && e.range.length === 2 ? e.range : [-5, 5];
+		if (!range.every((r) => typeof r === "number" && Number.isFinite(r))) return null;
+		return {
+			points: [],
+			segments: [[dir.map((d) => d * range[0]), dir.map((d) => d * range[1])]]
+		};
+	}
+	return null;
 }
 function hideElementById(id) {
 	const reg = sceneState.elementRegistry[id];
@@ -17863,18 +17944,37 @@ function nearestAnchorAt(clientX, clientY) {
 	const lh = labelHitTest(clientX, clientY);
 	if (lh && !isHidden(lh.id)) return worldAnchor(lh.id, state.elementRegistry[lh.id]);
 	const localX = clientX - rect.left, localY = clientY - rect.top;
+	let ray = null;
+	if (_raycaster) {
+		_raycaster.setFromCamera({
+			x: localX / rect.width * 2 - 1,
+			y: -(localY / rect.height) * 2 + 1
+		}, state.camera);
+		ray = _raycaster.ray.clone();
+	}
 	const nearest = (accept) => {
 		let best = null, bestD = PICK_PX;
+		const offer = (world, d) => {
+			if (d < bestD) {
+				bestD = d;
+				best = world;
+			}
+		};
+		const tryPoint = (world) => {
+			const p = projectToScreen(world, rect);
+			if (p) offer(world, Math.hypot(p.x - localX, p.y - localY));
+		};
 		for (const [id, reg] of Object.entries(state.elementRegistry)) {
 			if (!accept(id)) continue;
 			const anchor = worldAnchor(id, reg);
-			if (!anchor) continue;
-			const p = projectToScreen(anchor, rect);
-			if (!p) continue;
-			const d = Math.hypot(p.x - localX, p.y - localY);
-			if (d < bestD) {
-				bestD = d;
-				best = anchor;
+			if (anchor) tryPoint(anchor);
+			const g = reg.pivot;
+			if (!g) continue;
+			for (const pt of g.points) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
+			for (const [a, b] of g.segments) {
+				const A = new THREE.Vector3(...dataToWorld(a));
+				const B = new THREE.Vector3(...dataToWorld(b));
+				if (ray) tryPoint(new THREE.Vector3(...closestOnSegmentToRay(ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
 			}
 		}
 		return best;

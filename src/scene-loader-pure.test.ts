@@ -20,7 +20,7 @@ import type { Proof } from '/proof.js';
 // element-toggle shims onto it, so the cast is at the install site.
 globalThis.window ??= globalThis as unknown as Window & typeof globalThis;
 
-const { isLessonFormat, proofFileToLesson } = await import('/scene-loader.js');
+const { isLessonFormat, proofFileToLesson, pivotGeometryOf } = await import('/scene-loader.js');
 
 /**
  * The one scene proofFileToLesson builds, carrying its one proof.
@@ -89,4 +89,25 @@ test('proofFileToLesson falls back to the id and generic labels', () => {
 test('proofFileToLesson tolerates a proof file with no steps', () => {
   const lesson = proofFileToLesson({ title: 'Empty' }, 'x/y');
   assert.deepEqual(soleScene(lesson).proof.steps, []);
+});
+
+// ── pivotGeometryOf: what a rotation drag can pivot on (PR #669 review) ──
+type AnyEl = Parameters<typeof pivotGeometryOf>[0];
+const el = (o: object) => o as unknown as AnyEl;
+
+test('a static point pivots on its position, or each of its positions', () => {
+    assert.deepEqual(pivotGeometryOf(el({ type: 'point', position: [1, 2, 1] })), { points: [[1, 2, 1]], segments: [] });
+    assert.deepEqual(pivotGeometryOf(el({ type: 'point', positions: [[0, 0, 0], [1, 1, 1]] })), { points: [[0, 0, 0], [1, 1, 1]], segments: [] });
+    // renderPoint's default, and an expression position (not a static number) is skipped
+    assert.deepEqual(pivotGeometryOf(el({ type: 'point' })), { points: [[0, 0, 0]], segments: [] });
+    assert.equal(pivotGeometryOf(el({ type: 'point', position: ['t', 0, 0] })), null);
+});
+
+test('an axis pivots anywhere along its start-to-end segment, as renderAxis draws it', () => {
+    assert.deepEqual(pivotGeometryOf(el({ type: 'axis', axis: 'y', range: [-1, 5] })), { points: [], segments: [[[-0, -1, -0], [0, 5, 0]]] });
+    assert.deepEqual(pivotGeometryOf(el({ type: 'axis' })), { points: [], segments: [[[-5, -0, -0], [5, 0, 0]]] });
+});
+
+test('other element types expose their anchor through the tracker instead', () => {
+    assert.equal(pivotGeometryOf(el({ type: 'vector', to: [1, 0, 0] })), null);
 });

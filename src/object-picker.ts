@@ -20,7 +20,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { dataToWorld } from '/coords.js';
+import { dataToWorld, closestOnSegmentToRay } from '/coords.js';
 import { makeAiAskButton } from '/labels.js';
 import { setOrbitPivot, setRotationPivotPicker } from '/camera.js';
 import type { AppState } from '/state.js';
@@ -324,16 +324,36 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
     const lh = labelHitTest(clientX, clientY);
     if (lh && !isHidden(lh.id)) return worldAnchor(lh.id, state.elementRegistry[lh.id]);
     const localX = clientX - rect.left, localY = clientY - rect.top;
+    let ray: import('three').Ray | null = null;
+    if (_raycaster) {
+        _raycaster.setFromCamera({ x: (localX / rect.width) * 2 - 1, y: -(localY / rect.height) * 2 + 1 } as unknown as Vector2, state.camera);
+        ray = _raycaster.ray.clone();
+    }
     const nearest = (accept: (id: string) => boolean): Vector3 | null => {
         let best: Vector3 | null = null, bestD = PICK_PX;
+        const offer = (world: Vector3, d: number) => { if (d < bestD) { bestD = d; best = world; } };
+        const tryPoint = (world: Vector3) => {
+            const p = projectToScreen(world, rect);
+            if (p) offer(world, Math.hypot(p.x - localX, p.y - localY));
+        };
         for (const [id, reg] of Object.entries(state.elementRegistry)) {
             if (!accept(id)) continue;
             const anchor = worldAnchor(id, reg);
-            if (!anchor) continue;
-            const p = projectToScreen(anchor, rect);
-            if (!p) continue;
-            const d = Math.hypot(p.x - localX, p.y - localY);
-            if (d < bestD) { bestD = d; best = anchor; }
+            if (anchor) tryPoint(anchor);
+            // Static points and axes keep no position on their tracker; their
+            // spec geometry was recorded at registration (scene-loader).
+            const g = reg.pivot;
+            if (!g) continue;
+            for (const pt of g.points) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
+            for (const [a, b] of g.segments) {
+                // The point of the segment closest to the pointer's ray, in
+                // 3D — a fraction measured along the segment's *screen* image
+                // is not the same fraction in the world under perspective.
+                const A = new THREE.Vector3(...dataToWorld(a as Vec3));
+                const B = new THREE.Vector3(...dataToWorld(b as Vec3));
+                if (ray) tryPoint(new THREE.Vector3(...closestOnSegmentToRay(
+                    ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
+            }
         }
         return best;
     };

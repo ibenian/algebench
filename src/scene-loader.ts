@@ -30,6 +30,7 @@ import type { Material, Mesh, Scene } from 'three';
 import type { Label3D } from '/labels.js';
 import type { SceneSlider, SliderDef, AnimExprEntry } from '/sliders.js';
 import type { Element, Glossary } from '/types/lesson.js';
+import type { PivotGeometry } from '/state.js';
 import type { Proof } from '/proof.js';
 
 /**
@@ -93,6 +94,9 @@ interface ElementRegistryEntry {
     type?: string;
     prompt?: string | null;
     label?: string | null;
+    /** Data-space geometry a rotation drag can pivot on, for elements that
+     *  keep no position on their tracker (static points, axes). */
+    pivot?: PivotGeometry | null;
 }
 
 /** An info-overlay definition, as a step declares it. */
@@ -342,6 +346,7 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
             sceneState.elementRegistry[el.id] = {
                 tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el),
                 animState: (result as RenderResult | null)?._animState ?? null,
+                pivot: pivotGeometryOf(el),
             };
         }
     }
@@ -387,6 +392,33 @@ function undoTrackerInfoOverlays(tracker: StepTracker): void {
     for (const id of tracker.infoIds) {
         removeInfoOverlay(id);
     }
+}
+
+/** A finite numeric [x, y, z], or null. */
+function vec3Of(v: unknown): number[] | null {
+    return Array.isArray(v) && v.length === 3 && v.every((c) => typeof c === 'number' && Number.isFinite(c))
+        ? (v as number[]).slice() : null;
+}
+
+/**
+ * Pivot geometry for elements whose trackers keep no position: a static
+ * point's position(s), and an axis's start-to-end segment (mirroring
+ * renderAxis). Everything else already exposes an anchor through its tracker.
+ */
+export function pivotGeometryOf(el: Element): PivotGeometry | null {
+    const e = el as Element & { position?: unknown; at?: unknown; positions?: unknown; axis?: string; range?: unknown };
+    if (el.type === 'point') {
+        const list = Array.isArray(e.positions) ? e.positions : [e.position ?? e.at ?? [0, 0, 0]];
+        const points = list.map(vec3Of).filter((p): p is number[] => !!p);
+        return points.length ? { points, segments: [] } : null;
+    }
+    if (el.type === 'axis') {
+        const dir = ({ x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] } as Record<string, number[]>)[e.axis || 'x'] || [1, 0, 0];
+        const range = Array.isArray(e.range) && e.range.length === 2 ? e.range as number[] : [-5, 5];
+        if (!range.every((r) => typeof r === 'number' && Number.isFinite(r))) return null;
+        return { points: [], segments: [[dir.map((d) => d * range[0]!), dir.map((d) => d * range[1]!)]] };
+    }
+    return null;
 }
 
 export function hideElementById(id: string): void {

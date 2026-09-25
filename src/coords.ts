@@ -172,3 +172,23 @@ export function dataLenToWorld(len: number): number {
     const sz = 2 * s[2] / (r![2][1] - r![2][0]);
     return len * (sx + sy + sz) / 3;
 }
+
+/**
+ * The point of segment AB closest to a ray (origin `o`, unit direction `v`):
+ * the closest approach of the two lines, with the segment parameter clamped
+ * to [0, 1]. If that point lies behind the ray's origin, the segment end
+ * nearer the origin is returned instead. Used to pick where on an axis a
+ * press lands — a fraction measured along the segment's screen image is not
+ * the same fraction in the world under perspective.
+ */
+export function closestOnSegmentToRay(o: number[], v: number[], A: number[], B: number[]): number[] {
+    const sub = (p: number[], q: number[]) => [p[0]! - q[0]!, p[1]! - q[1]!, p[2]! - q[2]!];
+    const dot = (p: number[], q: number[]) => p[0]! * q[0]! + p[1]! * q[1]! + p[2]! * q[2]!;
+    const u = sub(B, A), w = sub(A, o);
+    const a = dot(u, u), b = dot(u, v), d = dot(u, w), e = dot(v, w);
+    const denom = a - b * b;             // |u|^2 |v|^2 - (u.v)^2, with |v| = 1
+    const t = Math.max(0, Math.min(1, denom > 1e-12 ? (b * e - d) / denom : 0));
+    const P = [A[0]! + t * u[0]!, A[1]! + t * u[1]!, A[2]! + t * u[2]!];
+    if (dot(sub(P, o), v) >= 0) return P;
+    return Math.hypot(...sub(A, o)) <= Math.hypot(...sub(B, o)) ? A.slice() : B.slice();
+}
