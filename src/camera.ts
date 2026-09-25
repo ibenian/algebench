@@ -535,7 +535,24 @@ function arcballWorldRadius(pixels: number): number {
 let ballHelper: import('three').Group | null = null;
 
 /** Draw (or resize) the translucent ball the drag is notionally grabbing. */
+// The rotate cue: the ball drawn while a drag turns the view, and the marker
+// on it under the pointer. 'off' draws neither. Chosen in the settings panel.
+type RotateCue = 'sphere' | 'off';
+const ROTATE_CUE_KEY = 'algebench.rotateCue';
+let rotateCue: RotateCue = loadRotateCue();
+
+function loadRotateCue(): RotateCue {
+    try { return localStorage.getItem(ROTATE_CUE_KEY) === 'off' ? 'off' : 'sphere'; } catch { return 'sphere'; }
+}
+
+export function setRotateCue(cue: RotateCue): void {
+    rotateCue = cue;
+    if (cue === 'off') { hideArcballBall(); hideGrabMarker(); }
+    try { localStorage.setItem(ROTATE_CUE_KEY, cue); } catch { /* storage blocked */ }
+}
+
 function showArcballBall(): void {
+    if (rotateCue === 'off') return;
     if (!cameraState.three || !cameraState.controls) return;
     const disc = arcballScreenDisc();
     if (!disc) return;
@@ -613,6 +630,7 @@ let grabHelper: import('three').Mesh | null = null;
 
 /** Mark the point on the ball the pointer is holding (`pt` is camera-space). */
 function showGrabMarker(pt: Vector3): void {
+    if (rotateCue === 'off') return;
     if (!cameraState.three || !cameraState.camera || !cameraState.controls) return;
     const disc = arcballScreenDisc();
     if (!disc) return;
@@ -1402,7 +1420,7 @@ function applyZoomFactor(factor: number): boolean {
     return free;
 }
 
-/** Bind the settings panel's zoom, rotate and pan smoothing selects. */
+/** Bind the settings panel's smoothing selects and the rotate cue. */
 function bindSmoothingSettings(): void {
     const bind = (id: string, current: SmoothingMode, set: (m: SmoothingMode) => void) => {
         const sel = document.getElementById(id) as HTMLSelectElement | null;
@@ -1413,6 +1431,11 @@ function bindSmoothingSettings(): void {
     bind('zoom-smoothing-select', zoomSmoother.mode, setZoomSmoothingMode);
     bind('rotate-smoothing-select', rotSmoother.mode, setRotateSmoothingMode);
     bind('pan-smoothing-select', panSmoother.mode, setPanSmoothingMode);
+    const cue = document.getElementById('rotate-cue-select') as HTMLSelectElement | null;
+    if (cue) {
+        cue.value = rotateCue;
+        cue.addEventListener('change', () => setRotateCue(cue.value === 'off' ? 'off' : 'sphere'));
+    }
 }
 
 export function setupTrackpadPan(): void {

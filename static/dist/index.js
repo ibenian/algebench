@@ -4959,8 +4959,27 @@ function arcballWorldRadius(pixels) {
 	return dist * Math.sin(Math.atan(pixels * perPixel / dist));
 }
 var ballHelper = null;
-/** Draw (or resize) the translucent ball the drag is notionally grabbing. */
+var ROTATE_CUE_KEY = "algebench.rotateCue";
+var rotateCue = loadRotateCue();
+function loadRotateCue() {
+	try {
+		return localStorage.getItem(ROTATE_CUE_KEY) === "off" ? "off" : "sphere";
+	} catch {
+		return "sphere";
+	}
+}
+function setRotateCue(cue) {
+	rotateCue = cue;
+	if (cue === "off") {
+		hideArcballBall();
+		hideGrabMarker();
+	}
+	try {
+		localStorage.setItem(ROTATE_CUE_KEY, cue);
+	} catch {}
+}
 function showArcballBall() {
+	if (rotateCue === "off") return;
 	if (!cameraState.three || !cameraState.controls) return;
 	const disc = arcballScreenDisc();
 	if (!disc) return;
@@ -5024,6 +5043,7 @@ function hideArcballBall() {
 var grabHelper = null;
 /** Mark the point on the ball the pointer is holding (`pt` is camera-space). */
 function showGrabMarker(pt) {
+	if (rotateCue === "off") return;
 	if (!cameraState.three || !cameraState.camera || !cameraState.controls) return;
 	const disc = arcballScreenDisc();
 	if (!disc) return;
@@ -5653,7 +5673,7 @@ function applyZoomFactor(factor) {
 	ctrl.update();
 	return free;
 }
-/** Bind the settings panel's zoom, rotate and pan smoothing selects. */
+/** Bind the settings panel's smoothing selects and the rotate cue. */
 function bindSmoothingSettings() {
 	const bind = (id, current, set) => {
 		const sel = document.getElementById(id);
@@ -5666,6 +5686,11 @@ function bindSmoothingSettings() {
 	bind("zoom-smoothing-select", zoomSmoother.mode, setZoomSmoothingMode);
 	bind("rotate-smoothing-select", rotSmoother.mode, setRotateSmoothingMode);
 	bind("pan-smoothing-select", panSmoother.mode, setPanSmoothingMode);
+	const cue = document.getElementById("rotate-cue-select");
+	if (cue) {
+		cue.value = rotateCue;
+		cue.addEventListener("change", () => setRotateCue(cue.value === "off" ? "off" : "sphere"));
+	}
 }
 function setupTrackpadPan() {
 	const canvas = cameraState.renderer && cameraState.renderer.domElement;
