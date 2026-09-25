@@ -4991,9 +4991,9 @@ var ROTATE_CUE_KEY = "algebench.rotateCue";
 var rotateCue = loadRotateCue();
 function loadRotateCue() {
 	try {
-		return localStorage.getItem(ROTATE_CUE_KEY) === "off" ? "off" : "sphere";
+		return localStorage.getItem(ROTATE_CUE_KEY) === "off" ? "off" : "trackball";
 	} catch {
-		return "sphere";
+		return "trackball";
 	}
 }
 function setRotateCue(cue) {
@@ -5718,7 +5718,7 @@ function bindSmoothingSettings() {
 	const cue = document.getElementById("rotate-cue-select");
 	if (cue) {
 		cue.value = rotateCue;
-		cue.addEventListener("change", () => setRotateCue(cue.value === "off" ? "off" : "sphere"));
+		cue.addEventListener("change", () => setRotateCue(cue.value === "off" ? "off" : "trackball"));
 	}
 }
 function setupTrackpadPan() {

@@ -535,14 +535,14 @@ function arcballWorldRadius(pixels: number): number {
 let ballHelper: import('three').Group | null = null;
 
 /** Draw (or resize) the translucent ball the drag is notionally grabbing. */
-// The rotate cue: the ball drawn while a drag turns the view, and the marker
-// on it under the pointer. 'off' draws neither. Chosen in the settings panel.
-type RotateCue = 'sphere' | 'off';
+// The rotate cue: the trackball drawn while a drag turns the view, and the
+// marker on it under the pointer. 'off' draws neither. Chosen in the settings panel.
+type RotateCue = 'trackball' | 'off';
 const ROTATE_CUE_KEY = 'algebench.rotateCue';
 let rotateCue: RotateCue = loadRotateCue();
 
 function loadRotateCue(): RotateCue {
-    try { return localStorage.getItem(ROTATE_CUE_KEY) === 'off' ? 'off' : 'sphere'; } catch { return 'sphere'; }
+    try { return localStorage.getItem(ROTATE_CUE_KEY) === 'off' ? 'off' : 'trackball'; } catch { return 'trackball'; }
 }
 
 export function setRotateCue(cue: RotateCue): void {
@@ -1435,7 +1435,7 @@ function bindSmoothingSettings(): void {
     const cue = document.getElementById('rotate-cue-select') as HTMLSelectElement | null;
     if (cue) {
         cue.value = rotateCue;
-        cue.addEventListener('change', () => setRotateCue(cue.value === 'off' ? 'off' : 'sphere'));
+        cue.addEventListener('change', () => setRotateCue(cue.value === 'off' ? 'off' : 'trackball'));
     }
 }
 
