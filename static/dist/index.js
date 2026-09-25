@@ -1,4 +1,4 @@
-import { C as USER_ICON, S as TRASH_ICON, _ as NEXT_ICON, a as wireThemeToggle, b as PREV_ICON, c as AI_ICON, f as FIRST_ICON, g as LAST_ICON, h as GEAR_ICON, l as ANGLE_LOCK_ICON, m as FUNCTION_ANALYSIS_ICON, n as applyTheme, o as validateProofData, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as PAUSE_ICON, x as SHARE_VIEW_ICON, y as PLAY_ICON } from "./theme.js";
+import { C as TRASH_ICON, S as SHARE_VIEW_ICON, T as USER_ICON, _ as LAST_ICON, a as wireThemeToggle, b as PLAY_ICON, c as AI_ICON, f as DOCK_LEFT_ICON, g as GEAR_ICON, h as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, n as applyTheme, o as validateProofData, p as FIRST_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as NEXT_ICON, w as UNDOCK_ICON, x as PREV_ICON, y as PAUSE_ICON } from "./theme.js";
 import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -2422,8 +2422,27 @@ function buildSliderOverlay() {
 	} catch (e) {}
 	const dragHandle = document.createElement("div");
 	dragHandle.className = "slider-drag-handle";
-	dragHandle.textContent = "⠿ ⠿ ⠿";
-	dragHandle.addEventListener("mousedown", (e) => setupSliderDrag(e, overlay));
+	const grip = document.createElement("span");
+	grip.className = "slider-drag-grip";
+	grip.textContent = "⠿ ⠿ ⠿";
+	dragHandle.appendChild(grip);
+	const dockTitle = document.createElement("span");
+	dockTitle.className = "slider-dock-title";
+	dockTitle.textContent = "Sliders";
+	dragHandle.appendChild(dockTitle);
+	const dockBtn = document.createElement("button");
+	dockBtn.type = "button";
+	dockBtn.className = "slider-dock-btn";
+	dockBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+	dockBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		toggleSliderDock();
+	});
+	dragHandle.appendChild(dockBtn);
+	dragHandle.addEventListener("mousedown", (e) => {
+		if (overlay.classList.contains("docked")) return;
+		setupSliderDrag(e, overlay);
+	});
 	overlay.appendChild(dragHandle);
 	for (const id of ids) {
 		const s = sliderState.sceneSliders[id];
@@ -2498,6 +2517,73 @@ function buildSliderOverlay() {
 		} catch (_) {}
 	}
 	syncSliderState();
+	applySliderDockPlacement();
+}
+var SLIDER_DOCK_KEY = "algebench-slider-docked";
+function _sliderDockPreferred() {
+	try {
+		return localStorage.getItem(SLIDER_DOCK_KEY) === "true";
+	} catch {
+		return false;
+	}
+}
+/** The left panel can host the sliders only while it is shown and expanded. */
+function _leftDockOpen() {
+	const dock = document.getElementById("scene-dock");
+	const panel = document.getElementById("scene-dock-panel");
+	return !!(dock && panel && dock.classList.contains("visible") && panel.classList.contains("open"));
+}
+var _dockObserverWired = false;
+/** Put the slider panel where the dock preference says: inside the left
+*  panel's #slider-dock-host when docked AND that panel is open, otherwise
+*  floating over the viewport. Closing the left panel floats the sliders
+*  without forgetting the preference, so reopening it docks them again. */
+function applySliderDockPlacement() {
+	const overlay = document.getElementById("slider-overlay");
+	const host = document.getElementById("slider-dock-host");
+	const wrapper = document.getElementById("mathbox-wrapper");
+	if (!overlay || !host || !wrapper) return;
+	if (!_dockObserverWired) {
+		_dockObserverWired = true;
+		const obs = new MutationObserver(() => applySliderDockPlacement());
+		for (const id of ["scene-dock", "scene-dock-panel"]) {
+			const el = document.getElementById(id);
+			if (el) obs.observe(el, {
+				attributes: true,
+				attributeFilter: ["class"]
+			});
+		}
+	}
+	const docked = _sliderDockPreferred() && _leftDockOpen();
+	if (docked && overlay.parentElement !== host) host.appendChild(overlay);
+	else if (!docked && overlay.parentElement !== wrapper) wrapper.insertBefore(overlay, document.getElementById("scene-nav"));
+	overlay.classList.toggle("docked", docked);
+	const btn = overlay.querySelector(".slider-dock-btn");
+	if (btn) {
+		btn.hidden = !!!document.getElementById("scene-dock")?.classList.contains("visible");
+		btn.innerHTML = docked ? UNDOCK_ICON : DOCK_LEFT_ICON;
+		btn.title = docked ? "Undock sliders (float over the scene)" : "Dock sliders into the left panel";
+		btn.setAttribute("aria-label", btn.title);
+	}
+}
+/** Flip the dock preference. Docking opens the left panel if it was closed. */
+function toggleSliderDock() {
+	const overlay = document.getElementById("slider-overlay");
+	const dockNow = !(overlay && overlay.classList.contains("docked"));
+	try {
+		localStorage.setItem(SLIDER_DOCK_KEY, String(dockNow));
+	} catch {}
+	if (dockNow && !_leftDockOpen()) {
+		const panel = document.getElementById("scene-dock-panel");
+		const toggle = document.getElementById("scene-dock-toggle");
+		if (panel) panel.classList.add("open");
+		if (toggle) toggle.classList.add("active");
+		try {
+			localStorage.setItem("algebench-dock-open", "true");
+		} catch {}
+		setTimeout(() => window.dispatchEvent(new Event("resize")), 250);
+	}
+	applySliderDockPlacement();
 }
 /** One panel row for a tensor slider: a header (label, shape, reset) over a
 *  grid of readouts the shape of the value. Hovering a readout opens that
@@ -15443,6 +15529,42 @@ function stepPrev() {
 		navigateTo$1(sceneState.currentSceneIndex - 1, prevMaxStep);
 	}
 }
+var DOCK_MIN_WIDTH = 180;
+var DOCK_MAX_WIDTH = 600;
+function setupSceneDockResize(panel) {
+	const handle = document.getElementById("scene-dock-resize-handle");
+	if (!handle) return;
+	const saved = parseInt(localStorage.getItem("algebench-dock-width") || "", 10);
+	if (saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH) panel.style.setProperty("--scene-dock-w", saved + "px");
+	let dragging = false;
+	let startX = 0, startWidth = 0;
+	handle.addEventListener("mousedown", (e) => {
+		if (e.button !== 0 || !panel.classList.contains("open")) return;
+		e.preventDefault();
+		dragging = true;
+		startX = e.clientX;
+		startWidth = panel.offsetWidth;
+		handle.classList.add("dragging");
+		panel.classList.add("resizing");
+		document.body.style.cursor = "col-resize";
+		document.body.style.userSelect = "none";
+	});
+	document.addEventListener("mousemove", (e) => {
+		if (!dragging) return;
+		const w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, startWidth + e.clientX - startX));
+		panel.style.setProperty("--scene-dock-w", w + "px");
+		window.dispatchEvent(new Event("resize"));
+	});
+	document.addEventListener("mouseup", () => {
+		if (!dragging) return;
+		dragging = false;
+		handle.classList.remove("dragging");
+		panel.classList.remove("resizing");
+		document.body.style.cursor = "";
+		document.body.style.userSelect = "";
+		localStorage.setItem("algebench-dock-width", String(panel.offsetWidth));
+	});
+}
 function setupSceneDock() {
 	const toggle = document.getElementById("scene-dock-toggle");
 	const panel = document.getElementById("scene-dock-panel");
@@ -15462,6 +15584,7 @@ function setupSceneDock() {
 		localStorage.setItem("algebench-dock-open", String(isOpen));
 		setTimeout(() => window.dispatchEvent(new Event("resize")), 250);
 	});
+	setupSceneDockResize(panel);
 	prevBtn.addEventListener("click", () => stepPrev());
 	playBtn.addEventListener("click", () => toggleAutoPlay());
 	nextBtn.addEventListener("click", () => stepNext());

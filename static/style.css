@@ -1894,7 +1894,58 @@ body.rotating-axis-z, body.rotating-axis-z * {
     
 }
 #scene-dock-panel.open {
-    width: 260px;
+    width: var(--scene-dock-w, 260px);
+}
+#scene-dock-panel.resizing { transition: none; }
+
+/* Scene dock resize handle — mirror of #panel-resize-handle on the right. */
+#scene-dock-resize-handle {
+    width: 4px;
+    margin-right: -4px;
+    position: relative;
+    z-index: 20;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    display: none;
+}
+#scene-dock-panel.open + #scene-dock-resize-handle { display: block; }
+#scene-dock-resize-handle:hover,
+#scene-dock-resize-handle.dragging { background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
+
+/* Docked slider panel: pinned to the bottom of the left panel, under either tab. */
+#slider-dock-host {
+    flex-shrink: 0;
+    max-height: 50%;
+    overflow-y: auto;
+    border-top: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--text-color) 7%, transparent);
+}
+#slider-dock-host:not(:has(#slider-overlay:not(.hidden))) { display: none; }
+#slider-overlay.docked {
+    position: static;
+    left: auto !important;
+    bottom: auto !important;
+    opacity: 1 !important;
+    min-width: 0;
+    max-width: none;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 6px 12px 10px;
+}
+#slider-overlay.docked .slider-drag-handle { cursor: default; }
+#slider-overlay.docked .slider-drag-grip { display: none; }
+.slider-dock-title { display: none; }
+#slider-overlay.docked .slider-drag-handle { text-align: left; letter-spacing: normal; }
+#slider-overlay.docked .slider-dock-title {
+    display: inline;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-color);
 }
 #scene-dock-header {
     display: flex;
@@ -2793,6 +2844,25 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-bottom: 1px solid var(--border-color);
     user-select: none;
 }
+.slider-drag-handle { position: relative; }
+.slider-dock-btn {
+    position: absolute;
+    right: -6px;
+    top: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 20px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: color-mix(in srgb, var(--accent-color) 55%, transparent);
+    cursor: pointer;
+}
+.slider-dock-btn:hover { color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 15%, transparent); }
+.slider-dock-btn[hidden] { display: none; }
 .slider-drag-handle:hover { color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
 #slider-overlay.dragging { opacity: 0.85; cursor: grabbing !important; }
 
