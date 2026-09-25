@@ -618,16 +618,23 @@ def check_semantic_graphs(data):
 
 GLOSSARY_MARKER_RE = re.compile(r'\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}')
 
-# Code and math, where the app leaves a marker as literal text (the same
-# protected regions as PROTECTED_RE in src/glossary-core.ts): fenced code,
-# closed by a run of the same length or running to the end; indented code
-# after a blank line; code spans; display and inline math.
+# Everywhere the app leaves a marker as literal text — the full protected-
+# region list of PROTECTED_RE in src/glossary-core.ts, kept in the same order:
+# fenced code (closed by a same-length run, or running to the end), indented
+# code after a blank line, display math, code spans, inline math, inline links
+# and images (URL with one level of balanced parens), reference-style links,
+# link reference definitions, raw HTML tags (quote-aware) and bare URLs.
 _GLOSSARY_LITERAL_RE = re.compile(
     r'^[ ]{0,3}(`{3,}|~{3,})[^\n]*(?:\n[\s\S]*?(?:\n[ ]{0,3}\1[ \t]*$|\Z)|\Z)'
     r'|(?<![^\n]\n)^(?: {4}|\t)[^\n]*(?:\n(?:(?: {4}|\t)[^\n]*|[ \t]*(?=\n)))*'
     r'|\$\$[\s\S]+?\$\$'
     r'|(`+)(?!`)[\s\S]*?(?<!`)\2(?!`)'
-    r'|\$[^$\n]+\$',
+    r'|\$[^$\n]+\$'
+    r'|!?\[[^\]]*\]\((?:[^()]|\([^()]*\))*\)'
+    r'|!?\[[^\]]*\]\[[^\]]*\]'
+    r'|^[ \t]*\[[^\]]+\]:[^\n]*'
+    r'|<[a-zA-Z/!](?:[^>"\']|"[^"]*"|\'[^\']*\')*>'
+    r'|(?:https?://|www\.)[^\s<>]+',
     re.MULTILINE,
 )
 

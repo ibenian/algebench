@@ -14414,8 +14414,10 @@ async function loadScene(spec) {
 	};
 	setActiveSceneFunctions(spec);
 	setActiveVirtualTimeExpr(spec, -1);
-	if (!spec) clearGlossary();
-	else hideGlossaryTip();
+	if (!spec) {
+		++_lessonLoadGen;
+		clearGlossary();
+	} else hideGlossaryTip();
 	updateTitle(spec);
 	updateExplanationPanel(spec);
 	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);

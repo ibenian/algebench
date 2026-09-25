@@ -99,3 +99,14 @@ def test_markers_in_code_or_math_are_literal_and_not_checked(tmp_path):
     errors, _, checked = check_glossary(data, tmp_path)
     assert checked == 2
     assert errors == ['scenes[0].markdown: {{glossary:missing}} has no glossary entry']
+
+
+def test_markers_in_links_tags_and_urls_are_literal_too(tmp_path):
+    md = ('<abbr title="{{glossary:missing1}}">x</abbr> '
+          '[text](https://x/{{glossary:missing2}}) '
+          '[ref text][{{glossary:missing3}}] '
+          'https://host/{{glossary:missing4}} '
+          'but {{glossary:missing5}} in prose is checked.')
+    data = {'title': 't', 'glossary': {}, 'scenes': [{'title': 's', 'markdown': md}]}
+    errors, _, checked = check_glossary(data, tmp_path)
+    assert errors == ['scenes[0].markdown: {{glossary:missing5}} has no glossary entry']

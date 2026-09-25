@@ -891,7 +891,9 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     // No scene at all (an empty or failed load) also means no glossary: the
     // previous lesson's entries must not keep resolving markers or tooltips.
     // A scene load re-renders the text every open tip is anchored to.
-    if (!spec) clearGlossary();
+    // Clearing also supersedes any lesson load still in flight, which would
+    // otherwise resume after this and restore its own lesson and glossary.
+    if (!spec) { ++_lessonLoadGen; clearGlossary(); }
     else hideGlossaryTip();
     updateTitle(spec);
     updateExplanationPanel(spec);
