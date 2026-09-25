@@ -1,4 +1,4 @@
-import { C as TRASH_ICON, S as SHARE_VIEW_ICON, T as USER_ICON, _ as LAST_ICON, a as wireThemeToggle, b as PLAY_ICON, c as AI_ICON, f as DOCK_LEFT_ICON, g as GEAR_ICON, h as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, n as applyTheme, o as validateProofData, p as FIRST_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as NEXT_ICON, w as UNDOCK_ICON, x as PREV_ICON, y as PAUSE_ICON } from "./theme.js";
+import { C as SHARE_VIEW_ICON, E as USER_ICON, S as PREV_ICON, T as UNDOCK_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as TRASH_ICON, x as PLAY_ICON, y as NEXT_ICON } from "./theme.js";
 import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -4154,7 +4154,7 @@ function _styleDockBtn(b, docked, overlay) {
 	b.title = docked ? `Float the ${what} again` : `Dock the ${what} along the bottom edge`;
 	b.setAttribute("aria-label", b.title);
 	b.setAttribute("aria-pressed", docked ? "true" : "false");
-	b.textContent = docked ? "⤴" : "⤓";
+	b.innerHTML = docked ? UNDOCK_ICON : DOCK_BOTTOM_ICON;
 }
 /** Replace the overlay's content with `html` wrapped in the shared chrome. */
 function fillBoardOverlay(el, html, aiBtn) {

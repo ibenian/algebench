@@ -1,4 +1,4 @@
-import { d as CODE_ICON, i as persistTheme, m as FULLSCREEN_ICON, n as applyTheme$1, o as validateProofData, r as initialTheme, s as ProofAnimator, t as THEMES, u as BRACES_ICON } from "./theme.js";
+import { d as CODE_ICON, h as FULLSCREEN_ICON, i as persistTheme, n as applyTheme$1, o as validateProofData, r as initialTheme, s as ProofAnimator, t as THEMES, u as BRACES_ICON } from "./theme.js";
 //#region src/renderproof.ts
 var SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 var loadedProofs = [];

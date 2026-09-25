@@ -92,6 +92,13 @@ export const DOCK_LEFT_ICON =
   '<rect x="1" y="1" width="14" height="12" rx="1.5"/>' +
   '<rect x="1" y="1" width="5" height="12" rx="1.5" fill="currentColor" stroke="none"/></svg>';
 
+/** Dock along the bottom edge — a frame whose bottom strip is filled. */
+export const DOCK_BOTTOM_ICON =
+  '<svg viewBox="0 0 16 14" width="14" height="12" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="1" y="1" width="14" height="12" rx="1.5"/>' +
+  '<rect x="1" y="8.5" width="14" height="4.5" rx="1.5" fill="currentColor" stroke="none"/></svg>';
+
 /** Undock back to a floating panel — a small window lifted off a frame. */
 export const UNDOCK_ICON =
   '<svg viewBox="0 0 16 14" width="14" height="12" fill="none" stroke="currentColor" ' +

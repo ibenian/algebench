@@ -4724,6 +4724,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
     text-shadow: none;
     transition: opacity 0.12s, background 0.12s, color 0.12s;
 }
+.bo-dock-btn svg { width: 12px; height: 10px; }
 #step-caption:hover .bo-dock-btn, #scene-description:hover .bo-dock-btn,
 #step-caption:focus-within .bo-dock-btn, #scene-description:focus-within .bo-dock-btn { opacity: 1; }
 #step-caption:hover .ai-ask-btn, #scene-description:hover .ai-ask-btn,

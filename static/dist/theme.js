@@ -26,6 +26,8 @@ var ANGLE_LOCK_ICON = "<svg viewBox=\"0 0 24 24\" width=\"17\" height=\"17\" fil
 var SHARE_VIEW_ICON = "<svg viewBox=\"0 0 24 24\" width=\"17\" height=\"17\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 12C5 6.5 19 6.5 22 12C19 17.5 5 17.5 2 12Z\"/><circle cx=\"12\" cy=\"12\" r=\"3.6\"/><circle cx=\"12\" cy=\"12\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/></svg>";
 /** Dock into the left panel — a frame whose left column is filled. */
 var DOCK_LEFT_ICON = "<svg viewBox=\"0 0 16 14\" width=\"14\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"1\" y=\"1\" width=\"14\" height=\"12\" rx=\"1.5\"/><rect x=\"1\" y=\"1\" width=\"5\" height=\"12\" rx=\"1.5\" fill=\"currentColor\" stroke=\"none\"/></svg>";
+/** Dock along the bottom edge — a frame whose bottom strip is filled. */
+var DOCK_BOTTOM_ICON = "<svg viewBox=\"0 0 16 14\" width=\"14\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"1\" y=\"1\" width=\"14\" height=\"12\" rx=\"1.5\"/><rect x=\"1\" y=\"8.5\" width=\"14\" height=\"4.5\" rx=\"1.5\" fill=\"currentColor\" stroke=\"none\"/></svg>";
 /** Undock back to a floating panel — a small window lifted off a frame. */
 var UNDOCK_ICON = "<svg viewBox=\"0 0 16 14\" width=\"14\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"1\" y=\"1\" width=\"14\" height=\"12\" rx=\"1.5\"/><rect x=\"6\" y=\"5\" width=\"7\" height=\"5.5\" rx=\"1\" fill=\"currentColor\" stroke=\"none\"/></svg>";
 /** ⚙ Display settings (a cog). */
@@ -3033,6 +3035,6 @@ function wireThemeToggle(btn, { key = THEME_KEY, onChange } = {}) {
 	return paint;
 }
 //#endregion
-export { TRASH_ICON as C, SHARE_VIEW_ICON as S, USER_ICON as T, LAST_ICON as _, wireThemeToggle as a, PLAY_ICON as b, AI_ICON as c, CODE_ICON as d, DOCK_LEFT_ICON as f, GEAR_ICON as g, FUNCTION_ANALYSIS_ICON as h, persistTheme as i, ANGLE_LOCK_ICON as l, FULLSCREEN_ICON as m, applyTheme as n, validateProofData as o, FIRST_ICON as p, initialTheme as r, ProofAnimator as s, THEMES as t, BRACES_ICON as u, NEXT_ICON as v, UNDOCK_ICON as w, PREV_ICON as x, PAUSE_ICON as y };
+export { SHARE_VIEW_ICON as C, USER_ICON as E, PREV_ICON as S, UNDOCK_ICON as T, GEAR_ICON as _, wireThemeToggle as a, PAUSE_ICON as b, AI_ICON as c, CODE_ICON as d, DOCK_BOTTOM_ICON as f, FUNCTION_ANALYSIS_ICON as g, FULLSCREEN_ICON as h, persistTheme as i, ANGLE_LOCK_ICON as l, FIRST_ICON as m, applyTheme as n, validateProofData as o, DOCK_LEFT_ICON as p, initialTheme as r, ProofAnimator as s, THEMES as t, BRACES_ICON as u, LAST_ICON as v, TRASH_ICON as w, PLAY_ICON as x, NEXT_ICON as y };
 
 //# sourceMappingURL=theme.js.map
