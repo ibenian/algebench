@@ -14,6 +14,8 @@ import { renderKaTeX, updateLabels } from '/labels.js';
 // these imports will resolve once all modules are in place.
 import { runAnimUpdaters } from '/sliders.js';
 import { updateStatusBar } from '/overlay.js';
+import { Smoother, VectorSmoother, DEFAULT_SMOOTHING, isSmoothingMode } from '/smoothing.js';
+import type { SmoothingMode } from '/smoothing.js';
 import type { Camera, Quaternion, Scene, Vector3, WebGLRenderer } from 'three';
 import type { Vec3 } from '/coords.js';
 import type { Element, View } from '/types/lesson.js';
@@ -326,6 +328,8 @@ const MAX_INERTIA_RADIANS_PER_FRAME = 0.05;
 
 /** The drag's pivot, or null to turn about the orbit target. */
 let dragPivot: Vector3 | null = null;
+/** A rotation drag is under way (its pivot must not be dropped). */
+let orbitDragActive = false;
 
 /** Finds the scene point under a pixel; object-picker registers it at setup
  *  (a direct import would be circular — it already imports this module). */
@@ -531,7 +535,24 @@ function arcballWorldRadius(pixels: number): number {
 let ballHelper: import('three').Group | null = null;
 
 /** Draw (or resize) the translucent ball the drag is notionally grabbing. */
+// The rotate cue: the trackball drawn while a drag turns the view, and the
+// marker on it under the pointer. 'off' draws neither. Chosen in the settings panel.
+type RotateCue = 'trackball' | 'off';
+const ROTATE_CUE_KEY = 'algebench.rotateCue';
+let rotateCue: RotateCue = loadRotateCue();
+
+function loadRotateCue(): RotateCue {
+    try { return localStorage.getItem(ROTATE_CUE_KEY) === 'off' ? 'off' : 'trackball'; } catch { return 'trackball'; }
+}
+
+export function setRotateCue(cue: RotateCue): void {
+    rotateCue = cue;
+    if (cue === 'off') { hideArcballBall(); hideGrabMarker(); }
+    try { localStorage.setItem(ROTATE_CUE_KEY, cue); } catch { /* storage blocked */ }
+}
+
 function showArcballBall(): void {
+    if (rotateCue === 'off') return;
     if (!cameraState.three || !cameraState.controls) return;
     const disc = arcballScreenDisc();
     if (!disc) return;
@@ -609,6 +630,7 @@ let grabHelper: import('three').Mesh | null = null;
 
 /** Mark the point on the ball the pointer is holding (`pt` is camera-space). */
 function showGrabMarker(pt: Vector3): void {
+    if (rotateCue === 'off') return;
     if (!cameraState.three || !cameraState.camera || !cameraState.controls) return;
     const disc = arcballScreenDisc();
     if (!disc) return;
@@ -678,7 +700,8 @@ function applyCameraSpaceRotation(q: Quaternion): void {
     const camQ   = cameraState.camera.quaternion.clone();
     const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
 
-    turnAboutPivot(worldQ);
+    if (rotSmoother.mode === 'instant') turnAboutPivot(worldQ);
+    else pushSmoothedRotation(worldQ);
 
     showArcballBall();
 
@@ -704,6 +727,80 @@ function applyAxisRoll(dx: number): void {
         new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL));
 }
 
+/** A smoothing mode from `?<param>=`, else localStorage, else `fallback`. */
+function loadSmoothingMode(param: string, key: string, fallback: SmoothingMode = DEFAULT_SMOOTHING): SmoothingMode {
+    try {
+        const q = new URLSearchParams(location.search).get(param);
+        if (isSmoothingMode(q)) return q;
+        const saved = localStorage.getItem(key);
+        if (isSmoothingMode(saved)) return saved;
+    } catch { /* storage blocked */ }
+    return fallback;
+}
+
+function saveSmoothingMode(key: string, mode: SmoothingMode): void {
+    try { localStorage.setItem(key, mode); } catch { /* storage blocked */ }
+}
+
+/** A requestAnimationFrame loop that runs `tick(dt)` while it returns true. */
+function frameLoop(tick: (dt: number) => boolean) {
+    let id: number | null = null;
+    let last = 0;
+    const frame = (now: number) => {
+        const dt = (now - last) / 1000;
+        last = now;
+        id = tick(dt) ? requestAnimationFrame(frame) : null;
+    };
+    return {
+        kick(): void { if (id === null) { last = performance.now(); id = requestAnimationFrame(frame); } },
+        cancel(): void { if (id !== null) cancelAnimationFrame(id); id = null; },
+        get running(): boolean { return id !== null; },
+    };
+}
+
+// A drag's rotation can be smoothed like pinch zoom. Each pointer move adds
+// its world rotation, as a rotation vector (axis * angle), to a goal; one
+// smoother per component carries the view there frame by frame. Per-move
+// rotations are small, so summing their vectors composes them closely enough.
+// The mode is chosen in the settings panel, or ?rotsmooth=<mode> for a visit.
+const ROTATE_SMOOTHING_KEY = 'algebench.rotateSmoothing';
+const rotSmoother = new VectorSmoother(loadSmoothingMode('rotsmooth', ROTATE_SMOOTHING_KEY));
+const rotLoop = frameLoop((dt) => {
+    const v = new THREE.Vector3(...rotSmoother.step(dt));
+    const angle = v.length();
+    if (angle > 0) turnAboutPivot(new THREE.Quaternion().setFromAxisAngle(v.divideScalar(angle), angle));
+    if (!rotSmoother.settled) return true;
+    rotSmoother.reset();
+    releaseDragPivotIfIdle(false);
+    return false;
+});
+
+export function setRotateSmoothingMode(mode: SmoothingMode): void {
+    rotSmoother.mode = mode;
+    haltSmoothedRotation();
+    saveSmoothingMode(ROTATE_SMOOTHING_KEY, mode);
+}
+
+function pushSmoothedRotation(worldQ: Quaternion): void {
+    const q = worldQ.clone();
+    if (q.w < 0) q.set(-q.x, -q.y, -q.z, -q.w);   // the short way round
+    const half = Math.acos(Math.min(1, q.w));
+    const k = half > 1e-9 ? (2 * half) / Math.sin(half) : 2;
+    rotSmoother.push(q.x * k, q.y * k, q.z * k);
+    rotLoop.kick();
+}
+
+/** Drop what's left of a smoothed turn, e.g. when a new drag takes over. */
+function haltSmoothedRotation(): void {
+    rotLoop.cancel();
+    rotSmoother.reset();
+}
+
+/** The drag pivot outlives the drag while a coast or a smoothed turn still uses it. */
+function releaseDragPivotIfIdle(rotating = rotLoop.running): void {
+    if (!orbitDragActive && !rotating && !cameraState.arcballInertiaId) dragPivot = null;
+}
+
 function startArcballInertia(): void {
     if (cameraState.arcballInertiaId) {
         cancelAnimationFrame(cameraState.arcballInertiaId);
@@ -714,7 +811,7 @@ function startArcballInertia(): void {
         performance.now() - cameraState.arcballLastMoveTime > 80 ||
         cameraState.arcballInertiaQ.angleTo(identity) < 0.0002) {
         cameraState.arcballInertiaQ = null;
-        dragPivot = null;   // no coast: the drag's pivot has nothing left to do
+        releaseDragPivotIfIdle();   // no coast: the drag's pivot has nothing left to do
         return;
     }
     // The coast replays the last pointer move once per frame, so a flick hands
@@ -729,10 +826,10 @@ function startArcballInertia(): void {
     const slerpT = Math.pow(0.01, cameraState.arcballMomentum);
     function step() {
         if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
-            cameraState.arcballInertiaId = null; dragPivot = null; return;
+            cameraState.arcballInertiaId = null; releaseDragPivotIfIdle(); return;
         }
         if (cameraState.arcballInertiaQ.angleTo(identity) < 0.00005) {
-            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; dragPivot = null; return;
+            cameraState.arcballInertiaQ = null; cameraState.arcballInertiaId = null; releaseDragPivotIfIdle(); return;
         }
         // The coast keeps turning about the drag's own pivot.
         turnAboutPivot(cameraState.arcballInertiaQ);
@@ -802,6 +899,9 @@ export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS):
     }
     cameraState.arcballInertiaQ = null;
     cancelPivotMove();
+    haltSmoothedRotation();
+    haltSmoothedZoom();
+    haltSmoothedPan();
     dragPivot = null;
 
     const start = cameraState.controls.target.clone();
@@ -837,11 +937,33 @@ export function setupRollDrag(container: HTMLElement | null): void {
     if (!container) return;
     const inputSurface = container;
     let orbitDrag: OrbitDragState | null = null;
+    // Shift+drag and right-drag pan. Handled here rather than by the orbit
+    // controls so a pan goes through the pan smoother like every other move.
+    let panDrag: { x: number; y: number } | null = null;
+    // A right press's context menu arrives on mousedown (macOS) or after
+    // mouseup (Windows, Linux), when panDrag is already gone. Remember the
+    // press until its menu shows up, so either order keeps the menu shut.
+    let suppressContextMenu = false;
 
     inputSurface.addEventListener('mousedown', (e) => {
+        suppressContextMenu = e.button === 2;
+        if ((e.button === 0 && e.shiftKey) || e.button === 2) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            // The pan takes over the camera: a rotation still coasting or
+            // settling would keep turning the view under it.
+            if (cameraState.arcballInertiaId) {
+                cancelAnimationFrame(cameraState.arcballInertiaId);
+                cameraState.arcballInertiaId = null;
+            }
+            cameraState.arcballInertiaQ = null;
+            haltSmoothedRotation();
+            releaseDragPivotIfIdle();
+            panDrag = { x: e.clientX, y: e.clientY };
+            if (cameraState.controls) cameraState.controls.enabled = false;
+            return;
+        }
         if (e.button !== 0) return;
-
-        if (e.shiftKey) return;
         // Cmd, Ctrl and Alt each pin the drag to one axis of the arcball — its
         // horizontal, vertical and screen-normal axis in turn. Latched here, so
         // letting go of the key mid-drag cannot change what the drag is doing.
@@ -865,6 +987,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
             cameraState.arcballInertiaId = null;
         }
         cameraState.arcballInertiaQ = null;
+        haltSmoothedRotation();
         // Turn about whatever was pressed on. Picked before the ball is shown
         // (a flash from a double-click may still be up), and before the drag
         // maps the pointer onto the ball, which is centred on this pivot.
@@ -879,6 +1002,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
         const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
         dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
+        orbitDragActive = true;
         if (axisClass) document.body.classList.add(axisClass);
         // A pivot slide still running would keep lerping the target out from
         // under this drag, which turns about that same target — the two would
@@ -893,6 +1017,15 @@ export function setupRollDrag(container: HTMLElement | null): void {
     }, { capture: true });
 
     window.addEventListener('mousemove', (e) => {
+        if (panDrag) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if ((e.buttons & 3) === 0) return endPanDrag();
+            panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
+            panDrag.x = e.clientX;
+            panDrag.y = e.clientY;
+            return;
+        }
         if (orbitDrag) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -907,9 +1040,20 @@ export function setupRollDrag(container: HTMLElement | null): void {
         }
     });
 
+    function endPanDrag() {
+        if (!panDrag) return;
+        panDrag = null;
+        if (cameraState.controls) {
+            cameraState.controls.enabled = true;
+            cameraState.controls.update();
+        }
+    }
+
     function endOrbitDrag() {
+        endPanDrag();
         if (!orbitDrag) return;
         orbitDrag = null;
+        orbitDragActive = false;
         document.body.classList.remove('rotating-axis-x', 'rotating-axis-y', 'rotating-axis-z');
         hideArcballBall();
         hideGrabMarker();
@@ -922,7 +1066,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
     }
 
     window.addEventListener('mouseup', (e) => {
-        if (orbitDrag) {
+        if (orbitDrag || panDrag) {
             e.preventDefault();
             e.stopImmediatePropagation();
         }
@@ -930,8 +1074,10 @@ export function setupRollDrag(container: HTMLElement | null): void {
     }, { capture: true });
 
     // Ctrl+click is a right-click on macOS: keep its menu out of the drag.
+    // A right-drag pans, so its menu stays shut too.
     inputSurface.addEventListener('contextmenu', (e) => {
-        if (orbitDrag) e.preventDefault();
+        if (orbitDrag || panDrag || suppressContextMenu) e.preventDefault();
+        suppressContextMenu = false;
     });
 
     window.addEventListener('pointerup', () => { endOrbitDrag(); }, { capture: true });
@@ -1167,6 +1313,30 @@ function isWheelNotch(deltaY: number): boolean {
     return a >= 50 && Number.isInteger(a) && (a % 100 === 0 || a % 120 === 0 || a % 53 === 0);
 }
 
+// Each pinch event only moves a *goal*; a per-frame smoother carries the
+// camera there (see smoothing.ts for the modes). The mode is chosen in the
+// settings panel (saved in localStorage), or ?zoomsmooth=<mode> for a visit.
+const ZOOM_SMOOTHING_KEY = 'algebench.zoomSmoothing';
+const zoomSmoother = new Smoother(loadSmoothingMode('zoomsmooth', ZOOM_SMOOTHING_KEY));
+const zoomLoop = frameLoop((dt) => {
+    const d = zoomSmoother.step(dt);
+    if (d !== 0 && !applyZoomFactor(Math.exp(d))) zoomSmoother.halt();   // hit a limit
+    if (!zoomSmoother.settled) return true;
+    zoomSmoother.reset();
+    return false;
+});
+
+function haltSmoothedZoom(): void {
+    zoomLoop.cancel();
+    zoomSmoother.reset();
+}
+
+export function setZoomSmoothingMode(mode: SmoothingMode): void {
+    zoomSmoother.mode = mode;
+    haltSmoothedZoom();
+    saveSmoothingMode(ZOOM_SMOOTHING_KEY, mode);
+}
+
 function pinchZoom(deltaY: number): void {
     if (!cameraState.camera || !cameraState.controls) return;
     // A pinch zooms by its travel, uncapped in practice, so a fast pinch
@@ -1176,26 +1346,118 @@ function pinchZoom(deltaY: number): void {
         ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100)))
         : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
     const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));   // >1 zooms in
+    if (zoomSmoother.mode === 'instant') { applyZoomFactor(factor); return; }
+    zoomSmoother.push(Math.log(factor));
+    zoomLoop.kick();
+}
+
+// Pan — two-finger trackpad scroll, Shift+drag and right-drag — moves camera
+// and target together by a world offset. Like zoom and rotation, each event
+// adds to a goal that a smoother carries the view to. The mode is chosen in
+// the settings panel, or ?pansmooth=<mode> for a visit.
+const PAN_SMOOTHING_KEY = 'algebench.panSmoothing';
+const panSmoother = new VectorSmoother(loadSmoothingMode('pansmooth', PAN_SMOOTHING_KEY));
+const panLoop = frameLoop((dt) => {
+    const [x, y, z] = panSmoother.step(dt);
+    if (x || y || z) applyPan(new THREE.Vector3(x, y, z));
+    if (!panSmoother.settled) return true;
+    panSmoother.reset();
+    return false;
+});
+
+function haltSmoothedPan(): void {
+    panLoop.cancel();
+    panSmoother.reset();
+}
+
+export function setPanSmoothingMode(mode: SmoothingMode): void {
+    panSmoother.mode = mode;
+    haltSmoothedPan();
+    saveSmoothingMode(PAN_SMOOTHING_KEY, mode);
+}
+
+function applyPan(offset: Vector3): void {
+    if (!cameraState.camera || !cameraState.controls) return;
+    cameraState.camera.position.add(offset);
+    cameraState.controls.target.add(offset);
+    cameraState.controls.update();
+}
+
+/** Pan by a world offset, through the pan smoother. */
+function panBy(offset: Vector3): void {
+    if (panSmoother.mode === 'instant') { applyPan(offset); return; }
+    panSmoother.push(offset.x, offset.y, offset.z);
+    panLoop.kick();
+}
+
+/** Pan so the scene moves (dx, dy) screen pixels, as if grabbed at the target's depth. */
+function panByPixels(dx: number, dy: number): void {
+    const cam = cameraState.camera, ctrl = cameraState.controls;
+    const h = cameraState.renderer?.domElement?.clientHeight;
+    if (!cam || !ctrl || !h) return;
+    let perPixel: number;
+    if (cam.isOrthographicCamera) {
+        perPixel = Math.abs((cam.top! - cam.bottom!) / (cam.zoom || 1) / h);
+    } else {
+        cam.updateMatrixWorld();
+        const depth = Math.max(-ctrl.target.clone().applyMatrix4(cam.matrixWorldInverse).z, 0.001);
+        perPixel = (2 * depth * Math.tan(((cam.fov || 75) * Math.PI) / 360)) / h;
+    }
+    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 0);
+    const up    = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1);
+    panBy(new THREE.Vector3()
+        .addScaledVector(right, -dx * perPixel)
+        .addScaledVector(up,     dy * perPixel));
+}
+
+/** Scale the view by `factor` (>1 zooms in). False when a limit clamped it. */
+function applyZoomFactor(factor: number): boolean {
+    if (!cameraState.camera || !cameraState.controls) return false;
     const ctrl = cameraState.controls as unknown as {
         target: Vector3; minDistance?: number; maxDistance?: number;
         minZoom?: number; maxZoom?: number; update(): void;
     };
     const cam = cameraState.camera;
+    let free: boolean;
     if (cam.isOrthographicCamera) {
-        const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, (cam.zoom || 1) * factor));
+        const want = (cam.zoom || 1) * factor;
+        const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, want));
+        free = zoom === want;
         cam.zoom = zoom;
         cam.updateProjectionMatrix!();
     } else {
         const offset = cam.position.clone().sub(ctrl.target);
-        const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, offset.length() / factor));
+        const want = offset.length() / factor;
+        const dist = Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, want));
+        free = dist === want;
         cam.position.copy(ctrl.target).add(offset.setLength(Math.max(dist, 1e-6)));
     }
     ctrl.update();
+    return free;
+}
+
+/** Bind the settings panel's smoothing selects and the rotate cue. */
+function bindSmoothingSettings(): void {
+    const bind = (id: string, current: SmoothingMode, set: (m: SmoothingMode) => void) => {
+        const sel = document.getElementById(id) as HTMLSelectElement | null;
+        if (!sel) return;
+        sel.value = current;
+        sel.addEventListener('change', () => { if (isSmoothingMode(sel.value)) set(sel.value); });
+    };
+    bind('zoom-smoothing-select', zoomSmoother.mode, setZoomSmoothingMode);
+    bind('rotate-smoothing-select', rotSmoother.mode, setRotateSmoothingMode);
+    bind('pan-smoothing-select', panSmoother.mode, setPanSmoothingMode);
+    const cue = document.getElementById('rotate-cue-select') as HTMLSelectElement | null;
+    if (cue) {
+        cue.value = rotateCue;
+        cue.addEventListener('change', () => setRotateCue(cue.value === 'off' ? 'off' : 'trackball'));
+    }
 }
 
 export function setupTrackpadPan(): void {
     const canvas = cameraState.renderer && cameraState.renderer.domElement;
     if (!canvas) return;
+    bindSmoothingSettings();
     canvas.addEventListener('wheel', (e) => {
         if (e.ctrlKey && e.deltaMode === 0) {
             e.preventDefault();
@@ -1213,13 +1475,9 @@ export function setupTrackpadPan(): void {
 
         const right = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 0);
         const up    = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 1);
-        const panOffset = new THREE.Vector3()
+        panBy(new THREE.Vector3()
             .addScaledVector(right,  e.deltaX * panFactor)
-            .addScaledVector(up,    -e.deltaY * panFactor);
-
-        cameraState.camera.position.add(panOffset);
-        cameraState.controls.target.add(panOffset);
-        cameraState.controls.update();
+            .addScaledVector(up,    -e.deltaY * panFactor));
     }, { capture: true, passive: false });
 }
 
@@ -1279,6 +1537,9 @@ export function animateCamera(view: string, duration?: number): void {
         cameraState.arcballInertiaId = null;
     }
     cameraState.arcballInertiaQ = null;
+    haltSmoothedRotation();
+    haltSmoothedZoom();
+    haltSmoothedPan();
     dragPivot = null;
     const targetView = cameraState.CAMERA_VIEWS[view];
     if (!targetView || !cameraState.camera || !cameraState.controls) return;
