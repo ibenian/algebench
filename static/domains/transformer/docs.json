@@ -595,8 +595,7 @@
     "attention head": {
       "term": "attention head",
       "aliases": [
-        "attention heads",
-        "head"
+        "attention heads"
       ],
       "markdown": "One independent attention computation with its own $W_Q$, $W_K$, $W_V$ projections.",
       "prompt": "Explain what a single attention head computes."
