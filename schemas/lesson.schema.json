@@ -32,6 +32,15 @@
           },
           "description": "Domain library names to import from static/domains/<name>/index.js. These register additional math functions available in expressions. Example: [\"astrodynamics\"]."
         },
+        "glossary": {
+          "$ref": "#/$defs/glossary",
+          "description": "Lesson-wide glossary. Layered over the glossaries of imported domains; a lesson entry wins on a shared key."
+        },
+        "glossaryMatchThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
+        },
         "unsafe": {
           "type": "boolean",
           "description": "When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.",
@@ -90,6 +99,15 @@
             "type": "string"
           },
           "description": "Domain library names to import."
+        },
+        "glossary": {
+          "$ref": "#/$defs/glossary",
+          "description": "Glossary for this scene. Layered over the glossaries of imported domains; an entry here wins on a shared key."
+        },
+        "glossaryMatchThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
         },
         "unsafe": {
           "type": "boolean",
@@ -2310,6 +2328,39 @@
       "minItems": 3,
       "maxItems": 3,
       "description": "3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]."
+    },
+    "glossaryEntry": {
+      "type": "object",
+      "description": "One glossary term. The key it is stored under is what an explicit {{glossary:KEY}} marker names.",
+      "properties": {
+        "term": {
+          "type": "string",
+          "description": "Display name shown as the tooltip title. Defaults to the key. Example: \"Gaussian RBF kernel\"."
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Other spellings that resolve to this term, both for explicit markers and automatic matching. Example: [\"radial basis function\", \"Gaussian kernel\"]."
+        },
+        "markdown": {
+          "type": "string",
+          "description": "Definition shown in the tooltip. Markdown with KaTeX math via $inline$ and $$display$$, rendered like scene markdown."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Message sent to the AI chat by the tooltip's Ask AI button. Defaults to asking the AI to explain the term in the context of the lesson."
+        }
+      },
+      "additionalProperties": false
+    },
+    "glossary": {
+      "type": "object",
+      "description": "Glossary of terms, keyed by the name an explicit {{glossary:KEY}} marker uses. Marked terms in scene markdown, scene and step descriptions and info overlays become hoverable, showing the definition in a tooltip with an Ask AI button. Terms from the glossary of every imported domain (static/domains/<name>/docs.json) are included; an entry here with the same key replaces the domain's. Keys should avoid underscores, which markdown reads as emphasis.",
+      "additionalProperties": {
+        "$ref": "#/$defs/glossaryEntry"
+      }
     }
   }
 }

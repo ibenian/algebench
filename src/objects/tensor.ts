@@ -1032,10 +1032,13 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         ctx.fillText(txt, cx, cy);
     }
 
-    function drawFitted(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string, rotate = false, align: 'left' | 'center' | 'right' = 'center') {
-        if (!txt || wPx < 2 || hPx < 2) return;
-        const fontPx = fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx);
+    /** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above
+     *  `maxFontPx`; returns the size used (0 when nothing was drawn). */
+    function drawFitted(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string, rotate = false, align: 'left' | 'center' | 'right' = 'center', maxFontPx = Infinity): number {
+        if (!txt || wPx < 2 || hPx < 2) return 0;
+        const fontPx = Math.min(maxFontPx, fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx));
         drawLatex(ctx, txt, cx, cy, { fontPx, color, align, rotate: rotate ? -Math.PI / 2 : 0 });
+        return fontPx;
     }
 
     // Scratch for paintText, allocated once: it runs every frame while the
@@ -1080,23 +1083,49 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
 
         ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
 
+        // Labels along one axis share one size — the smallest any of them
+        // needs to fit its slot — so a long word does not sit beside a large
+        // short one. Titles are capped at the smaller axis's label size:
+        // fitted on their own to a whole lattice side they grew far larger
+        // than the labels they name, and the two titles now match. The two
+        // axes are NOT forced to one size: a column label must fit a single
+        // cell, and tying the row labels to that made them unreadable.
+        const hW = 0.92 * px, vW = vBand * px - 0.35 * px, glyphH = LABEL_GLYPH / 0.62 * px;
+        const axisPx = (texts: string[] | null, n: number, wPx: number): number => {
+            let m = Infinity;
+            if (texts && wPx >= 2) for (let i = 0; i < n; i++) if (texts[i]) m = Math.min(m, fitLatexPx(texts[i]!, wPx, glyphH));
+            return m;
+        };
+        const hPx = axisPx(hTexts, cols, hW);
+        const vPx = axisPx(vTexts, rows, vW);
+        const labelPx = Math.min(hPx, vPx);
         if (hTexts) {
             const band = LABEL_BAND * px;   // the band nearest the lattice
             for (let c = 0; c < cols; c++) {
-                drawFitted(ctx, hTexts[c]!, ox + (c + 0.5) * px, oy - band / 2, 0.92 * px, LABEL_GLYPH / 0.62 * px, cssColor(hColor));
+                drawFitted(ctx, hTexts[c]!, ox + (c + 0.5) * px, oy - band / 2, hW, glyphH, cssColor(hColor), false, 'center', hPx);
+            }
+        }
+        if (vTexts) {
+            for (let r = 0; r < rows; r++) {
+                drawFitted(ctx, vTexts[r]!, ox - 0.2 * px, oy + (r + 0.5) * px, vW, glyphH, cssColor(vColor), false, 'right', vPx);
             }
         }
         if (hTitle && planeLabels) {
-            drawFitted(ctx, hTitle, ox + (cols * px) / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / 0.62 * px, cssColor(hColor));
-        }
-        if (vTexts) {
-            const band = vBand * px;
-            for (let r = 0; r < rows; r++) {
-                drawFitted(ctx, vTexts[r]!, ox - 0.2 * px, oy + (r + 0.5) * px, band - 0.35 * px, LABEL_GLYPH / 0.62 * px, cssColor(vColor), false, 'right');
-            }
+            drawFitted(ctx, hTitle, ox + (cols * px) / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / 0.62 * px, cssColor(hColor), false, 'center', labelPx);
         }
         if (vTitle && planeLabels) {
-            drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + (rows * px) / 2, LABEL_GLYPH / 0.62 * px, rows * px, cssColor(vColor), true);
+            // The left band was reserved at build from labels measured at the
+            // full glyph size; drawn at the axis's shared size they can be narrower, so
+            // set the title just beside the widest one rather than at the far
+            // edge of the band, adrift from the labels it names.
+            let titleX = TITLE_BAND * px / 2;
+            if (vTexts && Number.isFinite(vPx)) {
+                let widest = 0;
+                for (const t of vTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
+                const beside = ox - 0.2 * px - widest * vPx / 100 - 0.9 * Math.min(vPx, labelPx);
+                titleX = Math.max(titleX, beside);
+            }
+            drawFitted(ctx, vTitle, titleX, oy + (rows * px) / 2, LABEL_GLYPH / 0.62 * px, rows * px, cssColor(vColor), true, 'center', labelPx);
         }
 
         if (textFn) for (let r = 0; r < rows; r++) {

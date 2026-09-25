@@ -703,6 +703,6 @@ declare function removeAllInfoOverlays(): void;
 declare function updateInfoOverlays(): void;
 declare function dataCameraToWorld(v: number[]): number[];
 declare function worldCameraToData(v: number[]): number[];
-declare function renderMarkdown(text: string): string;
-declare function renderKaTeX(text: string, displayMode?: boolean): string;
+declare function renderMarkdown(text: string, opts?: import('/labels.js').RenderOptions): string;
+declare function renderKaTeX(text: string, displayMode?: boolean, opts?: import('/labels.js').RenderOptions): string;
 

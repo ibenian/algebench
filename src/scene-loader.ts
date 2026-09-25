@@ -16,6 +16,8 @@ import type { Vec3 } from '/coords.js';
 import { clearLabels } from '/labels.js';
 import { scanSpecForUnsafeJs, showTrustDialog, updateJsTrustPill } from '/trust.js';
 import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from '/expr.js';
+import { clearGlossary, hideGlossaryTip, loadGlossary } from '/glossary.js';
+import { setGlossaryThreshold } from '/glossary-core.js';
 import { clearWorldStarfield, clearWorldSkybox, configureWorldStarfield } from '/objects/skybox.js';
 import { updateFollowAngleLockButtonState } from '/follow-cam.js';
 import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
@@ -27,7 +29,7 @@ import { validateProofData } from '/proof-animation/validate-proof.js';
 import type { Material, Mesh, Scene } from 'three';
 import type { Label3D } from '/labels.js';
 import type { SceneSlider, SliderDef, AnimExprEntry } from '/sliders.js';
-import type { Element } from '/types/lesson.js';
+import type { Element, Glossary } from '/types/lesson.js';
 import type { Proof } from '/proof.js';
 
 /**
@@ -175,6 +177,8 @@ interface ProofFile {
 export interface LessonSpec extends SceneSpec {
     scenes?: SceneSpec[];
     import?: string[];
+    glossary?: Glossary;
+    glossaryMatchThreshold?: number;
     unsafe?: boolean;
     unsafeExplanation?: string;
 }
@@ -884,6 +888,13 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     sceneState.sceneData = { ...lessonData, ...sceneData };
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
+    // No scene at all (an empty or failed load) also means no glossary: the
+    // previous lesson's entries must not keep resolving markers or tooltips.
+    // A scene load re-renders the text every open tip is anchored to.
+    // Clearing also supersedes any lesson load still in flight, which would
+    // otherwise resume after this and restore its own lesson and glossary.
+    if (!spec) { ++_lessonLoadGen; clearGlossary(); }
+    else hideGlossaryTip();
     updateTitle(spec);
     updateExplanationPanel(spec);
     loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
@@ -1008,7 +1019,15 @@ export function isLessonFormat(spec: unknown) {
     return s && Array.isArray(s.scenes) && s.scenes.length > 0;
 }
 
+// Bumped by every loadLesson. Loading awaits (the trust dialog, domain
+// scripts, domain glossaries), so two loads can overlap; a load that resumes
+// after a newer one has started must stop there, or it would render its own
+// lesson against the newer lesson's glossary, threshold and domains.
+let _lessonLoadGen = 0;
+
 export async function loadLesson(spec: LessonSpec | null | undefined): Promise<void> {
+    const load = ++_lessonLoadGen;
+    const superseded = () => load !== _lessonLoadGen;
     // --- Trust check ---
     sceneState._sceneJsTrustState = null;
     sceneState._sceneJsIssues = [];
@@ -1024,6 +1043,7 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
                 'This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.';
             const imports = Array.isArray(spec.import) ? spec.import : [];
             const trusted = await showTrustDialog(explanation, imports);
+            if (superseded()) return;
             sceneState._sceneJsTrustState = trusted ? 'trusted' : 'untrusted';
         }
     }
@@ -1048,6 +1068,10 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
         stopAutoPlay();
         sceneState._activeDomainFunctions = {};
         await importDomains(spec && spec.import);
+        if (superseded()) return;
+        await loadGlossary(spec && spec.import, spec && spec.glossary);
+        if (superseded()) return;
+        setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
         updateDockVisibility();
         loadScene(spec);
         return;
@@ -1058,6 +1082,12 @@ export async function loadLesson(spec: LessonSpec | null | undefined): Promise<v
     sceneState.visitedSteps = new Set();
     stopAutoPlay();
     await importDomains(spec!.import);
+    if (superseded()) return;
+    await loadGlossary(spec!.import, spec!.glossary);
+    if (superseded()) return;
+    // One threshold for the whole lesson, set before anything renders — the
+    // scene tree shows every scene's titles at once, so it cannot vary by scene.
+    setGlossaryThreshold(spec!.glossaryMatchThreshold);
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);

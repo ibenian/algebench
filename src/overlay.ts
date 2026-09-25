@@ -6,6 +6,7 @@
 import { state } from '/state.js';
 import { GEAR_ICON } from '/icons.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
+import { stripGlossaryMarkers } from '/glossary-core.js';
 import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
 import { worldCameraToData } from '/coords.js';
@@ -158,7 +159,7 @@ export function updateExplanationPanel(spec: OverlayScene | null | undefined): v
 
     if (spec && spec.markdown) {
         content.innerHTML = renderMarkdown(spec.markdown);
-        content.dataset.markdown = spec.markdown;
+        content.dataset.markdown = stripGlossaryMarkers(spec.markdown);
         injectAskButtons(content);
     } else {
         content.innerHTML = '<p style="color: rgba(180,180,200,0.5); font-style: italic;">No explanation available for this scene.</p>';
@@ -270,7 +271,7 @@ export function setupDocSpeakButtons(): void {
 
         const contentEl = document.getElementById('explanation-content')!;
         const text = (overlayState.currentSpec && overlayState.currentSpec.markdown)
-            ? overlayState.currentSpec.markdown
+            ? stripGlossaryMarkers(overlayState.currentSpec.markdown)
             : (contentEl.dataset.markdown || contentEl.textContent);
 
         if (!text || !text.trim()) return;
@@ -321,8 +322,8 @@ export function updateTitle(spec: OverlayScene | null | undefined): void {
         titleEl.innerHTML = 'AlgeBench';
     }
     if (spec && spec.description) {
-        descEl.dataset.markdown = spec.description;
-        const descText = spec.description;
+        const descText = stripGlossaryMarkers(spec.description);
+        descEl.dataset.markdown = descText;
         const btn = makeAiAskButton('ai-ask-btn', 'Ask AI to explain this scene', () => 'Can you explain this scene:\n' + descText.trim());
         fillBoardOverlay(descEl, renderKaTeX(spec.description, false), btn);
         resetSceneDescPosition(descEl);
@@ -563,6 +564,9 @@ function _evalInfoExpr(expr: string): string {
 function _replaceDoubleBraceExprs(template: string, evaluator: (expr: string) => string): string {
     if (typeof template !== 'string' || template.indexOf('{{') === -1) return template;
     return template.replace(/\{\{([\s\S]*?)\}\}/g, (_m, expr) => {
+        // `{{glossary:KEY}}` is a glossary marker, not an expression — the
+        // renderer links it, so leave it verbatim.
+        if (/^\s*glossary:/.test(expr)) return _m;
         const v = evaluator(expr);
         return v == null ? _m : String(v);
     });
@@ -746,7 +750,7 @@ function _migrateOldOverlayKeys(id: string): Partial<DockGeometry> | null {
 
 function _makeItemAiBtn(item: InfoItem): HTMLElement {
     return makeAiAskButton('info-overlay-ai-btn', 'Ask AI about this',
-        () => 'Can you explain this:\n' + resolveInfoContent(item.content).trim());
+        () => 'Can you explain this:\n' + stripGlossaryMarkers(resolveInfoContent(item.content)).trim());
 }
 
 function _makeDockBtn(item: InfoItem): HTMLElement {
@@ -1678,8 +1682,9 @@ export function updateStepCaption(scene: OverlayScene | null | undefined, stepId
         text = scene!.description;
     }
     if (text) {
-        el.dataset.markdown = text;
-        const btn = makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${text}"`);
+        const plain = stripGlossaryMarkers(text);
+        el.dataset.markdown = plain;
+        const btn = makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${plain}"`);
         fillBoardOverlay(el, renderMarkdown(text), btn);
         el.style.opacity = String(overlayState.displayParams.overlayOpacity);
         resetCaptionPosition(el);

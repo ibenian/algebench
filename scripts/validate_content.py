@@ -518,6 +518,8 @@ def check_overlays(data):
                 checked += 1
                 placeholders = re.findall(r'\{\{([^}]+)\}\}', content)
                 for ph in placeholders:
+                    if ph.strip().startswith('glossary:'):
+                        continue  # a glossary marker, checked by check_glossary
                     # Simple identifier check — complex expressions are fine
                     ph_ids = extract_identifiers(ph)
                     unknown = ph_ids - BUILTIN_VARS - active_sliders
@@ -612,6 +614,155 @@ def check_semantic_graphs(data):
 
 # ---- Main ----
 
+# ---- Glossary checks (issue #665) ----
+
+GLOSSARY_MARKER_RE = re.compile(r'\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}')
+
+# Everywhere the app leaves a marker as literal text — the full protected-
+# region list of PROTECTED_RE in src/glossary-core.ts, kept in the same order:
+# fenced code (closed by a same-length run, or running to the end), indented
+# code after a blank line, display math, code spans, inline math, inline links
+# and images (URL with one level of balanced parens), reference-style links,
+# link reference definitions, raw HTML tags (quote-aware) and bare URLs.
+_GLOSSARY_LITERAL_RE = re.compile(
+    r'^[ ]{0,3}(`{3,}|~{3,})[^\n]*(?:\n[\s\S]*?(?:\n[ ]{0,3}\1[ \t]*$|\Z)|\Z)'
+    r'|(?<![^\n]\n)^(?: {4}|\t)[^\n]*(?:\n(?:(?: {4}|\t)[^\n]*|[ \t]*(?=\n)))*'
+    r'|\$\$[\s\S]+?\$\$'
+    r'|(`+)(?!`)[\s\S]*?(?<!`)\2(?!`)'
+    r'|\$[^$\n]+\$'
+    r'|!?\[[^\]]*\]\((?:[^()]|\([^()]*\))*\)'
+    r'|!?\[[^\]]*\]\[[^\]]*\]'
+    r'|^[ \t]*\[[^\]]+\]:[^\n]*'
+    r'|<[a-zA-Z/!](?:[^>"\']|"[^"]*"|\'[^\']*\')*>'
+    r'|(?:https?://|www\.)[^\s<>]+',
+    re.MULTILINE,
+)
+
+
+def _rendered_markers(text):
+    """Markers the app would actually link: not inside code or math."""
+    return GLOSSARY_MARKER_RE.finditer(_GLOSSARY_LITERAL_RE.sub(lambda m: ' ' * len(m.group(0)), text))
+DOMAINS_DIR = Path(__file__).resolve().parent.parent / 'static' / 'domains'
+
+
+def sanitize_glossary(raw):
+    """Mirror of sanitizeGlossary in src/glossary-core.ts: keep only object
+    entries, string term/markdown/prompt, and string-only aliases. Glossaries
+    are raw lesson and docs.json content, so a malformed entry must be
+    reported, never crash the validator."""
+    out = {}
+    if not isinstance(raw, dict):
+        return out
+    for key, entry in raw.items():
+        if not isinstance(key, str) or not key.strip() or not isinstance(entry, dict):
+            continue
+        clean = {k: entry[k] for k in ('term', 'markdown', 'prompt') if isinstance(entry.get(k), str)}
+        if isinstance(entry.get('aliases'), list):
+            clean['aliases'] = [a for a in entry['aliases'] if isinstance(a, str)]
+        out[key] = clean
+    return out
+
+
+def _domain_glossaries(data, domains_dir=DOMAINS_DIR):
+    """(name, sanitized glossary) for each imported domain, in import order."""
+    for name in data.get('import', []) or []:
+        if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_\-]+', name):
+            continue
+        docs = domains_dir / name / 'docs.json'
+        try:
+            docs_data = json.loads(docs.read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(docs_data, dict):
+            yield name, sanitize_glossary(docs_data.get('glossary'))
+
+
+def load_glossary(data, domains_dir=DOMAINS_DIR):
+    """The glossary the app builds for this file: each imported domain's
+    docs.json `glossary`, in import order, under the file's own `glossary`."""
+    merged = {}
+    for _name, g in _domain_glossaries(data, domains_dir):
+        merged.update(g)
+    merged.update(sanitize_glossary(data.get('glossary')))
+    return merged
+
+
+def resolve_glossary_key(glossary, raw):
+    """Mirror of resolveGlossaryKey in src/glossary-core.ts."""
+    name = raw.strip()
+    if name in glossary:
+        return name
+    lower = name.lower()
+    for key, entry in glossary.items():
+        names = [key]
+        if isinstance(entry, dict):
+            aliases = entry.get('aliases')
+            names += [entry.get('term')] + (aliases if isinstance(aliases, list) else [])
+        if any(isinstance(n, str) and n.lower() == lower for n in names):
+            return key
+    return None
+
+
+def _iter_strings(obj, path=''):
+    if isinstance(obj, str):
+        yield path, obj
+    elif isinstance(obj, dict):
+        # Glossary definitions are rendered too, so their markers are checked.
+        for k, v in obj.items():
+            yield from _iter_strings(v, f'{path}.{k}' if path else k)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            yield from _iter_strings(v, f'{path}[{i}]')
+
+
+def check_glossary(data, domains_dir=DOMAINS_DIR):
+    """Every explicit {{glossary:KEY}} marker must resolve to an entry; an
+    entry without a definition, or a key markdown would mangle, warns."""
+    errors, warnings = [], []
+    glossary = load_glossary(data, domains_dir)
+    # Definitions an imported domain contributes are rendered in tooltips too,
+    # so check their markers — except where the file's own entry replaces them.
+    own_keys = set(sanitize_glossary(data.get('glossary')))
+    sources = [('', data)]
+    shown = {}
+    for name, g in _domain_glossaries(data, domains_dir):
+        for key, entry in g.items():
+            if key not in own_keys:
+                shown[key] = (name, entry)
+    for key, (name, entry) in shown.items():
+        sources.append((f'domains/{name}/docs.json:glossary.{key}', entry))
+    checked = 0
+    for prefix, obj in sources:
+        for path, text in _iter_strings(obj):
+            for m in _rendered_markers(text):
+                checked += 1
+                if resolve_glossary_key(glossary, m.group(1)) is None:
+                    where = f'{prefix}.{path}' if prefix and path else (prefix or path)
+                    errors.append(f'{where}: {m.group(0)} has no glossary entry')
+    own = data.get('glossary')
+    if isinstance(own, dict):
+        for key, entry in own.items():
+            if not isinstance(entry, dict):
+                warnings.append(f'glossary.{key}: not an object — the entry is ignored')
+                continue
+            if '_' in key:
+                warnings.append(f'glossary.{key}: underscore in key — markdown may read it as emphasis')
+            if 'aliases' in entry and not (isinstance(entry['aliases'], list)
+                                           and all(isinstance(a, str) for a in entry['aliases'])):
+                warnings.append(f'glossary.{key}.aliases: must be a list of strings — non-strings are ignored')
+            if not entry.get('markdown'):
+                warnings.append(f'glossary.{key}: no markdown definition')
+    # The same content warnings for domain entries this file shows unchanged.
+    # They are already sanitised, so only the content checks apply.
+    for key, (name, entry) in shown.items():
+        where = f'domains/{name}/docs.json:glossary.{key}'
+        if '_' in key:
+            warnings.append(f'{where}: underscore in key — markdown may read it as emphasis')
+        if not entry.get('markdown'):
+            warnings.append(f'{where}: no markdown definition')
+    return errors, warnings, checked
+
+
 def validate_file(path, fix=False):
     """Run all content checks on a single file. Returns (errors, warnings, fixes, stats)."""
     try:
@@ -668,6 +819,12 @@ def validate_file(path, fix=False):
     warnings.extend(sg_warnings)
     stats['semantic_graphs'] = (sg_count, len(sg_warnings))
 
+    # Glossary
+    gl_errors, gl_warnings, gl_count = check_glossary(data)
+    errors.extend(gl_errors)
+    warnings.extend(gl_warnings)
+    stats['glossary'] = (gl_count, len(gl_errors), len(gl_warnings))
+
     # Apply fixes if requested
     if fix and fixes:
         text = path.read_text()
@@ -688,6 +845,7 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     te, tw = stats.get('tensors', (0, 0))
     oc, ow = stats.get('overlays', (0, 0))
     gc, gw = stats.get('semantic_graphs', (0, 0))
+    lc, le, lw = stats.get('glossary', (0, 0, 0))
 
     def status(errs, warns=0):
         if errs:
@@ -717,6 +875,8 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     print(f'  Overlays:    {status(0, ow)} ({oc} checked)')
     if gc > 0:
         print(f'  Graphs:      {status(0, gw)} ({gc} checked)')
+    if lc or le or lw:
+        print(f'  Glossary:    {status(le, lw)} ({lc} marker{"s" if lc != 1 else ""} checked)')
 
     if fixes:
         print(f'\n  ⚠️  Auto-fixable ({len(fixes)}):')

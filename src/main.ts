@@ -26,6 +26,7 @@ import { setupProofPanel, navigateProof, loadProof, getProofContext, refreshProo
 import { captureViewState, applyViewState, setupViewSync, setupShareButton } from '/view-state-bridge.js';
 import { setupPopstateListener } from '/nav-history.js';
 import { setupObjectPicker } from '/object-picker.js';
+import { installGlossaryTooltip } from '/glossary.js';
 import { AI_ICON, USER_ICON } from '/icons.js';
 import { applyTheme, initialTheme, wireThemeToggle } from '/theme.js';
 
@@ -71,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCaptionDrag();
     setupSceneDescDrag();
     setupBoardOverlays();
+    installGlossaryTooltip();
     setupTensorCellPop();
     setupJsonViewer();
     setupContextStatusPopup();

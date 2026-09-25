@@ -69,6 +69,26 @@ Until that gap closes, a coding agent with the `algebench-scene-builder` skill i
 | `elements` | array | Objects to display (vectors, planes, points, etc.) |
 | `steps` | array | Progressive reveal steps for narrated walkthroughs |
 
+**Glossary (hoverable term definitions):**
+
+A lesson (or single scene) can define a `glossary` at its root. Any rendered text — doc panel, captions, info overlays, proof steps, chat — links a term, and hovering, focusing or tapping it shows the definition with an Ask AI button.
+
+```json
+"glossary": {
+  "RBF": {
+    "term": "Gaussian RBF kernel",
+    "aliases": ["radial basis function"],
+    "markdown": "$k_\\gamma(x,x') = e^{-\\gamma\\lVert x-x'\\rVert^2}$ — a choice, not a result.",
+    "prompt": "Explain the Gaussian RBF kernel and the inductive bias it encodes."
+  }
+}
+```
+
+- **Explicit:** `{{glossary:RBF}}` or `{{glossary:RBF|RBF kernels}}` (shown text). Always linked; resolves by key, term or alias.
+- **Automatic:** set `glossaryMatchThreshold` at the lesson root (e.g. `3`), once for the whole lesson, to also link any key, term or alias at least that long — first appearance per paragraph (each list item, table row and heading counts as one), longest match wins, all-caps acronyms match their exact case only. Math, code, links and HTML tags are never matched.
+- **Domains:** an imported domain can ship a `glossary` in `static/domains/<name>/docs.json`; the lesson's own entry replaces a domain entry with the same key.
+- `./run.sh scripts/validate_content.py` flags explicit markers with no entry.
+
 **Choosing between static and animated elements**
 
 Every element type comes in two flavors — static and animated. Picking the right one matters both for correctness and performance.

@@ -205,6 +205,11 @@ export interface LessonFormat {
    * Domain library names to import from static/domains/<name>/index.js. These register additional math functions available in expressions. Example: ["astrodynamics"].
    */
   import?: string[];
+  glossary?: Glossary;
+  /**
+   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
+   */
+  glossaryMatchThreshold?: number;
   /**
    * When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.
    */
@@ -224,6 +229,33 @@ export interface LessonFormat {
    * @minItems 1
    */
   scenes: [Scene, ...Scene[]];
+}
+/**
+ * Lesson-wide glossary. Layered over the glossaries of imported domains; a lesson entry wins on a shared key.
+ */
+export interface Glossary {
+  [k: string]: GlossaryEntry;
+}
+/**
+ * One glossary term. The key it is stored under is what an explicit {{glossary:KEY}} marker names.
+ */
+export interface GlossaryEntry {
+  /**
+   * Display name shown as the tooltip title. Defaults to the key. Example: "Gaussian RBF kernel".
+   */
+  term?: string;
+  /**
+   * Other spellings that resolve to this term, both for explicit markers and automatic matching. Example: ["radial basis function", "Gaussian kernel"].
+   */
+  aliases?: string[];
+  /**
+   * Definition shown in the tooltip. Markdown with KaTeX math via $inline$ and $$display$$, rendered like scene markdown.
+   */
+  markdown?: string;
+  /**
+   * Message sent to the AI chat by the tooltip's Ask AI button. Defaults to asking the AI to explain the term in the context of the lesson.
+   */
+  prompt?: string;
 }
 /**
  * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions.
@@ -1673,6 +1705,11 @@ export interface SingleSceneFormat {
    * Domain library names to import.
    */
   import?: string[];
+  glossary?: Glossary1;
+  /**
+   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
+   */
+  glossaryMatchThreshold?: number;
   /**
    * Marks scene as containing native JS.
    */
@@ -1706,6 +1743,12 @@ export interface SingleSceneFormat {
    * Proof(s) associated with this scene.
    */
   proof?: Proof | Proof[];
+}
+/**
+ * Glossary for this scene. Layered over the glossaries of imported domains; an entry here wins on a shared key.
+ */
+export interface Glossary1 {
+  [k: string]: GlossaryEntry;
 }
 /**
  * Initial camera position and target.

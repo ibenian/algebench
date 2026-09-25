@@ -1051,6 +1051,263 @@ function _normalizeUpVector(up) {
 	return v.normalize();
 }
 //#endregion
+//#region src/glossary-core.ts
+/** `{{glossary:KEY}}` or `{{glossary:KEY|shown text}}`. */
+var GLOSSARY_MARKER_RE = /\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}/g;
+/** Keep only well-formed entries: an object per key, with string `term`,
+*  `markdown` and `prompt` and a string-only `aliases`. Glossaries come from
+*  lesson JSON and from every imported domain's docs.json, so a malformed
+*  entry must cost that entry, not the render of every scene using it. */
+function sanitizeGlossary(raw) {
+	const out = Object.create(null);
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+	for (const [key, e] of Object.entries(raw)) {
+		if (!key.trim() || !e || typeof e !== "object" || Array.isArray(e)) continue;
+		const src = e;
+		const entry = {};
+		if (typeof src.term === "string") entry.term = src.term;
+		if (Array.isArray(src.aliases)) entry.aliases = src.aliases.filter((a) => typeof a === "string");
+		if (typeof src.markdown === "string") entry.markdown = src.markdown;
+		if (typeof src.prompt === "string") entry.prompt = src.prompt;
+		out[key] = entry;
+	}
+	return out;
+}
+/** Display name of an entry: its `term`, else the key. */
+function glossaryTermName(key, entry) {
+	return entry && entry.term || key;
+}
+/** Resolve an explicit marker's key: exact key first, then any key, term or
+*  alias case-insensitively. Returns the canonical key, or null. */
+function resolveGlossaryKey(glossary, raw) {
+	const name = raw.trim();
+	if (!name) return null;
+	if (Object.prototype.hasOwnProperty.call(glossary, name)) return name;
+	const lower = name.toLowerCase();
+	for (const [key, entry] of Object.entries(glossary)) {
+		if (!entry || typeof entry !== "object") continue;
+		if ([
+			key,
+			entry.term,
+			...Array.isArray(entry.aliases) ? entry.aliases : []
+		].some((n) => typeof n === "string" && n.toLowerCase() === lower)) return key;
+	}
+	return null;
+}
+/** Replace every marker with the text it displays — for speech, AI prompts
+*  and anything else that reads the source rather than the rendered page. */
+function stripGlossaryMarkers(text) {
+	if (typeof text !== "string" || text.indexOf("{{glossary:") === -1) return text;
+	return text.replace(GLOSSARY_MARKER_RE, (_m, key, shown) => (shown || key).trim());
+}
+function isAcronym(s) {
+	return !/\p{Ll}/u.test(s) && /\p{Lu}/u.test(s);
+}
+function escapeRegExp(s) {
+	return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+/** Compile the auto-matcher: every key, term and alias at least `threshold`
+*  characters long, longest first so `Gaussian RBF kernel` beats `RBF`.
+*  Returns null when nothing qualifies. */
+function buildGlossaryMatcher(glossary, threshold) {
+	const byLower = /* @__PURE__ */ new Map();
+	for (const [key, entry] of Object.entries(glossary)) {
+		if (!entry || typeof entry !== "object") continue;
+		const names = /* @__PURE__ */ new Set([
+			key,
+			entry.term,
+			...Array.isArray(entry.aliases) ? entry.aliases : []
+		]);
+		for (const n of names) {
+			if (typeof n !== "string") continue;
+			const text = n.trim();
+			if ([...text].length < threshold) continue;
+			const lower = text.toLowerCase();
+			const list = byLower.get(lower) || [];
+			list.push({
+				key,
+				text,
+				caseSensitive: isAcronym(text)
+			});
+			byLower.set(lower, list);
+		}
+	}
+	if (byLower.size === 0) return null;
+	const alts = [...byLower.values()].map((list) => list[0].text).sort((a, b) => b.length - a.length).map(escapeRegExp);
+	return {
+		re: new RegExp(`(?<![\\p{L}\\p{N}_])(?:${alts.join("|")})(?![\\p{L}\\p{N}_])`, "giu"),
+		byLower
+	};
+}
+function autoSegments(text, matcher, used) {
+	if (!matcher || !text) return text ? [{ text }] : [];
+	const out = [];
+	let last = 0;
+	matcher.re.lastIndex = 0;
+	for (let m = matcher.re.exec(text); m; m = matcher.re.exec(text)) {
+		const hit = m[0];
+		const cand = (matcher.byLower.get(hit.toLowerCase()) || []).find((c) => !c.caseSensitive || c.text === hit);
+		if (!cand || used.has(cand.key)) continue;
+		used.add(cand.key);
+		if (m.index > last) out.push({ text: text.slice(last, m.index) });
+		out.push({
+			text: hit,
+			key: cand.key
+		});
+		last = m.index + hit.length;
+	}
+	if (last < text.length) out.push({ text: text.slice(last) });
+	return out;
+}
+/** Split one unprotected run of source into plain and term segments.
+*  Explicit markers always link (or fall back to their plain text when
+*  unresolved); automatic matches link only a key's first appearance in
+*  the paragraph, tracked in `used`. */
+function segmentGlossaryText(text, glossary, matcher, used) {
+	const out = [];
+	let last = 0;
+	GLOSSARY_MARKER_RE.lastIndex = 0;
+	for (let m = GLOSSARY_MARKER_RE.exec(text); m; m = GLOSSARY_MARKER_RE.exec(text)) {
+		out.push(...autoSegments(text.slice(last, m.index), matcher, used));
+		const raw = m[1];
+		const key = resolveGlossaryKey(glossary, raw);
+		const shown = (m[2] || raw).trim();
+		out.push(key ? {
+			text: shown,
+			key
+		} : { text: shown });
+		if (key) used.add(key);
+		last = m.index + m[0].length;
+	}
+	out.push(...autoSegments(text.slice(last), matcher, used));
+	return out;
+}
+var PROTECTED_RE = new RegExp([
+	"^[ ]{0,3}(`{3,}|~{3,})[^\\n]*(?:\\n[\\s\\S]*?(?:\\n[ ]{0,3}\\1[ \\t]*$|(?![\\s\\S]))|(?![\\s\\S]))",
+	"(?<![^\\n]\\n)^(?: {4}|\\t)[^\\n]*(?:\\n(?:(?: {4}|\\t)[^\\n]*|[ \\t]*(?=\\n)))*",
+	"\\$\\$[\\s\\S]+?\\$\\$",
+	"(`+)(?!`)[\\s\\S]*?(?<!`)\\2(?!`)",
+	"\\$[^$\\n]+\\$",
+	"%%[A-Z_]+\\d+%%",
+	"!?\\[[^\\]]*\\]\\((?:[^()]|\\([^()]*\\))*\\)",
+	"!?\\[[^\\]]*\\]\\[[^\\]]*\\]",
+	"^[ \\t]*\\[[^\\]]+\\]:[^\\n]*",
+	"<[a-zA-Z/!](?:[^>\"']|\"[^\"]*\"|'[^']*')*>",
+	"(?:https?://|www\\.)[^\\s<>]+"
+].join("|"), "gm");
+var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|))|(?<=(?:^|\n)[ \t]*#{1,6}\s[^\n]*)\n|(?<=\n[ \t]{0,3}(?:=+|-+)[ \t]*)\n)/;
+var MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
+var MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-([a-z0-9]+)-(\d+)([^"]*)"/g;
+function isMathRegion(region) {
+	return region.startsWith("$");
+}
+/** A fresh, empty term list with its own random sentinel tag. */
+function newGlossaryTerms(tag = "g" + Math.random().toString(36).slice(2, 10)) {
+	return Object.assign([], { tag });
+}
+/** Replace glossary terms in markdown source with `%%GLOSSARY_n%%` sentinels
+*  (prose) or `\htmlClass` wrappers (names inside math). Automatic matches
+*  link a term once per paragraph; explicit markers are prose-only. */
+function extractGlossaryTerms(src, glossary, matcher) {
+	const terms = newGlossaryTerms();
+	if (!src || !matcher && src.indexOf("{{glossary:") === -1) return {
+		text: src,
+		terms
+	};
+	let used = /* @__PURE__ */ new Set();
+	const subRun = (plain) => segmentGlossaryText(plain, glossary, matcher, used).map((s) => {
+		if (!s.key) return s.text;
+		terms.push(s);
+		return `%%GLOSSARY_${terms.tag}_${terms.length - 1}%%`;
+	}).join("");
+	const sub = (plain) => plain.split(PARAGRAPH_BREAK_RE).map((piece, i) => {
+		if (i % 2 === 0) return subRun(piece);
+		used = /* @__PURE__ */ new Set();
+		return piece;
+	}).join("");
+	const subMath = (math) => math.replace(MATH_NAME_RE, (whole, name) => {
+		const text = name.trim();
+		const cand = (matcher.byLower.get(text.toLowerCase()) || []).find((c) => !c.caseSensitive || c.text === text);
+		if (!cand || used.has(cand.key)) return whole;
+		used.add(cand.key);
+		terms.push({
+			text,
+			key: cand.key
+		});
+		return `\\htmlClass{glossary-term glossary-k-${terms.tag}-${terms.length - 1}}{${whole}}`;
+	});
+	let out = "";
+	let last = 0;
+	PROTECTED_RE.lastIndex = 0;
+	for (let m = PROTECTED_RE.exec(src); m; m = PROTECTED_RE.exec(src)) {
+		out += sub(src.slice(last, m.index));
+		out += matcher && isMathRegion(m[0]) ? subMath(m[0]) : m[0];
+		last = m.index + m[0].length;
+	}
+	out += sub(src.slice(last));
+	return {
+		text: out,
+		terms
+	};
+}
+function escapeHtmlText(s) {
+	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+/** The HTML for one marked term. */
+function glossaryTermHtml(term) {
+	return `<span class="glossary-term" data-glossary-key="${escapeHtmlText(term.key || "")}" tabindex="0" role="button" aria-haspopup="dialog">${escapeHtmlText(term.text)}</span>`;
+}
+/** Swap this pass's sentinels in rendered HTML for term spans, and give the
+*  spans KaTeX made for names inside math their term attributes. Only
+*  sentinels carrying `terms.tag` are touched. */
+function restoreGlossaryTerms(html, terms) {
+	if (!terms.length) return html;
+	const sentinel = new RegExp(`%%GLOSSARY_${terms.tag}_(\\d+)%%`, "g");
+	return html.replace(sentinel, (m, idx) => {
+		const term = terms[+idx];
+		return term ? glossaryTermHtml(term) : m;
+	}).replace(MATH_TERM_CLASS_RE, (m, before, tag, idx, after) => {
+		const term = tag === terms.tag ? terms[+idx] : void 0;
+		if (!term) return m;
+		return `class="${before}glossary-term${after}" data-glossary-key="${escapeHtmlText(term.key || "")}" tabindex="0" role="button" aria-haspopup="dialog"`;
+	});
+}
+/** Remove the math wrappers from TeX — for the TeX annotation KaTeX keeps,
+*  which is read back as source by speech and Ask AI. */
+function stripGlossaryMath(tex) {
+	return tex.replace(/\\htmlClass\{glossary-term glossary-k-[a-z0-9]+-\d+\}\{(\\[a-z]+\{[^{}]+\})\}/g, "$1");
+}
+var active = {
+	glossary: {},
+	threshold: null,
+	matcher: null,
+	dirty: false
+};
+function setActiveGlossary(glossary) {
+	active.glossary = sanitizeGlossary(glossary);
+	active.dirty = true;
+}
+/** `glossaryMatchThreshold` of the loaded lesson. Absent or non-positive
+*  turns automatic matching off; explicit markers still render. */
+function setGlossaryThreshold(n) {
+	const t = typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
+	if (t !== active.threshold) {
+		active.threshold = t;
+		active.dirty = true;
+	}
+}
+function getActiveGlossary() {
+	return active.glossary;
+}
+/** Extract terms from `src` against the active glossary. */
+function extractActiveGlossaryTerms(src) {
+	if (active.dirty) {
+		active.matcher = active.threshold == null ? null : buildGlossaryMatcher(active.glossary, active.threshold);
+		active.dirty = false;
+	}
+	return extractGlossaryTerms(src, active.glossary, active.matcher);
+}
+//#endregion
 //#region src/labels.ts
 var AI_SPARKLE_SVG = "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" width=\"11\" height=\"11\"><path d=\"M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z\"/></svg>";
 function escapeHtml$2(s) {
@@ -1107,7 +1364,13 @@ function stripHtmlMacros(s) {
 function normLatex(s) {
 	return (s || "").replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, "$1").replace(/\\le(?![a-zA-Z])/g, "\\leq").replace(/\\ge(?![a-zA-Z])/g, "\\geq").replace(/[\s{}]/g, "");
 }
-function renderKaTeX$1(text, displayMode) {
+function renderKaTeX$1(text, displayMode, opts) {
+	if (!text) return "";
+	if (opts && opts.glossary === false) return _renderKaTeX(stripGlossaryMarkers(text), displayMode);
+	const { text: src, terms } = extractActiveGlossaryTerms(text);
+	return restoreGlossaryTerms(_renderKaTeX(src, displayMode), terms);
+}
+function _renderKaTeX(text, displayMode) {
 	if (!text) return "";
 	const tables = [];
 	const withTables = text.replace(/^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm, (_match, headerLine, _sepLine, bodyBlock) => {
@@ -1149,9 +1412,9 @@ function renderKaTeX$1(text, displayMode) {
 		const cellStyle = "padding:3px 8px;border:1px solid rgba(255,255,255,0.15)";
 		const thStyle = "padding:3px 8px;border:1px solid rgba(255,255,255,0.15);font-weight:bold;background:rgba(255,255,255,0.06)";
 		let html = `<table style="${tableStyle}"><thead><tr>`;
-		html += headers.map((h) => `<th style="${thStyle}">${renderKaTeX$1(h, false)}</th>`).join("");
+		html += headers.map((h) => `<th style="${thStyle}">${_renderKaTeX(h, false)}</th>`).join("");
 		html += "</tr></thead><tbody>";
-		for (const row of rows) html += "<tr>" + row.map((c) => `<td style="${cellStyle}">${renderKaTeX$1(c, false)}</td>`).join("") + "</tr>";
+		for (const row of rows) html += "<tr>" + row.map((c) => `<td style="${cellStyle}">${_renderKaTeX(c, false)}</td>`).join("") + "</tr>";
 		html += "</tbody></table>";
 		tables.push(html);
 		return `\x01T${tables.length - 1}\x01`;
@@ -1163,7 +1426,7 @@ function renderKaTeX$1(text, displayMode) {
 			"0.95em",
 			"0.88em"
 		][hashes.length - 1];
-		headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX$1(content, false)}</div>`);
+		headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${_renderKaTeX(content, false)}</div>`);
 		return `\x01H${headings.length - 1}\x01`;
 	});
 	const codeSpans = [];
@@ -1206,7 +1469,7 @@ function renderKaTeX$1(text, displayMode) {
 					"0.88em"
 				][hm[1].length - 1]};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
 				if (t === "---") return "<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0\">";
-				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${renderKaTeX$1(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${renderKaTeX$1(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
 				return li < lines.length - 1 ? inline + "<br>" : inline;
 			}).join("");
 		} else if (seg.startsWith("$$")) {
@@ -1236,8 +1499,13 @@ function renderKaTeX$1(text, displayMode) {
 		}
 	}).join("");
 }
-function renderMarkdown$1(md) {
+function renderMarkdown$1(md, opts) {
 	if (!md) return "";
+	if (opts && opts.glossary === false) return _renderMarkdown(stripGlossaryMarkers(md));
+	const { text, terms } = extractActiveGlossaryTerms(md);
+	return restoreGlossaryTerms(_renderMarkdown(text), terms);
+}
+function _renderMarkdown(md) {
 	const mathBlocks = [];
 	let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex) => {
 		mathBlocks.push({
@@ -1648,7 +1916,8 @@ function makeAiAskButton(className, title, getMessage) {
 	btn.innerHTML = AI_SPARKLE_SVG;
 	btn.addEventListener("click", (e) => {
 		e.stopPropagation();
-		const message = getMessage();
+		const raw = getMessage();
+		const message = raw ? stripGlossaryMarkers(raw) : raw;
 		if (!message) return;
 		openChatPanel();
 		if (e.metaKey || e.ctrlKey) {
@@ -1685,11 +1954,11 @@ function elementToMarkdown(el) {
 	const clone = el.cloneNode(true);
 	clone.querySelectorAll(".katex-display").forEach((dispEl) => {
 		const ann = dispEl.querySelector("annotation[encoding=\"application/x-tex\"]");
-		if (ann) dispEl.replaceWith(`$$${ann.textContent.trim()}$$`);
+		if (ann) dispEl.replaceWith(`$$${stripGlossaryMath(ann.textContent.trim())}$$`);
 	});
 	clone.querySelectorAll(".katex").forEach((inlineEl) => {
 		const ann = inlineEl.querySelector("annotation[encoding=\"application/x-tex\"]");
-		if (ann) inlineEl.replaceWith(`$${ann.textContent.trim()}$`);
+		if (ann) inlineEl.replaceWith(`$${stripGlossaryMath(ann.textContent.trim())}$`);
 	});
 	return clone.textContent.trim();
 }
@@ -2758,7 +3027,7 @@ function updateExplanationPanel(spec) {
 	const toggle = document.getElementById("explain-toggle");
 	if (spec && spec.markdown) {
 		content.innerHTML = renderMarkdown$1(spec.markdown);
-		content.dataset.markdown = spec.markdown;
+		content.dataset.markdown = stripGlossaryMarkers(spec.markdown);
 		injectAskButtons(content);
 	} else content.innerHTML = "<p style=\"color: rgba(180,180,200,0.5); font-style: italic;\">No explanation available for this scene.</p>";
 	panel.classList.remove("hidden");
@@ -2837,7 +3106,7 @@ function setupDocSpeakButtons() {
 			return;
 		}
 		const contentEl = document.getElementById("explanation-content");
-		const text = overlayState.currentSpec && overlayState.currentSpec.markdown ? overlayState.currentSpec.markdown : contentEl.dataset.markdown || contentEl.textContent;
+		const text = overlayState.currentSpec && overlayState.currentSpec.markdown ? stripGlossaryMarkers(overlayState.currentSpec.markdown) : contentEl.dataset.markdown || contentEl.textContent;
 		if (!text || !text.trim()) return;
 		if (typeof window.algebenchSpeakText === "function") {
 			speakBtn.textContent = "⏹ Stop";
@@ -2872,8 +3141,8 @@ function updateTitle(spec) {
 	if (spec && spec.title) titleEl.innerHTML = renderKaTeX$1(spec.title, false);
 	else titleEl.innerHTML = "AlgeBench";
 	if (spec && spec.description) {
-		descEl.dataset.markdown = spec.description;
-		const descText = spec.description;
+		const descText = stripGlossaryMarkers(spec.description);
+		descEl.dataset.markdown = descText;
 		const btn = makeAiAskButton("ai-ask-btn", "Ask AI to explain this scene", () => "Can you explain this scene:\n" + descText.trim());
 		fillBoardOverlay(descEl, renderKaTeX$1(spec.description, false), btn);
 		resetSceneDescPosition(descEl);
@@ -3018,6 +3287,7 @@ function _evalInfoExpr(expr) {
 function _replaceDoubleBraceExprs(template, evaluator) {
 	if (typeof template !== "string" || template.indexOf("{{") === -1) return template;
 	return template.replace(/\{\{([\s\S]*?)\}\}/g, (_m, expr) => {
+		if (/^\s*glossary:/.test(expr)) return _m;
 		const v = evaluator(expr);
 		return v == null ? _m : String(v);
 	});
@@ -3103,7 +3373,7 @@ function _migrateOldOverlayKeys(id) {
 	return geom;
 }
 function _makeItemAiBtn(item) {
-	return makeAiAskButton("info-overlay-ai-btn", "Ask AI about this", () => "Can you explain this:\n" + resolveInfoContent(item.content).trim());
+	return makeAiAskButton("info-overlay-ai-btn", "Ask AI about this", () => "Can you explain this:\n" + stripGlossaryMarkers(resolveInfoContent(item.content)).trim());
 }
 function _makeDockBtn(item) {
 	const b = document.createElement("button");
@@ -3867,8 +4137,9 @@ function updateStepCaption(scene, stepIdx) {
 	if (stepIdx >= 0 && scene.steps && scene.steps[stepIdx] && scene.steps[stepIdx].description) text = scene.steps[stepIdx].description;
 	else if (stepIdx === -1 && scene.description) text = scene.description;
 	if (text) {
-		el.dataset.markdown = text;
-		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${text}"`);
+		const plain = stripGlossaryMarkers(text);
+		el.dataset.markdown = plain;
+		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${plain}"`);
 		fillBoardOverlay(el, renderMarkdown$1(text), btn);
 		el.style.opacity = String(overlayState.displayParams.overlayOpacity);
 		resetCaptionPosition(el);
@@ -8872,7 +9143,7 @@ function rasterLatex(src, fontPx, color) {
 	const h = getHost();
 	h.style.font = `${size}px ${FAMILY}`;
 	h.style.color = color;
-	h.innerHTML = renderKaTeX$1(src, false);
+	h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
 	for (const m of h.querySelectorAll(".katex-mathml")) m.remove();
 	const box = h.getBoundingClientRect();
 	const w = Math.ceil(box.width), ht = Math.ceil(box.height);
@@ -8984,7 +9255,7 @@ function measureLatex(src) {
 	else {
 		const h = getHost();
 		h.style.font = `100px ${FAMILY}`;
-		h.innerHTML = renderKaTeX$1(src, false);
+		h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
 		for (const el of h.querySelectorAll(".katex-mathml")) el.remove();
 		const box = h.getBoundingClientRect();
 		h.innerHTML = "";
@@ -9784,14 +10055,18 @@ function renderTensor(el, _view) {
 		ctx.textBaseline = "middle";
 		ctx.fillText(txt, cx, cy);
 	}
-	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center") {
-		if (!txt || wPx < 2 || hPx < 2) return;
+	/** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above
+	*  `maxFontPx`; returns the size used (0 when nothing was drawn). */
+	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center", maxFontPx = Infinity) {
+		if (!txt || wPx < 2 || hPx < 2) return 0;
+		const fontPx = Math.min(maxFontPx, fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx));
 		drawLatex(ctx, txt, cx, cy, {
-			fontPx: fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx),
+			fontPx,
 			color,
 			align,
 			rotate: rotate ? -Math.PI / 2 : 0
 		});
+		return fontPx;
 	}
 	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
 	const keyParts = [];
@@ -9831,16 +10106,33 @@ function renderTensor(el, _view) {
 		if (key === textLayer.lastKey) return;
 		textLayer.lastKey = key;
 		ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
+		const hW = .92 * px, vW = vBand * px - .35 * px, glyphH = LABEL_GLYPH / .62 * px;
+		const axisPx = (texts, n, wPx) => {
+			let m = Infinity;
+			if (texts && wPx >= 2) {
+				for (let i = 0; i < n; i++) if (texts[i]) m = Math.min(m, fitLatexPx(texts[i], wPx, glyphH));
+			}
+			return m;
+		};
+		const hPx = axisPx(hTexts, cols, hW);
+		const vPx = axisPx(vTexts, rows, vW);
+		const labelPx = Math.min(hPx, vPx);
 		if (hTexts) {
 			const band = LABEL_BAND * px;
-			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, .92 * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
+			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, hW, glyphH, cssColor(hColor), false, "center", hPx);
 		}
-		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
-		if (vTexts) {
-			const band = vBand * px;
-			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, band - .35 * px, LABEL_GLYPH / .62 * px, cssColor(vColor), false, "right");
+		if (vTexts) for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, vW, glyphH, cssColor(vColor), false, "right", vPx);
+		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor), false, "center", labelPx);
+		if (vTitle && planeLabels) {
+			let titleX = TITLE_BAND * px / 2;
+			if (vTexts && Number.isFinite(vPx)) {
+				let widest = 0;
+				for (const t of vTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
+				const beside = ox - .2 * px - widest * vPx / 100 - .9 * Math.min(vPx, labelPx);
+				titleX = Math.max(titleX, beside);
+			}
+			drawFitted(ctx, vTitle, titleX, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true, "center", labelPx);
 		}
-		if (vTitle && planeLabels) drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true);
 		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			const txt = texts[cell];
@@ -11361,6 +11653,299 @@ function updateJsTrustPill() {
 		if (_issuesPanelToggleFn) _issuesPanelToggleFn(document.getElementById("json-viewer-issues"));
 	} : null;
 	pill.style.cursor = pillClickable ? "pointer" : "";
+}
+//#endregion
+//#region src/glossary.ts
+var _domainGlossaries = /* @__PURE__ */ new Map();
+function _fetchDomainGlossary(name) {
+	let p = _domainGlossaries.get(name);
+	if (!p) {
+		p = fetch(`/api/domains/${encodeURIComponent(name)}`).then((r) => r.ok ? r.json() : {}).then((docs) => {
+			const g = docs && docs.glossary;
+			return g && typeof g === "object" && !Array.isArray(g) ? g : {};
+		}).catch((err) => {
+			console.warn(`[glossary] could not load glossary of domain "${name}":`, err);
+			return {};
+		});
+		_domainGlossaries.set(name, p);
+	}
+	return p;
+}
+var _loadGen = 0;
+/** Merge the glossaries of `domains` (in order) under `entries`, and make the
+*  result the active glossary. Unknown or malformed inputs contribute nothing. */
+async function loadGlossary(domains, entries) {
+	const gen = ++_loadGen;
+	const names = Array.isArray(domains) ? domains.filter((n) => typeof n === "string") : [];
+	const fromDomains = await Promise.all(names.map(_fetchDomainGlossary));
+	if (gen !== _loadGen) return;
+	const merged = Object.create(null);
+	for (const g of [...fromDomains.map(sanitizeGlossary), sanitizeGlossary(entries)]) for (const [k, v] of Object.entries(g)) Object.defineProperty(merged, k, {
+		value: v,
+		enumerable: true,
+		writable: true,
+		configurable: true
+	});
+	setActiveGlossary(merged);
+	hideGlossaryTip();
+}
+/** Drop the active glossary (no scene loaded), cancelling any load in flight. */
+function clearGlossary() {
+	++_loadGen;
+	setActiveGlossary(null);
+	setGlossaryThreshold(void 0);
+	hideGlossaryTip();
+}
+var _tips = [];
+var _depth = 0;
+var _pinned = false;
+var _restoringFocus = false;
+var _hideTimer$2 = null;
+function _tipId(level) {
+	return level === 0 ? "glossary-tip" : `glossary-tip-${level}`;
+}
+/** Level of the open tip containing `node`, or -1 when it is on the page. */
+function _levelOf(node) {
+	for (let i = _depth - 1; i >= 0; i--) if (node && _tips[i].el.contains(node)) return i;
+	return -1;
+}
+/** Keyboard focus sits on an open tip's term, or inside an open tip. */
+function _focusHeld() {
+	const a = document.activeElement;
+	if (!a) return false;
+	for (let i = 0; i < _depth; i++) if (_tips[i].anchor === a || _tips[i].el.contains(a)) return true;
+	return false;
+}
+function _cancelHide() {
+	if (_hideTimer$2) {
+		clearTimeout(_hideTimer$2);
+		_hideTimer$2 = null;
+	}
+}
+function _scheduleHide() {
+	if (_pinned || _focusHeld()) return;
+	_cancelHide();
+	_hideTimer$2 = setTimeout(hideGlossaryTip, 180);
+}
+function _ensureTip(level) {
+	let tip = _tips[level];
+	if (tip) return tip;
+	const el = document.createElement("div");
+	el.id = _tipId(level);
+	el.className = "glossary-tip hidden";
+	el.style.zIndex = String(2e4 + level);
+	el.setAttribute("role", "dialog");
+	el.addEventListener("mouseenter", _cancelHide);
+	el.addEventListener("mouseleave", _scheduleHide);
+	el.addEventListener("focusout", () => setTimeout(_scheduleHide, 0));
+	document.body.appendChild(el);
+	tip = {
+		el,
+		anchor: null
+	};
+	_tips[level] = tip;
+	return tip;
+}
+/** Close the tips at `level` and above. */
+function _closeFrom(level) {
+	for (let i = level; i < _depth; i++) {
+		const tip = _tips[i];
+		tip.el.classList.add("hidden");
+		if (tip.anchor) {
+			tip.anchor.setAttribute("aria-expanded", "false");
+			tip.anchor.removeAttribute("aria-describedby");
+		}
+		tip.anchor = null;
+	}
+	_depth = Math.min(_depth, level);
+}
+function _position(tip, anchor) {
+	const r = anchor.getBoundingClientRect();
+	const margin = 8;
+	tip.style.left = "0px";
+	tip.style.top = "0px";
+	const tw = tip.offsetWidth;
+	const th = tip.offsetHeight;
+	const below = r.bottom + 6;
+	const top = below + th + margin > window.innerHeight && r.top - 6 - th >= margin ? r.top - 6 - th : below;
+	const left = Math.min(Math.max(margin, r.left), window.innerWidth - tw - margin);
+	tip.style.left = `${Math.max(margin, left)}px`;
+	tip.style.top = `${Math.max(margin, top)}px`;
+}
+function _unlinkSelf(body, key) {
+	body.querySelectorAll(".glossary-term").forEach((t) => {
+		if (t.dataset.glossaryKey !== key) return;
+		t.classList.remove("glossary-term");
+		for (const a of [
+			"data-glossary-key",
+			"tabindex",
+			"role",
+			"aria-haspopup"
+		]) t.removeAttribute(a);
+	});
+}
+function _fill(tip, key, entry) {
+	const name = glossaryTermName(key, entry);
+	tip.el.innerHTML = "";
+	const head = document.createElement("div");
+	head.className = "glossary-tip-head";
+	const title = document.createElement("span");
+	title.className = "glossary-tip-title";
+	title.innerHTML = renderKaTeX$1(name, false, { glossary: false });
+	head.appendChild(title);
+	head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt && stripGlossaryMarkers(entry.prompt) || `Explain "${name}" in the context of what I'm looking at.`));
+	tip.el.appendChild(head);
+	if (entry.markdown) {
+		const body = document.createElement("div");
+		body.className = "glossary-tip-body";
+		body.innerHTML = renderMarkdown$1(entry.markdown);
+		_unlinkSelf(body, key);
+		tip.el.appendChild(body);
+	}
+	tip.el.setAttribute("aria-label", name);
+}
+function _show(anchor) {
+	const key = anchor.dataset.glossaryKey || "";
+	const g = getActiveGlossary();
+	const entry = Object.prototype.hasOwnProperty.call(g, key) ? g[key] : void 0;
+	if (!entry || anchor.getClientRects().length === 0) return;
+	_cancelHide();
+	const level = _levelOf(anchor) + 1;
+	const tip = _ensureTip(level);
+	if (level < _depth && tip.anchor === anchor) _closeFrom(level + 1);
+	else {
+		_closeFrom(level);
+		_fill(tip, key, entry);
+		tip.anchor = anchor;
+		anchor.setAttribute("aria-describedby", tip.el.id);
+		_depth = level + 1;
+	}
+	tip.el.classList.remove("hidden");
+	anchor.setAttribute("aria-expanded", "true");
+	_position(tip.el, anchor);
+}
+function hideGlossaryTip() {
+	_cancelHide();
+	_pinned = false;
+	_closeFrom(0);
+}
+var _CONTROL_SEL = "button, a, input, select, textarea, label, summary, #labels-container";
+function _termOf(target) {
+	const term = target instanceof Element ? target.closest(".glossary-term") : null;
+	return term && !(term.parentElement && term.parentElement.closest(_CONTROL_SEL)) ? term : null;
+}
+function _demoteInControl(term) {
+	if (!term.parentElement || !term.parentElement.closest(_CONTROL_SEL)) return;
+	for (const a of [
+		"tabindex",
+		"role",
+		"aria-haspopup",
+		"aria-expanded"
+	]) term.removeAttribute(a);
+}
+function _demoteWithin(root) {
+	if (root.matches(".glossary-term[tabindex]")) _demoteInControl(root);
+	root.querySelectorAll(".glossary-term[tabindex]").forEach(_demoteInControl);
+}
+var _installed = false;
+/** Wire the delegated listeners. Idempotent — safe for any page to call. */
+function installGlossaryTooltip() {
+	if (_installed) return;
+	_installed = true;
+	_demoteWithin(document.body);
+	new MutationObserver((records) => {
+		for (const r of records) for (const n of r.addedNodes) if (n.nodeType === 1) _demoteWithin(n);
+		for (let i = 0; i < _depth; i++) {
+			const a = _tips[i].anchor;
+			if (a && !a.isConnected) {
+				_closeFrom(i);
+				if (!_depth) {
+					_cancelHide();
+					_pinned = false;
+				}
+				break;
+			}
+		}
+	}).observe(document.body, {
+		childList: true,
+		subtree: true
+	});
+	document.addEventListener("mouseover", (e) => {
+		const term = _termOf(e.target);
+		if (term && (!_pinned || _levelOf(term) >= 0 || _tips[0].anchor === term)) _show(term);
+	});
+	document.addEventListener("mouseout", (e) => {
+		if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
+	});
+	document.addEventListener("focusin", (e) => {
+		if (_restoringFocus) return;
+		const term = _termOf(e.target);
+		if (term) _show(term);
+	});
+	document.addEventListener("focusout", (e) => {
+		if (!_termOf(e.target)) return;
+		setTimeout(_scheduleHide, 0);
+	});
+	document.addEventListener("click", (e) => {
+		const term = _termOf(e.target);
+		if (term) {
+			const level = _levelOf(term) + 1;
+			if (_pinned && level < _depth && _tips[level].anchor === term) {
+				_closeFrom(level);
+				if (!_depth) _pinned = false;
+				return;
+			}
+			_show(term);
+			_pinned = true;
+			return;
+		}
+		if (_depth && _levelOf(e.target) < 0) hideGlossaryTip();
+	}, true);
+	document.addEventListener("keydown", (e) => {
+		const term = _termOf(e.target);
+		if (term && (e.key === "Enter" || e.key === " ")) {
+			e.preventDefault();
+			_show(term);
+			_pinned = true;
+			return;
+		}
+		if (e.key === "Escape" && _depth) {
+			const back = _tips[_depth - 1].anchor;
+			_closeFrom(_depth - 1);
+			if (!_depth) {
+				_cancelHide();
+				_pinned = false;
+			}
+			if (back && document.activeElement !== back) {
+				_restoringFocus = true;
+				try {
+					back.focus();
+				} finally {
+					_restoringFocus = false;
+				}
+			}
+		}
+	});
+	document.addEventListener("scroll", (e) => {
+		if (!_depth) return;
+		const inTip = _levelOf(e.target instanceof Node ? e.target : null);
+		for (let i = inTip + 1; i < _depth; i++) {
+			const tip = _tips[i];
+			const r = tip.anchor.getBoundingClientRect();
+			if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) {
+				_closeFrom(i);
+				break;
+			}
+			_position(tip.el, tip.anchor);
+		}
+		if (!_depth) {
+			_cancelHide();
+			_pinned = false;
+		}
+	}, true);
+	window.addEventListener("resize", () => {
+		if (_depth) hideGlossaryTip();
+	});
 }
 //#endregion
 //#region src/context-browser.ts
@@ -13829,6 +14414,10 @@ async function loadScene(spec) {
 	};
 	setActiveSceneFunctions(spec);
 	setActiveVirtualTimeExpr(spec, -1);
+	if (!spec) {
+		++_lessonLoadGen;
+		clearGlossary();
+	} else hideGlossaryTip();
 	updateTitle(spec);
 	updateExplanationPanel(spec);
 	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
@@ -13982,7 +14571,10 @@ function isLessonFormat(spec) {
 	const s = spec;
 	return s && Array.isArray(s.scenes) && s.scenes.length > 0;
 }
+var _lessonLoadGen = 0;
 async function loadLesson(spec) {
+	const load = ++_lessonLoadGen;
+	const superseded = () => load !== _lessonLoadGen;
 	sceneState._sceneJsTrustState = null;
 	sceneState._sceneJsIssues = [];
 	sceneState._sceneIsUnsafe = false;
@@ -13991,7 +14583,11 @@ async function loadLesson(spec) {
 		sceneState._sceneIsUnsafe = spec.unsafe === true;
 		sceneState._sceneUnsafeExplanation = spec.unsafeExplanation || "";
 		const scanned = scanSpecForUnsafeJs(spec);
-		if (sceneState._sceneIsUnsafe || scanned) sceneState._sceneJsTrustState = await showTrustDialog(spec.unsafeExplanation || "This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.", Array.isArray(spec.import) ? spec.import : []) ? "trusted" : "untrusted";
+		if (sceneState._sceneIsUnsafe || scanned) {
+			const trusted = await showTrustDialog(spec.unsafeExplanation || "This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.", Array.isArray(spec.import) ? spec.import : []);
+			if (superseded()) return;
+			sceneState._sceneJsTrustState = trusted ? "trusted" : "untrusted";
+		}
 	}
 	updateJsTrustPill();
 	window._algebenchUpdateJsTrustPill = updateJsTrustPill;
@@ -14011,6 +14607,10 @@ async function loadLesson(spec) {
 		stopAutoPlay();
 		sceneState._activeDomainFunctions = {};
 		await importDomains(spec && spec.import);
+		if (superseded()) return;
+		await loadGlossary(spec && spec.import, spec && spec.glossary);
+		if (superseded()) return;
+		setGlossaryThreshold(spec && spec.glossaryMatchThreshold);
 		updateDockVisibility$1();
 		loadScene(spec);
 		return;
@@ -14021,6 +14621,10 @@ async function loadLesson(spec) {
 	sceneState.visitedSteps = /* @__PURE__ */ new Set();
 	stopAutoPlay();
 	await importDomains(spec.import);
+	if (superseded()) return;
+	await loadGlossary(spec.import, spec.glossary);
+	if (superseded()) return;
+	setGlossaryThreshold(spec.glossaryMatchThreshold);
 	buildSceneTree$1(spec);
 	updateDockVisibility$1();
 	navigateTo$1(0, -1);
@@ -17607,6 +18211,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupCaptionDrag();
 	setupSceneDescDrag();
 	setupBoardOverlays();
+	installGlossaryTooltip();
 	setupTensorCellPop();
 	setupJsonViewer();
 	setupContextStatusPopup();
@@ -26511,7 +27116,7 @@ function addChatMessage(role, content, toolCalls) {
 	body.className = "msg-body";
 	if (typeof renderKaTeX === "function" && typeof renderMarkdown === "function") body.innerHTML = role === "user" ? renderKaTeX(content, false) : renderMarkdown(content);
 	else body.textContent = content;
-	body.dataset.markdown = content;
+	body.dataset.markdown = stripGlossaryMarkers(content);
 	msgDiv.appendChild(body);
 	if (role === "assistant") {
 		const SVG_SPEAKER = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"12\" height=\"12\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z\"/></svg>";
@@ -26918,7 +27523,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 };
 async function speakText(text, { explicit = false } = {}) {
 	if (selectedTtsMode === "silent" && !explicit) return;
-	const clean = text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
+	const clean = stripGlossaryMarkers(text).replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
 	if (!clean) return;
 	const myId = ++ttsRequestId;
 	ttsPausedByUser = false;

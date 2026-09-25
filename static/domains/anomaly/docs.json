@@ -159,5 +159,435 @@
         6
       ]
     }
+  },
+  "glossary": {
+    "MAD": {
+      "term": "median absolute deviation",
+      "aliases": [
+        "median absolute deviations"
+      ],
+      "markdown": "$\\mathrm{MAD} = \\operatorname{median}_i \\lvert x_i - \\operatorname{median}(x)\\rvert$\n\nA robust spread: scaled by $1.4826$ it estimates $\\sigma$ for Gaussian data, yet a handful of wild points barely move it — its **breakdown point** is 50%.",
+      "prompt": "Explain the median absolute deviation (MAD): how it is computed, why it is scaled by 1.4826, and why it resists outliers where the standard deviation does not."
+    },
+    "breakdown point": {
+      "term": "breakdown point",
+      "markdown": "The largest fraction of the data that can be replaced by arbitrary values before an estimator can be dragged arbitrarily far. The mean's is $0\\%$; the median's and MAD's is $50\\%$.",
+      "prompt": "Explain the breakdown point of an estimator, and compare the mean, the standard deviation, the median and the MAD."
+    },
+    "z-score": {
+      "term": "z-score",
+      "aliases": [
+        "z-scores",
+        "standard score"
+      ],
+      "markdown": "$z = \\dfrac{x - \\bar x}{s}$ — how many standard deviations a point sits from the mean. Both $\\bar x$ and $s$ are pulled by the very outliers it is meant to flag.",
+      "prompt": "Explain the z-score as an outlier test and why masking makes it fail when the outliers themselves inflate the mean and standard deviation."
+    },
+    "kNN": {
+      "term": "k-nearest-neighbour distance",
+      "aliases": [
+        "k-NN",
+        "k nearest neighbours"
+      ],
+      "markdown": "The distance from a point to its $k$-th nearest neighbour. Large means isolated — but only relative to a single global scale, which is why it struggles when clusters have different densities.",
+      "prompt": "Explain the k-th nearest neighbour distance as an anomaly score, how k is chosen, and where it fails on data with clusters of different density."
+    },
+    "LOF": {
+      "term": "Local Outlier Factor",
+      "aliases": [
+        "local outlier factor"
+      ],
+      "markdown": "The ratio of a point's neighbours' local reachability density to its own. $\\mathrm{LOF}\\approx 1$ means as dense as its neighbourhood; $\\mathrm{LOF}\\gg 1$ means locally sparse, whatever the global scale.",
+      "prompt": "Explain the Local Outlier Factor: reachability distance, local reachability density, and why the ratio adapts to clusters of different density."
+    },
+    "Mahalanobis": {
+      "term": "Mahalanobis distance",
+      "aliases": [
+        "Mahalanobis distance"
+      ],
+      "markdown": "$d_M(x) = \\sqrt{(x-\\mu)^\\top \\Sigma^{-1} (x-\\mu)}$ — distance measured in the data's own covariance, so its level sets are ellipses aligned with the spread.",
+      "prompt": "Explain the Mahalanobis distance, why it uses the inverse covariance, and how outliers contaminate the covariance estimate it depends on."
+    },
+    "Isolation Forest": {
+      "term": "Isolation Forest",
+      "aliases": [
+        "iForest"
+      ],
+      "markdown": "Random axis-aligned splits isolate a point; anomalies take fewer splits. The score normalises the mean path length by $c(n)$, the average path of an unsuccessful BST search.",
+      "prompt": "Explain how an Isolation Forest scores anomalies by path length, and what the c(n) normalisation is for."
+    },
+    "RBF": {
+      "term": "Gaussian RBF kernel",
+      "aliases": [
+        "radial basis function",
+        "Gaussian kernel",
+        "RBF kernel"
+      ],
+      "markdown": "$k_\\gamma(x,x') = e^{-\\gamma\\lVert x-x'\\rVert^2}$\n\nA **choice**, not a result — it asserts that nearness is radial and means the same thing everywhere. That is an inductive bias.",
+      "prompt": "Explain the Gaussian RBF kernel: what it assumes, why isotropy and a single bandwidth are an inductive bias, and when that bias is wrong."
+    },
+    "SVM": {
+      "term": "one-class SVM",
+      "aliases": [
+        "one-class SVM",
+        "support vector machine"
+      ],
+      "markdown": "Finds a boundary in kernel feature space that encloses most of the data; $\\nu$ upper-bounds the fraction of training points left outside.",
+      "prompt": "Explain the one-class SVM: what the boundary means, the role of nu, and how the kernel bandwidth gamma shapes it."
+    },
+    "ROC": {
+      "term": "ROC curve",
+      "aliases": [
+        "ROC curve"
+      ],
+      "markdown": "True-positive rate against false-positive rate as the threshold sweeps. Blind to the base rate, so it can look excellent where precision is poor.",
+      "prompt": "Explain the ROC curve and AUC, and why they can look excellent on a rare-positive problem where precision is poor."
+    },
+    "AUC": {
+      "term": "area under the ROC curve",
+      "markdown": "The probability that a random positive outscores a random negative. Threshold-free — and base-rate-free, which is both its strength and its trap.",
+      "prompt": "Explain ROC AUC as a ranking probability and why it ignores the base rate.",
+      "aliases": [
+        "ROC-AUC",
+        "AUC-ROC",
+        "ROC AUC"
+      ]
+    },
+    "base rate": {
+      "term": "base rate",
+      "aliases": [
+        "prevalence"
+      ],
+      "markdown": "The fraction of cases that are truly positive. At a low base rate even a small false-positive rate swamps the true positives, so precision collapses.",
+      "prompt": "Explain the base rate and why a low base rate makes precision collapse even for a detector with a small false-positive rate."
+    },
+    "Tukey's fences": {
+      "term": "Tukey's fences",
+      "aliases": [
+        "Tukey fences",
+        "Tukey"
+      ],
+      "markdown": "Flag $v < Q_1 - k\\,\\mathrm{IQR}$ or $v > Q_3 + k\\,\\mathrm{IQR}$, with $k = 1.5$ for an outlier and $k = 3$ for a far-out one. Built from quartiles, so it needs no mean or standard deviation.",
+      "prompt": "Explain Tukey's fences: how the quartiles and the IQR set them, why k is 1.5 or 3, and how robust they are compared with a z-score rule."
+    },
+    "IQR": {
+      "term": "interquartile range",
+      "aliases": [
+        "interquartile range"
+      ],
+      "markdown": "$\\mathrm{IQR} = Q_3 - Q_1$ — the spread of the middle half of the data. Like the MAD it ignores the tails, so a few extreme points cannot inflate it.",
+      "prompt": "Explain the interquartile range and why it is a robust measure of spread."
+    },
+    "Grubbs' test": {
+      "term": "Grubbs' test",
+      "aliases": [
+        "Grubbs test"
+      ],
+      "markdown": "$G = \\max_i \\lvert v_i - \\bar v\\rvert / s$, compared with a critical value from the $t$ distribution. It assumes normal data and tests for **one** outlier; repeated or generalized versions (ESD) test for several.",
+      "prompt": "Explain Grubbs' test: the statistic, its normality assumption, and why it suffers from masking when there are several outliers."
+    },
+    "masking": {
+      "term": "masking",
+      "markdown": "Outliers inflate the scale estimate (and shift the centre) until they fall inside their own fence, so the rule stops seeing them.",
+      "prompt": "Explain masking in outlier detection with an example, and how robust estimators avoid it."
+    },
+    "swamping": {
+      "term": "swamping",
+      "markdown": "The mirror of masking: the same contaminated estimates push ordinary points outside the fence, so good data gets flagged.",
+      "prompt": "Explain swamping in outlier detection and how it relates to masking."
+    },
+    "autoencoder": {
+      "term": "autoencoder",
+      "aliases": [
+        "autoencoders"
+      ],
+      "markdown": "A model trained to reconstruct its input through a narrow bottleneck. Points unlike the training data reconstruct badly, so the **reconstruction error** serves as an anomaly score.",
+      "prompt": "Explain how an autoencoder is used for anomaly detection and what the bottleneck forces it to learn."
+    },
+    "reconstruction error": {
+      "term": "reconstruction error",
+      "markdown": "$\\lVert x - \\hat x\\rVert^2$, the distance between a point and its reconstruction from a low-rank or learned code. Large means the model's picture of normal data does not fit the point.",
+      "prompt": "Explain reconstruction error as an anomaly score, for PCA and for autoencoders, and where it fails."
+    },
+    "ESD": {
+      "term": "generalized ESD test",
+      "aliases": [
+        "generalized ESD",
+        "generalized ESD test",
+        "extreme Studentized deviate"
+      ],
+      "markdown": "Rosner's generalized extreme Studentized deviate test. For $i = 1..r$ it removes the most extreme point and computes $R_i = \\max\\lvert v - \\bar v\\rvert / s$ on what remains, comparing each with a critical value $\\lambda_i$. The number of outliers is the largest $i$ with $R_i > \\lambda_i$, which resists the masking that sinks a single Grubbs' test.",
+      "prompt": "Explain the generalized ESD test: how it iterates, how the critical values are set, and why it handles several outliers better than repeated Grubbs' tests."
+    },
+    "FPR": {
+      "term": "false-positive rate",
+      "aliases": [
+        "false positive rate",
+        "false-positive rate"
+      ],
+      "markdown": "$\\mathrm{FPR} = \\dfrac{FP}{FP + TN}$ — the fraction of normal points that get flagged. The $x$-axis of the ROC curve.",
+      "prompt": "Explain the false-positive rate, and why a small FPR can still mean most alerts are false when anomalies are rare."
+    },
+    "TPR": {
+      "term": "true-positive rate",
+      "aliases": [
+        "true positive rate",
+        "true-positive rate",
+        "sensitivity"
+      ],
+      "markdown": "$\\mathrm{TPR} = \\dfrac{TP}{TP + FN}$ — the fraction of real anomalies that get flagged. Also called recall or sensitivity; the $y$-axis of the ROC curve.",
+      "prompt": "Explain the true-positive rate (recall) and how it trades off against the false-positive rate as the threshold moves."
+    },
+    "PR curve": {
+      "term": "precision–recall curve",
+      "aliases": [
+        "precision-recall curve",
+        "precision–recall curve"
+      ],
+      "markdown": "Precision against recall as the threshold sweeps. Unlike ROC it depends on the base rate: a random detector sits at precision $=$ base rate, so it shows the cost of rare positives honestly.",
+      "prompt": "Explain the precision-recall curve, why its baseline is the base rate, and when to prefer it over ROC."
+    },
+    "PR-AUC": {
+      "term": "area under the PR curve",
+      "aliases": [
+        "average precision",
+        "AUC-PR",
+        "PR AUC"
+      ],
+      "markdown": "Summarises the precision–recall curve in one number (often computed as **average precision**). Its chance level is the base rate, not $0.5$.",
+      "prompt": "Explain PR-AUC or average precision, and why its chance level is the base rate."
+    },
+    "BST": {
+      "term": "binary search tree",
+      "aliases": [
+        "binary search tree"
+      ],
+      "markdown": "In Isolation Forest, $c(n) = 2H(n-1) - 2(n-1)/n$ is the average path length of an unsuccessful search in a binary search tree of $n$ points ($H$ is the harmonic number). It normalises path lengths so scores are comparable across sample sizes.",
+      "prompt": "Explain why Isolation Forest normalises path length by the average unsuccessful-search depth of a binary search tree, c(n)."
+    },
+    "RMSE": {
+      "term": "root-mean-square error",
+      "aliases": [
+        "root mean square error",
+        "root-mean-square error"
+      ],
+      "markdown": "$\\sqrt{\\tfrac{1}{d}\\sum_j (x_j - \\hat x_j)^2}$ — the typical size of a reconstruction or forecast error, in the data's own units.",
+      "prompt": "Explain RMSE and how it is used as a reconstruction-error anomaly score."
+    },
+    "VAE": {
+      "term": "variational autoencoder",
+      "aliases": [
+        "variational autoencoder",
+        "variational autoencoders"
+      ],
+      "markdown": "An autoencoder whose code is a probability distribution. Anomalies can be scored by reconstruction error or by the model's likelihood bound (ELBO) — though likelihoods can rank out-of-distribution data as *more* probable.",
+      "prompt": "Explain how a variational autoencoder is used for anomaly detection and the pitfalls of likelihood-based scores."
+    },
+    "OOD": {
+      "term": "out-of-distribution",
+      "aliases": [
+        "out-of-distribution",
+        "out of distribution"
+      ],
+      "markdown": "Data not drawn from the distribution a model was trained on. Out-of-distribution detection is anomaly detection applied to a model's inputs.",
+      "prompt": "Explain out-of-distribution detection and how it relates to anomaly detection."
+    },
+    "STL": {
+      "term": "Seasonal-Trend decomposition using Loess",
+      "aliases": [
+        "seasonal-trend decomposition"
+      ],
+      "markdown": "Splits a series into trend $+$ seasonal $+$ remainder using local regression. Anomalies are scored on the remainder, so a reading that is normal for its season is not flagged.",
+      "prompt": "Explain STL decomposition and how its remainder is used to find time-series anomalies."
+    },
+    "ARIMA": {
+      "term": "ARIMA",
+      "markdown": "Autoregressive integrated moving-average model — a classical linear forecaster. For anomaly detection its **forecast residual** is the score.",
+      "prompt": "Explain how an ARIMA forecast is used to detect anomalies in a time series."
+    },
+    "LSTM": {
+      "term": "long short-term memory network",
+      "aliases": [
+        "long short-term memory"
+      ],
+      "markdown": "A recurrent neural network that can carry information across long sequences. Used as a learned forecaster (score the residual) or as a sequence autoencoder.",
+      "prompt": "Explain how LSTM networks are used for time-series anomaly detection."
+    },
+    "MCD": {
+      "term": "minimum covariance determinant",
+      "aliases": [
+        "minimum covariance determinant"
+      ],
+      "markdown": "Finds the $h$ points whose covariance matrix has the smallest determinant and estimates centre and scatter from them. A robust replacement for the mean and covariance, so the Mahalanobis distance it feeds is not masked by the outliers it hunts.",
+      "prompt": "Explain the minimum covariance determinant estimator and why it makes Mahalanobis distance robust."
+    },
+    "elliptic envelope": {
+      "term": "elliptic envelope",
+      "markdown": "Fit a robust Gaussian (via MCD) and flag points whose robust Mahalanobis distance is too large — an ellipse drawn around the bulk of the data.",
+      "prompt": "Explain the elliptic envelope outlier detector and its assumptions."
+    },
+    "LSCP": {
+      "term": "Locally Selective Combination of Parallel outlier ensembles",
+      "markdown": "Runs many detectors, and for each test point picks the ones that agree best with a pseudo ground truth in its local region, instead of averaging them all.",
+      "prompt": "Explain LSCP and why selecting detectors locally can beat averaging an ensemble."
+    },
+    "COF": {
+      "term": "connectivity-based outlier factor",
+      "markdown": "A LOF variant that measures density along chaining paths rather than spheres, so points on a sparse line or curve are not mistaken for outliers.",
+      "prompt": "Explain the connectivity-based outlier factor and how it differs from LOF."
+    },
+    "INFLO": {
+      "term": "influenced outlierness",
+      "markdown": "A LOF variant whose neighbourhood includes reverse nearest neighbours (points that count *this* point as a neighbour), which helps where clusters of different density touch.",
+      "prompt": "Explain INFLO and why reverse nearest neighbours help at the border between clusters."
+    },
+    "DBSCAN": {
+      "term": "DBSCAN",
+      "markdown": "Density-based clustering: points with enough neighbours within $\\varepsilon$ form clusters, and points reachable from none are labelled **noise** — a built-in outlier label.",
+      "prompt": "Explain DBSCAN and how its noise points act as outliers, including how eps and minPts matter."
+    },
+    "SVDD": {
+      "term": "support vector data description",
+      "aliases": [
+        "support vector data description"
+      ],
+      "markdown": "The smallest sphere in kernel feature space that encloses most of the data; points outside are anomalies. With a Gaussian kernel it is equivalent to the one-class SVM.",
+      "prompt": "Explain support vector data description and its relation to the one-class SVM."
+    },
+    "DeepSVDD": {
+      "term": "Deep SVDD",
+      "aliases": [
+        "Deep SVDD"
+      ],
+      "markdown": "A neural network trained to map normal data close to a fixed centre $c$; the anomaly score is the distance $\\lVert\\phi(x) - c\\rVert$. Needs care to stop the network collapsing everything onto $c$.",
+      "prompt": "Explain Deep SVDD, its training objective, and the collapse problem."
+    },
+    "DeepSAD": {
+      "term": "Deep SAD",
+      "aliases": [
+        "Deep SAD"
+      ],
+      "markdown": "Semi-supervised Deep SVDD: a few labelled anomalies are pushed *away* from the centre while unlabelled data is pulled toward it.",
+      "prompt": "Explain Deep SAD and how a few labelled anomalies improve Deep SVDD."
+    },
+    "extended isolation forest": {
+      "term": "Extended Isolation Forest",
+      "markdown": "Isolation Forest with random-slope hyperplane splits instead of axis-parallel ones, which removes the axis-aligned artefacts in the score map.",
+      "prompt": "Explain the Extended Isolation Forest and the artefacts of axis-parallel splits it fixes."
+    },
+    "feature bagging": {
+      "term": "feature bagging",
+      "markdown": "Run a detector (often LOF) on many random subsets of the features and combine the scores, so an anomaly visible in only a few dimensions is not drowned out.",
+      "prompt": "Explain feature bagging for outlier detection and why it helps in high dimensions."
+    },
+    "subspace methods": {
+      "term": "subspace methods",
+      "aliases": [
+        "subspace method",
+        "subspace outlier detection"
+      ],
+      "markdown": "Look for outliers in lower-dimensional projections of the data. In high dimensions distances concentrate, so an anomaly may only stand out in a few features.",
+      "prompt": "Explain subspace outlier detection and the concentration of distances in high dimensions."
+    },
+    "random projections": {
+      "term": "random projections",
+      "aliases": [
+        "random projection"
+      ],
+      "markdown": "Project the data onto random low-dimensional subspaces; by the Johnson–Lindenstrauss lemma pairwise distances are roughly preserved, making distance-based detectors cheaper.",
+      "prompt": "Explain random projections and why they preserve distances well enough for outlier detection."
+    },
+    "forecast residual": {
+      "term": "forecast residual",
+      "aliases": [
+        "forecast residuals"
+      ],
+      "markdown": "Observed value minus a model's forecast. A point is anomalous when the residual is large relative to the residuals' usual spread.",
+      "prompt": "Explain forecast-residual anomaly detection and how the threshold on residuals is set."
+    },
+    "spectral residual": {
+      "term": "spectral residual",
+      "markdown": "A saliency method for time series: subtract a smoothed log-amplitude spectrum from the actual one and transform back; spikes in the result mark anomalies.",
+      "prompt": "Explain the spectral residual method for time-series anomaly detection."
+    },
+    "matrix profile": {
+      "term": "matrix profile",
+      "markdown": "For each subsequence of a time series, the distance to its nearest non-overlapping match. A high value is a **discord** — a shape that occurs nowhere else.",
+      "prompt": "Explain the matrix profile and how discords reveal time-series anomalies."
+    },
+    "point anomaly": {
+      "term": "point anomaly",
+      "aliases": [
+        "point anomalies"
+      ],
+      "markdown": "A single observation that is unusual on its own, whatever its context.",
+      "prompt": "Explain point anomalies and give examples."
+    },
+    "contextual anomaly": {
+      "term": "contextual anomaly",
+      "aliases": [
+        "contextual anomalies"
+      ],
+      "markdown": "A value that is normal globally but unusual in its context — $30^\\circ$C is ordinary in July and anomalous in January.",
+      "prompt": "Explain contextual anomalies and how context features change detection."
+    },
+    "collective anomaly": {
+      "term": "collective anomaly",
+      "aliases": [
+        "collective anomalies"
+      ],
+      "markdown": "A group of observations that is anomalous together although each point looks normal on its own — a flat stretch in a signal that should oscillate.",
+      "prompt": "Explain collective anomalies and why point-wise detectors miss them."
+    },
+    "inductive bias": {
+      "term": "inductive bias",
+      "markdown": "The assumptions a method brings before seeing data — what it treats as near, smooth or simple. Every detector has one; it decides which anomalies it can see.",
+      "prompt": "Explain inductive bias in anomaly detection with examples from distance, density and kernel methods."
+    },
+    "isotropy": {
+      "term": "isotropy",
+      "aliases": [
+        "isotropic"
+      ],
+      "markdown": "Looking the same in every direction. An isotropic kernel depends only on $\\lVert x - x'\\rVert$, so it treats all feature directions alike.",
+      "prompt": "Explain isotropy for a kernel and when that assumption fails."
+    },
+    "stationarity": {
+      "term": "stationarity",
+      "aliases": [
+        "stationary"
+      ],
+      "markdown": "For a kernel: depending only on $x - x'$, not on where you are — the same notion of nearness everywhere. For a time series: statistics that do not change over time.",
+      "prompt": "Explain stationarity, both for kernels and for time series, and why anomaly detectors often assume it."
+    },
+    "contamination": {
+      "term": "contamination",
+      "markdown": "The fraction of the data that is anomalous. Many detectors take it as a parameter to set their threshold, which quietly encodes a guess about the base rate.",
+      "prompt": "Explain the contamination parameter in anomaly detectors and what setting it implies."
+    },
+    "active learning": {
+      "term": "active learning",
+      "markdown": "Ask a human to label the points the model is least sure about, so a few labels improve the detector as much as possible.",
+      "prompt": "Explain active learning for anomaly detection and how to choose which points to label."
+    },
+    "drift": {
+      "term": "data drift",
+      "aliases": [
+        "data drift",
+        "concept drift"
+      ],
+      "markdown": "The distribution of normal data changes over time, so a model or threshold fitted in the past starts flagging the new normal — or missing the new abnormal.",
+      "prompt": "Explain data drift and concept drift, and how to keep an anomaly detector calibrated."
+    },
+    "whitening": {
+      "term": "whitening",
+      "aliases": [
+        "whiten",
+        "whitened",
+        "whitening map"
+      ],
+      "markdown": "The linear map $z = \\Sigma^{-1/2}(x - \\mu)$. It rescales each principal axis of the data by its own standard deviation, so the whitened data has identity covariance and the ellipse becomes a circle. Euclidean distance on $z$ **is** the Mahalanobis distance on $x$.",
+      "prompt": "Explain whitening: what the map Sigma^(-1/2)(x - mu) does geometrically, why the whitened data has identity covariance, and why Euclidean distance after whitening equals the Mahalanobis distance."
+    }
   }
 }

@@ -18,6 +18,7 @@ export {};
 import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
+import { stripGlossaryMarkers } from '/glossary-core.js';
 import {
     buildSceneRequestFromToolCall, interpretBuildSceneReply,
     type BuildSceneToolArgs,
@@ -1072,7 +1073,8 @@ function addChatMessage(role: string, content: string, toolCalls?: AlgeBenchChat
     } else {
         body.textContent = content;
     }
-    body.dataset.markdown = content;
+    // Speech reads this source; markers are spoken as their plain text.
+    body.dataset.markdown = stripGlossaryMarkers(content);
     msgDiv.appendChild(body);
 
     // Speak / pause / resume button (assistant messages only)
@@ -1537,7 +1539,9 @@ window.algebenchSpeakText = function(text, onEnd) {
 async function speakText(text: string, { explicit = false }: { explicit?: boolean } = {}): Promise<void> {
     if (selectedTtsMode === 'silent' && !explicit) return;
 
-    const clean = text
+    // Every spoken path lands here, so glossary markers are spoken as their
+    // plain text whichever caller forgot to strip them.
+    const clean = stripGlossaryMarkers(text)
         .replace(/```[\s\S]*?```/g, '')
         .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
         .replace(/[📍🤖👤]/gu, '')

@@ -113,7 +113,7 @@ export function rasterLatex(src: string, fontPx: number, color: string): LatexRa
     const h = getHost();
     h.style.font = `${size}px ${FAMILY}`;
     h.style.color = color;
-    h.innerHTML = renderKaTeX(src, false);
+    h.innerHTML = renderKaTeX(src, false, { glossary: false });
     for (const m of h.querySelectorAll('.katex-mathml')) m.remove();
     const box = h.getBoundingClientRect();
     const w = Math.ceil(box.width), ht = Math.ceil(box.height);
@@ -217,7 +217,7 @@ export function measureLatex(src: string): { w: number; h: number } {
     } else {
         const h = getHost();
         h.style.font = `100px ${FAMILY}`;
-        h.innerHTML = renderKaTeX(src, false);
+        h.innerHTML = renderKaTeX(src, false, { glossary: false });
         for (const el of h.querySelectorAll('.katex-mathml')) el.remove();
         const box = h.getBoundingClientRect();
         h.innerHTML = '';
