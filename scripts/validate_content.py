@@ -617,6 +617,24 @@ def check_semantic_graphs(data):
 # ---- Glossary checks (issue #665) ----
 
 GLOSSARY_MARKER_RE = re.compile(r'\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}')
+
+# Code and math, where the app leaves a marker as literal text (the same
+# protected regions as PROTECTED_RE in src/glossary-core.ts): fenced code,
+# closed by a run of the same length or running to the end; indented code
+# after a blank line; code spans; display and inline math.
+_GLOSSARY_LITERAL_RE = re.compile(
+    r'^[ ]{0,3}(`{3,}|~{3,})[^\n]*(?:\n[\s\S]*?(?:\n[ ]{0,3}\1[ \t]*$|\Z)|\Z)'
+    r'|(?<![^\n]\n)^(?: {4}|\t)[^\n]*(?:\n(?:(?: {4}|\t)[^\n]*|[ \t]*(?=\n)))*'
+    r'|\$\$[\s\S]+?\$\$'
+    r'|(`+)(?!`)[\s\S]*?(?<!`)\2(?!`)'
+    r'|\$[^$\n]+\$',
+    re.MULTILINE,
+)
+
+
+def _rendered_markers(text):
+    """Markers the app would actually link: not inside code or math."""
+    return GLOSSARY_MARKER_RE.finditer(_GLOSSARY_LITERAL_RE.sub(lambda m: ' ' * len(m.group(0)), text))
 DOMAINS_DIR = Path(__file__).resolve().parent.parent / 'static' / 'domains'
 
 
@@ -709,7 +727,7 @@ def check_glossary(data, domains_dir=DOMAINS_DIR):
     checked = 0
     for prefix, obj in sources:
         for path, text in _iter_strings(obj):
-            for m in GLOSSARY_MARKER_RE.finditer(text):
+            for m in _rendered_markers(text):
                 checked += 1
                 if resolve_glossary_key(glossary, m.group(1)) is None:
                     where = f'{prefix}.{path}' if prefix and path else (prefix or path)

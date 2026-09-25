@@ -87,3 +87,15 @@ def test_domain_entries_get_the_same_warnings(tmp_path):
         'domains/dom/docs.json:glossary.base_rate: underscore in key — markdown may read it as emphasis',
         'domains/dom/docs.json:glossary.nu: no markdown definition',
     ]
+
+
+def test_markers_in_code_or_math_are_literal_and_not_checked(tmp_path):
+    data = {'title': 't', 'glossary': {'MAD': {'markdown': 'm'}},
+            'scenes': [{'title': 's', 'markdown': (
+                'Write `{{glossary:KEY}}` to mark a term; $\\text{{{glossary:x}}}$ is math.\n\n'
+                '```\n{{glossary:inFence}}\n```\n\n'
+                '    {{glossary:indented}}\n\n'
+                'But {{glossary:missing}} in prose is checked, and {{glossary:MAD}} resolves.')}]}
+    errors, _, checked = check_glossary(data, tmp_path)
+    assert checked == 2
+    assert errors == ['scenes[0].markdown: {{glossary:missing}} has no glossary entry']

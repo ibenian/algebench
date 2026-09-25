@@ -197,3 +197,8 @@ test('code blocks of every form stay protected (review 5300065110)', () => {
     // an indented line that continues a paragraph is not code
     assert.equal(mark('MAD wraps\n    onto MAD', 3), '[MAD|MAD] wraps\n    onto MAD');
 });
+
+test('a Setext heading (=== or --- underline) ends its block (review 5311643764)', () => {
+    assert.equal(mark('MAD heading\n===\nMAD para', 3), '[MAD|MAD] heading\n===\n[MAD|MAD] para');
+    assert.equal(mark('MAD\n---\nMAD', 3), '[MAD|MAD]\n---\n[MAD|MAD]');
+});

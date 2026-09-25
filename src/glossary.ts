@@ -116,7 +116,10 @@ function _ensureTip(level: number): Tip {
     const el = document.createElement('div');
     el.id = _tipId(level);
     el.className = 'glossary-tip hidden';
-    el.style.zIndex = String(10000 + level);
+    // Above every other overlay: the graph viewport (10090) and the context
+    // popup (10020) render glossary terms too, and a tip must not open behind
+    // the panel its term is in.
+    el.style.zIndex = String(20000 + level);
     el.setAttribute('role', 'dialog');
     el.addEventListener('mouseenter', _cancelHide);
     el.addEventListener('mouseleave', _scheduleHide);

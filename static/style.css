@@ -4858,7 +4858,7 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 }
 .glossary-tip {
     position: fixed;
-    z-index: 10000;
+    z-index: 20000;
     max-width: min(360px, calc(100vw - 16px));
     max-height: 50vh;
     overflow: auto;

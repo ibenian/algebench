@@ -1195,7 +1195,7 @@ var PROTECTED_RE = new RegExp([
 	"<[a-zA-Z/!](?:[^>\"']|\"[^\"]*\"|'[^']*')*>",
 	"(?:https?://|www\\.)[^\\s<>]+"
 ].join("|"), "gm");
-var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|))|(?<=(?:^|\n)[ \t]*#{1,6}\s[^\n]*)\n)/;
+var PARAGRAPH_BREAK_RE = /(\n[ \t]*\n\s*|\n(?=[ \t]*(?:#{1,6}\s|[-*+]\s|\d+[.)]\s|\|))|(?<=(?:^|\n)[ \t]*#{1,6}\s[^\n]*)\n|(?<=\n[ \t]{0,3}(?:=+|-+)[ \t]*)\n)/;
 var MATH_NAME_RE = /\\(?:mathrm|operatorname|text|textrm|textsf|mathsf)\{([^{}]+)\}/g;
 var MATH_TERM_CLASS_RE = /class="([^"]*?)\bglossary-term glossary-k-([a-z0-9]+)-(\d+)([^"]*)"/g;
 function isMathRegion(region) {
@@ -11733,7 +11733,7 @@ function _ensureTip(level) {
 	const el = document.createElement("div");
 	el.id = _tipId(level);
 	el.className = "glossary-tip hidden";
-	el.style.zIndex = String(1e4 + level);
+	el.style.zIndex = String(2e4 + level);
 	el.setAttribute("role", "dialog");
 	el.addEventListener("mouseenter", _cancelHide);
 	el.addEventListener("mouseleave", _scheduleHide);
