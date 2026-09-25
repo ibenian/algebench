@@ -5334,7 +5334,9 @@ function setupRollDrag(container) {
 	const inputSurface = container;
 	let orbitDrag = null;
 	let panDrag = null;
+	let suppressContextMenu = false;
 	inputSurface.addEventListener("mousedown", (e) => {
+		suppressContextMenu = e.button === 2;
 		if (e.button === 0 && e.shiftKey || e.button === 2) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
@@ -5427,7 +5429,8 @@ function setupRollDrag(container) {
 		endOrbitDrag();
 	}, { capture: true });
 	inputSurface.addEventListener("contextmenu", (e) => {
-		if (orbitDrag || panDrag) e.preventDefault();
+		if (orbitDrag || panDrag || suppressContextMenu) e.preventDefault();
+		suppressContextMenu = false;
 	});
 	window.addEventListener("pointerup", () => {
 		endOrbitDrag();

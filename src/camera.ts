@@ -940,8 +940,13 @@ export function setupRollDrag(container: HTMLElement | null): void {
     // Shift+drag and right-drag pan. Handled here rather than by the orbit
     // controls so a pan goes through the pan smoother like every other move.
     let panDrag: { x: number; y: number } | null = null;
+    // A right press's context menu arrives on mousedown (macOS) or after
+    // mouseup (Windows, Linux), when panDrag is already gone. Remember the
+    // press until its menu shows up, so either order keeps the menu shut.
+    let suppressContextMenu = false;
 
     inputSurface.addEventListener('mousedown', (e) => {
+        suppressContextMenu = e.button === 2;
         if ((e.button === 0 && e.shiftKey) || e.button === 2) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -1062,7 +1067,8 @@ export function setupRollDrag(container: HTMLElement | null): void {
     // Ctrl+click is a right-click on macOS: keep its menu out of the drag.
     // A right-drag pans, so its menu stays shut too.
     inputSurface.addEventListener('contextmenu', (e) => {
-        if (orbitDrag || panDrag) e.preventDefault();
+        if (orbitDrag || panDrag || suppressContextMenu) e.preventDefault();
+        suppressContextMenu = false;
     });
 
     window.addEventListener('pointerup', () => { endOrbitDrag(); }, { capture: true });
