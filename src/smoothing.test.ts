@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Smoother, SMOOTHING_MODES } from './smoothing.ts';
+import { Smoother, VectorSmoother, SMOOTHING_MODES } from './smoothing.ts';
 
 function run(s: Smoother, frames: number, dt = 1 / 60): number[] {
     const out: number[] = [];
@@ -56,4 +56,13 @@ test('halt stops motion where it is', () => {
     s.halt();
     assert.equal(s.step(1 / 60), 0);
     assert.ok(s.settled);
+});
+
+test('VectorSmoother moves every component to its goal together', () => {
+    const v = new VectorSmoother('min-jerk');
+    v.push(1, -2, 0.5);
+    const sum = [0, 0, 0];
+    for (let i = 0; i < 60; i++) v.step(1 / 60).forEach((d, k) => { sum[k]! += d; });
+    assert.deepEqual(sum.map(x => +x.toFixed(9)), [1, -2, 0.5]);
+    assert.ok(v.settled);
 });

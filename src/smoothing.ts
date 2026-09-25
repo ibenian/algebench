@@ -149,3 +149,28 @@ export class Smoother {
         ];
     }
 }
+
+/** Three Smoothers in step, for a vector quantity (a pan offset, a rotation vector). */
+export class VectorSmoother {
+    readonly axes: [Smoother, Smoother, Smoother];
+
+    constructor(mode: SmoothingMode = DEFAULT_SMOOTHING) {
+        this.axes = [new Smoother(mode), new Smoother(mode), new Smoother(mode)];
+    }
+
+    get mode(): SmoothingMode { return this.axes[0].mode; }
+    set mode(m: SmoothingMode) { for (const a of this.axes) a.mode = m; }
+
+    push(x: number, y: number, z: number): void {
+        this.axes[0].push(x); this.axes[1].push(y); this.axes[2].push(z);
+    }
+
+    /** Advance by `dt` seconds; returns the step to apply this frame. */
+    step(dt: number): [number, number, number] {
+        return [this.axes[0].step(dt), this.axes[1].step(dt), this.axes[2].step(dt)];
+    }
+
+    get settled(): boolean { return this.axes.every(a => a.settled); }
+
+    reset(): void { for (const a of this.axes) a.reset(); }
+}
