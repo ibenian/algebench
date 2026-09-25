@@ -46,11 +46,15 @@ interface LineNodeEntry {
     baseOpacity?: number;
     anchorDataPos?: number[];
     anchorDataPosFn?: unknown;
+    /** An axis's data-space start and end, for choosing a rotation pivot. */
+    pivotSegment?: number[][];
 }
 
 /** A MathBox point primitive's registry entry (src/objects/point.ts). */
 interface PointNodeEntry {
     node: MathBoxNode | null;
+    /** The point(s)' static data-space positions, for choosing a rotation pivot. */
+    pivotPoints?: number[][];
 }
 
 /** A mesh the scene loader can hide or dispose. `_hiddenByRemove` is the
@@ -68,12 +72,6 @@ interface ArrowMeshEntry {
 
 /** An element's entry in the id → element registry. `tracker` is
  *  src/scene-loader.ts's private SubTracker; only that module opens it. */
-/** Data-space points and segments of an element, for choosing a rotation pivot. */
-export interface PivotGeometry {
-    points: number[][];
-    segments: number[][][];
-}
-
 interface ElementRegistryEntry {
     tracker: unknown;
     hidden: boolean;
@@ -84,9 +82,6 @@ interface ElementRegistryEntry {
     type?: string;
     prompt?: string | null;
     label?: string | null;
-    /** Data-space geometry a rotation drag can pivot on, for elements that
-     *  keep no position on their tracker (static points, axes). */
-    pivot?: PivotGeometry | null;
 }
 
 /**

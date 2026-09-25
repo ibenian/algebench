@@ -8,7 +8,7 @@ type Rgb3 = [number, number, number];
 
 /** The slice of the shared state object this module touches. */
 interface PointState {
-    pointNodes: { node: MathBoxNode }[];
+    pointNodes: { node: MathBoxNode; pivotPoints?: number[][] }[];
 }
 const pointState = state as unknown as PointState;
 
@@ -25,7 +25,12 @@ export function renderPoint(el: Element, view: MathBoxNode) {
     const pointNode = view
         .array({ channels: 3, width: positions.length, data: positions })
         .point({ color: new THREE.Color(...color), size: size, zBias: 5 });
-    pointState.pointNodes.push({ node: pointNode });
+    // Static positions a rotation drag can pivot on (object-picker): recorded
+    // here because the MathBox node keeps no readable position of its own,
+    // and every point has an entry, with or without an id.
+    const pivotPoints = positions.filter((p) => Array.isArray(p) && p.length === 3
+        && p.every((c) => typeof c === 'number' && Number.isFinite(c))).map((p) => p.slice());
+    pointState.pointNodes.push({ node: pointNode, pivotPoints });
 
     if (label && positions.length === 1) {
         // `!` not `?.`: the length check already guarantees the element, and the

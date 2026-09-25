@@ -331,36 +331,52 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
     }
     const nearest = (accept: (id: string) => boolean): Vector3 | null => {
         let best: Vector3 | null = null, bestD = PICK_PX;
-        const offer = (world: Vector3, d: number) => { if (d < bestD) { bestD = d; best = world; } };
-        const tryPoint = (world: Vector3) => {
-            const p = projectToScreen(world, rect);
-            if (p) offer(world, Math.hypot(p.x - localX, p.y - localY));
-        };
         for (const [id, reg] of Object.entries(state.elementRegistry)) {
             if (!accept(id)) continue;
             const anchor = worldAnchor(id, reg);
-            if (anchor) tryPoint(anchor);
-            // Static points and axes keep no position on their tracker; their
-            // spec geometry was recorded at registration (scene-loader).
-            const g = reg.pivot;
-            if (!g) continue;
-            for (const pt of g.points) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
-            for (const [a, b] of g.segments) {
-                // The point of the segment closest to the pointer's ray, in
-                // 3D — a fraction measured along the segment's *screen* image
-                // is not the same fraction in the world under perspective.
-                const A = new THREE.Vector3(...dataToWorld(a as Vec3));
-                const B = new THREE.Vector3(...dataToWorld(b as Vec3));
-                if (ray) tryPoint(new THREE.Vector3(...closestOnSegmentToRay(
-                    ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
-            }
+            if (!anchor) continue;
+            const p = projectToScreen(anchor, rect);
+            if (!p) continue;
+            const d = Math.hypot(p.x - localX, p.y - localY);
+            if (d < bestD) { bestD = d; best = anchor; }
+        }
+        return best;
+    };
+    const nodeShown = (node: unknown) => {
+        try { return (node as { get(k: string): unknown }).get('visible') !== false; } catch { return true; }
+    };
+    // Static points and axes keep no position on their tracker. Their
+    // renderers record pivot geometry on the scene-wide entries instead, which
+    // exist for every point and axis — base scene or step, with an id or not.
+    const staticGeometry = (): Vector3 | null => {
+        let best: Vector3 | null = null, bestD = PICK_PX;
+        const tryPoint = (world: Vector3) => {
+            const p = projectToScreen(world, rect);
+            if (!p) return;
+            const d = Math.hypot(p.x - localX, p.y - localY);
+            if (d < bestD) { bestD = d; best = world; }
+        };
+        for (const e of state.pointNodes) {
+            if (!e.pivotPoints || !nodeShown(e.node)) continue;
+            for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
+        }
+        for (const e of state.axisLineNodes) {
+            if (!e.pivotSegment || !ray || !nodeShown(e.node)) continue;
+            // The point of the axis closest to the pointer's ray, in 3D — a
+            // fraction measured along its *screen* image is not the same
+            // fraction in the world under perspective.
+            const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0] as Vec3));
+            const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1] as Vec3));
+            tryPoint(new THREE.Vector3(...closestOnSegmentToRay(
+                ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
         }
         return best;
     };
     // Named content first, so a press on a labelled point pivots on exactly
     // that point rather than on an axis or vector tail anchored beside it;
-    // then anything visible, which is what reaches the unlabelled ones.
-    return nearest(isPickable) ?? nearest((id) => !isHidden(id));
+    // then anything registered and visible; then static points and axes,
+    // which reaches the ones with no id or label at all.
+    return nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry();
 }
 
 /** Resolve the element under a client-space point: raycast first, then fall back

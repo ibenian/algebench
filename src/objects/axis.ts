@@ -13,6 +13,8 @@ interface AxisEntry {
     baseOpacity: number;
     widthParam: string;
     anchorDataPos: number[];
+    /** Start and end, for choosing a rotation pivot anywhere along the axis. */
+    pivotSegment: number[][];
 }
 
 /** The slice of the shared state object this module touches. */
@@ -52,6 +54,7 @@ export function renderAxis(el: Element, view: MathBoxNode) {
         baseOpacity,
         widthParam: 'axisWidth',
         anchorDataPos: axisMid,
+        pivotSegment: [start, end],
     };
     const axisW = resolveLineWidth(axisEntry);
     const axisLine = view

@@ -5740,7 +5740,8 @@ function renderAxis(el, view) {
 			(start[0] + end[0]) / 2,
 			(start[1] + end[1]) / 2,
 			(start[2] + end[2]) / 2
-		]
+		],
+		pivotSegment: [start, end]
 	};
 	const axisW = resolveLineWidth(axisEntry);
 	axisEntry.node = view.array({
@@ -6058,7 +6059,11 @@ function renderPoint(el, view) {
 		size,
 		zBias: 5
 	});
-	pointState.pointNodes.push({ node: pointNode });
+	const pivotPoints = positions.filter((p) => Array.isArray(p) && p.length === 3 && p.every((c) => typeof c === "number" && Number.isFinite(c))).map((p) => p.slice());
+	pointState.pointNodes.push({
+		node: pointNode,
+		pivotPoints
+	});
 	if (label && positions.length === 1) addLabel3D(label, [
 		positions[0][0],
 		positions[0][1] + .2,
@@ -14085,8 +14090,7 @@ function renderStepAdd(elements, sliderDefs) {
 				type: el.type,
 				prompt: el.prompt || null,
 				label: elementDisplayName(el),
-				animState: result?._animState ?? null,
-				pivot: pivotGeometryOf(el)
+				animState: result?._animState ?? null
 			};
 		}
 	}
@@ -14121,59 +14125,6 @@ function applyTrackerInfoOverlays(tracker, step) {
 function undoTrackerInfoOverlays(tracker) {
 	if (!tracker.infoIds) return;
 	for (const id of tracker.infoIds) removeInfoOverlay(id);
-}
-/** A finite numeric [x, y, z], or null. */
-function vec3Of(v) {
-	return Array.isArray(v) && v.length === 3 && v.every((c) => typeof c === "number" && Number.isFinite(c)) ? v.slice() : null;
-}
-/**
-* Pivot geometry for elements whose trackers keep no position: a static
-* point's position(s), and an axis's start-to-end segment (mirroring
-* renderAxis). Everything else already exposes an anchor through its tracker.
-*/
-function pivotGeometryOf(el) {
-	const e = el;
-	if (el.type === "point") {
-		const points = (Array.isArray(e.positions) ? e.positions : [e.position ?? e.at ?? [
-			0,
-			0,
-			0
-		]]).map(vec3Of).filter((p) => !!p);
-		return points.length ? {
-			points,
-			segments: []
-		} : null;
-	}
-	if (el.type === "axis") {
-		const dir = {
-			x: [
-				1,
-				0,
-				0
-			],
-			y: [
-				0,
-				1,
-				0
-			],
-			z: [
-				0,
-				0,
-				1
-			]
-		}[e.axis || "x"] || [
-			1,
-			0,
-			0
-		];
-		const range = Array.isArray(e.range) && e.range.length === 2 ? e.range : [-5, 5];
-		if (!range.every((r) => typeof r === "number" && Number.isFinite(r))) return null;
-		return {
-			points: [],
-			segments: [[dir.map((d) => d * range[0]), dir.map((d) => d * range[1])]]
-		};
-	}
-	return null;
 }
 function hideElementById(id) {
 	const reg = sceneState.elementRegistry[id];
@@ -17954,32 +17905,51 @@ function nearestAnchorAt(clientX, clientY) {
 	}
 	const nearest = (accept) => {
 		let best = null, bestD = PICK_PX;
-		const offer = (world, d) => {
+		for (const [id, reg] of Object.entries(state.elementRegistry)) {
+			if (!accept(id)) continue;
+			const anchor = worldAnchor(id, reg);
+			if (!anchor) continue;
+			const p = projectToScreen(anchor, rect);
+			if (!p) continue;
+			const d = Math.hypot(p.x - localX, p.y - localY);
+			if (d < bestD) {
+				bestD = d;
+				best = anchor;
+			}
+		}
+		return best;
+	};
+	const nodeShown = (node) => {
+		try {
+			return node.get("visible") !== false;
+		} catch {
+			return true;
+		}
+	};
+	const staticGeometry = () => {
+		let best = null, bestD = PICK_PX;
+		const tryPoint = (world) => {
+			const p = projectToScreen(world, rect);
+			if (!p) return;
+			const d = Math.hypot(p.x - localX, p.y - localY);
 			if (d < bestD) {
 				bestD = d;
 				best = world;
 			}
 		};
-		const tryPoint = (world) => {
-			const p = projectToScreen(world, rect);
-			if (p) offer(world, Math.hypot(p.x - localX, p.y - localY));
-		};
-		for (const [id, reg] of Object.entries(state.elementRegistry)) {
-			if (!accept(id)) continue;
-			const anchor = worldAnchor(id, reg);
-			if (anchor) tryPoint(anchor);
-			const g = reg.pivot;
-			if (!g) continue;
-			for (const pt of g.points) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
-			for (const [a, b] of g.segments) {
-				const A = new THREE.Vector3(...dataToWorld(a));
-				const B = new THREE.Vector3(...dataToWorld(b));
-				if (ray) tryPoint(new THREE.Vector3(...closestOnSegmentToRay(ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
-			}
+		for (const e of state.pointNodes) {
+			if (!e.pivotPoints || !nodeShown(e.node)) continue;
+			for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
+		}
+		for (const e of state.axisLineNodes) {
+			if (!e.pivotSegment || !ray || !nodeShown(e.node)) continue;
+			const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0]));
+			const B = new THREE.Vector3(...dataToWorld(e.pivotSegment[1]));
+			tryPoint(new THREE.Vector3(...closestOnSegmentToRay(ray.origin.toArray(), ray.direction.toArray(), A.toArray(), B.toArray())));
 		}
 		return best;
 	};
-	return nearest(isPickable) ?? nearest((id) => !isHidden(id));
+	return nearest(isPickable) ?? nearest((id) => !isHidden(id)) ?? staticGeometry();
 }
 /** Resolve the element under a client-space point: raycast first, then fall back
 *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point
