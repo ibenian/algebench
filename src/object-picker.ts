@@ -345,9 +345,10 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
     const nodeShown = (node: unknown) => {
         try { return (node as { get(k: string): unknown }).get('visible') !== false; } catch { return true; }
     };
-    // Static points and axes keep no position on their tracker. Their
-    // renderers record pivot geometry on the scene-wide entries instead, which
-    // exist for every point and axis — base scene or step, with an id or not.
+    // Elements with no id have no registry entry. The scene-wide entries the
+    // renderers push exist for every point, axis and line — base scene or
+    // step, with an id or not — so they are searched last: point positions,
+    // line anchors, and the nearest point along each axis.
     const staticGeometry = (): Vector3 | null => {
         let best: Vector3 | null = null, bestD = PICK_PX;
         const tryPoint = (world: Vector3) => {
@@ -359,6 +360,18 @@ function nearestAnchorAt(clientX: number, clientY: number): Vector3 | null {
         for (const e of state.pointNodes) {
             if (!e.pivotPoints || !nodeShown(e.node)) continue;
             for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt as Vec3)));
+        }
+        // Lines, curves and vectors drawn as MathBox lines: their entry's
+        // anchor, static or live (an animated line's moves every frame).
+        for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
+            if (!e || !nodeShown(e.node)) continue;
+            let pos: unknown = e.anchorDataPos;
+            if (!pos && typeof e.anchorDataPosFn === 'function') {
+                try { pos = (e.anchorDataPosFn as () => unknown)(); } catch { pos = null; }
+            }
+            if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === 'number' && Number.isFinite(c))) {
+                tryPoint(new THREE.Vector3(...dataToWorld(pos as Vec3)));
+            }
         }
         for (const e of state.axisLineNodes) {
             if (!e.pivotSegment || !ray || !nodeShown(e.node)) continue;

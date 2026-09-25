@@ -17941,6 +17941,16 @@ function nearestAnchorAt(clientX, clientY) {
 			if (!e.pivotPoints || !nodeShown(e.node)) continue;
 			for (const pt of e.pivotPoints) tryPoint(new THREE.Vector3(...dataToWorld(pt)));
 		}
+		for (const e of [...state.lineNodes, ...state.vectorLineNodes]) {
+			if (!e || !nodeShown(e.node)) continue;
+			let pos = e.anchorDataPos;
+			if (!pos && typeof e.anchorDataPosFn === "function") try {
+				pos = e.anchorDataPosFn();
+			} catch {
+				pos = null;
+			}
+			if (Array.isArray(pos) && pos.length === 3 && pos.every((c) => typeof c === "number" && Number.isFinite(c))) tryPoint(new THREE.Vector3(...dataToWorld(pos)));
+		}
 		for (const e of state.axisLineNodes) {
 			if (!e.pivotSegment || !ray || !nodeShown(e.node)) continue;
 			const A = new THREE.Vector3(...dataToWorld(e.pivotSegment[0]));
