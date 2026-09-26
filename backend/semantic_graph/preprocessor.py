@@ -804,7 +804,11 @@ class LaTeXPreprocessor:
     def substitute_multichar_subscripts(latex: str) -> tuple[str, dict[str, str]]:
         r"""Replace multi-character subscript bodies with Greek placeholders."""
         mapping: dict[str, str] = {}
-        greek_iter = iter(_GREEK_POOL)
+        # A placeholder must never share a name with a symbol the source already
+        # uses: restoration maps *every* ``alpha`` back, so a real ``\\alpha`` next
+        # to a ``\\text{…}`` placeholder would be renamed (or merged) with it.
+        in_source = set(re.findall(r"\\([A-Za-z]+)", latex))
+        greek_iter = (g for g in _GREEK_POOL if g not in in_source)
 
         def allocate(original: str) -> str | None:
             for k, v in mapping.items():

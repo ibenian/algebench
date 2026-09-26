@@ -95,8 +95,19 @@ def _split_equation_chain_sides(latex: str) -> list[str]:
     Splits on bare ``=`` and ``\\approx``, ``\\simeq``, ``\\equiv``.
     Returns the ordered list of sides (trimmed).
     """
+    return _split_chain_with_relations(latex)[0]
+
+
+def _split_chain_with_relations(latex: str) -> tuple[list[str], list[str]]:
+    """Like :func:`_split_equation_chain_sides`, also returning the relations.
+
+    ``relations[k]`` is the token (``"="``, ``"\\approx"``, …) between
+    ``sides[k]`` and ``sides[k + 1]`` — the merged graph must not turn an
+    approximation into an equality.
+    """
     if not isinstance(latex, str) or not latex:
-        return []
+        return [], []
+    rels: list[str] = []
     parts: list[str] = []
     buf: list[str] = []
     depth = 0
@@ -121,13 +132,30 @@ def _split_equation_chain_sides(latex: str) -> list[str]:
                     split_adv = 1
         if split_adv:
             parts.append(''.join(buf).strip())
+            rels.append(latex[i:i + split_adv])
             buf = []
             i += split_adv
             continue
         buf.append(c)
         i += 1
     parts.append(''.join(buf).strip())
-    return [p for p in parts if p]
+    # Drop empty parts together with the relation that follows them.
+    sides: list[str] = []
+    kept_rels: list[str] = []
+    for k, part in enumerate(parts):
+        if not part:
+            continue
+        if sides:
+            kept_rels.append(rels[k - 1])
+        sides.append(part)
+    return sides, kept_rels
+
+
+def _chain_relation(rels: list[str]) -> tuple[str, str]:
+    """The (op, LaTeX) of a merged chain: approximate if any link is."""
+    if any(r != "=" for r in rels):
+        return "approximately", "\\approx"
+    return "equals", "="
 
 
 def _derive_single_expression(latex: str) -> SemanticGraph | None:
@@ -474,14 +502,14 @@ def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
             _postprocessor.inject_annotations(graph, early_annotations)
         return graph
 
-    sides = _split_equation_chain_sides(latex)
+    sides, rels = _split_chain_with_relations(latex)
     if len(sides) <= 1:
         graph = _derive_single_expression(latex)
         if graph and early_annotations:
             _postprocessor.inject_annotations(graph, early_annotations)
         return graph
     if len(sides) == 2:
-        graph = _derive_single_expression(f"{sides[0]} = {sides[1]}")
+        graph = _derive_single_expression(f"{sides[0]} {rels[0]} {sides[1]}")
         if graph and early_annotations:
             _postprocessor.inject_annotations(graph, early_annotations)
         return graph
@@ -555,12 +583,16 @@ def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
         else:
             roots.append(_rename(sub.nodes[0].id))
 
-    equals_id = "__equals_1"
+    chain_op, _ = _chain_relation(rels)
+    equals_id = "__equals_1" if chain_op == "equals" else "__approximately_1"
+    subexpr = sides[0]
+    for rel, side in zip(rels, sides[1:]):
+        subexpr += f" {rel} {side}"
     merged_nodes[equals_id] = SemanticGraphNode(
         id=equals_id,
         type="operator",
-        op="equals",
-        subexpr=" = ".join(sides),
+        op=chain_op,
+        subexpr=subexpr,
     )
     for r in roots:
         if r:

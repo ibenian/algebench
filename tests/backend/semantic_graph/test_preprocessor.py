@@ -681,3 +681,44 @@ class TestPlaceholderRestoreConsistency:
         # placeholder would fuse ``\text{as } \pi`` into ``delta_pi``.
         from backend.semantic_graph.constants import _GREEK_POOL
         assert "delta" not in _GREEK_POOL
+
+
+class TestPlaceholderNamespace:
+    r"""Copilot on #672: placeholders must not collide with real Greek symbols."""
+
+    @pytest.mark.parametrize("latex, fn, arg", [
+        (r"\mathrm{softmax}(\alpha)", "softmax", "alpha"),
+        (r"y = \text{Res}(\alpha)", "Res", "alpha"),
+    ])
+    def test_greek_argument_survives(self, latex, fn, arg):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        assert [n.op for n in g.nodes if n.type == "function"] == [fn]
+        assert arg in {n.id for n in g.nodes}
+
+    @pytest.mark.parametrize("latex, sym", [
+        (r"\text{precision} = \alpha + 1", "alpha"),
+        (r"\text{precision} = \alpha_i + 1", "alpha_i"),
+    ])
+    def test_real_greek_is_not_merged_into_text(self, latex, sym):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        ids = {n.id for n in g.nodes}
+        assert {"precision", sym} <= ids, ids
+
+
+class TestChainRelation:
+    r"""Copilot on #672: an ``\approx`` link must not bake as an exact ``=``."""
+
+    @pytest.mark.parametrize("latex, op", [
+        (r"d = \frac{c^2}{a} \;\approx\; 0.97 \text{ ly at } 1g", "approximately"),
+        (r"a = b \approx c", "approximately"),
+        (r"x \approx 3", "approximately"),
+        (r"a = b = c", "equals"),
+    ])
+    def test_root_relation_matches_the_math(self, latex, op):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        rel = [n.op for n in g.nodes if n.op in ("equals", "approximately")]
+        assert rel == [op], rel

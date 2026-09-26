@@ -1796,24 +1796,24 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "s0___power_1", "type": "operator", "op": "power", "subexpr": "e^{-h_E/H}", "description": "The exponential term representing the ratio of atmospheric density at entry altitude to sea-level density.", "quantity": "density_ratio", "dimension": "1", "unit": ""},
+                    {"id": "s0___power_1", "type": "operator", "op": "power", "subexpr": "e^{-h_E/H}", "description": "The exponential term representing the ratio of atmospheric density at entry altitude $h_E$ to the density at sea level.", "quantity": "density_ratio", "dimension": "1", "unit": ""},
                     {"id": "e", "type": "scalar", "emoji": "🔢", "latex": "e", "subexpr": "e", "description": "Euler's number, the base of the natural logarithm, approximately 2.718.", "quantity": "eulers_number", "dimension": "1", "unit": "", "value": 2.71828, "role": "constant"},
-                    {"id": "s0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{H} -h_{E}", "description": "The negative ratio of entry altitude to the atmospheric scale height, which forms the exponent.", "quantity": "altitude_ratio", "dimension": "1", "unit": ""},
-                    {"id": "s0___negation_3", "type": "operator", "op": "negation", "subexpr": "-h_{E}", "description": "The negative of the entry altitude $h_E$.", "quantity": "altitude", "dimension": "L", "unit": "km"},
-                    {"id": "h_E", "type": "scalar", "emoji": "🚀", "latex": "h_{E}", "subexpr": "h_{E}", "description": "The entry altitude $h_E$, the altitude at which the spacecraft enters the atmosphere.", "quantity": "altitude", "dimension": "L", "unit": "km", "value": 122, "role": "parameter"},
-                    {"id": "s0___power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{H}", "description": "The reciprocal of the atmospheric scale height, $1/H$.", "quantity": "inverse_scale_height", "dimension": "L⁻¹", "unit": "km⁻¹"},
-                    {"id": "H", "type": "scalar", "emoji": "💨", "latex": "H", "subexpr": "H", "description": "The atmospheric scale height $H$, representing the distance over which atmospheric density drops by a factor of e.", "quantity": "scale_height", "dimension": "L", "unit": "km", "value": 7.2, "role": "parameter"},
-                    {"id": "s1___power_1", "type": "operator", "op": "power", "subexpr": "e^{-122/7.2}", "description": "The numerical evaluation of the exponential term using the given values for entry altitude and scale height.", "dimension": "1", "unit": ""},
-                    {"id": "s1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "-122 \\frac{1}{7.2}", "description": "The numerical calculation of the exponent, the ratio of entry altitude to scale height.", "dimension": "1", "unit": ""},
-                    {"id": "s1___num_3", "type": "number", "label": "-122", "emoji": "🔢", "subexpr": "-122", "description": "The numerical value of the entry altitude, -122 km.", "value": -122},
-                    {"id": "s1___power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{7.2}", "description": "The reciprocal of the scale height's numerical value, $1/7.2$ km⁻¹.", "dimension": "L⁻¹", "unit": "km⁻¹"},
-                    {"id": "s1___num_5", "type": "number", "label": "7.2", "emoji": "🔢", "subexpr": "7.2", "description": "The numerical value of the atmospheric scale height, 7.2 km.", "value": 7.2},
-                    {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "4 \\times 10^{-8}", "description": "The approximate scientific notation value of the exponential term, which is extremely close to zero.", "dimension": "1", "unit": ""},
-                    {"id": "s2___num_2", "type": "number", "label": "4", "emoji": "🔢", "subexpr": "4", "description": "The significand of the approximate value in scientific notation.", "value": 4},
-                    {"id": "s2___power_3", "type": "operator", "op": "power", "exponent": "-8", "subexpr": "\\frac{1}{100000000}", "description": "The power of ten, $10^{-8}$, indicating the scale of the small numerical result.", "dimension": "1", "unit": ""},
-                    {"id": "s2___num_4", "type": "number", "label": "10", "emoji": "🔢", "subexpr": "10", "description": "The base for the scientific notation exponent.", "value": 10},
-                    {"id": "s3___num_1", "type": "number", "label": "0", "emoji": "🔢", "subexpr": "0", "description": "The final approximation, treating the negligible exponential term as zero for simplification.", "dimension": "1", "unit": "", "value": 0},
-                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "e^{-h_E/H} = e^{-122/7.2} = 4 \\times 10^{-8} = 0", "description": "An equation showing that the atmospheric density ratio at entry altitude is so small it can be approximated as zero."}
+                    {"id": "s0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{H} -h_{E}", "description": "The negative ratio of entry altitude to the atmospheric scale height, forming the exponent of the density ratio term.", "quantity": "altitude_ratio", "dimension": "1", "unit": ""},
+                    {"id": "s0___negation_3", "type": "operator", "op": "negation", "subexpr": "-h_{E}", "description": "The negative of the entry altitude $h_E$."},
+                    {"id": "h_E", "type": "scalar", "emoji": "🏔️", "latex": "h_{E}", "subexpr": "h_{E}", "description": "The entry interface altitude, the height where the atmosphere becomes significant.", "quantity": "altitude", "dimension": "L", "unit": "km", "value": 122, "role": "parameter"},
+                    {"id": "s0___power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{H}", "description": "The reciprocal of the atmospheric scale height $H$.", "dimension": "L⁻¹", "unit": "km⁻¹"},
+                    {"id": "H", "type": "scalar", "emoji": "📏", "latex": "H", "subexpr": "H", "description": "The atmospheric scale height, the distance over which atmospheric density drops by a factor of $e$.", "quantity": "scale_height", "dimension": "L", "unit": "km", "value": 7.2, "role": "parameter"},
+                    {"id": "s1___power_1", "type": "operator", "op": "power", "subexpr": "e^{-122/7.2}", "description": "The numerical evaluation of the exponential term with the given values for entry altitude and scale height.", "dimension": "1", "unit": ""},
+                    {"id": "s1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "-122 \\frac{1}{7.2}", "description": "The calculation of the exponent, dividing the entry altitude by the scale height.", "dimension": "1", "unit": ""},
+                    {"id": "s1___num_3", "type": "number", "label": "-122", "emoji": "🏔️", "subexpr": "-122", "description": "The value of the entry altitude $h_E$ in kilometers.", "dimension": "L", "unit": "km"},
+                    {"id": "s1___power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{7.2}", "description": "The reciprocal of the scale height value in kilometers.", "dimension": "L⁻¹", "unit": "km⁻¹"},
+                    {"id": "s1___num_5", "type": "number", "label": "7.2", "emoji": "📏", "subexpr": "7.2", "description": "The value of the atmospheric scale height $H$ in kilometers.", "dimension": "L", "unit": "km"},
+                    {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "4 \\times 10^{-8}", "description": "The approximate result of the exponential term, expressed in scientific notation.", "dimension": "1", "unit": ""},
+                    {"id": "s2___num_2", "type": "number", "label": "4", "emoji": "🔢", "subexpr": "4", "description": "The significand of the approximate result.", "dimension": "1", "unit": ""},
+                    {"id": "s2___power_3", "type": "operator", "op": "power", "exponent": "-8", "subexpr": "\\frac{1}{100000000}", "description": "The power of ten for the scientific notation of the result.", "dimension": "1", "unit": ""},
+                    {"id": "s2___num_4", "type": "number", "label": "10", "emoji": "🔢", "subexpr": "10", "description": "The base for the scientific notation exponent.", "dimension": "1", "unit": ""},
+                    {"id": "s3___num_1", "type": "number", "label": "0", "emoji": "0️⃣", "subexpr": "0", "description": "The final approximation, treating the negligible atmospheric density term as zero.", "dimension": "1", "unit": ""},
+                    {"id": "__approximately_1", "type": "operator", "op": "approximately", "subexpr": "e^{-h_E/H} = e^{-122/7.2} \\approx 4 \\times 10^{-8} \\approx 0", "description": "A relation showing the symbolic expression is evaluated, approximated to a tiny number, and then to zero."}
                   ],
                   "edges": [
                     {"from": "e", "to": "s0___power_1"},
@@ -1830,16 +1830,16 @@
                     {"from": "s2___num_2", "to": "s2___multiply_1"},
                     {"from": "s2___num_4", "to": "s2___power_3"},
                     {"from": "s2___power_3", "to": "s2___multiply_1"},
-                    {"from": "s0___power_1", "to": "__equals_1"},
-                    {"from": "s1___power_1", "to": "__equals_1"},
-                    {"from": "s2___multiply_1", "to": "__equals_1"},
-                    {"from": "s3___num_1", "to": "__equals_1"}
+                    {"from": "s0___power_1", "to": "__approximately_1"},
+                    {"from": "s1___power_1", "to": "__approximately_1"},
+                    {"from": "s2___multiply_1", "to": "__approximately_1"},
+                    {"from": "s3___num_1", "to": "__approximately_1"}
                   ],
                   "classification": {"kind": "algebraic"},
                   "domain": "classical_mechanics",
                   "enrichment": {
-                    "reasoning": "The context discusses atmospheric entry, altitude, and scale height, which are concepts in classical mechanics. Therefore, the domain is `classical_mechanics`.",
-                    "fields": ["domain", "nodes.s0___power_1.description", "nodes.s0___power_1.dimension", "nodes.s0___power_1.quantity", "nodes.s0___power_1.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.e.value", "nodes.s0___multiply_2.description", "nodes.s0___multiply_2.dimension", "nodes.s0___multiply_2.quantity", "nodes.s0___multiply_2.unit", "nodes.s0___negation_3.description", "nodes.s0___negation_3.dimension", "nodes.s0___negation_3.quantity", "nodes.s0___negation_3.unit", "nodes.h_E.description", "nodes.h_E.dimension", "nodes.h_E.emoji", "nodes.h_E.quantity", "nodes.h_E.role", "nodes.h_E.unit", "nodes.h_E.value", "nodes.s0___power_4.description", "nodes.s0___power_4.dimension", "nodes.s0___power_4.quantity", "nodes.s0___power_4.unit", "nodes.H.description", "nodes.H.dimension", "nodes.H.emoji", "nodes.H.quantity", "nodes.H.role", "nodes.H.unit", "nodes.H.value", "nodes.s1___power_1.description", "nodes.s1___power_1.dimension", "nodes.s1___power_1.unit", "nodes.s1___multiply_2.description", "nodes.s1___multiply_2.dimension", "nodes.s1___multiply_2.unit", "nodes.s1___num_3.description", "nodes.s1___num_3.emoji", "nodes.s1___num_3.value", "nodes.s1___power_4.description", "nodes.s1___power_4.dimension", "nodes.s1___power_4.unit", "nodes.s1___num_5.description", "nodes.s1___num_5.emoji", "nodes.s1___num_5.value", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.unit", "nodes.s2___num_2.description", "nodes.s2___num_2.emoji", "nodes.s2___num_2.value", "nodes.s2___power_3.description", "nodes.s2___power_3.dimension", "nodes.s2___power_3.unit", "nodes.s2___num_4.description", "nodes.s2___num_4.emoji", "nodes.s2___num_4.value", "nodes.s3___num_1.description", "nodes.s3___num_1.dimension", "nodes.s3___num_1.emoji", "nodes.s3___num_1.unit", "nodes.s3___num_1.value", "nodes.__equals_1.description"]
+                    "reasoning": "The context is atmospheric entry physics, so the domain is classical mechanics. Symbols `h_E` and `H` are identified as entry altitude and atmospheric scale height, respectively.",
+                    "fields": ["domain", "nodes.s0___power_1.description", "nodes.s0___power_1.dimension", "nodes.s0___power_1.quantity", "nodes.s0___power_1.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.e.value", "nodes.s0___multiply_2.description", "nodes.s0___multiply_2.dimension", "nodes.s0___multiply_2.quantity", "nodes.s0___multiply_2.unit", "nodes.s0___negation_3.description", "nodes.h_E.description", "nodes.h_E.dimension", "nodes.h_E.emoji", "nodes.h_E.quantity", "nodes.h_E.role", "nodes.h_E.unit", "nodes.h_E.value", "nodes.s0___power_4.description", "nodes.s0___power_4.dimension", "nodes.s0___power_4.unit", "nodes.H.description", "nodes.H.dimension", "nodes.H.emoji", "nodes.H.quantity", "nodes.H.role", "nodes.H.unit", "nodes.H.value", "nodes.s1___power_1.description", "nodes.s1___power_1.dimension", "nodes.s1___power_1.unit", "nodes.s1___multiply_2.description", "nodes.s1___multiply_2.dimension", "nodes.s1___multiply_2.unit", "nodes.s1___num_3.description", "nodes.s1___num_3.dimension", "nodes.s1___num_3.emoji", "nodes.s1___num_3.unit", "nodes.s1___power_4.description", "nodes.s1___power_4.dimension", "nodes.s1___power_4.unit", "nodes.s1___num_5.description", "nodes.s1___num_5.dimension", "nodes.s1___num_5.emoji", "nodes.s1___num_5.unit", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.unit", "nodes.s2___num_2.description", "nodes.s2___num_2.dimension", "nodes.s2___num_2.emoji", "nodes.s2___num_2.unit", "nodes.s2___power_3.description", "nodes.s2___power_3.dimension", "nodes.s2___power_3.unit", "nodes.s2___num_4.description", "nodes.s2___num_4.dimension", "nodes.s2___num_4.emoji", "nodes.s2___num_4.unit", "nodes.s3___num_1.description", "nodes.s3___num_1.dimension", "nodes.s3___num_1.emoji", "nodes.s3___num_1.unit", "nodes.__approximately_1.description"]
                   }
                 }
               }
@@ -2023,21 +2023,21 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "emoji": "≈", "op": "equals", "subexpr": "F_{\\text{net}} = -F_D", "description": "The net force is approximately equal to the negative of the drag force, as drag dominates gravity during reentry."},
-                    {"id": "F_net", "type": "scalar", "emoji": "∑", "latex": "F_{\\text{net}}", "subexpr": "F_{\\text{net}}", "description": "The net force acting on the reentry vehicle.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
-                    {"id": "__negation_2", "type": "operator", "emoji": "👎", "op": "negation", "subexpr": "-F_{D}", "description": "Negation, indicating that the drag force opposes the vehicle's direction of motion.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
-                    {"id": "F_D", "type": "scalar", "emoji": "💨", "latex": "F_{D}", "subexpr": "F_{D}", "description": "The drag force exerted by the atmosphere on the reentry vehicle.", "quantity": "drag_force", "dimension": "M·L·T⁻²", "unit": "N"}
+                    {"id": "F_net", "type": "scalar", "emoji": "⚖️", "latex": "F_{\\text{net}}", "subexpr": "F_{\\text{net}}", "description": "Net force, the total force acting on the reentry vehicle.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                    {"id": "__negation_1", "type": "operator", "op": "negation", "subexpr": "-F_{D}", "description": "Negation, indicating that the drag force opposes the direction of motion.", "dimension": "M·L·T⁻²", "unit": "N"},
+                    {"id": "F_D", "type": "scalar", "emoji": "💨", "latex": "F_{D}", "subexpr": "F_{D}", "description": "Drag force, the atmospheric resistance opposing the vehicle's motion.", "quantity": "drag", "dimension": "M·L·T⁻²", "unit": "N"},
+                    {"id": "__approximately_2", "type": "relation", "label": "approximately equal", "emoji": "≈", "op": "approximately", "subexpr": "F_{\\text{net}} \\approx -F_D", "description": "Approximation, stating that the net force is almost entirely due to drag during peak reentry."}
                   ],
                   "edges": [
-                    {"from": "F_net", "to": "__equals_1"},
-                    {"from": "F_D", "to": "__negation_2"},
-                    {"from": "__negation_2", "to": "__equals_1"}
+                    {"from": "F_D", "to": "__negation_1"},
+                    {"from": "F_net", "to": "__approximately_2"},
+                    {"from": "__negation_1", "to": "__approximately_2"}
                   ],
                   "classification": {"kind": "algebraic"},
                   "domain": "classical_mechanics",
                   "enrichment": {
-                    "reasoning": "The context is atmospheric reentry, a classical mechanics problem. F_net is the net force and F_D is the drag force.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.F_net.description", "nodes.F_net.dimension", "nodes.F_net.emoji", "nodes.F_net.quantity", "nodes.F_net.unit", "nodes.__negation_2.description", "nodes.__negation_2.dimension", "nodes.__negation_2.emoji", "nodes.__negation_2.quantity", "nodes.__negation_2.unit", "nodes.F_D.description", "nodes.F_D.dimension", "nodes.F_D.emoji", "nodes.F_D.quantity", "nodes.F_D.unit"]
+                    "reasoning": "Context is atmospheric reentry, setting the domain to classical mechanics. `F_net` is the net force and `F_D` is the drag force on the vehicle.",
+                    "fields": ["domain", "nodes.F_net.description", "nodes.F_net.dimension", "nodes.F_net.emoji", "nodes.F_net.quantity", "nodes.F_net.unit", "nodes.__negation_1.description", "nodes.__negation_1.dimension", "nodes.__negation_1.unit", "nodes.F_D.description", "nodes.F_D.dimension", "nodes.F_D.emoji", "nodes.F_D.quantity", "nodes.F_D.unit", "nodes.__approximately_2.description"]
                   }
                 }
               }
@@ -3229,54 +3229,54 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\gamma_{\\text{shallow}} = \\arcsin\\!\\left(\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}\\right)", "description": "The shallow entry corridor angle, $\\gamma_{\\text{shallow}}$, is approximately equal to the arcsin of a term combining atmospheric and vehicle properties."},
-                    {"id": "gamma_shallow", "type": "scalar", "emoji": "📐", "latex": "\\gamma_{\\text{shallow}}", "subexpr": "\\gamma_{\\text{shallow}}", "description": "Shallow flight path angle limit for atmospheric entry, defining the upper boundary of the entry corridor.", "quantity": "flight_path_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__asin_2", "type": "function", "op": "asin", "subexpr": "\\operatorname{asin}{\\left(\\frac{\\rho_{0} H e^{\\frac{\\left(-1\\right) h_{E}}{H}}}{2 \\delta_{\\min} \\beta} \\right)}", "description": "The arcsin function, used to calculate the shallow entry angle from a dimensionless ratio of atmospheric and vehicle parameters.", "dimension": "1", "unit": "rad"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H \\frac{1}{2 \\delta_{\\min} \\beta}", "description": "The dimensionless argument of the arcsin, representing the ratio of atmospheric density effects to the vehicle's ballistic coefficient.", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H", "description": "Atmospheric density at the entry interface altitude, $\\rho_0 e^{-h_E/H}$, multiplied by the atmospheric scale height $H$.", "dimension": "M·L⁻²", "unit": "kg/m²"},
-                    {"id": "rho_0", "type": "scalar", "emoji": "💨", "latex": "\\rho_{0}", "subexpr": "\\rho_{0}", "description": "Atmospheric density at the reference altitude (sea level).", "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}} H", "description": "The atmospheric scale height $H$ multiplied by the exponential density decay factor.", "dimension": "L", "unit": "m"},
-                    {"id": "H", "type": "scalar", "emoji": "📏", "latex": "H", "subexpr": "H", "description": "Atmospheric scale height, a characteristic distance over which air pressure drops by a factor of $e$.", "quantity": "scale_height", "dimension": "L", "unit": "m"},
-                    {"id": "__power_6", "type": "operator", "op": "power", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}}", "description": "The exponential term $e^{-h_E/H}$, representing the decay of atmospheric density with altitude.", "dimension": "1", "unit": ""},
-                    {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e", "description": "Euler's number, the base of the natural logarithm, approximately 2.718.", "quantity": "eulers_number", "dimension": "1", "unit": "", "value": 2.71828, "role": "constant"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{H} -h_{E}", "description": "The dimensionless exponent $-h_E/H$, representing the entry altitude in units of scale heights.", "dimension": "1", "unit": ""},
-                    {"id": "__negation_8", "type": "operator", "op": "negation", "subexpr": "-h_{E}", "description": "Negation of the entry altitude $h_E$.", "dimension": "L", "unit": "m"},
-                    {"id": "h_E", "type": "scalar", "emoji": "🌍", "latex": "h_{E}", "subexpr": "h_{E}", "description": "The entry interface altitude, where atmospheric effects become significant.", "quantity": "altitude", "dimension": "L", "unit": "m"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{H}", "description": "The reciprocal of the atmospheric scale height, $1/H$.", "dimension": "L⁻¹", "unit": "m⁻¹"},
-                    {"id": "__power_10", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 \\delta_{\\min} \\beta}", "description": "The reciprocal of the term $2\\beta\\delta_{\\min}$, representing the vehicle's contribution to the entry angle.", "dimension": "M⁻¹·L²", "unit": "m²/kg"},
-                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "2 \\beta \\delta_{\\min}", "description": "A term combining the vehicle's ballistic coefficient $\\beta$ and the minimum drag parameter $\\delta_{\\min}$.", "dimension": "M·L⁻²", "unit": "kg/m²"},
-                    {"id": "__num_12", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, a constant factor in the denominator.", "dimension": "1", "unit": "", "value": 2},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\beta \\delta_{\\min}", "description": "The product of the vehicle's ballistic coefficient $\\beta$ and the minimum drag parameter $\\delta_{\\min}$.", "dimension": "M·L⁻²", "unit": "kg/m²"},
-                    {"id": "beta", "type": "scalar", "emoji": "🚀", "latex": "\\beta", "subexpr": "\\beta", "description": "Ballistic coefficient, $\\beta = m / (C_d A)$, a measure of a vehicle's ability to overcome air resistance.", "quantity": "ballistic_coefficient", "dimension": "M·L⁻²", "unit": "kg/m²"},
-                    {"id": "delta_min", "type": "scalar", "latex": "\\delta_{\\min}", "subexpr": "\\delta_{\\min}", "description": "A minimum dimensionless parameter related to drag or vehicle density, used in the small-angle approximation.", "quantity": "drag_parameter", "dimension": "1", "unit": ""}
+                    {"id": "gamma_shallow", "type": "scalar", "label": "gamma_shallow", "emoji": "📐", "latex": "\\gamma_{\\text{shallow}}", "subexpr": "\\gamma_{\\text{shallow}}", "description": "Shallow entry angle bound, the minimum flight path angle for atmospheric capture without skipping out.", "quantity": "entry_angle", "dimension": "1", "unit": "rad"},
+                    {"id": "__asin_1", "type": "function", "op": "asin", "subexpr": "\\arcsin \\left(\\frac{\\rho_{0} H e^{-h_{E}/H}}{2\\beta \\delta_{\\min}}\\right)", "description": "Calculates the shallow entry angle from the dimensionless ratio of atmospheric and vehicle properties.", "dimension": "1", "unit": "rad"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H \\frac{1}{2 \\delta_{\\min} \\beta}", "description": "The ratio of atmospheric properties to vehicle properties, whose arcsin gives the shallow entry angle.", "dimension": "1", "unit": ""},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H", "description": "Atmospheric density at the entry interface multiplied by the scale height.", "dimension": "M·L⁻²", "unit": "kg/m²"},
+                    {"id": "rho_0", "type": "scalar", "label": "rho_0", "emoji": "💨", "latex": "\\rho_{0}", "subexpr": "\\rho_{0}", "description": "Atmospheric density at a reference altitude (e.g., sea level).", "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}} H", "description": "Atmospheric scale height adjusted by the exponential density falloff at the entry altitude.", "dimension": "L", "unit": "m"},
+                    {"id": "H", "type": "scalar", "label": "H", "emoji": "📏", "latex": "H", "subexpr": "H", "description": "Atmospheric scale height, the vertical distance over which air density drops by a factor of e.", "quantity": "scale_height", "dimension": "L", "unit": "m"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}}", "description": "The exponential factor describing the decrease in atmospheric density with altitude.", "dimension": "1", "unit": ""},
+                    {"id": "e", "type": "scalar", "label": "e", "emoji": "🔢", "latex": "e", "subexpr": "e", "description": "Euler's number, the base of the natural logarithm.", "quantity": "eulers_number", "dimension": "1", "unit": "", "value": 2.71828, "role": "constant"},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{H} -h_{E}", "description": "The dimensionless ratio of entry altitude to atmospheric scale height.", "dimension": "1", "unit": ""},
+                    {"id": "__negation_7", "type": "operator", "op": "negation", "subexpr": "-h_{E}", "description": "The negative of the entry altitude."},
+                    {"id": "h_E", "type": "scalar", "label": "h_E", "emoji": "✈️", "latex": "h_{E}", "subexpr": "h_{E}", "description": "The entry interface altitude, where atmospheric effects become significant.", "quantity": "altitude", "dimension": "L", "unit": "m"},
+                    {"id": "__power_8", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{H}", "description": "The reciprocal of the atmospheric scale height.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 \\delta_{\\min} \\beta}", "description": "The reciprocal of the vehicle-dependent term in the denominator.", "dimension": "M⁻¹·L²", "unit": "m²/kg"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "2 \\beta \\delta_{\\min}", "description": "Twice the ballistic coefficient multiplied by the minimum delta parameter.", "dimension": "M·L⁻²", "unit": "kg/m²"},
+                    {"id": "__num_11", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "A dimensionless factor of two.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "\\beta \\delta_{\\min}", "description": "The product of the vehicle's ballistic coefficient and the minimum delta parameter.", "dimension": "M·L⁻²", "unit": "kg/m²"},
+                    {"id": "beta", "type": "scalar", "label": "beta", "emoji": "🚀", "latex": "\\beta", "subexpr": "\\beta", "description": "The vehicle's ballistic coefficient, $\\beta = m / (C_d A)$, measuring its ability to overcome air resistance.", "quantity": "ballistic_coefficient", "dimension": "M·L⁻²", "unit": "kg/m²"},
+                    {"id": "delta_min", "type": "scalar", "label": "delta_min", "emoji": "🎛️", "latex": "\\delta_{\\min}", "subexpr": "\\delta_{\\min}", "description": "A small, dimensionless parameter related to the minimum condition for atmospheric capture.", "quantity": "capture_parameter", "dimension": "1", "unit": ""},
+                    {"id": "__approximately_13", "type": "relation", "label": "approximately equal", "emoji": "≈", "op": "approximately", "subexpr": "\\gamma_{\\text{shallow}} \\approx \\arcsin\\!\\left(\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}\\right)", "description": "The shallow entry angle is approximately determined by the arcsin of the ratio of atmospheric to vehicle properties.", "color": "orange", "highlight": "shallow"}
                   ],
                   "edges": [
-                    {"from": "gamma_shallow", "to": "__equals_1"},
-                    {"from": "rho_0", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
-                    {"from": "H", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
-                    {"from": "e", "to": "__power_6"},
-                    {"from": "h_E", "to": "__negation_8"},
-                    {"from": "__negation_8", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
-                    {"from": "H", "to": "__power_9"},
-                    {"from": "__power_9", "to": "__multiply_7"},
-                    {"from": "__multiply_7", "to": "__power_6", "role": "exp"},
-                    {"from": "__power_6", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
-                    {"from": "__multiply_5", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "rho_0", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "H", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "e", "to": "__power_5"},
+                    {"from": "h_E", "to": "__negation_7"},
+                    {"from": "__negation_7", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
+                    {"from": "H", "to": "__power_8"},
+                    {"from": "__power_8", "to": "__multiply_6"},
+                    {"from": "__multiply_6", "to": "__power_5", "role": "exp"},
+                    {"from": "__power_5", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
                     {"from": "__multiply_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "__num_12", "to": "__multiply_11", "semantic": "direct", "weight": 1.0},
-                    {"from": "beta", "to": "__multiply_13", "semantic": "direct", "weight": 1.0},
-                    {"from": "delta_min", "to": "__multiply_13", "semantic": "direct", "weight": 1.0},
-                    {"from": "__multiply_13", "to": "__multiply_11", "semantic": "direct", "weight": 1.0},
-                    {"from": "__multiply_11", "to": "__power_10"},
-                    {"from": "__power_10", "to": "__multiply_3"},
-                    {"from": "__multiply_3", "to": "__asin_2"},
-                    {"from": "__asin_2", "to": "__equals_1"}
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_11", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
+                    {"from": "beta", "to": "__multiply_12", "semantic": "direct", "weight": 1.0},
+                    {"from": "delta_min", "to": "__multiply_12", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_12", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_10", "to": "__power_9"},
+                    {"from": "__power_9", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__asin_1"},
+                    {"from": "gamma_shallow", "to": "__approximately_13"},
+                    {"from": "__asin_1", "to": "__approximately_13"}
                   ],
                   "classification": {"kind": "algebraic"},
                   "domain": "classical_mechanics",
                   "enrichment": {
-                    "reasoning": "Context is atmospheric entry, so domain is `classical_mechanics`. Symbols are entry angle ($\\gamma$), atmospheric density ($\\rho$), scale height ($H$), and ballistic coefficient ($\\beta$).",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.gamma_shallow.description", "nodes.gamma_shallow.dimension", "nodes.gamma_shallow.emoji", "nodes.gamma_shallow.quantity", "nodes.gamma_shallow.unit", "nodes.__asin_2.description", "nodes.__asin_2.dimension", "nodes.__asin_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.unit", "nodes.rho_0.description", "nodes.rho_0.dimension", "nodes.rho_0.emoji", "nodes.rho_0.quantity", "nodes.rho_0.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.unit", "nodes.H.description", "nodes.H.dimension", "nodes.H.emoji", "nodes.H.quantity", "nodes.H.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.e.value", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.unit", "nodes.__negation_8.description", "nodes.__negation_8.dimension", "nodes.__negation_8.unit", "nodes.h_E.description", "nodes.h_E.dimension", "nodes.h_E.emoji", "nodes.h_E.quantity", "nodes.h_E.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__power_10.description", "nodes.__power_10.dimension", "nodes.__power_10.unit", "nodes.__multiply_11.description", "nodes.__multiply_11.dimension", "nodes.__multiply_11.unit", "nodes.__num_12.description", "nodes.__num_12.dimension", "nodes.__num_12.unit", "nodes.__num_12.value", "nodes.__multiply_13.description", "nodes.__multiply_13.dimension", "nodes.__multiply_13.unit", "nodes.beta.description", "nodes.beta.dimension", "nodes.beta.emoji", "nodes.beta.quantity", "nodes.beta.unit", "nodes.delta_min.description", "nodes.delta_min.dimension", "nodes.delta_min.quantity", "nodes.delta_min.unit"]
+                    "reasoning": "Context discusses atmospheric entry, vehicle trajectory, and drag, so the domain is classical mechanics. The symbols $\\beta$, $\\rho_0$, and $H$ are identified as ballistic coefficient, atmospheric density, and scale height.",
+                    "fields": ["domain", "nodes.gamma_shallow.description", "nodes.gamma_shallow.dimension", "nodes.gamma_shallow.emoji", "nodes.gamma_shallow.label", "nodes.gamma_shallow.quantity", "nodes.gamma_shallow.unit", "nodes.__asin_1.description", "nodes.__asin_1.dimension", "nodes.__asin_1.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.rho_0.description", "nodes.rho_0.dimension", "nodes.rho_0.emoji", "nodes.rho_0.label", "nodes.rho_0.quantity", "nodes.rho_0.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.unit", "nodes.H.description", "nodes.H.dimension", "nodes.H.emoji", "nodes.H.label", "nodes.H.quantity", "nodes.H.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.label", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.e.value", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.unit", "nodes.__negation_7.description", "nodes.h_E.description", "nodes.h_E.dimension", "nodes.h_E.emoji", "nodes.h_E.label", "nodes.h_E.quantity", "nodes.h_E.unit", "nodes.__power_8.description", "nodes.__power_8.dimension", "nodes.__power_8.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__multiply_10.description", "nodes.__multiply_10.dimension", "nodes.__multiply_10.unit", "nodes.__num_11.description", "nodes.__num_11.dimension", "nodes.__num_11.emoji", "nodes.__num_11.unit", "nodes.__num_11.value", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.unit", "nodes.beta.description", "nodes.beta.dimension", "nodes.beta.emoji", "nodes.beta.label", "nodes.beta.quantity", "nodes.beta.unit", "nodes.delta_min.description", "nodes.delta_min.dimension", "nodes.delta_min.emoji", "nodes.delta_min.label", "nodes.delta_min.quantity", "nodes.delta_min.unit", "nodes.__approximately_13.description"]
                   }
                 }
               }
@@ -4001,37 +4001,37 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "emoji": "⚖️", "op": "equals", "subexpr": "\\dot{q_s} = \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} \\, V^3", "description": "Relates the stagnation point heat rate to atmospheric density, vehicle velocity, and nose radius."},
-                    {"id": "q_s", "type": "scalar", "emoji": "🔥", "latex": "q_{s}", "subexpr": "q_{s}", "description": "Stagnation point heat flux, a measure of heat energy transferred per unit area per unit time.", "quantity": "heat_flux", "dimension": "M·T⁻³", "unit": "W/m²"},
-                    {"id": "t", "type": "scalar", "emoji": "⏰", "latex": "t", "subexpr": "t", "description": "Time, the independent variable for the rate of change.", "quantity": "time", "dimension": "T", "unit": "s"},
-                    {"id": "__deriv_2", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} q_{s}", "description": "Stagnation point heat flux, $\\\\dot{q}_s$, the rate of heating per unit area at the vehicle's foremost point.", "quantity": "heat_flux", "dimension": "M·T⁻³", "unit": "W/m²"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "K \\frac{1}{\\sqrt{R_{N}}} \\sqrt{\\rho} V^{3}", "description": "The Fay-Riddell formula for calculating the stagnation point heat flux on a reentry vehicle.", "quantity": "heat_flux", "dimension": "M·T⁻³", "unit": "W/m²"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "K \\frac{1}{\\sqrt{R_{N}}}", "description": "The combined heating parameter, scaled by the inverse square root of the nose radius."},
-                    {"id": "K", "type": "scalar", "emoji": "🌍", "latex": "K", "subexpr": "K", "description": "A constant, $K$, that depends on the properties of the gas in the atmosphere.", "quantity": "proportionality_constant", "role": "constant"},
-                    {"id": "__power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\sqrt{R_{N}}}", "description": "The inverse of the square root of the nose radius, $1/\\\\sqrt{R_N}$, showing that larger radius reduces heating.", "dimension": "L⁻¹/²", "unit": "m⁻¹/²"},
-                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{R_{N}}", "description": "The square root of the nose radius, $\\\\sqrt{R_N}$.", "dimension": "L¹/²", "unit": "m¹/²"},
-                    {"id": "R_N", "type": "scalar", "emoji": "👃", "latex": "R_{N}", "subexpr": "R_{N}", "description": "Nose radius, $R_N$, the radius of curvature of the spacecraft's heat shield at the stagnation point.", "quantity": "radius", "dimension": "L", "unit": "m", "role": "parameter"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\sqrt{\\rho} V^{3}", "description": "The combined effect of atmospheric density and vehicle velocity on aerodynamic heating.", "dimension": "M¹/²·L³/²·T⁻³", "unit": "kg¹/²·m³/²·s⁻³"},
-                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{\\rho}", "description": "The square root of the atmospheric density, $\\\\sqrt{\\\\rho}$.", "dimension": "M¹/²·L⁻³/²", "unit": "kg¹/²·m⁻³/²"},
-                    {"id": "rho", "type": "scalar", "emoji": "💨", "latex": "\\rho", "subexpr": "\\rho", "description": "The density, $\\\\rho$, of the atmosphere at the vehicle's current altitude.", "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³"},
-                    {"id": "__power_9", "type": "operator", "op": "power", "exponent": "3", "subexpr": "V^{3}", "description": "The cube of the spacecraft's velocity, $V^3$, showing the extreme sensitivity of heating to speed.", "dimension": "L³·T⁻³", "unit": "m³/s³"},
-                    {"id": "V", "type": "scalar", "emoji": "🚀", "latex": "V", "subexpr": "V", "description": "The velocity, $V$, of the spacecraft relative to the surrounding atmosphere.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"}
+                    {"id": "q_s", "type": "scalar", "emoji": "🔥", "latex": "q_{s}", "subexpr": "q_{s}", "description": "Stagnation point heat load, the total heat energy transferred per unit area over time.", "quantity": "areal_heat_load", "dimension": "M·T⁻²", "unit": "J/m²"},
+                    {"id": "t", "type": "scalar", "emoji": "⌛", "latex": "t", "subexpr": "t", "description": "Time, the independent variable for the rate of heating.", "quantity": "time", "dimension": "T", "unit": "s"},
+                    {"id": "__deriv_1", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} q_{s}", "description": "Stagnation point heat flux $\\dot{q}_s$, the rate of heat transfer per unit area at the stagnation point.", "quantity": "heat_flux", "dimension": "M·T⁻³", "unit": "W/m²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{K}{\\sqrt{R_{N}}} \\sqrt{\\rho}  V^3", "description": "The Fay-Riddell approximation for stagnation point heat flux, combining gas properties, nose radius, atmospheric density, and velocity.", "quantity": "heat_flux", "dimension": "M·T⁻³", "unit": "W/m²"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "K \\frac{1}{\\sqrt{R_{N}}}", "description": "The heating rate's dependence on the gas properties constant $K$ and the vehicle's nose radius $R_N$.", "quantity": "heating_parameter", "dimension": "M¹/²·L⁻³/²", "unit": "kg¹/²·m⁻³/²"},
+                    {"id": "K", "type": "scalar", "emoji": "🌍", "latex": "K", "subexpr": "K", "description": "The Fay-Riddell constant, which depends on gas properties and is approximately constant for Earth entry.", "quantity": "fay_riddell_constant", "dimension": "M¹/²·L⁻¹", "unit": "kg¹/²·m⁻¹", "role": "constant"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\sqrt{R_{N}}}", "description": "The inverse square root of the nose radius, showing that a larger radius reduces heating.", "dimension": "L⁻¹/²", "unit": "m⁻¹/²"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{R_{N}}", "description": "The square root of the vehicle's nose radius.", "dimension": "L¹/²", "unit": "m¹/²"},
+                    {"id": "R_N", "type": "scalar", "emoji": "🚀", "latex": "R_{N}", "subexpr": "R_{N}", "description": "The nose radius of the atmospheric entry vehicle.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\sqrt{\\rho} V^{3}", "description": "The heating rate's dependence on atmospheric density $\\rho$ and vehicle velocity $V$.", "dimension": "M¹/²·L³/²·T⁻³", "unit": "kg¹/²·m³/²·s⁻³"},
+                    {"id": "__power_7", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{\\rho}", "description": "The square root of the atmospheric density.", "dimension": "M¹/²·L⁻³/²", "unit": "kg¹/²·m⁻³/²"},
+                    {"id": "rho", "type": "scalar", "emoji": "💨", "latex": "\\rho", "subexpr": "\\rho", "description": "The density of the atmosphere or the shocked gas layer.", "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³"},
+                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "3", "subexpr": "V^{3}", "description": "The cube of the vehicle's velocity, indicating a very strong dependence of heating on speed.", "dimension": "L³·T⁻³", "unit": "m³/s³"},
+                    {"id": "V", "type": "scalar", "emoji": "☄️", "latex": "V", "subexpr": "V", "description": "The velocity of the vehicle relative to the atmosphere.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__approximately_9", "type": "relation", "label": "approximately equal", "emoji": "≈", "op": "approximately", "subexpr": "\\dot{q_s} \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} \\, V^3", "description": "The Fay-Riddell stagnation heating law, $\\dot{q}_s \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} V^3$, relating heat flux to vehicle and atmospheric properties for spacecraft design.", "color": "cyan", "highlight": "fr"}
                   ],
                   "edges": [
-                    {"from": "q_s", "to": "__deriv_2"},
-                    {"from": "t", "to": "__deriv_2", "role": "wrt"},
-                    {"from": "__deriv_2", "to": "__equals_1"},
-                    {"from": "K", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
-                    {"from": "R_N", "to": "__power_6"},
-                    {"from": "__power_6", "to": "__power_5"},
-                    {"from": "__power_5", "to": "__multiply_4"},
-                    {"from": "__multiply_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "rho", "to": "__power_8"},
-                    {"from": "__power_8", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
-                    {"from": "V", "to": "__power_9"},
-                    {"from": "__power_9", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
-                    {"from": "__multiply_7", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "__multiply_3", "to": "__equals_1"}
+                    {"from": "q_s", "to": "__deriv_1"},
+                    {"from": "t", "to": "__deriv_1", "role": "wrt"},
+                    {"from": "K", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "R_N", "to": "__power_5"},
+                    {"from": "__power_5", "to": "__power_4"},
+                    {"from": "__power_4", "to": "__multiply_3"},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "rho", "to": "__power_7"},
+                    {"from": "__power_7", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
+                    {"from": "V", "to": "__power_8"},
+                    {"from": "__power_8", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_6", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__deriv_1", "to": "__approximately_9"},
+                    {"from": "__multiply_2", "to": "__approximately_9"}
                   ],
                   "classification": {
                     "kind": "ODE",
@@ -4045,8 +4045,8 @@
                   },
                   "domain": "classical_mechanics",
                   "enrichment": {
-                    "reasoning": "The context of atmospheric entry and aerodynamic heating sets the domain to classical mechanics. Key symbols are stagnation point heat flux ($\\\\dot{q}_s$), vehicle velocity (V), and nose radius ($R_N$).",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.q_s.description", "nodes.q_s.dimension", "nodes.q_s.emoji", "nodes.q_s.quantity", "nodes.q_s.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__deriv_2.description", "nodes.__deriv_2.dimension", "nodes.__deriv_2.quantity", "nodes.__deriv_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.__multiply_4.description", "nodes.K.description", "nodes.K.emoji", "nodes.K.quantity", "nodes.K.role", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.R_N.description", "nodes.R_N.dimension", "nodes.R_N.emoji", "nodes.R_N.quantity", "nodes.R_N.role", "nodes.R_N.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.unit", "nodes.__power_8.description", "nodes.__power_8.dimension", "nodes.__power_8.unit", "nodes.rho.description", "nodes.rho.dimension", "nodes.rho.emoji", "nodes.rho.quantity", "nodes.rho.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.V.description", "nodes.V.dimension", "nodes.V.emoji", "nodes.V.quantity", "nodes.V.unit"]
+                    "reasoning": "The context of atmospheric entry and aerodynamic heating sets the domain to classical mechanics. Key symbols $\\rho$, $V$, and $R_N$ are identified as density, velocity, and nose radius.",
+                    "fields": ["domain", "nodes.q_s.description", "nodes.q_s.dimension", "nodes.q_s.emoji", "nodes.q_s.quantity", "nodes.q_s.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__deriv_1.description", "nodes.__deriv_1.dimension", "nodes.__deriv_1.quantity", "nodes.__deriv_1.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.K.description", "nodes.K.dimension", "nodes.K.emoji", "nodes.K.quantity", "nodes.K.role", "nodes.K.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.unit", "nodes.R_N.description", "nodes.R_N.dimension", "nodes.R_N.emoji", "nodes.R_N.quantity", "nodes.R_N.unit", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.unit", "nodes.__power_7.description", "nodes.__power_7.dimension", "nodes.__power_7.unit", "nodes.rho.description", "nodes.rho.dimension", "nodes.rho.emoji", "nodes.rho.quantity", "nodes.rho.unit", "nodes.__power_8.description", "nodes.__power_8.dimension", "nodes.__power_8.unit", "nodes.V.description", "nodes.V.dimension", "nodes.V.emoji", "nodes.V.quantity", "nodes.V.unit", "nodes.__approximately_9.description"]
                   }
                 }
               }
@@ -4240,37 +4240,37 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "emoji": "⚖️", "op": "equals", "subexpr": "\\frac{\\dot{q_{\\text{lunar}}}}{\\dot{q_{\\text{LEO}}}} = 2.81", "description": "The ratio of peak heating rates for lunar return versus LEO return equals approximately 2.81."},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{q_{\\text{lunar}}} \\frac{1}{\\dot{q_{\\text{LEO}}}}", "description": "The ratio of the lunar return heating rate to the LEO return heating rate.", "quantity": "heating_rate_ratio", "dimension": "1", "unit": ""},
-                    {"id": "q_lunar", "type": "scalar", "emoji": "🔥", "latex": "q_{\\text{lunar}}", "subexpr": "q_{\\text{lunar}}", "description": "Heat transferred to the spacecraft during a high-speed lunar return atmospheric entry.", "quantity": "heat", "dimension": "M·L²·T⁻²", "unit": "J"},
-                    {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time.", "quantity": "time", "dimension": "T", "unit": "s"},
-                    {"id": "__deriv_3", "type": "operator", "emoji": "🔥", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{lunar}}}", "description": "The rate of aerodynamic heating, $\\\\dot{q}$, experienced by the spacecraft during lunar return.", "quantity": "heating_rate", "dimension": "M·L²·T⁻³", "unit": "W"},
-                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\dot{q_{\\text{LEO}}}}", "description": "The reciprocal of the LEO return heating rate, used to form the ratio of the two heating rates.", "quantity": "inverse_heating_rate", "dimension": "M⁻¹·L⁻²·T³", "unit": "W⁻¹"},
-                    {"id": "q_LEO", "type": "scalar", "emoji": "🌍", "latex": "q_{\\text{LEO}}", "subexpr": "q_{\\text{LEO}}", "description": "Heat transferred to the spacecraft during a return from Low Earth Orbit (LEO).", "quantity": "heat", "dimension": "M·L²·T⁻²", "unit": "J"},
-                    {"id": "__deriv_5", "type": "operator", "emoji": "🌍", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{LEO}}}", "description": "The rate of aerodynamic heating, $\\\\dot{q}$, experienced by the spacecraft during a LEO return.", "quantity": "heating_rate", "dimension": "M·L²·T⁻³", "unit": "W"},
-                    {"id": "__num_6", "type": "number", "label": "2.81", "emoji": "🔢", "subexpr": "2.81", "description": "The calculated ratio of peak heating rates, showing lunar return is 2.81 times more intense than LEO return.", "quantity": "heating_rate_ratio", "dimension": "1", "unit": "", "value": 2.81, "color": "red", "highlight": "result"}
+                    {"id": "__multiply_1", "type": "operator", "emoji": "🔥", "op": "multiply", "subexpr": "\\frac{\\dot{q_{\\text{lunar}}}}{\\dot{q_{\\text{LEO}}}}", "description": "The ratio of the aerodynamic heating rate during lunar return to the rate during LEO return.", "quantity": "heating_rate_ratio", "dimension": "1", "unit": "\"\""},
+                    {"id": "q_lunar", "type": "scalar", "emoji": "🌜", "latex": "q_{\\text{lunar}}", "subexpr": "q_{\\text{lunar}}", "description": "Total heat absorbed by the spacecraft during a reentry from a lunar trajectory.", "quantity": "heat", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "t", "type": "scalar", "emoji": "⏰", "latex": "t", "subexpr": "t", "description": "Time, the independent variable over which heating occurs.", "quantity": "time", "dimension": "T", "unit": "s"},
+                    {"id": "__deriv_2", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{lunar}}}", "description": "The rate of aerodynamic heating, $\\dot{q}$, experienced during a lunar return trajectory.", "quantity": "heating_rate", "dimension": "M·L²·T⁻³", "unit": "W"},
+                    {"id": "__power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\dot{q_{\\text{LEO}}}}", "description": "The inverse of the heating rate for a reentry from Low Earth Orbit (LEO).", "quantity": "inverse_heating_rate", "dimension": "M⁻¹·L⁻²·T³", "unit": "W⁻¹"},
+                    {"id": "q_LEO", "type": "scalar", "emoji": "🛰️", "latex": "q_{\\text{LEO}}", "subexpr": "q_{\\text{LEO}}", "description": "Total heat absorbed by the spacecraft during a reentry from Low Earth Orbit (LEO).", "quantity": "heat", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__deriv_4", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{LEO}}}", "description": "The rate of aerodynamic heating, $\\dot{q}$, experienced during a reentry from Low Earth Orbit (LEO).", "quantity": "heating_rate", "dimension": "M·L²·T⁻³", "unit": "W"},
+                    {"id": "__num_5", "type": "number", "label": "2.81", "emoji": "🔢", "subexpr": "2.81", "description": "The calculated ratio of peak heating, showing lunar return is 2.81 times more intense than LEO return.", "dimension": "1", "unit": "\"\"", "value": 2.81, "color": "red", "highlight": "result"},
+                    {"id": "__approximately_6", "type": "relation", "label": "approximately equal", "emoji": "≈", "op": "approximately", "subexpr": "\\frac{\\dot{q_{\\text{lunar}}}}{\\dot{q_{\\text{LEO}}}} \\approx 2.81", "description": "The relationship stating that the ratio of lunar to LEO heating rates is approximately 2.81."}
                   ],
                   "edges": [
-                    {"from": "q_lunar", "to": "__deriv_3"},
-                    {"from": "t", "to": "__deriv_3", "role": "wrt"},
-                    {"from": "__deriv_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
-                    {"from": "q_LEO", "to": "__deriv_5"},
-                    {"from": "t", "to": "__deriv_5", "role": "wrt"},
-                    {"from": "__deriv_5", "to": "__power_4"},
-                    {"from": "__power_4", "to": "__multiply_2"},
-                    {"from": "__multiply_2", "to": "__equals_1"},
-                    {"from": "__num_6", "to": "__equals_1"}
+                    {"from": "q_lunar", "to": "__deriv_2"},
+                    {"from": "t", "to": "__deriv_2", "role": "wrt"},
+                    {"from": "__deriv_2", "to": "__multiply_1", "semantic": "direct", "weight": 1.0},
+                    {"from": "q_LEO", "to": "__deriv_4"},
+                    {"from": "t", "to": "__deriv_4", "role": "wrt"},
+                    {"from": "__deriv_4", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_1"},
+                    {"from": "__multiply_1", "to": "__approximately_6"},
+                    {"from": "__num_5", "to": "__approximately_6"}
                   ],
                   "classification": {
                     "kind": "ODE",
                     "order": 1,
-                    "dependent_variables": ["Xi_{0}", "Xi_{1}"],
+                    "dependent_variables": ["Xi_0", "Xi_1"],
                     "independent_variables": ["t"]
                   },
                   "domain": "classical_mechanics",
                   "enrichment": {
-                    "reasoning": "The context discusses aerodynamic heating during spacecraft atmospheric entry, a topic in classical mechanics. The symbol $\\\\dot{q}$ represents the rate of heat transfer.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.q_lunar.description", "nodes.q_lunar.dimension", "nodes.q_lunar.emoji", "nodes.q_lunar.quantity", "nodes.q_lunar.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__deriv_3.description", "nodes.__deriv_3.dimension", "nodes.__deriv_3.emoji", "nodes.__deriv_3.quantity", "nodes.__deriv_3.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.quantity", "nodes.__power_4.unit", "nodes.q_LEO.description", "nodes.q_LEO.dimension", "nodes.q_LEO.emoji", "nodes.q_LEO.quantity", "nodes.q_LEO.unit", "nodes.__deriv_5.description", "nodes.__deriv_5.dimension", "nodes.__deriv_5.emoji", "nodes.__deriv_5.quantity", "nodes.__deriv_5.unit", "nodes.__num_6.description", "nodes.__num_6.dimension", "nodes.__num_6.emoji", "nodes.__num_6.quantity", "nodes.__num_6.unit", "nodes.__num_6.value"]
+                    "reasoning": "The context is atmospheric reentry heating, so the domain is classical mechanics. The symbol `q` represents heat, so `\\dot{q}` is the heating rate.",
+                    "fields": ["domain", "nodes.__multiply_1.description", "nodes.__multiply_1.dimension", "nodes.__multiply_1.emoji", "nodes.__multiply_1.quantity", "nodes.__multiply_1.unit", "nodes.q_lunar.description", "nodes.q_lunar.dimension", "nodes.q_lunar.emoji", "nodes.q_lunar.quantity", "nodes.q_lunar.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__deriv_2.description", "nodes.__deriv_2.dimension", "nodes.__deriv_2.quantity", "nodes.__deriv_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.q_LEO.description", "nodes.q_LEO.dimension", "nodes.q_LEO.emoji", "nodes.q_LEO.quantity", "nodes.q_LEO.unit", "nodes.__deriv_4.description", "nodes.__deriv_4.dimension", "nodes.__deriv_4.quantity", "nodes.__deriv_4.unit", "nodes.__num_5.description", "nodes.__num_5.dimension", "nodes.__num_5.emoji", "nodes.__num_5.unit", "nodes.__num_5.value", "nodes.__approximately_6.description"]
                   }
                 }
               }
