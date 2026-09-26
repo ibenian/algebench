@@ -70,6 +70,7 @@ _ASSETS = _ROOT / "static" / "proof-animation"
 # ?builtin=<domain>/<name>. See docs/shareable-proof-animations.md.
 _PROOFS_DIR = _ROOT / "proofs" / "domains"
 _TSC = _ROOT / "node_modules" / ".bin" / "tsc"
+_SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$")
 
 
 def _emit_engine_js(out: Path) -> None:
