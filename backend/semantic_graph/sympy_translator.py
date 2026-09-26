@@ -27,7 +27,7 @@ from sympy.physics.quantum import InnerProduct, OuterProduct
 from backend.model.semantic_graph import SemanticGraph
 
 from .id_utils import _slug_id
-from .preprocessor import LaTeXPreprocessor
+from .preprocessor import LaTeXPreprocessor, ends_with_command
 from .constants import (
     KNOWN_VARIABLES,
     OPERATOR_MAP,
@@ -255,7 +255,14 @@ def _normalize_latex(latex: str) -> str:
                     if latex[j] == "{": depth += 1
                     elif latex[j] == "}": depth -= 1
                     j += 1
-                parts.append(latex[start:j - 1])
+                body = latex[start:j - 1]
+                # Keep a neighbouring ``\command`` from fusing with the body's
+                # letters once the braces are gone (``\cdot`` + ``k``).
+                if body[:1].isalpha() and ends_with_command("".join(parts[-32:])):
+                    parts.append(" ")
+                parts.append(body)
+                if j < len(latex) and latex[j].isalpha() and ends_with_command(body):
+                    parts.append(" ")
             i = j
         else:
             parts.append(latex[i])

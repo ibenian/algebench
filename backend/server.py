@@ -50,7 +50,7 @@ proofs_dir = script_dir / "proofs"
 # ---------------------------------------------------------------------------
 from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode
 from backend.semantic_graph import SemanticGraphService
-from backend.semantic_graph.preprocessor import LaTeXPreprocessor
+from backend.semantic_graph.preprocessor import LaTeXPreprocessor, ends_with_command
 from backend.semantic_graph.constants import _DOT_ACCENT_ORDERS
 
 _graph_service = SemanticGraphService()
@@ -223,6 +223,7 @@ def _strip_html_class(latex: str) -> str:
             i += 1
             continue
         i = class_end + 2
+        body: list[str] = []
         depth = 1
         while i < len(latex) and depth > 0:
             c = latex[i]
@@ -232,9 +233,17 @@ def _strip_html_class(latex: str) -> str:
                 depth -= 1
                 if depth == 0:
                     break
-            out.append(c)
+            body.append(c)
             i += 1
         i += 1  # skip closing `}`
+        # The wrapper's braces kept a ``\command`` apart from an adjacent
+        # letter; dropping them must not fuse the two — ``\cdot\htmlClass{…}{k}``
+        # would otherwise become the single symbol ``\cdotk``.
+        if body and body[0].isalpha() and ends_with_command(out):
+            out.append(' ')
+        out.extend(body)
+        if i < len(latex) and latex[i].isalpha() and ends_with_command(body):
+            out.append(' ')
     return ''.join(out)
 
 

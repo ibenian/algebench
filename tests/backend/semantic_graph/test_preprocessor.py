@@ -548,4 +548,30 @@ class TestNormalizeOperatorNames:
             r"v = \tanh\eta \quad\Longleftrightarrow\quad \eta = \operatorname{atanh}(v)")
         assert g is not None
         ids = {n.id for n in g.nodes}
-        assert "atanh_1" in ids and not ids & {"a", "t", "n", "h"}, ids
+        assert "s2_atanh_1" in ids and not ids & {"a", "t", "n", "h"}, ids
+
+    def test_spacing_between_name_and_bracket_is_dropped(self):
+        assert self.norm(r"\mathrm{Var}\!\left(q\right)") == r"\text{Var}\left(q\right)"
+        assert self.norm(r"\operatorname{Cov}\,(x)") == r"\text{Cov}(x)"
+
+
+class TestHtmlClassInsideGraphs:
+    r"""``\htmlClass`` unwrapping must not glue ``\cdot`` onto a letter."""
+
+    def test_cdot_before_highlighted_symbol(self):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"\mathrm{Var}(\htmlClass{hl-q}{q}\cdot\htmlClass{hl-k}{k}) = 1")
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        assert {"q", "k"} <= ids and not any("cdot" in i for i in ids), ids
+
+    def test_chain_keeps_each_function_application_separate(self):
+        # Three sides, each applying Var: three distinct function nodes.
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"\mathrm{Var}(q\cdot k) = \sum_{a=1}^{d_k} \mathrm{Var}(q_a k_a) = d_k"
+            r" \qquad\Longrightarrow\qquad \mathrm{Var}\!\left(\frac{q\cdot k}{\sqrt{d_k}}\right) = 1")
+        assert g is not None
+        fns = [n for n in g.nodes if n.type == "function" and n.latex == r"\text{Var}"]
+        assert len(fns) == 3, [n.id for n in g.nodes]

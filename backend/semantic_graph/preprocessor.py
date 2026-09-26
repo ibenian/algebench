@@ -27,14 +27,30 @@ _SIZED_CLOSE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)r(?![A-Za-z])\s*")
 _SIZED_BARE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)m?(?![A-Za-z])\s*")
 
 # A multi-letter upright name applied to an argument: ``\mathrm{softmax}(``,
-# ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``.
+# ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``.  Spacing commands between the
+# name and its bracket (``\mathrm{Var}\!\left(``) are matched so they can be
+# dropped — they would otherwise separate the name from its argument.
 _OPERATOR_NAME_RE = re.compile(
     r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
-    r"(?=\s*(?:\(|\[|\\left(?![A-Za-z])))"
+    r"(?:\s|\\[!,;:])*"
+    r"(?=\(|\[|\\left(?![A-Za-z]))"
 )
 
 # Math-mode delimiter pairs, longest opener first so ``$$`` beats ``$``.
 _MATH_DELIMITERS = (("$$", "$$"), ("\\[", "\\]"), ("\\(", "\\)"), ("$", "$"))
+
+
+def ends_with_command(s) -> bool:
+    r"""True when *s* (a string or list of chars) ends in a named ``\command``.
+
+    Unwrapping a braced body (``\htmlClass{hl-k}{k}``) drops the braces that kept
+    a neighbouring command apart from a letter; callers use this to re-insert a
+    space so ``\cdot`` + ``k`` does not fuse into the symbol ``\cdotk``.
+    """
+    j = len(s)
+    while j > 0 and s[j - 1].isalpha():
+        j -= 1
+    return 0 < j < len(s) and s[j - 1] == "\\"
 
 
 def strip_math_delimiters(s):

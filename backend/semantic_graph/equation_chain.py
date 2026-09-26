@@ -516,9 +516,16 @@ def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
         _postprocessor.restore_dot_notation(sub, dotted_vars)
 
         prefix = f"s{si}_"
+        # Operator nodes (``__…``) and function applications (``Var_1`` from a
+        # ``\text{Var}(…)``) are per-side instances; only variables are shared.
+        # Without the prefix, two sides' ``Var_1`` would merge into one node.
+        local_ids = {
+            n.id for n in sub.nodes
+            if n.id.startswith("__") or n.type == "function"
+        }
 
-        def _rename(nid: str, p: str = prefix) -> str:
-            return p + nid if nid.startswith("__") else nid
+        def _rename(nid: str, p: str = prefix, local: set = local_ids) -> str:
+            return p + nid if nid in local else nid
 
         for n in sub.nodes:
             nid = n.id
