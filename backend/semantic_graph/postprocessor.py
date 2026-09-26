@@ -220,6 +220,21 @@ class GraphPostprocessor:
                 if isinstance(val, str):
                     setattr(edge, attr, _restore_id(val))
 
+        # A PDE classification names its variables too (``alpha`` for a
+        # collapsed ``\\text{precision}``); restore them like the nodes they name.
+        def _restore_classification(c) -> None:
+            if c is None:
+                return
+            for field in ("dependent_variables", "independent_variables"):
+                names = getattr(c, field, None)
+                if names:
+                    setattr(c, field, [_restore_id(v) if isinstance(v, str) else v
+                                       for v in names])
+            for clause in c.clauses or []:
+                _restore_classification(clause)
+
+        _restore_classification(graph.classification)
+
     @staticmethod
     def inject_annotations(
         graph: SemanticGraph,

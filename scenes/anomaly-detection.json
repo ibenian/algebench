@@ -2883,8 +2883,8 @@
                     {
                       "kind": "PDE",
                       "order": 1,
-                      "dependent_variables": ["alpha"],
-                      "independent_variables": ["beta", "gamma"]
+                      "dependent_variables": ["precision"],
+                      "independent_variables": ["FPR", "TPR"]
                     },
                     {"kind": "algebraic"}
                   ]

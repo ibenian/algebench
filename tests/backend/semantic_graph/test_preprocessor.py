@@ -666,6 +666,16 @@ class TestPlaceholderRestoreConsistency:
         wrt = {n.with_respect_to for n in g.nodes if n.with_respect_to}
         assert wrt <= ids | {"pi"}, (wrt, ids)
 
+        def _vars(c):
+            if c is None:
+                return []
+            out = list(c.dependent_variables or []) + list(c.independent_variables or [])
+            for clause in c.clauses or []:
+                out += _vars(clause)
+            return out
+        leaked = [v for v in _vars(g.classification) if v in _GREEK_POOL and v not in latex]
+        assert not leaked, leaked
+
     def test_delta_is_never_a_placeholder(self):
         # The translator reads \delta x as one variation symbol, so a \delta
         # placeholder would fuse ``\text{as } \pi`` into ``delta_pi``.
