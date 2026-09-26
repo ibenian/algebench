@@ -496,6 +496,8 @@ def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
     for si, side in enumerate(sides):
         side, side_anns = _preprocessor.extract_parenthetical_annotations(side)
         all_annotations.extend(side_anns)
+        side = _preprocessor.normalize_sized_delimiters(side)
+        side = _preprocessor.normalize_operator_names(side)
         deriv_side = _preprocessor.rewrite_dot_derivatives(side, dotted_vars)
         deriv_side = _preprocessor.normalize_frac_derivatives(deriv_side)
         accent_map: dict[str, str] = {}

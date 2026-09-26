@@ -477,3 +477,75 @@ class TestDifferentialOfAGroupRenders:
             r"\oint \vec{E} \cdot d\vec{A} = \frac{Q}{\epsilon_0}", domain="physics")
         assert g is not None
         assert "dA" in {n.id for n in g.nodes}, [n.id for n in g.nodes]
+
+
+class TestNormalizeSizedDelimiters:
+    norm = staticmethod(LaTeXPreprocessor.normalize_sized_delimiters)
+
+    @pytest.mark.parametrize("latex, expected", [
+        (r"\bigl(x+y\bigr)", r"\left(x+y\right)"),
+        (r"\Bigl[ x \Bigr]", r"\left[ x \right]"),
+        (r"\biggl\{x\biggr\}", r"\left\{x\right\}"),
+        (r"\big( x \big)", r"( x )"),
+        (r"a \bigm| b", r"a | b"),
+    ])
+    def test_rewrites_sizing(self, latex, expected):
+        assert self.norm(latex) == expected
+
+    @pytest.mark.parametrize("latex", [
+        r"\bigcup_i A_i", r"\bigoplus_i V_i", r"\bigcap_i A_i", r"x + y",
+    ])
+    def test_leaves_big_operators_alone(self, latex):
+        assert self.norm(latex) == latex
+
+
+class TestNormalizeOperatorNames:
+    r"""Applied multi-letter names stay whole instead of splitting (issue #628)."""
+
+    norm = staticmethod(LaTeXPreprocessor.normalize_operator_names)
+
+    @pytest.mark.parametrize("latex, expected", [
+        (r"\mathrm{softmax}(z)", r"\text{softmax}(z)"),
+        (r"\operatorname{Attn}(X)", r"\text{Attn}(X)"),
+        (r"\mathrm{Var}\left(q\right)", r"\text{Var}\left(q\right)"),
+        (r"\operatorname{Cov}[X, Y]", r"\text{Cov}[X, Y]"),
+        (r"\mathrm{sin}(x)", r"\sin(x)"),
+    ])
+    def test_rewrites_operator_position(self, latex, expected):
+        assert self.norm(latex) == expected
+
+    @pytest.mark.parametrize("latex", [
+        r"v_{\mathrm{exit}}",        # subscript, not applied
+        r"\mathrm{d}\left(\rho\right)",  # single letter: the differential
+        r"\mathrm{LEO} + 1",         # plain symbol, not applied
+        r"\mathrm{softmax}\leftarrow x",  # \leftarrow is not \left
+    ])
+    def test_leaves_non_operator_uses_alone(self, latex):
+        assert self.norm(latex) == latex
+
+    @pytest.mark.parametrize("latex, name", [
+        (r"\mathrm{softmax}(z)", "softmax"),
+        (r"\operatorname{Attn}(X)", "Attn"),
+        (r"\mathrm{Var}(q)", "Var"),
+        (r"\operatorname{atanh}(\beta)", "atanh"),
+        (r"\operatorname{softmax}\bigl(\frac{QK^T}{\sqrt{d}}\bigr) V", "softmax"),
+    ])
+    def test_end_to_end_single_operator_node(self, latex, name):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        ops = [n for n in g.nodes if n.type == "function"]
+        assert [n.latex for n in ops] == [rf"\text{{{name}}}"], [n.id for n in g.nodes]
+        ids = {n.id for n in g.nodes}
+        # No stray single letters of the name, no leaked sizing command.
+        assert not ids & set(name), ids
+        assert not any("big" in i for i in ids), ids
+
+    def test_equation_chain_sides_are_normalized_too(self):
+        # 3+-side chains preprocess each side separately (equation_chain.py).
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"v = \tanh\eta \quad\Longleftrightarrow\quad \eta = \operatorname{atanh}(v)")
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        assert "atanh_1" in ids and not ids & {"a", "t", "n", "h"}, ids

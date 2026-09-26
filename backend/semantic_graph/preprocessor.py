@@ -20,6 +20,19 @@ _SPACING_COMMANDS = ("\\qquad", "\\quad", "\\,", "\\;", "\\!", "\\:")
 # ``\command`` — the shape SymPy's differential rule glues into one symbol.
 _BARE_D_BEFORE_COMMAND_RE = re.compile(r"(?<![A-Za-z\\])d(\s*)\\([a-zA-Z]+)")
 
+# Manual delimiter sizing: ``\bigl``/``\Bigr``/… and the unpaired ``\big``/``\bigm``.
+# The trailing ``(?![A-Za-z])`` keeps ``\bigcup``/``\bigoplus`` etc. out.
+_SIZED_OPEN_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)l(?![A-Za-z])\s*")
+_SIZED_CLOSE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)r(?![A-Za-z])\s*")
+_SIZED_BARE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)m?(?![A-Za-z])\s*")
+
+# A multi-letter upright name applied to an argument: ``\mathrm{softmax}(``,
+# ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``.
+_OPERATOR_NAME_RE = re.compile(
+    r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
+    r"(?=\s*(?:\(|\[|\\left(?![A-Za-z])))"
+)
+
 # Math-mode delimiter pairs, longest opener first so ``$$`` beats ``$``.
 _MATH_DELIMITERS = (("$$", "$$"), ("\\[", "\\]"), ("\\(", "\\)"), ("$", "$"))
 
@@ -96,6 +109,8 @@ class LaTeXPreprocessor:
 
     def preprocess(self, latex: str) -> PreprocessResult:
         src = latex
+        src = self.normalize_sized_delimiters(src)
+        src = self.normalize_operator_names(src)
         src = self.normalize_func_call_braces(src)
         src = self.normalize_applied_symbol_braces(src)
         src, annotations = self.extract_parenthetical_annotations(src)
@@ -152,6 +167,48 @@ class LaTeXPreprocessor:
             return "{d}" + m.group(1) + "\\" + m.group(2)
 
         return _BARE_D_BEFORE_COMMAND_RE.sub(_repl, latex)
+
+    @staticmethod
+    def normalize_sized_delimiters(latex: str) -> str:
+        r"""Rewrite ``\bigl(``/``\Bigr)``/… → ``\left(``/``\right)``; drop bare ``\big``.
+
+        SymPy's ``parse_latex`` knows ``\left``/``\right`` but not the manual
+        sizing commands, so ``\bigl(x+y\bigr)`` leaks literal ``bigl``/``bigr``
+        symbols into the graph (issue #628).  The size is purely typographic, so
+        the ``l``/``r`` forms become ``\left``/``\right`` and the unpaired
+        ``\big``/``\Big``/``\bigg``/``\Bigg`` (and ``…m``) forms are dropped.
+        """
+        if not isinstance(latex, str) or "\\big" not in latex.lower():
+            return latex
+        latex = _SIZED_OPEN_RE.sub(r"\\left", latex)
+        latex = _SIZED_CLOSE_RE.sub(r"\\right", latex)
+        return _SIZED_BARE_RE.sub("", latex)
+
+    @staticmethod
+    def normalize_operator_names(latex: str) -> str:
+        r"""Rewrite an applied ``\mathrm{NAME}``/``\operatorname{NAME}`` so NAME stays whole.
+
+        The font-command pass peels ``\mathrm{softmax}`` to the bare letters, which
+        SymPy then reads as the implicit product ``s·o·f·t·m·a·x`` (issue #628).
+        When a multi-letter NAME is in *operator position* — followed by ``(``,
+        ``[`` or ``\left`` — it is rewritten to ``\text{NAME}``, which the
+        translator already collapses into one opaque function (``\text{Res}(f)``).
+        A NAME SymPy knows as a function (``\mathrm{sin}``) becomes ``\sin``
+        instead, so it keeps its real semantics.  Names in subscripts or used as
+        plain symbols are left alone.
+        """
+        if not isinstance(latex, str) or (
+            "\\mathrm" not in latex and "\\operatorname" not in latex
+        ):
+            return latex
+
+        def _repl(m: re.Match) -> str:
+            name = m.group("name")
+            if name in _LATEX_FUNCS:
+                return f"\\{name}"
+            return f"\\text{{{name}}}"
+
+        return _OPERATOR_NAME_RE.sub(_repl, latex)
 
     @staticmethod
     def normalize_func_call_braces(latex: str) -> str:
