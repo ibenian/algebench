@@ -3315,27 +3315,27 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "v", "type": "scalar", "emoji": "🚀", "latex": "v", "subexpr": "v", "description": "Relativistic velocity, often normalized to the speed of light $c$.", "quantity": "velocity", "dimension": "1", "unit": ""},
-                    {"id": "s1___tanh_1", "type": "function", "latex": "\\tanh", "op": "tanh", "subexpr": "\\tanh\\eta", "description": "The hyperbolic tangent function, relating rapidity $\\eta$ to velocity $v$."},
-                    {"id": "eta", "type": "scalar", "emoji": "💨", "latex": "\\eta", "subexpr": "\\eta", "description": "Rapidity, an alternative measure of velocity in special relativity that adds linearly.", "quantity": "rapidity", "dimension": "1", "unit": ""},
-                    {"id": "s1___iff_2", "type": "operator", "label": "if and only if", "emoji": "⇔", "op": "iff", "subexpr": "\\tanh\\eta \\quad\\Longleftrightarrow\\quad \\eta", "description": "The logical equivalence showing that the relationship between velocity and rapidity is invertible."},
-                    {"id": "atanh_1", "type": "function", "latex": "\\text{atanh}", "op": "alpha", "subexpr": "\\text{atanh}(v)", "description": "The inverse hyperbolic tangent function, calculating rapidity $\\eta$ from velocity $v$."},
-                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "v = \\tanh\\eta \\quad\\Longleftrightarrow\\quad \\eta = \\operatorname{atanh}(v)", "description": "An equation defining relativistic velocity $v$ in terms of rapidity $\\eta$ and vice-versa."}
+                    {"id": "v", "type": "scalar", "emoji": "🚀", "latex": "v", "subexpr": "v", "description": "Velocity $v$ as a fraction of the speed of light, $c$.", "quantity": "velocity", "dimension": "1", "unit": ""},
+                    {"id": "s1___tanh_1", "type": "function", "latex": "\\tanh", "op": "tanh", "subexpr": "\\tanh\\eta", "description": "The hyperbolic tangent of rapidity, which gives the corresponding velocity as a fraction of the speed of light.", "quantity": "velocity", "dimension": "1", "unit": ""},
+                    {"id": "eta", "type": "scalar", "emoji": "💨", "latex": "\\eta", "subexpr": "\\eta", "description": "Rapidity, $\\\\eta$, an alternative to velocity that makes relativistic velocity addition simple.", "quantity": "rapidity", "dimension": "1", "unit": ""},
+                    {"id": "s1___iff_2", "type": "operator", "label": "if and only if", "emoji": "⟺", "op": "iff", "subexpr": "\\tanh\\eta \\quad\\Longleftrightarrow\\quad \\eta", "description": "Logical equivalence, showing the two-way relationship between the expressions for velocity and rapidity."},
+                    {"id": "s2_atanh_1", "type": "function", "latex": "\\text{atanh}", "op": "atanh", "subexpr": "\\text{atanh}(v)", "description": "The inverse hyperbolic tangent of a velocity, which computes the corresponding rapidity.", "quantity": "rapidity", "dimension": "1", "unit": ""},
+                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "v = \\tanh\\eta \\quad\\Longleftrightarrow\\quad \\eta = \\operatorname{atanh}(v)", "description": "The full equivalence defining rapidity $\\\\eta$ in terms of velocity $v$ and vice-versa."}
                   ],
                   "edges": [
                     {"from": "eta", "to": "s1___tanh_1"},
                     {"from": "s1___tanh_1", "to": "s1___iff_2"},
                     {"from": "eta", "to": "s1___iff_2"},
-                    {"from": "v", "to": "atanh_1"},
+                    {"from": "v", "to": "s2_atanh_1"},
                     {"from": "v", "to": "__equals_1"},
                     {"from": "s1___iff_2", "to": "__equals_1"},
-                    {"from": "atanh_1", "to": "__equals_1"}
+                    {"from": "s2_atanh_1", "to": "__equals_1"}
                   ],
                   "classification": {"kind": "algebraic"},
                   "domain": "special_relativity",
                   "enrichment": {
-                    "reasoning": "The lesson is on special relativity, so the domain is `special_relativity`. The symbol `v` is relativistic velocity and `η` is rapidity, both dimensionless quantities.",
-                    "fields": ["domain", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.s1___tanh_1.description", "nodes.eta.description", "nodes.eta.dimension", "nodes.eta.emoji", "nodes.eta.quantity", "nodes.eta.unit", "nodes.s1___iff_2.description", "nodes.s1___iff_2.emoji", "nodes.atanh_1.description", "nodes.__equals_1.description"]
+                    "reasoning": "The lesson context is Special Relativity, so `v` is velocity (as a fraction of c) and `η` is rapidity. Both are dimensionless.",
+                    "fields": ["domain", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.s1___tanh_1.description", "nodes.s1___tanh_1.dimension", "nodes.s1___tanh_1.quantity", "nodes.s1___tanh_1.unit", "nodes.eta.description", "nodes.eta.dimension", "nodes.eta.emoji", "nodes.eta.quantity", "nodes.eta.unit", "nodes.s1___iff_2.description", "nodes.s2_atanh_1.description", "nodes.s2_atanh_1.dimension", "nodes.s2_atanh_1.quantity", "nodes.s2_atanh_1.unit", "nodes.__equals_1.description"]
                   }
                 }
               }
@@ -4565,7 +4565,7 @@
             "id": "hw_hyperbola",
             "type": "remark",
             "label": "It's a hyperbola",
-            "math": "x^2 - t^2 = \\tfrac{1}{a^2}\\big(\\htmlClass{hl-id}{\\cosh^2 - \\sinh^2}\\big) = \\tfrac{1}{a^2}",
+            "math": "x^2 - t^2 = \\tfrac{1}{a^2}\\big(\\htmlClass{hl-id}{\\cosh^2(a\\tau) - \\sinh^2(a\\tau)}\\big) = \\tfrac{1}{a^2}",
             "justification": "Using $\\cosh^2\\eta - \\sinh^2\\eta = 1$ from the previous scene; asymptote $x = t$.",
             "explanation": "The same hyperbolic identity that pinned the interval at 1 now pins the worldline to $x^2 - t^2 = 1/a^2$. Its asymptote is the light line $x = t$ — the horizon of the next scene.",
             "highlights": {
@@ -4576,18 +4576,28 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "s0___add_1", "type": "operator", "op": "add", "subexpr": "x^2 - t^2", "description": "The squared spacetime interval $x^2 - t^2$, which is an invariant in special relativity.", "quantity": "spacetime_interval_squared", "dimension": "L²", "unit": "m²"},
-                  {"id": "s0___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "x^{2}", "description": "The square of the spatial coordinate, $x^2$.", "dimension": "L²", "unit": "m²"},
-                  {"id": "x", "type": "scalar", "emoji": "📏", "latex": "x", "subexpr": "x", "description": "Spatial coordinate $x$, representing position along one dimension.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "s0___negation_3", "type": "operator", "op": "negation", "subexpr": "-t^{2}", "description": "The negated square of the time coordinate, $-t^2$.", "dimension": "L²", "unit": "m²"},
-                  {"id": "s0___power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "The square of the time coordinate, $t^2$.", "dimension": "L²", "unit": "m²"},
-                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time coordinate $t$, expressed in units of distance (equivalent to $ct$).", "quantity": "time", "dimension": "L", "unit": "m"},
-                  {"id": "s1___power_1", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\tfrac{1}{a^2}(\\cosh^2 - \\sinh^2)", "description": "The worldline equation written in terms of hyperbolic functions, which simplifies using $\\cosh^2\\eta - \\sinh^2\\eta = 1$.", "dimension": "L²", "unit": "m²"},
-                  {"id": "s1___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "a^{2}", "description": "The square of the proper acceleration, $a^2$.", "dimension": "L⁻²", "unit": "m⁻²"},
-                  {"id": "a", "type": "scalar", "emoji": "🚀", "latex": "a", "subexpr": "a", "description": "Proper acceleration $a$, the acceleration experienced in the object's instantaneous rest frame.", "quantity": "proper_acceleration", "dimension": "L⁻¹", "unit": "m⁻¹"},
-                  {"id": "s2___power_1", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\tfrac{1}{a^2}", "description": "The inverse of the squared proper acceleration, $1/a^2$, defining the constant spacetime interval.", "quantity": "squared_distance", "dimension": "L²", "unit": "m²"},
-                  {"id": "s2___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "a^{2}", "description": "The square of the proper acceleration, $a^2$.", "dimension": "L⁻²", "unit": "m⁻²"},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "x^2 - t^2 = \\tfrac{1}{a^2}\\big(\\cosh^2 - \\sinh^2\\big) = \\tfrac{1}{a^2}", "description": "An equation for the hyperbolic worldline of an object undergoing constant proper acceleration."}
+                  {"id": "s0___add_1", "type": "operator", "op": "add", "subexpr": "x^2 - t^2", "description": "The spacetime interval, which is invariant under Lorentz transformations for the accelerating worldline.", "quantity": "interval_squared", "dimension": "L²", "unit": "m²"},
+                  {"id": "s0___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "x^{2}", "description": "The square of the spatial coordinate $x$.", "quantity": "position_squared", "dimension": "L²", "unit": "m²"},
+                  {"id": "x", "type": "scalar", "emoji": "📍", "latex": "x", "subexpr": "x", "description": "Spatial coordinate, representing position in one dimension.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "s0___negation_3", "type": "operator", "op": "negation", "subexpr": "-t^{2}", "description": "The negation of the squared time coordinate."},
+                  {"id": "s0___power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "The square of the time coordinate $t$.", "quantity": "time_squared", "dimension": "L²", "unit": "m²"},
+                  {"id": "t", "type": "scalar", "emoji": "⏰", "latex": "t", "subexpr": "t", "description": "Time coordinate in natural units where the speed of light $c=1$, giving it units of distance.", "quantity": "time", "dimension": "L", "unit": "m"},
+                  {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\tfrac{1}{a^2}(\\cosh^2(a\\tau) - \\sinh^2(a\\tau))", "description": "The squared spacetime interval, expressed using the hyperbolic identity which simplifies to $1/a^2$.", "quantity": "squared_distance", "dimension": "L²", "unit": "m²"},
+                  {"id": "s1___power_2", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{a^{2}}", "description": "The reciprocal of the squared proper acceleration, defining the hyperbola's vertex.", "quantity": "squared_distance", "dimension": "L²", "unit": "m²"},
+                  {"id": "s1___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "a^{2}", "description": "The square of the proper acceleration.", "quantity": "proper_acceleration_squared", "dimension": "L⁻²", "unit": "m⁻²"},
+                  {"id": "a", "type": "scalar", "emoji": "🚀", "latex": "a", "subexpr": "a", "description": "Proper acceleration, the acceleration felt by an object in its own reference frame.", "quantity": "proper_acceleration", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                  {"id": "s1___add_4", "type": "operator", "op": "add", "subexpr": "-\\sinh^{2}{\\left(a \\tau \\right)} + \\cosh^{2}{\\left(a \\tau \\right)}", "description": "The fundamental hyperbolic identity, $\\cosh^2\\eta - \\sinh^2\\eta = 1$.", "quantity": "dimensionless", "dimension": "1", "unit": "", "value": 1},
+                  {"id": "s1___power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cosh^{2}{\\left(a \\tau \\right)}", "description": "The square of the hyperbolic cosine of the rapidity.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                  {"id": "s1___cosh_6", "type": "function", "latex": "\\cosh", "op": "cosh", "subexpr": "\\cosh{\\left(a \\tau \\right)}", "description": "Hyperbolic cosine of the rapidity $a\\tau$.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                  {"id": "s1___multiply_7", "type": "operator", "op": "multiply", "subexpr": "a \\tau", "description": "Product of proper acceleration and proper time, which is the rapidity $\\eta$.", "quantity": "rapidity", "dimension": "1", "unit": ""},
+                  {"id": "tau", "type": "scalar", "emoji": "⏱️", "latex": "\\tau", "subexpr": "\\tau", "description": "Proper time, the time measured by a clock moving along the worldline.", "quantity": "proper_time", "dimension": "L", "unit": "m"},
+                  {"id": "s1___negation_8", "type": "operator", "op": "negation", "subexpr": "-\\sinh^{2}{\\left(a \\tau \\right)}", "description": "The negation of the squared hyperbolic sine of the rapidity."},
+                  {"id": "s1___power_9", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sinh^{2}{\\left(a \\tau \\right)}", "description": "The square of the hyperbolic sine of the rapidity.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                  {"id": "s1___sinh_10", "type": "function", "latex": "\\sinh", "op": "sinh", "subexpr": "\\sinh{\\left(a \\tau \\right)}", "description": "Hyperbolic sine of the rapidity $a\\tau$.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                  {"id": "s1___multiply_11", "type": "operator", "op": "multiply", "subexpr": "a \\tau", "description": "Product of proper acceleration and proper time, which is the rapidity $\\eta$.", "quantity": "rapidity", "dimension": "1", "unit": ""},
+                  {"id": "s2___power_1", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\tfrac{1}{a^2}", "description": "The reciprocal of the squared proper acceleration, the constant spacetime interval for this worldline.", "quantity": "squared_distance", "dimension": "L²", "unit": "m²"},
+                  {"id": "s2___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "a^{2}", "description": "The square of the proper acceleration.", "quantity": "proper_acceleration_squared", "dimension": "L⁻²", "unit": "m⁻²"},
+                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "x^2 - t^2 = \\tfrac{1}{a^2}\\big(\\cosh^2(a\\tau) - \\sinh^2(a\\tau)\\big) = \\tfrac{1}{a^2}", "description": "Equation showing that the spacetime interval $x^2 - t^2$ is constant and equals $1/a^2$."}
                 ],
                 "edges": [
                   {"from": "x", "to": "s0___power_2"},
@@ -4595,19 +4605,32 @@
                   {"from": "t", "to": "s0___power_4"},
                   {"from": "s0___power_4", "to": "s0___negation_3"},
                   {"from": "s0___negation_3", "to": "s0___add_1"},
-                  {"from": "a", "to": "s1___power_2"},
-                  {"from": "s1___power_2", "to": "s1___power_1"},
+                  {"from": "a", "to": "s1___power_3"},
+                  {"from": "s1___power_3", "to": "s1___power_2"},
+                  {"from": "s1___power_2", "to": "s1___multiply_1"},
+                  {"from": "a", "to": "s1___multiply_7"},
+                  {"from": "tau", "to": "s1___multiply_7"},
+                  {"from": "s1___multiply_7", "to": "s1___cosh_6"},
+                  {"from": "s1___cosh_6", "to": "s1___power_5"},
+                  {"from": "s1___power_5", "to": "s1___add_4"},
+                  {"from": "a", "to": "s1___multiply_11"},
+                  {"from": "tau", "to": "s1___multiply_11"},
+                  {"from": "s1___multiply_11", "to": "s1___sinh_10"},
+                  {"from": "s1___sinh_10", "to": "s1___power_9"},
+                  {"from": "s1___power_9", "to": "s1___negation_8"},
+                  {"from": "s1___negation_8", "to": "s1___add_4"},
+                  {"from": "s1___add_4", "to": "s1___multiply_1"},
                   {"from": "a", "to": "s2___power_2"},
                   {"from": "s2___power_2", "to": "s2___power_1"},
                   {"from": "s0___add_1", "to": "__equals_1"},
-                  {"from": "s1___power_1", "to": "__equals_1"},
+                  {"from": "s1___multiply_1", "to": "__equals_1"},
                   {"from": "s2___power_1", "to": "__equals_1"}
                 ],
                 "classification": {"kind": "algebraic"},
                 "domain": "special_relativity",
                 "enrichment": {
-                  "reasoning": "The context is special relativity, defining a hyperbolic worldline. In this system (with c=1), position `x` and time `t` have dimensions of length, and proper acceleration `a` has dimension of inverse length.",
-                  "fields": ["domain", "nodes.s0___add_1.description", "nodes.s0___add_1.dimension", "nodes.s0___add_1.quantity", "nodes.s0___add_1.unit", "nodes.s0___power_2.description", "nodes.s0___power_2.dimension", "nodes.s0___power_2.unit", "nodes.x.description", "nodes.x.dimension", "nodes.x.emoji", "nodes.x.quantity", "nodes.x.unit", "nodes.s0___negation_3.description", "nodes.s0___negation_3.dimension", "nodes.s0___negation_3.unit", "nodes.s0___power_4.description", "nodes.s0___power_4.dimension", "nodes.s0___power_4.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.s1___power_1.description", "nodes.s1___power_1.dimension", "nodes.s1___power_1.unit", "nodes.s1___power_2.description", "nodes.s1___power_2.dimension", "nodes.s1___power_2.unit", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.s2___power_1.description", "nodes.s2___power_1.dimension", "nodes.s2___power_1.quantity", "nodes.s2___power_1.unit", "nodes.s2___power_2.description", "nodes.s2___power_2.dimension", "nodes.s2___power_2.unit", "nodes.__equals_1.description"]
+                  "reasoning": "The context is special relativity, defining a worldline with constant proper acceleration. Using natural units where c=1, time and proper time are measured in meters.",
+                  "fields": ["domain", "nodes.s0___add_1.description", "nodes.s0___add_1.dimension", "nodes.s0___add_1.quantity", "nodes.s0___add_1.unit", "nodes.s0___power_2.description", "nodes.s0___power_2.dimension", "nodes.s0___power_2.quantity", "nodes.s0___power_2.unit", "nodes.x.description", "nodes.x.dimension", "nodes.x.emoji", "nodes.x.quantity", "nodes.x.unit", "nodes.s0___negation_3.description", "nodes.s0___power_4.description", "nodes.s0___power_4.dimension", "nodes.s0___power_4.quantity", "nodes.s0___power_4.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.s1___multiply_1.description", "nodes.s1___multiply_1.dimension", "nodes.s1___multiply_1.quantity", "nodes.s1___multiply_1.unit", "nodes.s1___power_2.description", "nodes.s1___power_2.dimension", "nodes.s1___power_2.quantity", "nodes.s1___power_2.unit", "nodes.s1___power_3.description", "nodes.s1___power_3.dimension", "nodes.s1___power_3.quantity", "nodes.s1___power_3.unit", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.s1___add_4.description", "nodes.s1___add_4.dimension", "nodes.s1___add_4.quantity", "nodes.s1___add_4.unit", "nodes.s1___add_4.value", "nodes.s1___power_5.description", "nodes.s1___power_5.dimension", "nodes.s1___power_5.quantity", "nodes.s1___power_5.unit", "nodes.s1___cosh_6.description", "nodes.s1___cosh_6.dimension", "nodes.s1___cosh_6.quantity", "nodes.s1___cosh_6.unit", "nodes.s1___multiply_7.description", "nodes.s1___multiply_7.dimension", "nodes.s1___multiply_7.quantity", "nodes.s1___multiply_7.unit", "nodes.tau.description", "nodes.tau.dimension", "nodes.tau.emoji", "nodes.tau.quantity", "nodes.tau.unit", "nodes.s1___negation_8.description", "nodes.s1___power_9.description", "nodes.s1___power_9.dimension", "nodes.s1___power_9.quantity", "nodes.s1___power_9.unit", "nodes.s1___sinh_10.description", "nodes.s1___sinh_10.dimension", "nodes.s1___sinh_10.quantity", "nodes.s1___sinh_10.unit", "nodes.s1___multiply_11.description", "nodes.s1___multiply_11.dimension", "nodes.s1___multiply_11.quantity", "nodes.s1___multiply_11.unit", "nodes.s2___power_1.description", "nodes.s2___power_1.dimension", "nodes.s2___power_1.quantity", "nodes.s2___power_1.unit", "nodes.s2___power_2.description", "nodes.s2___power_2.dimension", "nodes.s2___power_2.quantity", "nodes.s2___power_2.unit", "nodes.__equals_1.description"]
                 }
               }
             }
@@ -6905,7 +6928,77 @@
                   }
                 },
                 {"type": "step", "label": "Every now-line passes through the origin", "math": "(x, t) = (0, 0) \\;\\text{satisfies}\\; t = \\tanh(a\\tau)\\,x \\;\\;\\forall \\tau", "justification": "So the ship's 'now' always contains the pivot of the horizon $x = t$"},
-                {"type": "step", "label": "Proper distance from ship to origin", "math": "\\sqrt{x(\\tau)^2 - t(\\tau)^2} = \\sqrt{\\tfrac{1}{a^2}\\bigl(\\cosh^2 - \\sinh^2\\bigr)} = \\frac{1}{a}", "justification": "The invariant interval along the simultaneity line; $\\cosh^2 - \\sinh^2 = 1$"},
+                {
+                  "type": "step",
+                  "label": "Proper distance from ship to origin",
+                  "math": "\\sqrt{x(\\tau)^2 - t(\\tau)^2} = \\sqrt{\\tfrac{1}{a^2}\\bigl(\\cosh^2(a\\tau) - \\sinh^2(a\\tau)\\bigr)} = \\frac{1}{a}",
+                  "justification": "The invariant interval along the simultaneity line; $\\cosh^2 - \\sinh^2 = 1$",
+                  "semanticGraph": {
+                    "graph": {
+                      "nodes": [
+                        {"id": "s0___power_1", "type": "operator", "emoji": "📏", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{x(\\tau)^2 - t(\\tau)^2}", "description": "The definition of proper distance (spacetime interval) from the origin to the ship's position $(t, x)$.", "quantity": "proper_distance", "dimension": "L", "unit": "m"},
+                        {"id": "s0___add_2", "type": "operator", "op": "add", "subexpr": "-t^{2}{\\left(\\tau \\right)} + x^{2}{\\left(\\tau \\right)}", "description": "The squared spacetime interval, the fundamental invariant in Minkowski spacetime.", "quantity": "squared_proper_distance", "dimension": "L²", "unit": "m²"},
+                        {"id": "s0___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "x^{2}{\\left(\\tau \\right)}", "description": "The square of the ship's x-coordinate.", "quantity": "squared_position", "dimension": "L²", "unit": "m²"},
+                        {"id": "s0___x_4", "type": "function", "emoji": "📍", "op": "x", "subexpr": "x{\\left(\\tau \\right)}", "description": "The ship's position coordinate $x$ as a function of its proper time $\\\\tau$.", "quantity": "position", "dimension": "L", "unit": "m"},
+                        {"id": "tau", "type": "scalar", "emoji": "⏳", "latex": "\\tau", "subexpr": "\\tau", "description": "Proper time $\\\\tau$ as measured by the accelerating ship's clock.", "quantity": "proper_time", "dimension": "L", "unit": "m"},
+                        {"id": "s0___negation_5", "type": "operator", "op": "negation", "subexpr": "-t^{2}{\\left(\\tau \\right)}", "description": "The negation of the square of the time coordinate.", "quantity": "squared_time", "dimension": "L²", "unit": "m²"},
+                        {"id": "s0___power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}{\\left(\\tau \\right)}", "description": "The square of the time coordinate.", "quantity": "squared_time", "dimension": "L²", "unit": "m²"},
+                        {"id": "s0___t_7", "type": "function", "emoji": "🕰️", "op": "t", "subexpr": "t{\\left(\\tau \\right)}", "description": "The time coordinate $t$ as a function of the ship's proper time $\\\\tau$.", "quantity": "time", "dimension": "L", "unit": "m"},
+                        {"id": "s1___power_1", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{\\tfrac{1}{a^2}\\left(\\cosh^2(a\\tau) - \\sinh^2(a\\tau)\\right)}", "description": "The proper distance, calculated as the square root of the expression involving acceleration and hyperbolic functions.", "quantity": "proper_distance", "dimension": "L", "unit": "m"},
+                        {"id": "s1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{a^{2}} \\left(-\\sinh^{2}{\\left(a \\tau \\right)} + \\cosh^{2}{\\left(a \\tau \\right)}\\right)", "description": "The squared spacetime interval, given by the product of $1/a^2$ and the hyperbolic identity.", "quantity": "squared_proper_distance", "dimension": "L²", "unit": "m²"},
+                        {"id": "s1___power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{a^{2}}", "description": "The inverse of the squared proper acceleration.", "quantity": "inverse_squared_proper_acceleration", "dimension": "L²", "unit": "m²"},
+                        {"id": "s1___power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "a^{2}", "description": "The square of the ship's proper acceleration.", "quantity": "squared_proper_acceleration", "dimension": "L⁻²", "unit": "m⁻²"},
+                        {"id": "a", "type": "scalar", "emoji": "🚀", "latex": "a", "subexpr": "a", "description": "The ship's constant proper acceleration $a$.", "quantity": "proper_acceleration", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                        {"id": "s1___add_5", "type": "operator", "op": "add", "subexpr": "-\\sinh^{2}{\\left(a \\tau \\right)} + \\cosh^{2}{\\left(a \\tau \\right)}", "description": "The hyperbolic trigonometric identity, which always evaluates to 1.", "quantity": "dimensionless", "dimension": "1", "unit": "", "value": 1},
+                        {"id": "s1___power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cosh^{2}{\\left(a \\tau \\right)}", "description": "The square of the hyperbolic cosine of rapidity.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                        {"id": "s1___cosh_7", "type": "function", "latex": "\\cosh", "op": "cosh", "subexpr": "\\cosh{\\left(a \\tau \\right)}", "description": "The hyperbolic cosine of the rapidity $a\\\\tau$.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                        {"id": "s1___multiply_8", "type": "operator", "op": "multiply", "subexpr": "a \\tau", "description": "The dimensionless product of proper acceleration $a$ and proper time $\\\\tau$, representing rapidity.", "quantity": "rapidity", "dimension": "1", "unit": ""},
+                        {"id": "s1___negation_9", "type": "operator", "op": "negation", "subexpr": "-\\sinh^{2}{\\left(a \\tau \\right)}", "description": "The negation of the squared hyperbolic sine of rapidity.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                        {"id": "s1___power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sinh^{2}{\\left(a \\tau \\right)}", "description": "The square of the hyperbolic sine of rapidity.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                        {"id": "s1___sinh_11", "type": "function", "latex": "\\sinh", "op": "sinh", "subexpr": "\\sinh{\\left(a \\tau \\right)}", "description": "The hyperbolic sine of the rapidity $a\\\\tau$.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                        {"id": "s1___multiply_12", "type": "operator", "op": "multiply", "subexpr": "a \\tau", "description": "The dimensionless product of proper acceleration $a$ and proper time $\\\\tau$, representing rapidity.", "quantity": "rapidity", "dimension": "1", "unit": ""},
+                        {"id": "s2___power_1", "type": "operator", "emoji": "📏", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{a}", "description": "The final simplified expression for the proper distance from the ship to the origin, which is constant.", "quantity": "proper_distance", "dimension": "L", "unit": "m"},
+                        {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "\\sqrt{x(\\tau)^2 - t(\\tau)^2} = \\sqrt{\\tfrac{1}{a^2}\\bigl(\\cosh^2(a\\tau) - \\sinh^2(a\\tau)\\bigr)} = \\frac{1}{a}", "description": "An equation showing that the spacetime interval, when expressed in terms of hyperbolic functions of proper time, simplifies to the constant value $1/a$."}
+                      ],
+                      "edges": [
+                        {"from": "tau", "to": "s0___x_4"},
+                        {"from": "s0___x_4", "to": "s0___power_3"},
+                        {"from": "s0___power_3", "to": "s0___add_2"},
+                        {"from": "tau", "to": "s0___t_7"},
+                        {"from": "s0___t_7", "to": "s0___power_6"},
+                        {"from": "s0___power_6", "to": "s0___negation_5"},
+                        {"from": "s0___negation_5", "to": "s0___add_2"},
+                        {"from": "s0___add_2", "to": "s0___power_1"},
+                        {"from": "a", "to": "s1___power_4"},
+                        {"from": "s1___power_4", "to": "s1___power_3"},
+                        {"from": "s1___power_3", "to": "s1___multiply_2"},
+                        {"from": "a", "to": "s1___multiply_8"},
+                        {"from": "tau", "to": "s1___multiply_8"},
+                        {"from": "s1___multiply_8", "to": "s1___cosh_7"},
+                        {"from": "s1___cosh_7", "to": "s1___power_6"},
+                        {"from": "s1___power_6", "to": "s1___add_5"},
+                        {"from": "a", "to": "s1___multiply_12"},
+                        {"from": "tau", "to": "s1___multiply_12"},
+                        {"from": "s1___multiply_12", "to": "s1___sinh_11"},
+                        {"from": "s1___sinh_11", "to": "s1___power_10"},
+                        {"from": "s1___power_10", "to": "s1___negation_9"},
+                        {"from": "s1___negation_9", "to": "s1___add_5"},
+                        {"from": "s1___add_5", "to": "s1___multiply_2"},
+                        {"from": "s1___multiply_2", "to": "s1___power_1"},
+                        {"from": "a", "to": "s2___power_1"},
+                        {"from": "s0___power_1", "to": "__equals_1"},
+                        {"from": "s1___power_1", "to": "__equals_1"},
+                        {"from": "s2___power_1", "to": "__equals_1"}
+                      ],
+                      "classification": {"kind": "algebraic"},
+                      "domain": "special_relativity",
+                      "enrichment": {
+                        "reasoning": "The context is a lesson on Special Relativity involving Rindler coordinates, setting the domain to `special_relativity`. Units are set assuming geometric units ($c=1$).",
+                        "fields": ["domain", "nodes.s0___power_1.description", "nodes.s0___power_1.dimension", "nodes.s0___power_1.emoji", "nodes.s0___power_1.quantity", "nodes.s0___power_1.unit", "nodes.s0___add_2.description", "nodes.s0___add_2.dimension", "nodes.s0___add_2.quantity", "nodes.s0___add_2.unit", "nodes.s0___power_3.description", "nodes.s0___power_3.dimension", "nodes.s0___power_3.quantity", "nodes.s0___power_3.unit", "nodes.s0___x_4.description", "nodes.s0___x_4.dimension", "nodes.s0___x_4.emoji", "nodes.s0___x_4.quantity", "nodes.s0___x_4.unit", "nodes.tau.description", "nodes.tau.dimension", "nodes.tau.emoji", "nodes.tau.quantity", "nodes.tau.unit", "nodes.s0___negation_5.description", "nodes.s0___negation_5.dimension", "nodes.s0___negation_5.quantity", "nodes.s0___negation_5.unit", "nodes.s0___power_6.description", "nodes.s0___power_6.dimension", "nodes.s0___power_6.quantity", "nodes.s0___power_6.unit", "nodes.s0___t_7.description", "nodes.s0___t_7.dimension", "nodes.s0___t_7.emoji", "nodes.s0___t_7.quantity", "nodes.s0___t_7.unit", "nodes.s1___power_1.description", "nodes.s1___power_1.dimension", "nodes.s1___power_1.quantity", "nodes.s1___power_1.unit", "nodes.s1___multiply_2.description", "nodes.s1___multiply_2.dimension", "nodes.s1___multiply_2.quantity", "nodes.s1___multiply_2.unit", "nodes.s1___power_3.description", "nodes.s1___power_3.dimension", "nodes.s1___power_3.quantity", "nodes.s1___power_3.unit", "nodes.s1___power_4.description", "nodes.s1___power_4.dimension", "nodes.s1___power_4.quantity", "nodes.s1___power_4.unit", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.s1___add_5.description", "nodes.s1___add_5.dimension", "nodes.s1___add_5.quantity", "nodes.s1___add_5.unit", "nodes.s1___add_5.value", "nodes.s1___power_6.description", "nodes.s1___power_6.dimension", "nodes.s1___power_6.quantity", "nodes.s1___power_6.unit", "nodes.s1___cosh_7.description", "nodes.s1___cosh_7.dimension", "nodes.s1___cosh_7.quantity", "nodes.s1___cosh_7.unit", "nodes.s1___multiply_8.description", "nodes.s1___multiply_8.dimension", "nodes.s1___multiply_8.quantity", "nodes.s1___multiply_8.unit", "nodes.s1___negation_9.description", "nodes.s1___negation_9.dimension", "nodes.s1___negation_9.quantity", "nodes.s1___negation_9.unit", "nodes.s1___power_10.description", "nodes.s1___power_10.dimension", "nodes.s1___power_10.quantity", "nodes.s1___power_10.unit", "nodes.s1___sinh_11.description", "nodes.s1___sinh_11.dimension", "nodes.s1___sinh_11.quantity", "nodes.s1___sinh_11.unit", "nodes.s1___multiply_12.description", "nodes.s1___multiply_12.dimension", "nodes.s1___multiply_12.quantity", "nodes.s1___multiply_12.unit", "nodes.s2___power_1.description", "nodes.s2___power_1.dimension", "nodes.s2___power_1.emoji", "nodes.s2___power_1.quantity", "nodes.s2___power_1.unit", "nodes.__equals_1.description"]
+                      }
+                    }
+                  }
+                },
                 {
                   "type": "conclusion",
                   "label": "The horizon rides at fixed distance",

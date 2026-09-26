@@ -182,7 +182,18 @@ class GraphPostprocessor:
                     node.subexpr = rewrite(node.subexpr)
                 continue
             if isinstance(node.id, str):
-                node.id = _slug_id(rewrite(node.id))
+                nid = node.id
+                # A placeholder that carried its own subscript parses as the
+                # symbol ``alpha_i`` — no ``\\alpha`` for ``rewrite`` to find.
+                for greek_name, original in items:
+                    if nid == greek_name or nid.startswith(greek_name + "_"):
+                        nid = _display_of(original)[0] + nid[len(greek_name):]
+                        break
+                node.id = _slug_id(rewrite(nid))
+            # A ``\\text{NAME}(…)`` application is a function node whose op is
+            # the placeholder's name (``alpha``); give it the real one back.
+            if isinstance(node.op, str) and node.op in mapping:
+                node.op = _slug_id(_display_of(mapping[node.op])[0])
             for field in ("label", "latex", "subexpr"):
                 val = getattr(node, field, None)
                 if isinstance(val, str):

@@ -498,6 +498,18 @@ class TestNormalizeSizedDelimiters:
     def test_leaves_big_operators_alone(self, latex):
         assert self.norm(latex) == latex
 
+    @pytest.mark.parametrize("latex, expected", [
+        (r"\bigl\lvert x \bigr\rvert", r"| x |"),
+        (r"\left| x \right|", r"| x |"),
+        (r"\Bigl| x \Bigr|", r"| x |"),
+        (r"\left\vert x \right\vert", r"| x |"),
+        # A norm stays a norm; an evaluation bar stays an evaluation bar.
+        (r"\left\| x \right\|", r"\left\| x \right\|"),
+        (r"\left. f \right|_0^1", r"\left. f \right|_0^1"),
+    ])
+    def test_absolute_value_bars_become_bare(self, latex, expected):
+        assert self.norm(latex) == expected
+
 
 class TestNormalizeOperatorNames:
     r"""Applied multi-letter names stay whole instead of splitting (issue #628)."""
@@ -517,11 +529,46 @@ class TestNormalizeOperatorNames:
     @pytest.mark.parametrize("latex", [
         r"v_{\mathrm{exit}}",        # subscript, not applied
         r"\mathrm{d}\left(\rho\right)",  # single letter: the differential
-        r"\mathrm{LEO} + 1",         # plain symbol, not applied
-        r"\mathrm{softmax}\leftarrow x",  # \leftarrow is not \left
     ])
     def test_leaves_non_operator_uses_alone(self, latex):
         assert self.norm(latex) == latex
+
+    @pytest.mark.parametrize("latex, expected", [
+        # A named quantity is one text node, not a product of its letters.
+        (r"\mathrm{LEO} + 1", r"\text{LEO} + 1"),
+        (r"\operatorname{med}_j v_j", r"\text{med}_j v_j"),
+        # Subscripted operator applied to a bar group keeps its subscript.
+        (r"\operatorname{med}_i \lvert x \rvert", r"\text{med}_i\lvert x \rvert"),
+        # \leftarrow is not \left: a plain name, not an application.
+        (r"\mathrm{softmax}\leftarrow x", r"\text{softmax}\leftarrow x"),
+        (r"\mathrm{log}_2(x)", r"\log_2(x)"),
+        # Superscript names are left to the subscript pass.
+        (r"E^{\mathrm{rest}}", r"E^{\mathrm{rest}}"),
+    ])
+    def test_rewrites_plain_and_subscripted_names(self, latex, expected):
+        assert self.norm(latex) == expected
+
+    @pytest.mark.parametrize("latex, name", [
+        (r"\mathrm{softmax}(z)", "softmax"),
+        (r"y = \text{Res}(f)", "Res"),
+    ])
+    def test_function_node_op_is_the_name(self, latex, name):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        assert [n.op for n in g.nodes if n.type == "function"] == [name]
+
+    def test_mad_keeps_its_absolute_deviation_term(self):
+        # Copilot on #672: the \bigl\lvert…\bigr\rvert term was dropped.
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"\htmlClass{hl-mad}{\mathrm{MAD}} = \operatorname{med}_i"
+            r" \bigl\lvert v_i - \operatorname{med}_j v_j \bigr\rvert")
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        assert {"MAD", "med_i", "med_j", "v_i", "v_j"} <= ids, ids
+        assert any(n.op == "abs" for n in g.nodes), ids
+        assert not any(i.startswith(("alpha", "beta")) for i in ids), ids
 
     @pytest.mark.parametrize("latex, name", [
         (r"\mathrm{softmax}(z)", "softmax"),

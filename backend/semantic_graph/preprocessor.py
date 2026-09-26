@@ -25,15 +25,32 @@ _BARE_D_BEFORE_COMMAND_RE = re.compile(r"(?<![A-Za-z\\])d(\s*)\\([a-zA-Z]+)")
 _SIZED_OPEN_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)l(?![A-Za-z])\s*")
 _SIZED_CLOSE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)r(?![A-Za-z])\s*")
 _SIZED_BARE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)m?(?![A-Za-z])\s*")
+# A sized or ``\left``/``\right`` absolute-value bar.  SymPy only reads the bare
+# ``|…|`` form — ``\left\lvert…\right\rvert`` and ``\left|…\right|`` are dropped
+# silently, taking the whole term with them.  ``\|`` (a norm) is not matched.
+_SIZED_BAR_RE = re.compile(
+    r"\\(?:left|right|(?:big|Big|bigg|Bigg)[lrm]?)(?![A-Za-z])\s*"
+    r"(?:\||\\[lr]?vert(?![A-Za-z]))"
+)
 
 # A multi-letter upright name applied to an argument: ``\mathrm{softmax}(``,
-# ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``.  Spacing commands between the
+# ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``, ``\operatorname{med}_i |``
+# (an optional subscript is carried over).  Spacing commands between the
 # name and its bracket (``\mathrm{Var}\!\left(``) are matched so they can be
 # dropped — they would otherwise separate the name from its argument.
 _OPERATOR_NAME_RE = re.compile(
     r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
+    r"(?P<sub>_(?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z0-9]))?"
     r"(?:\s|\\[!,;:])*"
-    r"(?=\(|\[|\\left(?![A-Za-z]))"
+    r"(?=\(|\[|\||\\(?:left|[lr]?vert)(?![A-Za-z]))"
+)
+
+# Any other multi-letter upright name (``\mathrm{MAD}``, ``\operatorname{med}_j v_j``)
+# — a named quantity, never a product of its letters.  Names inside a sub- or
+# superscript (``v_{\mathrm{exit}}``) are left to the multichar-subscript pass.
+_UPRIGHT_NAME_RE = re.compile(
+    r"(?<![_^])(?<![_^]\{)"
+    r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
 )
 
 # Math-mode delimiter pairs, longest opener first so ``$$`` beats ``$``.
@@ -193,9 +210,17 @@ class LaTeXPreprocessor:
         symbols into the graph (issue #628).  The size is purely typographic, so
         the ``l``/``r`` forms become ``\left``/``\right`` and the unpaired
         ``\big``/``\Big``/``\bigg``/``\Bigg`` (and ``…m``) forms are dropped.
+
+        Absolute-value bars are the exception: ``\left|``/``\bigl\lvert``/… become
+        a bare ``|``, the only bar form the parser keeps.
         """
-        if not isinstance(latex, str) or "\\big" not in latex.lower():
+        if not isinstance(latex, str) or (
+            "\\big" not in latex.lower() and "vert" not in latex and "|" not in latex
+        ):
             return latex
+        # ``\left. … \right|_{a}`` is an evaluation bar, not an absolute value.
+        if "\\left." not in latex and "\\right." not in latex:
+            latex = _SIZED_BAR_RE.sub("|", latex)
         latex = _SIZED_OPEN_RE.sub(r"\\left", latex)
         latex = _SIZED_CLOSE_RE.sub(r"\\right", latex)
         return _SIZED_BARE_RE.sub("", latex)
@@ -210,8 +235,10 @@ class LaTeXPreprocessor:
         ``[`` or ``\left`` — it is rewritten to ``\text{NAME}``, which the
         translator already collapses into one opaque function (``\text{Res}(f)``).
         A NAME SymPy knows as a function (``\mathrm{sin}``) becomes ``\sin``
-        instead, so it keeps its real semantics.  Names in subscripts or used as
-        plain symbols are left alone.
+        instead, so it keeps its real semantics.  A multi-letter name used as a
+        plain quantity (``\mathrm{MAD} = …``) becomes ``\text{NAME}`` too — one
+        node, not a product of letters.  Names in sub/superscripts are left to
+        the multichar-subscript pass.
         """
         if not isinstance(latex, str) or (
             "\\mathrm" not in latex and "\\operatorname" not in latex
@@ -219,12 +246,19 @@ class LaTeXPreprocessor:
             return latex
 
         def _repl(m: re.Match) -> str:
-            name = m.group("name")
+            name, sub = m.group("name"), m.group("sub") or ""
+            return _as_name(name) + sub
+
+        def _repl_plain(m: re.Match) -> str:
+            return _as_name(m.group("name"))
+
+        def _as_name(name: str) -> str:
             if name in _LATEX_FUNCS:
                 return f"\\{name}"
             return f"\\text{{{name}}}"
 
-        return _OPERATOR_NAME_RE.sub(_repl, latex)
+        latex = _OPERATOR_NAME_RE.sub(_repl, latex)
+        return _UPRIGHT_NAME_RE.sub(_repl_plain, latex)
 
     @staticmethod
     def normalize_func_call_braces(latex: str) -> str:
