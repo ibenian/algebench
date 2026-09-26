@@ -36,7 +36,7 @@ from backend.semantic_graph.constants import (
 
 class TestPreprocessorConstants:
     def test_greek_pool_length(self):
-        assert len(_GREEK_POOL) == 22
+        assert len(_GREEK_POOL) == 21  # no "delta": \delta x is a variation symbol
         assert all(isinstance(g, str) for g in _GREEK_POOL)
 
     def test_accent_commands_tuple(self):

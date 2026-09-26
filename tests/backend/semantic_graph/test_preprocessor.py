@@ -477,3 +477,255 @@ class TestDifferentialOfAGroupRenders:
             r"\oint \vec{E} \cdot d\vec{A} = \frac{Q}{\epsilon_0}", domain="physics")
         assert g is not None
         assert "dA" in {n.id for n in g.nodes}, [n.id for n in g.nodes]
+
+
+class TestNormalizeSizedDelimiters:
+    norm = staticmethod(LaTeXPreprocessor.normalize_sized_delimiters)
+
+    @pytest.mark.parametrize("latex, expected", [
+        (r"\bigl(x+y\bigr)", r"\left(x+y\right)"),
+        (r"\Bigl[ x \Bigr]", r"\left[ x \right]"),
+        (r"\biggl\{x\biggr\}", r"\left\{x\right\}"),
+        (r"\big( x \big)", r"( x )"),
+        (r"a \bigm| b", r"a | b"),
+    ])
+    def test_rewrites_sizing(self, latex, expected):
+        assert self.norm(latex) == expected
+
+    @pytest.mark.parametrize("latex", [
+        r"\bigcup_i A_i", r"\bigoplus_i V_i", r"\bigcap_i A_i", r"x + y",
+    ])
+    def test_leaves_big_operators_alone(self, latex):
+        assert self.norm(latex) == latex
+
+    @pytest.mark.parametrize("latex, expected", [
+        (r"\bigl\lvert x \bigr\rvert", r"| x |"),
+        (r"\left| x \right|", r"| x |"),
+        (r"\Bigl| x \Bigr|", r"| x |"),
+        (r"\left\vert x \right\vert", r"| x |"),
+        # A norm stays a norm; an evaluation bar stays an evaluation bar.
+        (r"\left\| x \right\|", r"\left\| x \right\|"),
+        (r"\left. f \right|_0^1", r"\left. f \right|_0^1"),
+        # Per pair: an evaluation bar elsewhere doesn't block an absolute value.
+        (r"\left|x\right| + \left.f\right|_0^1", r"|x| + \left.f\right|_0^1"),
+        (r"\left( \left| a \right| \right)", r"\left( | a | \right)"),
+    ])
+    def test_absolute_value_bars_become_bare(self, latex, expected):
+        assert self.norm(latex) == expected
+
+
+class TestNormalizeOperatorNames:
+    r"""Applied multi-letter names stay whole instead of splitting (issue #628)."""
+
+    norm = staticmethod(LaTeXPreprocessor.normalize_operator_names)
+
+    @pytest.mark.parametrize("latex, expected", [
+        (r"\mathrm{softmax}(z)", r"\text{softmax}(z)"),
+        (r"\operatorname{Attn}(X)", r"\text{Attn}(X)"),
+        (r"\mathrm{Var}\left(q\right)", r"\text{Var}\left(q\right)"),
+        (r"\operatorname{Cov}[X, Y]", r"\text{Cov}[X, Y]"),
+        (r"\mathrm{sin}(x)", r"\sin(x)"),
+    ])
+    def test_rewrites_operator_position(self, latex, expected):
+        assert self.norm(latex) == expected
+
+    @pytest.mark.parametrize("latex", [
+        r"v_{\mathrm{exit}}",        # subscript, not applied
+        r"\mathrm{d}\left(\rho\right)",  # single letter: the differential
+    ])
+    def test_leaves_non_operator_uses_alone(self, latex):
+        assert self.norm(latex) == latex
+
+    @pytest.mark.parametrize("latex, expected", [
+        # A named quantity is one text node, not a product of its letters.
+        (r"\mathrm{LEO} + 1", r"\text{LEO} + 1"),
+        (r"\operatorname{med}_j v_j", r"\text{med}_j v_j"),
+        # Subscripted operator applied to a bar group keeps its subscript.
+        (r"\operatorname{med}_i \lvert x \rvert", r"\text{med}_i\lvert x \rvert"),
+        # \leftarrow is not \left: a plain name, not an application.
+        (r"\mathrm{softmax}\leftarrow x", r"\text{softmax}\leftarrow x"),
+        (r"\mathrm{log}_2(x)", r"\log_2(x)"),
+        # Superscript names are left to the subscript pass.
+        (r"E^{\mathrm{rest}}", r"E^{\mathrm{rest}}"),
+    ])
+    def test_rewrites_plain_and_subscripted_names(self, latex, expected):
+        assert self.norm(latex) == expected
+
+    @pytest.mark.parametrize("latex, name", [
+        (r"\mathrm{softmax}(z)", "softmax"),
+        (r"y = \text{Res}(f)", "Res"),
+        # A subscripted application's op was the placeholder LaTeX \alpha_{i}.
+        (r"y = \text{foo}_i(x)", "foo_i"),
+        (r"y = \operatorname{med}_i(x)", "med_i"),
+    ])
+    def test_function_node_op_is_the_name(self, latex, name):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        assert [n.op for n in g.nodes if n.type == "function"] == [name]
+
+    def test_spaced_name_before_bracket_is_a_product(self):
+        # Copilot on #672: \mathrm{FPR}\,(1-\pi) is FPR times (1-\pi).
+        assert self.norm(r"\mathrm{FPR}\,(1-\pi)") == r"\text{FPR} \cdot\,(1-\pi)"
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"P(D) = \mathrm{TPR}\,\pi + \mathrm{FPR}\,(1-\pi)")
+        assert g is not None
+        fns = [n.id for n in g.nodes if n.type == "function"]
+        assert not [f for f in fns if "FPR" in f], fns
+        assert "FPR" in {n.id for n in g.nodes}
+
+    def test_mad_keeps_its_absolute_deviation_term(self):
+        # Copilot on #672: the \bigl\lvert…\bigr\rvert term was dropped.
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"\htmlClass{hl-mad}{\mathrm{MAD}} = \operatorname{med}_i"
+            r" \bigl\lvert v_i - \operatorname{med}_j v_j \bigr\rvert")
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        assert {"MAD", "med_i", "med_j", "v_i", "v_j"} <= ids, ids
+        assert any(n.op == "abs" for n in g.nodes), ids
+        assert not any(i.startswith(("alpha", "beta")) for i in ids), ids
+
+    @pytest.mark.parametrize("latex, name", [
+        (r"\mathrm{softmax}(z)", "softmax"),
+        (r"\operatorname{Attn}(X)", "Attn"),
+        (r"\mathrm{Var}(q)", "Var"),
+        (r"\operatorname{atanh}(\beta)", "atanh"),
+        (r"\operatorname{softmax}\bigl(\frac{QK^T}{\sqrt{d}}\bigr) V", "softmax"),
+    ])
+    def test_end_to_end_single_operator_node(self, latex, name):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        ops = [n for n in g.nodes if n.type == "function"]
+        assert [n.latex for n in ops] == [rf"\text{{{name}}}"], [n.id for n in g.nodes]
+        ids = {n.id for n in g.nodes}
+        # No stray single letters of the name, no leaked sizing command.
+        assert not ids & set(name), ids
+        assert not any("big" in i for i in ids), ids
+
+    def test_equation_chain_sides_are_normalized_too(self):
+        # 3+-side chains preprocess each side separately (equation_chain.py).
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"v = \tanh\eta \quad\Longleftrightarrow\quad \eta = \operatorname{atanh}(v)")
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        assert "s2_atanh_1" in ids and not ids & {"a", "t", "n", "h"}, ids
+
+    def test_spacing_between_name_and_bracket_is_dropped(self):
+        assert self.norm(r"\mathrm{Var}\!\left(q\right)") == r"\text{Var}\left(q\right)"
+        # A positive space is a product, not an application.
+        assert self.norm(r"\operatorname{Cov}\,(x)") == r"\text{Cov} \cdot\,(x)"
+
+
+class TestHtmlClassInsideGraphs:
+    r"""``\htmlClass`` unwrapping must not glue ``\cdot`` onto a letter."""
+
+    def test_cdot_before_highlighted_symbol(self):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"\mathrm{Var}(\htmlClass{hl-q}{q}\cdot\htmlClass{hl-k}{k}) = 1")
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        assert {"q", "k"} <= ids and not any("cdot" in i for i in ids), ids
+
+    def test_chain_keeps_each_function_application_separate(self):
+        # Three sides, each applying Var: three distinct function nodes.
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"\mathrm{Var}(q\cdot k) = \sum_{a=1}^{d_k} \mathrm{Var}(q_a k_a) = d_k"
+            r" \qquad\Longrightarrow\qquad \mathrm{Var}\!\left(\frac{q\cdot k}{\sqrt{d_k}}\right) = 1")
+        assert g is not None
+        fns = [n for n in g.nodes if n.type == "function" and n.latex == r"\text{Var}"]
+        assert len(fns) == 3, [n.id for n in g.nodes]
+
+
+class TestPlaceholderRestoreConsistency:
+    r"""Copilot on #672: restored ids must agree across nodes, edges and fields."""
+
+    @pytest.mark.parametrize("latex", [
+        r"\htmlClass{hl-mad}{\mathrm{MAD}} = \operatorname{med}_i"
+        r" \bigl\lvert v_i - \operatorname{med}_j v_j \bigr\rvert",
+        r"\lim_{\pi \to 0^{+}} \text{precision} = 0, \qquad \text{precision} \sim"
+        r" \frac{\mathrm{TPR}}{\mathrm{FPR}}\,\pi \quad \text{as } \pi \to 0",
+        r"\frac{\partial\,\text{precision}}{\partial\,\mathrm{FPR}} \Big/"
+        r" \frac{\partial\,\text{precision}}{\partial\,\mathrm{TPR}}"
+        r" = -\frac{\mathrm{TPR}}{\mathrm{FPR}}",
+    ])
+    def test_no_dangling_edges_or_placeholder_leaks(self, latex):
+        from backend.semantic_graph.constants import _GREEK_POOL
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        dangling = [(e.from_, e.to) for e in g.edges
+                    if e.from_ not in ids or e.to not in ids]
+        assert not dangling, dangling
+        for n in g.nodes:
+            for val in (n.id, n.op, n.with_respect_to):
+                assert not (val in _GREEK_POOL and val not in latex), (n.id, val)
+        wrt = {n.with_respect_to for n in g.nodes if n.with_respect_to}
+        assert wrt <= ids | {"pi"}, (wrt, ids)
+
+        def _vars(c):
+            if c is None:
+                return []
+            out = list(c.dependent_variables or []) + list(c.independent_variables or [])
+            for clause in c.clauses or []:
+                out += _vars(clause)
+            return out
+        leaked = [v for v in _vars(g.classification) if v in _GREEK_POOL and v not in latex]
+        assert not leaked, leaked
+
+    def test_delta_is_never_a_placeholder(self):
+        # The translator reads \delta x as one variation symbol, so a \delta
+        # placeholder would fuse ``\text{as } \pi`` into ``delta_pi``.
+        from backend.semantic_graph.constants import _GREEK_POOL
+        assert "delta" not in _GREEK_POOL
+
+
+class TestPlaceholderNamespace:
+    r"""Copilot on #672: placeholders must not collide with real Greek symbols."""
+
+    @pytest.mark.parametrize("latex, fn, arg", [
+        (r"\mathrm{softmax}(\alpha)", "softmax", "alpha"),
+        (r"y = \text{Res}(\alpha)", "Res", "alpha"),
+    ])
+    def test_greek_argument_survives(self, latex, fn, arg):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        assert [n.op for n in g.nodes if n.type == "function"] == [fn]
+        assert arg in {n.id for n in g.nodes}
+
+    @pytest.mark.parametrize("latex, sym", [
+        (r"\text{precision} = \alpha + 1", "alpha"),
+        (r"\text{precision} = \alpha_i + 1", "alpha_i"),
+    ])
+    def test_real_greek_is_not_merged_into_text(self, latex, sym):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        ids = {n.id for n in g.nodes}
+        assert {"precision", sym} <= ids, ids
+
+
+class TestChainRelation:
+    r"""Copilot on #672: an ``\approx`` link must not bake as an exact ``=``."""
+
+    @pytest.mark.parametrize("latex, op", [
+        (r"d = \frac{c^2}{a} \;\approx\; 0.97 \text{ ly at } 1g", "approximately"),
+        (r"a = b \approx c", "approximately"),
+        (r"x \approx 3", "approximately"),
+        (r"a = b = c", "equals"),
+        # \simeq has no translator support; it must not leak as a symbol.
+        (r"a \simeq b", "approximately"),
+        (r"a = b \simeq c", "approximately"),
+    ])
+    def test_root_relation_matches_the_math(self, latex, op):
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        rel = [n.op for n in g.nodes if n.op in ("equals", "approximately")]
+        assert rel == [op], rel
+        assert "simeq" not in {n.id for n in g.nodes}

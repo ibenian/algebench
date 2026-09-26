@@ -176,3 +176,16 @@ def test_strip_html_class_preserves_nested_latex_body():
 def test_strip_html_class_handles_malformed_wrapper_without_regex_backtracking():
     bad = "\\htmlClass{" * 2000 + "x"
     assert _strip_html_class(bad) == bad
+
+
+@pytest.mark.parametrize("latex, expected", [
+    # A command before the wrapper must not fuse with the body's first letter.
+    (r"q\cdot\htmlClass{hl-k}{k}", r"q\cdot k"),
+    # A body ending in a command must not fuse with the letter after it.
+    (r"\htmlClass{hl-a}{\alpha}x", r"\alpha x"),
+    # Plain letters on both sides are left adjacent (implicit product).
+    (r"\htmlClass{hl-q}{q}\htmlClass{hl-k}{k}", r"qk"),
+    (r"\htmlClass{hl-q}{q}\cdot k", r"q\cdot k"),
+])
+def test_strip_html_class_keeps_commands_apart_from_letters(latex, expected):
+    assert _strip_html_class(latex) == expected

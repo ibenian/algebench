@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/proof_animation/**'
       - 'static/proof-animation/**'
+      - 'src/proof-animation/**'
       - 'tests/proof_animation/**'
       - 'backend/semantic_graph/**'
       - 'backend/model/semantic_graph.py'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'scripts/proof_animation/**'
       - 'static/proof-animation/**'
+      - 'src/proof-animation/**'
       - 'tests/proof_animation/**'
       - 'backend/semantic_graph/**'
       - 'backend/model/semantic_graph.py'
@@ -44,10 +46,17 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
       - name: Install dependencies
         run: |
           ./scripts/setup-venv.sh
           ./run.sh -m pip install pytest -q
+          npm ci
 
       - name: Determine destination directory
         id: dest

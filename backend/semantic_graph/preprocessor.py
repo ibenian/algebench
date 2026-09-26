@@ -20,8 +20,66 @@ _SPACING_COMMANDS = ("\\qquad", "\\quad", "\\,", "\\;", "\\!", "\\:")
 # ``\command`` — the shape SymPy's differential rule glues into one symbol.
 _BARE_D_BEFORE_COMMAND_RE = re.compile(r"(?<![A-Za-z\\])d(\s*)\\([a-zA-Z]+)")
 
+# Manual delimiter sizing: ``\bigl``/``\Bigr``/… and the unpaired ``\big``/``\bigm``.
+# The trailing ``(?![A-Za-z])`` keeps ``\bigcup``/``\bigoplus`` etc. out.
+_SIZED_OPEN_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)l(?![A-Za-z])\s*")
+_SIZED_CLOSE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)r(?![A-Za-z])\s*")
+_SIZED_BARE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)m?(?![A-Za-z])\s*")
+# A sized or ``\left``/``\right`` absolute-value bar.  SymPy only reads the bare
+# ``|…|`` form — ``\left\lvert…\right\rvert`` and ``\left|…\right|`` are dropped
+# silently, taking the whole term with them.  ``\|`` (a norm) is not matched.
+_SIZED_BAR_RE = re.compile(
+    r"\\(?:big|Big|bigg|Bigg)[lrm]?(?![A-Za-z])\s*"
+    r"(?:\||\\[lr]?vert(?![A-Za-z]))"
+)
+# One ``\left``/``\right`` and its delimiter; bars are rewritten per matched pair
+# so ``\left.f\right|_0^1`` (an evaluation bar) keeps its form while an
+# absolute value elsewhere in the same expression is still normalized.
+_LR_DELIM_RE = re.compile(r"\\(left|right)(?![A-Za-z])\s*(\\[A-Za-z]+|\\.|.)")
+_BAR_DELIMS = frozenset({"|", "\\vert", "\\lvert", "\\rvert"})
+
+# A multi-letter upright name applied to an argument: ``\mathrm{softmax}(``,
+# ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``, ``\operatorname{med}_i |``
+# (an optional subscript is carried over).  A negative thin space between the
+# name and its bracket (``\mathrm{Var}\!\left(``) pulls them together, so it is
+# matched and dropped.  A positive space (``\mathrm{FPR}\,(1-\pi)``) marks a
+# product, not an application — that name is left to the plain-name pass.
+_OPERATOR_NAME_RE = re.compile(
+    r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
+    r"(?P<sub>_(?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z0-9]))?"
+    r"(?:\s|\\!)*"
+    r"(?=\(|\[|\||\\(?:left|[lr]?vert)(?![A-Za-z]))"
+)
+
+# Any other multi-letter upright name (``\mathrm{MAD}``, ``\operatorname{med}_j v_j``)
+# — a named quantity, never a product of its letters.  Names inside a sub- or
+# superscript (``v_{\mathrm{exit}}``) are left to the multichar-subscript pass.
+_UPRIGHT_NAME_RE = re.compile(
+    r"(?<![_^])(?<![_^]\{)"
+    r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
+)
+
+# An explicit positive space before a bracket (``\,(``, ``\;\left(``): after a
+# plain name it marks a product, which must survive the later space stripping.
+_SPACED_BRACKET_RE = re.compile(
+    r"(?:\s*\\[,;: ])+\s*(?=\(|\[|\\left(?![A-Za-z]))"
+)
+
 # Math-mode delimiter pairs, longest opener first so ``$$`` beats ``$``.
 _MATH_DELIMITERS = (("$$", "$$"), ("\\[", "\\]"), ("\\(", "\\)"), ("$", "$"))
+
+
+def ends_with_command(s) -> bool:
+    r"""True when *s* (a string or list of chars) ends in a named ``\command``.
+
+    Unwrapping a braced body (``\htmlClass{hl-k}{k}``) drops the braces that kept
+    a neighbouring command apart from a letter; callers use this to re-insert a
+    space so ``\cdot`` + ``k`` does not fuse into the symbol ``\cdotk``.
+    """
+    j = len(s)
+    while j > 0 and s[j - 1].isalpha():
+        j -= 1
+    return 0 < j < len(s) and s[j - 1] == "\\"
 
 
 def strip_math_delimiters(s):
@@ -96,6 +154,8 @@ class LaTeXPreprocessor:
 
     def preprocess(self, latex: str) -> PreprocessResult:
         src = latex
+        src = self.normalize_sized_delimiters(src)
+        src = self.normalize_operator_names(src)
         src = self.normalize_func_call_braces(src)
         src = self.normalize_applied_symbol_braces(src)
         src, annotations = self.extract_parenthetical_annotations(src)
@@ -152,6 +212,90 @@ class LaTeXPreprocessor:
             return "{d}" + m.group(1) + "\\" + m.group(2)
 
         return _BARE_D_BEFORE_COMMAND_RE.sub(_repl, latex)
+
+    @staticmethod
+    def normalize_sized_delimiters(latex: str) -> str:
+        r"""Rewrite ``\bigl(``/``\Bigr)``/… → ``\left(``/``\right)``; drop bare ``\big``.
+
+        SymPy's ``parse_latex`` knows ``\left``/``\right`` but not the manual
+        sizing commands, so ``\bigl(x+y\bigr)`` leaks literal ``bigl``/``bigr``
+        symbols into the graph (issue #628).  The size is purely typographic, so
+        the ``l``/``r`` forms become ``\left``/``\right`` and the unpaired
+        ``\big``/``\Big``/``\bigg``/``\Bigg`` (and ``…m``) forms are dropped.
+
+        Absolute-value bars are the exception: ``\left|``/``\bigl\lvert``/… become
+        a bare ``|``, the only bar form the parser keeps.
+        """
+        if not isinstance(latex, str) or (
+            "\\big" not in latex.lower() and "vert" not in latex and "|" not in latex
+        ):
+            return latex
+        latex = _SIZED_BAR_RE.sub("|", latex)
+        latex = LaTeXPreprocessor._normalize_left_right_bars(latex)
+        latex = _SIZED_OPEN_RE.sub(r"\\left", latex)
+        latex = _SIZED_CLOSE_RE.sub(r"\\right", latex)
+        return _SIZED_BARE_RE.sub("", latex)
+
+    @staticmethod
+    def _normalize_left_right_bars(latex: str) -> str:
+        r"""Rewrite each ``\left|…\right|`` pair (any bar spelling) to ``|…|``.
+
+        Pairs are matched with a stack, so only a pair whose *both* ends are bars
+        changes: ``\left. f \right|_0^1`` is an evaluation bar and stays as is.
+        """
+        if "\\left" not in latex:
+            return latex
+        stack: list[re.Match] = []
+        spans: list[tuple[int, int]] = []
+        for m in _LR_DELIM_RE.finditer(latex):
+            if m.group(1) == "left":
+                stack.append(m)
+            elif stack:
+                opener = stack.pop()
+                if opener.group(2) in _BAR_DELIMS and m.group(2) in _BAR_DELIMS:
+                    spans += [opener.span(), m.span()]
+        for start, end in sorted(spans, reverse=True):
+            latex = latex[:start] + "|" + latex[end:]
+        return latex
+
+    @staticmethod
+    def normalize_operator_names(latex: str) -> str:
+        r"""Rewrite an applied ``\mathrm{NAME}``/``\operatorname{NAME}`` so NAME stays whole.
+
+        The font-command pass peels ``\mathrm{softmax}`` to the bare letters, which
+        SymPy then reads as the implicit product ``s·o·f·t·m·a·x`` (issue #628).
+        When a multi-letter NAME is in *operator position* — followed by ``(``,
+        ``[`` or ``\left`` — it is rewritten to ``\text{NAME}``, which the
+        translator already collapses into one opaque function (``\text{Res}(f)``).
+        A NAME SymPy knows as a function (``\mathrm{sin}``) becomes ``\sin``
+        instead, so it keeps its real semantics.  A multi-letter name used as a
+        plain quantity (``\mathrm{MAD} = …``) becomes ``\text{NAME}`` too — one
+        node, not a product of letters.  Names in sub/superscripts are left to
+        the multichar-subscript pass.
+        """
+        if not isinstance(latex, str) or (
+            "\\mathrm" not in latex and "\\operatorname" not in latex
+        ):
+            return latex
+
+        def _repl(m: re.Match) -> str:
+            name, sub = m.group("name"), m.group("sub") or ""
+            return _as_name(name) + sub
+
+        def _repl_plain(m: re.Match) -> str:
+            name = _as_name(m.group("name"))
+            # ``\mathrm{FPR}\,(1-\pi)`` is FPR times (1-π), not FPR applied.
+            if _SPACED_BRACKET_RE.match(m.string, m.end()):
+                return name + " \\cdot"
+            return name
+
+        def _as_name(name: str) -> str:
+            if name in _LATEX_FUNCS:
+                return f"\\{name}"
+            return f"\\text{{{name}}}"
+
+        latex = _OPERATOR_NAME_RE.sub(_repl, latex)
+        return _UPRIGHT_NAME_RE.sub(_repl_plain, latex)
 
     @staticmethod
     def normalize_func_call_braces(latex: str) -> str:
@@ -660,7 +804,11 @@ class LaTeXPreprocessor:
     def substitute_multichar_subscripts(latex: str) -> tuple[str, dict[str, str]]:
         r"""Replace multi-character subscript bodies with Greek placeholders."""
         mapping: dict[str, str] = {}
-        greek_iter = iter(_GREEK_POOL)
+        # A placeholder must never share a name with a symbol the source already
+        # uses: restoration maps *every* ``alpha`` back, so a real ``\\alpha`` next
+        # to a ``\\text{…}`` placeholder would be renamed (or merged) with it.
+        in_source = set(re.findall(r"\\([A-Za-z]+)", latex))
+        greek_iter = (g for g in _GREEK_POOL if g not in in_source)
 
         def allocate(original: str) -> str | None:
             for k, v in mapping.items():

@@ -82,6 +82,10 @@ Deriving and enriching run the model, so this happens **locally** (needs
     --from-file tests/proof_animation/proof_animations.json --outdir _site
 ```
 
+The engine is TypeScript (`src/proof-animation/proof-animation.ts`); the report
+type-strips it with the repo's `tsc` after `npm ci`, or, without `node_modules`,
+with Node's built-in stripper (Node ≥ 22.13).
+
 ## Deployed pages
 
 `.github/workflows/proof-animation.yml` renders this suite and publishes it to
