@@ -13,6 +13,7 @@ import json
 import logging
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -68,6 +69,26 @@ _ASSETS = _ROOT / "static" / "proof-animation"
 # Built-in shareable proofs live here; the /renderproof page loads them by
 # ?builtin=<domain>/<name>. See docs/shareable-proof-animations.md.
 _PROOFS_DIR = _ROOT / "proofs" / "domains"
+_TSC = _ROOT / "node_modules" / ".bin" / "tsc"
+
+
+def _emit_engine_js(out: Path) -> None:
+    """Write the standalone ``proof-animation.js`` engine module into *out*.
+
+    The engine is TypeScript (``src/proof-animation/proof-animation.ts``) and
+    the app only ships it bundled into ``static/dist/renderproof.js``, so the
+    report strips its types with the repo's own ``tsc`` (``npm ci`` first).
+    The module has no imports, so a type-strip is all the browser needs.
+    """
+    src = _ASSETS_JS / "proof-animation.ts"
+    if not _TSC.exists():
+        sys.exit(f"proof-animation report needs {_TSC.relative_to(_ROOT)} — run `npm ci` first")
+    subprocess.run(
+        [str(_TSC), "--ignoreConfig", str(src),
+         "--target", "es2022", "--module", "es2022", "--lib", "es2022,dom",
+         "--skipLibCheck", "--noCheck", "--outDir", str(out)],
+        check=True, cwd=_ROOT,
+    )
 _SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$")
 
 
@@ -445,7 +466,7 @@ def render_site(animations: list[dict], outdir) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     (out / "animations.json").write_text(
         json.dumps(animations, indent=2, ensure_ascii=False), encoding="utf-8")
-    shutil.copy(_ASSETS_JS / "proof-animation.js", out / "proof-animation.js")
+    _emit_engine_js(out)
     shutil.copy(_ASSETS / "proof-animation.css", out / "proof-animation.css")
     # cache-bust the engine on every (re)generation so a reload never serves a
     # stale module (browsers cache ES modules aggressively).
