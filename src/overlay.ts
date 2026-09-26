@@ -4,7 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { GEAR_ICON } from '/icons.js';
+import { GEAR_ICON, DOCK_BOTTOM_ICON, UNDOCK_ICON } from '/icons.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
 import { stripGlossaryMarkers } from '/glossary-core.js';
 import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
@@ -1569,7 +1569,7 @@ function _styleDockBtn(b: HTMLElement, docked: boolean, overlay: HTMLElement): v
     b.title = docked ? `Float the ${what} again` : `Dock the ${what} along the bottom edge`;
     b.setAttribute('aria-label', b.title);
     b.setAttribute('aria-pressed', docked ? 'true' : 'false');
-    b.textContent = docked ? '⤴' : '⤓';
+    b.innerHTML = docked ? UNDOCK_ICON : DOCK_BOTTOM_ICON;
 }
 
 /** Replace the overlay's content with `html` wrapped in the shared chrome. */

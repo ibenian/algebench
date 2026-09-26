@@ -85,6 +85,27 @@ export const SHARE_VIEW_ICON =
   '<path d="M2 12C5 6.5 19 6.5 22 12C19 17.5 5 17.5 2 12Z"/><circle cx="12" cy="12" r="3.6"/>' +
   '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>';
 
+/** Dock into the left panel — a frame whose left column is filled. */
+export const DOCK_LEFT_ICON =
+  '<svg viewBox="0 0 16 14" width="14" height="12" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="1" y="1" width="14" height="12" rx="1.5"/>' +
+  '<rect x="1" y="1" width="5" height="12" rx="1.5" fill="currentColor" stroke="none"/></svg>';
+
+/** Dock along the bottom edge — a frame whose bottom strip is filled. */
+export const DOCK_BOTTOM_ICON =
+  '<svg viewBox="0 0 16 14" width="14" height="12" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="1" y="1" width="14" height="12" rx="1.5"/>' +
+  '<rect x="1" y="8.5" width="14" height="4.5" rx="1.5" fill="currentColor" stroke="none"/></svg>';
+
+/** Undock back to a floating panel — a small window lifted off a frame. */
+export const UNDOCK_ICON =
+  '<svg viewBox="0 0 16 14" width="14" height="12" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="1" y="1" width="14" height="12" rx="1.5"/>' +
+  '<rect x="6" y="5" width="7" height="5.5" rx="1" fill="currentColor" stroke="none"/></svg>';
+
 /** ⚙ Display settings (a cog). */
 export const GEAR_ICON =
   '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ' +

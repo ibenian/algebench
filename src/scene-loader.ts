@@ -1432,6 +1432,71 @@ function stepPrev(): void {
     }
 }
 
+const DOCK_MIN_WIDTH = 180;
+const DOCK_MAX_WIDTH = 600;
+const DOCK_DEFAULT_WIDTH = 260; // matches the CSS fallback for --scene-dock-w
+
+// Drag the handle on the left panel's right edge to resize it — the mirror of
+// the explanation panel's handle. The width lives in a CSS variable so the
+// `.open` class still owns the collapse (width 0) and its transition.
+function setupSceneDockResize(panel: HTMLElement): void {
+    const handle = document.getElementById('scene-dock-resize-handle');
+    if (!handle) return;
+    const setWidth = (w: number) => {
+        w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, w));
+        panel.style.setProperty('--scene-dock-w', w + 'px');
+        handle.setAttribute('aria-valuenow', String(Math.round(w)));
+        return w;
+    };
+    handle.setAttribute('aria-valuemin', String(DOCK_MIN_WIDTH));
+    handle.setAttribute('aria-valuemax', String(DOCK_MAX_WIDTH));
+    // Seed from the saved width, or the CSS default, so assistive tech can
+    // report the current width before the first resize.
+    const saved = parseInt(localStorage.getItem('algebench-dock-width') || '', 10);
+    setWidth(saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH ? saved : DOCK_DEFAULT_WIDTH);
+    let dragging = false;
+    let startX = 0, startWidth = 0;
+
+    // Keyboard: Left/Right arrows resize in 16px steps.
+    handle.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (!panel.classList.contains('open')) return;
+        // Stop here: the document-level handler maps Left/Right to scene steps.
+        e.preventDefault();
+        e.stopPropagation();
+        const w = setWidth(panel.offsetWidth + (e.key === 'ArrowRight' ? 16 : -16));
+        localStorage.setItem('algebench-dock-width', String(w));
+        window.dispatchEvent(new Event('resize'));
+    });
+
+    handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || !panel.classList.contains('open')) return;
+        e.preventDefault();
+        dragging = true;
+        startX = e.clientX;
+        startWidth = panel.offsetWidth;
+        handle.classList.add('dragging');
+        panel.classList.add('resizing');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        // Handle is to the right of the panel, so dragging right = wider panel.
+        setWidth(startWidth + e.clientX - startX);
+        window.dispatchEvent(new Event('resize'));
+    });
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('dragging');
+        panel.classList.remove('resizing');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        localStorage.setItem('algebench-dock-width', String(panel.offsetWidth));
+    });
+}
+
 export function setupSceneDock(): void {
     // Non-null: all five are static markup in index.html. The JS dereferenced
     // them unguarded (except the innerHTML writes just below, which it did
@@ -1459,6 +1524,8 @@ export function setupSceneDock(): void {
         localStorage.setItem('algebench-dock-open', String(isOpen));
         setTimeout(() => window.dispatchEvent(new Event('resize')), 250);
     });
+
+    setupSceneDockResize(panel);
 
     prevBtn.addEventListener('click', () => stepPrev());
     playBtn.addEventListener('click', () => toggleAutoPlay());

@@ -7,6 +7,7 @@ import { state } from '/state.js';
 import { compileExpr, evalExpr, recompileActiveSceneFunctions, _getMathNamesAndValues,
          type CompiledExpr } from '/expr.js';
 import { renderKaTeX, stripLatex } from '/labels.js';
+import { DOCK_LEFT_ICON, UNDOCK_ICON } from '/icons.js';
 import type { Slider } from '/types/lesson.js';
 
 /**
@@ -693,11 +694,27 @@ export function buildSliderOverlay(): void {
         }
     } catch (e) { /* ignore */ }
 
-    // Drag handle
+    // Drag handle (inert while docked) with the dock / undock toggle.
     const dragHandle = document.createElement('div');
     dragHandle.className = 'slider-drag-handle';
-    dragHandle.textContent = '⠿ ⠿ ⠿';
-    dragHandle.addEventListener('mousedown', (e) => setupSliderDrag(e, overlay));
+    const grip = document.createElement('span');
+    grip.className = 'slider-drag-grip';
+    grip.textContent = '⠿ ⠿ ⠿';
+    dragHandle.appendChild(grip);
+    const dockTitle = document.createElement('span');
+    dockTitle.className = 'slider-dock-title';
+    dockTitle.textContent = 'Sliders';
+    dragHandle.appendChild(dockTitle);
+    const dockBtn = document.createElement('button');
+    dockBtn.type = 'button';
+    dockBtn.className = 'slider-dock-btn';
+    dockBtn.addEventListener('mousedown', e => e.stopPropagation());
+    dockBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleSliderDock(); });
+    dragHandle.appendChild(dockBtn);
+    dragHandle.addEventListener('mousedown', (e) => {
+        if (overlay.classList.contains('docked')) return;
+        setupSliderDrag(e, overlay);
+    });
     overlay.appendChild(dragHandle);
 
     for (const id of ids) {
@@ -804,6 +821,79 @@ export function buildSliderOverlay(): void {
         try { window.dispatchEvent(new CustomEvent('algebench:sliderchange')); } catch (_) { /* ignore */ }
     }
     syncSliderState();
+    applySliderDockPlacement();
+}
+
+// ----- Slider dock (bottom of the left panel) -----
+
+const SLIDER_DOCK_KEY = 'algebench-slider-docked';
+
+function _sliderDockPreferred(): boolean {
+    try { return localStorage.getItem(SLIDER_DOCK_KEY) === 'true'; } catch { return false; }
+}
+
+/** The left panel can host the sliders only while it is shown and expanded. */
+function _leftDockOpen(): boolean {
+    const dock = document.getElementById('scene-dock');
+    const panel = document.getElementById('scene-dock-panel');
+    return !!(dock && panel && dock.classList.contains('visible') && panel.classList.contains('open'));
+}
+
+let _dockObserverWired = false;
+
+/** Put the slider panel where the dock preference says: inside the left
+ *  panel's #slider-dock-host when docked AND that panel is open, otherwise
+ *  floating over the viewport. Closing the left panel floats the sliders
+ *  without forgetting the preference, so reopening it docks them again. */
+export function applySliderDockPlacement(): void {
+    const overlay = document.getElementById('slider-overlay');
+    const host = document.getElementById('slider-dock-host');
+    const wrapper = document.getElementById('mathbox-wrapper');
+    if (!overlay || !host || !wrapper) return;
+
+    if (!_dockObserverWired) {
+        _dockObserverWired = true;
+        const obs = new MutationObserver(() => applySliderDockPlacement());
+        for (const id of ['scene-dock', 'scene-dock-panel']) {
+            const el = document.getElementById(id);
+            if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+        }
+    }
+
+    const docked = _sliderDockPreferred() && _leftDockOpen();
+    if (docked && overlay.parentElement !== host) {
+        host.appendChild(overlay);
+    } else if (!docked && overlay.parentElement !== wrapper) {
+        wrapper.insertBefore(overlay, document.getElementById('scene-nav'));
+    }
+    overlay.classList.toggle('docked', docked);
+
+    const btn = overlay.querySelector<HTMLButtonElement>('.slider-dock-btn');
+    if (btn) {
+        // No left panel at all (a bare scene) -> nothing to dock into.
+        const dockAvailable = !!document.getElementById('scene-dock')?.classList.contains('visible');
+        btn.hidden = !dockAvailable;
+        btn.innerHTML = docked ? UNDOCK_ICON : DOCK_LEFT_ICON;
+        btn.title = docked ? 'Undock sliders (float over the scene)' : 'Dock sliders into the left panel';
+        btn.setAttribute('aria-label', btn.title);
+        btn.setAttribute('aria-pressed', docked ? 'true' : 'false');
+    }
+}
+
+/** Flip the dock preference. Docking opens the left panel if it was closed. */
+export function toggleSliderDock(): void {
+    const overlay = document.getElementById('slider-overlay');
+    const dockNow = !(overlay && overlay.classList.contains('docked'));
+    try { localStorage.setItem(SLIDER_DOCK_KEY, String(dockNow)); } catch { /* ignore */ }
+    if (dockNow && !_leftDockOpen()) {
+        const panel = document.getElementById('scene-dock-panel');
+        const toggle = document.getElementById('scene-dock-toggle');
+        if (panel) panel.classList.add('open');
+        if (toggle) toggle.classList.add('active');
+        try { localStorage.setItem('algebench-dock-open', 'true'); } catch { /* ignore */ }
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 250);
+    }
+    applySliderDockPlacement();
 }
 
 /** One panel row for a tensor slider: a header (label, shape, reset) over a
