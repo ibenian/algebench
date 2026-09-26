@@ -719,9 +719,13 @@ class TestChainRelation:
         (r"a = b \approx c", "approximately"),
         (r"x \approx 3", "approximately"),
         (r"a = b = c", "equals"),
+        # \simeq has no translator support; it must not leak as a symbol.
+        (r"a \simeq b", "approximately"),
+        (r"a = b \simeq c", "approximately"),
     ])
     def test_root_relation_matches_the_math(self, latex, op):
         from backend.semantic_graph.service import SemanticGraphService
         g = SemanticGraphService().latex_to_graph(latex)
         rel = [n.op for n in g.nodes if n.op in ("equals", "approximately")]
         assert rel == [op], rel
+        assert "simeq" not in {n.id for n in g.nodes}

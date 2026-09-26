@@ -509,7 +509,10 @@ def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
             _postprocessor.inject_annotations(graph, early_annotations)
         return graph
     if len(sides) == 2:
-        graph = _derive_single_expression(f"{sides[0]} {rels[0]} {sides[1]}")
+        # Normalized relation: ``\\simeq`` has no translator support, but means
+        # the same approximate relation as ``\\approx``.
+        _, rel_tex = _chain_relation(rels)
+        graph = _derive_single_expression(f"{sides[0]} {rel_tex} {sides[1]}")
         if graph and early_annotations:
             _postprocessor.inject_annotations(graph, early_annotations)
         return graph
