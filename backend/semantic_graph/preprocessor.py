@@ -35,13 +35,14 @@ _SIZED_BAR_RE = re.compile(
 
 # A multi-letter upright name applied to an argument: ``\mathrm{softmax}(``,
 # ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``, ``\operatorname{med}_i |``
-# (an optional subscript is carried over).  Spacing commands between the
-# name and its bracket (``\mathrm{Var}\!\left(``) are matched so they can be
-# dropped — they would otherwise separate the name from its argument.
+# (an optional subscript is carried over).  A negative thin space between the
+# name and its bracket (``\mathrm{Var}\!\left(``) pulls them together, so it is
+# matched and dropped.  A positive space (``\mathrm{FPR}\,(1-\pi)``) marks a
+# product, not an application — that name is left to the plain-name pass.
 _OPERATOR_NAME_RE = re.compile(
     r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
     r"(?P<sub>_(?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z0-9]))?"
-    r"(?:\s|\\[!,;:])*"
+    r"(?:\s|\\!)*"
     r"(?=\(|\[|\||\\(?:left|[lr]?vert)(?![A-Za-z]))"
 )
 
@@ -51,6 +52,12 @@ _OPERATOR_NAME_RE = re.compile(
 _UPRIGHT_NAME_RE = re.compile(
     r"(?<![_^])(?<![_^]\{)"
     r"\\(?:mathrm|operatorname)\s*\{\s*(?P<name>[A-Za-z]{2,})\s*\}"
+)
+
+# An explicit positive space before a bracket (``\,(``, ``\;\left(``): after a
+# plain name it marks a product, which must survive the later space stripping.
+_SPACED_BRACKET_RE = re.compile(
+    r"(?:\s*\\[,;: ])+\s*(?=\(|\[|\\left(?![A-Za-z]))"
 )
 
 # Math-mode delimiter pairs, longest opener first so ``$$`` beats ``$``.
@@ -250,7 +257,11 @@ class LaTeXPreprocessor:
             return _as_name(name) + sub
 
         def _repl_plain(m: re.Match) -> str:
-            return _as_name(m.group("name"))
+            name = _as_name(m.group("name"))
+            # ``\mathrm{FPR}\,(1-\pi)`` is FPR times (1-π), not FPR applied.
+            if _SPACED_BRACKET_RE.match(m.string, m.end()):
+                return name + " \\cdot"
+            return name
 
         def _as_name(name: str) -> str:
             if name in _LATEX_FUNCS:

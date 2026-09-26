@@ -558,6 +558,17 @@ class TestNormalizeOperatorNames:
         assert g is not None
         assert [n.op for n in g.nodes if n.type == "function"] == [name]
 
+    def test_spaced_name_before_bracket_is_a_product(self):
+        # Copilot on #672: \mathrm{FPR}\,(1-\pi) is FPR times (1-\pi).
+        assert self.norm(r"\mathrm{FPR}\,(1-\pi)") == r"\text{FPR} \cdot\,(1-\pi)"
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"P(D) = \mathrm{TPR}\,\pi + \mathrm{FPR}\,(1-\pi)")
+        assert g is not None
+        fns = [n.id for n in g.nodes if n.type == "function"]
+        assert not [f for f in fns if "FPR" in f], fns
+        assert "FPR" in {n.id for n in g.nodes}
+
     def test_mad_keeps_its_absolute_deviation_term(self):
         # Copilot on #672: the \bigl\lvert…\bigr\rvert term was dropped.
         from backend.semantic_graph.service import SemanticGraphService
@@ -599,7 +610,8 @@ class TestNormalizeOperatorNames:
 
     def test_spacing_between_name_and_bracket_is_dropped(self):
         assert self.norm(r"\mathrm{Var}\!\left(q\right)") == r"\text{Var}\left(q\right)"
-        assert self.norm(r"\operatorname{Cov}\,(x)") == r"\text{Cov}(x)"
+        # A positive space is a product, not an application.
+        assert self.norm(r"\operatorname{Cov}\,(x)") == r"\text{Cov} \cdot\,(x)"
 
 
 class TestHtmlClassInsideGraphs:
