@@ -554,6 +554,9 @@ class TestNormalizeOperatorNames:
     @pytest.mark.parametrize("latex, name", [
         (r"\mathrm{softmax}(z)", "softmax"),
         (r"y = \text{Res}(f)", "Res"),
+        # A subscripted application's op was the placeholder LaTeX \alpha_{i}.
+        (r"y = \text{foo}_i(x)", "foo_i"),
+        (r"y = \operatorname{med}_i(x)", "med_i"),
     ])
     def test_function_node_op_is_the_name(self, latex, name):
         from backend.semantic_graph.service import SemanticGraphService

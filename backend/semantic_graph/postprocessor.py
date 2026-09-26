@@ -178,6 +178,10 @@ class GraphPostprocessor:
                     break
             return _slug_id(rewrite(nid))
 
+        def _is_placeholder(val: str) -> bool:
+            slug = _slug_id(val)
+            return any(slug == g or slug.startswith(g + "_") for g in mapping)
+
         # A node id is an internal wiring key, never a display string. When we
         # restore a collapsed subscript we put the readable form in
         # ``label`` / ``latex`` / ``subexpr`` and keep the id a clean slug —
@@ -201,15 +205,12 @@ class GraphPostprocessor:
             if isinstance(node.id, str):
                 node.id = _restore_id(node.id)
             # A ``\\text{NAME}(…)`` application is a function node whose op is
-            # the placeholder's name (``alpha``); give it the real one back.
-            if isinstance(node.op, str) and node.op in mapping:
-                node.op = _restore_id(node.op)
-            # A derivative's variable names a node — restore it like one.
-            wrt = node.with_respect_to
-            if isinstance(wrt, str) and any(
-                wrt == g or wrt.startswith(g + "_") for g in mapping
-            ):
-                node.with_respect_to = _restore_id(wrt)
+            # the placeholder (``alpha``, or ``\\alpha_{i}`` when subscripted);
+            # a derivative's variable names a node.  Give both the real name back.
+            for field in ("op", "with_respect_to"):
+                val = getattr(node, field, None)
+                if isinstance(val, str) and _is_placeholder(val):
+                    setattr(node, field, _restore_id(_slug_id(val)))
             for field in ("label", "latex", "subexpr"):
                 val = getattr(node, field, None)
                 if isinstance(val, str):
