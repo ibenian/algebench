@@ -15532,11 +15532,10 @@ function stepPrev() {
 }
 var DOCK_MIN_WIDTH = 180;
 var DOCK_MAX_WIDTH = 600;
+var DOCK_DEFAULT_WIDTH = 260;
 function setupSceneDockResize(panel) {
 	const handle = document.getElementById("scene-dock-resize-handle");
 	if (!handle) return;
-	const saved = parseInt(localStorage.getItem("algebench-dock-width") || "", 10);
-	if (saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH) panel.style.setProperty("--scene-dock-w", saved + "px");
 	const setWidth = (w) => {
 		w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, w));
 		panel.style.setProperty("--scene-dock-w", w + "px");
@@ -15545,6 +15544,8 @@ function setupSceneDockResize(panel) {
 	};
 	handle.setAttribute("aria-valuemin", String(DOCK_MIN_WIDTH));
 	handle.setAttribute("aria-valuemax", String(DOCK_MAX_WIDTH));
+	const saved = parseInt(localStorage.getItem("algebench-dock-width") || "", 10);
+	setWidth(saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH ? saved : DOCK_DEFAULT_WIDTH);
 	let dragging = false;
 	let startX = 0, startWidth = 0;
 	handle.addEventListener("keydown", (e) => {

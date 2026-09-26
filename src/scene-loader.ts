@@ -1434,6 +1434,7 @@ function stepPrev(): void {
 
 const DOCK_MIN_WIDTH = 180;
 const DOCK_MAX_WIDTH = 600;
+const DOCK_DEFAULT_WIDTH = 260; // matches the CSS fallback for --scene-dock-w
 
 // Drag the handle on the left panel's right edge to resize it — the mirror of
 // the explanation panel's handle. The width lives in a CSS variable so the
@@ -1441,10 +1442,6 @@ const DOCK_MAX_WIDTH = 600;
 function setupSceneDockResize(panel: HTMLElement): void {
     const handle = document.getElementById('scene-dock-resize-handle');
     if (!handle) return;
-    const saved = parseInt(localStorage.getItem('algebench-dock-width') || '', 10);
-    if (saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH) {
-        panel.style.setProperty('--scene-dock-w', saved + 'px');
-    }
     const setWidth = (w: number) => {
         w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, w));
         panel.style.setProperty('--scene-dock-w', w + 'px');
@@ -1453,6 +1450,10 @@ function setupSceneDockResize(panel: HTMLElement): void {
     };
     handle.setAttribute('aria-valuemin', String(DOCK_MIN_WIDTH));
     handle.setAttribute('aria-valuemax', String(DOCK_MAX_WIDTH));
+    // Seed from the saved width, or the CSS default, so assistive tech can
+    // report the current width before the first resize.
+    const saved = parseInt(localStorage.getItem('algebench-dock-width') || '', 10);
+    setWidth(saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH ? saved : DOCK_DEFAULT_WIDTH);
     let dragging = false;
     let startX = 0, startWidth = 0;
 
