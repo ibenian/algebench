@@ -1912,6 +1912,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
 }
 #scene-dock-panel.open + #scene-dock-resize-handle { display: block; }
 #scene-dock-resize-handle:hover,
+#scene-dock-resize-handle:focus-visible,
 #scene-dock-resize-handle.dragging { background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
 
 /* Docked slider panel: pinned to the bottom of the left panel, under either tab. */
@@ -1936,6 +1937,8 @@ body.rotating-axis-z, body.rotating-axis-z * {
     padding: 6px 12px 10px;
 }
 #slider-overlay.docked .slider-drag-handle { cursor: default; }
+/* The panel can be as narrow as 180px; let the track give way so rows fit. */
+#slider-overlay.docked .slider-range { min-width: 0; }
 #slider-overlay.docked .slider-drag-grip { display: none; }
 .slider-dock-title { display: none; }
 #slider-overlay.docked .slider-drag-handle { text-align: left; letter-spacing: normal; }

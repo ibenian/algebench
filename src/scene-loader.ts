@@ -1445,8 +1445,28 @@ function setupSceneDockResize(panel: HTMLElement): void {
     if (saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH) {
         panel.style.setProperty('--scene-dock-w', saved + 'px');
     }
+    const setWidth = (w: number) => {
+        w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, w));
+        panel.style.setProperty('--scene-dock-w', w + 'px');
+        handle.setAttribute('aria-valuenow', String(Math.round(w)));
+        return w;
+    };
+    handle.setAttribute('aria-valuemin', String(DOCK_MIN_WIDTH));
+    handle.setAttribute('aria-valuemax', String(DOCK_MAX_WIDTH));
     let dragging = false;
     let startX = 0, startWidth = 0;
+
+    // Keyboard: Left/Right arrows resize in 16px steps.
+    handle.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (!panel.classList.contains('open')) return;
+        // Stop here: the document-level handler maps Left/Right to scene steps.
+        e.preventDefault();
+        e.stopPropagation();
+        const w = setWidth(panel.offsetWidth + (e.key === 'ArrowRight' ? 16 : -16));
+        localStorage.setItem('algebench-dock-width', String(w));
+        window.dispatchEvent(new Event('resize'));
+    });
 
     handle.addEventListener('mousedown', (e) => {
         if (e.button !== 0 || !panel.classList.contains('open')) return;
@@ -1462,8 +1482,7 @@ function setupSceneDockResize(panel: HTMLElement): void {
     document.addEventListener('mousemove', (e) => {
         if (!dragging) return;
         // Handle is to the right of the panel, so dragging right = wider panel.
-        const w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, startWidth + e.clientX - startX));
-        panel.style.setProperty('--scene-dock-w', w + 'px');
+        setWidth(startWidth + e.clientX - startX);
         window.dispatchEvent(new Event('resize'));
     });
     document.addEventListener('mouseup', () => {

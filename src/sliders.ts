@@ -876,6 +876,7 @@ export function applySliderDockPlacement(): void {
         btn.innerHTML = docked ? UNDOCK_ICON : DOCK_LEFT_ICON;
         btn.title = docked ? 'Undock sliders (float over the scene)' : 'Dock sliders into the left panel';
         btn.setAttribute('aria-label', btn.title);
+        btn.setAttribute('aria-pressed', docked ? 'true' : 'false');
     }
 }
 

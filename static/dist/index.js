@@ -2564,6 +2564,7 @@ function applySliderDockPlacement() {
 		btn.innerHTML = docked ? UNDOCK_ICON : DOCK_LEFT_ICON;
 		btn.title = docked ? "Undock sliders (float over the scene)" : "Dock sliders into the left panel";
 		btn.setAttribute("aria-label", btn.title);
+		btn.setAttribute("aria-pressed", docked ? "true" : "false");
 	}
 }
 /** Flip the dock preference. Docking opens the left panel if it was closed. */
@@ -15536,8 +15537,25 @@ function setupSceneDockResize(panel) {
 	if (!handle) return;
 	const saved = parseInt(localStorage.getItem("algebench-dock-width") || "", 10);
 	if (saved >= DOCK_MIN_WIDTH && saved <= DOCK_MAX_WIDTH) panel.style.setProperty("--scene-dock-w", saved + "px");
+	const setWidth = (w) => {
+		w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, w));
+		panel.style.setProperty("--scene-dock-w", w + "px");
+		handle.setAttribute("aria-valuenow", String(Math.round(w)));
+		return w;
+	};
+	handle.setAttribute("aria-valuemin", String(DOCK_MIN_WIDTH));
+	handle.setAttribute("aria-valuemax", String(DOCK_MAX_WIDTH));
 	let dragging = false;
 	let startX = 0, startWidth = 0;
+	handle.addEventListener("keydown", (e) => {
+		if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+		if (!panel.classList.contains("open")) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const w = setWidth(panel.offsetWidth + (e.key === "ArrowRight" ? 16 : -16));
+		localStorage.setItem("algebench-dock-width", String(w));
+		window.dispatchEvent(new Event("resize"));
+	});
 	handle.addEventListener("mousedown", (e) => {
 		if (e.button !== 0 || !panel.classList.contains("open")) return;
 		e.preventDefault();
@@ -15551,8 +15569,7 @@ function setupSceneDockResize(panel) {
 	});
 	document.addEventListener("mousemove", (e) => {
 		if (!dragging) return;
-		const w = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, startWidth + e.clientX - startX));
-		panel.style.setProperty("--scene-dock-w", w + "px");
+		setWidth(startWidth + e.clientX - startX);
 		window.dispatchEvent(new Event("resize"));
 	});
 	document.addEventListener("mouseup", () => {
