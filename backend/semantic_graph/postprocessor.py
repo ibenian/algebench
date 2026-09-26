@@ -161,6 +161,23 @@ class GraphPostprocessor:
 
         _TEXT_POLLUTION_KEYS = ("emoji", "quantity", "dimension", "unit", "value", "role")
 
+        def _restore_id(nid: str) -> str:
+            """Map a placeholder-bearing id back to a clean slug.
+
+            Nodes, edge endpoints and id-valued fields (``with_respect_to``) all
+            go through here, so they can never disagree and leave an edge
+            pointing at an id no node has.
+            """
+            if nid in mapping:
+                return _slug_id(_display_of(mapping[nid])[0])
+            # A placeholder that carried its own subscript parses as the symbol
+            # ``alpha_i`` — no ``\\alpha`` for ``rewrite`` to find.
+            for greek_name, original in items:
+                if nid.startswith(greek_name + "_"):
+                    nid = _display_of(original)[0] + nid[len(greek_name):]
+                    break
+            return _slug_id(rewrite(nid))
+
         # A node id is an internal wiring key, never a display string. When we
         # restore a collapsed subscript we put the readable form in
         # ``label`` / ``latex`` / ``subexpr`` and keep the id a clean slug —
@@ -170,7 +187,7 @@ class GraphPostprocessor:
             if node_id in mapping:
                 original = mapping[node_id]
                 display, is_text = _display_of(original)
-                node.id = _slug_id(display)
+                node.id = _restore_id(node_id)
                 node.label = display
                 node.latex = original
                 if is_text:
@@ -182,18 +199,17 @@ class GraphPostprocessor:
                     node.subexpr = rewrite(node.subexpr)
                 continue
             if isinstance(node.id, str):
-                nid = node.id
-                # A placeholder that carried its own subscript parses as the
-                # symbol ``alpha_i`` — no ``\\alpha`` for ``rewrite`` to find.
-                for greek_name, original in items:
-                    if nid == greek_name or nid.startswith(greek_name + "_"):
-                        nid = _display_of(original)[0] + nid[len(greek_name):]
-                        break
-                node.id = _slug_id(rewrite(nid))
+                node.id = _restore_id(node.id)
             # A ``\\text{NAME}(…)`` application is a function node whose op is
             # the placeholder's name (``alpha``); give it the real one back.
             if isinstance(node.op, str) and node.op in mapping:
-                node.op = _slug_id(_display_of(mapping[node.op])[0])
+                node.op = _restore_id(node.op)
+            # A derivative's variable names a node — restore it like one.
+            wrt = node.with_respect_to
+            if isinstance(wrt, str) and any(
+                wrt == g or wrt.startswith(g + "_") for g in mapping
+            ):
+                node.with_respect_to = _restore_id(wrt)
             for field in ("label", "latex", "subexpr"):
                 val = getattr(node, field, None)
                 if isinstance(val, str):
@@ -202,11 +218,7 @@ class GraphPostprocessor:
             for attr in ("from_", "to"):
                 val = getattr(edge, attr)
                 if isinstance(val, str):
-                    if val in mapping:
-                        display, _ = _display_of(mapping[val])
-                        setattr(edge, attr, _slug_id(display))
-                    else:
-                        setattr(edge, attr, _slug_id(rewrite(val)))
+                    setattr(edge, attr, _restore_id(val))
 
     @staticmethod
     def inject_annotations(

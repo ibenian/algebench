@@ -506,6 +506,9 @@ class TestNormalizeSizedDelimiters:
         # A norm stays a norm; an evaluation bar stays an evaluation bar.
         (r"\left\| x \right\|", r"\left\| x \right\|"),
         (r"\left. f \right|_0^1", r"\left. f \right|_0^1"),
+        # Per pair: an evaluation bar elsewhere doesn't block an absolute value.
+        (r"\left|x\right| + \left.f\right|_0^1", r"|x| + \left.f\right|_0^1"),
+        (r"\left( \left| a \right| \right)", r"\left( | a | \right)"),
     ])
     def test_absolute_value_bars_become_bare(self, latex, expected):
         assert self.norm(latex) == expected
@@ -634,3 +637,37 @@ class TestHtmlClassInsideGraphs:
         assert g is not None
         fns = [n for n in g.nodes if n.type == "function" and n.latex == r"\text{Var}"]
         assert len(fns) == 3, [n.id for n in g.nodes]
+
+
+class TestPlaceholderRestoreConsistency:
+    r"""Copilot on #672: restored ids must agree across nodes, edges and fields."""
+
+    @pytest.mark.parametrize("latex", [
+        r"\htmlClass{hl-mad}{\mathrm{MAD}} = \operatorname{med}_i"
+        r" \bigl\lvert v_i - \operatorname{med}_j v_j \bigr\rvert",
+        r"\lim_{\pi \to 0^{+}} \text{precision} = 0, \qquad \text{precision} \sim"
+        r" \frac{\mathrm{TPR}}{\mathrm{FPR}}\,\pi \quad \text{as } \pi \to 0",
+        r"\frac{\partial\,\text{precision}}{\partial\,\mathrm{FPR}} \Big/"
+        r" \frac{\partial\,\text{precision}}{\partial\,\mathrm{TPR}}"
+        r" = -\frac{\mathrm{TPR}}{\mathrm{FPR}}",
+    ])
+    def test_no_dangling_edges_or_placeholder_leaks(self, latex):
+        from backend.semantic_graph.constants import _GREEK_POOL
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex)
+        assert g is not None
+        ids = {n.id for n in g.nodes}
+        dangling = [(e.from_, e.to) for e in g.edges
+                    if e.from_ not in ids or e.to not in ids]
+        assert not dangling, dangling
+        for n in g.nodes:
+            for val in (n.id, n.op, n.with_respect_to):
+                assert not (val in _GREEK_POOL and val not in latex), (n.id, val)
+        wrt = {n.with_respect_to for n in g.nodes if n.with_respect_to}
+        assert wrt <= ids | {"pi"}, (wrt, ids)
+
+    def test_delta_is_never_a_placeholder(self):
+        # The translator reads \delta x as one variation symbol, so a \delta
+        # placeholder would fuse ``\text{as } \pi`` into ``delta_pi``.
+        from backend.semantic_graph.constants import _GREEK_POOL
+        assert "delta" not in _GREEK_POOL

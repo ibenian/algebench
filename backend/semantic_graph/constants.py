@@ -19,8 +19,12 @@ from sympy import (
 # Preprocessor constants (from server.py)
 # ---------------------------------------------------------------------------
 
+# Placeholder names for collapsed subscripts / ``\text{…}`` groups.  ``delta`` is
+# deliberately absent: the translator reads ``\delta x`` as the single variation
+# symbol δx, so a ``\delta`` placeholder fuses with the symbol after it
+# (``\text{as } \pi`` → ``delta_pi``).
 _GREEK_POOL: list[str] = [
-    "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta",
+    "alpha", "beta", "gamma", "epsilon", "zeta", "eta", "theta",
     "iota", "kappa", "lambda", "mu", "nu", "xi", "rho", "sigma", "tau",
     "upsilon", "phi", "chi", "psi", "omega",
 ]

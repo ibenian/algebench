@@ -554,9 +554,9 @@
                 ],
                 "edges": [
                   {"from": "MAD", "to": "__equals_1"},
-                  {"from": "beta_i", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                  {"from": "med_i", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
                   {"from": "v_i", "to": "__add_4"},
-                  {"from": "beta_j", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
+                  {"from": "med_j", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
                   {"from": "v_j", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
                   {"from": "__multiply_6", "to": "__negation_5"},
                   {"from": "__negation_5", "to": "__add_4"},
@@ -582,11 +582,11 @@
               "graph": {
                 "nodes": [
                   {"id": "X", "type": "scalar", "latex": "X", "subexpr": "X"},
-                  {"id": "__N_1", "type": "function", "op": "N", "subexpr": "N(\\mu, \\sigma^2)  \\Longrightarrow med | X - \\mu | = \\sigma \\Phi^{-1}(0.75)"},
+                  {"id": "__N_1", "type": "function", "op": "N", "subexpr": "N(\\mu, \\sigma^2)  \\Longrightarrow \\text{med}| X - \\mu | = \\sigma \\Phi^{-1}(0.75)"},
                   {"id": "mu", "type": "scalar", "latex": "\\mu", "subexpr": "\\mu"},
                   {"id": "__power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sigma^{2}"},
                   {"id": "sigma", "type": "scalar", "latex": "\\sigma", "subexpr": "\\sigma", "description": "σ — the scale we actually want", "color": "blue", "highlight": "sig"},
-                  {"id": "__asymptotic_3", "type": "relation", "label": "asymptotically equal", "emoji": "∼", "op": "asymptotic", "subexpr": "X \\sim N(\\mu, \\sigma^2) \\;\\Longrightarrow\\; med | X - \\mu | = \\sigma\\,\\Phi^{-1}(0.75)"}
+                  {"id": "__asymptotic_3", "type": "relation", "label": "asymptotically equal", "emoji": "∼", "op": "asymptotic", "subexpr": "X \\sim N(\\mu, \\sigma^2) \\;\\Longrightarrow\\; \\text{med}| X - \\mu | = \\sigma\\,\\Phi^{-1}(0.75)"}
                 ],
                 "edges": [
                   {"from": "mu", "to": "__N_1"},
@@ -2789,14 +2789,15 @@
                   {"id": "c0___tends_to_4", "type": "operator", "op": "tends_to", "with_respect_to": "pi", "limit_point": "__num_3", "limit_direction": "+", "subexpr": "\\pi \\to 0"},
                   {"id": "c0___limit_2", "type": "operator", "op": "limit", "subexpr": "\\lim_{\\pi \\to 0^+} \\text{precision}"},
                   {"id": "c0___num_5", "type": "number", "label": "0", "subexpr": "0"},
-                  {"id": "c1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{\\text{TPR}}{\\text{FPR}} \\pi  {\\text{as } \\pi} \\to 0"},
+                  {"id": "c1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{\\text{TPR}}{\\text{FPR}} \\pi  \\text{as } \\pi \\to 0"},
                   {"id": "c1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\text{TPR} \\frac{1}{\\text{FPR}}"},
                   {"id": "TPR", "type": "text", "label": "TPR", "latex": "\\text{TPR}", "subexpr": "\\text{TPR}", "description": "TPR", "color": "blue", "highlight": "tpr"},
                   {"id": "c1___power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\text{FPR}}"},
                   {"id": "FPR", "type": "text", "label": "FPR", "latex": "\\text{FPR}", "subexpr": "\\text{FPR}", "description": "FPR", "color": "orange", "highlight": "fpr"},
-                  {"id": "c1___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\pi \\text{as } \\pi"},
-                  {"id": "as_pi", "type": "scalar", "latex": "\\text{as } \\pi", "subexpr": "\\text{as } \\pi"},
-                  {"id": "c1___asymptotic_5", "type": "relation", "label": "asymptotically equal", "emoji": "∼", "op": "asymptotic", "subexpr": "\\text{precision} \\sim \\frac{\\text{TPR}}{\\text{FPR}}\\,\\pi \\quad \\text{as } \\pi \\to 0"}
+                  {"id": "c1___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\pi \\pi \\text{as }"},
+                  {"id": "c1___multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\pi \\text{as }"},
+                  {"id": "as", "type": "text", "label": "as ", "latex": "\\text{as }", "subexpr": "\\text{as }"},
+                  {"id": "c1___asymptotic_6", "type": "relation", "label": "asymptotically equal", "emoji": "∼", "op": "asymptotic", "subexpr": "\\text{precision} \\sim \\frac{\\text{TPR}}{\\text{FPR}}\\,\\pi \\quad \\text{as } \\pi \\to 0"}
                 ],
                 "edges": [
                   {"from": "precision", "to": "c0___limit_2"},
@@ -2810,10 +2811,12 @@
                   {"from": "c1___power_3", "to": "c1___multiply_2"},
                   {"from": "c1___multiply_2", "to": "c1___multiply_1", "semantic": "direct", "weight": 1.0},
                   {"from": "pi", "to": "c1___multiply_4", "semantic": "direct", "weight": 1.0},
-                  {"from": "delta_pi", "to": "c1___multiply_4", "semantic": "direct", "weight": 1.0},
+                  {"from": "as", "to": "c1___multiply_5", "semantic": "direct", "weight": 1.0},
+                  {"from": "pi", "to": "c1___multiply_5", "semantic": "direct", "weight": 1.0},
+                  {"from": "c1___multiply_5", "to": "c1___multiply_4", "semantic": "direct", "weight": 1.0},
                   {"from": "c1___multiply_4", "to": "c1___multiply_1", "semantic": "direct", "weight": 1.0},
-                  {"from": "precision", "to": "c1___asymptotic_5"},
-                  {"from": "c1___multiply_1", "to": "c1___asymptotic_5"}
+                  {"from": "precision", "to": "c1___asymptotic_6"},
+                  {"from": "c1___multiply_1", "to": "c1___asymptotic_6"}
                 ],
                 "classification": {
                   "kind": "statements",
@@ -2845,10 +2848,10 @@
                   {"id": "c0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{d}{d \\text{FPR}} \\text{precision} \\frac{1}{\\frac{d}{d \\text{TPR}} \\text{precision}}"},
                   {"id": "precision", "type": "text", "label": "precision", "latex": "\\text{precision}", "subexpr": "\\text{precision}"},
                   {"id": "FPR", "type": "text", "label": "FPR", "latex": "\\text{FPR}", "subexpr": "\\text{FPR}", "description": "FPR", "color": "orange", "highlight": "fpr"},
-                  {"id": "c0___deriv_3", "type": "operator", "op": "derivative", "with_respect_to": "beta", "subexpr": "\\frac{d}{d \\text{FPR}} \\text{precision}"},
+                  {"id": "c0___deriv_3", "type": "operator", "op": "derivative", "with_respect_to": "FPR", "subexpr": "\\frac{d}{d \\text{FPR}} \\text{precision}"},
                   {"id": "c0___power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\frac{d}{d \\text{TPR}} \\text{precision}}"},
                   {"id": "TPR", "type": "text", "label": "TPR", "latex": "\\text{TPR}", "subexpr": "\\text{TPR}", "description": "TPR", "color": "blue", "highlight": "tpr"},
-                  {"id": "c0___deriv_5", "type": "operator", "op": "derivative", "with_respect_to": "gamma", "subexpr": "\\frac{d}{d \\text{TPR}} \\text{precision}"},
+                  {"id": "c0___deriv_5", "type": "operator", "op": "derivative", "with_respect_to": "TPR", "subexpr": "\\frac{d}{d \\text{TPR}} \\text{precision}"},
                   {"id": "c0___negation_6", "type": "operator", "op": "negation", "subexpr": "-\\frac{1}{\\text{FPR}} \\text{TPR}"},
                   {"id": "c0___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{\\text{FPR}} \\text{TPR}"},
                   {"id": "c0___power_8", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\text{FPR}}"},

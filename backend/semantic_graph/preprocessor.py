@@ -29,9 +29,14 @@ _SIZED_BARE_RE = re.compile(r"\\(?:big|Big|bigg|Bigg)m?(?![A-Za-z])\s*")
 # ``|…|`` form — ``\left\lvert…\right\rvert`` and ``\left|…\right|`` are dropped
 # silently, taking the whole term with them.  ``\|`` (a norm) is not matched.
 _SIZED_BAR_RE = re.compile(
-    r"\\(?:left|right|(?:big|Big|bigg|Bigg)[lrm]?)(?![A-Za-z])\s*"
+    r"\\(?:big|Big|bigg|Bigg)[lrm]?(?![A-Za-z])\s*"
     r"(?:\||\\[lr]?vert(?![A-Za-z]))"
 )
+# One ``\left``/``\right`` and its delimiter; bars are rewritten per matched pair
+# so ``\left.f\right|_0^1`` (an evaluation bar) keeps its form while an
+# absolute value elsewhere in the same expression is still normalized.
+_LR_DELIM_RE = re.compile(r"\\(left|right)(?![A-Za-z])\s*(\\[A-Za-z]+|\\.|.)")
+_BAR_DELIMS = frozenset({"|", "\\vert", "\\lvert", "\\rvert"})
 
 # A multi-letter upright name applied to an argument: ``\mathrm{softmax}(``,
 # ``\operatorname{Var}\left(``, ``\mathrm{Cov}[``, ``\operatorname{med}_i |``
@@ -225,12 +230,33 @@ class LaTeXPreprocessor:
             "\\big" not in latex.lower() and "vert" not in latex and "|" not in latex
         ):
             return latex
-        # ``\left. … \right|_{a}`` is an evaluation bar, not an absolute value.
-        if "\\left." not in latex and "\\right." not in latex:
-            latex = _SIZED_BAR_RE.sub("|", latex)
+        latex = _SIZED_BAR_RE.sub("|", latex)
+        latex = LaTeXPreprocessor._normalize_left_right_bars(latex)
         latex = _SIZED_OPEN_RE.sub(r"\\left", latex)
         latex = _SIZED_CLOSE_RE.sub(r"\\right", latex)
         return _SIZED_BARE_RE.sub("", latex)
+
+    @staticmethod
+    def _normalize_left_right_bars(latex: str) -> str:
+        r"""Rewrite each ``\left|…\right|`` pair (any bar spelling) to ``|…|``.
+
+        Pairs are matched with a stack, so only a pair whose *both* ends are bars
+        changes: ``\left. f \right|_0^1`` is an evaluation bar and stays as is.
+        """
+        if "\\left" not in latex:
+            return latex
+        stack: list[re.Match] = []
+        spans: list[tuple[int, int]] = []
+        for m in _LR_DELIM_RE.finditer(latex):
+            if m.group(1) == "left":
+                stack.append(m)
+            elif stack:
+                opener = stack.pop()
+                if opener.group(2) in _BAR_DELIMS and m.group(2) in _BAR_DELIMS:
+                    spans += [opener.span(), m.span()]
+        for start, end in sorted(spans, reverse=True):
+            latex = latex[:start] + "|" + latex[end:]
+        return latex
 
     @staticmethod
     def normalize_operator_names(latex: str) -> str:
