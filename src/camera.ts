@@ -689,6 +689,10 @@ export function setRotateMode(mode: RotateMode): void {
     haltSmoothedRotation();
     haltSmoothedZoom();
     haltSmoothedPan();
+    // A drag under way finishes with the new mode's rotation: without its
+    // start snapshot a camera-space drag carries on as an arcball one, and an
+    // arcball drag never gains one mid-drag.
+    trackballStart = null;
     if (cameraState.arcballInertiaId) {
         cancelAnimationFrame(cameraState.arcballInertiaId);
         cameraState.arcballInertiaId = null;
@@ -1645,7 +1649,10 @@ function isCtrlScroll(deltaX: number, deltaY: number): boolean {
 
 function pinchZoom(deltaY: number, deltaX = 0): void {
     if (!cameraState.camera || !cameraState.controls) return;
-    if (!isWheelNotch(deltaY) && isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
+    // A mouse-wheel notch is neither, and ends any scroll or pinch gesture, so
+    // the next trackpad event is classified afresh rather than inheriting one.
+    if (isWheelNotch(deltaY)) ctrlWheelGesture = null;
+    else if (isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
     // A pinch zooms by its travel, uncapped in practice, so a fast pinch
     // coalesced into few large events on a slow frame zooms as far as the
     // same pinch at 60 fps.

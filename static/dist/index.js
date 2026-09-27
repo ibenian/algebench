@@ -5223,6 +5223,7 @@ function setRotateMode(mode) {
 	haltSmoothedRotation();
 	haltSmoothedZoom();
 	haltSmoothedPan();
+	trackballStart = null;
 	if (cameraState.arcballInertiaId) {
 		cancelAnimationFrame(cameraState.arcballInertiaId);
 		cameraState.arcballInertiaId = null;
@@ -5996,7 +5997,8 @@ function isCtrlScroll(deltaX, deltaY) {
 }
 function pinchZoom(deltaY, deltaX = 0) {
 	if (!cameraState.camera || !cameraState.controls) return;
-	if (!isWheelNotch(deltaY) && isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
+	if (isWheelNotch(deltaY)) ctrlWheelGesture = null;
+	else if (isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
 	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
 	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
 	if (rotateMode === "camera") {
