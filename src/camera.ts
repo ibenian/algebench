@@ -1295,11 +1295,15 @@ export function setupRollDrag(container: HTMLElement | null): void {
             e.preventDefault();
             e.stopImmediatePropagation();
             if ((e.buttons & 3) === 0) return endPanDrag();
-            // A mode switch (or anything that halts the pan smoother) drops the
-            // drag's start-relative state: carry on from the last pointer
-            // position in whichever mode is now active, rather than freezing.
-            if (panDrag.start && panDrag.start !== activePan) {
-                panDrag.start = rotateMode === 'camera' ? beginPanDrag(panDrag.x, panDrag.y) : null;
+            // Follow the mode now active, from the last pointer position: a
+            // camera-space pan needs a live start (new after an arcball→camera
+            // switch, or after a mode switch or wheel pan dropped it), and an
+            // arcball pan has none. Checked every move, so switching mid-drag
+            // either way takes effect at once rather than freezing or lagging.
+            if (rotateMode === 'camera') {
+                if (!panDrag.start || panDrag.start !== activePan) panDrag.start = beginPanDrag(panDrag.x, panDrag.y);
+            } else {
+                panDrag.start = null;
             }
             if (panDrag.start) applyPanDrag(panDrag.start, e.clientX, e.clientY);
             else panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
