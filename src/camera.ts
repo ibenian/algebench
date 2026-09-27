@@ -684,8 +684,17 @@ function loadRotateMode(): RotateMode {
 
 export function setRotateMode(mode: RotateMode): void {
     rotateMode = mode;
+    // Nothing a gesture in the old mode left in flight — a smoothed turn, pan
+    // or zoom still settling, or a coast — may carry on under the new one.
+    haltSmoothedRotation();
     haltSmoothedZoom();
     haltSmoothedPan();
+    if (cameraState.arcballInertiaId) {
+        cancelAnimationFrame(cameraState.arcballInertiaId);
+        cameraState.arcballInertiaId = null;
+    }
+    cameraState.arcballInertiaQ = null;
+    releaseDragPivotIfIdle(false);
     try { localStorage.setItem(ROTATE_MODE_KEY, mode); } catch { /* storage blocked */ }
 }
 

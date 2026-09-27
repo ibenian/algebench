@@ -5220,8 +5220,15 @@ function loadRotateMode() {
 }
 function setRotateMode(mode) {
 	rotateMode = mode;
+	haltSmoothedRotation();
 	haltSmoothedZoom();
 	haltSmoothedPan();
+	if (cameraState.arcballInertiaId) {
+		cancelAnimationFrame(cameraState.arcballInertiaId);
+		cameraState.arcballInertiaId = null;
+	}
+	cameraState.arcballInertiaQ = null;
+	releaseDragPivotIfIdle(false);
 	try {
 		localStorage.setItem(ROTATE_MODE_KEY, mode);
 	} catch {}
