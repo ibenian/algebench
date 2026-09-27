@@ -5686,7 +5686,8 @@ function setupRollDrag(container) {
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
 			axis,
-			x: e.clientX
+			x: e.clientX,
+			y: e.clientY
 		};
 		orbitDragActive = true;
 		if (rotateMode === "camera") beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
@@ -5718,11 +5719,13 @@ function setupRollDrag(container) {
 			updateDragAxis(e);
 			const currPt = screenToArcball(e.clientX, e.clientY);
 			const roll = !!orbitDrag.axis && orbitDrag.axis.z === 1;
+			if (rotateMode === "camera" && !trackballStart) beginCameraTrackball(orbitDrag.x, orbitDrag.y, orbitDrag.axis, roll);
 			if (trackballStart) applyCameraTrackball(e.clientX, e.clientY);
 			else if (roll) applyAxisRoll(e.clientX - orbitDrag.x);
 			else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
 			orbitDrag.pt = currPt;
 			orbitDrag.x = e.clientX;
+			orbitDrag.y = e.clientY;
 			showGrabMarker(currPt);
 			return;
 		}

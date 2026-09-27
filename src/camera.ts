@@ -111,6 +111,8 @@ interface OrbitDragState {
     axis: Vector3 | null;
     /** Previous pointer x, for the roll axis — see applyAxisRoll. */
     x: number;
+    /** Previous pointer y — where a drag switched to camera-space mode restarts. */
+    y: number;
 }
 
 /** An expression-driven camera view, compiled and ticked each frame. */
@@ -689,9 +691,10 @@ export function setRotateMode(mode: RotateMode): void {
     haltSmoothedRotation();
     haltSmoothedZoom();
     haltSmoothedPan();
-    // A drag under way finishes with the new mode's rotation: without its
-    // start snapshot a camera-space drag carries on as an arcball one, and an
-    // arcball drag never gains one mid-drag.
+    // A drag under way carries on in the new mode from wherever the pointer
+    // is: dropping its start snapshot turns a camera-space drag into an
+    // arcball one, and the move handler starts a fresh snapshot for an
+    // arcball drag switched to camera-space.
     trackballStart = null;
     if (cameraState.arcballInertiaId) {
         cancelAnimationFrame(cameraState.arcballInertiaId);
@@ -1260,7 +1263,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // would be thrown away one frame later.
         const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
         dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
-        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
+        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX, y: e.clientY };
         orbitDragActive = true;
         if (rotateMode === 'camera') beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
         else trackballStart = null;
@@ -1301,11 +1304,17 @@ export function setupRollDrag(container: HTMLElement | null): void {
             updateDragAxis(e);
             const currPt = screenToArcball(e.clientX, e.clientY);
             const roll = !!orbitDrag.axis && orbitDrag.axis.z === 1;
+            // Switched to camera-space mid-drag: start its snapshot from the
+            // previous pointer position, so this move already counts.
+            if (rotateMode === 'camera' && !trackballStart) {
+                beginCameraTrackball(orbitDrag.x, orbitDrag.y, orbitDrag.axis, roll);
+            }
             if (trackballStart) applyCameraTrackball(e.clientX, e.clientY);
             else if (roll) applyAxisRoll(e.clientX - orbitDrag.x);
             else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
             orbitDrag.pt = currPt;
             orbitDrag.x = e.clientX;
+            orbitDrag.y = e.clientY;
             showGrabMarker(currPt);
             return;
         }
