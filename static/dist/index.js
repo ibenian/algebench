@@ -19813,6 +19813,7 @@ var D3SemanticGraphRenderer = class {
 	* @param opts.onBackgroundClick — callback()
 	*/
 	constructor(container, opts = {}) {
+		this._renderSeq = 0;
 		this.container = container;
 		this.katex = opts.katex || typeof window !== "undefined" && window.katex;
 		this.direction = opts.direction || "left-right";
@@ -19844,13 +19845,14 @@ var D3SemanticGraphRenderer = class {
 	}
 	async render(graph) {
 		if (this._destroyed) return;
+		const seq = ++this._renderSeq;
 		this._graph = graph;
 		const [d3, dagre] = await Promise.all([loadD3(), loadDagre()]);
-		if (this._destroyed) return;
+		if (this._destroyed || seq !== this._renderSeq) return;
 		this._d3 = d3;
 		this._dagre = dagre;
 		this._theme = await fetchTheme(this.themeName);
-		if (this._destroyed) return;
+		if (this._destroyed || seq !== this._renderSeq) return;
 		if (!graph.nodes || !graph.nodes.length) {
 			this.container.innerHTML = "<div style=\"color:#7e8aa3;padding:2rem;text-align:center;\">No renderable graph structure.</div>";
 			return;

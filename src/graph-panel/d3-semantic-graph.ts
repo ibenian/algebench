@@ -611,6 +611,8 @@ export class D3SemanticGraphRenderer {
     _dagre: DagreModule | null;
     _positionById: Map<string, Point>;
     _lastInteractionId: string | null;
+    /** Bumped by every render(); an older render that finds it moved on stops. */
+    _renderSeq = 0;
     _activeNodeId: string | null;
     _selectedNodeIds: Set<string>;
     _highlightTimer: ReturnType<typeof setTimeout> | null;
@@ -668,13 +670,17 @@ export class D3SemanticGraphRenderer {
 
     async render(graph: SemanticGraph): Promise<void> {
         if (this._destroyed) return;
+        // render() awaits twice before drawing, and calls aren't serialised:
+        // a render overtaken by a newer one must not draw its older graph over
+        // the newer one's, so each checks it is still the latest after awaiting.
+        const seq = ++this._renderSeq;
         this._graph = graph;
         const [d3, dagre] = await Promise.all([loadD3(), loadDagre()]);
-        if (this._destroyed) return;
+        if (this._destroyed || seq !== this._renderSeq) return;
         this._d3 = d3;
         this._dagre = dagre;
         this._theme = await fetchTheme(this.themeName);
-        if (this._destroyed) return;
+        if (this._destroyed || seq !== this._renderSeq) return;
 
         if (!graph.nodes || !graph.nodes.length) {
             this.container.innerHTML = '<div style="color:#7e8aa3;padding:2rem;text-align:center;">No renderable graph structure.</div>';
