@@ -4902,7 +4902,7 @@ function resolveSmallVectorAutoScale(vectorLen, coneLen) {
 }
 function updateControlsHint() {
 	const hint = document.getElementById("controls-hint");
-	if (hint) hint.innerHTML = "Drag: rotate &middot; &#8984;/Ctrl/&#8997;+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom";
+	if (hint) hint.innerHTML = "Drag: rotate &middot; &#8984;/Ctrl/&#8997;+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel or Ctrl+right-drag: zoom";
 }
 function configureControlsInstance(ctrl, target) {
 	if (!ctrl) return;
@@ -5658,9 +5658,40 @@ function setupRollDrag(container) {
 	const inputSurface = container;
 	let orbitDrag = null;
 	let panDrag = null;
+	let zoomDrag = null;
 	let suppressContextMenu = false;
+	let pressPointerId = null;
+	inputSurface.addEventListener("pointerdown", (e) => {
+		pressPointerId = e.pointerId;
+	}, { capture: true });
+	function captureDragPointer() {
+		if (pressPointerId === null) return;
+		try {
+			inputSurface.setPointerCapture(pressPointerId);
+		} catch {}
+	}
+	inputSurface.addEventListener("lostpointercapture", () => {
+		endPanDrag();
+		endZoomDrag();
+	});
 	inputSurface.addEventListener("mousedown", (e) => {
 		suppressContextMenu = e.button === 2;
+		if (e.button === 2 && e.ctrlKey) {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			if (cameraState.arcballInertiaId) {
+				cancelAnimationFrame(cameraState.arcballInertiaId);
+				cameraState.arcballInertiaId = null;
+			}
+			cameraState.arcballInertiaQ = null;
+			haltSmoothedRotation();
+			releaseDragPivotIfIdle();
+			zoomDrag = { y: e.clientY };
+			captureDragPointer();
+			document.body.classList.add("zooming");
+			if (cameraState.controls) cameraState.controls.enabled = false;
+			return;
+		}
 		if (e.button === 0 && e.shiftKey || e.button === 2) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
@@ -5677,6 +5708,7 @@ function setupRollDrag(container) {
 				y: e.clientY,
 				start: rotateMode === "camera" ? beginPanDrag(e.clientX, e.clientY) : null
 			};
+			captureDragPointer();
 			if (cameraState.controls) cameraState.controls.enabled = false;
 			return;
 		}
@@ -5711,6 +5743,14 @@ function setupRollDrag(container) {
 		if (cameraState.controls) cameraState.controls.enabled = false;
 	}, { capture: true });
 	window.addEventListener("mousemove", (e) => {
+		if (zoomDrag) {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			if ((e.buttons & 2) === 0) return endZoomDrag();
+			dragZoom(e.clientY - zoomDrag.y);
+			zoomDrag.y = e.clientY;
+			return;
+		}
 		if (panDrag) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
@@ -5775,8 +5815,18 @@ function setupRollDrag(container) {
 			cameraState.controls.update();
 		}
 	}
+	function endZoomDrag() {
+		if (!zoomDrag) return;
+		zoomDrag = null;
+		document.body.classList.remove("zooming");
+		if (cameraState.controls) {
+			cameraState.controls.enabled = true;
+			cameraState.controls.update();
+		}
+	}
 	function endOrbitDrag() {
 		endPanDrag();
+		endZoomDrag();
 		if (!orbitDrag) return;
 		orbitDrag = null;
 		orbitDragActive = false;
@@ -5792,14 +5842,14 @@ function setupRollDrag(container) {
 		startArcballInertia();
 	}
 	window.addEventListener("mouseup", (e) => {
-		if (orbitDrag || panDrag) {
+		if (orbitDrag || panDrag || zoomDrag) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 		}
 		endOrbitDrag();
 	}, { capture: true });
 	inputSurface.addEventListener("contextmenu", (e) => {
-		if (orbitDrag || panDrag || suppressContextMenu) e.preventDefault();
+		if (orbitDrag || panDrag || zoomDrag || suppressContextMenu) e.preventDefault();
 		suppressContextMenu = false;
 	});
 	window.addEventListener("pointerup", () => {
@@ -6016,17 +6066,26 @@ function pinchZoom(deltaY, deltaX = 0) {
 	if (isWheelNotch(deltaY)) ctrlWheelGesture = null;
 	else if (isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
 	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
-	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
+	zoomByLog(Math.log(Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw))));
+}
+/** Zoom by ln `logFactor` (>0 zooms in) through the current mode and smoother. */
+function zoomByLog(logFactor) {
 	if (rotateMode === "camera") {
-		pinchZoomStartRelative(Math.log(factor));
+		pinchZoomStartRelative(logFactor);
 		return;
 	}
 	if (zoomSmoother.mode === "instant") {
-		applyZoomFactor(factor);
+		applyZoomFactor(Math.exp(logFactor));
 		return;
 	}
-	zoomSmoother.push(Math.log(factor));
+	zoomSmoother.push(logFactor);
 	zoomLoop.kick();
+}
+var DRAG_ZOOM_PER_PX = .01;
+/** Ctrl+right-drag: zoom by the pointer's vertical travel since the last move. */
+function dragZoom(dy) {
+	if (!cameraState.camera || !cameraState.controls || dy === 0) return;
+	zoomByLog(dy * DRAG_ZOOM_PER_PX);
 }
 var PAN_SMOOTHING_KEY = "algebench.panSmoothing";
 var panSmoother = new VectorSmoother(loadSmoothingMode("pansmooth", PAN_SMOOTHING_KEY));
