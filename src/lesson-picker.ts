@@ -1,5 +1,5 @@
 // ============================================================
-// Lesson picker — the "Built-in Lessons" palette: a search box over the
+// Lesson picker — the "Open Lesson" palette: a search box over the
 // lessons in scenes/ (Built-in) and scenes/draft/ (Draft), in the style of
 // the chat's voice-character picker.
 // ============================================================
@@ -358,7 +358,7 @@ export class LessonPicker {
         }
         buttonEl.setAttribute('aria-haspopup', 'dialog');
         const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-        buttonEl.title = `Browse built-in lessons (${isMac ? '⌘O' : 'Ctrl+O'})`;
+        buttonEl.title = `Open a lesson (${isMac ? '⌘O' : 'Ctrl+O'})`;
         buttonEl.setAttribute('aria-keyshortcuts', isMac ? 'Meta+O' : 'Control+O');
         // Cmd/Ctrl+O toggles the picker, in place of the browser's Open File.
         // Caught in the capture phase so it works from any focused field too.

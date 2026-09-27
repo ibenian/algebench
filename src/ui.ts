@@ -71,7 +71,7 @@ export function hideSceneLoading(): void {
     }
 }
 
-// ----- Built-in Lessons Picker -----
+// ----- Open Lesson Picker -----
 
 let lessonPicker: LessonPicker | null = null;
 

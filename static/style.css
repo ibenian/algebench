@@ -762,7 +762,7 @@ html, body {
     word-break: break-word;
 }
 
-/* Built-in Lessons picker — a search palette under the toolbar button */
+/* Open Lesson picker — a search palette under the toolbar button */
 .lesson-picker-backdrop {
     position: fixed;
     inset: 0;

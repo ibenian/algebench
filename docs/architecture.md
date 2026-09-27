@@ -716,7 +716,7 @@ Scenes are standalone JSON files loaded at startup or dropped into the browser.
 
 ## 11. Built-in Scenes
 
-The toolbar's **Built-in Lessons** button opens a search palette (`src/lesson-picker.ts`) over every lesson in `scenes/` (Built-in pill) and `scenes/draft/` (Draft pill). `GET /api/scenes` returns their summaries under `lessons` — title, first-scene description, scene and step counts, imported domains, `draft` — and a draft loads by the id `draft/<name>` like any built-in.
+The toolbar's **Open Lesson** button (Cmd/Ctrl+O) opens a search palette (`src/lesson-picker.ts`) over every lesson in `scenes/` (Built-in pill) and `scenes/draft/` (Draft pill). `GET /api/scenes` returns their summaries under `lessons` — title, first-scene description, scene and step counts, imported domains, `draft` — and a draft loads by the id `draft/<name>` like any built-in.
 
 | File | Topic |
 |---|---|

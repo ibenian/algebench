@@ -16547,7 +16547,7 @@ var LessonPicker = class {
 		}
 		buttonEl.setAttribute("aria-haspopup", "dialog");
 		const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-		buttonEl.title = `Browse built-in lessons (${isMac ? "⌘O" : "Ctrl+O"})`;
+		buttonEl.title = `Open a lesson (${isMac ? "⌘O" : "Ctrl+O"})`;
 		buttonEl.setAttribute("aria-keyshortcuts", isMac ? "Meta+O" : "Control+O");
 		document.addEventListener("keydown", (e) => {
 			if (e.key.toLowerCase() !== "o" || e.shiftKey || e.altKey) return;
