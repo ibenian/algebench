@@ -19851,8 +19851,9 @@ var D3SemanticGraphRenderer = class {
 		if (this._destroyed || seq !== this._renderSeq) return;
 		this._d3 = d3;
 		this._dagre = dagre;
-		this._theme = await fetchTheme(this.themeName);
+		const theme = await fetchTheme(this.themeName);
 		if (this._destroyed || seq !== this._renderSeq) return;
+		this._theme = theme;
 		if (!graph.nodes || !graph.nodes.length) {
 			this.container.innerHTML = "<div style=\"color:#7e8aa3;padding:2rem;text-align:center;\">No renderable graph structure.</div>";
 			return;
@@ -19862,11 +19863,14 @@ var D3SemanticGraphRenderer = class {
 		this._renderGraph();
 	}
 	async update(opts = {}) {
+		const seq = ++this._renderSeq;
 		if (opts.direction) this.direction = opts.direction;
 		if (opts.labels) this.labels = opts.labels;
 		if (opts.theme && opts.theme !== this.themeName) {
 			this.themeName = opts.theme;
-			this._theme = await fetchTheme(this.themeName);
+			const theme = await fetchTheme(this.themeName);
+			if (this._destroyed || seq !== this._renderSeq) return;
+			this._theme = theme;
 		}
 		if (this._d3 && this._dagre && this._graph) this._renderGraph();
 	}
