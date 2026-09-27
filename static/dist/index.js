@@ -24605,6 +24605,7 @@ function _applyPendingDeeplinkSelection(graph) {
 		const node = (graph.nodes || []).find((n) => n.id === valid[0]);
 		_showD3InfoPanel(valid[0], node, graph);
 	} else _hideD3InfoPanel();
+	if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(new Set(valid), false);
 	return valid.length ? "applied" : want.length ? "unmatched" : "none";
 }
 /**
@@ -25375,9 +25376,12 @@ async function _renderWithD3(container, graph, step, key) {
 	const stepKey = stableStepKey(step);
 	if (_currentD3Renderer && _d3LastStepKey && _d3LastStepKey !== stepKey) _d3StepStates.set(_d3LastStepKey, _currentD3Renderer.saveState());
 	const saved = _d3StepStates.get(stepKey);
-	const firstShowing = !saved && _d3LastStepKey !== stepKey;
-	if (saved) _currentD3Renderer.restoreState(saved);
-	else if (_d3LastStepKey !== stepKey) _currentD3Renderer.resetZoom();
+	const stepChanged = _d3LastStepKey !== stepKey;
+	const firstShowing = !saved && stepChanged;
+	if (stepChanged) {
+		if (saved) _currentD3Renderer.restoreState(saved);
+		else _currentD3Renderer.resetZoom();
+	}
 	await _currentD3Renderer.render(graph);
 	_d3LastStepKey = stepKey;
 	_currentSemanticKey = key;

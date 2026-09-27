@@ -204,6 +204,9 @@ function _applyPendingDeeplinkSelection(graph: SemanticGraph): 'applied' | 'unma
     } else {
         _hideD3InfoPanel();
     }
+    // Mirror the replaced selection onto the proof terms, as a plain click
+    // would — otherwise terms stay gold for the selection this one replaced.
+    if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(new Set(valid), false);
     return valid.length ? 'applied' : want.length ? 'unmatched' : 'none';
 }
 
@@ -1265,14 +1268,17 @@ async function _renderWithD3(
     }
 
     const saved = _d3StepStates.get(stepKey);
+    const stepChanged = _d3LastStepKey !== stepKey;
     // A step's first showing, with nothing restored: its roots start selected.
     // Later re-renders of the same step (enrichment, theme) keep whatever the
     // user has selected since — including nothing.
-    const firstShowing = !saved && _d3LastStepKey !== stepKey;
-    if (saved) {
-        _currentD3Renderer.restoreState(saved);
-    } else if (_d3LastStepKey !== stepKey) {
-        _currentD3Renderer.resetZoom();
+    const firstShowing = !saved && stepChanged;
+    // The snapshot was taken when the step was left, so it is only restored on
+    // arriving back. Restoring it on a same-step re-render too would throw away
+    // everything the user has done on the step since (selection, collapse, zoom).
+    if (stepChanged) {
+        if (saved) _currentD3Renderer.restoreState(saved);
+        else _currentD3Renderer.resetZoom();
     }
 
     await _currentD3Renderer.render(graph);
