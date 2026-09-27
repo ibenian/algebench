@@ -5216,7 +5216,7 @@ function loadRotateMode() {
 		const saved = localStorage.getItem(ROTATE_MODE_KEY);
 		if (isRotateMode(saved)) return saved;
 	} catch {}
-	return "arcball";
+	return "camera";
 }
 function setRotateMode(mode) {
 	rotateMode = mode;

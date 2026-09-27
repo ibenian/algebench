@@ -669,6 +669,9 @@ function hideGrabMarker(): void {
 // in-screen axis perpendicular to it, by an angle proportional to its length.
 // Both turn about the same pivot — the point pressed on — and share the
 // axis-pinned and roll drags; only how a drag becomes a rotation differs.
+// 'camera' also makes pan and zoom start-relative (see "Start-relative
+// interaction"), and is the default; 'arcball' keeps the older incremental
+// behaviour for anyone who picks it in the settings panel.
 type RotateMode = 'arcball' | 'camera';
 const ROTATE_MODE_KEY = 'algebench.rotateMode';
 const isRotateMode = (m: unknown): m is RotateMode => m === 'arcball' || m === 'camera';
@@ -681,7 +684,7 @@ function loadRotateMode(): RotateMode {
         const saved = localStorage.getItem(ROTATE_MODE_KEY);
         if (isRotateMode(saved)) return saved;
     } catch { /* storage blocked */ }
-    return 'arcball';
+    return 'camera';
 }
 
 export function setRotateMode(mode: RotateMode): void {
