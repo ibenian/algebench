@@ -24583,7 +24583,8 @@ function getGraphSelection() {
 /** Stash a deeplink selection; applied on the next/current step render. */
 function applyDeeplinkSelection(ids) {
 	_pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
-	if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
+	const step = currentProofStep();
+	if (!!step && stableStepKey(step) === _d3LastStepKey && _currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
 		if (_applyPendingDeeplinkSelection(_d3ActiveGraph) === "unmatched") _selectD3Roots(_d3ActiveGraph);
 	}
 }

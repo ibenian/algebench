@@ -169,7 +169,14 @@ function getGraphSelection() {
 /** Stash a deeplink selection; applied on the next/current step render. */
 function applyDeeplinkSelection(ids: string[] | null) {
     _pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
-    if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
+    // Apply now only if the graph on screen is the current step's. A deeplink
+    // usually navigates first, and the new step's graph renders asynchronously
+    // — until it does, the renderer still holds the previous step's graph, and
+    // matching ids against that would consume the request for the wrong step.
+    // Left pending, the target step's render applies it.
+    const step = currentProofStep();
+    const onScreen = !!step && stableStepKey(step) === _d3LastStepKey;
+    if (onScreen && _currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
         if (_applyPendingDeeplinkSelection(_d3ActiveGraph) === 'unmatched') _selectD3Roots(_d3ActiveGraph);
     }
 }
