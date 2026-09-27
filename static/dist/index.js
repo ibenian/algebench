@@ -19777,6 +19777,16 @@ function nodeShortLabel(node) {
 * Full applied form shown in the details panel / hover / TTS.
 * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
 */
+/**
+* A graph's roots, in graph order: nodes with no outgoing edge. Edges point
+* from a child up to the node it feeds (`from` → `to`), so a root is never an
+* edge's `from`. Annotations are left out — the layout never draws them.
+*/
+function graphRootIds(graph) {
+	if (!graph || !Array.isArray(graph.nodes)) return [];
+	const hasOutgoing = new Set((graph.edges || []).map((e) => e.from));
+	return graph.nodes.filter((n) => !hasOutgoing.has(n.id) && n.type !== "annotation").map((n) => n.id);
+}
 function nodeLongLabel(node) {
 	if (!node) return "";
 	return node.subexpr || node.latex || nodeShortLabel(node);
@@ -19899,9 +19909,7 @@ var D3SemanticGraphRenderer = class {
 	* layout never draws them).
 	*/
 	rootNodeIds() {
-		if (!this._graph || !Array.isArray(this._graph.nodes)) return [];
-		const hasOutgoing = new Set((this._graph.edges || []).map((e) => e.from));
-		return this._graph.nodes.filter((n) => !hasOutgoing.has(n.id) && n.type !== "annotation").map((n) => n.id);
+		return graphRootIds(this._graph);
 	}
 	/**
 	* Resolve a proof-animation term id (its `data-n`) to a node id in THIS
@@ -24575,14 +24583,20 @@ function getGraphSelection() {
 /** Stash a deeplink selection; applied on the next/current step render. */
 function applyDeeplinkSelection(ids) {
 	_pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
-	if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) _applyPendingDeeplinkSelection(_d3ActiveGraph);
+	if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
+		if (_applyPendingDeeplinkSelection(_d3ActiveGraph) === "unmatched") _selectD3Roots(_d3ActiveGraph);
+	}
 }
-/** True when a deeplink selection was pending and picked out nodes in this graph. */
+/**
+* Apply a pending deeplink selection: 'applied' when it picked out nodes in
+* this graph, 'unmatched' when it named nodes and none are here, 'none' when
+* nothing was pending or it named no nodes.
+*/
 function _applyPendingDeeplinkSelection(graph) {
-	if (_pendingDeeplinkSelection == null) return false;
+	if (_pendingDeeplinkSelection == null) return "none";
 	const want = _pendingDeeplinkSelection;
 	_pendingDeeplinkSelection = null;
-	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return false;
+	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return "none";
 	const valid = want.filter((id) => (graph.nodes || []).some((n) => n.id === id));
 	_currentD3Renderer.setSelection(valid);
 	if (valid.length > 1) _showD3MultiInfoPanel(new Set(valid), graph);
@@ -24590,7 +24604,7 @@ function _applyPendingDeeplinkSelection(graph) {
 		const node = (graph.nodes || []).find((n) => n.id === valid[0]);
 		_showD3InfoPanel(valid[0], node, graph);
 	} else _hideD3InfoPanel();
-	return valid.length > 0;
+	return valid.length ? "applied" : want.length ? "unmatched" : "none";
 }
 /**
 * Show a graph selection the way a click does: the info panel (one node or the
@@ -24616,7 +24630,18 @@ function _selectD3Roots(graph) {
 	if (!ids.length) return;
 	_currentD3Renderer.setSelection(ids);
 	const active = ids[ids.length - 1];
-	_onD3SelectionChange(active, (graph.nodes || []).find((n) => n.id === active), new Set(ids), ids.length > 1);
+	_onD3SelectionChange(active, (graph.nodes || []).find((n) => n.id === active), new Set(ids), false);
+}
+/**
+* Every render empties the info panel, but a re-render of the same step (the
+* graph re-derived or enriched, a theme or direction change) keeps the
+* renderer's selection — so show the panel for that selection again, or the
+* selected nodes lose their details until clicked afresh.
+*/
+function _showD3InfoForSelection(graph) {
+	const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+	if (ids.length > 1) _showD3MultiInfoPanel(new Set(ids), graph);
+	else if (ids.length === 1) _showD3InfoPanel(ids[0], (graph.nodes || []).find((n) => n.id === ids[0]), graph);
 }
 /** 'math' when the Math tab is active, else 'scene'. (Internal dock id is 'graph'.) */
 function getCurrentView() {
@@ -25355,8 +25380,9 @@ async function _renderWithD3(container, graph, step, key) {
 	await _currentD3Renderer.render(graph);
 	_d3LastStepKey = stepKey;
 	_currentSemanticKey = key;
-	const fromDeeplink = _applyPendingDeeplinkSelection(graph);
-	if (firstShowing && !fromDeeplink) _selectD3Roots(graph);
+	const deeplink = _applyPendingDeeplinkSelection(graph);
+	if (deeplink === "unmatched" || firstShowing && deeplink === "none") _selectD3Roots(graph);
+	else _showD3InfoForSelection(graph);
 	if (_currentChartManager) try {
 		_currentChartManager.reattach();
 	} catch {}

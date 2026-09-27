@@ -548,6 +548,21 @@ export function nodeShortLabel(node: LabelNode | null | undefined): string {
  * Full applied form shown in the details panel / hover / TTS.
  * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
  */
+/**
+ * A graph's roots, in graph order: nodes with no outgoing edge. Edges point
+ * from a child up to the node it feeds (`from` → `to`), so a root is never an
+ * edge's `from`. Annotations are left out — the layout never draws them.
+ */
+export function graphRootIds(
+    graph: { nodes?: readonly { id: string; type?: string }[]; edges?: readonly { from: string }[] | null } | null | undefined,
+): string[] {
+    if (!graph || !Array.isArray(graph.nodes)) return [];
+    const hasOutgoing = new Set((graph.edges || []).map(e => e.from));
+    return graph.nodes
+        .filter(n => !hasOutgoing.has(n.id) && n.type !== 'annotation')
+        .map(n => n.id);
+}
+
 export function nodeLongLabel(node: LabelNode | null | undefined): string {
     if (!node) return '';
     return node.subexpr || node.latex || nodeShortLabel(node);
@@ -738,11 +753,7 @@ export class D3SemanticGraphRenderer {
      * layout never draws them).
      */
     rootNodeIds(): string[] {
-        if (!this._graph || !Array.isArray(this._graph.nodes)) return [];
-        const hasOutgoing = new Set((this._graph.edges || []).map(e => e.from));
-        return this._graph.nodes
-            .filter(n => !hasOutgoing.has(n.id) && n.type !== 'annotation')
-            .map(n => n.id);
+        return graphRootIds(this._graph);
     }
 
     // ── Live-terms bridge ────────────────────────────────────────────────────

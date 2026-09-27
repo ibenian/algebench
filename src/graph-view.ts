@@ -170,16 +170,20 @@ function getGraphSelection() {
 function applyDeeplinkSelection(ids: string[] | null) {
     _pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
     if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
-        _applyPendingDeeplinkSelection(_d3ActiveGraph);
+        if (_applyPendingDeeplinkSelection(_d3ActiveGraph) === 'unmatched') _selectD3Roots(_d3ActiveGraph);
     }
 }
 
-/** True when a deeplink selection was pending and picked out nodes in this graph. */
-function _applyPendingDeeplinkSelection(graph: SemanticGraph): boolean {
-    if (_pendingDeeplinkSelection == null) return false;
+/**
+ * Apply a pending deeplink selection: 'applied' when it picked out nodes in
+ * this graph, 'unmatched' when it named nodes and none are here, 'none' when
+ * nothing was pending or it named no nodes.
+ */
+function _applyPendingDeeplinkSelection(graph: SemanticGraph): 'applied' | 'unmatched' | 'none' {
+    if (_pendingDeeplinkSelection == null) return 'none';
     const want = _pendingDeeplinkSelection;
     _pendingDeeplinkSelection = null;
-    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return false;
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return 'none';
     const valid = want.filter((id) => (graph.nodes || []).some((n) => n.id === id));
     _currentD3Renderer.setSelection(valid);
     if (valid.length > 1) {
@@ -193,7 +197,7 @@ function _applyPendingDeeplinkSelection(graph: SemanticGraph): boolean {
     } else {
         _hideD3InfoPanel();
     }
-    return valid.length > 0;
+    return valid.length ? 'applied' : want.length ? 'unmatched' : 'none';
 }
 
 /**
@@ -232,7 +236,24 @@ function _selectD3Roots(graph: SemanticGraph) {
     // Non-null: `ids` is non-empty.
     const active = ids[ids.length - 1]!;
     const node = (graph.nodes || []).find((n) => n.id === active);
-    _onD3SelectionChange(active, node, new Set(ids), ids.length > 1);
+    // Not additive: this replaces the selection, so proof terms still gold
+    // from the previous step must clear, as a fresh plain click would.
+    _onD3SelectionChange(active, node, new Set(ids), false);
+}
+
+/**
+ * Every render empties the info panel, but a re-render of the same step (the
+ * graph re-derived or enriched, a theme or direction change) keeps the
+ * renderer's selection — so show the panel for that selection again, or the
+ * selected nodes lose their details until clicked afresh.
+ */
+function _showD3InfoForSelection(graph: SemanticGraph) {
+    const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+    if (ids.length > 1) {
+        _showD3MultiInfoPanel(new Set(ids), graph);
+    } else if (ids.length === 1) {
+        _showD3InfoPanel(ids[0]!, (graph.nodes || []).find((n) => n.id === ids[0]), graph);
+    }
 }
 
 /** 'math' when the Math tab is active, else 'scene'. (Internal dock id is 'graph'.) */
@@ -1253,9 +1274,12 @@ async function _renderWithD3(
 
     // Apply a pending deeplink selection now that this step's graph exists.
     // The renderer outlives steps, so what it has selected may be the previous
-    // step's: only a deeplink selection counts as this step's own.
-    const fromDeeplink = _applyPendingDeeplinkSelection(graph);
-    if (firstShowing && !fromDeeplink) _selectD3Roots(graph);
+    // step's: only a deeplink selection counts as this step's own. A deeplink
+    // whose nodes aren't in this graph falls back to the roots even on a
+    // revisited step, rather than leaving nothing selected.
+    const deeplink = _applyPendingDeeplinkSelection(graph);
+    if (deeplink === 'unmatched' || (firstShowing && deeplink === 'none')) _selectD3Roots(graph);
+    else _showD3InfoForSelection(graph);
 
     // Re-attach this step's persisted charts to the freshly-recreated card.
     if (_currentChartManager) { try { _currentChartManager.reattach(); } catch {} }
