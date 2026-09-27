@@ -40,7 +40,7 @@ test('MAD, \\mathrm{MAD} and `MAD` in one paragraph: only the prose word links',
     assert.match(html, /<span class="katex">\\mathrm\{MAD\}\(x\)<\/span>/);
     assert.match(html, /<code>MAD\(\)<\/code>/);
     assert.match(html, /title="MAD"/);
-    setGlossaryThreshold(undefined);
+    setGlossaryThreshold(0);
 });
 
 test('explicit marker renders a term in both renderers', () => {

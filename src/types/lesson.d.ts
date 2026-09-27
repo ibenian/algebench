@@ -207,7 +207,7 @@ export interface LessonFormat {
   import?: string[];
   glossary?: Glossary;
   /**
-   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
+   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked.
    */
   glossaryMatchThreshold?: number;
   /**
@@ -1707,7 +1707,7 @@ export interface SingleSceneFormat {
   import?: string[];
   glossary?: Glossary1;
   /**
-   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked.
+   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked.
    */
   glossaryMatchThreshold?: number;
   /**

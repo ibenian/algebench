@@ -1314,10 +1314,12 @@ function setActiveGlossary(glossary) {
 	active.glossary = sanitizeGlossary(glossary);
 	active.dirty = true;
 }
-/** `glossaryMatchThreshold` of the loaded lesson. Absent or non-positive
-*  turns automatic matching off; explicit markers still render. */
+/** `glossaryMatchThreshold` of the loaded lesson. Absent falls back to
+*  DEFAULT_GLOSSARY_THRESHOLD; zero or negative turns automatic matching off
+*  (explicit markers still render). */
 function setGlossaryThreshold(n) {
-	const t = typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
+	const v = typeof n === "number" && Number.isFinite(n) ? n : 2;
+	const t = v > 0 ? v : null;
 	if (t !== active.threshold) {
 		active.threshold = t;
 		active.dirty = true;

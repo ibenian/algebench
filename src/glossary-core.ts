@@ -327,10 +327,15 @@ export function setActiveGlossary(glossary: unknown): void {
     active.dirty = true;
 }
 
-/** `glossaryMatchThreshold` of the loaded lesson. Absent or non-positive
- *  turns automatic matching off; explicit markers still render. */
+/** Automatic-matching threshold when a lesson doesn't set one. */
+export const DEFAULT_GLOSSARY_THRESHOLD = 2;
+
+/** `glossaryMatchThreshold` of the loaded lesson. Absent falls back to
+ *  DEFAULT_GLOSSARY_THRESHOLD; zero or negative turns automatic matching off
+ *  (explicit markers still render). */
 export function setGlossaryThreshold(n: unknown): void {
-    const t = typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : null;
+    const v = typeof n === 'number' && Number.isFinite(n) ? n : DEFAULT_GLOSSARY_THRESHOLD;
+    const t = v > 0 ? v : null;
     if (t !== active.threshold) { active.threshold = t; active.dirty = true; }
 }
 

@@ -85,7 +85,7 @@ A lesson (or single scene) can define a `glossary` at its root. Any rendered tex
 ```
 
 - **Explicit:** `{{glossary:RBF}}` or `{{glossary:RBF|RBF kernels}}` (shown text). Always linked; resolves by key, term or alias.
-- **Automatic:** set `glossaryMatchThreshold` at the lesson root (e.g. `3`), once for the whole lesson, to also link any key, term or alias at least that long — first appearance per paragraph (each list item, table row and heading counts as one), longest match wins, all-caps acronyms match their exact case only. Math, code, links and HTML tags are never matched.
+- **Automatic:** any key, term or alias at least `glossaryMatchThreshold` characters long is linked too (lesson root, once for the whole lesson; default `2`, `0` turns it off) — first appearance per paragraph (each list item, table row and heading counts as one), longest match wins, all-caps acronyms match their exact case only. Math, code, links and HTML tags are never matched.
 - **Domains:** an imported domain can ship a `glossary` in `static/domains/<name>/docs.json`; the lesson's own entry replaces a domain entry with the same key.
 - `./run.sh scripts/validate_content.py` flags explicit markers with no entry.
 
