@@ -5189,6 +5189,125 @@ function hideGrabMarker() {
 	grabHelper.material.dispose();
 	grabHelper = null;
 }
+var ROTATE_MODE_KEY = "algebench.rotateMode";
+var isRotateMode = (m) => m === "arcball" || m === "camera";
+var rotateMode = loadRotateMode();
+function loadRotateMode() {
+	try {
+		const q = new URLSearchParams(window.location.search).get("rotmode");
+		if (isRotateMode(q)) return q;
+		const saved = localStorage.getItem(ROTATE_MODE_KEY);
+		if (isRotateMode(saved)) return saved;
+	} catch {}
+	return "arcball";
+}
+function setRotateMode(mode) {
+	rotateMode = mode;
+	try {
+		localStorage.setItem(ROTATE_MODE_KEY, mode);
+	} catch {}
+}
+function snapshotView() {
+	const cam = cameraState.camera, ctrl = cameraState.controls;
+	if (!cam || !ctrl) return null;
+	return {
+		position: cam.position.clone(),
+		target: ctrl.target.clone(),
+		up: cam.up.clone(),
+		quaternion: cam.quaternion.clone(),
+		zoom: cam.zoom || 1
+	};
+}
+/** The camera is still where a gesture last put it. */
+function viewUnchangedSince(s) {
+	const cam = cameraState.camera, ctrl = cameraState.controls;
+	if (!s || !cam || !ctrl) return false;
+	const eps = 1e-9;
+	return cam.position.distanceToSquared(s.position) < eps && ctrl.target.distanceToSquared(s.target) < eps && cam.up.distanceToSquared(s.up) < eps && Math.abs((cam.zoom || 1) - s.zoom) < eps;
+}
+/** Put the camera at an absolute view; returns it as it landed. */
+function setView(position, target, up, zoom) {
+	const cam = cameraState.camera, ctrl = cameraState.controls;
+	if (!cam || !ctrl) return null;
+	if (up) cam.up.copy(up).normalize();
+	if (zoom !== void 0 && cam.isOrthographicCamera && cam.zoom !== zoom) {
+		cam.zoom = zoom;
+		cam.updateProjectionMatrix();
+	}
+	cam.position.copy(position);
+	ctrl.target.copy(target);
+	cam.lookAt(target);
+	ctrl.update();
+	return snapshotView();
+}
+/** The camera's screen right and up, in world space. */
+function screenAxes() {
+	const cam = cameraState.camera;
+	cam.updateMatrixWorld();
+	return {
+		right: new THREE.Vector3().setFromMatrixColumn(cam.matrix, 0),
+		up: new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1)
+	};
+}
+var trackballStart = null;
+function beginCameraTrackball(clientX, clientY) {
+	const view = snapshotView();
+	if (!view) {
+		trackballStart = null;
+		return;
+	}
+	const disc = arcballScreenDisc();
+	trackballStart = {
+		x: clientX,
+		y: clientY,
+		r: disc ? Math.max(disc.r, 1) : 200,
+		pivot: rotationCentre().clone(),
+		view,
+		last: view,
+		prevX: clientX,
+		prevY: clientY,
+		applied: new THREE.Quaternion()
+	};
+}
+/**
+* Camera-space trackball: the pointer's travel (dx, dy) since the press turns
+* the start view about the screen axis perpendicular to it — the start
+* camera's screen — by an angle proportional to its length. The sense and rate
+* match the arcball at the ball's centre: one ball radius of travel is one
+* radian. A roll drag turns about the start view axis by sideways travel.
+*/
+function applyCameraTrackball(clientX, clientY, axis, roll) {
+	const s = trackballStart;
+	if (!s || !cameraState.camera || !cameraState.controls) return;
+	if (!viewUnchangedSince(s.last)) {
+		const now = snapshotView();
+		if (!now) return;
+		s.view = now;
+		s.x = s.prevX;
+		s.y = s.prevY;
+		s.applied.identity();
+	}
+	s.prevX = clientX;
+	s.prevY = clientY;
+	const dx = clientX - s.x;
+	const dy = clientY - s.y;
+	const q = new THREE.Quaternion();
+	if (roll) q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL);
+	else {
+		const len = Math.hypot(dx, dy);
+		if (len > 1e-6) q.setFromAxisAngle(new THREE.Vector3(-dy / len, -dx / len, 0), len / s.r);
+		if (axis) twistAboutAxis(q, axis);
+	}
+	const v = s.view;
+	const worldQ = v.quaternion.clone().multiply(q).multiply(v.quaternion.clone().conjugate());
+	const pivot = s.pivot;
+	s.last = setView(v.position.clone().sub(pivot).applyQuaternion(worldQ).add(pivot), v.target.clone().sub(pivot).applyQuaternion(worldQ).add(pivot), v.up.clone().applyQuaternion(worldQ));
+	showArcballBall();
+	const step = worldQ.clone().multiply(s.applied.clone().conjugate());
+	s.applied.copy(worldQ);
+	cameraState.arcballLastMoveTime = performance.now();
+	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(step, .5) : step;
+}
 function applyArcballOrbit(prevPt, currPt, axis = null) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	if (prevPt.distanceToSquared(currPt) < 1e-10) return;
@@ -5439,9 +5558,11 @@ function setupRollDrag(container) {
 			cameraState.arcballInertiaQ = null;
 			haltSmoothedRotation();
 			releaseDragPivotIfIdle();
+			haltSmoothedPan();
 			panDrag = {
 				x: e.clientX,
-				y: e.clientY
+				y: e.clientY,
+				start: rotateMode === "camera" ? beginPanDrag(e.clientX, e.clientY) : null
 			};
 			if (cameraState.controls) cameraState.controls.enabled = false;
 			return;
@@ -5466,6 +5587,8 @@ function setupRollDrag(container) {
 			x: e.clientX
 		};
 		orbitDragActive = true;
+		if (rotateMode === "camera") beginCameraTrackball(e.clientX, e.clientY);
+		else trackballStart = null;
 		if (axisClass) document.body.classList.add(axisClass);
 		cancelPivotMove();
 		cancelBallFlash();
@@ -5479,7 +5602,8 @@ function setupRollDrag(container) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 			if ((e.buttons & 3) === 0) return endPanDrag();
-			panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
+			if (panDrag.start) applyPanDrag(panDrag.start, e.clientX, e.clientY);
+			else panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
 			panDrag.x = e.clientX;
 			panDrag.y = e.clientY;
 			return;
@@ -5489,7 +5613,9 @@ function setupRollDrag(container) {
 			e.stopImmediatePropagation();
 			if ((e.buttons & 1) === 0) return endOrbitDrag();
 			const currPt = screenToArcball(e.clientX, e.clientY);
-			if (orbitDrag.axis && orbitDrag.axis.z === 1) applyAxisRoll(e.clientX - orbitDrag.x);
+			const roll = !!orbitDrag.axis && orbitDrag.axis.z === 1;
+			if (trackballStart) applyCameraTrackball(e.clientX, e.clientY, orbitDrag.axis, roll);
+			else if (roll) applyAxisRoll(e.clientX - orbitDrag.x);
 			else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
 			orbitDrag.pt = currPt;
 			orbitDrag.x = e.clientX;
@@ -5510,6 +5636,7 @@ function setupRollDrag(container) {
 		if (!orbitDrag) return;
 		orbitDrag = null;
 		orbitDragActive = false;
+		trackballStart = null;
 		document.body.classList.remove("rotating-axis-x", "rotating-axis-y", "rotating-axis-z");
 		hideArcballBall();
 		hideGrabMarker();
@@ -5727,6 +5854,10 @@ function pinchZoom(deltaY) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
 	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
+	if (rotateMode === "camera") {
+		pinchZoomStartRelative(Math.log(factor));
+		return;
+	}
 	if (zoomSmoother.mode === "instant") {
 		applyZoomFactor(factor);
 		return;
@@ -5767,20 +5898,123 @@ function panBy(offset) {
 	panSmoother.push(offset.x, offset.y, offset.z);
 	panLoop.kick();
 }
-/** Pan so the scene moves (dx, dy) screen pixels, as if grabbed at the target's depth. */
-function panByPixels(dx, dy) {
+/** World units per screen pixel at the orbit target's depth, or null with no view. */
+function panPerPixel() {
 	const cam = cameraState.camera, ctrl = cameraState.controls;
 	const h = cameraState.renderer?.domElement?.clientHeight;
-	if (!cam || !ctrl || !h) return;
-	let perPixel;
-	if (cam.isOrthographicCamera) perPixel = Math.abs((cam.top - cam.bottom) / (cam.zoom || 1) / h);
-	else {
-		cam.updateMatrixWorld();
-		perPixel = 2 * Math.max(-ctrl.target.clone().applyMatrix4(cam.matrixWorldInverse).z, .001) * Math.tan((cam.fov || 75) * Math.PI / 360) / h;
-	}
-	const right = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 0);
-	const up = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1);
+	if (!cam || !ctrl || !h) return null;
+	if (cam.isOrthographicCamera) return Math.abs((cam.top - cam.bottom) / (cam.zoom || 1) / h);
+	cam.updateMatrixWorld();
+	return 2 * Math.max(-ctrl.target.clone().applyMatrix4(cam.matrixWorldInverse).z, .001) * Math.tan((cam.fov || 75) * Math.PI / 360) / h;
+}
+/** Pan so the scene moves (dx, dy) screen pixels, as if grabbed at the target's depth. */
+function panByPixels(dx, dy) {
+	const perPixel = panPerPixel();
+	if (perPixel === null) return;
+	const { right, up } = screenAxes();
 	panBy(new THREE.Vector3().addScaledVector(right, -dx * perPixel).addScaledVector(up, dy * perPixel));
+}
+function beginPan(x, y, perX, perY) {
+	const view = snapshotView();
+	if (!view) return null;
+	const { right, up } = screenAxes();
+	return {
+		view,
+		right,
+		up,
+		perX,
+		perY,
+		x,
+		y,
+		prevX: x,
+		prevY: y,
+		last: view
+	};
+}
+/** Move a start-relative pan's input to (x, y) and set the view from its total travel. */
+function applyPanTo(p, x, y) {
+	if (!viewUnchangedSince(p.last)) {
+		const fresh = beginPan(p.prevX, p.prevY, p.perX, p.perY);
+		if (!fresh) return;
+		Object.assign(p, fresh);
+	}
+	p.prevX = x;
+	p.prevY = y;
+	const offset = new THREE.Vector3().addScaledVector(p.right, (x - p.x) * p.perX).addScaledVector(p.up, (y - p.y) * p.perY);
+	p.last = setView(p.view.position.clone().add(offset), p.view.target.clone().add(offset));
+}
+/** Shift+drag / right-drag: the scene follows the pointer from where it pressed. */
+function beginPanDrag(clientX, clientY) {
+	const perPixel = panPerPixel();
+	return perPixel === null ? null : beginPan(clientX, clientY, -perPixel, perPixel);
+}
+function applyPanDrag(p, clientX, clientY) {
+	applyPanTo(p, clientX, clientY);
+}
+var WHEEL_GESTURE_GAP_MS = 200;
+var wheelGesture = null;
+function wheelGestureFor(kind) {
+	const now = performance.now();
+	const g = wheelGesture;
+	if (g && g.kind === kind && now - g.time <= WHEEL_GESTURE_GAP_MS) {
+		g.time = now;
+		return g;
+	}
+	wheelGesture = null;
+	const view = snapshotView();
+	if (!view) return null;
+	if (kind === "pan") haltSmoothedPan();
+	else haltSmoothedZoom();
+	let pan = null;
+	if (kind === "pan") {
+		const h = cameraState.renderer?.domElement?.clientHeight || 1;
+		const perPixel = view.position.distanceTo(view.target) / h * .8;
+		pan = beginPan(0, 0, perPixel, -perPixel);
+		if (!pan) return null;
+	}
+	wheelGesture = {
+		kind,
+		time: now,
+		pan,
+		view,
+		logZoom: 0,
+		last: view
+	};
+	return wheelGesture;
+}
+/** Two-finger scroll: pan by the gesture's total scroll from its start view. */
+function wheelPanStartRelative(deltaX, deltaY) {
+	const g = wheelGestureFor("pan");
+	if (!g || !g.pan) return;
+	applyPanTo(g.pan, g.pan.prevX + deltaX, g.pan.prevY + deltaY);
+}
+/**
+* Pinch: zoom the gesture's start view by its total pinch. The total is held
+* to what the zoom limits allow, so pinching back out of a limit answers at
+* once rather than first unwinding travel that did nothing.
+*/
+function pinchZoomStartRelative(logFactor) {
+	const g = wheelGestureFor("zoom");
+	const cam = cameraState.camera, ctrl = cameraState.controls;
+	if (!g || !cam || !ctrl) return;
+	if (!viewUnchangedSince(g.last)) {
+		g.view = snapshotView();
+		g.logZoom = 0;
+	}
+	const v = g.view;
+	if (!v) return;
+	g.logZoom += logFactor;
+	if (cam.isOrthographicCamera) {
+		const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, v.zoom * Math.exp(g.logZoom)));
+		g.logZoom = Math.log(zoom / v.zoom);
+		g.last = setView(v.position, v.target, void 0, zoom);
+	} else {
+		const offset = v.position.clone().sub(v.target);
+		const start = offset.length();
+		const dist = Math.max(1e-6, Math.min(ctrl.maxDistance ?? Infinity, Math.max(ctrl.minDistance ?? 0, start / Math.exp(g.logZoom))));
+		g.logZoom = Math.log(start / dist);
+		g.last = setView(v.target.clone().add(offset.setLength(dist)), v.target);
+	}
 }
 /** Scale the view by `factor` (>1 zooms in). False when a limit clamped it. */
 function applyZoomFactor(factor) {
@@ -5804,7 +6038,7 @@ function applyZoomFactor(factor) {
 	ctrl.update();
 	return free;
 }
-/** Bind the settings panel's smoothing selects and the rotate cue. */
+/** Bind the settings panel's smoothing selects, rotate cue and rotate mode. */
 function bindSmoothingSettings() {
 	const bind = (id, current, set) => {
 		const sel = document.getElementById(id);
@@ -5822,6 +6056,13 @@ function bindSmoothingSettings() {
 		cue.value = rotateCue;
 		cue.addEventListener("change", () => setRotateCue(cue.value === "off" ? "off" : "trackball"));
 	}
+	const mode = document.getElementById("rotate-mode-select");
+	if (mode) {
+		mode.value = rotateMode;
+		mode.addEventListener("change", () => {
+			if (isRotateMode(mode.value)) setRotateMode(mode.value);
+		});
+	}
 }
 function setupTrackpadPan() {
 	const canvas = cameraState.renderer && cameraState.renderer.domElement;
@@ -5838,6 +6079,10 @@ function setupTrackpadPan() {
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (!cameraState.camera || !cameraState.controls) return;
+		if (rotateMode === "camera") {
+			wheelPanStartRelative(e.deltaX, e.deltaY);
+			return;
+		}
 		const panFactor = cameraState.camera.position.distanceTo(cameraState.controls.target) / canvas.clientHeight * .8;
 		const right = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 0);
 		const up = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 1);
