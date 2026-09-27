@@ -660,9 +660,9 @@ def list_builtin_scenes():
 DRAFT_SCENES_SUBDIR = "draft"
 LESSON_DESCRIPTION_MAX = 280
 
-# path -> (mtime_ns, summary). Lessons can run to megabytes with baked graphs,
+# lesson id -> (mtime_ns, summary). Lessons can run to megabytes with baked graphs,
 # so each file is parsed once per change rather than on every list request.
-_lesson_summary_cache: dict[Path, tuple[int, dict]] = {}
+_lesson_summary_cache: dict[str, tuple[int, dict]] = {}
 
 
 def _glossary_terms(glossary) -> list[str]:
@@ -689,7 +689,10 @@ def _domain_glossary_terms(name: str) -> list[str]:
     """An imported domain's glossary terms, so a lesson is found by them too."""
     if not re.fullmatch(r"[A-Za-z0-9_\-]+", name):
         return []
-    path = static_dir / "domains" / name / "docs.json"
+    # Confined like the /domains routes: a symlink out of static/domains is skipped.
+    path = sanitize_path(static_dir / "domains", f"{name}/docs.json")
+    if not path:
+        return []
     try:
         mtime = path.stat().st_mtime_ns
     except OSError:
@@ -713,7 +716,7 @@ def _lesson_summary(path: Path, lesson_id: str, draft: bool) -> Optional[dict]:
         mtime = path.stat().st_mtime_ns
     except OSError:
         return None
-    cached = _lesson_summary_cache.get(path)
+    cached = _lesson_summary_cache.get(lesson_id)
     if cached and cached[0] == mtime:
         return cached[1]
     try:
@@ -750,7 +753,7 @@ def _lesson_summary(path: Path, lesson_id: str, draft: bool) -> Optional[dict]:
         "searchText": " ".join(" ".join(search_parts).split()),
         "glossary": _glossary_terms(spec.get("glossary")),
     }
-    _lesson_summary_cache[path] = (mtime, summary)
+    _lesson_summary_cache[lesson_id] = (mtime, summary)
     return summary
 
 
@@ -784,16 +787,24 @@ def list_builtin_lessons(refresh: bool = False):
         return _scan_builtin_lessons()
 
 
+def _confined_lesson(f: Path) -> Optional[Path]:
+    """``f`` resolved inside scenes/, as /scenes/{name} would load it; None for a
+    symlink that points outside."""
+    return sanitize_path(scenes_dir, f.relative_to(scenes_dir).as_posix())
+
+
 def _scan_builtin_lessons():
     if not scenes_dir.exists():
         return []
     lessons = []
     for f in sorted(scenes_dir.glob("*.json")):
-        summary = _lesson_summary(f, f.stem, draft=False)
+        path = _confined_lesson(f)
+        summary = path and _lesson_summary(path, f.stem, draft=False)
         if summary:
             lessons.append(_with_domain_terms(summary))
     for f in sorted((scenes_dir / DRAFT_SCENES_SUBDIR).glob("*.json")):
-        summary = _lesson_summary(f, f"{DRAFT_SCENES_SUBDIR}/{f.stem}", draft=True)
+        path = _confined_lesson(f)
+        summary = path and _lesson_summary(path, f"{DRAFT_SCENES_SUBDIR}/{f.stem}", draft=True)
         if summary:
             lessons.append(_with_domain_terms(summary))
     return lessons

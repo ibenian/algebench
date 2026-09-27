@@ -98,10 +98,10 @@ def test_index_is_built_at_startup_and_edits_are_picked_up(tmp_path, monkeypatch
     _write(lesson, {"title": "Eps", "scenes": []})
     with TestClient(server.create_app()):
         for _ in range(100):
-            if lesson in server._lesson_summary_cache:
+            if "eps" in server._lesson_summary_cache:
                 break
             time.sleep(0.02)
-        assert server._lesson_summary_cache[lesson][1]["title"] == "Eps"
+        assert server._lesson_summary_cache["eps"][1]["title"] == "Eps"
 
     _write(lesson, {"title": "Eps 2", "scenes": []})
     os.utime(lesson, ns=(time.time_ns(), time.time_ns() + 10**9))
@@ -129,3 +129,28 @@ def test_a_description_with_no_spaces_is_cut_by_characters(tmp_path, monkeypatch
     _write(tmp_path / "run.json", {"title": "Run", "scenes": [{"description": "x" * 400}]})
     desc = _lessons(tmp_path, monkeypatch)["run"]["description"]
     assert desc == "x" * server.LESSON_DESCRIPTION_MAX + "…"
+
+
+def test_symlinks_out_of_scenes_or_domains_are_skipped(tmp_path, monkeypatch):
+    outside = tmp_path / "outside"
+    _write(outside / "secret.json", {"title": "Secret", "scenes": []})
+    _write(outside / "docs.json", {"glossary": {"leak": {"term": "leaked term"}}})
+    scenes = tmp_path / "scenes"
+    _write(scenes / "ok.json", {"title": "Ok", "scenes": [], "import": ["evil"]})
+    (scenes / "linked.json").symlink_to(outside / "secret.json")
+    (scenes / "draft").mkdir()
+    (scenes / "draft" / "linked.json").symlink_to(outside / "secret.json")
+    domains = tmp_path / "static" / "domains"
+    domains.mkdir(parents=True)
+    (domains / "evil").symlink_to(outside, target_is_directory=True)
+    monkeypatch.setattr(server, "static_dir", tmp_path / "static")
+    monkeypatch.setattr(server, "_domain_terms_cache", {})
+    lessons = _lessons(scenes, monkeypatch)
+    assert set(lessons) == {"ok"}
+    assert lessons["ok"]["glossary"] == []
+
+
+def test_a_symlink_inside_scenes_is_still_listed(tmp_path, monkeypatch):
+    _write(tmp_path / "real.json", {"title": "Real", "scenes": []})
+    (tmp_path / "alias.json").symlink_to(tmp_path / "real.json")
+    assert set(_lessons(tmp_path, monkeypatch)) == {"real", "alias"}
