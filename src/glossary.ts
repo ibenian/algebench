@@ -80,6 +80,32 @@ let _pinned = false;
 let _restoringFocus = false;   // Escape handing focus back to a term
 let _hideTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Hovering a term waits this long before its tip opens, so a pointer passing
+// over text on its way somewhere else doesn't flash tips. Click, tap and
+// keyboard focus open at once; so does moving to another term while a tip at
+// that level is already up.
+const SHOW_DELAY_MS = 350;
+let _showTimer: ReturnType<typeof setTimeout> | null = null;
+
+function _cancelShow(): void {
+    if (_showTimer) { clearTimeout(_showTimer); _showTimer = null; }
+}
+
+/** Hover may open this term's tip: while pinned, only a term inside an open tip (stacked). */
+function _hoverMayShow(term: HTMLElement): boolean {
+    return !_pinned || _levelOf(term) >= 0 || _tips[0]!.anchor === term;
+}
+
+function _scheduleShow(term: HTMLElement): void {
+    _cancelShow();
+    // A tip already open where this one would go: switch without waiting.
+    if (_depth > _levelOf(term) + 1) { _show(term); return; }
+    _showTimer = setTimeout(() => {
+        _showTimer = null;
+        if (term.isConnected && _hoverMayShow(term)) _show(term);
+    }, SHOW_DELAY_MS);
+}
+
 function _tipId(level: number): string {
     return level === 0 ? 'glossary-tip' : `glossary-tip-${level}`;
 }
@@ -215,6 +241,7 @@ function _show(anchor: HTMLElement): void {
 }
 
 export function hideGlossaryTip(): void {
+    _cancelShow();
     _cancelHide();
     _pinned = false;
     _closeFrom(0);
@@ -271,16 +298,21 @@ export function installGlossaryTooltip(): void {
     }).observe(document.body, { childList: true, subtree: true });
     document.addEventListener('mouseover', (e) => {
         const term = _termOf(e.target);
-        // While pinned, only a term inside an open tip may open (stacked).
-        if (term && (!_pinned || _levelOf(term) >= 0 || _tips[0]!.anchor === term)) _show(term);
+        if (!term || !_hoverMayShow(term)) return;
+        // Moving within the same term (onto a child element) keeps its timer.
+        if (_termOf(e.relatedTarget) === term) return;
+        _scheduleShow(term);
     });
     document.addEventListener('mouseout', (e) => {
-        if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
+        if (_termOf(e.target) && !_termOf(e.relatedTarget)) {
+            _cancelShow();   // left before the delay ran out
+            _scheduleHide();
+        }
     });
     document.addEventListener('focusin', (e) => {
         if (_restoringFocus) return;
         const term = _termOf(e.target);
-        if (term) _show(term);
+        if (term) { _cancelShow(); _show(term); }
     });
     document.addEventListener('focusout', (e) => {
         if (!_termOf(e.target)) return;
@@ -295,6 +327,7 @@ export function installGlossaryTooltip(): void {
         const term = _termOf(e.target);
         if (term) {
             const level = _levelOf(term) + 1;
+            _cancelShow();
             if (_pinned && level < _depth && _tips[level]!.anchor === term) { _closeFrom(level); if (!_depth) _pinned = false; return; }
             _show(term);
             _pinned = true;
