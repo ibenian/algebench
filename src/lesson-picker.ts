@@ -216,6 +216,9 @@ export class LessonPicker {
         const { listEl, countEl } = this.opts;
         listEl.innerHTML = '';
         this.visible = [];
+        // The rows are gone: drop the old active one, so an empty result list
+        // cannot leave aria-activedescendant pointing at a removed element.
+        this.setActive(-1, false);
         const groups = this.groups(query);
         const current = this.opts.currentId();
 

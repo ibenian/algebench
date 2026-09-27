@@ -16424,6 +16424,7 @@ var LessonPicker = class {
 		const { listEl, countEl } = this.opts;
 		listEl.innerHTML = "";
 		this.visible = [];
+		this.setActive(-1, false);
 		const groups = this.groups(query);
 		const current = this.opts.currentId();
 		const total = this.pool().length;
