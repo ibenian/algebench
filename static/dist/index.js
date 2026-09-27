@@ -24628,7 +24628,7 @@ function _onD3SelectionChange(nodeId, nodeData, selectedIds, additive) {
 */
 function _selectD3Roots(graph) {
 	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
-	const ids = _currentD3Renderer.rootNodeIds();
+	const ids = graphRootIds(graph);
 	if (!ids.length) return;
 	_currentD3Renderer.setSelection(ids);
 	const active = ids[ids.length - 1];
@@ -25388,10 +25388,15 @@ async function _renderWithD3(container, graph, step, key) {
 	const deeplink = _applyPendingDeeplinkSelection(graph);
 	if (deeplink === "unmatched" || firstShowing && deeplink === "none") _selectD3Roots(graph);
 	else _showD3InfoForSelection(graph);
+	const restoredSelection = stepChanged && !!saved && deeplink === "none";
 	if (_currentChartManager) try {
 		_currentChartManager.reattach();
 	} catch {}
 	if (_currentProofManager) _currentProofManager.setCurrentStep(stepKey);
+	if (restoredSelection && _currentProofManager) {
+		const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+		_currentProofManager.syncSelectionFromGraph(new Set(ids), false);
+	}
 	const dock = container.querySelector(".d3-graph-card .sgc-pinned-panel");
 	if (dock && dock.children.length > 1) [...dock.children].sort((a, b) => (+a.dataset.dockOrder || 0) - (+b.dataset.dockOrder || 0)).forEach((c) => dock.appendChild(c));
 	enrichGraphInBackground(graph, key, step);

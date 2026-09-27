@@ -19,7 +19,7 @@
 import { state } from '/state.js';
 import { BRACES_ICON, FUNCTION_ANALYSIS_ICON } from '/icons.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
-import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
+import { D3SemanticGraphRenderer, graphRootIds, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import type {
     D3SemanticGraphOptions, D3SemanticGraphState, GraphEdgeStyle,
 } from '/graph-panel/d3-semantic-graph.js';
@@ -240,7 +240,9 @@ function _onD3SelectionChange(
  */
 function _selectD3Roots(graph: SemanticGraph) {
     if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
-    const ids = _currentD3Renderer.rootNodeIds();
+    // From the graph this render is for, not the renderer's current one:
+    // renders aren't serialised, so another may have replaced it meanwhile.
+    const ids = graphRootIds(graph);
     if (!ids.length) return;
     _currentD3Renderer.setSelection(ids);
     // Non-null: `ids` is non-empty.
@@ -1293,6 +1295,7 @@ async function _renderWithD3(
     const deeplink = _applyPendingDeeplinkSelection(graph);
     if (deeplink === 'unmatched' || (firstShowing && deeplink === 'none')) _selectD3Roots(graph);
     else _showD3InfoForSelection(graph);
+    const restoredSelection = stepChanged && !!saved && deeplink === 'none';
 
     // Re-attach this step's persisted charts to the freshly-recreated card.
     if (_currentChartManager) { try { _currentChartManager.reattach(); } catch {} }
@@ -1301,6 +1304,13 @@ async function _renderWithD3(
     // (re-attaching to the freshly-recreated card), detach the rest. This also
     // makes them survive re-renders within the same step.
     if (_currentProofManager) _currentProofManager.setCurrentStep(stepKey);
+    // Back on a step whose selection was just restored from its snapshot:
+    // mirror it onto that step's proof terms, replacing the previous step's.
+    // Not on same-step re-renders, which must keep local term selections.
+    if (restoredSelection && _currentProofManager) {
+        const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+        _currentProofManager.syncSelectionFromGraph(new Set(ids), false);
+    }
 
     // Charts and proof boxes share the docked overlay panel but re-attach from
     // two managers — keep their order stable (creation order) so it doesn't
