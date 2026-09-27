@@ -25247,6 +25247,7 @@ function updateTreeHighlight() {
 	});
 }
 function clearGraph() {
+	_d3RenderGen++;
 	const container = document.getElementById("graph-mermaid-container");
 	if (container) container.innerHTML = "";
 	if (_currentGraphPanel) {
@@ -25371,11 +25372,14 @@ async function _renderWithD3(container, graph, step, key) {
 			if (step) getFaManager().open(nodeData, step);
 		}
 	});
-	else await _currentD3Renderer.update({
-		direction: _currentDirection,
-		labels: _currentLabels,
-		theme: _currentTheme
-	});
+	else {
+		await _currentD3Renderer.update({
+			direction: _currentDirection,
+			labels: _currentLabels,
+			theme: _currentTheme
+		});
+		if (gen !== _d3RenderGen) return;
+	}
 	if (_currentChartManager && _currentD3Renderer) _currentChartManager.setRenderer(_currentD3Renderer);
 	if (_currentProofManager && _currentD3Renderer) _currentProofManager.setRenderer(_currentD3Renderer);
 	const stepKey = stableStepKey(step);
@@ -25388,7 +25392,7 @@ async function _renderWithD3(container, graph, step, key) {
 		else _currentD3Renderer.resetZoom();
 	}
 	await _currentD3Renderer.render(graph);
-	if (gen !== _d3RenderGen) return;
+	if (gen !== _d3RenderGen || !_currentD3Renderer || _currentD3Renderer._destroyed) return;
 	_d3LastStepKey = stepKey;
 	_currentSemanticKey = key;
 	const deeplink = _applyPendingDeeplinkSelection(graph);

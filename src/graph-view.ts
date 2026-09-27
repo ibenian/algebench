@@ -1087,6 +1087,8 @@ function updateTreeHighlight() {
 // destroys any attached SemanticGraphPanel, and resets the cache key so
 // the next real render is a full rebuild.
 function clearGraph() {
+    // Any D3 render still in flight belongs to what is being cleared.
+    _d3RenderGen++;
     const container = document.getElementById('graph-mermaid-container');
     if (container) container.innerHTML = '';
     if (_currentGraphPanel) {
@@ -1257,6 +1259,8 @@ async function _renderWithD3(
         });
     } else {
         await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
+        // Overtaken while updating: don't go on to render this older graph.
+        if (gen !== _d3RenderGen) return;
     }
 
     // Connect chart manager to renderer for transform polling + resize observation
@@ -1287,10 +1291,12 @@ async function _renderWithD3(
     }
 
     await _currentD3Renderer.render(graph);
-    // Renders aren't serialised: if a newer one started while this awaited, it
-    // owns the renderer, the step key and the selection now. Stop before
-    // applying this older graph's selection, details or step bookkeeping.
-    if (gen !== _d3RenderGen) return;
+    // Renders aren't serialised: if a newer one started (or the graph was
+    // cleared) while this awaited, that now owns the renderer, the step key and
+    // the selection. Stop before applying this older graph's selection,
+    // details or step bookkeeping. Checked after every await in this function.
+    // A clearGraph() meanwhile destroys the renderer (and bumps the count too).
+    if (gen !== _d3RenderGen || !_currentD3Renderer || _currentD3Renderer._destroyed) return;
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
 
