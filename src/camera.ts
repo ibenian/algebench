@@ -684,6 +684,8 @@ function loadRotateMode(): RotateMode {
 
 export function setRotateMode(mode: RotateMode): void {
     rotateMode = mode;
+    haltSmoothedZoom();
+    haltSmoothedPan();
     try { localStorage.setItem(ROTATE_MODE_KEY, mode); } catch { /* storage blocked */ }
 }
 
@@ -1558,6 +1560,8 @@ const zoomLoop = frameLoop((dt) => {
 
 function haltSmoothedZoom(): void {
     zoomLoop.cancel();
+    srZoomLoop.cancel();
+    activeZoom = null;
     zoomSmoother.reset();
 }
 
@@ -1598,6 +1602,8 @@ const panLoop = frameLoop((dt) => {
 
 function haltSmoothedPan(): void {
     panLoop.cancel();
+    srPanLoop.cancel();
+    activePan = null;
     panSmoother.reset();
 }
 
@@ -1642,9 +1648,20 @@ function panByPixels(dx: number, dy: number): void {
         .addScaledVector(up,     dy * perPixel));
 }
 
+// Start-relative pan and zoom still go through the pan and zoom smoothers, so
+// the settings panel's smoothing applies in both modes — without giving up
+// start-relative input. The smoother's goal is the gesture's *total* travel
+// (a world offset for pan, ln zoom for zoom), and each frame the view is
+// rebuilt as the start snapshot plus the smoothed position: the smoother only
+// shapes the path to an absolute goal, it never stacks steps onto the camera.
+// If something else moves the camera mid-gesture, the snapshot rebases onto
+// the view as it now is, and `base` records how much of the goal was already
+// shown then.
+
 /**
  * A start-relative pan: the view it started from, the screen axes and scale
- * held from then, and the input's travel since. `last` is the view it last set.
+ * held from then, and where its input began. The smoother's goal is the world
+ * offset for the input's travel since.
  */
 interface PanStart {
     view: ViewSnapshot;
@@ -1655,31 +1672,68 @@ interface PanStart {
     perY: number;
     x: number;
     y: number;
-    prevX: number;
-    prevY: number;
+    /** The input's current position, in the units of `x` and `y`. */
+    curX: number;
+    curY: number;
+    /** Smoothed offset already shown when `view` was taken. */
+    base: Vector3;
     last: ViewSnapshot | null;
 }
+let activePan: PanStart | null = null;
 
 function beginPan(x: number, y: number, perX: number, perY: number): PanStart | null {
     const view = snapshotView();
     if (!view) return null;
+    srPanLoop.cancel();
+    panSmoother.reset();
     const { right, up } = screenAxes();
-    return { view, right, up, perX, perY, x, y, prevX: x, prevY: y, last: view };
+    activePan = { view, right, up, perX, perY, x, y, curX: x, curY: y, base: new THREE.Vector3(), last: view };
+    return activePan;
 }
 
-/** Move a start-relative pan's input to (x, y) and set the view from its total travel. */
+function panSmoothedPos(): Vector3 {
+    const [x, y, z] = panSmoother.axes;
+    return new THREE.Vector3(x.pos, y.pos, z.pos);
+}
+
+/** Rebase onto the camera if something else moved it; false with no view. */
+function rebasePan(p: PanStart): boolean {
+    if (viewUnchangedSince(p.last)) return true;
+    const now = snapshotView();
+    if (!now) return false;
+    p.view = now;
+    p.last = now;
+    p.base = panSmoothedPos();
+    return true;
+}
+
+/** Show the pan's smoothed offset on its start view. */
+function showPan(p: PanStart): void {
+    const offset = panSmoothedPos().sub(p.base);
+    p.last = setView(p.view.position.clone().add(offset), p.view.target.clone().add(offset));
+}
+
+const srPanLoop = frameLoop((dt) => {
+    const p = activePan;
+    if (!p || !rebasePan(p)) return false;
+    panSmoother.step(dt);
+    showPan(p);
+    return !panSmoother.settled;
+});
+
+/** Move a start-relative pan's input to (x, y): its total travel sets the goal. */
 function applyPanTo(p: PanStart, x: number, y: number): void {
-    if (!viewUnchangedSince(p.last)) {
-        const fresh = beginPan(p.prevX, p.prevY, p.perX, p.perY);
-        if (!fresh) return;
-        Object.assign(p, fresh);
-    }
-    p.prevX = x;
-    p.prevY = y;
-    const offset = new THREE.Vector3()
+    if (activePan !== p || !rebasePan(p)) return;
+    p.curX = x;
+    p.curY = y;
+    const goal = new THREE.Vector3()
         .addScaledVector(p.right, (x - p.x) * p.perX)
         .addScaledVector(p.up,    (y - p.y) * p.perY);
-    p.last = setView(p.view.position.clone().add(offset), p.view.target.clone().add(offset));
+    const [ax, ay, az] = panSmoother.axes;
+    panSmoother.push(goal.x - ax.goal, goal.y - ay.goal, goal.z - az.goal);
+    panSmoother.step(0);   // 'instant' lands now; the others start their path
+    showPan(p);
+    if (!panSmoother.settled) srPanLoop.kick();
 }
 
 /** Shift+drag / right-drag: the scene follows the pointer from where it pressed. */
@@ -1693,73 +1747,108 @@ function applyPanDrag(p: PanStart, clientX: number, clientY: number): void {
 }
 
 // Wheel gestures — two-finger scroll and pinch — have no press or release, so
-// a gesture is a run of events of one kind with no gap longer than this.
+// a gesture is a run of events with no gap longer than this. One still
+// settling is carried on rather than restarted, so a pause mid-glide cannot
+// drop the rest of its goal.
 const WHEEL_GESTURE_GAP_MS = 200;
 
-interface WheelGesture {
-    kind: 'pan' | 'zoom';
-    time: number;
-    pan: PanStart | null;
-    /** Zoom: the view it started from, the summed log zoom, and the view it last set. */
-    view: ViewSnapshot | null;
-    logZoom: number;
-    last: ViewSnapshot | null;
-}
-let wheelGesture: WheelGesture | null = null;
-
-function wheelGestureFor(kind: 'pan' | 'zoom'): WheelGesture | null {
-    const now = performance.now();
-    const g = wheelGesture;
-    if (g && g.kind === kind && now - g.time <= WHEEL_GESTURE_GAP_MS) { g.time = now; return g; }
-    wheelGesture = null;
-    const view = snapshotView();
-    if (!view) return null;
-    if (kind === 'pan') haltSmoothedPan(); else haltSmoothedZoom();
-    let pan: PanStart | null = null;
-    if (kind === 'pan') {
-        const h = cameraState.renderer?.domElement?.clientHeight || 1;
-        const perPixel = view.position.distanceTo(view.target) / h * 0.8;
-        pan = beginPan(0, 0, perPixel, -perPixel);
-        if (!pan) return null;
-    }
-    wheelGesture = { kind, time: now, pan, view, logZoom: 0, last: view };
-    return wheelGesture;
-}
+let wheelPanTime = 0;
 
 /** Two-finger scroll: pan by the gesture's total scroll from its start view. */
 function wheelPanStartRelative(deltaX: number, deltaY: number): void {
-    const g = wheelGestureFor('pan');
-    if (!g || !g.pan) return;
-    applyPanTo(g.pan, g.pan.prevX + deltaX, g.pan.prevY + deltaY);
+    const now = performance.now();
+    let p = activePan;
+    const fresh = !p || p.perX < 0   // a drag's pan, not a scroll's
+        || (now - wheelPanTime > WHEEL_GESTURE_GAP_MS && panSmoother.settled);
+    wheelPanTime = now;
+    if (fresh) {
+        const view = snapshotView();
+        if (!view) return;
+        const h = cameraState.renderer?.domElement?.clientHeight || 1;
+        const perPixel = view.position.distanceTo(view.target) / h * 0.8;
+        p = beginPan(0, 0, perPixel, -perPixel);
+    }
+    if (p) applyPanTo(p, p.curX + deltaX, p.curY + deltaY);
 }
 
-/**
- * Pinch: zoom the gesture's start view by its total pinch. The total is held
- * to what the zoom limits allow, so pinching back out of a limit answers at
- * once rather than first unwinding travel that did nothing.
- */
-function pinchZoomStartRelative(logFactor: number): void {
-    const g = wheelGestureFor('zoom');
-    const cam = cameraState.camera, ctrl = cameraState.controls as unknown as {
+/** A start-relative zoom: the view it started from, and the smoothed ln zoom already shown then. */
+interface ZoomStart {
+    view: ViewSnapshot;
+    base: number;
+    last: ViewSnapshot | null;
+    time: number;
+}
+let activeZoom: ZoomStart | null = null;
+
+function rebaseZoom(g: ZoomStart): boolean {
+    if (viewUnchangedSince(g.last)) return true;
+    const now = snapshotView();
+    if (!now) return false;
+    g.view = now;
+    g.last = now;
+    g.base = zoomSmoother.pos;
+    return true;
+}
+
+/** The ln zoom the limits allow from a view: [most out, most in]. */
+function zoomLogRange(v: ViewSnapshot): [number, number] {
+    const cam = cameraState.camera!;
+    const ctrl = cameraState.controls as unknown as {
         minDistance?: number; maxDistance?: number; minZoom?: number; maxZoom?: number;
-    } | null;
-    if (!g || !cam || !ctrl) return;
-    if (!viewUnchangedSince(g.last)) { g.view = snapshotView(); g.logZoom = 0; }
-    const v = g.view;
-    if (!v) return;
-    g.logZoom += logFactor;
+    };
     if (cam.isOrthographicCamera) {
-        const zoom = Math.min(ctrl.maxZoom ?? Infinity, Math.max(ctrl.minZoom ?? 0, v.zoom * Math.exp(g.logZoom)));
-        g.logZoom = Math.log(zoom / v.zoom);
-        g.last = setView(v.position, v.target, undefined, zoom);
+        return [Math.log((ctrl.minZoom ?? 0) / v.zoom), Math.log((ctrl.maxZoom ?? Infinity) / v.zoom)];
+    }
+    const start = v.position.distanceTo(v.target);
+    return [Math.log(start / (ctrl.maxDistance ?? Infinity)), Math.log(start / Math.max(ctrl.minDistance ?? 0, 1e-6))];
+}
+
+/** Show the zoom's smoothed ln zoom on its start view. */
+function showZoom(g: ZoomStart): void {
+    const v = g.view;
+    const rel = zoomSmoother.pos - g.base;
+    if (cameraState.camera!.isOrthographicCamera) {
+        g.last = setView(v.position, v.target, undefined, v.zoom * Math.exp(rel));
     } else {
         const offset = v.position.clone().sub(v.target);
-        const start = offset.length();
-        const dist = Math.max(1e-6, Math.min(ctrl.maxDistance ?? Infinity,
-            Math.max(ctrl.minDistance ?? 0, start / Math.exp(g.logZoom))));
-        g.logZoom = Math.log(start / dist);
-        g.last = setView(v.target.clone().add(offset.setLength(dist)), v.target);
+        g.last = setView(v.target.clone().add(offset.setLength(Math.max(offset.length() / Math.exp(rel), 1e-6))), v.target);
     }
+}
+
+const srZoomLoop = frameLoop((dt) => {
+    const g = activeZoom;
+    if (!g || !rebaseZoom(g)) return false;
+    zoomSmoother.step(dt);
+    showZoom(g);
+    return !zoomSmoother.settled;
+});
+
+/**
+ * Pinch (and Ctrl + two-finger scroll, which arrives as the same event): the
+ * goal is the gesture's total ln zoom, held to what the zoom limits allow so
+ * that pinching back out of a limit answers at once rather than first
+ * unwinding travel that did nothing.
+ */
+function pinchZoomStartRelative(logFactor: number): void {
+    if (!cameraState.camera || !cameraState.controls) return;
+    const now = performance.now();
+    let g = activeZoom;
+    if (!g || (now - g.time > WHEEL_GESTURE_GAP_MS && zoomSmoother.settled)) {
+        const view = snapshotView();
+        if (!view) return;
+        srZoomLoop.cancel();
+        zoomLoop.cancel();
+        zoomSmoother.reset();
+        g = activeZoom = { view, base: 0, last: view, time: now };
+    }
+    g.time = now;
+    if (!rebaseZoom(g)) return;
+    const [lo, hi] = zoomLogRange(g.view);
+    const rel = Math.min(hi, Math.max(lo, zoomSmoother.goal - g.base + logFactor));
+    zoomSmoother.push(rel + g.base - zoomSmoother.goal);
+    zoomSmoother.step(0);   // 'instant' lands now; the others start their path
+    showZoom(g);
+    if (!zoomSmoother.settled) srZoomLoop.kick();
 }
 
 /** Scale the view by `factor` (>1 zooms in). False when a limit clamped it. */
