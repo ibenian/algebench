@@ -959,11 +959,33 @@ html, body {
     text-align: center;
 }
 .lesson-picker-foot {
-    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 8px 6px 12px;
     border-top: 1px solid var(--border-color);
     font-size: 11px;
     color: var(--muted-color);
 }
+.lesson-picker-keys { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lesson-picker-load {
+    flex: none;
+    font: inherit;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--btn-border, var(--border-color));
+    background: var(--btn-bg);
+    color: var(--btn-fg, var(--text-color));
+    cursor: pointer;
+}
+.lesson-picker-load:hover { background: var(--btn-hover, var(--btn-bg)); }
+.lesson-picker-load:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-color) 60%, transparent);
+    outline-offset: 1px;
+}
+@media (max-width: 480px) { .lesson-picker-keys { display: none; } .lesson-picker-foot { justify-content: flex-end; } }
 
 /* Main Content */
 #main-content {

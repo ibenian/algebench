@@ -1312,7 +1312,7 @@ export function updateDockVisibility(): void {
 }
 
 // Open the left dock and show its Scenes tab. Called when the user explicitly
-// loads a scene (Load button / Built-in Scenes) so they land on the scene tree.
+// loads a scene (From JSON / Built-in Lessons) so they land on the scene tree.
 // The right panel is intentionally left untouched. No-op when there is no scene
 // tree to show (single non-lesson scene -> dock stays hidden).
 export function showSceneDockScenesTab(): void {

@@ -16519,6 +16519,16 @@ var LessonPicker = class {
 			draftsEl.addEventListener("click", () => this.setShowDrafts(!this.showDrafts));
 		}
 		buttonEl.setAttribute("aria-haspopup", "dialog");
+		const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+		buttonEl.title = `Browse built-in lessons (${isMac ? "⌘O" : "Ctrl+O"})`;
+		buttonEl.setAttribute("aria-keyshortcuts", isMac ? "Meta+O" : "Control+O");
+		document.addEventListener("keydown", (e) => {
+			if (e.key.toLowerCase() !== "o" || e.shiftKey || e.altKey) return;
+			if (!(isMac ? e.metaKey : e.ctrlKey)) return;
+			e.preventDefault();
+			e.stopPropagation();
+			this.toggle();
+		}, { capture: true });
 		buttonEl.setAttribute("aria-expanded", "false");
 		buttonEl.addEventListener("click", (e) => {
 			e.stopPropagation();
@@ -16721,7 +16731,10 @@ function setupDragDrop() {
 function setupFilePicker() {
 	const btn = document.getElementById("btn-load");
 	const input = document.getElementById("file-input");
-	btn.addEventListener("click", () => input.click());
+	btn.addEventListener("click", () => {
+		lessonPicker?.close();
+		input.click();
+	});
 	input.addEventListener("change", (e) => {
 		const file = e.target.files[0];
 		if (file) {

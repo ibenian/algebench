@@ -42,8 +42,7 @@
             </div>
         </div>
         <div id="toolbar">
-            <button class="tb-btn" id="btn-load" title="Load JSON file">Load JSON</button>
-            <button class="tb-btn" id="btn-scenes" title="Browse built-in lessons">Built-in Lessons &#9662;</button>
+            <button class="tb-btn" id="btn-scenes" title="Browse built-in lessons (Cmd/Ctrl+O)">Built-in Lessons &#9662;</button>
             <button class="tb-btn" id="btn-show-json" title="Show current scene JSON">{ }</button>
             <div id="video-export-format-dropdown" class="toolbar-dropdown">
                 <button class="tb-btn tb-btn-split" id="btn-video-record" title="Record current tab video with TTS audio">
@@ -277,7 +276,11 @@
                     title="Reload the lesson list from disk" aria-label="Reload lessons">&#x21bb;</button>
         </div>
         <div id="lesson-picker-list" class="lesson-picker-list" role="listbox"></div>
-        <div class="lesson-picker-foot">&uarr;&darr; to move &middot; Enter to open &middot; Esc to close</div>
+        <div class="lesson-picker-foot">
+            <span class="lesson-picker-keys">&uarr;&darr; to move &middot; Enter to open &middot; Esc to close</span>
+            <button id="btn-load" class="lesson-picker-load" type="button"
+                    title="Open a lesson JSON file from your computer (or drop one on the page)">From JSON&hellip;</button>
+        </div>
     </div>
 
     <!-- Trust Dialog Overlay -->

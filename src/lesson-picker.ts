@@ -323,6 +323,18 @@ export class LessonPicker {
             draftsEl.addEventListener('click', () => this.setShowDrafts(!this.showDrafts));
         }
         buttonEl.setAttribute('aria-haspopup', 'dialog');
+        const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+        buttonEl.title = `Browse built-in lessons (${isMac ? '⌘O' : 'Ctrl+O'})`;
+        buttonEl.setAttribute('aria-keyshortcuts', isMac ? 'Meta+O' : 'Control+O');
+        // Cmd/Ctrl+O toggles the picker, in place of the browser's Open File.
+        // Caught in the capture phase so it works from any focused field too.
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() !== 'o' || e.shiftKey || e.altKey) return;
+            if (!(isMac ? e.metaKey : e.ctrlKey)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            this.toggle();
+        }, { capture: true });
         buttonEl.setAttribute('aria-expanded', 'false');
         buttonEl.addEventListener('click', (e) => { e.stopPropagation(); this.toggle(); });
         backdropEl.addEventListener('mousedown', () => this.close());

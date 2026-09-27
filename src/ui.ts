@@ -261,7 +261,12 @@ export function setupFilePicker(): void {
     const btn = document.getElementById('btn-load')!;
     const input = document.getElementById('file-input') as HTMLInputElement;
 
-    btn.addEventListener('click', () => input.click());
+    // The button lives in the lesson picker's footer: close the picker, then
+    // open the file dialog (still inside the click, so it is allowed to open).
+    btn.addEventListener('click', () => {
+        lessonPicker?.close();
+        input.click();
+    });
     input.addEventListener('change', (e) => {
         // Non-null: `target` is the file input above, so `files` is a list.
         const file = (e.target as HTMLInputElement).files![0] as PickedFile | undefined;
