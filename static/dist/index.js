@@ -4590,6 +4590,7 @@ var DEFAULT_SMOOTHING = "min-jerk";
 var LOWPASS_TAU = .06;
 var SPRING_TIME = .08;
 var TWEEN_TIME = .18;
+var EASE_IN_OUT_TIME = .3;
 var SETTLE_EPS = 1e-4;
 function isSmoothingMode(s) {
 	return typeof s === "string" && SMOOTHING_MODES.includes(s);
@@ -4602,6 +4603,7 @@ var Smoother = class {
 		this.acc = 0;
 		this.t = 0;
 		this.from = 0;
+		this.v0 = 0;
 		this.c = [
 			0,
 			0,
@@ -4621,6 +4623,7 @@ var Smoother = class {
 			this.vel = 0;
 			this.acc = 0;
 		}
+		this.v0 = this.vel;
 		if (this.mode === "min-jerk") this.planQuintic();
 	}
 	/** Stop where we are (e.g. a distance limit was hit). */
@@ -4630,12 +4633,13 @@ var Smoother = class {
 		this.acc = 0;
 		this.t = 0;
 		this.from = this.pos;
+		this.v0 = 0;
 		if (this.mode === "min-jerk") this.planQuintic();
 	}
 	/** Rebase to zero so values stay small over a long session. */
 	reset() {
 		this.pos = this.goal = this.vel = this.acc = this.t = 0;
-		this.from = 0;
+		this.from = this.v0 = 0;
 	}
 	get settled() {
 		return Math.abs(this.goal - this.pos) < SETTLE_EPS && Math.abs(this.vel) < SETTLE_EPS * 10;
@@ -4658,14 +4662,27 @@ var Smoother = class {
 			case "spring":
 				this.smoothDamp(dtc);
 				break;
-			case "ease-out":
-			case "ease-in-out": {
+			case "ease-out": {
 				this.t = Math.min(this.t + dtc, TWEEN_TIME);
 				const u = this.t / TWEEN_TIME;
-				const e = this.mode === "ease-out" ? 1 - Math.pow(1 - u, 3) : u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-				const next = this.from + (this.goal - this.from) * e;
+				const next = this.from + (this.goal - this.from) * (1 - Math.pow(1 - u, 3));
 				this.vel = dtc > 0 ? (next - this.pos) / dtc : 0;
 				this.pos = next;
+				break;
+			}
+			case "ease-in-out": {
+				const T = EASE_IN_OUT_TIME;
+				this.t = Math.min(this.t + dtc, T);
+				const u = this.t / T, u2 = u * u, u3 = u2 * u;
+				const d = this.goal - this.from;
+				const next = this.from + d * (3 * u2 - 2 * u3) + this.v0 * T * (u3 - 2 * u2 + u);
+				const lo = Math.min(this.from, this.goal), hi = Math.max(this.from, this.goal);
+				this.pos = Math.min(hi, Math.max(lo, next));
+				this.vel = this.pos === next ? d * (6 * u - 6 * u2) / T + this.v0 * (3 * u2 - 4 * u + 1) : 0;
+				if (this.t >= T) {
+					this.pos = this.goal;
+					this.vel = 0;
+				}
 				break;
 			}
 			case "min-jerk": {
@@ -5189,6 +5206,185 @@ function hideGrabMarker() {
 	grabHelper.material.dispose();
 	grabHelper = null;
 }
+var ROTATE_MODE_KEY = "algebench.rotateMode";
+var isRotateMode = (m) => m === "arcball" || m === "camera";
+var rotateMode = loadRotateMode();
+function loadRotateMode() {
+	try {
+		const q = new URLSearchParams(window.location.search).get("rotmode");
+		if (isRotateMode(q)) return q;
+		const saved = localStorage.getItem(ROTATE_MODE_KEY);
+		if (isRotateMode(saved)) return saved;
+	} catch {}
+	return "arcball";
+}
+function setRotateMode(mode) {
+	rotateMode = mode;
+	haltSmoothedRotation();
+	haltSmoothedZoom();
+	haltSmoothedPan();
+	trackballStart = null;
+	if (cameraState.arcballInertiaId) {
+		cancelAnimationFrame(cameraState.arcballInertiaId);
+		cameraState.arcballInertiaId = null;
+	}
+	cameraState.arcballInertiaQ = null;
+	releaseDragPivotIfIdle(false);
+	try {
+		localStorage.setItem(ROTATE_MODE_KEY, mode);
+	} catch {}
+}
+function snapshotView() {
+	const cam = cameraState.camera, ctrl = cameraState.controls;
+	if (!cam || !ctrl) return null;
+	return {
+		position: cam.position.clone(),
+		target: ctrl.target.clone(),
+		up: cam.up.clone(),
+		quaternion: cam.quaternion.clone(),
+		zoom: cam.zoom || 1
+	};
+}
+/** The camera is still where a gesture last put it. */
+function viewUnchangedSince(s) {
+	const cam = cameraState.camera, ctrl = cameraState.controls;
+	if (!s || !cam || !ctrl) return false;
+	const eps = 1e-9;
+	return cam.position.distanceToSquared(s.position) < eps && ctrl.target.distanceToSquared(s.target) < eps && cam.up.distanceToSquared(s.up) < eps && Math.abs((cam.zoom || 1) - s.zoom) < eps;
+}
+/** Put the camera at an absolute view; returns it as it landed. */
+function setView(position, target, up, zoom) {
+	const cam = cameraState.camera, ctrl = cameraState.controls;
+	if (!cam || !ctrl) return null;
+	if (up) cam.up.copy(up).normalize();
+	if (zoom !== void 0 && cam.isOrthographicCamera && cam.zoom !== zoom) {
+		cam.zoom = zoom;
+		cam.updateProjectionMatrix();
+	}
+	cam.position.copy(position);
+	ctrl.target.copy(target);
+	cam.lookAt(target);
+	ctrl.update();
+	return snapshotView();
+}
+/** The camera's screen right and up, in world space. */
+function screenAxes() {
+	const cam = cameraState.camera;
+	cam.updateMatrixWorld();
+	return {
+		right: new THREE.Vector3().setFromMatrixColumn(cam.matrix, 0),
+		up: new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1)
+	};
+}
+/** The drag in progress. */
+var trackballStart = null;
+/** The drag, or after release the tail its smoothing is still settling. */
+var activeTrackball = null;
+function beginCameraTrackball(clientX, clientY, axis, roll) {
+	const view = snapshotView();
+	if (!view) {
+		trackballStart = null;
+		return;
+	}
+	srRotLoop.cancel();
+	rotSmoother.reset();
+	const disc = arcballScreenDisc();
+	trackballStart = activeTrackball = {
+		x: clientX,
+		y: clientY,
+		r: disc ? Math.max(disc.r, 1) : 200,
+		pivot: rotationCentre().clone(),
+		view,
+		baseX: 0,
+		baseY: 0,
+		axis,
+		roll,
+		last: view,
+		applied: new THREE.Quaternion()
+	};
+}
+/**
+* Restart the trackball from the view as it is now, keeping its goal — after
+* something else moved the camera, or the modifier keys changed the axis.
+* False with no view to restart from.
+*/
+function rebaseCameraTrackball(s) {
+	const now = snapshotView();
+	if (!now) return false;
+	const [ax, ay] = rotSmoother.axes;
+	s.view = now;
+	s.last = now;
+	s.baseX = ax.pos;
+	s.baseY = ay.pos;
+	s.applied.identity();
+	return true;
+}
+/**
+* The modifier keys changed mid-drag: the new axis takes over from the view as
+* it is now, with the pointer at (x, y). Whatever the smoothing had not yet
+* shown is dropped rather than rebased — carried over, it would keep turning
+* under the new axis while the pointer stood still.
+*/
+function setTrackballAxis(axis, roll, x, y) {
+	const s = trackballStart;
+	if (!s) return;
+	srRotLoop.cancel();
+	rotSmoother.reset();
+	if (!rebaseCameraTrackball(s)) return;
+	s.x = x;
+	s.y = y;
+	s.axis = axis;
+	s.roll = roll;
+}
+/**
+* Show the drag's smoothed travel (dx, dy) as a turn of its start view about
+* the screen axis perpendicular to it — the start camera's screen — by an
+* angle proportional to its length. The sense and rate match the arcball at
+* the ball's centre: one ball radius of travel is one radian. A roll drag
+* turns about the view axis by sideways travel.
+*/
+function showCameraTrackball(s) {
+	const [ax, ay] = rotSmoother.axes;
+	const dx = ax.pos - s.baseX;
+	const dy = ay.pos - s.baseY;
+	const q = new THREE.Quaternion();
+	if (s.roll) q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL);
+	else {
+		const len = Math.hypot(dx, dy);
+		if (len > 1e-6) q.setFromAxisAngle(new THREE.Vector3(-dy / len, -dx / len, 0), len / s.r);
+		if (s.axis) twistAboutAxis(q, s.axis);
+	}
+	const v = s.view;
+	const worldQ = v.quaternion.clone().multiply(q).multiply(v.quaternion.clone().conjugate());
+	const pivot = s.pivot;
+	s.last = setView(v.position.clone().sub(pivot).applyQuaternion(worldQ).add(pivot), v.target.clone().sub(pivot).applyQuaternion(worldQ).add(pivot), v.up.clone().applyQuaternion(worldQ));
+	const step = worldQ.clone().multiply(s.applied.clone().conjugate());
+	s.applied.copy(worldQ);
+	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(step, .5) : step;
+}
+var srRotLoop = frameLoop((dt) => {
+	const s = activeTrackball;
+	if (!s) return false;
+	if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball(s)) return false;
+	rotSmoother.step(dt);
+	showCameraTrackball(s);
+	if (!rotSmoother.settled) return true;
+	if (s !== trackballStart) activeTrackball = null;
+	return false;
+});
+/** Move the drag's pointer to (clientX, clientY): its total travel is the smoother's goal. */
+function applyCameraTrackball(clientX, clientY) {
+	const s = trackballStart;
+	if (!s || !cameraState.camera || !cameraState.controls) return;
+	if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball(s)) return;
+	const [ax, ay] = rotSmoother.axes;
+	rotSmoother.push(clientX - s.x - ax.goal, clientY - s.y - ay.goal, 0);
+	rotSmoother.step(0);
+	showCameraTrackball(s);
+	showArcballBall();
+	cameraState.arcballLastMoveTime = performance.now();
+	if (!rotSmoother.settled) srRotLoop.kick();
+}
 function applyArcballOrbit(prevPt, currPt, axis = null) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	if (prevPt.distanceToSquared(currPt) < 1e-10) return;
@@ -5304,6 +5500,8 @@ function pushSmoothedRotation(worldQ) {
 /** Drop what's left of a smoothed turn, e.g. when a new drag takes over. */
 function haltSmoothedRotation() {
 	rotLoop.cancel();
+	srRotLoop.cancel();
+	activeTrackball = null;
 	rotSmoother.reset();
 }
 /** The drag pivot outlives the drag while a coast or a smoothed turn still uses it. */
@@ -5421,6 +5619,40 @@ function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 	}
 	pivotMoveId = requestAnimationFrame(step);
 }
+var AXIS_CLASSES = [
+	"rotating-axis-x",
+	"rotating-axis-y",
+	"rotating-axis-z"
+];
+/**
+* Cmd, Ctrl and Alt each pin a rotation drag to one axis of the arcball — its
+* horizontal, vertical and screen-normal axis in turn. They are read live, so
+* pressing or letting go of one mid-drag switches between a free and a pinned
+* turn without lifting the pointer.
+*
+* Turning about the horizontal axis moves the pointer up and down, and vice
+* versa, so the cursor class shows the direction that still does something
+* rather than the axis itself. Rolling has no such direction: it wants the
+* pointer swung around the pivot.
+*/
+function modifierAxis(e) {
+	if (e.metaKey) return {
+		axis: new THREE.Vector3(1, 0, 0),
+		cls: "rotating-axis-x"
+	};
+	if (e.ctrlKey) return {
+		axis: new THREE.Vector3(0, 1, 0),
+		cls: "rotating-axis-y"
+	};
+	if (e.altKey) return {
+		axis: new THREE.Vector3(0, 0, 1),
+		cls: "rotating-axis-z"
+	};
+	return {
+		axis: null,
+		cls: null
+	};
+}
 function setupRollDrag(container) {
 	if (!container) return;
 	const inputSurface = container;
@@ -5439,16 +5671,17 @@ function setupRollDrag(container) {
 			cameraState.arcballInertiaQ = null;
 			haltSmoothedRotation();
 			releaseDragPivotIfIdle();
+			haltSmoothedPan();
 			panDrag = {
 				x: e.clientX,
-				y: e.clientY
+				y: e.clientY,
+				start: rotateMode === "camera" ? beginPanDrag(e.clientX, e.clientY) : null
 			};
 			if (cameraState.controls) cameraState.controls.enabled = false;
 			return;
 		}
 		if (e.button !== 0) return;
-		const axis = e.metaKey ? new THREE.Vector3(1, 0, 0) : e.ctrlKey ? new THREE.Vector3(0, 1, 0) : e.altKey ? new THREE.Vector3(0, 0, 1) : null;
-		const axisClass = e.metaKey ? "rotating-axis-x" : e.ctrlKey ? "rotating-axis-y" : e.altKey ? "rotating-axis-z" : null;
+		const { axis, cls: axisClass } = modifierAxis(e);
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (cameraState.arcballInertiaId) {
@@ -5463,9 +5696,12 @@ function setupRollDrag(container) {
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
 			axis,
-			x: e.clientX
+			x: e.clientX,
+			y: e.clientY
 		};
 		orbitDragActive = true;
+		if (rotateMode === "camera") beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
+		else trackballStart = null;
 		if (axisClass) document.body.classList.add(axisClass);
 		cancelPivotMove();
 		cancelBallFlash();
@@ -5479,7 +5715,11 @@ function setupRollDrag(container) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 			if ((e.buttons & 3) === 0) return endPanDrag();
-			panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
+			if (rotateMode === "camera") {
+				if (!panDrag.start || panDrag.start !== activePan) panDrag.start = beginPanDrag(panDrag.x, panDrag.y);
+			} else panDrag.start = null;
+			if (panDrag.start) applyPanDrag(panDrag.start, e.clientX, e.clientY);
+			else panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
 			panDrag.x = e.clientX;
 			panDrag.y = e.clientY;
 			return;
@@ -5488,15 +5728,45 @@ function setupRollDrag(container) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 			if ((e.buttons & 1) === 0) return endOrbitDrag();
+			updateDragAxis(e);
 			const currPt = screenToArcball(e.clientX, e.clientY);
-			if (orbitDrag.axis && orbitDrag.axis.z === 1) applyAxisRoll(e.clientX - orbitDrag.x);
+			const roll = !!orbitDrag.axis && orbitDrag.axis.z === 1;
+			if (rotateMode === "camera" && !trackballStart) beginCameraTrackball(orbitDrag.x, orbitDrag.y, orbitDrag.axis, roll);
+			if (trackballStart) applyCameraTrackball(e.clientX, e.clientY);
+			else if (roll) applyAxisRoll(e.clientX - orbitDrag.x);
 			else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
 			orbitDrag.pt = currPt;
 			orbitDrag.x = e.clientX;
+			orbitDrag.y = e.clientY;
 			showGrabMarker(currPt);
 			return;
 		}
 	});
+	/**
+	* Follow the modifier keys mid-drag. A start-relative drag restarts from
+	* the view as it is now, at the pointer's current position, so the new
+	* axis takes over from here instead of reinterpreting the whole drag.
+	*/
+	function updateDragAxis(e) {
+		if (!orbitDrag) return;
+		const { axis, cls } = modifierAxis(e);
+		const was = orbitDrag.axis;
+		if (was === axis || was && axis && was.equals(axis)) return;
+		orbitDrag.axis = axis;
+		document.body.classList.remove(...AXIS_CLASSES);
+		if (cls) document.body.classList.add(cls);
+		setTrackballAxis(axis, !!axis && axis.z === 1, orbitDrag.x, orbitDrag.y);
+	}
+	const onModifierKey = (e) => {
+		if (!orbitDrag || ![
+			"Meta",
+			"Control",
+			"Alt"
+		].includes(e.key)) return;
+		updateDragAxis(e);
+	};
+	window.addEventListener("keydown", onModifierKey);
+	window.addEventListener("keyup", onModifierKey);
 	function endPanDrag() {
 		if (!panDrag) return;
 		panDrag = null;
@@ -5510,7 +5780,8 @@ function setupRollDrag(container) {
 		if (!orbitDrag) return;
 		orbitDrag = null;
 		orbitDragActive = false;
-		document.body.classList.remove("rotating-axis-x", "rotating-axis-y", "rotating-axis-z");
+		trackballStart = null;
+		document.body.classList.remove(...AXIS_CLASSES);
 		hideArcballBall();
 		hideGrabMarker();
 		document.body.classList.remove("rotating");
@@ -5716,6 +5987,8 @@ var zoomLoop = frameLoop((dt) => {
 });
 function haltSmoothedZoom() {
 	zoomLoop.cancel();
+	srZoomLoop.cancel();
+	activeZoom = null;
 	zoomSmoother.reset();
 }
 function setZoomSmoothingMode(mode) {
@@ -5723,10 +5996,31 @@ function setZoomSmoothingMode(mode) {
 	haltSmoothedZoom();
 	saveSmoothingMode(ZOOM_SMOOTHING_KEY, mode);
 }
-function pinchZoom(deltaY) {
+var ctrlWheelGesture = null;
+function isCtrlScroll(deltaX, deltaY) {
+	const now = performance.now();
+	const g = ctrlWheelGesture;
+	if (g && now - g.time <= WHEEL_GESTURE_GAP_MS) {
+		g.time = now;
+		return g.scroll;
+	}
+	const scroll = Number.isInteger(deltaY) && Number.isInteger(deltaX) && deltaY !== 0;
+	ctrlWheelGesture = {
+		scroll,
+		time: now
+	};
+	return scroll;
+}
+function pinchZoom(deltaY, deltaX = 0) {
 	if (!cameraState.camera || !cameraState.controls) return;
+	if (isWheelNotch(deltaY)) ctrlWheelGesture = null;
+	else if (isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
 	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
 	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
+	if (rotateMode === "camera") {
+		pinchZoomStartRelative(Math.log(factor));
+		return;
+	}
 	if (zoomSmoother.mode === "instant") {
 		applyZoomFactor(factor);
 		return;
@@ -5745,6 +6039,8 @@ var panLoop = frameLoop((dt) => {
 });
 function haltSmoothedPan() {
 	panLoop.cancel();
+	srPanLoop.cancel();
+	activePan = null;
 	panSmoother.reset();
 }
 function setPanSmoothingMode(mode) {
@@ -5767,20 +6063,173 @@ function panBy(offset) {
 	panSmoother.push(offset.x, offset.y, offset.z);
 	panLoop.kick();
 }
-/** Pan so the scene moves (dx, dy) screen pixels, as if grabbed at the target's depth. */
-function panByPixels(dx, dy) {
+/** World units per screen pixel at the orbit target's depth, or null with no view. */
+function panPerPixel() {
 	const cam = cameraState.camera, ctrl = cameraState.controls;
 	const h = cameraState.renderer?.domElement?.clientHeight;
-	if (!cam || !ctrl || !h) return;
-	let perPixel;
-	if (cam.isOrthographicCamera) perPixel = Math.abs((cam.top - cam.bottom) / (cam.zoom || 1) / h);
-	else {
-		cam.updateMatrixWorld();
-		perPixel = 2 * Math.max(-ctrl.target.clone().applyMatrix4(cam.matrixWorldInverse).z, .001) * Math.tan((cam.fov || 75) * Math.PI / 360) / h;
-	}
-	const right = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 0);
-	const up = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1);
+	if (!cam || !ctrl || !h) return null;
+	if (cam.isOrthographicCamera) return Math.abs((cam.top - cam.bottom) / (cam.zoom || 1) / h);
+	cam.updateMatrixWorld();
+	return 2 * Math.max(-ctrl.target.clone().applyMatrix4(cam.matrixWorldInverse).z, .001) * Math.tan((cam.fov || 75) * Math.PI / 360) / h;
+}
+/** Pan so the scene moves (dx, dy) screen pixels, as if grabbed at the target's depth. */
+function panByPixels(dx, dy) {
+	const perPixel = panPerPixel();
+	if (perPixel === null) return;
+	const { right, up } = screenAxes();
 	panBy(new THREE.Vector3().addScaledVector(right, -dx * perPixel).addScaledVector(up, dy * perPixel));
+}
+var activePan = null;
+function beginPan(x, y, perX, perY) {
+	const view = snapshotView();
+	if (!view) return null;
+	srPanLoop.cancel();
+	panSmoother.reset();
+	const { right, up } = screenAxes();
+	activePan = {
+		view,
+		right,
+		up,
+		perX,
+		perY,
+		x,
+		y,
+		curX: x,
+		curY: y,
+		base: new THREE.Vector3(),
+		last: view
+	};
+	return activePan;
+}
+function panSmoothedPos() {
+	const [x, y, z] = panSmoother.axes;
+	return new THREE.Vector3(x.pos, y.pos, z.pos);
+}
+/** Rebase onto the camera if something else moved it; false with no view. */
+function rebasePan(p) {
+	if (viewUnchangedSince(p.last)) return true;
+	const now = snapshotView();
+	if (!now) return false;
+	p.view = now;
+	p.last = now;
+	p.base = panSmoothedPos();
+	return true;
+}
+/** Show the pan's smoothed offset on its start view. */
+function showPan(p) {
+	const offset = panSmoothedPos().sub(p.base);
+	p.last = setView(p.view.position.clone().add(offset), p.view.target.clone().add(offset));
+}
+var srPanLoop = frameLoop((dt) => {
+	const p = activePan;
+	if (!p || !rebasePan(p)) return false;
+	panSmoother.step(dt);
+	showPan(p);
+	return !panSmoother.settled;
+});
+/** Move a start-relative pan's input to (x, y): its total travel sets the goal. */
+function applyPanTo(p, x, y) {
+	if (activePan !== p || !rebasePan(p)) return;
+	p.curX = x;
+	p.curY = y;
+	const goal = new THREE.Vector3().addScaledVector(p.right, (x - p.x) * p.perX).addScaledVector(p.up, (y - p.y) * p.perY);
+	const [ax, ay, az] = panSmoother.axes;
+	panSmoother.push(goal.x - ax.goal, goal.y - ay.goal, goal.z - az.goal);
+	panSmoother.step(0);
+	showPan(p);
+	if (!panSmoother.settled) srPanLoop.kick();
+}
+/** Shift+drag / right-drag: the scene follows the pointer from where it pressed. */
+function beginPanDrag(clientX, clientY) {
+	const perPixel = panPerPixel();
+	return perPixel === null ? null : beginPan(clientX, clientY, -perPixel, perPixel);
+}
+function applyPanDrag(p, clientX, clientY) {
+	applyPanTo(p, clientX, clientY);
+}
+var WHEEL_GESTURE_GAP_MS = 200;
+var wheelPanTime = 0;
+/** Two-finger scroll: pan by the gesture's total scroll from its start view. */
+function wheelPanStartRelative(deltaX, deltaY) {
+	const now = performance.now();
+	let p = activePan;
+	const fresh = !p || p.perX < 0 || now - wheelPanTime > WHEEL_GESTURE_GAP_MS && panSmoother.settled;
+	wheelPanTime = now;
+	if (fresh) {
+		const view = snapshotView();
+		if (!view) return;
+		const h = cameraState.renderer?.domElement?.clientHeight || 1;
+		const perPixel = view.position.distanceTo(view.target) / h * .8;
+		p = beginPan(0, 0, perPixel, -perPixel);
+	}
+	if (p) applyPanTo(p, p.curX + deltaX, p.curY + deltaY);
+}
+var activeZoom = null;
+function rebaseZoom(g) {
+	if (viewUnchangedSince(g.last)) return true;
+	const now = snapshotView();
+	if (!now) return false;
+	g.view = now;
+	g.last = now;
+	g.base = zoomSmoother.pos;
+	return true;
+}
+/** The ln zoom the limits allow from a view: [most out, most in]. */
+function zoomLogRange(v) {
+	const cam = cameraState.camera;
+	const ctrl = cameraState.controls;
+	if (cam.isOrthographicCamera) return [Math.log((ctrl.minZoom ?? 0) / v.zoom), Math.log((ctrl.maxZoom ?? Infinity) / v.zoom)];
+	const start = v.position.distanceTo(v.target);
+	return [Math.log(start / (ctrl.maxDistance ?? Infinity)), Math.log(start / Math.max(ctrl.minDistance ?? 0, 1e-6))];
+}
+/** Show the zoom's smoothed ln zoom on its start view. */
+function showZoom(g) {
+	const v = g.view;
+	const rel = zoomSmoother.pos - g.base;
+	if (cameraState.camera.isOrthographicCamera) g.last = setView(v.position, v.target, void 0, v.zoom * Math.exp(rel));
+	else {
+		const offset = v.position.clone().sub(v.target);
+		g.last = setView(v.target.clone().add(offset.setLength(Math.max(offset.length() / Math.exp(rel), 1e-6))), v.target);
+	}
+}
+var srZoomLoop = frameLoop((dt) => {
+	const g = activeZoom;
+	if (!g || !rebaseZoom(g)) return false;
+	zoomSmoother.step(dt);
+	showZoom(g);
+	return !zoomSmoother.settled;
+});
+/**
+* Pinch (and Ctrl + two-finger scroll, which arrives as the same event): the
+* goal is the gesture's total ln zoom, held to what the zoom limits allow so
+* that pinching back out of a limit answers at once rather than first
+* unwinding travel that did nothing.
+*/
+function pinchZoomStartRelative(logFactor) {
+	if (!cameraState.camera || !cameraState.controls) return;
+	const now = performance.now();
+	let g = activeZoom;
+	if (!g || now - g.time > WHEEL_GESTURE_GAP_MS && zoomSmoother.settled) {
+		const view = snapshotView();
+		if (!view) return;
+		srZoomLoop.cancel();
+		zoomLoop.cancel();
+		zoomSmoother.reset();
+		g = activeZoom = {
+			view,
+			base: 0,
+			last: view,
+			time: now
+		};
+	}
+	g.time = now;
+	if (!rebaseZoom(g)) return;
+	const [lo, hi] = zoomLogRange(g.view);
+	const rel = Math.min(hi, Math.max(lo, zoomSmoother.goal - g.base + logFactor));
+	zoomSmoother.push(rel + g.base - zoomSmoother.goal);
+	zoomSmoother.step(0);
+	showZoom(g);
+	if (!zoomSmoother.settled) srZoomLoop.kick();
 }
 /** Scale the view by `factor` (>1 zooms in). False when a limit clamped it. */
 function applyZoomFactor(factor) {
@@ -5804,7 +6253,7 @@ function applyZoomFactor(factor) {
 	ctrl.update();
 	return free;
 }
-/** Bind the settings panel's smoothing selects and the rotate cue. */
+/** Bind the settings panel's smoothing selects, rotate cue and rotate mode. */
 function bindSmoothingSettings() {
 	const bind = (id, current, set) => {
 		const sel = document.getElementById(id);
@@ -5822,6 +6271,13 @@ function bindSmoothingSettings() {
 		cue.value = rotateCue;
 		cue.addEventListener("change", () => setRotateCue(cue.value === "off" ? "off" : "trackball"));
 	}
+	const mode = document.getElementById("rotate-mode-select");
+	if (mode) {
+		mode.value = rotateMode;
+		mode.addEventListener("change", () => {
+			if (isRotateMode(mode.value)) setRotateMode(mode.value);
+		});
+	}
 }
 function setupTrackpadPan() {
 	const canvas = cameraState.renderer && cameraState.renderer.domElement;
@@ -5831,13 +6287,17 @@ function setupTrackpadPan() {
 		if (e.ctrlKey && e.deltaMode === 0) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
-			pinchZoom(e.deltaY);
+			pinchZoom(e.deltaY, e.deltaX);
 			return;
 		}
 		if (e.ctrlKey || e.deltaMode !== 0) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (!cameraState.camera || !cameraState.controls) return;
+		if (rotateMode === "camera") {
+			wheelPanStartRelative(e.deltaX, e.deltaY);
+			return;
+		}
 		const panFactor = cameraState.camera.position.distanceTo(cameraState.controls.target) / canvas.clientHeight * .8;
 		const right = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 0);
 		const up = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 1);

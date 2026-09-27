@@ -111,6 +111,8 @@ interface OrbitDragState {
     axis: Vector3 | null;
     /** Previous pointer x, for the roll axis — see applyAxisRoll. */
     x: number;
+    /** Previous pointer y — where a drag switched to camera-space mode restarts. */
+    y: number;
 }
 
 /** An expression-driven camera view, compiled and ticked each frame. */
@@ -660,6 +662,267 @@ function hideGrabMarker(): void {
     grabHelper = null;
 }
 
+// ----- Rotate mode -----
+//
+// 'arcball' maps the pointer onto a virtual sphere (above). 'camera' is a
+// trackball in camera space: the drag's screen delta turns the view about the
+// in-screen axis perpendicular to it, by an angle proportional to its length.
+// Both turn about the same pivot — the point pressed on — and share the
+// axis-pinned and roll drags; only how a drag becomes a rotation differs.
+type RotateMode = 'arcball' | 'camera';
+const ROTATE_MODE_KEY = 'algebench.rotateMode';
+const isRotateMode = (m: unknown): m is RotateMode => m === 'arcball' || m === 'camera';
+let rotateMode: RotateMode = loadRotateMode();
+
+function loadRotateMode(): RotateMode {
+    try {
+        const q = new URLSearchParams(window.location.search).get('rotmode');
+        if (isRotateMode(q)) return q;
+        const saved = localStorage.getItem(ROTATE_MODE_KEY);
+        if (isRotateMode(saved)) return saved;
+    } catch { /* storage blocked */ }
+    return 'arcball';
+}
+
+export function setRotateMode(mode: RotateMode): void {
+    rotateMode = mode;
+    // Nothing a gesture in the old mode left in flight — a smoothed turn, pan
+    // or zoom still settling, or a coast — may carry on under the new one.
+    haltSmoothedRotation();
+    haltSmoothedZoom();
+    haltSmoothedPan();
+    // A drag under way carries on in the new mode from wherever the pointer
+    // is: dropping its start snapshot turns a camera-space drag into an
+    // arcball one, and the move handler starts a fresh snapshot for an
+    // arcball drag switched to camera-space.
+    trackballStart = null;
+    if (cameraState.arcballInertiaId) {
+        cancelAnimationFrame(cameraState.arcballInertiaId);
+        cameraState.arcballInertiaId = null;
+    }
+    cameraState.arcballInertiaQ = null;
+    releaseDragPivotIfIdle(false);
+    try { localStorage.setItem(ROTATE_MODE_KEY, mode); } catch { /* storage blocked */ }
+}
+
+// ----- Start-relative interaction -----
+//
+// In the camera-space mode every gesture — rotate, pan, zoom — snapshots the
+// view when it starts and rebuilds the view from that snapshot and the
+// gesture's total travel on each event, rather than stacking per-event
+// deltas: the same pointer position always gives the same view, and nothing
+// drifts from rounding or from the path taken. If something else moved the
+// camera mid-gesture (a zoom during a rotate drag, say), the gesture rebases
+// onto the view as it now is, so it never snaps that change back out.
+
+/** The view a gesture starts from. */
+interface ViewSnapshot {
+    position: Vector3;
+    target: Vector3;
+    up: Vector3;
+    quaternion: Quaternion;
+    zoom: number;
+}
+
+function snapshotView(): ViewSnapshot | null {
+    const cam = cameraState.camera, ctrl = cameraState.controls;
+    if (!cam || !ctrl) return null;
+    return {
+        position: cam.position.clone(),
+        target: ctrl.target.clone(),
+        up: cam.up.clone(),
+        quaternion: cam.quaternion.clone(),
+        zoom: cam.zoom || 1,
+    };
+}
+
+/** The camera is still where a gesture last put it. */
+function viewUnchangedSince(s: ViewSnapshot | null): boolean {
+    const cam = cameraState.camera, ctrl = cameraState.controls;
+    if (!s || !cam || !ctrl) return false;
+    const eps = 1e-9;
+    return cam.position.distanceToSquared(s.position) < eps
+        && ctrl.target.distanceToSquared(s.target) < eps
+        && cam.up.distanceToSquared(s.up) < eps
+        && Math.abs((cam.zoom || 1) - s.zoom) < eps;
+}
+
+/** Put the camera at an absolute view; returns it as it landed. */
+function setView(position: Vector3, target: Vector3, up?: Vector3, zoom?: number): ViewSnapshot | null {
+    const cam = cameraState.camera, ctrl = cameraState.controls;
+    if (!cam || !ctrl) return null;
+    if (up) cam.up.copy(up).normalize();
+    if (zoom !== undefined && cam.isOrthographicCamera && cam.zoom !== zoom) {
+        cam.zoom = zoom;
+        cam.updateProjectionMatrix!();
+    }
+    cam.position.copy(position);
+    ctrl.target.copy(target);
+    cam.lookAt(target);
+    ctrl.update();
+    return snapshotView();
+}
+
+/** The camera's screen right and up, in world space. */
+function screenAxes(): { right: Vector3; up: Vector3 } {
+    const cam = cameraState.camera!;
+    cam.updateMatrixWorld();
+    return {
+        right: new THREE.Vector3().setFromMatrixColumn(cam.matrix, 0),
+        up: new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1),
+    };
+}
+
+/**
+ * A camera-space trackball drag: the view it started from and where the
+ * pointer pressed. See "Start-relative interaction" above.
+ *
+ * The drag goes through the rotate smoother like every other gesture, so the
+ * settings panel's smoothing applies here too. What is smoothed is the
+ * pointer's total travel since the press; the rotation is always computed
+ * from the smoothed travel and the start view, so smoothing only shapes the
+ * path to an absolute goal and never stacks steps onto the camera.
+ */
+interface TrackballStart {
+    /** The press: the pointer's travel is measured from here. */
+    x: number;
+    y: number;
+    /** Ball radius in pixels at the press, held for the drag so the rate cannot shift under it. */
+    r: number;
+    pivot: Vector3;
+    view: ViewSnapshot;
+    /** Smoothed travel already shown when `view` was taken. */
+    baseX: number;
+    baseY: number;
+    /** Camera-space axis the drag is pinned to, or null; `roll` turns about the view axis. */
+    axis: Vector3 | null;
+    roll: boolean;
+    /** The view it last set, to tell whether something else has moved it since. */
+    last: ViewSnapshot | null;
+    /** The world rotation it last showed — its change per frame is the coast's speed. */
+    applied: Quaternion;
+}
+/** The drag in progress. */
+let trackballStart: TrackballStart | null = null;
+/** The drag, or after release the tail its smoothing is still settling. */
+let activeTrackball: TrackballStart | null = null;
+
+function beginCameraTrackball(clientX: number, clientY: number, axis: Vector3 | null, roll: boolean): void {
+    const view = snapshotView();
+    if (!view) { trackballStart = null; return; }
+    srRotLoop.cancel();
+    rotSmoother.reset();
+    const disc = arcballScreenDisc();
+    trackballStart = activeTrackball = {
+        x: clientX,
+        y: clientY,
+        r: disc ? Math.max(disc.r, 1) : 200,
+        pivot: rotationCentre().clone(),
+        view,
+        baseX: 0,
+        baseY: 0,
+        axis,
+        roll,
+        last: view,
+        applied: new THREE.Quaternion(),
+    };
+}
+
+/**
+ * Restart the trackball from the view as it is now, keeping its goal — after
+ * something else moved the camera, or the modifier keys changed the axis.
+ * False with no view to restart from.
+ */
+function rebaseCameraTrackball(s: TrackballStart): boolean {
+    const now = snapshotView();
+    if (!now) return false;
+    const [ax, ay] = rotSmoother.axes;
+    s.view = now;
+    s.last = now;
+    s.baseX = ax.pos;
+    s.baseY = ay.pos;
+    s.applied.identity();
+    return true;
+}
+
+/**
+ * The modifier keys changed mid-drag: the new axis takes over from the view as
+ * it is now, with the pointer at (x, y). Whatever the smoothing had not yet
+ * shown is dropped rather than rebased — carried over, it would keep turning
+ * under the new axis while the pointer stood still.
+ */
+function setTrackballAxis(axis: Vector3 | null, roll: boolean, x: number, y: number): void {
+    const s = trackballStart;
+    if (!s) return;
+    srRotLoop.cancel();
+    rotSmoother.reset();
+    if (!rebaseCameraTrackball(s)) return;
+    s.x = x;
+    s.y = y;
+    s.axis = axis;
+    s.roll = roll;
+}
+
+/**
+ * Show the drag's smoothed travel (dx, dy) as a turn of its start view about
+ * the screen axis perpendicular to it — the start camera's screen — by an
+ * angle proportional to its length. The sense and rate match the arcball at
+ * the ball's centre: one ball radius of travel is one radian. A roll drag
+ * turns about the view axis by sideways travel.
+ */
+function showCameraTrackball(s: TrackballStart): void {
+    const [ax, ay] = rotSmoother.axes;
+    const dx = ax.pos - s.baseX;
+    const dy = ay.pos - s.baseY;
+    const q = new THREE.Quaternion();
+    if (s.roll) {
+        q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL);
+    } else {
+        const len = Math.hypot(dx, dy);
+        if (len > 1e-6) q.setFromAxisAngle(new THREE.Vector3(-dy / len, -dx / len, 0), len / s.r);
+        if (s.axis) twistAboutAxis(q, s.axis);
+    }
+    const v = s.view;
+    const worldQ = v.quaternion.clone().multiply(q).multiply(v.quaternion.clone().conjugate());
+    const pivot = s.pivot;
+    s.last = setView(
+        v.position.clone().sub(pivot).applyQuaternion(worldQ).add(pivot),
+        v.target.clone().sub(pivot).applyQuaternion(worldQ).add(pivot),
+        v.up.clone().applyQuaternion(worldQ),
+    );
+    // The coast carries on at this frame's step, not the whole turn so far.
+    const step = worldQ.clone().multiply(s.applied.clone().conjugate());
+    s.applied.copy(worldQ);
+    cameraState.arcballInertiaQ = cameraState.arcballInertiaQ
+        ? cameraState.arcballInertiaQ.slerp(step, 0.5)
+        : step;
+}
+
+const srRotLoop = frameLoop((dt) => {
+    const s = activeTrackball;
+    if (!s) return false;
+    if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball(s)) return false;
+    rotSmoother.step(dt);
+    showCameraTrackball(s);
+    if (!rotSmoother.settled) return true;
+    if (s !== trackballStart) activeTrackball = null;
+    return false;
+});
+
+/** Move the drag's pointer to (clientX, clientY): its total travel is the smoother's goal. */
+function applyCameraTrackball(clientX: number, clientY: number): void {
+    const s = trackballStart;
+    if (!s || !cameraState.camera || !cameraState.controls) return;
+    if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball(s)) return;
+    const [ax, ay] = rotSmoother.axes;
+    rotSmoother.push(clientX - s.x - ax.goal, clientY - s.y - ay.goal, 0);
+    rotSmoother.step(0);   // 'instant' lands now; the others start their path
+    showCameraTrackball(s);
+    showArcballBall();
+    cameraState.arcballLastMoveTime = performance.now();
+    if (!rotSmoother.settled) srRotLoop.kick();
+}
+
 function applyArcballOrbit(prevPt: Vector3, currPt: Vector3, axis: Vector3 | null = null): void {
     if (!cameraState.camera || !cameraState.controls) return;
     if (prevPt.distanceToSquared(currPt) < 1e-10) return;
@@ -793,6 +1056,8 @@ function pushSmoothedRotation(worldQ: Quaternion): void {
 /** Drop what's left of a smoothed turn, e.g. when a new drag takes over. */
 function haltSmoothedRotation(): void {
     rotLoop.cancel();
+    srRotLoop.cancel();
+    activeTrackball = null;
     rotSmoother.reset();
 }
 
@@ -933,13 +1198,33 @@ export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS):
 }
 
 
+const AXIS_CLASSES = ['rotating-axis-x', 'rotating-axis-y', 'rotating-axis-z'];
+
+/**
+ * Cmd, Ctrl and Alt each pin a rotation drag to one axis of the arcball — its
+ * horizontal, vertical and screen-normal axis in turn. They are read live, so
+ * pressing or letting go of one mid-drag switches between a free and a pinned
+ * turn without lifting the pointer.
+ *
+ * Turning about the horizontal axis moves the pointer up and down, and vice
+ * versa, so the cursor class shows the direction that still does something
+ * rather than the axis itself. Rolling has no such direction: it wants the
+ * pointer swung around the pivot.
+ */
+function modifierAxis(e: { metaKey: boolean; ctrlKey: boolean; altKey: boolean }): { axis: Vector3 | null; cls: string | null } {
+    if (e.metaKey) return { axis: new THREE.Vector3(1, 0, 0), cls: 'rotating-axis-x' };
+    if (e.ctrlKey) return { axis: new THREE.Vector3(0, 1, 0), cls: 'rotating-axis-y' };
+    if (e.altKey)  return { axis: new THREE.Vector3(0, 0, 1), cls: 'rotating-axis-z' };
+    return { axis: null, cls: null };
+}
+
 export function setupRollDrag(container: HTMLElement | null): void {
     if (!container) return;
     const inputSurface = container;
     let orbitDrag: OrbitDragState | null = null;
     // Shift+drag and right-drag pan. Handled here rather than by the orbit
     // controls so a pan goes through the pan smoother like every other move.
-    let panDrag: { x: number; y: number } | null = null;
+    let panDrag: { x: number; y: number; start: PanStart | null } | null = null;
     // A right press's context menu arrives on mousedown (macOS) or after
     // mouseup (Windows, Linux), when panDrag is already gone. Remember the
     // press until its menu shows up, so either order keeps the menu shut.
@@ -959,26 +1244,13 @@ export function setupRollDrag(container: HTMLElement | null): void {
             cameraState.arcballInertiaQ = null;
             haltSmoothedRotation();
             releaseDragPivotIfIdle();
-            panDrag = { x: e.clientX, y: e.clientY };
+            haltSmoothedPan();
+            panDrag = { x: e.clientX, y: e.clientY, start: rotateMode === 'camera' ? beginPanDrag(e.clientX, e.clientY) : null };
             if (cameraState.controls) cameraState.controls.enabled = false;
             return;
         }
         if (e.button !== 0) return;
-        // Cmd, Ctrl and Alt each pin the drag to one axis of the arcball — its
-        // horizontal, vertical and screen-normal axis in turn. Latched here, so
-        // letting go of the key mid-drag cannot change what the drag is doing.
-        const axis = e.metaKey ? new THREE.Vector3(1, 0, 0)
-                  : e.ctrlKey ? new THREE.Vector3(0, 1, 0)
-                  : e.altKey  ? new THREE.Vector3(0, 0, 1)
-                  : null;
-        // Turning about the horizontal axis moves the pointer up and down, and
-        // vice versa, so the cursor shows the direction that still does
-        // something rather than the axis itself. Rolling has no such direction:
-        // it wants the pointer swung around the pivot.
-        const axisClass = e.metaKey ? 'rotating-axis-x'
-                        : e.ctrlKey ? 'rotating-axis-y'
-                        : e.altKey  ? 'rotating-axis-z'
-                        : null;
+        const { axis, cls: axisClass } = modifierAxis(e);
 
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -1001,8 +1273,10 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // would be thrown away one frame later.
         const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
         dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
-        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
+        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX, y: e.clientY };
         orbitDragActive = true;
+        if (rotateMode === 'camera') beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
+        else trackballStart = null;
         if (axisClass) document.body.classList.add(axisClass);
         // A pivot slide still running would keep lerping the target out from
         // under this drag, which turns about that same target — the two would
@@ -1021,7 +1295,18 @@ export function setupRollDrag(container: HTMLElement | null): void {
             e.preventDefault();
             e.stopImmediatePropagation();
             if ((e.buttons & 3) === 0) return endPanDrag();
-            panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
+            // Follow the mode now active, from the last pointer position: a
+            // camera-space pan needs a live start (new after an arcball→camera
+            // switch, or after a mode switch or wheel pan dropped it), and an
+            // arcball pan has none. Checked every move, so switching mid-drag
+            // either way takes effect at once rather than freezing or lagging.
+            if (rotateMode === 'camera') {
+                if (!panDrag.start || panDrag.start !== activePan) panDrag.start = beginPanDrag(panDrag.x, panDrag.y);
+            } else {
+                panDrag.start = null;
+            }
+            if (panDrag.start) applyPanDrag(panDrag.start, e.clientX, e.clientY);
+            else panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
             panDrag.x = e.clientX;
             panDrag.y = e.clientY;
             return;
@@ -1030,15 +1315,48 @@ export function setupRollDrag(container: HTMLElement | null): void {
             e.preventDefault();
             e.stopImmediatePropagation();
             if ((e.buttons & 1) === 0) return endOrbitDrag();
+            updateDragAxis(e);
             const currPt = screenToArcball(e.clientX, e.clientY);
-            if (orbitDrag.axis && orbitDrag.axis.z === 1) applyAxisRoll(e.clientX - orbitDrag.x);
+            const roll = !!orbitDrag.axis && orbitDrag.axis.z === 1;
+            // Switched to camera-space mid-drag: start its snapshot from the
+            // previous pointer position, so this move already counts.
+            if (rotateMode === 'camera' && !trackballStart) {
+                beginCameraTrackball(orbitDrag.x, orbitDrag.y, orbitDrag.axis, roll);
+            }
+            if (trackballStart) applyCameraTrackball(e.clientX, e.clientY);
+            else if (roll) applyAxisRoll(e.clientX - orbitDrag.x);
             else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
             orbitDrag.pt = currPt;
             orbitDrag.x = e.clientX;
+            orbitDrag.y = e.clientY;
             showGrabMarker(currPt);
             return;
         }
     });
+
+    /**
+     * Follow the modifier keys mid-drag. A start-relative drag restarts from
+     * the view as it is now, at the pointer's current position, so the new
+     * axis takes over from here instead of reinterpreting the whole drag.
+     */
+    function updateDragAxis(e: { metaKey: boolean; ctrlKey: boolean; altKey: boolean }): void {
+        if (!orbitDrag) return;
+        const { axis, cls } = modifierAxis(e);
+        const was = orbitDrag.axis;
+        if (was === axis || (was && axis && was.equals(axis))) return;
+        orbitDrag.axis = axis;
+        document.body.classList.remove(...AXIS_CLASSES);
+        if (cls) document.body.classList.add(cls);
+        // orbitDrag.x/y are still the previous pointer position here.
+        setTrackballAxis(axis, !!axis && axis.z === 1, orbitDrag.x, orbitDrag.y);
+    }
+
+    const onModifierKey = (e: KeyboardEvent) => {
+        if (!orbitDrag || !['Meta', 'Control', 'Alt'].includes(e.key)) return;
+        updateDragAxis(e);
+    };
+    window.addEventListener('keydown', onModifierKey);
+    window.addEventListener('keyup', onModifierKey);
 
     function endPanDrag() {
         if (!panDrag) return;
@@ -1054,7 +1372,8 @@ export function setupRollDrag(container: HTMLElement | null): void {
         if (!orbitDrag) return;
         orbitDrag = null;
         orbitDragActive = false;
-        document.body.classList.remove('rotating-axis-x', 'rotating-axis-y', 'rotating-axis-z');
+        trackballStart = null;
+        document.body.classList.remove(...AXIS_CLASSES);
         hideArcballBall();
         hideGrabMarker();
         document.body.classList.remove('rotating');
@@ -1328,6 +1647,8 @@ const zoomLoop = frameLoop((dt) => {
 
 function haltSmoothedZoom(): void {
     zoomLoop.cancel();
+    srZoomLoop.cancel();
+    activeZoom = null;
     zoomSmoother.reset();
 }
 
@@ -1337,8 +1658,31 @@ export function setZoomSmoothingMode(mode: SmoothingMode): void {
     saveSmoothingMode(ZOOM_SMOOTHING_KEY, mode);
 }
 
-function pinchZoom(deltaY: number): void {
+// Ctrl + two-finger scroll arrives as the same ctrlKey wheel event as a pinch,
+// but runs the other way: fingers up scroll the page down (deltaY > 0), which
+// for a pinch means spreading the fingers apart the other way — zoom out. A
+// scroll should zoom in when the fingers go up, like pushing the scene away
+// from you, so its sign flips. The two are told apart by their deltas: a
+// pinch's are fractional, a trackpad scroll's whole pixels. The call is made
+// once per gesture — a run of events with no long gap — so a pinch that
+// happens to land on a whole number cannot flip direction mid-gesture.
+let ctrlWheelGesture: { scroll: boolean; time: number } | null = null;
+
+function isCtrlScroll(deltaX: number, deltaY: number): boolean {
+    const now = performance.now();
+    const g = ctrlWheelGesture;
+    if (g && now - g.time <= WHEEL_GESTURE_GAP_MS) { g.time = now; return g.scroll; }
+    const scroll = Number.isInteger(deltaY) && Number.isInteger(deltaX) && deltaY !== 0;
+    ctrlWheelGesture = { scroll, time: now };
+    return scroll;
+}
+
+function pinchZoom(deltaY: number, deltaX = 0): void {
     if (!cameraState.camera || !cameraState.controls) return;
+    // A mouse-wheel notch is neither, and ends any scroll or pinch gesture, so
+    // the next trackpad event is classified afresh rather than inheriting one.
+    if (isWheelNotch(deltaY)) ctrlWheelGesture = null;
+    else if (isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
     // A pinch zooms by its travel, uncapped in practice, so a fast pinch
     // coalesced into few large events on a slow frame zooms as far as the
     // same pinch at 60 fps.
@@ -1346,6 +1690,7 @@ function pinchZoom(deltaY: number): void {
         ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100)))
         : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
     const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));   // >1 zooms in
+    if (rotateMode === 'camera') { pinchZoomStartRelative(Math.log(factor)); return; }
     if (zoomSmoother.mode === 'instant') { applyZoomFactor(factor); return; }
     zoomSmoother.push(Math.log(factor));
     zoomLoop.kick();
@@ -1367,6 +1712,8 @@ const panLoop = frameLoop((dt) => {
 
 function haltSmoothedPan(): void {
     panLoop.cancel();
+    srPanLoop.cancel();
+    activePan = null;
     panSmoother.reset();
 }
 
@@ -1390,24 +1737,228 @@ function panBy(offset: Vector3): void {
     panLoop.kick();
 }
 
-/** Pan so the scene moves (dx, dy) screen pixels, as if grabbed at the target's depth. */
-function panByPixels(dx: number, dy: number): void {
+/** World units per screen pixel at the orbit target's depth, or null with no view. */
+function panPerPixel(): number | null {
     const cam = cameraState.camera, ctrl = cameraState.controls;
     const h = cameraState.renderer?.domElement?.clientHeight;
-    if (!cam || !ctrl || !h) return;
-    let perPixel: number;
-    if (cam.isOrthographicCamera) {
-        perPixel = Math.abs((cam.top! - cam.bottom!) / (cam.zoom || 1) / h);
-    } else {
-        cam.updateMatrixWorld();
-        const depth = Math.max(-ctrl.target.clone().applyMatrix4(cam.matrixWorldInverse).z, 0.001);
-        perPixel = (2 * depth * Math.tan(((cam.fov || 75) * Math.PI) / 360)) / h;
-    }
-    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 0);
-    const up    = new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1);
+    if (!cam || !ctrl || !h) return null;
+    if (cam.isOrthographicCamera) return Math.abs((cam.top! - cam.bottom!) / (cam.zoom || 1) / h);
+    cam.updateMatrixWorld();
+    const depth = Math.max(-ctrl.target.clone().applyMatrix4(cam.matrixWorldInverse).z, 0.001);
+    return (2 * depth * Math.tan(((cam.fov || 75) * Math.PI) / 360)) / h;
+}
+
+/** Pan so the scene moves (dx, dy) screen pixels, as if grabbed at the target's depth. */
+function panByPixels(dx: number, dy: number): void {
+    const perPixel = panPerPixel();
+    if (perPixel === null) return;
+    const { right, up } = screenAxes();
     panBy(new THREE.Vector3()
         .addScaledVector(right, -dx * perPixel)
         .addScaledVector(up,     dy * perPixel));
+}
+
+// Start-relative pan and zoom still go through the pan and zoom smoothers, so
+// the settings panel's smoothing applies in both modes — without giving up
+// start-relative input. The smoother's goal is the gesture's *total* travel
+// (a world offset for pan, ln zoom for zoom), and each frame the view is
+// rebuilt as the start snapshot plus the smoothed position: the smoother only
+// shapes the path to an absolute goal, it never stacks steps onto the camera.
+// If something else moves the camera mid-gesture, the snapshot rebases onto
+// the view as it now is, and `base` records how much of the goal was already
+// shown then.
+
+/**
+ * A start-relative pan: the view it started from, the screen axes and scale
+ * held from then, and where its input began. The smoother's goal is the world
+ * offset for the input's travel since.
+ */
+interface PanStart {
+    view: ViewSnapshot;
+    right: Vector3;
+    up: Vector3;
+    /** World units per unit of travel along each screen axis. */
+    perX: number;
+    perY: number;
+    x: number;
+    y: number;
+    /** The input's current position, in the units of `x` and `y`. */
+    curX: number;
+    curY: number;
+    /** Smoothed offset already shown when `view` was taken. */
+    base: Vector3;
+    last: ViewSnapshot | null;
+}
+let activePan: PanStart | null = null;
+
+function beginPan(x: number, y: number, perX: number, perY: number): PanStart | null {
+    const view = snapshotView();
+    if (!view) return null;
+    srPanLoop.cancel();
+    panSmoother.reset();
+    const { right, up } = screenAxes();
+    activePan = { view, right, up, perX, perY, x, y, curX: x, curY: y, base: new THREE.Vector3(), last: view };
+    return activePan;
+}
+
+function panSmoothedPos(): Vector3 {
+    const [x, y, z] = panSmoother.axes;
+    return new THREE.Vector3(x.pos, y.pos, z.pos);
+}
+
+/** Rebase onto the camera if something else moved it; false with no view. */
+function rebasePan(p: PanStart): boolean {
+    if (viewUnchangedSince(p.last)) return true;
+    const now = snapshotView();
+    if (!now) return false;
+    p.view = now;
+    p.last = now;
+    p.base = panSmoothedPos();
+    return true;
+}
+
+/** Show the pan's smoothed offset on its start view. */
+function showPan(p: PanStart): void {
+    const offset = panSmoothedPos().sub(p.base);
+    p.last = setView(p.view.position.clone().add(offset), p.view.target.clone().add(offset));
+}
+
+const srPanLoop = frameLoop((dt) => {
+    const p = activePan;
+    if (!p || !rebasePan(p)) return false;
+    panSmoother.step(dt);
+    showPan(p);
+    return !panSmoother.settled;
+});
+
+/** Move a start-relative pan's input to (x, y): its total travel sets the goal. */
+function applyPanTo(p: PanStart, x: number, y: number): void {
+    if (activePan !== p || !rebasePan(p)) return;
+    p.curX = x;
+    p.curY = y;
+    const goal = new THREE.Vector3()
+        .addScaledVector(p.right, (x - p.x) * p.perX)
+        .addScaledVector(p.up,    (y - p.y) * p.perY);
+    const [ax, ay, az] = panSmoother.axes;
+    panSmoother.push(goal.x - ax.goal, goal.y - ay.goal, goal.z - az.goal);
+    panSmoother.step(0);   // 'instant' lands now; the others start their path
+    showPan(p);
+    if (!panSmoother.settled) srPanLoop.kick();
+}
+
+/** Shift+drag / right-drag: the scene follows the pointer from where it pressed. */
+function beginPanDrag(clientX: number, clientY: number): PanStart | null {
+    const perPixel = panPerPixel();
+    return perPixel === null ? null : beginPan(clientX, clientY, -perPixel, perPixel);
+}
+
+function applyPanDrag(p: PanStart, clientX: number, clientY: number): void {
+    applyPanTo(p, clientX, clientY);
+}
+
+// Wheel gestures — two-finger scroll and pinch — have no press or release, so
+// a gesture is a run of events with no gap longer than this. One still
+// settling is carried on rather than restarted, so a pause mid-glide cannot
+// drop the rest of its goal.
+const WHEEL_GESTURE_GAP_MS = 200;
+
+let wheelPanTime = 0;
+
+/** Two-finger scroll: pan by the gesture's total scroll from its start view. */
+function wheelPanStartRelative(deltaX: number, deltaY: number): void {
+    const now = performance.now();
+    let p = activePan;
+    const fresh = !p || p.perX < 0   // a drag's pan, not a scroll's
+        || (now - wheelPanTime > WHEEL_GESTURE_GAP_MS && panSmoother.settled);
+    wheelPanTime = now;
+    if (fresh) {
+        const view = snapshotView();
+        if (!view) return;
+        const h = cameraState.renderer?.domElement?.clientHeight || 1;
+        const perPixel = view.position.distanceTo(view.target) / h * 0.8;
+        p = beginPan(0, 0, perPixel, -perPixel);
+    }
+    if (p) applyPanTo(p, p.curX + deltaX, p.curY + deltaY);
+}
+
+/** A start-relative zoom: the view it started from, and the smoothed ln zoom already shown then. */
+interface ZoomStart {
+    view: ViewSnapshot;
+    base: number;
+    last: ViewSnapshot | null;
+    time: number;
+}
+let activeZoom: ZoomStart | null = null;
+
+function rebaseZoom(g: ZoomStart): boolean {
+    if (viewUnchangedSince(g.last)) return true;
+    const now = snapshotView();
+    if (!now) return false;
+    g.view = now;
+    g.last = now;
+    g.base = zoomSmoother.pos;
+    return true;
+}
+
+/** The ln zoom the limits allow from a view: [most out, most in]. */
+function zoomLogRange(v: ViewSnapshot): [number, number] {
+    const cam = cameraState.camera!;
+    const ctrl = cameraState.controls as unknown as {
+        minDistance?: number; maxDistance?: number; minZoom?: number; maxZoom?: number;
+    };
+    if (cam.isOrthographicCamera) {
+        return [Math.log((ctrl.minZoom ?? 0) / v.zoom), Math.log((ctrl.maxZoom ?? Infinity) / v.zoom)];
+    }
+    const start = v.position.distanceTo(v.target);
+    return [Math.log(start / (ctrl.maxDistance ?? Infinity)), Math.log(start / Math.max(ctrl.minDistance ?? 0, 1e-6))];
+}
+
+/** Show the zoom's smoothed ln zoom on its start view. */
+function showZoom(g: ZoomStart): void {
+    const v = g.view;
+    const rel = zoomSmoother.pos - g.base;
+    if (cameraState.camera!.isOrthographicCamera) {
+        g.last = setView(v.position, v.target, undefined, v.zoom * Math.exp(rel));
+    } else {
+        const offset = v.position.clone().sub(v.target);
+        g.last = setView(v.target.clone().add(offset.setLength(Math.max(offset.length() / Math.exp(rel), 1e-6))), v.target);
+    }
+}
+
+const srZoomLoop = frameLoop((dt) => {
+    const g = activeZoom;
+    if (!g || !rebaseZoom(g)) return false;
+    zoomSmoother.step(dt);
+    showZoom(g);
+    return !zoomSmoother.settled;
+});
+
+/**
+ * Pinch (and Ctrl + two-finger scroll, which arrives as the same event): the
+ * goal is the gesture's total ln zoom, held to what the zoom limits allow so
+ * that pinching back out of a limit answers at once rather than first
+ * unwinding travel that did nothing.
+ */
+function pinchZoomStartRelative(logFactor: number): void {
+    if (!cameraState.camera || !cameraState.controls) return;
+    const now = performance.now();
+    let g = activeZoom;
+    if (!g || (now - g.time > WHEEL_GESTURE_GAP_MS && zoomSmoother.settled)) {
+        const view = snapshotView();
+        if (!view) return;
+        srZoomLoop.cancel();
+        zoomLoop.cancel();
+        zoomSmoother.reset();
+        g = activeZoom = { view, base: 0, last: view, time: now };
+    }
+    g.time = now;
+    if (!rebaseZoom(g)) return;
+    const [lo, hi] = zoomLogRange(g.view);
+    const rel = Math.min(hi, Math.max(lo, zoomSmoother.goal - g.base + logFactor));
+    zoomSmoother.push(rel + g.base - zoomSmoother.goal);
+    zoomSmoother.step(0);   // 'instant' lands now; the others start their path
+    showZoom(g);
+    if (!zoomSmoother.settled) srZoomLoop.kick();
 }
 
 /** Scale the view by `factor` (>1 zooms in). False when a limit clamped it. */
@@ -1436,7 +1987,7 @@ function applyZoomFactor(factor: number): boolean {
     return free;
 }
 
-/** Bind the settings panel's smoothing selects and the rotate cue. */
+/** Bind the settings panel's smoothing selects, rotate cue and rotate mode. */
 function bindSmoothingSettings(): void {
     const bind = (id: string, current: SmoothingMode, set: (m: SmoothingMode) => void) => {
         const sel = document.getElementById(id) as HTMLSelectElement | null;
@@ -1452,6 +2003,11 @@ function bindSmoothingSettings(): void {
         cue.value = rotateCue;
         cue.addEventListener('change', () => setRotateCue(cue.value === 'off' ? 'off' : 'trackball'));
     }
+    const mode = document.getElementById('rotate-mode-select') as HTMLSelectElement | null;
+    if (mode) {
+        mode.value = rotateMode;
+        mode.addEventListener('change', () => { if (isRotateMode(mode.value)) setRotateMode(mode.value); });
+    }
 }
 
 export function setupTrackpadPan(): void {
@@ -1462,13 +2018,14 @@ export function setupTrackpadPan(): void {
         if (e.ctrlKey && e.deltaMode === 0) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            pinchZoom(e.deltaY);
+            pinchZoom(e.deltaY, e.deltaX);
             return;
         }
         if (e.ctrlKey || e.deltaMode !== 0) return;
         e.preventDefault();
         e.stopImmediatePropagation();
         if (!cameraState.camera || !cameraState.controls) return;
+        if (rotateMode === 'camera') { wheelPanStartRelative(e.deltaX, e.deltaY); return; }
 
         const distance  = cameraState.camera.position.distanceTo(cameraState.controls.target);
         const panFactor = distance / canvas.clientHeight * 0.8;
