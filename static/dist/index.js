@@ -5270,6 +5270,22 @@ function beginCameraTrackball(clientX, clientY) {
 	};
 }
 /**
+* Restart the trackball drag from the view as it is now, at the pointer's last
+* position — after something else moved the camera, or the modifier keys
+* changed the axis. False with no view to restart from.
+*/
+function rebaseCameraTrackball() {
+	const s = trackballStart;
+	const now = snapshotView();
+	if (!s || !now) return false;
+	s.view = now;
+	s.last = now;
+	s.x = s.prevX;
+	s.y = s.prevY;
+	s.applied.identity();
+	return true;
+}
+/**
 * Camera-space trackball: the pointer's travel (dx, dy) since the press turns
 * the start view about the screen axis perpendicular to it — the start
 * camera's screen — by an angle proportional to its length. The sense and rate
@@ -5279,14 +5295,7 @@ function beginCameraTrackball(clientX, clientY) {
 function applyCameraTrackball(clientX, clientY, axis, roll) {
 	const s = trackballStart;
 	if (!s || !cameraState.camera || !cameraState.controls) return;
-	if (!viewUnchangedSince(s.last)) {
-		const now = snapshotView();
-		if (!now) return;
-		s.view = now;
-		s.x = s.prevX;
-		s.y = s.prevY;
-		s.applied.identity();
-	}
+	if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball()) return;
 	s.prevX = clientX;
 	s.prevY = clientY;
 	const dx = clientX - s.x;
@@ -5540,6 +5549,40 @@ function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 	}
 	pivotMoveId = requestAnimationFrame(step);
 }
+var AXIS_CLASSES = [
+	"rotating-axis-x",
+	"rotating-axis-y",
+	"rotating-axis-z"
+];
+/**
+* Cmd, Ctrl and Alt each pin a rotation drag to one axis of the arcball — its
+* horizontal, vertical and screen-normal axis in turn. They are read live, so
+* pressing or letting go of one mid-drag switches between a free and a pinned
+* turn without lifting the pointer.
+*
+* Turning about the horizontal axis moves the pointer up and down, and vice
+* versa, so the cursor class shows the direction that still does something
+* rather than the axis itself. Rolling has no such direction: it wants the
+* pointer swung around the pivot.
+*/
+function modifierAxis(e) {
+	if (e.metaKey) return {
+		axis: new THREE.Vector3(1, 0, 0),
+		cls: "rotating-axis-x"
+	};
+	if (e.ctrlKey) return {
+		axis: new THREE.Vector3(0, 1, 0),
+		cls: "rotating-axis-y"
+	};
+	if (e.altKey) return {
+		axis: new THREE.Vector3(0, 0, 1),
+		cls: "rotating-axis-z"
+	};
+	return {
+		axis: null,
+		cls: null
+	};
+}
 function setupRollDrag(container) {
 	if (!container) return;
 	const inputSurface = container;
@@ -5568,8 +5611,7 @@ function setupRollDrag(container) {
 			return;
 		}
 		if (e.button !== 0) return;
-		const axis = e.metaKey ? new THREE.Vector3(1, 0, 0) : e.ctrlKey ? new THREE.Vector3(0, 1, 0) : e.altKey ? new THREE.Vector3(0, 0, 1) : null;
-		const axisClass = e.metaKey ? "rotating-axis-x" : e.ctrlKey ? "rotating-axis-y" : e.altKey ? "rotating-axis-z" : null;
+		const { axis, cls: axisClass } = modifierAxis(e);
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (cameraState.arcballInertiaId) {
@@ -5612,6 +5654,7 @@ function setupRollDrag(container) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 			if ((e.buttons & 1) === 0) return endOrbitDrag();
+			updateDragAxis(e);
 			const currPt = screenToArcball(e.clientX, e.clientY);
 			const roll = !!orbitDrag.axis && orbitDrag.axis.z === 1;
 			if (trackballStart) applyCameraTrackball(e.clientX, e.clientY, orbitDrag.axis, roll);
@@ -5623,6 +5666,31 @@ function setupRollDrag(container) {
 			return;
 		}
 	});
+	/**
+	* Follow the modifier keys mid-drag. A start-relative drag restarts from
+	* the view as it is now, at the pointer's current position, so the new
+	* axis takes over from here instead of reinterpreting the whole drag.
+	*/
+	function updateDragAxis(e) {
+		if (!orbitDrag) return;
+		const { axis, cls } = modifierAxis(e);
+		const was = orbitDrag.axis;
+		if (was === axis || was && axis && was.equals(axis)) return;
+		orbitDrag.axis = axis;
+		document.body.classList.remove(...AXIS_CLASSES);
+		if (cls) document.body.classList.add(cls);
+		if (trackballStart) rebaseCameraTrackball();
+	}
+	const onModifierKey = (e) => {
+		if (!orbitDrag || ![
+			"Meta",
+			"Control",
+			"Alt"
+		].includes(e.key)) return;
+		updateDragAxis(e);
+	};
+	window.addEventListener("keydown", onModifierKey);
+	window.addEventListener("keyup", onModifierKey);
 	function endPanDrag() {
 		if (!panDrag) return;
 		panDrag = null;
@@ -5637,7 +5705,7 @@ function setupRollDrag(container) {
 		orbitDrag = null;
 		orbitDragActive = false;
 		trackballStart = null;
-		document.body.classList.remove("rotating-axis-x", "rotating-axis-y", "rotating-axis-z");
+		document.body.classList.remove(...AXIS_CLASSES);
 		hideArcballBall();
 		hideGrabMarker();
 		document.body.classList.remove("rotating");
