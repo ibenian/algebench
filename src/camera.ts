@@ -1282,6 +1282,12 @@ export function setupRollDrag(container: HTMLElement | null): void {
             e.preventDefault();
             e.stopImmediatePropagation();
             if ((e.buttons & 3) === 0) return endPanDrag();
+            // A mode switch (or anything that halts the pan smoother) drops the
+            // drag's start-relative state: carry on from the last pointer
+            // position in whichever mode is now active, rather than freezing.
+            if (panDrag.start && panDrag.start !== activePan) {
+                panDrag.start = rotateMode === 'camera' ? beginPanDrag(panDrag.x, panDrag.y) : null;
+            }
             if (panDrag.start) applyPanDrag(panDrag.start, e.clientX, e.clientY);
             else panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
             panDrag.x = e.clientX;

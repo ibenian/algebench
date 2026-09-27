@@ -5704,6 +5704,7 @@ function setupRollDrag(container) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 			if ((e.buttons & 3) === 0) return endPanDrag();
+			if (panDrag.start && panDrag.start !== activePan) panDrag.start = rotateMode === "camera" ? beginPanDrag(panDrag.x, panDrag.y) : null;
 			if (panDrag.start) applyPanDrag(panDrag.start, e.clientX, e.clientY);
 			else panByPixels(e.clientX - panDrag.x, e.clientY - panDrag.y);
 			panDrag.x = e.clientX;
