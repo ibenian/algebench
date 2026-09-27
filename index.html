@@ -40,10 +40,7 @@
         </div>
         <div id="toolbar">
             <button class="tb-btn" id="btn-load" title="Load JSON file">Load JSON</button>
-            <div id="scenes-dropdown">
-                <button class="tb-btn" id="btn-scenes">Built-in Scenes &#9662;</button>
-                <div id="scenes-menu"></div>
-            </div>
+            <button class="tb-btn" id="btn-scenes" title="Browse built-in lessons">Built-in Lessons &#9662;</button>
             <button class="tb-btn" id="btn-show-json" title="Show current scene JSON">{ }</button>
             <div id="video-export-format-dropdown" class="toolbar-dropdown">
                 <button class="tb-btn tb-btn-split" id="btn-video-record" title="Record current tab video with TTS audio">
@@ -264,6 +261,17 @@
         </div>
     </div>
     <div id="chatCharacterBackdrop" class="style-backdrop" hidden></div>
+    <div id="lesson-picker-backdrop" class="lesson-picker-backdrop" hidden></div>
+    <div id="lesson-picker" class="lesson-picker" role="dialog" aria-label="Built-in lessons" hidden>
+        <div class="lesson-picker-head">
+            <input id="lesson-picker-search" class="lesson-picker-search" type="search"
+                   placeholder="Search lessons…" autocomplete="off" spellcheck="false"
+                   aria-controls="lesson-picker-list" />
+            <span id="lesson-picker-count" class="lesson-picker-count"></span>
+        </div>
+        <div id="lesson-picker-list" class="lesson-picker-list" role="listbox"></div>
+        <div class="lesson-picker-foot">&uarr;&darr; to move &middot; Enter to open &middot; Esc to close</div>
+    </div>
 
     <!-- Trust Dialog Overlay -->
     <div id="trust-dialog-overlay" class="hidden">

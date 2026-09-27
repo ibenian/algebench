@@ -654,6 +654,77 @@ def list_builtin_scenes():
     ])
 
 
+# Draft lessons live one level down, in scenes/draft/, and are listed as
+# "draft/<name>" — the same id /scenes/{name:path} and ?builtin= take.
+DRAFT_SCENES_SUBDIR = "draft"
+LESSON_DESCRIPTION_MAX = 280
+
+# path -> (mtime_ns, summary). Lessons can run to megabytes with baked graphs,
+# so each file is parsed once per change rather than on every list request.
+_lesson_summary_cache: dict[Path, tuple[int, dict]] = {}
+
+
+def _lesson_summary(path: Path, lesson_id: str, draft: bool) -> Optional[dict]:
+    """Title, first-scene description and counts for the lesson picker."""
+    try:
+        mtime = path.stat().st_mtime_ns
+    except OSError:
+        return None
+    cached = _lesson_summary_cache.get(path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            spec = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(spec, dict):
+        return None
+    scenes = spec.get("scenes") if isinstance(spec.get("scenes"), list) else []
+    scenes = [sc for sc in scenes if isinstance(sc, dict)]
+    first = scenes[0] if scenes else {}
+    description = first.get("description") if isinstance(first.get("description"), str) else ""
+    description = " ".join(description.split())
+    if len(description) > LESSON_DESCRIPTION_MAX:
+        description = description[:LESSON_DESCRIPTION_MAX].rsplit(" ", 1)[0] + "…"
+    imports = spec.get("import") if isinstance(spec.get("import"), list) else []
+    # What the picker's search looks through beyond the title: every scene's
+    # title and full description, not just the clipped first one shown.
+    search_parts = []
+    for sc in scenes:
+        for key in ("title", "description"):
+            if isinstance(sc.get(key), str):
+                search_parts.append(sc[key])
+    summary = {
+        "id": lesson_id,
+        "title": spec.get("title") if isinstance(spec.get("title"), str) else lesson_id,
+        "description": description,
+        "sceneCount": len(scenes),
+        "stepCount": sum(len(sc.get("steps") or []) for sc in scenes if isinstance(sc.get("steps"), list)),
+        "domains": [d for d in imports if isinstance(d, str)],
+        "draft": draft,
+        "searchText": " ".join(" ".join(search_parts).split()),
+    }
+    _lesson_summary_cache[path] = (mtime, summary)
+    return summary
+
+
+def list_builtin_lessons():
+    """Summaries of the built-in lessons in scenes/ and the drafts in scenes/draft/."""
+    if not scenes_dir.exists():
+        return []
+    lessons = []
+    for f in sorted(scenes_dir.glob("*.json")):
+        summary = _lesson_summary(f, f.stem, draft=False)
+        if summary:
+            lessons.append(summary)
+    for f in sorted((scenes_dir / DRAFT_SCENES_SUBDIR).glob("*.json")):
+        summary = _lesson_summary(f, f"{DRAFT_SCENES_SUBDIR}/{f.stem}", draft=True)
+        if summary:
+            lessons.append(summary)
+    return lessons
+
+
 def load_builtin_scene(name):
     """Load a built-in scene JSON by name."""
     # Charset/null-byte hygiene + confinement handled by sanitize_path.
@@ -2171,7 +2242,10 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
 
     @fastapp.get("/api/scenes")
     async def get_scenes():
-        return JSONResponse({"scenes": list_builtin_scenes()})
+        # "scenes" stays the plain top-level names (the coach's auto-pick reads
+        # it); "lessons" adds drafts and what the lesson picker shows per row.
+        lessons = await asyncio.to_thread(list_builtin_lessons)
+        return JSONResponse({"scenes": list_builtin_scenes(), "lessons": lessons})
 
     @fastapp.get("/api/scene_file")
     async def get_scene_file(request: Request):
