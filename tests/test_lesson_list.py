@@ -117,3 +117,15 @@ def test_refresh_rebuilds_even_when_mtimes_match(tmp_path, monkeypatch):
     os.utime(lesson, ns=(st.st_atime_ns, st.st_mtime_ns))   # an edit the mtime check misses
     assert server.list_builtin_lessons()[0]["title"] == "Zeta"
     assert server.list_builtin_lessons(refresh=True)[0]["title"] == "Zeta 2"
+
+
+def test_invalid_utf8_lesson_is_skipped(tmp_path, monkeypatch):
+    (tmp_path / "latin1.json").write_bytes('{"title": "Caf\xe9"}'.encode("latin-1"))
+    _write(tmp_path / "ok.json", {"title": "Ok", "scenes": []})
+    assert set(_lessons(tmp_path, monkeypatch)) == {"ok"}
+
+
+def test_a_description_with_no_spaces_is_cut_by_characters(tmp_path, monkeypatch):
+    _write(tmp_path / "run.json", {"title": "Run", "scenes": [{"description": "x" * 400}]})
+    desc = _lessons(tmp_path, monkeypatch)["run"]["description"]
+    assert desc == "x" * server.LESSON_DESCRIPTION_MAX + "…"

@@ -16311,6 +16311,8 @@ function scoreLesson(lesson, query) {
 	}
 	return score;
 }
+/** Row ids for aria-activedescendant; unique across renders. */
+var optionSeq = 0;
 var LessonPicker = class {
 	constructor(opts) {
 		this.lessons = [];
@@ -16388,7 +16390,7 @@ var LessonPicker = class {
 		const left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
 		paletteEl.style.left = `${Math.max(margin, left)}px`;
 		paletteEl.style.top = `${r.bottom + 6}px`;
-		paletteEl.style.maxHeight = `${Math.max(240, window.innerHeight - r.bottom - 6 - margin)}px`;
+		paletteEl.style.maxHeight = `${Math.max(0, window.innerHeight - r.bottom - 6 - margin)}px`;
 	}
 	groups(query) {
 		const q = query.trim();
@@ -16462,6 +16464,8 @@ var LessonPicker = class {
 		const row = document.createElement("div");
 		row.className = "lesson-row" + (isCurrent ? " current" : "") + (l.draft ? " draft" : "");
 		row.setAttribute("role", "option");
+		row.setAttribute("aria-selected", "false");
+		row.id = `lesson-option-${++optionSeq}`;
 		row.dataset.lessonId = l.id;
 		const meta = [
 			`${l.sceneCount} scene${l.sceneCount === 1 ? "" : "s"}`,
@@ -16482,10 +16486,16 @@ var LessonPicker = class {
 	setActive(index, scroll = true) {
 		if (!this.visible.length) {
 			this.active = -1;
+			this.opts.searchEl.removeAttribute("aria-activedescendant");
 			return;
 		}
 		this.active = Math.max(0, Math.min(index, this.visible.length - 1));
-		this.visible.forEach((v, i) => v.el.classList.toggle("active", i === this.active));
+		this.visible.forEach((v, i) => {
+			const on = i === this.active;
+			v.el.classList.toggle("active", on);
+			v.el.setAttribute("aria-selected", String(on));
+		});
+		this.opts.searchEl.setAttribute("aria-activedescendant", this.visible[this.active].el.id);
 		if (scroll) this.visible[this.active].el.scrollIntoView({ block: "nearest" });
 	}
 	bind() {

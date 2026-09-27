@@ -700,7 +700,7 @@ def _domain_glossary_terms(name: str) -> list[str]:
     try:
         with open(path, "r", encoding="utf-8") as f:
             docs = json.load(f)
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):   # ValueError: bad JSON or bad UTF-8
         return []
     terms = _glossary_terms(docs.get("glossary")) if isinstance(docs, dict) else []
     _domain_terms_cache[name] = (mtime, terms)
@@ -719,7 +719,7 @@ def _lesson_summary(path: Path, lesson_id: str, draft: bool) -> Optional[dict]:
     try:
         with open(path, "r", encoding="utf-8") as f:
             spec = json.load(f)
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):   # ValueError: bad JSON or bad UTF-8
         return None
     if not isinstance(spec, dict):
         return None
@@ -729,7 +729,9 @@ def _lesson_summary(path: Path, lesson_id: str, draft: bool) -> Optional[dict]:
     description = first.get("description") if isinstance(first.get("description"), str) else ""
     description = " ".join(description.split())
     if len(description) > LESSON_DESCRIPTION_MAX:
-        description = description[:LESSON_DESCRIPTION_MAX].rsplit(" ", 1)[0] + "…"
+        clipped = description[:LESSON_DESCRIPTION_MAX]
+        # Cut on a word; a run with no space in it is cut where it is.
+        description = (clipped.rsplit(" ", 1)[0] if " " in clipped else clipped) + "…"
     imports = spec.get("import") if isinstance(spec.get("import"), list) else []
     # What the picker's search looks through beyond the lesson title: every
     # scene's title, and every scene's full description (not just the clipped

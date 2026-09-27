@@ -104,6 +104,9 @@ export function scoreLesson(lesson: LessonSummary, query: string): number {
 
 interface Group { title: string; lessons: LessonSummary[] }
 
+/** Row ids for aria-activedescendant; unique across renders. */
+let optionSeq = 0;
+
 export class LessonPicker {
     private opts: LessonPickerOptions;
     private lessons: LessonSummary[] = [];
@@ -184,7 +187,8 @@ export class LessonPicker {
         const left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
         paletteEl.style.left = `${Math.max(margin, left)}px`;
         paletteEl.style.top = `${r.bottom + 6}px`;
-        paletteEl.style.maxHeight = `${Math.max(240, window.innerHeight - r.bottom - 6 - margin)}px`;
+        // The space actually left below the button, however little.
+        paletteEl.style.maxHeight = `${Math.max(0, window.innerHeight - r.bottom - 6 - margin)}px`;
     }
 
     private groups(query: string): Group[] {
@@ -259,6 +263,8 @@ export class LessonPicker {
         const row = document.createElement('div');
         row.className = 'lesson-row' + (isCurrent ? ' current' : '') + (l.draft ? ' draft' : '');
         row.setAttribute('role', 'option');
+        row.setAttribute('aria-selected', 'false');
+        row.id = `lesson-option-${++optionSeq}`;
         row.dataset.lessonId = l.id;
 
         const meta = [
@@ -280,9 +286,19 @@ export class LessonPicker {
     }
 
     private setActive(index: number, scroll = true): void {
-        if (!this.visible.length) { this.active = -1; return; }
+        if (!this.visible.length) {
+            this.active = -1;
+            this.opts.searchEl.removeAttribute('aria-activedescendant');
+            return;
+        }
         this.active = Math.max(0, Math.min(index, this.visible.length - 1));
-        this.visible.forEach((v, i) => v.el.classList.toggle('active', i === this.active));
+        this.visible.forEach((v, i) => {
+            const on = i === this.active;
+            v.el.classList.toggle('active', on);
+            v.el.setAttribute('aria-selected', String(on));
+        });
+        // Focus stays in the search box; this tells assistive tech which row ↑/↓ picked.
+        this.opts.searchEl.setAttribute('aria-activedescendant', this.visible[this.active]!.el.id);
         if (scroll) this.visible[this.active]!.el.scrollIntoView({ block: 'nearest' });
     }
 

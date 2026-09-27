@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreLesson } from './lesson-picker.ts';
-import type { LessonSummary } from './lesson-picker.ts';
+import { scoreLesson } from './lesson-picker.js';
+import type { LessonSummary } from './lesson-picker.js';
 
 const lesson = (over: Partial<LessonSummary>): LessonSummary => ({
     id: 'eigenvalues', title: 'Eigenvalues & Eigenvectors',
