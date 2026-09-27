@@ -1324,6 +1324,12 @@ async function _renderWithD3(
         const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
         _currentProofManager.syncSelectionFromGraph(new Set(ids), false);
     }
+    // …and let the deeplink URL catch up: navigation may already have written
+    // the previous step's `nodes=`. The bridge coalesces this, and ignores it
+    // while it is applying an incoming deeplink.
+    if (restoredSelection) {
+        try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
+    }
 
     // Charts and proof boxes share the docked overlay panel but re-attach from
     // two managers — keep their order stable (creation order) so it doesn't

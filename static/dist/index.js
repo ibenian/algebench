@@ -25411,6 +25411,9 @@ async function _renderWithD3(container, graph, step, key) {
 		const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
 		_currentProofManager.syncSelectionFromGraph(new Set(ids), false);
 	}
+	if (restoredSelection) try {
+		window.dispatchEvent(new CustomEvent("algebench:selectionchange"));
+	} catch (_) {}
 	const dock = container.querySelector(".d3-graph-card .sgc-pinned-panel");
 	if (dock && dock.children.length > 1) [...dock.children].sort((a, b) => (+a.dataset.dockOrder || 0) - (+b.dataset.dockOrder || 0)).forEach((c) => dock.appendChild(c));
 	enrichGraphInBackground(graph, key, step);
