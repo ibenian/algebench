@@ -151,6 +151,8 @@ let _d3HoveredNodeId: string | null = null;
 let _d3ActiveGraph: SemanticGraph | null = null;
 let _d3StepStates = new Map<string, D3SemanticGraphState>();
 let _d3LastStepKey: string | null = null;
+/** Bumped by every D3 render; a render that finds it moved on was overtaken. */
+let _d3RenderGen = 0;
 let _pendingDeeplinkSelection: string[] | null = null;  // node ids awaiting the target step's render
 
 // ----- Deeplink selection bridge (consumed by view-state-bridge.js) -----
@@ -1157,6 +1159,7 @@ function hideErrorState() {
 async function _renderWithD3(
     container: HTMLElement, graph: SemanticGraph, step: ProofStep | null, key: string,
 ) {
+    const gen = ++_d3RenderGen;
     const viewport = document.getElementById('graph-viewport');
     if (viewport) {
         viewport.classList.toggle('gv-theme-light', _currentMode === 'light');
@@ -1284,6 +1287,10 @@ async function _renderWithD3(
     }
 
     await _currentD3Renderer.render(graph);
+    // Renders aren't serialised: if a newer one started while this awaited, it
+    // owns the renderer, the step key and the selection now. Stop before
+    // applying this older graph's selection, details or step bookkeeping.
+    if (gen !== _d3RenderGen) return;
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
 

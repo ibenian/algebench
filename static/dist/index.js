@@ -24571,6 +24571,8 @@ var _d3HoveredNodeId = null;
 var _d3ActiveGraph = null;
 var _d3StepStates = /* @__PURE__ */ new Map();
 var _d3LastStepKey = null;
+/** Bumped by every D3 render; a render that finds it moved on was overtaken. */
+var _d3RenderGen = 0;
 var _pendingDeeplinkSelection = null;
 /** Current selection as an ordered array, active node last. */
 function getGraphSelection() {
@@ -25296,6 +25298,7 @@ function hideErrorState() {
 	if (empty) empty.style.display = "";
 }
 async function _renderWithD3(container, graph, step, key) {
+	const gen = ++_d3RenderGen;
 	const viewport = document.getElementById("graph-viewport");
 	if (viewport) {
 		viewport.classList.toggle("gv-theme-light", _currentMode === "light");
@@ -25383,6 +25386,7 @@ async function _renderWithD3(container, graph, step, key) {
 		else _currentD3Renderer.resetZoom();
 	}
 	await _currentD3Renderer.render(graph);
+	if (gen !== _d3RenderGen) return;
 	_d3LastStepKey = stepKey;
 	_currentSemanticKey = key;
 	const deeplink = _applyPendingDeeplinkSelection(graph);
