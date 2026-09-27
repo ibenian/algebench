@@ -19894,6 +19894,16 @@ var D3SemanticGraphRenderer = class {
 		return new Set(this._selectedNodeIds);
 	}
 	/**
+	* The graph's roots, in graph order: nodes with no outgoing edge — the
+	* tops of the trees the layout hangs from (annotations excluded, as the
+	* layout never draws them).
+	*/
+	rootNodeIds() {
+		if (!this._graph || !Array.isArray(this._graph.nodes)) return [];
+		const hasOutgoing = new Set((this._graph.edges || []).map((e) => e.from));
+		return this._graph.nodes.filter((n) => !hasOutgoing.has(n.id) && n.type !== "annotation").map((n) => n.id);
+	}
+	/**
 	* Resolve a proof-animation term id (its `data-n`) to a node id in THIS
 	* graph, or null if the term has no selectable node here. The animation is
 	* derived independently, but node ids are deterministic slugs of the symbol
@@ -24567,11 +24577,12 @@ function applyDeeplinkSelection(ids) {
 	_pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
 	if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) _applyPendingDeeplinkSelection(_d3ActiveGraph);
 }
+/** True when a deeplink selection was pending and picked out nodes in this graph. */
 function _applyPendingDeeplinkSelection(graph) {
-	if (_pendingDeeplinkSelection == null) return;
+	if (_pendingDeeplinkSelection == null) return false;
 	const want = _pendingDeeplinkSelection;
 	_pendingDeeplinkSelection = null;
-	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return false;
 	const valid = want.filter((id) => (graph.nodes || []).some((n) => n.id === id));
 	_currentD3Renderer.setSelection(valid);
 	if (valid.length > 1) _showD3MultiInfoPanel(new Set(valid), graph);
@@ -24579,6 +24590,33 @@ function _applyPendingDeeplinkSelection(graph) {
 		const node = (graph.nodes || []).find((n) => n.id === valid[0]);
 		_showD3InfoPanel(valid[0], node, graph);
 	} else _hideD3InfoPanel();
+	return valid.length > 0;
+}
+/**
+* Show a graph selection the way a click does: the info panel (one node or the
+* multi-node list), the gold terms in proof boxes, and the deeplink URL.
+*/
+function _onD3SelectionChange(nodeId, nodeData, selectedIds, additive) {
+	if (!selectedIds || selectedIds.size === 0) _hideD3InfoPanel();
+	else if (selectedIds.size > 1) _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
+	else _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+	if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:selectionchange"));
+	} catch (_) {}
+}
+/**
+* Select every root of the graph — as though each had been Cmd-clicked — so
+* the node details list the equation's top-level nodes. Selecting a node lights
+* its whole subtree, so with every root selected nothing is dimmed.
+*/
+function _selectD3Roots(graph) {
+	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+	const ids = _currentD3Renderer.rootNodeIds();
+	if (!ids.length) return;
+	_currentD3Renderer.setSelection(ids);
+	const active = ids[ids.length - 1];
+	_onD3SelectionChange(active, (graph.nodes || []).find((n) => n.id === active), new Set(ids), ids.length > 1);
 }
 /** 'math' when the Math tab is active, else 'scene'. (Internal dock id is 'graph'.) */
 function getCurrentView() {
@@ -25271,13 +25309,7 @@ async function _renderWithD3(container, graph, step, key) {
 		labels: _currentLabels,
 		theme: _currentTheme,
 		onNodeClick: (nodeId, nodeData, selectedIds, additive) => {
-			if (!selectedIds || selectedIds.size === 0) _hideD3InfoPanel();
-			else if (selectedIds.size > 1) _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
-			else _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
-			if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
-			try {
-				window.dispatchEvent(new CustomEvent("algebench:selectionchange"));
-			} catch (_) {}
+			_onD3SelectionChange(nodeId, nodeData, selectedIds, additive);
 		},
 		onBackgroundClick: () => {
 			_hideD3InfoPanel();
@@ -25317,12 +25349,14 @@ async function _renderWithD3(container, graph, step, key) {
 	const stepKey = stableStepKey(step);
 	if (_currentD3Renderer && _d3LastStepKey && _d3LastStepKey !== stepKey) _d3StepStates.set(_d3LastStepKey, _currentD3Renderer.saveState());
 	const saved = _d3StepStates.get(stepKey);
+	const firstShowing = !saved && _d3LastStepKey !== stepKey;
 	if (saved) _currentD3Renderer.restoreState(saved);
 	else if (_d3LastStepKey !== stepKey) _currentD3Renderer.resetZoom();
 	await _currentD3Renderer.render(graph);
 	_d3LastStepKey = stepKey;
 	_currentSemanticKey = key;
-	_applyPendingDeeplinkSelection(graph);
+	const fromDeeplink = _applyPendingDeeplinkSelection(graph);
+	if (firstShowing && !fromDeeplink) _selectD3Roots(graph);
 	if (_currentChartManager) try {
 		_currentChartManager.reattach();
 	} catch {}

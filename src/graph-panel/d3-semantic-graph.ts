@@ -732,6 +732,19 @@ export class D3SemanticGraphRenderer {
         return new Set(this._selectedNodeIds);
     }
 
+    /**
+     * The graph's roots, in graph order: nodes with no outgoing edge — the
+     * tops of the trees the layout hangs from (annotations excluded, as the
+     * layout never draws them).
+     */
+    rootNodeIds(): string[] {
+        if (!this._graph || !Array.isArray(this._graph.nodes)) return [];
+        const hasOutgoing = new Set((this._graph.edges || []).map(e => e.from));
+        return this._graph.nodes
+            .filter(n => !hasOutgoing.has(n.id) && n.type !== 'annotation')
+            .map(n => n.id);
+    }
+
     // ── Live-terms bridge ────────────────────────────────────────────────────
     // A docked proof animation (SgProofManager) can make each rendered term
     // "live": hovering/clicking a term lights up — and selects — its linked node

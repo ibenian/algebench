@@ -174,11 +174,12 @@ function applyDeeplinkSelection(ids: string[] | null) {
     }
 }
 
-function _applyPendingDeeplinkSelection(graph: SemanticGraph) {
-    if (_pendingDeeplinkSelection == null) return;
+/** True when a deeplink selection was pending and picked out nodes in this graph. */
+function _applyPendingDeeplinkSelection(graph: SemanticGraph): boolean {
+    if (_pendingDeeplinkSelection == null) return false;
     const want = _pendingDeeplinkSelection;
     _pendingDeeplinkSelection = null;
-    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return false;
     const valid = want.filter((id) => (graph.nodes || []).some((n) => n.id === id));
     _currentD3Renderer.setSelection(valid);
     if (valid.length > 1) {
@@ -192,6 +193,46 @@ function _applyPendingDeeplinkSelection(graph: SemanticGraph) {
     } else {
         _hideD3InfoPanel();
     }
+    return valid.length > 0;
+}
+
+/**
+ * Show a graph selection the way a click does: the info panel (one node or the
+ * multi-node list), the gold terms in proof boxes, and the deeplink URL.
+ */
+function _onD3SelectionChange(
+    nodeId: string, nodeData: GraphNode | undefined, selectedIds: Set<string>, additive: boolean,
+) {
+    if (!selectedIds || selectedIds.size === 0) {
+        _hideD3InfoPanel();
+    } else if (selectedIds.size > 1) {
+        // `!` on _d3ActiveGraph — a selection only exists on a rendered graph,
+        // which _renderWithD3 assigns before wiring the renderer.
+        _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph!);
+    } else {
+        _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph!);
+    }
+    // Reverse sync: mirror the graph selection onto the proof terms (gold).
+    // Pass additive so a PLAIN (replacing) selection also clears off-graph terms.
+    if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
+    // Deeplink sync: node selection rewrites the current URL.
+    try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
+}
+
+/**
+ * Select every root of the graph — as though each had been Cmd-clicked — so
+ * the node details list the equation's top-level nodes. Selecting a node lights
+ * its whole subtree, so with every root selected nothing is dimmed.
+ */
+function _selectD3Roots(graph: SemanticGraph) {
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+    const ids = _currentD3Renderer.rootNodeIds();
+    if (!ids.length) return;
+    _currentD3Renderer.setSelection(ids);
+    // Non-null: `ids` is non-empty.
+    const active = ids[ids.length - 1]!;
+    const node = (graph.nodes || []).find((n) => n.id === active);
+    _onD3SelectionChange(active, node, new Set(ids), ids.length > 1);
 }
 
 /** 'math' when the Math tab is active, else 'scene'. (Internal dock id is 'graph'.) */
@@ -1143,20 +1184,7 @@ async function _renderWithD3(
             labels: _currentLabels,
             theme: _currentTheme,
             onNodeClick: (nodeId, nodeData, selectedIds, additive) => {
-                if (!selectedIds || selectedIds.size === 0) {
-                    _hideD3InfoPanel();
-                } else if (selectedIds.size > 1) {
-                    // `!` on _d3ActiveGraph — this callback can only fire from a
-                    // rendered graph, which _renderWithD3 assigns before wiring it.
-                    _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph!);
-                } else {
-                    _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph!);
-                }
-                // Reverse sync: mirror the graph selection onto the proof terms (gold).
-                // Pass additive so a PLAIN (replacing) selection also clears off-graph terms.
-                if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
-                // Deeplink sync: node selection rewrites the current URL.
-                try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
+                _onD3SelectionChange(nodeId, nodeData, selectedIds, additive);
             },
             onBackgroundClick: () => {
                 _hideD3InfoPanel();
@@ -1209,6 +1237,10 @@ async function _renderWithD3(
     }
 
     const saved = _d3StepStates.get(stepKey);
+    // A step's first showing, with nothing restored: its roots start selected.
+    // Later re-renders of the same step (enrichment, theme) keep whatever the
+    // user has selected since — including nothing.
+    const firstShowing = !saved && _d3LastStepKey !== stepKey;
     if (saved) {
         _currentD3Renderer.restoreState(saved);
     } else if (_d3LastStepKey !== stepKey) {
@@ -1220,7 +1252,10 @@ async function _renderWithD3(
     _currentSemanticKey = key;
 
     // Apply a pending deeplink selection now that this step's graph exists.
-    _applyPendingDeeplinkSelection(graph);
+    // The renderer outlives steps, so what it has selected may be the previous
+    // step's: only a deeplink selection counts as this step's own.
+    const fromDeeplink = _applyPendingDeeplinkSelection(graph);
+    if (firstShowing && !fromDeeplink) _selectD3Roots(graph);
 
     // Re-attach this step's persisted charts to the freshly-recreated card.
     if (_currentChartManager) { try { _currentChartManager.reattach(); } catch {} }
