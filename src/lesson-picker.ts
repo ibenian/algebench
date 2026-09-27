@@ -26,6 +26,8 @@ export interface LessonPickerOptions {
     searchEl: HTMLInputElement;
     listEl: HTMLElement;
     countEl: HTMLElement | null;
+    /** The Drafts filter pill: drafts are hidden unless it is on. */
+    draftsEl: HTMLElement | null;
     backdropEl: HTMLElement;
     /** The loaded lesson's id, to mark its row. */
     currentId: () => string | null;
@@ -34,6 +36,7 @@ export interface LessonPickerOptions {
 }
 
 const RECENTS_KEY = 'algebenchLessonRecents';
+const SHOW_DRAFTS_KEY = 'algebenchLessonShowDrafts';
 const MAX_RECENTS = 5;
 
 function readRecents(): string[] {
@@ -93,15 +96,40 @@ export class LessonPicker {
     private loaded = false;
     private visible: { id: string; el: HTMLElement }[] = [];
     private active = -1;
+    private showDrafts = false;
 
     constructor(opts: LessonPickerOptions) {
         this.opts = opts;
+        try { this.showDrafts = localStorage.getItem(SHOW_DRAFTS_KEY) === '1'; } catch { /* default off */ }
+        this.syncDraftsPill();
         this.bind();
+    }
+
+    private syncDraftsPill(): void {
+        const el = this.opts.draftsEl;
+        if (!el) return;
+        el.setAttribute('aria-pressed', String(this.showDrafts));
+        el.classList.toggle('on', this.showDrafts);
+        const n = this.lessons.filter(l => l.draft).length;
+        el.textContent = n ? `Drafts ${n}` : 'Drafts';
+    }
+
+    private setShowDrafts(on: boolean): void {
+        this.showDrafts = on;
+        try { localStorage.setItem(SHOW_DRAFTS_KEY, on ? '1' : '0'); } catch { /* per-visit only */ }
+        this.syncDraftsPill();
+        this.render(this.opts.searchEl.value);
+    }
+
+    /** The lessons the filter lets through. */
+    private pool(): LessonSummary[] {
+        return this.showDrafts ? this.lessons : this.lessons.filter(l => !l.draft);
     }
 
     setLessons(lessons: LessonSummary[]): void {
         this.lessons = lessons;
         this.loaded = true;
+        this.syncDraftsPill();
         if (this.isOpen()) this.render(this.opts.searchEl.value);
     }
 
@@ -149,7 +177,7 @@ export class LessonPicker {
         const q = query.trim();
         const byTitle = (a: LessonSummary, b: LessonSummary) => a.title.localeCompare(b.title);
         if (q) {
-            const hits = this.lessons
+            const hits = this.pool()
                 .map(l => ({ l, s: scoreLesson(l, q) }))
                 .filter(x => x.s > 0)
                 .sort((a, b) => b.s - a.s || Number(a.l.draft) - Number(b.l.draft) || byTitle(a.l, b.l))
@@ -157,12 +185,12 @@ export class LessonPicker {
             return hits.length ? [{ title: 'Results', lessons: hits }] : [];
         }
         const recents = readRecents()
-            .map(id => this.lessons.find(l => l.id === id))
+            .map(id => this.pool().find(l => l.id === id))
             .filter((l): l is LessonSummary => !!l);
         return [
             { title: 'Recent', lessons: recents },
             { title: 'Lessons', lessons: this.lessons.filter(l => !l.draft).sort(byTitle) },
-            { title: 'Drafts', lessons: this.lessons.filter(l => l.draft).sort(byTitle) },
+            { title: 'Drafts', lessons: this.pool().filter(l => l.draft).sort(byTitle) },
         ].filter(g => g.lessons.length);
     }
 
@@ -173,18 +201,22 @@ export class LessonPicker {
         const groups = this.groups(query);
         const current = this.opts.currentId();
 
+        const total = this.pool().length;
         if (countEl) {
-            const shown = query.trim() ? (groups[0]?.lessons.length ?? 0) : this.lessons.length;
+            const shown = query.trim() ? (groups[0]?.lessons.length ?? 0) : total;
             countEl.textContent = !this.loaded ? '' : query.trim()
-                ? `${shown} of ${this.lessons.length} lessons`
-                : `${this.lessons.length} lessons`;
+                ? `${shown} of ${total}`
+                : `${total} lessons`;
         }
 
         if (!groups.length) {
             const empty = document.createElement('div');
             empty.className = 'lesson-picker-empty';
             empty.textContent = !this.loaded ? 'Loading lessons…'
-                : this.lessons.length ? 'No lessons match your search.' : 'No built-in lessons found.';
+                : !total ? 'No built-in lessons found.'
+                : !this.showDrafts && this.lessons.some(l => l.draft && scoreLesson(l, query) > 0)
+                    ? 'No lessons match. Turn on Drafts to search drafts too.'
+                    : 'No lessons match your search.';
             listEl.appendChild(empty);
             return;
         }
@@ -241,7 +273,12 @@ export class LessonPicker {
     }
 
     private bind(): void {
-        const { buttonEl, backdropEl, searchEl, listEl } = this.opts;
+        const { buttonEl, backdropEl, searchEl, listEl, draftsEl } = this.opts;
+        if (draftsEl) {
+            // Keep focus in the search box, so typing carries on after a toggle.
+            draftsEl.addEventListener('mousedown', (e) => e.preventDefault());
+            draftsEl.addEventListener('click', () => this.setShowDrafts(!this.showDrafts));
+        }
         buttonEl.setAttribute('aria-haspopup', 'dialog');
         buttonEl.setAttribute('aria-expanded', 'false');
         buttonEl.addEventListener('click', (e) => { e.stopPropagation(); this.toggle(); });

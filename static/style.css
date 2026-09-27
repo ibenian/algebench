@@ -809,6 +809,30 @@ html, body {
     border-color: color-mix(in srgb, var(--accent-color) 72%, transparent);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 22%, transparent);
 }
+.lesson-filter-pill {
+    flex: none;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px dashed var(--border-color);
+    background: transparent;
+    color: var(--muted-color);
+    cursor: pointer;
+    transition: background var(--dur-quick, 0.12s) ease, color var(--dur-quick, 0.12s) ease;
+}
+.lesson-filter-pill:hover { color: var(--text-color); border-color: var(--muted-color); }
+.lesson-filter-pill.on {
+    border-style: solid;
+    color: color-mix(in srgb, #d9a441 70%, var(--text-color));
+    border-color: color-mix(in srgb, #d9a441 55%, transparent);
+    background: color-mix(in srgb, #d9a441 14%, transparent);
+}
+.lesson-filter-pill:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent-color) 60%, transparent);
+    outline-offset: 1px;
+}
 .lesson-picker-count {
     flex: none;
     font-size: 11px;

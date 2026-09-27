@@ -16256,6 +16256,7 @@ function parseViewState(search) {
 //#endregion
 //#region src/lesson-picker.ts
 var RECENTS_KEY = "algebenchLessonRecents";
+var SHOW_DRAFTS_KEY = "algebenchLessonShowDrafts";
 var MAX_RECENTS = 5;
 function readRecents() {
 	try {
@@ -16310,12 +16311,38 @@ var LessonPicker = class {
 		this.loaded = false;
 		this.visible = [];
 		this.active = -1;
+		this.showDrafts = false;
 		this.opts = opts;
+		try {
+			this.showDrafts = localStorage.getItem(SHOW_DRAFTS_KEY) === "1";
+		} catch {}
+		this.syncDraftsPill();
 		this.bind();
+	}
+	syncDraftsPill() {
+		const el = this.opts.draftsEl;
+		if (!el) return;
+		el.setAttribute("aria-pressed", String(this.showDrafts));
+		el.classList.toggle("on", this.showDrafts);
+		const n = this.lessons.filter((l) => l.draft).length;
+		el.textContent = n ? `Drafts ${n}` : "Drafts";
+	}
+	setShowDrafts(on) {
+		this.showDrafts = on;
+		try {
+			localStorage.setItem(SHOW_DRAFTS_KEY, on ? "1" : "0");
+		} catch {}
+		this.syncDraftsPill();
+		this.render(this.opts.searchEl.value);
+	}
+	/** The lessons the filter lets through. */
+	pool() {
+		return this.showDrafts ? this.lessons : this.lessons.filter((l) => !l.draft);
 	}
 	setLessons(lessons) {
 		this.lessons = lessons;
 		this.loaded = true;
+		this.syncDraftsPill();
 		if (this.isOpen()) this.render(this.opts.searchEl.value);
 	}
 	isOpen() {
@@ -16361,7 +16388,7 @@ var LessonPicker = class {
 		const q = query.trim();
 		const byTitle = (a, b) => a.title.localeCompare(b.title);
 		if (q) {
-			const hits = this.lessons.map((l) => ({
+			const hits = this.pool().map((l) => ({
 				l,
 				s: scoreLesson(l, q)
 			})).filter((x) => x.s > 0).sort((a, b) => b.s - a.s || Number(a.l.draft) - Number(b.l.draft) || byTitle(a.l, b.l)).map((x) => x.l);
@@ -16373,7 +16400,7 @@ var LessonPicker = class {
 		return [
 			{
 				title: "Recent",
-				lessons: readRecents().map((id) => this.lessons.find((l) => l.id === id)).filter((l) => !!l)
+				lessons: readRecents().map((id) => this.pool().find((l) => l.id === id)).filter((l) => !!l)
 			},
 			{
 				title: "Lessons",
@@ -16381,7 +16408,7 @@ var LessonPicker = class {
 			},
 			{
 				title: "Drafts",
-				lessons: this.lessons.filter((l) => l.draft).sort(byTitle)
+				lessons: this.pool().filter((l) => l.draft).sort(byTitle)
 			}
 		].filter((g) => g.lessons.length);
 	}
@@ -16391,14 +16418,15 @@ var LessonPicker = class {
 		this.visible = [];
 		const groups = this.groups(query);
 		const current = this.opts.currentId();
+		const total = this.pool().length;
 		if (countEl) {
-			const shown = query.trim() ? groups[0]?.lessons.length ?? 0 : this.lessons.length;
-			countEl.textContent = !this.loaded ? "" : query.trim() ? `${shown} of ${this.lessons.length} lessons` : `${this.lessons.length} lessons`;
+			const shown = query.trim() ? groups[0]?.lessons.length ?? 0 : total;
+			countEl.textContent = !this.loaded ? "" : query.trim() ? `${shown} of ${total}` : `${total} lessons`;
 		}
 		if (!groups.length) {
 			const empty = document.createElement("div");
 			empty.className = "lesson-picker-empty";
-			empty.textContent = !this.loaded ? "Loading lessons…" : this.lessons.length ? "No lessons match your search." : "No built-in lessons found.";
+			empty.textContent = !this.loaded ? "Loading lessons…" : !total ? "No built-in lessons found." : !this.showDrafts && this.lessons.some((l) => l.draft && scoreLesson(l, query) > 0) ? "No lessons match. Turn on Drafts to search drafts too." : "No lessons match your search.";
 			listEl.appendChild(empty);
 			return;
 		}
@@ -16455,7 +16483,11 @@ var LessonPicker = class {
 		if (scroll) this.visible[this.active].el.scrollIntoView({ block: "nearest" });
 	}
 	bind() {
-		const { buttonEl, backdropEl, searchEl, listEl } = this.opts;
+		const { buttonEl, backdropEl, searchEl, listEl, draftsEl } = this.opts;
+		if (draftsEl) {
+			draftsEl.addEventListener("mousedown", (e) => e.preventDefault());
+			draftsEl.addEventListener("click", () => this.setShowDrafts(!this.showDrafts));
+		}
 		buttonEl.setAttribute("aria-haspopup", "dialog");
 		buttonEl.setAttribute("aria-expanded", "false");
 		buttonEl.addEventListener("click", (e) => {
@@ -16694,6 +16726,7 @@ function setupScenesDropdown() {
 		listEl,
 		backdropEl,
 		countEl: document.getElementById("lesson-picker-count"),
+		draftsEl: document.getElementById("lesson-picker-drafts"),
 		currentId: currentBuiltinId,
 		onPick: async (id) => {
 			if (await loadBuiltinScene(id)) showSceneDockScenesTab();

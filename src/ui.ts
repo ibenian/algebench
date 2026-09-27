@@ -297,6 +297,7 @@ export function setupScenesDropdown(): void {
     lessonPicker = new LessonPicker({
         buttonEl, paletteEl, searchEl, listEl, backdropEl,
         countEl: document.getElementById('lesson-picker-count'),
+        draftsEl: document.getElementById('lesson-picker-drafts'),
         currentId: currentBuiltinId,
         onPick: async (id) => {
             const ok = await loadBuiltinScene(id);
