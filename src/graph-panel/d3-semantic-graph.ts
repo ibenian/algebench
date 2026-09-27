@@ -545,10 +545,6 @@ export function nodeShortLabel(node: LabelNode | null | undefined): string {
 }
 
 /**
- * Full applied form shown in the details panel / hover / TTS.
- * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
- */
-/**
  * A graph's roots, in graph order: nodes with no outgoing edge. Edges point
  * from a child up to the node it feeds (`from` → `to`), so a root is never an
  * edge's `from`. Annotations are left out — the layout never draws them.
@@ -563,6 +559,10 @@ export function graphRootIds(
         .map(n => n.id);
 }
 
+/**
+ * Full applied form shown in the details panel / hover / TTS.
+ * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
+ */
 export function nodeLongLabel(node: LabelNode | null | undefined): string {
     if (!node) return '';
     return node.subexpr || node.latex || nodeShortLabel(node);
