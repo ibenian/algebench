@@ -845,10 +845,20 @@ function rebaseCameraTrackball(s: TrackballStart): boolean {
     return true;
 }
 
-/** The modifier keys changed mid-drag: the new axis takes over from the view as it is now. */
-function setTrackballAxis(axis: Vector3 | null, roll: boolean): void {
+/**
+ * The modifier keys changed mid-drag: the new axis takes over from the view as
+ * it is now, with the pointer at (x, y). Whatever the smoothing had not yet
+ * shown is dropped rather than rebased — carried over, it would keep turning
+ * under the new axis while the pointer stood still.
+ */
+function setTrackballAxis(axis: Vector3 | null, roll: boolean, x: number, y: number): void {
     const s = trackballStart;
-    if (!s || !rebaseCameraTrackball(s)) return;
+    if (!s) return;
+    srRotLoop.cancel();
+    rotSmoother.reset();
+    if (!rebaseCameraTrackball(s)) return;
+    s.x = x;
+    s.y = y;
     s.axis = axis;
     s.roll = roll;
 }
@@ -1333,7 +1343,8 @@ export function setupRollDrag(container: HTMLElement | null): void {
         orbitDrag.axis = axis;
         document.body.classList.remove(...AXIS_CLASSES);
         if (cls) document.body.classList.add(cls);
-        setTrackballAxis(axis, !!axis && axis.z === 1);
+        // orbitDrag.x/y are still the previous pointer position here.
+        setTrackballAxis(axis, !!axis && axis.z === 1, orbitDrag.x, orbitDrag.y);
     }
 
     const onModifierKey = (e: KeyboardEvent) => {
