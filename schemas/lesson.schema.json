@@ -38,8 +38,9 @@
         },
         "glossaryMatchThreshold": {
           "type": "integer",
-          "minimum": 1,
-          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
+          "minimum": 0,
+          "default": 2,
+          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked."
         },
         "unsafe": {
           "type": "boolean",
@@ -106,8 +107,9 @@
         },
         "glossaryMatchThreshold": {
           "type": "integer",
-          "minimum": 1,
-          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). When absent, only explicit {{glossary:KEY}} markers are linked."
+          "minimum": 0,
+          "default": 2,
+          "description": "Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked."
         },
         "unsafe": {
           "type": "boolean",

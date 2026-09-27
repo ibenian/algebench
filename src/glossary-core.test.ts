@@ -110,13 +110,17 @@ test('resolveGlossaryKey and stripGlossaryMarkers', () => {
 
 test('active glossary follows the threshold setting', () => {
     setActiveGlossary(G);
-    setGlossaryThreshold(undefined);
+    setGlossaryThreshold(0);
     assert.equal(extractActiveGlossaryTerms('MAD').terms.length, 0);
     setGlossaryThreshold(3);
     assert.equal(extractActiveGlossaryTerms('MAD').terms.length, 1);
+    // absent falls back to the default (2): a 2-char acronym links, a 1-char name doesn't
+    setActiveGlossary({ PE: { markdown: 'pe' }, x: { markdown: 'x' } });
+    setGlossaryThreshold(undefined);
+    assert.equal(extractActiveGlossaryTerms('PE and x').terms.length, 1);
     setActiveGlossary({});
     assert.equal(extractActiveGlossaryTerms('MAD').terms.length, 0);
-    setGlossaryThreshold(undefined);
+    setGlossaryThreshold(0);
 });
 
 test('automatic matching restarts every paragraph, list item, table row and heading', () => {
@@ -139,7 +143,7 @@ test('malformed entries are dropped, not fatal (review #4089506131)', () => {
     setGlossaryThreshold(3);
     assert.equal(extractActiveGlossaryTerms('MAD here').terms.length, 1);
     setActiveGlossary({});
-    setGlossaryThreshold(undefined);
+    setGlossaryThreshold(0);
 });
 
 test('links and HTML tags spanning lines stay protected (review #4089506215)', () => {
