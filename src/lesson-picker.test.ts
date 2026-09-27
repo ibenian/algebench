@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreLesson } from './lesson-picker.js';
+import { scoreLesson, builtinIdFromPath } from './lesson-picker.js';
 import type { LessonSummary } from './lesson-picker.js';
 
 const lesson = (over: Partial<LessonSummary>): LessonSummary => ({
@@ -63,4 +63,14 @@ test('scene titles are searchable, above glossary and description hits', () => {
     assert.ok(inScene > scoreLesson(lesson({ title: 'x', id: 'y', glossary: ['heating'] }), 'heating'));
     assert.ok(inScene > scoreLesson(lesson({ title: 'x', id: 'y', searchText: 'heating' }), 'heating'));
     assert.ok(inScene < scoreLesson(lesson({ title: 'Heating', id: 'y' }), 'heating'));
+});
+
+test('built-in ids come from either source-path form', () => {
+    assert.equal(builtinIdFromPath('/scenes/eigenvalues'), 'eigenvalues');
+    assert.equal(builtinIdFromPath('scenes/eigenvalues.json'), 'eigenvalues');
+    assert.equal(builtinIdFromPath('/scenes/draft/chart-demo'), 'draft/chart-demo');
+    assert.equal(builtinIdFromPath('scenes/draft/chart-demo.json'), 'draft/chart-demo');
+    assert.equal(builtinIdFromPath('my-lesson.json'), null);
+    assert.equal(builtinIdFromPath('/home/me/scenes-backup/x.json'), null);
+    assert.equal(builtinIdFromPath(undefined), null);
 });

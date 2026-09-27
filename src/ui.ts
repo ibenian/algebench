@@ -7,7 +7,7 @@ import { state } from '/state.js';
 import { loadLesson, loadScene, stopAutoPlay, showSceneDockScenesTab } from '/scene-loader.js';
 import { parseViewState } from '/view-state.js';
 import type { LessonSpec } from '/scene-loader.js';
-import { LessonPicker } from '/lesson-picker.js';
+import { LessonPicker, builtinIdFromPath } from '/lesson-picker.js';
 import type { LessonSummary } from '/lesson-picker.js';
 
 /** `GET /api/scenes` — the built-in scene names, and the picker's lesson summaries. */
@@ -77,19 +77,27 @@ let lessonPicker: LessonPicker | null = null;
 
 /** The loaded lesson's built-in id ("eigenvalues", "draft/chart-demo"), if it is one. */
 function currentBuiltinId(): string | null {
-    const p = state.currentSceneSourcePath;
-    return typeof p === 'string' && p.startsWith('/scenes/') ? p.slice('/scenes/'.length) : null;
+    return builtinIdFromPath(state.currentSceneSourcePath);
 }
+
+// The startup load and a refresh can be in flight together; only the newest
+// response is applied, so a slow older one cannot overwrite a newer list.
+let lessonsRequest = 0;
 
 /** Fetch the lesson list; `refresh` has the server rebuild its lesson index from disk. */
 export async function loadBuiltinScenesList(refresh = false): Promise<void> {
+    const seq = ++lessonsRequest;
     try {
         const resp = await fetch('/api/scenes' + (refresh ? '?refresh=1' : ''), { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json() as ScenesListResponse;
+        if (seq !== lessonsRequest) return;
         lessonPicker?.setLessons(data.lessons || []);
     } catch (e) {
         console.error('Failed to load lessons list:', e);
-        lessonPicker?.setLessons([]);
+        if (seq !== lessonsRequest) return;
+        // Keep whatever list the picker already has; just say the load failed.
+        lessonPicker?.setLoadError("Couldn't load the lesson list. Try ↻ to reload.");
     }
 }
 

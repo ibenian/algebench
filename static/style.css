@@ -952,6 +952,15 @@ html, body {
     color: var(--muted-color);
     border-color: var(--border-color);
 }
+.lesson-picker-error {
+    margin: 6px 4px 2px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--err-fg);
+    background: var(--err-bg);
+    border: 1px solid var(--err-border);
+}
 .lesson-picker-empty {
     padding: 24px 12px;
     color: var(--muted-color);

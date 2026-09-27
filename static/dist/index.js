@@ -16311,12 +16311,23 @@ function scoreLesson(lesson, query) {
 	}
 	return score;
 }
+/**
+* The built-in id ("eigenvalues", "draft/chart-demo") a loaded scene's source
+* path names, or null. A built-in picked in the picker is recorded as
+* "/scenes/<id>"; one opened from a ?scene= link as "scenes/<id>.json".
+*/
+function builtinIdFromPath(p) {
+	if (typeof p !== "string") return null;
+	const m = /^\/?scenes\/(.+?)(?:\.json)?$/.exec(p);
+	return m ? m[1] : null;
+}
 /** Row ids for aria-activedescendant; unique across renders. */
 var optionSeq = 0;
 var LessonPicker = class {
 	constructor(opts) {
 		this.lessons = [];
 		this.loaded = false;
+		this.loadError = null;
 		this.visible = [];
 		this.active = -1;
 		this.showDrafts = false;
@@ -16350,7 +16361,13 @@ var LessonPicker = class {
 	setLessons(lessons) {
 		this.lessons = lessons;
 		this.loaded = true;
+		this.loadError = null;
 		this.syncDraftsPill();
+		if (this.isOpen()) this.render(this.opts.searchEl.value);
+	}
+	/** The list failed to load: keep the lessons already shown, and say so. */
+	setLoadError(message) {
+		this.loadError = message;
 		if (this.isOpen()) this.render(this.opts.searchEl.value);
 	}
 	isOpen() {
@@ -16368,6 +16385,7 @@ var LessonPicker = class {
 	}
 	close() {
 		const { paletteEl, backdropEl, buttonEl } = this.opts;
+		if (paletteEl.contains(document.activeElement)) buttonEl.focus();
 		backdropEl.hidden = true;
 		paletteEl.hidden = true;
 		buttonEl.setAttribute("aria-expanded", "false");
@@ -16432,7 +16450,15 @@ var LessonPicker = class {
 			const shown = query.trim() ? groups[0]?.lessons.length ?? 0 : total;
 			countEl.textContent = !this.loaded ? "" : query.trim() ? `${shown} of ${total}` : `${total} lessons`;
 		}
+		if (this.loadError) {
+			const err = document.createElement("div");
+			err.className = "lesson-picker-error";
+			err.setAttribute("role", "alert");
+			err.textContent = this.loadError;
+			listEl.appendChild(err);
+		}
 		if (!groups.length) {
+			if (this.loadError && !this.loaded) return;
 			const empty = document.createElement("div");
 			empty.className = "lesson-picker-empty";
 			empty.textContent = !this.loaded ? "Loading lessons…" : !total ? "No built-in lessons found." : !this.showDrafts && this.lessons.some((l) => l.draft && scoreLesson(l, query) > 0) ? "No lessons match. Turn on Drafts to search drafts too." : "No lessons match your search.";
@@ -16551,7 +16577,6 @@ var LessonPicker = class {
 			} else if (e.key === "Escape") {
 				e.preventDefault();
 				this.close();
-				buttonEl.focus();
 			}
 		});
 		listEl.addEventListener("mousemove", (e) => {
@@ -16591,17 +16616,22 @@ function hideSceneLoading() {
 var lessonPicker = null;
 /** The loaded lesson's built-in id ("eigenvalues", "draft/chart-demo"), if it is one. */
 function currentBuiltinId() {
-	const p = state.currentSceneSourcePath;
-	return typeof p === "string" && p.startsWith("/scenes/") ? p.slice(8) : null;
+	return builtinIdFromPath(state.currentSceneSourcePath);
 }
+var lessonsRequest = 0;
 /** Fetch the lesson list; `refresh` has the server rebuild its lesson index from disk. */
 async function loadBuiltinScenesList(refresh = false) {
+	const seq = ++lessonsRequest;
 	try {
-		const data = await (await fetch("/api/scenes" + (refresh ? "?refresh=1" : ""), { cache: "no-store" })).json();
+		const resp = await fetch("/api/scenes" + (refresh ? "?refresh=1" : ""), { cache: "no-store" });
+		if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+		const data = await resp.json();
+		if (seq !== lessonsRequest) return;
 		lessonPicker?.setLessons(data.lessons || []);
 	} catch (e) {
 		console.error("Failed to load lessons list:", e);
-		lessonPicker?.setLessons([]);
+		if (seq !== lessonsRequest) return;
+		lessonPicker?.setLoadError("Couldn't load the lesson list. Try ↻ to reload.");
 	}
 }
 async function loadBuiltinScene(name) {

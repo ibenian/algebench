@@ -102,6 +102,17 @@ export function scoreLesson(lesson: LessonSummary, query: string): number {
     return score;
 }
 
+/**
+ * The built-in id ("eigenvalues", "draft/chart-demo") a loaded scene's source
+ * path names, or null. A built-in picked in the picker is recorded as
+ * "/scenes/<id>"; one opened from a ?scene= link as "scenes/<id>.json".
+ */
+export function builtinIdFromPath(p: unknown): string | null {
+    if (typeof p !== 'string') return null;
+    const m = /^\/?scenes\/(.+?)(?:\.json)?$/.exec(p);
+    return m ? m[1]! : null;
+}
+
 interface Group { title: string; lessons: LessonSummary[] }
 
 /** Row ids for aria-activedescendant; unique across renders. */
@@ -111,6 +122,7 @@ export class LessonPicker {
     private opts: LessonPickerOptions;
     private lessons: LessonSummary[] = [];
     private loaded = false;
+    private loadError: string | null = null;
     private visible: { id: string; el: HTMLElement }[] = [];
     private active = -1;
     private showDrafts = false;
@@ -146,7 +158,14 @@ export class LessonPicker {
     setLessons(lessons: LessonSummary[]): void {
         this.lessons = lessons;
         this.loaded = true;
+        this.loadError = null;
         this.syncDraftsPill();
+        if (this.isOpen()) this.render(this.opts.searchEl.value);
+    }
+
+    /** The list failed to load: keep the lessons already shown, and say so. */
+    setLoadError(message: string): void {
+        this.loadError = message;
         if (this.isOpen()) this.render(this.opts.searchEl.value);
     }
 
@@ -165,6 +184,8 @@ export class LessonPicker {
 
     close(): void {
         const { paletteEl, backdropEl, buttonEl } = this.opts;
+        // Focus must not stay in a field that is about to be hidden.
+        if (paletteEl.contains(document.activeElement)) buttonEl.focus();
         backdropEl.hidden = true;
         paletteEl.hidden = true;
         buttonEl.setAttribute('aria-expanded', 'false');
@@ -230,7 +251,17 @@ export class LessonPicker {
                 : `${total} lessons`;
         }
 
+        if (this.loadError) {
+            const err = document.createElement('div');
+            err.className = 'lesson-picker-error';
+            err.setAttribute('role', 'alert');
+            err.textContent = this.loadError;
+            listEl.appendChild(err);
+        }
+
         if (!groups.length) {
+            // A failed first load has nothing to list; the error above says why.
+            if (this.loadError && !this.loaded) return;
             const empty = document.createElement('div');
             empty.className = 'lesson-picker-empty';
             empty.textContent = !this.loaded ? 'Loading lessons…'
@@ -349,7 +380,7 @@ export class LessonPicker {
                 e.preventDefault();
                 const v = this.visible[this.active];
                 if (v) this.pick(v.id);
-            } else if (e.key === 'Escape') { e.preventDefault(); this.close(); buttonEl.focus(); }
+            } else if (e.key === 'Escape') { e.preventDefault(); this.close(); }
         });
         listEl.addEventListener('mousemove', (e) => {
             const row = (e.target as Element).closest<HTMLElement>('.lesson-row');
