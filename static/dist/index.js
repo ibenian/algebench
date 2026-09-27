@@ -16288,6 +16288,8 @@ function scoreLesson(lesson, query) {
 	const id = lesson.id.toLowerCase();
 	const desc = plain(lesson.description);
 	const body = plain(lesson.searchText || "");
+	const scenes = (lesson.sceneTitles || []).map(plain);
+	const glossary = (lesson.glossary || []).map(plain);
 	const domains = lesson.domains.join(" ").toLowerCase();
 	const status = lesson.draft ? "draft" : "built-in builtin";
 	let score = 0;
@@ -16295,7 +16297,11 @@ function scoreLesson(lesson, query) {
 		let best = 0;
 		if (titleWords.some((t) => t.startsWith(w))) best = 30;
 		else if (title.includes(w)) best = 20;
+		if (scenes.some((t) => t.split(/[^a-z0-9π]+/).some((x) => x.startsWith(w)))) best = Math.max(best, 16);
+		else if (scenes.some((t) => t.includes(w))) best = Math.max(best, 11);
 		if (id.includes(w)) best = Math.max(best, 12);
+		if (glossary.some((t) => t.startsWith(w) || t.includes(" " + w))) best = Math.max(best, 14);
+		else if (glossary.some((t) => t.includes(w))) best = Math.max(best, 7);
 		if (domains.includes(w)) best = Math.max(best, 10);
 		if (status.includes(w)) best = Math.max(best, 8);
 		if (desc.includes(w)) best = Math.max(best, 5);
@@ -16483,7 +16489,21 @@ var LessonPicker = class {
 		if (scroll) this.visible[this.active].el.scrollIntoView({ block: "nearest" });
 	}
 	bind() {
-		const { buttonEl, backdropEl, searchEl, listEl, draftsEl } = this.opts;
+		const { buttonEl, backdropEl, searchEl, listEl, draftsEl, refreshEl } = this.opts;
+		if (refreshEl) {
+			refreshEl.addEventListener("mousedown", (e) => e.preventDefault());
+			refreshEl.addEventListener("click", async () => {
+				if (refreshEl.classList.contains("busy")) return;
+				refreshEl.classList.add("busy");
+				refreshEl.setAttribute("aria-busy", "true");
+				try {
+					await this.opts.onRefresh();
+				} finally {
+					refreshEl.classList.remove("busy");
+					refreshEl.setAttribute("aria-busy", "false");
+				}
+			});
+		}
 		if (draftsEl) {
 			draftsEl.addEventListener("mousedown", (e) => e.preventDefault());
 			draftsEl.addEventListener("click", () => this.setShowDrafts(!this.showDrafts));
@@ -16553,9 +16573,10 @@ function currentBuiltinId() {
 	const p = state.currentSceneSourcePath;
 	return typeof p === "string" && p.startsWith("/scenes/") ? p.slice(8) : null;
 }
-async function loadBuiltinScenesList() {
+/** Fetch the lesson list; `refresh` has the server rebuild its lesson index from disk. */
+async function loadBuiltinScenesList(refresh = false) {
 	try {
-		const data = await (await fetch("/api/scenes", { cache: "no-store" })).json();
+		const data = await (await fetch("/api/scenes" + (refresh ? "?refresh=1" : ""), { cache: "no-store" })).json();
 		lessonPicker?.setLessons(data.lessons || []);
 	} catch (e) {
 		console.error("Failed to load lessons list:", e);
@@ -16727,6 +16748,8 @@ function setupScenesDropdown() {
 		backdropEl,
 		countEl: document.getElementById("lesson-picker-count"),
 		draftsEl: document.getElementById("lesson-picker-drafts"),
+		refreshEl: document.getElementById("lesson-picker-refresh"),
+		onRefresh: () => loadBuiltinScenesList(true),
 		currentId: currentBuiltinId,
 		onPick: async (id) => {
 			if (await loadBuiltinScene(id)) showSceneDockScenesTab();

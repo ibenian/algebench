@@ -81,9 +81,10 @@ function currentBuiltinId(): string | null {
     return typeof p === 'string' && p.startsWith('/scenes/') ? p.slice('/scenes/'.length) : null;
 }
 
-export async function loadBuiltinScenesList(): Promise<void> {
+/** Fetch the lesson list; `refresh` has the server rebuild its lesson index from disk. */
+export async function loadBuiltinScenesList(refresh = false): Promise<void> {
     try {
-        const resp = await fetch('/api/scenes', { cache: 'no-store' });
+        const resp = await fetch('/api/scenes' + (refresh ? '?refresh=1' : ''), { cache: 'no-store' });
         const data = await resp.json() as ScenesListResponse;
         lessonPicker?.setLessons(data.lessons || []);
     } catch (e) {
@@ -298,6 +299,8 @@ export function setupScenesDropdown(): void {
         buttonEl, paletteEl, searchEl, listEl, backdropEl,
         countEl: document.getElementById('lesson-picker-count'),
         draftsEl: document.getElementById('lesson-picker-drafts'),
+        refreshEl: document.getElementById('lesson-picker-refresh'),
+        onRefresh: () => loadBuiltinScenesList(true),
         currentId: currentBuiltinId,
         onPick: async (id) => {
             const ok = await loadBuiltinScene(id);

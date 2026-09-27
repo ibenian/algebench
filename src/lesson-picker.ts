@@ -16,8 +16,12 @@ export interface LessonSummary {
     stepCount: number;
     domains: string[];
     draft: boolean;
-    /** Every scene's title and full description, for search only. */
+    /** Every scene's title, for search only. */
+    sceneTitles?: string[];
+    /** Every scene's full description, for search only. */
     searchText?: string;
+    /** Glossary keys, terms and aliases — the lesson's own and its domains'. For search only. */
+    glossary?: string[];
 }
 
 export interface LessonPickerOptions {
@@ -28,6 +32,10 @@ export interface LessonPickerOptions {
     countEl: HTMLElement | null;
     /** The Drafts filter pill: drafts are hidden unless it is on. */
     draftsEl: HTMLElement | null;
+    /** Re-reads the lesson list from disk. */
+    refreshEl: HTMLElement | null;
+    /** Fetch the list again, rebuilding the server's index; resolves once setLessons ran. */
+    onRefresh: () => Promise<void>;
     backdropEl: HTMLElement;
     /** The loaded lesson's id, to mark its row. */
     currentId: () => string | null;
@@ -70,6 +78,8 @@ export function scoreLesson(lesson: LessonSummary, query: string): number {
     const id = lesson.id.toLowerCase();
     const desc = plain(lesson.description);
     const body = plain(lesson.searchText || '');
+    const scenes = (lesson.sceneTitles || []).map(plain);
+    const glossary = (lesson.glossary || []).map(plain);
     const domains = lesson.domains.join(' ').toLowerCase();
     const status = lesson.draft ? 'draft' : 'built-in builtin';
     let score = 0;
@@ -77,7 +87,11 @@ export function scoreLesson(lesson: LessonSummary, query: string): number {
         let best = 0;
         if (titleWords.some(t => t.startsWith(w))) best = 30;
         else if (title.includes(w)) best = 20;
+        if (scenes.some(t => t.split(/[^a-z0-9π]+/).some(x => x.startsWith(w)))) best = Math.max(best, 16);
+        else if (scenes.some(t => t.includes(w))) best = Math.max(best, 11);
         if (id.includes(w)) best = Math.max(best, 12);
+        if (glossary.some(t => t.startsWith(w) || t.includes(' ' + w))) best = Math.max(best, 14);
+        else if (glossary.some(t => t.includes(w))) best = Math.max(best, 7);
         if (domains.includes(w)) best = Math.max(best, 10);
         if (status.includes(w)) best = Math.max(best, 8);
         if (desc.includes(w)) best = Math.max(best, 5);
@@ -273,7 +287,20 @@ export class LessonPicker {
     }
 
     private bind(): void {
-        const { buttonEl, backdropEl, searchEl, listEl, draftsEl } = this.opts;
+        const { buttonEl, backdropEl, searchEl, listEl, draftsEl, refreshEl } = this.opts;
+        if (refreshEl) {
+            refreshEl.addEventListener('mousedown', (e) => e.preventDefault());
+            refreshEl.addEventListener('click', async () => {
+                if (refreshEl.classList.contains('busy')) return;
+                refreshEl.classList.add('busy');
+                refreshEl.setAttribute('aria-busy', 'true');
+                try { await this.opts.onRefresh(); }
+                finally {
+                    refreshEl.classList.remove('busy');
+                    refreshEl.setAttribute('aria-busy', 'false');
+                }
+            });
+        }
         if (draftsEl) {
             // Keep focus in the search box, so typing carries on after a toggle.
             draftsEl.addEventListener('mousedown', (e) => e.preventDefault());
