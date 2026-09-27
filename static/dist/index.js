@@ -25097,7 +25097,11 @@ function _onD3SelectionChange(nodeId, nodeData, selectedIds, additive) {
 function _selectD3Roots(graph) {
 	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
 	const ids = graphRootIds(graph);
-	if (!ids.length) return;
+	if (!ids.length) {
+		_currentD3Renderer.setSelection([]);
+		_onD3SelectionChange("", void 0, /* @__PURE__ */ new Set(), false);
+		return;
+	}
 	_currentD3Renderer.setSelection(ids);
 	const active = ids[ids.length - 1];
 	_onD3SelectionChange(active, (graph.nodes || []).find((n) => n.id === active), new Set(ids), false);

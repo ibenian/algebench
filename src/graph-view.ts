@@ -245,7 +245,14 @@ function _selectD3Roots(graph: SemanticGraph) {
     // From the graph this render is for, not the renderer's current one:
     // renders aren't serialised, so another may have replaced it meanwhile.
     const ids = graphRootIds(graph);
-    if (!ids.length) return;
+    if (!ids.length) {
+        // Nothing to select (say, a graph of annotations only) — but the
+        // renderer outlives steps, so clear whatever the previous step left
+        // selected, with the same side effects as a deselect.
+        _currentD3Renderer.setSelection([]);
+        _onD3SelectionChange('', undefined, new Set(), false);
+        return;
+    }
     _currentD3Renderer.setSelection(ids);
     // Non-null: `ids` is non-empty.
     const active = ids[ids.length - 1]!;
