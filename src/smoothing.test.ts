@@ -37,8 +37,8 @@ test('same total zoom at 25 fps and 120 fps', () => {
     }
 });
 
-test('spring and min-jerk keep velocity continuous across a retarget', () => {
-    for (const mode of ['spring', 'min-jerk'] as const) {
+test('spring, min-jerk and ease-in-out keep velocity continuous across a retarget', () => {
+    for (const mode of ['spring', 'min-jerk', 'ease-in-out'] as const) {
         const s = new Smoother(mode);
         s.push(0.5);
         run(s, 4);
@@ -88,4 +88,38 @@ test('no mode carries past a goal pulled back mid-motion', () => {
             }
         }
     }
+});
+
+// Steady input — a slow pinch — as one small push every other frame.
+function steadyInput(s: Smoother, perPush: number, pushes: number): number[] {
+    const speeds: number[] = [];
+    for (let i = 0; i < pushes; i++) {
+        if (i % 2 === 0) s.push(perPush);
+        speeds.push(s.step(1 / 60) * 60);
+    }
+    return speeds;
+}
+
+test('ease-in-out follows steady input without pulsing back to rest', () => {
+    const s = new Smoother('ease-in-out');
+    const speeds = steadyInput(s, 0.01, 120);
+    // Past the ease-in, the speed never collapses between events.
+    const cruise = speeds.slice(40);
+    const inputSpeed = 0.01 * 30;
+    for (const v of cruise) assert.ok(v > inputSpeed * 0.7, `speed dropped to ${v}`);
+    assert.ok(Math.abs(cruise.at(-1)! - inputSpeed) < inputSpeed * 0.15, `cruise ${cruise.at(-1)} vs input ${inputSpeed}`);
+});
+
+test('ease-in-out speed scales with input speed', () => {
+    const slow = steadyInput(new Smoother('ease-in-out'), 0.005, 120).at(-1)!;
+    const fast = steadyInput(new Smoother('ease-in-out'), 0.04, 120).at(-1)!;
+    assert.ok(Math.abs(fast / slow - 8) < 1, `fast/slow = ${fast / slow}`);
+});
+
+test('ease-in-out eases in from rest', () => {
+    const s = new Smoother('ease-in-out');
+    s.push(1);
+    const first = s.step(1 / 60);
+    const later = s.step(1 / 60);
+    assert.ok(first > 0 && first < later, `first ${first}, then ${later}`);
 });

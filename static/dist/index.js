@@ -4590,6 +4590,7 @@ var DEFAULT_SMOOTHING = "min-jerk";
 var LOWPASS_TAU = .06;
 var SPRING_TIME = .08;
 var TWEEN_TIME = .18;
+var EASE_IN_OUT_TIME = .3;
 var SETTLE_EPS = 1e-4;
 function isSmoothingMode(s) {
 	return typeof s === "string" && SMOOTHING_MODES.includes(s);
@@ -4602,6 +4603,7 @@ var Smoother = class {
 		this.acc = 0;
 		this.t = 0;
 		this.from = 0;
+		this.v0 = 0;
 		this.c = [
 			0,
 			0,
@@ -4621,6 +4623,7 @@ var Smoother = class {
 			this.vel = 0;
 			this.acc = 0;
 		}
+		this.v0 = this.vel;
 		if (this.mode === "min-jerk") this.planQuintic();
 	}
 	/** Stop where we are (e.g. a distance limit was hit). */
@@ -4630,12 +4633,13 @@ var Smoother = class {
 		this.acc = 0;
 		this.t = 0;
 		this.from = this.pos;
+		this.v0 = 0;
 		if (this.mode === "min-jerk") this.planQuintic();
 	}
 	/** Rebase to zero so values stay small over a long session. */
 	reset() {
 		this.pos = this.goal = this.vel = this.acc = this.t = 0;
-		this.from = 0;
+		this.from = this.v0 = 0;
 	}
 	get settled() {
 		return Math.abs(this.goal - this.pos) < SETTLE_EPS && Math.abs(this.vel) < SETTLE_EPS * 10;
@@ -4658,14 +4662,27 @@ var Smoother = class {
 			case "spring":
 				this.smoothDamp(dtc);
 				break;
-			case "ease-out":
-			case "ease-in-out": {
+			case "ease-out": {
 				this.t = Math.min(this.t + dtc, TWEEN_TIME);
 				const u = this.t / TWEEN_TIME;
-				const e = this.mode === "ease-out" ? 1 - Math.pow(1 - u, 3) : u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-				const next = this.from + (this.goal - this.from) * e;
+				const next = this.from + (this.goal - this.from) * (1 - Math.pow(1 - u, 3));
 				this.vel = dtc > 0 ? (next - this.pos) / dtc : 0;
 				this.pos = next;
+				break;
+			}
+			case "ease-in-out": {
+				const T = EASE_IN_OUT_TIME;
+				this.t = Math.min(this.t + dtc, T);
+				const u = this.t / T, u2 = u * u, u3 = u2 * u;
+				const d = this.goal - this.from;
+				const next = this.from + d * (3 * u2 - 2 * u3) + this.v0 * T * (u3 - 2 * u2 + u);
+				const lo = Math.min(this.from, this.goal), hi = Math.max(this.from, this.goal);
+				this.pos = Math.min(hi, Math.max(lo, next));
+				this.vel = this.pos === next ? d * (6 * u - 6 * u2) / T + this.v0 * (3 * u2 - 4 * u + 1) : 0;
+				if (this.t >= T) {
+					this.pos = this.goal;
+					this.vel = 0;
+				}
 				break;
 			}
 			case "min-jerk": {
@@ -5251,73 +5268,104 @@ function screenAxes() {
 		up: new THREE.Vector3().setFromMatrixColumn(cam.matrix, 1)
 	};
 }
+/** The drag in progress. */
 var trackballStart = null;
-function beginCameraTrackball(clientX, clientY) {
+/** The drag, or after release the tail its smoothing is still settling. */
+var activeTrackball = null;
+function beginCameraTrackball(clientX, clientY, axis, roll) {
 	const view = snapshotView();
 	if (!view) {
 		trackballStart = null;
 		return;
 	}
+	srRotLoop.cancel();
+	rotSmoother.reset();
 	const disc = arcballScreenDisc();
-	trackballStart = {
+	trackballStart = activeTrackball = {
 		x: clientX,
 		y: clientY,
 		r: disc ? Math.max(disc.r, 1) : 200,
 		pivot: rotationCentre().clone(),
 		view,
+		baseX: 0,
+		baseY: 0,
+		axis,
+		roll,
 		last: view,
-		prevX: clientX,
-		prevY: clientY,
 		applied: new THREE.Quaternion()
 	};
 }
 /**
-* Restart the trackball drag from the view as it is now, at the pointer's last
-* position — after something else moved the camera, or the modifier keys
-* changed the axis. False with no view to restart from.
+* Restart the trackball from the view as it is now, keeping its goal — after
+* something else moved the camera, or the modifier keys changed the axis.
+* False with no view to restart from.
 */
-function rebaseCameraTrackball() {
-	const s = trackballStart;
+function rebaseCameraTrackball(s) {
 	const now = snapshotView();
-	if (!s || !now) return false;
+	if (!now) return false;
+	const [ax, ay] = rotSmoother.axes;
 	s.view = now;
 	s.last = now;
-	s.x = s.prevX;
-	s.y = s.prevY;
+	s.baseX = ax.pos;
+	s.baseY = ay.pos;
 	s.applied.identity();
 	return true;
 }
-/**
-* Camera-space trackball: the pointer's travel (dx, dy) since the press turns
-* the start view about the screen axis perpendicular to it — the start
-* camera's screen — by an angle proportional to its length. The sense and rate
-* match the arcball at the ball's centre: one ball radius of travel is one
-* radian. A roll drag turns about the start view axis by sideways travel.
-*/
-function applyCameraTrackball(clientX, clientY, axis, roll) {
+/** The modifier keys changed mid-drag: the new axis takes over from the view as it is now. */
+function setTrackballAxis(axis, roll) {
 	const s = trackballStart;
-	if (!s || !cameraState.camera || !cameraState.controls) return;
-	if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball()) return;
-	s.prevX = clientX;
-	s.prevY = clientY;
-	const dx = clientX - s.x;
-	const dy = clientY - s.y;
+	if (!s || !rebaseCameraTrackball(s)) return;
+	s.axis = axis;
+	s.roll = roll;
+}
+/**
+* Show the drag's smoothed travel (dx, dy) as a turn of its start view about
+* the screen axis perpendicular to it — the start camera's screen — by an
+* angle proportional to its length. The sense and rate match the arcball at
+* the ball's centre: one ball radius of travel is one radian. A roll drag
+* turns about the view axis by sideways travel.
+*/
+function showCameraTrackball(s) {
+	const [ax, ay] = rotSmoother.axes;
+	const dx = ax.pos - s.baseX;
+	const dy = ay.pos - s.baseY;
 	const q = new THREE.Quaternion();
-	if (roll) q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL);
+	if (s.roll) q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL);
 	else {
 		const len = Math.hypot(dx, dy);
 		if (len > 1e-6) q.setFromAxisAngle(new THREE.Vector3(-dy / len, -dx / len, 0), len / s.r);
-		if (axis) twistAboutAxis(q, axis);
+		if (s.axis) twistAboutAxis(q, s.axis);
 	}
 	const v = s.view;
 	const worldQ = v.quaternion.clone().multiply(q).multiply(v.quaternion.clone().conjugate());
 	const pivot = s.pivot;
 	s.last = setView(v.position.clone().sub(pivot).applyQuaternion(worldQ).add(pivot), v.target.clone().sub(pivot).applyQuaternion(worldQ).add(pivot), v.up.clone().applyQuaternion(worldQ));
-	showArcballBall();
 	const step = worldQ.clone().multiply(s.applied.clone().conjugate());
 	s.applied.copy(worldQ);
-	cameraState.arcballLastMoveTime = performance.now();
 	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(step, .5) : step;
+}
+var srRotLoop = frameLoop((dt) => {
+	const s = activeTrackball;
+	if (!s) return false;
+	if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball(s)) return false;
+	rotSmoother.step(dt);
+	showCameraTrackball(s);
+	if (!rotSmoother.settled) return true;
+	if (s !== trackballStart) activeTrackball = null;
+	return false;
+});
+/** Move the drag's pointer to (clientX, clientY): its total travel is the smoother's goal. */
+function applyCameraTrackball(clientX, clientY) {
+	const s = trackballStart;
+	if (!s || !cameraState.camera || !cameraState.controls) return;
+	if (!viewUnchangedSince(s.last) && !rebaseCameraTrackball(s)) return;
+	const [ax, ay] = rotSmoother.axes;
+	rotSmoother.push(clientX - s.x - ax.goal, clientY - s.y - ay.goal, 0);
+	rotSmoother.step(0);
+	showCameraTrackball(s);
+	showArcballBall();
+	cameraState.arcballLastMoveTime = performance.now();
+	if (!rotSmoother.settled) srRotLoop.kick();
 }
 function applyArcballOrbit(prevPt, currPt, axis = null) {
 	if (!cameraState.camera || !cameraState.controls) return;
@@ -5434,6 +5482,8 @@ function pushSmoothedRotation(worldQ) {
 /** Drop what's left of a smoothed turn, e.g. when a new drag takes over. */
 function haltSmoothedRotation() {
 	rotLoop.cancel();
+	srRotLoop.cancel();
+	activeTrackball = null;
 	rotSmoother.reset();
 }
 /** The drag pivot outlives the drag while a coast or a smoothed turn still uses it. */
@@ -5631,7 +5681,7 @@ function setupRollDrag(container) {
 			x: e.clientX
 		};
 		orbitDragActive = true;
-		if (rotateMode === "camera") beginCameraTrackball(e.clientX, e.clientY);
+		if (rotateMode === "camera") beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
 		else trackballStart = null;
 		if (axisClass) document.body.classList.add(axisClass);
 		cancelPivotMove();
@@ -5659,7 +5709,7 @@ function setupRollDrag(container) {
 			updateDragAxis(e);
 			const currPt = screenToArcball(e.clientX, e.clientY);
 			const roll = !!orbitDrag.axis && orbitDrag.axis.z === 1;
-			if (trackballStart) applyCameraTrackball(e.clientX, e.clientY, orbitDrag.axis, roll);
+			if (trackballStart) applyCameraTrackball(e.clientX, e.clientY);
 			else if (roll) applyAxisRoll(e.clientX - orbitDrag.x);
 			else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
 			orbitDrag.pt = currPt;
@@ -5681,7 +5731,7 @@ function setupRollDrag(container) {
 		orbitDrag.axis = axis;
 		document.body.classList.remove(...AXIS_CLASSES);
 		if (cls) document.body.classList.add(cls);
-		if (trackballStart) rebaseCameraTrackball();
+		setTrackballAxis(axis, !!axis && axis.z === 1);
 	}
 	const onModifierKey = (e) => {
 		if (!orbitDrag || ![
@@ -5922,8 +5972,24 @@ function setZoomSmoothingMode(mode) {
 	haltSmoothedZoom();
 	saveSmoothingMode(ZOOM_SMOOTHING_KEY, mode);
 }
-function pinchZoom(deltaY) {
+var ctrlWheelGesture = null;
+function isCtrlScroll(deltaX, deltaY) {
+	const now = performance.now();
+	const g = ctrlWheelGesture;
+	if (g && now - g.time <= WHEEL_GESTURE_GAP_MS) {
+		g.time = now;
+		return g.scroll;
+	}
+	const scroll = Number.isInteger(deltaY) && Number.isInteger(deltaX) && deltaY !== 0;
+	ctrlWheelGesture = {
+		scroll,
+		time: now
+	};
+	return scroll;
+}
+function pinchZoom(deltaY, deltaX = 0) {
 	if (!cameraState.camera || !cameraState.controls) return;
+	if (!isWheelNotch(deltaY) && isCtrlScroll(deltaX, deltaY)) deltaY = -deltaY;
 	const raw = isWheelNotch(deltaY) ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100))) : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
 	const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));
 	if (rotateMode === "camera") {
@@ -6196,7 +6262,7 @@ function setupTrackpadPan() {
 		if (e.ctrlKey && e.deltaMode === 0) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
-			pinchZoom(e.deltaY);
+			pinchZoom(e.deltaY, e.deltaX);
 			return;
 		}
 		if (e.ctrlKey || e.deltaMode !== 0) return;
