@@ -19,7 +19,7 @@ globalThis.document = {
   body: { appendChild() {}, removeChild() {} },
 } as unknown as Document;
 
-const { operatorKind, nodeShortLabel, nodeLongLabel } =
+const { operatorKind, nodeShortLabel, nodeLongLabel, graphRootIds } =
   await import('/graph-panel/d3-semantic-graph.js');
 
 test('operatorKind classifies only operator/relation/function nodes', () => {
@@ -108,4 +108,41 @@ test('nodeLongLabel prefers subexpr, then latex, then the short label', () => {
   // operator is the glyph, not the op name.
   assert.equal(nodeLongLabel({ type: 'operator', op: 'multiply' }), '×');
   assert.equal(nodeLongLabel({ type: 'scalar', label: 'mass' }), 'mass');
+});
+
+// Edges run from a child up to the node it feeds, so a root is a node that is
+// never an edge's `from`.
+test('graphRootIds follows edge direction: roots are never an edge source', () => {
+  const graph = {
+    nodes: [{ id: 'eq', type: 'relation' }, { id: 'x', type: 'scalar' }, { id: 'y', type: 'scalar' }],
+    edges: [{ from: 'x', to: 'eq' }, { from: 'y', to: 'eq' }],
+  };
+  assert.deepEqual(graphRootIds(graph), ['eq']);
+});
+
+test('graphRootIds keeps graph order across several roots', () => {
+  const graph = {
+    nodes: [
+      { id: 'c1___equals_1', type: 'relation' },
+      { id: 'a', type: 'scalar' },
+      { id: 'c0___equals_1', type: 'relation' },
+      { id: 'b', type: 'scalar' },
+    ],
+    edges: [{ from: 'a', to: 'c1___equals_1' }, { from: 'b', to: 'c0___equals_1' }],
+  };
+  assert.deepEqual(graphRootIds(graph), ['c1___equals_1', 'c0___equals_1']);
+});
+
+test('graphRootIds leaves out annotations, and a lone node is its own root', () => {
+  const graph = {
+    nodes: [{ id: 'eps', type: 'scalar' }, { id: 'note', type: 'annotation' }],
+    edges: [],
+  };
+  assert.deepEqual(graphRootIds(graph), ['eps']);
+});
+
+test('graphRootIds is empty for a missing or empty graph', () => {
+  assert.deepEqual(graphRootIds(null), []);
+  assert.deepEqual(graphRootIds(undefined), []);
+  assert.deepEqual(graphRootIds({ nodes: [], edges: [] }), []);
 });

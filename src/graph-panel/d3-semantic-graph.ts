@@ -545,6 +545,21 @@ export function nodeShortLabel(node: LabelNode | null | undefined): string {
 }
 
 /**
+ * A graph's roots, in graph order: nodes with no outgoing edge. Edges point
+ * from a child up to the node it feeds (`from` → `to`), so a root is never an
+ * edge's `from`. Annotations are left out — the layout never draws them.
+ */
+export function graphRootIds(
+    graph: { nodes?: readonly { id: string; type?: string }[]; edges?: readonly { from: string }[] | null } | null | undefined,
+): string[] {
+    if (!graph || !Array.isArray(graph.nodes)) return [];
+    const hasOutgoing = new Set((graph.edges || []).map(e => e.from));
+    return graph.nodes
+        .filter(n => !hasOutgoing.has(n.id) && n.type !== 'annotation')
+        .map(n => n.id);
+}
+
+/**
  * Full applied form shown in the details panel / hover / TTS.
  * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
  */
@@ -596,6 +611,8 @@ export class D3SemanticGraphRenderer {
     _dagre: DagreModule | null;
     _positionById: Map<string, Point>;
     _lastInteractionId: string | null;
+    /** Bumped by every render() and update(); an older one that finds it moved on stops. */
+    _renderSeq = 0;
     _activeNodeId: string | null;
     _selectedNodeIds: Set<string>;
     _highlightTimer: ReturnType<typeof setTimeout> | null;
@@ -653,13 +670,18 @@ export class D3SemanticGraphRenderer {
 
     async render(graph: SemanticGraph): Promise<void> {
         if (this._destroyed) return;
+        // render() awaits twice before drawing, and calls aren't serialised:
+        // a render overtaken by a newer one must not draw its older graph over
+        // the newer one's, so each checks it is still the latest after awaiting.
+        const seq = ++this._renderSeq;
         this._graph = graph;
         const [d3, dagre] = await Promise.all([loadD3(), loadDagre()]);
-        if (this._destroyed) return;
+        if (this._destroyed || seq !== this._renderSeq) return;
         this._d3 = d3;
         this._dagre = dagre;
-        this._theme = await fetchTheme(this.themeName);
-        if (this._destroyed) return;
+        const theme = await fetchTheme(this.themeName);
+        if (this._destroyed || seq !== this._renderSeq) return;
+        this._theme = theme;
 
         if (!graph.nodes || !graph.nodes.length) {
             this.container.innerHTML = '<div style="color:#7e8aa3;padding:2rem;text-align:center;">No renderable graph structure.</div>';
@@ -672,11 +694,17 @@ export class D3SemanticGraphRenderer {
     }
 
     async update(opts: { direction?: D3SemanticGraphOptions['direction']; labels?: D3SemanticGraphOptions['labels']; theme?: string } = {}): Promise<void> {
+        // Shares render()'s sequence: an update overtaken by a newer update or
+        // render while its theme loads must neither install that theme nor
+        // repaint the graph now on screen.
+        const seq = ++this._renderSeq;
         if (opts.direction) this.direction = opts.direction;
         if (opts.labels) this.labels = opts.labels;
         if (opts.theme && opts.theme !== this.themeName) {
             this.themeName = opts.theme;
-            this._theme = await fetchTheme(this.themeName);
+            const theme = await fetchTheme(this.themeName);
+            if (this._destroyed || seq !== this._renderSeq) return;
+            this._theme = theme;
         }
         if (this._d3 && this._dagre && this._graph) {
             this._renderGraph();
@@ -730,6 +758,15 @@ export class D3SemanticGraphRenderer {
 
     get selectedNodes(): Set<string> {
         return new Set(this._selectedNodeIds);
+    }
+
+    /**
+     * The graph's roots, in graph order: nodes with no outgoing edge — the
+     * tops of the trees the layout hangs from (annotations excluded, as the
+     * layout never draws them).
+     */
+    rootNodeIds(): string[] {
+        return graphRootIds(this._graph);
     }
 
     // ── Live-terms bridge ────────────────────────────────────────────────────

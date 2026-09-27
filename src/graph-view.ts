@@ -19,7 +19,7 @@
 import { state } from '/state.js';
 import { BRACES_ICON, FUNCTION_ANALYSIS_ICON } from '/icons.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
-import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
+import { D3SemanticGraphRenderer, graphRootIds, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import type {
     D3SemanticGraphOptions, D3SemanticGraphState, GraphEdgeStyle,
 } from '/graph-panel/d3-semantic-graph.js';
@@ -151,6 +151,8 @@ let _d3HoveredNodeId: string | null = null;
 let _d3ActiveGraph: SemanticGraph | null = null;
 let _d3StepStates = new Map<string, D3SemanticGraphState>();
 let _d3LastStepKey: string | null = null;
+/** Bumped by every D3 render; a render that finds it moved on was overtaken. */
+let _d3RenderGen = 0;
 let _pendingDeeplinkSelection: string[] | null = null;  // node ids awaiting the target step's render
 
 // ----- Deeplink selection bridge (consumed by view-state-bridge.js) -----
@@ -169,16 +171,28 @@ function getGraphSelection() {
 /** Stash a deeplink selection; applied on the next/current step render. */
 function applyDeeplinkSelection(ids: string[] | null) {
     _pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
-    if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
-        _applyPendingDeeplinkSelection(_d3ActiveGraph);
+    // Apply now only if the graph on screen is the current step's. A deeplink
+    // usually navigates first, and the new step's graph renders asynchronously
+    // — until it does, the renderer still holds the previous step's graph, and
+    // matching ids against that would consume the request for the wrong step.
+    // Left pending, the target step's render applies it.
+    const step = currentProofStep();
+    const onScreen = !!step && stableStepKey(step) === _d3LastStepKey;
+    if (onScreen && _currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
+        if (_applyPendingDeeplinkSelection(_d3ActiveGraph) === 'unmatched') _selectD3Roots(_d3ActiveGraph);
     }
 }
 
-function _applyPendingDeeplinkSelection(graph: SemanticGraph) {
-    if (_pendingDeeplinkSelection == null) return;
+/**
+ * Apply a pending deeplink selection: 'applied' when it picked out nodes in
+ * this graph, 'unmatched' when it named nodes and none are here, 'none' when
+ * nothing was pending or it named no nodes.
+ */
+function _applyPendingDeeplinkSelection(graph: SemanticGraph): 'applied' | 'unmatched' | 'none' {
+    if (_pendingDeeplinkSelection == null) return 'none';
     const want = _pendingDeeplinkSelection;
     _pendingDeeplinkSelection = null;
-    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return 'none';
     const valid = want.filter((id) => (graph.nodes || []).some((n) => n.id === id));
     _currentD3Renderer.setSelection(valid);
     if (valid.length > 1) {
@@ -191,6 +205,75 @@ function _applyPendingDeeplinkSelection(graph: SemanticGraph) {
         _showD3InfoPanel(valid[0]!, node, graph);
     } else {
         _hideD3InfoPanel();
+    }
+    // Mirror the replaced selection onto the proof terms, as a plain click
+    // would — otherwise terms stay gold for the selection this one replaced.
+    if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(new Set(valid), false);
+    return valid.length ? 'applied' : want.length ? 'unmatched' : 'none';
+}
+
+/**
+ * Show a graph selection the way a click does: the info panel (one node or the
+ * multi-node list), the gold terms in proof boxes, and the deeplink URL.
+ */
+function _onD3SelectionChange(
+    nodeId: string, nodeData: GraphNode | undefined, selectedIds: Set<string>, additive: boolean,
+) {
+    if (!selectedIds || selectedIds.size === 0) {
+        _hideD3InfoPanel();
+    } else if (selectedIds.size > 1) {
+        // `!` on _d3ActiveGraph — a selection only exists on a rendered graph,
+        // which _renderWithD3 assigns before wiring the renderer.
+        _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph!);
+    } else {
+        _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph!);
+    }
+    // Reverse sync: mirror the graph selection onto the proof terms (gold).
+    // Pass additive so a PLAIN (replacing) selection also clears off-graph terms.
+    if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
+    // Deeplink sync: node selection rewrites the current URL.
+    try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
+}
+
+/**
+ * Select every root of the graph — as though each had been Cmd-clicked — so
+ * the node details list the equation's top-level nodes. Selecting a node lights
+ * its whole subtree, so with every root selected nothing is dimmed.
+ */
+function _selectD3Roots(graph: SemanticGraph) {
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+    // From the graph this render is for, not the renderer's current one:
+    // renders aren't serialised, so another may have replaced it meanwhile.
+    const ids = graphRootIds(graph);
+    if (!ids.length) {
+        // Nothing to select (say, a graph of annotations only) — but the
+        // renderer outlives steps, so clear whatever the previous step left
+        // selected, with the same side effects as a deselect.
+        _currentD3Renderer.setSelection([]);
+        _onD3SelectionChange('', undefined, new Set(), false);
+        return;
+    }
+    _currentD3Renderer.setSelection(ids);
+    // Non-null: `ids` is non-empty.
+    const active = ids[ids.length - 1]!;
+    const node = (graph.nodes || []).find((n) => n.id === active);
+    // Not additive: this replaces the selection, so proof terms still gold
+    // from the previous step must clear, as a fresh plain click would.
+    _onD3SelectionChange(active, node, new Set(ids), false);
+}
+
+/**
+ * Every render empties the info panel, but a re-render of the same step (the
+ * graph re-derived or enriched, a theme or direction change) keeps the
+ * renderer's selection — so show the panel for that selection again, or the
+ * selected nodes lose their details until clicked afresh.
+ */
+function _showD3InfoForSelection(graph: SemanticGraph) {
+    const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+    if (ids.length > 1) {
+        _showD3MultiInfoPanel(new Set(ids), graph);
+    } else if (ids.length === 1) {
+        _showD3InfoPanel(ids[0]!, (graph.nodes || []).find((n) => n.id === ids[0]), graph);
     }
 }
 
@@ -1011,6 +1094,8 @@ function updateTreeHighlight() {
 // destroys any attached SemanticGraphPanel, and resets the cache key so
 // the next real render is a full rebuild.
 function clearGraph() {
+    // Any D3 render still in flight belongs to what is being cleared.
+    _d3RenderGen++;
     const container = document.getElementById('graph-mermaid-container');
     if (container) container.innerHTML = '';
     if (_currentGraphPanel) {
@@ -1083,6 +1168,7 @@ function hideErrorState() {
 async function _renderWithD3(
     container: HTMLElement, graph: SemanticGraph, step: ProofStep | null, key: string,
 ) {
+    const gen = ++_d3RenderGen;
     const viewport = document.getElementById('graph-viewport');
     if (viewport) {
         viewport.classList.toggle('gv-theme-light', _currentMode === 'light');
@@ -1143,20 +1229,7 @@ async function _renderWithD3(
             labels: _currentLabels,
             theme: _currentTheme,
             onNodeClick: (nodeId, nodeData, selectedIds, additive) => {
-                if (!selectedIds || selectedIds.size === 0) {
-                    _hideD3InfoPanel();
-                } else if (selectedIds.size > 1) {
-                    // `!` on _d3ActiveGraph — this callback can only fire from a
-                    // rendered graph, which _renderWithD3 assigns before wiring it.
-                    _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph!);
-                } else {
-                    _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph!);
-                }
-                // Reverse sync: mirror the graph selection onto the proof terms (gold).
-                // Pass additive so a PLAIN (replacing) selection also clears off-graph terms.
-                if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
-                // Deeplink sync: node selection rewrites the current URL.
-                try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
+                _onD3SelectionChange(nodeId, nodeData, selectedIds, additive);
             },
             onBackgroundClick: () => {
                 _hideD3InfoPanel();
@@ -1193,6 +1266,8 @@ async function _renderWithD3(
         });
     } else {
         await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
+        // Overtaken while updating: don't go on to render this older graph.
+        if (gen !== _d3RenderGen) return;
     }
 
     // Connect chart manager to renderer for transform polling + resize observation
@@ -1209,18 +1284,38 @@ async function _renderWithD3(
     }
 
     const saved = _d3StepStates.get(stepKey);
-    if (saved) {
-        _currentD3Renderer.restoreState(saved);
-    } else if (_d3LastStepKey !== stepKey) {
-        _currentD3Renderer.resetZoom();
+    const stepChanged = _d3LastStepKey !== stepKey;
+    // A step's first showing, with nothing restored: its roots start selected.
+    // Later re-renders of the same step (enrichment, theme) keep whatever the
+    // user has selected since — including nothing.
+    const firstShowing = !saved && stepChanged;
+    // The snapshot was taken when the step was left, so it is only restored on
+    // arriving back. Restoring it on a same-step re-render too would throw away
+    // everything the user has done on the step since (selection, collapse, zoom).
+    if (stepChanged) {
+        if (saved) _currentD3Renderer.restoreState(saved);
+        else _currentD3Renderer.resetZoom();
     }
 
     await _currentD3Renderer.render(graph);
+    // Renders aren't serialised: if a newer one started (or the graph was
+    // cleared) while this awaited, that now owns the renderer, the step key and
+    // the selection. Stop before applying this older graph's selection,
+    // details or step bookkeeping. Checked after every await in this function.
+    // A clearGraph() meanwhile destroys the renderer (and bumps the count too).
+    if (gen !== _d3RenderGen || !_currentD3Renderer || _currentD3Renderer._destroyed) return;
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
 
     // Apply a pending deeplink selection now that this step's graph exists.
-    _applyPendingDeeplinkSelection(graph);
+    // The renderer outlives steps, so what it has selected may be the previous
+    // step's: only a deeplink selection counts as this step's own. A deeplink
+    // whose nodes aren't in this graph falls back to the roots even on a
+    // revisited step, rather than leaving nothing selected.
+    const deeplink = _applyPendingDeeplinkSelection(graph);
+    if (deeplink === 'unmatched' || (firstShowing && deeplink === 'none')) _selectD3Roots(graph);
+    else _showD3InfoForSelection(graph);
+    const restoredSelection = stepChanged && !!saved && deeplink === 'none';
 
     // Re-attach this step's persisted charts to the freshly-recreated card.
     if (_currentChartManager) { try { _currentChartManager.reattach(); } catch {} }
@@ -1229,6 +1324,19 @@ async function _renderWithD3(
     // (re-attaching to the freshly-recreated card), detach the rest. This also
     // makes them survive re-renders within the same step.
     if (_currentProofManager) _currentProofManager.setCurrentStep(stepKey);
+    // Back on a step whose selection was just restored from its snapshot:
+    // mirror it onto that step's proof terms, replacing the previous step's.
+    // Not on same-step re-renders, which must keep local term selections.
+    if (restoredSelection && _currentProofManager) {
+        const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+        _currentProofManager.syncSelectionFromGraph(new Set(ids), false);
+    }
+    // …and let the deeplink URL catch up: navigation may already have written
+    // the previous step's `nodes=`. The bridge coalesces this, and ignores it
+    // while it is applying an incoming deeplink.
+    if (restoredSelection) {
+        try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
+    }
 
     // Charts and proof boxes share the docked overlay panel but re-attach from
     // two managers — keep their order stable (creation order) so it doesn't

@@ -20234,6 +20234,16 @@ function nodeShortLabel(node) {
 	return node.latex || node.label || node.id || "";
 }
 /**
+* A graph's roots, in graph order: nodes with no outgoing edge. Edges point
+* from a child up to the node it feeds (`from` → `to`), so a root is never an
+* edge's `from`. Annotations are left out — the layout never draws them.
+*/
+function graphRootIds(graph) {
+	if (!graph || !Array.isArray(graph.nodes)) return [];
+	const hasOutgoing = new Set((graph.edges || []).map((e) => e.from));
+	return graph.nodes.filter((n) => !hasOutgoing.has(n.id) && n.type !== "annotation").map((n) => n.id);
+}
+/**
 * Full applied form shown in the details panel / hover / TTS.
 * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
 */
@@ -20263,6 +20273,7 @@ var D3SemanticGraphRenderer = class {
 	* @param opts.onBackgroundClick — callback()
 	*/
 	constructor(container, opts = {}) {
+		this._renderSeq = 0;
 		this.container = container;
 		this.katex = opts.katex || typeof window !== "undefined" && window.katex;
 		this.direction = opts.direction || "left-right";
@@ -20294,13 +20305,15 @@ var D3SemanticGraphRenderer = class {
 	}
 	async render(graph) {
 		if (this._destroyed) return;
+		const seq = ++this._renderSeq;
 		this._graph = graph;
 		const [d3, dagre] = await Promise.all([loadD3(), loadDagre()]);
-		if (this._destroyed) return;
+		if (this._destroyed || seq !== this._renderSeq) return;
 		this._d3 = d3;
 		this._dagre = dagre;
-		this._theme = await fetchTheme(this.themeName);
-		if (this._destroyed) return;
+		const theme = await fetchTheme(this.themeName);
+		if (this._destroyed || seq !== this._renderSeq) return;
+		this._theme = theme;
 		if (!graph.nodes || !graph.nodes.length) {
 			this.container.innerHTML = "<div style=\"color:#7e8aa3;padding:2rem;text-align:center;\">No renderable graph structure.</div>";
 			return;
@@ -20310,11 +20323,14 @@ var D3SemanticGraphRenderer = class {
 		this._renderGraph();
 	}
 	async update(opts = {}) {
+		const seq = ++this._renderSeq;
 		if (opts.direction) this.direction = opts.direction;
 		if (opts.labels) this.labels = opts.labels;
 		if (opts.theme && opts.theme !== this.themeName) {
 			this.themeName = opts.theme;
-			this._theme = await fetchTheme(this.themeName);
+			const theme = await fetchTheme(this.themeName);
+			if (this._destroyed || seq !== this._renderSeq) return;
+			this._theme = theme;
 		}
 		if (this._d3 && this._dagre && this._graph) this._renderGraph();
 	}
@@ -20352,6 +20368,14 @@ var D3SemanticGraphRenderer = class {
 	}
 	get selectedNodes() {
 		return new Set(this._selectedNodeIds);
+	}
+	/**
+	* The graph's roots, in graph order: nodes with no outgoing edge — the
+	* tops of the trees the layout hangs from (annotations excluded, as the
+	* layout never draws them).
+	*/
+	rootNodeIds() {
+		return graphRootIds(this._graph);
 	}
 	/**
 	* Resolve a proof-animation term id (its `data-n`) to a node id in THIS
@@ -25013,6 +25037,8 @@ var _d3HoveredNodeId = null;
 var _d3ActiveGraph = null;
 var _d3StepStates = /* @__PURE__ */ new Map();
 var _d3LastStepKey = null;
+/** Bumped by every D3 render; a render that finds it moved on was overtaken. */
+var _d3RenderGen = 0;
 var _pendingDeeplinkSelection = null;
 /** Current selection as an ordered array, active node last. */
 function getGraphSelection() {
@@ -25025,13 +25051,21 @@ function getGraphSelection() {
 /** Stash a deeplink selection; applied on the next/current step render. */
 function applyDeeplinkSelection(ids) {
 	_pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
-	if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) _applyPendingDeeplinkSelection(_d3ActiveGraph);
+	const step = currentProofStep();
+	if (!!step && stableStepKey(step) === _d3LastStepKey && _currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
+		if (_applyPendingDeeplinkSelection(_d3ActiveGraph) === "unmatched") _selectD3Roots(_d3ActiveGraph);
+	}
 }
+/**
+* Apply a pending deeplink selection: 'applied' when it picked out nodes in
+* this graph, 'unmatched' when it named nodes and none are here, 'none' when
+* nothing was pending or it named no nodes.
+*/
 function _applyPendingDeeplinkSelection(graph) {
-	if (_pendingDeeplinkSelection == null) return;
+	if (_pendingDeeplinkSelection == null) return "none";
 	const want = _pendingDeeplinkSelection;
 	_pendingDeeplinkSelection = null;
-	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return "none";
 	const valid = want.filter((id) => (graph.nodes || []).some((n) => n.id === id));
 	_currentD3Renderer.setSelection(valid);
 	if (valid.length > 1) _showD3MultiInfoPanel(new Set(valid), graph);
@@ -25039,6 +25073,49 @@ function _applyPendingDeeplinkSelection(graph) {
 		const node = (graph.nodes || []).find((n) => n.id === valid[0]);
 		_showD3InfoPanel(valid[0], node, graph);
 	} else _hideD3InfoPanel();
+	if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(new Set(valid), false);
+	return valid.length ? "applied" : want.length ? "unmatched" : "none";
+}
+/**
+* Show a graph selection the way a click does: the info panel (one node or the
+* multi-node list), the gold terms in proof boxes, and the deeplink URL.
+*/
+function _onD3SelectionChange(nodeId, nodeData, selectedIds, additive) {
+	if (!selectedIds || selectedIds.size === 0) _hideD3InfoPanel();
+	else if (selectedIds.size > 1) _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
+	else _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+	if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:selectionchange"));
+	} catch (_) {}
+}
+/**
+* Select every root of the graph — as though each had been Cmd-clicked — so
+* the node details list the equation's top-level nodes. Selecting a node lights
+* its whole subtree, so with every root selected nothing is dimmed.
+*/
+function _selectD3Roots(graph) {
+	if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+	const ids = graphRootIds(graph);
+	if (!ids.length) {
+		_currentD3Renderer.setSelection([]);
+		_onD3SelectionChange("", void 0, /* @__PURE__ */ new Set(), false);
+		return;
+	}
+	_currentD3Renderer.setSelection(ids);
+	const active = ids[ids.length - 1];
+	_onD3SelectionChange(active, (graph.nodes || []).find((n) => n.id === active), new Set(ids), false);
+}
+/**
+* Every render empties the info panel, but a re-render of the same step (the
+* graph re-derived or enriched, a theme or direction change) keeps the
+* renderer's selection — so show the panel for that selection again, or the
+* selected nodes lose their details until clicked afresh.
+*/
+function _showD3InfoForSelection(graph) {
+	const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+	if (ids.length > 1) _showD3MultiInfoPanel(new Set(ids), graph);
+	else if (ids.length === 1) _showD3InfoPanel(ids[0], (graph.nodes || []).find((n) => n.id === ids[0]), graph);
 }
 /** 'math' when the Math tab is active, else 'scene'. (Internal dock id is 'graph'.) */
 function getCurrentView() {
@@ -25638,6 +25715,7 @@ function updateTreeHighlight() {
 	});
 }
 function clearGraph() {
+	_d3RenderGen++;
 	const container = document.getElementById("graph-mermaid-container");
 	if (container) container.innerHTML = "";
 	if (_currentGraphPanel) {
@@ -25691,6 +25769,7 @@ function hideErrorState() {
 	if (empty) empty.style.display = "";
 }
 async function _renderWithD3(container, graph, step, key) {
+	const gen = ++_d3RenderGen;
 	const viewport = document.getElementById("graph-viewport");
 	if (viewport) {
 		viewport.classList.toggle("gv-theme-light", _currentMode === "light");
@@ -25731,13 +25810,7 @@ async function _renderWithD3(container, graph, step, key) {
 		labels: _currentLabels,
 		theme: _currentTheme,
 		onNodeClick: (nodeId, nodeData, selectedIds, additive) => {
-			if (!selectedIds || selectedIds.size === 0) _hideD3InfoPanel();
-			else if (selectedIds.size > 1) _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
-			else _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
-			if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
-			try {
-				window.dispatchEvent(new CustomEvent("algebench:selectionchange"));
-			} catch (_) {}
+			_onD3SelectionChange(nodeId, nodeData, selectedIds, additive);
 		},
 		onBackgroundClick: () => {
 			_hideD3InfoPanel();
@@ -25767,26 +25840,44 @@ async function _renderWithD3(container, graph, step, key) {
 			if (step) getFaManager().open(nodeData, step);
 		}
 	});
-	else await _currentD3Renderer.update({
-		direction: _currentDirection,
-		labels: _currentLabels,
-		theme: _currentTheme
-	});
+	else {
+		await _currentD3Renderer.update({
+			direction: _currentDirection,
+			labels: _currentLabels,
+			theme: _currentTheme
+		});
+		if (gen !== _d3RenderGen) return;
+	}
 	if (_currentChartManager && _currentD3Renderer) _currentChartManager.setRenderer(_currentD3Renderer);
 	if (_currentProofManager && _currentD3Renderer) _currentProofManager.setRenderer(_currentD3Renderer);
 	const stepKey = stableStepKey(step);
 	if (_currentD3Renderer && _d3LastStepKey && _d3LastStepKey !== stepKey) _d3StepStates.set(_d3LastStepKey, _currentD3Renderer.saveState());
 	const saved = _d3StepStates.get(stepKey);
-	if (saved) _currentD3Renderer.restoreState(saved);
-	else if (_d3LastStepKey !== stepKey) _currentD3Renderer.resetZoom();
+	const stepChanged = _d3LastStepKey !== stepKey;
+	const firstShowing = !saved && stepChanged;
+	if (stepChanged) {
+		if (saved) _currentD3Renderer.restoreState(saved);
+		else _currentD3Renderer.resetZoom();
+	}
 	await _currentD3Renderer.render(graph);
+	if (gen !== _d3RenderGen || !_currentD3Renderer || _currentD3Renderer._destroyed) return;
 	_d3LastStepKey = stepKey;
 	_currentSemanticKey = key;
-	_applyPendingDeeplinkSelection(graph);
+	const deeplink = _applyPendingDeeplinkSelection(graph);
+	if (deeplink === "unmatched" || firstShowing && deeplink === "none") _selectD3Roots(graph);
+	else _showD3InfoForSelection(graph);
+	const restoredSelection = stepChanged && !!saved && deeplink === "none";
 	if (_currentChartManager) try {
 		_currentChartManager.reattach();
 	} catch {}
 	if (_currentProofManager) _currentProofManager.setCurrentStep(stepKey);
+	if (restoredSelection && _currentProofManager) {
+		const ids = getGraphSelection().filter((id) => (graph.nodes || []).some((n) => n.id === id));
+		_currentProofManager.syncSelectionFromGraph(new Set(ids), false);
+	}
+	if (restoredSelection) try {
+		window.dispatchEvent(new CustomEvent("algebench:selectionchange"));
+	} catch (_) {}
 	const dock = container.querySelector(".d3-graph-card .sgc-pinned-panel");
 	if (dock && dock.children.length > 1) [...dock.children].sort((a, b) => (+a.dataset.dockOrder || 0) - (+b.dataset.dockOrder || 0)).forEach((c) => dock.appendChild(c));
 	enrichGraphInBackground(graph, key, step);
