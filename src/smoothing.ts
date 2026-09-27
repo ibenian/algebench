@@ -14,8 +14,11 @@
 //   spring       critically-damped spring — velocity is continuous, so a
 //                pinch starts and stops without a kick; no overshoot
 //   ease-out     each event restarts a cubic ease-out tween to the new goal
-//   ease-in-out  each event restarts a cubic ease-in-out tween; accelerates
-//                from rest every time, so a continuous pinch pulses
+//   ease-in-out  each event plans a cubic (Hermite) path from the current
+//                position AND velocity to the goal, arriving at rest: from
+//                rest it eases in and out, but mid-motion it carries on at
+//                the speed it has — slow input moves slowly, a quickening
+//                input speeds it up, and it never pulses back to rest
 //   min-jerk     each event re-plans a minimum-jerk (quintic) path from the
 //                current position, velocity AND acceleration to the goal —
 //                smoothest in the jerk sense, and retargets without a seam
@@ -29,7 +32,11 @@ export const DEFAULT_SMOOTHING: SmoothingMode = 'min-jerk';
 
 const LOWPASS_TAU = 0.06;      // s — time constant: 63% of the way in 60 ms
 const SPRING_TIME = 0.08;      // s — SmoothDamp smooth time (≈ settle in 4x this)
-const TWEEN_TIME = 0.18;       // s — ease-out / ease-in-out / min-jerk duration
+const TWEEN_TIME = 0.18;       // s — ease-out / min-jerk duration
+// Ease-in-out's Hermite path. From rest it is smoothstep, whose peak
+// acceleration 6d/T² is about 5x gentler than the 0.18 s cubic it replaces.
+// Under steady input it trails the goal by (2/3)·T of that input's travel.
+const EASE_IN_OUT_TIME = 0.3;  // s
 const SETTLE_EPS = 1e-4;       // ln units: 0.01% zoom — below this, stop
 
 export function isSmoothingMode(s: unknown): s is SmoothingMode {
@@ -45,6 +52,8 @@ export class Smoother {
     // Tween / quintic plan, restarted on every retarget.
     private t = 0;
     private from = 0;
+    /** Ease-in-out: the velocity its current path started with. */
+    private v0 = 0;
     private c: [number, number, number, number, number, number] = [0, 0, 0, 0, 0, 0];
 
     constructor(mode: SmoothingMode = DEFAULT_SMOOTHING) {
@@ -59,6 +68,7 @@ export class Smoother {
         // A goal now behind the motion (a pinch or drag reversing) must not be
         // carried past by momentum: the reversal starts from rest.
         if (this.vel * (this.goal - this.pos) < 0) { this.vel = 0; this.acc = 0; }
+        this.v0 = this.vel;
         if (this.mode === 'min-jerk') this.planQuintic();
     }
 
@@ -71,13 +81,14 @@ export class Smoother {
         // Tweens and the quintic run from `from` / their plan: restart both
         // here, or the next step replays the old path from its start.
         this.from = this.pos;
+        this.v0 = 0;
         if (this.mode === 'min-jerk') this.planQuintic();
     }
 
     /** Rebase to zero so values stay small over a long session. */
     reset(): void {
         this.pos = this.goal = this.vel = this.acc = this.t = 0;
-        this.from = 0;
+        this.from = this.v0 = 0;
     }
 
     get settled(): boolean {
@@ -102,16 +113,28 @@ export class Smoother {
             case 'spring':
                 this.smoothDamp(dtc);
                 break;
-            case 'ease-out':
-            case 'ease-in-out': {
+            case 'ease-out': {
                 this.t = Math.min(this.t + dtc, TWEEN_TIME);
                 const u = this.t / TWEEN_TIME;
-                const e = this.mode === 'ease-out'
-                    ? 1 - Math.pow(1 - u, 3)
-                    : (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
-                const next = this.from + (this.goal - this.from) * e;
+                const next = this.from + (this.goal - this.from) * (1 - Math.pow(1 - u, 3));
                 this.vel = dtc > 0 ? (next - this.pos) / dtc : 0;
                 this.pos = next;
+                break;
+            }
+            case 'ease-in-out': {
+                // Cubic Hermite from (from, v0) to (goal, 0) over T.
+                const T = EASE_IN_OUT_TIME;
+                this.t = Math.min(this.t + dtc, T);
+                const u = this.t / T, u2 = u * u, u3 = u2 * u;
+                const d = this.goal - this.from;
+                const next = this.from + d * (3 * u2 - 2 * u3) + this.v0 * T * (u3 - 2 * u2 + u);
+                // Carried speed near the goal would sail past it; stop there instead.
+                const lo = Math.min(this.from, this.goal), hi = Math.max(this.from, this.goal);
+                this.pos = Math.min(hi, Math.max(lo, next));
+                this.vel = this.pos === next
+                    ? d * (6 * u - 6 * u2) / T + this.v0 * (3 * u2 - 4 * u + 1)
+                    : 0;
+                if (this.t >= T) { this.pos = this.goal; this.vel = 0; }
                 break;
             }
             case 'min-jerk': {
