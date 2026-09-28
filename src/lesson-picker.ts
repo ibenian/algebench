@@ -246,9 +246,10 @@ export class LessonPicker {
         const total = this.pool().length;
         if (countEl) {
             const shown = query.trim() ? (groups[0]?.lessons.length ?? 0) : total;
+            const noun = total === 1 ? 'lesson' : 'lessons';
             countEl.textContent = !this.loaded ? '' : query.trim()
-                ? `${shown} of ${total}`
-                : `${total} lessons`;
+                ? `${shown} of ${total} ${noun}`
+                : `${total} ${noun}`;
         }
 
         if (this.loadError) {
@@ -387,9 +388,18 @@ export class LessonPicker {
                 if (v) this.pick(v.id);
             }
         });
-        // Esc closes from any control in the palette (search, ↻, Drafts, From JSON).
+        // Esc closes from any control in the palette (search, ↻, Drafts, From JSON),
+        // and Tab cycles among them: the backdrop covers the page, so focus
+        // stays in the palette until it closes.
         this.opts.paletteEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') { e.preventDefault(); this.close(); }
+            if (e.key === 'Escape') { e.preventDefault(); this.close(); return; }
+            if (e.key !== 'Tab') return;
+            const stops = [...this.opts.paletteEl.querySelectorAll<HTMLElement>('input, button')]
+                .filter(el => !(el as HTMLButtonElement).disabled && el.offsetParent !== null);
+            if (!stops.length) return;
+            const first = stops[0]!, last = stops[stops.length - 1]!;
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
         });
         listEl.addEventListener('mousemove', (e) => {
             const row = (e.target as Element).closest<HTMLElement>('.lesson-row');

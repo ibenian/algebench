@@ -16448,7 +16448,8 @@ var LessonPicker = class {
 		const total = this.pool().length;
 		if (countEl) {
 			const shown = query.trim() ? groups[0]?.lessons.length ?? 0 : total;
-			countEl.textContent = !this.loaded ? "" : query.trim() ? `${shown} of ${total}` : `${total} lessons`;
+			const noun = total === 1 ? "lesson" : "lessons";
+			countEl.textContent = !this.loaded ? "" : query.trim() ? `${shown} of ${total} ${noun}` : `${total} ${noun}`;
 		}
 		if (this.loadError) {
 			const err = document.createElement("div");
@@ -16581,6 +16582,18 @@ var LessonPicker = class {
 			if (e.key === "Escape") {
 				e.preventDefault();
 				this.close();
+				return;
+			}
+			if (e.key !== "Tab") return;
+			const stops = [...this.opts.paletteEl.querySelectorAll("input, button")].filter((el) => !el.disabled && el.offsetParent !== null);
+			if (!stops.length) return;
+			const first = stops[0], last = stops[stops.length - 1];
+			if (e.shiftKey && document.activeElement === first) {
+				e.preventDefault();
+				last.focus();
+			} else if (!e.shiftKey && document.activeElement === last) {
+				e.preventDefault();
+				first.focus();
 			}
 		});
 		listEl.addEventListener("mousemove", (e) => {
