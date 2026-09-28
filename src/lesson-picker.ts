@@ -264,11 +264,16 @@ export class LessonPicker {
             if (this.loadError && !this.loaded) return;
             const empty = document.createElement('div');
             empty.className = 'lesson-picker-empty';
+            // Hidden drafts that would show come first: with no built-ins at
+            // all, "none found" would hide that turning Drafts on helps.
+            const hiddenDraftHit = !this.showDrafts
+                && this.lessons.some(l => l.draft && scoreLesson(l, query) > 0);
             empty.textContent = !this.loaded ? 'Loading lessons…'
-                : !total ? 'No built-in lessons found.'
-                : !this.showDrafts && this.lessons.some(l => l.draft && scoreLesson(l, query) > 0)
-                    ? 'No lessons match. Turn on Drafts to search drafts too.'
-                    : 'No lessons match your search.';
+                : hiddenDraftHit
+                    ? (query.trim() ? 'No lessons match. Turn on Drafts to search drafts too.'
+                                    : 'No built-in lessons. Turn on Drafts to see the drafts.')
+                : !this.lessons.length ? 'No built-in lessons found.'
+                : 'No lessons match your search.';
             listEl.appendChild(empty);
             return;
         }
