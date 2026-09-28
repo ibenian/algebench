@@ -50,7 +50,10 @@ def readable_slug(title: Any, fallback: str, limit: int = 48) -> str:
     """
     slug = slugify(_LATEX.sub(" ", "" if title is None else str(title)))
     if len(slug) > limit:
-        slug = slug[:limit + 1].rsplit("-", 1)[0] or slug[:limit]
+        head = slug[:limit + 1]
+        # Cut at the last word boundary within the cap; a single long word has
+        # none, so hard-truncate it.
+        slug = head.rsplit("-", 1)[0] if "-" in head else slug[:limit]
     return slug or fallback
 
 

@@ -7,7 +7,7 @@ import pytest
 
 from backend.lesson_ids import (
     assign_missing_ids, build_ids, carry_ids, duplicate_id_errors, id_errors,
-    iter_id_targets, missing_id_errors, slugify,
+    iter_id_targets, missing_id_errors, readable_slug, slugify,
 )
 from scripts.backfill_lesson_ids import backfill_text
 
@@ -157,6 +157,12 @@ def test_carry_ids_keeps_the_scene_and_surviving_steps():
     carry_ids(old, new, 'shipped')
     assert new['id'] == 'shipped'
     assert [s['id'] for s in new['steps']] == ['kept', 'setup']
+
+
+def test_readable_slug_respects_the_cap():
+    assert readable_slug('x' * 60, 'f') == 'x' * 48          # no word boundary
+    assert readable_slug('word ' * 20, 'f') == '-'.join(['word'] * 9)  # 44 chars
+    assert all(len(readable_slug(t, 'f')) <= 48 for t in ['a' * 49, 'ab-' * 30, 'a' * 48 + ' b'])
 
 
 def test_carry_ids_matches_repeated_titles_in_order():
