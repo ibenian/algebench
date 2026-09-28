@@ -1498,7 +1498,7 @@ function _renderKaTeX(text, displayMode) {
 					"0.88em"
 				][hm[1].length - 1]};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
 				if (t === "---") return "<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0\">";
-				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${escapeHtml$2(codeSpans[+idx])}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
 				return li < lines.length - 1 ? inline + "<br>" : inline;
 			}).join("");
 		} else if (seg.startsWith("$$")) {
@@ -16574,7 +16574,10 @@ var LessonPicker = class {
 				e.preventDefault();
 				const v = this.visible[this.active];
 				if (v) this.pick(v.id);
-			} else if (e.key === "Escape") {
+			}
+		});
+		this.opts.paletteEl.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") {
 				e.preventDefault();
 				this.close();
 			}

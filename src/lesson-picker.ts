@@ -380,7 +380,11 @@ export class LessonPicker {
                 e.preventDefault();
                 const v = this.visible[this.active];
                 if (v) this.pick(v.id);
-            } else if (e.key === 'Escape') { e.preventDefault(); this.close(); }
+            }
+        });
+        // Esc closes from any control in the palette (search, ↻, Drafts, From JSON).
+        this.opts.paletteEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); this.close(); }
         });
         listEl.addEventListener('mousemove', (e) => {
             const row = (e.target as Element).closest<HTMLElement>('.lesson-row');
