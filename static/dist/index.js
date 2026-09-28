@@ -16340,6 +16340,22 @@ function buildQuery(pairs) {
 function slugify(title) {
 	return String(title == null ? "" : title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
+/**
+* Deterministic, collision-free ids for an array of {id?, title?} — how the
+* `sc=` / `st=` / `ps=` params resolve (id -> slug(title) -> index). Mirrored by
+* `build_ids` in backend/lesson_ids.py.
+*/
+function buildIds(items, titleKey) {
+	const used = /* @__PURE__ */ new Set();
+	return (items || []).map((it, i) => {
+		let base = it && it.id ? String(it.id) : slugify(it && it[titleKey]);
+		if (!base) base = String(i);
+		let id = base, n = 2;
+		while (used.has(id)) id = `${base}-${n++}`;
+		used.add(id);
+		return id;
+	});
+}
 /** Encode camera to compact `px,py,pz,tx,ty,tz[,ux,uy,uz]` (data-space). */
 function encodeCamera(cam) {
 	if (!cam || !Array.isArray(cam.position) || !Array.isArray(cam.target)) return "";
@@ -18969,17 +18985,6 @@ var _autoAskFired = false;
 /** True while applyViewState is driving the app (suppresses outbound sync). */
 function isApplyingViewState() {
 	return _applying || isApplyingFromHistory();
-}
-function buildIds(items, titleKey) {
-	const used = /* @__PURE__ */ new Set();
-	return (items || []).map((it, i) => {
-		let base = it && it.id ? String(it.id) : slugify(it && it[titleKey]);
-		if (!base) base = String(i);
-		let id = base, n = 2;
-		while (used.has(id)) id = `${base}-${n++}`;
-		used.add(id);
-		return id;
-	});
 }
 function sceneMaps(lesson) {
 	if (!lesson || !Array.isArray(lesson.scenes)) return {
@@ -28136,10 +28141,10 @@ function assembleBuildSceneRequest(opts) {
 			description: firstLine(lesson.description),
 			sceneSummaries: summarised.map((s, index) => ({
 				index,
-				id: typeof s.id === "string" ? s.id : "",
 				title: typeof s.title === "string" ? s.title : "",
 				description: firstLine(s.description)
-			}))
+			})),
+			sceneIds: buildIds(scenes, "title")
 		},
 		conventions: deriveConventions(scenes),
 		neighbours: around.map((i) => scenes[i]),

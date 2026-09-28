@@ -78,6 +78,7 @@ These checks go beyond structural schema validation:
 #### Stable IDs
 - Every scene, step, proof and proof step has an explicit `id` (deeplinks and saved references resolve by id before title)
 - Ids are unique within their array (steps within a scene, scenes within the lesson, proof steps within a proof)
+- **Proof ids are unique across the whole lesson** — root-, scene- and step-level proofs are flattened into one list and `pf=` resolves against all of it
 - Fix missing ones with `./run.sh scripts/backfill_lesson_ids.py --write <file>` — it writes the ids the client already derives, so no link moves
 
 #### Proof Checks

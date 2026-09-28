@@ -14,40 +14,42 @@
   "sceneSummaries": [
    {
     "index": 0,
-    "id": "vector-addition-vec-a-vec-b-vec-c",
     "title": "Vector Addition: $\\vec{a} + \\vec{b} = \\vec{c}$",
     "description": "The sum of two vectors $\\vec{a} = (2, 1, 0)$ and $\\vec{b} = (1, 2, 1)$ is found by placing $\\vec{b}$ at the tip of $\\vec{a}$. The resultant $\\vec{c} = (3, 3, 1)$ goes from the origin to the tip of $\\v"
    },
    {
     "index": 1,
-    "id": "cross-product-vec-a-times-vec-b",
     "title": "Cross Product: $\\vec{a} \\times \\vec{b}$",
     "description": "The cross product of $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$ yields $\\vec{a} \\times \\vec{b} = (0, 0, 4)$, perpendicular to both vectors."
    },
    {
     "index": 2,
-    "id": "dot-product-vec-a-cdot-vec-b",
     "title": "Dot Product: $\\vec{a} \\cdot \\vec{b}$",
     "description": "The dot product $\\vec{a} \\cdot \\vec{b} = |\\vec{a}||\\vec{b}|\\cos\\theta$ measures how much two vectors point in the same direction. The projection of $\\vec{b}$ onto $\\vec{a}$ has length $\\frac{\\vec{a} \\"
    },
    {
     "index": 3,
-    "id": "scalar-multiplication-c-vec-v",
     "title": "Scalar Multiplication: $c\\vec{v}$",
     "description": "Multiplying a vector by a scalar $c$ stretches or shrinks it. Positive $c$ preserves direction, negative $c$ reverses it."
    },
    {
     "index": 4,
-    "id": "vector-subtraction-vec-a-vec-b",
     "title": "Vector Subtraction: $\\vec{a} - \\vec{b}$",
     "description": "Subtracting $\\vec{b}$ from $\\vec{a}$ gives the vector from the tip of $\\vec{b}$ to the tip of $\\vec{a}$. Equivalently, $\\vec{a} - \\vec{b} = \\vec{a} + (-\\vec{b})$."
    },
    {
     "index": 5,
-    "id": "span-linear-combinations-fill-space",
     "title": "Span: Linear Combinations Fill Space",
     "description": "The span of a set of vectors is the collection of all their linear combinations. One vector spans a line, two independent vectors span a plane, and three independent vectors span all of $\\mathbb{R}^3$"
    }
+  ],
+  "sceneIds": [
+   "vector-addition-vec-a-vec-b-vec-c",
+   "cross-product-vec-a-times-vec-b",
+   "dot-product-vec-a-cdot-vec-b",
+   "scalar-multiplication-c-vec-v",
+   "vector-subtraction-vec-a-vec-b",
+   "span-linear-combinations-fill-space"
   ]
  },
  "conventions": {

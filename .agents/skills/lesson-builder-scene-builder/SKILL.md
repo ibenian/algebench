@@ -404,7 +404,8 @@ Add `"import": ["domain_name"]` at the lesson root level. Slider IDs must match 
 Every **scene**, **step**, **proof** and **proof step** carries an explicit `id`. Deeplinks (`sc=`/`st=`/`pf=`/`ps=`), AI jumps and saved references resolve by `id` first, so an object without one breaks the moment its title is edited.
 
 - **kebab-case, from the title** (proof steps: from the `label`), with LaTeX dropped: `"Eigenvector $\\mathbf{v}_1$"` → `"eigenvector-v-1"`
-- **Unique within its array** — steps within their scene, scenes within the lesson (suffix `-2`, `-3` on a clash)
+- **Unique within its array** — steps within their scene, scenes within the lesson, proof steps within their proof (suffix `-2`, `-3` on a clash)
+- **Proof ids are unique across the WHOLE lesson** — root-, scene- and step-level proofs share one `pf=` namespace, so never reuse a proof id in another scene
 - **Never change an existing id**, even when the title changes. When modifying a scene, keep the scene's and every surviving step's `id`
 - Put `id` as the first key of the object
 
@@ -422,7 +423,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 - [ ] `camera` in data space; custom `views` with descriptions
 - [ ] Base `elements` includes axes + grid (unless outline says otherwise). **At minimum, an invisible grid must always be present.**
 - [ ] Every element has a unique `id`
-- [ ] The scene, every step, every proof and every proof step has a stable kebab-case `id`, unique within its array; existing ids unchanged
+- [ ] The scene, every step, every proof and every proof step has a stable kebab-case `id`, unique within its array (proofs: unique lesson-wide); existing ids unchanged
 - [ ] Steps cumulative and consistent; each has `title` + `description`
 - [ ] All expressions use math.js syntax
 - [ ] All LaTeX double-escaped

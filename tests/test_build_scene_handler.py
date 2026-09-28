@@ -468,16 +468,18 @@ def _node(monkeypatch, request_body, proposal=None) -> dict:
     return out["result"]["ops"][0]["node"]
 
 
-def test_a_replace_keeps_the_scenes_id(monkeypatch, request_body):
-    """Links into the replaced scene must still land on it."""
-    request_body["current"]["id"] = "dot-product"
-    assert _node(monkeypatch, request_body)["id"] == "dot-product"
-
-
-def test_a_replace_of_an_unidentified_scene_keeps_its_derived_id(monkeypatch, request_body):
-    """No explicit id: links use the slug the client derives from the old title."""
+def test_a_replace_keeps_the_id_the_client_resolved(monkeypatch, request_body):
+    """An id-less scene whose title collides resolves as `intro-2` on the client;
+    the replacement must keep exactly that, not re-derive `intro`."""
     request_body["current"].pop("id", None)
-    assert _node(monkeypatch, request_body)["id"] == "dot-product-vec-a-cdot-vec-b"
+    request_body["lesson"]["sceneIds"][2] = "intro-2"
+    assert _node(monkeypatch, request_body)["id"] == "intro-2"
+
+
+def test_a_replace_keeps_the_old_id_over_a_freshly_minted_one(monkeypatch, request_body):
+    request_body["current"]["id"] = "shipped-id"
+    request_body["lesson"]["sceneIds"][2] = "shipped-id"
+    assert _node(monkeypatch, request_body)["id"] == "shipped-id"
 
 
 def test_a_replace_keeps_the_ids_of_steps_whose_title_survives(monkeypatch, request_body):
@@ -491,5 +493,14 @@ def test_a_replace_keeps_the_ids_of_steps_whose_title_survives(monkeypatch, requ
 def test_an_insert_does_not_collide_with_another_scene(monkeypatch, request_body):
     request_body["op"] = "insert"
     request_body["current"] = None
-    request_body["lesson"]["sceneSummaries"][0]["id"] = "cross-product"
+    request_body["lesson"]["sceneIds"][0] = "cross-product"
+    assert _node(monkeypatch, request_body)["id"] == "cross-product-2"
+
+
+def test_an_insert_is_unique_past_the_summary_cap(monkeypatch, request_body):
+    """`sceneSummaries` is capped at 40; `sceneIds` is not, so a clash with scene
+    #41 is still seen."""
+    request_body["op"] = "insert"
+    request_body["current"] = None
+    request_body["lesson"]["sceneIds"] += [f"s{i}" for i in range(40)] + ["cross-product"]
     assert _node(monkeypatch, request_body)["id"] == "cross-product-2"

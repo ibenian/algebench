@@ -23,7 +23,9 @@ from pathlib import Path
 from _json_format import dumps_compact_leaves
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from backend.lesson_ids import assign_missing_ids, duplicate_id_errors  # noqa: E402
+from backend.lesson_ids import (  # noqa: E402
+    assign_missing_ids, build_ids, carry_ids, duplicate_id_errors,
+)
 
 
 def load_json(path):
@@ -150,9 +152,12 @@ def cmd_replace(args):
 
     old = lesson['scenes'][idx]
     old_title = old.get('title', '(untitled)')
-    # A rebuilt scene keeps the id links into it already use.
-    if not scene.get('id') and old.get('id'):
-        scene = {'id': old['id'], **scene}
+    # A rebuilt scene keeps the id links into it already use — ALWAYS, even
+    # when the builder minted its own — and so does every step whose title
+    # survives.
+    old_id = build_ids(lesson['scenes'], 'title')[idx]
+    carry_ids(old, scene, old_id)
+    scene = {'id': scene.pop('id'), **scene}
     lesson['scenes'][idx] = scene
     settle_ids(lesson)
     save_json(args.lesson, lesson)

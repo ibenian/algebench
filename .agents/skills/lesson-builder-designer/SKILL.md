@@ -161,7 +161,7 @@ Before returning your lesson blueprint, verify:
 - [ ] Step outlines have concrete values (coordinates, matrix entries, ranges)
 - [ ] Every element mentioned has a specific AlgeBench element type
 - [ ] Proof plans have step skeletons with `sync_to_step` links
-- [ ] Every scene has a `scene_id`, every step a `step_id`, every proof a `proof_id` and every proof step an `id` — unique, kebab-case, existing ids preserved
+- [ ] Every scene has a `scene_id`, every step a `step_id`, every proof a `proof_id` and every proof step an `id` — unique, kebab-case, existing ids preserved; `proof_id`s unique across the whole lesson
 - [ ] Slider plans include all parameters (id, label, min, max, default, step)
 - [ ] Color and naming conventions are defined for cross-scene consistency
 - [ ] No scene has more than ~10 steps (split if larger)

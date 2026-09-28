@@ -17,7 +17,7 @@
 
 import { state } from '/state.js';
 import { SHARE_VIEW_ICON } from '/icons.js';
-import { serializeViewState, parseViewState, slugify, fmtNum } from '/view-state.js';
+import { serializeViewState, parseViewState, slugify, buildIds, fmtNum } from '/view-state.js';
 import { pushView, replaceView, isApplyingFromHistory } from '/nav-history.js';
 import { navigateTo, loadProofAsLesson } from '/scene-loader.js';
 import { loadBuiltinScene, loadSceneFromPath } from '/ui.js';
@@ -79,15 +79,6 @@ interface ViewStateBridgeState {
 }
 const bridgeState = state as unknown as ViewStateBridgeState;
 
-/**
- * The minimum buildIds() needs from an entry: an optional explicit `id`, plus
- * a human title under whichever key the caller names. Widened to `unknown` so
- * the generated schema types (Scene / Step / ProofStep) all satisfy it.
- */
-interface IdItem {
-    id?: unknown;
-}
-
 /** The per-lesson id maps sceneMaps() memoizes. */
 interface SceneMaps {
     sceneIds: string[];
@@ -107,21 +98,6 @@ export function isApplyingViewState(): boolean {
 }
 
 // ----- Id resolution (hybrid: id -> slug(title) -> index) -----
-
-// Build a deterministic, collision-free id list for an array of {id?, title?}.
-function buildIds(items: readonly IdItem[] | null | undefined, titleKey: string): string[] {
-    const used = new Set<string>();
-    return (items || []).map((it, i) => {
-        // `titleKey` is a runtime-chosen key ('title' / 'label'), so the lookup
-        // is widened here rather than baked into IdItem.
-        let base = (it && it.id) ? String(it.id) : slugify(it && (it as Record<string, unknown>)[titleKey]);
-        if (!base) base = String(i);
-        let id = base, n = 2;
-        while (used.has(id)) id = `${base}-${n++}`;
-        used.add(id);
-        return id;
-    });
-}
 
 function sceneMaps(lesson: LessonFormat | null | undefined): SceneMaps {
     if (!lesson || !Array.isArray(lesson.scenes)) return { sceneIds: [], stepIds: [] };

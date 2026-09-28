@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from backend.lesson_ids import (
-    assign_missing_ids, build_ids, duplicate_id_errors, id_errors, iter_id_targets,
-    missing_id_errors, slugify,
+    assign_missing_ids, build_ids, carry_ids, duplicate_id_errors, id_errors,
+    iter_id_targets, missing_id_errors, slugify,
 )
 from scripts.backfill_lesson_ids import backfill_text
 
@@ -128,6 +128,35 @@ def test_backfill_preserves_escapes_and_unicode():
     out, _ = backfill_text(text)
     assert out.startswith('{"scenes": [{"id": "caf-q", "title": "Café \\u00e9')
     assert json.loads(out)['scenes'][0]['note'] == 'a\\b'
+
+
+def test_proof_ids_are_unique_lesson_wide():
+    """The client flattens root/scene/step proofs into one list and resolves
+    `pf=` against all of it (collectAllProofs + proofId)."""
+    data = {'scenes': [
+        {'title': 'A', 'proof': {'id': 'same', 'title': 'P'}},
+        {'title': 'B', 'steps': [{'id': 's', 'title': 's', 'proof': {'id': 'same', 'title': 'Q'}}]},
+    ]}
+    assert any('duplicate id "same"' in e for e in duplicate_id_errors(data))
+
+
+def test_an_untitled_proof_keeps_its_global_index_token():
+    """`pf=_idx_<n>` is not an integer, so nothing else would resolve an old link
+    to an untitled proof — keep the token, numbered over the flattened list."""
+    data = {'proof': {'title': 'Root'},
+            'scenes': [{'title': 'A', 'proof': [{'title': 'P'}, {}]},
+                       {'title': 'B', 'steps': [{'title': 't', 'proof': {}}]}]}
+    written = {t.path: i for t, i in assign_missing_ids(data)}
+    assert written['scenes[0].proof[1]'] == '_idx_2'
+    assert written['scenes[1].steps[0].proof'] == '_idx_3'
+
+
+def test_carry_ids_keeps_the_scene_and_surviving_steps():
+    old = {'id': 'shipped', 'steps': [{'title': 'Setup'}, {'id': 'kept', 'title': 'Force'}]}
+    new = {'id': 'fresh', 'steps': [{'id': 'force', 'title': 'Force'}, {'id': 'setup', 'title': 'New'}]}
+    carry_ids(old, new, 'shipped')
+    assert new['id'] == 'shipped'
+    assert [s['id'] for s in new['steps']] == ['kept', 'setup']
 
 
 @pytest.mark.parametrize('path', sorted((ROOT / 'scenes').glob('*.json'))

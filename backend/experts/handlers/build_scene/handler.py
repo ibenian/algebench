@@ -25,7 +25,7 @@ import logging
 from backend.experts.modules.build_scene.intent import propose_scene
 from backend.experts.modules.proof_edit.intent import clarifications_from_thread
 from backend.experts.registry import register_handler
-from backend.lesson_ids import build_ids, slugify, unique_id
+from backend.lesson_ids import build_ids, carry_ids, slugify, unique_id
 
 from .compose import ComposeError, compose
 from .format import format_clarifications, format_refused, render_inputs
@@ -162,35 +162,24 @@ def _composed(proposal, req: BuildSceneRequest, inputs: dict):
         return None, str(second)
 
 
-def _settle_ids(scene, req: BuildSceneRequest) -> None:
+def _settle_ids(node: dict, req: BuildSceneRequest) -> None:
     """Make compose's provisional ids stable against the lesson they land in.
 
-    A replace keeps the replaced scene's id, and each step whose title survives
-    keeps its id, so links and saved references into the scene still resolve. An
-    insert is de-duplicated against the other scenes, which compose cannot see.
+    A replace keeps the replaced scene's resolved id, and each step whose title
+    survives keeps its id, so links and saved references into the scene still
+    resolve. An insert is made unique against every other scene. Both use
+    ``lesson.sceneIds`` — every scene's id as the client resolves it, uncapped —
+    falling back to the summaries for a client that does not send it.
     """
-    steps = scene.steps or []
+    ids = list(req.lesson.sceneIds) or build_ids(
+        [{"title": s.title} for s in req.lesson.sceneSummaries], "title")
     if req.op == "replace" and isinstance(req.current, dict):
-        cur = req.current
-        # What links to it already use: its id, or the slug the client derives.
-        scene.id = str(cur.get("id") or slugify(cur.get("title")) or scene.id)
-        cur_steps = [s for s in cur.get("steps") or [] if isinstance(s, dict)]
-        kept = {slugify(s.get("title")): sid
-                for s, sid in zip(cur_steps, build_ids(cur_steps, "title"))}
-        taken: set[str] = set()
-        fresh = []
-        for st in steps:
-            keep = kept.pop(slugify(st.title), None)
-            if keep and keep not in taken:
-                st.id = keep
-                taken.add(keep)
-            else:
-                fresh.append(st)
-        for st in fresh:
-            st.id = unique_id(st.id, taken)
+        old_id = (ids[req.sceneIndex] if req.sceneIndex < len(ids) and ids[req.sceneIndex]
+                  else str(req.current.get("id") or slugify(req.current.get("title"))
+                           or node.get("id") or "scene"))
+        carry_ids(req.current, node, old_id)
         return
-    others = {s.id or slugify(s.title) for s in req.lesson.sceneSummaries}
-    scene.id = unique_id(scene.id, others)
+    node["id"] = unique_id(str(node.get("id") or "scene"), {i for i in ids if i})
 
 
 @register_handler("build_scene", request_model=BuildSceneRequest)
@@ -253,7 +242,8 @@ def build_scene(req: BuildSceneRequest) -> dict:
         #    empty — and what the CHAT agent needs to propose something else.
         return {"reason": reason}
 
-    _settle_ids(scene, req)
+    node = scene.model_dump(mode="json", by_alias=True, exclude_none=True)
+    _settle_ids(node, req)
     log.info("%s built %r: %d element(s), %d step(s), %d slider(s)", LOG_TAG,
              scene.title, len(scene.elements or []), len(scene.steps or []),
              sum(len(s.sliders or []) for s in (scene.steps or [])))
@@ -270,7 +260,7 @@ def build_scene(req: BuildSceneRequest) -> dict:
                 # client cannot apply anything the expert returns. Caught by
                 # review, not by tests: mine asserted the shape I had written.
                 "at": {"index": req.sceneIndex},
-                "node": scene.model_dump(mode="json", by_alias=True, exclude_none=True),
+                "node": node,
             }],
         },
         "focus": req.sceneIndex,

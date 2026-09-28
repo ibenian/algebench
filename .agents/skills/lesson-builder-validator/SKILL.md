@@ -129,6 +129,7 @@ These common errors can be fixed automatically:
 | Missing `id` on element targeted by `remove` | Generate ID from type + index |
 | Missing `id` on a scene, step, proof or proof step | `./run.sh scripts/backfill_lesson_ids.py --write <file>` (ids from titles; existing links keep resolving) |
 | Duplicate scene/step/proof-step `id` in one array | Rename the NEWER one with a `-2` suffix — never an id that shipped |
+| Duplicate proof `id` anywhere in the lesson (proofs share one lesson-wide `pf=` namespace) | Rename the NEWER proof's id — never an id that shipped |
 | `highlights` key with no matching `\htmlClass` | Remove orphan key |
 | `\htmlClass` with no matching `highlights` key | Add stub `{"color":"yellow","label":""}` |
 

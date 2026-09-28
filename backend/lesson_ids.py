@@ -12,7 +12,10 @@ filling them in never changes where an existing link lands:
 - scenes / steps: ``buildIds(items, 'title')`` — id, else slug(title), else the
   index; collisions within the array get ``-2``, ``-3``, ...
 - proof steps: the same, keyed on ``label``
-- proofs: id, else slug(title) (no de-duplication, matching ``proofId``)
+- proofs: id, else slug(title), else ``_idx_<n>`` (``proofId``). Root-, scene-
+  and step-level proofs are flattened into ONE list (``collectAllProofs``) and
+  ``pf=`` is resolved against all of it, so proof ids are unique lesson-wide;
+  ``n`` is the position in that flattened list
 
 Once written, an id never changes when its title does — that is the point.
 """
@@ -100,42 +103,52 @@ def _dicts(items: Any) -> list[dict]:
     return [x for x in items if isinstance(x, dict)] if isinstance(items, list) else []
 
 
-def _proof_targets(holder: dict, ctx: str) -> Iterator[IdTarget]:
+#: Scope of proof ids: the whole lesson (see the module docstring).
+PROOF_SCOPE = "proofs"
+
+
+def _proof_targets(holder: dict, ctx: str, counter: list[int]) -> Iterator[IdTarget]:
+    """``counter[0]`` is the proof's index in the client's flattened list, which
+    visits proofs in the same order as this walk: root, then per scene its own
+    proofs followed by its steps' proofs."""
     raw = holder.get("proof")
     proofs = [raw] if isinstance(raw, dict) else _dicts(raw)
     for pi, proof in enumerate(proofs):
         pctx = f"{ctx}.proof[{pi}]" if isinstance(raw, list) else f"{ctx}.proof"
         pctx = pctx.lstrip(".")
-        pid = str(proof.get("id") or slugify(proof.get("title")))
-        yield IdTarget(proof, "proof", pid, pctx, f"{ctx}.proof")
+        pid = str(proof.get("id") or slugify(proof.get("title")) or f"_idx_{counter[0]}")
+        counter[0] += 1
+        yield IdTarget(proof, "proof", pid, pctx, PROOF_SCOPE)
         steps = _dicts(proof.get("steps"))
         for si, (step, sid) in enumerate(zip(steps, build_ids(steps, "label"))):
             yield IdTarget(step, "proof-step", sid, f"{pctx}.steps[{si}]", pctx)
 
 
-def _scene_targets(scene: dict, ctx: str) -> Iterator[IdTarget]:
-    yield from _proof_targets(scene, ctx)
+def _scene_targets(scene: dict, ctx: str, counter: list[int]) -> Iterator[IdTarget]:
+    yield from _proof_targets(scene, ctx, counter)
     steps = _dicts(scene.get("steps"))
     for i, (step, sid) in enumerate(zip(steps, build_ids(steps, "title"))):
         sctx = f"{ctx}.steps[{i}]".lstrip(".")
         yield IdTarget(step, "step", sid, sctx, f"{ctx}.steps")
-        yield from _proof_targets(step, sctx)
+        yield from _proof_targets(step, sctx, counter)
 
 
 def iter_id_targets(data: dict) -> Iterator[IdTarget]:
     """Every object in a lesson (or a bare single scene) that needs a stable id."""
     if not isinstance(data, dict):
         return
+    counter = [0]
     if "scenes" in data:
-        yield from _proof_targets(data, "")
+        yield from _proof_targets(data, "", counter)
         scenes = _dicts(data.get("scenes"))
         for i, (scene, sid) in enumerate(zip(scenes, build_ids(scenes, "title"))):
             yield IdTarget(scene, "scene", sid, f"scenes[{i}]", "scenes")
-            yield from _scene_targets(scene, f"scenes[{i}]")
+            yield from _scene_targets(scene, f"scenes[{i}]", counter)
     else:
-        # A bare scene: scene-builder output or a single-scene file.
+        # A bare scene: scene-builder output or a single-scene file. Its own
+        # proof is the file-level one, visited once, as the client does.
         yield IdTarget(data, "scene", slugify(data.get("title")) or "0", "scene", "scene")
-        yield from _scene_targets(data, "")
+        yield from _scene_targets(data, "", counter)
 
 
 def missing_ids(data: dict) -> list[IdTarget]:
@@ -147,10 +160,12 @@ def id_to_write(t: IdTarget) -> str:
     """The id to write for a target that lacks one.
 
     Normally the client-derived id, so existing links keep resolving. An
-    untitled object's derived id is only its index, which is not stable and
-    reads as an integer-index token — use ``<kind>-<n>`` instead.
+    untitled scene/step/proof step's derived id is only its index — not stable,
+    and it still resolves through the integer-index fallback — so it gets
+    ``<kind>-<n>`` instead. An untitled proof keeps ``_idx_<n>``: that token is
+    not an integer, so no fallback would catch an existing ``pf=_idx_<n>`` link.
     """
-    if t.untitled:
+    if t.untitled and t.kind != "proof":
         n = int(t.ident) + 1 if t.ident.isdigit() else 1
         return f"{t.kind}-{n}"
     return t.ident
@@ -176,10 +191,10 @@ def missing_id_errors(data: dict) -> list[str]:
 
 
 def duplicate_id_errors(data: dict) -> list[str]:
-    """Explicit ids repeated within one array.
+    """Explicit ids repeated within their scope: the containing array, or the
+    whole lesson for proofs.
 
-    The client silently suffixes a duplicate, so a link written against the
-    second copy would land on the first.
+    A link written against the second copy would land on the first.
     """
     errors = []
     seen: dict[tuple[str, str], str] = {}
@@ -197,3 +212,27 @@ def duplicate_id_errors(data: dict) -> list[str]:
 def id_errors(data: dict) -> list[str]:
     """All stable-id problems: missing ids, then duplicates."""
     return missing_id_errors(data) + duplicate_id_errors(data)
+
+
+def carry_ids(old: dict, new: dict, old_id: str) -> None:
+    """Keep a replaced scene's ids on its replacement, in place.
+
+    The scene keeps ``old_id`` (its resolved id, which links already use), and
+    each new step whose title matches an old step's takes that step's resolved
+    id. Other steps keep their own id, made unique against the carried ones.
+    """
+    new["id"] = old_id
+    old_steps = _dicts(old.get("steps"))
+    kept = {slugify(s.get("title")): sid
+            for s, sid in zip(old_steps, build_ids(old_steps, "title"))}
+    taken: set[str] = set()
+    fresh = []
+    for st in _dicts(new.get("steps")):
+        keep = kept.pop(slugify(st.get("title")), None)
+        if keep and keep not in taken:
+            st["id"] = keep
+            taken.add(keep)
+        else:
+            fresh.append(st)
+    for st in fresh:
+        st["id"] = unique_id(str(st.get("id") or readable_slug(st.get("title"), "step")), taken)

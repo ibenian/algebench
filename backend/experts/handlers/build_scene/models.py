@@ -68,8 +68,6 @@ class SceneSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     index: int = Field(ge=0)
-    #: The scene's stable id, so an inserted scene's id can be kept unique.
-    id: str = ""
     title: str = ""
     description: str = ""
 
@@ -82,6 +80,10 @@ class LessonOutline(BaseModel):
     title: str = ""
     description: str = ""
     sceneSummaries: list[SceneSummary] = Field(default_factory=list)
+    #: EVERY scene's resolved id, in order (``buildIds`` on the client). Not
+    #: capped like the summaries: it is what keeps a replaced scene's id and a
+    #: new scene's id unique across the whole lesson.
+    sceneIds: list[str] = Field(default_factory=list)
 
 
 class Conventions(BaseModel):
