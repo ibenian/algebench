@@ -16525,7 +16525,9 @@ var LessonPicker = class {
 			v.el.setAttribute("aria-selected", String(on));
 		});
 		this.opts.searchEl.setAttribute("aria-activedescendant", this.visible[this.active].el.id);
-		if (scroll) this.visible[this.active].el.scrollIntoView({ block: "nearest" });
+		if (!scroll) return;
+		if (this.active === 0) this.opts.listEl.scrollTop = 0;
+		else this.visible[this.active].el.scrollIntoView({ block: "nearest" });
 	}
 	bind() {
 		const { buttonEl, backdropEl, searchEl, listEl, draftsEl, refreshEl } = this.opts;

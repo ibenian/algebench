@@ -341,7 +341,11 @@ export class LessonPicker {
         });
         // Focus stays in the search box; this tells assistive tech which row ↑/↓ picked.
         this.opts.searchEl.setAttribute('aria-activedescendant', this.visible[this.active]!.el.id);
-        if (scroll) this.visible[this.active]!.el.scrollIntoView({ block: 'nearest' });
+        if (!scroll) return;
+        // The first row goes all the way up, showing its group heading too;
+        // any other row stops below the sticky heading (CSS scroll-margin-top).
+        if (this.active === 0) this.opts.listEl.scrollTop = 0;
+        else this.visible[this.active]!.el.scrollIntoView({ block: 'nearest' });
     }
 
     private bind(): void {

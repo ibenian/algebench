@@ -886,6 +886,8 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 3px;
+    /* Scrolled into view below the sticky group heading, not under it. */
+    scroll-margin-top: 30px;
     padding: 8px 10px;
     border-radius: 8px;
     border-left: 2px solid transparent;
