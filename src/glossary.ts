@@ -93,7 +93,7 @@ function _cancelShow(): void {
 
 /** Hover may open this term's tip: while pinned, only a term inside an open tip (stacked). */
 function _hoverMayShow(term: HTMLElement): boolean {
-    return !_pinned || _levelOf(term) >= 0 || _tips[0]!.anchor === term;
+    return !_pinned || _levelOf(term) >= 0 || (_depth > 0 && _tips[0]?.anchor === term);
 }
 
 function _scheduleShow(term: HTMLElement): void {
@@ -133,7 +133,9 @@ function _scheduleHide(): void {
     // rest over a scrolling panel must not close it.
     if (_pinned || _focusHeld()) return;
     _cancelHide();
-    _hideTimer = setTimeout(hideGlossaryTip, 180);
+    // Close what is open, but leave a pending hover-open alone: leaving term A
+    // before its delay ran out and resting on term B must still open B's tip.
+    _hideTimer = setTimeout(() => { _hideTimer = null; _pinned = false; _closeFrom(0); }, 180);
 }
 
 function _ensureTip(level: number): Tip {
@@ -330,7 +332,9 @@ export function installGlossaryTooltip(): void {
             _cancelShow();
             if (_pinned && level < _depth && _tips[level]!.anchor === term) { _closeFrom(level); if (!_depth) _pinned = false; return; }
             _show(term);
-            _pinned = true;
+            // _show opens nothing for a term with no entry (a stale glossary):
+            // pinning then would leave the next hover reading a missing tip.
+            _pinned = _depth > 0;
             return;
         }
         if (_depth && _levelOf(e.target as Node) < 0) hideGlossaryTip();
@@ -340,7 +344,7 @@ export function installGlossaryTooltip(): void {
         if (term && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
             _show(term);
-            _pinned = true;
+            _pinned = _depth > 0;
             return;
         }
         if (e.key === 'Escape' && _depth) {

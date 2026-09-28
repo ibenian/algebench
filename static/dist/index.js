@@ -12879,7 +12879,7 @@ function _cancelShow() {
 }
 /** Hover may open this term's tip: while pinned, only a term inside an open tip (stacked). */
 function _hoverMayShow(term) {
-	return !_pinned || _levelOf(term) >= 0 || _tips[0].anchor === term;
+	return !_pinned || _levelOf(term) >= 0 || _depth > 0 && _tips[0]?.anchor === term;
 }
 function _scheduleShow(term) {
 	_cancelShow();
@@ -12916,7 +12916,11 @@ function _cancelHide() {
 function _scheduleHide() {
 	if (_pinned || _focusHeld()) return;
 	_cancelHide();
-	_hideTimer$2 = setTimeout(hideGlossaryTip, 180);
+	_hideTimer$2 = setTimeout(() => {
+		_hideTimer$2 = null;
+		_pinned = false;
+		_closeFrom(0);
+	}, 180);
 }
 function _ensureTip(level) {
 	let tip = _tips[level];
@@ -13097,7 +13101,7 @@ function installGlossaryTooltip() {
 				return;
 			}
 			_show(term);
-			_pinned = true;
+			_pinned = _depth > 0;
 			return;
 		}
 		if (_depth && _levelOf(e.target) < 0) hideGlossaryTip();
@@ -13107,7 +13111,7 @@ function installGlossaryTooltip() {
 		if (term && (e.key === "Enter" || e.key === " ")) {
 			e.preventDefault();
 			_show(term);
-			_pinned = true;
+			_pinned = _depth > 0;
 			return;
 		}
 		if (e.key === "Escape" && _depth) {
