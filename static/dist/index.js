@@ -6000,6 +6000,7 @@ function setupRollDrag(container) {
 	}, { capture: true });
 }
 function activateExprCamera(viewSpec, key) {
+	dropLingeringBall();
 	const posExpr = Array.isArray(viewSpec.positionExpr) && viewSpec.positionExpr.length === 3 ? viewSpec.positionExpr : null;
 	const tgtExpr = Array.isArray(viewSpec.targetExpr) && viewSpec.targetExpr.length === 3 ? viewSpec.targetExpr : null;
 	if (!posExpr || !tgtExpr || !cameraState.camera || !cameraState.controls) return;
@@ -6533,6 +6534,7 @@ function resolveEffectiveStepCamera(scene, stepIdx) {
 }
 function animateCamera$1(view, duration) {
 	duration = duration == null ? 800 : duration;
+	dropLingeringBall();
 	deactivateFollowCam();
 	deactivateExprCamera();
 	if (cameraState.arcballInertiaId) {
@@ -6618,6 +6620,7 @@ function buildCameraButtons(spec) {
 				}
 				document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
 				btn.classList.add("active");
+				dropLingeringBall();
 				activateFollowCam({
 					...v,
 					_viewKey: key

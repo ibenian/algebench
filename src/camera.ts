@@ -1599,6 +1599,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
 }
 
 function activateExprCamera(viewSpec: CameraView, key: string): void {
+    dropLingeringBall();   // the expression now drives the view, not the lingering drag
     const posExpr = Array.isArray(viewSpec.positionExpr) && viewSpec.positionExpr.length === 3 ? viewSpec.positionExpr : null;
     const tgtExpr = Array.isArray(viewSpec.targetExpr) && viewSpec.targetExpr.length === 3 ? viewSpec.targetExpr : null;
     if (!posExpr || !tgtExpr || !cameraState.camera || !cameraState.controls) return;
@@ -2287,6 +2288,9 @@ export function resolveEffectiveStepCamera(scene: CameraScene | null | undefined
 
 export function animateCamera(view: string, duration?: number): void {
     duration = (duration == null) ? 800 : duration;
+    // Camera buttons, step changes, chat and deeplinks move the view off a
+    // lingering ball; one left up would be grabbed at a stale pivot.
+    dropLingeringBall();
     deactivateFollowCam();
     deactivateExprCamera();
     // A flick's coast still running would keep turning the view — and, about
@@ -2398,6 +2402,7 @@ export function buildCameraButtons(spec: CameraScene | null | undefined): void {
                 }
                 document.querySelectorAll<HTMLElement>('.cam-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                dropLingeringBall();   // the follow cam now drives the view
                 activateFollowCam({ ...v, _viewKey: key });
             });
         } else if (Array.isArray(v.positionExpr) && Array.isArray(v.targetExpr)) {
