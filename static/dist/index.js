@@ -16330,6 +16330,7 @@ var LessonPicker = class {
 		this.loadError = null;
 		this.visible = [];
 		this.active = -1;
+		this.parked = -1;
 		this.showDrafts = false;
 		this.opts = opts;
 		try {
@@ -16512,7 +16513,17 @@ var LessonPicker = class {
 		row.title = l.id;
 		return row;
 	}
+	/** No active row: state, highlight and aria-activedescendant all cleared together. */
+	clearActive() {
+		this.active = -1;
+		this.visible.forEach((v) => {
+			v.el.classList.remove("active");
+			v.el.setAttribute("aria-selected", "false");
+		});
+		this.opts.searchEl.removeAttribute("aria-activedescendant");
+	}
 	setActive(index, scroll = true) {
+		this.parked = -1;
 		if (!this.visible.length) {
 			this.active = -1;
 			this.opts.searchEl.removeAttribute("aria-activedescendant");
@@ -16567,6 +16578,9 @@ var LessonPicker = class {
 		});
 		backdropEl.addEventListener("mousedown", () => this.close());
 		searchEl.addEventListener("input", () => this.render(searchEl.value));
+		searchEl.addEventListener("focus", () => {
+			if (this.active < 0 && this.parked >= 0) this.setActive(this.parked, false);
+		});
 		searchEl.addEventListener("keydown", (e) => {
 			if ((e.metaKey || e.ctrlKey) && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
 				e.preventDefault();
@@ -16575,10 +16589,9 @@ var LessonPicker = class {
 				e.preventDefault();
 				const after = this.opts.afterListEl;
 				if (after && this.active >= this.visible.length - 1) {
-					this.visible.forEach((v) => {
-						v.el.classList.remove("active");
-						v.el.setAttribute("aria-selected", "false");
-					});
+					const from = this.active;
+					this.clearActive();
+					this.parked = from;
 					after.focus();
 				} else this.setActive(this.active + 1);
 			} else if (e.key === "ArrowUp") {

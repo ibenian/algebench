@@ -127,6 +127,8 @@ export class LessonPicker {
     private loadError: string | null = null;
     private visible: { id: string; el: HTMLElement }[] = [];
     private active = -1;
+    /** The row that was active when focus left for the footer; restored when it comes back. */
+    private parked = -1;
     private showDrafts = false;
 
     constructor(opts: LessonPickerOptions) {
@@ -327,7 +329,15 @@ export class LessonPicker {
         return row;
     }
 
+    /** No active row: state, highlight and aria-activedescendant all cleared together. */
+    private clearActive(): void {
+        this.active = -1;
+        this.visible.forEach(v => { v.el.classList.remove('active'); v.el.setAttribute('aria-selected', 'false'); });
+        this.opts.searchEl.removeAttribute('aria-activedescendant');
+    }
+
     private setActive(index: number, scroll = true): void {
+        this.parked = -1;
         if (!this.visible.length) {
             this.active = -1;
             this.opts.searchEl.removeAttribute('aria-activedescendant');
@@ -385,6 +395,11 @@ export class LessonPicker {
         buttonEl.addEventListener('click', (e) => { e.stopPropagation(); this.toggle(); });
         backdropEl.addEventListener('mousedown', () => this.close());
         searchEl.addEventListener('input', () => this.render(searchEl.value));
+        // Back in the search box (Tab, Shift+Tab, a click) after visiting the
+        // footer: the row it left from is active again.
+        searchEl.addEventListener('focus', () => {
+            if (this.active < 0 && this.parked >= 0) this.setActive(this.parked, false);
+        });
         searchEl.addEventListener('keydown', (e) => {
             // Cmd (Ctrl off macOS) + ↓/↑ jumps to the last / first lesson.
             const jump = e.metaKey || e.ctrlKey;
@@ -396,8 +411,11 @@ export class LessonPicker {
                 e.preventDefault();
                 const after = this.opts.afterListEl;
                 if (after && this.active >= this.visible.length - 1) {
-                    // Past the last lesson: on to the control below the list.
-                    this.visible.forEach(v => { v.el.classList.remove('active'); v.el.setAttribute('aria-selected', 'false'); });
+                    // Past the last lesson: on to the control below the list,
+                    // with no row left marked active while focus is there.
+                    const from = this.active;
+                    this.clearActive();
+                    this.parked = from;
                     after.focus();
                 } else {
                     this.setActive(this.active + 1);
