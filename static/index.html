@@ -42,11 +42,7 @@
             </div>
         </div>
         <div id="toolbar">
-            <button class="tb-btn" id="btn-load" title="Load JSON file">Load JSON</button>
-            <div id="scenes-dropdown">
-                <button class="tb-btn" id="btn-scenes">Built-in Scenes &#9662;</button>
-                <div id="scenes-menu"></div>
-            </div>
+            <button class="tb-btn" id="btn-scenes" title="Open a lesson (Cmd/Ctrl+O)" aria-label="Open Lesson"><u>O</u>pen Lesson &#9662;</button>
             <button class="tb-btn" id="btn-show-json" title="Show current scene JSON">{ }</button>
             <div id="video-export-format-dropdown" class="toolbar-dropdown">
                 <button class="tb-btn tb-btn-split" id="btn-video-record" title="Record current tab video with TTS audio">
@@ -267,6 +263,25 @@
         </div>
     </div>
     <div id="chatCharacterBackdrop" class="style-backdrop" hidden></div>
+    <div id="lesson-picker-backdrop" class="lesson-picker-backdrop" hidden></div>
+    <div id="lesson-picker" class="lesson-picker" role="dialog" aria-modal="true" aria-label="Open lesson" hidden>
+        <div class="lesson-picker-head">
+            <input id="lesson-picker-search" class="lesson-picker-search" type="search"
+                   placeholder="Search lessons…" aria-label="Search lessons" autocomplete="off" spellcheck="false"
+                   aria-controls="lesson-picker-list" />
+            <button id="lesson-picker-drafts" class="lesson-filter-pill" type="button"
+                    aria-pressed="false" title="Show draft lessons from scenes/draft/">Drafts</button>
+            <span id="lesson-picker-count" class="lesson-picker-count"></span>
+            <button id="lesson-picker-refresh" class="lesson-picker-refresh" type="button"
+                    title="Reload the lesson list from disk" aria-label="Reload lessons">&#x21bb;</button>
+        </div>
+        <div id="lesson-picker-list" class="lesson-picker-list" role="listbox"></div>
+        <div class="lesson-picker-foot">
+            <span class="lesson-picker-keys">&uarr;&darr; to move &middot; Enter to open &middot; Esc to close</span>
+            <button id="btn-load" class="lesson-picker-load" type="button"
+                    title="Open a lesson JSON file from your computer (or drop one on the page)">From JSON&hellip;</button>
+        </div>
+    </div>
 
     <!-- Trust Dialog Overlay -->
     <div id="trust-dialog-overlay" class="hidden">

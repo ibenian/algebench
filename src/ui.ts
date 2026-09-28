@@ -7,10 +7,13 @@ import { state } from '/state.js';
 import { loadLesson, loadScene, stopAutoPlay, showSceneDockScenesTab } from '/scene-loader.js';
 import { parseViewState } from '/view-state.js';
 import type { LessonSpec } from '/scene-loader.js';
+import { LessonPicker, builtinIdFromPath } from '/lesson-picker.js';
+import type { LessonSummary } from '/lesson-picker.js';
 
-/** `GET /api/scenes` — the built-in scene names, without the .json suffix. */
+/** `GET /api/scenes` — the built-in scene names, and the picker's lesson summaries. */
 interface ScenesListResponse {
     scenes?: string[];
+    lessons?: LessonSummary[];
 }
 
 /** `GET /api/scene_file` — one scene read off disk, plus where it came from. */
@@ -68,40 +71,43 @@ export function hideSceneLoading(): void {
     }
 }
 
-// ----- Built-in Scenes Dropdown -----
+// ----- Open Lesson Picker -----
 
-export async function loadBuiltinScenesList(): Promise<void> {
+let lessonPicker: LessonPicker | null = null;
+
+/** The loaded lesson's built-in id ("eigenvalues", "draft/chart-demo"), if it is one. */
+function currentBuiltinId(): string | null {
+    return builtinIdFromPath(state.currentSceneSourcePath);
+}
+
+// The startup load and a refresh can be in flight together; only the newest
+// response is applied, so a slow older one cannot overwrite a newer list.
+let lessonsRequest = 0;
+
+/** Fetch the lesson list; `refresh` has the server rebuild its lesson index from disk. */
+export async function loadBuiltinScenesList(refresh = false): Promise<void> {
+    const seq = ++lessonsRequest;
     try {
-        const resp = await fetch('/api/scenes', { cache: 'no-store' });
+        const resp = await fetch('/api/scenes' + (refresh ? '?refresh=1' : ''), { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json() as ScenesListResponse;
-        // Non-null: #scenes-menu is in index.html; a missing one threw here before.
-        const menu = document.getElementById('scenes-menu')!;
-        menu.innerHTML = '';
-        if (data.scenes && data.scenes.length > 0) {
-            for (const name of data.scenes) {
-                const item = document.createElement('div');
-                item.className = 'scene-item';
-                item.textContent = name.replace(/-/g, ' ');
-                item.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const ok = await loadBuiltinScene(name);
-                    if (ok) showSceneDockScenesTab();
-                });
-                menu.appendChild(item);
-            }
-        } else {
-            const item = document.createElement('div');
-            item.className = 'scene-item';
-            item.textContent = '(no scenes available)';
-            item.style.opacity = '0.5';
-            menu.appendChild(item);
-        }
+        if (seq !== lessonsRequest) return;
+        lessonPicker?.setLessons(data.lessons || []);
     } catch (e) {
-        console.error('Failed to load scenes list:', e);
+        console.error('Failed to load lessons list:', e);
+        if (seq !== lessonsRequest) return;
+        // Keep whatever list the picker already has; just say the load failed.
+        lessonPicker?.setLoadError("Couldn't load the lesson list. Try ↻ to reload.");
     }
 }
 
+// Lesson loads started from here, newest last. Picking A then B quickly can
+// finish A's fetch after B's; only the newest load may set the source
+// label/path and the URL. (loadLesson guards the render itself.)
+let sceneLoadSeq = 0;
+
 export async function loadBuiltinScene(name: string): Promise<boolean> {
+    const seq = ++sceneLoadSeq;
     showSceneLoading();
     try {
         const resp = await fetch('/scenes/' + encodeURIComponent(name), { cache: 'no-store' });
@@ -109,6 +115,7 @@ export async function loadBuiltinScene(name: string): Promise<boolean> {
             throw new Error(`HTTP ${resp.status} loading scene '${name}'`);
         }
         const spec = await resp.json() as LessonSpec;
+        if (seq !== sceneLoadSeq) return false;   // a newer load took over
         state.currentSceneSourceLabel = `${name}.json`;
         state.currentSceneSourcePath = `/scenes/${name}`;
         // Force a full re-init path so selecting from scenes always reloads.
@@ -117,9 +124,8 @@ export async function loadBuiltinScene(name: string): Promise<boolean> {
         // a still-in-flight lesson load and get reset to scene 0.
         stopAutoPlay();
         await loadLesson(spec);
+        if (seq !== sceneLoadSeq) return false;
         updateSceneUrl({ builtin: name });
-        // Non-null: same #scenes-menu the list above populates.
-        document.getElementById('scenes-menu')!.classList.remove('open');
         return true;
     } catch (e) {
         console.error('Failed to load scene:', name, e);
@@ -130,6 +136,7 @@ export async function loadBuiltinScene(name: string): Promise<boolean> {
 }
 
 export async function loadSceneFromPath(path: string): Promise<void> {
+    const seq = ++sceneLoadSeq;
     showSceneLoading();
     try {
         const resp = await fetch('/api/scene_file?path=' + encodeURIComponent(path), { cache: 'no-store' });
@@ -144,10 +151,12 @@ export async function loadSceneFromPath(path: string): Promise<void> {
         if (!data || !data.spec || typeof data.spec !== 'object') {
             throw new Error('Invalid scene payload');
         }
+        if (seq !== sceneLoadSeq) return;   // a newer load took over
         state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
         state.currentSceneSourcePath = data.path || path;
         stopAutoPlay();
         await loadLesson(data.spec);
+        if (seq !== sceneLoadSeq) return;
         updateSceneUrl({ path: state.currentSceneSourcePath });
     } finally {
         hideSceneLoading();
@@ -188,7 +197,11 @@ export async function loadInitialSceneFromQuery(): Promise<void> {
     };
 
     if (vs.builtin) {
+        const before = sceneLoadSeq;
         const loaded = await loadBuiltinScene(vs.builtin);
+        // Another lesson was picked while this link loaded: leave it be —
+        // no fallback load, and no deeplink applied on top of it.
+        if (sceneLoadSeq !== before + 1) return;
         if (loaded) { await applyRest(); return; }
     }
     if (!vs.scene) {
@@ -271,7 +284,12 @@ export function setupFilePicker(): void {
     const btn = document.getElementById('btn-load')!;
     const input = document.getElementById('file-input') as HTMLInputElement;
 
-    btn.addEventListener('click', () => input.click());
+    // The button lives in the lesson picker's footer: close the picker, then
+    // open the file dialog (still inside the click, so it is allowed to open).
+    btn.addEventListener('click', () => {
+        lessonPicker?.close();
+        input.click();
+    });
     input.addEventListener('change', (e) => {
         // Non-null: `target` is the file input above, so `files` is a list.
         const file = (e.target as HTMLInputElement).files![0] as PickedFile | undefined;
@@ -296,20 +314,27 @@ export function setupFilePicker(): void {
     });
 }
 
-// ----- Scenes Dropdown Toggle -----
+// ----- Lesson Picker Setup -----
 
 export function setupScenesDropdown(): void {
-    // Non-null: both are in index.html; a missing one threw on addEventListener.
-    const btn = document.getElementById('btn-scenes')!;
-    const menu = document.getElementById('scenes-menu')!;
-
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        menu.classList.toggle('open');
-    });
-
-    document.addEventListener('click', () => {
-        menu.classList.remove('open');
+    const buttonEl = document.getElementById('btn-scenes');
+    const paletteEl = document.getElementById('lesson-picker');
+    const searchEl = document.getElementById('lesson-picker-search') as HTMLInputElement | null;
+    const listEl = document.getElementById('lesson-picker-list');
+    const backdropEl = document.getElementById('lesson-picker-backdrop');
+    if (!buttonEl || !paletteEl || !searchEl || !listEl || !backdropEl) return;
+    lessonPicker = new LessonPicker({
+        buttonEl, paletteEl, searchEl, listEl, backdropEl,
+        countEl: document.getElementById('lesson-picker-count'),
+        draftsEl: document.getElementById('lesson-picker-drafts'),
+        refreshEl: document.getElementById('lesson-picker-refresh'),
+        afterListEl: document.getElementById('btn-load'),
+        onRefresh: () => loadBuiltinScenesList(true),
+        currentId: currentBuiltinId,
+        onPick: async (id) => {
+            const ok = await loadBuiltinScene(id);
+            if (ok) showSceneDockScenesTab();
+        },
     });
 }
 

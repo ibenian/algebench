@@ -53,3 +53,10 @@ test('glossary: false renders a marker as plain text', () => {
     assert.deepEqual(terms(html), []);
     assert.match(html, /a the MAD b/);
 });
+
+test('renderKaTeX escapes HTML inside `code` spans', () => {
+    const html = renderKaTeX('see `<img src=x onerror=alert(1)>` and `a < b`', false, { glossary: false });
+    assert.ok(!html.includes('<img'), html);
+    assert.ok(html.includes('<code>&lt;img src=x onerror=alert(1)&gt;</code>'), html);
+    assert.ok(html.includes('<code>a &lt; b</code>'), html);
+});

@@ -17,6 +17,7 @@ import asyncio
 import webbrowser
 import builtins
 from pathlib import Path
+from contextlib import asynccontextmanager
 from typing import Optional
 import threading
 import time
@@ -652,6 +653,176 @@ def list_builtin_scenes():
     return sorted([
         f.stem for f in scenes_dir.glob("*.json")
     ])
+
+
+# Draft lessons live one level down, in scenes/draft/, and are listed as
+# "draft/<name>" — the same id /scenes/{name:path} and ?builtin= take.
+DRAFT_SCENES_SUBDIR = "draft"
+LESSON_DESCRIPTION_MAX = 280
+
+# lesson id -> (mtime_ns, summary). Lessons can run to megabytes with baked graphs,
+# so each file is parsed once per change rather than on every list request.
+_lesson_summary_cache: dict[str, tuple[int, dict]] = {}
+
+
+def _glossary_terms(glossary) -> list[str]:
+    """The words a glossary answers to: each entry's key, term and aliases."""
+    if not isinstance(glossary, dict):
+        return []
+    terms = []
+    for key, entry in glossary.items():
+        terms.append(str(key))
+        if isinstance(entry, dict):
+            if isinstance(entry.get("term"), str):
+                terms.append(entry["term"])
+            aliases = entry.get("aliases")
+            if isinstance(aliases, list):
+                terms.extend(a for a in aliases if isinstance(a, str))
+    return terms
+
+
+# domain name -> (mtime_ns, glossary terms), read from static/domains/<name>/docs.json.
+_domain_terms_cache: dict[str, tuple[int, list[str]]] = {}
+
+
+def _domain_glossary_terms(name: str) -> list[str]:
+    """An imported domain's glossary terms, so a lesson is found by them too."""
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", name):
+        return []
+    # Confined like the /domains routes: a symlink out of static/domains is skipped.
+    path = sanitize_path(static_dir / "domains", f"{name}/docs.json")
+    if not path:
+        return []
+    try:
+        mtime = path.stat().st_mtime_ns
+    except OSError:
+        return []
+    cached = _domain_terms_cache.get(name)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            docs = json.load(f)
+    except (OSError, ValueError):   # ValueError: bad JSON or bad UTF-8
+        return []
+    terms = _glossary_terms(docs.get("glossary")) if isinstance(docs, dict) else []
+    _domain_terms_cache[name] = (mtime, terms)
+    return terms
+
+
+def _lesson_summary(path: Path, lesson_id: str, draft: bool) -> Optional[dict]:
+    """Title, first-scene description and counts for the lesson picker."""
+    try:
+        mtime = path.stat().st_mtime_ns
+    except OSError:
+        return None
+    cached = _lesson_summary_cache.get(lesson_id)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            spec = json.load(f)
+    except (OSError, ValueError):   # ValueError: bad JSON or bad UTF-8
+        return None
+    if not isinstance(spec, dict):
+        return None
+    scenes = spec.get("scenes") if isinstance(spec.get("scenes"), list) else []
+    scenes = [sc for sc in scenes if isinstance(sc, dict)]
+    first = scenes[0] if scenes else {}
+    description = first.get("description") if isinstance(first.get("description"), str) else ""
+    description = " ".join(description.split())
+    if len(description) > LESSON_DESCRIPTION_MAX:
+        clipped = description[:LESSON_DESCRIPTION_MAX]
+        # Cut on a word; a run with no space in it is cut where it is.
+        description = (clipped.rsplit(" ", 1)[0] if " " in clipped else clipped) + "…"
+    imports = spec.get("import") if isinstance(spec.get("import"), list) else []
+    # What the picker's search looks through beyond the lesson title: every
+    # scene's title, and every scene's full description (not just the clipped
+    # first one shown).
+    scene_titles = [" ".join(sc["title"].split()) for sc in scenes if isinstance(sc.get("title"), str)]
+    search_parts = [sc["description"] for sc in scenes if isinstance(sc.get("description"), str)]
+    summary = {
+        "id": lesson_id,
+        "title": spec.get("title") if isinstance(spec.get("title"), str) else lesson_id,
+        "description": description,
+        "sceneCount": len(scenes),
+        "stepCount": sum(len(sc.get("steps") or []) for sc in scenes if isinstance(sc.get("steps"), list)),
+        "domains": [d for d in imports if isinstance(d, str)],
+        "draft": draft,
+        "sceneTitles": scene_titles,
+        "searchText": " ".join(" ".join(search_parts).split()),
+        "glossary": _glossary_terms(spec.get("glossary")),
+    }
+    _lesson_summary_cache[lesson_id] = (mtime, summary)
+    return summary
+
+
+def _with_domain_terms(summary: dict) -> dict:
+    """The summary plus its domains' glossary terms, looked up fresh (their own cache)."""
+    seen, terms = set(), []
+    for term in summary["glossary"] + [t for d in summary["domains"] for t in _domain_glossary_terms(d)]:
+        if term.lower() not in seen:
+            seen.add(term.lower())
+            terms.append(term)
+    return {**summary, "glossary": terms}
+
+
+# One scan at a time: the startup build and an early request would otherwise
+# both parse every file.
+_lesson_index_lock = threading.Lock()
+
+
+def list_builtin_lessons(refresh: bool = False):
+    """Summaries of the built-in lessons in scenes/ and the drafts in scenes/draft/.
+
+    Served from the lesson index that build_lesson_index() fills at startup:
+    a file is parsed again only when its mtime changes (or it is new), so a
+    call is one stat() per lesson. ``refresh`` drops the index and rebuilds it
+    from disk — the picker's refresh button.
+    """
+    with _lesson_index_lock:
+        if refresh:
+            _lesson_summary_cache.clear()
+            _domain_terms_cache.clear()
+        return _scan_builtin_lessons()
+
+
+def _confined_lesson(f: Path) -> Optional[Path]:
+    """``f`` resolved inside scenes/, as /scenes/{name} would load it; None for a
+    symlink that points outside."""
+    return sanitize_path(scenes_dir, f.relative_to(scenes_dir).as_posix())
+
+
+def _scan_builtin_lessons():
+    if not scenes_dir.exists():
+        return []
+    lessons = []
+    for f in sorted(scenes_dir.glob("*.json")):
+        path = _confined_lesson(f)
+        summary = path and _lesson_summary(path, f.stem, draft=False)
+        if summary:
+            lessons.append(_with_domain_terms(summary))
+    for f in sorted((scenes_dir / DRAFT_SCENES_SUBDIR).glob("*.json")):
+        path = _confined_lesson(f)
+        summary = path and _lesson_summary(path, f"{DRAFT_SCENES_SUBDIR}/{f.stem}", draft=True)
+        if summary:
+            lessons.append(_with_domain_terms(summary))
+    return lessons
+
+
+def build_lesson_index() -> None:
+    """Build the lesson index in the background, so the picker's first
+    /api/scenes request finds every lesson already parsed."""
+    def build():
+        start = time.perf_counter()
+        try:
+            count = len(list_builtin_lessons())
+        except Exception:
+            logging.getLogger("backend").exception("Lesson index build failed")
+            return
+        logging.getLogger("backend").info(
+            "Lesson index: %d lessons in %.0f ms", count, (time.perf_counter() - start) * 1000)
+    threading.Thread(target=build, name="lesson-index", daemon=True).start()
 
 
 def load_builtin_scene(name):
@@ -1497,7 +1668,12 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
 
     # ---- FastAPI app ----
 
-    fastapp = FastAPI(docs_url=None, redoc_url=None)
+    @asynccontextmanager
+    async def lifespan(_app):
+        build_lesson_index()
+        yield
+
+    fastapp = FastAPI(docs_url=None, redoc_url=None, lifespan=lifespan)
 
     # Bundled frontend output (static/dist/*.js + sourcemaps), generated by
     # `npm run build` and COMMITTED. Node is a dev-time-only dependency —
@@ -2170,8 +2346,11 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         })
 
     @fastapp.get("/api/scenes")
-    async def get_scenes():
-        return JSONResponse({"scenes": list_builtin_scenes()})
+    async def get_scenes(refresh: bool = False):
+        # "scenes" stays the plain top-level names (the coach's auto-pick reads
+        # it); "lessons" adds drafts and what the lesson picker shows per row.
+        lessons = await asyncio.to_thread(list_builtin_lessons, refresh)
+        return JSONResponse({"scenes": list_builtin_scenes(), "lessons": lessons})
 
     @fastapp.get("/api/scene_file")
     async def get_scene_file(request: Request):

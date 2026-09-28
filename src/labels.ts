@@ -197,7 +197,8 @@ function _renderKaTeX(text: string | null | undefined, displayMode?: boolean): s
                 const inline = line
                     .replace(/\x01B(\d+)\x01/g, (_m: string, idx: string) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`)
                     .replace(/\x01I(\d+)\x01/g, (_m: string, idx: string) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`)
-                    .replace(/\x01C(\d+)\x01/g, (_m: string, idx: string) => `<code>${codeSpans[+idx]}</code>`)
+                    // Code spans were lifted out before the escape above: escape them here.
+                    .replace(/\x01C(\d+)\x01/g, (_m: string, idx: string) => `<code>${escapeHtml(codeSpans[+idx]!)}</code>`)
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     .replace(/`(.+?)`/g, '<code>$1</code>');

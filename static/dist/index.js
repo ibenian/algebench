@@ -1498,7 +1498,7 @@ function _renderKaTeX(text, displayMode) {
 					"0.88em"
 				][hm[1].length - 1]};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
 				if (t === "---") return "<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0\">";
-				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${_renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${_renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${escapeHtml$2(codeSpans[+idx])}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
 				return li < lines.length - 1 ? inline + "<br>" : inline;
 			}).join("");
 		} else if (seg.startsWith("$$")) {
@@ -16254,6 +16254,394 @@ function parseViewState(search) {
 	return vs;
 }
 //#endregion
+//#region src/lesson-picker.ts
+var RECENTS_KEY = "algebenchLessonRecents";
+var SHOW_DRAFTS_KEY = "algebenchLessonShowDrafts";
+var MAX_RECENTS = 5;
+function readRecents() {
+	try {
+		const parsed = JSON.parse(localStorage.getItem(RECENTS_KEY) || "[]");
+		return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+	} catch {
+		return [];
+	}
+}
+function storeRecent(id) {
+	try {
+		const next = [id, ...readRecents().filter((r) => r !== id)].slice(0, MAX_RECENTS);
+		localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+	} catch {}
+}
+/** Title and description with the LaTeX and markdown markers taken out, for matching. */
+function plain(s) {
+	return s.replace(/[$*`_\\{}]/g, " ").toLowerCase();
+}
+/**
+* How well a lesson matches the query: every word of the query has to hit
+* something, and a hit in the title counts most. 0 is no match.
+*/
+function scoreLesson(lesson, query) {
+	const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+	if (!words.length) return 1;
+	const title = plain(lesson.title);
+	const titleWords = title.split(/[^a-z0-9π]+/);
+	const id = lesson.id.toLowerCase();
+	const desc = plain(lesson.description);
+	const body = plain(lesson.searchText || "");
+	const scenes = (lesson.sceneTitles || []).map(plain);
+	const glossary = (lesson.glossary || []).map(plain);
+	const domains = lesson.domains.join(" ").toLowerCase();
+	const status = lesson.draft ? "draft" : "built-in builtin";
+	let score = 0;
+	for (const w of words) {
+		let best = 0;
+		if (titleWords.some((t) => t.startsWith(w))) best = 30;
+		else if (title.includes(w)) best = 20;
+		if (scenes.some((t) => t.split(/[^a-z0-9π]+/).some((x) => x.startsWith(w)))) best = Math.max(best, 16);
+		else if (scenes.some((t) => t.includes(w))) best = Math.max(best, 11);
+		if (id.includes(w)) best = Math.max(best, 12);
+		if (glossary.some((t) => t.startsWith(w) || t.includes(" " + w))) best = Math.max(best, 14);
+		else if (glossary.some((t) => t.includes(w))) best = Math.max(best, 7);
+		if (domains.includes(w)) best = Math.max(best, 10);
+		if (status.includes(w)) best = Math.max(best, 8);
+		if (desc.includes(w)) best = Math.max(best, 5);
+		else if (body.includes(w)) best = Math.max(best, 3);
+		if (!best) return 0;
+		score += best;
+	}
+	return score;
+}
+/**
+* The built-in id ("eigenvalues", "draft/chart-demo") a loaded scene's source
+* path names, or null. A built-in picked in the picker is recorded as
+* "/scenes/<id>"; one opened from a ?scene= link as "scenes/<id>.json".
+*/
+function builtinIdFromPath(p) {
+	if (typeof p !== "string") return null;
+	const m = /^\/?scenes\/(.+?)(?:\.json)?$/.exec(p);
+	return m ? m[1] : null;
+}
+/** Row ids for aria-activedescendant; unique across renders. */
+var optionSeq = 0;
+var LessonPicker = class {
+	constructor(opts) {
+		this.lessons = [];
+		this.loaded = false;
+		this.loadError = null;
+		this.visible = [];
+		this.active = -1;
+		this.parked = -1;
+		this.showDrafts = false;
+		this.opts = opts;
+		try {
+			this.showDrafts = localStorage.getItem(SHOW_DRAFTS_KEY) === "1";
+		} catch {}
+		this.syncDraftsPill();
+		this.bind();
+	}
+	syncDraftsPill() {
+		const el = this.opts.draftsEl;
+		if (!el) return;
+		el.setAttribute("aria-pressed", String(this.showDrafts));
+		el.classList.toggle("on", this.showDrafts);
+		const n = this.lessons.filter((l) => l.draft).length;
+		el.textContent = n ? `Drafts ${n}` : "Drafts";
+	}
+	setShowDrafts(on) {
+		this.showDrafts = on;
+		try {
+			localStorage.setItem(SHOW_DRAFTS_KEY, on ? "1" : "0");
+		} catch {}
+		this.syncDraftsPill();
+		this.render(this.opts.searchEl.value);
+	}
+	/** The lessons the filter lets through. */
+	pool() {
+		return this.showDrafts ? this.lessons : this.lessons.filter((l) => !l.draft);
+	}
+	setLessons(lessons) {
+		this.lessons = lessons;
+		this.loaded = true;
+		this.loadError = null;
+		this.syncDraftsPill();
+		if (this.isOpen()) this.render(this.opts.searchEl.value);
+	}
+	/** The list failed to load: keep the lessons already shown, and say so. */
+	setLoadError(message) {
+		this.loadError = message;
+		if (this.isOpen()) this.render(this.opts.searchEl.value);
+	}
+	isOpen() {
+		return !this.opts.paletteEl.hidden;
+	}
+	open() {
+		const { paletteEl, backdropEl, searchEl, buttonEl } = this.opts;
+		backdropEl.hidden = false;
+		paletteEl.hidden = false;
+		buttonEl.setAttribute("aria-expanded", "true");
+		searchEl.value = "";
+		this.position();
+		this.render("");
+		setTimeout(() => searchEl.focus(), 0);
+	}
+	close() {
+		const { paletteEl, backdropEl, buttonEl } = this.opts;
+		if (paletteEl.contains(document.activeElement)) buttonEl.focus();
+		backdropEl.hidden = true;
+		paletteEl.hidden = true;
+		buttonEl.setAttribute("aria-expanded", "false");
+	}
+	toggle() {
+		if (this.isOpen()) this.close();
+		else this.open();
+	}
+	pick(id) {
+		storeRecent(id);
+		this.close();
+		this.opts.onPick(id);
+	}
+	/** Under the button, kept on screen; the palette's own CSS caps its size. */
+	position() {
+		const { buttonEl, paletteEl } = this.opts;
+		const r = buttonEl.getBoundingClientRect();
+		const margin = 8;
+		const width = paletteEl.offsetWidth;
+		const left = Math.min(Math.max(margin, r.right - width), window.innerWidth - width - margin);
+		paletteEl.style.left = `${Math.max(margin, left)}px`;
+		paletteEl.style.top = `${r.bottom + 6}px`;
+		paletteEl.style.maxHeight = `${Math.max(0, window.innerHeight - r.bottom - 6 - margin)}px`;
+	}
+	groups(query) {
+		const q = query.trim();
+		const byTitle = (a, b) => a.title.localeCompare(b.title);
+		if (q) {
+			const hits = this.pool().map((l) => ({
+				l,
+				s: scoreLesson(l, q)
+			})).filter((x) => x.s > 0).sort((a, b) => b.s - a.s || Number(a.l.draft) - Number(b.l.draft) || byTitle(a.l, b.l)).map((x) => x.l);
+			return hits.length ? [{
+				title: "Results",
+				lessons: hits
+			}] : [];
+		}
+		return [
+			{
+				title: "Recent",
+				lessons: readRecents().map((id) => this.pool().find((l) => l.id === id)).filter((l) => !!l)
+			},
+			{
+				title: "Lessons",
+				lessons: this.lessons.filter((l) => !l.draft).sort(byTitle)
+			},
+			{
+				title: "Drafts",
+				lessons: this.pool().filter((l) => l.draft).sort(byTitle)
+			}
+		].filter((g) => g.lessons.length);
+	}
+	render(query) {
+		const { listEl, countEl } = this.opts;
+		listEl.innerHTML = "";
+		this.visible = [];
+		this.setActive(-1, false);
+		const groups = this.groups(query);
+		const current = this.opts.currentId();
+		const total = this.pool().length;
+		if (countEl) {
+			const shown = query.trim() ? groups[0]?.lessons.length ?? 0 : total;
+			const noun = total === 1 ? "lesson" : "lessons";
+			countEl.textContent = !this.loaded ? "" : query.trim() ? `${shown} of ${total} ${noun}` : `${total} ${noun}`;
+		}
+		if (this.loadError) {
+			const err = document.createElement("div");
+			err.className = "lesson-picker-error";
+			err.setAttribute("role", "alert");
+			err.textContent = this.loadError;
+			listEl.appendChild(err);
+		}
+		if (!groups.length) {
+			if (this.loadError && !this.loaded) return;
+			const empty = document.createElement("div");
+			empty.className = "lesson-picker-empty";
+			const hiddenDraftHit = !this.showDrafts && this.lessons.some((l) => l.draft && scoreLesson(l, query) > 0);
+			empty.textContent = !this.loaded ? "Loading lessons…" : hiddenDraftHit ? query.trim() ? "No lessons match. Turn on Drafts to search drafts too." : "No built-in lessons. Turn on Drafts to see the drafts." : !this.lessons.length ? "No built-in lessons found." : "No lessons match your search.";
+			listEl.appendChild(empty);
+			return;
+		}
+		for (const g of groups) {
+			const section = document.createElement("div");
+			section.className = "lesson-picker-group";
+			section.setAttribute("role", "group");
+			section.setAttribute("aria-label", g.title);
+			const title = document.createElement("div");
+			title.className = "lesson-picker-group-title";
+			title.textContent = g.title;
+			section.appendChild(title);
+			for (const l of g.lessons) {
+				const row = this.row(l, l.id === current);
+				section.appendChild(row);
+				this.visible.push({
+					id: l.id,
+					el: row
+				});
+			}
+			listEl.appendChild(section);
+		}
+		listEl.scrollTop = 0;
+		this.setActive(0, false);
+	}
+	row(l, isCurrent) {
+		const row = document.createElement("div");
+		row.className = "lesson-row" + (isCurrent ? " current" : "") + (l.draft ? " draft" : "");
+		row.setAttribute("role", "option");
+		row.setAttribute("aria-selected", "false");
+		row.id = `lesson-option-${++optionSeq}`;
+		row.dataset.lessonId = l.id;
+		const meta = [
+			`${l.sceneCount} scene${l.sceneCount === 1 ? "" : "s"}`,
+			`${l.stepCount} step${l.stepCount === 1 ? "" : "s"}`,
+			...l.domains
+		].map(escapeHtml$2).join(" · ");
+		row.innerHTML = `
+            <div class="lesson-row-head">
+                <div class="lesson-row-title">${renderKaTeX$1(l.title, false, { glossary: false })}</div>
+                ${isCurrent ? "<span class=\"lesson-pill lesson-pill-current\">Open</span>" : ""}
+                <span class="lesson-pill ${l.draft ? "lesson-pill-draft" : "lesson-pill-builtin"}">${l.draft ? "Draft" : "Built-in"}</span>
+            </div>
+            ${l.description ? `<div class="lesson-row-desc">${renderKaTeX$1(l.description, false, { glossary: false })}</div>` : ""}
+            <div class="lesson-row-meta">${meta}</div>`;
+		row.title = l.id;
+		return row;
+	}
+	/** No active row: state, highlight and aria-activedescendant all cleared together. */
+	clearActive() {
+		this.active = -1;
+		this.visible.forEach((v) => {
+			v.el.classList.remove("active");
+			v.el.setAttribute("aria-selected", "false");
+		});
+		this.opts.searchEl.removeAttribute("aria-activedescendant");
+	}
+	setActive(index, scroll = true) {
+		this.parked = -1;
+		if (!this.visible.length) {
+			this.active = -1;
+			this.opts.searchEl.removeAttribute("aria-activedescendant");
+			return;
+		}
+		this.active = Math.max(0, Math.min(index, this.visible.length - 1));
+		this.visible.forEach((v, i) => {
+			const on = i === this.active;
+			v.el.classList.toggle("active", on);
+			v.el.setAttribute("aria-selected", String(on));
+		});
+		this.opts.searchEl.setAttribute("aria-activedescendant", this.visible[this.active].el.id);
+		if (!scroll) return;
+		if (this.active === 0) this.opts.listEl.scrollTop = 0;
+		else this.visible[this.active].el.scrollIntoView({ block: "nearest" });
+	}
+	bind() {
+		const { buttonEl, backdropEl, searchEl, listEl, draftsEl, refreshEl } = this.opts;
+		if (refreshEl) {
+			refreshEl.addEventListener("mousedown", (e) => e.preventDefault());
+			refreshEl.addEventListener("click", async () => {
+				if (refreshEl.classList.contains("busy")) return;
+				refreshEl.classList.add("busy");
+				refreshEl.setAttribute("aria-busy", "true");
+				try {
+					await this.opts.onRefresh();
+				} finally {
+					refreshEl.classList.remove("busy");
+					refreshEl.setAttribute("aria-busy", "false");
+				}
+			});
+		}
+		if (draftsEl) {
+			draftsEl.addEventListener("mousedown", (e) => e.preventDefault());
+			draftsEl.addEventListener("click", () => this.setShowDrafts(!this.showDrafts));
+		}
+		buttonEl.setAttribute("aria-haspopup", "dialog");
+		const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+		buttonEl.title = `Open a lesson (${isMac ? "⌘O" : "Ctrl+O"})`;
+		buttonEl.setAttribute("aria-keyshortcuts", isMac ? "Meta+O" : "Control+O");
+		document.addEventListener("keydown", (e) => {
+			if (e.key.toLowerCase() !== "o" || e.shiftKey || e.altKey) return;
+			if (!(isMac ? e.metaKey : e.ctrlKey)) return;
+			e.preventDefault();
+			e.stopPropagation();
+			this.toggle();
+		}, { capture: true });
+		buttonEl.setAttribute("aria-expanded", "false");
+		buttonEl.addEventListener("click", (e) => {
+			e.stopPropagation();
+			this.toggle();
+		});
+		backdropEl.addEventListener("mousedown", () => this.close());
+		searchEl.addEventListener("input", () => this.render(searchEl.value));
+		searchEl.addEventListener("focus", () => {
+			if (this.active < 0 && this.parked >= 0) this.setActive(this.parked, false);
+		});
+		searchEl.addEventListener("keydown", (e) => {
+			if ((e.metaKey || e.ctrlKey) && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+				e.preventDefault();
+				this.setActive(e.key === "ArrowDown" ? this.visible.length - 1 : 0);
+			} else if (e.key === "ArrowDown") {
+				e.preventDefault();
+				const after = this.opts.afterListEl;
+				if (after && this.active >= this.visible.length - 1) {
+					const from = this.active;
+					this.clearActive();
+					this.parked = from;
+					after.focus();
+				} else this.setActive(this.active + 1);
+			} else if (e.key === "ArrowUp") {
+				e.preventDefault();
+				this.setActive(this.active - 1);
+			} else if (e.key === "Enter") {
+				e.preventDefault();
+				const v = this.visible[this.active];
+				if (v) this.pick(v.id);
+			}
+		});
+		this.opts.afterListEl?.addEventListener("keydown", (e) => {
+			if (e.key !== "ArrowUp") return;
+			e.preventDefault();
+			searchEl.focus();
+			this.setActive(e.metaKey || e.ctrlKey ? 0 : this.visible.length - 1);
+		});
+		this.opts.paletteEl.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") {
+				e.preventDefault();
+				this.close();
+				return;
+			}
+			if (e.key !== "Tab") return;
+			const stops = [...this.opts.paletteEl.querySelectorAll("input, button")].filter((el) => !el.disabled && el.offsetParent !== null);
+			if (!stops.length) return;
+			const first = stops[0], last = stops[stops.length - 1];
+			if (e.shiftKey && document.activeElement === first) {
+				e.preventDefault();
+				last.focus();
+			} else if (!e.shiftKey && document.activeElement === last) {
+				e.preventDefault();
+				first.focus();
+			}
+		});
+		listEl.addEventListener("mousemove", (e) => {
+			const row = e.target.closest(".lesson-row");
+			const i = row ? this.visible.findIndex((v) => v.el === row) : -1;
+			if (i >= 0 && i !== this.active) this.setActive(i, false);
+		});
+		listEl.addEventListener("click", (e) => {
+			const row = e.target.closest(".lesson-row");
+			if (row?.dataset.lessonId) this.pick(row.dataset.lessonId);
+		});
+		window.addEventListener("resize", () => {
+			if (this.isOpen()) this.position();
+		});
+	}
+};
+//#endregion
 //#region src/ui.ts
 var _sceneLoadingCount = 0;
 function showSceneLoading() {
@@ -16273,44 +16661,42 @@ function hideSceneLoading() {
 		el.setAttribute("aria-busy", "false");
 	}
 }
-async function loadBuiltinScenesList() {
+var lessonPicker = null;
+/** The loaded lesson's built-in id ("eigenvalues", "draft/chart-demo"), if it is one. */
+function currentBuiltinId() {
+	return builtinIdFromPath(state.currentSceneSourcePath);
+}
+var lessonsRequest = 0;
+/** Fetch the lesson list; `refresh` has the server rebuild its lesson index from disk. */
+async function loadBuiltinScenesList(refresh = false) {
+	const seq = ++lessonsRequest;
 	try {
-		const data = await (await fetch("/api/scenes", { cache: "no-store" })).json();
-		const menu = document.getElementById("scenes-menu");
-		menu.innerHTML = "";
-		if (data.scenes && data.scenes.length > 0) for (const name of data.scenes) {
-			const item = document.createElement("div");
-			item.className = "scene-item";
-			item.textContent = name.replace(/-/g, " ");
-			item.addEventListener("click", async (e) => {
-				e.stopPropagation();
-				if (await loadBuiltinScene(name)) showSceneDockScenesTab();
-			});
-			menu.appendChild(item);
-		}
-		else {
-			const item = document.createElement("div");
-			item.className = "scene-item";
-			item.textContent = "(no scenes available)";
-			item.style.opacity = "0.5";
-			menu.appendChild(item);
-		}
+		const resp = await fetch("/api/scenes" + (refresh ? "?refresh=1" : ""), { cache: "no-store" });
+		if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+		const data = await resp.json();
+		if (seq !== lessonsRequest) return;
+		lessonPicker?.setLessons(data.lessons || []);
 	} catch (e) {
-		console.error("Failed to load scenes list:", e);
+		console.error("Failed to load lessons list:", e);
+		if (seq !== lessonsRequest) return;
+		lessonPicker?.setLoadError("Couldn't load the lesson list. Try ↻ to reload.");
 	}
 }
+var sceneLoadSeq = 0;
 async function loadBuiltinScene(name) {
+	const seq = ++sceneLoadSeq;
 	showSceneLoading();
 	try {
 		const resp = await fetch("/scenes/" + encodeURIComponent(name), { cache: "no-store" });
 		if (!resp.ok) throw new Error(`HTTP ${resp.status} loading scene '${name}'`);
 		const spec = await resp.json();
+		if (seq !== sceneLoadSeq) return false;
 		state.currentSceneSourceLabel = `${name}.json`;
 		state.currentSceneSourcePath = `/scenes/${name}`;
 		stopAutoPlay();
 		await loadLesson(spec);
+		if (seq !== sceneLoadSeq) return false;
 		updateSceneUrl({ builtin: name });
-		document.getElementById("scenes-menu").classList.remove("open");
 		return true;
 	} catch (e) {
 		console.error("Failed to load scene:", name, e);
@@ -16320,16 +16706,19 @@ async function loadBuiltinScene(name) {
 	}
 }
 async function loadSceneFromPath(path) {
+	const seq = ++sceneLoadSeq;
 	showSceneLoading();
 	try {
 		const resp = await fetch("/api/scene_file?path=" + encodeURIComponent(path), { cache: "no-store" });
 		if (!resp.ok) throw new Error(`HTTP ${resp.status} loading scene file`);
 		const data = await resp.json();
 		if (!data || !data.spec || typeof data.spec !== "object") throw new Error("Invalid scene payload");
+		if (seq !== sceneLoadSeq) return;
 		state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
 		state.currentSceneSourcePath = data.path || path;
 		stopAutoPlay();
 		await loadLesson(data.spec);
+		if (seq !== sceneLoadSeq) return;
 		updateSceneUrl({ path: state.currentSceneSourcePath });
 	} finally {
 		hideSceneLoading();
@@ -16360,7 +16749,10 @@ async function loadInitialSceneFromQuery() {
 		}
 	};
 	if (vs.builtin) {
-		if (await loadBuiltinScene(vs.builtin)) {
+		const before = sceneLoadSeq;
+		const loaded = await loadBuiltinScene(vs.builtin);
+		if (sceneLoadSeq !== before + 1) return;
+		if (loaded) {
 			await applyRest();
 			return;
 		}
@@ -16428,7 +16820,10 @@ function setupDragDrop() {
 function setupFilePicker() {
 	const btn = document.getElementById("btn-load");
 	const input = document.getElementById("file-input");
-	btn.addEventListener("click", () => input.click());
+	btn.addEventListener("click", () => {
+		lessonPicker?.close();
+		input.click();
+	});
 	input.addEventListener("change", (e) => {
 		const file = e.target.files[0];
 		if (file) {
@@ -16451,14 +16846,27 @@ function setupFilePicker() {
 	});
 }
 function setupScenesDropdown() {
-	const btn = document.getElementById("btn-scenes");
-	const menu = document.getElementById("scenes-menu");
-	btn.addEventListener("click", (e) => {
-		e.stopPropagation();
-		menu.classList.toggle("open");
-	});
-	document.addEventListener("click", () => {
-		menu.classList.remove("open");
+	const buttonEl = document.getElementById("btn-scenes");
+	const paletteEl = document.getElementById("lesson-picker");
+	const searchEl = document.getElementById("lesson-picker-search");
+	const listEl = document.getElementById("lesson-picker-list");
+	const backdropEl = document.getElementById("lesson-picker-backdrop");
+	if (!buttonEl || !paletteEl || !searchEl || !listEl || !backdropEl) return;
+	lessonPicker = new LessonPicker({
+		buttonEl,
+		paletteEl,
+		searchEl,
+		listEl,
+		backdropEl,
+		countEl: document.getElementById("lesson-picker-count"),
+		draftsEl: document.getElementById("lesson-picker-drafts"),
+		refreshEl: document.getElementById("lesson-picker-refresh"),
+		afterListEl: document.getElementById("btn-load"),
+		onRefresh: () => loadBuiltinScenesList(true),
+		currentId: currentBuiltinId,
+		onPick: async (id) => {
+			if (await loadBuiltinScene(id)) showSceneDockScenesTab();
+		}
 	});
 }
 function pickVideoRecorderFormat() {
