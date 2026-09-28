@@ -1030,6 +1030,7 @@ html, body {
 #mathbox-container canvas { cursor: grab; }
 /* Closed-fist grabbing cursor while rotating — overrides MathBox cursor plugin */
 body.rotating, body.rotating * { cursor: grabbing !important; }
+body.zooming, body.zooming * { cursor: ns-resize !important; }
 /* A drag pinned to one axis of the arcball says so: the cursor points along
    the direction the pointer can still move, not the axis it turns about. */
 body.rotating-axis-x, body.rotating-axis-x * { cursor: ns-resize !important; }

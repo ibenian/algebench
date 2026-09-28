@@ -278,7 +278,7 @@ export function updateAdaptiveLineWidths(): void { return; }
 
 export function updateControlsHint(): void {
     const hint = document.getElementById('controls-hint');
-    if (hint) hint.innerHTML = 'Drag: rotate &middot; &#8984;/Ctrl/&#8997;+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom';
+    if (hint) hint.innerHTML = 'Drag: rotate &middot; &#8984;/Ctrl/&#8997;+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel or Ctrl+right-drag: zoom';
 }
 
 export function configureControlsInstance(ctrl: ThreeControls, target?: Vector3 | null): void {
@@ -1228,13 +1228,44 @@ export function setupRollDrag(container: HTMLElement | null): void {
     // Shift+drag and right-drag pan. Handled here rather than by the orbit
     // controls so a pan goes through the pan smoother like every other move.
     let panDrag: { x: number; y: number; start: PanStart | null } | null = null;
+    // Ctrl+right-drag zooms instead: the last pointer y.
+    let zoomDrag: { y: number } | null = null;
     // A right press's context menu arrives on mousedown (macOS) or after
     // mouseup (Windows, Linux), when panDrag is already gone. Remember the
     // press until its menu shows up, so either order keeps the menu shut.
     let suppressContextMenu = false;
+    // A right-button drag released outside the window gets no mouseup, and
+    // later moves may still report the button held, so the pan or zoom never
+    // ends. Capturing the pointer for the drag keeps its moves and release
+    // coming here wherever the pointer goes. The id comes from the pointerdown
+    // that precedes each mousedown.
+    let pressPointerId: number | null = null;
+    inputSurface.addEventListener('pointerdown', (e) => { pressPointerId = e.pointerId; }, { capture: true });
+    function captureDragPointer(): void {
+        if (pressPointerId === null) return;
+        try { inputSurface.setPointerCapture(pressPointerId); } catch { /* pointer already gone */ }
+    }
+    inputSurface.addEventListener('lostpointercapture', () => { endPanDrag(); endZoomDrag(); });
 
     inputSurface.addEventListener('mousedown', (e) => {
         suppressContextMenu = e.button === 2;
+        if (e.button === 2 && e.ctrlKey) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            // Like a pan, the zoom takes over the camera from any coasting rotation.
+            if (cameraState.arcballInertiaId) {
+                cancelAnimationFrame(cameraState.arcballInertiaId);
+                cameraState.arcballInertiaId = null;
+            }
+            cameraState.arcballInertiaQ = null;
+            haltSmoothedRotation();
+            releaseDragPivotIfIdle();
+            zoomDrag = { y: e.clientY };
+            captureDragPointer();
+            document.body.classList.add('zooming');
+            if (cameraState.controls) cameraState.controls.enabled = false;
+            return;
+        }
         if ((e.button === 0 && e.shiftKey) || e.button === 2) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -1249,6 +1280,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
             releaseDragPivotIfIdle();
             haltSmoothedPan();
             panDrag = { x: e.clientX, y: e.clientY, start: rotateMode === 'camera' ? beginPanDrag(e.clientX, e.clientY) : null };
+            captureDragPointer();
             if (cameraState.controls) cameraState.controls.enabled = false;
             return;
         }
@@ -1294,6 +1326,14 @@ export function setupRollDrag(container: HTMLElement | null): void {
     }, { capture: true });
 
     window.addEventListener('mousemove', (e) => {
+        if (zoomDrag) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if ((e.buttons & 2) === 0) return endZoomDrag();
+            dragZoom(e.clientY - zoomDrag.y);
+            zoomDrag.y = e.clientY;
+            return;
+        }
         if (panDrag) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -1370,8 +1410,19 @@ export function setupRollDrag(container: HTMLElement | null): void {
         }
     }
 
+    function endZoomDrag() {
+        if (!zoomDrag) return;
+        zoomDrag = null;
+        document.body.classList.remove('zooming');
+        if (cameraState.controls) {
+            cameraState.controls.enabled = true;
+            cameraState.controls.update();
+        }
+    }
+
     function endOrbitDrag() {
         endPanDrag();
+        endZoomDrag();
         if (!orbitDrag) return;
         orbitDrag = null;
         orbitDragActive = false;
@@ -1388,7 +1439,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
     }
 
     window.addEventListener('mouseup', (e) => {
-        if (orbitDrag || panDrag) {
+        if (orbitDrag || panDrag || zoomDrag) {
             e.preventDefault();
             e.stopImmediatePropagation();
         }
@@ -1396,9 +1447,9 @@ export function setupRollDrag(container: HTMLElement | null): void {
     }, { capture: true });
 
     // Ctrl+click is a right-click on macOS: keep its menu out of the drag.
-    // A right-drag pans, so its menu stays shut too.
+    // A right-drag pans (or zooms, with Ctrl), so its menu stays shut too.
     inputSurface.addEventListener('contextmenu', (e) => {
-        if (orbitDrag || panDrag || suppressContextMenu) e.preventDefault();
+        if (orbitDrag || panDrag || zoomDrag || suppressContextMenu) e.preventDefault();
         suppressContextMenu = false;
     });
 
@@ -1693,10 +1744,25 @@ function pinchZoom(deltaY: number, deltaX = 0): void {
         ? Math.pow(WHEEL_NOTCH_STEP, -Math.sign(deltaY) * Math.max(1, Math.round(Math.abs(deltaY) / 100)))
         : Math.exp(-deltaY * PINCH_ZOOM_PER_DELTA);
     const factor = Math.min(PINCH_MAX_STEP, Math.max(1 / PINCH_MAX_STEP, raw));   // >1 zooms in
-    if (rotateMode === 'camera') { pinchZoomStartRelative(Math.log(factor)); return; }
-    if (zoomSmoother.mode === 'instant') { applyZoomFactor(factor); return; }
-    zoomSmoother.push(Math.log(factor));
+    zoomByLog(Math.log(factor));
+}
+
+/** Zoom by ln `logFactor` (>0 zooms in) through the current mode and smoother. */
+function zoomByLog(logFactor: number): void {
+    if (rotateMode === 'camera') { pinchZoomStartRelative(logFactor); return; }
+    if (zoomSmoother.mode === 'instant') { applyZoomFactor(Math.exp(logFactor)); return; }
+    zoomSmoother.push(logFactor);
     zoomLoop.kick();
+}
+
+// Ctrl+right-drag zooms: dragging down pulls the scene toward you (zooms in),
+// up pushes it away. 100 px of travel zooms about 2.7x.
+const DRAG_ZOOM_PER_PX = 0.01;
+
+/** Ctrl+right-drag: zoom by the pointer's vertical travel since the last move. */
+function dragZoom(dy: number): void {
+    if (!cameraState.camera || !cameraState.controls || dy === 0) return;
+    zoomByLog(dy * DRAG_ZOOM_PER_PX);
 }
 
 // Pan — two-finger trackpad scroll, Shift+drag and right-drag — moves camera
