@@ -376,8 +376,10 @@ function pivotUnder(clientX: number, clientY: number): Vector3 | null {
  * that need the rect themselves would otherwise ask for it a second time on
  * the pointer-move path.
  */
-function arcballScreenDisc(centre: Vector3 = rotationCentre()): { cx: number; cy: number; r: number; rect: DOMRect } | null {
+function arcballScreenDisc(at?: Vector3): { cx: number; cy: number; r: number; rect: DOMRect } | null {
     if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
+    // Resolved only past the guard: rotationCentre() reads controls.target.
+    const centre = at ?? rotationCentre();
     const rect = cameraState.renderer.domElement.getBoundingClientRect();
     // A collapsed canvas has no disc, and saying so here is what keeps the
     // divisions in screenToArcball finite. A drag cannot start on a 0x0
@@ -534,7 +536,8 @@ function arcballWorldRadius(pixels: number): number {
 //
 // The drag maps the pointer onto a virtual sphere centred on the orbit pivot.
 // This draws that sphere while a drag is in flight, so the thing being turned
-// is visible; it is removed as soon as the drag ends.
+// is visible. It lingers for BALL_LINGER_MS after the drag ends — long enough
+// to press it again, or one of its axis cues — and then it is removed.
 
 let ballHelper: import('three').Group | null = null;
 
@@ -551,7 +554,7 @@ function loadRotateCue(): RotateCue {
 
 export function setRotateCue(cue: RotateCue): void {
     rotateCue = cue;
-    if (cue === 'off') { hideArcballBall(); hideGrabMarker(); }
+    if (cue === 'off') { cancelBallFlash(); hideArcballBall(); hideGrabMarker(); }   // no invisible linger left behind
     try { localStorage.setItem(ROTATE_CUE_KEY, cue); } catch { /* storage blocked */ }
 }
 
@@ -1693,6 +1696,8 @@ export function initMathBox(): void {
     updateControlsHint();
 
     window.addEventListener('resize', () => {
+        // The lingering ball and its cues were placed for the old size.
+        dropLingeringBall();
         const w2 = container.clientWidth;
         const h2 = container.clientHeight;
         cameraState.renderer!.setSize(w2, h2);

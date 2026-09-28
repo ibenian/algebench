@@ -4982,8 +4982,9 @@ function pivotUnder(clientX, clientY) {
 * that need the rect themselves would otherwise ask for it a second time on
 * the pointer-move path.
 */
-function arcballScreenDisc(centre = rotationCentre()) {
+function arcballScreenDisc(at) {
 	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
+	const centre = at ?? rotationCentre();
 	const rect = cameraState.renderer.domElement.getBoundingClientRect();
 	if (rect.width <= 0 || rect.height <= 0) return null;
 	const ndc = centre.clone().project(cameraState.camera);
@@ -5108,6 +5109,7 @@ function loadRotateCue() {
 function setRotateCue(cue) {
 	rotateCue = cue;
 	if (cue === "off") {
+		cancelBallFlash();
 		hideArcballBall();
 		hideGrabMarker();
 	}
@@ -6086,6 +6088,7 @@ function initMathBox() {
 	}
 	updateControlsHint();
 	window.addEventListener("resize", () => {
+		dropLingeringBall();
 		const w2 = container.clientWidth;
 		const h2 = container.clientHeight;
 		cameraState.renderer.setSize(w2, h2);
