@@ -313,6 +313,7 @@ export function setupScenesDropdown(): void {
         countEl: document.getElementById('lesson-picker-count'),
         draftsEl: document.getElementById('lesson-picker-drafts'),
         refreshEl: document.getElementById('lesson-picker-refresh'),
+        afterListEl: document.getElementById('btn-load'),
         onRefresh: () => loadBuiltinScenesList(true),
         currentId: currentBuiltinId,
         onPick: async (id) => {

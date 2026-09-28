@@ -16568,7 +16568,14 @@ var LessonPicker = class {
 		searchEl.addEventListener("keydown", (e) => {
 			if (e.key === "ArrowDown") {
 				e.preventDefault();
-				this.setActive(this.active + 1);
+				const after = this.opts.afterListEl;
+				if (after && this.active >= this.visible.length - 1) {
+					this.visible.forEach((v) => {
+						v.el.classList.remove("active");
+						v.el.setAttribute("aria-selected", "false");
+					});
+					after.focus();
+				} else this.setActive(this.active + 1);
 			} else if (e.key === "ArrowUp") {
 				e.preventDefault();
 				this.setActive(this.active - 1);
@@ -16577,6 +16584,12 @@ var LessonPicker = class {
 				const v = this.visible[this.active];
 				if (v) this.pick(v.id);
 			}
+		});
+		this.opts.afterListEl?.addEventListener("keydown", (e) => {
+			if (e.key !== "ArrowUp") return;
+			e.preventDefault();
+			searchEl.focus();
+			this.setActive(this.visible.length - 1);
 		});
 		this.opts.paletteEl.addEventListener("keydown", (e) => {
 			if (e.key === "Escape") {
@@ -16820,6 +16833,7 @@ function setupScenesDropdown() {
 		countEl: document.getElementById("lesson-picker-count"),
 		draftsEl: document.getElementById("lesson-picker-drafts"),
 		refreshEl: document.getElementById("lesson-picker-refresh"),
+		afterListEl: document.getElementById("btn-load"),
 		onRefresh: () => loadBuiltinScenesList(true),
 		currentId: currentBuiltinId,
 		onPick: async (id) => {

@@ -34,6 +34,8 @@ export interface LessonPickerOptions {
     draftsEl: HTMLElement | null;
     /** Re-reads the lesson list from disk. */
     refreshEl: HTMLElement | null;
+    /** The control under the list (From JSON): ↓ past the last lesson moves here, ↑ comes back. */
+    afterListEl: HTMLElement | null;
     /** Fetch the list again, rebuilding the server's index; resolves once setLessons ran. */
     onRefresh: () => Promise<void>;
     backdropEl: HTMLElement;
@@ -380,13 +382,30 @@ export class LessonPicker {
         backdropEl.addEventListener('mousedown', () => this.close());
         searchEl.addEventListener('input', () => this.render(searchEl.value));
         searchEl.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') { e.preventDefault(); this.setActive(this.active + 1); }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const after = this.opts.afterListEl;
+                if (after && this.active >= this.visible.length - 1) {
+                    // Past the last lesson: on to the control below the list.
+                    this.visible.forEach(v => { v.el.classList.remove('active'); v.el.setAttribute('aria-selected', 'false'); });
+                    after.focus();
+                } else {
+                    this.setActive(this.active + 1);
+                }
+            }
             else if (e.key === 'ArrowUp') { e.preventDefault(); this.setActive(this.active - 1); }
             else if (e.key === 'Enter') {
                 e.preventDefault();
                 const v = this.visible[this.active];
                 if (v) this.pick(v.id);
             }
+        });
+        this.opts.afterListEl?.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowUp') return;
+            // Back up into the list, on its last lesson.
+            e.preventDefault();
+            searchEl.focus();
+            this.setActive(this.visible.length - 1);
         });
         // Esc closes from any control in the palette (search, ↻, Drafts, From JSON),
         // and Tab cycles among them: the backdrop covers the page, so focus
