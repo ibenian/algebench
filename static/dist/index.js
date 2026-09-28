@@ -16566,7 +16566,10 @@ var LessonPicker = class {
 		backdropEl.addEventListener("mousedown", () => this.close());
 		searchEl.addEventListener("input", () => this.render(searchEl.value));
 		searchEl.addEventListener("keydown", (e) => {
-			if (e.key === "ArrowDown") {
+			if ((e.metaKey || e.ctrlKey) && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+				e.preventDefault();
+				this.setActive(e.key === "ArrowDown" ? this.visible.length - 1 : 0);
+			} else if (e.key === "ArrowDown") {
 				e.preventDefault();
 				const after = this.opts.afterListEl;
 				if (after && this.active >= this.visible.length - 1) {
@@ -16589,7 +16592,7 @@ var LessonPicker = class {
 			if (e.key !== "ArrowUp") return;
 			e.preventDefault();
 			searchEl.focus();
-			this.setActive(this.visible.length - 1);
+			this.setActive(e.metaKey || e.ctrlKey ? 0 : this.visible.length - 1);
 		});
 		this.opts.paletteEl.addEventListener("keydown", (e) => {
 			if (e.key === "Escape") {

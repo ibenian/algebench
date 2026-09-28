@@ -382,7 +382,13 @@ export class LessonPicker {
         backdropEl.addEventListener('mousedown', () => this.close());
         searchEl.addEventListener('input', () => this.render(searchEl.value));
         searchEl.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') {
+            // Cmd (Ctrl off macOS) + ↓/↑ jumps to the last / first lesson.
+            const jump = e.metaKey || e.ctrlKey;
+            if (jump && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                e.preventDefault();
+                this.setActive(e.key === 'ArrowDown' ? this.visible.length - 1 : 0);
+            }
+            else if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 const after = this.opts.afterListEl;
                 if (after && this.active >= this.visible.length - 1) {
@@ -402,10 +408,10 @@ export class LessonPicker {
         });
         this.opts.afterListEl?.addEventListener('keydown', (e) => {
             if (e.key !== 'ArrowUp') return;
-            // Back up into the list, on its last lesson.
+            // Back up into the list: on its last lesson, or its first with Cmd/Ctrl.
             e.preventDefault();
             searchEl.focus();
-            this.setActive(this.visible.length - 1);
+            this.setActive(e.metaKey || e.ctrlKey ? 0 : this.visible.length - 1);
         });
         // Esc closes from any control in the palette (search, ↻, Drafts, From JSON),
         // and Tab cycles among them: the backdrop covers the page, so focus
