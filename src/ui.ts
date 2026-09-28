@@ -101,7 +101,13 @@ export async function loadBuiltinScenesList(refresh = false): Promise<void> {
     }
 }
 
+// Lesson loads started from here, newest last. Picking A then B quickly can
+// finish A's fetch after B's; only the newest load may set the source
+// label/path and the URL. (loadLesson guards the render itself.)
+let sceneLoadSeq = 0;
+
 export async function loadBuiltinScene(name: string): Promise<boolean> {
+    const seq = ++sceneLoadSeq;
     showSceneLoading();
     try {
         const resp = await fetch('/scenes/' + encodeURIComponent(name), { cache: 'no-store' });
@@ -109,6 +115,7 @@ export async function loadBuiltinScene(name: string): Promise<boolean> {
             throw new Error(`HTTP ${resp.status} loading scene '${name}'`);
         }
         const spec = await resp.json() as LessonSpec;
+        if (seq !== sceneLoadSeq) return false;   // a newer load took over
         state.currentSceneSourceLabel = `${name}.json`;
         state.currentSceneSourcePath = `/scenes/${name}`;
         // Force a full re-init path so selecting from scenes always reloads.
@@ -117,6 +124,7 @@ export async function loadBuiltinScene(name: string): Promise<boolean> {
         // a still-in-flight lesson load and get reset to scene 0.
         stopAutoPlay();
         await loadLesson(spec);
+        if (seq !== sceneLoadSeq) return false;
         updateSceneUrl({ builtin: name });
         return true;
     } catch (e) {
@@ -128,6 +136,7 @@ export async function loadBuiltinScene(name: string): Promise<boolean> {
 }
 
 export async function loadSceneFromPath(path: string): Promise<void> {
+    const seq = ++sceneLoadSeq;
     showSceneLoading();
     try {
         const resp = await fetch('/api/scene_file?path=' + encodeURIComponent(path), { cache: 'no-store' });
@@ -142,10 +151,12 @@ export async function loadSceneFromPath(path: string): Promise<void> {
         if (!data || !data.spec || typeof data.spec !== 'object') {
             throw new Error('Invalid scene payload');
         }
+        if (seq !== sceneLoadSeq) return;   // a newer load took over
         state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
         state.currentSceneSourcePath = data.path || path;
         stopAutoPlay();
         await loadLesson(data.spec);
+        if (seq !== sceneLoadSeq) return;
         updateSceneUrl({ path: state.currentSceneSourcePath });
     } finally {
         hideSceneLoading();
@@ -186,7 +197,11 @@ export async function loadInitialSceneFromQuery(): Promise<void> {
     };
 
     if (vs.builtin) {
+        const before = sceneLoadSeq;
         const loaded = await loadBuiltinScene(vs.builtin);
+        // Another lesson was picked while this link loaded: leave it be —
+        // no fallback load, and no deeplink applied on top of it.
+        if (sceneLoadSeq !== before + 1) return;
         if (loaded) { await applyRest(); return; }
     }
     if (!vs.scene) {

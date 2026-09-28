@@ -16682,16 +16682,20 @@ async function loadBuiltinScenesList(refresh = false) {
 		lessonPicker?.setLoadError("Couldn't load the lesson list. Try ↻ to reload.");
 	}
 }
+var sceneLoadSeq = 0;
 async function loadBuiltinScene(name) {
+	const seq = ++sceneLoadSeq;
 	showSceneLoading();
 	try {
 		const resp = await fetch("/scenes/" + encodeURIComponent(name), { cache: "no-store" });
 		if (!resp.ok) throw new Error(`HTTP ${resp.status} loading scene '${name}'`);
 		const spec = await resp.json();
+		if (seq !== sceneLoadSeq) return false;
 		state.currentSceneSourceLabel = `${name}.json`;
 		state.currentSceneSourcePath = `/scenes/${name}`;
 		stopAutoPlay();
 		await loadLesson(spec);
+		if (seq !== sceneLoadSeq) return false;
 		updateSceneUrl({ builtin: name });
 		return true;
 	} catch (e) {
@@ -16702,16 +16706,19 @@ async function loadBuiltinScene(name) {
 	}
 }
 async function loadSceneFromPath(path) {
+	const seq = ++sceneLoadSeq;
 	showSceneLoading();
 	try {
 		const resp = await fetch("/api/scene_file?path=" + encodeURIComponent(path), { cache: "no-store" });
 		if (!resp.ok) throw new Error(`HTTP ${resp.status} loading scene file`);
 		const data = await resp.json();
 		if (!data || !data.spec || typeof data.spec !== "object") throw new Error("Invalid scene payload");
+		if (seq !== sceneLoadSeq) return;
 		state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
 		state.currentSceneSourcePath = data.path || path;
 		stopAutoPlay();
 		await loadLesson(data.spec);
+		if (seq !== sceneLoadSeq) return;
 		updateSceneUrl({ path: state.currentSceneSourcePath });
 	} finally {
 		hideSceneLoading();
@@ -16742,7 +16749,10 @@ async function loadInitialSceneFromQuery() {
 		}
 	};
 	if (vs.builtin) {
-		if (await loadBuiltinScene(vs.builtin)) {
+		const before = sceneLoadSeq;
+		const loaded = await loadBuiltinScene(vs.builtin);
+		if (sceneLoadSeq !== before + 1) return;
+		if (loaded) {
 			await applyRest();
 			return;
 		}
