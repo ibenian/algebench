@@ -212,7 +212,9 @@ class BuildSceneSig(BuildSceneInputs):
     WHAT YOU DO NOT DECIDE. These are computed from what you propose, and a
     plausible guess at them is worse than none:
 
-    * ids — they are minted, and are referenced elsewhere by later steps.
+    * ids — they are minted, and are referenced elsewhere by later steps. The
+      scene's and each step's id are minted from its TITLE, and links and saved
+      references depend on them, so give every step a distinct title.
     * `camera`, `range`, `scale`, `views` — arithmetic on your own geometry.
 
     STEPS AND ELEMENTS ARE SEPARATE LISTS. An element says which step introduces

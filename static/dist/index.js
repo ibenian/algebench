@@ -16340,6 +16340,22 @@ function buildQuery(pairs) {
 function slugify(title) {
 	return String(title == null ? "" : title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
+/**
+* Deterministic, collision-free ids for an array of {id?, title?} — how the
+* `sc=` / `st=` / `ps=` params resolve (id -> slug(title) -> index). Mirrored by
+* `build_ids` in backend/lesson_ids.py.
+*/
+function buildIds(items, titleKey) {
+	const used = /* @__PURE__ */ new Set();
+	return (items || []).map((it, i) => {
+		let base = it && it.id ? String(it.id) : slugify(it && it[titleKey]);
+		if (!base) base = String(i);
+		let id = base, n = 2;
+		while (used.has(id)) id = `${base}-${n++}`;
+		used.add(id);
+		return id;
+	});
+}
 /** Encode camera to compact `px,py,pz,tx,ty,tz[,ux,uy,uz]` (data-space). */
 function encodeCamera(cam) {
 	if (!cam || !Array.isArray(cam.position) || !Array.isArray(cam.target)) return "";
@@ -18964,36 +18980,20 @@ function setupPopstateListener(applyFn) {
 //#region src/view-state-bridge.ts
 var bridgeState = state;
 var _applying = false;
-var _sceneMapCache = /* @__PURE__ */ new WeakMap();
 var _autoAskFired = false;
 /** True while applyViewState is driving the app (suppresses outbound sync). */
 function isApplyingViewState() {
 	return _applying || isApplyingFromHistory();
-}
-function buildIds(items, titleKey) {
-	const used = /* @__PURE__ */ new Set();
-	return (items || []).map((it, i) => {
-		let base = it && it.id ? String(it.id) : slugify(it && it[titleKey]);
-		if (!base) base = String(i);
-		let id = base, n = 2;
-		while (used.has(id)) id = `${base}-${n++}`;
-		used.add(id);
-		return id;
-	});
 }
 function sceneMaps(lesson) {
 	if (!lesson || !Array.isArray(lesson.scenes)) return {
 		sceneIds: [],
 		stepIds: []
 	};
-	let cached = _sceneMapCache.get(lesson);
-	if (cached) return cached;
-	cached = {
+	return {
 		sceneIds: buildIds(lesson.scenes, "title"),
 		stepIds: lesson.scenes.map((sc) => buildIds(sc.steps || [], "title"))
 	};
-	_sceneMapCache.set(lesson, cached);
-	return cached;
 }
 function resolveIndex(token, ids) {
 	if (token == null) return -1;
@@ -28138,7 +28138,8 @@ function assembleBuildSceneRequest(opts) {
 				index,
 				title: typeof s.title === "string" ? s.title : "",
 				description: firstLine(s.description)
-			}))
+			})),
+			sceneIds: buildIds(scenes, "title")
 		},
 		conventions: deriveConventions(scenes),
 		neighbours: around.map((i) => scenes[i]),

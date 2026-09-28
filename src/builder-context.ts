@@ -22,6 +22,7 @@
 // with cached browsers still sending last month's format.
 // ============================================================
 
+import { buildIds } from '/view-state.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
 /**
@@ -72,6 +73,9 @@ export interface LessonOutline {
     title: string;
     description: string;
     sceneSummaries: SceneSummary[];
+    /** EVERY scene's resolved id, in order — unbounded, unlike the summaries,
+     *  so the builder can keep a replaced scene's id and a new one unique. */
+    sceneIds: string[];
 }
 
 /**
@@ -220,6 +224,7 @@ export function assembleBuildSceneRequest(opts: {
                 title: typeof s.title === 'string' ? s.title : '',
                 description: firstLine((s as { description?: unknown }).description),
             })),
+            sceneIds: buildIds(scenes, 'title'),
         },
         conventions: deriveConventions(scenes),
         neighbours: around.map((i) => scenes[i]!) as Scene[],

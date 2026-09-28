@@ -458,3 +458,57 @@ def test_the_proposal_keeps_one_function_past_the_cap(monkeypatch):
     kept = it.propose_scene().functions
     assert len(kept) == MAX_FUNCTIONS + 1, "bounded, but not down to the cap"
     assert len(kept) > MAX_FUNCTIONS, "compose must still be able to refuse it"
+
+
+# ---- stable ids -----------------------------------------------------------
+
+def _node(monkeypatch, request_body, proposal=None) -> dict:
+    _stub(monkeypatch, proposal or _good())
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    return out["result"]["ops"][0]["node"]
+
+
+def test_a_replace_keeps_the_id_the_client_resolved(monkeypatch, request_body):
+    """An id-less scene whose title collides resolves as `intro-2` on the client;
+    the replacement must keep exactly that, not re-derive `intro`."""
+    request_body["current"].pop("id", None)
+    request_body["lesson"]["sceneIds"][2] = "intro-2"
+    assert _node(monkeypatch, request_body)["id"] == "intro-2"
+
+
+def test_a_replace_keeps_the_old_id_over_a_freshly_minted_one(monkeypatch, request_body):
+    request_body["current"]["id"] = "shipped-id"
+    request_body["lesson"]["sceneIds"][2] = "shipped-id"
+    assert _node(monkeypatch, request_body)["id"] == "shipped-id"
+
+
+def test_a_replace_keeps_the_ids_of_steps_whose_title_survives(monkeypatch, request_body):
+    request_body["current"]["steps"] = [{"id": "kept-id", "title": "Add $\\vec{a}$"}]
+    proposal = _good()
+    proposal.steps.append(ProposedStep(index=1, title="New step"))
+    node = _node(monkeypatch, request_body, proposal)
+    assert [s["id"] for s in node["steps"]] == ["kept-id", "new-step"]
+
+
+def test_an_older_client_without_scene_ids_keeps_the_explicit_id(monkeypatch, request_body):
+    """A cached client sends no `sceneIds`; the title-rebuilt fallback must not
+    beat the scene's own explicit id."""
+    request_body["lesson"].pop("sceneIds")
+    request_body["current"]["id"] = "shipped-id"
+    assert _node(monkeypatch, request_body)["id"] == "shipped-id"
+
+
+def test_an_insert_does_not_collide_with_another_scene(monkeypatch, request_body):
+    request_body["op"] = "insert"
+    request_body["current"] = None
+    request_body["lesson"]["sceneIds"][0] = "cross-product"
+    assert _node(monkeypatch, request_body)["id"] == "cross-product-2"
+
+
+def test_an_insert_is_unique_past_the_summary_cap(monkeypatch, request_body):
+    """`sceneSummaries` is capped at 40; `sceneIds` is not, so a clash with scene
+    #41 is still seen."""
+    request_body["op"] = "insert"
+    request_body["current"] = None
+    request_body["lesson"]["sceneIds"] += [f"s{i}" for i in range(40)] + ["cross-product"]
+    assert _node(monkeypatch, request_body)["id"] == "cross-product-2"

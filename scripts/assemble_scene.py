@@ -22,6 +22,12 @@ from pathlib import Path
 
 from _json_format import dumps_compact_leaves
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from backend.lesson_ids import (  # noqa: E402
+    ambiguous_id_errors, assign_missing_ids, build_ids, carry_ids,
+    duplicate_id_errors, readable_slug, unique_id,
+)
+
 
 def load_json(path):
     """Load and parse a JSON file."""
@@ -75,6 +81,23 @@ def strip_unsafe_reason(scene):
     return reason
 
 
+def settle_ids(lesson):
+    """Give every scene, step, proof and proof step a stable id; refuse duplicates.
+
+    A scene builder is told to write ids, but assembly is the last gate before
+    the lesson is saved, so anything missing is filled here — with the id the
+    client already derives, so no link moves. A duplicate explicit id is an
+    error: the client would silently re-point the second one.
+    """
+    for t, ident in assign_missing_ids(lesson):
+        print(f'  Added id "{ident}" at {t.path}')
+    dups = ambiguous_id_errors(lesson) + duplicate_id_errors(lesson)
+    if dups:
+        for e in dups:
+            print(f'Error: {e}')
+        sys.exit(1)
+
+
 def cmd_list(args):
     """List scenes in a lesson."""
     lesson = load_json(args.lesson)
@@ -103,7 +126,17 @@ def cmd_add(args):
         print(f'Error: Index {idx} out of range (0..{len(lesson["scenes"])})')
         sys.exit(1)
 
+    # Freeze the existing scenes' ids FIRST: inserting a same-titled scene ahead
+    # of an id-less one would otherwise shift its derived id (intro -> intro-2).
+    # Then give the NEW scene its ids before it joins — it has no links yet, so
+    # it is the one that yields on a clash.
+    settle_ids(lesson)
+    taken = set(build_ids(lesson['scenes'], 'title'))
+    scene = {'id': unique_id(str(scene.pop('id', '') or readable_slug(scene.get('title'), 'scene')),
+                             taken), **scene}
+    assign_missing_ids(scene)
     lesson['scenes'].insert(idx, scene)
+    settle_ids(lesson)
     save_json(args.lesson, lesson)
 
     print(f'Added "{scene.get("title", "(untitled)")}" at index {idx}')
@@ -127,8 +160,17 @@ def cmd_replace(args):
 
     strip_unsafe_reason(scene)
 
-    old_title = lesson['scenes'][idx].get('title', '(untitled)')
+    old = lesson['scenes'][idx]
+    old_title = old.get('title', '(untitled)')
+    # A rebuilt scene keeps the id links into it already use — ALWAYS, even
+    # when the builder minted its own — and so does every step whose title
+    # survives.
+    settle_ids(lesson)  # freeze every existing id before changing anything
+    old_id = lesson['scenes'][idx]['id']
+    carry_ids(old, scene, old_id)
+    scene = {'id': scene.pop('id'), **scene}
     lesson['scenes'][idx] = scene
+    settle_ids(lesson)
     save_json(args.lesson, lesson)
 
     print(f'Replaced [{idx}] "{old_title}" with "{scene.get("title", "(untitled)")}"')

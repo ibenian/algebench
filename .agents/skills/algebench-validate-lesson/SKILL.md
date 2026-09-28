@@ -75,6 +75,12 @@ These checks go beyond structural schema validation:
 - Check `{{id}}` placeholders in info overlay `content` fields
 - Each placeholder must reference an active slider ID or be a valid math.js expression
 
+#### Stable IDs
+- Every scene, step, proof and proof step has an explicit `id` (deeplinks and saved references resolve by id before title)
+- Ids are unique within their array (steps within a scene, scenes within the lesson, proof steps within a proof)
+- **Proof ids are unique across the whole lesson** — root-, scene- and step-level proofs are flattened into one list and `pf=` resolves against all of it
+- Fix missing ones with `./run.sh scripts/backfill_lesson_ids.py --write <file>` — it writes the ids the client already derives, so no link moves
+
 #### Proof Checks
 - Every proof has `id`, `title`, `goal`, `steps` (non-empty)
 - Every proof step has `id`, `label`, `math`
@@ -152,6 +158,7 @@ When called with the intent to fix (by the Syntax Validator agent or user), afte
 | `\vec` (single backslash in JSON) | `\\vec` | LaTeX |
 | `\frac` (single backslash in JSON) | `\\frac` | LaTeX |
 | Missing `id` on element targeted by `remove` | Generate ID from type + index | Structure |
+| Missing `id` on a scene, step, proof or proof step | `./run.sh scripts/backfill_lesson_ids.py --write <file>` | Structure |
 | `highlights` key with no matching `\htmlClass` | Remove orphan key | Proof |
 | `\htmlClass` with no matching `highlights` key | Add stub entry `{"color":"yellow","label":""}` | Proof |
 

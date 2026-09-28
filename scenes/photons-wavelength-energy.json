@@ -24,6 +24,7 @@
   },
   "scenes": [
     {
+      "id": "light-as-a-wave-c-f-lambda",
       "title": "Light as a Wave: $c=f\\lambda$",
       "description": "Start with the classical wave picture: stretching wavelength lowers frequency when the wave speed is fixed.",
       "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## What this wave is — and what it is not\n\nThe sine wave shown here represents the **electric field** component of a classical electromagnetic wave: $E_y(x,t)=A\\sin(kx-\\omega t)$, described by Maxwell's equations.\n\nA real EM wave has **two fields** oscillating in phase, perpendicular to each other and to the propagation direction:\n\n- **Electric field** $\\vec{E}$: shown here as the sine wave in the $y$-direction.\n- **Magnetic field** $\\vec{B}$: oscillates in the $z$-direction (perpendicular to the screen), with magnitude $B=E/c$.\n\nWe show only the electric field because it is the component that does most of the work on charged matter — it drives electron oscillations, photoelectric ejection, and detector responses. The magnetic component is always present but $c$ times smaller in SI units.\n\nThis wave does not depict a single photon. In quantum terms it corresponds to a **coherent state** — a huge number of photons all sharing the same frequency, direction, and phase, like a laser beam or a radio signal. The amplitude $A$ is the peak electric field strength. A brighter beam has a larger $A$, which means more photons per second, not more energetic photons.\n\nA single photon is one quantum excitation of the field mode. It has definite energy $E=hf$ and momentum $p=h/\\lambda$, but it does not have a definite classical electric field value. To depict a single photon, you would show a localized **wave packet** — a few oscillations that taper off — not an infinite plane wave.\n\nThe quantum content of this scene is the relation $E=hf$: the wave's energy is not continuous but comes in discrete packets, each carrying energy proportional to frequency. The wave picture gives wavelength and frequency; quantization gives the energy rule.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
@@ -87,6 +88,7 @@
       ],
       "steps": [
         {
+          "id": "a-travelling-em-wave",
           "title": "A travelling EM wave",
           "description": "A sinusoidal electromagnetic wave gives the first mental model: a spatially spread disturbance with a wavelength $\\lambda$.",
           "prompt": "Introduce wavelength as crest-to-crest spacing, amplitude as peak height, and frequency as crests passing per second (period T = 1/f). The wave now visibly travels. Do not talk about photons as tiny balls.",
@@ -189,6 +191,7 @@
           ]
         },
         {
+          "id": "predict-double-the-wavelength",
           "title": "Predict: double the wavelength",
           "description": "Before revealing the graph: with $c$ fixed, if you double the wavelength $\\lambda$, what happens to the frequency $f$? Halves, doubles, or stays the same? And what shape will the $f$ vs $\\lambda$ graph be — a straight line or a curve?",
           "prompt": "Ask the learner to commit to an answer before advancing. If they hesitate, point back at c = f·lambda: the product must stay fixed. Do not reveal the answer; the next step shows the hyperbola.",
@@ -198,6 +201,7 @@
           ]
         },
         {
+          "id": "frequency-falls-as-wavelength-grows",
           "title": "Frequency falls as wavelength grows",
           "description": "Answer: $f$ halves — $f = c/\\lambda$ is an inverse proportion, so the graph is a hyperbola, not a line. With $c$ fixed, the frequency scales like $1/\\lambda$. The scale bars below compare $\\lambda$ to nanoscale objects: visible light wavelengths are on the order of viruses and bacteria.",
           "prompt": "Use the slider to compare short and long wavelengths. Ask the learner what happens to f when lambda doubles. Draw attention to the scale bars: when lambda is around 1, the wavelength is about the size of a flu virus; at lambda 5, it matches the width of an E. coli bacterium. Visible light lives in this extraordinary nanoscale world.",
@@ -474,6 +478,7 @@
           ]
         },
         {
+          "id": "visible-light-real-wavelengths",
           "title": "Visible light: real wavelengths",
           "description": "Map the abstract $\\lambda$ to real wavelengths. The vertical spectrum bar shows how frequency maps to color. Note: the wave's amplitude represents the peak electric field strength, not its energy or wavelength—amplitude depends on intensity (how many photons), not on color.",
           "prompt": "Show how the abstract wavelength maps to visible light. The vertical color bar next to the f-axis shows the direct mapping: higher frequency means shorter wavelength and bluer color. Emphasize that our eyes only see a tiny slice of the full EM spectrum. Point out that the amplitude of the wave is the electric field strength and is independent of wavelength—it depends on the light's intensity, not its color. A dim blue beam and a dim red beam have the same small amplitude; a bright red beam has a large amplitude.",
@@ -772,6 +777,7 @@
           ]
         },
         {
+          "id": "the-full-picture-vec-e-and-vec-b",
           "title": "The full picture: $\\vec{E}$ and $\\vec{B}$",
           "description": "An electromagnetic wave has two perpendicular oscillating fields. Until now we showed only the electric field $\\vec{E}$ (in $y$). The magnetic field $\\vec{B}$ oscillates in $z$, perpendicular to both $\\vec{E}$ and the propagation direction. Switch to the Iso view to see both components in 3D. This wave depicts a steady many-photon beam, not a single photon.",
           "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity. Make the beam-vs-photon distinction explicit: this travelling wave is a steady many-photon beam (a coherent state, like a laser), not a single photon — a single photon would be a localized wave packet, shown later in the wave-packet scene. Point out the two arrows at the sample point x0: they are the instantaneous field values — what a detector parked there feels — while the curves show the whole wave at once. If asked about the right-hand rule: E and B flip sign together, so the Poynting vector E cross B is proportional to sine squared — it pulses at twice the wave frequency but always points along propagation, never backward. Define the Poynting vector at first mention: S = (1/mu0) E cross B, the field's energy flux in watts per square meter; its time-average is the beam intensity.",
@@ -1955,6 +1961,7 @@
       ]
     },
     {
+      "id": "the-ultraviolet-catastrophe",
       "title": "The Ultraviolet Catastrophe",
       "description": "Classical wave theory predicts a hot oven should radiate infinite energy. The fix — energy exchanged in quanta E=hf — is the birth of quantum mechanics.",
       "markdown": "# The Ultraviolet Catastrophe\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nThis scene builds the crisis and its resolution visually: the classical Rayleigh–Jeans spectrum diverges at high frequency, while Planck's quantized spectrum stays finite and matches what hot objects actually emit.",
@@ -2006,6 +2013,7 @@
       ],
       "steps": [
         {
+          "id": "hot-things-glow",
           "title": "Hot things glow",
           "description": "Before any theory, the everyday fact: heat something and it glows. Embers glow dull red, the Sun burns yellow-white, the hottest stars shine blue-white. Predict: heat a piece of iron hotter and hotter — does its glow shift toward red or toward blue?",
           "prompt": "Anchor the phenomenon before any theory. Ask the learner to commit: hotter iron glows redder or bluer? Use the everyday anchors — embers about 800 K are dull red, the Sun about 5800 K is yellow-white, the hottest stars are blue-white. Do not mention modes or kT yet. The temperature slider here is in relative units. The gold curve is the measured blackbody spectrum — treat it as an experimental fact here; the theory fight over explaining it comes next.",
@@ -2105,6 +2113,7 @@
           ]
         },
         {
+          "id": "inside-a-hot-box-modes-and-kt",
           "title": "Inside a hot box: modes and $kT$",
           "description": "Physicists model a glowing object as a hot box (cavity) full of light waves. Two words before the theory: a *mode* is one allowed standing-wave pattern of light in the box, and $kT$ is the typical thermal energy per jiggle at temperature $T$. Classical physics gives every mode the same average energy $kT$ — and short wavelengths pack in unlimited modes. Predict the total radiated energy of a warm oven.",
           "prompt": "Define the jargon before using it: a mode is one allowed standing-wave pattern in the box (point at the three shapes), and kT is the typical thermal energy per jiggle, with k the Boltzmann constant. Then set up the predict question: classical physics gives every mode kT and there are unlimited short-wavelength modes, so what is the classical total? Also explain how to read the chart axes in plain words: frequency across, energy content at each frequency up. Do not reveal the divergence yet.",
@@ -2174,6 +2183,7 @@
           ]
         },
         {
+          "id": "the-catastrophe-revealed",
           "title": "The catastrophe, revealed",
           "description": "The classical answer is infinity. The red Rayleigh–Jeans curve $u \\propto T f^2$ climbs without limit — it shoots off the top of the chart. Real ovens follow the gold Planck curve instead: it agrees with the classical curve at low frequency, then turns over and dies. The red shading is energy the classical rule predicts that simply is not there.",
           "prompt": "Reveal the answer to the predict question: classical physics says a warm oven radiates infinite energy, which is absurd — that absurdity is the ultraviolet catastrophe. Walk the two curves: red Rayleigh-Jeans grows like T f squared forever and exits the top of the chart; gold Planck agrees at low frequency then turns over. The red shaded gap is energy that is not actually there. Let the learner drag T (or watch it bounce) and notice the gold peak grows and slides right while red always diverges.",
@@ -2259,6 +2269,7 @@
           ]
         },
         {
+          "id": "count-the-energy",
           "title": "Count the energy",
           "description": "Add up the energy frequency by frequency: slide the cutoff $f_{cut}$ to the right. The classical total (red area) grows like $f_{cut}^3$ — without bound. The quantum total (gold area) converges to a finite number proportional to $T^4$: the Stefan–Boltzmann law.",
           "prompt": "This step makes the divergence quantitative. As f_cut sweeps right, read the two live totals: the classical area grows like f_cut cubed forever, while the Planck area converges to about 5.5 T to the fourth — the Stefan-Boltzmann law. Emphasize: same box, same temperature, one rule gives infinity and the other gives a finite T-to-the-fourth total that matches experiment.",
@@ -2311,6 +2322,7 @@
           ]
         },
         {
+          "id": "planck-s-move-e-hf",
           "title": "Planck's move: $E = hf$",
           "description": "Planck's resolution: energy exchange is not arbitrary. A mode of frequency $f$ can only trade energy in whole chunks of size $E = hf$. High-frequency chunks cost more than the thermal budget $kT$ can pay, so they are frozen out — the spectrum turns over. Drag $T$: the peak slides right as $f_{peak} \\propto T$, and the glow shifts red, to white, to blue — exactly the strip from the first step.",
           "prompt": "Land the resolution. Planck quantized the exchange of energy: E = hf per chunk, so high-frequency modes are frozen out because one chunk costs more than kT. Connect the Wien peak marker to the color strip from step 0: as T rises the peak crosses the visible band and the glow shifts red to white to blue. Close with the bridge: this E = hf is the same energy rule the rest of the lesson builds on — it is the bridge from the wave picture to photons. Avoid overclaiming: Planck quantized energy exchange, not spatial wavelength.",
@@ -2775,6 +2787,7 @@
       }
     },
     {
+      "id": "the-photoelectric-effect-light-arrives-in-chunks",
       "title": "The Photoelectric Effect: Light Arrives in Chunks",
       "description": "Einstein's 1905 explanation of photoelectric emission — Kmax = hf − φ — is the experimental proof that light delivers energy one quantum at a time.",
       "markdown": "# The Photoelectric Effect\n\nShine light on a metal and electrons pop out — but only if the light's *frequency* is high enough. Below the threshold, no intensity is ever enough; above it, even dim light ejects electrons instantly. A classical wave, whose energy accumulates smoothly, predicts exactly the opposite. Einstein's 1905 resolution: light arrives in chunks of energy $E = hf$, and one electron absorbs one chunk, all or nothing:\n\n$$K_{max} = hf - \\varphi.$$\n\nMillikan spent a decade trying to refute this equation and ended up confirming it — and measuring Planck's constant $h$ from the slope.",
@@ -2808,6 +2821,7 @@
       ],
       "steps": [
         {
+          "id": "predict-can-bright-red-light-do-it",
           "title": "Predict: can bright red light do it?",
           "description": "A dim red wave washes over a metal plate. Classically, wave energy accumulates: absorb long enough and any electron should eventually gather enough to escape. Predict: must bright red light eventually eject electrons? Does dim blue light stand any chance?",
           "prompt": "Set up the classical prediction and make the learner commit. A classical wave delivers energy continuously, so brightness times time should eventually free electrons at any color — that is the classical bet. Also define the new units plainly at first use: one electron-volt is the energy an electron gains crossing one volt, about 1.6e-19 joules, and a visible photon carries 2 to 3 eV; the work function phi is the escape fee the metal charges an electron; remind them K equals one half m v squared. Do not reveal the experimental answer yet.",
@@ -2866,6 +2880,7 @@
           ]
         },
         {
+          "id": "all-or-nothing",
           "title": "All or nothing",
           "description": "The experiment says no. Light arrives as photons — chunks of energy $E = hf$ — and one electron absorbs one photon, all or nothing. Raise the intensity $I$: more photons arrive, each carrying the same energy. Raise the frequency $f$ past the work function $\\varphi$: electrons suddenly fly out, even at the dimmest setting.",
           "prompt": "Reveal the all-or-nothing rule and let the learner play. Intensity adds photons (count the gold dots as I rises) but never changes the energy per photon. The electron appears only when f exceeds phi — at any intensity — and its speed grows like the square root of the surplus f minus phi. Contrast with the classical bet from the predict step: red light below threshold never ejects, no matter how bright or how long. Point at the live yes/no readout as they drag f across phi.",
@@ -2958,6 +2973,7 @@
           ]
         },
         {
+          "id": "millikan-s-graph-k-max-vs-f",
           "title": "Millikan's graph: $K_{max}$ vs $f$",
           "description": "Plot the maximum kinetic energy of the ejected electrons against the light's frequency. Below the threshold $f_0 = \\varphi/h$: a dead zone — no electrons at any intensity. Above it, the data fall on a straight line $K_{max} = hf - \\varphi$. The white dot is the current experiment; drag $f$ to move it along the line.",
           "prompt": "Introduce the K-max versus f graph as the quantitative face of the experiment Millikan actually ran. Walk the anatomy: dead zone left of the threshold f0 = phi/h where nothing comes out, then a straight line rising from the threshold. The operating point mirrors the apparatus on the left — drag f below phi and the point drops to the axis while the electron vanishes. Read the live K-max value from the info panel; note the axes are in chart units, with K in eV in spirit.",
@@ -3080,6 +3096,7 @@
           ]
         },
         {
+          "id": "the-slope-is-h",
           "title": "The slope is $h$",
           "description": "Predict: swap the metal for one with a different escape fee $\\varphi$ — what moves, the slope or the intercept? Drag $\\varphi$ and watch: the line translates sideways, but its slope never changes. Every metal gives the same slope — Planck's constant itself. That is how Millikan measured $h$.",
           "prompt": "Predict-then-reveal inside one step. First ask: changing the metal changes phi — does that change the line's slope or just shift it? Then have the learner drag phi against the gray reference line of the first metal: the gold line translates, the slope stays fixed. The slope is h (h over e when plotting stopping voltage) — universal, independent of the metal. Close the arc: Millikan set out to refute Einstein's equation, confirmed it instead, and extracted h from graphs like this one.",
@@ -3414,6 +3431,7 @@
       }
     },
     {
+      "id": "one-photon-energy-vs-light-intensity",
       "title": "One Photon Energy vs Light Intensity",
       "description": "The energy of one photon depends on frequency; intensity depends on how many photons arrive.",
       "markdown": "# Photon Energy\n\nThe Planck-Einstein relation is\n\n$$E=hf=\\frac{hc}{\\lambda}.$$\n\nA shorter-wavelength blue photon has more energy than a longer-wavelength red photon. But that statement is about **one photon**.\n\nA beam's total delivered energy also depends on photon count:\n\n$$E_{\\text{total}}=Nhf.$$\n\nSo the useful correction is:\n\n- Blue photon: higher energy per photon than red.\n- Many red photons: can carry more total energy than one blue photon.\n- Intensity: mainly photon number flux.\n- Color/frequency: energy per photon.",
@@ -3462,6 +3480,7 @@
       ],
       "steps": [
         {
+          "id": "energy-per-photon",
           "title": "Energy per photon",
           "description": "A red photon ($\\lambda=700$ nm) carries $1.77$ eV; a blue photon ($\\lambda=450$ nm) carries $2.76$ eV. The blue photon has more energy because $E=hf$.",
           "prompt": "Emphasize that energy per photon is set by frequency. Use the eV numbers on the bars to ground the comparison.",
@@ -3550,6 +3569,7 @@
           ]
         },
         {
+          "id": "photon-count-changes-total-energy",
           "title": "Photon count changes total energy",
           "description": "Use the red photon count slider. Many lower-energy photons can exceed the energy of one higher-energy photon.",
           "prompt": "Let the learner move N_red. Emphasize that intensity is count per area per time, while frequency sets energy per photon.",
@@ -3589,6 +3609,7 @@
           ]
         },
         {
+          "id": "color-is-not-brightness",
           "title": "Color is not brightness",
           "description": "Frequency controls energy per photon. Photon number controls intensity. The two knobs are different.",
           "prompt": "Finish by separating two axes: frequency/color and intensity/count. Mention that real beams also involve area and time.",
@@ -3806,6 +3827,7 @@
       ],
       "steps": [
         {
+          "id": "a-free-spectrum-is-continuous",
           "title": "A free spectrum is continuous",
           "description": "Without boundary conditions selecting modes, wavelength can vary continuously.",
           "prompt": "Start from the contrast: free space permits a continuum. Bound systems create a ladder.",
@@ -3835,6 +3857,7 @@
           ]
         },
         {
+          "id": "boundary-conditions-pick-standing-waves",
           "title": "Boundary conditions pick standing waves",
           "description": "The wave must have nodes at both walls, so only integer half-wavelengths fit: $L=n\\lambda/2$.",
           "prompt": "Use the n slider to show exactly fitting waves. The walls require zero amplitude at both ends.",
@@ -3916,6 +3939,7 @@
           "id": "energy-n-squared"
         },
         {
+          "id": "emission-lines-are-energy-differences",
           "title": "Emission lines are energy differences",
           "description": "Atoms emit photons when electrons move between allowed energy levels: $E_{photon}=E_{high}-E_{low}$.",
           "prompt": "Use this as the bridge from box analogy to atomic spectra. Avoid saying atoms are literal boxes.",
@@ -4427,6 +4451,7 @@
       ]
     },
     {
+      "id": "photon-as-wave-packet-and-detection-event",
       "title": "Photon as Wave Packet and Detection Event",
       "description": "A photon is a quantum excitation: spread out in possibility, localized in interaction.",
       "markdown": "# What Is a Photon?\n\nA photon is a quantized excitation of the electromagnetic field. It is not a tiny classical ball and not a classical water wave.\n\nThe useful synthesis is a wave packet:\n\n$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk.$$\n\nBefore detection, the quantum state can be spatially spread out. Detection is localized and all-or-nothing: a detector either records an interaction or it does not.\n\nA careful wording is:\n\n- Before measurement: spread-out quantum state or probability amplitude.\n- At measurement: localized detection event.\n- Measurement updates the quantum state description.\n\nThis avoids the misleading picture of a physical classical wave instantly collapsing across the universe.",
@@ -4476,6 +4501,7 @@
       ],
       "steps": [
         {
+          "id": "a-localized-packet-is-built-from-many-waves",
           "title": "A localized packet is built from many waves",
           "description": "A packet is made by superposing many wave numbers $k$. Narrower packets require a broader spread of wavelengths.",
           "prompt": "Introduce superposition qualitatively. This is a conceptual visualization, not a full photon field calculation.",
@@ -4527,6 +4553,7 @@
           ]
         },
         {
+          "id": "detection-is-localized",
           "title": "Detection is localized",
           "description": "The spread-out state predicts probabilities. The detector records a localized event.",
           "prompt": "Use the detector point to distinguish state description from detection event.",
@@ -4564,6 +4591,7 @@
           ]
         },
         {
+          "id": "the-final-mental-model",
           "title": "The final mental model",
           "description": "A photon is spread out in possibility and localized in interaction. Wave and particle are incomplete classical metaphors.",
           "prompt": "Close the lesson with the core insight. Invite questions about particle in a box, atomic orbitals, or black holes as next topics.",
@@ -4611,6 +4639,7 @@
       ]
     },
     {
+      "id": "spreading-is-not-stretching",
       "title": "Spreading Is Not Stretching",
       "description": "A wave packet can spread through space while each photon's energy stays fixed; redshift changes energy per photon.",
       "markdown": "# Spreading vs Stretching\n\nThis is the most important distinction in the lesson.\n\n## Spreading\n\nA beam or wave packet expands over a larger area. The same photon energy is distributed across a larger cross-section, so intensity drops. Energy per photon stays the same.\n\n## Stretching\n\nThe wavelength itself grows. Since\n\n$$E=\\frac{hc}{\\lambda},$$\n\nstretching the wavelength lowers the energy per photon.\n\nRedshift is a stretching effect. Doppler redshift comes from relative motion. Gravitational redshift comes from climbing out of a gravitational field. Cosmological redshift is described by\n\n$$\\lambda_{obs}=\\lambda_{em}(1+z).$$\n\nIn expanding spacetime, local conservation laws still hold, but a single global total energy for the universe is not generally well-defined.",
@@ -4661,6 +4690,7 @@
       ],
       "steps": [
         {
+          "id": "spreading-dims-the-beam",
           "title": "Spreading dims the beam",
           "description": "Move the radius slider. The footprint grows, so intensity drops, but the photon energy label stays unchanged.",
           "prompt": "Explain inverse-area intuition without over-formalizing it. Energy per photon is unchanged by spreading alone.",
@@ -4702,6 +4732,7 @@
           ]
         },
         {
+          "id": "stretching-lowers-photon-energy",
           "title": "Stretching lowers photon energy",
           "description": "Redshift increases wavelength. The wave becomes longer and $E=hc/\\lambda$ decreases.",
           "prompt": "Use the z slider to show wavelength stretching. Emphasize energy per photon, not photon count.",
@@ -4749,6 +4780,7 @@
           ]
         },
         {
+          "id": "cosmological-caution",
           "title": "Cosmological caution",
           "description": "In expanding spacetime, local conservation remains meaningful. A global total energy for the whole universe is not generally well-defined.",
           "prompt": "State the GR caveat carefully. Avoid saying the energy simply disappears.",
@@ -4928,6 +4960,7 @@
       }
     },
     {
+      "id": "where-intuition-breaks-black-holes",
       "title": "Where Intuition Breaks: Black Holes",
       "description": "Extreme gravity sharpens the lesson: photon energy depends on observer and spacetime, and singularities require unfinished physics.",
       "markdown": "# Black Holes and the Limits of the Picture\n\nNear a black hole, intuition based on ordinary wave packets becomes unreliable.\n\nCorrect statements:\n\n- Falling photons can blueshift for local observers.\n- Photon energy contributes to the black hole's mass-energy when absorbed.\n- Photons do not become little classical balls compressed to a mathematical point.\n- Singularities are not fully described by established quantum theory and general relativity together.\n\nThe honest ending is that black holes point toward quantum gravity, which remains unsolved.",
@@ -4989,6 +5022,7 @@
       ],
       "steps": [
         {
+          "id": "falling-light-blueshifts-locally",
           "title": "Falling light blueshifts locally",
           "description": "A falling photon can be measured with increasing frequency by local observers deeper in the gravitational field.",
           "prompt": "State observer dependence. Do not imply there is one universal photon energy in curved spacetime.",
@@ -5022,6 +5056,7 @@
           ]
         },
         {
+          "id": "absorbed-energy-changes-the-black-hole",
           "title": "Absorbed energy changes the black hole",
           "description": "If the photon is absorbed, its energy contributes to the black hole's mass-energy.",
           "prompt": "Make this conservative: absorbed energy contributes to mass-energy. Avoid details of horizon thermodynamics.",
@@ -5052,6 +5087,7 @@
           ]
         },
         {
+          "id": "do-not-overextend-the-picture",
           "title": "Do not overextend the picture",
           "description": "Photons do not literally collapse into a classical point. The singularity problem needs quantum gravity.",
           "prompt": "Close by acknowledging the unsolved part. Use this as a boundary on the model, not a mystery flourish.",

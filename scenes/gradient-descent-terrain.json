@@ -26,6 +26,7 @@
   "unsafeExplanation": "The Himmelblau animated descent scene uses iterative JavaScript loops to compute gradient descent paths step-by-step. No closed-form solution exists for this non-convex function, so native JS iteration is required. Scenes 1 and 2 (elliptic bowl) run entirely in the math.js sandbox.",
   "scenes": [
     {
+      "id": "gradient-descent-on-an-elliptic-bowl",
       "title": "Gradient Descent on an Elliptic Bowl",
       "description": "We optimize the objective $f(x,y)=0.2(0.6x^2+2y^2)$. The surface is steeper in $y$ than $x$, so descent contracts faster along $y$.",
       "markdown": "# Gradient Descent on a 3D Objective Surface\n\nWe minimize the objective\n\n$$f(x,y)=0.2\\,(a x^2+b y^2), \\quad a=0.6,\\; b=2.0$$\n\nThis is a convex bowl with anisotropic curvature.\n\n## Gradient\n\n$$\\nabla f(x,y)=\\left(0.4ax,\\;0.4by\\right)$$\n\nThe gradient points uphill. Gradient descent moves downhill:\n\n$$\\begin{aligned}\nx_{k+1} &= x_k-\\eta\\,a\\,x_k=(1-\\eta a)x_k \\\\\ny_{k+1} &= y_k-\\eta\\,b\\,y_k=(1-\\eta b)y_k\n\\end{aligned}$$\n\nSo the iterate contracts geometrically toward the minimizer $(0,0)$.\n\n## Stability Intuition\n\nFor a quadratic, convergence requires\n\n$$0<\\eta<\\frac{2}{\\lambda_{\\max}}$$\n\nHere the dominant curvature is $b=2$, so too-large $\\eta$ can cause oscillation or divergence in the steep direction.\n\n## How To Read The Visualization\n\n- The surface height is objective value $f(x,y)$\n- Gold curve: descent trajectory over iterations\n- Gold vector: current iterate $\\mathbf{x}_k=(x_k,y_k,f(x_k,y_k))$\n- Red segment: local downhill move direction from current point\n\nUse sliders to change start point and learning rate, then inspect how quickly (or smoothly) convergence happens.",
@@ -181,6 +182,7 @@
       ],
       "steps": [
         {
+          "id": "objective-terrain",
           "title": "Objective terrain",
           "description": "The quadratic bowl $f(x,y)=0.2(0.6x^2+2y^2)$ is steeper along $y$, so level sets are ellipses.",
           "add": [
@@ -211,6 +213,7 @@
           ]
         },
         {
+          "id": "start-point-and-first-descent-direction",
           "title": "Start point and first descent direction",
           "description": "Start at $(x_0,y_0)=(-3,2.5)$. The red segment points toward $\\mathbf{x}_1=\\mathbf{x}_0-\\eta\\nabla f(\\mathbf{x}_0)$ with $\\eta=0.2$.",
           "add": [
@@ -252,6 +255,7 @@
           ]
         },
         {
+          "id": "trajectory-over-iterations",
           "title": "Trajectory over iterations",
           "description": "With fixed $\\eta=0.2$, iterates follow geometric decay: $x_k=x_0(1-0.6\\eta)^k$, $y_k=y_0(1-2\\eta)^k$.",
           "remove": [
@@ -278,6 +282,7 @@
           ]
         },
         {
+          "id": "interactive-simulator",
           "title": "Interactive simulator",
           "description": "Tune learning rate and start point. The path clamps at iteration $n$, and the gold vector marks the current iterate at index $k$.",
           "remove": [
@@ -431,6 +436,7 @@
       ]
     },
     {
+      "id": "one-gradient-descent-iteration-step-by-step-breakdown",
       "title": "One Gradient Descent Iteration: Step-by-Step Breakdown",
       "description": "Break one update into pieces: current point, gradient, scaled step, and next point using $\\mathbf{x}_{k+1}=\\mathbf{x}_k-\\eta\\nabla f(\\mathbf{x}_k)$.",
       "prompt": "You are teaching one-step gradient descent mechanics. Prioritize a numbered breakdown: (1) current point, (2) gradient direction and magnitude, (3) scaled step eta times gradient, (4) updated point. Keep responses concise (2-4 sentences), and always mention whether eta is stable or too large for this quadratic. If the user asks for intuition, relate steep vs flat axes to curvature.",
@@ -611,6 +617,7 @@
       ],
       "steps": [
         {
+          "id": "1-current-iterate-mathbf-x-k",
           "title": "1) Current iterate $\\mathbf{x}_k$",
           "description": "Start at $\\mathbf{x}_k=(-2.8,\\;2.2)$. The gold vector rises to the surface at height $f(\\mathbf{x}_k)$.",
           "add": [
@@ -633,6 +640,7 @@
           ]
         },
         {
+          "id": "2-compute-gradient-nabla-f-mathbf-x-k",
           "title": "2) Compute gradient $\\nabla f(\\mathbf{x}_k)$",
           "description": "$\\nabla f(x_k,y_k)=(0.6x_k,\\,2y_k)=(-1.68,\\,4.4)$. Red and blue segments show each gradient component in the tangent plane direction.",
           "add": [
@@ -677,6 +685,7 @@
           ]
         },
         {
+          "id": "3-scale-by-learning-rate-and-step-downhill",
           "title": "3) Scale by learning rate and step downhill",
           "description": "With $\\eta=0.2$, move by $-\\eta\\nabla f(\\mathbf{x}_k)$ to get $\\mathbf{x}_{k+1}=(-2.464,\\;1.32)$.",
           "add": [
@@ -718,6 +727,7 @@
           ]
         },
         {
+          "id": "4-interactive-one-step-simulator",
           "title": "4) Interactive one-step simulator",
           "description": "Adjust $x_k,y_k,\\eta$. Gold is current point, red is the update segment, green is next point. This is exactly one GD iteration.",
           "remove": [
@@ -841,6 +851,7 @@
       ]
     },
     {
+      "id": "non-convex-objective-himmelblau-landscape",
       "title": "Non-Convex Objective: Himmelblau Landscape",
       "description": "Himmelblau's function is a non-convex objective with multiple local minima and saddle regions, illustrating basin dependence in gradient-based optimization.",
       "prompt": "Teach non-convex optimization with precise terms: local minima, global minima, saddle points, and basin of attraction. Emphasize that initialization changes which minimum gradient descent converges to. Keep explanations concise and geometric.",
@@ -997,6 +1008,7 @@
       ],
       "steps": [
         {
+          "id": "non-convex-terrain-surface",
           "title": "Non-convex terrain surface",
           "description": "Himmelblau's function creates multiple valleys separated by ridges and saddle-like regions.",
           "add": [
@@ -1027,6 +1039,7 @@
           ]
         },
         {
+          "id": "multiple-minima",
           "title": "Multiple minima",
           "description": "Four known local minima (also global for this function) are marked. Different starts can descend into different basins.",
           "add": [
@@ -1081,6 +1094,7 @@
           ]
         },
         {
+          "id": "interactive-local-descent-step",
           "title": "Interactive local descent step",
           "description": "Move $(x_p,y_p)$ and learning rate $\\eta$. Gold = current point, red = one gradient step. Watch how direction and destination vary across basins.",
           "add": [
@@ -1170,6 +1184,7 @@
           ]
         },
         {
+          "id": "animated-descent-probe",
           "title": "Animated descent probe",
           "description": "Animate full gradient-descent iterations over Himmelblau from the current start point. The cyan path shows the entire descent trajectory toward a basin minimum.\n\n**Try it:** Move $x_p$, $y_p$ to start near different basins. Then **increase $\\eta$** \u2014 watch what happens when the learning rate is too large: the path overshoots the minimum and climbs back up. This divergence is why choosing the right learning rate matters.",
           "remove": [

@@ -1,0 +1,233 @@
+"""Stable lesson ids: backend/lesson_ids.py and scripts/backfill_lesson_ids.py."""
+
+import json
+from pathlib import Path
+
+import pytest
+
+from backend.lesson_ids import (
+    ambiguous_id_errors, assign_missing_ids, build_ids, carry_ids,
+    duplicate_id_errors, id_errors,
+    iter_id_targets, missing_id_errors, readable_slug, slugify,
+)
+from scripts.backfill_lesson_ids import backfill_text
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.mark.parametrize('title, slug', [
+    ('Finding Eigenvalues', 'finding-eigenvalues'),
+    ("Vectors That Don't Rotate", 'vectors-that-don-t-rotate'),
+    ('Eigenvector $\\mathbf{v}_1 = (1,1)/\\sqrt{2}$: stretched 4x',
+     'eigenvector-mathbf-v-1-1-1-sqrt-2-stretched-4x'),
+    ('  --Leading & trailing--  ', 'leading-trailing'),
+    ('', ''),
+    (None, ''),
+])
+def test_slugify_matches_client(title, slug):
+    # Same rule as slugify() in src/view-state.ts.
+    assert slugify(title) == slug
+
+
+def test_build_ids_mirrors_client_resolution():
+    items = [{'title': 'Intro'}, {'title': 'Intro'}, {'id': 'kept', 'title': 'x'}, {}]
+    assert build_ids(items, 'title') == ['intro', 'intro-2', 'kept', '3']
+
+
+def _lesson():
+    return {
+        'title': 'L',
+        'scenes': [{
+            'title': 'Drag',
+            'steps': [{'title': 'Setup'}, {'id': 'force', 'title': 'Force'}, {'title': 'Setup'}],
+            'proof': {'title': 'Terminal speed', 'steps': [{'label': 'Balance'}, {'math': 'x'}]},
+        }],
+    }
+
+
+def test_targets_cover_scenes_steps_proofs_and_proof_steps():
+    kinds = [(t.kind, t.path, t.ident) for t in iter_id_targets(_lesson())]
+    assert kinds == [
+        ('scene', 'scenes[0]', 'drag'),
+        ('proof', 'scenes[0].proof', 'terminal-speed'),
+        ('proof-step', 'scenes[0].proof.steps[0]', 'balance'),
+        ('proof-step', 'scenes[0].proof.steps[1]', '1'),
+        ('step', 'scenes[0].steps[0]', 'setup'),
+        ('step', 'scenes[0].steps[1]', 'force'),
+        ('step', 'scenes[0].steps[2]', 'setup-2'),
+    ]
+
+
+def test_assign_writes_client_ids_and_names_untitled_by_kind():
+    data = _lesson()
+    written = {t.path: ident for t, ident in assign_missing_ids(data)}
+    assert written == {
+        'scenes[0]': 'drag',
+        'scenes[0].proof': 'terminal-speed',
+        'scenes[0].proof.steps[0]': 'balance',
+        # Untitled: the client's id is the bare index — write a real name.
+        'scenes[0].proof.steps[1]': 'proof-step-2',
+        'scenes[0].steps[0]': 'setup',
+        'scenes[0].steps[2]': 'setup-2',
+    }
+    assert id_errors(data) == []
+
+
+def test_missing_and_duplicate_errors():
+    data = _lesson()
+    assert 'scenes[0].steps[0]: missing "id" (suggested: "setup")' in missing_id_errors(data)
+    data['scenes'][0]['steps'][2]['id'] = 'force'
+    assert duplicate_id_errors(data) == [
+        'scenes[0].steps[2]: duplicate id "force" (also at scenes[0].steps[1])']
+
+
+def test_bare_scene_gets_ids_too():
+    scene = {'title': 'Solo', 'steps': [{'title': 'One'}]}
+    assign_missing_ids(scene)
+    assert scene['id'] == 'solo' and scene['steps'][0]['id'] == 'one'
+
+
+def test_proofs_at_every_level():
+    data = {'proof': [{'title': 'Root'}],
+            'scenes': [{'title': 'S', 'steps': [{'title': 'T', 'proof': {'title': 'Nested'}}]}]}
+    paths = {t.path for t in iter_id_targets(data) if t.kind == 'proof'}
+    assert paths == {'proof[0]', 'scenes[0].steps[0].proof'}
+
+
+def test_backfill_inserts_lines_without_reformatting():
+    text = (
+        '{\n'
+        '  "scenes": [\n'
+        '    {\n'
+        '      "title": "Drag",\n'
+        '      "steps": [{"title": "One", "v": [1, 2]}],\n'
+        '      "proof": {"title": "P", "steps": [{"label": "A"}, {}]}\n'
+        '    }\n'
+        '  ]\n'
+        '}\n'
+    )
+    out, changes = backfill_text(text)
+    assert len(changes) == 5
+    assert out == (
+        '{\n'
+        '  "scenes": [\n'
+        '    {\n'
+        '      "id": "drag",\n'
+        '      "title": "Drag",\n'
+        '      "steps": [{"id": "one", "title": "One", "v": [1, 2]}],\n'
+        '      "proof": {"id": "p", "title": "P", "steps": [{"id": "a", "label": "A"}, {"id": "proof-step-2"}]}\n'
+        '    }\n'
+        '  ]\n'
+        '}\n'
+    )
+    # Idempotent.
+    assert backfill_text(out) == (out, [])
+
+
+def test_backfill_preserves_escapes_and_unicode():
+    text = '{"scenes": [{"title": "Café \\u00e9 \\"q\\"", "note": "a\\\\b"}]}'
+    out, _ = backfill_text(text)
+    assert out.startswith('{"scenes": [{"id": "caf-q", "title": "Café \\u00e9')
+    assert json.loads(out)['scenes'][0]['note'] == 'a\\b'
+
+
+def test_proof_ids_are_unique_lesson_wide():
+    """The client flattens root/scene/step proofs into one list and resolves
+    `pf=` against all of it (collectAllProofs + proofId)."""
+    data = {'scenes': [
+        {'title': 'A', 'proof': {'id': 'same', 'title': 'P'}},
+        {'title': 'B', 'steps': [{'id': 's', 'title': 's', 'proof': {'id': 'same', 'title': 'Q'}}]},
+    ]}
+    assert any('duplicate id "same"' in e for e in duplicate_id_errors(data))
+
+
+def test_an_untitled_proof_keeps_its_global_index_token():
+    """`pf=_idx_<n>` is not an integer, so nothing else would resolve an old link
+    to an untitled proof — keep the token, numbered over the flattened list."""
+    data = {'proof': {'title': 'Root'},
+            'scenes': [{'title': 'A', 'proof': [{'title': 'P'}, {}]},
+                       {'title': 'B', 'steps': [{'title': 't', 'proof': {}}]}]}
+    written = {t.path: i for t, i in assign_missing_ids(data)}
+    assert written['scenes[0].proof[1]'] == '_idx_2'
+    assert written['scenes[1].steps[0].proof'] == '_idx_3'
+
+
+def test_carry_ids_keeps_the_scene_and_surviving_steps():
+    old = {'id': 'shipped', 'steps': [{'title': 'Setup'}, {'id': 'kept', 'title': 'Force'}]}
+    new = {'id': 'fresh', 'steps': [{'id': 'force', 'title': 'Force'}, {'id': 'setup', 'title': 'New'}]}
+    carry_ids(old, new, 'shipped')
+    assert new['id'] == 'shipped'
+    assert [s['id'] for s in new['steps']] == ['kept', 'setup']
+
+
+def test_readable_slug_respects_the_cap():
+    assert readable_slug('x' * 60, 'f') == 'x' * 48          # no word boundary
+    assert readable_slug('word ' * 20, 'f') == '-'.join(['word'] * 9)  # 44 chars
+    assert all(len(readable_slug(t, 'f')) <= 48 for t in ['a' * 49, 'ab-' * 30, 'a' * 48 + ' b'])
+
+
+def test_carry_ids_matches_repeated_titles_in_order():
+    old = {'steps': [{'title': 'Setup'}, {'title': 'Setup'}]}
+    new = {'steps': [{'id': 'a', 'title': 'Setup'}, {'id': 'b', 'title': 'Setup'}]}
+    carry_ids(old, new, 'x')
+    assert [s['id'] for s in new['steps']] == ['setup', 'setup-2']
+
+
+@pytest.mark.parametrize('path', sorted((ROOT / 'scenes').glob('*.json'))
+                         + sorted((ROOT / 'scenes' / 'draft').glob('*.json')),
+                         ids=lambda p: p.name)
+def test_every_repo_lesson_has_stable_ids(path):
+    # Fix with: ./run.sh scripts/backfill_lesson_ids.py --write <file>
+    assert id_errors(json.loads(path.read_text())) == []
+
+
+def test_a_collision_resolved_fallback_is_kept():
+    """Step 1 is untitled while step 0 is explicitly `1`: the client resolves
+    step 1 as `1-2`, which is not an integer — keep it so `st=1-2` still works."""
+    data = {'title': 's', 'steps': [{'id': '1', 'title': 'x'}, {}]}
+    assert dict((t.path, i) for t, i in assign_missing_ids(data))['steps[1]'] == '1-2'
+
+
+def test_a_renamed_index_fallback_does_not_collide():
+    data = {'title': 's', 'steps': [{'title': 'a'}, {'id': 'step-2', 'title': 'b'}, {}]}
+    # steps[2] would become step-3; steps[0]'s untitled twin would be step-1 —
+    # force a clash: an explicit step-3 already exists.
+    data['steps'][1]['id'] = 'step-3'
+    written = dict((t.path, i) for t, i in assign_missing_ids(data))
+    assert written['steps[2]'] == 'step-3-2'
+
+
+def test_carry_ids_matches_exact_titles_not_slugs():
+    old = {'steps': [{'title': 'A+B'}, {'title': 'A B'}]}   # resolve a-b, a-b-2
+    new = {'steps': [{'title': 'A B'}]}
+    carry_ids(old, new, 'x')
+    assert new['steps'][0]['id'] == 'a-b-2'
+
+
+def test_carry_ids_keeps_proof_and_proof_step_ids():
+    old = {'proof': {'id': 'p1', 'title': 'Balance', 'steps': [{'label': 'Given'}, {'id': 'k', 'label': 'Sum'}]},
+           'steps': [{'title': 'S', 'proof': {'title': 'Nested'}}]}
+    new = {'proof': {'id': 'minted', 'title': 'Balance', 'steps': [{'id': 'x', 'label': 'Sum'}, {'label': 'New'}]},
+           'steps': [{'title': 'S', 'proof': {'id': 'other', 'title': 'Nested'}}]}
+    carry_ids(old, new, 'scene')
+    assert new['proof']['id'] == 'p1'
+    assert [s['id'] for s in new['proof']['steps']] == ['k', 'new']
+    assert new['steps'][0]['proof']['id'] == 'nested'
+
+
+def test_backfill_overwrites_an_empty_id_in_place():
+    out, changes = backfill_text('{"scenes": [{"id": "", "title": "Intro"}]}')
+    assert out == '{"scenes": [{"id": "intro", "title": "Intro"}]}'
+    assert len(changes) == 1
+
+
+def test_an_ambiguous_legacy_layout_is_reported_not_swapped():
+    """The client resolves this as intro / intro-2. Writing `intro-2` onto the
+    first scene would swap both links; writing `intro` would duplicate. Leave
+    it for a human."""
+    data = {'scenes': [{'title': 'Intro'}, {'id': 'intro', 'title': 'Intro'}]}
+    assert assign_missing_ids(data) == []
+    assert 'id' not in data['scenes'][0]
+    assert ambiguous_id_errors(data) == [
+        'scenes[0]: missing "id", and its current link id "intro" is also an '
+        'explicit id elsewhere — assign both ids by hand']

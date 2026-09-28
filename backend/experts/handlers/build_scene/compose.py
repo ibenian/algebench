@@ -50,6 +50,7 @@ from typing import Optional, Union
 
 from backend.expression_fields import carries_expressions
 from backend.js_only import JS_ONLY_ALTERNATIVES
+from backend.lesson_ids import readable_slug, unique_id
 from backend.mathjs_extensions import CORE_MATH_NAMES, EXTENSION_NAMES
 from backend.model.lesson import Element, Scene, Step
 
@@ -861,9 +862,16 @@ def compose(
     _pull_sliders_forward(per_step_sliders, first_use)
 
     ordered = sorted(steps, key=lambda s: s.index)
+    # Every step gets a stable id (deeplinks and saved references resolve by id
+    # before title), minted from its title like element ids — never the model's.
+    step_titles = [s.title.strip() or f"Step {i + 1}" for i, s in enumerate(ordered)]
+    taken_step_ids: set[str] = set()
+    step_ids = [unique_id(readable_slug(t, f"step-{i + 1}"), taken_step_ids)
+                for i, t in enumerate(step_titles)]
     built_steps = [
         Step.model_validate({
-            "title": s.title.strip() or f"Step {i + 1}",
+            "id": step_ids[i],
+            "title": step_titles[i],
             **({"description": s.description.strip()} if s.description.strip() else {}),
             **({"add": per_step.pop(s.index, [])} if per_step.get(s.index) else {}),
             **({"sliders": per_step_sliders.pop(s.index)}
@@ -882,7 +890,9 @@ def compose(
             f"does not define (it has {len(ordered)}). An element in a step that "
             f"never runs simply never appears.")
 
-    body: dict = {"title": title.strip()}
+    # The scene id is provisional: the handler keeps a replaced scene's own id
+    # and de-duplicates against the lesson's other scenes, which compose cannot see.
+    body: dict = {"id": readable_slug(title, "scene"), "title": title.strip()}
     if (description or "").strip():
         body["description"] = description.strip()
     # After the elements, so a function colliding with a slider is caught with the

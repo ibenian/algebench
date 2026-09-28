@@ -42,6 +42,14 @@
     "title": "Span: Linear Combinations Fill Space",
     "description": "The span of a set of vectors is the collection of all their linear combinations. One vector spans a line, two independent vectors span a plane, and three independent vectors span all of $\\mathbb{R}^3$"
    }
+  ],
+  "sceneIds": [
+   "vector-addition-vec-a-vec-b-vec-c",
+   "cross-product-vec-a-times-vec-b",
+   "dot-product-vec-a-cdot-vec-b",
+   "scalar-multiplication-c-vec-v",
+   "vector-subtraction-vec-a-vec-b",
+   "span-linear-combinations-fill-space"
   ]
  },
  "conventions": {
@@ -64,6 +72,7 @@
  },
  "neighbours": [
   {
+   "id": "cross-product-vec-a-times-vec-b",
    "title": "Cross Product: $\\vec{a} \\times \\vec{b}$",
    "description": "The cross product of $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$ yields $\\vec{a} \\times \\vec{b} = (0, 0, 4)$, perpendicular to both vectors.",
    "markdown": "# Cross Product\n\nThe **cross product** $\\vec{a} \\times \\vec{b}$ produces a vector **perpendicular** to both input vectors.\n\n## Definition\n\nFor vectors $\\vec{a} = (a_1, a_2, a_3)$ and $\\vec{b} = (b_1, b_2, b_3)$:\n\n$$\\vec{a} \\times \\vec{b} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ a_1 & a_2 & a_3 \\\\ b_1 & b_2 & b_3 \\end{vmatrix}$$\n\nExpanding the determinant:\n\n$$\\vec{a} \\times \\vec{b} = (a_2 b_3 - a_3 b_2)\\hat{i} - (a_1 b_3 - a_3 b_1)\\hat{j} + (a_1 b_2 - a_2 b_1)\\hat{k}$$\n\n## This Example\n\nWith $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$:\n\n$$\\vec{a} \\times \\vec{b} = (0 \\cdot 0 - 0 \\cdot 2, \\; 0 \\cdot 1 - 2 \\cdot 0, \\; 2 \\cdot 2 - 0 \\cdot 1) = (0, 0, 4)$$\n\nThe result points along the **positive z-axis** (shown in gold).\n\n## Geometric Meaning\n\n- **Direction**: Perpendicular to both $\\vec{a}$ and $\\vec{b}$, following the right-hand rule\n- **Magnitude**: Equal to the area of the parallelogram formed by $\\vec{a}$ and $\\vec{b}$\n\n$$|\\vec{a} \\times \\vec{b}| = |\\vec{a}| \\cdot |\\vec{b}| \\cdot \\sin\\theta = 4$$\n\nThe purple parallelogram in the visualization has area exactly $4$.\n\n## Key Properties\n\n- **Anti-commutative**: $\\vec{b} \\times \\vec{a} = -(\\vec{a} \\times \\vec{b})$\n- **Not associative**: $(\\vec{a} \\times \\vec{b}) \\times \\vec{c} \\neq \\vec{a} \\times (\\vec{b} \\times \\vec{c})$\n- **Distributive**: $\\vec{a} \\times (\\vec{b} + \\vec{c}) = \\vec{a} \\times \\vec{b} + \\vec{a} \\times \\vec{c}$\n\n> **Tip**: Use the right-hand rule — curl fingers from $\\vec{a}$ to $\\vec{b}$, your thumb points in the direction of $\\vec{a} \\times \\vec{b}$.",
@@ -229,6 +238,7 @@
    ],
    "steps": [
     {
+     "id": "add-vector-vec-a",
      "title": "Add vector $\\vec{a}$",
      "description": "Draw $\\vec{a} = (2, 0, 0)$ along the $x$-axis.",
      "add": [
@@ -270,6 +280,7 @@
      ]
     },
     {
+     "id": "add-vector-vec-b",
      "title": "Add vector $\\vec{b}$",
      "description": "Draw $\\vec{b} = (1, 2, 0)$ in the $xy$-plane — both vectors are flat.",
      "add": [
@@ -311,6 +322,7 @@
      ]
     },
     {
+     "id": "show-parallelogram",
      "title": "Show parallelogram",
      "description": "The parallelogram spanned by $\\vec{a}$ and $\\vec{b}$ has area $|\\vec{a} \\times \\vec{b}| = 4$.",
      "add": [
@@ -385,6 +397,7 @@
      ]
     },
     {
+     "id": "show-vec-a-times-vec-b",
      "title": "Show $\\vec{a} \\times \\vec{b}$",
      "description": "$\\vec{a} \\times \\vec{b} = (0, 0, 4)$ — perpendicular to both, pointing up by the right-hand rule.",
      "add": [
@@ -438,6 +451,7 @@
      }
     },
     {
+     "id": "interactive-adjust-vec-a-and-vec-b",
      "title": "Interactive: adjust $\\vec{a}$ and $\\vec{b}$",
      "description": "Use the sliders to change each component. The gold vector $\\vec{a} \\times \\vec{b}$ is always perpendicular to both — watch it flip when you reverse the orientation.",
      "remove": [
@@ -601,6 +615,7 @@
    "prompt": "Teach cross product as orientation plus area: direction from right-hand rule, magnitude as parallelogram area, and sign flip under order reversal. Ask the learner to test near-parallel vectors and explain why the cross product shrinks toward zero."
   },
   {
+   "id": "scalar-multiplication-c-vec-v",
    "title": "Scalar Multiplication: $c\\vec{v}$",
    "description": "Multiplying a vector by a scalar $c$ stretches or shrinks it. Positive $c$ preserves direction, negative $c$ reverses it.",
    "markdown": "# Scalar Multiplication\n\n**Scalar multiplication** scales a vector's magnitude without changing its line of action (unless $c < 0$, which reverses direction).\n\n## Definition\n\nFor a scalar $c$ and vector $\\vec{v} = (v_1, v_2, v_3)$:\n\n$$c\\vec{v} = (cv_1, cv_2, cv_3)$$\n\n## This Example\n\nWith $\\vec{v} = (1, 1.5, 0.5)$:\n\n- $2\\vec{v} = (2, 3, 1)$ — twice as long, same direction\n- $-1\\vec{v} = (-1, -1.5, -0.5)$ — same length, opposite direction\n- $0.5\\vec{v} = (0.5, 0.75, 0.25)$ — half as long, same direction\n\n## Geometric Meaning\n\n- $|c| > 1$: vector gets **longer**\n- $|c| < 1$: vector gets **shorter**\n- $c > 0$: **same direction** as original\n- $c < 0$: **opposite direction**\n- $c = 0$: **zero vector**\n\n## Magnitude\n\n$$|c\\vec{v}| = |c| \\cdot |\\vec{v}|$$\n\nFor $\\vec{v} = (1, 1.5, 0.5)$: $|\\vec{v}| = \\sqrt{1 + 2.25 + 0.25} = \\sqrt{3.5} \\approx 1.87$\n\n## Key Properties\n\n- **Associative**: $a(b\\vec{v}) = (ab)\\vec{v}$\n- **Distributive over vector addition**: $c(\\vec{u} + \\vec{v}) = c\\vec{u} + c\\vec{v}$\n- **Distributive over scalar addition**: $(a + b)\\vec{v} = a\\vec{v} + b\\vec{v}$\n- **Identity**: $1\\vec{v} = \\vec{v}$\n\n> **Tip**: All scalar multiples of $\\vec{v}$ lie along the same line through the origin. This line is the **span** of $\\vec{v}$.",
@@ -751,6 +766,7 @@
    ],
    "steps": [
     {
+     "id": "original-vector-vec-v",
      "title": "Original vector $\\vec{v}$",
      "description": "Start with $\\vec{v} = (1, 1.5, 0.5)$, with magnitude $|\\vec{v}| = \\sqrt{3.5} \\approx 1.87$.",
      "add": [
@@ -788,6 +804,7 @@
      ]
     },
     {
+     "id": "double-2-vec-v",
      "title": "Double: $2\\vec{v}$",
      "description": "$2\\vec{v} = (2, 3, 1)$ — twice the length, same direction as $\\vec{v}$.",
      "add": [
@@ -825,6 +842,7 @@
      ]
     },
     {
+     "id": "negate-vec-v",
      "title": "Negate: $-\\vec{v}$",
      "description": "$-\\vec{v} = (-1, -1.5, -0.5)$ — same length, opposite direction.",
      "add": [
@@ -862,6 +880,7 @@
      ]
     },
     {
+     "id": "half-0-5-vec-v",
      "title": "Half: $0.5\\vec{v}$",
      "description": "$0.5\\vec{v} = (0.5, 0.75, 0.25)$ — all scalar multiples lie on the span of $\\vec{v}$.",
      "add": [
@@ -946,6 +965,7 @@
   }
  ],
  "current": {
+  "id": "dot-product-vec-a-cdot-vec-b",
   "title": "Dot Product: $\\vec{a} \\cdot \\vec{b}$",
   "description": "The dot product $\\vec{a} \\cdot \\vec{b} = |\\vec{a}||\\vec{b}|\\cos\\theta$ measures how much two vectors point in the same direction. The projection of $\\vec{b}$ onto $\\vec{a}$ has length $\\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|}$.",
   "markdown": "# Dot Product\n\nThe **dot product** (or scalar product) takes two vectors and returns a **scalar**.\n\n## Definition\n\nFor vectors $\\vec{a} = (a_1, a_2, a_3)$ and $\\vec{b} = (b_1, b_2, b_3)$:\n\n$$\\vec{a} \\cdot \\vec{b} = a_1 b_1 + a_2 b_2 + a_3 b_3$$\n\n## Geometric Form\n\n$$\\vec{a} \\cdot \\vec{b} = |\\vec{a}| \\cdot |\\vec{b}| \\cdot \\cos\\theta$$\n\nwhere $\\theta$ is the angle between the vectors.\n\n## This Example\n\nWith $\\vec{a} = (3, 1, 0)$ and $\\vec{b} = (1, 3, 1)$:\n\n$$\\vec{a} \\cdot \\vec{b} = 3 \\cdot 1 + 1 \\cdot 3 + 0 \\cdot 1 = 6$$\n\n## Projection\n\nThe **scalar projection** of $\\vec{b}$ onto $\\vec{a}$ is:\n\n$$\\text{comp}_{\\vec{a}} \\vec{b} = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|} = \\frac{6}{\\sqrt{10}} \\approx 1.90$$\n\nThe **vector projection** is:\n\n$$\\text{proj}_{\\vec{a}} \\vec{b} = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|^2} \\vec{a} = \\frac{6}{10}(3, 1, 0) = (1.8, 0.6, 0)$$\n\n## Key Properties\n\n- **Commutative**: $\\vec{a} \\cdot \\vec{b} = \\vec{b} \\cdot \\vec{a}$\n- **Distributive**: $\\vec{a} \\cdot (\\vec{b} + \\vec{c}) = \\vec{a} \\cdot \\vec{b} + \\vec{a} \\cdot \\vec{c}$\n- **Orthogonality test**: $\\vec{a} \\cdot \\vec{b} = 0 \\iff \\vec{a} \\perp \\vec{b}$\n- **Self dot product**: $\\vec{a} \\cdot \\vec{a} = |\\vec{a}|^2$\n\n> **Tip**: The dot product is positive when vectors point roughly the same way, zero when perpendicular, and negative when they point apart.",
@@ -1096,6 +1116,7 @@
   ],
   "steps": [
    {
+    "id": "add-vector-vec-a",
     "title": "Add vector $\\vec{a}$",
     "description": "Draw $\\vec{a} = (3, 1, 0)$ from the origin along the $x$-axis.",
     "add": [
@@ -1137,6 +1158,7 @@
     ]
    },
    {
+    "id": "add-vector-vec-b",
     "title": "Add vector $\\vec{b}$",
     "description": "Draw $\\vec{b} = (1, 3, 1)$ — it points in a different direction from $\\vec{a}$.",
     "add": [
@@ -1178,6 +1200,7 @@
     ]
    },
    {
+    "id": "show-projection-of-vec-b-onto-vec-a",
     "title": "Show projection of $\\vec{b}$ onto $\\vec{a}$",
     "description": "The projection $\\text{proj}_{\\vec{a}}\\vec{b} = \\frac{\\vec{a}\\cdot\\vec{b}}{|\\vec{a}|^2}\\vec{a} = (1.8, 0.6, 0)$ drops $\\vec{b}$ perpendicularly onto $\\vec{a}$.",
     "add": [
@@ -1239,6 +1262,7 @@
     ]
    },
    {
+    "id": "show-angle-theta",
     "title": "Show angle $\\theta$",
     "description": "$\\vec{a} \\cdot \\vec{b} = 6 = |\\vec{a}||\\vec{b}|\\cos\\theta$, giving $\\theta \\approx 63°$.",
     "add": [
@@ -1311,6 +1335,7 @@
     ]
    },
    {
+    "id": "interactive-adjust-vec-a-and-vec-b",
     "title": "Interactive: adjust $\\vec{a}$ and $\\vec{b}$",
     "description": "Drag the sliders to see how the projection changes. The gold vector is $\\text{proj}_{\\vec{a}}\\vec{b}$ and the purple line shows the perpendicular rejection.",
     "remove": [

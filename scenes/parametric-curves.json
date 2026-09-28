@@ -24,6 +24,7 @@
   },
   "scenes": [
     {
+      "id": "the-circle-and-helix",
       "title": "The Circle and Helix",
       "description": "A circle in the xy-plane is defined by $x = \\cos t$, $y = \\sin t$. Adding a $z$-component that grows with $t$ unwinds the circle into a helix ascending through space.",
       "markdown": "# The Circle and Helix\n\nA **parametric curve** in 3D assigns a point $(x, y, z)$ to each value of a parameter $t$:\n\n$$\\mathbf{r}(t) = \\bigl(x(t),\\; y(t),\\; z(t)\\bigr)$$\n\n## The Circle\n\nThe unit circle in the $xy$-plane is:\n\n$$\\mathbf{r}(t) = (\\cos t,\\; \\sin t,\\; 0), \\quad t \\in [0, 2\\pi]$$\n\nEvery point stays at height $z = 0$.\n\n## The Helix\n\nLift the circle by letting $z$ grow proportionally to $t$:\n\n$$\\mathbf{r}(t) = \\left(\\cos t,\\; \\sin t,\\; \\frac{t}{2\\pi}\\right), \\quad t \\in [0, 4\\pi]$$\n\nAfter one full revolution ($t = 2\\pi$) the curve has risen by 1 unit. This is a **right circular helix**.\n\n## Pitch\n\nThe **pitch** $h$ controls how fast the helix rises per revolution:\n\n$$\\mathbf{r}(t) = \\left(\\cos t,\\; \\sin t,\\; \\frac{h\\,t}{2\\pi}\\right)$$\n\n- $h = 0$: flat circle\n- $h = 1$: rises 1 unit per turn\n- $h = 3$: steeply rising helix\n\nThe arc length of one turn is $\\sqrt{(2\\pi)^2 + h^2}$.\n\n> **Tip**: Use the pitch slider to watch the circle smoothly stretch into a helix.",
@@ -160,6 +161,7 @@
       ],
       "steps": [
         {
+          "id": "draw-the-unit-circle",
           "title": "Draw the unit circle",
           "description": "The unit circle $\\mathbf{r}(t) = (\\cos t, \\sin t, 0)$ traces a flat circle in the $xy$-plane.",
           "add": [
@@ -193,6 +195,7 @@
           ]
         },
         {
+          "id": "rise-into-a-helix",
           "title": "Rise into a helix",
           "description": "Add $z = t/(2\\pi)$. The curve spirals upward through two full turns, rising 2 units total.",
           "add": [
@@ -214,6 +217,7 @@
           ]
         },
         {
+          "id": "compare-circle-and-helix",
           "title": "Compare circle and helix",
           "description": "Both curves share the same $xy$ projection but the helix climbs upward. Rotate to see the difference from the top vs. side view.",
           "add": [
@@ -232,6 +236,7 @@
           ]
         },
         {
+          "id": "interactive-adjust-the-pitch",
           "title": "Interactive: adjust the pitch",
           "description": "Drag the pitch slider $h$. At $h=0$ you get a flat circle; larger values produce a steeper helix.",
           "remove": [
@@ -278,6 +283,7 @@
       "prompt": "Teach parametric curves as motion over t, emphasizing projection vs height evolution. Use the pitch slider to connect algebraic z(t) to geometric rise per turn."
     },
     {
+      "id": "lissajous-figures",
       "title": "Lissajous Figures",
       "description": "Lissajous curves $x = \\sin(at + \\varphi)$, $y = \\sin(bt)$ arise when two perpendicular oscillations have different frequencies $a$ and $b$.",
       "markdown": "# Lissajous Figures\n\nA **Lissajous figure** is the path traced by a point undergoing two independent sinusoidal oscillations at right angles:\n\n$$x(t) = \\sin(a\\,t + \\varphi), \\quad y(t) = \\sin(b\\,t), \\quad z(t) = 0$$\n\n## Frequency Ratio\n\nThe shape depends on the ratio $a : b$:\n\n| $a$ | $b$ | Shape |\n|-----|-----|-------|\n| 1 | 1 | Circle / ellipse |\n| 2 | 1 | Figure-eight |\n| 3 | 2 | Pretzel / bow-tie |\n| 3 | 1 | Triple loop |\n\nWhen $a/b$ is rational the curve closes after finite time. When irrational it fills a rectangle densely.\n\n## Phase Shift $\\varphi$\n\nThe phase $\\varphi$ rotates and deforms the figure:\n\n- $\\varphi = 0$: straight line (when $a = b$)\n- $\\varphi = \\pi/2$: circle (when $a = b = 1$)\n\n## Applications\n\nLissajous figures appear in:\n- **Electronics**: visualizing phase and frequency on oscilloscopes\n- **Mechanics**: coupled pendula\n- **Acoustics**: visualizing harmonic ratios\n\n> **Tip**: Try $a=3, b=2, \\varphi=\\pi/4$ for a beautiful pretzel shape.",
@@ -400,6 +406,7 @@
       ],
       "steps": [
         {
+          "id": "a-1-b-1-circle",
           "title": "$a=1, b=1$: Circle",
           "description": "When $a = b = 1$ and $\\varphi = \\pi/2$, the Lissajous curve is a perfect circle.",
           "add": [
@@ -421,6 +428,7 @@
           ]
         },
         {
+          "id": "a-2-b-1-figure-eight",
           "title": "$a=2, b=1$: Figure-eight",
           "description": "Doubling the $x$-frequency creates the classic figure-eight. The curve has 2 horizontal lobes.",
           "add": [
@@ -442,6 +450,7 @@
           ]
         },
         {
+          "id": "a-3-b-2-pretzel-curve",
           "title": "$a=3, b=2$: Pretzel curve",
           "description": "The ratio 3:2 produces an interlocking pretzel shape with 3 lobes horizontally and 2 vertically.",
           "add": [
@@ -463,6 +472,7 @@
           ]
         },
         {
+          "id": "interactive-choose-frequencies-and-phase",
           "title": "Interactive: choose frequencies and phase",
           "description": "Adjust $a$, $b$, and $\\varphi$ to explore the full family of Lissajous curves.",
           "remove": [
@@ -525,6 +535,7 @@
       "prompt": "Explain how frequency ratio a:b and phase phi control closure, symmetry, and lobe count. Encourage comparing rational ratios by switching camera views."
     },
     {
+      "id": "building-the-torus",
       "title": "Building the Torus",
       "description": "A torus is built by sweeping a circle of radius $r$ along a circular spine of radius $R$. Two angles $\\phi$ and $\\theta$ locate any point on the surface.",
       "markdown": "# Building the Torus\n\nA **torus** is generated by revolving a circle of radius $r$ around an axis at distance $R$ from its centre:\n\n$$\\mathbf{r}(\\phi, \\theta) = \\begin{pmatrix}(R + r\\cos\\theta)\\cos\\phi \\\\ (R + r\\cos\\theta)\\sin\\phi \\\\ r\\sin\\theta\\end{pmatrix}, \\quad \\phi,\\theta \\in [0, 2\\pi)$$\n\n## The Two Parameters\n\n| Symbol | Name | Role |\n|--------|------|------|\n| $R$ | Major radius | Distance from $z$-axis to tube centre |\n| $r$ | Minor radius | Radius of the tube cross-section |\n| $\\phi$ | Longitude | Angle around the central spine circle |\n| $\\theta$ | Tube angle | Angle around the cross-section circle |\n\n## Construction Steps\n\n1. **Spine circle** — a circle of radius $R$ in the $xy$-plane\n2. **Cross-section** — a circle of radius $r$ centred at $(R,0,0)$ in the $xz$-plane\n3. **Sweep** — rotate the cross-section around the $z$-axis through angle $\\phi \\in [0,2\\pi]$\n4. **Complete torus** — the swept surface\n\nEvery point on the surface is reached by choosing exactly one $(\\phi, \\theta)$.",
@@ -646,6 +657,7 @@
       ],
       "steps": [
         {
+          "id": "the-spine-circle",
           "title": "The spine circle",
           "description": "The torus starts with a circle of radius $R=2$ in the $xy$-plane. This is the **spine** — the path that the centre of every cross-section will follow.",
           "add": [
@@ -693,6 +705,7 @@
           ]
         },
         {
+          "id": "the-cross-section-circle",
           "title": "The cross-section circle",
           "description": "At the point $(R, 0, 0)$ on the spine, draw a small circle of radius $r = 0.6$ in the $xz$-plane. Every slice through the torus perpendicular to the spine is a copy of this circle.",
           "add": [
@@ -730,6 +743,7 @@
           ]
         },
         {
+          "id": "sweeping-halfway",
           "title": "Sweeping halfway",
           "description": "Rotate the cross-section circle around the $z$-axis from $\\phi = 0$ to $\\phi = \\pi$. Each value of $\\phi$ adds one ring to the surface, building up the first half of the torus.",
           "add": [
@@ -755,6 +769,7 @@
           ]
         },
         {
+          "id": "the-complete-torus",
           "title": "The complete torus",
           "description": "Continue sweeping to $\\phi = 2\\pi$ to close the surface. Every point on the torus is now addressed by exactly two angles: $\\phi$ (longitude, around the spine) and $\\theta$ (tube angle, around the cross-section).",
           "remove": [
@@ -791,6 +806,7 @@
           ]
         },
         {
+          "id": "interactive-pick-any-point",
           "title": "Interactive: pick any point",
           "description": "Drag $\\phi$ and $\\theta$ to move a point anywhere on the torus. The **red arrow $R$** runs from the origin to the centre of the cross-section at longitude $\\phi$. The **orange arrow $r$** runs from that centre to your chosen point. The gold ring is the cross-section circle at $\\phi$.",
           "remove": [
@@ -901,6 +917,7 @@
       "prompt": "Teach the torus from construction primitives: spine circle + cross-section + sweep. Reinforce the roles of phi (longitude) and theta (tube angle)."
     },
     {
+      "id": "torus-knot",
       "title": "Torus Knot",
       "description": "The $(2,3)$ torus knot winds 2 times around the torus the long way and 3 times through the hole, forming the trefoil knot.",
       "markdown": "# The Torus Knot\n\nA **torus knot** $T(p,q)$ is a curve that wraps around the surface of a torus:\n- $p$ times in the **longitudinal** direction (around the big circle)\n- $q$ times in the **meridional** direction (through the hole)\n\n## Parametric Equations\n\nThe $(2,3)$ torus knot lives on a torus with major radius $R=2$:\n\n$$x(t) = \\bigl(2 + \\cos(3t)\\bigr)\\cos(2t)$$\n$$y(t) = \\bigl(2 + \\cos(3t)\\bigr)\\sin(2t)$$\n$$z(t) = \\sin(3t)$$\n\nfor $t \\in [0, 2\\pi]$.\n\n## The Torus Surface\n\nThe underlying torus is parameterized by $(u, v) \\in [0, 2\\pi]^2$:\n\n$$x = (2 + 0.6\\cos v)\\cos u, \\quad y = (2 + 0.6\\cos v)\\sin u, \\quad z = 0.6\\sin v$$\n\nThe knot rides along this surface.\n\n## Knot Theory\n\nThe $(2,3)$ torus knot is the **trefoil knot** — the simplest non-trivial knot.\n\n- It **cannot** be untangled into a circle without cutting\n- Its **crossing number** is 3 (minimum for any non-trivial knot)\n- $\\gcd(2,3) = 1$ ensures it is a single connected curve\n\nWhen $\\gcd(p,q) > 1$, you get a **torus link** with multiple components.",
@@ -1022,6 +1039,7 @@
       ],
       "steps": [
         {
+          "id": "the-torus-surface",
           "title": "The torus surface",
           "description": "First the torus: major radius 2, minor radius 0.6. The knot will live on this surface.",
           "add": [
@@ -1052,6 +1070,7 @@
           ]
         },
         {
+          "id": "the-trefoil-knot-in-gold",
           "title": "The trefoil knot in gold",
           "description": "The $(2,3)$ torus knot wraps twice longitudinally and three times meridionally, closing back after $t = 2\\pi$.",
           "add": [
@@ -1085,6 +1104,7 @@
           ]
         },
         {
+          "id": "first-half-of-the-knot",
           "title": "First half of the knot",
           "description": "The first half ($t \\in [0,\\pi]$) highlighted in pink. Notice it crosses over and under the second half, creating the trefoil's 3 crossings.",
           "add": [
@@ -1106,6 +1126,7 @@
           ]
         },
         {
+          "id": "interactive-lift-the-knot",
           "title": "Interactive: lift the knot",
           "description": "Drag the slider to change the knot's wrapping radius $s$. At $s = 0.6$ the knot rides exactly on the torus surface. Increase $s$ and it peels away into free space — still the same trefoil topology, but no longer confined to the torus.",
           "add": [
@@ -1163,6 +1184,7 @@
           ]
         },
         {
+          "id": "interactive-explore-t-p-q",
           "title": "Interactive: explore T(p, q)",
           "description": "Slide $p$ and $q$ to change the winding numbers. **$p$** counts how many times the curve goes the long way around the torus; **$q$** counts trips through the hole. When $\\gcd(p,q)=1$ you get a true knot. When they share a common factor $d = \\gcd(p,q)$, the curve closes after only $1/d$ of its range — you have a $d$-component link rather than a knot. Try $p=2, q=3$ (trefoil), then $p=2, q=4$ (2-component link), then $p=3, q=6$ (3 loops).",
           "add": [
@@ -1231,6 +1253,7 @@
       "prompt": "Explain torus-knot winding intuition and how amplitude changes embedding without changing knot type. Distinguish knot vs link behavior conceptually."
     },
     {
+      "id": "knot-on-a-torus",
       "title": "Knot on a Torus",
       "description": "A torus knot lives on the surface of a torus. Drag the slider to see the knot swell from touching the surface to looping freely in space.",
       "markdown": "# Knot on a Torus\n\nA **torus knot** $T(p,q)$ is a curve that wraps around the surface of a torus without crossing itself:\n\n$$\\mathbf{r}(t) = \\bigl((R + r\\cos qt)\\cos pt,\\;(R + r\\cos qt)\\sin pt,\\;r\\sin qt\\bigr)$$\n\nwhen the wrapping amplitude $r$ equals the torus tube radius, the knot lies **exactly on the surface**.\n\n## On the Surface vs. Off\n\nIf we scale the meridional amplitude independently from the tube radius, the knot can:\n\n| $s$ | Position |\n|-----|----------|\n| $s < r$ | Inside the torus tube |\n| $s = r = 0.6$ | Exactly on the surface |\n| $s > r$ | Lifted above the surface |\n\nThe topology of the knot is unchanged — it is still a trefoil, still $T(2,3)$ — only its embedding in space changes.\n\n## Why Tori?\n\nThe torus is the natural habitat for this family of curves because:\n- Longitude and meridian provide **two independent winding directions**\n- The curve closes when $t = 2\\pi$ (if $\\gcd(p,q)=1$)\n- The winding numbers $(p,q)$ completely classify the knot type",
@@ -1294,6 +1317,7 @@
       ],
       "steps": [
         {
+          "id": "the-torus-surface",
           "title": "The torus surface",
           "description": "Major radius $R=2$, tube radius $r=0.6$. Every point on the surface is specified by two angles: $u$ going around the big circle, $v$ going around the tube.",
           "add": [
@@ -1319,6 +1343,7 @@
           ]
         },
         {
+          "id": "t-2-3-trefoil-on-the-surface",
           "title": "T(2, 3) trefoil on the surface",
           "description": "The trefoil knot $T(2,3)$ sits exactly on the torus. Each time it goes around the big circle it also completes part of a loop through the hole, weaving over and under itself 3 times.",
           "add": [
@@ -1340,6 +1365,7 @@
           ]
         },
         {
+          "id": "interactive-lift-the-knot-off-the-surface",
           "title": "Interactive: lift the knot off the surface",
           "description": "The slider $s$ controls the knot's meridional amplitude independently of the torus tube radius. At $s=0.6$ the knot is flush with the surface. Pull it higher and the knot detaches, becoming a free-floating trefoil in space — same topological type, different geometric embedding.",
           "remove": [

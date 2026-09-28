@@ -1362,3 +1362,17 @@ def test_an_entirely_blank_entry_is_skipped_not_refused():
     eleven elements that were right."""
     scene = _with_fns([_fn(name="", expr=""), _fn(name="k", expr="1")])
     assert [f["name"] for f in scene.functions] == ["k"]
+
+
+def test_the_scene_and_every_step_get_a_stable_id():
+    """Deeplinks and saved references resolve a scene/step by id before title, so
+    a built scene carries them from the start — minted from titles, unique, and
+    free of LaTeX noise."""
+    scene = compose(r"Eigenvector $\mathbf{v}_1$", "", [], [
+        ProposedStep(index=0, title="Setup"),
+        ProposedStep(index=1, title="Setup"),
+        ProposedStep(index=2, title=r"Stretch $\mathbf{v}$"),
+        ProposedStep(index=3, title=""),
+    ])
+    assert scene.id == "eigenvector-v-1"
+    assert [s.id for s in scene.steps] == ["setup", "setup-2", "stretch-v", "step-4"]

@@ -24,6 +24,7 @@
   },
   "scenes": [
     {
+      "id": "vector-addition-vec-a-vec-b-vec-c",
       "title": "Vector Addition: $\\vec{a} + \\vec{b} = \\vec{c}$",
       "description": "The sum of two vectors $\\vec{a} = (2, 1, 0)$ and $\\vec{b} = (1, 2, 1)$ is found by placing $\\vec{b}$ at the tip of $\\vec{a}$. The resultant $\\vec{c} = (3, 3, 1)$ goes from the origin to the tip of $\\vec{b}$.",
       "prompt": "You are teaching vector addition. Follow these guidelines for this scene:\n\n## Interactive Follow-Up Examples\nWhen the student asks to explore further, build slider-driven scenes:\n- Let them adjust individual components of a and b (sliders for ax, ay, az, bx, by, bz)\n- Show the parallelogram updating in real time with an animated_polygon\n- Display the magnitude of the resultant as a text label that updates\n\n## Related Topics to Suggest\nAfter the student understands addition, naturally suggest:\n1. **Vector subtraction** — \"Want to see what happens when we subtract b from a? The difference vector points from tip to tip.\"\n2. **Scalar multiplication** — \"Curious what happens when you scale a vector by a number? We can explore stretching and flipping.\"\n3. **Linear combinations** — \"Ready for the big picture? Any vector in the plane can be written as a combination of two independent vectors.\"\n\n## Guided Exploration Prompts\nEncourage the student to discover these insights:\n- \"What happens when the two vectors are parallel? Try setting b proportional to a.\"\n- \"What if the vectors point in opposite directions? Watch the resultant shrink.\"\n- \"Can you make the resultant land exactly on the x-axis? What constraint does that put on the y-components?\"\n- \"Notice that |a + b| is usually less than |a| + |b| — when does equality hold?\"\n\n## Step-by-Step Scene Patterns\nWhen creating new explanatory scenes for follow-up questions:\n1. Start with the two original vectors (keep colors consistent: red-orange for a, blue for b, gold for result)\n2. Add one new concept per step (e.g., the translated copy, the parallelogram, the diagonal)\n3. End with an interactive step that has sliders for the student to explore\n4. Always include a markdown panel with the relevant formula and a worked example",
@@ -118,6 +119,7 @@
       ],
       "steps": [
         {
+          "id": "add-vector-vec-a",
           "title": "Add vector $\\vec{a}$",
           "description": "Draw $\\vec{a} = (2, 1, 0)$ from the origin — it lies flat in the $xy$-plane.",
           "add": [
@@ -143,6 +145,7 @@
           ]
         },
         {
+          "id": "add-vector-vec-b-tip-to-tail",
           "title": "Add vector $\\vec{b}$ (tip-to-tail)",
           "description": "Place $\\vec{b} = (1, 2, 1)$ at the tip of $\\vec{a}$ — notice it lifts into the $z$-axis.",
           "add": [
@@ -159,6 +162,7 @@
           ]
         },
         {
+          "id": "show-resultant-vec-c",
           "title": "Show resultant $\\vec{c}$",
           "description": "The resultant $\\vec{c} = \\vec{a} + \\vec{b} = (3, 3, 1)$ goes from origin to the tip of $\\vec{b}$.",
           "add": [
@@ -184,6 +188,7 @@
           ]
         },
         {
+          "id": "show-commutativity",
           "title": "Show commutativity",
           "description": "Reversing the order — $\\vec{b}$ then $\\vec{a}$ — arrives at the same point: $\\vec{a} + \\vec{b} = \\vec{b} + \\vec{a}$.",
           "add": [
@@ -210,6 +215,7 @@
           ]
         },
         {
+          "id": "interactive-adjust-vec-a-and-vec-b",
           "title": "Interactive: adjust $\\vec{a}$ and $\\vec{b}$",
           "description": "Use the sliders to change each component of $\\vec{a}$ and $\\vec{b}$. The blue vector stays tip-to-tail on $\\vec{a}$, and the gold resultant updates in real time.",
           "remove": [
@@ -256,6 +262,7 @@
       ]
     },
     {
+      "id": "cross-product-vec-a-times-vec-b",
       "title": "Cross Product: $\\vec{a} \\times \\vec{b}$",
       "description": "The cross product of $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$ yields $\\vec{a} \\times \\vec{b} = (0, 0, 4)$, perpendicular to both vectors.",
       "markdown": "# Cross Product\n\nThe **cross product** $\\vec{a} \\times \\vec{b}$ produces a vector **perpendicular** to both input vectors.\n\n## Definition\n\nFor vectors $\\vec{a} = (a_1, a_2, a_3)$ and $\\vec{b} = (b_1, b_2, b_3)$:\n\n$$\\vec{a} \\times \\vec{b} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ a_1 & a_2 & a_3 \\\\ b_1 & b_2 & b_3 \\end{vmatrix}$$\n\nExpanding the determinant:\n\n$$\\vec{a} \\times \\vec{b} = (a_2 b_3 - a_3 b_2)\\hat{i} - (a_1 b_3 - a_3 b_1)\\hat{j} + (a_1 b_2 - a_2 b_1)\\hat{k}$$\n\n## This Example\n\nWith $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$:\n\n$$\\vec{a} \\times \\vec{b} = (0 \\cdot 0 - 0 \\cdot 2, \\; 0 \\cdot 1 - 2 \\cdot 0, \\; 2 \\cdot 2 - 0 \\cdot 1) = (0, 0, 4)$$\n\nThe result points along the **positive z-axis** (shown in gold).\n\n## Geometric Meaning\n\n- **Direction**: Perpendicular to both $\\vec{a}$ and $\\vec{b}$, following the right-hand rule\n- **Magnitude**: Equal to the area of the parallelogram formed by $\\vec{a}$ and $\\vec{b}$\n\n$$|\\vec{a} \\times \\vec{b}| = |\\vec{a}| \\cdot |\\vec{b}| \\cdot \\sin\\theta = 4$$\n\nThe purple parallelogram in the visualization has area exactly $4$.\n\n## Key Properties\n\n- **Anti-commutative**: $\\vec{b} \\times \\vec{a} = -(\\vec{a} \\times \\vec{b})$\n- **Not associative**: $(\\vec{a} \\times \\vec{b}) \\times \\vec{c} \\neq \\vec{a} \\times (\\vec{b} \\times \\vec{c})$\n- **Distributive**: $\\vec{a} \\times (\\vec{b} + \\vec{c}) = \\vec{a} \\times \\vec{b} + \\vec{a} \\times \\vec{c}$\n\n> **Tip**: Use the right-hand rule — curl fingers from $\\vec{a}$ to $\\vec{b}$, your thumb points in the direction of $\\vec{a} \\times \\vec{b}$.",
@@ -344,6 +351,7 @@
       ],
       "steps": [
         {
+          "id": "add-vector-vec-a",
           "title": "Add vector $\\vec{a}$",
           "description": "Draw $\\vec{a} = (2, 0, 0)$ along the $x$-axis.",
           "add": [
@@ -369,6 +377,7 @@
           ]
         },
         {
+          "id": "add-vector-vec-b",
           "title": "Add vector $\\vec{b}$",
           "description": "Draw $\\vec{b} = (1, 2, 0)$ in the $xy$-plane — both vectors are flat.",
           "add": [
@@ -394,6 +403,7 @@
           ]
         },
         {
+          "id": "show-parallelogram",
           "title": "Show parallelogram",
           "description": "The parallelogram spanned by $\\vec{a}$ and $\\vec{b}$ has area $|\\vec{a} \\times \\vec{b}| = 4$.",
           "add": [
@@ -428,6 +438,7 @@
           ]
         },
         {
+          "id": "show-vec-a-times-vec-b",
           "title": "Show $\\vec{a} \\times \\vec{b}$",
           "description": "$\\vec{a} \\times \\vec{b} = (0, 0, 4)$ — perpendicular to both, pointing up by the right-hand rule.",
           "add": [
@@ -457,6 +468,7 @@
           }
         },
         {
+          "id": "interactive-adjust-vec-a-and-vec-b",
           "title": "Interactive: adjust $\\vec{a}$ and $\\vec{b}$",
           "description": "Use the sliders to change each component. The gold vector $\\vec{a} \\times \\vec{b}$ is always perpendicular to both — watch it flip when you reverse the orientation.",
           "remove": [
@@ -520,6 +532,7 @@
       "prompt": "Teach cross product as orientation plus area: direction from right-hand rule, magnitude as parallelogram area, and sign flip under order reversal. Ask the learner to test near-parallel vectors and explain why the cross product shrinks toward zero."
     },
     {
+      "id": "dot-product-vec-a-cdot-vec-b",
       "title": "Dot Product: $\\vec{a} \\cdot \\vec{b}$",
       "description": "The dot product $\\vec{a} \\cdot \\vec{b} = |\\vec{a}||\\vec{b}|\\cos\\theta$ measures how much two vectors point in the same direction. The projection of $\\vec{b}$ onto $\\vec{a}$ has length $\\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|}$.",
       "markdown": "# Dot Product\n\nThe **dot product** (or scalar product) takes two vectors and returns a **scalar**.\n\n## Definition\n\nFor vectors $\\vec{a} = (a_1, a_2, a_3)$ and $\\vec{b} = (b_1, b_2, b_3)$:\n\n$$\\vec{a} \\cdot \\vec{b} = a_1 b_1 + a_2 b_2 + a_3 b_3$$\n\n## Geometric Form\n\n$$\\vec{a} \\cdot \\vec{b} = |\\vec{a}| \\cdot |\\vec{b}| \\cdot \\cos\\theta$$\n\nwhere $\\theta$ is the angle between the vectors.\n\n## This Example\n\nWith $\\vec{a} = (3, 1, 0)$ and $\\vec{b} = (1, 3, 1)$:\n\n$$\\vec{a} \\cdot \\vec{b} = 3 \\cdot 1 + 1 \\cdot 3 + 0 \\cdot 1 = 6$$\n\n## Projection\n\nThe **scalar projection** of $\\vec{b}$ onto $\\vec{a}$ is:\n\n$$\\text{comp}_{\\vec{a}} \\vec{b} = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|} = \\frac{6}{\\sqrt{10}} \\approx 1.90$$\n\nThe **vector projection** is:\n\n$$\\text{proj}_{\\vec{a}} \\vec{b} = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|^2} \\vec{a} = \\frac{6}{10}(3, 1, 0) = (1.8, 0.6, 0)$$\n\n## Key Properties\n\n- **Commutative**: $\\vec{a} \\cdot \\vec{b} = \\vec{b} \\cdot \\vec{a}$\n- **Distributive**: $\\vec{a} \\cdot (\\vec{b} + \\vec{c}) = \\vec{a} \\cdot \\vec{b} + \\vec{a} \\cdot \\vec{c}$\n- **Orthogonality test**: $\\vec{a} \\cdot \\vec{b} = 0 \\iff \\vec{a} \\perp \\vec{b}$\n- **Self dot product**: $\\vec{a} \\cdot \\vec{a} = |\\vec{a}|^2$\n\n> **Tip**: The dot product is positive when vectors point roughly the same way, zero when perpendicular, and negative when they point apart.",
@@ -601,6 +614,7 @@
       ],
       "steps": [
         {
+          "id": "add-vector-vec-a",
           "title": "Add vector $\\vec{a}$",
           "description": "Draw $\\vec{a} = (3, 1, 0)$ from the origin along the $x$-axis.",
           "add": [
@@ -626,6 +640,7 @@
           ]
         },
         {
+          "id": "add-vector-vec-b",
           "title": "Add vector $\\vec{b}$",
           "description": "Draw $\\vec{b} = (1, 3, 1)$ — it points in a different direction from $\\vec{a}$.",
           "add": [
@@ -651,6 +666,7 @@
           ]
         },
         {
+          "id": "show-projection-of-vec-b-onto-vec-a",
           "title": "Show projection of $\\vec{b}$ onto $\\vec{a}$",
           "description": "The projection $\\text{proj}_{\\vec{a}}\\vec{b} = \\frac{\\vec{a}\\cdot\\vec{b}}{|\\vec{a}|^2}\\vec{a} = (1.8, 0.6, 0)$ drops $\\vec{b}$ perpendicularly onto $\\vec{a}$.",
           "add": [
@@ -688,6 +704,7 @@
           ]
         },
         {
+          "id": "show-angle-theta",
           "title": "Show angle $\\theta$",
           "description": "$\\vec{a} \\cdot \\vec{b} = 6 = |\\vec{a}||\\vec{b}|\\cos\\theta$, giving $\\theta \\approx 63°$.",
           "add": [
@@ -720,6 +737,7 @@
           ]
         },
         {
+          "id": "interactive-adjust-vec-a-and-vec-b",
           "title": "Interactive: adjust $\\vec{a}$ and $\\vec{b}$",
           "description": "Drag the sliders to see how the projection changes. The gold vector is $\\text{proj}_{\\vec{a}}\\vec{b}$ and the purple line shows the perpendicular rejection.",
           "remove": [
@@ -778,6 +796,7 @@
       "prompt": "Teach dot product as alignment: positive, zero, negative based on angle. Connect algebraic form to projection and cosine, and prompt learners to test orthogonality and angle changes with sliders."
     },
     {
+      "id": "scalar-multiplication-c-vec-v",
       "title": "Scalar Multiplication: $c\\vec{v}$",
       "description": "Multiplying a vector by a scalar $c$ stretches or shrinks it. Positive $c$ preserves direction, negative $c$ reverses it.",
       "markdown": "# Scalar Multiplication\n\n**Scalar multiplication** scales a vector's magnitude without changing its line of action (unless $c < 0$, which reverses direction).\n\n## Definition\n\nFor a scalar $c$ and vector $\\vec{v} = (v_1, v_2, v_3)$:\n\n$$c\\vec{v} = (cv_1, cv_2, cv_3)$$\n\n## This Example\n\nWith $\\vec{v} = (1, 1.5, 0.5)$:\n\n- $2\\vec{v} = (2, 3, 1)$ — twice as long, same direction\n- $-1\\vec{v} = (-1, -1.5, -0.5)$ — same length, opposite direction\n- $0.5\\vec{v} = (0.5, 0.75, 0.25)$ — half as long, same direction\n\n## Geometric Meaning\n\n- $|c| > 1$: vector gets **longer**\n- $|c| < 1$: vector gets **shorter**\n- $c > 0$: **same direction** as original\n- $c < 0$: **opposite direction**\n- $c = 0$: **zero vector**\n\n## Magnitude\n\n$$|c\\vec{v}| = |c| \\cdot |\\vec{v}|$$\n\nFor $\\vec{v} = (1, 1.5, 0.5)$: $|\\vec{v}| = \\sqrt{1 + 2.25 + 0.25} = \\sqrt{3.5} \\approx 1.87$\n\n## Key Properties\n\n- **Associative**: $a(b\\vec{v}) = (ab)\\vec{v}$\n- **Distributive over vector addition**: $c(\\vec{u} + \\vec{v}) = c\\vec{u} + c\\vec{v}$\n- **Distributive over scalar addition**: $(a + b)\\vec{v} = a\\vec{v} + b\\vec{v}$\n- **Identity**: $1\\vec{v} = \\vec{v}$\n\n> **Tip**: All scalar multiples of $\\vec{v}$ lie along the same line through the origin. This line is the **span** of $\\vec{v}$.",
@@ -859,6 +878,7 @@
       ],
       "steps": [
         {
+          "id": "original-vector-vec-v",
           "title": "Original vector $\\vec{v}$",
           "description": "Start with $\\vec{v} = (1, 1.5, 0.5)$, with magnitude $|\\vec{v}| = \\sqrt{3.5} \\approx 1.87$.",
           "add": [
@@ -880,6 +900,7 @@
           ]
         },
         {
+          "id": "double-2-vec-v",
           "title": "Double: $2\\vec{v}$",
           "description": "$2\\vec{v} = (2, 3, 1)$ — twice the length, same direction as $\\vec{v}$.",
           "add": [
@@ -901,6 +922,7 @@
           ]
         },
         {
+          "id": "negate-vec-v",
           "title": "Negate: $-\\vec{v}$",
           "description": "$-\\vec{v} = (-1, -1.5, -0.5)$ — same length, opposite direction.",
           "add": [
@@ -922,6 +944,7 @@
           ]
         },
         {
+          "id": "half-0-5-vec-v",
           "title": "Half: $0.5\\vec{v}$",
           "description": "$0.5\\vec{v} = (0.5, 0.75, 0.25)$ — all scalar multiples lie on the span of $\\vec{v}$.",
           "add": [
@@ -961,6 +984,7 @@
       "prompt": "Teach scalar multiplication as geometric scaling along one line: magnitude scales by |c| and sign controls direction reversal. Encourage quick experiments at c=0, c<0, and |c|>1."
     },
     {
+      "id": "vector-subtraction-vec-a-vec-b",
       "title": "Vector Subtraction: $\\vec{a} - \\vec{b}$",
       "description": "Subtracting $\\vec{b}$ from $\\vec{a}$ gives the vector from the tip of $\\vec{b}$ to the tip of $\\vec{a}$. Equivalently, $\\vec{a} - \\vec{b} = \\vec{a} + (-\\vec{b})$.",
       "markdown": "# Vector Subtraction\n\n**Vector subtraction** is defined as adding the negative:\n\n$$\\vec{a} - \\vec{b} = \\vec{a} + (-\\vec{b})$$\n\n## Definition\n\nFor vectors $\\vec{a} = (a_1, a_2, a_3)$ and $\\vec{b} = (b_1, b_2, b_3)$:\n\n$$\\vec{a} - \\vec{b} = (a_1 - b_1, \\; a_2 - b_2, \\; a_3 - b_3)$$\n\n## This Example\n\nWith $\\vec{a} = (3, 1, 0)$ and $\\vec{b} = (1, 3, 1)$:\n\n$$\\vec{a} - \\vec{b} = (3-1, \\; 1-3, \\; 0-1) = (2, -2, -1)$$\n\n## Geometric Interpretation\n\nThe difference vector $\\vec{a} - \\vec{b}$ points **from the tip of** $\\vec{b}$ **to the tip of** $\\vec{a}$.\n\nThis is extremely useful in physics and geometry:\n- The displacement from point $B$ to point $A$\n- The relative velocity of $A$ with respect to $B$\n- The side of a triangle connecting two vertices\n\n## Parallelogram Connection\n\nWhen drawn from the origin, $\\vec{a}$, $\\vec{b}$, $\\vec{a} + \\vec{b}$, and $\\vec{a} - \\vec{b}$ form the two diagonals of a parallelogram.\n\n## Key Properties\n\n- **Not commutative**: $\\vec{a} - \\vec{b} \\neq \\vec{b} - \\vec{a}$ (they are negatives of each other)\n- **Self subtraction**: $\\vec{a} - \\vec{a} = \\vec{0}$\n- **Magnitude**: $|\\vec{a} - \\vec{b}|$ is the **distance** between points $A$ and $B$\n\n$$|\\vec{a} - \\vec{b}| = \\sqrt{4 + 4 + 1} = 3$$\n\n> **Tip**: Think of subtraction as answering \"how do I get from $B$ to $A$?\"",
@@ -1042,6 +1066,7 @@
       ],
       "steps": [
         {
+          "id": "add-vector-vec-a",
           "title": "Add vector $\\vec{a}$",
           "description": "Draw $\\vec{a} = (3, 1, 0)$ from the origin.",
           "add": [
@@ -1065,6 +1090,7 @@
           ]
         },
         {
+          "id": "add-vector-vec-b",
           "title": "Add vector $\\vec{b}$",
           "description": "Draw $\\vec{b} = (1, 3, 1)$ — the tips of $\\vec{a}$ and $\\vec{b}$ are separated in space.",
           "add": [
@@ -1088,6 +1114,7 @@
           ]
         },
         {
+          "id": "show-vec-a-vec-b-from-tip-to-tip",
           "title": "Show $\\vec{a} - \\vec{b}$ from tip to tip",
           "description": "$\\vec{a} - \\vec{b} = (2, -2, -1)$ points from the tip of $\\vec{b}$ to the tip of $\\vec{a}$.",
           "add": [
@@ -1103,6 +1130,7 @@
           ]
         },
         {
+          "id": "show-vec-b-and-addition-path",
           "title": "Show $-\\vec{b}$ and addition path",
           "description": "Equivalently, $\\vec{a} - \\vec{b} = \\vec{a} + (-\\vec{b})$ — add the negated vector tip-to-tail.",
           "add": [
@@ -1151,6 +1179,7 @@
       "prompt": "Teach subtraction as adding the opposite and as a displacement from b-tip to a-tip. Reinforce component formula a-b and ask learners to compare with a+(-b)."
     },
     {
+      "id": "span-linear-combinations-fill-space",
       "title": "Span: Linear Combinations Fill Space",
       "description": "The span of a set of vectors is the collection of all their linear combinations. One vector spans a line, two independent vectors span a plane, and three independent vectors span all of $\\mathbb{R}^3$.",
       "markdown": "# Span of Vectors\n\nThe **span** of a set of vectors is the set of all possible **linear combinations**:\n\n$$\\text{span}(\\vec{v}_1, \\vec{v}_2, \\dots, \\vec{v}_k) = \\{ c_1\\vec{v}_1 + c_2\\vec{v}_2 + \\cdots + c_k\\vec{v}_k \\mid c_i \\in \\mathbb{R} \\}$$\n\n## Building Dimension\n\n| Vectors | Span | Dimension |\n|---------|------|-----------|\n| $\\vec{v}_1$ alone | A **line** through the origin | 1D |\n| $\\vec{v}_1, \\vec{v}_2$ (independent) | A **plane** through the origin | 2D |\n| $\\vec{v}_1, \\vec{v}_2, \\vec{v}_3$ (independent) | All of $\\mathbb{R}^3$ | 3D |\n\n## Linear Independence\n\nVectors $\\vec{v}_1, \\dots, \\vec{v}_k$ are **linearly independent** if the only solution to:\n\n$$c_1\\vec{v}_1 + c_2\\vec{v}_2 + \\cdots + c_k\\vec{v}_k = \\vec{0}$$\n\nis $c_1 = c_2 = \\cdots = c_k = 0$.\n\n## This Example\n\n$$\\vec{v}_1 = (2, 1, 0), \\quad \\vec{v}_2 = (0, 1, 1.5), \\quad \\vec{v}_3 = (1, 0, 2)$$\n\n### Determinant Test\n\n$$\\det \\begin{pmatrix} 2 & 0 & 1 \\\\ 1 & 1 & 0 \\\\ 0 & 1.5 & 2 \\end{pmatrix} = 2(2 - 0) - 0 + 1(1.5 - 0) = 5.5 \\neq 0$$\n\nSince the determinant is non-zero, the three vectors are **linearly independent** and span all of $\\mathbb{R}^3$.\n\n## Key Insight\n\nEvery vector in $\\mathbb{R}^3$ can be written **uniquely** as a linear combination of three linearly independent vectors — they form a **basis**.",
@@ -1232,6 +1261,7 @@
       ],
       "steps": [
         {
+          "id": "draw-vec-v-1",
           "title": "Draw $\\vec{v}_1$",
           "duration": 2500,
           "description": "Start with $\\vec{v}_1 = (2, 1, 0)$ from the origin — it lies in the $xy$-plane.",
@@ -1256,6 +1286,7 @@
           ]
         },
         {
+          "id": "span-of-one-vector-a-line",
           "title": "Span of one vector: a line",
           "duration": 4000,
           "description": "All scalar multiples $c_1 \\vec{v}_1$ trace out a line through the origin — a 1D subspace.",
@@ -1310,6 +1341,7 @@
           ]
         },
         {
+          "id": "add-vec-v-2",
           "title": "Add $\\vec{v}_2$",
           "duration": 3000,
           "description": "$\\vec{v}_2 = (0, 1, 1.5)$ points out of the $xy$-plane — it is linearly independent from $\\vec{v}_1$.",
@@ -1334,6 +1366,7 @@
           ]
         },
         {
+          "id": "sweeping-the-plane",
           "title": "Sweeping the plane",
           "duration": 12000,
           "description": "The animated vector traces $c_1 \\vec{v}_1 + c_2 \\vec{v}_2$ — all linear combinations of two independent vectors fill a plane. Adjust $r$ to change the sweep radius.",
@@ -1374,6 +1407,7 @@
           ]
         },
         {
+          "id": "sample-combinations",
           "title": "Sample combinations",
           "duration": 5000,
           "description": "Concrete examples: each point is a specific $c_1 \\vec{v}_1 + c_2 \\vec{v}_2$ lying in the plane.",
@@ -1457,6 +1491,7 @@
           ]
         },
         {
+          "id": "add-vec-v-3-off-the-plane",
           "title": "Add $\\vec{v}_3$ (off the plane)",
           "duration": 4000,
           "description": "$\\vec{v}_3 = (1, 0, 2)$ does not lie in $\\text{span}(\\vec{v}_1, \\vec{v}_2)$ — it points out of the plane, adding a third dimension.",
@@ -1498,6 +1533,7 @@
           }
         },
         {
+          "id": "three-vectors-span-mathbb-r-3",
           "title": "Three vectors span $\\mathbb{R}^3$",
           "duration": 6000,
           "description": "With $\\det \\neq 0$, every point in 3D space is reachable. Sample combinations fill the volume.",

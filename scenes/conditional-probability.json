@@ -23,6 +23,7 @@
   },
   "scenes": [
     {
+      "id": "probability-terms",
       "title": "Probability Terms",
       "description": "A guided tour of every probability term in the joint distribution \u2014 each one highlighted in the rectangle while the rest fade back.",
       "range": [
@@ -106,6 +107,7 @@
       ],
       "steps": [
         {
+          "id": "all-terms-at-a-glance",
           "title": "All Terms at a Glance",
           "description": "Every probability term lives somewhere in this rectangle.\n\n- **Column width** = marginal $P(X)$\n- **Row height within each column** = conditional $P(Y \\mid X)$\n- **Cell area** = joint $P(X, Y)$\n\nStep through to highlight each term one at a time.",
           "sliders": [
@@ -400,6 +402,7 @@
           ]
         },
         {
+          "id": "p-a-prior",
           "title": "$P(A)$ \u2014 Prior",
           "description": "**P(A)** is the marginal probability of event $A$ \u2014 the **width of the left column**.\n\nIt represents your prior belief about $A$ before observing anything about $B$.",
           "add": [
@@ -445,6 +448,7 @@
           ]
         },
         {
+          "id": "p-overline-a",
           "title": "$P(\\overline{A})$",
           "description": "**P(\u00acA)** is the probability of the complement \u2014 the **width of the right column**.\n\n$P(A) + P(\\overline{A}) = 1$",
           "remove": [
@@ -495,6 +499,7 @@
           ]
         },
         {
+          "id": "p-b-marginal-evidence",
           "title": "$P(B)$ \u2014 Marginal / Evidence",
           "description": "**P(B)** is the total probability of event $B$ \u2014 the **area of the entire B-row**, summed across both columns.\n\n$$P(B) = P(B \\mid A)\\,P(A) + P(B \\mid \\overline{A})\\,P(\\overline{A})$$\n\nThis is the **law of total probability**. The B-row is L-shaped because $P(B \\mid A) \\neq P(B \\mid \\overline{A})$.",
           "remove": [
@@ -577,6 +582,7 @@
           ]
         },
         {
+          "id": "p-overline-b",
           "title": "$P(\\overline{B})$",
           "description": "**P(\u00acB)** is the probability of $B$ not occurring \u2014 the **area of the \u00acB region** (upper part of each column).\n\n$P(B) + P(\\overline{B}) = 1$",
           "remove": [
@@ -662,6 +668,7 @@
           ]
         },
         {
+          "id": "p-a-cap-b-joint",
           "title": "$P(A \\cap B)$ \u2014 Joint",
           "description": "**P(A\u2229B)** is the joint probability of both $A$ and $B$ \u2014 the **area of the bottom-left cell**.\n\n$$P(A \\cap B) = P(A) \\cdot P(B \\mid A)$$",
           "remove": [
@@ -715,6 +722,7 @@
           ]
         },
         {
+          "id": "p-overline-a-cap-b-joint",
           "title": "$P(\\overline{A} \\cap B)$ \u2014 Joint",
           "description": "**P(\u00acA\u2229B)** is the joint probability that $A$ does not occur but $B$ does \u2014 the **area of the bottom-right cell**.\n\n$$P(\\overline{A} \\cap B) = P(\\overline{A}) \\cdot P(B \\mid \\overline{A})$$",
           "remove": [
@@ -765,6 +773,7 @@
           ]
         },
         {
+          "id": "p-a-cap-overline-b-joint",
           "title": "$P(A \\cap \\overline{B})$ \u2014 Joint",
           "description": "**P(A\u2229\u00acB)** \u2014 $A$ occurs but $B$ does not \u2014 the **top-left cell**.\n\n$$P(A \\cap \\overline{B}) = P(A) \\cdot P(\\overline{B} \\mid A) = P(A) \\cdot (1 - P(B \\mid A))$$",
           "remove": [
@@ -815,6 +824,7 @@
           ]
         },
         {
+          "id": "p-overline-a-cap-overline-b-joint",
           "title": "$P(\\overline{A} \\cap \\overline{B})$ \u2014 Joint",
           "description": "**P(\u00acA\u2229\u00acB)** \u2014 neither $A$ nor $B$ occurs \u2014 the **top-right cell**.\n\nThe four joints sum to 1:\n$$P(A\\cap B)+P(\\overline{A}\\cap B)+P(A\\cap\\overline{B})+P(\\overline{A}\\cap\\overline{B})=1$$",
           "remove": [
@@ -865,6 +875,7 @@
           ]
         },
         {
+          "id": "p-b-mid-a-likelihood",
           "title": "$P(B \\mid A)$ \u2014 Likelihood",
           "description": "**P(B|A)** is the conditional probability of $B$ given $A$ \u2014 the **row height within the A column**.\n\n$$P(B \\mid A) = \\frac{P(A \\cap B)}{P(A)}$$\n\nGeometrically: zoom into the A-column (blue border). The B-portion occupies $P(B \\mid A)$ of its height.",
           "remove": [
@@ -947,6 +958,7 @@
           ]
         },
         {
+          "id": "p-b-mid-overline-a-false-positive-rate",
           "title": "$P(B \\mid \\overline{A})$ \u2014 False positive rate",
           "description": "**P(B|\u00acA)** is the row height within the \u00acA column.\n\n$$P(B \\mid \\overline{A}) = \\frac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$$\n\nWhen $P(B \\mid A) = P(B \\mid \\overline{A})$, $A$ and $B$ are **independent**.",
           "remove": [
@@ -1032,6 +1044,7 @@
           ]
         },
         {
+          "id": "p-a-mid-b-posterior",
           "title": "$P(A \\mid B)$ \u2014 Posterior",
           "description": "**P(A|B)** is the posterior probability of $A$ given evidence $B$ \u2014 the **A-fraction of the B-row**.\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} = \\frac{P(B \\mid A)\\,P(A)}{P(B)}$$\n\nThis is Bayes' rule. Geometrically: zoom into the B-row \u2014 the A-cell occupies $P(A \\mid B)$ of its width.",
           "remove": [
@@ -1149,6 +1162,7 @@
           ]
         },
         {
+          "id": "p-a-mid-overline-b-posterior-given-overline-b",
           "title": "$P(A \\mid \\overline{B})$ \u2014 Posterior given $\\overline{B}$",
           "description": "**P(A|\u00acB)** \u2014 how likely is $A$ given that $B$ did **not** occur?\n\n$$P(A \\mid \\overline{B}) = \\frac{P(A \\cap \\overline{B})}{P(\\overline{B})}$$\n\nIf $B$ is a positive test, this is the probability of the condition given a **negative** result.",
           "remove": [
@@ -1273,6 +1287,7 @@
       "prompt": "You are a patient tutor helping a student explore every probability term in the joint distribution rectangle.\n\n## The 12 Terms and Their Geometry\nAll terms are determined by just three numbers: P(A), P(B|A), P(B|\u00acA).\n\n**Marginals** \u2014 widths or total row areas:\n- P(A) = left column width\n- P(\u00acA) = right column width = 1 - P(A)\n- P(B) = total B-row area = P(B|A)\u00b7P(A) + P(B|\u00acA)\u00b7P(\u00acA)\n- P(\u00acB) = 1 - P(B)\n\n**Joints** \u2014 individual cell areas:\n- P(A\u2229B) = bottom-left cell = P(A)\u00b7P(B|A)\n- P(\u00acA\u2229B) = bottom-right cell = P(\u00acA)\u00b7P(B|\u00acA)\n- P(A\u2229\u00acB) = top-left cell = P(A)\u00b7(1-P(B|A))\n- P(\u00acA\u2229\u00acB) = top-right cell = P(\u00acA)\u00b7(1-P(B|\u00acA))\n\n**Conditionals** \u2014 fraction within a column or row:\n- P(B|A) = row height in A-column (slider directly)\n- P(B|\u00acA) = row height in \u00acA-column (slider directly)\n- P(A|B) = A-fraction of B-row = P(A\u2229B)/P(B) \u2014 Bayes posterior\n- P(A|\u00acB) = A-fraction of \u00acB region = P(A\u2229\u00acB)/P(\u00acB)\n\n## Independence Special Case\nWhen P(B|A) = P(B|\u00acA): the step line is horizontal, P(B) = P(B|A), and all conditionals collapse: P(A|B) = P(A|\u00acB) = P(A), P(B|A) = P(B|\u00acA) = P(B).\n\n## Teaching Approach\n- Point to the highlighted region in the rectangle when explaining each term\n- Emphasize that all 12 terms come from just 3 slider values\n- Use the independence check to connect conditional and marginal probabilities\n- Encourage the student to predict how a term changes before moving the slider"
     },
     {
+      "id": "conditional-probability",
       "title": "Conditional Probability",
       "description": "Build intuition for conditional probability from joint distributions and areas \u2014 the probability rectangle.",
       "range": [
@@ -1376,6 +1391,7 @@
       ],
       "steps": [
         {
+          "id": "the-probability-rectangle",
           "title": "The Probability Rectangle",
           "description": "The **unit square** represents all possible outcomes (total probability = 1). We split it into two **columns** \u2014 one for event $A$, one for $\\overline{A}$ \u2014 where the **column width equals the probability**.\n\nAdjust $P(A)$ to see the column split change. This is the first axis of the joint distribution.",
           "sliders": [
@@ -1549,6 +1565,7 @@
           ]
         },
         {
+          "id": "the-joint-distribution",
           "title": "The Joint Distribution",
           "description": "Now add event $B$ as a **row split within each column**. The height of the $B$-row in each column is the **conditional probability** $P(B \\mid \\text{column})$.\n\nCrucially, $P(B \\mid A)$ and $P(B \\mid \\overline{A})$ can be **different** \u2014 that's dependence. Each cell's area equals the joint probability $P(X, Y)$.\n\n**Independence**: set both $P(B \\mid A)$ and $P(B \\mid \\overline{A})$ to the same value \u2014 the horizontal divider becomes a straight line.",
           "sliders": [
@@ -1797,6 +1814,7 @@
           ]
         },
         {
+          "id": "independence-is-a-straight-line",
           "title": "Independence Is a Straight Line",
           "description": "**Independence** means knowing $A$ tells you nothing about $B$: $P(B \\mid A) = P(B \\mid \\overline{A})$.\n\nThe **bar chart to the right** shows P(B|A) and P(B|\u00acA) side by side. When they match, the step line in the rectangle is a straight horizontal line \u2014 that is independence.\n\n**Dependence** creates mismatched bars and a step. Set both sliders to the same value to see the bars align and the step disappear.",
           "add": [
@@ -1964,6 +1982,7 @@
           ]
         },
         {
+          "id": "conditioning-on-b-zoom-in",
           "title": "Conditioning on B: Zoom In",
           "description": "**Conditioning on B** means restricting attention to just the $B$-row \u2014 the bottom strip. We zoom in on it, stretching it to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $A$ column occupies exactly $P(A \\mid B)$ of the width. The **column widths change** when you zoom in, because the B-row has different heights in each column.\n\n$$P(A \\mid B) = \\frac{\\text{area of } A \\cap B}{\\text{area of } B\\text{-row}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nUse the **Side** camera view to see the 3D projection clearly.",
           "remove": [
@@ -2291,6 +2310,7 @@
           ]
         },
         {
+          "id": "conditioning-on-a-zoom-in",
           "title": "Conditioning on A: Zoom In",
           "description": "**Conditioning on A** means restricting attention to just the $A$-column \u2014 the left strip. We zoom it horizontally to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $B$ row occupies exactly $P(B \\mid A)$ of the height. Compare this to the previous slide where we zoomed the B-row.\n\n$$P(B \\mid A) = \\frac{\\text{area of } A \\cap B}{\\text{area of } A\\text{-column}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(A)}$$\n\nUse the **Side** camera view to see both zoom levels.",
           "remove": [
@@ -2645,6 +2665,7 @@
           ]
         },
         {
+          "id": "asymmetry-p-a-mid-b-neq-p-b-mid-a",
           "title": "Asymmetry: $P(A \\mid B) \\neq P(B \\mid A)$",
           "description": "You have now seen both zoomed views \u2014 conditioning on B and conditioning on A.\n\nSame four cells, two different lenses. The intersection area $P(A \\cap B)$ is shared, but the denominators differ: $P(B)$ vs $P(A)$. That's why $P(A \\mid B) \\neq P(B \\mid A)$ in general \u2014 same intersection, different normalization.",
           "remove": [
@@ -2703,6 +2724,7 @@
           ]
         },
         {
+          "id": "symmetry-vs-independence",
           "title": "Symmetry vs Independence",
           "description": "Two special conditions can each make $P(A \\mid B)$ and $P(B \\mid A)$ behave in interesting ways \u2014 but they mean very different things.\n\n**Symmetry** ($P(A \\mid B) = P(B \\mid A)$): happens whenever $P(A) = P(B)$. The two events are equally common, so the same intersection divided by two equal denominators gives the same fraction. It says nothing about whether $A$ and $B$ are related.\n\n**Independence** ($P(A \\mid B) = P(A)$): knowing $B$ happened gives you no information about $A$. Equivalently $P(B \\mid A) = P(B)$ and $P(B \\mid A) = P(B \\mid \\overline{A})$ \u2014 the step line is horizontal.\n\nTry the sliders:\n- Set $P(A) = P(B)$ without making the step horizontal \u2014 you get symmetry but not independence\n- Set $P(B \\mid A) = P(B \\mid \\overline{A})$ \u2014 you get independence; $P(A \\mid B) = P(A)$ regardless of whether $P(A) = P(B)$",
           "info": [
@@ -2717,6 +2739,7 @@
       "prompt": "You are teaching conditional probability using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs \u00acA). Column WIDTH = P(X) \u2014 marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) \u00d7 P(Y|X) = P(X,Y) \u2014 joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|\u00acA).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) \u2260 P(A) when dependent\n\n## Summary of Geometric Rules\nUse this summary when asked, and proactively offer it on the Symmetry vs Independence step.\n\n**Independence** (P(A|B) = P(A))\n- Step line is horizontal: P(B|A) = P(B|\u00acA)\n- B gives no information about A\n- Geometrically: the B-row is a rectangle \u2014 same column proportions as the full square\n\n**Symmetry** (P(A|B) = P(B|A))\n- Holds when and only when P(A) = P(B) \u2014 equal column width and equal row area\n- Equivalently: P(A\u2229\u00acB) = P(\u00acA\u2229B) \u2014 the off-diagonal joints are equal\n- Same intersection P(A\u2229B), equal denominators P(A) = P(B)\n- Has nothing to do with whether A and B are related \u2014 you can have symmetry with strong dependence\n\n**Conditioning**\n- Zooming into a row or column changes the frame of reference\n- P(A|B) is the A-fraction of the B-row area\n- P(B|A) is the B-fraction of the A-column area\n- Same numerator P(A\u2229B), different denominators P(B) vs P(A)\n\n## Preset Prompts\nOn the 'Symmetry vs Independence' step, call set_preset_prompts with:\n- 'Show me the Summary of Geometric Rules'\n- 'Can you find slider values that are symmetric but dependent?'\n- 'Can you find slider values that are independent but asymmetric?'\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|\u00acA) and notice the step disappears \u2014 that is what independence looks like'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
     },
     {
+      "id": "bayes-rule",
       "title": "Bayes' Rule",
       "description": "Apply Bayes' rule to three real-world problems where intuition fails \u2014 medical testing, spam filtering, and tornado warnings.",
       "range": [
@@ -2820,6 +2843,7 @@
       ],
       "steps": [
         {
+          "id": "bayes-rule",
           "title": "Bayes' Rule",
           "description": "From the symmetry of joint probability:\n$$P(A, B) = P(B \\mid A) \\cdot P(A) = P(A \\mid B) \\cdot P(B)$$\n\nRearranging gives **Bayes' rule**:\n$$P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B)}$$\n\nThis is the **belief update formula**: start with prior $P(A)$, observe evidence $B$, compute posterior $P(A \\mid B)$. The denominator $P(B)$ just normalizes so probabilities sum to 1.\n\nTry setting both likelihood sliders to the same value to see the independence special case.",
           "sliders": [
@@ -3330,6 +3354,7 @@
           ]
         },
         {
+          "id": "example-1-medical-testing",
           "title": "Example 1 \u2014 Medical Testing",
           "description": "A disease affects **1%** of people. A test is **99% sensitive** and has a **2% false positive rate**.\n\n**You test positive. What's the probability you actually have the disease?**\n\nMost people say ~99%. The real answer at 1% prevalence is ~**33%** \u2014 still a surprise.\n\n**Left column** (width = prevalence) = disease. **Right column** = no disease. The **bottom row** (below the step line) = tested positive. Green = true positive, orange = false positive. The posterior $P(D \\mid +)$ is the green fraction of that bottom row.\n\nSlide prevalence down to **0.1%** to see the famous 4.7% result.",
           "sliders": [
@@ -4120,6 +4145,7 @@
           ]
         },
         {
+          "id": "example-2-spam-filtering",
           "title": "Example 2 \u2014 Spam Filtering",
           "description": "**15%** of emails are spam. **80%** of spam contains \"lottery\". Only **5%** of legitimate emails contain it.\n\n**An email with \"lottery\" arrives \u2014 what's the probability it's spam?**\n\n**Left column** (width = 15%) = spam. **Right column** = legit. **Bottom row** = emails containing the keyword. Orange = spam\u2229word, blue = legit\u2229word. The posterior $P(\\text{spam} \\mid W) \\approx 73.8\\%$ is the orange fraction of the bottom row.",
           "sliders": [
@@ -4919,6 +4945,7 @@
           ]
         },
         {
+          "id": "example-3-tornado-warning",
           "title": "Example 3 \u2014 Tornado Warning",
           "description": "Only **2%** of severe storm alerts are real tornadoes. Radar detects **95%** of actual tornadoes, but triggers for **3%** of non-tornado storms.\n\n**The radar fires. What's the probability of an actual tornado?** Answer: ~**39.3%**.\n\n**Left column** (width = 2%) = real tornadoes. **Right column** = non-tornado storms. **Bottom row** = radar fired. Red cell = true alarm, orange = false alarm. The posterior P(T|radar) is the red fraction of the bottom row.\n\n**Try increasing the base rate**: as tornadoes become more common, the posterior climbs rapidly.",
           "sliders": [
@@ -5721,6 +5748,7 @@
       "prompt": "You are teaching Bayes' rule using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = prior categories (disease/healthy, spam/legit, tornado/no tornado). Column WIDTH = prior probability.\n- **Rows within each column** = conditional distribution P(evidence|category). Row HEIGHT in each column = P(evidence|category).\n- **Cell area** = P(category) \u00d7 P(evidence|category) = P(category, evidence) \u2014 joint probability.\n- The stepped dividing line separates positive evidence (bottom row) from negative (top row).\n\n## Independence Special Case\nWhen A and B are independent, P(B|A) = P(B|\u00acA) = P(B). Substituting into Bayes' rule:\n  P(A|B) = P(B|A)\u00b7P(A) / P(B) = P(B)\u00b7P(A) / P(B) = P(A)\nThe posterior equals the prior \u2014 observing B gives zero information about A. Geometrically: the step line is horizontal, so the B-row is a rectangle and conditioning on it doesn't change the column proportions.\n\n## For Real-World Examples\nAll three examples use the same column/row structure:\n- Column width = base rate (P(disease), P(spam), P(tornado))\n- Row height in each column = conditional test/signal probability\n- The stepped dividing line size = how informative the test is\n- Base rate neglect = the left column is tiny, so even a tall green cell has small area\n\n## Exploration Prompts\n- 'Set both likelihood sliders equal \u2014 the panel shows the independence collapse P(A|B) = P(A)'\n- 'In the medical example, try prevalence 10% vs 0.1% and see how the posterior swings'\n- 'What makes a test useful? Both low FPR and high base rate matter'\n- 'Compare all three examples: which has the most dramatic base rate effect?'"
     },
     {
+      "id": "story-the-test-result",
       "title": "Story: The Test Result",
       "description": "A medical test comes back positive. Walk through the story of how prior belief meets evidence \u2014 and why the result isn't what you'd expect.",
       "range": [
@@ -5802,6 +5830,7 @@
       ],
       "steps": [
         {
+          "id": "the-population",
           "title": "The Population",
           "description": "Imagine a city of **10,000 people**.\n\nA rare disease affects **1 in 100** \u2014 that's the **prior probability** $P(D) = 0.01$.\n\nThe entire rectangle represents everyone. The narrow green column on the left? That's the **1%** who carry the disease. The vast blue area is the **99%** who are healthy.\n\nNotice how thin that green column is. Hold that image.",
           "sliders": [
@@ -5966,6 +5995,7 @@
           ]
         },
         {
+          "id": "the-test",
           "title": "The Test",
           "description": "A new test is available. The lab says it's very reliable:\n\n- If you **have** the disease, the test catches it **99% of the time** \u2014 $P(+ \\mid D) = 0.99$\n- If you're **healthy**, the test wrongly says positive only **2% of the time** \u2014 $P(+ \\mid \\overline{D}) = 0.02$\n\nSounds nearly perfect. The test splits each column at different heights:\n- The **green column** is split high \u2014 99% tested positive (true catches)\n- The **blue column** is split low \u2014 only 2% false alarms\n\nThe white step-line shows where the test divides each group.",
           "sliders": [
@@ -6242,6 +6272,7 @@
           ]
         },
         {
+          "id": "the-phone-call",
           "title": "The Phone Call",
           "description": "Your phone rings. The doctor says: **\"Your test came back positive.\"**\n\nYour stomach drops. The test is 99% accurate \u2014 so you must be 99% likely to have the disease, right?\n\nLook at the rectangle. Everything **below the white line** tested positive. That's your group now.\n\nThe bright **green** area = true positives (people with disease who tested positive)\nThe **orange** area = false positives (healthy people the test got wrong)\n\n**Your chance of actually having the disease = green \u00f7 (green + orange)**\n\nLook at how much orange there is compared to green...",
           "add": [
@@ -6326,6 +6357,7 @@
           ]
         },
         {
+          "id": "the-surprise-only-33",
           "title": "The Surprise \u2014 Only 33%",
           "description": "Watch the **area-preserving morph**: the green (true positive) and orange (false positive) regions slide from the probability rectangle into a stacked bar.\n\n**The areas don't change** \u2014 each region keeps exactly the same area throughout. What changes is the shape: wide and short on the rectangle, narrow and tall in the bar.\n\nIn the final bar, the **green fraction = $P(D \\mid +)$** \u2014 the posterior. You can see immediately that the orange (false positives) dominates. At 1% prevalence, $P(D \\mid +) \\approx 33\\%$.\n\n$$P(D \\mid +) = \\frac{P(+ \\mid D) \\cdot P(D)}{P(+ \\mid D) \\cdot P(D) + P(+ \\mid \\overline{D}) \\cdot P(\\overline{D})}$$\n\nDrag the **morph slider** back and forth to see the connection between the rectangle and the bar.",
           "add": [
@@ -6450,6 +6482,7 @@
           ]
         },
         {
+          "id": "explore-what-changes-the-odds",
           "title": "Explore \u2014 What Changes the Odds?",
           "description": "Now explore with the sliders. The morph bar updates live.\n\n**Prevalence** \u2014 Slide up to 10%: the green region grows and the posterior jumps to ~84%. Slide down to 0.1%: the green shrinks and the posterior drops to ~4.7%.\n\n**False alarm rate** \u2014 This is the real lever. At 2%, false positives flood the bar with orange. Drop it to 0.1% and the green dominates \u2014 posterior jumps to ~91%.\n\n**Catch rate** \u2014 Surprisingly, going from 99% to 100% barely matters. The bottleneck isn't how well the test detects disease \u2014 it's how many false alarms it produces.\n\n**The lesson**: area is truth. When the prior is low, even a tiny false alarm rate creates more orange than green.",
           "add": [],

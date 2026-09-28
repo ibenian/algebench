@@ -3,6 +3,7 @@
   "import": ["cislunar-dynamics"],
   "scenes": [
     {
+      "id": "the-earth-moon-stage",
       "title": "The Earth-Moon Stage",
       "description": "Establish the vast scale of cislunar space so students can contextualize the Artemis II mission.",
       "markdown": "# The Earth-Moon System\n\n## Scale of the System\n\nIn this scene, **1 unit = 10,000 km**. The key distances are:\n\n$$d_{\\text{Earth-Moon}} = 384{,}400 \\text{ km} \\approx 38.4 \\text{ units}$$\n\n$$R_{\\oplus} = 6{,}371 \\text{ km} \\approx 0.64 \\text{ units}$$\n\n$$R_{\\text{Moon}} = 1{,}737 \\text{ km} \\approx 0.17 \\text{ units}$$\n\n## Size Comparison\n\nThe Moon is only about **27%** of Earth's radius — and at the correct scale of 384,400 km separation, the Moon appears tiny.\n\n$$\\frac{R_{\\text{Moon}}}{R_{\\oplus}} = \\frac{1{,}737}{6{,}371} \\approx 0.273$$\n\n## How Far Is the Moon?\n\nThe Earth-Moon distance is approximately **30 Earth diameters**:\n\n$$\\frac{d_{\\text{Earth-Moon}}}{2R_{\\oplus}} = \\frac{384{,}400}{12{,}742} \\approx 30.2$$\n\nFor comparison, familiar orbital altitudes:\n\n| Orbit | Altitude | Model distance from Earth center |\n|---|---|---|\n| ISS | 400 km | 0.04 units above surface |\n| GPS | 20,200 km | 2.02 + 0.64 = 2.66 units |\n| Geostationary | 35,786 km | 3.58 + 0.64 = 4.22 units |\n| Moon | 384,400 km | 38.4 units |\n\n## Travel Time\n\nAt typical spacecraft speeds (~1 km/s average over coast phase), the journey takes:\n\n$$t = \\frac{384{,}400 \\text{ km}}{1 \\text{ km/s}} \\approx 384{,}400 \\text{ s} \\approx 4.4 \\text{ days}$$\n\nArtemis II is planned as a **~10-day mission** — fly out, loop around the Moon on a free-return trajectory, and return to Earth.\n\n## The Free-Return Trajectory\n\nA free-return trajectory is a figure-eight path that uses the Moon's gravity to redirect the spacecraft back toward Earth — no engine burn required at the Moon. It was used by Apollo and is the safety backbone of Artemis II.\n\n## Citations\n\n- NASA Moon Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- NASA Earth Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html\n- Wikipedia: Earth-Moon system — https://en.wikipedia.org/wiki/Moon\n- Artemis II mission overview: https://www.nasa.gov/artemis-ii/",
@@ -80,6 +81,7 @@
       ],
       "steps": [
         {
+          "id": "how-far-is-the-moon",
           "title": "How Far Is the Moon?",
           "description": "The Moon is 384,400 km away — about 30 Earth diameters. Let's see it.",
           "camera": {
@@ -107,6 +109,7 @@
           "remove": []
         },
         {
+          "id": "scale-comparisons",
           "title": "Scale Comparisons",
           "description": "For comparison: the ISS orbits just 400 km up — barely a speck at this scale. GPS satellites orbit at 20,200 km, and geostationary orbit is at 35,786 km.",
           "camera": {
@@ -160,6 +163,7 @@
           "remove": []
         },
         {
+          "id": "the-journey-preview",
           "title": "The Journey Preview",
           "description": "This preview now uses the same mission construction as the simulation lesson: two Earth setup orbits from the departure sequence, then the nominal translunar coast, far-side flyby, and free-return leg. The path is frozen at the modeled closest-approach geometry so the flyby stays aligned with the fixed Moon marker in this scale view. Moon SOI entry marks where Orion enters the Moon's sphere of influence — the region where lunar gravity starts to dominate the flyby geometry.",
           "camera": {
@@ -270,6 +274,7 @@
           "remove": []
         },
         {
+          "id": "explore-the-scale",
           "title": "Explore the Scale",
           "description": "The entire Artemis II mission takes about 10 days. Orbit the view to explore the scale of this incredible journey.",
           "camera": {
@@ -298,6 +303,7 @@
       ]
     },
     {
+      "id": "the-sls-rocket-orion-spacecraft",
       "title": "The SLS Rocket & Orion Spacecraft",
       "description": "SLS Block 1 and Orion — stages, mass ratios, and why staging is necessary",
       "prompt": "You are teaching about the SLS rocket and staging concept. The key insight: rockets must carry their own fuel, and fuel has mass, which requires more fuel — the tyranny of the rocket equation. Staging solves this by dropping empty tanks. Compare the 98m SLS to familiar structures (taller than the Statue of Liberty). Each stage has a specific job: SRBs for raw power at liftoff, core stage for sustained acceleration to orbit, ICPS for precision orbit adjustment. The crew of four sits at the very top in Orion — the only part that comes home.",
@@ -341,6 +347,7 @@
       ],
       "steps": [
         {
+          "id": "the-full-stack",
           "title": "The Full Stack",
           "description": "The Space Launch System is the most powerful rocket ever flown. Standing 98 meters tall — taller than the Statue of Liberty — it generates 39 meganewtons of thrust at liftoff.",
           "camera": {
@@ -405,6 +412,7 @@
           ]
         },
         {
+          "id": "solid-rocket-boosters",
           "title": "Solid Rocket Boosters",
           "description": "Two massive solid rocket boosters provide most of the thrust at liftoff — 32 MN combined. They burn for just 126 seconds before separating at 48 km altitude.",
           "add": [
@@ -432,6 +440,7 @@
           ]
         },
         {
+          "id": "core-stage",
           "title": "Core Stage",
           "description": "The orange core stage carries liquid hydrogen and liquid oxygen, feeding four RS-25 engines — the same engine design that powered the Space Shuttle. It burns for 8 minutes.",
           "add": [
@@ -459,6 +468,7 @@
           ]
         },
         {
+          "id": "icps-upper-stage",
           "title": "ICPS Upper Stage",
           "description": "The Interim Cryogenic Propulsion Stage uses a single RL10 engine. It performs two burns to place Orion into a high Earth orbit before TLI.",
           "add": [
@@ -479,6 +489,7 @@
           ]
         },
         {
+          "id": "orion-spacecraft",
           "title": "Orion Spacecraft",
           "description": "At the top sits Orion — carrying four astronauts: Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen. Its European Service Module provides propulsion for the lunar journey.",
           "camera": {
@@ -503,6 +514,7 @@
           ]
         },
         {
+          "id": "why-staging",
           "title": "Why Staging?",
           "description": "About 85% of the rocket's 2.6 million kg liftoff mass is propellant. Staging works by discarding empty tanks — each stage falls away once its fuel is spent, leaving less mass for the next stage to push.",
           "camera": {
@@ -1212,6 +1224,7 @@
       ]
     },
     {
+      "id": "cislunar-scale-and-nominal-route",
       "title": "Cislunar Scale and Nominal Route",
       "description": "A uniform-scale Earth-Moon map with a time-controlled nominal Artemis II route and a dynamically moving Moon.",
       "markdown": "# Cislunar Scale and Nominal Route\n\nThis lesson uses a **uniform distance scale** in every direction:\n\n$$1\\text{ unit} = 10{,}000\\text{ km}$$\n\nSo the key mission distances become:\n\n$$R_{\\oplus} = 6371\\text{ km} \\approx 0.6371\\text{ units}$$\n$$R_{\\text{Moon}} = 1737\\text{ km} \\approx 0.1737\\text{ units}$$\n$$d_{\\oplus\\text{-Moon}} = 384{,}400\\text{ km} \\approx 38.44\\text{ units}$$\n\nThe route shown here is a **nominal reference trajectory** based on NASA SVS record **5610** and the Artemis II press kit. NASA explicitly notes that the actual trajectory may vary with final launch timing.\n\nThe Moon is also **dynamically simulated** rather than pinned in place. In this lesson, the Moon moves on a circular cislunar orbit with mean angular rate\n\n$$\\omega_{\\text{Moon}} = \\frac{2\\pi}{27.321661\\text{ days}} \\approx 0.23\\text{ rad/day}$$\n\nand the Artemis II path is timed so the flyby occurs when Orion reaches the moving Moon near mission day 5.\n\nA key mission fact is that Artemis II does **two Earth orbits before translunar injection**. So the route near Earth is not an accidental loop: it represents the planned Earth-orbit setup before Orion heads for the Moon.\n\nThat departure is **not** an Earth gravity assist. Orion must execute a real **translunar injection burn** with the service module after the Earth-orbit setup. The gravity-assist style turn happens later at the Moon during the free-return flyby.\n\n## Mission anchors used in this scene\n\n- mission duration: about **10 days**\n- closest approach above the Moon: about **4,000 to 6,000 miles**\n- communications blackout: about **30 to 50 minutes**\n- two Earth orbits before translunar injection\n- a thrust-driven translunar injection burn\n- free-return path back to Earth\n\n## Sources\n\n- NASA Artemis II press kit: https://www.nasa.gov/artemis-ii-press-kit/\n- NASA Artemis II mission page: https://www.nasa.gov/mission/artemis-ii/\n- NASA SVS API record 5610: https://svs.gsfc.nasa.gov/api/5610",
@@ -1327,6 +1340,7 @@
       ],
       "steps": [
         {
+          "id": "nominal-route",
           "title": "Nominal Route",
           "description": "Move through the mission on a uniform-scale Earth-Moon map. The route is driven by mission day and flyby altitude.",
           "sliders": [
@@ -1341,6 +1355,7 @@
       ]
     },
     {
+      "id": "earth-orbit-setup-and-departure-burns",
       "title": "Earth-Orbit Setup and Departure Burns",
       "description": "A closer look at the physically scaled high-Earth orbit and the departure phase.",
       "proof": [
@@ -2923,6 +2938,7 @@
       ],
       "steps": [
         {
+          "id": "setup-and-departure",
           "title": "Setup and Departure",
           "description": "Scrub the early mission from Earth-orbit setup into the departure sequence.",
           "add": [
@@ -2952,6 +2968,7 @@
       ]
     },
     {
+      "id": "moon-flyby-and-blackout-geometry",
       "title": "Moon Flyby and Blackout Geometry",
       "description": "A Moon-centered simulation of the far-side pass and the Earth line-of-sight blackout.",
       "markdown": "# Moon Flyby and Blackout Geometry\n\nThis scene is centered on the Moon. Orion's route is shown in **Moon-centered coordinates** so the flyby and blackout geometry are easier to inspect.\n\n## What is modeled here?\n\n- launch-date-dependent closest approach between **4,000 and 6,000 miles** above the lunar surface\n- a far-side pass rather than lunar orbit insertion\n- the Earth-to-Orion line-of-sight test\n- a return route bent back toward Earth\n- a moving Earth direction in the Moon-centered frame because the Moon itself is orbiting Earth\n\n## Blackout physics\n\nThe blackout is geometric. If the straight line from Earth to Orion passes through the Moon, communications are blocked.\n\n## Sources\n\n- NASA Artemis II press kit: https://www.nasa.gov/artemis-ii-press-kit/\n- NASA SVS API record 5610: https://svs.gsfc.nasa.gov/api/5610",
@@ -3034,6 +3051,7 @@
       ],
       "steps": [
         {
+          "id": "far-side-flyby",
           "title": "Far-Side Flyby",
           "description": "Inspect the lunar pass in Moon-centered coordinates and watch the line of sight to Earth switch on and off.",
           "add": [
@@ -3075,6 +3093,7 @@
       ]
     },
     {
+      "id": "full-mission-physics-simulator",
       "title": "Full Mission Physics Simulator",
       "description": "A full nominal mission simulation with live route, moving Moon, phase labels, and return conditions.",
       "markdown": "# Full Mission Physics Simulator\n\nThis capstone scene runs the nominal reference route as one continuous simulation on the same **uniform 10,000 km scale** used in the rest of the lesson.\n\nThe Moon is not frozen in place. Its Earth-centered position is updated through the mission using a mean orbital angular rate, so the Earth-Moon geometry and the blackout condition evolve with mission time.\n\n## Mission phases represented\n\n1. ascent\n2. Earth-orbit setup\n3. outbound cislunar coast\n4. far-side lunar flyby\n5. return coast\n6. entry interface and splashdown\n\n## Burns versus gravity assist\n\nBefore leaving Earth, Artemis II performs **two Earth orbits** and then a real **translunar injection burn**. That means the Earth-departure leg is created by thrust, not by a slingshot around Earth.\n\nNASA's Flight Day 2 update on **April 2, 2026** reported the TLI burn lasted **5 minutes 49 seconds**, which is a useful teaching point: a short burn can reshape the entire large-scale route when it is applied at the right orbital point.\n\nLater, at the Moon, the trajectory bends through a **lunar flyby / gravity-assist style turn** that sends Orion onto the free-return path back toward Earth.\n\n## Mission facts shown in the overlays\n\n- mission day and current phase\n- distance from Earth and Moon\n- flyby-altitude setting\n- Moon orbital angle\n- blackout condition from line-of-sight geometry\n- reentry anchors: **25,000 mph** and **400,000 ft** entry interface\n\n## Source basis\n\n- NASA Artemis II press kit: https://www.nasa.gov/artemis-ii-press-kit/\n- NASA Artemis II mission page: https://www.nasa.gov/mission/artemis-ii/\n- NASA SVS API record 5610: https://svs.gsfc.nasa.gov/api/5610\n- NASA Flight Day 2 update, April 2, 2026: https://www.nasa.gov/blogs/missions/2026/04/02/artemis-ii-flight-day-2-crew-houston-poll-go-for-translunar-injection-burn/",
@@ -3287,6 +3306,7 @@
       ],
       "steps": [
         {
+          "id": "run-the-mission",
           "title": "Run the Mission",
           "description": "Drive the nominal mission with real mission-day timing and a uniform distance scale.",
           "add": [

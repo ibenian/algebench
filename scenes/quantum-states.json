@@ -23,6 +23,7 @@
   },
   "scenes": [
     {
+      "id": "a-qubit-lives-in-mathbb-c-2",
       "title": "A Qubit Lives in $\\mathbb{C}^2$",
       "description": "Every two-level quantum system — an electron spin, a photon polarization, a superconducting circuit — is described by two complex amplitudes.",
       "markdown": "# A Qubit Lives in $\\mathbb{C}^2$\n\nConsider an electron passing through a Stern–Gerlach magnet. The beam splits into exactly **two** spots: spin-up and spin-down. Before measurement, the electron is in a superposition\n\n$$|\\psi\\rangle = \\alpha|{\\uparrow}\\rangle + \\beta|{\\downarrow}\\rangle$$\n\nwhere $\\alpha$ and $\\beta$ are **complex numbers** satisfying $|\\alpha|^2+|\\beta|^2=1$.\n\nThe same math describes photon polarization ($|H\\rangle, |V\\rangle$), superconducting qubits ($|0\\rangle, |1\\rangle$), and any other two-level quantum system.\n\n## Same qubit, different hardware\n\nOnce a basis is chosen, the symbols mean the same mathematical thing in every platform, but their physical interpretation changes:\n\n| System | Basis states | $\\alpha, \\beta$ encode | $\\theta$ encodes | $\\phi$ encodes |\n|--------|--------------|-------------------------|-------------------|-----------------|\n| Electron spin | $|\\uparrow_z\\rangle, |\\downarrow_z\\rangle$ | Spin-up / spin-down amplitudes in the $z$ basis | Tilt away from the $+z$ axis, which sets the spin-up vs spin-down population balance | Azimuth of the spin direction; affects $x$- and $y$-basis measurements |\n| Photon polarization | $|H\\rangle, |V\\rangle$ | Horizontal / vertical field amplitudes | How much of the state is in $H$ versus $V$ | Phase delay between $H$ and $V$, setting linear vs elliptical/circular polarization |\n| Two-level atom | $|g\\rangle, |e\\rangle$ | Ground / excited-state amplitudes | Population balance between $|g\\rangle$ and $|e\\rangle$ | Phase of the atomic coherence (dipole oscillation) |\n| Superconducting qubit | $|0\\rangle, |1\\rangle$ | Amplitudes of the two logical energy eigenstates | Ground-versus-excited occupation | Relative phase seen in coherent control and Ramsey interference |\n| Interferometer path qubit | $|A\\rangle, |B\\rangle$ | Probability amplitudes for the two paths | How strongly the state favors path $A$ or path $B$ | Optical phase difference accumulated between the paths |\n\nAcross all of these examples, $\\alpha$ and $\\beta$ are the raw complex amplitudes in the chosen basis. After imposing normalization and discarding global phase, the same state can always be written with two real angles:\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle.$$\n\nHere $\\theta$ determines the population balance in the chosen basis, while $\\phi$ determines the relative phase that shows up in interference and in measurements away from that basis.\n\n## From four real numbers to two\n\nTwo complex numbers have **four** real parameters. But:\n1. **Normalization** ($|\\alpha|^2+|\\beta|^2=1$) removes one.\n2. **Global phase** ($e^{i\\gamma}|\\psi\\rangle$ is the same state as $|\\psi\\rangle$) removes another.\n\nTwo real parameters remain — just enough to specify a point on a **sphere**.",
@@ -81,6 +82,7 @@
       ],
       "steps": [
         {
+          "id": "two-outcomes",
           "title": "Two outcomes",
           "description": "An electron in a magnetic field can only be measured spin-up or spin-down. Before measurement, the state is a superposition $|\\psi\\rangle = \\alpha|{\\uparrow}\\rangle + \\beta|{\\downarrow}\\rangle$, where $\\alpha$ and $\\beta$ are each complex numbers — together they form a vector in $\\mathbb{C}^2$, a four-real-dimensional space. We show them in one diagram for convenience, but remember each lives in its own copy of $\\mathbb{C}$.",
           "prompt": "Introduce the Stern-Gerlach experiment. Two spots on the screen → two basis states. But before measurement, the electron doesn't have a definite spin. Emphasize that alpha and beta each live in their own copy of C — together they form a vector in C^2, which has four real dimensions. We are drawing both in one complex plane for visual convenience, not because they share a single plane.",
@@ -110,6 +112,7 @@
           ]
         },
         {
+          "id": "same-math-different-physics",
           "title": "Same math, different physics",
           "description": "A photon passing through a polarizer also has two outcomes: horizontal $|H\\rangle$ or vertical $|V\\rangle$. Before measurement, $|\\psi\\rangle = \\alpha|H\\rangle + \\beta|V\\rangle$ — the same two complex amplitudes.",
           "prompt": "Show that photon polarization is exactly the same math. The cyan vector is the H amplitude, the coral vector is the V amplitude. Mention that diagonal polarization is an equal superposition, and circular polarization is when beta has a phase of pi/2.",
@@ -121,6 +124,7 @@
           ]
         },
         {
+          "id": "one-framework-many-systems",
           "title": "One framework, many systems",
           "description": "Superconducting circuits, trapped ions, nitrogen-vacancy centers — every two-level quantum system maps to the same $\\alpha|0\\rangle + \\beta|1\\rangle$.",
           "prompt": "Drive home the universality: electron spin, photon polarization, superconducting transmon, trapped ion, NV center — all are the same two-complex-number problem. This is why the qubit abstraction is so powerful. Use the standard |0>, |1> labels from here on.",
@@ -131,8 +135,9 @@
             {"id": "s0_universal_info", "position": "top-right", "content": "**The qubit abstraction**\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle$$\n\n| System | $\\lvert 0\\rangle$ | $\\lvert 1\\rangle$ |\n|--------|-----------|----------|\n| Electron spin | $\\lvert{\\uparrow}\\rangle$ | $\\lvert{\\downarrow}\\rangle$ |\n| Photon | $\\lvert H\\rangle$ | $\\lvert V\\rangle$ |\n| Transmon | ground | excited |\n| Trapped ion | $S_{1/2}$ | $D_{5/2}$ |"}
           ]
         },
-        {"title": "Global phase — fixing the gauge", "description": "If you rotate both $\\alpha$ and $\\beta$ by the exact same angle (a 'global phase'), nothing physical changes — no measurement can tell the difference. Because of this, we can always rotate our perspective until $\\alpha$ lands on the real axis. Physicists call this choice **gauge fixing**: picking one representative from a family of physically identical states. It doesn't lose any information; it just strips away the one dimension that the universe doesn't care about.", "prompt": "Explain global phase intuitively: multiplying the whole state by e^{i gamma} is like rotating both arrows by the same angle — all relative relationships stay the same, so no experiment can detect it. We exploit this by choosing gamma so that alpha lands on the positive real axis. Introduce the term 'gauge fixing' — choosing a convention to eliminate redundancy. This removes one of our four real parameters, leaving three. The next step (normalization) will remove one more."},
+        {"id": "global-phase-fixing-the-gauge", "title": "Global phase — fixing the gauge", "description": "If you rotate both $\\alpha$ and $\\beta$ by the exact same angle (a 'global phase'), nothing physical changes — no measurement can tell the difference. Because of this, we can always rotate our perspective until $\\alpha$ lands on the real axis. Physicists call this choice **gauge fixing**: picking one representative from a family of physically identical states. It doesn't lose any information; it just strips away the one dimension that the universe doesn't care about.", "prompt": "Explain global phase intuitively: multiplying the whole state by e^{i gamma} is like rotating both arrows by the same angle — all relative relationships stay the same, so no experiment can detect it. We exploit this by choosing gamma so that alpha lands on the positive real axis. Introduce the term 'gauge fixing' — choosing a convention to eliminate redundancy. This removes one of our four real parameters, leaving three. The next step (normalization) will remove one more."},
         {
+          "id": "normalization",
           "title": "Normalization",
           "description": "The total probability must be 1, so $|\\alpha|^2 + |\\beta|^2 = 1$. With global phase already removed, this constraint reduces our three remaining parameters to two — just enough for a point on a sphere.",
           "prompt": "Show the normalization constraint geometrically. Explain that in the full four-real-dimensional space, |alpha|^2+|beta|^2=1 defines S^3. We simplify the picture by gauge-fixing alpha to be real (choosing a global phase), so the circle you see is a slice of S^3, not the whole constraint surface. The tip of alpha traces part of this circle, and beta gets whatever is left. Four real numbers minus normalization minus global phase = two real parameters.",
@@ -163,6 +168,7 @@
           ]
         },
         {
+          "id": "explore-amplitudes",
           "title": "Explore amplitudes",
           "description": "Slide $\\theta$ to trade amplitude between $\\alpha$ and $\\beta$. At $\\theta=0$ the state is pure $|0\\rangle$; at $\\theta=\\pi$ it is pure $|1\\rangle$. Remember, $\\alpha$ is shown along the real axis because we gauge-fixed the global phase.",
           "prompt": "Let the student play with the slider. Point out theta=0 → all alpha, theta=pi → all beta, theta=pi/2 → equal superposition. The cyan vector shrinks as the coral one grows. Note that alpha lies on the real axis because we chose the global phase to make it real — this is a convention, not a physical constraint.",
@@ -188,6 +194,7 @@
           ]
         },
         {
+          "id": "relative-phase",
           "title": "Relative phase",
           "description": "Now let $\\beta$ become complex: $\\beta = e^{i\\phi}\\sin(\\theta/2)$. The phase $\\phi$ rotates $\\beta$ in its own complex plane without changing its magnitude. Because $\\alpha$ is gauge-fixed real, this is the **relative** phase between the two amplitudes — the only phase with physical meaning.",
           "prompt": "Add the phi slider. Show that phi rotates the beta vector in its own complex plane without changing its length. The normalization circle stays the same. Emphasize this is a relative phase — it matters because alpha has been fixed real, so all the physically meaningful phase lives in beta. This is the second and final real parameter.",
@@ -225,6 +232,7 @@
           ]
         },
         {
+          "id": "two-parameters-one-sphere",
           "title": "Two parameters, one sphere",
           "description": "Two real numbers $\\theta \\in [0,\\pi]$ and $\\phi \\in [0,2\\pi)$ specify every pure qubit state. These are exactly the polar and azimuthal angles of a sphere — the **Bloch sphere**.",
           "prompt": "This is the first bridge. Summarize: we started with 4 real parameters, removed 2 (normalization + global phase), and arrived at theta and phi. The next scene puts the physical electron beside its Hilbert-space description; the scene after that turns those same parameters into the Bloch sphere.",
@@ -235,6 +243,7 @@
       ]
     },
     {
+      "id": "from-electron-spin-to-hilbert-space",
       "title": "From Electron Spin to Hilbert Space",
       "description": "The electron on the left is the physical system; the ket on the right is the abstract Hilbert-space description used to predict what a spin measurement can return.",
       "markdown": "# From Electron Spin to Hilbert Space\n\nA Stern-Gerlach experiment asks a concrete physical question: if we measure spin along the $z$ axis, do we get **up** or **down**?\n\nThat laboratory question defines a basis:\n\n$$\\lvert\\uparrow_z\\rangle, \\qquad \\lvert\\downarrow_z\\rangle.$$\n\nOnce that basis is chosen, we represent the **same physical electron** by a vector in a two-dimensional complex Hilbert space:\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert\\uparrow_z\\rangle + \\beta\\lvert\\downarrow_z\\rangle.$$\n\nThe left panel shows the laboratory picture. The right panel shows the Hilbert-space coordinates. Those coordinates are **not** a position in ordinary space; they are amplitudes that encode measurement probabilities and relative phase.\n\nFor a pure qubit, normalization and the irrelevance of global phase reduce the description to two real parameters. That reduction is what makes the Bloch-sphere picture possible in the next scene.",
@@ -308,6 +317,7 @@
       ],
       "steps": [
         {
+          "id": "a-real-experiment-gives-two-outcomes",
           "title": "A real experiment gives two outcomes",
           "description": "On the left is the physical electron. A Stern-Gerlach measurement along $z$ can only return spin-up or spin-down, so the laboratory setup defines a two-state basis.",
           "prompt": "Start with the laboratory picture only. Say explicitly that the apparatus asks a yes-no question about spin along z, and that the two answers become the basis states.",
@@ -379,6 +389,7 @@
           ]
         },
         {
+          "id": "write-the-same-state-as-a-ket",
           "title": "Write the same state as a ket",
           "description": "Now place the Hilbert-space description next to the laboratory picture. The electron is still the same system, but on the right we encode it by amplitudes in the chosen basis.",
           "prompt": "Introduce the right panel as an abstract coordinate system, not as a second physical object. The student should understand that the ket is the mathematical representation of the same electron.",
@@ -453,6 +464,7 @@
           ]
         },
         {
+          "id": "one-physical-state-two-amplitudes",
           "title": "One physical state, two amplitudes",
           "description": "Changing the state on the left changes the amplitudes on the right. The physical electron and the Hilbert-space ket are two views of the same state, not two different systems.",
           "prompt": "Add theta as the bridge parameter. As the physical spin tilts, the Hilbert-space amplitudes change in lockstep. Emphasize that theta sets the population balance in the chosen z basis.",
@@ -522,6 +534,7 @@
           ]
         },
         {
+          "id": "relative-phase-completes-the-ket",
           "title": "Relative phase completes the ket",
           "description": "The amplitudes are complex, so magnitude is not the whole story. The relative phase $\\phi$ lives naturally in Hilbert space and, for electron spin, also changes the spin direction in a physically meaningful way.",
           "prompt": "Add phi carefully. The right panel should make clear that beta is complex, not just a positive length. Since this is electron spin, you can also let the left arrow rotate with phi and point out that this direct geometric reading is special to some systems.",
@@ -585,6 +598,7 @@
       ]
     },
     {
+      "id": "from-hilbert-space-to-the-bloch-sphere",
       "title": "From Hilbert Space to the Bloch Sphere",
       "description": "The amplitudes on the left and the Bloch vector on the right are two pictures of the same pure qubit state.",
       "markdown": "# From Hilbert Space to the Bloch Sphere\n\nOn the left, a pure qubit is written in Hilbert space as\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle.$$\n\nOn the right, the **same state** is represented by a Bloch vector\n\n$$\\vec r = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is not a change of physics; it is a change of coordinates.\n\n- In the Hilbert-space picture, $\\alpha$ and $\\beta$ are complex amplitudes.\n- In the Bloch-sphere picture, the same information is compressed into a point on the unit sphere.\n- $\\theta$ controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- $\\phi$ controls the relative phase.\n\nSo the Bloch sphere is a geometric summary of the pure-state Hilbert-space data for one qubit.",
@@ -658,6 +672,7 @@
       ],
       "steps": [
         {
+          "id": "the-ket-already-has-the-needed-data",
           "title": "The ket already has the needed data",
           "description": "Hilbert space stores the state in two complex amplitudes. Those amplitudes already contain everything the Bloch sphere will show geometrically.",
           "prompt": "Start from the left panel. The key idea is that we are not adding information when we go to the Bloch sphere; we are reorganizing it.",
@@ -786,6 +801,7 @@
           ]
         },
         {
+          "id": "theta-becomes-latitude",
           "title": "$\\theta$ becomes latitude",
           "description": "The magnitudes of $\\alpha$ and $\\beta$ determine how far up or down the Bloch vector sits. As $\\theta$ changes, the Hilbert-space bars and the Bloch latitude move together.",
           "prompt": "Make theta the first visible bridge. On the left, alpha shrinks while beta grows. On the right, the Bloch vector slides from north pole to south pole.",
@@ -887,6 +903,7 @@
           ]
         },
         {
+          "id": "phi-becomes-azimuth",
           "title": "$\\phi$ becomes azimuth",
           "description": "The relative phase rotates the state around the Bloch z-axis. On the left it is the phase of the lower amplitude; on the right it is the azimuthal angle of the Bloch vector.",
           "prompt": "Add phi as the second bridge. Left panel: beta carries phase around a small phase circle. Right panel: the Bloch vector sweeps around the sphere at fixed latitude.",
@@ -973,6 +990,7 @@
           ]
         },
         {
+          "id": "one-state-two-coordinate-systems",
           "title": "One state, two coordinate systems",
           "description": "For a pure qubit, the Hilbert-space amplitudes and the Bloch vector contain exactly the same physical information. The next scene will zoom in on the Bloch sphere alone.",
           "prompt": "Close the bridge clearly: Hilbert space and the Bloch sphere are two coordinate systems for the same pure state. The next scene can now focus purely on the sphere geometry.",
@@ -983,6 +1001,7 @@
       ]
     },
     {
+      "id": "from-amplitudes-to-probabilities",
       "title": "From Amplitudes to Probabilities",
       "description": "Hilbert-space amplitudes are not themselves probabilities; Born's rule says to square their magnitudes.",
       "markdown": "# From Amplitudes to Probabilities\n\nA pure qubit written in Hilbert space has the form\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle.$$\n\nThe numbers $\\alpha$ and $\\beta$ are **probability amplitudes**, not probabilities themselves. The actual measurement probabilities are given by **Born's rule**:\n\n$$p(0)=|\\alpha|^2, \\qquad p(1)=|\\beta|^2.$$\n\nFor the Bloch-sphere parameterization,\n\n$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right), \\qquad \\beta = e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right),$$\n\nso the probabilities become\n\n$$p(0)=\\cos^2\\!\\left(\\frac{\\theta}{2}\\right), \\qquad p(1)=\\sin^2\\!\\left(\\frac{\\theta}{2}\\right).$$\n\nThe phase $\\phi$ changes interference in other bases, but it does **not** affect these computational-basis probabilities.",
@@ -1049,6 +1068,7 @@
       ],
       "steps": [
         {
+          "id": "amplitudes-are-not-probabilities",
           "title": "Amplitudes are not probabilities",
           "description": "The Hilbert-space coordinates $\\alpha$ and $\\beta$ tell us the state, but the actual probabilities are their squared magnitudes.",
           "prompt": "Start by contrasting the two panels. Left: amplitudes. Right: probabilities. Say explicitly that the right panel comes from Born's rule, not by renaming alpha and beta.",
@@ -1187,6 +1207,7 @@
           ]
         },
         {
+          "id": "theta-controls-both-panels",
           "title": "$\\theta$ controls both panels",
           "description": "As $\\theta$ changes, the amplitudes change on the left and the probabilities change on the right. The right panel always shows the squared magnitudes of the left panel.",
           "prompt": "Make the squaring relationship visible. Students should see that shortening an amplitude bar by a little can shorten the corresponding probability bar by more.",
@@ -1365,6 +1386,7 @@
           ]
         },
         {
+          "id": "phi-does-not-change-these-probabilities",
           "title": "$\\phi$ does not change these probabilities",
           "description": "Now add relative phase. The lower amplitude can rotate in Hilbert space, but the computational-basis probabilities stay fixed because only the magnitudes matter.",
           "prompt": "Use this step to separate amplitude phase from measurement probability. The left panel gains a phase wheel; the right panel does not move.",
@@ -1408,6 +1430,7 @@
       ]
     },
     {
+      "id": "from-amplitudes-to-a-sphere",
       "title": "From Amplitudes to a Sphere",
       "description": "After the side-by-side bridge, this scene zooms in on the Bloch sphere itself and lets the student explore its geometry directly.",
       "markdown": "# From Amplitudes to a Sphere\n\nIn the previous scene we matched the Hilbert-space amplitudes to their Bloch-sphere image. Now we zoom in on the sphere itself.\n\nFor a pure qubit,\n\n$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n\nmaps to the **Bloch vector**\n\n$$\\vec{r} = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is a unit vector in $\\mathbb{R}^3$ — a point on a sphere.\n\n- **$\\theta$** is the polar angle from the north pole. It controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- **$\\phi$** is the azimuthal angle around the equator. It controls the relative phase.\n- **$z = \\cos\\theta$** directly gives the measurement probabilities: $p(0) = (1+z)/2$.",
@@ -1485,6 +1508,7 @@
       ],
       "steps": [
         {
+          "id": "recall-the-amplitudes",
           "title": "Recall the amplitudes",
           "description": "From the previous scene: $\\alpha = \\cos(\\theta/2)$ lives on the real axis, and $\\beta = e^{i\\phi}\\sin(\\theta/2)$ carries the phase. Two real numbers — where do they live geometrically?",
           "prompt": "Recap the amplitude result. Show alpha along the z-axis (it controls the height) and tease that we're about to reveal the geometric picture.",
@@ -1511,6 +1535,7 @@
           ]
         },
         {
+          "id": "theta-sets-the-latitude",
           "title": "$\\theta$ sets the latitude",
           "description": "The polar angle $\\theta$ sweeps from $\\lvert 0\\rangle$ at the north pole ($\\theta = 0$) to $\\lvert 1\\rangle$ at the south pole ($\\theta = \\pi$). Halfway ($\\theta = \\pi/2$) is an equal superposition.",
           "prompt": "Show the meridian and let the student sweep theta. Connect it explicitly: theta=0 means alpha=1 beta=0, theta=pi means alpha=0 beta=1. The z-coordinate is cos(theta).",
@@ -1554,6 +1579,7 @@
           ]
         },
         {
+          "id": "the-sphere-appears",
           "title": "The sphere appears",
           "description": "All possible $\\theta$ values trace a meridian. Now reveal the full sphere — every point on this surface is a valid pure qubit state.",
           "prompt": "Add the sphere. Emphasize that the meridian we've been sliding along is just one slice of the full picture. The sphere has room for the second parameter phi.",
@@ -1584,6 +1610,7 @@
           ]
         },
         {
+          "id": "phi-sets-the-azimuth",
           "title": "$\\phi$ sets the azimuth",
           "description": "The relative phase $\\phi$ rotates the state around the z-axis. It sweeps out the equator and every latitude circle — this is the Bloch sphere.",
           "prompt": "Add the phi slider. Now the state can reach any point on the sphere. Connect back to the amplitude picture: theta controlled |alpha| vs |beta|, phi controls the complex phase of beta. Together they cover every pure state.",
@@ -1631,6 +1658,7 @@
           ]
         },
         {
+          "id": "the-complete-bloch-sphere",
           "title": "The complete Bloch sphere",
           "description": "Every pure qubit state is a point on this sphere. The amplitudes $\\alpha$ and $\\beta$ from the Hilbert space map one-to-one to the angles $\\theta$ and $\\phi$ on the Bloch sphere.",
           "prompt": "Wrap up the bridge. The student now knows: ℂ² amplitudes → two angles → Bloch sphere. Every subsequent scene will work directly on the sphere. Mention that mixed states (statistical mixtures) live inside the sphere, but this lesson stays on the surface.",
@@ -1641,6 +1669,7 @@
       ]
     },
     {
+      "id": "from-bit-to-bloch-sphere",
       "title": "From Bit to Bloch Sphere",
       "description": "A qubit is not just 0 or 1. Pure one-qubit states fill the Bloch sphere, with $|0\\rangle$ and $|1\\rangle$ at the poles.",
       "markdown": "# From Bit to Bloch Sphere\n\nA classical bit has two pure states: $0$ and $1$. A **qubit** has basis states $|0\\rangle$ and $|1\\rangle$, but any normalized superposition\n\n$$|\\psi\\rangle = \\alpha |0\\rangle + \\beta |1\\rangle, \\qquad |\\alpha|^2 + |\\beta|^2 = 1$$\n\nis also a valid pure state.\n\nFor a single qubit, global phase does not affect measurements, so every pure state can be represented by a point on the **Bloch sphere**. The north pole is $|0\\rangle$, the south pole is $|1\\rangle$, and intermediate points represent superpositions.\n\nThis draft lesson focuses on **pure one-qubit states** because they admit a clean 3D picture. Mixed states live inside the sphere rather than on its surface.",
@@ -1735,6 +1764,7 @@
       ],
       "steps": [
         {
+          "id": "classical-endpoints",
           "title": "Classical endpoints",
           "description": "Start with the computational basis states. In this basis, $|0\\rangle$ is certainly 0 and $|1\\rangle$ is certainly 1, just like the two pure states of a classical bit.",
           "prompt": "Anchor the scene in the two poles first. Connect them to definite computational-basis outcomes and to the classical idea of two pure alternatives.",
@@ -1758,6 +1788,7 @@
           ]
         },
         {
+          "id": "a-superposition-appears",
           "title": "A superposition appears",
           "description": "Now move to the equator. This state is neither pole, so it is not 'just 0' or 'just 1'; it is a balanced superposition.",
           "prompt": "Use the equator state to break the classical analogy. Stress that equal amplitudes do not mean a classical halfway state.",
@@ -1781,6 +1812,7 @@
           ]
         },
         {
+          "id": "generic-pure-state",
           "title": "Generic pure state",
           "description": "A general pure qubit can point anywhere on the sphere. This sample state has both a latitude and an azimuth, so it needs more than a single 'probability of 1' number to describe it.",
           "prompt": "Introduce the idea that one angle sets the balance between |0> and |1>, while another controls relative phase. Keep it qualitative here and save formulas for the next scene.",
@@ -1808,6 +1840,7 @@
           ]
         },
         {
+          "id": "the-whole-sphere-matters",
           "title": "The whole sphere matters",
           "description": "The equator and the meridian show that there is a continuous family of pure states. Quantum state space is richer than a two-point classical menu.",
           "prompt": "Close by naming the key visual fact: the poles are special cases, but pure states occupy the full surface. Prepare the student for angle coordinates next.",
@@ -1841,6 +1874,7 @@
       ]
     },
     {
+      "id": "angles-encode-amplitudes",
       "title": "Angles Encode Amplitudes",
       "description": "Two angles, $\\theta$ and $\\phi$, locate a pure qubit on the Bloch sphere and encode its amplitudes.",
       "markdown": "# Angles Encode Amplitudes\n\nFor a pure one-qubit state, the Bloch sphere coordinates are usually written as\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle.$$\n\nThe Bloch point has coordinates\n\n$$r=(x,y,z)=\\bigl(\\sin\\theta\\cos\\phi,\\;\\sin\\theta\\sin\\phi,\\;\\cos\\theta\\bigr).$$\n\nSo:\n\n- $\\theta$ controls the **latitude** and therefore the balance between $|0\\rangle$ and $|1\\rangle$.\n- $\\phi$ controls the **azimuth** and therefore the **relative phase** between those basis states.\n\nThis is the standard pure-state parameterization for qubits; it is the geometric version of the normalized state-vector description.",
@@ -1944,6 +1978,7 @@
       ],
       "steps": [
         {
+          "id": "polar-angle-theta",
           "title": "Polar angle $\\theta$",
           "description": "Start on a single meridian with $\\phi=0$. As $\\theta$ increases from 0 to $\\pi$, the state slides from $|0\\rangle$ down to $|1\\rangle$.",
           "prompt": "Connect theta to north-versus-south balance. Point out that theta alone already tells the student how much of |0> and |1> appears in the amplitudes.",
@@ -1985,6 +2020,7 @@
           ]
         },
         {
+          "id": "azimuth-phi",
           "title": "Azimuth $\\phi$",
           "description": "Now let the state swing around the sphere. Changing $\\phi$ rotates the state around the z-axis while keeping the latitude fixed.",
           "prompt": "Name phi as the azimuth angle and the source of relative phase. Do not claim that phi changes z-basis probabilities; save that comparison for later.",
@@ -2015,6 +2051,7 @@
           ]
         },
         {
+          "id": "read-off-amplitudes",
           "title": "Read off amplitudes",
           "description": "The latitude controls the magnitudes of the amplitudes, while the azimuth controls their relative phase. The Bloch point packages both into one geometric picture.",
           "prompt": "Connect the geometry to the ket formula explicitly. Mention that the magnitudes come from theta over 2 and the relative phase from phi.",
@@ -2414,6 +2451,7 @@
           ]
         },
         {
+          "id": "deriving-the-bloch-z-component-from-the-state-vector",
           "title": "Deriving the Bloch z-component from the state vector",
           "technique": "derivation",
           "techniqueHint": "Compute the expectation value of the Pauli Z operator to extract the z-coordinate from the ket.",
@@ -2422,6 +2460,7 @@
           "prompt": "Walk the student through the density-matrix / expectation-value route. Emphasize that z is not arbitrary — it is a measurable quantity tied to the Pauli Z operator.",
           "steps": [
             {
+              "id": "bloch-parameterization",
               "type": "given",
               "label": "Bloch parameterization",
               "math": "\\htmlClass{hl-ket}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
@@ -2492,6 +2531,7 @@
               }
             },
             {
+              "id": "recall-the-pauli-z-operator",
               "type": "step",
               "label": "Recall the Pauli Z operator",
               "math": "\\htmlClass{hl-Z}{Z} = \\begin{pmatrix} 1 & 0 \\\\ 0 & -1 \\end{pmatrix}, \\quad Z\\lvert 0\\rangle = \\lvert 0\\rangle,\\; Z\\lvert 1\\rangle = -\\lvert 1\\rangle",
@@ -2504,6 +2544,7 @@
               "sceneStep": 0
             },
             {
+              "id": "compute-the-expectation-value",
               "type": "step",
               "label": "Compute the expectation value",
               "math": "\\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\htmlClass{hl-cos2}{\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(+1) + \\htmlClass{hl-sin2}{\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(-1)",
@@ -2575,6 +2616,7 @@
               }
             },
             {
+              "id": "apply-the-double-angle-identity",
               "type": "step",
               "label": "Apply the double-angle identity",
               "math": "\\cos^2\\!\\left(\\frac{\\theta}{2}\\right) - \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) = \\htmlClass{hl-costheta}{\\cos\\theta}",
@@ -2632,6 +2674,7 @@
               }
             },
             {
+              "id": "the-z-coordinate-is-an-expectation-value",
               "type": "conclusion",
               "label": "The z-coordinate is an expectation value",
               "math": "\\htmlClass{hl-result}{z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta}",
@@ -2679,6 +2722,7 @@
       ]
     },
     {
+      "id": "measurement-reads-latitude",
       "title": "Measurement Reads Latitude",
       "description": "In the computational basis, measurement probabilities depend only on how far up or down the Bloch sphere the state sits.",
       "markdown": "# Measurement Reads Latitude\n\nFor the Bloch-sphere parameterization\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle,$$\n\nBorn's rule gives\n\n$$p(0)=|\\langle 0|\\psi\\rangle|^2 = \\cos^2\\left(\\frac{\\theta}{2}\\right),\\qquad p(1)=|\\langle 1|\\psi\\rangle|^2 = \\sin^2\\left(\\frac{\\theta}{2}\\right).$$\n\nBecause the Bloch z-coordinate is $z=\\cos\\theta$, the half-angle identities turn those into\n\n$$p(0)=\\frac{1+z}{2},\\qquad p(1)=\\frac{1-z}{2}.$$\n\nSo a computational-basis measurement only reads the state's **height** on the sphere. The azimuth $\\phi$ matters for other measurement bases, but not for this one.",
@@ -2775,6 +2819,7 @@
       ],
       "steps": [
         {
+          "id": "set-the-latitude",
           "title": "Set the latitude",
           "description": "Choose a state on the x-z meridian. Sliding $\\theta$ changes the state's height and therefore its computational-basis bias.",
           "prompt": "Make the student track height first. Explain that we are freezing phi because computational-basis measurement only cares about the z coordinate.",
@@ -2801,6 +2846,7 @@
           ]
         },
         {
+          "id": "project-onto-z",
           "title": "Project onto $z$",
           "description": "The green projection on the z-axis is the quantity that matters. At the north pole $z=1$, at the south pole $z=-1$, and on the equator $z=0$.",
           "prompt": "Explain why the green segment captures everything needed for computational-basis measurement. Tie z equals cosine theta to the student's slider intuition.",
@@ -2830,6 +2876,7 @@
           ]
         },
         {
+          "id": "rewrite-with-z",
           "title": "Rewrite with $z$",
           "description": "Using the half-angle identities, the probabilities become linear in the Bloch z-coordinate. That is why a computational-basis measurement can be read directly from the state's height.",
           "prompt": "Tie the algebra back to the picture. The goal is not just to manipulate identities, but to see why latitude predicts measurement.",
@@ -2848,6 +2895,7 @@
         "prompt": "Walk the student from the ket formula to the probability formula. Keep the visual link explicit: z is the state's height on the sphere.",
         "steps": [
           {
+            "id": "start-from-the-bloch-parameterization",
             "type": "given",
             "label": "Start from the Bloch parameterization",
             "math": "\\htmlClass{hl-state}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
@@ -2918,6 +2966,7 @@
             }
           },
           {
+            "id": "apply-born-s-rule",
             "type": "step",
             "label": "Apply Born's rule",
             "math": "p(0)=\\lvert\\langle 0\\vert\\psi\\rangle\\rvert^2=\\htmlClass{hl-p0}{\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)} \\\\ p(1)=\\lvert\\langle 1\\vert\\psi\\rangle\\rvert^2=\\htmlClass{hl-p1}{\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)}",
@@ -3000,6 +3049,7 @@
             }
           },
           {
+            "id": "use-the-half-angle-identities",
             "type": "step",
             "label": "Use the half-angle identities",
             "math": "\\cos^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1+\\htmlClass{hl-z}{\\cos\\theta}}{2},\\qquad \\sin^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1-\\htmlClass{hl-z2}{\\cos\\theta}}{2}",
@@ -3087,6 +3137,7 @@
             }
           },
           {
+            "id": "read-height-as-probability",
             "type": "conclusion",
             "label": "Read height as probability",
             "math": "z=\\cos\\theta\\ \\Longrightarrow\\ p(0)=\\frac{1+\\htmlClass{hl-zfinal}{z}}{2},\\qquad p(1)=\\frac{1-\\htmlClass{hl-zfinal2}{z}}{2}",
@@ -3103,6 +3154,7 @@
       }
     },
     {
+      "id": "relative-phase-changes-other-measurements",
       "title": "Relative Phase Changes Other Measurements",
       "description": "Equator states all look identical to a z-basis measurement, but their relative phase changes what other bases can see.",
       "markdown": "# Relative Phase Changes Other Measurements\n\nOn the equator of the Bloch sphere, $\\theta=\\pi/2$, so the state takes the form\n\n$$|\\psi(\\phi)\\rangle = \\frac{|0\\rangle + e^{i\\phi}|1\\rangle}{\\sqrt{2}}.$$\n\nEvery such state has\n\n$$p_z(0)=p_z(1)=\\frac{1}{2},$$\n\nso a computational-basis measurement cannot distinguish them.\n\nBut other bases can. For the x basis,\n\n$$p(+x)=\\frac{1+\\cos\\phi}{2},\\qquad p(-x)=\\frac{1-\\cos\\phi}{2},$$\n\nand for the y basis,\n\n$$p(+y)=\\frac{1+\\sin\\phi}{2},\\qquad p(-y)=\\frac{1-\\sin\\phi}{2}.$$\n\nThis is why **relative phase matters**. By contrast, multiplying the entire ket by $e^{i\\gamma}$ leaves the Bloch point unchanged, so **global phase is physically invisible** for a single qubit.",
@@ -3183,6 +3235,7 @@
       ],
       "steps": [
         {
+          "id": "walk-the-equator",
           "title": "Walk the equator",
           "description": "Set $\\theta=\\pi/2$ and change only $\\phi$. The state moves around the equator, but its z-coordinate stays at zero, so a z-basis measurement always gives 50%-50%.",
           "prompt": "Say explicitly that the equator means z equals zero. Use that to justify the flat z-basis probabilities before discussing any other basis.",
@@ -3224,6 +3277,7 @@
           ]
         },
         {
+          "id": "measure-in-the-x-basis",
           "title": "Measure in the x basis",
           "description": "Now ask a different question: is the state aligned with $|+x\\rangle$ or $|-x\\rangle$? As $\\phi$ changes, those probabilities change even though the z-basis probabilities do not.",
           "prompt": "Use this step to make basis dependence vivid. Relative phase becomes visible when we rotate the measurement basis.",
@@ -3250,6 +3304,7 @@
           ]
         },
         {
+          "id": "measure-in-the-y-basis",
           "title": "Measure in the y basis",
           "description": "The y basis sees a different slice of the same circle. As the state moves around the equator, the y-basis probabilities rise and fall with $\\sin\\phi$.",
           "prompt": "Show that x and y measurements are complementary ways of reading the azimuth. This cements the idea that relative phase is geometric information on the Bloch sphere.",
@@ -3276,6 +3331,7 @@
           ]
         },
         {
+          "id": "global-phase-is-invisible",
           "title": "Global phase is invisible",
           "description": "Multiplying the entire ket by $e^{i\\gamma}$ does not move the Bloch point or change any measurement probability. Only the relative phase between the basis amplitudes changes the state geometry.",
           "prompt": "Students often confuse relative phase with global phase. State the distinction plainly: relative phase moves the Bloch point; global phase does not.",

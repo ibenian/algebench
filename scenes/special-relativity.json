@@ -3326,11 +3326,13 @@
       ],
       "proof": [
         {
+          "id": "velocity-composition-from-rapidity-addition",
           "title": "Velocity composition from rapidity addition",
           "technique": "derivation",
           "goal": "Derive $w = \\dfrac{v_A - v_B}{1 - v_A v_B}$ from $\\eta_{rel} = \\eta_A - \\eta_B$",
           "steps": [
             {
+              "id": "rapidity",
               "type": "definition",
               "label": "Rapidity",
               "math": "v = \\tanh\\eta \\quad\\Longleftrightarrow\\quad \\eta = \\operatorname{atanh}(v)",
@@ -3363,6 +3365,7 @@
               }
             },
             {
+              "id": "boosts-add-rapidities",
               "type": "given",
               "label": "Boosts add rapidities",
               "math": "\\eta_{rel} = \\eta_A - \\eta_B",
@@ -3394,6 +3397,7 @@
               }
             },
             {
+              "id": "expand-the-hyperbolic-tangent",
               "type": "step",
               "label": "Expand the hyperbolic tangent",
               "math": "w = \\tanh(\\eta_A - \\eta_B) = \\frac{\\tanh\\eta_A - \\tanh\\eta_B}{1 - \\tanh\\eta_A \\tanh\\eta_B}",
@@ -3455,6 +3459,7 @@
               }
             },
             {
+              "id": "substitute-the-velocities",
               "type": "step",
               "label": "Substitute the velocities",
               "math": "w = \\frac{v_A - v_B}{1 - v_A v_B}",
@@ -3499,8 +3504,9 @@
                 }
               }
             },
-            {"type": "step", "label": "The speed limit is automatic", "math": "|\\eta_{rel}| < \\infty \\;\\Rightarrow\\; |w| = |\\tanh(\\eta_{rel})| < 1", "justification": "$\\tanh$ saturates at $\\pm 1$: stacking any finite rapidity never reaches light speed"},
+            {"id": "the-speed-limit-is-automatic", "type": "step", "label": "The speed limit is automatic", "math": "|\\eta_{rel}| < \\infty \\;\\Rightarrow\\; |w| = |\\tanh(\\eta_{rel})| < 1", "justification": "$\\tanh$ saturates at $\\pm 1$: stacking any finite rapidity never reaches light speed"},
             {
+              "id": "newton-is-the-small-angle-limit",
               "type": "conclusion",
               "label": "Newton is the small-angle limit",
               "math": "v \\ll 1 \\;\\Rightarrow\\; \\tanh\\eta \\approx \\eta \\;\\Rightarrow\\; w \\approx v_A - v_B",
@@ -3545,14 +3551,16 @@
           ]
         },
         {
+          "id": "boosts-really-do-add-rapidities",
           "title": "Boosts really do add rapidities",
           "technique": "derivation",
           "goal": "Show $\\Lambda(\\eta_1)\\,\\Lambda(\\eta_2) = \\Lambda(\\eta_1 + \\eta_2)$",
           "steps": [
-            {"type": "definition", "label": "A boost is a hyperbolic rotation", "math": "\\Lambda(\\eta) = \\begin{pmatrix} \\cosh\\eta & \\sinh\\eta \\\\ \\sinh\\eta & \\cosh\\eta \\end{pmatrix}", "justification": "From The Interval: this matrix slides events along hyperbolas, preserving $x^2 - t^2$"},
-            {"type": "step", "label": "Compose two boosts", "math": "\\Lambda(\\eta_1)\\Lambda(\\eta_2) = \\begin{pmatrix} \\cosh\\eta_1\\cosh\\eta_2 + \\sinh\\eta_1\\sinh\\eta_2 & \\cosh\\eta_1\\sinh\\eta_2 + \\sinh\\eta_1\\cosh\\eta_2 \\\\ \\cdot & \\cdot \\end{pmatrix}", "justification": "Matrix multiplication, entry by entry (the matrix is symmetric — the second row mirrors the first)"},
-            {"type": "step", "label": "Angle-sum identities collapse it", "math": "\\cosh\\eta_1\\cosh\\eta_2 + \\sinh\\eta_1\\sinh\\eta_2 = \\cosh(\\eta_1{+}\\eta_2), \\quad \\cosh\\eta_1\\sinh\\eta_2 + \\sinh\\eta_1\\cosh\\eta_2 = \\sinh(\\eta_1{+}\\eta_2)", "justification": "The hyperbolic analogues of the trigonometric angle-sum formulas"},
+            {"id": "a-boost-is-a-hyperbolic-rotation", "type": "definition", "label": "A boost is a hyperbolic rotation", "math": "\\Lambda(\\eta) = \\begin{pmatrix} \\cosh\\eta & \\sinh\\eta \\\\ \\sinh\\eta & \\cosh\\eta \\end{pmatrix}", "justification": "From The Interval: this matrix slides events along hyperbolas, preserving $x^2 - t^2$"},
+            {"id": "compose-two-boosts", "type": "step", "label": "Compose two boosts", "math": "\\Lambda(\\eta_1)\\Lambda(\\eta_2) = \\begin{pmatrix} \\cosh\\eta_1\\cosh\\eta_2 + \\sinh\\eta_1\\sinh\\eta_2 & \\cosh\\eta_1\\sinh\\eta_2 + \\sinh\\eta_1\\cosh\\eta_2 \\\\ \\cdot & \\cdot \\end{pmatrix}", "justification": "Matrix multiplication, entry by entry (the matrix is symmetric — the second row mirrors the first)"},
+            {"id": "angle-sum-identities-collapse-it", "type": "step", "label": "Angle-sum identities collapse it", "math": "\\cosh\\eta_1\\cosh\\eta_2 + \\sinh\\eta_1\\sinh\\eta_2 = \\cosh(\\eta_1{+}\\eta_2), \\quad \\cosh\\eta_1\\sinh\\eta_2 + \\sinh\\eta_1\\cosh\\eta_2 = \\sinh(\\eta_1{+}\\eta_2)", "justification": "The hyperbolic analogues of the trigonometric angle-sum formulas"},
             {
+              "id": "rapidities-add",
               "type": "conclusion",
               "label": "Rapidities add",
               "math": "\\Lambda(\\eta_1)\\,\\Lambda(\\eta_2) = \\Lambda(\\eta_1 + \\eta_2)",
@@ -3592,11 +3600,13 @@
           ]
         },
         {
+          "id": "the-speed-limit-survives-composition",
           "title": "The speed limit survives composition",
           "technique": "direct",
           "goal": "Sub-light in $\\Rightarrow$ sub-light out: $|v_A|, |v_B| < 1 \\Rightarrow |w| < 1$, with $w = 1$ exactly when an input is light",
           "steps": [
             {
+              "id": "the-composition-law",
               "type": "given",
               "label": "The composition law",
               "math": "w = \\frac{v_A + v_B}{1 + v_A v_B} \\qquad (|v_A| \\le 1,\\; |v_B| \\le 1)",
@@ -3638,6 +3648,7 @@
               }
             },
             {
+              "id": "factor-the-shortfall-from-c",
               "type": "step",
               "label": "Factor the shortfall from $+c$",
               "math": "1 - w = \\frac{(1 - v_A)(1 - v_B)}{1 + v_A v_B}",
@@ -3697,6 +3708,7 @@
               }
             },
             {
+              "id": "factor-the-clearance-above-c",
               "type": "step",
               "label": "Factor the clearance above $-c$",
               "math": "1 + w = \\frac{(1 + v_A)(1 + v_B)}{1 + v_A v_B}",
@@ -3749,8 +3761,9 @@
                 }
               }
             },
-            {"type": "step", "label": "Strictly sub-light inputs stay strictly sub-light", "math": "|v_A|, |v_B| < 1 \\;\\Rightarrow\\; 1 - w > 0 \\text{ and } 1 + w > 0 \\;\\Rightarrow\\; |w| < 1", "justification": "All factors strictly positive — no pair of sub-$c$ speeds can compose past $c$, ever"},
+            {"id": "strictly-sub-light-inputs-stay-strictly-sub-light", "type": "step", "label": "Strictly sub-light inputs stay strictly sub-light", "math": "|v_A|, |v_B| < 1 \\;\\Rightarrow\\; 1 - w > 0 \\text{ and } 1 + w > 0 \\;\\Rightarrow\\; |w| < 1", "justification": "All factors strictly positive — no pair of sub-$c$ speeds can compose past $c$, ever"},
             {
+              "id": "equality-happens-only-at-the-speed-of-light",
               "type": "step",
               "label": "Equality happens only at the speed of light",
               "math": "w = 1 \\;\\Longleftrightarrow\\; v_A = 1 \\text{ or } v_B = 1",
@@ -3792,6 +3805,7 @@
               }
             },
             {
+              "id": "sub-light-speeds-form-a-closed-system",
               "type": "conclusion",
               "label": "Sub-light speeds form a closed system",
               "math": "\\text{sub-}c \\circ \\text{sub-}c = \\text{sub-}c, \\qquad c \\circ \\text{anything} = c",
@@ -6795,11 +6809,13 @@
           ],
           "proof": [
             {
+              "id": "why-the-horizon-stays-exactly-1-a-behind-the-ship",
               "title": "Why the horizon stays exactly $1/a$ behind the ship",
               "technique": "derivation",
               "goal": "Show the proper distance from the accelerating ship to the Rindler horizon is always $c^2/a$",
               "steps": [
                 {
+                  "id": "the-ship-s-worldline",
                   "type": "definition",
                   "label": "The ship's worldline",
                   "math": "x(\\tau) = \\tfrac{1}{a}\\cosh(a\\tau), \\qquad t(\\tau) = \\tfrac{1}{a}\\sinh(a\\tau)",
@@ -6858,6 +6874,7 @@
                   }
                 },
                 {
+                  "id": "its-speed-at-proper-time-tau",
                   "type": "step",
                   "label": "Its speed at proper time $\\tau$",
                   "math": "v = \\frac{dx}{dt} = \\tanh(a\\tau)",
@@ -6895,6 +6912,7 @@
                   }
                 },
                 {
+                  "id": "the-ship-s-line-of-simultaneity",
                   "type": "step",
                   "label": "The ship's line of simultaneity",
                   "math": "t - t(\\tau) = v\\,\\bigl(x - x(\\tau)\\bigr) \\;\\Longrightarrow\\; t = \\tanh(a\\tau)\\, x",
@@ -6949,8 +6967,9 @@
                     }
                   }
                 },
-                {"type": "step", "label": "Every now-line passes through the origin", "math": "(x, t) = (0, 0) \\;\\text{satisfies}\\; t = \\tanh(a\\tau)\\,x \\;\\;\\forall \\tau", "justification": "So the ship's 'now' always contains the pivot of the horizon $x = t$"},
+                {"id": "every-now-line-passes-through-the-origin", "type": "step", "label": "Every now-line passes through the origin", "math": "(x, t) = (0, 0) \\;\\text{satisfies}\\; t = \\tanh(a\\tau)\\,x \\;\\;\\forall \\tau", "justification": "So the ship's 'now' always contains the pivot of the horizon $x = t$"},
                 {
+                  "id": "proper-distance-from-ship-to-origin",
                   "type": "step",
                   "label": "Proper distance from ship to origin",
                   "math": "\\sqrt{x(\\tau)^2 - t(\\tau)^2} = \\sqrt{\\tfrac{1}{a^2}\\bigl(\\cosh^2(a\\tau) - \\sinh^2(a\\tau)\\bigr)} = \\frac{1}{a}",
@@ -7022,6 +7041,7 @@
                   }
                 },
                 {
+                  "id": "the-horizon-rides-at-fixed-distance",
                   "type": "conclusion",
                   "label": "The horizon rides at fixed distance",
                   "math": "d = \\frac{c^2}{a} \\;\\approx\\; 0.97 \\text{ ly at } 1g",

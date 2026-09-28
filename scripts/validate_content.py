@@ -25,6 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.mathjs_extensions import EXTENSION_NAMES  # noqa: E402
 from backend.expression_fields import is_expression_key  # noqa: E402
+from backend.lesson_ids import ambiguous_id_errors, id_errors, iter_id_targets  # noqa: E402
 
 # ---- Expression safety ----
 
@@ -333,6 +334,18 @@ def check_proofs(data):
             scan_proofs(step, f'scenes[{si}].steps[{sti}]')
 
     return errors, warnings, proof_count, step_count
+
+
+# ---- Stable ids ----
+
+def check_ids(data):
+    """Every scene, step, proof and proof step needs an explicit, unique id.
+
+    Deeplinks (sc=/st=/pf=/ps=) and saved references resolve by id first; without
+    one they fall back to the title slug, so a title edit re-points old links.
+    Fix with: ./run.sh scripts/backfill_lesson_ids.py --write <file>
+    """
+    return ambiguous_id_errors(data) + id_errors(data), sum(1 for _ in iter_id_targets(data))
 
 
 # ---- Camera sanity ----
@@ -798,6 +811,11 @@ def validate_file(path, fix=False):
     warnings.extend(proof_warnings)
     stats['proofs'] = (proof_count, proof_step_count, len(proof_errors), len(proof_warnings))
 
+    # Stable ids
+    id_errs, id_count = check_ids(data)
+    errors.extend(id_errs)
+    stats['ids'] = (id_count, len(id_errs))
+
     # Tensors
     tensor_errors, tensor_warnings = check_tensors(data)
     errors.extend(tensor_errors)
@@ -865,6 +883,10 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     print(f'  Expressions: {status(ee)} ({ec} checked, {ef} auto-fixable)')
     print(f'  Remove IDs:  {status(re_)} ({rc} checked)')
     print(f'  Slider refs: {status(0, sw)} ({sc} checked)')
+    ic, ie = stats.get('ids', (0, 0))
+    print(f'  Stable IDs:  {status(ie)} ({ic} checked)')
+    if ie:
+        print(f'               fix: ./run.sh scripts/backfill_lesson_ids.py --write {path}')
     if pc > 0:
         print(f'  Proofs:      {status(pe, pw)} ({pc} proof{"s" if pc != 1 else ""}, {psc} steps)')
     else:

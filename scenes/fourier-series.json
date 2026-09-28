@@ -24,6 +24,7 @@
   },
   "scenes": [
     {
+      "id": "sine-and-cosine-building-blocks",
       "title": "Sine and Cosine: Building Blocks",
       "description": "The sine and cosine functions are the fundamental building blocks of all periodic signals. They arise naturally from a point rotating on the unit circle.",
       "markdown": "# Sine and Cosine: The Building Blocks\n\nThe unit circle parametrized by angle $t$:\n\n$$x(t) = \\cos t, \\quad y(t) = \\sin t, \\quad t \\in [0, 2\\pi]$$\n\nProjects onto two waves:\n- **Horizontal projection** gives the **cosine** wave\n- **Vertical projection** gives the **sine** wave\n\n## Key Properties\n\n$$\\sin(t + 2\\pi) = \\sin(t), \\quad \\cos(t + 2\\pi) = \\cos(t)$$\n\nBoth functions are **periodic** with period $T = 2\\pi$.\n\n## Orthogonality\n\nSine and cosine are **orthogonal** on $[0, 2\\pi]$:\n\n$$\\int_0^{2\\pi} \\sin(nt)\\cos(mt)\\,dt = 0 \\quad \\text{for all } n, m$$\n\n$$\\int_0^{2\\pi} \\sin(nt)\\sin(mt)\\,dt = \\begin{cases}\\pi & n = m \\\\ 0 & n \\neq m\\end{cases}$$\n\nThis orthogonality is what makes Fourier series work \u2014 the basis functions do not interfere with each other.\n\n## Frequency and Amplitude\n\nGeneralizing: $A\\sin(\\omega t + \\phi)$ has:\n- **Amplitude** $A$ \u2014 height of the wave\n- **Frequency** $\\omega$ \u2014 oscillations per $2\\pi$\n- **Phase** $\\phi$ \u2014 horizontal shift\n\n> **The Circle View**: The rotating point on the unit circle PRODUCES the sine wave as its $y$-coordinate. Watching the circle is the most intuitive way to understand all of trigonometry.",
@@ -146,6 +147,7 @@
       ],
       "steps": [
         {
+          "id": "the-unit-circle",
           "title": "The unit circle",
           "description": "A point rotating on the unit circle: $x = \\cos t$, $y = \\sin t$. One full revolution takes $t = 2\\pi$.",
           "add": [
@@ -191,6 +193,7 @@
           ]
         },
         {
+          "id": "the-sine-wave",
           "title": "The sine wave",
           "description": "The $y$-coordinate of the rotating point traces the **sine wave** $y = \\sin(t)$ as $t$ increases from 0 to $2\\pi$.",
           "add": [
@@ -212,6 +215,7 @@
           ]
         },
         {
+          "id": "the-cosine-wave",
           "title": "The cosine wave",
           "description": "The $x$-coordinate traces the **cosine wave** $y = \\cos(t)$. Cosine is sine shifted left by $\\pi/2$: $\\cos(t) = \\sin(t + \\pi/2)$.",
           "add": [
@@ -233,6 +237,7 @@
           ]
         },
         {
+          "id": "higher-frequencies",
           "title": "Higher frequencies",
           "description": "The frequency-2 sine wave $\\sin(2t)$ completes 2 full oscillations in one period. These higher harmonics are the building blocks of the Fourier series.",
           "add": [
@@ -256,6 +261,7 @@
       ]
     },
     {
+      "id": "square-wave-approximation",
       "title": "Square Wave Approximation",
       "description": "A square wave can be built from sine waves alone: $f(x) = \\frac{4}{\\pi}\\left(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5} + \\cdots\\right)$. More terms means a sharper approximation.",
       "markdown": "# Fourier Series: Square Wave\n\nThe **square wave** with period $2\\pi$ and amplitude 1 can be represented as an infinite sum of sine waves:\n\n$$f(x) = \\frac{4}{\\pi}\\sum_{k=0}^{\\infty} \\frac{\\sin\\bigl((2k+1)x\\bigr)}{2k+1} = \\frac{4}{\\pi}\\left(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5} + \\cdots\\right)$$\n\n## Why Only Odd Harmonics?\n\nThe square wave is an **odd function** (symmetric about the origin) and has **half-wave symmetry** (the second half is minus the first half). These symmetries force:\n- Cosine coefficients: $a_n = 0$ (odd function)\n- Even sine coefficients: $b_{2k} = 0$ (half-wave symmetry)\n\n## Fourier Coefficients\n\nFor a general periodic function $f$ with period $2\\pi$:\n\n$$a_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\cos(nx)\\,dx, \\quad b_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\sin(nx)\\,dx$$\n\nFor the square wave: $b_n = \\frac{4}{n\\pi}$ (odd $n$), $0$ (even $n$).\n\n## Gibbs Phenomenon\n\nAt the jump discontinuities ($x = 0, \\pm\\pi$), the partial sums always overshoot by about **8.9%** no matter how many terms are used. This is the **Gibbs phenomenon**.\n\n> **Watch**: Adding each new odd harmonic adds a new \"wiggle\" while sharpening the approximation at smooth regions.",
@@ -379,6 +385,7 @@
       ],
       "steps": [
         {
+          "id": "target-the-square-wave",
           "title": "Target: the square wave",
           "description": "The ideal square wave: $+1$ for $x \\in (0, \\pi)$ and $-1$ for $x \\in (-\\pi, 0)$. We will build this from pure sine waves.",
           "add": [
@@ -413,6 +420,7 @@
           ]
         },
         {
+          "id": "n-1-first-term-frac-4-pi-sin-x",
           "title": "$N=1$: First term $\\frac{4}{\\pi}\\sin(x)$",
           "description": "The first term alone is just a sine wave scaled to $4/\\pi \\approx 1.27$. It captures the right sign but is very smooth.",
           "add": [
@@ -434,6 +442,7 @@
           ]
         },
         {
+          "id": "n-3-three-terms-through-sin-5x-5",
           "title": "$N=3$: Three terms through $\\sin(5x)/5$",
           "description": "$\\frac{4}{\\pi}(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5})$. Already much closer to the square wave with flat top and bottom.",
           "remove": [
@@ -460,6 +469,7 @@
           ]
         },
         {
+          "id": "n-7-seven-terms-sharper-corners",
           "title": "$N=7$: Seven terms, sharper corners",
           "description": "Seven odd harmonics. The flat regions are well-approximated, but small Gibbs overshoots appear near the jumps.",
           "remove": [
@@ -486,6 +496,7 @@
           ]
         },
         {
+          "id": "interactive-choose-number-of-terms-n",
           "title": "Interactive: choose number of terms $N$",
           "description": "Drag the $N$ slider to add more odd harmonics. Watch the Gibbs phenomenon at $x = 0, \\pm\\pi$ \u2014 it never fully disappears!",
           "remove": [
@@ -524,6 +535,7 @@
       ]
     },
     {
+      "id": "phasors-in-3d-the-helix-visualization",
       "title": "Phasors in 3D: The Helix Visualization",
       "description": "Each Fourier term is a rotating phasor. In 3D — with time as the z-axis — every frequency component traces a helix. The y-z shadow of the combined helix IS the square wave.",
       "markdown": "# Fourier in 3D: Rotating Phasors\n\nEvery Fourier term is a **rotating phasor** — a vector spinning in the complex plane at a fixed frequency. In 3D, we let time advance along the **z-axis**, so each phasor sweeps out a **helix**:\n\n$$\\text{Term } n:\\quad x(t) = A_n\\cos(nt),\\quad y(t) = A_n\\sin(nt),\\quad z = t$$\n\n## Two Views, Two Insights\n\n| Camera | What you see |\n|--------|--------------|\n| **End On** (along −z) | Phasors as circles — radius = amplitude, speed = frequency |\n| **Wave View** (along −x) | The **y-z shadow** of the helix — the actual waveform |\n\n## Square Wave Phasors\n\nOnly odd harmonics appear, each with amplitude $4/(n\\pi)$:\n\n$$x(t) = \\frac{4}{\\pi}\\!\\left(\\cos t + \\frac{\\cos 3t}{3} + \\frac{\\cos 5t}{5} + \\cdots\\right)$$\n$$y(t) = \\frac{4}{\\pi}\\!\\left(\\sin t + \\frac{\\sin 3t}{3} + \\frac{\\sin 5t}{5} + \\cdots\\right)$$\n\nThe combined helix grows increasingly complex in 3D — but its **y-z shadow** step by step becomes a square wave.\n\n## The Deep Insight\n\nA Fourier series is not merely algebra — it is a **geometric fact**: any periodic signal is the shadow of rotating helices cast onto a plane.\n\n> **Gibbs phenomenon**: Even with $N=8$ terms the shadow overshoots ~9% at each jump. The overshoot gets thinner but never vanishes no matter how many helices you add.",
@@ -562,6 +574,7 @@
       ],
       "steps": [
         {
+          "id": "a-phasor-traces-a-helix-in-3d",
           "title": "A phasor traces a helix in 3D",
           "description": "A phasor of amplitude 1 rotating at frequency 1 sweeps through time. In 3D this traces a **helix**. Switch to **End On** to see a circle; switch to **Wave View** to see that its y-shadow is $\\sin(t)$.",
           "add": [
@@ -580,6 +593,7 @@
           ]
         },
         {
+          "id": "n-1-the-fundamental-phasor",
           "title": "n=1: the fundamental phasor",
           "description": "The first square-wave term has amplitude $4/\\pi \\approx 1.27$, giving a wider helix. Switch to **Wave View** — the dark shadow on the back wall is $(4/\\pi)\\sin(t)$: a smooth start.",
           "remove": [{"id": "unit-helix"}],
@@ -610,6 +624,7 @@
           ]
         },
         {
+          "id": "n-3-the-third-harmonic-phasor",
           "title": "n=3: the third harmonic phasor",
           "description": "The third harmonic has amplitude $4/(3\\pi) \\approx 0.42$ and spins **3× faster** — a tighter, narrower helix. From **End On** it appears as a smaller inner circle. Both phasors now rotate simultaneously.",
           "add": [
@@ -628,6 +643,7 @@
           ]
         },
         {
+          "id": "n-3-combined-the-sum-phasor",
           "title": "N=3 combined: the sum phasor",
           "description": "Adding the two phasors gives a winding 3D path. Switch to **Wave View** — the y-shadow is already recognizable as a rough square wave! A complex 3D path, a simple shadow.",
           "remove": [
@@ -662,6 +678,7 @@
           ]
         },
         {
+          "id": "n-7-the-square-wave-emerges-from-the-shadow",
           "title": "N=7: the square wave emerges from the shadow",
           "description": "Seven phasors. The 3D helix grows intricate — but switch to **Wave View** and the shadow is nearly a perfect square wave. Seven rotating helices conspire to cast a square shadow.",
           "remove": [
@@ -695,6 +712,7 @@
           ]
         },
         {
+          "id": "interactive-watch-the-helix-and-its-shadow",
           "title": "Interactive: watch the helix and its shadow",
           "description": "Drag $N$ from 1 to 8. Watch the 3D helix path change — and in **Wave View**, the shadow sharpen toward a square wave. Notice the Gibbs overshoot near the jumps never fully disappears.",
           "remove": [
@@ -740,6 +758,7 @@
       ]
     },
     {
+      "id": "why-square-waves-arise-bistable-dynamics",
       "title": "Why Square Waves Arise: Bistable Dynamics",
       "description": "Square waves emerge naturally from any system with two stable states. A periodic force tilts the energy landscape until one well disappears — the system snaps to the other side. Flat regions are stable equilibrium; sharp jumps are fast barrier crossings.",
       "markdown": "# Why Square Waves Arise: Bistable Dynamics\n\nMany real systems have **two stable equilibria** — two states they naturally settle into. Under periodic forcing such systems **snap** between states, tracing a square wave in time.\n\n## The Double Well\n\nThe simplest model: a particle in a **double-well potential**:\n\n$$V(x) = x^4 - 2x^2$$\n\nStable minima at $x = \\pm 1$, unstable barrier at $x = 0$.\n\n## Periodic Forcing\n\nAn external tilt $-A\\sin(t)\\cdot x$ periodically raises one well:\n\n$$V(x,t) = x^4 - 2x^2 - A\\sin(t)\\cdot x$$\n\n- $\\sin(t) > 0$: right well deepens, left wall shrinks → ball snaps **right**\n- $\\sin(t) < 0$: left well deepens, right wall shrinks → ball snaps **left**\n\n## Why the Jumps Are Sharp\n\nAt the barrier $x=0$, the restoring force $-dV/dx = 4x - 4x^3$ is zero — but once the ball tips past, the cubic term accelerates it rapidly into the other well. The steeper the barrier, the faster the snap, and the **sharper the jump** in the time signal.\n\n## Real-World Examples\n\n| System | State $-1$ | State $+1$ |\n|--------|-----------|----------|\n| Digital logic | LOW (0 V) | HIGH (5 V) |\n| Thermostat | Heater OFF | Heater ON |\n| Neuron | Resting | Firing |\n| Relay | Open | Closed |\n\n> **Key insight**: Square waves don't require elaborate construction — they arise from any bistable system under periodic forcing. Fourier just tells you what frequencies are hidden inside the shape.",
@@ -779,6 +798,7 @@
       ],
       "steps": [
         {
+          "id": "two-stable-states-the-double-well",
           "title": "Two stable states: the double well",
           "description": "The potential $V(x) = x^4 - 2x^2$ has **two minima** at $x = \\pm 1$ and an unstable **barrier** at $x = 0$. A ball placed anywhere will roll into one of the two valleys and stay. Neither state is preferred — both are equally stable. Switch to **Potential** view for a clear 2D picture.",
           "add": [
@@ -821,6 +841,7 @@
           ]
         },
         {
+          "id": "trapped-in-equilibrium-a-flat-signal",
           "title": "Trapped in equilibrium: a flat signal",
           "description": "Without forcing the ball sits at $x = -1$ forever — its position over time is a **flat line**. The z-axis is time; the line extends straight ahead without changing. No wave, just a constant. To get a square wave we need something to periodically push the ball over the barrier.",
           "add": [
@@ -842,6 +863,7 @@
           ]
         },
         {
+          "id": "periodic-forcing-tilts-the-landscape",
           "title": "Periodic forcing tilts the landscape",
           "description": "The force $-A\\sin(t)\\cdot x$ periodically tilts the well. Each curve is a snapshot of $V(x)$ at a different time. **Orange** ($t = \\pi/2$): right well deepened, left wall nearly gone → ball snaps right. **Bright blue** ($t = 3\\pi/2$): the reverse. Switch to **Potential** view to compare the shapes.",
           "remove": [
@@ -898,6 +920,7 @@
           ]
         },
         {
+          "id": "the-ball-snaps-a-square-wave-is-born",
           "title": "The ball snaps: a square wave is born",
           "description": "The ball's full 3D trajectory through time. It hugs the well bottom at $x = \\pm 1$ (travelling along $y \\approx -0.7$) and briefly rises to $y = 0$ as it crosses the barrier. Switch to **Time View** to see this is a square wave: long flat stretches at $\\pm 1$, sharp vertical jumps at the transitions.",
           "remove": [

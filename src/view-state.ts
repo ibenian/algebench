@@ -125,6 +125,34 @@ export function slugify(title: unknown): string {
         .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * The minimum buildIds() needs from an entry: an optional explicit `id`, plus
+ * a human title under whichever key the caller names. Widened to `unknown` so
+ * the generated schema types (Scene / Step / ProofStep) all satisfy it.
+ */
+export interface IdItem {
+    id?: unknown;
+}
+
+/**
+ * Deterministic, collision-free ids for an array of {id?, title?} — how the
+ * `sc=` / `st=` / `ps=` params resolve (id -> slug(title) -> index). Mirrored by
+ * `build_ids` in backend/lesson_ids.py.
+ */
+export function buildIds(items: readonly IdItem[] | null | undefined, titleKey: string): string[] {
+    const used = new Set<string>();
+    return (items || []).map((it, i) => {
+        // `titleKey` is a runtime-chosen key ('title' / 'label'), so the lookup
+        // is widened here rather than baked into IdItem.
+        let base = (it && it.id) ? String(it.id) : slugify(it && (it as Record<string, unknown>)[titleKey]);
+        if (!base) base = String(i);
+        let id = base, n = 2;
+        while (used.has(id)) id = `${base}-${n++}`;
+        used.add(id);
+        return id;
+    });
+}
+
 // ----- Camera encode / decode -----
 
 /** Encode camera to compact `px,py,pz,tx,ty,tz[,ux,uy,uz]` (data-space). */

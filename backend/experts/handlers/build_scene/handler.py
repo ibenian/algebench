@@ -25,6 +25,7 @@ import logging
 from backend.experts.modules.build_scene.intent import propose_scene
 from backend.experts.modules.proof_edit.intent import clarifications_from_thread
 from backend.experts.registry import register_handler
+from backend.lesson_ids import build_ids, carry_ids, slugify, unique_id
 
 from .compose import ComposeError, compose
 from .format import format_clarifications, format_refused, render_inputs
@@ -161,6 +162,32 @@ def _composed(proposal, req: BuildSceneRequest, inputs: dict):
         return None, str(second)
 
 
+def _settle_ids(node: dict, req: BuildSceneRequest) -> None:
+    """Make compose's provisional ids stable against the lesson they land in.
+
+    A replace keeps the replaced scene's resolved id, and each step whose title
+    survives keeps its id, so links and saved references into the scene still
+    resolve. An insert is made unique against every other scene. Both use
+    ``lesson.sceneIds`` — every scene's id as the client resolves it, uncapped —
+    falling back to the summaries for a client that does not send it.
+    """
+    sent = list(req.lesson.sceneIds)
+    ids = sent or build_ids(
+        [{"title": s.title} for s in req.lesson.sceneSummaries], "title")
+    if req.op == "replace" and isinstance(req.current, dict):
+        # The client's resolved id when it sent one; otherwise (an older, cached
+        # client) the scene's own explicit id beats anything rebuilt from titles.
+        if req.sceneIndex < len(sent) and sent[req.sceneIndex]:
+            old_id = sent[req.sceneIndex]
+        else:
+            old_id = str(req.current.get("id")
+                         or (ids[req.sceneIndex] if req.sceneIndex < len(ids) else "")
+                         or slugify(req.current.get("title")) or node.get("id") or "scene")
+        carry_ids(req.current, node, old_id)
+        return
+    node["id"] = unique_id(str(node.get("id") or "scene"), {i for i in ids if i})
+
+
 @register_handler("build_scene", request_model=BuildSceneRequest)
 def build_scene(req: BuildSceneRequest) -> dict:
     """Propose one scene, composed and validated, as an insert or replace op."""
@@ -221,6 +248,8 @@ def build_scene(req: BuildSceneRequest) -> dict:
         #    empty — and what the CHAT agent needs to propose something else.
         return {"reason": reason}
 
+    node = scene.model_dump(mode="json", by_alias=True, exclude_none=True)
+    _settle_ids(node, req)
     log.info("%s built %r: %d element(s), %d step(s), %d slider(s)", LOG_TAG,
              scene.title, len(scene.elements or []), len(scene.steps or []),
              sum(len(s.sliders or []) for s in (scene.steps or [])))
@@ -237,7 +266,7 @@ def build_scene(req: BuildSceneRequest) -> dict:
                 # client cannot apply anything the expert returns. Caught by
                 # review, not by tests: mine asserted the shape I had written.
                 "at": {"index": req.sceneIndex},
-                "node": scene.model_dump(mode="json", by_alias=True, exclude_none=True),
+                "node": node,
             }],
         },
         "focus": req.sceneIndex,
