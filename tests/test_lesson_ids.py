@@ -178,3 +178,51 @@ def test_carry_ids_matches_repeated_titles_in_order():
 def test_every_repo_lesson_has_stable_ids(path):
     # Fix with: ./run.sh scripts/backfill_lesson_ids.py --write <file>
     assert id_errors(json.loads(path.read_text())) == []
+
+
+def test_a_collision_resolved_fallback_is_kept():
+    """Step 1 is untitled while step 0 is explicitly `1`: the client resolves
+    step 1 as `1-2`, which is not an integer — keep it so `st=1-2` still works."""
+    data = {'title': 's', 'steps': [{'id': '1', 'title': 'x'}, {}]}
+    assert dict((t.path, i) for t, i in assign_missing_ids(data))['steps[1]'] == '1-2'
+
+
+def test_a_renamed_index_fallback_does_not_collide():
+    data = {'title': 's', 'steps': [{'title': 'a'}, {'id': 'step-2', 'title': 'b'}, {}]}
+    # steps[2] would become step-3; steps[0]'s untitled twin would be step-1 —
+    # force a clash: an explicit step-3 already exists.
+    data['steps'][1]['id'] = 'step-3'
+    written = dict((t.path, i) for t, i in assign_missing_ids(data))
+    assert written['steps[2]'] == 'step-3-2'
+
+
+def test_carry_ids_matches_exact_titles_not_slugs():
+    old = {'steps': [{'title': 'A+B'}, {'title': 'A B'}]}   # resolve a-b, a-b-2
+    new = {'steps': [{'title': 'A B'}]}
+    carry_ids(old, new, 'x')
+    assert new['steps'][0]['id'] == 'a-b-2'
+
+
+def test_carry_ids_keeps_proof_and_proof_step_ids():
+    old = {'proof': {'id': 'p1', 'title': 'Balance', 'steps': [{'label': 'Given'}, {'id': 'k', 'label': 'Sum'}]},
+           'steps': [{'title': 'S', 'proof': {'title': 'Nested'}}]}
+    new = {'proof': {'id': 'minted', 'title': 'Balance', 'steps': [{'id': 'x', 'label': 'Sum'}, {'label': 'New'}]},
+           'steps': [{'title': 'S', 'proof': {'id': 'other', 'title': 'Nested'}}]}
+    carry_ids(old, new, 'scene')
+    assert new['proof']['id'] == 'p1'
+    assert [s['id'] for s in new['proof']['steps']] == ['k', 'new']
+    assert new['steps'][0]['proof']['id'] == 'nested'
+
+
+def test_backfill_overwrites_an_empty_id_in_place():
+    out, changes = backfill_text('{"scenes": [{"id": "", "title": "Intro"}]}')
+    assert out == '{"scenes": [{"id": "intro", "title": "Intro"}]}'
+    assert len(changes) == 1
+
+
+def test_explicit_ids_win_over_derived_ones():
+    """An id-less `Intro` inserted ahead of a scene already frozen as `intro`
+    must not take its id (assemble_scene --add --at 0)."""
+    data = {'scenes': [{'title': 'Intro'}, {'id': 'intro', 'title': 'Intro'}]}
+    assert [i for _, i in assign_missing_ids(data)] == ['intro-2']
+    assert duplicate_id_errors(data) == []

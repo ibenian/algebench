@@ -162,15 +162,16 @@ def missing_ids(data: dict) -> list[IdTarget]:
 def id_to_write(t: IdTarget) -> str:
     """The id to write for a target that lacks one.
 
-    Normally the client-derived id, so existing links keep resolving. An
-    untitled scene/step/proof step's derived id is only its index — not stable,
-    and it still resolves through the integer-index fallback — so it gets
-    ``<kind>-<n>`` instead. An untitled proof keeps ``_idx_<n>``: that token is
-    not an integer, so no fallback would catch an existing ``pf=_idx_<n>`` link.
+    Normally the client-derived id, so existing links keep resolving. The one
+    exception is an untitled scene/step/proof step whose derived id is a BARE
+    index (``3``): that is not stable, and a link carrying it still resolves
+    through the integer-index fallback, so it gets ``<kind>-<n>`` instead
+    (made unique by ``assign_missing_ids``). A collision-resolved fallback such
+    as ``1-2`` is not an integer — no fallback would catch it — so it is kept,
+    as is an untitled proof's ``_idx_<n>``.
     """
-    if t.untitled and t.kind != "proof":
-        n = int(t.ident) + 1 if t.ident.isdigit() else 1
-        return f"{t.kind}-{n}"
+    if t.untitled and t.kind != "proof" and t.ident.isdigit():
+        return f"{t.kind}-{int(t.ident) + 1}"
     return t.ident
 
 
@@ -178,10 +179,21 @@ def assign_missing_ids(data: dict) -> list[tuple[IdTarget, str]]:
     """Write an id onto every target that lacks one, in place.
 
     Returns ``(target, id_written)`` for each change.
+
+    Explicit ids are authoritative: a derived id that an explicit id elsewhere
+    in the same scope already holds takes the next free suffix instead (e.g. an
+    id-less ``Intro`` inserted ahead of a scene whose id is ``intro``).
     """
+    targets = list(iter_id_targets(data))
+    taken: dict[str, set[str]] = {}
+    for t in targets:
+        if t.explicit:
+            taken.setdefault(t.scope, set()).add(str(t.obj["id"]))
     changed = []
-    for t in missing_ids(data):
-        ident = id_to_write(t)
+    for t in targets:
+        if t.explicit:
+            continue
+        ident = unique_id(id_to_write(t), taken.setdefault(t.scope, set()))
         t.obj["id"] = ident
         changed.append((t, ident))
     return changed
@@ -217,29 +229,73 @@ def id_errors(data: dict) -> list[str]:
     return missing_id_errors(data) + duplicate_id_errors(data)
 
 
+def _title_key(title: Any) -> str:
+    """Exact title, whitespace-normalized. Not the slug: ``A+B`` and ``A B``
+    slug alike but are different steps."""
+    return " ".join(str(title or "").split())
+
+
+def _carry(old_items: list[dict], old_ids: list[str], new_items: list[dict],
+           key: str, mint: str) -> list[tuple[dict, dict]]:
+    """Give each new item the resolved id of the old item with the same
+    ``key`` (repeated titles matched in order), unique within ``new_items``.
+    Returns the ``(old, new)`` pairs that matched."""
+    queues: dict[str, list[tuple[dict, str]]] = {}
+    for o, oid in zip(old_items, old_ids):
+        if oid and _title_key(o.get(key)):
+            queues.setdefault(_title_key(o.get(key)), []).append((o, oid))
+    taken: set[str] = set()
+    pairs, fresh = [], []
+    for n in new_items:
+        queue = queues.get(_title_key(n.get(key)))
+        o, keep = queue.pop(0) if queue else (None, None)
+        if keep and keep not in taken:
+            n["id"] = keep
+            taken.add(keep)
+            pairs.append((o, n))
+        else:
+            fresh.append(n)
+    for n in fresh:
+        n["id"] = unique_id(str(n.get("id") or readable_slug(n.get(key), mint)), taken)
+    return pairs
+
+
+def _scene_proofs(scene: dict) -> list[dict]:
+    """The scene's own proofs followed by its steps' proofs."""
+    out = []
+    for holder in [scene, *_dicts(scene.get("steps"))]:
+        raw = holder.get("proof")
+        out += [raw] if isinstance(raw, dict) else _dicts(raw)
+    return out
+
+
 def carry_ids(old: dict, new: dict, old_id: str) -> None:
     """Keep a replaced scene's ids on its replacement, in place.
 
-    The scene keeps ``old_id`` (its resolved id, which links already use), and
-    each new step whose title matches an old step's takes that step's resolved
-    id — repeated titles matched in order, so two ``Setup`` steps keep ``setup``
-    and ``setup-2`` respectively. Other steps keep their own id, made unique
-    against the carried ones.
+    The scene keeps ``old_id`` (its resolved id, which links already use). Each
+    new step whose title matches an old step's takes that step's resolved id,
+    and likewise each proof (by title) and, within a matched proof, each proof
+    step (by label) — so ``st=``, ``pf=`` and ``ps=`` links into the scene keep
+    landing on the same content. Titles match exactly (whitespace-normalized),
+    repeats in order. Unmatched items keep their own id, made unique among
+    their siblings; proof ids are lesson-wide, which the validator checks.
     """
     new["id"] = old_id
-    old_steps = _dicts(old.get("steps"))
-    kept: dict[str, list[str]] = {}
-    for s, sid in zip(old_steps, build_ids(old_steps, "title")):
-        kept.setdefault(slugify(s.get("title")), []).append(sid)
-    taken: set[str] = set()
-    fresh = []
-    for st in _dicts(new.get("steps")):
-        queue = kept.get(slugify(st.get("title")))
-        keep = queue.pop(0) if queue else None
-        if keep and keep not in taken:
-            st["id"] = keep
-            taken.add(keep)
-        else:
-            fresh.append(st)
-    for st in fresh:
-        st["id"] = unique_id(str(st.get("id") or readable_slug(st.get("title"), "step")), taken)
+    old_steps, new_steps = _dicts(old.get("steps")), _dicts(new.get("steps"))
+    _carry(old_steps, build_ids(old_steps, "title"), new_steps, "title", "step")
+    old_proofs = _scene_proofs(old)
+    old_pids = [str(p.get("id") or slugify(p.get("title"))) for p in old_proofs]
+    new_proofs = _scene_proofs(new)
+    queues: dict[str, list[tuple[dict, str]]] = {}
+    for p, pid in zip(old_proofs, old_pids):
+        if pid and _title_key(p.get("title")):
+            queues.setdefault(_title_key(p.get("title")), []).append((p, pid))
+    for proof in new_proofs:
+        queue = queues.get(_title_key(proof.get("title")))
+        if not queue:
+            continue
+        old_proof, pid = queue.pop(0)
+        proof["id"] = pid
+        old_ps = _dicts(old_proof.get("steps"))
+        _carry(old_ps, build_ids(old_ps, "label"), _dicts(proof.get("steps")),
+               "label", "proof-step")

@@ -24,7 +24,7 @@ from _json_format import dumps_compact_leaves
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.lesson_ids import (  # noqa: E402
-    assign_missing_ids, build_ids, carry_ids, duplicate_id_errors,
+    assign_missing_ids, carry_ids, duplicate_id_errors,
 )
 
 
@@ -125,6 +125,9 @@ def cmd_add(args):
         print(f'Error: Index {idx} out of range (0..{len(lesson["scenes"])})')
         sys.exit(1)
 
+    # Freeze the existing scenes' ids FIRST: inserting a same-titled scene ahead
+    # of an id-less one would otherwise shift its derived id (intro -> intro-2).
+    settle_ids(lesson)
     lesson['scenes'].insert(idx, scene)
     settle_ids(lesson)
     save_json(args.lesson, lesson)
@@ -155,7 +158,8 @@ def cmd_replace(args):
     # A rebuilt scene keeps the id links into it already use — ALWAYS, even
     # when the builder minted its own — and so does every step whose title
     # survives.
-    old_id = build_ids(lesson['scenes'], 'title')[idx]
+    settle_ids(lesson)  # freeze every existing id before changing anything
+    old_id = lesson['scenes'][idx]['id']
     carry_ids(old, scene, old_id)
     scene = {'id': scene.pop('id'), **scene}
     lesson['scenes'][idx] = scene

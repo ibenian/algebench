@@ -35,12 +35,14 @@ _WS = " \t\n\r"
 class _PosParser:
     """Minimal JSON parser that records where each object's braces sit.
 
-    ``starts[id(obj)]`` is the text offset of the object's opening ``{``.
+    ``starts[id(obj)]`` is the text offset of the object's opening ``{``, and
+    ``id_spans[id(obj)]`` the ``(start, end)`` of its ``"id"`` value, if any.
     """
 
     def __init__(self, text: str):
         self.text = text
         self.starts: dict[int, int] = {}
+        self.id_spans: dict[int, tuple[int, int]] = {}
         self._keep: list = []  # keep every dict alive so id() stays unique
 
     def _ws(self, i):
@@ -81,7 +83,10 @@ class _PosParser:
             key, i = scanstring(self.text, self._ws(i) + 1)
             i = self._ws(i)
             assert self.text[i] == ":"
-            obj[key], i = self._value(self._ws(i + 1))
+            vstart = self._ws(i + 1)
+            obj[key], i = self._value(vstart)
+            if key == "id":
+                self.id_spans[id(obj)] = (vstart, i)
             i = self._ws(i)
             if self.text[i] == "}":
                 return obj, i + 1
@@ -110,20 +115,25 @@ def backfill_text(text: str) -> tuple[str, list]:
     changes = assign_missing_ids(data)
     inserts = []
     for target, ident in changes:
+        entry_value = json.dumps(ident, ensure_ascii=False)
+        span = parser.id_spans.get(id(target.obj))
+        if span:  # present but empty/null: overwrite the value, add no key
+            inserts.append((span, entry_value))
+            continue
         brace = parser.starts[id(target.obj)]
         first = brace + 1
         while text[first] in _WS:
             first += 1
-        entry = f'"id": {json.dumps(ident, ensure_ascii=False)},'
+        entry = f'"id": {entry_value},'
         if text[first] == "}":  # empty object: {} -> {"id": "x"}
-            inserts.append((first, entry[:-1]))
+            inserts.append(((first, first), entry[:-1]))
         elif "\n" in text[brace + 1:first]:  # multi-line: own line, same indent
             indent = text[text.rfind("\n", 0, first) + 1:first]
-            inserts.append((first, f"{entry}\n{indent}"))
+            inserts.append(((first, first), f"{entry}\n{indent}"))
         else:  # one-line object
-            inserts.append((first, f"{entry} "))
-    for pos, s in sorted(inserts, reverse=True):
-        text = text[:pos] + s + text[pos:]
+            inserts.append(((first, first), f"{entry} "))
+    for (start, end), s in sorted(inserts, reverse=True):
+        text = text[:start] + s + text[end:]
     # Safety net: the edit must be exactly "the same data, plus these ids".
     if json.loads(text) != data:
         raise RuntimeError("text edit did not round-trip to the expected data")
