@@ -374,7 +374,7 @@ function pivotUnder(clientX: number, clientY: number): Vector3 | null {
  * that need the rect themselves would otherwise ask for it a second time on
  * the pointer-move path.
  */
-function arcballScreenDisc(): { cx: number; cy: number; r: number; rect: DOMRect } | null {
+function arcballScreenDisc(centre: Vector3 = rotationCentre()): { cx: number; cy: number; r: number; rect: DOMRect } | null {
     if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
     const rect = cameraState.renderer.domElement.getBoundingClientRect();
     // A collapsed canvas has no disc, and saying so here is what keeps the
@@ -386,7 +386,7 @@ function arcballScreenDisc(): { cx: number; cy: number; r: number; rect: DOMRect
     if (rect.width <= 0 || rect.height <= 0) return null;
     // The ball is centred on the rotation pivot, not on the viewport, so
     // grabbing a point on it turns the same point that the rotation swings.
-    const ndc = rotationCentre().clone().project(cameraState.camera as unknown as Camera);
+    const ndc = centre.clone().project(cameraState.camera as unknown as Camera);
     return {
         cx: rect.left + (ndc.x * 0.5 + 0.5) * rect.width,
         cy: rect.top  + (-ndc.y * 0.5 + 0.5) * rect.height,
@@ -1136,11 +1136,48 @@ function cancelPivotMove(): void {
     pivotMoveId = null;
 }
 
-/** Drop a pending flash, so a drag's own ball outlives it. */
+/** Drop a pending flash or linger, so a drag's own ball outlives it. */
 function cancelBallFlash(): void {
+    lingerPivot = null;
     if (pivotFlashTimer === null) return;
     clearTimeout(pivotFlashTimer);
     pivotFlashTimer = null;
+}
+
+/**
+ * How long the ball stays up after a rotate drag ends. Pressing on it again
+ * within that time grabs another point of the same ball — same pivot, ball
+ * left where it is — so a turn can be built up from several short drags.
+ * Every mouse up re-arms it.
+ */
+const BALL_LINGER_MS = 1500;
+/** The pivot of the ball still up after a drag; null once it has gone. */
+let lingerPivot: Vector3 | null = null;
+
+function lingerArcballBall(pivot: Vector3): void {
+    cancelBallFlash();
+    if (!ballHelper) return;   // rotate cue off: nothing to linger
+    lingerPivot = pivot.clone();
+    pivotFlashTimer = window.setTimeout(() => {
+        pivotFlashTimer = null;
+        lingerPivot = null;
+        if (!document.body.classList.contains('rotating')) hideArcballBall();
+    }, BALL_LINGER_MS);
+}
+
+/** A pan or zoom moves the view off the lingering ball: take it away now. */
+function dropLingeringBall(): void {
+    if (lingerPivot === null) return;
+    cancelBallFlash();
+    hideArcballBall();
+}
+
+/** The lingering ball's pivot, if a press at this pixel lands on the ball. */
+function lingeringPivotUnder(clientX: number, clientY: number): Vector3 | null {
+    if (!lingerPivot) return null;
+    const disc = arcballScreenDisc(lingerPivot);
+    if (!disc) return null;
+    return Math.hypot(clientX - disc.cx, clientY - disc.cy) <= disc.r ? lingerPivot.clone() : null;
 }
 
 /**
@@ -1279,6 +1316,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
             haltSmoothedRotation();
             releaseDragPivotIfIdle();
             haltSmoothedPan();
+            dropLingeringBall();
             panDrag = { x: e.clientX, y: e.clientY, start: rotateMode === 'camera' ? beginPanDrag(e.clientX, e.clientY) : null };
             captureDragPointer();
             if (cameraState.controls) cameraState.controls.enabled = false;
@@ -1298,8 +1336,12 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // Turn about whatever was pressed on. Picked before the ball is shown
         // (a flash from a double-click may still be up), and before the drag
         // maps the pointer onto the ball, which is centred on this pivot.
+        //
+        // A press on the ball still lingering from the last drag keeps that
+        // drag's pivot, so it grabs another point of the same ball.
+        const onBall = lingeringPivotUnder(e.clientX, e.clientY);
         cancelBallFlash();
-        hideArcballBall();
+        if (!onBall) hideArcballBall();
         // A follow cam re-pins the target to what it tracks every frame, so a
         // pivot elsewhere would fight it: there the drag turns about the
         // target, as it always did. An expression-driven view rewrites the
@@ -1307,7 +1349,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // change too); it gets no drag pivot either, rather than a pivot that
         // would be thrown away one frame later.
         const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
-        dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
+        dragPivot = viewLocked ? null : (onBall ?? pivotUnder(e.clientX, e.clientY));
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX, y: e.clientY };
         orbitDragActive = true;
         if (rotateMode === 'camera') beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
@@ -1428,7 +1470,8 @@ export function setupRollDrag(container: HTMLElement | null): void {
         orbitDragActive = false;
         trackballStart = null;
         document.body.classList.remove(...AXIS_CLASSES);
-        hideArcballBall();
+        // The ball stays a moment (BALL_LINGER_MS) so another press can grab it.
+        lingerArcballBall(rotationCentre());
         hideGrabMarker();
         document.body.classList.remove('rotating');
         if (cameraState.controls) {
@@ -2084,6 +2127,7 @@ export function setupTrackpadPan(): void {
     if (!canvas) return;
     bindSmoothingSettings();
     canvas.addEventListener('wheel', (e) => {
+        dropLingeringBall();   // pinch, zoom or scroll-pan: the lingering ball is stale
         if (e.ctrlKey && e.deltaMode === 0) {
             e.preventDefault();
             e.stopImmediatePropagation();

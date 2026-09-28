@@ -4982,11 +4982,11 @@ function pivotUnder(clientX, clientY) {
 * that need the rect themselves would otherwise ask for it a second time on
 * the pointer-move path.
 */
-function arcballScreenDisc() {
+function arcballScreenDisc(centre = rotationCentre()) {
 	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
 	const rect = cameraState.renderer.domElement.getBoundingClientRect();
 	if (rect.width <= 0 || rect.height <= 0) return null;
-	const ndc = rotationCentre().clone().project(cameraState.camera);
+	const ndc = centre.clone().project(cameraState.camera);
 	return {
 		cx: rect.left + (ndc.x * .5 + .5) * rect.width,
 		cy: rect.top + (-ndc.y * .5 + .5) * rect.height,
@@ -5561,11 +5561,44 @@ function cancelPivotMove() {
 	cancelAnimationFrame(pivotMoveId);
 	pivotMoveId = null;
 }
-/** Drop a pending flash, so a drag's own ball outlives it. */
+/** Drop a pending flash or linger, so a drag's own ball outlives it. */
 function cancelBallFlash() {
+	lingerPivot = null;
 	if (pivotFlashTimer === null) return;
 	clearTimeout(pivotFlashTimer);
 	pivotFlashTimer = null;
+}
+/**
+* How long the ball stays up after a rotate drag ends. Pressing on it again
+* within that time grabs another point of the same ball — same pivot, ball
+* left where it is — so a turn can be built up from several short drags.
+* Every mouse up re-arms it.
+*/
+var BALL_LINGER_MS = 1500;
+/** The pivot of the ball still up after a drag; null once it has gone. */
+var lingerPivot = null;
+function lingerArcballBall(pivot) {
+	cancelBallFlash();
+	if (!ballHelper) return;
+	lingerPivot = pivot.clone();
+	pivotFlashTimer = window.setTimeout(() => {
+		pivotFlashTimer = null;
+		lingerPivot = null;
+		if (!document.body.classList.contains("rotating")) hideArcballBall();
+	}, BALL_LINGER_MS);
+}
+/** A pan or zoom moves the view off the lingering ball: take it away now. */
+function dropLingeringBall() {
+	if (lingerPivot === null) return;
+	cancelBallFlash();
+	hideArcballBall();
+}
+/** The lingering ball's pivot, if a press at this pixel lands on the ball. */
+function lingeringPivotUnder(clientX, clientY) {
+	if (!lingerPivot) return null;
+	const disc = arcballScreenDisc(lingerPivot);
+	if (!disc) return null;
+	return Math.hypot(clientX - disc.cx, clientY - disc.cy) <= disc.r ? lingerPivot.clone() : null;
 }
 /**
 * Turn the view about `world` from now on.
@@ -5703,6 +5736,7 @@ function setupRollDrag(container) {
 			haltSmoothedRotation();
 			releaseDragPivotIfIdle();
 			haltSmoothedPan();
+			dropLingeringBall();
 			panDrag = {
 				x: e.clientX,
 				y: e.clientY,
@@ -5722,9 +5756,10 @@ function setupRollDrag(container) {
 		}
 		cameraState.arcballInertiaQ = null;
 		haltSmoothedRotation();
+		const onBall = lingeringPivotUnder(e.clientX, e.clientY);
 		cancelBallFlash();
-		hideArcballBall();
-		dragPivot = !!(cameraState.followCamState || cameraState.cameraExprState) ? null : pivotUnder(e.clientX, e.clientY);
+		if (!onBall) hideArcballBall();
+		dragPivot = !!(cameraState.followCamState || cameraState.cameraExprState) ? null : onBall ?? pivotUnder(e.clientX, e.clientY);
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
 			axis,
@@ -5832,7 +5867,7 @@ function setupRollDrag(container) {
 		orbitDragActive = false;
 		trackballStart = null;
 		document.body.classList.remove(...AXIS_CLASSES);
-		hideArcballBall();
+		lingerArcballBall(rotationCentre());
 		hideGrabMarker();
 		document.body.classList.remove("rotating");
 		if (cameraState.controls) {
@@ -6343,6 +6378,7 @@ function setupTrackpadPan() {
 	if (!canvas) return;
 	bindSmoothingSettings();
 	canvas.addEventListener("wheel", (e) => {
+		dropLingeringBall();
 		if (e.ctrlKey && e.deltaMode === 0) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
