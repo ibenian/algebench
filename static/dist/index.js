@@ -12869,6 +12869,29 @@ var _depth = 0;
 var _pinned = false;
 var _restoringFocus = false;
 var _hideTimer$2 = null;
+var SHOW_DELAY_MS = 350;
+var _showTimer = null;
+function _cancelShow() {
+	if (_showTimer) {
+		clearTimeout(_showTimer);
+		_showTimer = null;
+	}
+}
+/** Hover may open this term's tip: while pinned, only a term inside an open tip (stacked). */
+function _hoverMayShow(term) {
+	return !_pinned || _levelOf(term) >= 0 || _depth > 0 && _tips[0]?.anchor === term;
+}
+function _scheduleShow(term) {
+	_cancelShow();
+	if (_depth > _levelOf(term) + 1) {
+		_show(term);
+		return;
+	}
+	_showTimer = setTimeout(() => {
+		_showTimer = null;
+		if (term.isConnected && _hoverMayShow(term)) _show(term);
+	}, SHOW_DELAY_MS);
+}
 function _tipId(level) {
 	return level === 0 ? "glossary-tip" : `glossary-tip-${level}`;
 }
@@ -12893,7 +12916,11 @@ function _cancelHide() {
 function _scheduleHide() {
 	if (_pinned || _focusHeld()) return;
 	_cancelHide();
-	_hideTimer$2 = setTimeout(hideGlossaryTip, 180);
+	_hideTimer$2 = setTimeout(() => {
+		_hideTimer$2 = null;
+		_pinned = false;
+		_closeFrom(0);
+	}, 180);
 }
 function _ensureTip(level) {
 	let tip = _tips[level];
@@ -12993,6 +13020,7 @@ function _show(anchor) {
 	_position(tip.el, anchor);
 }
 function hideGlossaryTip() {
+	_cancelShow();
 	_cancelHide();
 	_pinned = false;
 	_closeFrom(0);
@@ -13040,15 +13068,23 @@ function installGlossaryTooltip() {
 	});
 	document.addEventListener("mouseover", (e) => {
 		const term = _termOf(e.target);
-		if (term && (!_pinned || _levelOf(term) >= 0 || _tips[0].anchor === term)) _show(term);
+		if (!term || !_hoverMayShow(term)) return;
+		if (_termOf(e.relatedTarget) === term) return;
+		_scheduleShow(term);
 	});
 	document.addEventListener("mouseout", (e) => {
-		if (_termOf(e.target) && !_termOf(e.relatedTarget)) _scheduleHide();
+		if (_termOf(e.target) && !_termOf(e.relatedTarget)) {
+			_cancelShow();
+			_scheduleHide();
+		}
 	});
 	document.addEventListener("focusin", (e) => {
 		if (_restoringFocus) return;
 		const term = _termOf(e.target);
-		if (term) _show(term);
+		if (term) {
+			_cancelShow();
+			_show(term);
+		}
 	});
 	document.addEventListener("focusout", (e) => {
 		if (!_termOf(e.target)) return;
@@ -13058,13 +13094,14 @@ function installGlossaryTooltip() {
 		const term = _termOf(e.target);
 		if (term) {
 			const level = _levelOf(term) + 1;
+			_cancelShow();
 			if (_pinned && level < _depth && _tips[level].anchor === term) {
 				_closeFrom(level);
 				if (!_depth) _pinned = false;
 				return;
 			}
 			_show(term);
-			_pinned = true;
+			_pinned = _depth > 0;
 			return;
 		}
 		if (_depth && _levelOf(e.target) < 0) hideGlossaryTip();
@@ -13074,7 +13111,7 @@ function installGlossaryTooltip() {
 		if (term && (e.key === "Enter" || e.key === " ")) {
 			e.preventDefault();
 			_show(term);
-			_pinned = true;
+			_pinned = _depth > 0;
 			return;
 		}
 		if (e.key === "Escape" && _depth) {
