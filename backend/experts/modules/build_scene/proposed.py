@@ -32,7 +32,7 @@ documentation about the prompt — it IS the prompt.
 
 WHAT THE MODEL DOES NOT DECIDE
 ------------------------------
-No ids (they are minted — see compose), no camera, no range, no scale. Those are
+No ids (they are minted — see compose; scene and step ids from their titles), no camera, no range, no scale. Those are
 arithmetic on what it proposed, and a model asked for a camera returns a
 plausible one that frames nothing.
 """

@@ -35,6 +35,7 @@ A single structured JSON object (as text in your response) — the **lesson blue
   "scenes": [
     {
       "scene_index": 0,
+      "scene_id": "<stable kebab-case id from the title, unique in the lesson>",
       "title": "<scene title>",
       "purpose": "<why this scene exists in the lesson>",
       "learning_objective": "<what the student should understand after this scene>",
@@ -42,6 +43,7 @@ A single structured JSON object (as text in your response) — the **lesson blue
       "step_outline": [
         {
           "step": 1,
+          "step_id": "<stable kebab-case id from the title, unique in the scene>",
           "title": "<step title>",
           "action": "<what this step does — adds/removes/transforms what>",
           "description": "<narration text for the student>",
@@ -70,6 +72,7 @@ A single structured JSON object (as text in your response) — the **lesson blue
           "goal": "<LaTeX goal statement>",
           "step_skeleton": [
             {
+              "id": "<stable kebab-case id from the label, unique in the proof>",
               "type": "given | step | conclusion | remark",
               "label": "<step heading>",
               "math_hint": "<LaTeX hint for the Scene Builder>",
@@ -114,6 +117,7 @@ A single structured JSON object (as text in your response) — the **lesson blue
 - **Slider additions/removals are per-step** — specify which sliders appear at which step
 - **Narration in `description`** — every step needs a description that reads like a teacher explaining to a student
 - **Title is concise** — step titles appear in the navigation tree, keep them short (3-6 words)
+- **Every scene, step and proof step gets a stable id** — kebab-case from its title (LaTeX dropped), unique within its array. Deeplinks and saved references resolve by id. In enhance mode, **reuse the existing ids** of scenes and steps you keep; never rename one
 
 ### Proof Design
 - **Proof step skeleton is a guide, not final** — the Scene Builder will produce the actual LaTeX, but you specify the logical structure
@@ -157,6 +161,7 @@ Before returning your lesson blueprint, verify:
 - [ ] Step outlines have concrete values (coordinates, matrix entries, ranges)
 - [ ] Every element mentioned has a specific AlgeBench element type
 - [ ] Proof plans have step skeletons with `sync_to_step` links
+- [ ] Every scene has a `scene_id`, every step a `step_id`, every proof a `proof_id` and every proof step an `id` — unique, kebab-case, existing ids preserved
 - [ ] Slider plans include all parameters (id, label, min, max, default, step)
 - [ ] Color and naming conventions are defined for cross-scene consistency
 - [ ] No scene has more than ~10 steps (split if larger)

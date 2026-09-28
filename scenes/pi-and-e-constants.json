@@ -26,6 +26,7 @@
   "unsafeExplanation": "Scene functions use IIFE loops to compute partial sums for Leibniz series, Basel problem, and Taylor approximation of e^x.",
   "scenes": [
     {
+      "id": "scene-1-the-circle-constant",
       "title": "Scene 1 — The Circle Constant π",
       "description": "π is the ratio of a circle's circumference to its diameter. We approach it three ways: geometrically via inscribed polygons, analytically via the Leibniz series, and via the Basel problem.",
       "prompt": "Teach π as one constant appearing through geometry, infinite series, and unexpected analytic identities. Keep answers tied to the active step and live slider values. When useful, compare convergence speed across methods: polygon perimeter converges quickly, Leibniz converges very slowly, and Basel converges faster but still gradually.",
@@ -60,6 +61,7 @@
       ],
       "steps": [
         {
+          "id": "the-unit-circle",
           "title": "The Unit Circle",
           "description": "π is defined as the ratio of a circle's circumference to its diameter — a constant that is the same for every circle regardless of size. For a unit circle ($r = 1$) the circumference is $C = 2\\pi \\approx 6.2832$ and the area is $A = \\pi \\approx 3.1416$. These two formulas are the reason π is fundamental to all of geometry.",
           "prompt": "Teach this step from the definition outward: circumference over diameter first, then the special simplifications when r=1. Use the visible radius and circle to explain why both 2π and π appear naturally.",
@@ -110,6 +112,7 @@
           ]
         },
         {
+          "id": "archimedes-method-n-gon-approximation",
           "title": "Archimedes' Method — N-gon Approximation",
           "description": "Long before calculus, Archimedes trapped π between inscribed and circumscribed regular polygons. Each vertex of the inscribed $N$-gon sits exactly on the unit circle. The perimeter $P_N = N \\cdot 2\\sin(\\pi/N)$ approaches $2\\pi$ from below as $N$ grows. At $N = 6$ the hexagon gives $P = 6.000$; at $N = 96$ (Archimedes' own calculation) we already have $3.14103 < \\pi < 3.14271$. Drag the slider and watch the polygon fill the circle.",
           "prompt": "Teach this as geometric approximation from below. Always reference the live N value, explain why the inscribed perimeter is less than the circle circumference, and note that the target is 2π because the unit circle has radius 1.",
@@ -143,6 +146,7 @@
           ]
         },
         {
+          "id": "leibniz-series-from-an-alternating-sum",
           "title": "Leibniz Series — π from an Alternating Sum",
           "description": "Leibniz discovered in 1673 that $\\pi/4 = 1 - 1/3 + 1/5 - 1/7 + \\cdots$ — π emerges from the reciprocals of odd integers with alternating signs. The blue curve shows all partial sums from 1 to 300; the partial sums oscillate above and below $\\pi/4$ (the gold line), converging slowly. Drag $N$ and the orange dot tracks the current sum — you need roughly 300 terms for just 3 decimal places. Despite the slow convergence, the formula is exact: $\\pi = 4\\sum_{k=0}^{\\infty}(-1)^k/(2k+1)$.",
           "prompt": "Teach alternating-series behavior explicitly: overshoot, undershoot, and shrinking error. Always mention that the gold line is π/4 and the displayed π approximation is 4 times the partial sum. Be direct that this method is elegant but numerically slow.",
@@ -194,6 +198,7 @@
           ]
         },
         {
+          "id": "basel-problem-1-n-6",
           "title": "Basel Problem — ∑ 1/n² = π²/6",
           "description": "In 1734 Euler proved: $\\sum_{k=1}^{\\infty} 1/k^2 = \\pi^2/6 \\approx 1.6449$. The purple curve shows all partial sums from 1 to 500 — they grow quickly at first then level off near the gold target line $\\pi^2/6$. Drag $N$ and the orange dot follows the current sum. Even at $N=500$ you're still off by about $0.002$. Euler's proof expanded $\\sin(x)/x$ as an infinite product over its zeros and matched the $x^2$ coefficient — one of the most elegant arguments in all of mathematics.",
           "prompt": "Teach the Basel problem as a surprise appearance of π in pure arithmetic. Tie explanations to the live N value and current partial sum, and compare its convergence with Leibniz when useful. If asked for proof intuition, mention zeros of sin(x) and the infinite-product idea, but keep it high level unless asked for more.",
@@ -247,6 +252,7 @@
       ]
     },
     {
+      "id": "scene-2-the-growth-constant-e",
       "title": "Scene 2 — The Growth Constant e",
       "description": "e is the base of natural exponential growth. It appears as the limit of compound interest, as the unique base whose logarithm equals area under 1/x, and as the function equal to its own derivative.",
       "prompt": "Teach e as the constant linking growth, logarithms, and calculus. Keep the three definitions visibly connected rather than treating them as isolated facts. Start with the active visualization, then connect back to why e is the natural base.",
@@ -281,6 +287,7 @@
       ],
       "steps": [
         {
+          "id": "compound-interest-limit",
           "title": "Compound Interest Limit",
           "description": "Invest 1 unit at 100% annual interest compounded $n$ times per year. After one year the balance is $(1+1/n)^n$. At $n=1$ (annual): 2.00. At $n=12$ (monthly): 2.613. At $n=365$ (daily): 2.7146. The limit as $n\\to\\infty$ is $e \\approx 2.7183$ — continuous compounding. The blue curve $(1+1/n)^{nx}$ approaches the gold $e^x$ as you drag $n$ higher. The orange dot at $x=1$ shows the current value.",
           "prompt": "Teach this as a limit from discrete compounding to continuous growth. Always mention the live n value and compare the blue approximation with the gold e^x curve, especially at x=1 where the dot shows the current estimate of e.",
@@ -337,6 +344,7 @@
           ]
         },
         {
+          "id": "area-under-1-x",
           "title": "Area Under 1/x",
           "description": "The natural logarithm is defined as $\\ln(b) = \\int_1^b 1/x\\,dx$ — the area under the hyperbola $y=1/x$ from 1 to $b$. This area equals exactly 1 when $b = e$. Drag the slider: below $e$ the area is less than 1, above $e$ it exceeds 1. The orange marker at $x = e \\approx 2.718$ shows where the transition happens. This is not a coincidence — it's actually the geometric definition of $e$.",
           "prompt": "Teach this step geometrically: e is the x-value where the shaded area under 1/x from 1 to b becomes exactly 1. Reference the current b and ln(b) values directly. If asked how this relates to logarithms, explain that ln is defined by accumulated area.",
@@ -400,6 +408,7 @@
           ]
         },
         {
+          "id": "e-x-is-its-own-derivative-taylor-series",
           "title": "$e^x$ Is Its Own Derivative — Taylor Series",
           "description": "$e^x$ is the unique function satisfying $f'(x) = f(x)$. The Taylor series makes this visible: differentiate term by term — $\\frac{d}{dx}\\frac{x^k}{k!} = \\frac{k\\,x^{k-1}}{k!} = \\frac{x^{k-1}}{(k-1)!}$ — and each term shifts one place to the left, reproducing the same series. The derivative of $N$ terms gives $N-1$ terms of the identical series; as $N\\to\\infty$ nothing is lost and $\\frac{d}{dx}e^x = e^x$ exactly. Drag $N$ and watch the bottom overlay: the right-hand side is always the same sequence, just one term shorter.",
           "prompt": "Teach this as the calculus reason e is natural. Tie the live N value to approximation quality and point out the term-shift pattern that makes the derivative look like the original series again. If asked why factorials appear, explain that they make repeated differentiation clean.",
@@ -449,6 +458,7 @@
       ]
     },
     {
+      "id": "scene-3-where-they-meet",
       "title": "Scene 3 — Where They Meet",
       "description": "π and e are not independent. They meet in Euler's formula e^(iθ) = cos θ + i sin θ — which unifies rotation, exponential growth, and the circle constant in one equation.",
       "prompt": "Teach this scene as synthesis: π from rotation and symmetry, e from exponential structure, meeting in complex analysis and probability. Keep explanations visual and concrete first. When asked why these formulas are profound, point to what each picture is showing before escalating to abstraction.",
@@ -461,6 +471,7 @@
       ],
       "steps": [
         {
+          "id": "e-i-traces-the-unit-circle",
           "title": "e^(iθ) Traces the Unit Circle",
           "description": "Plug a purely imaginary number $i\\theta$ into $e$ and the result is a rotation: $e^{i\\theta} = \\cos\\theta + i\\sin\\theta$. The gold vector has real part $\\cos\\theta$ (blue projection onto Re axis) and imaginary part $\\sin\\theta$ (pink projection onto Im axis). As $\\theta$ increases from 0 to $2\\pi$, the tip traces the entire unit circle. Press **Animate** to watch it rotate continuously.",
           "prompt": "Teach Euler's formula as rotation, not symbol manipulation alone. Always tie the real part to the horizontal projection and the imaginary part to the vertical projection, using the live θ value. Encourage checks at 0, π/2, π, and 2π.",
@@ -521,6 +532,7 @@
           ]
         },
         {
+          "id": "euler-s-identity-e-i-1-0",
           "title": "Euler's Identity — e^(iπ) + 1 = 0",
           "description": "Watch the vector rotate from $(1,0)$ to $(-1,0)$ as $\\theta$ sweeps from $0$ to $\\pi$. At exactly $\\theta = \\pi$ the tip lands on $-1$, and the green $+1$ arrow returns it to the origin: $e^{i\\pi} + 1 = 0$. Five of the most fundamental constants — $e$ (growth), $i$ (rotation), $\\pi$ (circle), $1$ (identity), $0$ (origin) — united in one equation. Richard Feynman called it \"the most remarkable formula in mathematics.\"",
           "prompt": "Teach this as the special case θ=π of the rotation picture. Keep the explanation geometric first: the vector lands at -1, then +1 returns to 0. Only after that unpack why the identity is famous.",
@@ -579,6 +591,7 @@
           ]
         },
         {
+          "id": "the-gaussian-integral-e-x-dx",
           "title": "The Gaussian Integral — ∫e^(−x²)dx = √π",
           "description": "The bell-shaped surface $z = e^{-(x^2+y^2)}$ has total volume exactly $\\pi$. The gold cross-section shows $e^{-x^2}$ along the x-axis — integrating it gives $\\sqrt{\\pi}$. The proof squares the integral, rewrites the double integral in polar coordinates, and the $2\\pi$ from the full rotation around the z-axis delivers $\\pi$. π enters through the circular symmetry of the Gaussian — the same circle constant that appeared in Archimedes' polygons.",
           "prompt": "Teach this step as symmetry plus a coordinate change. The key idea is that squaring the 1D Gaussian integral creates a rotationally symmetric 2D problem, and polar coordinates inject π through the angular sweep. Keep proof details high level unless requested.",
@@ -621,6 +634,7 @@
           ]
         },
         {
+          "id": "the-normal-distribution-and-e-together",
           "title": "The Normal Distribution — π and e Together",
           "description": "Normalize $e^{-x^2}$ by $1/(\\sigma\\sqrt{2\\pi})$ to get a probability distribution that integrates to 1. Both $e$ and $\\pi$ appear in the formula — $e$ shapes the curve, $\\pi$ calibrates the area. The three blue bands show the empirical rule: $\\mu \\pm \\sigma$ contains 68.3% of probability, $\\mu \\pm 2\\sigma$ contains 95.4%, $\\mu \\pm 3\\sigma$ contains 99.7%. Drag $\\mu$ to shift the distribution and $\\sigma$ to widen or narrow it.",
           "prompt": "Teach the normal curve as the Gaussian after normalization. Always tie μ to horizontal shift and σ to spread and peak height, and mention that total area stays 1. Encourage learners to compare how the 68-95-99.7 bands move when μ changes and widen when σ increases.",

@@ -2,6 +2,7 @@
   "title": "Atmospheric Entry and Splashdown: Orion, Dragon, and Apollo",
   "scenes": [
     {
+      "id": "entry-corridor-comparison",
       "title": "Entry Corridor Comparison",
       "description": "Compare how Apollo, Orion, and Dragon move from entry interface to parachutes and splashdown.",
       "markdown": "# Entry Corridor Comparison\n\nAll three capsules solve the same problem: convert enormous kinetic energy into drag, lift, heat, and finally a splashdown your crew can survive.\n\n## One atmosphere, three different jobs\n\n- **Apollo** returns from the Moon at roughly $11\\,\\text{km/s}$ and uses a lifting direct entry.\n- **Orion / Artemis II** also returns from lunar speed, but uses a **skip entry** so it can manage heating, g-load, and landing footprint more precisely.\n- **Crew Dragon** returns from low Earth orbit at roughly $7.7\\,\\text{km/s}$, so its energy problem is milder even though it still faces severe heating.\n\nThe slider in this scene moves a marker along each nominal path. These are **teaching profiles**, not flight-reconstruction telemetry, but they preserve the important physics: lunar-return capsules start faster, Orion intentionally climbs back up during skip entry, and all three hand off from aerodynamics to parachutes near the bottom of the atmosphere.\n\n## Key reference numbers\n\n- Orion reentry: about **25,000 mph** and nearly **5,000 F** on return from deep space.\n- Dragon deorbit return: drogue deployment near **18,000 ft** at about **350 mph**, then mains near **6,000 ft** at about **119 mph**.\n- Apollo recovery system: drogues after forward heat-shield separation near **24,000 ft**, mains below about **11,000 ft**, and splashdown near **22 mph**.\n\n## Sources\n\n- NASA Orion splashdown and heat shield reporting: https://www.nasa.gov/image-article/orions-successful-splashdown-paves-way-artemis-future/\n- NASA Artemis / Orion entry blog: https://www.nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-crew-module-separation-from-service-module-complete/\n- NASA Commercial Crew deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/\n- NASA Apollo parachute history: https://www.nasa.gov/history/60-years-ago-apollo-parachute-development-and-testing/",
@@ -102,6 +103,7 @@
       ],
       "steps": [
         {
+          "id": "three-return-speeds",
           "title": "Three Return Speeds",
           "description": "Apollo and Orion start near lunar-return speed, while Dragon starts much slower because it returns from low Earth orbit instead of the Moon.",
           "sliders": [
@@ -343,6 +345,7 @@
           ]
         },
         {
+          "id": "orion-s-skip-entry",
           "title": "Orion's Skip Entry",
           "description": "Orion deliberately dips into the atmosphere, generates lift, then climbs back up before final descent. That skip entry reduces peak loads and helps target the landing zone.",
           "add": [
@@ -379,6 +382,7 @@
           ]
         },
         {
+          "id": "lift-shapes-the-path",
           "title": "Lift Shapes the Path",
           "description": "Even blunt capsules can generate lift by flying slightly off-balance. Apollo uses lift for corridor control, Orion uses it more aggressively for skip entry, and Dragon uses a simpler single-pass return.",
           "add": [
@@ -418,6 +422,7 @@
           ]
         },
         {
+          "id": "parachutes-take-over",
           "title": "Parachutes Take Over",
           "description": "Below the lower atmosphere, entry physics hands off to parachutes and splashdown recovery. That handoff happens after the main heating and deceleration problem has already been solved.",
           "add": [
@@ -456,6 +461,7 @@
       ]
     },
     {
+      "id": "forces-acting-on-the-capsules",
       "title": "Forces Acting on the Capsules",
       "description": "Compare velocity, drag, lift, and weight during entry for Apollo, Orion, and Dragon.",
       "markdown": "# Forces Acting on the Capsules\n\nThe entry problem is governed by only a few forces, but their balance changes dramatically as the capsule dives deeper.\n\n## Core aerodynamic model\n\nThe drag force is\n\n$$D = \\tfrac12 \\rho v^2 C_D A,$$\n\nand the lift force is similar:\n\n$$L = \\tfrac12 \\rho v^2 C_L A.$$\n\nAt hypersonic speed, $v^2$ is huge, so a small change in velocity or density produces a large change in aerodynamic force. That is why entry guidance is mostly about controlling **where** you spend your speed.\n\n## What differs between the vehicles\n\n- **Apollo** and **Orion** both return from lunar speed, so they need substantial drag and some lift to stay inside the entry corridor.\n- **Orion** uses that lift to execute a skip entry.\n- **Dragon** returns from orbital speed, so its force environment is less extreme even though it still relies on drag to remove most of its kinetic energy.\n\nIn the last step, the density slider scales the drag arrows so students can see why the atmosphere becomes dramatically more effective as the capsule descends.\n\n## Source anchors\n\n- NASA Orion entry reporting: https://www.nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-crew-module-separation-from-service-module-complete/\n- NASA Crew Dragon deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/",
@@ -540,6 +546,7 @@
       ],
       "steps": [
         {
+          "id": "velocity-and-weight",
           "title": "Velocity and Weight",
           "description": "Start with the two forces every entry vehicle has: velocity forward and weight downward. Each capsule is shown at the same scale only for comparison of forces, not real size.",
           "add": [
@@ -745,6 +752,7 @@
           ]
         },
         {
+          "id": "drag-does-the-braking",
           "title": "Drag Does the Braking",
           "description": "Drag points opposite the motion and removes most of the kinetic energy. Lunar-return capsules need larger integrated drag because they arrive with much more speed to shed.",
           "add": [
@@ -816,6 +824,7 @@
           ]
         },
         {
+          "id": "lift-reshapes-the-entry",
           "title": "Lift Reshapes the Entry",
           "description": "Lift is smaller than drag for these capsules, but it matters enormously because it lets guidance trade altitude against heating and deceleration.",
           "add": [
@@ -898,6 +907,7 @@
           ]
         },
         {
+          "id": "density-makes-drag-explode",
           "title": "Density Makes Drag Explode",
           "description": "Increase the density scale and watch drag grow. This is why most braking happens lower in the atmosphere even though entry starts much higher up.",
           "remove": [
@@ -988,6 +998,7 @@
       ]
     },
     {
+      "id": "ballistic-coefficient-heating-and-g-load",
       "title": "Ballistic Coefficient, Heating, and g-Load",
       "description": "Compare how entry speed and ballistic coefficient shape deceleration and thermal severity.",
       "markdown": "# Ballistic Coefficient, Heating, and g-Load\n\nA useful comparison quantity is the **ballistic coefficient**\n\n$$\\beta = \\frac{m}{C_D A}.$$\n\nA lower $\\beta$ means more drag per unit mass. A higher $\\beta$ means the capsule penetrates deeper before the atmosphere can slow it down effectively.\n\n## Why this matters here\n\n- **Apollo** and **Orion** have similar lunar-return entry speed, so their heat shields and guidance laws must handle very high energy.\n- **Dragon** has a larger mass-per-area proxy, but it starts at much lower speed, so its total entry problem is still milder.\n- **Orion** uses a skip entry to turn that deep-space return into a lower-g, more targetable splashdown than a simple one-pass lunar dive.\n\nThis chart uses approximate comparison values. The horizontal axis is a **beta proxy** in units of $100\\,\\text{kg/m}^2$ so the points fit naturally in one plot.\n\n## Heat shields\n\n- **Apollo**: Avcoat ablative heat shield.\n- **Orion**: Avcoat ablative heat shield, larger than Apollo's and designed for crewed Artemis lunar return.\n- **Dragon**: PICA-X family ablative heat shield for orbital return.\n\n## Source anchors\n\n- NASA Orion heat shield milestone: https://www.nasa.gov/blogs/missions/2020/07/08/heat-shield-milestone-for-first-artemis-mission-with-crew/\n- NASA Orion splashdown article: https://www.nasa.gov/image-article/orions-successful-splashdown-paves-way-artemis-future/\n- NASA Commercial Crew deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/",
@@ -1074,6 +1085,7 @@
       ],
       "steps": [
         {
+          "id": "where-the-capsules-sit",
           "title": "Where the Capsules Sit",
           "description": "Plot the capsules by approximate ballistic-coefficient proxy and entry speed. Dragon sits farther right, but much lower, because its return speed is orbital rather than lunar.",
           "add": [
@@ -1149,6 +1161,7 @@
           ]
         },
         {
+          "id": "severity-moves-up-and-right",
           "title": "Severity Moves Up and Right",
           "description": "The hardest entry problems generally move toward higher speed and higher ballistic coefficient. Speed matters so strongly that Apollo and Orion remain the tougher thermal cases despite Dragon's larger mass-per-area proxy.",
           "add": [
@@ -1196,6 +1209,7 @@
           ]
         },
         {
+          "id": "change-drag-coefficient",
           "title": "Change Drag Coefficient",
           "description": "Move the drag-coefficient scale and watch the points shift horizontally. A larger $C_D$ lowers ballistic coefficient, so the atmosphere can do more braking for the same mass.",
           "remove": [
@@ -1305,6 +1319,7 @@
           ]
         },
         {
+          "id": "open-the-proof-panel",
           "title": "Open the Proof Panel",
           "description": "The proof panel derives the simple but powerful rule $a_D = q/\\beta$. That relation is the cleanest way to connect the chart to actual deceleration.",
           "add": [
@@ -1330,6 +1345,7 @@
         "prompt": "Explain each algebraic step and keep tying it back to the chart. The main insight is that dynamic pressure measures what the air is doing, while ballistic coefficient measures how hard the vehicle is to slow.",
         "steps": [
           {
+            "id": "start-with-drag",
             "type": "given",
             "label": "Start with drag",
             "math": "D = \\htmlClass{hl-q}{\\tfrac12\\rho v^2} \\htmlClass{hl-ca}{C_D A}",
@@ -1349,6 +1365,7 @@
             "sceneStep": 0
           },
           {
+            "id": "divide-by-mass",
             "type": "step",
             "label": "Divide by mass",
             "math": "a_D = \\frac{D}{m} = \\htmlClass{hl-q}{\\tfrac12\\rho v^2} \\frac{\\htmlClass{hl-ca}{C_D A}}{\\htmlClass{hl-m}{m}}",
@@ -1372,6 +1389,7 @@
             "sceneStep": 1
           },
           {
+            "id": "define-ballistic-coefficient",
             "type": "step",
             "label": "Define ballistic coefficient",
             "math": "\\beta = \\frac{\\htmlClass{hl-m}{m}}{\\htmlClass{hl-ca}{C_D A}} \\quad \\Longrightarrow \\quad \\frac{\\htmlClass{hl-ca}{C_D A}}{\\htmlClass{hl-m}{m}} = \\frac{1}{\\beta}",
@@ -1391,6 +1409,7 @@
             "sceneStep": 2
           },
           {
+            "id": "combine-the-pieces",
             "type": "conclusion",
             "label": "Combine the pieces",
             "math": "a_D = \\htmlClass{hl-q}{q} \\cdot \\frac{1}{\\htmlClass{hl-beta}{\\beta}} = \\frac{\\htmlClass{hl-q}{q}}{\\htmlClass{hl-beta}{\\beta}}",
@@ -1413,6 +1432,7 @@
       }
     },
     {
+      "id": "parachutes-and-splashdown",
       "title": "Parachutes and Splashdown",
       "description": "Compare the recovery ladders for Apollo, Orion, and Dragon from drogue deployment to water impact.",
       "markdown": "# Parachutes and Splashdown\n\nBy the time parachutes deploy, the capsule has already survived the hardest thermal and deceleration part of entry. Recovery now becomes a different physics problem: keeping the vehicle stable, reducing vertical speed, and landing with acceptable water impact loads.\n\n## Recovery sequences\n\n- **Apollo**: forward heat-shield separation near **24,000 ft**, drogues to about **11,000 ft**, then three mains and a roughly **22 mph** splashdown target.\n- **Orion**: an **11-parachute** system slows the crew module from roughly **300 mph** to about **20 mph** for splashdown.\n- **Dragon**: drogues at about **18,000 ft** near **350 mph**, then mains at about **6,000 ft** near **119 mph**, followed by ocean splashdown under four main parachutes.\n\nThe slider in this scene scrubs all three capsules down their recovery ladders so students can compare where each system changes configuration.\n\n## Sources\n\n- NASA Apollo parachute history: https://www.nasa.gov/history/60-years-ago-apollo-parachute-development-and-testing/\n- NASA Orion parachute testing: https://www.nasa.gov/missions/artemis/orion/orion-parachute-tests-prove-out-complex-system-for-human-deep-space-missions/\n- NASA Crew Dragon deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/",
@@ -1498,6 +1518,7 @@
       ],
       "steps": [
         {
+          "id": "descent-ladder",
           "title": "Descent Ladder",
           "description": "Each vertical lane represents one capsule descending toward splashdown. Use the slider to scrub the recovery phase.",
           "sliders": [
@@ -1663,6 +1684,7 @@
           ]
         },
         {
+          "id": "apollo-recovery",
           "title": "Apollo Recovery",
           "description": "Apollo separates the forward heat shield near 24,000 feet, rides drogues to about 11,000 feet, then opens three mains for a roughly 22 mph splashdown.",
           "add": [
@@ -1738,6 +1760,7 @@
           ]
         },
         {
+          "id": "orion-recovery",
           "title": "Orion Recovery",
           "description": "Orion's recovery system uses 11 parachutes overall and slows the capsule from around 300 mph to about 20 mph for splashdown after deep-space return.",
           "add": [
@@ -1813,6 +1836,7 @@
           ]
         },
         {
+          "id": "dragon-recovery",
           "title": "Dragon Recovery",
           "description": "Dragon deploys drogues near 18,000 feet at about 350 mph, then mains near 6,000 feet at about 119 mph, and splashes down under four mains.",
           "add": [

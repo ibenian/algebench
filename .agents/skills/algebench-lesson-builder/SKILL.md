@@ -144,7 +144,8 @@ After each scene builder returns:
   ```bash
   ./run.sh scripts/lint_scene.py --fix scenes/{topic-slug}/scene-{i}.json
   ```
-  This checks and auto-fixes: nested props (flattens), Math.sin→sin, invalid element types, missing fields.
+  This checks and auto-fixes: nested props (flattens), Math.sin→sin, invalid element types, missing fields, and missing stable ids.
+  Every scene, step, proof and proof step must have an explicit `id` — deeplinks and saved references depend on them. `--fix` fills missing ones from titles; a duplicate id is an error to fix by hand.
   Scenes with `"unsafe": true` skip expression checks (JS is intentional).
   If lint fails after --fix (unfixable errors remain), fix manually or retry the scene builder once.
 
@@ -165,6 +166,7 @@ After all scenes pass review:
   # List scenes in a lesson
   ./run.sh scripts/assemble_scene.py {existing} --list
   ```
+  Assembly also fills any missing id and refuses duplicates; a `--replace` keeps the replaced scene's id when the new scene has none.
   Validate separately in Phase 4 using `./run.sh scripts/validate_content.py`.
   If the blueprint includes root-level proofs, add them manually to the lesson root before assembly.
 - **Print status**: `Phase 3 ✓  Scene JSON: {N}/{N} built ({lines} lines total)`
@@ -267,6 +269,7 @@ When `existing` is provided:
    - New scenes: `./run.sh scripts/assemble_scene.py {existing} --add scene.json [--at N]`
    - Modified scenes: `./run.sh scripts/assemble_scene.py {existing} --replace N scene.json`
 6. Only modified/new scenes go through validation and evaluation
+7. **Preserve stable ids** — a modified scene keeps its `id` and the `id` of every step it keeps. Never rename an existing id, even when retitling: links and saved references point at it
 
 ---
 

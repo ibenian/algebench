@@ -458,3 +458,38 @@ def test_the_proposal_keeps_one_function_past_the_cap(monkeypatch):
     kept = it.propose_scene().functions
     assert len(kept) == MAX_FUNCTIONS + 1, "bounded, but not down to the cap"
     assert len(kept) > MAX_FUNCTIONS, "compose must still be able to refuse it"
+
+
+# ---- stable ids -----------------------------------------------------------
+
+def _node(monkeypatch, request_body, proposal=None) -> dict:
+    _stub(monkeypatch, proposal or _good())
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    return out["result"]["ops"][0]["node"]
+
+
+def test_a_replace_keeps_the_scenes_id(monkeypatch, request_body):
+    """Links into the replaced scene must still land on it."""
+    request_body["current"]["id"] = "dot-product"
+    assert _node(monkeypatch, request_body)["id"] == "dot-product"
+
+
+def test_a_replace_of_an_unidentified_scene_keeps_its_derived_id(monkeypatch, request_body):
+    """No explicit id: links use the slug the client derives from the old title."""
+    request_body["current"].pop("id", None)
+    assert _node(monkeypatch, request_body)["id"] == "dot-product-vec-a-cdot-vec-b"
+
+
+def test_a_replace_keeps_the_ids_of_steps_whose_title_survives(monkeypatch, request_body):
+    request_body["current"]["steps"] = [{"id": "kept-id", "title": "Add $\\vec{a}$"}]
+    proposal = _good()
+    proposal.steps.append(ProposedStep(index=1, title="New step"))
+    node = _node(monkeypatch, request_body, proposal)
+    assert [s["id"] for s in node["steps"]] == ["kept-id", "new-step"]
+
+
+def test_an_insert_does_not_collide_with_another_scene(monkeypatch, request_body):
+    request_body["op"] = "insert"
+    request_body["current"] = None
+    request_body["lesson"]["sceneSummaries"][0]["id"] = "cross-product"
+    assert _node(monkeypatch, request_body)["id"] == "cross-product-2"

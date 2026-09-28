@@ -24,6 +24,7 @@
   },
   "scenes": [
     {
+      "id": "deriving-the-quadratic-formula",
       "title": "Deriving the Quadratic Formula",
       "description": "Step through the derivation of $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$ while watching the parabola respond to slider changes.",
       "markdown": "# The Quadratic Formula\n\nEvery quadratic equation $ax^2 + bx + c = 0$ (with $a \\neq 0$) has solutions given by:\n\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\n## What You'll Learn\n\nIn this scene, you'll **derive the quadratic formula from scratch** by completing the square — the same technique that was used over 1,000 years ago by al-Khwarizmi.\n\n## The Key Idea: Completing the Square\n\nThe derivation transforms $ax^2 + bx + c = 0$ into a **perfect square** on one side:\n\n$$\\left(x + \\frac{b}{2a}\\right)^2 = \\frac{b^2 - 4ac}{4a^2}$$\n\nTaking the square root of both sides reveals the formula. The expression under the radical — the **discriminant** $\\Delta = b^2 - 4ac$ — determines everything about the roots.\n\n## Reading the Formula\n\nThe quadratic formula has two parts:\n- **Center**: $-\\frac{b}{2a}$ — the axis of symmetry (orange dashed line)\n- **Spread**: $\\pm\\frac{\\sqrt{\\Delta}}{2a}$ — how far the roots sit from the center\n\n## The Discriminant at a Glance\n\n| $\\Delta$ | Roots | What You See |\n|----------|-------|--------------|\n| $> 0$ | Two distinct real roots | Parabola crosses x-axis at two points |\n| $= 0$ | One repeated root | Parabola touches x-axis at vertex |\n| $< 0$ | No real roots | Parabola floats above (or below) x-axis |\n\n## Try It\n\nAdjust the sliders $a$, $b$, $c$ and watch how the parabola, roots, and vertex respond. Open the **Proof** panel to step through the derivation interactively.",
@@ -76,6 +77,7 @@
       ],
       "steps": [
         {
+          "id": "the-parabola",
           "title": "The Parabola",
           "description": "A general quadratic $y = ax^2 + bx + c$ with adjustable coefficients.",
           "sliders": [
@@ -121,6 +123,7 @@
           ]
         },
         {
+          "id": "completing-the-square-geometric-view",
           "title": "Completing the Square — Geometric View",
           "description": "The square area model shows why adding $(b/2a)^2$ creates a perfect square.",
           "add": [
@@ -142,6 +145,7 @@
           ]
         },
         {
+          "id": "the-discriminant",
           "title": "The Discriminant",
           "description": "The discriminant $\\Delta = b^2 - 4ac$ determines the number of real roots.",
           "info": [
@@ -149,6 +153,7 @@
           ]
         },
         {
+          "id": "finding-the-roots",
           "title": "Finding the Roots",
           "description": "The roots are at $x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$, symmetric about the vertex.",
           "add": [
@@ -169,6 +174,7 @@
           ]
         },
         {
+          "id": "the-complete-picture",
           "title": "The Complete Picture",
           "description": "Vertex, roots, and axis of symmetry — the full anatomy of a parabola.",
           "info": [
@@ -699,6 +705,7 @@
       }
     },
     {
+      "id": "the-discriminant-root-classification",
       "title": "The Discriminant & Root Classification",
       "description": "Explore how $\\Delta = b^2 - 4ac$ determines the nature of roots.",
       "markdown": "# The Discriminant & Root Classification\n\nThe **discriminant** of $ax^2 + bx + c = 0$ is the expression under the square root in the quadratic formula:\n\n$$\\Delta = b^2 - 4ac$$\n\nIt tells us everything about the roots **without solving the equation**.\n\n## Three Cases\n\n### Case 1: $\\Delta > 0$ — Two Real Roots\n\nThe parabola crosses the x-axis at **two distinct points**. The green line shows the **root span** — the distance between roots:\n\n$$|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}$$\n\nAs $\\Delta$ grows, the roots spread farther apart.\n\n### Case 2: $\\Delta = 0$ — Repeated Root\n\nThe two roots **collapse into one**: $x_1 = x_2 = -\\frac{b}{2a}$. The parabola just touches the x-axis at its vertex. The root span shrinks to zero.\n\n### Case 3: $\\Delta < 0$ — No Real Roots\n\nThe parabola **never reaches the x-axis**. The vertex floats above (when $a > 0$) or below (when $a < 0$) the axis. The roots become complex conjugates: $x = \\frac{-b \\pm i\\sqrt{|\\Delta|}}{2a}$.\n\n## Vieta's Formulas\n\nFor any quadratic with roots $x_1, x_2$:\n\n$$x_1 + x_2 = -\\frac{b}{a} \\qquad x_1 \\cdot x_2 = \\frac{c}{a}$$\n\nThese connect the roots directly to the coefficients — no square roots needed! The sum equals the negative ratio of the linear to leading coefficient, and the product equals the ratio of the constant to the leading coefficient.\n\n## Key Relationships\n\n| Quantity | Formula | Visual Element |\n|----------|---------|----------------|\n| Axis of symmetry | $x = -\\frac{b}{2a}$ | Orange dashed line |\n| Root span | $\\frac{\\sqrt{\\Delta}}{\\|a\\|}$ | Green line between roots |\n| Vertex height | $c - \\frac{b^2}{4a}$ | Red dashed line (gap to x-axis) |\n\n## Try It\n\nUse the sliders to move between the three cases. Watch how the root span (green) shrinks to zero at $\\Delta = 0$, and how the vertex gap (red) appears when $\\Delta < 0$. Open the **Proof** panel to see the formal derivations.",
@@ -739,6 +746,7 @@
       ],
       "steps": [
         {
+          "id": "the-discriminant-formula",
           "title": "The Discriminant Formula",
           "description": "The discriminant $\\Delta = b^2 - 4ac$ is the key to classifying roots.",
           "sliders": [
@@ -787,6 +795,7 @@
           ]
         },
         {
+          "id": "two-real-roots-0",
           "title": "Two Real Roots (Δ > 0)",
           "description": "When the discriminant is positive, the parabola crosses the x-axis twice.",
           "sliders": [
@@ -909,6 +918,7 @@
           ]
         },
         {
+          "id": "repeated-root-0",
           "title": "Repeated Root (Δ = 0)",
           "description": "When the discriminant is zero, the parabola touches the x-axis at exactly one point.",
           "sliders": [
@@ -977,6 +987,7 @@
           }
         },
         {
+          "id": "no-real-roots-0",
           "title": "No Real Roots (Δ < 0)",
           "description": "When the discriminant is negative, the parabola doesn't cross the x-axis. The roots are complex conjugates.",
           "sliders": [
@@ -1310,6 +1321,7 @@
       }
     },
     {
+      "id": "roots-leave-the-real-line-the-complex-plane-in-3d",
       "title": "Roots Leave the Real Line — The Complex Plane in 3D",
       "description": "The imaginary axis rises from the real plane, revealing where complex roots live when the discriminant turns negative.",
       "markdown": "# Roots Leave the Real Line\n\nIn this scene we extend the familiar real-number picture of a parabola into **three dimensions** by adding the imaginary axis.\n\n## The Setup\n\nThe $x$-axis and $y$-axis work exactly as before — $y = ax^2 + bx + c$ is the parabola.\n\nThe new $z$-axis represents the **imaginary part** of $x$. When the discriminant $\\Delta = b^2 - 4ac$ is negative, the quadratic formula gives complex roots:\n\n$$x = \\frac{-b}{2a} \\pm \\frac{\\sqrt{|\\Delta|}}{2a}\\,i$$\n\nThese roots have the same real part $\\alpha = -\\frac{b}{2a}$ (the axis of symmetry) but opposite imaginary parts $\\pm\\beta$ where $\\beta = \\frac{\\sqrt{|\\Delta|}}{2a}$.\n\n## What You'll See\n\n1. **$\\Delta > 0$** — Two real roots on the $x$-axis (green dots)\n2. **$\\Delta = 0$** — Roots merge at the vertex\n3. **$\\Delta < 0$** — Roots **lift off** the real line into the complex plane (magenta dots connected by a dashed conjugate link)\n\nThe further the vertex rises above the $x$-axis, the further apart the conjugate roots spread along the imaginary axis.\n\n## The Formula\n\nWhen $\\Delta < 0$, we write $\\sqrt{\\Delta} = i\\sqrt{|\\Delta|}$, so:\n\n$$x = \\underbrace{-\\frac{b}{2a}}_{\\alpha} \\pm \\underbrace{\\frac{\\sqrt{|\\Delta|}}{2a}}_{\\beta}\\,i$$\n\nThe roots are $\\alpha + \\beta i$ and $\\alpha - \\beta i$ — **complex conjugates**.",
@@ -1375,6 +1387,7 @@
       ],
       "steps": [
         {
+          "id": "familiar-ground-in-3d",
           "title": "Familiar Ground in 3D",
           "description": "The parabola $y = x^2 - 4x + 3$ with $\\Delta = 4 > 0$ has two real roots at $x = 1$ and $x = 3$. The imaginary axis (purple) extends into the third dimension — but for now, everything stays in the real plane.",
           "sliders": [
@@ -1454,6 +1467,7 @@
           ]
         },
         {
+          "id": "the-transition-roots-merge",
           "title": "The Transition — Roots Merge",
           "description": "Set $c = 4$ so $\\Delta = 0$. The two real roots merge at the vertex — the parabola just touches the $x$-axis. This is the boundary between real and complex roots.",
           "sliders": [
@@ -1480,6 +1494,7 @@
           ]
         },
         {
+          "id": "roots-lift-off-complex-roots-appear",
           "title": "Roots Lift Off — Complex Roots Appear",
           "description": "With $c = 5$, the discriminant becomes $\\Delta = -4 < 0$. The parabola no longer crosses the $x$-axis. The roots have **left the real line** — they now live at $(2, 0, \\pm 1)$ in the complex plane. Rotate the camera to see them.",
           "sliders": [
@@ -1510,6 +1525,7 @@
           ]
         },
         {
+          "id": "deeper-into-the-complex-plane",
           "title": "Deeper into the Complex Plane",
           "description": "Increase $c$ to $6$ — the discriminant drops to $\\Delta = -8$. The vertex gap grows, and the complex roots spread further apart to $(2, 0, \\pm\\sqrt{2})$. The larger the gap between the vertex and the $x$-axis, the further the roots extend into the imaginary dimension.",
           "sliders": [
@@ -1522,6 +1538,7 @@
           ]
         },
         {
+          "id": "the-formula-behind-it-all",
           "title": "The Formula Behind It All",
           "description": "Return to $c = 5$. The quadratic formula with $\\Delta < 0$ yields $x = \\alpha \\pm \\beta i$ where $\\alpha = -b/2a$ and $\\beta = \\sqrt{|\\Delta|}/2a$. Open the **Proof** panel to step through the derivation.",
           "sliders": [
@@ -1586,6 +1603,7 @@
       ]
     },
     {
+      "id": "conjugate-symmetry-the-vertex-connection",
       "title": "Conjugate Symmetry & the Vertex Connection",
       "description": "Prove the Conjugate Root Theorem, explore Vieta's formulas for complex roots, the modulus circle, and the vertex gap connection.",
       "markdown": "# Conjugate Symmetry & the Vertex Connection\n\nWhen a quadratic $ax^2 + bx + c = 0$ has **no real roots** ($\\Delta < 0$), its roots are a **conjugate pair** of complex numbers:\n\n$$z = \\frac{-b}{2a} \\pm \\frac{\\sqrt{|\\Delta|}}{2a}\\,i$$\n\nThese roots share the same real part $\\alpha = -\\frac{b}{2a}$ and have equal-and-opposite imaginary parts $\\pm\\beta$.\n\n## What You'll Learn\n\n1. **Conjugate Root Theorem** — why complex roots of real polynomials always come in conjugate pairs\n2. **Vieta's Formulas** — $z_1 + z_2 = -\\frac{b}{a}$ and $z_1 \\cdot z_2 = \\frac{c}{a}$ still hold\n3. **The Modulus Circle** — both roots lie on a circle of radius $\\sqrt{c/a}$ centered at the origin\n4. **Vertex Gap Connection** — the imaginary part $\\beta = \\sqrt{g/a}$ where $g$ is the vertex gap above the x-axis\n\n## The 3D View\n\nThe xz-plane is the **complex plane**: the x-axis is the real axis and the z-axis is the imaginary axis. The y-axis remains the function value axis. Complex roots appear as magenta points at $(\\alpha, 0, \\pm\\beta)$, connected by a dashed conjugate link.\n\n## Key Relationships\n\n| Quantity | Formula | Default Value |\n|----------|---------|---------------|\n| Real part $\\alpha$ | $-b/(2a)$ | $2$ |\n| Imaginary part $\\beta$ | $\\sqrt{|\\Delta|}/(2a)$ | $1$ |\n| Modulus $|z|$ | $\\sqrt{c/a}$ | $\\sqrt{5} \\approx 2.236$ |\n| Vertex gap $g$ | $c - b^2/(4a)$ | $1$ |\n| Sum of roots | $-b/a$ | $4$ |\n| Product of roots | $c/a$ | $5$ |\n\n## Try It\n\nAdjust $a$, $b$, $c$ to see how the conjugate pair, modulus circle, and vertex gap all respond together. Keep $\\Delta < 0$ to stay in the complex regime.",
@@ -1658,6 +1676,7 @@
       ],
       "steps": [
         {
+          "id": "conjugate-pair-visualization",
           "title": "Conjugate Pair Visualization",
           "description": "The parabola $y = ax^2 + bx + c$ with its vertex and complex conjugate roots in the xz-plane.",
           "sliders": [
@@ -1732,6 +1751,7 @@
           ]
         },
         {
+          "id": "vieta-s-in-the-complex-case",
           "title": "Vieta's in the Complex Case",
           "description": "The sum and product of complex conjugate roots still satisfy Vieta's formulas: $z_1 + z_2 = -b/a$ and $z_1 z_2 = c/a$.",
           "add": [
@@ -1771,6 +1791,7 @@
           ]
         },
         {
+          "id": "the-modulus-circle",
           "title": "The Modulus Circle",
           "description": "Both conjugate roots lie on a circle of radius $\\sqrt{c/a}$ centered at the origin in the complex plane.",
           "add": [
@@ -1802,6 +1823,7 @@
           ]
         },
         {
+          "id": "the-vertex-gap-connection",
           "title": "The Vertex Gap Connection",
           "description": "The vertex gap $g = c - b^2/(4a)$ connects to the imaginary part: $\\beta = \\sqrt{g/a}$.",
           "add": [
@@ -1831,6 +1853,7 @@
           ]
         },
         {
+          "id": "proof-conjugate-root-theorem",
           "title": "Proof: Conjugate Root Theorem",
           "description": "Why complex roots of polynomials with real coefficients always come in conjugate pairs.",
           "add": [],
@@ -1839,6 +1862,7 @@
           ]
         },
         {
+          "id": "free-exploration",
           "title": "Free Exploration",
           "description": "Explore the connections between conjugate roots, the modulus circle, and the vertex gap.",
           "add": [],
@@ -2107,6 +2131,7 @@
       }
     },
     {
+      "id": "the-fundamental-theorem-every-quadratic-has-two-roots",
       "title": "The Fundamental Theorem — Every Quadratic Has Two Roots",
       "description": "The complete root locus: watch roots move continuously from real through repeated to complex conjugate as the discriminant sweeps through all regimes.",
       "markdown": "# The Fundamental Theorem of Algebra\n\nThe **Fundamental Theorem of Algebra** guarantees that every polynomial of degree $n$ has exactly $n$ roots in $\\mathbb{C}$ (counted with multiplicity).\n\nFor our quadratic $ax^2 + bx + c = 0$, this means: **always exactly two roots**.\n\n## Three Regimes, One Continuous Story\n\n| $\\Delta$ | Regime | Roots | Factoring over $\\mathbb{C}$ |\n|----------|--------|-------|----------------------------|\n| $> 0$ | Two real | $r_1, r_2 \\in \\mathbb{R}$ | $a(x - r_1)(x - r_2)$ |\n| $= 0$ | Repeated | $r \\in \\mathbb{R}$ | $a(x - r)^2$ |\n| $< 0$ | Complex conjugate | $\\alpha \\pm \\beta i$ | $a(x - (\\alpha+\\beta i))(x - (\\alpha-\\beta i))$ |\n\nIn all three cases, the quadratic factors completely over $\\mathbb{C}$.\n\n## The Root Locus\n\nFix $a = 1$, $b = -4$ and sweep $c$ from $-3$ to $8$:\n\n- **$c < 4$** ($\\Delta > 0$): Two real roots at $2 \\pm \\sqrt{4-c}$ slide toward each other along the real axis\n- **$c = 4$** ($\\Delta = 0$): Roots merge at $x = 2$ (the vertex)\n- **$c > 4$** ($\\Delta < 0$): Roots split into the complex plane at $2 \\pm i\\sqrt{c-4}$\n\nThe transition is **continuous** — roots never appear or disappear, they just change character.\n\n## Factoring over $\\mathbb{R}$ vs $\\mathbb{C}$\n\nOver $\\mathbb{R}$: $x^2 - 4x + 5$ is **irreducible** — it cannot be factored with real coefficients.\n\nOver $\\mathbb{C}$: $x^2 - 4x + 5 = (x - (2+i))(x - (2-i))$ — it factors completely!\n\nThe Fundamental Theorem says this always works over $\\mathbb{C}$.",
@@ -2177,6 +2202,7 @@
       ],
       "steps": [
         {
+          "id": "setting-up-the-sweep",
           "title": "Setting Up the Sweep",
           "description": "Fix $a = 1$, $b = -4$ and vary $c$. At each value, $x^2 - 4x + c = 0$ has exactly two roots — sometimes real, sometimes complex. The green dots are real roots; the magenta dots are complex roots.",
           "sliders": [
@@ -2256,6 +2282,7 @@
           ]
         },
         {
+          "id": "the-root-locus-in-motion",
           "title": "The Root Locus in Motion",
           "description": "Watch the roots trace their paths as $c$ sweeps. When $c < 4$, two green roots slide along the $x$-axis toward each other. At $c = 4$ they meet at $x = 2$. When $c > 4$, they split vertically into conjugate pairs. The roots **never vanish** — they just change character.",
           "sliders": [
@@ -2326,6 +2353,7 @@
           ]
         },
         {
+          "id": "always-two-roots-the-factored-form",
           "title": "Always Two Roots — The Factored Form",
           "description": "Over $\\mathbb{R}$, $x^2 - 4x + 5$ is irreducible. Over $\\mathbb{C}$, it factors as $(x - (2+i))(x - (2-i))$. The Fundamental Theorem guarantees this factoring always works.",
           "sliders": [
@@ -2338,6 +2366,7 @@
           ]
         },
         {
+          "id": "proof-fta-for-degree-2",
           "title": "Proof: FTA for Degree 2",
           "description": "The Fundamental Theorem of Algebra (degree 2): every quadratic $ax^2 + bx + c$ with $a \\neq 0$ factors completely over $\\mathbb{C}$ as $a(x - z_1)(x - z_2)$. Open the **Proof** panel for the constructive proof.",
           "info": [
@@ -2345,6 +2374,7 @@
           ]
         },
         {
+          "id": "the-complete-picture-free-exploration",
           "title": "The Complete Picture — Free Exploration",
           "description": "You've seen the full story: the quadratic formula always gives two roots in $\\mathbb{C}$. Adjust all three sliders and explore freely. Try $a = -1$ to flip the parabola. Try $b = 0$ for symmetric roots. Watch the root locus reshape.",
           "sliders": [
@@ -2612,6 +2642,7 @@
       }
     },
     {
+      "id": "the-saddle-beneath-the-parabola",
       "title": "The Saddle Beneath the Parabola",
       "description": "Discover that the familiar parabola is a single slice of a saddle-shaped surface $\\text{Re}(f(z))$ over the complex input plane — and see where complex roots live on the saddle.",
       "markdown": "# The Saddle Beneath the Parabola\n\nEvery quadratic $f(z) = az^2 + bz + c$ extends naturally to complex inputs $z = u + iv$. The **real part** of $f(z)$ is:\n\n$$\\text{Re}(f(u+iv)) = a(u^2 - v^2) + bu + c$$\n\nThis is a **hyperbolic paraboloid** — a saddle surface.\n\n## Why a Saddle?\n\n$\\text{Re}(f)$ is a **harmonic function**: $\\nabla^2 \\text{Re}(f) = 2a + (-2a) = 0$. Harmonic functions cannot have local minima or maxima — only saddle points. This is the geometric reason the quadratic formula *always* produces two roots.\n\n## The Parabola Is a Slice\n\nSetting $v = 0$ (restricting to real inputs):\n$$\\text{Re}(f(u + 0i)) = au^2 + bu + c$$\n\nThis is the parabola you know from Scenes 0–1. It lives along the $v = 0$ ridge of the saddle.\n\n## Where Are the Roots?\n\n$f(z) = 0$ requires **both** $\\text{Re}(f) = 0$ and $\\text{Im}(f) = 0$.\n\n$\\text{Im}(f(u+iv)) = v(2au + b)$, which vanishes when $v = 0$ (real axis) or $u = -b/(2a)$.\n\n- **$\\Delta > 0$**: Saddle crosses zero on the real axis → two green real roots\n- **$\\Delta = 0$**: Saddle is tangent to the zero-plane → one repeated root\n- **$\\Delta < 0$**: Saddle crosses zero off the real axis → two magenta complex conjugate roots at $u = -b/(2a)$, $v = \\pm\\sqrt{|\\Delta|}/(2|a|)$\n\n## The Saddle Point\n\nThe saddle point sits at $(u, v) = (-b/(2a),\\, 0)$ with height $c - b^2/(4a) = -\\Delta/(4a)$. This is the vertex of the parabola, reinterpreted as the apex of the saddle.\n\n## Try It\n\nAdjust sliders to deform the saddle. Watch roots transition between real and complex as the discriminant changes sign.",
@@ -2672,6 +2703,7 @@
       ],
       "steps": [
         {
+          "id": "the-parabola-you-know",
           "title": "The Parabola You Know",
           "description": "We begin with the familiar parabola $f(x) = x^2 + 1$. It sits entirely above the $x$-axis — no real roots. But the Fundamental Theorem of Algebra promises two roots. Where are they hiding?",
           "add": [
@@ -2693,6 +2725,7 @@
           }
         },
         {
+          "id": "extending-to-complex-inputs",
           "title": "Extending to Complex Inputs",
           "description": "What if the input could be a complex number $z = u + iv$? The $u$-axis is the real axis you know. A new $v$-axis extends into the imaginary direction. The parabola lives along the $v = 0$ line.",
           "add": [
@@ -2734,6 +2767,7 @@
           }
         },
         {
+          "id": "the-saddle-reveals-itself",
           "title": "The Saddle Reveals Itself",
           "description": "The surface $\\text{Re}(f(z)) = a(u^2 - v^2) + bu + c$ is a **saddle** — it curves up along $u$ (like the parabola) but down along $v$. The blue parabola is just the $v = 0$ slice of this surface.",
           "remove": [
@@ -2787,6 +2821,7 @@
           }
         },
         {
+          "id": "the-zero-plane",
           "title": "The Zero-Plane",
           "description": "A translucent gray plane appears at $\\text{Re}(f) = 0$. Where the saddle surface passes through this plane, the real part vanishes — but a true root requires **both** real and imaginary parts to be zero.",
           "add": [
@@ -2812,6 +2847,7 @@
           }
         },
         {
+          "id": "roots-on-the-saddle",
           "title": "Roots on the Saddle",
           "description": "The roots of $f(z) = 0$ sit where $\\text{Re}(f) = 0$ **and** $\\text{Im}(f) = 0$ simultaneously. With $\\Delta < 0$, the magenta complex conjugate roots sit symmetrically above and below the real axis on the saddle.",
           "add": [
@@ -2873,6 +2909,7 @@
           }
         },
         {
+          "id": "explore-the-saddle",
           "title": "Explore the Saddle",
           "description": "Drag the sliders to reshape the saddle. Try $c = -1$ to pull roots onto the real axis, or change $b$ to shift the saddle sideways. The roots are **always** there — the saddle guarantees it.",
           "add": [],

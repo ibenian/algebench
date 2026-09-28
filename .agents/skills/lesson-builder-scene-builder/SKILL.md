@@ -62,6 +62,7 @@ Before writing any JSON:
 ### Phase 2: Build Base Scene
 
 Produce the root scene object:
+- `id` — stable scene id from the outline's `scene_id` (see **Stable IDs** below)
 - `title`, `description` from the outline
 - `markdown` — full documentation panel content with LaTeX, covering the scene's mathematical concepts. Include citations from the research excerpt where relevant.
 - `prompt` — AI agent teaching hints (never shown to users). Include color conventions, what to emphasize, follow-up questions to suggest.
@@ -79,7 +80,7 @@ For each step in the outline, IN ORDER:
 3. **Write `remove`** — element IDs to remove (must exist in current state)
 4. **Write sliders** — if the outline specifies slider changes at this step, add sliders via `sliders` and remove them via `remove` directives such as `{ "type": "slider" }`
 5. **Write `info`** — info overlay content if specified (supports `{{slider_id}}` placeholders)
-6. **Write `title`** and `description` — step title for navigation tree, description for narration
+6. **Write `id`, `title`** and `description` — `id` from the outline's `step_id` (see **Stable IDs**), step title for navigation tree, description for narration
 7. **Write `prompt`** — per-step system prompt for the AI chat tutor. Tell the AI what to emphasize at this step, what follow-up questions to suggest, and how to explain the new elements. This is never shown to users — it guides the in-app AI tutor.
 8. **Update state** — add new IDs, remove removed IDs, for the next step's tracking
 
@@ -90,7 +91,7 @@ If the scene outline includes a `proof_plan`:
 1. **Create the proof object** with `id`, `title`, `technique`, `goal`, `prompt`
    - `goal` — rendered with `renderKaTeX`, so use `$...$` for inline math and `$$...$$` for display math. Can be pure math (e.g. `"$$I_{sp} = \\frac{v_e}{g_0}$$"`) or prose with inline math (e.g. `"Show that $P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$"`). **Always include `$` delimiters** — bare LaTeX without `$` will render as plain text.
 2. **Build each proof step** from the skeleton:
-   - `id` — unique identifier
+   - `id` — stable id from the `label`, unique within the proof (see **Stable IDs**)
    - `type` — `given`, `step`, `conclusion`, or `remark`
    - `label` — concise heading
    - `math` — pure LaTeX expression, NO `$` delimiters (the renderer wraps it in `$$` automatically). Use `\htmlClass{hl-name}{...}` for highlight regions.
@@ -398,6 +399,17 @@ Add `"import": ["domain_name"]` at the lesson root level. Slider IDs must match 
 
 ## LaTeX in JSON
 
+### Stable IDs (required — never skip)
+
+Every **scene**, **step**, **proof** and **proof step** carries an explicit `id`. Deeplinks (`sc=`/`st=`/`pf=`/`ps=`), AI jumps and saved references resolve by `id` first, so an object without one breaks the moment its title is edited.
+
+- **kebab-case, from the title** (proof steps: from the `label`), with LaTeX dropped: `"Eigenvector $\\mathbf{v}_1$"` → `"eigenvector-v-1"`
+- **Unique within its array** — steps within their scene, scenes within the lesson (suffix `-2`, `-3` on a clash)
+- **Never change an existing id**, even when the title changes. When modifying a scene, keep the scene's and every surviving step's `id`
+- Put `id` as the first key of the object
+
+`lint_scene.py` and `validate_content.py` fail on a missing or duplicate id; `lint_scene.py --fix` fills missing ones.
+
 Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlClass{hl-x}{...}`
 
 ---
@@ -410,6 +422,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 - [ ] `camera` in data space; custom `views` with descriptions
 - [ ] Base `elements` includes axes + grid (unless outline says otherwise). **At minimum, an invisible grid must always be present.**
 - [ ] Every element has a unique `id`
+- [ ] The scene, every step, every proof and every proof step has a stable kebab-case `id`, unique within its array; existing ids unchanged
 - [ ] Steps cumulative and consistent; each has `title` + `description`
 - [ ] All expressions use math.js syntax
 - [ ] All LaTeX double-escaped
@@ -429,6 +442,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 | `t**2` | `t^2` |
 | `{a}` in overlay | `{{a}}` |
 | `\frac{{{expr}}}` in overlay | `\frac{ {{expr}} }` — space around `{{}}` inside LaTeX braces to prevent the lazy regex from mismatching |
+| Step or scene without `id` | `"id": "<kebab-case-title>"` as the first key — never omit, never rename an existing one |
 | Mismatched axis/scene range | Match them |
 | Non-uniform range spans | Equal spans on all axes |
 | No grid in scene elements | Always include at least an invisible grid (`opacity: 0`) — MathBox won't initialize without one |

@@ -46,7 +46,7 @@ export const MAX_INTENT_CHARS = 2000;
 export const MAX_THREAD_TURNS = 12;
 
 /** One line about a scene — cheap enough to include for every one. */
-export interface SceneSummary { index: number; title: string; description: string }
+export interface SceneSummary { index: number; id: string; title: string; description: string }
 
 /**
  * House style, DERIVED by scanning rather than asked of the model.
@@ -217,6 +217,7 @@ export function assembleBuildSceneRequest(opts: {
             description: firstLine(lesson.description),
             sceneSummaries: summarised.map((s, index) => ({
                 index,
+                id: typeof (s as { id?: unknown }).id === 'string' ? (s as { id: string }).id : '',
                 title: typeof s.title === 'string' ? s.title : '',
                 description: firstLine((s as { description?: unknown }).description),
             })),

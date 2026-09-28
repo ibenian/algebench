@@ -77,7 +77,7 @@ Run the content validation script:
 ```
 
 If it passes, proceed to Step 3. If it fails:
-1. Read the error output
+1. Read the error output. A `Stable IDs` failure (missing `id` on a scene, step, proof or proof step) is fixed with `./run.sh scripts/backfill_lesson_ids.py --write <file>`
 2. Apply auto-fixes where possible
 3. Re-run to confirm
 4. Report remaining issues
@@ -127,6 +127,8 @@ These common errors can be fixed automatically:
 | Pattern | Fix |
 |---------|-----|
 | Missing `id` on element targeted by `remove` | Generate ID from type + index |
+| Missing `id` on a scene, step, proof or proof step | `./run.sh scripts/backfill_lesson_ids.py --write <file>` (ids from titles; existing links keep resolving) |
+| Duplicate scene/step/proof-step `id` in one array | Rename the NEWER one with a `-2` suffix — never an id that shipped |
 | `highlights` key with no matching `\htmlClass` | Remove orphan key |
 | `\htmlClass` with no matching `highlights` key | Add stub `{"color":"yellow","label":""}` |
 

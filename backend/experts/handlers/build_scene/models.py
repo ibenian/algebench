@@ -68,6 +68,8 @@ class SceneSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     index: int = Field(ge=0)
+    #: The scene's stable id, so an inserted scene's id can be kept unique.
+    id: str = ""
     title: str = ""
     description: str = ""
 

@@ -22,6 +22,9 @@ from pathlib import Path
 
 from _json_format import dumps_compact_leaves
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from backend.lesson_ids import assign_missing_ids, duplicate_id_errors  # noqa: E402
+
 
 def load_json(path):
     """Load and parse a JSON file."""
@@ -75,6 +78,23 @@ def strip_unsafe_reason(scene):
     return reason
 
 
+def settle_ids(lesson):
+    """Give every scene, step, proof and proof step a stable id; refuse duplicates.
+
+    A scene builder is told to write ids, but assembly is the last gate before
+    the lesson is saved, so anything missing is filled here — with the id the
+    client already derives, so no link moves. A duplicate explicit id is an
+    error: the client would silently re-point the second one.
+    """
+    for t, ident in assign_missing_ids(lesson):
+        print(f'  Added id "{ident}" at {t.path}')
+    dups = duplicate_id_errors(lesson)
+    if dups:
+        for e in dups:
+            print(f'Error: {e}')
+        sys.exit(1)
+
+
 def cmd_list(args):
     """List scenes in a lesson."""
     lesson = load_json(args.lesson)
@@ -104,6 +124,7 @@ def cmd_add(args):
         sys.exit(1)
 
     lesson['scenes'].insert(idx, scene)
+    settle_ids(lesson)
     save_json(args.lesson, lesson)
 
     print(f'Added "{scene.get("title", "(untitled)")}" at index {idx}')
@@ -127,8 +148,13 @@ def cmd_replace(args):
 
     strip_unsafe_reason(scene)
 
-    old_title = lesson['scenes'][idx].get('title', '(untitled)')
+    old = lesson['scenes'][idx]
+    old_title = old.get('title', '(untitled)')
+    # A rebuilt scene keeps the id links into it already use.
+    if not scene.get('id') and old.get('id'):
+        scene = {'id': old['id'], **scene}
     lesson['scenes'][idx] = scene
+    settle_ids(lesson)
     save_json(args.lesson, lesson)
 
     print(f'Replaced [{idx}] "{old_title}" with "{scene.get("title", "(untitled)")}"')

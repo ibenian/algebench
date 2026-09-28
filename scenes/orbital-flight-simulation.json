@@ -6,6 +6,7 @@
   "unsafeExplanation": "This lesson uses scene-level reusable functions with native JavaScript expressions (for loops/closures) to compute trajectory extrema like apogee and perigee from live simulation state. Allow only if you trust this scene source.",
   "scenes": [
     {
+      "id": "orbit-basics-speed-vs-height",
       "title": "Orbit Basics: Speed vs Height",
       "description": "Build intuition for circular orbit speed, escape speed, and gravity at altitude around a simple spherical planet.",
       "markdown": "# Orbit Basics: Speed vs Height\n\nThis scene introduces the three key quantities that control orbital insertion:\n\n$$g(r)=\\frac{\\mu}{r^2}, \\qquad v_{\\text{circ}}=\\sqrt{\\frac{\\mu}{r}}, \\qquad v_{\\text{esc}}=\\sqrt{\\frac{2\\mu}{r}}$$\n\nwhere:\n- $r=R_p+h$ is distance from planet center (planet radius plus altitude),\n- $\\mu=GM$ is the gravitational parameter.\n\nIn the sliders, we use scaled values:\n- $G_s = G\\times 10^{11}$\n- $M_x = M/10^{24}$\n- so $\\mu = G_s\\,M_x\\times10^4$ in km$^3$/s$^2$.\n\n## What To Look For\n\n1. As altitude $h$ increases, both $v_{\\text{circ}}$ and $v_{\\text{esc}}$ decrease.\n2. Gravity weakens with $1/r^2$, but it never becomes zero.\n3. Orbital insertion is mostly a **sideways speed problem**: you need enough tangential speed at the chosen altitude.\n\n## Earth Reference (for context)\n\nUsing Earth-like values $R_p\\approx 6371\\,\\text{km}$ and $\\mu\\approx 398600\\,\\text{km}^3/\\text{s}^2$, low Earth orbit speeds are around $7.8\\,\\text{km/s}$ and escape speed near the surface is about $11.2\\,\\text{km/s}$.\n\nThese values match standard educational and agency references (NASA).",
@@ -145,6 +146,7 @@
       ],
       "steps": [
         {
+          "id": "parameter-1-planet-radius-rp",
           "title": "Parameter 1: Planet Radius Rp",
           "description": "Start with planet radius $R_p$. This sets the size of the world and the base geometric scale for orbit.",
           "sliders": [
@@ -187,6 +189,7 @@
           ]
         },
         {
+          "id": "parameter-2-orbit-altitude-h",
           "title": "Parameter 2: Orbit Altitude h",
           "description": "Set orbit altitude $h$. The orbital radius is $r = R_p + h$. All speeds and forces in this scene are evaluated at this radius.",
           "sliders": [
@@ -240,6 +243,7 @@
           ]
         },
         {
+          "id": "parameters-3-4-gravity-inputs-g-and-m",
           "title": "Parameters 3-4: Gravity Inputs G and M",
           "description": "Set gravity constant and planet mass with scaled sliders. We compute $\\mu=GM$ live, then gravity from $g(r)=\\mu/r^2$.",
           "sliders": [
@@ -269,6 +273,7 @@
           ]
         },
         {
+          "id": "derived-targets-orbital-and-escape-speeds",
           "title": "Derived Targets: Orbital and Escape Speeds",
           "description": "With $R_p,h,G,M$ fixed, the green arrow gives circular speed and the red arrow gives escape speed at the same radius.",
           "camera": {
@@ -381,6 +386,7 @@
           ]
         },
         {
+          "id": "force-balance-gravity-vs-centrifugal",
           "title": "Force Balance: Gravity vs Centrifugal",
           "description": "In the rotating-frame view, inward gravity and outward centrifugal balance at circular speed. Drag altitude to see both vectors shrink together with radius.",
           "camera": {
@@ -470,6 +476,7 @@
       ]
     },
     {
+      "id": "passive-coast-flight-no-thrust",
       "title": "Passive Coast Flight (No Thrust)",
       "description": "This scene is a no-thrust coast model: choose initial speed and direction at launch height, then observe ballistic/gravity-dominated outcomes.",
       "markdown": "# Launch and Insertion Simulator\n\nThis scene ties together **vehicle mass properties** and **orbital targets**.\n\n## Important Modeling Note\n\nThis simplified simulator starts at a **launch-height point** at altitude $h$ (post-ascent), not from ground liftoff. So $h$ is the simulation start height, while $h_{target}$ is the desired orbit height.\n\n## Mass and Propulsion Bookkeeping\n\n- Dry mass: $m_d$\n- Fuel mass: $m_f$\n- Initial mass: $m_0=m_d+m_f$\n\nMaximum ideal one-stage delta-v estimate:\n\n$$\\Delta v_{max}=I_{sp}g_0\\ln\\left(\\frac{m_0}{m_d}\\right)$$\n\n(with $g_0=9.81\\,\\text{m/s}^2$).\n\n## Gravity Inputs\n\nWe compute gravity live from:\n- $G_s=G\\times10^{11}$\n- $M_x=M/10^{24}$\n- $\\mu=G_sM_x\\times10^4$ (km$^3$/s$^2$)\n\n## Target Speeds for Orbit\n\nAt launch-height radius $r=R_p+h$:\n\n$$v_{\\text{circ}}=\\sqrt{\\frac{\\mu}{r}}, \\quad v_{\\text{esc}}=\\sqrt{\\frac{2\\mu}{r}}$$\n\nIf your speed is below circular, the trajectory is usually suborbital unless direction and staging are corrected.\n\n## Pedagogical Model Used Here\n\nFor interactive clarity, this simulator uses a blended 2D model:\n- ballistic-like arc when speed is below orbital target,\n- near-circular motion around $v_{\\text{circ}}$,\n- outward escape branch near/above $v_{\\text{esc}}$.\n\nThis keeps the controls intuitive while preserving the key speed-height logic used in real orbital mechanics.",
@@ -578,6 +585,7 @@
       ],
       "steps": [
         {
+          "id": "parameter-1-planet-geometry-and-gravity-inputs",
           "title": "Parameter 1: Planet Geometry and Gravity Inputs",
           "description": "Set $R_p$, launch height $h$, and gravity inputs $G, M$. This defines $r=R_p+h$ and $\\mu=GM$.",
           "sliders": [
@@ -701,6 +709,7 @@
           ]
         },
         {
+          "id": "parameters-2-3-dry-mass-and-fuel-mass",
           "title": "Parameters 2-3: Dry Mass and Fuel Mass",
           "description": "Now set vehicle mass. Total mass is $m_0=m_d+m_f$, and weight magnitude scales with $m_0g$.",
           "camera": {
@@ -771,6 +780,7 @@
           ]
         },
         {
+          "id": "parameter-4-engine-efficiency-isp",
           "title": "Parameter 4: Engine Efficiency (Isp)",
           "description": "Side-by-side comparison: your selected-$I_{sp}$ vector first, with reference rocket baselines immediately next to it.",
           "sliders": [
@@ -912,6 +922,7 @@
           ]
         },
         {
+          "id": "parameters-5-6-launch-speed-and-direction",
           "title": "Parameters 5-6: Launch Speed and Direction",
           "description": "Set launch speed, flight-path angle, and target height. Green ring = launch height, red ring = target height.",
           "remove": [
@@ -1025,6 +1036,7 @@
           ]
         },
         {
+          "id": "parameters-7-8-simulation-horizon-and-playback",
           "title": "Parameters 7-8: Simulation Horizon and Playback",
           "description": "Set the simulation horizon $T$, then animate playback with $\\tau$ to inspect whether the trajectory falls, orbits, or escapes.",
           "virtualTime": {
@@ -1172,6 +1184,7 @@
       ]
     },
     {
+      "id": "thrust-driven-flight-powered-model",
       "title": "Thrust-Driven Flight (Powered Model)",
       "description": "This scene adds sustained thrust and burn duration. Unlike passive coast, the rocket accelerates during burn, then coasts under gravity.",
       "markdown": "# Thrust-Driven Flight (Powered Model)\n\nThis scene shows a simplified powered ascent/insertion model.\n\n## Key Difference From Scene 2\n\n- Scene 2: no sustained thrust after start (passive coast).\n- Scene 3: thrust is applied for a burn duration $t_{burn}$.\n\n## Simplified Powered Dynamics Used Here\n\nWe split time into burn and coast:\n\n- $t_e = \\min(t, t_{burn})$ (engine-on time)\n- $t_c = \\max(0, t - t_{burn})$ (coast time)\n\nRadial and tangential motion get thrust contributions during burn, then coast with gravity.\n\nThis is still educational/simplified, but it captures the core operational idea: **orbit insertion depends on powered acceleration, not only an assumed initial speed**.",
@@ -1353,6 +1366,7 @@
       ],
       "steps": [
         {
+          "id": "powered-flight-parameters-and-playback",
           "title": "Powered Flight Parameters and Playback",
           "description": "Set launch/target heights, initial speed, thrust acceleration, burn time, and flight-path angle. Then animate with $\\tau$.",
           "virtualTime": {
@@ -1659,6 +1673,7 @@
       ]
     },
     {
+      "id": "guided-two-burn-orbital-insertion",
       "title": "Guided Two-Burn Orbital Insertion",
       "description": "A more realistic educational flight profile: ascent burn with pitch program, coast arc, then prograde circularization burn to achieve stable orbit.",
       "markdown": "# Guided Two-Burn Orbital Insertion\n\nThis scene uses a simplified but physically grounded 2D orbital model with **central gravity** and **time integration**.\n\n## Physics Model Used\n\nState is propagated in the orbital plane with position and velocity:\n\n$$\\dot{\\mathbf{r}}=\\mathbf{v}, \\qquad \\dot{\\mathbf{v}}=\\mathbf{a}_g+\\mathbf{a}_T$$\n\nGravity is not constant; it updates with altitude each step:\n\n$$\\mathbf{a}_g=-\\mu\\,\\frac{\\mathbf{r}}{\\|\\mathbf{r}\\|^3}, \\qquad g(r)=\\frac{\\mu}{r^2}$$\n\nwith\n\n$$\\mu=GM=(G_s\\,M_x)\\times10^4\\;\\text{km}^3/\\text{s}^2$$\n\nin this slider scaling.\n\n## Circular-Orbit Balance\n\nAt radius $r$, the circular-orbit speed is\n\n$$v_{\\mathrm{circ}}(r)=\\sqrt{\\frac{\\mu}{r}}$$\n\nwhich is equivalent to centripetal balance:\n\n$$\\frac{v^2}{r}=\\frac{\\mu}{r^2}$$\n\nSo altitude alone is insufficient; you need the right **tangential speed** and near-zero radial speed.\n\n## Flight Phases in This Scene\n\n1. **Burn 1 (ascent + gravity turn):** thrust while pitch transitions from pitch_start to pitch_end over t_pitch.\n2. **Coast:** no thrust for t_coast.\n3. **Burn 2 (circularization):** guidance trims tangential speed toward $v_{\\mathrm{circ,target}}$ and damps radial speed $v_r$.\n\n## Numerical Integration Note\n\nThe trajectory is propagated with a stepwise symplectic-style update (interactive educational fidelity, not mission-grade guidance software).\n\n## Stable-Orbit Criterion (Displayed Outcome)\n\nAfter burns complete, the scene reports **stable-orbit target achieved** when all are met:\n\n- $|r-r_{target}|\\le 40\\,\\text{km}$\n- $|v_\\theta-v_{\\mathrm{circ,target}}|\\le 0.25\\,\\text{km/s}$\n- $|v_r|\\le 0.08\\,\\text{km/s}$\n\nwhere $r_{target}=R_p+h_{target}$.\n\n## Falcon 9-like Baseline (Simplified)\n\nDefaults are tuned to approximate a Falcon 9 style ISS insertion in this educational model:\n\n- $h_{target}=420\\,\\text{km}$ (ISS-class altitude)\n- Burn 1 / coast / burn 2 sequence tuned for near-circular insertion\n\nThese are educational defaults, not mission-certified flight software parameters.",
@@ -1840,6 +1855,7 @@
       ],
       "steps": [
         {
+          "id": "guided-ascent-coast-and-circularization",
           "title": "Guided Ascent, Coast, and Circularization",
           "description": "Tune two burns and pitch program to hit a stable orbit at target height.",
           "virtualTime": {

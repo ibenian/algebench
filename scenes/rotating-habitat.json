@@ -20,6 +20,7 @@
   },
   "scenes": [
     {
+      "id": "rotating-space-habitats",
       "title": "Rotating Space Habitats",
       "description": "Engineering artificial gravity through rotation — explore angular velocity, centripetal force, Coriolis effect, and the comfort constraints that shape real spacecraft design.",
       "markdown": "# Rotating Space Habitats\n\n## The Problem: Weightlessness Kills\n\nIn deep space there is no natural gravity. Without it, astronauts suffer:\n- **Bone density loss** (~1–2% per month)\n- **Muscle atrophy** (heart included)\n- **Vestibular disruption**, fluid shifts, vision changes\n\nFor a Mars transit (6–9 months each way), this is unacceptable.\n\n## The Solution: Spin It\n\nA rotating habitat pushes occupants against the outer wall through **centripetal acceleration**. From inside, this is indistinguishable from gravity — it's the same fundamental effect.\n\n$$g_a = \\omega^2 R = \\left(\\frac{2\\pi n}{60}\\right)^2 R$$\n\nwhere $\\omega$ is angular velocity (rad/s), $n$ is spin rate (RPM), and $R$ is radius (m).\n\n## The Design Constraints\n\nThree competing physics effects must all be satisfied simultaneously:\n\n| Effect | Constraint | Why |\n|--------|-----------|-----|\n| Gravity level $g_a$ | $0.5 – 1.2\\,g$ | Too little: no benefit. Too much: overloading. |\n| Spin rate $n$ | $< 3$ RPM | Higher spin → Coriolis sickness, vestibular cross-coupling |\n| Gravity gradient | $< 10\\%$ | Head-to-foot $\\Delta g > 10\\%$ feels deeply wrong |\n\n## Historical Benchmarks\n\n| Design | Radius | RPM | $g_a$ |\n|--------|--------|-----|-------|\n| Stanford Torus | 895 m | 1.0 | 1.00 g |\n| O'Neill Cylinder | 3200 m | 0.5 | 0.90 g |\n| Near-term viable | ~100 m | ~3.0 | ~1.00 g |\n\nThe near-term constraint is clear: **you need at least ~100 m radius** to stay within all comfort bounds at acceptable gravity.\n\n## Key Formulas\n\n$$\\omega = \\frac{2\\pi n}{60} \\quad [\\text{rad/s}]$$\n\n$$g_a = \\omega^2 R \\quad [\\text{m/s}^2] \\quad = \\frac{\\omega^2 R}{9.81} \\quad [g]$$\n\n$$a_{\\text{Cor}} = 2\\omega v \\quad [\\text{m/s}^2]\\quad \\text{(for radial walking at speed } v\\text{)}$$\n\n$$\\Delta g / g = \\Delta r / R \\approx 1.8 / R \\quad \\text{(head-to-foot, \\%)}$$\n\n## Symbol Definitions\n\n$$P(t) = (R\\cos(\\omega t),\\;R\\sin(\\omega t),\\;0)$$\nPosition of an occupant on the rotating rim at time $t$.\n\n$$\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}} = \\omega^2\\Delta r$$\nAbsolute head-to-foot gravity difference across body height $\\Delta r\\approx1.8\\,\\mathrm{m}$.\n\n$$\\Delta g/g = \\frac{\\Delta g}{g_{\\mathrm{feet}}} \\approx \\frac{\\Delta r}{R}$$\nRelative gravity gradient (usually reported as a percent). Smaller is more comfortable.",
@@ -86,6 +87,7 @@
       ],
       "steps": [
         {
+          "id": "the-cylinder",
           "title": "The Cylinder",
           "description": "The habitat is a rotating cylinder. The outer curved wall becomes the floor — people live on the inside surface, pressed outward by spin. Adjust $R$ to see how radius changes the structure, and $n$ to feel the scale of what's being designed.",
           "sliders": [
@@ -224,6 +226,7 @@
           ]
         },
         {
+          "id": "angular-velocity",
           "title": "Angular Velocity ω",
           "description": "The habitat rotates at $n$ RPM — angular velocity $\\omega = 2\\pi n/60$ rad/s. The yellow ball is a stationary rim marker (0.5 m diameter). Orange shows tangential speed $v = \\omega R$.",
           "sliders": [
@@ -277,6 +280,7 @@
           ]
         },
         {
+          "id": "artificial-gravity-g-a-omega-2-r",
           "title": "Artificial Gravity — $g_a = \\omega^2 R$",
           "description": "Centripetal acceleration felt as outward gravity: $g_a = \\omega^2 R$. The red line shows effective gravity at the stationary rim marker. Target: $0.9$–$1.0\\,g$.",
           "sliders": [
@@ -303,6 +307,7 @@
           ]
         },
         {
+          "id": "the-coriolis-effect",
           "title": "The Coriolis Effect",
           "description": "Walking **tangentially** inside a rotating frame produces a radial Coriolis push: $a_{\\text{Cor}} = 2\\omega v$. Red is artificial gravity and blue is Coriolis at the same walker position, so you can see when they align (prograde) or oppose (retrograde).",
           "sliders": [
@@ -367,6 +372,7 @@
           ]
         },
         {
+          "id": "gravity-gradient-head-vs-feet",
           "title": "Gravity Gradient — Head vs. Feet",
           "description": "Your head is $1.8$ m closer to the spin axis than your feet. Since $g \\propto r$, your head experiences less gravity: $\\Delta g/g = 1.8/R$. The two orange arrows show gravity at feet (longer) and head (shorter).",
           "sliders": [
@@ -403,6 +409,7 @@
           ]
         },
         {
+          "id": "full-simulation-design-your-habitat",
           "title": "Full Simulation — Design Your Habitat",
           "description": "All effects simultaneously. Yellow is stationary, green is walker, orange is walk velocity, blue is Coriolis, red is artificial gravity.",
           "sliders": [

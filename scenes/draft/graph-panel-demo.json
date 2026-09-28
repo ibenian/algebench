@@ -2,6 +2,7 @@
   "title": "Semantic Graph Demo",
   "scenes": [
     {
+      "id": "semantic-graph-demo",
       "title": "Semantic Graph Demo",
       "description": "Demonstrates the semantic graph dock view.",
       "markdown": "## Semantic Graph Demo\n\nSwitch to the **Graph** tab in the left dock to view interactive Mermaid diagrams for each proof step. Each equation appears in both its canonical form and a physically-equivalent alternate form, so you can see how the semantic graph reshapes as the algebra is rewritten.",
@@ -34,110 +35,137 @@
       "elements": [],
       "steps": [
         {
+          "id": "newton-s-second-law",
           "title": "Newton's Second Law",
           "description": "$F = m \\cdot a$"
         },
         {
+          "id": "newton-s-second-law-momentum-form",
           "title": "Newton's Second Law (momentum form)",
           "description": "$F = \\dfrac{dp}{dt}$"
         },
         {
+          "id": "mass-energy-equivalence",
           "title": "Mass-energy equivalence",
           "description": "$E = m c^2$"
         },
         {
+          "id": "relativistic-energy-momentum",
           "title": "Relativistic energy-momentum",
           "description": "$E^2 = (pc)^2 + (mc^2)^2$"
         },
         {
+          "id": "uniform-acceleration-velocity",
           "title": "Uniform acceleration (velocity)",
           "description": "$v = v_0 + a t$"
         },
         {
+          "id": "uniform-acceleration-position",
           "title": "Uniform acceleration (position)",
           "description": "$x = x_0 + v_0 t + \\tfrac{1}{2} a t^2$"
         },
         {
+          "id": "schr-dinger-equation-compact",
           "title": "Schr\u00f6dinger equation (compact)",
           "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = \\hat{H}\\,\\psi$"
         },
         {
+          "id": "schr-dinger-equation-expanded",
           "title": "Schr\u00f6dinger equation (expanded)",
           "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$"
         },
         {
+          "id": "partial-derivatives-2d-transport-equation",
           "title": "Partial derivatives \u2014 2D transport equation",
           "description": "$\\dfrac{\\partial \\rho}{\\partial t} + u\\,\\dfrac{\\partial \\rho}{\\partial x} + v\\,\\dfrac{\\partial \\rho}{\\partial y} = 0$"
         },
         {
+          "id": "higher-powers-and-a-quotient-3-4-n-3-4-n-a-b",
           "title": "Higher powers and a quotient (^3, ^4, ^n, ^-3, ^-4, ^-n, a/b)",
           "description": "$y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}$"
         },
         {
+          "id": "annotation-constant-velocity",
           "title": "Annotation: constant velocity",
           "description": "$F = \\dot{m} \\cdot v_e \\quad (v_e \\text{ constant})$"
         },
         {
+          "id": "annotation-two-assumptions",
           "title": "Annotation: two assumptions",
           "description": "$P V = n R T \\quad (T \\text{ constant}) \\quad (n \\text{ fixed})$"
         },
         {
+          "id": "annotation-small-angle",
           "title": "Annotation: small angle",
           "description": "$\\sin\\theta \\approx \\theta \\quad (\\theta \\text{ small})$"
         },
         {
+          "id": "annotation-long-latex-annotation",
           "title": "Annotation: long latex annotation",
           "description": "$W = \\int F \\, dx \\quad (F \\text{ conservative, } \\nabla \\times F = 0)$"
         },
         {
+          "id": "annotation-paragraph-length",
           "title": "Annotation: paragraph-length",
           "description": "$\\Delta S \\geq 0 \\quad (\\text{holds for isolated systems undergoing irreversible processes where no heat exchange with surroundings occurs})$"
         },
         {
+          "id": "comparison-strict-greater-than",
           "title": "Comparison: strict greater-than",
           "description": "$x > 0$"
         },
         {
+          "id": "comparison-strict-less-than",
           "title": "Comparison: strict less-than",
           "description": "$x < 5$"
         },
         {
+          "id": "comparison-greater-or-equal",
           "title": "Comparison: greater-or-equal",
           "description": "$x \\geq y + 1$"
         },
         {
+          "id": "comparison-less-or-equal",
           "title": "Comparison: less-or-equal",
           "description": "$a \\leq b$"
         },
         {
+          "id": "comparison-constraint-after-equation",
           "title": "Comparison: constraint after equation",
           "description": "$f(x) = x^2, x > 0$"
         },
         {
+          "id": "comparison-domain-restriction",
           "title": "Comparison: domain restriction",
           "description": "$\\sin\\theta = \\theta, 0 \\leq \\theta$"
         },
         {
+          "id": "domain-constraint",
           "title": "Domain constraint: \u03b1 \u2208 \u2102",
           "description": "\u03b1 \u2208 \u2102 \u2014 styled symbol correctly parsed"
         },
         {
+          "id": "bare-symbols-formerly-hardcoded-vectors",
           "title": "Bare symbols (formerly hardcoded vectors)",
           "description": "$y = F + a \\cdot v - p + B$"
         },
         {
+          "id": "definite-integral",
           "title": "Definite integral",
           "description": "$W = \\int_a^b F \\, dx$"
         },
         {
+          "id": "closed-line-integral-gauss-s-law",
           "title": "Closed line integral (Gauss's law)",
           "description": "$\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q}{\\epsilon_0}$"
         },
         {
+          "id": "summation-partition-function",
           "title": "Summation (partition function)",
           "description": "$Z = \\sum_i e^{-E_i / k_B T}$"
         },
         {
+          "id": "product-factorial-via-product",
           "title": "Product (factorial via product)",
           "description": "$n! = \\prod_k k$"
         }
