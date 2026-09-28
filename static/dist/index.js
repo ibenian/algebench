@@ -5719,6 +5719,7 @@ function setupRollDrag(container) {
 			cameraState.arcballInertiaQ = null;
 			haltSmoothedRotation();
 			releaseDragPivotIfIdle();
+			dropLingeringBall();
 			zoomDrag = { y: e.clientY };
 			captureDragPointer();
 			document.body.classList.add("zooming");

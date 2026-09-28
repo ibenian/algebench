@@ -1297,6 +1297,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
             cameraState.arcballInertiaQ = null;
             haltSmoothedRotation();
             releaseDragPivotIfIdle();
+            dropLingeringBall();   // the zoom moves the view off the lingering ball
             zoomDrag = { y: e.clientY };
             captureDragPointer();
             document.body.classList.add('zooming');
