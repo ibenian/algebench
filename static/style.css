@@ -1026,7 +1026,40 @@ html, body {
     border-radius: 12px;
     border: 1px solid var(--border-color);
 }
-#mathbox-container { width: 100%; height: 100%; cursor: grab; }
+#mathbox-container { position: relative; width: 100%; height: 100%; cursor: grab; }
+
+/* Axis cues on the trackball's rim: press one for a Cmd/Ctrl/Alt drag without the key. */
+.axis-cue {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    margin: -13px 0 0 -13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 15px;
+    line-height: 1;
+    /* Pale like the ball itself (#9fd4ff at low opacity); a hover brings it up. */
+    color: rgba(159, 212, 255, 0.55);
+    background: rgba(159, 212, 255, 0.05);
+    border: 1px solid rgba(159, 212, 255, 0.22);
+    user-select: none;
+    z-index: 5;
+    transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+.axis-cue[hidden] { display: none; }
+.axis-cue:hover {
+    color: rgba(214, 236, 255, 0.95);
+    background: rgba(159, 212, 255, 0.16);
+    border-color: rgba(159, 212, 255, 0.6);
+    transform: scale(1.12);
+}
+.axis-cue[data-axis="x"] { cursor: ns-resize; }
+.axis-cue[data-axis="y"] { cursor: ew-resize; }
+.axis-cue[data-axis="z"] { cursor: alias; }
+/* While a drag turns the view, the cues are a picture only. */
+body.rotating .axis-cue { pointer-events: none; }
 #mathbox-container canvas { cursor: grab; }
 /* Closed-fist grabbing cursor while rotating — overrides MathBox cursor plugin */
 body.rotating, body.rotating * { cursor: grabbing !important; }

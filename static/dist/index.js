@@ -5167,8 +5167,10 @@ function showArcballBall() {
 	}
 	ballHelper.scale.setScalar(radius);
 	ballHelper.position.copy(rotationCentre());
+	showAxisCues(disc);
 }
 function hideArcballBall() {
+	hideAxisCues();
 	if (!ballHelper) return;
 	cameraState.three?.scene.remove(ballHelper);
 	for (const child of ballHelper.children) {
@@ -5176,6 +5178,91 @@ function hideArcballBall() {
 		child.material.dispose();
 	}
 	ballHelper = null;
+}
+var IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+var AXIS_CUES = [
+	{
+		axis: "x",
+		glyph: "↕",
+		deg: 90,
+		label: `Tilt: drag up or down (same as ${IS_MAC ? "⌘" : "Win"}-drag)`
+	},
+	{
+		axis: "y",
+		glyph: "↔",
+		deg: 0,
+		label: "Turn: drag left or right (same as Ctrl-drag)"
+	},
+	{
+		axis: "z",
+		glyph: "⟲",
+		deg: 45,
+		label: `Roll: drag around the ball (same as ${IS_MAC ? "⌥" : "Alt"}-drag)`
+	}
+];
+/** Gap between the ball's rim and a cue's centre, in CSS px. */
+var CUE_GAP_PX = 18;
+var cueHost = null;
+var cueEls = [];
+function ensureAxisCues() {
+	if (cueEls.length || !cueHost) return;
+	for (const c of AXIS_CUES) {
+		const el = document.createElement("div");
+		el.className = "axis-cue";
+		el.dataset.axis = c.axis;
+		el.textContent = c.glyph;
+		el.title = c.label;
+		el.setAttribute("aria-hidden", "true");
+		el.hidden = true;
+		el.addEventListener("mouseenter", () => {
+			if (lingerPivot && pivotFlashTimer !== null) {
+				clearTimeout(pivotFlashTimer);
+				pivotFlashTimer = null;
+			}
+		});
+		el.addEventListener("mouseleave", () => {
+			if (lingerPivot && pivotFlashTimer === null && !document.body.classList.contains("rotating")) lingerArcballBall(lingerPivot);
+		});
+		cueHost.appendChild(el);
+		cueEls.push(el);
+	}
+}
+function showAxisCues(disc) {
+	if (!cueHost) return;
+	ensureAxisCues();
+	const host = cueHost.getBoundingClientRect();
+	const reach = disc.r + CUE_GAP_PX;
+	const pad = 14;
+	AXIS_CUES.forEach((c, i) => {
+		const el = cueEls[i];
+		const a = c.deg * Math.PI / 180;
+		const x = Math.min(host.width - pad, Math.max(pad, disc.cx + reach * Math.cos(a) - host.left));
+		const y = Math.min(host.height - pad, Math.max(pad, disc.cy - reach * Math.sin(a) - host.top));
+		el.style.left = `${x}px`;
+		el.style.top = `${y}px`;
+		el.hidden = false;
+	});
+}
+function hideAxisCues() {
+	for (const el of cueEls) el.hidden = true;
+}
+/** The axis lock of the cue under a press, if it is on one. */
+function axisCueUnder(target) {
+	switch ((target instanceof Element ? target.closest(".axis-cue") : null)?.dataset.axis) {
+		case "x": return {
+			axis: new THREE.Vector3(1, 0, 0),
+			cls: "rotating-axis-x"
+		};
+		case "y": return {
+			axis: new THREE.Vector3(0, 1, 0),
+			cls: "rotating-axis-y"
+		};
+		case "z": return {
+			axis: new THREE.Vector3(0, 0, 1),
+			cls: "rotating-axis-z"
+		};
+		default: return null;
+	}
 }
 var grabHelper = null;
 /** Mark the point on the ball the pointer is holding (`pt` is camera-space). */
@@ -5689,6 +5776,7 @@ function modifierAxis(e) {
 function setupRollDrag(container) {
 	if (!container) return;
 	const inputSurface = container;
+	cueHost = container;
 	let orbitDrag = null;
 	let panDrag = null;
 	let zoomDrag = null;
@@ -5748,7 +5836,8 @@ function setupRollDrag(container) {
 			return;
 		}
 		if (e.button !== 0) return;
-		const { axis, cls: axisClass } = modifierAxis(e);
+		const cue = axisCueUnder(e.target);
+		const { axis, cls: axisClass } = cue ?? modifierAxis(e);
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (cameraState.arcballInertiaId) {
@@ -5757,15 +5846,16 @@ function setupRollDrag(container) {
 		}
 		cameraState.arcballInertiaQ = null;
 		haltSmoothedRotation();
-		const onBall = lingeringPivotUnder(e.clientX, e.clientY);
+		const onBall = cue ? lingerPivot ? lingerPivot.clone() : null : lingeringPivotUnder(e.clientX, e.clientY);
 		cancelBallFlash();
-		if (!onBall) hideArcballBall();
-		dragPivot = !!(cameraState.followCamState || cameraState.cameraExprState) ? null : onBall ?? pivotUnder(e.clientX, e.clientY);
+		if (!onBall && !cue) hideArcballBall();
+		dragPivot = !!(cameraState.followCamState || cameraState.cameraExprState) ? null : cue ? onBall : onBall ?? pivotUnder(e.clientX, e.clientY);
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
 			axis,
 			x: e.clientX,
-			y: e.clientY
+			y: e.clientY,
+			locked: !!cue
 		};
 		orbitDragActive = true;
 		if (rotateMode === "camera") beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
@@ -5824,7 +5914,7 @@ function setupRollDrag(container) {
 	* axis takes over from here instead of reinterpreting the whole drag.
 	*/
 	function updateDragAxis(e) {
-		if (!orbitDrag) return;
+		if (!orbitDrag || orbitDrag.locked) return;
 		const { axis, cls } = modifierAxis(e);
 		const was = orbitDrag.axis;
 		if (was === axis || was && axis && was.equals(axis)) return;
