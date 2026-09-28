@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.mathjs_extensions import EXTENSION_NAMES  # noqa: E402
 from backend.expression_fields import is_expression_key  # noqa: E402
-from backend.lesson_ids import id_errors, iter_id_targets  # noqa: E402
+from backend.lesson_ids import ambiguous_id_errors, id_errors, iter_id_targets  # noqa: E402
 
 # ---- Expression safety ----
 
@@ -345,7 +345,7 @@ def check_ids(data):
     one they fall back to the title slug, so a title edit re-points old links.
     Fix with: ./run.sh scripts/backfill_lesson_ids.py --write <file>
     """
-    return id_errors(data), sum(1 for _ in iter_id_targets(data))
+    return ambiguous_id_errors(data) + id_errors(data), sum(1 for _ in iter_id_targets(data))
 
 
 # ---- Camera sanity ----

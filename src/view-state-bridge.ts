@@ -86,7 +86,6 @@ interface SceneMaps {
 }
 
 let _applying = false;
-const _sceneMapCache = new WeakMap<object, SceneMaps>();
 // Auto-ask (?aa=) fires AT MOST once per session — a deeplink from an embedded
 // proof's "Ask AI". Latched so back/forward/reload can't re-ask (belt-and-braces
 // with the fromHistory skip + `aa` not being serialized back into the URL).
@@ -99,15 +98,15 @@ export function isApplyingViewState(): boolean {
 
 // ----- Id resolution (hybrid: id -> slug(title) -> index) -----
 
+// Recomputed on every call, NOT memoized per lesson object: the in-app
+// builder mutates the lesson in place (applyBuildOps), so a cache keyed on
+// the object kept serving a replaced placeholder's ids until reload. The
+// work is a slugify per scene and step — trivial next to a navigation.
 function sceneMaps(lesson: LessonFormat | null | undefined): SceneMaps {
     if (!lesson || !Array.isArray(lesson.scenes)) return { sceneIds: [], stepIds: [] };
-    let cached = _sceneMapCache.get(lesson);
-    if (cached) return cached;
     const sceneIds = buildIds(lesson.scenes, 'title');
     const stepIds = lesson.scenes.map((sc) => buildIds(sc.steps || [], 'title'));
-    cached = { sceneIds, stepIds };
-    _sceneMapCache.set(lesson, cached);
-    return cached;
+    return { sceneIds, stepIds };
 }
 
 // Resolve a token against an id list using id/slug match, then integer index.

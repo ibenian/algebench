@@ -24,7 +24,8 @@ from _json_format import dumps_compact_leaves
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.lesson_ids import (  # noqa: E402
-    assign_missing_ids, carry_ids, duplicate_id_errors,
+    ambiguous_id_errors, assign_missing_ids, build_ids, carry_ids,
+    duplicate_id_errors, readable_slug, unique_id,
 )
 
 
@@ -90,7 +91,7 @@ def settle_ids(lesson):
     """
     for t, ident in assign_missing_ids(lesson):
         print(f'  Added id "{ident}" at {t.path}')
-    dups = duplicate_id_errors(lesson)
+    dups = ambiguous_id_errors(lesson) + duplicate_id_errors(lesson)
     if dups:
         for e in dups:
             print(f'Error: {e}')
@@ -127,7 +128,13 @@ def cmd_add(args):
 
     # Freeze the existing scenes' ids FIRST: inserting a same-titled scene ahead
     # of an id-less one would otherwise shift its derived id (intro -> intro-2).
+    # Then give the NEW scene its ids before it joins — it has no links yet, so
+    # it is the one that yields on a clash.
     settle_ids(lesson)
+    taken = set(build_ids(lesson['scenes'], 'title'))
+    scene = {'id': unique_id(str(scene.pop('id', '') or readable_slug(scene.get('title'), 'scene')),
+                             taken), **scene}
+    assign_missing_ids(scene)
     lesson['scenes'].insert(idx, scene)
     settle_ids(lesson)
     save_json(args.lesson, lesson)

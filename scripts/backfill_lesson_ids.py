@@ -26,7 +26,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from backend.lesson_ids import assign_missing_ids, id_errors  # noqa: E402
+from backend.lesson_ids import ambiguous_id_errors, assign_missing_ids, id_errors  # noqa: E402
+
+
+def _problems(data):
+    return ambiguous_id_errors(data) + id_errors(data)
 
 _NUMBER = re.compile(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][-+]?\d+)?")
 _WS = " \t\n\r"
@@ -161,7 +165,7 @@ def main() -> int:
         except ValueError:
             rel = path
         if args.check:
-            errors = id_errors(json.loads(text))
+            errors = _problems(json.loads(text))
             if errors:
                 bad += 1
                 print(f"{rel}: {len(errors)} id problem(s)")
@@ -174,8 +178,8 @@ def main() -> int:
         if changes:
             path.write_text(new_text)
             print(f"{rel}: added {len(changes)} id(s)")
-        leftover = id_errors(json.loads(new_text))
-        if leftover:  # duplicates need a human decision
+        leftover = _problems(json.loads(new_text))
+        if leftover:  # duplicates / ambiguous layouts need a human decision
             bad += 1
             for e in leftover:
                 print(f"    {e}")

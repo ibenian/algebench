@@ -180,9 +180,13 @@ def assign_missing_ids(data: dict) -> list[tuple[IdTarget, str]]:
 
     Returns ``(target, id_written)`` for each change.
 
-    Explicit ids are authoritative: a derived id that an explicit id elsewhere
-    in the same scope already holds takes the next free suffix instead (e.g. an
-    id-less ``Intro`` inserted ahead of a scene whose id is ``intro``).
+    Existing content keeps the id the client resolves for it today, so no link
+    moves. One legacy layout has no safe answer: a derived id that an explicit
+    id elsewhere in the scope also claims (``[{title: Intro}, {id: intro}]``
+    resolves as ``intro`` / ``intro-2`` on the client, so either write swaps
+    or duplicates a link target). Those are left unwritten and reported by
+    ``ambiguous_id_errors`` for a human to settle. New content should get its
+    ids BEFORE it joins the lesson (see ``assemble_scene.py``).
     """
     targets = list(iter_id_targets(data))
     taken: dict[str, set[str]] = {}
@@ -193,10 +197,28 @@ def assign_missing_ids(data: dict) -> list[tuple[IdTarget, str]]:
     for t in targets:
         if t.explicit:
             continue
-        ident = unique_id(id_to_write(t), taken.setdefault(t.scope, set()))
+        scope = taken.setdefault(t.scope, set())
+        ident = id_to_write(t)
+        if ident == t.ident:
+            if ident in scope:  # ambiguous legacy layout — see above
+                continue
+            scope.add(ident)
+        else:  # a renamed index fallback: no link carries it, so just be unique
+            ident = unique_id(ident, scope)
         t.obj["id"] = ident
         changed.append((t, ident))
     return changed
+
+
+def ambiguous_id_errors(data: dict) -> list[str]:
+    """Id-less targets whose client-resolved id an explicit id also claims."""
+    explicit = {(t.scope, str(t.obj["id"])) for t in iter_id_targets(data) if t.explicit}
+    return [
+        f'{t.path}: missing "id", and its current link id "{t.ident}" is also an '
+        f'explicit id elsewhere — assign both ids by hand'
+        for t in missing_ids(data)
+        if id_to_write(t) == t.ident and (t.scope, t.ident) in explicit
+    ]
 
 
 def missing_id_errors(data: dict) -> list[str]:

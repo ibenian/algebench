@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 
 from backend.lesson_ids import (
-    assign_missing_ids, build_ids, carry_ids, duplicate_id_errors, id_errors,
+    ambiguous_id_errors, assign_missing_ids, build_ids, carry_ids,
+    duplicate_id_errors, id_errors,
     iter_id_targets, missing_id_errors, readable_slug, slugify,
 )
 from scripts.backfill_lesson_ids import backfill_text
@@ -220,9 +221,13 @@ def test_backfill_overwrites_an_empty_id_in_place():
     assert len(changes) == 1
 
 
-def test_explicit_ids_win_over_derived_ones():
-    """An id-less `Intro` inserted ahead of a scene already frozen as `intro`
-    must not take its id (assemble_scene --add --at 0)."""
+def test_an_ambiguous_legacy_layout_is_reported_not_swapped():
+    """The client resolves this as intro / intro-2. Writing `intro-2` onto the
+    first scene would swap both links; writing `intro` would duplicate. Leave
+    it for a human."""
     data = {'scenes': [{'title': 'Intro'}, {'id': 'intro', 'title': 'Intro'}]}
-    assert [i for _, i in assign_missing_ids(data)] == ['intro-2']
-    assert duplicate_id_errors(data) == []
+    assert assign_missing_ids(data) == []
+    assert 'id' not in data['scenes'][0]
+    assert ambiguous_id_errors(data) == [
+        'scenes[0]: missing "id", and its current link id "intro" is also an '
+        'explicit id elsewhere — assign both ids by hand']

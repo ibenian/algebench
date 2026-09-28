@@ -23,7 +23,7 @@ from _json_format import dumps_compact_leaves
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.lesson_ids import (  # noqa: E402
-    assign_missing_ids, duplicate_id_errors, missing_id_errors,
+    ambiguous_id_errors, assign_missing_ids, duplicate_id_errors, missing_id_errors,
 )
 
 
@@ -207,7 +207,7 @@ def lint_scene(scene, fix=False):
             all_fixes.append(f'{t.path}: added id "{ident}"')
     else:
         all_errors.extend(missing_id_errors(scene))
-    all_errors.extend(duplicate_id_errors(scene))
+    all_errors.extend(ambiguous_id_errors(scene) + duplicate_id_errors(scene))
 
     # Check expressions (skip for unsafe scenes — they use native JS intentionally)
     # Scene builders use "_unsafe_reason" as a signal field; assembled lessons use "unsafe"

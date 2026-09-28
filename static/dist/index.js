@@ -18980,7 +18980,6 @@ function setupPopstateListener(applyFn) {
 //#region src/view-state-bridge.ts
 var bridgeState = state;
 var _applying = false;
-var _sceneMapCache = /* @__PURE__ */ new WeakMap();
 var _autoAskFired = false;
 /** True while applyViewState is driving the app (suppresses outbound sync). */
 function isApplyingViewState() {
@@ -18991,14 +18990,10 @@ function sceneMaps(lesson) {
 		sceneIds: [],
 		stepIds: []
 	};
-	let cached = _sceneMapCache.get(lesson);
-	if (cached) return cached;
-	cached = {
+	return {
 		sceneIds: buildIds(lesson.scenes, "title"),
 		stepIds: lesson.scenes.map((sc) => buildIds(sc.steps || [], "title"))
 	};
-	_sceneMapCache.set(lesson, cached);
-	return cached;
 }
 function resolveIndex(token, ids) {
 	if (token == null) return -1;
