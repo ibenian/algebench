@@ -28136,6 +28136,7 @@ function assembleBuildSceneRequest(opts) {
 			description: firstLine(lesson.description),
 			sceneSummaries: summarised.map((s, index) => ({
 				index,
+				id: typeof s.id === "string" ? s.id : "",
 				title: typeof s.title === "string" ? s.title : "",
 				description: firstLine(s.description)
 			}))
