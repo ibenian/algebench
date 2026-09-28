@@ -171,12 +171,18 @@ def _settle_ids(node: dict, req: BuildSceneRequest) -> None:
     ``lesson.sceneIds`` — every scene's id as the client resolves it, uncapped —
     falling back to the summaries for a client that does not send it.
     """
-    ids = list(req.lesson.sceneIds) or build_ids(
+    sent = list(req.lesson.sceneIds)
+    ids = sent or build_ids(
         [{"title": s.title} for s in req.lesson.sceneSummaries], "title")
     if req.op == "replace" and isinstance(req.current, dict):
-        old_id = (ids[req.sceneIndex] if req.sceneIndex < len(ids) and ids[req.sceneIndex]
-                  else str(req.current.get("id") or slugify(req.current.get("title"))
-                           or node.get("id") or "scene"))
+        # The client's resolved id when it sent one; otherwise (an older, cached
+        # client) the scene's own explicit id beats anything rebuilt from titles.
+        if req.sceneIndex < len(sent) and sent[req.sceneIndex]:
+            old_id = sent[req.sceneIndex]
+        else:
+            old_id = str(req.current.get("id")
+                         or (ids[req.sceneIndex] if req.sceneIndex < len(ids) else "")
+                         or slugify(req.current.get("title")) or node.get("id") or "scene")
         carry_ids(req.current, node, old_id)
         return
     node["id"] = unique_id(str(node.get("id") or "scene"), {i for i in ids if i})

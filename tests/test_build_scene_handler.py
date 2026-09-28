@@ -490,6 +490,14 @@ def test_a_replace_keeps_the_ids_of_steps_whose_title_survives(monkeypatch, requ
     assert [s["id"] for s in node["steps"]] == ["kept-id", "new-step"]
 
 
+def test_an_older_client_without_scene_ids_keeps_the_explicit_id(monkeypatch, request_body):
+    """A cached client sends no `sceneIds`; the title-rebuilt fallback must not
+    beat the scene's own explicit id."""
+    request_body["lesson"].pop("sceneIds")
+    request_body["current"]["id"] = "shipped-id"
+    assert _node(monkeypatch, request_body)["id"] == "shipped-id"
+
+
 def test_an_insert_does_not_collide_with_another_scene(monkeypatch, request_body):
     request_body["op"] = "insert"
     request_body["current"] = None

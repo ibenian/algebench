@@ -219,16 +219,20 @@ def carry_ids(old: dict, new: dict, old_id: str) -> None:
 
     The scene keeps ``old_id`` (its resolved id, which links already use), and
     each new step whose title matches an old step's takes that step's resolved
-    id. Other steps keep their own id, made unique against the carried ones.
+    id — repeated titles matched in order, so two ``Setup`` steps keep ``setup``
+    and ``setup-2`` respectively. Other steps keep their own id, made unique
+    against the carried ones.
     """
     new["id"] = old_id
     old_steps = _dicts(old.get("steps"))
-    kept = {slugify(s.get("title")): sid
-            for s, sid in zip(old_steps, build_ids(old_steps, "title"))}
+    kept: dict[str, list[str]] = {}
+    for s, sid in zip(old_steps, build_ids(old_steps, "title")):
+        kept.setdefault(slugify(s.get("title")), []).append(sid)
     taken: set[str] = set()
     fresh = []
     for st in _dicts(new.get("steps")):
-        keep = kept.pop(slugify(st.get("title")), None)
+        queue = kept.get(slugify(st.get("title")))
+        keep = queue.pop(0) if queue else None
         if keep and keep not in taken:
             st["id"] = keep
             taken.add(keep)

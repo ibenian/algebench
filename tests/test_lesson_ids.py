@@ -159,6 +159,13 @@ def test_carry_ids_keeps_the_scene_and_surviving_steps():
     assert [s['id'] for s in new['steps']] == ['kept', 'setup']
 
 
+def test_carry_ids_matches_repeated_titles_in_order():
+    old = {'steps': [{'title': 'Setup'}, {'title': 'Setup'}]}
+    new = {'steps': [{'id': 'a', 'title': 'Setup'}, {'id': 'b', 'title': 'Setup'}]}
+    carry_ids(old, new, 'x')
+    assert [s['id'] for s in new['steps']] == ['setup', 'setup-2']
+
+
 @pytest.mark.parametrize('path', sorted((ROOT / 'scenes').glob('*.json'))
                          + sorted((ROOT / 'scenes' / 'draft').glob('*.json')),
                          ids=lambda p: p.name)

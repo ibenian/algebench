@@ -166,7 +166,7 @@ After all scenes pass review:
   # List scenes in a lesson
   ./run.sh scripts/assemble_scene.py {existing} --list
   ```
-  Assembly also fills any missing id and refuses duplicates; a `--replace` keeps the replaced scene's id when the new scene has none.
+  Assembly also fills any missing id and refuses duplicates; a `--replace` ALWAYS keeps the replaced scene's id — even if the new scene carries its own — and the ids of steps whose titles survive.
   Validate separately in Phase 4 using `./run.sh scripts/validate_content.py`.
   If the blueprint includes root-level proofs, add them manually to the lesson root before assembly.
 - **Print status**: `Phase 3 ✓  Scene JSON: {N}/{N} built ({lines} lines total)`
