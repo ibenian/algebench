@@ -113,6 +113,8 @@ interface OrbitDragState {
     x: number;
     /** Previous pointer y — where a drag switched to camera-space mode restarts. */
     y: number;
+    /** Started on an axis cue: its axis holds for the whole drag, whatever keys change. */
+    locked?: boolean;
 }
 
 /** An expression-driven camera view, compiled and ticked each frame. */
@@ -374,8 +376,10 @@ function pivotUnder(clientX: number, clientY: number): Vector3 | null {
  * that need the rect themselves would otherwise ask for it a second time on
  * the pointer-move path.
  */
-function arcballScreenDisc(): { cx: number; cy: number; r: number; rect: DOMRect } | null {
+function arcballScreenDisc(at?: Vector3): { cx: number; cy: number; r: number; rect: DOMRect } | null {
     if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
+    // Resolved only past the guard: rotationCentre() reads controls.target.
+    const centre = at ?? rotationCentre();
     const rect = cameraState.renderer.domElement.getBoundingClientRect();
     // A collapsed canvas has no disc, and saying so here is what keeps the
     // divisions in screenToArcball finite. A drag cannot start on a 0x0
@@ -386,7 +390,7 @@ function arcballScreenDisc(): { cx: number; cy: number; r: number; rect: DOMRect
     if (rect.width <= 0 || rect.height <= 0) return null;
     // The ball is centred on the rotation pivot, not on the viewport, so
     // grabbing a point on it turns the same point that the rotation swings.
-    const ndc = rotationCentre().clone().project(cameraState.camera as unknown as Camera);
+    const ndc = centre.clone().project(cameraState.camera as unknown as Camera);
     return {
         cx: rect.left + (ndc.x * 0.5 + 0.5) * rect.width,
         cy: rect.top  + (-ndc.y * 0.5 + 0.5) * rect.height,
@@ -532,7 +536,8 @@ function arcballWorldRadius(pixels: number): number {
 //
 // The drag maps the pointer onto a virtual sphere centred on the orbit pivot.
 // This draws that sphere while a drag is in flight, so the thing being turned
-// is visible; it is removed as soon as the drag ends.
+// is visible. It lingers for BALL_LINGER_MS after the drag ends — long enough
+// to press it again, or one of its axis cues — and then it is removed.
 
 let ballHelper: import('three').Group | null = null;
 
@@ -549,7 +554,7 @@ function loadRotateCue(): RotateCue {
 
 export function setRotateCue(cue: RotateCue): void {
     rotateCue = cue;
-    if (cue === 'off') { hideArcballBall(); hideGrabMarker(); }
+    if (cue === 'off') { cancelBallFlash(); hideArcballBall(); hideGrabMarker(); }   // no invisible linger left behind
     try { localStorage.setItem(ROTATE_CUE_KEY, cue); } catch { /* storage blocked */ }
 }
 
@@ -616,9 +621,11 @@ function showArcballBall(): void {
     // the geometry on every pointer move.
     ballHelper.scale.setScalar(radius);
     ballHelper.position.copy(rotationCentre());
+    showAxisCues(disc);
 }
 
 function hideArcballBall(): void {
+    hideAxisCues();
     if (!ballHelper) return;
     cameraState.three?.scene.remove(ballHelper);
     for (const child of ballHelper.children as (import('three').Mesh | import('three').LineSegments)[]) {
@@ -626,6 +633,81 @@ function hideArcballBall(): void {
         (child.material as import('three').Material).dispose();
     }
     ballHelper = null;
+}
+
+// ----- Axis cues -----
+// Three handles on the trackball's rim for the axis-locked drags that Cmd,
+// Ctrl and Alt give from the keyboard. Pressing one starts that drag with no
+// key held. They come and go with the ball, and hovering one holds a
+// lingering ball up so there is time to reach it.
+
+type CueAxis = 'x' | 'y' | 'z';
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const AXIS_CUES: { axis: CueAxis; glyph: string; label: string; deg: number }[] = [
+    { axis: 'x', glyph: '↕', deg: 90, label: `Tilt: drag up or down (same as ${IS_MAC ? '⌘' : 'Win'}-drag)` },
+    { axis: 'y', glyph: '↔', deg: 0,  label: 'Turn: drag left or right (same as Ctrl-drag)' },
+    { axis: 'z', glyph: '⟲', deg: 45, label: `Roll: drag around the ball (same as ${IS_MAC ? '⌥' : 'Alt'}-drag)` },
+];
+/** Gap between the ball's rim and a cue's centre, in CSS px. */
+const CUE_GAP_PX = 18;
+
+let cueHost: HTMLElement | null = null;
+let cueEls: HTMLElement[] = [];
+
+function ensureAxisCues(): void {
+    if (cueEls.length || !cueHost) return;
+    for (const c of AXIS_CUES) {
+        const el = document.createElement('div');
+        el.className = 'axis-cue';
+        el.dataset.axis = c.axis;
+        el.textContent = c.glyph;
+        el.title = c.label;
+        el.setAttribute('aria-hidden', 'true');   // a pointer affordance; the keys do the same
+        el.hidden = true;
+        // Hovering a cue holds a lingering ball up; leaving re-arms its timer.
+        el.addEventListener('mouseenter', () => {
+            if (lingerPivot && pivotFlashTimer !== null) { clearTimeout(pivotFlashTimer); pivotFlashTimer = null; }
+        });
+        el.addEventListener('mouseleave', () => {
+            if (lingerPivot && pivotFlashTimer === null && !document.body.classList.contains('rotating')) {
+                lingerArcballBall(lingerPivot);
+            }
+        });
+        cueHost.appendChild(el);
+        cueEls.push(el);
+    }
+}
+
+function showAxisCues(disc: { cx: number; cy: number; r: number }): void {
+    if (!cueHost) return;
+    ensureAxisCues();
+    const host = cueHost.getBoundingClientRect();
+    const reach = disc.r + CUE_GAP_PX;
+    const pad = 14;
+    AXIS_CUES.forEach((c, i) => {
+        const el = cueEls[i]!;
+        const a = c.deg * Math.PI / 180;
+        const x = Math.min(host.width - pad, Math.max(pad, disc.cx + reach * Math.cos(a) - host.left));
+        const y = Math.min(host.height - pad, Math.max(pad, disc.cy - reach * Math.sin(a) - host.top));
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.hidden = false;
+    });
+}
+
+function hideAxisCues(): void {
+    for (const el of cueEls) el.hidden = true;
+}
+
+/** The axis lock of the cue under a press, if it is on one. */
+function axisCueUnder(target: EventTarget | null): { axis: Vector3; cls: string } | null {
+    const el = target instanceof Element ? target.closest<HTMLElement>('.axis-cue') : null;
+    switch (el?.dataset.axis) {
+        case 'x': return { axis: new THREE.Vector3(1, 0, 0), cls: 'rotating-axis-x' };
+        case 'y': return { axis: new THREE.Vector3(0, 1, 0), cls: 'rotating-axis-y' };
+        case 'z': return { axis: new THREE.Vector3(0, 0, 1), cls: 'rotating-axis-z' };
+        default: return null;
+    }
 }
 
 let grabHelper: import('three').Mesh | null = null;
@@ -1136,11 +1218,48 @@ function cancelPivotMove(): void {
     pivotMoveId = null;
 }
 
-/** Drop a pending flash, so a drag's own ball outlives it. */
+/** Drop a pending flash or linger, so a drag's own ball outlives it. */
 function cancelBallFlash(): void {
+    lingerPivot = null;
     if (pivotFlashTimer === null) return;
     clearTimeout(pivotFlashTimer);
     pivotFlashTimer = null;
+}
+
+/**
+ * How long the ball stays up after a rotate drag ends. Pressing on it again
+ * within that time grabs another point of the same ball — same pivot, ball
+ * left where it is — so a turn can be built up from several short drags.
+ * Every mouse up re-arms it.
+ */
+const BALL_LINGER_MS = 1500;
+/** The pivot of the ball still up after a drag; null once it has gone. */
+let lingerPivot: Vector3 | null = null;
+
+function lingerArcballBall(pivot: Vector3): void {
+    cancelBallFlash();
+    if (!ballHelper) return;   // rotate cue off: nothing to linger
+    lingerPivot = pivot.clone();
+    pivotFlashTimer = window.setTimeout(() => {
+        pivotFlashTimer = null;
+        lingerPivot = null;
+        if (!document.body.classList.contains('rotating')) hideArcballBall();
+    }, BALL_LINGER_MS);
+}
+
+/** A pan or zoom moves the view off the lingering ball: take it away now. */
+function dropLingeringBall(): void {
+    if (lingerPivot === null) return;
+    cancelBallFlash();
+    hideArcballBall();
+}
+
+/** The lingering ball's pivot, if a press at this pixel lands on the ball. */
+function lingeringPivotUnder(clientX: number, clientY: number): Vector3 | null {
+    if (!lingerPivot) return null;
+    const disc = arcballScreenDisc(lingerPivot);
+    if (!disc) return null;
+    return Math.hypot(clientX - disc.cx, clientY - disc.cy) <= disc.r ? lingerPivot.clone() : null;
 }
 
 /**
@@ -1224,6 +1343,7 @@ function modifierAxis(e: { metaKey: boolean; ctrlKey: boolean; altKey: boolean }
 export function setupRollDrag(container: HTMLElement | null): void {
     if (!container) return;
     const inputSurface = container;
+    cueHost = container;   // the axis cues sit in here, so presses on them reach this handler
     let orbitDrag: OrbitDragState | null = null;
     // Shift+drag and right-drag pan. Handled here rather than by the orbit
     // controls so a pan goes through the pan smoother like every other move.
@@ -1260,6 +1380,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
             cameraState.arcballInertiaQ = null;
             haltSmoothedRotation();
             releaseDragPivotIfIdle();
+            dropLingeringBall();   // the zoom moves the view off the lingering ball
             zoomDrag = { y: e.clientY };
             captureDragPointer();
             document.body.classList.add('zooming');
@@ -1279,13 +1400,16 @@ export function setupRollDrag(container: HTMLElement | null): void {
             haltSmoothedRotation();
             releaseDragPivotIfIdle();
             haltSmoothedPan();
+            dropLingeringBall();
             panDrag = { x: e.clientX, y: e.clientY, start: rotateMode === 'camera' ? beginPanDrag(e.clientX, e.clientY) : null };
             captureDragPointer();
             if (cameraState.controls) cameraState.controls.enabled = false;
             return;
         }
         if (e.button !== 0) return;
-        const { axis, cls: axisClass } = modifierAxis(e);
+        // A press on an axis cue is a Cmd/Ctrl/Alt drag without the key.
+        const cue = axisCueUnder(e.target);
+        const { axis, cls: axisClass } = cue ?? modifierAxis(e);
 
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -1298,8 +1422,12 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // Turn about whatever was pressed on. Picked before the ball is shown
         // (a flash from a double-click may still be up), and before the drag
         // maps the pointer onto the ball, which is centred on this pivot.
+        //
+        // A press on the ball still lingering from the last drag keeps that
+        // drag's pivot, so it grabs another point of the same ball.
+        const onBall = cue ? (lingerPivot ? lingerPivot.clone() : null) : lingeringPivotUnder(e.clientX, e.clientY);
         cancelBallFlash();
-        hideArcballBall();
+        if (!onBall && !cue) hideArcballBall();
         // A follow cam re-pins the target to what it tracks every frame, so a
         // pivot elsewhere would fight it: there the drag turns about the
         // target, as it always did. An expression-driven view rewrites the
@@ -1307,8 +1435,10 @@ export function setupRollDrag(container: HTMLElement | null): void {
         // change too); it gets no drag pivot either, rather than a pivot that
         // would be thrown away one frame later.
         const viewLocked = !!(cameraState.followCamState || cameraState.cameraExprState);
-        dragPivot = viewLocked ? null : pivotUnder(e.clientX, e.clientY);
-        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX, y: e.clientY };
+        // A cue keeps the ball's own pivot (null: the ball is on the orbit
+        // target, as after a double-click flash) — never the point under the cue.
+        dragPivot = viewLocked ? null : cue ? onBall : (onBall ?? pivotUnder(e.clientX, e.clientY));
+        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX, y: e.clientY, locked: !!cue };
         orbitDragActive = true;
         if (rotateMode === 'camera') beginCameraTrackball(e.clientX, e.clientY, axis, !!axis && axis.z === 1);
         else trackballStart = null;
@@ -1383,7 +1513,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
      * axis takes over from here instead of reinterpreting the whole drag.
      */
     function updateDragAxis(e: { metaKey: boolean; ctrlKey: boolean; altKey: boolean }): void {
-        if (!orbitDrag) return;
+        if (!orbitDrag || orbitDrag.locked) return;
         const { axis, cls } = modifierAxis(e);
         const was = orbitDrag.axis;
         if (was === axis || (was && axis && was.equals(axis))) return;
@@ -1428,7 +1558,8 @@ export function setupRollDrag(container: HTMLElement | null): void {
         orbitDragActive = false;
         trackballStart = null;
         document.body.classList.remove(...AXIS_CLASSES);
-        hideArcballBall();
+        // The ball stays a moment (BALL_LINGER_MS) so another press can grab it.
+        lingerArcballBall(rotationCentre());
         hideGrabMarker();
         document.body.classList.remove('rotating');
         if (cameraState.controls) {
@@ -1468,6 +1599,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
 }
 
 function activateExprCamera(viewSpec: CameraView, key: string): void {
+    dropLingeringBall();   // the expression now drives the view, not the lingering drag
     const posExpr = Array.isArray(viewSpec.positionExpr) && viewSpec.positionExpr.length === 3 ? viewSpec.positionExpr : null;
     const tgtExpr = Array.isArray(viewSpec.targetExpr) && viewSpec.targetExpr.length === 3 ? viewSpec.targetExpr : null;
     if (!posExpr || !tgtExpr || !cameraState.camera || !cameraState.controls) return;
@@ -1565,6 +1697,8 @@ export function initMathBox(): void {
     updateControlsHint();
 
     window.addEventListener('resize', () => {
+        // The lingering ball and its cues were placed for the old size.
+        dropLingeringBall();
         const w2 = container.clientWidth;
         const h2 = container.clientHeight;
         cameraState.renderer!.setSize(w2, h2);
@@ -2084,6 +2218,7 @@ export function setupTrackpadPan(): void {
     if (!canvas) return;
     bindSmoothingSettings();
     canvas.addEventListener('wheel', (e) => {
+        dropLingeringBall();   // pinch, zoom or scroll-pan: the lingering ball is stale
         if (e.ctrlKey && e.deltaMode === 0) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -2153,6 +2288,9 @@ export function resolveEffectiveStepCamera(scene: CameraScene | null | undefined
 
 export function animateCamera(view: string, duration?: number): void {
     duration = (duration == null) ? 800 : duration;
+    // Camera buttons, step changes, chat and deeplinks move the view off a
+    // lingering ball; one left up would be grabbed at a stale pivot.
+    dropLingeringBall();
     deactivateFollowCam();
     deactivateExprCamera();
     // A flick's coast still running would keep turning the view — and, about
@@ -2264,6 +2402,7 @@ export function buildCameraButtons(spec: CameraScene | null | undefined): void {
                 }
                 document.querySelectorAll<HTMLElement>('.cam-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                dropLingeringBall();   // the follow cam now drives the view
                 activateFollowCam({ ...v, _viewKey: key });
             });
         } else if (Array.isArray(v.positionExpr) && Array.isArray(v.targetExpr)) {
