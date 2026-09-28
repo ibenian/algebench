@@ -113,8 +113,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `stable-lesson-ids` |
-| **Commit** | `4b0d147` |
-| **Date** | 2026-09-28 22:16:06 +0000 |
+| **Commit** | `32359cd` |
+| **Date** | 2026-09-28 18:25:04 -0400 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -123,7 +123,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "src", "tests", "backend", "static", "scripts", "(other)", "docs", "schemas", "themes"]
-  bar [74791, 43054, 25748, 24095, 12709, 9840, 8433, 4205, 2778, 317]
+  bar [74791, 43054, 25752, 24096, 12709, 9840, 8433, 4205, 2778, 317]
 ```
 
 ## By Directory
@@ -132,21 +132,21 @@ xychart-beta horizontal
 |---|---:|---:|---:|
 | `scenes/` | 74,791 | 0 | 1 |
 | `src/` | 43,054 | 10,606 | 4,062 |
-| `tests/` | 25,748 | 2,012 | 5,527 |
-| `backend/` | 24,095 | 4,179 | 3,628 |
+| `tests/` | 25,752 | 2,012 | 5,529 |
+| `backend/` | 24,096 | 4,181 | 3,628 |
 | `static/` | 12,709 | 1,452 | 669 |
 | `scripts/` | 9,840 | 1,390 | 1,362 |
 | `(other)/` | 8,433 | 0 | 0 |
 | `docs/` | 4,205 | 9,774 | 3,155 |
 | `schemas/` | 2,778 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **205,970** | **29,413** | **18,404** |
+| **Total** | **205,975** | **29,415** | **18,406** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "TypeScript", "CSS", "JavaScript", "HTML", "Shell", "YAML", "BASH", "Dockerfile", "TOML"]
-  bar [89258, 56012, 43203, 7215, 2739, 2346, 463, 29, 16, 16, 2]
+  bar [89258, 56017, 43203, 7215, 2739, 2346, 463, 29, 16, 16, 2]
 ```
 
 ## Summary by Language
@@ -156,7 +156,7 @@ xychart-beta horizontal
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     77        89264        89258            0            6
- Python                  272        72658        56012         6483        10163
+ Python                  272        72667        56017         6485        10165
  TypeScript              130        57939        43203        10668         4068
  CSS                       9         8314         7215          728          371
  JavaScript                9         3773         2739          720          314
@@ -182,7 +182,7 @@ xychart-beta horizontal
  |- XML                    1          228          185           43            0
  (Total)                            21086         2377        14211         4498
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   609       259260       205970        33522        19768
+ Total                   609       259269       205975        33524        19770
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -384,7 +384,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                  272        72658        56012         6483        10163
+ Python                  272        72667        56017         6485        10165
 ─────────────────────────────────────────────────────────────────────────────────
  |_graph/sympy_translator.py         4437         3532          521          384
  |lgebench/backend/server.py         2983         2396          319          268
@@ -480,8 +480,8 @@ xychart-beta horizontal
  |oof_animation/animation.py          275          203           55           17
  |mation/prompt_endpoints.py          255          203           16           36
  |proof_completion/metric.py          273          202           32           39
+ |ench/backend/lesson_ids.py          245          197            6           42
  |ackend/proof_api/routes.py          243          196           25           22
- |ench/backend/lesson_ids.py          242          196            4           42
  |latex_fields_avoid_json.py          236          193           15           28
  |s/test_placement_parity.py          259          192           14           53
  |prebake_proof_traversal.py          247          188            9           50
@@ -515,10 +515,10 @@ xychart-beta horizontal
  |ckend/experts/contracts.py          242          145           48           49
  |lers/proof_edit/handler.py          182          142           13           27
  |ench/backend/util/latex.py          159          141            2           16
+ |h/tests/test_lesson_ids.py          180          140            4           36
  |ackend/test_proof_store.py          183          139           12           32
  |est_expression_features.py          211          139           20           52
  |egrade_proof_confidence.py          166          139            6           21
- |h/tests/test_lesson_ids.py          174          136            4           34
  |ph/test_cycle_detection.py          160          134            3           23
  |/test_derivative_in_sum.py          168          132            4           32
  |mpletion/compare_refine.py          164          129            8           27
@@ -659,7 +659,7 @@ xychart-beta horizontal
  |ebench/scripts/__init__.py            0            0            0            0
  |es/build_scene/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   272        72658        56012         6483        10163
+ Total                   272        72667        56017         6485        10165
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -668,8 +668,8 @@ xychart-beta horizontal
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
 | TypeScript + JavaScript (frontend) | 45572 | 44% |
-| Python (backend) | 56012 | 56% |
-| **Total** | **101584** | **100%** |
+| Python (backend) | 56017 | 56% |
+| **Total** | **101589** | **100%** |
 
 </script>
 </body>
