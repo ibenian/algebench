@@ -1359,11 +1359,20 @@ export function setupRollDrag(container: HTMLElement | null): void {
     // ends. Capturing the pointer for the drag keeps its moves and release
     // coming here wherever the pointer goes. The id comes from the pointerdown
     // that precedes each mousedown.
+    //
+    // The capture goes on the canvas the orbit controls listen on, not on this
+    // container. The controls start a drag of their own on the same press's
+    // pointerdown and end it only on a pointerup at the canvas; capturing
+    // anywhere else delivers the pointerup there instead, so the controls stay
+    // mid-pan and, once this drag re-enables them, every plain mouse move
+    // keeps panning the view.
     let pressPointerId: number | null = null;
     inputSurface.addEventListener('pointerdown', (e) => { pressPointerId = e.pointerId; }, { capture: true });
     function captureDragPointer(): void {
         if (pressPointerId === null) return;
-        try { inputSurface.setPointerCapture(pressPointerId); } catch { /* pointer already gone */ }
+        // The controls are built on the renderer's canvas (switchProjection).
+        const target = cameraState.renderer?.domElement ?? inputSurface;
+        try { target.setPointerCapture(pressPointerId); } catch { /* pointer already gone */ }
     }
     inputSurface.addEventListener('lostpointercapture', () => { endPanDrag(); endZoomDrag(); });
 
