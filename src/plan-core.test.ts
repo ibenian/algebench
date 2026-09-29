@@ -361,3 +361,43 @@ test('parsePlanFile rejects foreign files and reports invalid plans', () => {
     assert.deepEqual(r.plans.map((p) => p.id), ['tv']);
     assert.ok(r.errors.length > 0 && r.errors.every((e) => e.startsWith('plans[1]')));
 });
+
+// ----- malformed and stale positions -----
+
+test('validatePlan rejects a malformed saved position and non-object views', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    bad.nav = { frames: [{ planId: 'someone-else', stepId: 's1', cameFrom: ORIGIN }, { planId: 'x' }] };
+    bad.steps[0].view = 'not a view';
+    bad.steps[4].lastView = 42;
+    const errs = validatePlan(bad);
+    assert.ok(errs.includes('plan.steps[0]: missing view'));
+    assert.ok(errs.includes('plan.steps[4]: bad lastView'));
+    assert.ok(errs.includes('plan.nav.frames[1]: needs planId, stepId and a cameFrom view'));
+    assert.ok(errs.includes('plan.nav.frames[0]: must be this plan, on one of its steps'));
+    assert.deepEqual(validatePlan({ ...root, nav: { frames: [] } }), ['plan.nav: frames is not a non-empty list']);
+});
+
+test('a saved position that no longer resolves is refused, not thrown', () => {
+    const { root, lookup, save, saved } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    p = save(jumpTo(p, lookup, 's3', 2));
+    p = save(enter(p, lookup, ORIGIN, 3));   // into the linked 'air' plan
+    saved.set('air', { ...saved.get('air')!, steps: [saved.get('air')!.steps[1]!] });   // its current step removed
+    for (const act of [
+        () => forward(p, lookup, 4), () => back(p, lookup, 4), () => jumpTo(p, lookup, 'r2', 4),
+        () => enter(p, lookup, ORIGIN, 4),
+    ]) {
+        const r = act();
+        assert.match(r.error!, /no longer matches/);
+        assert.deepEqual(r.changed, []);
+    }
+    assert.deepEqual(breadcrumb(p, lookup), []);
+    assert.equal(currentStep(p, lookup), null);
+    assert.equal(recordView(p, lookup, ORIGIN, 4).onStep, false);
+    // Starting it again recovers: the stale position is dropped and the walk
+    // restarts at the first unfinished step (s1 was only visited).
+    const r = startPlan(p, lookup, 5);
+    assert.equal(r.error, undefined);
+    assert.deepEqual(r.changed[0]!.nav!.frames.map((f) => f.stepId), ['s1']);
+});

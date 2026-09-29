@@ -201,10 +201,21 @@ class Session {
                 const holder = parent && stepById(parent, this.frames[i - 1]!.stepId);
                 plan = holder && holder.kind === 'subplan' ? this.subOf(holder, parent!) : undefined;
             }
-            if (!plan || plan.id !== f.planId) throw new Error(`plan frame ${i} does not resolve`);
+            if (!plan || plan.id !== f.planId || !stepById(plan, f.stepId)) {
+                throw new Error(`plan frame ${i} does not resolve`);
+            }
             out.push(plan);
         });
         return out;
+    }
+
+    /**
+     * `chain()`, or null when the saved position no longer resolves — a step
+     * removed, a linked plan changed or deleted, a corrupt import. Navigator
+     * actions refuse in that case instead of throwing.
+     */
+    tryChain(): LearningPlan[] | null {
+        try { return this.chain(); } catch { return null; }
     }
 
     /** Record that `plan` (or the top-level record holding it) changed. */
@@ -238,6 +249,9 @@ function firstUnfinished(plan: LearningPlan): PlanStep | undefined {
     return plan.steps.find((s) => s.state === 'todo' || s.state === 'visited') ?? plan.steps[0];
 }
 
+/** The refusal for a saved position that no longer resolves. */
+const STALE = 'this plan\'s saved position no longer matches its steps — start it again';
+
 function refused(error: string): NavResult {
     return { changed: [], go: null, error };
 }
@@ -256,10 +270,14 @@ function markVisited(step: PlanStep): void {
 export function startPlan(plan: LearningPlan, lookup: PlanLookup, now: number, from?: ViewState): NavResult {
     const s = new Session(plan, lookup);
     if (s.frames.length) {
-        const chain = s.chain();
-        const top = chain[chain.length - 1]!;
-        const step = stepById(top, s.frames[s.frames.length - 1]!.stepId);
-        return { changed: [], go: step ? resumeView(step) : null };   // resuming changes nothing
+        const chain = s.tryChain();
+        if (chain) {
+            const top = chain[chain.length - 1]!;
+            const step = stepById(top, s.frames[s.frames.length - 1]!.stepId);
+            return { changed: [], go: step ? resumeView(step) : null };   // resuming changes nothing
+        }
+        // The saved position no longer resolves: drop it and start afresh.
+        delete s.root.nav;
     }
     const first = firstUnfinished(s.root);
     if (!first) return refused('this plan has no steps');
@@ -274,7 +292,8 @@ export function startPlan(plan: LearningPlan, lookup: PlanLookup, now: number, f
 export function forward(plan: LearningPlan, lookup: PlanLookup, now: number): NavResult {
     const s = new Session(plan, lookup);
     if (!s.frames.length) return refused('this plan is not being walked');
-    const chain = s.chain();
+    const chain = s.tryChain();
+    if (!chain) return refused(STALE);
     const depth = chain.length - 1;
     const cur = chain[depth]!;
     const frame = s.frames[depth]!;
@@ -307,7 +326,8 @@ export function forward(plan: LearningPlan, lookup: PlanLookup, now: number): Na
 export function back(plan: LearningPlan, lookup: PlanLookup, now: number): NavResult {
     const s = new Session(plan, lookup);
     if (!s.frames.length) return refused('this plan is not being walked');
-    const chain = s.chain();
+    const chain = s.tryChain();
+    if (!chain) return refused(STALE);
     const cur = chain[chain.length - 1]!;
     const frame = s.frames[s.frames.length - 1]!;
     const i = stepIndex(cur, frame.stepId);
@@ -322,7 +342,8 @@ export function back(plan: LearningPlan, lookup: PlanLookup, now: number): NavRe
 export function jumpTo(plan: LearningPlan, lookup: PlanLookup, stepId: string, now: number): NavResult {
     const s = new Session(plan, lookup);
     if (!s.frames.length) return refused('this plan is not being walked');
-    const chain = s.chain();
+    const chain = s.tryChain();
+    if (!chain) return refused(STALE);
     const cur = chain[chain.length - 1]!;
     const step = stepById(cur, stepId);
     if (!step) return refused(`no step ${stepId} in "${cur.title}"`);
@@ -339,7 +360,8 @@ export function jumpTo(plan: LearningPlan, lookup: PlanLookup, stepId: string, n
 export function enter(plan: LearningPlan, lookup: PlanLookup, from: ViewState, now: number): NavResult {
     const s = new Session(plan, lookup);
     if (!s.frames.length) return refused('this plan is not being walked');
-    const chain = s.chain();
+    const chain = s.tryChain();
+    if (!chain) return refused(STALE);
     const cur = chain[chain.length - 1]!;
     const step = stepById(cur, s.frames[s.frames.length - 1]!.stepId);
     if (!step || step.kind !== 'subplan') return refused('the current step is not a sub-plan');
@@ -380,7 +402,8 @@ export function returnUp(plan: LearningPlan, lookup: PlanLookup, now: number): N
 export function recordView(plan: LearningPlan, lookup: PlanLookup, view: ViewState, now: number): NavResult & { onStep: boolean } {
     const s = new Session(plan, lookup);
     if (!s.frames.length) return { changed: [], go: null, onStep: false };
-    const chain = s.chain();
+    const chain = s.tryChain();
+    if (!chain) return { changed: [], go: null, onStep: false };
     const cur = chain[chain.length - 1]!;
     const step = stepById(cur, s.frames[s.frames.length - 1]!.stepId);
     if (!step || step.kind === 'subplan' || !viewMatchesRef(view, step.ref)) {
@@ -436,7 +459,9 @@ export interface Crumb {
 export function breadcrumb(plan: LearningPlan, lookup: PlanLookup): Crumb[] {
     const s = new Session(plan, lookup);
     if (!s.frames.length) return [];
-    return s.chain().map((p, i) => {
+    const chain = s.tryChain();
+    if (!chain) return [];
+    return chain.map((p, i) => {
         const stepId = s.frames[i]!.stepId;
         const idx = stepIndex(p, stepId);
         return {
@@ -451,7 +476,8 @@ export function breadcrumb(plan: LearningPlan, lookup: PlanLookup): Crumb[] {
 export function currentStep(plan: LearningPlan, lookup: PlanLookup): PlanStep | null {
     const s = new Session(plan, lookup);
     if (!s.frames.length) return null;
-    const chain = s.chain();
+    const chain = s.tryChain();
+    if (!chain) return null;
     return stepById(chain[chain.length - 1]!, s.frames[s.frames.length - 1]!.stepId) ?? null;
 }
 
@@ -494,7 +520,7 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
     if (p.schemaVersion !== PLAN_SCHEMA_VERSION) errs.push(`${path}: unsupported schemaVersion ${String(p.schemaVersion)}`);
     if (typeof p.id !== 'string' || !p.id) errs.push(`${path}: missing id`);
     if (typeof p.title !== 'string') errs.push(`${path}: missing title`);
-    if (!p.target || typeof p.target.text !== 'string' || !p.target.origin) errs.push(`${path}: missing target`);
+    if (!p.target || typeof p.target.text !== 'string' || !isObject(p.target.origin)) errs.push(`${path}: missing target`);
     if (p.status !== 'active' && p.status !== 'complete') errs.push(`${path}: bad status`);
     if (!Array.isArray(p.steps)) return [...errs, `${path}: steps is not a list`];
     const ids = new Set<string>();
@@ -511,12 +537,37 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
             if (!ref || typeof ref.lesson !== 'string' || !ref.lesson) errs.push(`${at}: missing ref.lesson`);
-            if (!(step as ContentStep).view) errs.push(`${at}: missing view`);
+            if (!isObject((step as ContentStep).view)) errs.push(`${at}: missing view`);
+            const last = (step as ContentStep).lastView;
+            if (last !== undefined && !isObject(last)) errs.push(`${at}: bad lastView`);
         } else {
             errs.push(`${at}: unknown kind "${String((step as { kind?: unknown }).kind)}"`);
         }
     });
+    // Where the learner is. Only the outermost frame can be checked here —
+    // deeper ones name nested or linked plans; the navigator refuses a
+    // position that doesn't resolve (see Session.tryChain).
+    if (p.nav !== undefined) {
+        const frames = isObject(p.nav) ? (p.nav as { frames?: unknown }).frames : undefined;
+        if (!Array.isArray(frames) || !frames.length) errs.push(`${path}.nav: frames is not a non-empty list`);
+        else {
+            frames.forEach((f, i) => {
+                const fr = f as Partial<NavFrame> | null;
+                if (!isObject(fr) || typeof fr!.planId !== 'string' || typeof fr!.stepId !== 'string' || !isObject(fr!.cameFrom)) {
+                    errs.push(`${path}.nav.frames[${i}]: needs planId, stepId and a cameFrom view`);
+                }
+            });
+            const f0 = frames[0] as Partial<NavFrame>;
+            if (isObject(f0) && (f0.planId !== p.id || !ids.has(String(f0.stepId)))) {
+                errs.push(`${path}.nav.frames[0]: must be this plan, on one of its steps`);
+            }
+        }
+    }
     return errs;
+}
+
+function isObject(v: unknown): boolean {
+    return !!v && typeof v === 'object' && !Array.isArray(v);
 }
 
 // ----- Export / import -----
