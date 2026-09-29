@@ -5789,8 +5789,9 @@ function setupRollDrag(container) {
 	}, { capture: true });
 	function captureDragPointer() {
 		if (pressPointerId === null) return;
+		const target = cameraState.renderer?.domElement ?? inputSurface;
 		try {
-			inputSurface.setPointerCapture(pressPointerId);
+			target.setPointerCapture(pressPointerId);
 		} catch {}
 	}
 	inputSurface.addEventListener("lostpointercapture", () => {
