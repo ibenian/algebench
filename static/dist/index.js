@@ -24329,7 +24329,8 @@ var FunctionAnalysisManager = class {
 			yb,
 			xLatex: this._varLatex(chars, view.x_var),
 			exprLatex: chars.dependentLatex || chars.expression || "f",
-			anns: annotations.filter((a) => !this._hiddenGroups.has(a.group || ""))
+			anns: annotations.filter((a) => !this._hiddenGroups.has(a.group || "")),
+			singXs: this._singularityXs(chars)
 		};
 		this._renderAnnLegend(legend, view, annotations, () => this._updateChartData(chart, chars, view, state));
 		chart.update("none");
@@ -25360,20 +25361,47 @@ var FunctionAnalysisManager = class {
 				ctx.fillText(isMax ? "max" : "min", px + 6, isMax ? py - 6 : py + 14);
 			}
 			if (marks.has("singularities")) {
-				ctx.strokeStyle = ANNOTATION_COLOR;
-				ctx.setLineDash([3, 3]);
+				const sx = scales.x;
+				const lo = sx.min, hi = sx.max;
+				const span = Math.abs(hi - lo) || 1;
+				const at = (chart.$fa?.singXs || []).filter((x) => x >= lo - span * 1e-9 && x <= hi + span * 1e-9);
 				for (let i = 1; i < ys.length; i++) if (ys[i - 1] == null !== (ys[i] == null)) {
 					const x = (xs[i - 1] + xs[i]) / 2;
-					const px = scales.x.getPixelForValue(x);
+					const px = sx.getPixelForValue(x);
+					if (!at.some((a) => Math.abs(sx.getPixelForValue(a) - px) < 6)) at.push(x);
+				}
+				ctx.strokeStyle = ANNOTATION_COLOR;
+				ctx.fillStyle = ANNOTATION_COLOR;
+				ctx.lineWidth = 1.5;
+				ctx.font = "10px ui-monospace, Menlo, monospace";
+				const near = (chart.$fa?.singXs || []).filter((x) => (x < lo || x > hi) && Math.min(Math.abs(x - lo), Math.abs(x - hi)) <= span);
+				for (const x of near) {
+					const left = x < lo;
+					const label = `${left ? "◂ " : ""}singularity at ${+x.toPrecision(4)}${left ? "" : " ▸"}`;
+					const w = ctx.measureText(label).width;
+					ctx.fillText(label, left ? chartArea.left + 6 : chartArea.right - 6 - w, chartArea.top + 12);
+				}
+				ctx.setLineDash([4, 3]);
+				for (const x of at) {
+					const px = Math.min(Math.max(sx.getPixelForValue(x), chartArea.left + 2), chartArea.right - 2);
 					ctx.beginPath();
 					ctx.moveTo(px, chartArea.top);
 					ctx.lineTo(px, chartArea.bottom);
 					ctx.stroke();
+					const label = "singularity";
+					const w = ctx.measureText(label).width;
+					const tx = px + 5 + w > chartArea.right ? px - 5 - w : px + 5;
+					ctx.fillText(label, tx, chartArea.top + 12);
 				}
 				ctx.setLineDash([]);
 			}
 		}
 		ctx.restore();
+	}
+	/** The CAS singularities' x positions, as numbers (unresolvable ones skipped). */
+	_singularityXs(chars) {
+		const f = (chars.features || {}).singularities;
+		return (f && f.points || []).map((p) => Number(p.location?.approx)).filter((x) => Number.isFinite(x));
 	}
 	_renderSliders(artifact, chars, proposal, view, host, state, onChange) {
 		host.innerHTML = "";
