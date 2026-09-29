@@ -2796,6 +2796,9 @@ export class FunctionAnalysisManager {
             if (on && !line) {
                 line = document.createElement('div');
                 line.className = 'ai-thinking-status';
+                // Announced to screen readers, not just shown.
+                line.setAttribute('role', 'status');
+                line.setAttribute('aria-live', 'polite');
                 line.textContent = 'AI is thinking…';
                 where.appendChild(line);
             } else if (!on && line) {

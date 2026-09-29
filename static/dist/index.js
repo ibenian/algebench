@@ -25680,6 +25680,8 @@ var FunctionAnalysisManager = class {
 			if (on && !line) {
 				line = document.createElement("div");
 				line.className = "ai-thinking-status";
+				line.setAttribute("role", "status");
+				line.setAttribute("aria-live", "polite");
 				line.textContent = "AI is thinking…";
 				where.appendChild(line);
 			} else if (!on && line) {
