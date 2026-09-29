@@ -28177,6 +28177,40 @@ function applyEach(lesson, ops, inverse) {
 	}
 	return inverse.reverse();
 }
+//#endregion
+//#region src/chat-flight.ts
+function singleFlightSender(isBusy, sendTurn) {
+	const queued = [];
+	function sendNext() {
+		const next = queued.shift();
+		if (next) send(next.text).then(next.resolve, () => next.resolve(false));
+	}
+	function send(text, { silent = false } = {}) {
+		if (isBusy()) {
+			if (silent) return Promise.resolve(false);
+			const waiting = queued.find((q) => q.text === text);
+			if (waiting) return waiting.done;
+			let resolve;
+			const done = new Promise((r) => {
+				resolve = r;
+			});
+			queued.push({
+				text,
+				done,
+				resolve
+			});
+			return done;
+		}
+		return sendTurn(text, silent).then(() => {
+			sendNext();
+			return true;
+		}, (err) => {
+			sendNext();
+			throw err;
+		});
+	}
+	return send;
+}
 var MAX_INTENT_CHARS = 2e3;
 function scenesOf(lesson) {
 	const l = lesson;
@@ -28589,7 +28623,7 @@ function setPresetPrompts$1(prompts) {
 					input.focus();
 					input.dispatchEvent(new Event("input"));
 				}
-			} else if (!chatSending) sendChatMessage$1(text);
+			} else sendChatMessage$1(text);
 		});
 		container.appendChild(btn);
 	}
@@ -29023,15 +29057,11 @@ function showBuiltScene(lesson, index, step) {
 	}
 }
 /**
-* Send one chat turn. Single-flight: while a turn is in flight a second call
-* is turned away (resolves `false`) instead of starting a request that would
-* race the first on the same history and clear its sending state early. The
-* chat's own input and the welcome already wait for `chatSending`; this makes
-* every other caller (Ask-AI buttons, the tour, the plan guide) safe too.
-* Resolves `true` once an accepted turn has finished.
+* Send one chat turn. Single-flight (chat-flight.ts): mid-turn, a visible ask
+* is queued and a silent one is turned away with `false`.
 */
-async function sendChatMessage$1(text, { silent = false } = {}) {
-	if (chatSending) return false;
+var sendChatMessage$1 = singleFlightSender(() => chatSending, _sendTurn);
+async function _sendTurn(text, silent) {
 	setChatSending(true);
 	if (!silent) addChatMessage("user", text);
 	const loadingEl = addChatLoading();
@@ -29057,7 +29087,7 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 			addChatMessage("assistant", msg || "Something went wrong. Please try again.");
 			if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
 			setChatSending(false);
-			return true;
+			return;
 		}
 		const data = await res.json();
 		const tcNames = (data.toolCalls || []).map((tc) => tc.name).join(", ");
@@ -29237,7 +29267,6 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 		if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
 	}
 	setChatSending(false);
-	return true;
 }
 function addChatMessage(role, content, toolCalls) {
 	const messagesEl = document.getElementById("chat-messages");

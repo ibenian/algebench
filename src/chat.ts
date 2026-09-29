@@ -19,6 +19,7 @@ import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
 import { stripGlossaryMarkers } from '/glossary-core.js';
+import { singleFlightSender } from '/chat-flight.js';
 import {
     buildSceneRequestFromToolCall, interpretBuildSceneReply,
     type BuildSceneToolArgs,
@@ -151,7 +152,7 @@ function setPresetPrompts(prompts: string[] | null | undefined): void {
                     input.dispatchEvent(new Event('input'));
                 }
             } else {
-                if (!chatSending) sendChatMessage(text);
+                sendChatMessage(text);
             }
         });
         container.appendChild(btn);
@@ -777,15 +778,12 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
 }
 
 /**
- * Send one chat turn. Single-flight: while a turn is in flight a second call
- * is turned away (resolves `false`) instead of starting a request that would
- * race the first on the same history and clear its sending state early. The
- * chat's own input and the welcome already wait for `chatSending`; this makes
- * every other caller (Ask-AI buttons, the tour, the plan guide) safe too.
- * Resolves `true` once an accepted turn has finished.
+ * Send one chat turn. Single-flight (chat-flight.ts): mid-turn, a visible ask
+ * is queued and a silent one is turned away with `false`.
  */
-async function sendChatMessage(text: string, { silent = false }: { silent?: boolean } = {}): Promise<boolean> {
-    if (chatSending) return false;
+const sendChatMessage = singleFlightSender(() => chatSending, _sendTurn);
+
+async function _sendTurn(text: string, silent: boolean): Promise<void> {
     setChatSending(true);
     if (!silent) addChatMessage('user', text);
 
@@ -829,7 +827,7 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
             addChatMessage('assistant', msg || 'Something went wrong. Please try again.');
             if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user') chatHistory.pop();
             setChatSending(false);
-            return true;
+            return;
         }
 
         const data: ChatApiResponse = await res.json();
@@ -1068,7 +1066,6 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
     }
 
     setChatSending(false);
-    return true;
 }
 
 // ----- Message Rendering -----
