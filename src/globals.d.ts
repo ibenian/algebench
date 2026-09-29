@@ -419,7 +419,10 @@ interface Window {
   switchPanelTab: (tabName: string) => void;
   setupChat: () => void;
   initChatTtsControls: () => void;
-  sendChatMessage: (text: string, opts?: { silent?: boolean }) => Promise<void>;
+  /** Resolves false when turned away because a turn is already in flight. */
+  sendChatMessage: (text: string, opts?: { silent?: boolean }) => Promise<boolean>;
+  /** True while a chat turn is in flight (chat.ts). */
+  algebenchChatBusy?: () => boolean;
   addChatMessage: (role: string, content: string) => HTMLDivElement;
   addChatLoading: () => HTMLDivElement;
   renderToolCallChip: (tc: AlgeBenchChatToolCall) => HTMLDivElement;
@@ -460,7 +463,7 @@ interface Window {
 declare function switchPanelTab(tabName: string): void;
 
 /** Send a message to the AI chat (chat.ts). */
-declare function sendChatMessage(text: string, opts?: { silent?: boolean }): Promise<void>;
+declare function sendChatMessage(text: string, opts?: { silent?: boolean }): Promise<boolean>;
 
 /** Replace the preset-prompt buttons under the chat input (chat.ts). */
 declare function setPresetPrompts(prompts: string[] | null | undefined): void;

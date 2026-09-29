@@ -74,6 +74,17 @@ interface ChatMessageElement extends HTMLDivElement {
 let chatHistory: ChatHistoryEntry[] = [];       // [{role: 'user'|'assistant', text: string}]
 let chatAvailable = false;  // set true if GEMINI_API_KEY is configured
 let chatSending = false;
+
+/**
+ * The one place `chatSending` changes. It's app-wide state — every AI ask
+ * button reflects it — so each change is announced (`algebench:chatbusy`,
+ * detail `{ busy }`) and readable via window.algebenchChatBusy().
+ */
+function setChatSending(busy: boolean): void {
+    chatSending = busy;
+    try { window.dispatchEvent(new CustomEvent('algebench:chatbusy', { detail: { busy } })); } catch (_) { /* ignore */ }
+}
+window.algebenchChatBusy = () => chatSending;
 let activeSpeakBtn: SpeakButton | null = null;  // the .msg-speak-btn currently playing TTS
 let welcomeInFlight = false;
 let welcomeRequestId = 0;
@@ -765,8 +776,17 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
     }
 }
 
-async function sendChatMessage(text: string, { silent = false }: { silent?: boolean } = {}): Promise<void> {
-    chatSending = true;
+/**
+ * Send one chat turn. Single-flight: while a turn is in flight a second call
+ * is turned away (resolves `false`) instead of starting a request that would
+ * race the first on the same history and clear its sending state early. The
+ * chat's own input and the welcome already wait for `chatSending`; this makes
+ * every other caller (Ask-AI buttons, the tour, the plan guide) safe too.
+ * Resolves `true` once an accepted turn has finished.
+ */
+async function sendChatMessage(text: string, { silent = false }: { silent?: boolean } = {}): Promise<boolean> {
+    if (chatSending) return false;
+    setChatSending(true);
     if (!silent) addChatMessage('user', text);
 
     const loadingEl = addChatLoading();
@@ -808,8 +828,8 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
                 'color: #ff4444; font-weight: bold', 'color: #ccc');
             addChatMessage('assistant', msg || 'Something went wrong. Please try again.');
             if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user') chatHistory.pop();
-            chatSending = false;
-            return;
+            setChatSending(false);
+            return true;
         }
 
         const data: ChatApiResponse = await res.json();
@@ -1047,7 +1067,8 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
         if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user') chatHistory.pop();
     }
 
-    chatSending = false;
+    setChatSending(false);
+    return true;
 }
 
 // ----- Message Rendering -----

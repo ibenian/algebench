@@ -1954,17 +1954,24 @@ function makeAiAskButton(className, title, getMessage) {
 function makeSilentAiAskButton(className, title, getMessage) {
 	return _makeAiAskButton(className, title, getMessage, true);
 }
+/** True while a chat turn is in flight (chat.ts owns the state). */
+function _chatBusy() {
+	return typeof window.algebenchChatBusy === "function" && window.algebenchChatBusy();
+}
+var _busyListening = false;
 /**
-* One silent ask at a time, across every silent AI button: sendChatMessage
-* keeps a single `chatSending` flag but doesn't turn a second caller away,
-* so two in flight clear each other's state and race on the same history.
-* While one is out, every silent button is disabled.
+* Every Ask-AI button reflects the chat's single-flight state: disabled while
+* a turn is in flight, so no control offers a send the chat would turn away.
+* One listener for all of them, installed with the first button.
 */
-var _silentAskInFlight = false;
-function _setSilentAsksBusy(busy) {
-	_silentAskInFlight = busy;
-	document.querySelectorAll("button[data-ai-silent]").forEach((b) => {
-		b.disabled = busy;
+function _followChatBusy() {
+	if (_busyListening || typeof window.addEventListener !== "function") return;
+	_busyListening = true;
+	window.addEventListener("algebench:chatbusy", (e) => {
+		const busy = !!e.detail?.busy;
+		document.querySelectorAll("button[data-ai-ask]").forEach((b) => {
+			b.disabled = busy;
+		});
 	});
 }
 function _makeAiAskButton(className, title, getMessage, silent) {
@@ -1974,10 +1981,9 @@ function _makeAiAskButton(className, title, getMessage, silent) {
 	btn.title = title + "\n\nClick to send · ⌘-click (Ctrl on Windows) to edit";
 	btn.setAttribute("aria-label", title);
 	btn.innerHTML = AI_SPARKLE_SVG;
-	if (silent) {
-		btn.dataset.aiSilent = "";
-		btn.disabled = _silentAskInFlight;
-	}
+	btn.setAttribute("data-ai-ask", "");
+	btn.disabled = _chatBusy();
+	_followChatBusy();
 	btn.addEventListener("click", (e) => {
 		e.stopPropagation();
 		const raw = getMessage();
@@ -1994,16 +2000,15 @@ function _makeAiAskButton(className, title, getMessage, silent) {
 			return;
 		}
 		if (typeof sendChatMessage !== "function") return;
-		if (silent && _silentAskInFlight) return;
+		if (_chatBusy()) return;
 		const sending = sendChatMessage(message, { silent });
 		if (!silent) return;
 		const pending = (on) => {
 			btn.setAttribute("aria-busy", on ? "true" : "false");
-			_setSilentAsksBusy(on);
 			btn.dispatchEvent(new CustomEvent("ai-ask-pending", { detail: on }));
 		};
 		pending(true);
-		Promise.resolve(sending).finally(() => pending(false));
+		Promise.resolve(sending).catch(() => void 0).finally(() => pending(false));
 	});
 	return btn;
 }
@@ -28522,6 +28527,18 @@ var BUILD_SCENE_TIMEOUT_MS = 9e4;
 var chatHistory = [];
 var chatAvailable$1 = false;
 var chatSending = false;
+/**
+* The one place `chatSending` changes. It's app-wide state — every AI ask
+* button reflects it — so each change is announced (`algebench:chatbusy`,
+* detail `{ busy }`) and readable via window.algebenchChatBusy().
+*/
+function setChatSending(busy) {
+	chatSending = busy;
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:chatbusy", { detail: { busy } }));
+	} catch (_) {}
+}
+window.algebenchChatBusy = () => chatSending;
 var activeSpeakBtn = null;
 var welcomeInFlight = false;
 var memorySnapshot = null;
@@ -29005,8 +29022,17 @@ function showBuiltScene(lesson, index, step) {
 		console.error("build_scene: navigation/render failed:", e);
 	}
 }
+/**
+* Send one chat turn. Single-flight: while a turn is in flight a second call
+* is turned away (resolves `false`) instead of starting a request that would
+* race the first on the same history and clear its sending state early. The
+* chat's own input and the welcome already wait for `chatSending`; this makes
+* every other caller (Ask-AI buttons, the tour, the plan guide) safe too.
+* Resolves `true` once an accepted turn has finished.
+*/
 async function sendChatMessage$1(text, { silent = false } = {}) {
-	chatSending = true;
+	if (chatSending) return false;
+	setChatSending(true);
 	if (!silent) addChatMessage("user", text);
 	const loadingEl = addChatLoading();
 	const context = buildChatContext();
@@ -29030,8 +29056,8 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 			console.error("%c🤖 Chat error: %c" + res.status + " — " + (msg || "unknown"), "color: #ff4444; font-weight: bold", "color: #ccc");
 			addChatMessage("assistant", msg || "Something went wrong. Please try again.");
 			if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
-			chatSending = false;
-			return;
+			setChatSending(false);
+			return true;
 		}
 		const data = await res.json();
 		const tcNames = (data.toolCalls || []).map((tc) => tc.name).join(", ");
@@ -29210,7 +29236,8 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 		addChatMessage("assistant", err instanceof TypeError && /fetch|network|connect/i.test(err.message) ? "Failed to reach AI service. Check your connection." : "Error processing response: " + err.message);
 		if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
 	}
-	chatSending = false;
+	setChatSending(false);
+	return true;
 }
 function addChatMessage(role, content, toolCalls) {
 	const messagesEl = document.getElementById("chat-messages");

@@ -737,17 +737,24 @@ export function makeSilentAiAskButton(
     return _makeAiAskButton(className, title, getMessage, true);
 }
 
-/**
- * One silent ask at a time, across every silent AI button: sendChatMessage
- * keeps a single `chatSending` flag but doesn't turn a second caller away,
- * so two in flight clear each other's state and race on the same history.
- * While one is out, every silent button is disabled.
- */
-let _silentAskInFlight = false;
+/** True while a chat turn is in flight (chat.ts owns the state). */
+function _chatBusy(): boolean {
+    return typeof window.algebenchChatBusy === 'function' && window.algebenchChatBusy();
+}
 
-function _setSilentAsksBusy(busy: boolean): void {
-    _silentAskInFlight = busy;
-    document.querySelectorAll<HTMLButtonElement>('button[data-ai-silent]').forEach((b) => { b.disabled = busy; });
+let _busyListening = false;
+/**
+ * Every Ask-AI button reflects the chat's single-flight state: disabled while
+ * a turn is in flight, so no control offers a send the chat would turn away.
+ * One listener for all of them, installed with the first button.
+ */
+function _followChatBusy(): void {
+    if (_busyListening || typeof window.addEventListener !== 'function') return;
+    _busyListening = true;
+    window.addEventListener('algebench:chatbusy', (e) => {
+        const busy = !!(e as CustomEvent<{ busy: boolean }>).detail?.busy;
+        document.querySelectorAll<HTMLButtonElement>('button[data-ai-ask]').forEach((b) => { b.disabled = busy; });
+    });
 }
 
 function _makeAiAskButton(
@@ -762,10 +769,9 @@ function _makeAiAskButton(
     btn.title = title + '\n\nClick to send · ⌘-click (Ctrl on Windows) to edit';
     btn.setAttribute('aria-label', title);
     btn.innerHTML = AI_SPARKLE_SVG;
-    if (silent) {
-        btn.dataset.aiSilent = '';
-        btn.disabled = _silentAskInFlight;   // created while another is out
-    }
+    btn.setAttribute('data-ai-ask', '');
+    btn.disabled = _chatBusy();   // created while a turn is in flight
+    _followChatBusy();
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
         // Messages are built from source text (labels, descriptions), so
@@ -784,19 +790,18 @@ function _makeAiAskButton(
             return;
         }
         if (typeof sendChatMessage !== 'function') return;
-        if (silent && _silentAskInFlight) return;   // single-flight (see above)
+        // Single-flight (chat.ts): a turn already in flight would turn this
+        // one away — so don't send, and don't report a pending ask that
+        // isn't happening (the quiz advances its hint ladder on that event).
+        if (_chatBusy()) return;
         const sending = sendChatMessage(message, { silent });
         if (!silent) return;
         const pending = (on: boolean) => {
             btn.setAttribute('aria-busy', on ? 'true' : 'false');
-            // One reply at a time, app-wide: a double-click or a second
-            // button would otherwise send twice, render replies out of
-            // order, and clear "thinking" too early.
-            _setSilentAsksBusy(on);
             btn.dispatchEvent(new CustomEvent('ai-ask-pending', { detail: on }));
         };
         pending(true);
-        void Promise.resolve(sending).finally(() => pending(false));
+        void Promise.resolve(sending).catch(() => undefined).finally(() => pending(false));
     });
     return btn;
 }
