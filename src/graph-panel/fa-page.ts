@@ -19,7 +19,7 @@
 import { invokeExpert } from '/expert-client.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { AI_ICON, BRACES_ICON, TRASH_ICON } from '/icons.js';
-import { makeAiAskButton, renderKaTeX } from '/labels.js';
+import { makeAiAskButton, makeSilentAiAskButton, renderKaTeX } from '/labels.js';
 import { loadChartJs } from '/graph-panel/sg-chart.js';
 import type { CompiledExpr, ExprScope } from '/expr.js';
 import type { Node as GraphNode } from '/types/semantic-graph.js';
@@ -2604,7 +2604,7 @@ export class FunctionAnalysisManager {
                 `This is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ` +
                 `${QUIZ_HINTS[hintLevel - 1]}\n` +
                 QUIZ_HINT_RULES;
-        });
+        }, undefined, { silent: true });   // tutor instructions, not the learner's words
         hintBtn.title = quizHintTitle(0);
         div.appendChild(q);
 
@@ -2633,7 +2633,8 @@ export class FunctionAnalysisManager {
                 // question, options, the learner's pick, the correct answer,
                 // and whether they got it — so it can celebrate or encourage.
                 const correct = (probe.options || [])[probe.correct_index] || '';
-                const ask = makeAiAskButton('ai-ask-btn fa-hover-ask',
+                // Silent: tutor instructions, not the learner's words.
+                const ask = makeSilentAiAskButton('ai-ask-btn fa-hover-ask',
                     'Talk to the AI about your answer', () =>
                     `I just answered a quiz question about $${artifact.latex}$.\n` +
                     `Question: "${probe.question}"\n` +
@@ -2757,8 +2758,9 @@ export class FunctionAnalysisManager {
     }
 
     /** Hover-revealed AI ask button beside the element (app-wide pattern). */
-    _attachHoverAsk(el: HTMLElement, getMessage: () => string, title = 'Ask the AI about this'): HTMLButtonElement {
-        const btn = makeAiAskButton('ai-ask-btn fa-hover-ask', title, getMessage);
+    _attachHoverAsk(el: HTMLElement, getMessage: () => string, title = 'Ask the AI about this',
+                    opts: { silent?: boolean } = {}): HTMLButtonElement {
+        const btn = (opts.silent ? makeSilentAiAskButton : makeAiAskButton)('ai-ask-btn fa-hover-ask', title, getMessage);
         el.classList.add('fa-askable');
         el.appendChild(btn);
         return btn;

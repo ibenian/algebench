@@ -1937,6 +1937,19 @@ function openChatPanel() {
 *  the click is then a complete no-op — no chat panel, no input text, no send —
 *  matching the proof engine's own routed ask button. */
 function makeAiAskButton(className, title, getMessage) {
+	return _makeAiAskButton(className, title, getMessage, false);
+}
+/**
+* makeAiAskButton, but the prompt is sent without being posted as the
+* learner's message — only the AI's reply shows, as the tour and the
+* learning-plan guide do. For prompts that are instructions to the tutor
+* rather than something the learner would type (the quiz's hint rules, say).
+* ⌘-click still puts the prompt in the input to edit.
+*/
+function makeSilentAiAskButton(className, title, getMessage) {
+	return _makeAiAskButton(className, title, getMessage, true);
+}
+function _makeAiAskButton(className, title, getMessage, silent) {
 	const btn = document.createElement("button");
 	btn.type = "button";
 	btn.className = className;
@@ -1959,7 +1972,7 @@ function makeAiAskButton(className, title, getMessage) {
 			return;
 		}
 		if (typeof sendChatMessage !== "function") return;
-		sendChatMessage(message);
+		sendChatMessage(message, { silent });
 	});
 	return btn;
 }
@@ -25493,7 +25506,7 @@ var FunctionAnalysisManager = class {
 			hintLevel = Math.min(hintLevel + 1, QUIZ_HINTS.length);
 			hintBtn.title = quizHintTitle(hintLevel);
 			return `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nThis is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ${QUIZ_HINTS[hintLevel - 1]}\nRules: do NOT state the answer or the result, do NOT name, quote or point at any option, and do NOT ask a leading question whose answer IS the answer. Keep it to 1–3 sentences, like a tutor who wants me to get there on my own.`;
-		});
+		}, void 0, { silent: true });
 		hintBtn.title = quizHintTitle(0);
 		div.appendChild(q);
 		const opts = document.createElement("div");
@@ -25512,7 +25525,7 @@ var FunctionAnalysisManager = class {
 				if (!right && opts.children[probe.correct_index]) opts.children[probe.correct_index].classList.add("right");
 				exp.classList.add("show");
 				const correct = (probe.options || [])[probe.correct_index] || "";
-				const ask = makeAiAskButton("ai-ask-btn fa-hover-ask", "Talk to the AI about your answer", () => `I just answered a quiz question about $${artifact.latex}$.\nQuestion: "${probe.question}"\nOptions: ${(probe.options || []).join(" | ")}\nThe correct answer is "${correct}". I chose "${o}" — ` + (right ? "I got it RIGHT." : "I got it WRONG.") + "\n" + (probe.explanation ? `The given explanation: "${probe.explanation}"\n` : "") + (right ? "Congratulate me briefly, then deepen my understanding with one extra insight about this behavior." : "Encourage me — no scolding — and help me see why the correct answer is right, building from what my choice got partially right if anything.") + "\nFirst verify the quiz against the expression itself: if the marked correct answer is mathematically wrong for this expression, say so plainly and teach the true answer instead.");
+				const ask = makeSilentAiAskButton("ai-ask-btn fa-hover-ask", "Talk to the AI about your answer", () => `I just answered a quiz question about $${artifact.latex}$.\nQuestion: "${probe.question}"\nOptions: ${(probe.options || []).join(" | ")}\nThe correct answer is "${correct}". I chose "${o}" — ` + (right ? "I got it RIGHT." : "I got it WRONG.") + "\n" + (probe.explanation ? `The given explanation: "${probe.explanation}"\n` : "") + (right ? "Congratulate me briefly, then deepen my understanding with one extra insight about this behavior." : "Encourage me — no scolding — and help me see why the correct answer is right, building from what my choice got partially right if anything.") + "\nFirst verify the quiz against the expression itself: if the marked correct answer is mathematically wrong for this expression, say so plainly and teach the true answer instead.");
 				exp.appendChild(ask);
 				div.classList.add("fa-askable");
 			}, { once: true });
@@ -25604,8 +25617,8 @@ var FunctionAnalysisManager = class {
 		});
 	}
 	/** Hover-revealed AI ask button beside the element (app-wide pattern). */
-	_attachHoverAsk(el, getMessage, title = "Ask the AI about this") {
-		const btn = makeAiAskButton("ai-ask-btn fa-hover-ask", title, getMessage);
+	_attachHoverAsk(el, getMessage, title = "Ask the AI about this", opts = {}) {
+		const btn = (opts.silent ? makeSilentAiAskButton : makeAiAskButton)("ai-ask-btn fa-hover-ask", title, getMessage);
 		el.classList.add("fa-askable");
 		el.appendChild(btn);
 		return btn;

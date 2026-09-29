@@ -714,6 +714,30 @@ export function makeAiAskButton(
     title: string,
     getMessage: () => string | null,
 ): HTMLButtonElement {
+    return _makeAiAskButton(className, title, getMessage, false);
+}
+
+/**
+ * makeAiAskButton, but the prompt is sent without being posted as the
+ * learner's message — only the AI's reply shows, as the tour and the
+ * learning-plan guide do. For prompts that are instructions to the tutor
+ * rather than something the learner would type (the quiz's hint rules, say).
+ * ⌘-click still puts the prompt in the input to edit.
+ */
+export function makeSilentAiAskButton(
+    className: string,
+    title: string,
+    getMessage: () => string | null,
+): HTMLButtonElement {
+    return _makeAiAskButton(className, title, getMessage, true);
+}
+
+function _makeAiAskButton(
+    className: string,
+    title: string,
+    getMessage: () => string | null,
+    silent: boolean,
+): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.type = 'button';   // never submit an enclosing form
     btn.className = className;
@@ -738,7 +762,7 @@ export function makeAiAskButton(
             return;
         }
         if (typeof sendChatMessage !== 'function') return;
-        sendChatMessage(message);
+        sendChatMessage(message, { silent });
     });
     return btn;
 }
