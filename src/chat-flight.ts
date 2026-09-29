@@ -3,7 +3,8 @@
 // on who sees it:
 //   - a visible ask (the Commentate control, proof Explore, a deep-link ask)
 //     is queued and sent once the chat is free, so a click is never lost; the
-//     same text already waiting is not queued twice;
+//     same text already in flight or waiting shares that turn (a double-click
+//     sends once);
 //   - a silent ask is turned away (resolves `false`), since its caller counts
 //     only accepted asks (the quiz's hint ladder).
 // Each call resolves `true` once its turn — queued or not — has finished.
@@ -13,6 +14,7 @@ export type ChatSender = (text: string, opts?: { silent?: boolean }) => Promise<
 
 export function singleFlightSender(isBusy: () => boolean, sendTurn: SendTurn): ChatSender {
     const queued: Array<{ text: string; done: Promise<boolean>; resolve: (ok: boolean) => void }> = [];
+    let active: { text: string; done: Promise<boolean> } | null = null;   // the visible turn in flight
 
     function sendNext(): void {
         const next = queued.shift();
@@ -22,6 +24,7 @@ export function singleFlightSender(isBusy: () => boolean, sendTurn: SendTurn): C
     function send(text: string, { silent = false }: { silent?: boolean } = {}): Promise<boolean> {
         if (isBusy()) {
             if (silent) return Promise.resolve(false);
+            if (active && active.text === text) return active.done;
             const waiting = queued.find((q) => q.text === text);
             if (waiting) return waiting.done;
             let resolve!: (ok: boolean) => void;
@@ -29,10 +32,14 @@ export function singleFlightSender(isBusy: () => boolean, sendTurn: SendTurn): C
             queued.push({ text, done, resolve });
             return done;
         }
-        return sendTurn(text, silent).then(
-            () => { sendNext(); return true; },
-            (err: unknown) => { sendNext(); throw err; },
+        const turn = { text, done: Promise.resolve(false) };
+        const settle = () => { if (active === turn) active = null; sendNext(); };
+        turn.done = sendTurn(text, silent).then(
+            () => { settle(); return true; },
+            (err: unknown) => { settle(); throw err; },
         );
+        if (!silent) active = turn;
+        return turn.done;
     }
 
     return send;

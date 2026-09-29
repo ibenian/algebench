@@ -28181,6 +28181,7 @@ function applyEach(lesson, ops, inverse) {
 //#region src/chat-flight.ts
 function singleFlightSender(isBusy, sendTurn) {
 	const queued = [];
+	let active = null;
 	function sendNext() {
 		const next = queued.shift();
 		if (next) send(next.text).then(next.resolve, () => next.resolve(false));
@@ -28188,6 +28189,7 @@ function singleFlightSender(isBusy, sendTurn) {
 	function send(text, { silent = false } = {}) {
 		if (isBusy()) {
 			if (silent) return Promise.resolve(false);
+			if (active && active.text === text) return active.done;
 			const waiting = queued.find((q) => q.text === text);
 			if (waiting) return waiting.done;
 			let resolve;
@@ -28201,13 +28203,23 @@ function singleFlightSender(isBusy, sendTurn) {
 			});
 			return done;
 		}
-		return sendTurn(text, silent).then(() => {
+		const turn = {
+			text,
+			done: Promise.resolve(false)
+		};
+		const settle = () => {
+			if (active === turn) active = null;
 			sendNext();
+		};
+		turn.done = sendTurn(text, silent).then(() => {
+			settle();
 			return true;
 		}, (err) => {
-			sendNext();
+			settle();
 			throw err;
 		});
+		if (!silent) active = turn;
+		return turn.done;
 	}
 	return send;
 }

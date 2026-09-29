@@ -53,6 +53,21 @@ test('queued asks go out in order, and a repeated one is queued only once', asyn
     assert.deepEqual(await Promise.all([a, b]), [true, true]);
 });
 
+test('repeating the ask in flight shares that turn instead of queueing a duplicate', async () => {
+    const r = rig();
+    const first = r.send('Please commentate');
+    const again = r.send('Please commentate');
+    assert.equal(again, first, 'a double-click while idle sends once');
+    await r.finish();
+    assert.equal(await again, true);
+    assert.deepEqual(r.sent.map((s) => s.text), ['Please commentate']);
+    assert.equal(r.isBusy(), false, 'nothing left queued');
+    const later = r.send('Please commentate');
+    assert.notEqual(later, first, 'once the turn is over, asking again is a new turn');
+    await r.finish();
+    assert.deepEqual(r.sent.map((s) => s.text), ['Please commentate', 'Please commentate']);
+});
+
 test('a silent ask made mid-turn is turned away with false, never queued', async () => {
     const r = rig();
     void r.send('busy');
