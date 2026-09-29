@@ -2604,7 +2604,7 @@ export class FunctionAnalysisManager {
                 `This is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ` +
                 `${QUIZ_HINTS[hintLevel - 1]}\n` +
                 QUIZ_HINT_RULES;
-        }, undefined, { silent: true });   // tutor instructions, not the learner's words
+        }, undefined, { silent: true, thinkingIn: div });   // tutor instructions, not the learner's words
         hintBtn.title = quizHintTitle(0);
         div.appendChild(q);
 
@@ -2652,6 +2652,7 @@ export class FunctionAnalysisManager {
                     'marked correct answer is mathematically wrong for this ' +
                     'expression, say so plainly and teach the true answer instead.');
                 exp.appendChild(ask);
+                this._showThinking(ask, exp);
                 div.classList.add('fa-askable');
             }, { once: true });
             opts.appendChild(b);
@@ -2759,11 +2760,33 @@ export class FunctionAnalysisManager {
 
     /** Hover-revealed AI ask button beside the element (app-wide pattern). */
     _attachHoverAsk(el: HTMLElement, getMessage: () => string, title = 'Ask the AI about this',
-                    opts: { silent?: boolean } = {}): HTMLButtonElement {
+                    opts: { silent?: boolean; thinkingIn?: HTMLElement } = {}): HTMLButtonElement {
         const btn = (opts.silent ? makeSilentAiAskButton : makeAiAskButton)('ai-ask-btn fa-hover-ask', title, getMessage);
         el.classList.add('fa-askable');
         el.appendChild(btn);
+        if (opts.silent) this._showThinking(btn, opts.thinkingIn || el);
         return btn;
+    }
+
+    /**
+     * A silent ask posts nothing in the chat, so show the wait where the
+     * learner clicked: "AI is thinking…" with a pulsing dot, under `where`,
+     * until the reply arrives.
+     */
+    _showThinking(btn: HTMLElement, where: HTMLElement) {
+        let line: HTMLElement | null = null;
+        btn.addEventListener('ai-ask-pending', (e) => {
+            const on = (e as CustomEvent<boolean>).detail;
+            if (on && !line) {
+                line = document.createElement('div');
+                line.className = 'ai-thinking-status';
+                line.textContent = 'AI is thinking…';
+                where.appendChild(line);
+            } else if (!on && line) {
+                line.remove();
+                line = null;
+            }
+        });
     }
 
     destroy() {

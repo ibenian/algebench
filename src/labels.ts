@@ -723,6 +723,11 @@ export function makeAiAskButton(
  * learning-plan guide do. For prompts that are instructions to the tutor
  * rather than something the learner would type (the quiz's hint rules, say).
  * ⌘-click still puts the prompt in the input to edit.
+ *
+ * With no question visible in the chat, the wait for the reply would read as
+ * nothing happening, so the button reports it: `aria-busy` is set while the
+ * reply is pending, and an `ai-ask-pending` event (detail: boolean) fires when
+ * that starts and ends — callers show a "thinking" indicator from it.
  */
 export function makeSilentAiAskButton(
     className: string,
@@ -762,7 +767,14 @@ function _makeAiAskButton(
             return;
         }
         if (typeof sendChatMessage !== 'function') return;
-        sendChatMessage(message, { silent });
+        const sending = sendChatMessage(message, { silent });
+        if (!silent) return;
+        const pending = (on: boolean) => {
+            btn.setAttribute('aria-busy', on ? 'true' : 'false');
+            btn.dispatchEvent(new CustomEvent('ai-ask-pending', { detail: on }));
+        };
+        pending(true);
+        void Promise.resolve(sending).finally(() => pending(false));
     });
     return btn;
 }

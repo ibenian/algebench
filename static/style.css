@@ -5194,3 +5194,16 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 .glossary-tip-body > :first-child { margin-top: 0; }
 .glossary-tip-body > :last-child { margin-bottom: 0; }
 .glossary-tip-body p { margin: 4px 0; }
+
+/* "AI is thinking…" — shown under whatever asked the AI silently (the quiz's
+   hint and answer buttons), since no question appears in the chat to show the
+   wait. A pulsing accent dot, the same as the learning plan's guide status. */
+.ai-thinking-status { font-size: 11px; color: var(--accent-color); display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.ai-thinking-status::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-color);
+    animation: ai-thinking-pulse 1.2s ease-in-out infinite;
+}
+@keyframes ai-thinking-pulse {
+    0%, 100% { opacity: 0.15; }
+    50%      { opacity: 1; }
+}

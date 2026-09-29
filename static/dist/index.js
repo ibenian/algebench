@@ -1945,6 +1945,11 @@ function makeAiAskButton(className, title, getMessage) {
 * learning-plan guide do. For prompts that are instructions to the tutor
 * rather than something the learner would type (the quiz's hint rules, say).
 * ⌘-click still puts the prompt in the input to edit.
+*
+* With no question visible in the chat, the wait for the reply would read as
+* nothing happening, so the button reports it: `aria-busy` is set while the
+* reply is pending, and an `ai-ask-pending` event (detail: boolean) fires when
+* that starts and ends — callers show a "thinking" indicator from it.
 */
 function makeSilentAiAskButton(className, title, getMessage) {
 	return _makeAiAskButton(className, title, getMessage, true);
@@ -1972,7 +1977,14 @@ function _makeAiAskButton(className, title, getMessage, silent) {
 			return;
 		}
 		if (typeof sendChatMessage !== "function") return;
-		sendChatMessage(message, { silent });
+		const sending = sendChatMessage(message, { silent });
+		if (!silent) return;
+		const pending = (on) => {
+			btn.setAttribute("aria-busy", on ? "true" : "false");
+			btn.dispatchEvent(new CustomEvent("ai-ask-pending", { detail: on }));
+		};
+		pending(true);
+		Promise.resolve(sending).finally(() => pending(false));
 	});
 	return btn;
 }
@@ -25506,7 +25518,10 @@ var FunctionAnalysisManager = class {
 			hintLevel = Math.min(hintLevel + 1, QUIZ_HINTS.length);
 			hintBtn.title = quizHintTitle(hintLevel);
 			return `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nThis is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ${QUIZ_HINTS[hintLevel - 1]}\nRules: do NOT state the answer or the result, do NOT name, quote or point at any option, and do NOT ask a leading question whose answer IS the answer. Keep it to 1–3 sentences, like a tutor who wants me to get there on my own.`;
-		}, void 0, { silent: true });
+		}, void 0, {
+			silent: true,
+			thinkingIn: div
+		});
 		hintBtn.title = quizHintTitle(0);
 		div.appendChild(q);
 		const opts = document.createElement("div");
@@ -25527,6 +25542,7 @@ var FunctionAnalysisManager = class {
 				const correct = (probe.options || [])[probe.correct_index] || "";
 				const ask = makeSilentAiAskButton("ai-ask-btn fa-hover-ask", "Talk to the AI about your answer", () => `I just answered a quiz question about $${artifact.latex}$.\nQuestion: "${probe.question}"\nOptions: ${(probe.options || []).join(" | ")}\nThe correct answer is "${correct}". I chose "${o}" — ` + (right ? "I got it RIGHT." : "I got it WRONG.") + "\n" + (probe.explanation ? `The given explanation: "${probe.explanation}"\n` : "") + (right ? "Congratulate me briefly, then deepen my understanding with one extra insight about this behavior." : "Encourage me — no scolding — and help me see why the correct answer is right, building from what my choice got partially right if anything.") + "\nFirst verify the quiz against the expression itself: if the marked correct answer is mathematically wrong for this expression, say so plainly and teach the true answer instead.");
 				exp.appendChild(ask);
+				this._showThinking(ask, exp);
 				div.classList.add("fa-askable");
 			}, { once: true });
 			opts.appendChild(b);
@@ -25621,7 +25637,28 @@ var FunctionAnalysisManager = class {
 		const btn = (opts.silent ? makeSilentAiAskButton : makeAiAskButton)("ai-ask-btn fa-hover-ask", title, getMessage);
 		el.classList.add("fa-askable");
 		el.appendChild(btn);
+		if (opts.silent) this._showThinking(btn, opts.thinkingIn || el);
 		return btn;
+	}
+	/**
+	* A silent ask posts nothing in the chat, so show the wait where the
+	* learner clicked: "AI is thinking…" with a pulsing dot, under `where`,
+	* until the reply arrives.
+	*/
+	_showThinking(btn, where) {
+		let line = null;
+		btn.addEventListener("ai-ask-pending", (e) => {
+			const on = e.detail;
+			if (on && !line) {
+				line = document.createElement("div");
+				line.className = "ai-thinking-status";
+				line.textContent = "AI is thinking…";
+				where.appendChild(line);
+			} else if (!on && line) {
+				line.remove();
+				line = null;
+			}
+		});
 	}
 	destroy() {
 		this._destroyCharts();
