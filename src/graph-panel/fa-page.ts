@@ -25,6 +25,40 @@ import type { CompiledExpr, ExprScope } from '/expr.js';
 import type { Node as GraphNode } from '/types/semantic-graph.js';
 import type { ProofStep } from '/proof.js';
 
+/**
+ * The quiz's pre-answer hint ladder: what each successive hint may do. The
+ * key step is always left to the learner — see `_renderProbe`.
+ */
+const QUIZ_HINTS = [
+    'Give me a gentle NUDGE only: point my attention at what matters here — which ' +
+        'quantity is changing and where it sits in the expression. Do not compute ' +
+        'anything and do not say which way anything goes.',
+    // Tried first as "suggest an approach, don't carry it out": the model still
+    // asked the leading question ("what happens to a fraction as its
+    // denominator shrinks?"). General terms only, and no questions, holds.
+    'Now suggest an APPROACH in general terms only: name one strategy I could use ' +
+        '(compare two cases, try an extreme value, picture a physical analogy) WITHOUT ' +
+        'applying it to this expression and without saying what it would show. Don\'t ' +
+        'ask me questions — just point me to the method.',
+    'Walk me through the reasoning STEP BY STEP up to — but not including — the final ' +
+        'conclusion, and stop there so I make that last step myself.',
+];
+
+/** Rules every hint carries. */
+const QUIZ_HINT_RULES =
+    'Rules: do NOT state the answer or the result, do NOT name, quote or point at any ' +
+    'option, and do NOT ask a leading question whose answer IS the answer. Keep it to ' +
+    '1–3 sentences, like a tutor who wants me to get there on my own.';
+
+/** Tooltip for the question's hint button, after `given` hints so far. */
+function quizHintTitle(given: number): string {
+    const what = given >= QUIZ_HINTS.length
+        ? `Get another hint (you've had all ${QUIZ_HINTS.length} levels — this repeats the strongest)`
+        : `Get a hint (${given + 1} of ${QUIZ_HINTS.length}) — never the answer`;
+    // makeAiAskButton's own usage note, kept.
+    return `${what}\n\nClick to send · ⌘-click (Ctrl on Windows) to edit`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Wire shapes                                                        */
 /*                                                                    */
@@ -2551,15 +2585,27 @@ export class FunctionAnalysisManager {
         q.appendChild(badge);
         q.appendChild(document.createTextNode(`${number}. `));
         this._inlineMath(q, probe.question || '');
-        // Pre-answer ask: hints ONLY — revealing the answer would destroy the
-        // predict-before-reveal value of the quiz. The post-answer button
-        // (added on click) is the one that discusses the actual answer.
-        this._attachHoverAsk(q, () =>
-            `I'm working on a quiz question about $${artifact.latex}$ and I ` +
-            `have NOT answered it yet.\nQuestion: "${probe.question}"\n` +
-            `IMPORTANT: do NOT tell me the answer and do NOT identify or hint ` +
-            `at which option is correct. Give me ONE guiding hint or a leading ` +
-            `question that helps me reason it out myself — think Socratic tutor.`);
+        // Pre-answer ask: a HINT LADDER, never the answer — revealing it would
+        // destroy the predict-before-reveal value of the quiz. Each click asks
+        // for the next, slightly stronger hint; the post-answer button (added
+        // on click) is the one that discusses the actual answer.
+        //
+        // "Don't tell me the answer" alone wasn't enough: the model complied
+        // with a leading question whose answer WAS the answer ("what happens
+        // to a fraction as its denominator shrinks?"). So each rung says
+        // exactly how much of the reasoning it may do, and the key step is
+        // always left to the learner.
+        let hintLevel = 0;
+        const hintBtn = this._attachHoverAsk(q, () => {
+            hintLevel = Math.min(hintLevel + 1, QUIZ_HINTS.length);
+            hintBtn.title = quizHintTitle(hintLevel);
+            return `I'm working on a quiz question about $${artifact.latex}$ and I ` +
+                `have NOT answered it yet.\nQuestion: "${probe.question}"\n` +
+                `This is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ` +
+                `${QUIZ_HINTS[hintLevel - 1]}\n` +
+                QUIZ_HINT_RULES;
+        });
+        hintBtn.title = quizHintTitle(0);
         div.appendChild(q);
 
         const opts = document.createElement('div');
@@ -2711,11 +2757,11 @@ export class FunctionAnalysisManager {
     }
 
     /** Hover-revealed AI ask button beside the element (app-wide pattern). */
-    _attachHoverAsk(el: HTMLElement, getMessage: () => string) {
-        const btn = makeAiAskButton('ai-ask-btn fa-hover-ask',
-                                    'Ask the AI about this', getMessage);
+    _attachHoverAsk(el: HTMLElement, getMessage: () => string, title = 'Ask the AI about this'): HTMLButtonElement {
+        const btn = makeAiAskButton('ai-ask-btn fa-hover-ask', title, getMessage);
         el.classList.add('fa-askable');
         el.appendChild(btn);
+        return btn;
     }
 
     destroy() {

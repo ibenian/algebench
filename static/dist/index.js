@@ -23667,6 +23667,19 @@ var SgChartManager = class {
 };
 //#endregion
 //#region src/graph-panel/fa-page.ts
+/**
+* The quiz's pre-answer hint ladder: what each successive hint may do. The
+* key step is always left to the learner — see `_renderProbe`.
+*/
+var QUIZ_HINTS = [
+	"Give me a gentle NUDGE only: point my attention at what matters here — which quantity is changing and where it sits in the expression. Do not compute anything and do not say which way anything goes.",
+	"Now suggest an APPROACH in general terms only: name one strategy I could use (compare two cases, try an extreme value, picture a physical analogy) WITHOUT applying it to this expression and without saying what it would show. Don't ask me questions — just point me to the method.",
+	"Walk me through the reasoning STEP BY STEP up to — but not including — the final conclusion, and stop there so I make that last step myself."
+];
+/** Tooltip for the question's hint button, after `given` hints so far. */
+function quizHintTitle(given) {
+	return `${given >= QUIZ_HINTS.length ? `Get another hint (you've had all ${QUIZ_HINTS.length} levels — this repeats the strongest)` : `Get a hint (${given + 1} of ${QUIZ_HINTS.length}) — never the answer`}\n\nClick to send · ⌘-click (Ctrl on Windows) to edit`;
+}
 var REQUEST_TIMEOUT_MS = 18e4;
 var NUM_POINTS = 220;
 var TAU = Math.PI * 2;
@@ -25475,7 +25488,13 @@ var FunctionAnalysisManager = class {
 		q.appendChild(badge);
 		q.appendChild(document.createTextNode(`${number}. `));
 		this._inlineMath(q, probe.question || "");
-		this._attachHoverAsk(q, () => `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nIMPORTANT: do NOT tell me the answer and do NOT identify or hint at which option is correct. Give me ONE guiding hint or a leading question that helps me reason it out myself — think Socratic tutor.`);
+		let hintLevel = 0;
+		const hintBtn = this._attachHoverAsk(q, () => {
+			hintLevel = Math.min(hintLevel + 1, QUIZ_HINTS.length);
+			hintBtn.title = quizHintTitle(hintLevel);
+			return `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nThis is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ${QUIZ_HINTS[hintLevel - 1]}\nRules: do NOT state the answer or the result, do NOT name, quote or point at any option, and do NOT ask a leading question whose answer IS the answer. Keep it to 1–3 sentences, like a tutor who wants me to get there on my own.`;
+		});
+		hintBtn.title = quizHintTitle(0);
 		div.appendChild(q);
 		const opts = document.createElement("div");
 		opts.className = "fa-probe-opts";
@@ -25585,10 +25604,11 @@ var FunctionAnalysisManager = class {
 		});
 	}
 	/** Hover-revealed AI ask button beside the element (app-wide pattern). */
-	_attachHoverAsk(el, getMessage) {
-		const btn = makeAiAskButton("ai-ask-btn fa-hover-ask", "Ask the AI about this", getMessage);
+	_attachHoverAsk(el, getMessage, title = "Ask the AI about this") {
+		const btn = makeAiAskButton("ai-ask-btn fa-hover-ask", title, getMessage);
 		el.classList.add("fa-askable");
 		el.appendChild(btn);
+		return btn;
 	}
 	destroy() {
 		this._destroyCharts();
