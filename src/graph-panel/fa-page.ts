@@ -52,9 +52,11 @@ const QUIZ_HINT_RULES =
 
 /** Tooltip for the question's hint button, after `given` hints so far. */
 function quizHintTitle(given: number): string {
+    // "Aims not to give the answer", not "never": the rules are prompt
+    // instructions, and the reply is shown as the model writes it.
     const what = given >= QUIZ_HINTS.length
         ? `Get another hint (you've had all ${QUIZ_HINTS.length} levels — this repeats the strongest)`
-        : `Get a hint (${given + 1} of ${QUIZ_HINTS.length}) — never the answer`;
+        : `Get a hint (${given + 1} of ${QUIZ_HINTS.length}) — a nudge, not the answer`;
     // makeAiAskButton's own usage note, kept.
     return `${what}\n\nClick to send · ⌘-click (Ctrl on Windows) to edit`;
 }
@@ -2595,17 +2597,27 @@ export class FunctionAnalysisManager {
         // to a fraction as its denominator shrinks?"). So each rung says
         // exactly how much of the reasoning it may do, and the key step is
         // always left to the learner.
-        let hintLevel = 0;
-        const hintBtn = this._attachHoverAsk(q, () => {
-            hintLevel = Math.min(hintLevel + 1, QUIZ_HINTS.length);
-            hintBtn.title = quizHintTitle(hintLevel);
-            return `I'm working on a quiz question about $${artifact.latex}$ and I ` +
-                `have NOT answered it yet.\nQuestion: "${probe.question}"\n` +
-                `This is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ` +
-                `${QUIZ_HINTS[hintLevel - 1]}\n` +
-                QUIZ_HINT_RULES;
-        }, undefined, { silent: true, thinkingIn: div });   // tutor instructions, not the learner's words
-        hintBtn.title = quizHintTitle(0);
+        // `given` counts hints actually SENT: building the message has no side
+        // effects, and the ladder only advances when a send starts (a ⌘-click
+        // that just opens the prompt for editing doesn't use up a rung).
+        let given = 0;
+        const next = (): number => Math.min(given + 1, QUIZ_HINTS.length);
+        const hintBtn = this._attachHoverAsk(q, () =>
+            `I'm working on a quiz question about $${artifact.latex}$ and I ` +
+            `have NOT answered it yet.\nQuestion: "${probe.question}"\n` +
+            `This is hint ${next()} of ${QUIZ_HINTS.length} I've asked for. ` +
+            `${QUIZ_HINTS[next() - 1]}\n` +
+            QUIZ_HINT_RULES,
+        undefined, { silent: true, thinkingIn: div });   // tutor instructions, not the learner's words
+        const labelHint = (): void => {
+            const title = quizHintTitle(given);
+            hintBtn.title = title;
+            hintBtn.setAttribute('aria-label', title.split('\n')[0]!);   // same for screen readers
+        };
+        hintBtn.addEventListener('ai-ask-pending', (e) => {
+            if ((e as CustomEvent<boolean>).detail) { given = next(); labelHint(); }
+        });
+        labelHint();
         div.appendChild(q);
 
         const opts = document.createElement('div');

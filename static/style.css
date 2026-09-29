@@ -5207,3 +5207,6 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
     0%, 100% { opacity: 0.15; }
     50%      { opacity: 1; }
 }
+@media (prefers-reduced-motion: reduce) {
+    .ai-thinking-status::before { animation: none; opacity: 0.8; }
+}

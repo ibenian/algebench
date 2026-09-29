@@ -771,6 +771,9 @@ function _makeAiAskButton(
         if (!silent) return;
         const pending = (on: boolean) => {
             btn.setAttribute('aria-busy', on ? 'true' : 'false');
+            // One reply at a time: a double-click would otherwise send twice,
+            // render replies out of order, and clear "thinking" too early.
+            btn.disabled = on;
             btn.dispatchEvent(new CustomEvent('ai-ask-pending', { detail: on }));
         };
         pending(true);

@@ -1981,6 +1981,7 @@ function _makeAiAskButton(className, title, getMessage, silent) {
 		if (!silent) return;
 		const pending = (on) => {
 			btn.setAttribute("aria-busy", on ? "true" : "false");
+			btn.disabled = on;
 			btn.dispatchEvent(new CustomEvent("ai-ask-pending", { detail: on }));
 		};
 		pending(true);
@@ -23703,7 +23704,7 @@ var QUIZ_HINTS = [
 ];
 /** Tooltip for the question's hint button, after `given` hints so far. */
 function quizHintTitle(given) {
-	return `${given >= QUIZ_HINTS.length ? `Get another hint (you've had all ${QUIZ_HINTS.length} levels — this repeats the strongest)` : `Get a hint (${given + 1} of ${QUIZ_HINTS.length}) — never the answer`}\n\nClick to send · ⌘-click (Ctrl on Windows) to edit`;
+	return `${given >= QUIZ_HINTS.length ? `Get another hint (you've had all ${QUIZ_HINTS.length} levels — this repeats the strongest)` : `Get a hint (${given + 1} of ${QUIZ_HINTS.length}) — a nudge, not the answer`}\n\nClick to send · ⌘-click (Ctrl on Windows) to edit`;
 }
 var REQUEST_TIMEOUT_MS = 18e4;
 var NUM_POINTS = 220;
@@ -25513,16 +25514,24 @@ var FunctionAnalysisManager = class {
 		q.appendChild(badge);
 		q.appendChild(document.createTextNode(`${number}. `));
 		this._inlineMath(q, probe.question || "");
-		let hintLevel = 0;
-		const hintBtn = this._attachHoverAsk(q, () => {
-			hintLevel = Math.min(hintLevel + 1, QUIZ_HINTS.length);
-			hintBtn.title = quizHintTitle(hintLevel);
-			return `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nThis is hint ${hintLevel} of ${QUIZ_HINTS.length} I've asked for. ${QUIZ_HINTS[hintLevel - 1]}\nRules: do NOT state the answer or the result, do NOT name, quote or point at any option, and do NOT ask a leading question whose answer IS the answer. Keep it to 1–3 sentences, like a tutor who wants me to get there on my own.`;
-		}, void 0, {
+		let given = 0;
+		const next = () => Math.min(given + 1, QUIZ_HINTS.length);
+		const hintBtn = this._attachHoverAsk(q, () => `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nThis is hint ${next()} of ${QUIZ_HINTS.length} I've asked for. ${QUIZ_HINTS[next() - 1]}\nRules: do NOT state the answer or the result, do NOT name, quote or point at any option, and do NOT ask a leading question whose answer IS the answer. Keep it to 1–3 sentences, like a tutor who wants me to get there on my own.`, void 0, {
 			silent: true,
 			thinkingIn: div
 		});
-		hintBtn.title = quizHintTitle(0);
+		const labelHint = () => {
+			const title = quizHintTitle(given);
+			hintBtn.title = title;
+			hintBtn.setAttribute("aria-label", title.split("\n")[0]);
+		};
+		hintBtn.addEventListener("ai-ask-pending", (e) => {
+			if (e.detail) {
+				given = next();
+				labelHint();
+			}
+		});
+		labelHint();
 		div.appendChild(q);
 		const opts = document.createElement("div");
 		opts.className = "fa-probe-opts";
