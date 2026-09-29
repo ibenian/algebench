@@ -2634,6 +2634,10 @@ export class FunctionAnalysisManager {
                 // `as` — every child of `.fa-probe-opts` is a <button> built
                 // by this same loop.
                 for (const c of opts.children) (c as HTMLButtonElement).disabled = true;
+                // Answered: the pre-answer hint ("I have NOT answered it
+                // yet") no longer applies — the post-answer button below is
+                // the only AI action left.
+                hintBtn.remove();
                 const right = i === probe.correct_index;
                 b.classList.add(right ? 'right' : 'wrong');
                 if (!right && opts.children[probe.correct_index]) {

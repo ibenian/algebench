@@ -1954,6 +1954,19 @@ function makeAiAskButton(className, title, getMessage) {
 function makeSilentAiAskButton(className, title, getMessage) {
 	return _makeAiAskButton(className, title, getMessage, true);
 }
+/**
+* One silent ask at a time, across every silent AI button: sendChatMessage
+* keeps a single `chatSending` flag but doesn't turn a second caller away,
+* so two in flight clear each other's state and race on the same history.
+* While one is out, every silent button is disabled.
+*/
+var _silentAskInFlight = false;
+function _setSilentAsksBusy(busy) {
+	_silentAskInFlight = busy;
+	document.querySelectorAll("button[data-ai-silent]").forEach((b) => {
+		b.disabled = busy;
+	});
+}
 function _makeAiAskButton(className, title, getMessage, silent) {
 	const btn = document.createElement("button");
 	btn.type = "button";
@@ -1961,6 +1974,10 @@ function _makeAiAskButton(className, title, getMessage, silent) {
 	btn.title = title + "\n\nClick to send · ⌘-click (Ctrl on Windows) to edit";
 	btn.setAttribute("aria-label", title);
 	btn.innerHTML = AI_SPARKLE_SVG;
+	if (silent) {
+		btn.dataset.aiSilent = "";
+		btn.disabled = _silentAskInFlight;
+	}
 	btn.addEventListener("click", (e) => {
 		e.stopPropagation();
 		const raw = getMessage();
@@ -1977,11 +1994,12 @@ function _makeAiAskButton(className, title, getMessage, silent) {
 			return;
 		}
 		if (typeof sendChatMessage !== "function") return;
+		if (silent && _silentAskInFlight) return;
 		const sending = sendChatMessage(message, { silent });
 		if (!silent) return;
 		const pending = (on) => {
 			btn.setAttribute("aria-busy", on ? "true" : "false");
-			btn.disabled = on;
+			_setSilentAsksBusy(on);
 			btn.dispatchEvent(new CustomEvent("ai-ask-pending", { detail: on }));
 		};
 		pending(true);
@@ -25544,6 +25562,7 @@ var FunctionAnalysisManager = class {
 			this._inlineMath(b, o);
 			b.addEventListener("click", () => {
 				for (const c of opts.children) c.disabled = true;
+				hintBtn.remove();
 				const right = i === probe.correct_index;
 				b.classList.add(right ? "right" : "wrong");
 				if (!right && opts.children[probe.correct_index]) opts.children[probe.correct_index].classList.add("right");
