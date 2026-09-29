@@ -24330,7 +24330,7 @@ var FunctionAnalysisManager = class {
 			xLatex: this._varLatex(chars, view.x_var),
 			exprLatex: chars.dependentLatex || chars.expression || "f",
 			anns: annotations.filter((a) => !this._hiddenGroups.has(a.group || "")),
-			singXs: this._singularityXs(chars)
+			singXs: this._singularityXs(chars, view)
 		};
 		this._renderAnnLegend(legend, view, annotations, () => this._updateChartData(chart, chars, view, state));
 		chart.update("none");
@@ -25398,8 +25398,15 @@ var FunctionAnalysisManager = class {
 		}
 		ctx.restore();
 	}
-	/** The CAS singularities' x positions, as numbers (unresolvable ones skipped). */
-	_singularityXs(chars) {
+	/**
+	* The CAS singularities' x positions, as numbers (unresolvable ones
+	* skipped) — but only when this view sweeps the ANALYZED variable: the
+	* CAS locations are values of that variable, and on a view sweeping
+	* another one (see `_featureRows`) the same number would mark the wrong
+	* place. Gap detection still covers breaks on such views.
+	*/
+	_singularityXs(chars, view) {
+		if ((chars.variable || view.x_var) !== view.x_var) return [];
 		const f = (chars.features || {}).singularities;
 		return (f && f.points || []).map((p) => Number(p.location?.approx)).filter((x) => Number.isFinite(x));
 	}
