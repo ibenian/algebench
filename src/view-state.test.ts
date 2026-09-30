@@ -220,9 +220,9 @@ test('fax (function-analysis expression) parses, never serialized', () => {
     assert.equal(serializeViewState({ fax: 'x^2', sc: 's1' }), 'sc=s1');
 });
 
-test('cv carries selector metacharacters verbatim (escaped at the DOM, not here)', () => {
+test('cv carries selector metacharacters verbatim (the DOM lookup never builds a selector from it)', () => {
     // A hostile deep link must parse without throwing; the value is only ever
-    // matched through CSS.escape, so parse keeps it as-is.
+    // compared against data-view directly (cam-buttons.ts), so parse keeps it as-is.
     assert.deepEqual(parseViewState('cv=' + encodeURIComponent('x"]')), { cv: 'x"]' });
     // Real camera-view keys are lowercased scene names and are not plain tokens.
     for (const cv of ['side-(yz)', 'ride:-chased-ship', 'ship-&-photon', 'iso']) {

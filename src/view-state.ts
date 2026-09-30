@@ -333,8 +333,9 @@ export function parseViewState(search: string | URLSearchParams | null | undefin
     // Camera-view keys are scene-authored names lowercased with whitespace -> '-'
     // (camera.ts), so real keys carry `(`, `:`, `&`, `\`, `$`… (`side-(yz)`,
     // `ride:-chased-ship`) and a plain-token filter would break those links. The
-    // value is never trusted as selector syntax — every lookup goes through
-    // CSS.escape — so here it is only bounded, like the other free-text params.
+    // value is never used as selector syntax — every lookup compares it against
+    // data-view directly (cam-buttons.ts) — so here it is only bounded, like the
+    // other free-text params.
     const cv = params.get('cv');
     if (cv && cv.length <= CV_MAX_LEN) vs.cv = cv;
 

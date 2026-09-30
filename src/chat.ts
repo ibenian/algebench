@@ -18,6 +18,7 @@ export {};
 import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
+import { findCamButton } from '/cam-buttons.js';
 import { stripGlossaryMarkers } from '/glossary-core.js';
 import { singleFlightSender } from '/chat-flight.js';
 import {
@@ -924,7 +925,7 @@ async function _sendTurn(text: string, silent: boolean): Promise<void> {
                         } else {
                             // Follow-cam and expr-camera views aren't in CAMERA_VIEWS;
                             // activate them by clicking the matching camera button.
-                            const btn = document.querySelector<HTMLElement>(`.cam-btn[data-view="${CSS.escape(key)}"]`);
+                            const btn = findCamButton(key);
                             if (btn) btn.click();
                         }
                     } else if (tc.args.position || tc.args.target) {

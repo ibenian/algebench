@@ -1078,6 +1078,13 @@ function _normalizeUpVector(up) {
 	return v.normalize();
 }
 //#endregion
+//#region src/cam-buttons.ts
+/** The `.cam-btn` whose `data-view` is exactly `view`, or null. */
+function findCamButton(view, root = document) {
+	for (const btn of root.querySelectorAll(".cam-btn")) if (btn.dataset.view === view) return btn;
+	return null;
+}
+//#endregion
 //#region src/glossary-core.ts
 /** `{{glossary:KEY}}` or `{{glossary:KEY|shown text}}`. */
 var GLOSSARY_MARKER_RE = /\{\{glossary:([^{}|]+?)(?:\|([^{}]+?))?\}\}/g;
@@ -6618,7 +6625,7 @@ function animateCamera$1(view, duration) {
 	}
 	const startTime = performance.now();
 	document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
-	const activeBtn = document.querySelector(`.cam-btn[data-view="${CSS.escape(view)}"]`);
+	const activeBtn = findCamButton(view);
 	if (activeBtn) activeBtn.classList.add("active");
 	cameraState.cameraAnimating = true;
 	if (duration === 0) {
@@ -19249,7 +19256,7 @@ async function applyViewState(vs, opts = {}) {
 				c.updateProjectionMatrix();
 			}
 		}
-		const cvBtn = vs.cv ? document.querySelector(`.cam-btn[data-view="${CSS.escape(vs.cv)}"]`) : null;
+		const cvBtn = vs.cv ? findCamButton(vs.cv) : null;
 		const cvDynamic = !!(cvBtn && cvBtn.classList.contains("cam-btn-follow"));
 		if (cvBtn && cvDynamic && !cvBtn.classList.contains("active")) cvBtn.click();
 		const dynamicCam = bridgeState.followCamState || bridgeState.cameraExprState;
@@ -29223,7 +29230,7 @@ async function _sendTurn(text, silent) {
 					const key = viewName.toLowerCase().replace(/\s+/g, "-");
 					if (CAMERA_VIEWS[key]) animateCamera(key, 800);
 					else {
-						const btn = document.querySelector(`.cam-btn[data-view="${CSS.escape(key)}"]`);
+						const btn = findCamButton(key);
 						if (btn) btn.click();
 					}
 				} else if (tc.args.position || tc.args.target) {
