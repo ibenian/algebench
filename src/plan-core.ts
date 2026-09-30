@@ -174,11 +174,13 @@ export function navigableView(view: ViewState): ViewState {
         if (sl.length) v.sliders = Object.fromEntries(sl) as Record<string, number>;
     }
     const cam = src.cam as Record<string, unknown> | undefined;
+    // By index, not every(): every() skips the holes of a sparse array.
     const triple = (t: unknown): t is [number, number, number] =>
-        Array.isArray(t) && t.length === 3 && t.every((n) => Number.isFinite(n));
+        Array.isArray(t) && t.length === 3 && [0, 1, 2].every((i) => Number.isFinite(t[i]));
     if (isObject(cam) && triple(cam!.position) && triple(cam!.target)) {
-        v.cam = { position: [...cam!.position], target: [...cam!.target] };
-        if (triple(cam!.up)) v.cam.up = [...cam!.up];
+        const copy = (t: [number, number, number]): [number, number, number] => [t[0], t[1], t[2]];
+        v.cam = { position: copy(cam!.position), target: copy(cam!.target) };
+        if (triple(cam!.up)) v.cam.up = copy(cam!.up);
     }
     return v;
 }
@@ -610,7 +612,8 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
     if (p.completedAt !== undefined && !Number.isFinite(p.completedAt)) errs.push(`${path}: bad completedAt`);
     if (!Array.isArray(p.steps)) return [...errs, `${path}: steps is not a list`];
     const ids = new Set<string>();
-    p.steps.forEach((step, i) => {
+    // Array.from: forEach skips a sparse array's holes; a hole must be reported.
+    Array.from(p.steps).forEach((step, i) => {
         const at = `${path}.steps[${i}]`;
         if (!step || typeof step.id !== 'string' || !step.id) { errs.push(`${at}: missing id`); return; }
         if (ids.has(step.id)) errs.push(`${at}: duplicate id "${step.id}"`);
@@ -656,7 +659,7 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
         if (!Array.isArray(frames) || !frames.length) errs.push(`${path}.nav: frames is not a non-empty list`);
         else if (frames.length > MAX_PLAN_DEPTH) errs.push(`${path}.nav: deeper than ${MAX_PLAN_DEPTH} frames`);
         else {
-            frames.forEach((f, i) => {
+            Array.from(frames).forEach((f, i) => {
                 const fr = f as Partial<NavFrame> | null;
                 if (!isObject(fr) || !nonEmpty(fr!.planId) || !nonEmpty(fr!.stepId) || !isObject(fr!.cameFrom)) {
                     errs.push(`${path}.nav.frames[${i}]: needs planId, stepId and a cameFrom view`);
@@ -664,7 +667,7 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
             });
             // The navigator never enters a plan it is already in (no cycles).
             const seen = new Set<string>();
-            frames.forEach((f, i) => {
+            Array.from(frames).forEach((f, i) => {
                 const id = isObject(f) ? (f as Partial<NavFrame>).planId : undefined;
                 if (typeof id !== 'string') return;
                 if (seen.has(id)) errs.push(`${path}.nav.frames[${i}]: plan "${id}" is already on the stack`);

@@ -585,6 +585,18 @@ test('navigableView keeps draft lesson ids and drops prototype-named sliders', (
     assert.deepEqual(validatePlan(draft), []);
 });
 
+test('holes in sparse arrays are reported or dropped, not skipped', () => {
+    const { root } = fixture();
+    const sparse = { ...root, steps: [...root.steps] };
+    delete (sparse.steps as unknown[])[1];   // a hole, as structured clone can store
+    assert.ok(validatePlan(sparse).includes('plan.steps[1]: missing id'));
+
+    const hole = [1, 2, 3] as [number, number, number];
+    delete (hole as unknown[])[1];
+    const v = navigableView({ builtin: L, cam: { position: hole, target: [0, 0, 0] } });
+    assert.equal(v.cam, undefined, 'a camera vector with a hole is not finite');
+});
+
 test('a nested plan may not reuse an id already in its plan', () => {
     const { root } = fixture();
     const bad = JSON.parse(JSON.stringify(root));

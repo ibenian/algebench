@@ -64,7 +64,14 @@ export function createPlanStore(factory: IDBFactory | undefined = globalThis.ind
     let db: Promise<IDBDatabase> | null = null;
     const conn = (): Promise<IDBDatabase> => {
         if (!factory) return Promise.reject(new Error('IndexedDB is not available in this browser'));
-        db ??= openDb(factory).catch((e) => { db = null; throw e; });
+        db ??= openDb(factory).then((d) => {
+            // Another tab upgrading the schema (or deleting the database) asks
+            // open connections to close; a cached one would block it forever.
+            // Close, forget it, and reopen on the next call.
+            d.onversionchange = () => { d.close(); db = null; };
+            d.onclose = () => { db = null; };
+            return d;
+        }, (e) => { db = null; throw e; });
         return db;
     };
     return {
