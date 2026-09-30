@@ -370,7 +370,7 @@ export function forward(plan: LearningPlan, lookup: PlanLookup, now: number): Na
     s.frames.pop();
     const parent = chain[depth - 1]!;
     const holder = stepById(parent, s.frames[depth - 1]!.stepId);
-    if (holder) holder.state = 'done';
+    if (holder && holder.state !== 'skipped') holder.state = 'done';   // as Forward: a skip stays a skip
     s.touch(parent, now);
     return s.result(frame.cameFrom);
 }
@@ -495,7 +495,8 @@ export function progress(plan: LearningPlan, lookup: PlanLookup, seen: Set<strin
         if (step.kind !== 'subplan') { if (step.state === 'done') done += 1; continue; }
         const sub = 'nested' in step.sub ? step.sub.nested : lookup(step.sub.planId);
         if (!sub) continue;                                   // deleted: counts 0
-        if (seen.has(sub.id)) { if (step.state === 'done') done += 1; continue; }   // a cycle: its own mark
+        // A cycle, or a sub-plan with nothing in it: the step's own mark.
+        if (seen.has(sub.id) || !sub.steps.length) { if (step.state === 'done') done += 1; continue; }
         done += progress(sub, lookup, new Set(seen)).fraction;
     }
     return { done, total, fraction: done / total };
@@ -616,11 +617,16 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
             else if (!isObject(sub) || !nonEmpty((sub as { planId?: unknown }).planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
-            const refOk = isObject(ref) && typeof ref.lesson === 'string' && !!ref.lesson;
+            const refOk = isObject(ref) && typeof ref.lesson === 'string' && TOKEN.test(ref.lesson);
             if (!refOk) errs.push(`${at}: missing ref.lesson`);
             else {
                 const missing = KIND_IDS[step.kind]!.filter((k) => typeof ref[k] !== 'string' || !ref[k]);
                 if (missing.length) errs.push(`${at}: a ${step.kind} ref needs ${missing.join(' and ')}`);
+                // Location ids must survive navigableView, or the step would
+                // validate but open somewhere else (a glossary key is text, not a location).
+                const bad = (['sc', 'st', 'pf', 'ps'] as const)
+                    .filter((k) => ref[k] !== undefined && (typeof ref[k] !== 'string' || !TOKEN.test(ref[k]!)));
+                if (bad.length) errs.push(`${at}: ref ${bad.join(', ')} not a plain id`);
             }
             // The ref is the source of truth; a stored view must land on it
             // (resumeView opens lastView before view).
@@ -747,7 +753,14 @@ export function parsePlanFile(text: string): { plans: LearningPlan[]; errors: st
         const errs = validatePlan(p, `plans[${i}]`);
         if (!errs.length && ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
         if (errs.length) errors.push(...errs);
-        else { ids.add(p.id); plans.push(withNavigableViews(p)); }
+        else {
+            // Sanitizing must leave a plan the store accepts; if not, report it here.
+            const clean = withNavigableViews(p);
+            const after = validatePlan(clean, `plans[${i}]`);
+            if (after.length) { errors.push(...after); return; }
+            ids.add(p.id);
+            plans.push(clean);
+        }
     });
     return { plans, errors };
 }

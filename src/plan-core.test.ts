@@ -541,6 +541,38 @@ test('validatePlan reports a cyclic or absurdly deep plan instead of overflowing
     assert.match(errs[0]!, /nested more than 32 deep$/);
 });
 
+test('ref location ids must be plain ids, so an accepted import is one the store accepts', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    const i = bad.steps.findIndex((st: PlanStep) => st.kind === 'step');
+    bad.steps[i].ref.sc = 'my scene';
+    bad.steps[i].view = refToView(bad.steps[i].ref);
+    assert.ok(validatePlan(bad).includes(`plan.steps[${i}]: ref sc not a plain id`));
+    const r = parsePlanFile(JSON.stringify({ format: 'algebench-learning-plans', version: 1, exportedAt: 0, plans: [bad] }));
+    assert.deepEqual(r.plans, []);
+    // Everything parsePlanFile does accept validates again as the store will see it.
+    const ok = parsePlanFile(JSON.stringify(exportPlans([root], fixture().lookup, 1)));
+    for (const p of ok.plans) assert.deepEqual(validatePlan(p), []);
+});
+
+test('an empty sub-plan counts by its step; finishing a sub-plan keeps a skip a skip', () => {
+    const empty = plan('empty', []);
+    const p = plan('p', [{ ...nested('e', empty), state: 'done' }]);
+    assert.equal(progress(p, () => undefined).fraction, 1, 'forwarded past an empty sub-plan: done');
+
+    const { root, lookup, save, saved } = fixture();
+    let q = save(startPlan(root, lookup, 1));
+    q = save(jumpTo(q, lookup, 's3', 2));
+    const s3 = q.steps.find((st) => st.id === 's3')!;
+    s3.state = 'skipped';
+    q = save(enter(q, lookup, ORIGIN, 3));
+    let r = forward(q, lookup, 4);
+    while (!r.changed.some((x) => x.id === 'air' && x.status === 'complete')) { q = save(r); r = forward(q, lookup, 5); }
+    const holder = save(r).steps.find((st) => st.id === 's3')!;
+    assert.equal(holder.state, 'skipped');
+    assert.ok(saved.get('air')!.status === 'complete');
+});
+
 test('a nested plan may not reuse an id already in its plan', () => {
     const { root } = fixture();
     const bad = JSON.parse(JSON.stringify(root));

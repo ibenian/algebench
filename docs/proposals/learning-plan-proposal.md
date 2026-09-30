@@ -391,7 +391,7 @@ The navigator is a small state machine over `nav.frames`. Every action changes t
 | **Enter ↘** (on a sub-plan step) | push `{planId: sub-plan, stepId: its first unfinished step, cameFrom: current view}` | sub-plan step → `visited` | that step's view |
 | **Return ⤴** | pop the top frame | **unchanged, nothing is completed** | the popped frame's `cameFrom` |
 | **Forward on a sub-plan's last step** | sub-plan → `complete` (its own walk cleared); pop | parent's sub-plan step → `done` | the popped frame's `cameFrom` |
-| **Return on the outermost frame** | clear `nav` (the plan stays active) | unchanged | `target.origin`, where the learner first asked |
+| **Return on the outermost frame** | clear `nav` (the plan stays active) | unchanged | that frame's `cameFrom`: where the walk was started from (by default `target.origin`, where the learner first asked) |
 | **Jump to any step** (click in the list) | top frame moves there | that step `todo` → `visited` (nothing is completed) | its `lastView ?? view` |
 
 - **"Knows where the user is."** On `algebench:navchange`, `proofchange`, slider and camera settle events, the current step's `lastView` is updated from `captureViewState()`. Coming back to a step (Back, Return, or a reload) lands where the learner actually left it, not just at the step's start.
