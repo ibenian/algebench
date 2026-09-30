@@ -75,6 +75,9 @@ function quizHintTitle(given: number): string {
 export interface FaPoint {
     latex?: string;
     approx?: number;
+    /** Evaluable form, set on a singularity location that depends on other
+     *  symbols — `approx` pins those to 1, the chart to its sliders. */
+    script?: string;
 }
 
 /** A CAS extremum: where it is, what the curve reads there, and its kind. */
@@ -298,6 +301,8 @@ interface FaChartState {
     xLatex: string;
     exprLatex: string;
     anns: FaEvalAnnotation[];
+    /** Where the CAS says the curve has a singularity (numeric x). */
+    singXs: number[];
 }
 
 /** A Chart.js instance carrying this module's live state. */
@@ -1210,6 +1215,7 @@ export class FunctionAnalysisManager {
             xLatex: this._varLatex(chars, view.x_var),
             exprLatex: chars.dependentLatex || chars.expression || 'f',
             anns: annotations.filter(a => !this._hiddenGroups.has(a.group || '')),
+            singXs: this._singularityXs(chars, view, state.pins),
         };
         this._renderAnnLegend(legend, view, annotations,
             () => this._updateChartData(chart, chars, view, state));
@@ -1239,6 +1245,7 @@ export class FunctionAnalysisManager {
         });
         const annotations = this._evalAnnotations(chars, view, state.pins);
         fa.anns = annotations.filter(a => !this._hiddenGroups.has(a.group || ''));
+        fa.singXs = this._singularityXs(chars, view, state.pins);   // a pole of 1/(x − a) follows a
         // Expand-only y-bounds (see _renderChart) — never shrink mid-drag.
         const b = this._yBounds(chart.data.datasets);
         if (b.min < fa.yb.min || b.max > fa.yb.max) {
@@ -2431,22 +2438,103 @@ export class FunctionAnalysisManager {
                 }
             }
             if (marks.has('singularities')) {
-                ctx.strokeStyle = ANNOTATION_COLOR;
-                ctx.setLineDash([3, 3]);
+                // Where to draw: every singularity the CAS reported inside the
+                // plotted window — edges included, which is where one often
+                // sits (C_dA = 0 at the left end) — plus any break in the
+                // sampled curve the CAS list didn't cover. Gap detection alone
+                // missed an edge singularity (no sample on its far side) or
+                // drew it a hair from the edge, under the y axis.
+                const sx = scales.x;   // narrowed by the guard at the top; closures lose that
+                const lo = sx.min, hi = sx.max;
+                const span = Math.abs(hi - lo) || 1;
+                const tol = span * 1e-9;   // one boundary for "in the window" and "past an edge"
+                const at: number[] = (chart.$fa?.singXs || [])
+                    .filter(x => x >= lo - tol && x <= hi + tol);
                 for (let i = 1; i < ys.length; i++) {
                     if ((ys[i - 1] == null) !== (ys[i] == null)) {
                         const x = (xs[i - 1]! + xs[i]!) / 2;
-                        const px = scales.x.getPixelForValue(x);
-                        ctx.beginPath();
-                        ctx.moveTo(px, chartArea.top);
-                        ctx.lineTo(px, chartArea.bottom);
-                        ctx.stroke();
+                        const px = sx.getPixelForValue(x);
+                        if (!at.some(a => Math.abs(sx.getPixelForValue(a) - px) < 6)) at.push(x);
                     }
+                }
+                ctx.strokeStyle = ANNOTATION_COLOR;
+                ctx.fillStyle = ANNOTATION_COLOR;
+                ctx.lineWidth = 1.5;
+                ctx.font = '10px ui-monospace, Menlo, monospace';
+                // Just past an edge: a view often starts a hair inside the
+                // singularity (C_dA ∈ [0.01, 5] around C_dA = 0), so there's
+                // nothing in the window to draw, and the toggle looked broken.
+                // Point at it from that edge instead — the closest one per
+                // edge, since every label on a side lands in the same spot.
+                const singXs = chart.$fa?.singXs || [];
+                const beyondLo = singXs.filter(x => x < lo - tol && lo - x <= span);
+                const beyondHi = singXs.filter(x => x > hi + tol && x - hi <= span);
+                const near = [
+                    ...(beyondLo.length ? [Math.max(...beyondLo)] : []),
+                    ...(beyondHi.length ? [Math.min(...beyondHi)] : []),
+                ];
+                // Every label — edge pointers and line names — goes through
+                // one left-to-right row allocator, so nearby poles stack
+                // instead of overprinting at the same spot.
+                const labels: Array<{ x0: number; text: string }> = [];
+                for (const x of near) {
+                    const left = x < lo;
+                    const text = `${left ? '◂ ' : ''}singularity at ${+x.toPrecision(4)}${left ? '' : ' ▸'}`;
+                    const w = ctx.measureText(text).width;
+                    labels.push({ x0: left ? chartArea.left + 6 : chartArea.right - 6 - w, text });
+                }
+                ctx.setLineDash([4, 3]);
+                for (const x of at) {
+                    // Keep a line on the window's edge inside the plot, off
+                    // the axis line it would otherwise hide under.
+                    const px = Math.min(Math.max(sx.getPixelForValue(x), chartArea.left + 2),
+                                        chartArea.right - 2);
+                    ctx.beginPath();
+                    ctx.moveTo(px, chartArea.top);
+                    ctx.lineTo(px, chartArea.bottom);
+                    ctx.stroke();
+                    // Name it, on whichever side has room.
+                    const text = 'singularity';
+                    const w = ctx.measureText(text).width;
+                    labels.push({ x0: px + 5 + w > chartArea.right ? px - 5 - w : px + 5, text });
+                }
+                ctx.setLineDash([]);
+                const rowEnds: number[] = [];
+                for (const { x0, text } of labels.sort((a, b) => a.x0 - b.x0)) {
+                    let row = 0;
+                    while (row < rowEnds.length && x0 < rowEnds[row]! + 4) row++;
+                    rowEnds[row] = x0 + ctx.measureText(text).width;
+                    ctx.fillText(text, x0, chartArea.top + 12 + row * 12);
                 }
                 ctx.setLineDash([]);
             }
         }
         ctx.restore();
+    }
+
+    /**
+     * The CAS singularities' x positions, as numbers (unresolvable ones
+     * skipped) — but only when this view sweeps the ANALYZED variable: the
+     * CAS locations are values of that variable, and on a view sweeping
+     * another one (see `_featureRows`) the same number would mark the wrong
+     * place. Gap detection still covers breaks on such views.
+     *
+     * A location that depends on other symbols carries a `script`, evaluated
+     * at the chart's current pins (its sliders); a fixed one uses `approx`.
+     */
+    _singularityXs(chars: FaCharacteristics, view: FaView, pins: Record<string, number>): number[] {
+        if ((chars.variable || view.x_var) !== view.x_var) return [];
+        const f = ((chars.features || {}) as FaFeatures).singularities as FaFeature | undefined;
+        return ((f && f.points) || [])
+            .map((p) => {
+                const loc = (p as FaSingularity).location;
+                if (loc?.script) return this._evalPos(chars, view, pins, { script: loc.script }) ?? NaN;
+                return Number(loc?.approx);
+            })
+            .filter(x => Number.isFinite(x))
+            // Parametric poles can coincide (±√a at a = 0): one line each place.
+            .sort((a, b) => a - b)
+            .filter((x, i, xs) => i === 0 || Math.abs(x - xs[i - 1]!) > 1e-9 * Math.max(1, Math.abs(x)));
     }
 
     /* ---------------- sliders ------------------------------------------ */
