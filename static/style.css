@@ -3382,6 +3382,15 @@ body.rotating-axis-z, body.rotating-axis-z * {
     align-items: flex-start;
     animation: chatFadeIn 0.2s ease;
 }
+/* A long reply scrolls, but who's speaking and its speaker button stay in
+   sight: the avatar and the speak column pin to the top of the message list
+   while any of their message is on screen, and leave with it. */
+.chat-msg > .msg-avatar,
+.chat-msg > .tts-speak-col {
+    position: sticky;
+    top: 4px;
+    z-index: 1;
+}
 @keyframes chatFadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
