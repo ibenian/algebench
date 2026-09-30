@@ -19,6 +19,7 @@ import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
 import { stripGlossaryMarkers } from '/glossary-core.js';
+import { singleFlightSender } from '/chat-flight.js';
 import {
     buildSceneRequestFromToolCall, interpretBuildSceneReply,
     type BuildSceneToolArgs,
@@ -74,6 +75,17 @@ interface ChatMessageElement extends HTMLDivElement {
 let chatHistory: ChatHistoryEntry[] = [];       // [{role: 'user'|'assistant', text: string}]
 let chatAvailable = false;  // set true if GEMINI_API_KEY is configured
 let chatSending = false;
+
+/**
+ * The one place `chatSending` changes. It's app-wide state — every AI ask
+ * button reflects it — so each change is announced (`algebench:chatbusy`,
+ * detail `{ busy }`) and readable via window.algebenchChatBusy().
+ */
+function setChatSending(busy: boolean): void {
+    chatSending = busy;
+    try { window.dispatchEvent(new CustomEvent('algebench:chatbusy', { detail: { busy } })); } catch (_) { /* ignore */ }
+}
+window.algebenchChatBusy = () => chatSending;
 let activeSpeakBtn: SpeakButton | null = null;  // the .msg-speak-btn currently playing TTS
 let welcomeInFlight = false;
 let welcomeRequestId = 0;
@@ -140,7 +152,7 @@ function setPresetPrompts(prompts: string[] | null | undefined): void {
                     input.dispatchEvent(new Event('input'));
                 }
             } else {
-                if (!chatSending) sendChatMessage(text);
+                sendChatMessage(text);
             }
         });
         container.appendChild(btn);
@@ -765,8 +777,14 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
     }
 }
 
-async function sendChatMessage(text: string, { silent = false }: { silent?: boolean } = {}): Promise<void> {
-    chatSending = true;
+/**
+ * Send one chat turn. Single-flight (chat-flight.ts): mid-turn, a visible ask
+ * is queued and a silent one is turned away with `false`.
+ */
+const sendChatMessage = singleFlightSender(() => chatSending, _sendTurn);
+
+async function _sendTurn(text: string, silent: boolean): Promise<void> {
+    setChatSending(true);
     if (!silent) addChatMessage('user', text);
 
     const loadingEl = addChatLoading();
@@ -808,7 +826,7 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
                 'color: #ff4444; font-weight: bold', 'color: #ccc');
             addChatMessage('assistant', msg || 'Something went wrong. Please try again.');
             if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user') chatHistory.pop();
-            chatSending = false;
+            setChatSending(false);
             return;
         }
 
@@ -1047,7 +1065,7 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
         if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user') chatHistory.pop();
     }
 
-    chatSending = false;
+    setChatSending(false);
 }
 
 // ----- Message Rendering -----
