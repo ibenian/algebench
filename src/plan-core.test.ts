@@ -527,6 +527,20 @@ test('finishing a sub-plan clears its own walk, and a complete plan with a walk 
         .includes('plan: a complete plan is not being walked, but has a saved position'));
 });
 
+test('validatePlan reports a cyclic or absurdly deep plan instead of overflowing', () => {
+    const { root } = fixture();
+    const cyclic = JSON.parse(JSON.stringify(root));
+    const n = cyclic.steps.findIndex((st: PlanStep) => st.kind === 'subplan' && 'nested' in st.sub);
+    cyclic.steps[n].sub.nested = cyclic;   // what a structured-clone record can hold
+    assert.ok(validatePlan(cyclic).includes(`plan.steps[${n}].sub.nested: a plan that contains itself`));
+
+    let deep = plan('d0', [content('x', { lesson: L, sc: 'a' }, 'scene')]);
+    for (let d = 1; d <= 40; d++) deep = plan(`d${d}`, [nested(`k${d}`, deep)]);
+    const errs = validatePlan(deep);
+    assert.equal(errs.length, 1);
+    assert.match(errs[0]!, /nested more than 32 deep$/);
+});
+
 test('a nested plan may not reuse an id already in its plan', () => {
     const { root } = fixture();
     const bad = JSON.parse(JSON.stringify(root));

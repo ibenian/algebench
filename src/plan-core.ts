@@ -573,10 +573,20 @@ const KIND_IDS: Record<string, ReadonlyArray<keyof ContentRef>> = {
 const STATES = new Set<string>(['todo', 'visited', 'done', 'skipped']);
 
 /** Structural problems with a plan (e.g. an imported file); empty when valid. */
-export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> = new Set()): string[] {
+/** How deep nested plans may go before validation stops descending. Far more
+ *  than the navigator can walk (MAX_PLAN_DEPTH); it only bounds the recursion
+ *  so a deep import or a cyclic IndexedDB record is reported, not a stack overflow. */
+const MAX_NESTING = 32;
+
+export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> = new Set(),
+                             ancestors: Set<object> = new Set()): string[] {
     const errs: string[] = [];
     const p = plan as Partial<LearningPlan> | null;
     if (!p || typeof p !== 'object') return [`${path}: not an object`];
+    // Structured clone keeps cycles, so a stored record can contain itself.
+    if (ancestors.has(p)) return [`${path}: a plan that contains itself`];
+    if (ancestors.size >= MAX_NESTING) return [`${path}: nested more than ${MAX_NESTING} deep`];
+    ancestors = new Set(ancestors).add(p);
     // The navigator tells plans apart by id (cycles, frames): one id per plan in the tree.
     if (typeof p.id === 'string' && p.id) {
         if (planIds.has(p.id)) errs.push(`${path}: plan id "${p.id}" is used twice in this plan`);
@@ -602,7 +612,7 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
         if (step.source !== 'ai' && step.source !== 'learner') errs.push(`${at}: bad source`);
         if (step.kind === 'subplan') {
             const sub = (step as SubplanStep).sub as unknown;
-            if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`, planIds));
+            if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`, planIds, ancestors));
             else if (!isObject(sub) || !nonEmpty((sub as { planId?: unknown }).planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
