@@ -113,8 +113,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `main` |
-| **Commit** | `81af8ce` |
-| **Date** | 2026-09-29 21:03:02 -0400 |
+| **Commit** | `069c12c` |
+| **Date** | 2026-09-29 22:12:10 -0400 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -123,7 +123,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "src", "tests", "backend", "static", "scripts", "(other)", "docs", "schemas", "themes"]
-  bar [74791, 43463, 25807, 24172, 12727, 9859, 8433, 4205, 2778, 317]
+  bar [74791, 44843, 25807, 24172, 12727, 9859, 8433, 4373, 2778, 317]
 ```
 
 ## By Directory
@@ -131,22 +131,22 @@ xychart-beta horizontal
 | Directory | Code | Comments | Blanks |
 |---|---:|---:|---:|
 | `scenes/` | 74,791 | 0 | 1 |
-| `src/` | 43,463 | 10,735 | 4,101 |
+| `src/` | 44,843 | 10,949 | 4,262 |
 | `tests/` | 25,807 | 2,017 | 5,549 |
 | `backend/` | 24,172 | 4,187 | 3,636 |
 | `static/` | 12,727 | 1,458 | 670 |
 | `scripts/` | 9,859 | 1,394 | 1,364 |
 | `(other)/` | 8,433 | 0 | 0 |
-| `docs/` | 4,205 | 9,774 | 3,155 |
+| `docs/` | 4,373 | 10,005 | 3,223 |
 | `schemas/` | 2,778 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **206,552** | **29,565** | **18,476** |
+| **Total** | **208,100** | **30,010** | **18,705** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "TypeScript", "CSS", "JavaScript", "HTML", "Shell", "YAML", "BASH", "Dockerfile", "TOML"]
-  bar [89258, 56167, 43612, 7233, 2739, 2346, 463, 29, 16, 16, 2]
+  bar [89258, 56167, 44992, 7233, 2739, 2346, 463, 29, 16, 16, 2]
 ```
 
 ## Summary by Language
@@ -157,7 +157,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     77        89264        89258            0            6
  Python                  272        72862        56167         6500        10195
- TypeScript              133        58516        43612        10797         4107
+ TypeScript              137        60271        44992        11011         4268
  CSS                       9         8339         7233          734          372
  JavaScript                9         3773         2739          720          314
  Shell                     6          740          463          198           79
@@ -173,16 +173,16 @@ xychart-beta horizontal
  |- JavaScript             7         1045          905           48           92
  (Total)                             5209         4640          317          252
 ─────────────────────────────────────────────────────────────────────────────────
- Markdown                 86        18497            0        14073         4424
+ Markdown                 87        18796            0        14304         4492
  |- BASH                  25          503          380           84           39
  |- JavaScript             1           10            6            3            1
- |- JSON                  35         1385         1385            0            0
+ |- JSON                  36         1553         1553            0            0
  |- Markdown               1            1            0            1            0
  |- Python                 9          462          421            7           34
  |- XML                    1          228          185           43            0
- (Total)                            21086         2377        14211         4498
+ (Total)                            21553         2545        14442         4566
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   612       260066       206552        33674        19840
+ Total                   617       262288       208100        34119        20069
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -192,7 +192,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- TypeScript              132        58299        43463        10735         4101
+ TypeScript              136        60054        44843        10949         4262
 ─────────────────────────────────────────────────────────────────────────────────
  |imation/proof-animation.ts         3896         3790           81           25
  |lgebench/src/graph-view.ts         3129         2202          717          210
@@ -213,7 +213,9 @@ xychart-beta horizontal
  |roof-animation/sg-proof.ts         1076          787          213           76
  |ch/algebench/src/labels.ts          873          636          172           65
  |bench/src/object-picker.ts          867          603          199           65
+ |ench/src/plan-core.test.ts          672          584           18           70
  |ench/src/types/lesson.d.ts         1809          583         1224            2
+ |algebench/src/plan-core.ts          797          564          165           68
  |objects/animated-vector.ts          637          550           35           52
  |lgebench/src/follow-cam.ts          564          487           37           40
  |graph-panel/graph-panel.ts          612          439          119           54
@@ -255,6 +257,7 @@ xychart-beta horizontal
  |/labels-silent-ask.test.ts          172          147           10           15
  |ench/algebench/src/main.ts          191          146           34           11
  |deeplink-roundtrip.test.ts          215          146           41           28
+ |nch/src/plan-store.test.ts          166          144            8           14
  |ench/src/objects/vector.ts          163          144            4           15
  |nch/src/builder-context.ts          240          141           78           21
  |src/derive-payload.test.ts          175          137           20           18
@@ -275,6 +278,7 @@ xychart-beta horizontal
  |ench/src/colormaps.test.ts          137           98           17           22
  |ch/src/objects/cylinder.ts          114           97            4           13
  |/types/semantic-graph.d.ts          273           89          182            2
+ |lgebench/src/plan-store.ts          120           88           23            9
  |ebench/src/objects/text.ts          107           88            6           13
  |ench/src/build-progress.ts          214           87          114           13
  |nch/algebench/src/icons.ts          148           87           40           21
@@ -377,7 +381,7 @@ xychart-beta horizontal
  |- BASH                                3            3            0            0
  /home/runner/work/algebench/algebench/static/proof-animation/README.md             46            0           38            8
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   154        73154        56190        12193         4771
+ Total                   158        74909        57570        12407         4932
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -622,9 +626,9 @@ xychart-beta horizontal
  |completion/domains/base.py           49           34            2           13
  |ts/test_grounding_score.py           48           33            4           11
  |nd/experts/test_dataset.py           44           33            0           11
+ |/backend/model/__init__.py           31           29            0            2
  |nd/semantic_graph/cache.py           41           29            0           12
  |semantic_graph/id_utils.py           35           29            1            5
- |/backend/model/__init__.py           31           29            0            2
  |ackend/experts/__init__.py           34           28            0            6
  |end/experts/cas_workers.py           41           27            0           14
  |ompletion/domains/logic.py           32           24            0            8
@@ -670,9 +674,9 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| TypeScript + JavaScript (frontend) | 45981 | 45% |
+| TypeScript + JavaScript (frontend) | 47361 | 45% |
 | Python (backend) | 56167 | 55% |
-| **Total** | **102148** | **100%** |
+| **Total** | **103528** | **100%** |
 
 </script>
 </body>
