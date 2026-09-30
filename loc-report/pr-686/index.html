@@ -113,8 +113,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `learning-plan-core` |
-| **Commit** | `52719a5` |
-| **Date** | 2026-09-29 18:51:24 -0400 |
+| **Commit** | `896ced0` |
+| **Date** | 2026-09-30 00:09:17 +0000 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -123,7 +123,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "src", "tests", "backend", "static", "scripts", "(other)", "docs", "schemas", "themes"]
-  bar [74791, 43928, 25791, 24166, 12709, 9859, 8433, 4373, 2778, 317]
+  bar [74791, 44319, 25791, 24166, 12721, 9859, 8433, 4373, 2778, 317]
 ```
 
 ## By Directory
@@ -131,22 +131,22 @@ xychart-beta horizontal
 | Directory | Code | Comments | Blanks |
 |---|---:|---:|---:|
 | `scenes/` | 74,791 | 0 | 1 |
-| `src/` | 43,928 | 10,767 | 4,176 |
+| `src/` | 44,319 | 10,854 | 4,217 |
 | `tests/` | 25,791 | 2,014 | 5,541 |
 | `backend/` | 24,166 | 4,181 | 3,636 |
-| `static/` | 12,709 | 1,452 | 669 |
+| `static/` | 12,721 | 1,455 | 670 |
 | `scripts/` | 9,859 | 1,394 | 1,364 |
 | `(other)/` | 8,433 | 0 | 0 |
 | `docs/` | 4,373 | 10,005 | 3,223 |
 | `schemas/` | 2,778 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **207,145** | **29,813** | **18,610** |
+| **Total** | **207,548** | **29,903** | **18,652** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "TypeScript", "CSS", "JavaScript", "HTML", "Shell", "YAML", "BASH", "Dockerfile", "TOML"]
-  bar [89258, 56145, 44077, 7215, 2739, 2346, 463, 29, 16, 16, 2]
+  bar [89258, 56145, 44468, 7227, 2739, 2346, 463, 29, 16, 16, 2]
 ```
 
 ## Summary by Language
@@ -157,8 +157,8 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     77        89264        89258            0            6
  Python                  272        72823        56145         6491        10187
- TypeScript              133        59088        44077        10829         4182
- CSS                       9         8314         7215          728          371
+ TypeScript              136        59607        44468        10916         4223
+ CSS                       9         8330         7227          731          372
  JavaScript                9         3773         2739          720          314
  Shell                     6          740          463          198           79
  YAML                      1           55           29           25            1
@@ -182,7 +182,7 @@ xychart-beta horizontal
  |- XML                    1          228          185           43            0
  (Total)                            21553         2545        14442         4566
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   613       261041       207145        33922        19974
+ Total                   616       261576       207548        34012        20016
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -192,17 +192,17 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- TypeScript              132        58871        43928        10767         4176
+ TypeScript              135        59390        44319        10854         4217
 ─────────────────────────────────────────────────────────────────────────────────
  |imation/proof-animation.ts         3896         3790           81           25
  |lgebench/src/graph-view.ts         3129         2202          717          210
- |src/graph-panel/fa-page.ts         2730         2004          553          173
+ |src/graph-panel/fa-page.ts         2820         2058          585          177
  |h/algebench/src/overlay.ts         2090         1933          106           51
  |ch/algebench/src/camera.ts         2477         1771          483          223
  |nch/algebench/src/prove.ts         1896         1725          122           49
  |panel/d3-semantic-graph.ts         2212         1620          382          210
  |ebench/src/json-browser.ts         1502         1441           18           43
- |ench/algebench/src/chat.ts         1856         1407          272          177
+ |ench/algebench/src/chat.ts         1874         1414          281          179
  |nch/algebench/src/proof.ts         1434         1231          148           55
  |ebench/src/scene-loader.ts         1553         1180          248          125
  |rc/graph-panel/sg-chart.ts         1340         1059          137          144
@@ -211,20 +211,20 @@ xychart-beta horizontal
  |ench/src/objects/tensor.ts         1346          830          433           83
  |bench/src/objects/chart.ts         1117          808          256           53
  |roof-animation/sg-proof.ts         1076          787          213           76
+ |ch/algebench/src/labels.ts          873          636          172           65
  |bench/src/object-picker.ts          867          603          199           65
- |ch/algebench/src/labels.ts          810          598          151           61
  |ench/src/types/lesson.d.ts         1809          583         1224            2
  |objects/animated-vector.ts          637          550           35           52
  |lgebench/src/follow-cam.ts          564          487           37           40
- |algebench/src/plan-core.ts          625          448          115           62
+ |algebench/src/plan-core.ts          636          458          116           62
  |graph-panel/graph-panel.ts          612          439          119           54
  |bench/src/lesson-picker.ts          462          438           17            7
  |ebench/algebench/src/ui.ts          538          420           61           57
  |h/src/view-state-bridge.ts          651          418          181           52
  |ench/algebench/src/expr.ts          538          403           94           41
- |algebench/src/globals.d.ts          708          383          272           53
+ |algebench/src/globals.d.ts          711          384          274           53
+ |ench/src/plan-core.test.ts          430          370           14           46
  |bjects/animated-polygon.ts          439          355           44           40
- |ench/src/plan-core.test.ts          403          346           14           43
  |/objects/animated-curve.ts          405          345           19           41
  |gebench/src/renderproof.ts          462          343           83           36
  |nch/src/proof-edit-tool.ts          479          289          137           53
@@ -254,6 +254,7 @@ xychart-beta horizontal
  |algebench/src/smoothing.ts          240          161           57           22
  |/src/slider-bounds.test.ts          197          158           23           16
  |algebench/src/chartjs.d.ts          244          151           71           22
+ |/labels-silent-ask.test.ts          172          147           10           15
  |ench/algebench/src/main.ts          191          146           34           11
  |deeplink-roundtrip.test.ts          215          146           41           28
  |ench/src/objects/vector.ts          163          144            4           15
@@ -279,13 +280,14 @@ xychart-beta horizontal
  |ebench/src/objects/text.ts          107           88            6           13
  |ench/src/build-progress.ts          214           87          114           13
  |nch/algebench/src/icons.ts          148           87           40           21
- |lgebench/src/plan-store.ts          113           84           20            9
  |ebench/src/objects/grid.ts          142           84           43           15
  |/objects/grid-pure.test.ts          122           84           19           19
+ |lgebench/src/plan-store.ts          113           84           20            9
  |h/src/overlay-pure.test.ts          122           83           26           13
  |h-panel/sg-chart-script.ts          157           82           57           18
  |h/src/objects/ellipsoid.ts          100           82            7           11
  |nch/src/context-browser.ts          109           79           12           18
+ |ch/src/chat-flight.test.ts           89           79            2            8
  |raph-panel/term-resolve.ts          154           77           71            6
  |algebench/src/colormaps.ts          136           75           52            9
  |lgebench/src/proof-sync.ts          106           74           24            8
@@ -315,11 +317,12 @@ xychart-beta horizontal
  |lgebench/src/trust.test.ts           71           36           26            9
  |algebench/src/mathbox.d.ts          110           34           64           12
  |algebench/src/placement.ts          122           32           82            8
+ |gebench/src/chat-flight.ts           46           31           10            5
  |src/test-discovery.test.ts           48           29           15            4
  |src/validate-proof.test.ts           48           27           14            7
  |bench/src/objects/point.ts           43           27            9            7
- |bench/src/embed-resizer.ts           43           26           17            0
  |nch/src/objects/vectors.ts           36           26            4            6
+ |bench/src/embed-resizer.ts           43           26           17            0
  |lgebench/src/theme-init.ts           46           25           20            1
  |h/src/latex-raster.test.ts           23           17            3            3
  |node-test-resolver.test.ts           47           17           28            2
@@ -327,9 +330,9 @@ xychart-beta horizontal
  |roof-animation/dock-seq.ts            6            2            4            0
  |h/src/coach/steps/index.ts           10            1            8            1
 ─────────────────────────────────────────────────────────────────────────────────
- CSS                       8         8193         7131          702          360
+ CSS                       8         8209         7143          705          361
 ─────────────────────────────────────────────────────────────────────────────────
- |algebench/static/style.css         5196         4743          249          204
+ |algebench/static/style.css         5212         4755          252          205
  |mation/proof-animation.css         1157          819          301           37
  |ic/graph-panel/fa-page.css          474          399           54           21
  |lgebench/static/tokens.css          405          330           45           30
@@ -377,7 +380,7 @@ xychart-beta horizontal
  |- BASH                                3            3            0            0
  /home/runner/work/algebench/algebench/static/proof-animation/README.md             46            0           38            8
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   154        73701        56637        12219         4845
+ Total                   157        74236        57040        12309         4887
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -473,8 +476,8 @@ xychart-beta horizontal
  |ripts/extract_structure.py          259          218            5           36
  |/proof_completion/judge.py          256          217           10           29
  |ins/test_domain_algebra.py          279          216           24           39
- |end/experts/test_refine.py          312          216           21           75
  |proof_completion/module.py          347          216          102           29
+ |end/experts/test_refine.py          312          216           21           75
  |ench/scripts/lint_scene.py          279          216           19           44
  |experts/test_llm_config.py          283          210            9           64
  |erts/test_domain_rescue.py          306          209           28           69
@@ -507,15 +510,15 @@ xychart-beta horizontal
  |ins/test_domain_complex.py          205          159           13           33
  |/test_limits_unresolved.py          207          159            6           42
  |ains/test_domain_linalg.py          204          157           13           34
- |scripts/validate_schema.py          180          154            1           25
  |lers/build_scene/models.py          208          154           22           32
+ |scripts/validate_schema.py          180          154            1           25
  |proof_completion/refine.py          212          153           42           17
  |trypoint_venv_staleness.py          180          153            4           23
  |ripts/md_report_to_html.py          168          151            3           14
  |oof_completion/evaluate.py          178          148            5           25
  |st_domain_number_theory.py          195          147           13           35
- |graph_highlight_overlay.py          191          145            5           41
  |backend/proof_api/pages.py          185          145           27           13
+ |graph_highlight_overlay.py          191          145            5           41
  |ckend/experts/contracts.py          242          145           48           49
  |lers/proof_edit/handler.py          182          142           13           27
  |ench/backend/util/latex.py          159          141            2           16
@@ -541,8 +544,8 @@ xychart-beta horizontal
  |nch/backend/agents/base.py          124          105            0           19
  |ules/build_scene/intent.py          164          105           32           27
  |ench/tests/test_version.py          152          104            5           43
- |test_stored_change_type.py          152           99           20           33
  |proof_completion/reward.py          128           99           12           17
+ |test_stored_change_type.py          152           99           20           33
  |_prompt_endpoints_retry.py          123           98            2           23
  |s/test_proof_edit_patch.py          123           98            2           23
  |end/experts/test_reward.py          136           96            8           32
@@ -654,9 +657,9 @@ xychart-beta horizontal
  |lgebench/tests/__init__.py            0            0            0            0
  |/tests/backend/__init__.py            0            0            0            0
  |s/backend/util/__init__.py            0            0            0            0
+ |es/build_scene/__init__.py            0            0            0            0
  |semantic_graph/__init__.py            0            0            0            0
  |_graph/domains/__init__.py            0            0            0            0
- |es/build_scene/__init__.py            0            0            0            0
  |backend/agents/__init__.py            0            0            0            0
  |ackend/experts/__init__.py            0            0            0            0
  |/backend/model/__init__.py            0            0            0            0
@@ -670,9 +673,9 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| TypeScript + JavaScript (frontend) | 46446 | 45% |
+| TypeScript + JavaScript (frontend) | 46837 | 45% |
 | Python (backend) | 56145 | 55% |
-| **Total** | **102591** | **100%** |
+| **Total** | **102982** | **100%** |
 
 </script>
 </body>
