@@ -310,6 +310,16 @@ test('progress survives a cycle between referenced plans', () => {
     assert.equal(progress(a, lookup).fraction, 0.5);
 });
 
+test('a finished sub-plan step follows its plan: reopened shows its fraction, deleted counts 0', () => {
+    const half = { ...plan('half', [{ ...content('h1', { lesson: L, sc: 'a' }, 'scene'), state: 'done' as const },
+        content('h2', { lesson: L, sc: 'b' }, 'scene')]) };
+    const holder = (state: 'done' | 'skipped') => plan('p', [{ ...linked('l', 'half'), state }]);
+    const lookup: PlanLookup = (id) => (id === 'half' ? half : undefined);
+    assert.equal(progress(holder('done'), lookup).fraction, 0.5, 'a reopened plan is half done, not whole');
+    assert.equal(progress(holder('done'), () => undefined).fraction, 0, 'a deleted plan counts 0');
+    assert.equal(progress(holder('skipped'), lookup).fraction, 1, 'skipped still counts as dealt with');
+});
+
 // ----- lifecycle and validation -----
 
 test('plansReferencing finds plans that link a plan, including inside nested ones', () => {
@@ -478,6 +488,21 @@ test('every navigator move stamps the root, even inside a linked plan', () => {
     const moved = forward(p, lookup, 7);
     const saved = moved.changed.find((q) => q.id === root.id)!;
     assert.equal(saved.updatedAt, 7, 'the root, which holds the frame stack, is stamped');
+});
+
+test('validatePlan requires step titles, reasons, a known source, and non-empty ids', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    delete bad.steps[0].why;
+    bad.steps[1].source = 'someone';
+    const li = bad.steps.findIndex((st: PlanStep) => st.kind === 'subplan' && 'planId' in st.sub);
+    bad.steps[li].sub.planId = '';
+    const errs = validatePlan(bad);
+    assert.ok(errs.includes('plan.steps[0]: needs a title and a why'));
+    assert.ok(errs.includes('plan.steps[1]: bad source'));
+    assert.ok(errs.includes(`plan.steps[${li}]: sub-plan has neither nested plan nor planId`));
+    const frames = [{ planId: 'tv', stepId: 's1', cameFrom: ORIGIN }, { planId: '', stepId: 'x', cameFrom: ORIGIN }];
+    assert.ok(validatePlan({ ...root, nav: { frames } }).includes('plan.nav.frames[1]: needs planId, stepId and a cameFrom view'));
 });
 
 test('a saved position that no longer resolves is refused, not thrown', () => {

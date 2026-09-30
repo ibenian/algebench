@@ -446,8 +446,9 @@ export interface Progress {
 /**
  * How far through `plan` the learner is. A content step counts 1 once done or
  * skipped; a sub-plan step counts its sub-plan's fraction (a referenced plan
- * contributes its own, shared progress; a missing one counts 0). A complete
- * plan is 100%.
+ * contributes its own, shared progress; a missing one counts 0) — even when
+ * the step itself is marked done, since a linked plan reopened or edited
+ * since has less to show. A skipped sub-plan counts 1. A complete plan is 100%.
  */
 export function progress(plan: LearningPlan, lookup: PlanLookup, seen: Set<string> = new Set()): Progress {
     const total = plan.steps.length;
@@ -456,10 +457,12 @@ export function progress(plan: LearningPlan, lookup: PlanLookup, seen: Set<strin
     seen.add(plan.id);
     let done = 0;
     for (const step of plan.steps) {
-        if (step.state === 'done' || step.state === 'skipped') { done += 1; continue; }
-        if (step.kind !== 'subplan') continue;
+        if (step.state === 'skipped') { done += 1; continue; }
+        if (step.kind !== 'subplan') { if (step.state === 'done') done += 1; continue; }
         const sub = 'nested' in step.sub ? step.sub.nested : lookup(step.sub.planId);
-        if (sub && !seen.has(sub.id)) done += progress(sub, lookup, new Set(seen)).fraction;
+        if (!sub) continue;                                   // deleted: counts 0
+        if (seen.has(sub.id)) { if (step.state === 'done') done += 1; continue; }   // a cycle: its own mark
+        done += progress(sub, lookup, new Set(seen)).fraction;
     }
     return { done, total, fraction: done / total };
 }
@@ -556,10 +559,12 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
         if (ids.has(step.id)) errs.push(`${at}: duplicate id "${step.id}"`);
         ids.add(step.id);
         if (!STATES.has(step.state)) errs.push(`${at}: bad state`);
+        if (typeof step.title !== 'string' || typeof step.why !== 'string') errs.push(`${at}: needs a title and a why`);
+        if (step.source !== 'ai' && step.source !== 'learner') errs.push(`${at}: bad source`);
         if (step.kind === 'subplan') {
             const sub = (step as SubplanStep).sub as unknown;
             if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`));
-            else if (!isObject(sub) || typeof (sub as { planId?: unknown }).planId !== 'string') errs.push(`${at}: sub-plan has neither nested plan nor planId`);
+            else if (!isObject(sub) || !nonEmpty((sub as { planId?: unknown }).planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
             const refOk = isObject(ref) && typeof ref.lesson === 'string' && !!ref.lesson;
@@ -590,7 +595,7 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
         else {
             frames.forEach((f, i) => {
                 const fr = f as Partial<NavFrame> | null;
-                if (!isObject(fr) || typeof fr!.planId !== 'string' || typeof fr!.stepId !== 'string' || !isObject(fr!.cameFrom)) {
+                if (!isObject(fr) || !nonEmpty(fr!.planId) || !nonEmpty(fr!.stepId) || !isObject(fr!.cameFrom)) {
                     errs.push(`${path}.nav.frames[${i}]: needs planId, stepId and a cameFrom view`);
                 }
             });
@@ -609,6 +614,10 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
         }
     }
     return errs;
+}
+
+function nonEmpty(v: unknown): boolean {
+    return typeof v === 'string' && v.length > 0;
 }
 
 function isObject(v: unknown): boolean {
