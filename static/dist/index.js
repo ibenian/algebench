@@ -25495,7 +25495,7 @@ var FunctionAnalysisManager = class {
 			const loc = p.location;
 			if (loc?.script) return this._evalPos(chars, view, pins, { script: loc.script }) ?? NaN;
 			return Number(loc?.approx);
-		}).filter((x) => Number.isFinite(x));
+		}).filter((x) => Number.isFinite(x)).sort((a, b) => a - b).filter((x, i, xs) => i === 0 || Math.abs(x - xs[i - 1]) > 1e-9 * Math.max(1, Math.abs(x)));
 	}
 	_renderSliders(artifact, chars, proposal, view, host, state, onChange) {
 		host.innerHTML = "";

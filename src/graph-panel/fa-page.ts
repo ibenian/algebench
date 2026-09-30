@@ -2530,7 +2530,10 @@ export class FunctionAnalysisManager {
                 if (loc?.script) return this._evalPos(chars, view, pins, { script: loc.script }) ?? NaN;
                 return Number(loc?.approx);
             })
-            .filter(x => Number.isFinite(x));
+            .filter(x => Number.isFinite(x))
+            // Parametric poles can coincide (±√a at a = 0): one line each place.
+            .sort((a, b) => a - b)
+            .filter((x, i, xs) => i === 0 || Math.abs(x - xs[i - 1]!) > 1e-9 * Math.max(1, Math.abs(x)));
     }
 
     /* ---------------- sliders ------------------------------------------ */
