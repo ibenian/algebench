@@ -149,6 +149,14 @@ def _op_singularities(expr, var) -> dict:
     out = []
     for p in sings:
         entry: dict[str, Any] = {"location": _point(p, subs)}
+        if p.free_symbols:
+            # ``approx`` pins every other symbol to 1, but a chart moves them
+            # with its sliders (a pole of 1/(x - a) sits at a, not at 1). An
+            # evaluable script lets the chart place it for the current values.
+            try:
+                entry["location"]["script"] = sympy_to_mathjs(p)[0]
+            except Exception as exc:
+                log.debug("singularity location %s not scriptable: %s", p, exc)
         try:
             left = limit(expr, var, p, "-")
             right = limit(expr, var, p, "+")

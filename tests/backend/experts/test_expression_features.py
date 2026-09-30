@@ -87,6 +87,18 @@ def test_reciprocal_singularity_and_asymptotes():
     assert f["zeros"]["points"] == []
 
 
+def test_parametric_singularity_carries_a_script():
+    # The approx pins a = 1; the chart needs the location for ITS value of a.
+    rep = analyze(r"\frac{1}{x - a}", variable="x")
+    loc = rep["features"]["singularities"]["points"][0]["location"]
+    assert loc["approx"] == 1.0
+    assert loc["script"].strip() == "a"
+
+    # A fixed location needs none — its approx is already right.
+    rep = analyze(r"\frac{1}{x}")
+    assert "script" not in rep["features"]["singularities"]["points"][0]["location"]
+
+
 # ── x²−4: even parity, minimum, listable zeros ─────────────────────────
 
 def test_parabola_features():

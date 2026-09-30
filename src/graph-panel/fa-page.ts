@@ -75,6 +75,9 @@ function quizHintTitle(given: number): string {
 export interface FaPoint {
     latex?: string;
     approx?: number;
+    /** Evaluable form, set on a singularity location that depends on other
+     *  symbols — `approx` pins those to 1, the chart to its sliders. */
+    script?: string;
 }
 
 /** A CAS extremum: where it is, what the curve reads there, and its kind. */
@@ -1212,7 +1215,7 @@ export class FunctionAnalysisManager {
             xLatex: this._varLatex(chars, view.x_var),
             exprLatex: chars.dependentLatex || chars.expression || 'f',
             anns: annotations.filter(a => !this._hiddenGroups.has(a.group || '')),
-            singXs: this._singularityXs(chars, view),
+            singXs: this._singularityXs(chars, view, state.pins),
         };
         this._renderAnnLegend(legend, view, annotations,
             () => this._updateChartData(chart, chars, view, state));
@@ -1242,6 +1245,7 @@ export class FunctionAnalysisManager {
         });
         const annotations = this._evalAnnotations(chars, view, state.pins);
         fa.anns = annotations.filter(a => !this._hiddenGroups.has(a.group || ''));
+        fa.singXs = this._singularityXs(chars, view, state.pins);   // a pole of 1/(x − a) follows a
         // Expand-only y-bounds (see _renderChart) — never shrink mid-drag.
         const b = this._yBounds(chart.data.datasets);
         if (b.min < fa.yb.min || b.max > fa.yb.max) {
@@ -2459,9 +2463,15 @@ export class FunctionAnalysisManager {
                 // Just past an edge: a view often starts a hair inside the
                 // singularity (C_dA ∈ [0.01, 5] around C_dA = 0), so there's
                 // nothing in the window to draw, and the toggle looked broken.
-                // Point at it from that edge instead.
-                const near = (chart.$fa?.singXs || []).filter(x => (x < lo || x > hi)
-                    && Math.min(Math.abs(x - lo), Math.abs(x - hi)) <= span);
+                // Point at it from that edge instead — the closest one per
+                // edge, since every label on a side lands in the same spot.
+                const singXs = chart.$fa?.singXs || [];
+                const beyondLo = singXs.filter(x => x < lo && lo - x <= span);
+                const beyondHi = singXs.filter(x => x > hi && x - hi <= span);
+                const near = [
+                    ...(beyondLo.length ? [Math.max(...beyondLo)] : []),
+                    ...(beyondHi.length ? [Math.min(...beyondHi)] : []),
+                ];
                 for (const x of near) {
                     const left = x < lo;
                     const label = `${left ? '◂ ' : ''}singularity at ${+x.toPrecision(4)}${left ? '' : ' ▸'}`;
@@ -2496,12 +2506,19 @@ export class FunctionAnalysisManager {
      * CAS locations are values of that variable, and on a view sweeping
      * another one (see `_featureRows`) the same number would mark the wrong
      * place. Gap detection still covers breaks on such views.
+     *
+     * A location that depends on other symbols carries a `script`, evaluated
+     * at the chart's current pins (its sliders); a fixed one uses `approx`.
      */
-    _singularityXs(chars: FaCharacteristics, view: FaView): number[] {
+    _singularityXs(chars: FaCharacteristics, view: FaView, pins: Record<string, number>): number[] {
         if ((chars.variable || view.x_var) !== view.x_var) return [];
         const f = ((chars.features || {}) as FaFeatures).singularities as FaFeature | undefined;
         return ((f && f.points) || [])
-            .map(p => Number((p as FaSingularity).location?.approx))
+            .map((p) => {
+                const loc = (p as FaSingularity).location;
+                if (loc?.script) return this._evalPos(chars, view, pins, { script: loc.script }) ?? NaN;
+                return Number(loc?.approx);
+            })
             .filter(x => Number.isFinite(x));
     }
 
