@@ -138,6 +138,12 @@ export const VIEW_DIRECTIVES = ['aa', 'fax', 'pa', 'pas', 'scene'] as const;
 
 /** Ids and enum-ish values that end up in selectors and lookups: a plain token. */
 const TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
+/** A built-in lesson id: plain-token path segments, e.g. "eigenvalues" or
+ *  "draft/chart-demo" — no empty, dot-leading or traversal segments. */
+const LESSON_ID = /^(?=.{1,200}$)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/;
+/** A name safe to use as a plain-object key: not one Object.prototype answers
+ *  to (`__proto__`, `constructor`, …) — applyViewState looks sliders up by it. */
+const safeKey = (k: string): boolean => TOKEN.test(k) && !(k in Object.prototype);
 
 /**
  * `view` reduced to a location the app can apply safely: only the known,
@@ -150,7 +156,8 @@ const TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
 export function navigableView(view: ViewState): ViewState {
     const src = (isObject(view) ? view : {}) as Record<string, unknown>;
     const v: ViewState = {};
-    for (const k of ['builtin', 'view', 'panel', 'sc', 'st', 'pf', 'ps', 'cv', 'proj', 'fa'] as const) {
+    if (typeof src.builtin === 'string' && LESSON_ID.test(src.builtin)) v.builtin = src.builtin;
+    for (const k of ['view', 'panel', 'sc', 'st', 'pf', 'ps', 'cv', 'proj', 'fa'] as const) {
         const val = src[k];
         if (typeof val === 'string' && TOKEN.test(val)) v[k] = val;
     }
@@ -163,7 +170,7 @@ export function navigableView(view: ViewState): ViewState {
     }
     if (isObject(src.sliders)) {
         const sl = Object.entries(src.sliders as Record<string, unknown>)
-            .filter(([id, n]) => TOKEN.test(id) && Number.isFinite(n));
+            .filter(([id, n]) => safeKey(id) && Number.isFinite(n));
         if (sl.length) v.sliders = Object.fromEntries(sl) as Record<string, number>;
     }
     const cam = src.cam as Record<string, unknown> | undefined;
@@ -617,7 +624,7 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
             else if (!isObject(sub) || !nonEmpty((sub as { planId?: unknown }).planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
-            const refOk = isObject(ref) && typeof ref.lesson === 'string' && TOKEN.test(ref.lesson);
+            const refOk = isObject(ref) && typeof ref.lesson === 'string' && LESSON_ID.test(ref.lesson);
             if (!refOk) errs.push(`${at}: missing ref.lesson`);
             else {
                 const missing = KIND_IDS[step.kind]!.filter((k) => typeof ref[k] !== 'string' || !ref[k]);

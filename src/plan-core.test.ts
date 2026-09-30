@@ -573,6 +573,18 @@ test('an empty sub-plan counts by its step; finishing a sub-plan keeps a skip a 
     assert.ok(saved.get('air')!.status === 'complete');
 });
 
+test('navigableView keeps draft lesson ids and drops prototype-named sliders', () => {
+    assert.equal(navigableView({ builtin: 'draft/chart-demo', sc: 'a' }).builtin, 'draft/chart-demo');
+    for (const bad of ['../etc', 'draft//x', '/abs', 'a/.hidden', 'a b']) {
+        assert.equal(navigableView({ builtin: bad }).builtin, undefined, bad);
+    }
+    const sliders = JSON.parse('{"__proto__": 1, "constructor": 2, "toString": 3, "k": 4}');
+    assert.deepEqual(navigableView({ builtin: L, sliders }).sliders, { k: 4 });
+    // A draft lesson's step validates like any other.
+    const draft = plan('d', [content('x', { lesson: 'draft/chart-demo', sc: 'a' }, 'scene')]);
+    assert.deepEqual(validatePlan(draft), []);
+});
+
 test('a nested plan may not reuse an id already in its plan', () => {
     const { root } = fixture();
     const bad = JSON.parse(JSON.stringify(root));
