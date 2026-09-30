@@ -924,7 +924,7 @@ async function _sendTurn(text: string, silent: boolean): Promise<void> {
                         } else {
                             // Follow-cam and expr-camera views aren't in CAMERA_VIEWS;
                             // activate them by clicking the matching camera button.
-                            const btn = document.querySelector<HTMLElement>(`.cam-btn[data-view="${key}"]`);
+                            const btn = document.querySelector<HTMLElement>(`.cam-btn[data-view="${CSS.escape(key)}"]`);
                             if (btn) btn.click();
                         }
                     } else if (tc.args.position || tc.args.target) {

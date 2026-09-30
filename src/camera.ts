@@ -2345,7 +2345,7 @@ export function animateCamera(view: string, duration?: number): void {
     const startTime = performance.now();
 
     document.querySelectorAll<HTMLElement>('.cam-btn').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector<HTMLElement>(`.cam-btn[data-view="${view}"]`);
+    const activeBtn = document.querySelector<HTMLElement>(`.cam-btn[data-view="${CSS.escape(view)}"]`);
     if (activeBtn) activeBtn.classList.add('active');
 
     cameraState.cameraAnimating = true;

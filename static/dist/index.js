@@ -6618,7 +6618,7 @@ function animateCamera$1(view, duration) {
 	}
 	const startTime = performance.now();
 	document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
-	const activeBtn = document.querySelector(`.cam-btn[data-view="${view}"]`);
+	const activeBtn = document.querySelector(`.cam-btn[data-view="${CSS.escape(view)}"]`);
 	if (activeBtn) activeBtn.classList.add("active");
 	cameraState.cameraAnimating = true;
 	if (duration === 0) {
@@ -16371,6 +16371,7 @@ var DEFAULT_UP = [
 	1,
 	0
 ];
+var CV_MAX_LEN = 64;
 /** Round to `dp` decimals and stringify, dropping trailing zeros. */
 function fmtNum(n, dp = CAM_DECIMALS) {
 	if (!Number.isFinite(n)) return "0";
@@ -16536,7 +16537,7 @@ function parseViewState(search) {
 		if (Object.keys(sliders).length) vs.sliders = sliders;
 	}
 	const cv = params.get("cv");
-	if (cv) vs.cv = cv;
+	if (cv && cv.length <= CV_MAX_LEN) vs.cv = cv;
 	const proj = params.get("proj");
 	if (proj) vs.proj = proj;
 	const oz = params.get("oz");
@@ -19248,7 +19249,7 @@ async function applyViewState(vs, opts = {}) {
 				c.updateProjectionMatrix();
 			}
 		}
-		const cvBtn = vs.cv ? document.querySelector(`.cam-btn[data-view="${vs.cv}"]`) : null;
+		const cvBtn = vs.cv ? document.querySelector(`.cam-btn[data-view="${CSS.escape(vs.cv)}"]`) : null;
 		const cvDynamic = !!(cvBtn && cvBtn.classList.contains("cam-btn-follow"));
 		if (cvBtn && cvDynamic && !cvBtn.classList.contains("active")) cvBtn.click();
 		const dynamicCam = bridgeState.followCamState || bridgeState.cameraExprState;
@@ -29222,7 +29223,7 @@ async function _sendTurn(text, silent) {
 					const key = viewName.toLowerCase().replace(/\s+/g, "-");
 					if (CAMERA_VIEWS[key]) animateCamera(key, 800);
 					else {
-						const btn = document.querySelector(`.cam-btn[data-view="${key}"]`);
+						const btn = document.querySelector(`.cam-btn[data-view="${CSS.escape(key)}"]`);
 						if (btn) btn.click();
 					}
 				} else if (tc.args.position || tc.args.target) {

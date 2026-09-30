@@ -219,3 +219,18 @@ test('fax (function-analysis expression) parses, never serialized', () => {
     // Create-once directive: the resulting artifact's `fa` id is what persists.
     assert.equal(serializeViewState({ fax: 'x^2', sc: 's1' }), 'sc=s1');
 });
+
+test('cv carries selector metacharacters verbatim (escaped at the DOM, not here)', () => {
+    // A hostile deep link must parse without throwing; the value is only ever
+    // matched through CSS.escape, so parse keeps it as-is.
+    assert.deepEqual(parseViewState('cv=' + encodeURIComponent('x"]')), { cv: 'x"]' });
+    // Real camera-view keys are lowercased scene names and are not plain tokens.
+    for (const cv of ['side-(yz)', 'ride:-chased-ship', 'ship-&-photon', 'iso']) {
+        assert.deepEqual(parseViewState(serializeViewState({ cv })), { cv });
+    }
+});
+
+test('cv longer than the cap is dropped', () => {
+    assert.deepEqual(parseViewState('cv=' + 'a'.repeat(64)), { cv: 'a'.repeat(64) });
+    assert.deepEqual(parseViewState('cv=' + 'a'.repeat(65)), {});
+});
