@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
     back, breadcrumb, currentStep, enter, exportPlans, forward, jumpTo, markComplete, MAX_PLAN_DEPTH, parsePlanFile,
     plansReferencing, progress, recordView, refToView, reopen, returnUp, startPlan,
-    validatePlan, viewMatchesRef, VIEW_DIRECTIVES,
+    navigableView, validatePlan, viewMatchesRef, VIEW_DIRECTIVES,
 } from './plan-core.js';
 import type { ContentRef, ContentStep, LearningPlan, PlanLookup, PlanStep, SubplanStep } from './plan-core.js';
 import type { ViewState } from '/view-state.js';
@@ -503,6 +503,48 @@ test('validatePlan requires step titles, reasons, a known source, and non-empty 
     assert.ok(errs.includes(`plan.steps[${li}]: sub-plan has neither nested plan nor planId`));
     const frames = [{ planId: 'tv', stepId: 's1', cameFrom: ORIGIN }, { planId: '', stepId: 'x', cameFrom: ORIGIN }];
     assert.ok(validatePlan({ ...root, nav: { frames } }).includes('plan.nav.frames[1]: needs planId, stepId and a cameFrom view'));
+});
+
+test('finishing a sub-plan clears its own walk, and a complete plan with a walk is invalid', () => {
+    const { root, lookup, save, saved } = fixture();
+    // 'air' was once walked on its own, so it carries a saved position.
+    const airWalked = startPlan(saved.get('air')!, lookup, 1).changed.find((q) => q.id === 'air')!;
+    saved.set('air', airWalked);
+    assert.ok(airWalked.nav);
+    let p = save(startPlan(root, lookup, 2));
+    p = save(jumpTo(p, lookup, 's3', 3));
+    p = save(enter(p, lookup, ORIGIN, 4));    // into 'air'
+    let r = forward(p, lookup, 5);
+    while (!r.changed.some((q) => q.id === 'air' && q.status === 'complete')) {
+        assert.ok(!r.error, r.error);
+        p = save(r);
+        r = forward(p, lookup, 6);
+    }
+    const air = r.changed.find((q) => q.id === 'air')!;
+    assert.equal(air.nav, undefined, 'a complete plan is not being walked');
+    assert.deepEqual(validatePlan(air), []);
+    assert.ok(validatePlan({ ...airWalked, status: 'complete', completedAt: 1 })
+        .includes('plan: a complete plan is not being walked, but has a saved position'));
+});
+
+test('a nested plan may not reuse an id already in its plan', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    const n = bad.steps.findIndex((st: PlanStep) => st.kind === 'subplan' && 'nested' in st.sub);
+    bad.steps[n].sub.nested.id = root.id;
+    assert.ok(validatePlan(bad).includes(`plan.steps[${n}].sub.nested: plan id "${root.id}" is used twice in this plan`));
+});
+
+test('navigableView keeps a clean location and drops anything malformed or active', () => {
+    const cam = { position: [1, 2, 3] as [number, number, number], target: [0, 0, 0] as [number, number, number] };
+    const clean = { builtin: L, sc: 'a-b', st: 'c', pp: true, panel: 'chat', cv: 'front', oz: 1.5, nodes: ['n1'], sliders: { k: 2 }, cam };
+    assert.deepEqual(navigableView(clean), clean);
+    const dirty = {
+        ...clean, cv: 'x"]', aa: 'ask', fax: 'x', pa: 'a/b', pas: 1, scene: '/etc/x.json', evil: 1,
+        oz: Infinity, nodes: ['ok', 7, 'bad node'], sliders: { k: 'NaN', j: 3 }, cam: { position: [1, 2], target: [0, 0, 0] },
+    } as unknown as ViewState;
+    assert.deepEqual(navigableView(dirty),
+        { builtin: L, sc: 'a-b', st: 'c', pp: true, panel: 'chat', nodes: ['ok'], sliders: { j: 3 } });
 });
 
 test('a saved position that no longer resolves is refused, not thrown', () => {

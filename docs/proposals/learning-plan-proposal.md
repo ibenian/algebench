@@ -386,13 +386,13 @@ The navigator is a small state machine over `nav.frames`. Every action changes t
 
 | Action | Frame stack | Step state | Goes to |
 |---|---|---|---|
-| **Forward ›** | top frame moves to the next step | current step → `done` | next step's `lastView ?? view` |
+| **Forward ›** | top frame moves to the next step | current step → `done`; next step `todo` → `visited` | next step's `lastView ?? view` |
 | **‹ Back** | top frame moves to the previous step | unchanged | previous step's `lastView ?? view` |
 | **Enter ↘** (on a sub-plan step) | push `{planId: sub-plan, stepId: its first unfinished step, cameFrom: current view}` | sub-plan step → `visited` | that step's view |
 | **Return ⤴** | pop the top frame | **unchanged, nothing is completed** | the popped frame's `cameFrom` |
-| **Forward on a sub-plan's last step** | sub-plan → `complete`; pop | parent's sub-plan step → `done` | the popped frame's `cameFrom` |
+| **Forward on a sub-plan's last step** | sub-plan → `complete` (its own walk cleared); pop | parent's sub-plan step → `done` | the popped frame's `cameFrom` |
 | **Return on the outermost frame** | clear `nav` (the plan stays active) | unchanged | `target.origin`, where the learner first asked |
-| **Jump to any step** (click in the list) | top frame moves there | unchanged | its `lastView ?? view` |
+| **Jump to any step** (click in the list) | top frame moves there | that step `todo` → `visited` (nothing is completed) | its `lastView ?? view` |
 
 - **"Knows where the user is."** On `algebench:navchange`, `proofchange`, slider and camera settle events, the current step's `lastView` is updated from `captureViewState()`. Coming back to a step (Back, Return, or a reload) lands where the learner actually left it, not just at the step's start.
 - **Wandering off is allowed.** If the learner navigates somewhere unrelated to the current step, the plan doesn't follow them or overwrite anything outside that step. The navigator shows "Back to plan · step 3" and the frame stack is unchanged.
@@ -456,7 +456,7 @@ PRs 1 and 2 are independent and can go in parallel. The navigator works without 
 5. **Panel reset on jump.** Every jump forces Doc or Chat. Keep that (the plan lives in the dock, so nothing is lost), and have a step's view carry `panel`/`pp` when a proof step needs the proof panel open.
 6. **Cost.** One LLM call per plan, behind the existing per-IP rate limit (60/min shared across experts). Consider a low reasoning effort (`scoped_lm`).
 7. **Privacy.** Plans stay in the browser only; nothing goes to the server except the target text and the current view, per request.
-8. **Does Forward mean "done"?** Proposed: yes. Forward marks the step done, while Back, jumps and Return never change state; the learner can undo it or mark a step skipped. The alternative is a separate "Done" check with Forward only moving, which is more precise but adds a click per step.
+8. **Does Forward mean "done"?** Proposed: yes. Forward marks the step done; Back and Return never change state, and a jump only marks a step it lands on as visited (never done); the learner can undo it or mark a step skipped. The alternative is a separate "Done" check with Forward only moving, which is more precise but adds a click per step.
 9. **Finishing a sub-plan: land at `cameFrom`, or move the parent forward too?** Proposed: land at `cameFrom` with the parent parked on its (now done) sub-plan step, so the learner sees where they were and chooses to go on.
 
 ## 8. Risks

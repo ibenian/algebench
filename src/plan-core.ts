@@ -136,10 +136,43 @@ export function viewMatchesRef(view: ViewState | null | undefined, ref: ContentR
  */
 export const VIEW_DIRECTIVES = ['aa', 'fax', 'pa', 'pas', 'scene'] as const;
 
-/** `view` without its directives: a location to go to, and nothing else. */
+/** Ids and enum-ish values that end up in selectors and lookups: a plain token. */
+const TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
+
+/**
+ * `view` reduced to a location the app can apply safely: only the known,
+ * non-directive fields, each of the right type — strings as plain tokens
+ * (`cv` is spliced into a CSS selector), numbers finite, the camera three
+ * finite triples. Everything the navigator hands out goes through this, so
+ * a stored or imported view can't carry a directive or a malformed value
+ * into applyViewState.
+ */
 export function navigableView(view: ViewState): ViewState {
-    const v = { ...view };
-    for (const k of VIEW_DIRECTIVES) delete v[k];
+    const src = (isObject(view) ? view : {}) as Record<string, unknown>;
+    const v: ViewState = {};
+    for (const k of ['builtin', 'view', 'panel', 'sc', 'st', 'pf', 'ps', 'cv', 'proj', 'fa'] as const) {
+        const val = src[k];
+        if (typeof val === 'string' && TOKEN.test(val)) v[k] = val;
+    }
+    if (typeof src.pp === 'boolean') v.pp = src.pp;
+    if (typeof src.dock === 'boolean') v.dock = src.dock;
+    if (Number.isFinite(src.oz)) v.oz = src.oz as number;
+    if (Array.isArray(src.nodes)) {
+        const nodes = src.nodes.filter((n): n is string => typeof n === 'string' && TOKEN.test(n));
+        if (nodes.length) v.nodes = nodes;
+    }
+    if (isObject(src.sliders)) {
+        const sl = Object.entries(src.sliders as Record<string, unknown>)
+            .filter(([id, n]) => TOKEN.test(id) && Number.isFinite(n));
+        if (sl.length) v.sliders = Object.fromEntries(sl) as Record<string, number>;
+    }
+    const cam = src.cam as Record<string, unknown> | undefined;
+    const triple = (t: unknown): t is [number, number, number] =>
+        Array.isArray(t) && t.length === 3 && t.every((n) => Number.isFinite(n));
+    if (isObject(cam) && triple(cam!.position) && triple(cam!.target)) {
+        v.cam = { position: [...cam!.position], target: [...cam!.target] };
+        if (triple(cam!.up)) v.cam.up = [...cam!.up];
+    }
     return v;
 }
 
@@ -333,6 +366,7 @@ export function forward(plan: LearningPlan, lookup: PlanLookup, now: number): Na
     // with the parent parked on its sub-plan step, now done.
     cur.status = 'complete';
     cur.completedAt = now;
+    delete cur.nav;   // complete means not being walked (as markComplete)
     s.frames.pop();
     const parent = chain[depth - 1]!;
     const holder = stepById(parent, s.frames[depth - 1]!.stepId);
@@ -539,10 +573,15 @@ const KIND_IDS: Record<string, ReadonlyArray<keyof ContentRef>> = {
 const STATES = new Set<string>(['todo', 'visited', 'done', 'skipped']);
 
 /** Structural problems with a plan (e.g. an imported file); empty when valid. */
-export function validatePlan(plan: unknown, path = 'plan'): string[] {
+export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> = new Set()): string[] {
     const errs: string[] = [];
     const p = plan as Partial<LearningPlan> | null;
     if (!p || typeof p !== 'object') return [`${path}: not an object`];
+    // The navigator tells plans apart by id (cycles, frames): one id per plan in the tree.
+    if (typeof p.id === 'string' && p.id) {
+        if (planIds.has(p.id)) errs.push(`${path}: plan id "${p.id}" is used twice in this plan`);
+        planIds.add(p.id);
+    }
     if (p.schemaVersion !== PLAN_SCHEMA_VERSION) errs.push(`${path}: unsupported schemaVersion ${String(p.schemaVersion)}`);
     if (typeof p.id !== 'string' || !p.id) errs.push(`${path}: missing id`);
     if (typeof p.title !== 'string') errs.push(`${path}: missing title`);
@@ -563,7 +602,7 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
         if (step.source !== 'ai' && step.source !== 'learner') errs.push(`${at}: bad source`);
         if (step.kind === 'subplan') {
             const sub = (step as SubplanStep).sub as unknown;
-            if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`));
+            if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`, planIds));
             else if (!isObject(sub) || !nonEmpty((sub as { planId?: unknown }).planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
@@ -588,6 +627,7 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
     // Where the learner is. Only the outermost frame can be checked here —
     // deeper ones name nested or linked plans; the navigator refuses a
     // position that doesn't resolve (see Session.tryChain).
+    if (p.nav !== undefined && p.status === 'complete') errs.push(`${path}: a complete plan is not being walked, but has a saved position`);
     if (p.nav !== undefined) {
         const frames = isObject(p.nav) ? (p.nav as { frames?: unknown }).frames : undefined;
         if (!Array.isArray(frames) || !frames.length) errs.push(`${path}.nav: frames is not a non-empty list`);
@@ -665,8 +705,8 @@ export function exportPlans(plans: LearningPlan[], lookup: PlanLookup, now: numb
     return { format: PLAN_FILE_FORMAT, version: 1, exportedAt: now, plans: [...out.values()] };
 }
 
-/** Every stored view in `plan` (nested plans included) without its directives. */
-function withoutDirectives(plan: LearningPlan): LearningPlan {
+/** Every stored view in `plan` (nested plans included) reduced to `navigableView`. */
+function withNavigableViews(plan: LearningPlan): LearningPlan {
     const p = clone(plan);
     const walk = (q: LearningPlan): void => {
         q.target.origin = navigableView(q.target.origin);
@@ -697,7 +737,7 @@ export function parsePlanFile(text: string): { plans: LearningPlan[]; errors: st
         const errs = validatePlan(p, `plans[${i}]`);
         if (!errs.length && ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
         if (errs.length) errors.push(...errs);
-        else { ids.add(p.id); plans.push(withoutDirectives(p)); }
+        else { ids.add(p.id); plans.push(withNavigableViews(p)); }
     });
     return { plans, errors };
 }
