@@ -2472,11 +2472,15 @@ export class FunctionAnalysisManager {
                     ...(beyondLo.length ? [Math.max(...beyondLo)] : []),
                     ...(beyondHi.length ? [Math.min(...beyondHi)] : []),
                 ];
+                // Every label — edge pointers and line names — goes through
+                // one left-to-right row allocator, so nearby poles stack
+                // instead of overprinting at the same spot.
+                const labels: Array<{ x0: number; text: string }> = [];
                 for (const x of near) {
                     const left = x < lo;
-                    const label = `${left ? '◂ ' : ''}singularity at ${+x.toPrecision(4)}${left ? '' : ' ▸'}`;
-                    const w = ctx.measureText(label).width;
-                    ctx.fillText(label, left ? chartArea.left + 6 : chartArea.right - 6 - w, chartArea.top + 12);
+                    const text = `${left ? '◂ ' : ''}singularity at ${+x.toPrecision(4)}${left ? '' : ' ▸'}`;
+                    const w = ctx.measureText(text).width;
+                    labels.push({ x0: left ? chartArea.left + 6 : chartArea.right - 6 - w, text });
                 }
                 ctx.setLineDash([4, 3]);
                 for (const x of at) {
@@ -2489,10 +2493,17 @@ export class FunctionAnalysisManager {
                     ctx.lineTo(px, chartArea.bottom);
                     ctx.stroke();
                     // Name it, on whichever side has room.
-                    const label = 'singularity';
-                    const w = ctx.measureText(label).width;
-                    const tx = px + 5 + w > chartArea.right ? px - 5 - w : px + 5;
-                    ctx.fillText(label, tx, chartArea.top + 12);
+                    const text = 'singularity';
+                    const w = ctx.measureText(text).width;
+                    labels.push({ x0: px + 5 + w > chartArea.right ? px - 5 - w : px + 5, text });
+                }
+                ctx.setLineDash([]);
+                const rowEnds: number[] = [];
+                for (const { x0, text } of labels.sort((a, b) => a.x0 - b.x0)) {
+                    let row = 0;
+                    while (row < rowEnds.length && x0 < rowEnds[row]! + 4) row++;
+                    rowEnds[row] = x0 + ctx.measureText(text).width;
+                    ctx.fillText(text, x0, chartArea.top + 12 + row * 12);
                 }
                 ctx.setLineDash([]);
             }

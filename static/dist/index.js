@@ -25441,11 +25441,15 @@ var FunctionAnalysisManager = class {
 				const beyondLo = singXs.filter((x) => x < lo && lo - x <= span);
 				const beyondHi = singXs.filter((x) => x > hi && x - hi <= span);
 				const near = [...beyondLo.length ? [Math.max(...beyondLo)] : [], ...beyondHi.length ? [Math.min(...beyondHi)] : []];
+				const labels = [];
 				for (const x of near) {
 					const left = x < lo;
-					const label = `${left ? "◂ " : ""}singularity at ${+x.toPrecision(4)}${left ? "" : " ▸"}`;
-					const w = ctx.measureText(label).width;
-					ctx.fillText(label, left ? chartArea.left + 6 : chartArea.right - 6 - w, chartArea.top + 12);
+					const text = `${left ? "◂ " : ""}singularity at ${+x.toPrecision(4)}${left ? "" : " ▸"}`;
+					const w = ctx.measureText(text).width;
+					labels.push({
+						x0: left ? chartArea.left + 6 : chartArea.right - 6 - w,
+						text
+					});
 				}
 				ctx.setLineDash([4, 3]);
 				for (const x of at) {
@@ -25454,10 +25458,20 @@ var FunctionAnalysisManager = class {
 					ctx.moveTo(px, chartArea.top);
 					ctx.lineTo(px, chartArea.bottom);
 					ctx.stroke();
-					const label = "singularity";
-					const w = ctx.measureText(label).width;
-					const tx = px + 5 + w > chartArea.right ? px - 5 - w : px + 5;
-					ctx.fillText(label, tx, chartArea.top + 12);
+					const text = "singularity";
+					const w = ctx.measureText(text).width;
+					labels.push({
+						x0: px + 5 + w > chartArea.right ? px - 5 - w : px + 5,
+						text
+					});
+				}
+				ctx.setLineDash([]);
+				const rowEnds = [];
+				for (const { x0, text } of labels.sort((a, b) => a.x0 - b.x0)) {
+					let row = 0;
+					while (row < rowEnds.length && x0 < rowEnds[row] + 4) row++;
+					rowEnds[row] = x0 + ctx.measureText(text).width;
+					ctx.fillText(text, x0, chartArea.top + 12 + row * 12);
 				}
 				ctx.setLineDash([]);
 			}
