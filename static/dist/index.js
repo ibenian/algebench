@@ -1937,12 +1937,53 @@ function openChatPanel() {
 *  the click is then a complete no-op — no chat panel, no input text, no send —
 *  matching the proof engine's own routed ask button. */
 function makeAiAskButton(className, title, getMessage) {
+	return _makeAiAskButton(className, title, getMessage, false);
+}
+/**
+* makeAiAskButton, but the prompt is sent without being posted as the
+* learner's message — only the AI's reply shows, as the tour and the
+* learning-plan guide do. For prompts that are instructions to the tutor
+* rather than something the learner would type (the quiz's hint rules, say).
+* ⌘-click still puts the prompt in the input to edit.
+*
+* With no question visible in the chat, the wait for the reply would read as
+* nothing happening, so the button reports it: `aria-busy` is set while the
+* reply is pending, and an `ai-ask-pending` event (detail: boolean) fires when
+* that starts and ends — callers show a "thinking" indicator from it.
+*/
+function makeSilentAiAskButton(className, title, getMessage) {
+	return _makeAiAskButton(className, title, getMessage, true);
+}
+/** True while a chat turn is in flight (chat.ts owns the state). */
+function _chatBusy() {
+	return typeof window.algebenchChatBusy === "function" && window.algebenchChatBusy();
+}
+var _busyListening = false;
+/**
+* Every Ask-AI button reflects the chat's single-flight state: disabled while
+* a turn is in flight, so no control offers a send the chat would turn away.
+* One listener for all of them, installed with the first button.
+*/
+function _followChatBusy() {
+	if (_busyListening || typeof window.addEventListener !== "function") return;
+	_busyListening = true;
+	window.addEventListener("algebench:chatbusy", (e) => {
+		const busy = !!e.detail?.busy;
+		document.querySelectorAll("button[data-ai-ask]").forEach((b) => {
+			b.disabled = busy;
+		});
+	});
+}
+function _makeAiAskButton(className, title, getMessage, silent) {
 	const btn = document.createElement("button");
 	btn.type = "button";
 	btn.className = className;
 	btn.title = title + "\n\nClick to send · ⌘-click (Ctrl on Windows) to edit";
 	btn.setAttribute("aria-label", title);
 	btn.innerHTML = AI_SPARKLE_SVG;
+	btn.setAttribute("data-ai-ask", "");
+	btn.disabled = _chatBusy();
+	_followChatBusy();
 	btn.addEventListener("click", (e) => {
 		e.stopPropagation();
 		const raw = getMessage();
@@ -1959,7 +2000,15 @@ function makeAiAskButton(className, title, getMessage) {
 			return;
 		}
 		if (typeof sendChatMessage !== "function") return;
-		sendChatMessage(message);
+		if (_chatBusy()) return;
+		const sending = sendChatMessage(message, { silent });
+		if (!silent) return;
+		const pending = (on) => {
+			btn.setAttribute("aria-busy", on ? "true" : "false");
+			btn.dispatchEvent(new CustomEvent("ai-ask-pending", { detail: on }));
+		};
+		pending(true);
+		Promise.resolve(sending).catch(() => void 0).finally(() => pending(false));
 	});
 	return btn;
 }
@@ -23667,6 +23716,19 @@ var SgChartManager = class {
 };
 //#endregion
 //#region src/graph-panel/fa-page.ts
+/**
+* The quiz's pre-answer hint ladder: what each successive hint may do. The
+* key step is always left to the learner — see `_renderProbe`.
+*/
+var QUIZ_HINTS = [
+	"Give me a gentle NUDGE only: point my attention at what matters here — which quantity is changing and where it sits in the expression. Do not compute anything and do not say which way anything goes.",
+	"Now suggest an APPROACH in general terms only: name one strategy I could use (compare two cases, try an extreme value, picture a physical analogy) WITHOUT applying it to this expression and without saying what it would show. Don't ask me questions — just point me to the method.",
+	"Walk me through the reasoning STEP BY STEP up to — but not including — the final conclusion, and stop there so I make that last step myself."
+];
+/** Tooltip for the question's hint button, after `given` hints so far. */
+function quizHintTitle(given) {
+	return `${given >= QUIZ_HINTS.length ? `Get another hint (you've had all ${QUIZ_HINTS.length} levels — this repeats the strongest)` : `Get a hint (${given + 1} of ${QUIZ_HINTS.length}) — a nudge, not the answer`}\n\nClick to send · ⌘-click (Ctrl on Windows) to edit`;
+}
 var REQUEST_TIMEOUT_MS = 18e4;
 var NUM_POINTS = 220;
 var TAU = Math.PI * 2;
@@ -24329,8 +24391,7 @@ var FunctionAnalysisManager = class {
 			yb,
 			xLatex: this._varLatex(chars, view.x_var),
 			exprLatex: chars.dependentLatex || chars.expression || "f",
-			anns: annotations.filter((a) => !this._hiddenGroups.has(a.group || "")),
-			singXs: this._singularityXs(chars, view)
+			anns: annotations.filter((a) => !this._hiddenGroups.has(a.group || ""))
 		};
 		this._renderAnnLegend(legend, view, annotations, () => this._updateChartData(chart, chars, view, state));
 		chart.update("none");
@@ -25361,54 +25422,20 @@ var FunctionAnalysisManager = class {
 				ctx.fillText(isMax ? "max" : "min", px + 6, isMax ? py - 6 : py + 14);
 			}
 			if (marks.has("singularities")) {
-				const sx = scales.x;
-				const lo = sx.min, hi = sx.max;
-				const span = Math.abs(hi - lo) || 1;
-				const at = (chart.$fa?.singXs || []).filter((x) => x >= lo - span * 1e-9 && x <= hi + span * 1e-9);
+				ctx.strokeStyle = ANNOTATION_COLOR;
+				ctx.setLineDash([3, 3]);
 				for (let i = 1; i < ys.length; i++) if (ys[i - 1] == null !== (ys[i] == null)) {
 					const x = (xs[i - 1] + xs[i]) / 2;
-					const px = sx.getPixelForValue(x);
-					if (!at.some((a) => Math.abs(sx.getPixelForValue(a) - px) < 6)) at.push(x);
-				}
-				ctx.strokeStyle = ANNOTATION_COLOR;
-				ctx.fillStyle = ANNOTATION_COLOR;
-				ctx.lineWidth = 1.5;
-				ctx.font = "10px ui-monospace, Menlo, monospace";
-				const near = (chart.$fa?.singXs || []).filter((x) => (x < lo || x > hi) && Math.min(Math.abs(x - lo), Math.abs(x - hi)) <= span);
-				for (const x of near) {
-					const left = x < lo;
-					const label = `${left ? "◂ " : ""}singularity at ${+x.toPrecision(4)}${left ? "" : " ▸"}`;
-					const w = ctx.measureText(label).width;
-					ctx.fillText(label, left ? chartArea.left + 6 : chartArea.right - 6 - w, chartArea.top + 12);
-				}
-				ctx.setLineDash([4, 3]);
-				for (const x of at) {
-					const px = Math.min(Math.max(sx.getPixelForValue(x), chartArea.left + 2), chartArea.right - 2);
+					const px = scales.x.getPixelForValue(x);
 					ctx.beginPath();
 					ctx.moveTo(px, chartArea.top);
 					ctx.lineTo(px, chartArea.bottom);
 					ctx.stroke();
-					const label = "singularity";
-					const w = ctx.measureText(label).width;
-					const tx = px + 5 + w > chartArea.right ? px - 5 - w : px + 5;
-					ctx.fillText(label, tx, chartArea.top + 12);
 				}
 				ctx.setLineDash([]);
 			}
 		}
 		ctx.restore();
-	}
-	/**
-	* The CAS singularities' x positions, as numbers (unresolvable ones
-	* skipped) — but only when this view sweeps the ANALYZED variable: the
-	* CAS locations are values of that variable, and on a view sweeping
-	* another one (see `_featureRows`) the same number would mark the wrong
-	* place. Gap detection still covers breaks on such views.
-	*/
-	_singularityXs(chars, view) {
-		if ((chars.variable || view.x_var) !== view.x_var) return [];
-		const f = (chars.features || {}).singularities;
-		return (f && f.points || []).map((p) => Number(p.location?.approx)).filter((x) => Number.isFinite(x));
 	}
 	_renderSliders(artifact, chars, proposal, view, host, state, onChange) {
 		host.innerHTML = "";
@@ -25510,7 +25537,24 @@ var FunctionAnalysisManager = class {
 		q.appendChild(badge);
 		q.appendChild(document.createTextNode(`${number}. `));
 		this._inlineMath(q, probe.question || "");
-		this._attachHoverAsk(q, () => `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nIMPORTANT: do NOT tell me the answer and do NOT identify or hint at which option is correct. Give me ONE guiding hint or a leading question that helps me reason it out myself — think Socratic tutor.`);
+		let given = 0;
+		const next = () => Math.min(given + 1, QUIZ_HINTS.length);
+		const hintBtn = this._attachHoverAsk(q, () => `I'm working on a quiz question about $${artifact.latex}$ and I have NOT answered it yet.\nQuestion: "${probe.question}"\nThis is hint ${next()} of ${QUIZ_HINTS.length} I've asked for. ${QUIZ_HINTS[next() - 1]}\nRules: do NOT state the answer or the result, do NOT name, quote or point at any option, and do NOT ask a leading question whose answer IS the answer. Keep it to 1–3 sentences, like a tutor who wants me to get there on my own.`, void 0, {
+			silent: true,
+			thinkingIn: div
+		});
+		const labelHint = () => {
+			const title = quizHintTitle(given);
+			hintBtn.title = title;
+			hintBtn.setAttribute("aria-label", title.split("\n")[0]);
+		};
+		hintBtn.addEventListener("ai-ask-pending", (e) => {
+			if (e.detail) {
+				given = next();
+				labelHint();
+			}
+		});
+		labelHint();
 		div.appendChild(q);
 		const opts = document.createElement("div");
 		opts.className = "fa-probe-opts";
@@ -25523,13 +25567,15 @@ var FunctionAnalysisManager = class {
 			this._inlineMath(b, o);
 			b.addEventListener("click", () => {
 				for (const c of opts.children) c.disabled = true;
+				hintBtn.remove();
 				const right = i === probe.correct_index;
 				b.classList.add(right ? "right" : "wrong");
 				if (!right && opts.children[probe.correct_index]) opts.children[probe.correct_index].classList.add("right");
 				exp.classList.add("show");
 				const correct = (probe.options || [])[probe.correct_index] || "";
-				const ask = makeAiAskButton("ai-ask-btn fa-hover-ask", "Talk to the AI about your answer", () => `I just answered a quiz question about $${artifact.latex}$.\nQuestion: "${probe.question}"\nOptions: ${(probe.options || []).join(" | ")}\nThe correct answer is "${correct}". I chose "${o}" — ` + (right ? "I got it RIGHT." : "I got it WRONG.") + "\n" + (probe.explanation ? `The given explanation: "${probe.explanation}"\n` : "") + (right ? "Congratulate me briefly, then deepen my understanding with one extra insight about this behavior." : "Encourage me — no scolding — and help me see why the correct answer is right, building from what my choice got partially right if anything.") + "\nFirst verify the quiz against the expression itself: if the marked correct answer is mathematically wrong for this expression, say so plainly and teach the true answer instead.");
+				const ask = makeSilentAiAskButton("ai-ask-btn fa-hover-ask", "Talk to the AI about your answer", () => `I just answered a quiz question about $${artifact.latex}$.\nQuestion: "${probe.question}"\nOptions: ${(probe.options || []).join(" | ")}\nThe correct answer is "${correct}". I chose "${o}" — ` + (right ? "I got it RIGHT." : "I got it WRONG.") + "\n" + (probe.explanation ? `The given explanation: "${probe.explanation}"\n` : "") + (right ? "Congratulate me briefly, then deepen my understanding with one extra insight about this behavior." : "Encourage me — no scolding — and help me see why the correct answer is right, building from what my choice got partially right if anything.") + "\nFirst verify the quiz against the expression itself: if the marked correct answer is mathematically wrong for this expression, say so plainly and teach the true answer instead.");
 				exp.appendChild(ask);
+				this._showThinking(ask, exp);
 				div.classList.add("fa-askable");
 			}, { once: true });
 			opts.appendChild(b);
@@ -25620,10 +25666,34 @@ var FunctionAnalysisManager = class {
 		});
 	}
 	/** Hover-revealed AI ask button beside the element (app-wide pattern). */
-	_attachHoverAsk(el, getMessage) {
-		const btn = makeAiAskButton("ai-ask-btn fa-hover-ask", "Ask the AI about this", getMessage);
+	_attachHoverAsk(el, getMessage, title = "Ask the AI about this", opts = {}) {
+		const btn = (opts.silent ? makeSilentAiAskButton : makeAiAskButton)("ai-ask-btn fa-hover-ask", title, getMessage);
 		el.classList.add("fa-askable");
 		el.appendChild(btn);
+		if (opts.silent) this._showThinking(btn, opts.thinkingIn || el);
+		return btn;
+	}
+	/**
+	* A silent ask posts nothing in the chat, so show the wait where the
+	* learner clicked: "AI is thinking…" with a pulsing dot, under `where`,
+	* until the reply arrives.
+	*/
+	_showThinking(btn, where) {
+		let line = null;
+		btn.addEventListener("ai-ask-pending", (e) => {
+			const on = e.detail;
+			if (on && !line) {
+				line = document.createElement("div");
+				line.className = "ai-thinking-status";
+				line.setAttribute("role", "status");
+				line.setAttribute("aria-live", "polite");
+				line.textContent = "AI is thinking…";
+				where.appendChild(line);
+			} else if (!on && line) {
+				line.remove();
+				line = null;
+			}
+		});
 	}
 	destroy() {
 		this._destroyCharts();
@@ -28107,6 +28177,52 @@ function applyEach(lesson, ops, inverse) {
 	}
 	return inverse.reverse();
 }
+//#endregion
+//#region src/chat-flight.ts
+function singleFlightSender(isBusy, sendTurn) {
+	const queued = [];
+	let active = null;
+	function sendNext() {
+		const next = queued.shift();
+		if (next) send(next.text).then(next.resolve, () => next.resolve(false));
+	}
+	function send(text, { silent = false } = {}) {
+		if (isBusy()) {
+			if (silent) return Promise.resolve(false);
+			if (active && active.text === text) return active.done;
+			const waiting = queued.find((q) => q.text === text);
+			if (waiting) return waiting.done;
+			let resolve;
+			const done = new Promise((r) => {
+				resolve = r;
+			});
+			queued.push({
+				text,
+				done,
+				resolve
+			});
+			return done;
+		}
+		const turn = {
+			text,
+			done: Promise.resolve(false)
+		};
+		const settle = () => {
+			if (active === turn) active = null;
+			sendNext();
+		};
+		turn.done = sendTurn(text, silent).then(() => {
+			settle();
+			return true;
+		}, (err) => {
+			settle();
+			throw err;
+		});
+		if (!silent) active = turn;
+		return turn.done;
+	}
+	return send;
+}
 var MAX_INTENT_CHARS = 2e3;
 function scenesOf(lesson) {
 	const l = lesson;
@@ -28457,6 +28573,18 @@ var BUILD_SCENE_TIMEOUT_MS = 9e4;
 var chatHistory = [];
 var chatAvailable$1 = false;
 var chatSending = false;
+/**
+* The one place `chatSending` changes. It's app-wide state — every AI ask
+* button reflects it — so each change is announced (`algebench:chatbusy`,
+* detail `{ busy }`) and readable via window.algebenchChatBusy().
+*/
+function setChatSending(busy) {
+	chatSending = busy;
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:chatbusy", { detail: { busy } }));
+	} catch (_) {}
+}
+window.algebenchChatBusy = () => chatSending;
 var activeSpeakBtn = null;
 var welcomeInFlight = false;
 var memorySnapshot = null;
@@ -28507,7 +28635,7 @@ function setPresetPrompts$1(prompts) {
 					input.focus();
 					input.dispatchEvent(new Event("input"));
 				}
-			} else if (!chatSending) sendChatMessage$1(text);
+			} else sendChatMessage$1(text);
 		});
 		container.appendChild(btn);
 	}
@@ -28940,8 +29068,13 @@ function showBuiltScene(lesson, index, step) {
 		console.error("build_scene: navigation/render failed:", e);
 	}
 }
-async function sendChatMessage$1(text, { silent = false } = {}) {
-	chatSending = true;
+/**
+* Send one chat turn. Single-flight (chat-flight.ts): mid-turn, a visible ask
+* is queued and a silent one is turned away with `false`.
+*/
+var sendChatMessage$1 = singleFlightSender(() => chatSending, _sendTurn);
+async function _sendTurn(text, silent) {
+	setChatSending(true);
 	if (!silent) addChatMessage("user", text);
 	const loadingEl = addChatLoading();
 	const context = buildChatContext();
@@ -28965,7 +29098,7 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 			console.error("%c🤖 Chat error: %c" + res.status + " — " + (msg || "unknown"), "color: #ff4444; font-weight: bold", "color: #ccc");
 			addChatMessage("assistant", msg || "Something went wrong. Please try again.");
 			if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
-			chatSending = false;
+			setChatSending(false);
 			return;
 		}
 		const data = await res.json();
@@ -29145,7 +29278,7 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 		addChatMessage("assistant", err instanceof TypeError && /fetch|network|connect/i.test(err.message) ? "Failed to reach AI service. Check your connection." : "Error processing response: " + err.message);
 		if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
 	}
-	chatSending = false;
+	setChatSending(false);
 }
 function addChatMessage(role, content, toolCalls) {
 	const messagesEl = document.getElementById("chat-messages");

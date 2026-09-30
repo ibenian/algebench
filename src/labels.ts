@@ -714,12 +714,64 @@ export function makeAiAskButton(
     title: string,
     getMessage: () => string | null,
 ): HTMLButtonElement {
+    return _makeAiAskButton(className, title, getMessage, false);
+}
+
+/**
+ * makeAiAskButton, but the prompt is sent without being posted as the
+ * learner's message — only the AI's reply shows, as the tour and the
+ * learning-plan guide do. For prompts that are instructions to the tutor
+ * rather than something the learner would type (the quiz's hint rules, say).
+ * ⌘-click still puts the prompt in the input to edit.
+ *
+ * With no question visible in the chat, the wait for the reply would read as
+ * nothing happening, so the button reports it: `aria-busy` is set while the
+ * reply is pending, and an `ai-ask-pending` event (detail: boolean) fires when
+ * that starts and ends — callers show a "thinking" indicator from it.
+ */
+export function makeSilentAiAskButton(
+    className: string,
+    title: string,
+    getMessage: () => string | null,
+): HTMLButtonElement {
+    return _makeAiAskButton(className, title, getMessage, true);
+}
+
+/** True while a chat turn is in flight (chat.ts owns the state). */
+function _chatBusy(): boolean {
+    return typeof window.algebenchChatBusy === 'function' && window.algebenchChatBusy();
+}
+
+let _busyListening = false;
+/**
+ * Every Ask-AI button reflects the chat's single-flight state: disabled while
+ * a turn is in flight, so no control offers a send the chat would turn away.
+ * One listener for all of them, installed with the first button.
+ */
+function _followChatBusy(): void {
+    if (_busyListening || typeof window.addEventListener !== 'function') return;
+    _busyListening = true;
+    window.addEventListener('algebench:chatbusy', (e) => {
+        const busy = !!(e as CustomEvent<{ busy: boolean }>).detail?.busy;
+        document.querySelectorAll<HTMLButtonElement>('button[data-ai-ask]').forEach((b) => { b.disabled = busy; });
+    });
+}
+
+function _makeAiAskButton(
+    className: string,
+    title: string,
+    getMessage: () => string | null,
+    silent: boolean,
+): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.type = 'button';   // never submit an enclosing form
     btn.className = className;
     btn.title = title + '\n\nClick to send · ⌘-click (Ctrl on Windows) to edit';
     btn.setAttribute('aria-label', title);
     btn.innerHTML = AI_SPARKLE_SVG;
+    btn.setAttribute('data-ai-ask', '');
+    btn.disabled = _chatBusy();   // created while a turn is in flight
+    _followChatBusy();
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
         // Messages are built from source text (labels, descriptions), so
@@ -738,7 +790,18 @@ export function makeAiAskButton(
             return;
         }
         if (typeof sendChatMessage !== 'function') return;
-        sendChatMessage(message);
+        // Single-flight (chat.ts): a turn already in flight would turn this
+        // one away — so don't send, and don't report a pending ask that
+        // isn't happening (the quiz advances its hint ladder on that event).
+        if (_chatBusy()) return;
+        const sending = sendChatMessage(message, { silent });
+        if (!silent) return;
+        const pending = (on: boolean) => {
+            btn.setAttribute('aria-busy', on ? 'true' : 'false');
+            btn.dispatchEvent(new CustomEvent('ai-ask-pending', { detail: on }));
+        };
+        pending(true);
+        void Promise.resolve(sending).catch(() => undefined).finally(() => pending(false));
     });
     return btn;
 }
