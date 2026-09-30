@@ -8,6 +8,7 @@ import { state } from '/state.js';
 import { dataToWorld, dataCameraToWorld } from '/coords.js';
 import { activateFollowCam, deactivateFollowCam, updateFollowCam, updateFollowAngleLockButtonState } from '/follow-cam.js';
 import { compileExpr, evalExpr } from '/expr.js';
+import { findCamButton } from '/cam-buttons.js';
 import type { CompiledExpr } from '/expr.js';
 import { renderKaTeX, updateLabels } from '/labels.js';
 // sliders.js and overlay.js are created later in the refactor;
@@ -2345,7 +2346,7 @@ export function animateCamera(view: string, duration?: number): void {
     const startTime = performance.now();
 
     document.querySelectorAll<HTMLElement>('.cam-btn').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector<HTMLElement>(`.cam-btn[data-view="${view}"]`);
+    const activeBtn = findCamButton(view);
     if (activeBtn) activeBtn.classList.add('active');
 
     cameraState.cameraAnimating = true;

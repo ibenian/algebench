@@ -88,6 +88,8 @@ export interface ViewState {
 
 const CAM_DECIMALS = 4;
 const DEFAULT_UP = [0, 1, 0];
+// Longest accepted `cv`. Real camera-view keys are well under 30 chars.
+const CV_MAX_LEN = 64;
 
 // ----- Number / string helpers -----
 
@@ -328,8 +330,14 @@ export function parseViewState(search: string | URLSearchParams | null | undefin
         if (Object.keys(sliders).length) vs.sliders = sliders;
     }
 
+    // Camera-view keys are scene-authored names lowercased with whitespace -> '-'
+    // (camera.ts), so real keys carry `(`, `:`, `&`, `\`, `$`… (`side-(yz)`,
+    // `ride:-chased-ship`) and a plain-token filter would break those links. The
+    // value is never used as selector syntax — every lookup compares it against
+    // data-view directly (cam-buttons.ts) — so here it is only bounded, like the
+    // other free-text params.
     const cv = params.get('cv');
-    if (cv) vs.cv = cv;
+    if (cv && cv.length <= CV_MAX_LEN) vs.cv = cv;
 
     const proj = params.get('proj');
     if (proj) vs.proj = proj;

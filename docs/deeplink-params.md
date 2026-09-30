@@ -31,7 +31,7 @@ AlgeBench has **two** URL surfaces that take query parameters:
 | `ps` | `ps=velocity-as-a-function-of-altitude` | goal | Proof step id; absent ⇒ the goal. | ✅ |
 | `nodes` | `nodes=a,b,c` | — | Ordered semantic-graph selection (CSV). **Last = active/focus.** | ✅ |
 | `sl` | `sl=t~1.5,k~2` | — | Slider overrides, `id~value,…`. | ✅ |
-| `cv` | `cv=iso` | — | Selected camera-view preset. | ✅ |
+| `cv` | `cv=iso` | — | Selected camera-view preset — the view's name lowercased with spaces → `-` (e.g. `side-(yz)`). Any characters allowed; values over 64 chars are ignored. Compared directly with each `.cam-btn` `data-view` (never spliced into a selector), so a malformed value simply selects nothing. | ✅ |
 | `proj` | `proj=orthographic` | `perspective` | Camera projection. | ✅ |
 | `oz` | `oz=3.2` | — | Orthographic visible half-height (world units). | ✅ |
 | `cam` | `cam=px,py,pz,tx,ty,tz[,ux,uy,uz]` | — | Exact camera (data-space): position + target, optional up. | ✅ |

@@ -24,6 +24,7 @@ import { loadBuiltinScene, loadSceneFromPath } from '/ui.js';
 import { setActiveProof, navigateProof, setProofPanelOpen } from '/proof.js';
 import { setSliderValue } from '/sliders.js';
 import { animateCamera, switchProjection } from '/camera.js';
+import { findCamButton } from '/cam-buttons.js';
 import { dataCameraToWorld, worldCameraToData } from '/coords.js';
 import { openChatPanel } from '/labels.js';
 import type { ViewState } from '/view-state.js';
@@ -438,7 +439,7 @@ export async function applyViewState(vs: ViewState | null | undefined, opts: App
         //      all .cam-btn active states), THEN mark the preset button active so
         //      it isn't wiped. The exact camera matters because the user may have
         //      orbited off the preset before sharing.
-        const cvBtn = vs.cv ? document.querySelector<HTMLElement>(`.cam-btn[data-view="${vs.cv}"]`) : null;
+        const cvBtn = vs.cv ? findCamButton(vs.cv) : null;
         const cvDynamic = !!(cvBtn && cvBtn.classList.contains('cam-btn-follow'));
 
         // Dynamic views (follow-cam / expression-cam): activate them like a click.
