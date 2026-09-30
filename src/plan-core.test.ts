@@ -616,6 +616,17 @@ test('holes in sparse arrays are reported or dropped, not skipped', () => {
     assert.equal(v.cam, undefined, 'a camera vector with a hole is not finite');
 });
 
+test('a sub-plan is nested or linked, never both; an orthographic scale must be positive', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    const n = bad.steps.findIndex((st: PlanStep) => st.kind === 'subplan' && 'nested' in st.sub);
+    bad.steps[n].sub.planId = 'air';
+    assert.ok(validatePlan(bad).includes(`plan.steps[${n}]: sub-plan has both a nested plan and a planId`));
+
+    for (const oz of [0, -2]) assert.equal(navigableView({ builtin: L, proj: 'orthographic', oz }).oz, undefined, String(oz));
+    assert.equal(navigableView({ builtin: L, proj: 'orthographic', oz: 3 }).oz, 3);
+});
+
 test('a nested plan may not reuse an id already in its plan', () => {
     const { root } = fixture();
     const bad = JSON.parse(JSON.stringify(root));

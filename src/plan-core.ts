@@ -163,7 +163,8 @@ export function navigableView(view: ViewState): ViewState {
     }
     if (typeof src.pp === 'boolean') v.pp = src.pp;
     if (typeof src.dock === 'boolean') v.dock = src.dock;
-    if (Number.isFinite(src.oz)) v.oz = src.oz as number;
+    // An orthographic scale is a half-height: zero or negative collapses or flips the view.
+    if (Number.isFinite(src.oz) && (src.oz as number) > 0) v.oz = src.oz as number;
     if (Array.isArray(src.nodes)) {
         const nodes = src.nodes.filter((n): n is string => typeof n === 'string' && TOKEN.test(n));
         if (nodes.length) v.nodes = nodes;
@@ -624,7 +625,9 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
         if (step.source !== 'ai' && step.source !== 'learner') errs.push(`${at}: bad source`);
         if (step.kind === 'subplan') {
             const sub = (step as SubplanStep).sub as unknown;
-            if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`, planIds, ancestors));
+            // Exactly one of the two: every consumer checks `nested` first and would ignore the link.
+            if (isObject(sub) && 'nested' in (sub as object) && 'planId' in (sub as object)) errs.push(`${at}: sub-plan has both a nested plan and a planId`);
+            else if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`, planIds, ancestors));
             else if (!isObject(sub) || !nonEmpty((sub as { planId?: unknown }).planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
