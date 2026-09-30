@@ -766,17 +766,27 @@ export function parsePlanFile(text: string): { plans: LearningPlan[]; errors: st
     if (file.version !== 1) return { plans: [], errors: [`unsupported file version ${String(file.version)}`] };
     const plans: LearningPlan[] = [];
     const errors: string[] = [];
-    const ids = new Set<string>();   // one store key per plan: a repeat would overwrite the first
+    // Every plan id in the file — records and the plans nested in them — is
+    // identity to the navigator (frames, the cycle guard) and a repeated
+    // record id would overwrite the first in the store: one of each.
+    const ids = new Set<string>();
     file.plans.forEach((p, i) => {
-        const errs = validatePlan(p, `plans[${i}]`);
-        if (!errs.length && ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
+        const treeIds = new Set<string>();
+        const errs = validatePlan(p, `plans[${i}]`, treeIds);
+        if (!errs.length) {
+            if (ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
+            else {
+                const clash = [...treeIds].filter((id) => ids.has(id));
+                if (clash.length) errs.push(`plans[${i}]: nested plan id ${clash.map((c) => `"${c}"`).join(', ')} already used in this file`);
+            }
+        }
         if (errs.length) errors.push(...errs);
         else {
             // Sanitizing must leave a plan the store accepts; if not, report it here.
             const clean = withNavigableViews(p);
             const after = validatePlan(clean, `plans[${i}]`);
             if (after.length) { errors.push(...after); return; }
-            ids.add(p.id);
+            for (const id of treeIds) ids.add(id);
             plans.push(clean);
         }
     });

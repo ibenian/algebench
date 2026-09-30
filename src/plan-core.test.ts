@@ -407,6 +407,16 @@ test('validatePlan rejects a saved position that is too deep or revisits a plan'
     assert.deepEqual(validatePlan(cyclic), ['plan.nav.frames[2]: plan "tv" is already on the stack']);
 });
 
+test('parsePlanFile rejects a nested plan whose id another plan in the file already has', () => {
+    const { root } = fixture();
+    const n = root.steps.find((st): st is SubplanStep => st.kind === 'subplan' && 'nested' in st.sub)!;
+    const nestedId = (n.sub as { nested: LearningPlan }).nested.id;
+    const other = plan(nestedId === 'x' ? 'y' : 'other', [nested('k', plan(nestedId, [content('c', { lesson: L, sc: 'a' }, 'scene')]))]);
+    const r = parsePlanFile(JSON.stringify({ format: 'algebench-learning-plans', version: 1, exportedAt: 0, plans: [root, other] }));
+    assert.deepEqual(r.plans.map((p) => p.id), [root.id]);
+    assert.deepEqual(r.errors, [`plans[1]: nested plan id "${nestedId}" already used in this file`]);
+});
+
 test('parsePlanFile keeps the first of two plans with the same id', () => {
     const { root } = fixture();
     const twin = { ...root, title: 'imposter' };
