@@ -3,7 +3,7 @@
 > A navigation layer that builds a path from wherever the learner is to a concept they don't understand yet, using AlgeBench's existing content.
 
 **Issue:** [#683](https://github.com/ibenian/algebench/issues/683) · **Depends on:** stable lesson ids ([#684](https://github.com/ibenian/algebench/pull/684), merged)
-**Status:** design only, no code yet.
+**Status:** plan core, navigator and IndexedDB store implemented (`src/plan-core.ts`, `src/plan-store.ts`, [#686](https://github.com/ibenian/algebench/pull/686)); the plan panel UI follows in a separate PR.
 **Principle:** a navigation layer over existing AlgeBench content, not an AI-written syllabus. The AI chooses content; it never writes content or links.
 
 ---

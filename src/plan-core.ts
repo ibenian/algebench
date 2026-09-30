@@ -522,6 +522,9 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
     if (typeof p.title !== 'string') errs.push(`${path}: missing title`);
     if (!p.target || typeof p.target.text !== 'string' || !isObject(p.target.origin)) errs.push(`${path}: missing target`);
     if (p.status !== 'active' && p.status !== 'complete') errs.push(`${path}: bad status`);
+    // The store lists most recently updated first; a missing time breaks that order.
+    if (!Number.isFinite(p.createdAt) || !Number.isFinite(p.updatedAt)) errs.push(`${path}: createdAt and updatedAt must be numbers`);
+    if (p.completedAt !== undefined && !Number.isFinite(p.completedAt)) errs.push(`${path}: bad completedAt`);
     if (!Array.isArray(p.steps)) return [...errs, `${path}: steps is not a list`];
     const ids = new Set<string>();
     p.steps.forEach((step, i) => {
@@ -536,10 +539,16 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
             else if (!isObject(sub) || typeof (sub as { planId?: unknown }).planId !== 'string') errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
-            if (!ref || typeof ref.lesson !== 'string' || !ref.lesson) errs.push(`${at}: missing ref.lesson`);
-            if (!isObject((step as ContentStep).view)) errs.push(`${at}: missing view`);
+            const refOk = isObject(ref) && typeof ref.lesson === 'string' && !!ref.lesson;
+            if (!refOk) errs.push(`${at}: missing ref.lesson`);
+            // The ref is the source of truth; a stored view must land on it
+            // (resumeView opens lastView before view).
+            const view = (step as ContentStep).view;
+            if (!isObject(view)) errs.push(`${at}: missing view`);
+            else if (refOk && !viewMatchesRef(view, ref)) errs.push(`${at}: view is not at its ref`);
             const last = (step as ContentStep).lastView;
             if (last !== undefined && !isObject(last)) errs.push(`${at}: bad lastView`);
+            else if (last !== undefined && refOk && !viewMatchesRef(last, ref)) errs.push(`${at}: lastView is not at its ref`);
         } else {
             errs.push(`${at}: unknown kind "${String((step as { kind?: unknown }).kind)}"`);
         }
@@ -605,9 +614,14 @@ export function exportPlans(plans: LearningPlan[], lookup: PlanLookup, now: numb
             if (ref && !out.has(ref.id)) add(ref);
         }
     };
+    // Where the learner was is not portable — nested plans included.
+    const dropWalk = (p: LearningPlan): void => {
+        delete p.nav;
+        for (const s of p.steps) if (s.kind === 'subplan' && 'nested' in s.sub) dropWalk(s.sub.nested);
+    };
     const add = (p: LearningPlan): void => {
         const c = clone(p);
-        delete c.nav;
+        dropWalk(c);
         out.set(c.id, c);
         visit(c);
     };
@@ -623,6 +637,7 @@ export function parsePlanFile(text: string): { plans: LearningPlan[]; errors: st
     if (!file || file.format !== PLAN_FILE_FORMAT || !Array.isArray(file.plans)) {
         return { plans: [], errors: ['not an AlgeBench learning-plans file'] };
     }
+    if (file.version !== 1) return { plans: [], errors: [`unsupported file version ${String(file.version)}`] };
     const plans: LearningPlan[] = [];
     const errors: string[] = [];
     const ids = new Set<string>();   // one store key per plan: a repeat would overwrite the first

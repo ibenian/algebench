@@ -405,6 +405,38 @@ test('parsePlanFile keeps the first of two plans with the same id', () => {
     assert.deepEqual(r.errors, ['plans[1]: duplicate id "tv"']);
 });
 
+test('validatePlan requires numeric timestamps', () => {
+    const { root } = fixture();
+    const { updatedAt: _u, ...noUpdated } = root;
+    assert.deepEqual(validatePlan(noUpdated), ['plan: createdAt and updatedAt must be numbers']);
+    assert.deepEqual(validatePlan({ ...root, createdAt: 'yesterday' }), ['plan: createdAt and updatedAt must be numbers']);
+    assert.deepEqual(validatePlan({ ...root, completedAt: null }), ['plan: bad completedAt']);
+    assert.deepEqual(validatePlan({ ...root, completedAt: 5 }), []);
+});
+
+test('validatePlan rejects a stored view that is not at its step\'s ref', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    const i = bad.steps.findIndex((st: PlanStep) => st.kind !== 'subplan');
+    bad.steps[i].view = { builtin: 'some-other-lesson' };
+    bad.steps[i].lastView = { ...bad.steps[i].view };
+    assert.deepEqual(validatePlan(bad), [
+        `plan.steps[${i}]: view is not at its ref`,
+        `plan.steps[${i}]: lastView is not at its ref`,
+    ]);
+});
+
+test('export drops walks from nested plans too, and import checks the file version', () => {
+    const { root, lookup } = fixture();
+    const withWalks = JSON.parse(JSON.stringify(root));
+    const n = withWalks.steps.find((st: PlanStep) => st.kind === 'subplan' && 'nested' in st.sub);
+    n.sub.nested.nav = { frames: [{ planId: n.sub.nested.id, stepId: n.sub.nested.steps[0].id, cameFrom: ORIGIN }] };
+    const file = exportPlans([withWalks], lookup, 1);
+    assert.ok(!JSON.stringify(file).includes('"nav"'), 'no walk anywhere in the export');
+    assert.deepEqual(parsePlanFile(JSON.stringify({ ...file, version: 2 })),
+        { plans: [], errors: ['unsupported file version 2'] });
+});
+
 test('a saved position that no longer resolves is refused, not thrown', () => {
     const { root, lookup, save, saved } = fixture();
     let p = save(startPlan(root, lookup, 1));
