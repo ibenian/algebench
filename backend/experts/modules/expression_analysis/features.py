@@ -156,6 +156,10 @@ def _op_singularities(expr, var) -> dict:
             try:
                 entry["location"]["script"] = sympy_to_mathjs(p)[0]
             except Exception as exc:
+                # Without a script the chart would take the pinned approx as
+                # a fixed position — wrong once a slider moves. Leave the
+                # location symbolic; the chart's gap detection covers it.
+                entry["location"].pop("approx", None)
                 log.debug("singularity location %s not scriptable: %s", p, exc)
         try:
             left = limit(expr, var, p, "-")

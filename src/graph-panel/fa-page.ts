@@ -2447,8 +2447,9 @@ export class FunctionAnalysisManager {
                 const sx = scales.x;   // narrowed by the guard at the top; closures lose that
                 const lo = sx.min, hi = sx.max;
                 const span = Math.abs(hi - lo) || 1;
+                const tol = span * 1e-9;   // one boundary for "in the window" and "past an edge"
                 const at: number[] = (chart.$fa?.singXs || [])
-                    .filter(x => x >= lo - span * 1e-9 && x <= hi + span * 1e-9);
+                    .filter(x => x >= lo - tol && x <= hi + tol);
                 for (let i = 1; i < ys.length; i++) {
                     if ((ys[i - 1] == null) !== (ys[i] == null)) {
                         const x = (xs[i - 1]! + xs[i]!) / 2;
@@ -2466,8 +2467,8 @@ export class FunctionAnalysisManager {
                 // Point at it from that edge instead — the closest one per
                 // edge, since every label on a side lands in the same spot.
                 const singXs = chart.$fa?.singXs || [];
-                const beyondLo = singXs.filter(x => x < lo && lo - x <= span);
-                const beyondHi = singXs.filter(x => x > hi && x - hi <= span);
+                const beyondLo = singXs.filter(x => x < lo - tol && lo - x <= span);
+                const beyondHi = singXs.filter(x => x > hi + tol && x - hi <= span);
                 const near = [
                     ...(beyondLo.length ? [Math.max(...beyondLo)] : []),
                     ...(beyondHi.length ? [Math.min(...beyondHi)] : []),

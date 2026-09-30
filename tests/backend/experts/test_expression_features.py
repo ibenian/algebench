@@ -7,6 +7,8 @@ guarded ops execute in-process and stay assertable.
 
 from __future__ import annotations
 
+import sympy
+
 from backend.experts.modules.expression_analysis.features import analyze
 
 
@@ -97,6 +99,19 @@ def test_parametric_singularity_carries_a_script():
     # A fixed location needs none — its approx is already right.
     rep = analyze(r"\frac{1}{x}")
     assert "script" not in rep["features"]["singularities"]["points"][0]["location"]
+
+
+def test_unscriptable_parametric_singularity_drops_its_pinned_approx(monkeypatch):
+    # No script → no approx either: the pinned value would be drawn as fixed.
+    from backend.experts.modules.expression_analysis import features
+
+    def boom(_expr):
+        raise ValueError("no mathjs form")
+
+    monkeypatch.setattr(features, "sympy_to_mathjs", boom)
+    x, a = sympy.symbols("x a")
+    loc = features._op_singularities(1 / (x - a), x)["points"][0]["location"]
+    assert loc == {"latex": "a"}
 
 
 # ── x²−4: even parity, minimum, listable zeros ─────────────────────────

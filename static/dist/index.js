@@ -25427,7 +25427,8 @@ var FunctionAnalysisManager = class {
 				const sx = scales.x;
 				const lo = sx.min, hi = sx.max;
 				const span = Math.abs(hi - lo) || 1;
-				const at = (chart.$fa?.singXs || []).filter((x) => x >= lo - span * 1e-9 && x <= hi + span * 1e-9);
+				const tol = span * 1e-9;
+				const at = (chart.$fa?.singXs || []).filter((x) => x >= lo - tol && x <= hi + tol);
 				for (let i = 1; i < ys.length; i++) if (ys[i - 1] == null !== (ys[i] == null)) {
 					const x = (xs[i - 1] + xs[i]) / 2;
 					const px = sx.getPixelForValue(x);
@@ -25438,8 +25439,8 @@ var FunctionAnalysisManager = class {
 				ctx.lineWidth = 1.5;
 				ctx.font = "10px ui-monospace, Menlo, monospace";
 				const singXs = chart.$fa?.singXs || [];
-				const beyondLo = singXs.filter((x) => x < lo && lo - x <= span);
-				const beyondHi = singXs.filter((x) => x > hi && x - hi <= span);
+				const beyondLo = singXs.filter((x) => x < lo - tol && lo - x <= span);
+				const beyondHi = singXs.filter((x) => x > hi + tol && x - hi <= span);
 				const near = [...beyondLo.length ? [Math.max(...beyondLo)] : [], ...beyondHi.length ? [Math.min(...beyondHi)] : []];
 				const labels = [];
 				for (const x of near) {
