@@ -593,6 +593,7 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
     const errs: string[] = [];
     const p = plan as Partial<LearningPlan> | null;
     if (!p || typeof p !== 'object') return [`${path}: not an object`];
+    const outermost = ancestors.size === 0;
     // Structured clone keeps cycles, so a stored record can contain itself.
     if (ancestors.has(p)) return [`${path}: a plan that contains itself`];
     if (ancestors.size >= MAX_NESTING) return [`${path}: nested more than ${MAX_NESTING} deep`];
@@ -678,6 +679,13 @@ export function validatePlan(plan: unknown, path = 'plan', planIds: Set<string> 
                 errs.push(`${path}.nav.frames[0]: must be this plan, on one of its steps`);
             }
         }
+    }
+    // Plans are JSON documents: the navigator clones them through JSON and
+    // export writes them as JSON. A cycle anywhere else (a view that points
+    // back at itself, from a structured-clone record) would pass every check
+    // above and throw on first use, so a plan must also serialize.
+    if (outermost && !errs.length) {
+        try { JSON.stringify(p); } catch { errs.push(`${path}: not a JSON document (it contains a cycle)`); }
     }
     return errs;
 }

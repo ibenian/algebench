@@ -534,6 +534,15 @@ test('validatePlan reports a cyclic or absurdly deep plan instead of overflowing
     cyclic.steps[n].sub.nested = cyclic;   // what a structured-clone record can hold
     assert.ok(validatePlan(cyclic).includes(`plan.steps[${n}].sub.nested: a plan that contains itself`));
 
+    // A cycle outside the nested plans: a view that refers to itself.
+    const viewCycle = JSON.parse(JSON.stringify(root));
+    const i = viewCycle.steps.findIndex((st: PlanStep) => st.kind !== 'subplan');
+    viewCycle.steps[i].view.self = viewCycle.steps[i].view;
+    assert.deepEqual(validatePlan(viewCycle), ['plan: not a JSON document (it contains a cycle)']);
+    const origin = JSON.parse(JSON.stringify(root));
+    origin.target.origin.loop = origin.target;
+    assert.deepEqual(validatePlan(origin), ['plan: not a JSON document (it contains a cycle)']);
+
     let deep = plan('d0', [content('x', { lesson: L, sc: 'a' }, 'scene')]);
     for (let d = 1; d <= 40; d++) deep = plan(`d${d}`, [nested(`k${d}`, deep)]);
     const errs = validatePlan(deep);
