@@ -378,6 +378,33 @@ test('validatePlan rejects a malformed saved position and non-object views', () 
     assert.deepEqual(validatePlan({ ...root, nav: { frames: [] } }), ['plan.nav: frames is not a non-empty list']);
 });
 
+test('validatePlan reports, not throws, a primitive sub-plan', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    bad.steps[2].sub = 'bad';
+    assert.deepEqual(validatePlan(bad), ['plan.steps[2]: sub-plan has neither nested plan nor planId']);
+    const r = parsePlanFile(JSON.stringify({ format: 'algebench-learning-plans', version: 1, exportedAt: 0, plans: [bad] }));
+    assert.deepEqual(r.plans, []);
+    assert.deepEqual(r.errors, ['plans[0].steps[2]: sub-plan has neither nested plan nor planId']);
+});
+
+test('validatePlan rejects a saved position that is too deep or revisits a plan', () => {
+    const { root } = fixture();
+    const frame = (planId: string) => ({ planId, stepId: 's1', cameFrom: ORIGIN });
+    const deep = { ...root, nav: { frames: [frame('tv'), frame('a'), frame('b'), frame('c'), frame('d')] } };
+    assert.deepEqual(validatePlan(deep), [`plan.nav: deeper than ${MAX_PLAN_DEPTH} frames`]);
+    const cyclic = { ...root, nav: { frames: [frame('tv'), frame('air'), frame('tv')] } };
+    assert.deepEqual(validatePlan(cyclic), ['plan.nav.frames[2]: plan "tv" is already on the stack']);
+});
+
+test('parsePlanFile keeps the first of two plans with the same id', () => {
+    const { root } = fixture();
+    const twin = { ...root, title: 'imposter' };
+    const r = parsePlanFile(JSON.stringify({ format: 'algebench-learning-plans', version: 1, exportedAt: 0, plans: [root, twin] }));
+    assert.deepEqual(r.plans.map((p) => p.title), [root.title]);
+    assert.deepEqual(r.errors, ['plans[1]: duplicate id "tv"']);
+});
+
 test('a saved position that no longer resolves is refused, not thrown', () => {
     const { root, lookup, save, saved } = fixture();
     let p = save(startPlan(root, lookup, 1));

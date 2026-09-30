@@ -531,9 +531,9 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
         ids.add(step.id);
         if (!STATES.has(step.state)) errs.push(`${at}: bad state`);
         if (step.kind === 'subplan') {
-            const sub = (step as SubplanStep).sub;
-            if (sub && 'nested' in sub) errs.push(...validatePlan(sub.nested, `${at}.sub.nested`));
-            else if (!sub || typeof (sub as { planId?: unknown }).planId !== 'string') errs.push(`${at}: sub-plan has neither nested plan nor planId`);
+            const sub = (step as SubplanStep).sub as unknown;
+            if (isObject(sub) && 'nested' in (sub as object)) errs.push(...validatePlan((sub as { nested: unknown }).nested, `${at}.sub.nested`));
+            else if (!isObject(sub) || typeof (sub as { planId?: unknown }).planId !== 'string') errs.push(`${at}: sub-plan has neither nested plan nor planId`);
         } else if (CONTENT_KINDS.has(step.kind)) {
             const ref = (step as ContentStep).ref;
             if (!ref || typeof ref.lesson !== 'string' || !ref.lesson) errs.push(`${at}: missing ref.lesson`);
@@ -550,12 +550,21 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
     if (p.nav !== undefined) {
         const frames = isObject(p.nav) ? (p.nav as { frames?: unknown }).frames : undefined;
         if (!Array.isArray(frames) || !frames.length) errs.push(`${path}.nav: frames is not a non-empty list`);
+        else if (frames.length > MAX_PLAN_DEPTH) errs.push(`${path}.nav: deeper than ${MAX_PLAN_DEPTH} frames`);
         else {
             frames.forEach((f, i) => {
                 const fr = f as Partial<NavFrame> | null;
                 if (!isObject(fr) || typeof fr!.planId !== 'string' || typeof fr!.stepId !== 'string' || !isObject(fr!.cameFrom)) {
                     errs.push(`${path}.nav.frames[${i}]: needs planId, stepId and a cameFrom view`);
                 }
+            });
+            // The navigator never enters a plan it is already in (no cycles).
+            const seen = new Set<string>();
+            frames.forEach((f, i) => {
+                const id = isObject(f) ? (f as Partial<NavFrame>).planId : undefined;
+                if (typeof id !== 'string') return;
+                if (seen.has(id)) errs.push(`${path}.nav.frames[${i}]: plan "${id}" is already on the stack`);
+                seen.add(id);
             });
             const f0 = frames[0] as Partial<NavFrame>;
             if (isObject(f0) && (f0.planId !== p.id || !ids.has(String(f0.stepId)))) {
@@ -616,10 +625,12 @@ export function parsePlanFile(text: string): { plans: LearningPlan[]; errors: st
     }
     const plans: LearningPlan[] = [];
     const errors: string[] = [];
+    const ids = new Set<string>();   // one store key per plan: a repeat would overwrite the first
     file.plans.forEach((p, i) => {
         const errs = validatePlan(p, `plans[${i}]`);
+        if (!errs.length && ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
         if (errs.length) errors.push(...errs);
-        else plans.push(p);
+        else { ids.add(p.id); plans.push(p); }
     });
     return { plans, errors };
 }
