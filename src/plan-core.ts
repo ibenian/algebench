@@ -127,9 +127,25 @@ export function viewMatchesRef(view: ViewState | null | undefined, ref: ContentR
     return true;
 }
 
+/**
+ * Deep-link fields that DO something rather than say where the learner is:
+ * the fire-once boot directives (send a chat message, run an analysis, load a
+ * proof animation) and a custom scene file path. The app never serializes
+ * them, so a plan made here never has them — but an imported one could, and
+ * opening a shared plan must not launch AI work.
+ */
+export const VIEW_DIRECTIVES = ['aa', 'fax', 'pa', 'pas', 'scene'] as const;
+
+/** `view` without its directives: a location to go to, and nothing else. */
+export function navigableView(view: ViewState): ViewState {
+    const v = { ...view };
+    for (const k of VIEW_DIRECTIVES) delete v[k];
+    return v;
+}
+
 /** Where resuming a content step lands: where the learner left it, else its start. */
 export function resumeView(step: PlanStep): ViewState | null {
-    return step.kind === 'subplan' ? null : (step.lastView ?? step.view);
+    return step.kind === 'subplan' ? null : navigableView(step.lastView ?? step.view);
 }
 
 // ----- Walking the frame stack -----
@@ -218,9 +234,12 @@ class Session {
         try { return this.chain(); } catch { return null; }
     }
 
-    /** Record that `plan` (or the top-level record holding it) changed. */
+    /** Record that `plan` (or the top-level record holding it) changed. Every
+     *  navigator action also moves the frame stack, which lives on the root —
+     *  so the root is stamped too, keeping the store's recent-first order. */
     touch(plan: LearningPlan, now: number): void {
         plan.updatedAt = now;
+        this.root.updatedAt = now;
         const record = this.recordOf.get(plan.id) ?? plan.id;
         this.dirty.add(record);
         if (record !== plan.id) {
@@ -233,7 +252,7 @@ class Session {
         this.dirty.add(this.root.id);   // nav lives on the root
         const changed = [...this.dirty].map((id) => (id === this.root.id ? this.root : this.refs.get(id)!))
             .filter(Boolean);
-        return { changed, go, ...extra };
+        return { changed, go: go && navigableView(go), ...extra };
     }
 }
 
@@ -510,6 +529,10 @@ export function plansReferencing(plans: LearningPlan[], planId: string): Learnin
 // ----- Validation (imports and loads) -----
 
 const CONTENT_KINDS = new Set<string>(['scene', 'step', 'proof', 'proofStep', 'glossary']);
+/** The ref ids each kind needs to land where it promises. */
+const KIND_IDS: Record<string, ReadonlyArray<keyof ContentRef>> = {
+    scene: ['sc'], step: ['sc', 'st'], proof: ['pf'], proofStep: ['pf', 'ps'], glossary: ['glossary'],
+};
 const STATES = new Set<string>(['todo', 'visited', 'done', 'skipped']);
 
 /** Structural problems with a plan (e.g. an imported file); empty when valid. */
@@ -541,6 +564,10 @@ export function validatePlan(plan: unknown, path = 'plan'): string[] {
             const ref = (step as ContentStep).ref;
             const refOk = isObject(ref) && typeof ref.lesson === 'string' && !!ref.lesson;
             if (!refOk) errs.push(`${at}: missing ref.lesson`);
+            else {
+                const missing = KIND_IDS[step.kind]!.filter((k) => typeof ref[k] !== 'string' || !ref[k]);
+                if (missing.length) errs.push(`${at}: a ${step.kind} ref needs ${missing.join(' and ')}`);
+            }
             // The ref is the source of truth; a stored view must land on it
             // (resumeView opens lastView before view).
             const view = (step as ContentStep).view;
@@ -629,6 +656,22 @@ export function exportPlans(plans: LearningPlan[], lookup: PlanLookup, now: numb
     return { format: PLAN_FILE_FORMAT, version: 1, exportedAt: now, plans: [...out.values()] };
 }
 
+/** Every stored view in `plan` (nested plans included) without its directives. */
+function withoutDirectives(plan: LearningPlan): LearningPlan {
+    const p = clone(plan);
+    const walk = (q: LearningPlan): void => {
+        q.target.origin = navigableView(q.target.origin);
+        for (const f of q.nav?.frames ?? []) f.cameFrom = navigableView(f.cameFrom);
+        for (const st of q.steps) {
+            if (st.kind === 'subplan') { if ('nested' in st.sub) walk(st.sub.nested); continue; }
+            st.view = navigableView(st.view);
+            if (st.lastView) st.lastView = navigableView(st.lastView);
+        }
+    };
+    walk(p);
+    return p;
+}
+
 /** Parse an exported file: the plans that are valid, and why the others are not. */
 export function parsePlanFile(text: string): { plans: LearningPlan[]; errors: string[] } {
     let data: unknown;
@@ -645,7 +688,7 @@ export function parsePlanFile(text: string): { plans: LearningPlan[]; errors: st
         const errs = validatePlan(p, `plans[${i}]`);
         if (!errs.length && ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
         if (errs.length) errors.push(...errs);
-        else { ids.add(p.id); plans.push(p); }
+        else { ids.add(p.id); plans.push(withoutDirectives(p)); }
     });
     return { plans, errors };
 }

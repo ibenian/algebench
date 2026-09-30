@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
     back, breadcrumb, currentStep, enter, exportPlans, forward, jumpTo, markComplete, MAX_PLAN_DEPTH, parsePlanFile,
     plansReferencing, progress, recordView, refToView, reopen, returnUp, startPlan,
-    validatePlan, viewMatchesRef,
+    validatePlan, viewMatchesRef, VIEW_DIRECTIVES,
 } from './plan-core.js';
 import type { ContentRef, ContentStep, LearningPlan, PlanLookup, PlanStep, SubplanStep } from './plan-core.js';
 import type { ViewState } from '/view-state.js';
@@ -340,7 +340,7 @@ test('validatePlan accepts the fixture and reports broken plans', () => {
 
 test('export carries referenced plans (transitively) and drops walks; import round-trips', () => {
     const { root, lookup, save, saved } = fixture();
-    const extra = plan('extra', [content('e1', { lesson: L })]);
+    const extra = plan('extra', [content('e1', { lesson: L, sc: 'the-forces-of-reentry', st: 'aerodynamic-drag' })]);
     saved.set('extra', extra);
     saved.set('air', { ...saved.get('air')!, steps: [...saved.get('air')!.steps, linked('r3', 'extra')] });
     const walked = save(startPlan(root, lookup, 1));
@@ -435,6 +435,49 @@ test('export drops walks from nested plans too, and import checks the file versi
     assert.ok(!JSON.stringify(file).includes('"nav"'), 'no walk anywhere in the export');
     assert.deepEqual(parsePlanFile(JSON.stringify({ ...file, version: 2 })),
         { plans: [], errors: ['unsupported file version 2'] });
+});
+
+test('validatePlan requires the ref ids each step kind navigates to', () => {
+    const { root } = fixture();
+    const bad = JSON.parse(JSON.stringify(root));
+    const i = bad.steps.findIndex((st: PlanStep) => st.kind === 'glossary');
+    const ps = bad.steps.findIndex((st: PlanStep) => st.kind === 'proofStep');
+    delete bad.steps[i].ref.glossary;
+    bad.steps[ps].ref = { lesson: L };
+    bad.steps[ps].view = { builtin: L };
+    assert.deepEqual(validatePlan(bad), [
+        `plan.steps[${Math.min(i, ps)}]: a ${i < ps ? 'glossary ref needs glossary' : 'proofStep ref needs pf and ps'}`,
+        `plan.steps[${Math.max(i, ps)}]: a ${i < ps ? 'proofStep ref needs pf and ps' : 'glossary ref needs glossary'}`,
+    ]);
+});
+
+test('side-effecting deep-link directives never leave the navigator, and are stripped on import', () => {
+    const { root, lookup } = fixture();
+    const armed = JSON.parse(JSON.stringify(root));
+    const directives = { aa: 'explain everything', fax: 'x^2', pa: 'd/anim', pas: 2, scene: '/tmp/x.json' };
+    for (const st of armed.steps) if (st.kind !== 'subplan') { Object.assign(st.view, directives); }
+    Object.assign(armed.target.origin, directives);
+    const first = startPlan(armed, lookup, 1);
+    assert.ok(first.go, 'the plan starts');
+    for (const k of VIEW_DIRECTIVES) assert.equal(k in first.go!, false, `go has no ${k}`);
+    const back = returnUp(first.changed[0]!, lookup, 2);   // lands on the (armed) origin
+    for (const k of VIEW_DIRECTIVES) assert.equal(k in back.go!, false, `return has no ${k}`);
+
+    const r = parsePlanFile(JSON.stringify({ format: 'algebench-learning-plans', version: 1, exportedAt: 0, plans: [armed] }));
+    assert.deepEqual(r.errors, []);
+    const text = JSON.stringify(r.plans);
+    for (const k of VIEW_DIRECTIVES) assert.ok(!text.includes(`"${k}":`), `imported plan has no ${k}`);
+});
+
+test('every navigator move stamps the root, even inside a linked plan', () => {
+    const { root, lookup, save } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    p = save(jumpTo(p, lookup, 's3', 2));
+    const r = enter(p, lookup, ORIGIN, 3);   // into the linked 'air' plan
+    p = save(r);
+    const moved = forward(p, lookup, 7);
+    const saved = moved.changed.find((q) => q.id === root.id)!;
+    assert.equal(saved.updatedAt, 7, 'the root, which holds the frame stack, is stamped');
 });
 
 test('a saved position that no longer resolves is refused, not thrown', () => {
