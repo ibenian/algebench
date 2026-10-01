@@ -1,0 +1,223 @@
+{
+  "format": "algebench-learning-plans",
+  "version": 1,
+  "exportedAt": 1790640000000,
+  "plans": [
+    {
+      "schemaVersion": 1,
+      "id": "3f6c2a9e-8d41-4b7a-9f0e-2c5d7e1a4b88",
+      "title": "Understand terminal velocity",
+      "target": {
+        "text": "Understand terminal velocity",
+        "origin": {
+          "builtin": "atmospheric-entry-physics",
+          "sc": "splashdown-dynamics",
+          "st": "terminal-velocity"
+        }
+      },
+      "status": "active",
+      "createdAt": 1790640000000,
+      "updatedAt": 1790640780000,
+      "steps": [
+        {
+          "id": "s1",
+          "kind": "step",
+          "title": "Aerodynamic Drag",
+          "why": "Terminal velocity is where drag cancels weight, so start with what drag is and what it depends on.",
+          "ref": {
+            "lesson": "atmospheric-entry-physics",
+            "sc": "the-forces-of-reentry",
+            "st": "aerodynamic-drag"
+          },
+          "view": {
+            "builtin": "atmospheric-entry-physics",
+            "sc": "the-forces-of-reentry",
+            "st": "aerodynamic-drag"
+          },
+          "state": "todo",
+          "source": "ai"
+        },
+        {
+          "id": "s2",
+          "kind": "glossary",
+          "title": "drag coefficient",
+          "why": "The drag coefficient packs the capsule's shape into one number that appears in the final formula.",
+          "ref": {
+            "lesson": "atmospheric-entry-physics",
+            "glossary": "drag coefficient"
+          },
+          "view": {
+            "builtin": "atmospheric-entry-physics"
+          },
+          "state": "todo",
+          "source": "ai"
+        },
+        {
+          "id": "s3",
+          "kind": "subplan",
+          "title": "Why air gets thinner with height",
+          "why": "Drag depends on air density, which changes with altitude, so terminal velocity changes as the capsule falls.",
+          "sub": {
+            "planId": "7b2e4d10-93c6-4f85-a1d2-6e0b8c3f5a19"
+          },
+          "state": "todo",
+          "source": "learner"
+        },
+        {
+          "id": "s4",
+          "kind": "subplan",
+          "title": "Why zero acceleration means balanced forces",
+          "why": "Terminal velocity is defined by the forces balancing; this makes that step obvious.",
+          "state": "todo",
+          "source": "ai",
+          "sub": {
+            "nested": {
+              "schemaVersion": 1,
+              "id": "a81d0c55-2e3f-4c19-b6a7-5d9e0f1c2b34",
+              "title": "Newton's second law",
+              "target": {
+                "text": "Why zero acceleration means the forces balance",
+                "origin": {
+                  "builtin": "atmospheric-entry-physics",
+                  "sc": "splashdown-dynamics",
+                  "pf": "terminal_velocity",
+                  "ps": "so-the-forces-must-balance",
+                  "pp": true,
+                  "panel": "chat"
+                }
+              },
+              "status": "active",
+              "createdAt": 1790640500000,
+              "updatedAt": 1790640780000,
+              "steps": [
+                {
+                  "id": "n1",
+                  "kind": "proofStep",
+                  "title": "Newton's second law",
+                  "why": "F = ma: if a is zero, the net force is zero, so the forces cancel.",
+                  "ref": {
+                    "lesson": "atmospheric-entry-physics",
+                    "sc": "splashdown-dynamics",
+                    "pf": "terminal_velocity",
+                    "ps": "newton-s-second-law"
+                  },
+                  "view": {
+                    "builtin": "atmospheric-entry-physics",
+                    "sc": "splashdown-dynamics",
+                    "pf": "terminal_velocity",
+                    "ps": "newton-s-second-law",
+                    "pp": true,
+                    "panel": "chat"
+                  },
+                  "state": "todo",
+                  "source": "ai"
+                },
+                {
+                  "id": "n2",
+                  "kind": "proofStep",
+                  "title": "So the forces must balance",
+                  "why": "With the net force at zero, weight and drag must be equal and opposite.",
+                  "ref": {
+                    "lesson": "atmospheric-entry-physics",
+                    "sc": "splashdown-dynamics",
+                    "pf": "terminal_velocity",
+                    "ps": "so-the-forces-must-balance"
+                  },
+                  "view": {
+                    "builtin": "atmospheric-entry-physics",
+                    "sc": "splashdown-dynamics",
+                    "pf": "terminal_velocity",
+                    "ps": "so-the-forces-must-balance",
+                    "pp": true,
+                    "panel": "chat"
+                  },
+                  "state": "todo",
+                  "source": "ai"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "s5",
+          "kind": "proofStep",
+          "title": "Solve for Terminal Velocity",
+          "why": "Solving the balance gives the formula; each factor now maps to something you've seen.",
+          "ref": {
+            "lesson": "atmospheric-entry-physics",
+            "sc": "splashdown-dynamics",
+            "pf": "terminal_velocity",
+            "ps": "solve-for-terminal-velocity"
+          },
+          "view": {
+            "builtin": "atmospheric-entry-physics",
+            "sc": "splashdown-dynamics",
+            "pf": "terminal_velocity",
+            "ps": "solve-for-terminal-velocity",
+            "pp": true,
+            "panel": "chat"
+          },
+          "state": "todo",
+          "source": "ai"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "7b2e4d10-93c6-4f85-a1d2-6e0b8c3f5a19",
+      "title": "Why air gets thinner with height",
+      "target": {
+        "text": "Why does air density drop with altitude?",
+        "origin": {
+          "builtin": "atmospheric-entry-physics",
+          "sc": "the-exponential-atmosphere"
+        }
+      },
+      "status": "active",
+      "createdAt": 1790550000000,
+      "updatedAt": 1790550300000,
+      "steps": [
+        {
+          "id": "r1",
+          "kind": "proofStep",
+          "title": "Hydrostatic Equilibrium",
+          "why": "Each layer of air holds up the weight of the air above it.",
+          "ref": {
+            "lesson": "atmospheric-entry-physics",
+            "sc": "the-exponential-atmosphere",
+            "pf": "exponential_atmosphere_derivation",
+            "ps": "hydrostatic-equilibrium"
+          },
+          "view": {
+            "builtin": "atmospheric-entry-physics",
+            "sc": "the-exponential-atmosphere",
+            "pf": "exponential_atmosphere_derivation",
+            "ps": "hydrostatic-equilibrium",
+            "pp": true,
+            "panel": "chat"
+          },
+          "state": "todo",
+          "source": "ai"
+        },
+        {
+          "id": "r2",
+          "kind": "step",
+          "title": "The Exponential Profile",
+          "why": "Putting it together gives density falling off exponentially with height.",
+          "ref": {
+            "lesson": "atmospheric-entry-physics",
+            "sc": "the-exponential-atmosphere",
+            "st": "the-exponential-profile"
+          },
+          "view": {
+            "builtin": "atmospheric-entry-physics",
+            "sc": "the-exponential-atmosphere",
+            "st": "the-exponential-profile"
+          },
+          "state": "todo",
+          "source": "ai"
+        }
+      ]
+    }
+  ]
+}

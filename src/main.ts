@@ -6,7 +6,7 @@
 
 import { state } from '/state.js';
 import { initMathBox, animateCamera, setupRollDrag, setupProjectionToggle, setupTrackpadPan,
-         applyCanvasClearColor } from '/camera.js';
+         applyCanvasClearColor, startCameraSettleWatch } from '/camera.js';
 import { animateSlider } from '/sliders.js';
 import { setupDragDrop, setupFilePicker, setupScenesDropdown, setupVideoExportControls,
          loadBuiltinScenesList, loadInitialSceneFromQuery } from '/ui.js';
@@ -24,6 +24,7 @@ import { setupJsonViewer, setupContextStatusPopup } from '/json-browser.js';
 import { renderMarkdown, renderKaTeX } from '/labels.js';
 import { setupProofPanel, navigateProof, loadProof, getProofContext, refreshProofPanel } from '/proof.js';
 import { captureViewState, applyViewState, setupViewSync, setupShareButton } from '/view-state-bridge.js';
+import { planBootDone, setupPlanUi } from '/plan-ui.js';
 import { setupPopstateListener } from '/nav-history.js';
 import { setupObjectPicker } from '/object-picker.js';
 import { installGlossaryTooltip } from '/glossary.js';
@@ -53,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     wireThemeToggle(document.getElementById('btn-theme'),
                     { onChange: () => applyCanvasClearColor() });
     initMathBox();
+    startCameraSettleWatch();
     setupObjectPicker();
     setupRollDrag(document.getElementById('mathbox-container'));
     setupTrackpadPan();
@@ -83,8 +85,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupViewSync();
     setupShareButton();
     setupPopstateListener(applyViewState);
+    // After the view sync, before the first load: the plan follows navchange events.
+    // Its stored plans load alongside the scene (not delaying it), but booting
+    // only ends once both are in, so the restored walk is checked against the
+    // loaded view.
+    const planReady = setupPlanUi();
     loadBuiltinScenesList();
     await loadInitialSceneFromQuery();
+    await planReady;
+    planBootDone();
 });
 
 // ============================================================

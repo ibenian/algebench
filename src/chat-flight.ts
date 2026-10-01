@@ -9,32 +9,38 @@
 //     only accepted asks (the quiz's hint ladder).
 // Each call resolves `true` once its turn — queued or not — has finished.
 
-export type SendTurn = (text: string, silent: boolean) => Promise<void>;
-export type ChatSender = (text: string, opts?: { silent?: boolean }) => Promise<boolean>;
+/** `noTools`: a text-only turn — the server offers no tools and treats the
+ *  message as nothing but a question (the learning plan's guide). */
+export interface SendOptions { silent?: boolean; noTools?: boolean }
+export type SendTurn = (text: string, opts: { silent: boolean; noTools: boolean }) => Promise<void>;
+export type ChatSender = (text: string, opts?: SendOptions) => Promise<boolean>;
 
 export function singleFlightSender(isBusy: () => boolean, sendTurn: SendTurn): ChatSender {
-    const queued: Array<{ text: string; done: Promise<boolean>; resolve: (ok: boolean) => void }> = [];
-    let active: { text: string; done: Promise<boolean> } | null = null;   // the visible turn in flight
+    // A turn is the same turn only with the same text AND the same tool
+    // permission: a text-only (noTools) ask must never share, or be replayed
+    // as, a turn that may act on the app.
+    const queued: Array<{ text: string; noTools: boolean; done: Promise<boolean>; resolve: (ok: boolean) => void }> = [];
+    let active: { text: string; noTools: boolean; done: Promise<boolean> } | null = null;   // the visible turn in flight
 
     function sendNext(): void {
         const next = queued.shift();
-        if (next) void send(next.text).then(next.resolve, () => next.resolve(false));
+        if (next) void send(next.text, { noTools: next.noTools }).then(next.resolve, () => next.resolve(false));
     }
 
-    function send(text: string, { silent = false }: { silent?: boolean } = {}): Promise<boolean> {
+    function send(text: string, { silent = false, noTools = false }: SendOptions = {}): Promise<boolean> {
         if (isBusy()) {
             if (silent) return Promise.resolve(false);
-            if (active && active.text === text) return active.done;
-            const waiting = queued.find((q) => q.text === text);
+            if (active && active.text === text && active.noTools === noTools) return active.done;
+            const waiting = queued.find((q) => q.text === text && q.noTools === noTools);
             if (waiting) return waiting.done;
             let resolve!: (ok: boolean) => void;
             const done = new Promise<boolean>((r) => { resolve = r; });
-            queued.push({ text, done, resolve });
+            queued.push({ text, noTools, done, resolve });
             return done;
         }
-        const turn = { text, done: Promise.resolve(false) };
+        const turn = { text, noTools, done: Promise.resolve(false) };
         const settle = () => { if (active === turn) active = null; sendNext(); };
-        turn.done = sendTurn(text, silent).then(
+        turn.done = sendTurn(text, { silent, noTools }).then(
             () => { settle(); return true; },
             (err: unknown) => { settle(); throw err; },
         );

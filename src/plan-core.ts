@@ -101,7 +101,11 @@ export interface NavResult {
 
 // ----- Refs and views -----
 
-/** The deep link for a content ref. A proof step opens the proof panel. */
+/**
+ * The deep link for a content ref. A proof opens the proof panel, which lives
+ * inside the Chat tab — so it also selects that tab, or the jump would land on
+ * Doc with the proof panel open but out of sight.
+ */
 export function refToView(ref: ContentRef): ViewState {
     const vs: ViewState = { builtin: ref.lesson };
     if (ref.sc) vs.sc = ref.sc;
@@ -109,6 +113,7 @@ export function refToView(ref: ContentRef): ViewState {
     if (ref.pf) {
         vs.pf = ref.pf;
         vs.pp = true;
+        vs.panel = 'chat';
         if (ref.ps) vs.ps = ref.ps;
     }
     return vs;
@@ -138,6 +143,8 @@ export const VIEW_DIRECTIVES = ['aa', 'fax', 'pa', 'pas', 'scene'] as const;
 
 /** Ids and enum-ish values that end up in selectors and lookups: a plain token. */
 const TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
+/** Longest camera-view key kept — the same bound parseViewState applies to `cv`. */
+const CV_MAX_LEN = 64;
 /** A built-in lesson id: plain-token path segments, e.g. "eigenvalues" or
  *  "draft/chart-demo" — no empty, dot-leading or traversal segments. */
 const LESSON_ID = /^(?=.{1,200}$)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/;
@@ -147,9 +154,11 @@ const safeKey = (k: string): boolean => TOKEN.test(k) && !(k in Object.prototype
 
 /**
  * `view` reduced to a location the app can apply safely: only the known,
- * non-directive fields, each of the right type — strings as plain tokens
- * (`cv` is spliced into a CSS selector), numbers finite, the camera three
- * finite triples. Everything the navigator hands out goes through this, so
+ * non-directive fields, each of the right type — ids as plain tokens,
+ * numbers finite, the camera three finite triples. `cv` is the exception: a
+ * camera-view key is a scene-authored name (`side-(yz)`, `ride:-chased-ship`)
+ * that the app matches exactly, never as selector syntax (findCamButton), so
+ * any string is kept, bounded like parseViewState bounds it. Everything the navigator hands out goes through this, so
  * a stored or imported view can't carry a directive or a malformed value
  * into applyViewState.
  */
@@ -157,10 +166,11 @@ export function navigableView(view: ViewState): ViewState {
     const src = (isObject(view) ? view : {}) as Record<string, unknown>;
     const v: ViewState = {};
     if (typeof src.builtin === 'string' && LESSON_ID.test(src.builtin)) v.builtin = src.builtin;
-    for (const k of ['view', 'panel', 'sc', 'st', 'pf', 'ps', 'cv', 'proj', 'fa'] as const) {
+    for (const k of ['view', 'panel', 'sc', 'st', 'pf', 'ps', 'proj', 'fa'] as const) {
         const val = src[k];
         if (typeof val === 'string' && TOKEN.test(val)) v[k] = val;
     }
+    if (typeof src.cv === 'string' && src.cv.length > 0 && src.cv.length <= CV_MAX_LEN) v.cv = src.cv;
     if (typeof src.pp === 'boolean') v.pp = src.pp;
     if (typeof src.dock === 'boolean') v.dock = src.dock;
     // An orthographic scale is a half-height: zero or negative collapses or flips the view.
@@ -186,9 +196,48 @@ export function navigableView(view: ViewState): ViewState {
     return v;
 }
 
+/**
+ * Whether the view shows its proof. Views carry the selected proof (`pf`/`ps`)
+ * whether or not anyone is reading it — a scene keeps one selected, and some
+ * open the proof panel behind the Doc tab — so the proof is on screen only on
+ * the Math page (the step's equation as a graph), or when the proof panel is
+ * open AND the Chat tab that holds it is showing.
+ */
+export function proofOnScreen(view: ViewState): boolean {
+    return view.view === 'math' || (!!view.pp && view.panel === 'chat');
+}
+
+/** `view` is at `ref`, and if `ref` is a proof, the proof is actually on screen. */
+function showsRef(view: ViewState, ref: ContentRef): boolean {
+    return viewMatchesRef(view, ref) && (!ref.pf || proofOnScreen(view));
+}
+
+/**
+ * Whether `view` shows the plan's current step — the on-screen match alone,
+ * nothing recorded or moved (after a reload, say). A sub-plan or glossary
+ * step has no location of its own, so it counts as shown.
+ */
+export function viewShowsCurrentStep(plan: LearningPlan, lookup: PlanLookup, view: ViewState): boolean {
+    const s = new Session(plan, lookup);
+    if (!s.frames.length) return false;
+    const chain = s.tryChain();
+    if (!chain) return false;
+    const step = stepById(chain[chain.length - 1]!, s.frames[s.frames.length - 1]!.stepId);
+    if (!step) return false;
+    if (step.kind === 'subplan' || step.kind === 'glossary') return true;
+    return showsRef(view, step.ref);
+}
+
 /** Where resuming a content step lands: where the learner left it, else its start. */
 export function resumeView(step: PlanStep): ViewState | null {
-    return step.kind === 'subplan' ? null : navigableView(step.lastView ?? step.view);
+    if (step.kind === 'subplan') return null;
+    const v = navigableView(step.lastView ?? step.view);
+    // A proof step's promise is its proof on screen: outside the Math page that
+    // means the proof panel open in the Chat tab, whatever the stored view says
+    // (an imported one may omit `pp` or say `panel: 'doc'`). Other steps keep
+    // their view exactly as recorded.
+    if ((step.kind === 'proof' || step.kind === 'proofStep') && v.view !== 'math') { v.pp = true; v.panel = 'chat'; }
+    return v;
 }
 
 // ----- Walking the frame stack -----
@@ -457,25 +506,73 @@ export function returnUp(plan: LearningPlan, lookup: PlanLookup, now: number): N
     return s.result(frame.cameFrom);
 }
 
+/** How precisely a ref pins a location: the number of ids it names. */
+function refSpecificity(ref: ContentRef): number {
+    // Weighted by the location hierarchy, not counted: a proof step (pf + ps,
+    // even without sc) outranks a scene step (sc + st), and a proof its scene.
+    return (ref.sc ? 1 : 0) + (ref.st ? 2 : 0) + (ref.pf ? 4 : 0) + (ref.ps ? 8 : 0);
+}
+
 /**
- * The learner is now at `view`. If that is the current content step's
- * location, the step counts as visited and remembers the view as its resume
- * point; anywhere else (wandering off) changes nothing. `onStep` says which.
+ * The learner is now at `view` — however they got there: the plan, the scene
+ * tree, the proof panel, the Math view. The plan follows:
+ *
+ * - On the current content step: it counts as visited and remembers the view
+ *   as its resume point.
+ * - On another content step of the plan being walked, or of a plan further
+ *   out on the frame stack: the plan moves there (leaving any sub-plans above
+ *   that level the way Return does — nothing is completed) and marks it
+ *   visited. The innermost level with a match wins; within it, the most
+ *   specific ref (a proof step over its scene), then the nearest step after
+ *   the current one.
+ * - Anywhere else (wandering off): nothing changes.
+ *
+ * Glossary steps never match — their ref names only a lesson, so they would
+ * claim every view in it. A sub-plan the learner hasn't entered isn't entered
+ * for them. `onStep` says whether the view is on (now) the current step;
+ * `moved` whether the plan's position changed to follow the learner.
  */
-export function recordView(plan: LearningPlan, lookup: PlanLookup, view: ViewState, now: number): NavResult & { onStep: boolean } {
+export function recordView(plan: LearningPlan, lookup: PlanLookup, view: ViewState, now: number): NavResult & { onStep: boolean; moved: boolean } {
     const s = new Session(plan, lookup);
-    if (!s.frames.length) return { changed: [], go: null, onStep: false };
+    const none = { changed: [], go: null, onStep: false, moved: false };
+    if (!s.frames.length) return none;
     const chain = s.tryChain();
-    if (!chain) return { changed: [], go: null, onStep: false };
-    const cur = chain[chain.length - 1]!;
-    const step = stepById(cur, s.frames[s.frames.length - 1]!.stepId);
-    if (!step || step.kind === 'subplan' || !viewMatchesRef(view, step.ref)) {
-        return { changed: [], go: null, onStep: false };
+    if (!chain) return none;   // saved position no longer resolves
+    const depth = chain.length - 1;
+    const cur = chain[depth]!;
+    const hereId = s.frames[depth]!.stepId;
+
+    for (let d = depth; d >= 0; d--) {
+        const p = chain[d]!;
+        const at = stepIndex(p, s.frames[d]!.stepId);
+        let best: { step: ContentStep; score: number; dist: number } | null = null;
+        p.steps.forEach((step, i) => {
+            if (step.kind === 'subplan' || step.kind === 'glossary' || !showsRef(view, step.ref)) return;
+            const score = refSpecificity(step.ref);
+            // The current step first among equals (-1), then steps after it
+            // (1, 2 …), then those before it. It is ranked with the rest, so a
+            // broad current step (a scene) yields to a more specific one (a
+            // step or proof of that scene) the learner has moved to.
+            const dist = i === at ? -1 : i > at ? i - at : p.steps.length + (at - i);
+            if (!best || score > best.score || (score === best.score && dist < best.dist)) best = { step, score, dist };
+        });
+        if (!best) continue;
+        const { step } = best as { step: ContentStep };
+        if (d === depth && step.id === hereId) {
+            // Still on the current step: it counts as visited and remembers the view.
+            markVisited(step);
+            step.lastView = clone(view);
+            s.touch(p, now);
+            return { ...s.result(null), onStep: true, moved: false };
+        }
+        s.frames.length = d + 1;   // leave the sub-plans above this level, completing nothing
+        s.frames[d]!.stepId = step.id;
+        markVisited(step);
+        step.lastView = clone(view);
+        s.touch(p, now);
+        return { ...s.result(null), onStep: true, moved: true };
     }
-    markVisited(step);
-    step.lastView = clone(view);
-    s.touch(cur, now);
-    return { ...s.result(null), onStep: true };
+    return none;
 }
 
 // ----- Progress, breadcrumb, lifecycle -----
@@ -548,6 +645,23 @@ export function currentStep(plan: LearningPlan, lookup: PlanLookup): PlanStep | 
     return stepById(chain[chain.length - 1]!, s.frames[s.frames.length - 1]!.stepId) ?? null;
 }
 
+/**
+ * `plan` with its walk stepped out of `deletedId`, or null if it isn't inside
+ * it. Deleting a linked plan the learner is walking inside would leave the
+ * frame stack pointing at nothing; instead the stack is cut back to the frame
+ * that holds the link, so the parent rests on its (now dangling) sub-plan step
+ * — where the UI offers Remove or Import. Nothing is completed.
+ */
+export function leaveDeletedPlan(plan: LearningPlan, deletedId: string, now: number): LearningPlan | null {
+    const frames = plan.nav?.frames ?? [];
+    const i = frames.findIndex((f) => f.planId === deletedId);
+    if (i <= 0) return null;   // not inside it (or it is this plan, deleted itself)
+    const p = clone(plan);
+    p.nav!.frames = p.nav!.frames.slice(0, i);
+    p.updatedAt = now;
+    return p;
+}
+
 /** Mark the plan complete. Step states stay as history; the walk ends. */
 export function markComplete(plan: LearningPlan, now: number): LearningPlan {
     const p = clone(plan);
@@ -555,6 +669,29 @@ export function markComplete(plan: LearningPlan, now: number): LearningPlan {
     p.completedAt = now;
     delete p.nav;
     p.updatedAt = now;
+    return p;
+}
+
+/**
+ * Restart: the plan's progress back to the beginning — every step not
+ * started, resume points forgotten, nested sub-plans reset too, the walk
+ * ended. Linked plans are left alone: they're separate plans, and their
+ * progress is shared with whatever else links them.
+ */
+export function restartPlan(plan: LearningPlan, now: number): LearningPlan {
+    const reset = (p: LearningPlan): void => {
+        p.status = 'active';
+        delete p.completedAt;
+        delete p.nav;
+        p.updatedAt = now;
+        for (const s of p.steps) {
+            s.state = 'todo';
+            if (s.kind === 'subplan') { if ('nested' in s.sub) reset(s.sub.nested); }
+            else delete s.lastView;
+        }
+    };
+    const p = clone(plan);
+    reset(p);
     return p;
 }
 
@@ -756,6 +893,50 @@ function withNavigableViews(plan: LearningPlan): LearningPlan {
     };
     walk(p);
     return p;
+}
+
+/** Every plan id in `plan`'s tree: its own and its nested plans'. */
+export function planTreeIds(plan: LearningPlan): Set<string> {
+    const ids = new Set<string>();
+    const walk = (p: LearningPlan): void => {
+        ids.add(p.id);
+        for (const s of p.steps) if (s.kind === 'subplan' && 'nested' in s.sub) walk(s.sub.nested);
+    };
+    walk(plan);
+    return ids;
+}
+
+/**
+ * Which parsed plans can join the stored ones. A plan replaces the stored
+ * record with its id; otherwise every id in its tree must be new to the
+ * stored forest (minus the records being replaced) — plan ids are identity to
+ * the navigator, and Export all must stay a file parsePlanFile accepts.
+ */
+export function mergeImport(stored: LearningPlan[], incoming: LearningPlan[]): { plans: LearningPlan[]; errors: string[] } {
+    const replaced = new Set(incoming.map((p) => p.id));
+    const taken = new Set<string>();
+    for (const p of stored) if (!replaced.has(p.id)) for (const id of planTreeIds(p)) taken.add(id);
+    const plans: LearningPlan[] = [];
+    const errors: string[] = [];
+    // Updates to stored records first: a new plan mustn't claim an id that a
+    // record being re-imported (its own newer copy) still uses.
+    const storedById = new Map(stored.map((p) => [p.id, p]));
+    const ordered = [...incoming.filter((p) => storedById.has(p.id)), ...incoming.filter((p) => !storedById.has(p.id))];
+    for (const p of ordered) {
+        const ids = planTreeIds(p);
+        const clash = [...ids].filter((id) => taken.has(id));
+        if (clash.length) {
+            errors.push(`plan id "${clash[0]}" in “${p.title}” is already used by another saved plan`);
+            // A rejected replacement leaves the stored record as it was: its
+            // ids stay taken, so nothing later in the file can claim them.
+            const kept = storedById.get(p.id);
+            if (kept) for (const id of planTreeIds(kept)) taken.add(id);
+            continue;
+        }
+        for (const id of ids) taken.add(id);
+        plans.push(p);
+    }
+    return { plans, errors };
 }
 
 /** Parse an exported file: the plans that are valid, and why the others are not. */

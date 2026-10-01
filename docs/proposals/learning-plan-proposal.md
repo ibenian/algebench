@@ -78,6 +78,8 @@ flowchart LR
 
 A plan is a **progress keeper**. It knows its steps, how far the learner has got, where the learner is right now (possibly several sub-plans deep), and how to get back to where each level was entered.
 
+A complete sample export, a plan with content, glossary and proof steps, a nested sub-plan and a linked plan (all steps still to do; exports carry no walk), is in [`learning-plan-sample.json`](learning-plan-sample.json). A test keeps it valid against `parsePlanFile`.
+
 - A content step's **ref** is the source of truth. Its **view** is derived from the ref and may add presentation state (slider values, camera preset).
 - A **sub-plan step** holds another plan instead of content, either **nested** (the plan lives inside this step) or **referenced** (a pointer to another saved plan).
 
@@ -264,7 +266,7 @@ Step `s3` is a **reference** to a separate saved plan about air density.
           "title": "Newton's second law",
           "target": {
             "text": "Why zero acceleration means the forces balance",
-            "origin": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "so-the-forces-must-balance", "pp": true }
+            "origin": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "so-the-forces-must-balance", "pp": true, "panel": "chat" }
           },
           "status": "active",
           "createdAt": 1790640500000,
@@ -276,7 +278,7 @@ Step `s3` is a **reference** to a separate saved plan about air density.
               "title": "Newton's second law",
               "why": "F = ma: if a is zero, the net force is zero, so the forces cancel.",
               "ref":  { "lesson": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "newton-s-second-law" },
-              "view": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "newton-s-second-law", "pp": true },
+              "view": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "newton-s-second-law", "pp": true, "panel": "chat" },
               "state": "visited",
               "source": "ai"
             },
@@ -286,7 +288,7 @@ Step `s3` is a **reference** to a separate saved plan about air density.
               "title": "So the forces must balance",
               "why": "With the net force at zero, weight and drag must be equal and opposite.",
               "ref":  { "lesson": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "so-the-forces-must-balance" },
-              "view": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "so-the-forces-must-balance", "pp": true },
+              "view": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "so-the-forces-must-balance", "pp": true, "panel": "chat" },
               "state": "todo",
               "source": "ai"
             }
@@ -300,7 +302,7 @@ Step `s3` is a **reference** to a separate saved plan about air density.
       "title": "Solve for Terminal Velocity",
       "why": "Solving the balance gives the formula; each factor now maps to something you've seen.",
       "ref":  { "lesson": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "solve-for-terminal-velocity" },
-      "view": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "solve-for-terminal-velocity", "pp": true },
+      "view": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "solve-for-terminal-velocity", "pp": true, "panel": "chat" },
       "state": "todo",
       "source": "ai"
     }
@@ -315,7 +317,7 @@ Step `s3` is a **reference** to a separate saved plan about air density.
       {
         "planId": "a81d0c55-2e3f-4c19-b6a7-5d9e0f1c2b34",
         "stepId": "n1",
-        "cameFrom": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "so-the-forces-must-balance", "pp": true }
+        "cameFrom": { "builtin": "atmospheric-entry-physics", "sc": "splashdown-dynamics", "pf": "terminal_velocity", "ps": "so-the-forces-must-balance", "pp": true, "panel": "chat" }
       }
     ]
   }
@@ -327,7 +329,7 @@ Reading `nav`: the learner is on step `n1` of the nested plan *Newton's second l
 A content step's `view` serializes to an ordinary deep link. `n1`, for example, becomes:
 
 ```text
-/?builtin=atmospheric-entry-physics&sc=splashdown-dynamics&pf=terminal_velocity&ps=newton-s-second-law&pp=1
+/?builtin=atmospheric-entry-physics&sc=splashdown-dynamics&pf=terminal_velocity&ps=newton-s-second-law&pp=1&panel=chat
 ```
 
 **⑤ The referenced plan.** Step `s3` points to this separate saved plan. The learner may have made it earlier, or it may be linked from several plans. Its progress is its own and is shared by every plan that references it.
@@ -351,7 +353,7 @@ A content step's `view` serializes to an ordinary deep link. `n1`, for example, 
       "title": "Hydrostatic Equilibrium",
       "why": "Each layer of air holds up the weight of the air above it.",
       "ref":  { "lesson": "atmospheric-entry-physics", "sc": "the-exponential-atmosphere", "pf": "exponential_atmosphere_derivation", "ps": "hydrostatic-equilibrium" },
-      "view": { "builtin": "atmospheric-entry-physics", "sc": "the-exponential-atmosphere", "pf": "exponential_atmosphere_derivation", "ps": "hydrostatic-equilibrium", "pp": true },
+      "view": { "builtin": "atmospheric-entry-physics", "sc": "the-exponential-atmosphere", "pf": "exponential_atmosphere_derivation", "ps": "hydrostatic-equilibrium", "pp": true, "panel": "chat" },
       "state": "done",
       "source": "ai"
     },
@@ -395,8 +397,12 @@ The navigator is a small state machine over `nav.frames`. Every action changes t
 | **Jump to any step** (click in the list) | top frame moves there | that step `todo` → `visited` (nothing is completed) | its `lastView ?? view` |
 
 - **"Knows where the user is."** On `algebench:navchange`, `proofchange`, slider and camera settle events, the current step's `lastView` is updated from `captureViewState()`. Coming back to a step (Back, Return, or a reload) lands where the learner actually left it, not just at the step's start.
-- **Wandering off is allowed.** If the learner navigates somewhere unrelated to the current step, the plan doesn't follow them or overwrite anything outside that step. The navigator shows "Back to plan · step 3" and the frame stack is unchanged.
-- **Jump mechanics.** `applyViewState(view)`, then `pushView(captureViewState())` so the browser's Back button still works. Then compare where it landed with the step's `sc`/`st`/`pf`/`ps`, and show a notice if it didn't land.
+- **The plan follows the learner, however they move.** Scene tree, proof panel, Math view or the plan's own buttons: on each navigation the plan checks where the learner landed.
+  - **On the current step:** it updates that step's resume point.
+  - **On another content step of the plan being walked, or of a plan further out on the frame stack:** the plan moves there and marks it visited. It leaves any sub-plans above that level the way Return does, completing nothing. The innermost level with a match wins; within it, the most specific ref (a proof step over its scene), then the nearest step after the current one.
+  - **What doesn't count:** glossary steps never match, because they name only a lesson. A sub-plan the learner hasn't entered isn't entered for them. The plan's own jumps don't count as the learner moving.
+- **Wandering off is allowed.** Anywhere that isn't a plan step changes nothing: the navigator shows "Back to step" and the frame stack is unchanged.
+- **Jump mechanics.** First `pushView(view)` (without the camera, which history never carries), then `applyViewState(view)`. The order matters: `applyViewState` rewrites the *current* history entry, so pushing first keeps the view the learner left as the entry Back returns to. Then compare where it landed with the step's `sc`/`st`/`pf`/`ps`, and show a notice if it didn't land.
 - **Progress.**
   - A content step counts 1 when it's `done` or `skipped`.
   - A sub-plan step counts as its sub-plan's completion fraction, computed recursively. A referenced plan contributes its own shared progress.
@@ -453,7 +459,7 @@ PRs 1 and 2 are independent and can go in parallel. The navigator works without 
 2. **What happens when content is thin.** "Terminal velocity" appears in only one lesson. The expert should be able to say "AlgeBench doesn't cover X well yet" (`reason`) instead of padding the plan with weak steps. Recommendation: allow it, and show it.
 3. **Graph nodes excluded in v1** because their ids aren't stable. Revisit once node ids are stabilized for prebaked graphs.
 4. **Glossary deep link (`gl=`).** Inline definitions in v1; add the param in v1.5 if glossary steps turn out to be common.
-5. **Panel reset on jump.** Every jump forces Doc or Chat. Keep that (the plan lives in the dock, so nothing is lost), and have a step's view carry `panel`/`pp` when a proof step needs the proof panel open.
+5. **Panel reset on jump.** Every jump forces Doc or Chat. Keep that (the plan lives in the dock, so nothing is lost), and have a proof step's view carry `pp` **and** `panel: "chat"`: the proof panel lives inside the Chat tab, so `pp` alone lands on Doc with the proof panel out of sight.
 6. **Cost.** One LLM call per plan, behind the existing per-IP rate limit (60/min shared across experts). Consider a low reasoning effort (`scoped_lm`).
 7. **Privacy.** Plans stay in the browser only; nothing goes to the server except the target text and the current view, per request.
 8. **Does Forward mean "done"?** Proposed: yes. Forward marks the step done; Back and Return never change state, and a jump only marks a step it lands on as visited (never done); the learner can undo it or mark a step skipped. The alternative is a separate "Done" check with Forward only moving, which is more precise but adds a click per step.

@@ -44,6 +44,8 @@ var PAUSE_ICON = "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"c
 var FIRST_ICON = "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6l-8 6 8 6z\" stroke=\"none\"/><path d=\"M7 6v12\" fill=\"none\"/></svg>";
 /** ›| Last (skip to end) — a right triangle + a bar. */
 var LAST_ICON = "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 6l8 6-8 6z\" stroke=\"none\"/><path d=\"M17 6v12\" fill=\"none\"/></svg>";
+/** Learning plan: a route with waypoints. */
+var PLAN_ICON = "<svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"6\" cy=\"19\" r=\"2\"/><circle cx=\"18\" cy=\"5\" r=\"2\"/><path d=\"M8 19h6.5a3.5 3.5 0 0 0 0-7h-5a3.5 3.5 0 0 1 0-7H16\"/></svg>";
 //#endregion
 //#region src/proof-animation/proof-animation.ts
 var EASE = "cubic-bezier(0.42, 0, 0.58, 1)";
@@ -3035,6 +3037,6 @@ function wireThemeToggle(btn, { key = THEME_KEY, onChange } = {}) {
 	return paint;
 }
 //#endregion
-export { SHARE_VIEW_ICON as C, USER_ICON as E, PREV_ICON as S, UNDOCK_ICON as T, GEAR_ICON as _, wireThemeToggle as a, PAUSE_ICON as b, AI_ICON as c, CODE_ICON as d, DOCK_BOTTOM_ICON as f, FUNCTION_ANALYSIS_ICON as g, FULLSCREEN_ICON as h, persistTheme as i, ANGLE_LOCK_ICON as l, FIRST_ICON as m, applyTheme as n, validateProofData as o, DOCK_LEFT_ICON as p, initialTheme as r, ProofAnimator as s, THEMES as t, BRACES_ICON as u, LAST_ICON as v, TRASH_ICON as w, PLAY_ICON as x, NEXT_ICON as y };
+export { PREV_ICON as C, USER_ICON as D, UNDOCK_ICON as E, PLAY_ICON as S, TRASH_ICON as T, GEAR_ICON as _, wireThemeToggle as a, PAUSE_ICON as b, AI_ICON as c, CODE_ICON as d, DOCK_BOTTOM_ICON as f, FUNCTION_ANALYSIS_ICON as g, FULLSCREEN_ICON as h, persistTheme as i, ANGLE_LOCK_ICON as l, FIRST_ICON as m, applyTheme as n, validateProofData as o, DOCK_LEFT_ICON as p, initialTheme as r, ProofAnimator as s, THEMES as t, BRACES_ICON as u, LAST_ICON as v, SHARE_VIEW_ICON as w, PLAN_ICON as x, NEXT_ICON as y };
 
 //# sourceMappingURL=theme.js.map

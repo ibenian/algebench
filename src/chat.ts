@@ -75,6 +75,12 @@ interface ChatMessageElement extends HTMLDivElement {
 // ----- Chat State -----
 let chatHistory: ChatHistoryEntry[] = [];       // [{role: 'user'|'assistant', text: string}]
 let chatAvailable = false;  // set true if GEMINI_API_KEY is configured
+/** Whether AI chat works here (a key is configured). Others — the learning
+ *  plan's guide — read it, and hear 'algebench:chatavailability' when known. */
+window.algebenchChatAvailable = () => chatAvailable;
+function announceChatAvailability(): void {
+    try { window.dispatchEvent(new CustomEvent('algebench:chatavailability', { detail: { available: chatAvailable } })); } catch (_) { /* ignore */ }
+}
 let chatSending = false;
 
 /**
@@ -160,8 +166,21 @@ function setPresetPrompts(prompts: string[] | null | undefined): void {
     }
 }
 
+/** Until this time (ms), the Chat-tab welcome is skipped — see suppressChatWelcome. */
+let _welcomeSuppressedUntil = 0;
+
+/**
+ * Skip the Chat-tab welcome for the next `ms`. The learning plan's AI guide
+ * calls this before it navigates: a plan jump to a proof step opens the Chat
+ * tab (where the proof panel lives), and the guide is about to explain that
+ * very screen — the welcome would talk over it with a second explanation.
+ */
+export function suppressChatWelcome(ms = 5000): void {
+    _welcomeSuppressedUntil = Math.max(_welcomeSuppressedUntil, Date.now() + ms);
+}
+
 function shouldSkipWelcome(): boolean {
-    return chatHistory.length > 0 || chatSending;
+    return chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
 }
 
 // ----- Context Snapshot -----
@@ -385,6 +404,7 @@ function setupChat(): void {
         .then(r => r.json())
         .then((data: { available: boolean }) => {
             chatAvailable = data.available;
+            announceChatAvailability();
             if (!chatAvailable) {
                 const msg = document.getElementById('chat-unavailable-msg');
                 const tab = document.getElementById('tab-chat');
@@ -394,6 +414,7 @@ function setupChat(): void {
         })
         .catch(() => {
             chatAvailable = false;
+            announceChatAvailability();
             const msg = document.getElementById('chat-unavailable-msg');
             const tab = document.getElementById('tab-chat');
             if (msg) msg.classList.remove('hidden');
@@ -784,7 +805,7 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
  */
 const sendChatMessage = singleFlightSender(() => chatSending, _sendTurn);
 
-async function _sendTurn(text: string, silent: boolean): Promise<void> {
+async function _sendTurn(text: string, { silent, noTools }: { silent: boolean; noTools: boolean }): Promise<void> {
     setChatSending(true);
     if (!silent) addChatMessage('user', text);
 
@@ -799,7 +820,8 @@ async function _sendTurn(text: string, silent: boolean): Promise<void> {
         message: text,
         // silent: user wasn't added to chatHistory, so don't slice
         history: silent ? chatHistory : chatHistory.slice(0, -1),
-        context: context
+        context: context,
+        ...(noTools ? { noTools: true } : {}),
     };
 
     try {
@@ -832,6 +854,8 @@ async function _sendTurn(text: string, silent: boolean): Promise<void> {
         }
 
         const data: ChatApiResponse = await res.json();
+        // A text-only turn never acts on the app, even if a reply carried tool calls.
+        if (noTools) data.toolCalls = [];
 
         const tcNames = (data.toolCalls || []).map(tc => tc.name).join(', ');
         console.log('%c🤖 Chat response: %c' + data.response.length + ' chars' + (tcNames ? ' | tools: ' + tcNames : ''),
@@ -1088,7 +1112,9 @@ function addChatMessage(role: string, content: string, toolCalls?: AlgeBenchChat
     if (typeof renderKaTeX === 'function' && typeof renderMarkdown === 'function') {
         body.innerHTML = role === 'user'
             ? renderKaTeX(content, false)
-            : renderMarkdown(content);
+            // An AI reply: it may echo text it was given (an imported plan's,
+            // via the guide), so no raw HTML or script links from it render.
+            : renderMarkdown(content, { untrusted: true });
     } else {
         body.textContent = content;
     }
@@ -1348,7 +1374,7 @@ function renderToolCallChip(tc: AlgeBenchChatToolCall): HTMLDivElement {
     summary.className = 'tool-call-summary';
     summary.style.flex = '1';
     if (typeof renderMarkdown === 'function') {
-        summary.innerHTML = renderMarkdown(friendlyText);
+        summary.innerHTML = renderMarkdown(friendlyText, { untrusted: true });
     } else {
         summary.textContent = friendlyText;
     }
@@ -1507,6 +1533,15 @@ window.algebenchResumeTTS = function() {
     if (!p || !p._ctx) return;
     ttsPausedByUser = false;
     p._ctx.resume().catch(() => {});
+};
+
+/** Whether this browser is speaking (or fetching speech) right now. Callers that
+ *  only need to silence *their own* talk check this first: algebenchStopTTS
+ *  also tells the server to kill every TTS stream. */
+window.algebenchTTSActive = function(): boolean {
+    if (ttsAbortController) return true;
+    const p = _ensureTTSPlayer();
+    return !!p && p.isPlaying();
 };
 
 window.algebenchStopTTS = function() {

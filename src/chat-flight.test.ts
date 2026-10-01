@@ -9,7 +9,10 @@ function rig() {
     let busy = false;
     const sent: Array<{ text: string; silent: boolean }> = [];
     const finishers: Array<(ok: boolean) => void> = [];
-    const send = singleFlightSender(() => busy, (text, silent) => {
+    const opts: Array<{ silent: boolean; noTools: boolean }> = [];
+    const send = singleFlightSender(() => busy, (text, o) => {
+        const { silent } = o;
+        opts.push(o);
         busy = true;
         sent.push({ text, silent });
         return new Promise<void>((resolve, reject) => {
@@ -17,7 +20,7 @@ function rig() {
         });
     });
     const finish = async (ok = true) => { finishers.shift()!(ok); await new Promise((r) => setImmediate(r)); };
-    return { send, sent, finish, isBusy: () => busy };
+    return { send, sent, finish, isBusy: () => busy, opts };
 }
 
 test('an idle chat sends at once and resolves true when the turn ends', async () => {
@@ -86,4 +89,27 @@ test('a failed turn still lets the queue move on', async () => {
     assert.deepEqual(r.sent.map((s) => s.text), ['boom', 'next']);
     await r.finish();
     assert.equal(await queued, true);
+});
+
+test('a text-only (noTools) ask reaches the turn sender as such', async () => {
+    const r = rig();
+    void r.send('guide me', { silent: true, noTools: true });
+    assert.deepEqual(r.opts[0], { silent: true, noTools: true });
+    await r.finish();
+    void r.send('plain');
+    assert.deepEqual(r.opts[1], { silent: false, noTools: false });
+    await r.finish();
+});
+
+test('a queued text-only ask keeps noTools, and never shares a tool-enabled turn', async () => {
+    const r = rig();
+    void r.send('busy');                                     // in flight, tools allowed
+    const same = r.send('busy', { noTools: true });          // same text, text-only: its own turn
+    const queued = r.send('guide', { noTools: true });
+    await r.finish();                                        // 'busy' ends → queue moves on
+    await r.finish();
+    await r.finish();
+    assert.deepEqual(r.sent.map((s) => s.text), ['busy', 'busy', 'guide']);
+    assert.deepEqual(r.opts.map((o) => o.noTools), [false, true, true]);
+    assert.deepEqual(await Promise.all([same, queued]), [true, true]);
 });

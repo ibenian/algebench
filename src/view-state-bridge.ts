@@ -280,10 +280,15 @@ export async function applyViewState(vs: ViewState | null | undefined, opts: App
         }
 
         // 3. Proof + proof step (proofs reload inside navigateTo).
-        //    Restored under the proof-sync latch: `st` and `ps` are captured
+        //    When the view names a scene step (`st`), the proof is restored
+        //    under the proof-sync latch: `st` and `ps` are captured
         //    independently, so restoring the proof position must not let
         //    proof→scene sync yank the scene to the proof step's `sceneStep`
         //    binding, overriding the explicit `st` applied in step 2.
+        //    Without `st` (a learning-plan step, a proof's own deeplink), there
+        //    is no scene step to protect: the proof step's binding is the only
+        //    thing that can place the scene, so sync is left on for the step
+        //    move — exactly as if the learner had stepped the proof panel.
         if (vs.pf != null && Array.isArray(bridgeState.proofSpec) && bridgeState.proofSpec.length) {
             const ids = bridgeState.proofSpec.map((e, i) => proofId(e, i));
             const pIdx = resolveIndex(vs.pf, ids);
@@ -298,6 +303,13 @@ export async function applyViewState(vs: ViewState | null | undefined, opts: App
                     const proof = bridgeState.proofSpec[pIdx] && bridgeState.proofSpec[pIdx]!.proof;
                     const sIds = proofStepIds(proof);
                     const sIdx = vs.ps != null ? resolveIndex(vs.ps, sIds) : -1;
+                    // Only a link that shows the proof may move the scene to the
+                    // proof step's binding: the proof panel open in the Chat tab
+                    // (which holds it), or the Math page. A captured view carries
+                    // the selected pf/ps — and pp — even when the proof is behind
+                    // Doc, so a plain scene link must not jump to that proof's step.
+                    const proofShown = (vs.pp && vs.panel === 'chat') || vs.view === 'math';
+                    if (vs.st == null && proofShown) bridgeState._proofSyncInProgress = prevLatch;
                     navigateProof(sIdx);
                 } finally {
                     bridgeState._proofSyncInProgress = prevLatch;

@@ -11,10 +11,12 @@ export const AI_SPARKLE_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" widt
 
 // ----- Utility -----
 
+/** Escape text for use in HTML (element content or a quoted attribute).
+ *  A plain string replace rather than a DOM round-trip: same result, no
+ *  document needed, and static analysis can see it is a sanitizer. */
 export function escapeHtml(s: string): string {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+    return String(s).replace(/[&<>"']/g, (c) =>
+        c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '"' ? '&quot;' : '&#39;');
 }
 
 export function stripLatex(text: string | null | undefined): string {
@@ -79,6 +81,10 @@ export interface RenderOptions {
      *  output is not interactive text (canvas rasters) or is itself a
      *  glossary definition — markers then render as their plain text. */
     glossary?: boolean;
+    /** Text the lesson didn't write — an AI reply, which may echo imported
+     *  plan text. Raw HTML in it is shown as text (escaped), and links keep
+     *  only safe targets (http(s), mailto, relative, #anchors). */
+    untrusted?: boolean;
 }
 
 export function renderKaTeX(text: string | null | undefined, displayMode?: boolean, opts?: RenderOptions): string {
@@ -220,13 +226,36 @@ function _renderKaTeX(text: string | null | undefined, displayMode?: boolean): s
 
 export function renderMarkdown(md: string | null | undefined, opts?: RenderOptions): string {
     if (!md) return '';
-    if (opts && opts.glossary === false) return _renderMarkdown(stripGlossaryMarkers(md));
+    const untrusted = !!opts?.untrusted;
+    if (opts && opts.glossary === false) return _renderMarkdown(stripGlossaryMarkers(md), untrusted);
     // Terms are matched on the source, then restored into the output.
     const { text, terms } = extractActiveGlossaryTerms(md);
-    return restoreGlossaryTerms(_renderMarkdown(text), terms);
+    return restoreGlossaryTerms(_renderMarkdown(text, untrusted), terms);
 }
 
-function _renderMarkdown(md: string): string {
+/** A link target that can't run script: http(s), mailto, or scheme-less (relative, #anchor). */
+function safeHref(href: string | null | undefined): boolean {
+    const h = String(href ?? '').trim();
+    const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(h);
+    return !scheme || /^(https?|mailto)$/i.test(scheme[1]!);
+}
+
+type MarkedRenderer = InstanceType<typeof marked.Renderer>;
+let _untrustedRenderer: MarkedRenderer | null = null;
+
+/** marked's renderer for untrusted Markdown: raw HTML escaped, unsafe links dropped. */
+function untrustedRenderer(): MarkedRenderer {
+    if (_untrustedRenderer) return _untrustedRenderer;
+    const r = new marked.Renderer();
+    const link = r.link.bind(r);
+    const image = r.image.bind(r);
+    r.html = (html: string) => escapeHtml(html);
+    r.link = (href: string, title: string | null | undefined, text: string) => (safeHref(href) ? link(href, title, text) : text);
+    r.image = (href: string, title: string | null, text: string) => (safeHref(href) ? image(href, title, text) : escapeHtml(text));
+    return (_untrustedRenderer = r);
+}
+
+function _renderMarkdown(md: string, untrusted = false): string {
     const mathBlocks: { tex: string; display: boolean }[] = [];
 
     let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m: string, tex: string) => {
@@ -240,7 +269,7 @@ function _renderMarkdown(md: string): string {
 
     // marked.parse is typed string | Promise<string> because it supports async
     // extensions; none are registered here, so the sync string is what comes back.
-    let html = marked.parse(safe) as string;
+    let html = (untrusted ? marked.parse(safe, { renderer: untrustedRenderer() }) : marked.parse(safe)) as string;
     html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (_m: string, idx: string) => {
         // Sentinel indices are generated just above, so this always resolves.
         const block = mathBlocks[parseInt(idx)]!;
