@@ -22816,6 +22816,7 @@ function addCurrentView() {
 		if (top) top.stepId = step.id;
 		ui.onStep = true;
 	});
+	maybeGuide();
 }
 /** + Sub-plan…: a nested sub-plan starting from this view, inserted after the current step and entered. */
 function newSubplanHere() {
@@ -22877,7 +22878,7 @@ function insertAndEnter(holder, andEnter = true) {
 	if (andEnter) {
 		const root = active();
 		if (root) apply(enter(root, lookup, captureViewState({ includeCamera: true }), now()));
-	}
+	} else maybeGuide();
 }
 /** Ask for a title in the panel itself; `submit` runs with a non-empty title. */
 function askTitle(label, value, submit) {

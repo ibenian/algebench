@@ -374,6 +374,7 @@ function addCurrentView(): void {
         if (top) top.stepId = step.id;
         ui.onStep = true;
     });
+    maybeGuide();   // a new current step: the guide explains it, as after any move
 }
 
 /** + Sub-plan…: a nested sub-plan starting from this view, inserted after the current step and entered. */
@@ -416,6 +417,8 @@ function insertAndEnter(holder: SubplanStep, andEnter = true): void {
     if (andEnter) {
         const root = active();
         if (root) apply(enter(root, lookup, captureViewState({ includeCamera: true }), now()));
+    } else {
+        maybeGuide();   // the linked plan's step is now current: the guide introduces it
     }
 }
 
