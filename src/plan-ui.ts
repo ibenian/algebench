@@ -692,7 +692,16 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
                 : 'This linked plan was deleted — importing it again brings the link back.'));
             if (!sub) {
                 const row = el('div', 'plan-tools');
-                row.appendChild(button('Remove this step', () => removeStep(cur.id), { cls: 'plan-btn-danger' }));
+                // A plan keeps at least one step, so when the dead link is all
+                // there is, removing it means removing the plan (or leaving the sub-plan).
+                const holder = findInner(root, last.planId) ?? root;
+                if (holder.steps.length > 1) {
+                    row.appendChild(button('Remove this step', () => removeStep(cur.id), { cls: 'plan-btn-danger' }));
+                } else if (holder === root) {
+                    row.appendChild(ui.confirmDelete === root.id
+                        ? button('Really delete?', () => deletePlan(root.id), { cls: 'plan-btn-danger plan-btn-armed', title: 'Click again to delete this plan for good' })
+                        : button('Delete this plan', () => deletePlan(root.id), { cls: 'plan-btn-danger', title: 'Its only step links a plan that no longer exists' }));
+                }
                 row.appendChild(button('Import…', importFile));
                 card.appendChild(row);
             }
@@ -1385,6 +1394,10 @@ export function planBootDone(): void {
         if (quiet) clearTimeout(quiet);
         clearTimeout(cap);
         ui.booting = false;
+        // Load-time events don't carry over: a follow check they scheduled is
+        // dropped, so the first real event after boot is judged on its own.
+        if (followTimer) { clearTimeout(followTimer); followTimer = null; }
+        followNavigated = false;
         // The walk keeps its saved position; whether that step is what's on
         // screen now is worked out fresh, so "Back to step" shows after a
         // reload that landed somewhere else.

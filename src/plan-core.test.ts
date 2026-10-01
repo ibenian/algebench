@@ -820,6 +820,16 @@ test('a rejected replacement keeps the stored record\'s ids reserved', () => {
     assert.equal(r.errors.length, 2);
 });
 
+test('a proof step without its scene id still outranks the scene step it sits in', () => {
+    const sceneStep = content('st', { lesson: L, sc: 'splashdown-dynamics', st: 'terminal-velocity' });
+    const proofStep = content('pr', { lesson: L, pf: 'terminal_velocity', ps: 'solve' }, 'proofStep');
+    const lookup: PlanLookup = () => undefined;
+    const p = startPlan(plan('m', [sceneStep, proofStep]), lookup, 1).changed[0]!;   // on the scene step
+    const view = { builtin: L, sc: 'splashdown-dynamics', st: 'terminal-velocity', pf: 'terminal_velocity', ps: 'solve', pp: true, panel: 'chat' };
+    const r = recordView(p, lookup, view, 2);
+    assert.equal(r.changed[0]!.nav!.frames[0]!.stepId, 'pr');
+});
+
 test('a nested plan may not reuse an id already in its plan', () => {
     const { root } = fixture();
     const bad = JSON.parse(JSON.stringify(root));

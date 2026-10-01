@@ -508,7 +508,9 @@ export function returnUp(plan: LearningPlan, lookup: PlanLookup, now: number): N
 
 /** How precisely a ref pins a location: the number of ids it names. */
 function refSpecificity(ref: ContentRef): number {
-    return (['sc', 'st', 'pf', 'ps'] as const).filter((k) => ref[k]).length;
+    // Weighted by the location hierarchy, not counted: a proof step (pf + ps,
+    // even without sc) outranks a scene step (sc + st), and a proof its scene.
+    return (ref.sc ? 1 : 0) + (ref.st ? 2 : 0) + (ref.pf ? 4 : 0) + (ref.ps ? 8 : 0);
 }
 
 /**

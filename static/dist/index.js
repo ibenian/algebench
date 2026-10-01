@@ -21929,12 +21929,7 @@ function returnUp(plan, lookup, now) {
 }
 /** How precisely a ref pins a location: the number of ids it names. */
 function refSpecificity(ref) {
-	return [
-		"sc",
-		"st",
-		"pf",
-		"ps"
-	].filter((k) => ref[k]).length;
+	return (ref.sc ? 1 : 0) + (ref.st ? 2 : 0) + (ref.pf ? 4 : 0) + (ref.ps ? 8 : 0);
 }
 /**
 * The learner is now at `view` — however they got there: the plan, the scene
@@ -23161,7 +23156,15 @@ function renderWalk(root, body) {
 			card.appendChild(el("div", "plan-current-why", sub ? `${sub.steps.length} step${sub.steps.length === 1 ? "" : "s"}${"planId" in cur.sub ? " · linked plan" : ""}` : "This linked plan was deleted — importing it again brings the link back."));
 			if (!sub) {
 				const row = el("div", "plan-tools");
-				row.appendChild(button("Remove this step", () => removeStep(cur.id), { cls: "plan-btn-danger" }));
+				const holder = findInner(root, last.planId) ?? root;
+				if (holder.steps.length > 1) row.appendChild(button("Remove this step", () => removeStep(cur.id), { cls: "plan-btn-danger" }));
+				else if (holder === root) row.appendChild(ui.confirmDelete === root.id ? button("Really delete?", () => deletePlan(root.id), {
+					cls: "plan-btn-danger plan-btn-armed",
+					title: "Click again to delete this plan for good"
+				}) : button("Delete this plan", () => deletePlan(root.id), {
+					cls: "plan-btn-danger",
+					title: "Its only step links a plan that no longer exists"
+				}));
 				row.appendChild(button("Import…", importFile));
 				card.appendChild(row);
 			}
@@ -23817,6 +23820,11 @@ function planBootDone() {
 		if (quiet) clearTimeout(quiet);
 		clearTimeout(cap);
 		ui.booting = false;
+		if (followTimer) {
+			clearTimeout(followTimer);
+			followTimer = null;
+		}
+		followNavigated = false;
 		const root = active();
 		if (root?.nav) {
 			ui.onStep = viewShowsCurrentStep(root, lookup, seenView({ includeCamera: true }));
