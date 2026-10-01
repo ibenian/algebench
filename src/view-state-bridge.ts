@@ -303,11 +303,13 @@ export async function applyViewState(vs: ViewState | null | undefined, opts: App
                     const proof = bridgeState.proofSpec[pIdx] && bridgeState.proofSpec[pIdx]!.proof;
                     const sIds = proofStepIds(proof);
                     const sIdx = vs.ps != null ? resolveIndex(vs.ps, sIds) : -1;
-                    // Only a link that shows the proof (panel open, or the Math
-                    // page) may move the scene to the proof step's binding: a
-                    // captured view carries the selected pf/ps even when hidden,
-                    // so a plain scene link must not jump to that proof's step.
-                    if (vs.st == null && (vs.pp || vs.view === 'math')) bridgeState._proofSyncInProgress = prevLatch;
+                    // Only a link that shows the proof may move the scene to the
+                    // proof step's binding: the proof panel open in the Chat tab
+                    // (which holds it), or the Math page. A captured view carries
+                    // the selected pf/ps — and pp — even when the proof is behind
+                    // Doc, so a plain scene link must not jump to that proof's step.
+                    const proofShown = (vs.pp && vs.panel === 'chat') || vs.view === 'math';
+                    if (vs.st == null && proofShown) bridgeState._proofSyncInProgress = prevLatch;
                     navigateProof(sIdx);
                 } finally {
                     bridgeState._proofSyncInProgress = prevLatch;

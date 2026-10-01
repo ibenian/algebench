@@ -19246,7 +19246,8 @@ async function applyViewState(vs, opts = {}) {
 					setActiveProof(pIdx);
 					const sIds = proofStepIds(bridgeState.proofSpec[pIdx] && bridgeState.proofSpec[pIdx].proof);
 					const sIdx = vs.ps != null ? resolveIndex(vs.ps, sIds) : -1;
-					if (vs.st == null && (vs.pp || vs.view === "math")) bridgeState._proofSyncInProgress = prevLatch;
+					const proofShown = vs.pp && vs.panel === "chat" || vs.view === "math";
+					if (vs.st == null && proofShown) bridgeState._proofSyncInProgress = prevLatch;
 					navigateProof$1(sIdx);
 				} finally {
 					bridgeState._proofSyncInProgress = prevLatch;
