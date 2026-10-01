@@ -2379,6 +2379,46 @@ export function animateCamera(view: string, duration?: number): void {
     requestAnimationFrame(step);
 }
 
+// ----- Camera settled -----
+
+/** How long the camera must stay still after moving before it counts as settled. */
+const CAMERA_SETTLE_MS = 300;
+
+/**
+ * Announce `algebench:camerachange` once the camera settles after moving —
+ * however it moved: a preset animation, a trackball or axis drag, a pan,
+ * a wheel or pinch zoom, inertia. Those paths are many and custom, so this
+ * watches the result instead of each input: once per frame it compares the
+ * camera's position, target, up and zoom with the last frame's, and fires
+ * one event when a move has been still for CAMERA_SETTLE_MS. Listeners (the
+ * learning plan's resume point) get one event per gesture, not per frame.
+ */
+export function startCameraSettleWatch(): void {
+    let last: number[] = [];
+    let moving = false;
+    let stillSince = 0;
+    const snapshot = (): number[] => {
+        const c = cameraState.camera, t = cameraState.controls?.target;
+        if (!c || !t) return [];
+        return [c.position.x, c.position.y, c.position.z, t.x, t.y, t.z,
+                c.up.x, c.up.y, c.up.z, (c as { zoom?: number }).zoom ?? 1];
+    };
+    const frame = (now: number): void => {
+        const cur = snapshot();
+        const changed = cur.length !== last.length || cur.some((v, i) => Math.abs(v - last[i]!) > 1e-6);
+        if (changed) {
+            if (last.length) moving = true;   // the first sample is a baseline, not a move
+            last = cur;
+            stillSince = now;
+        } else if (moving && now - stillSince >= CAMERA_SETTLE_MS) {
+            moving = false;
+            try { window.dispatchEvent(new CustomEvent('algebench:camerachange')); } catch (_) { /* ignore */ }
+        }
+        requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+}
+
 // ----- Camera Buttons -----
 
 export function buildCameraButtons(spec: CameraScene | null | undefined): void {

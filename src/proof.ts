@@ -1304,6 +1304,9 @@ export function setupProofPanel(): void {
             _toggleProofPanel(!proofState.proofExpanded);
         });
     }
+    // × in the PROOF section header: close (the toggle button reopens it).
+    const closeBtn = document.getElementById('proof-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', () => _toggleProofPanel(false));
 
     // Nav buttons
     const firstBtn = document.getElementById('proof-first');

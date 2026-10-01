@@ -3737,18 +3737,16 @@ body.rotating-axis-z, body.rotating-axis-z * {
     color: var(--page-bg);   /* on-accent text: ink-on-ochre in both themes */
 }
 
+/* Flush with the side panel like the Chat and Learning Plan sections — its
+   PROOF section header does the separating, so no card of its own. */
 #proof-panel {
     position: relative;
     display: flex;
     flex-direction: column;
-    margin: 0 12px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 18px;
     overflow: hidden;
     flex-shrink: 0;
     max-height: 60%;
     background: var(--panel-bg);
-    box-shadow: var(--shadow-sm);
 }
 #proof-panel.hidden { display: none; }
 
@@ -5203,6 +5201,191 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 .glossary-tip-body > :first-child { margin-top: 0; }
 .glossary-tip-body > :last-child { margin-bottom: 0; }
 .glossary-tip-body p { margin: 4px 0; }
+
+/* ============================================================
+   Learning plan panel (src/plan-ui.ts)
+   ============================================================ */
+#btn-plan.active { color: var(--accent-color); }
+#btn-plan svg { vertical-align: -2px; margin-right: 4px; }
+/* Above the 3D view and its overlays, below modals (10000+) and the tour (99990). */
+#plan-layer { position: fixed; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 1200; }
+#plan-layer .dockable-panel { pointer-events: auto; }
+.plan-panel { width: 320px; max-height: 70vh; }
+.plan-panel .dockable-panel-body { overflow-y: auto; }
+.plan-panel-body { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; font-size: 13px; color: var(--text-color); }
+/* One style for the side panel's section-header buttons — the plan's guide,
+   dock and close (floating or docked) and the PROOF section's close. Plain,
+   muted, pointer cursor even inside a draggable header. */
+.plan-head-btn, .side-head-btn {
+    flex: none; width: 20px; height: 20px; padding: 0; margin: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: var(--radius-sm, 4px); background: transparent;
+    color: var(--muted-color); font: inherit; font-size: 12px; line-height: 1;
+    cursor: pointer; transition: color .15s, background .15s;
+}
+.plan-head-btn:hover, .side-head-btn:hover { color: var(--text-color); background: color-mix(in srgb, var(--text-color) 10%, transparent); }
+.plan-head-btn svg, .side-head-btn svg { display: block; pointer-events: none; }
+.plan-dock-btn svg { width: 12px; height: 10px; }
+.plan-close svg { width: 12px; height: 12px; }
+.plan-header-btns { display: inline-flex; align-items: center; gap: 2px; }
+/* The AI-guide toggle: the tour coach's 🔊/🔇 on the shared header button. */
+.plan-guide-btn { font-size: 13px; }
+.plan-guide-btn.plan-guide-off { opacity: 0.5; }
+/* Guide on: a strong backlight that goes from off to full and back. The
+   button itself glows (tinted background, wide outer glow, halo on the icon)
+   and a large blurred light sits behind it; all fade in and out together. Reduced motion
+   gets the same light held steady instead (below). */
+.plan-guide-btn:not(.plan-guide-off) {
+    position: relative; isolation: isolate;
+    animation: plan-guide-glow 2.2s ease-in-out infinite;
+}
+.plan-guide-btn:not(.plan-guide-off)::before {
+    content: ''; position: absolute; inset: -5px; z-index: -1; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, color-mix(in srgb, var(--accent-color) 70%, transparent) 0%,
+        color-mix(in srgb, var(--accent-color) 30%, transparent) 45%, transparent 72%);
+    filter: blur(3px);
+    animation: plan-guide-backlight 2.2s ease-in-out infinite;
+}
+/* From no light at all to full light and back. */
+@keyframes plan-guide-glow {
+    0%, 100% {
+        background: transparent;
+        box-shadow: 0 0 0 0 transparent;
+        text-shadow: 0 0 0 transparent;
+    }
+    50% {
+        background: color-mix(in srgb, var(--accent-color) 29%, transparent);
+        box-shadow: 0 0 8px 2px color-mix(in srgb, var(--accent-color) 65%, transparent);
+        text-shadow: 0 0 6px color-mix(in srgb, var(--accent-color) 91%, transparent);
+    }
+}
+@keyframes plan-guide-backlight {
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 0.91; }
+}
+@media (prefers-reduced-motion: reduce) {
+    /* No continuous animation: a steady highlight still says the guide is on. */
+    .plan-guide-btn:not(.plan-guide-off) {
+        animation: none;
+        background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+        box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent-color) 50%, transparent);
+    }
+    .plan-guide-btn:not(.plan-guide-off)::before { animation: none; opacity: 0.6; }
+    .plan-guide-status::before { animation: none; opacity: 0.8; }
+}
+
+
+.plan-guide-status { font-size: 11px; color: var(--accent-color); display: flex; align-items: center; gap: 6px; }
+.plan-guide-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-color); animation: plan-guide-backlight 1.2s ease-in-out infinite; }
+.plan-step { position: relative; }
+.plan-step-remove { flex: none; border: none; background: none; color: var(--muted-color); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; opacity: 0; transition: opacity .12s; }
+.plan-step:hover .plan-step-remove, .plan-step-remove:focus-visible { opacity: 1; }
+/* Reorder arrows: like the remove ×, shown on hover or keyboard focus. */
+.plan-step-move { flex: none; border: none; background: none; color: var(--muted-color); cursor: pointer; font-size: 12px; line-height: 1; padding: 0 2px; opacity: 0; transition: opacity .12s; }
+.plan-step:hover .plan-step-move:not(:disabled), .plan-step-move:focus-visible { opacity: 1; }
+.plan-step-move:hover { color: var(--text-color); }
+.plan-step-move:disabled { cursor: default; }
+.plan-step-remove:hover { color: #d9534f; }
+/* Docked: pinned to the bottom of the right-hand panel (#explanation-panel is
+   a flex column; the active tab takes the rest and scrolls on its own). */
+/* Section headers in the right-hand panel — Proof, Chat, Learning Plan — so
+   the three stacked sections read as separate: an accent icon, a small caps
+   title a step brighter than muted text, a rule and a faint band. */
+.side-section-head {
+    flex: none; display: flex; align-items: center; gap: 7px;
+    padding: 6px 10px 5px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-color) 72%, var(--muted-color));
+    background: color-mix(in srgb, var(--text-color) 4%, transparent);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+.side-section-head > svg { flex: none; color: var(--accent-color); }
+.side-section-title { flex: 1; min-width: 0; }
+.plan-docked.plan-panel {
+    width: auto; flex: none; max-height: 48%; display: flex; flex-direction: column;
+    background: var(--panel-bg);
+    box-shadow: 0 -6px 14px -10px rgba(0, 0, 0, 0.45);
+}
+.plan-docked .plan-panel-body { overflow-y: auto; min-height: 0; }
+.plan-docked-head { padding-top: 2px; padding-bottom: 1px; padding-right: 6px; min-height: 26px; box-sizing: border-box; }
+
+.plan-docked-btns { display: inline-flex; gap: 4px; }
+
+.plan-docked .plan-steps { max-height: none; }
+.plan-switch { display: flex; justify-content: flex-end; }
+.plan-btn {
+    font: inherit; font-size: 12px; padding: 3px 9px; border-radius: var(--radius-sm, 4px);
+    border: 1px solid var(--border-color); background: var(--btn-bg, transparent); color: var(--text-color); cursor: pointer;
+}
+.plan-btn:hover:not(:disabled) { border-color: var(--accent-color); }
+.plan-btn:disabled { opacity: 0.45; cursor: default; }
+.plan-btn-primary { background: color-mix(in srgb, var(--accent-color) 22%, transparent); border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); }
+.plan-btn-danger:hover:not(:disabled) { border-color: #d9534f; color: #d9534f; }
+.plan-btn-link { border: none; background: none; padding: 0; color: var(--accent-color); text-decoration: underline; }
+.plan-select { font: inherit; font-size: 12px; padding: 2px 4px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); }
+.plan-notice { font-size: 12px; padding: 5px 8px; border-radius: var(--radius-sm, 4px); background: color-mix(in srgb, var(--accent-color) 12%, transparent); }
+.plan-notice-error { background: color-mix(in srgb, #d9534f 18%, transparent); }
+.plan-muted, .plan-empty { color: var(--muted-color); font-size: 12px; }
+.plan-breadcrumb { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; color: var(--muted-color); font-size: 12px; }
+.plan-crumb:last-child { color: var(--text-color); font-weight: 600; }
+.plan-crumb-sep { opacity: 0.6; }
+.plan-progress { display: flex; align-items: center; gap: 8px; }
+.plan-progress-bar { flex: 1; height: 5px; border-radius: var(--radius-full, 999px); background: color-mix(in srgb, var(--text-color) 12%, transparent); overflow: hidden; }
+.plan-progress-fill { height: 100%; background: var(--accent-color); transition: width 0.25s ease; }
+.plan-progress-text { font-size: 11px; color: var(--muted-color); white-space: nowrap; }
+.plan-current { border: 1px solid var(--border-color); border-radius: var(--radius-md, 6px); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.plan-current-meta { font-size: 11px; color: var(--muted-color); text-transform: uppercase; letter-spacing: 0.04em; }
+.plan-current-title { font-weight: 600; }
+.plan-current-why { font-size: 12px; color: var(--muted-color); }
+.plan-current-why p { margin: 0; }
+.plan-glossary { font-size: 12px; border-left: 2px solid var(--accent-color); padding-left: 8px; display: flex; flex-direction: column; gap: 4px; position: relative; }
+.plan-glossary p { margin: 0; }
+.plan-glossary-term { font-weight: 600; }
+.plan-ask-ai { align-self: flex-start; background: none; border: none; cursor: pointer; color: var(--accent-color); padding: 0; }
+.plan-offstep, .plan-finished { font-size: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.plan-nav { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Icon and label on one line, centred on the same axis; the row wraps whole
+   buttons rather than breaking a label under its arrow. */
+.plan-nav .plan-btn { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
+.plan-nav .plan-btn svg { flex: none; display: block; }
+.plan-btn-armed { border-color: #d9534f; color: #d9534f; }
+.plan-btn-icon { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.plan-btn-icon svg { flex: none; display: block; }
+.plan-ask { display: flex; flex-direction: column; gap: 6px; }
+.plan-ask-label { font-size: 12px; color: var(--muted-color); }
+.plan-ask-input { font: inherit; padding: 5px 8px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); }
+.plan-ask-input:focus { outline: none; border-color: var(--accent-color); }
+.plan-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 32vh; overflow-y: auto; }
+.plan-step { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-radius: var(--radius-sm, 4px); cursor: pointer; }
+/* The row's jump target: a plain-looking button filling the row. */
+.plan-step-jump {
+    flex: 1; min-width: 0; display: flex; gap: 6px; align-items: center;
+    padding: 0; margin: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.plan-step-jump:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm, 4px); }
+.plan-step:hover { background: color-mix(in srgb, var(--text-color) 7%, transparent); }
+.plan-step-current { background: color-mix(in srgb, var(--accent-color) 16%, transparent); }
+/* Done = green tick, matching the scene tree's and proof steps' ticks (full
+   strength here: done is firmer than visited); darker on light themes. */
+.plan-panel { --plan-done: rgb(111, 214, 146); }
+html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
+.plan-step-mark { flex: none; width: 13px; height: 13px; align-self: center; color: var(--muted-color); }
+.plan-step-mark svg { display: block; }
+.plan-step-visited .plan-step-mark { color: var(--accent-color); }
+.plan-step-done .plan-step-mark { color: var(--plan-done); }
+.plan-step-skipped .plan-step-title { text-decoration: line-through; color: var(--muted-color); }
+.plan-step-title { flex: 1; min-width: 0; }
+.plan-step-kind { font-size: 10px; color: var(--muted-color); white-space: nowrap; }
+.plan-tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.plan-item { border: 1px solid var(--border-color); border-radius: var(--radius-md, 6px); padding: 7px 9px; display: flex; flex-direction: column; gap: 6px; }
+.plan-item-complete { opacity: 0.75; }
+.plan-item-head { display: flex; gap: 6px; align-items: baseline; }
+.plan-item-title { flex: 1; font-weight: 600; }
+.plan-badge { font-size: 10px; padding: 1px 6px; border-radius: var(--radius-full, 999px); border: 1px solid var(--border-color); color: var(--muted-color); }
+.plan-badge-live { border-color: var(--accent-color); color: var(--accent-color); }
+.plan-item-actions { display: flex; gap: 5px; flex-wrap: wrap; }
 
 /* "AI is thinking…" — shown under whatever asked the AI silently (the quiz's
    hint and answer buttons), since no question appears in the chat to show the

@@ -1008,14 +1008,26 @@ from backend.proof_chat import (  # noqa: E402
     call_proof_chat,
 )
 
-def call_gemini_chat(message, history, context):
-    """Call Gemini API using google-genai SDK. Returns (response_text, tool_calls_list, debug_info)."""
+def call_gemini_chat(message, history, context, no_tools=False):
+    """Call Gemini API using google-genai SDK. Returns (response_text, tool_calls_list, debug_info).
+
+    ``no_tools`` makes a text-only turn: no tools are offered, the message is
+    never read as a navigation command, and no tool call comes back on any
+    path (not even one recovered from inline JSON in the reply). The learning
+    plan's guide uses it — its prompt quotes plan text that may come from an
+    imported file, so the turn it starts must not be able to act on the app.
+    """
+    text, tool_calls, debug_info = _call_gemini_chat(message, history, context, no_tools)
+    return text, ([] if no_tools else tool_calls), debug_info
+
+
+def _call_gemini_chat(message, history, context, no_tools):
     client = get_gemini_client()
     if not client:
         return "AI chat is not available (no API key configured).", [], {}
 
     # Handle simple navigation deterministically — don't rely on the agent
-    nav = _detect_navigation(message, context)
+    nav = None if no_tools else _detect_navigation(message, context)
     if nav:
         scene_num, step_num, direction = nav
         current_scene = context.get('currentScene', {})
@@ -1114,7 +1126,7 @@ def call_gemini_chat(message, history, context):
 
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
-        tools=_make_tools(),
+        tools=[] if no_tools else _make_tools(),
         temperature=0.7,
     )
 
@@ -1194,6 +1206,12 @@ def call_gemini_chat(message, history, context):
                 function_calls.append(part.function_call)
             if part.text:
                 text_response += part.text
+
+        if no_tools and function_calls:
+            # A text-only turn offered no tools; a reply that calls one anyway is
+            # never executed (not even server-side ones like mem_set).
+            print(f"   🚫 no_tools turn: ignoring {len(function_calls)} function call(s)")
+            function_calls = []
 
         if function_calls:
             # Preserve the model response (including thought_signature) once.
@@ -1642,6 +1660,8 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         message: str = ''
         history: list = []
         context: dict = {}
+        # Text-only turn: no tools, no navigation shortcut (see call_gemini_chat).
+        noTools: bool = False
 
     class ProofChatRequest(BaseModel):
         # Full thread incl. the latest user turn: [{role:'user'|'bot', text}, …]
@@ -2460,7 +2480,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         try:
             loop = asyncio.get_running_loop()
             response_text, tool_calls, debug_info = await loop.run_in_executor(
-                None, lambda: call_gemini_chat(req.message, req.history, req.context)
+                None, lambda: call_gemini_chat(req.message, req.history, req.context, no_tools=req.noTools)
             )
             if DEBUG_MODE:
                 print(f"   💬 Response ({len(response_text)} chars): {response_text}")

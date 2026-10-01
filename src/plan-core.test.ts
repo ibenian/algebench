@@ -1,10 +1,11 @@
 // node:test unit tests for the pure learning-plan core.
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import {
-    back, breadcrumb, currentStep, enter, exportPlans, forward, jumpTo, markComplete, MAX_PLAN_DEPTH, parsePlanFile,
+    back, breadcrumb, currentStep, enter, exportPlans, restartPlan, forward, jumpTo, leaveDeletedPlan, markComplete, MAX_PLAN_DEPTH, parsePlanFile,
     plansReferencing, progress, recordView, refToView, reopen, returnUp, startPlan,
-    navigableView, validatePlan, viewMatchesRef, VIEW_DIRECTIVES,
+    mergeImport, navigableView, planTreeIds, resumeView, validatePlan, viewShowsCurrentStep, viewMatchesRef, VIEW_DIRECTIVES,
 } from './plan-core.js';
 import type { ContentRef, ContentStep, LearningPlan, PlanLookup, PlanStep, SubplanStep } from './plan-core.js';
 import type { ViewState } from '/view-state.js';
@@ -64,7 +65,7 @@ const nestedPlan = (p: LearningPlan, id: string) => ((step(p, id) as SubplanStep
 
 test('refToView builds the deep link; a proof step opens the proof panel', () => {
     assert.deepEqual(refToView({ lesson: L, sc: 'a', st: 'b' }), { builtin: L, sc: 'a', st: 'b' });
-    assert.deepEqual(refToView({ lesson: L, sc: 'a', pf: 'p', ps: 'q' }), { builtin: L, sc: 'a', pf: 'p', pp: true, ps: 'q' });
+    assert.deepEqual(refToView({ lesson: L, sc: 'a', pf: 'p', ps: 'q' }), { builtin: L, sc: 'a', pf: 'p', pp: true, panel: 'chat', ps: 'q' });
     assert.deepEqual(refToView({ lesson: L, glossary: 'g' }), { builtin: L });
 });
 
@@ -277,6 +278,67 @@ test('wandering off the current step changes nothing', () => {
     assert.deepEqual(r.changed, []);
 });
 
+test('reaching another plan step some other way moves the plan there', () => {
+    const { root, lookup, save } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    // The learner opens s5's proof step from the proof panel, not the plan.
+    const r = recordView(p, lookup, { ...view(root, 's5'), panel: 'chat' }, 2);
+    assert.equal(r.onStep, true);
+    assert.equal(r.moved, true);
+    p = save(r);
+    assert.equal(p.nav!.frames[0]!.stepId, 's5');
+    assert.equal(step(p, 's5').state, 'visited');
+    assert.equal(step(p, 's1').state, 'visited', 'the step left behind is not completed');
+});
+
+test('the most specific matching step wins, a proof step over its scene step', () => {
+    const scene = content('sc', { lesson: L, sc: 'splashdown-dynamics' }, 'scene');
+    const proof = content('pr', { lesson: L, sc: 'splashdown-dynamics', pf: 'terminal_velocity', ps: 'solve' }, 'proofStep');
+    const first = content('x', { lesson: L, sc: 'elsewhere' });
+    const lookup: PlanLookup = () => undefined;
+    const p = startPlan(plan('m', [first, scene, proof]), lookup, 1).changed[0]!;
+    // The proof on screen (panel open, Chat showing): the proof step is the most specific match.
+    const r = recordView(p, lookup, { builtin: L, sc: 'splashdown-dynamics', st: 'any', pf: 'terminal_velocity', ps: 'solve', pp: true, panel: 'chat' }, 2);
+    assert.equal(r.changed[0]!.nav!.frames[0]!.stepId, 'pr');
+});
+
+test('reaching a parent plan\'s step leaves the sub-plan without completing it', () => {
+    const { root, lookup, save } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    p = save(jumpTo(p, lookup, 's4', 2));
+    p = save(enter(p, lookup, HERE, 3));
+    const r = recordView(p, lookup, view(root, 's1'), 4);
+    assert.equal(r.moved, true);
+    p = save(r);
+    assert.deepEqual(p.nav!.frames.map((f) => [f.planId, f.stepId]), [['tv', 's1']]);
+    assert.equal(nestedPlan(p, 's4').status, 'active');
+    assert.equal(step(p, 's4').state, 'visited');
+});
+
+test('inside a sub-plan, its own matching step beats the same place in the parent', () => {
+    const { root, lookup, save } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    p = save(jumpTo(p, lookup, 's4', 2));
+    p = save(enter(p, lookup, HERE, 3));
+    // n2's location: the sub-plan's own step wins and its frame stays open.
+    const r = recordView(p, lookup, view(nestedPlan(root, 's4'), 'n2'), 4);
+    assert.equal(r.moved, true);
+    p = save(r);
+    assert.deepEqual(p.nav!.frames.map((f) => f.stepId), ['s4', 'n2']);
+});
+
+test('glossary steps never capture a view, and sub-plans are not entered for the learner', () => {
+    const { root, lookup, save } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    p = save(jumpTo(p, lookup, 's2', 2));        // glossary step: ref names only the lesson
+    const r = recordView(p, lookup, { builtin: L, sc: 'somewhere-else' }, 3);
+    assert.equal(r.onStep, false);
+    assert.deepEqual(r.changed, []);
+    // n1 lives in a nested sub-plan that isn't entered: no match from the outer level.
+    const r2 = recordView(p, lookup, view(nestedPlan(root, 's4'), 'n1'), 4);
+    assert.equal(r2.moved, false);
+});
+
 test('breadcrumb and currentStep follow the frame stack', () => {
     const { root, lookup, save } = fixture();
     let p = save(startPlan(root, lookup, 1));
@@ -286,6 +348,31 @@ test('breadcrumb and currentStep follow the frame stack', () => {
         [['plan tv', 4, 5], ['plan newton', 1, 2]]);
     assert.equal(currentStep(p, lookup)!.id, 'n1');
     assert.equal(currentStep(root, lookup), null);
+});
+
+test('restartPlan resets progress, nested sub-plans too, but not linked plans', () => {
+    const { root, lookup, save, saved } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    p = save(recordView(p, lookup, { ...view(root, 's1'), cv: 'iso' }, 2));
+    p = save(forward(p, lookup, 3));
+    p = save(jumpTo(p, lookup, 's3', 4));
+    p = save(enter(p, lookup, ORIGIN, 5));
+    p = save(forward(p, lookup, 6));              // linked air plan: r1 done
+    p = save(returnUp(p, lookup, 7));
+    p = save(jumpTo(p, lookup, 's4', 8));
+    p = save(enter(p, lookup, HERE, 9));
+    p = save(forward(p, lookup, 10));             // nested n1 done
+    p = markComplete(p, 11);
+    const r = restartPlan(p, 12);
+    assert.equal(r.status, 'active');
+    assert.equal(r.completedAt, undefined);
+    assert.equal(r.nav, undefined);
+    assert.ok(r.steps.every((s) => s.state === 'todo'));
+    assert.equal((step(r, 's1') as ContentStep).lastView, undefined);
+    assert.ok(nestedPlan(r, 's4').steps.every((s) => s.state === 'todo'));
+    assert.equal(step(saved.get('air')!, 'r1').state, 'done', 'the linked plan keeps its own progress');
+    assert.equal(progress(r, lookup).done, 0.5, 'which still counts toward this plan');
+    assert.equal(step(p, 's1').state, 'done', 'the input is never mutated');
 });
 
 // ----- progress -----
@@ -627,6 +714,112 @@ test('a sub-plan is nested or linked, never both; an orthographic scale must be 
     assert.equal(navigableView({ builtin: L, proj: 'orthographic', oz: 3 }).oz, 3);
 });
 
+test('navigableView keeps real camera-view keys, which are names, not tokens', () => {
+    for (const cv of ['side-(yz)', 'ride:-chased-ship', 'ship-&-photon', 'x"]']) {
+        assert.equal(navigableView({ builtin: L, cv }).cv, cv, cv);
+    }
+    assert.equal(navigableView({ builtin: L, cv: '' }).cv, undefined);
+    assert.equal(navigableView({ builtin: L, cv: 7 } as unknown as ViewState).cv, undefined);
+});
+
+test('the proposal\'s sample export imports cleanly', () => {
+    const r = parsePlanFile(readFileSync('docs/proposals/learning-plan-sample.json', 'utf8'));
+    assert.deepEqual(r.errors, []);
+    assert.ok(r.plans.length >= 1);
+});
+
+test('deleting a linked plan the walk is inside steps back out to its link', () => {
+    const { root, lookup, save, saved } = fixture();
+    let p = save(startPlan(root, lookup, 1));
+    p = save(jumpTo(p, lookup, 's3', 2));
+    p = save(enter(p, lookup, ORIGIN, 3));                  // inside the linked 'air'
+    assert.equal(p.nav!.frames.length, 2);
+    const fixed = leaveDeletedPlan(p, 'air', 4)!;
+    assert.deepEqual(fixed.nav!.frames.map((f) => [f.planId, f.stepId]), [['tv', 's3']]);
+    assert.equal(fixed.updatedAt, 4);
+    saved.delete('air');
+    saved.set('tv', fixed);
+    assert.equal(currentStep(fixed, lookup)!.id, 's3', 'resting on the dangling link step');
+    assert.equal(leaveDeletedPlan(fixed, 'air', 5), null, 'nothing left to step out of');
+    assert.equal(leaveDeletedPlan(root, 'tv', 5), null, 'a plan deleting itself needs no repair');
+});
+
+test('a proof step is followed only when its proof is on screen', () => {
+    const { root, lookup, save } = fixture();
+    const p = save(startPlan(root, lookup, 1));
+    const proof = { builtin: L, sc: 'splashdown-dynamics', pf: 'terminal_velocity', ps: 'solve-for-terminal-velocity' };
+    // Selected, even open, but behind Doc: the learner is on the scene, not the proof.
+    for (const hidden of [{ ...proof }, { ...proof, pp: true }, { ...proof, pp: true, panel: 'doc' }]) {
+        const r = recordView(p, lookup, hidden, 2);
+        assert.notEqual(currentStep(r.changed.find((q) => q.id === root.id) ?? p, lookup)!.id, 's5', JSON.stringify(hidden));
+    }
+    const onMath = recordView(p, lookup, { ...proof, view: 'math' }, 3);
+    assert.equal(currentStep(onMath.changed.find((q) => q.id === root.id)!, lookup)!.id, 's5', 'the Math page shows the proof');
+    const shown = recordView(p, lookup, { ...proof, pp: true, panel: 'chat' }, 3);
+    assert.equal(shown.moved, true);
+    assert.equal(currentStep(shown.changed.find((q) => q.id === root.id)!, lookup)!.id, 's5');
+});
+
+test('a broad current step yields to a more specific one the learner moved to', () => {
+    const scene = content('sc', { lesson: L, sc: 'splashdown-dynamics' }, 'scene');
+    const step = content('st', { lesson: L, sc: 'splashdown-dynamics', st: 'terminal-velocity' });
+    const lookup: PlanLookup = () => undefined;
+    const p = startPlan(plan('m', [scene, step]), lookup, 1).changed[0]!;   // on the scene step
+    const atScene = recordView(p, lookup, { builtin: L, sc: 'splashdown-dynamics' }, 2);
+    assert.deepEqual([atScene.onStep, atScene.moved], [true, false], 'the scene itself: stay');
+    const atStep = recordView(p, lookup, { builtin: L, sc: 'splashdown-dynamics', st: 'terminal-velocity' }, 3);
+    assert.equal(atStep.moved, true);
+    assert.equal(atStep.changed[0]!.nav!.frames[0]!.stepId, 'st');
+});
+
+test('resuming a proof step shows its proof; other steps resume exactly as recorded', () => {
+    const proofStep = { ...content('p', { lesson: L, sc: 'a', pf: 'f', ps: 's' }, 'proofStep'),
+        view: { builtin: L, sc: 'a', pf: 'f', ps: 's', pp: true, panel: 'doc' } };
+    assert.equal(resumeView(proofStep)!.panel, 'chat');
+    const noPp = { ...proofStep, view: { builtin: L, sc: 'a', pf: 'f', ps: 's' } };
+    assert.deepEqual([resumeView(noPp)!.pp, resumeView(noPp)!.panel], [true, 'chat'], 'opens the proof panel too');
+    const onMath = { ...proofStep, view: { builtin: L, sc: 'a', pf: 'f', ps: 's', view: 'math' } };
+    assert.equal(resumeView(onMath)!.panel, undefined, 'the Math page shows the proof itself');
+    const sceneStep = { ...content('c', { lesson: L, sc: 'a' }, 'scene'),
+        view: { builtin: L, sc: 'a', pf: 'f', pp: true, panel: 'doc' } };
+    assert.equal(resumeView(sceneStep)!.panel, 'doc', 'a share-link view is kept as is');
+});
+
+test('viewShowsCurrentStep answers without moving anything', () => {
+    const { root, lookup, save } = fixture();
+    const p = save(startPlan(root, lookup, 1));   // on s1
+    const s1 = currentStep(p, lookup)!;
+    assert.equal(viewShowsCurrentStep(p, lookup, refToView((s1 as ContentStep).ref)), true);
+    assert.equal(viewShowsCurrentStep(p, lookup, { builtin: L, sc: 'somewhere-else' }), false);
+    assert.equal(viewShowsCurrentStep(root, lookup, refToView((s1 as ContentStep).ref)), false, 'not being walked');
+    assert.equal(currentStep(p, lookup)!.id, s1.id, 'the walk is unchanged');
+});
+
+test('mergeImport keeps ids unique across the stored plans, letting a record replace itself', () => {
+    const { root } = fixture();
+    const stored = [root];
+    const nestedId = [...planTreeIds(root)].find((id) => id !== root.id)!;
+    const clashing = plan('fresh', [nested('k', plan(nestedId, [content('c', { lesson: L, sc: 'a' }, 'scene')]))]);
+    const replacing = { ...root, title: 'same record, updated' };
+    const fresh = plan('brand-new', [content('c', { lesson: L, sc: 'a' }, 'scene')]);
+    const r = mergeImport(stored, [clashing, replacing, fresh]);
+    assert.deepEqual(r.plans.map((p) => p.id).sort(), ['brand-new', root.id].sort());
+    assert.equal(r.errors.length, 1);
+    assert.match(r.errors[0]!, new RegExp(`plan id "${nestedId}"`));
+});
+
+test('a rejected replacement keeps the stored record\'s ids reserved', () => {
+    const stored = plan('A', [nested('k', plan('X', [content('c', { lesson: L, sc: 'a' }, 'scene')]))]);
+    const other = plan('B', [nested('k', plan('Y', [content('c', { lesson: L, sc: 'a' }, 'scene')]))]);
+    // A replacement for A that clashes with B's nested Y is rejected …
+    const badA = plan('A', [nested('k', plan('Y', [content('c', { lesson: L, sc: 'a' }, 'scene')]))]);
+    // … so a later new plan must not get to claim A's still-stored nested X.
+    const claimsX = plan('C', [nested('k', plan('X', [content('c', { lesson: L, sc: 'a' }, 'scene')]))]);
+    const r = mergeImport([stored, other], [badA, claimsX]);
+    assert.deepEqual(r.plans, []);
+    assert.equal(r.errors.length, 2);
+});
+
 test('a nested plan may not reuse an id already in its plan', () => {
     const { root } = fixture();
     const bad = JSON.parse(JSON.stringify(root));
@@ -640,7 +833,7 @@ test('navigableView keeps a clean location and drops anything malformed or activ
     const clean = { builtin: L, sc: 'a-b', st: 'c', pp: true, panel: 'chat', cv: 'front', oz: 1.5, nodes: ['n1'], sliders: { k: 2 }, cam };
     assert.deepEqual(navigableView(clean), clean);
     const dirty = {
-        ...clean, cv: 'x"]', aa: 'ask', fax: 'x', pa: 'a/b', pas: 1, scene: '/etc/x.json', evil: 1,
+        ...clean, cv: 'c'.repeat(65), aa: 'ask', fax: 'x', pa: 'a/b', pas: 1, scene: '/etc/x.json', evil: 1,
         oz: Infinity, nodes: ['ok', 7, 'bad node'], sliders: { k: 'NaN', j: 3 }, cam: { position: [1, 2], target: [0, 0, 0] },
     } as unknown as ViewState;
     assert.deepEqual(navigableView(dirty),
