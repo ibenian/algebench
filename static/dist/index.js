@@ -23448,8 +23448,7 @@ function stopSpeaking() {
 /**
 * Plan text quoted into a guide prompt. Titles, goals and reasons can come
 * from an imported file, so each is one line, bounded, and quoted, under a
-* note that quoted text is data to talk about — and the turn itself is
-* text-only (noTools), so nothing it says can act on the app.
+* note that quoted text is data to talk about, never instructions.
 */
 function pt(s) {
 	return `“${String(s ?? "").replace(/\s+/g, " ").replace(/[“”"]/g, "'").trim().slice(0, 300)}”`;
@@ -23532,10 +23531,7 @@ function maybeGuide(delay = 1200) {
 		const question = guidePrompt(r, s);
 		const back = ui.returnedFrom;
 		ui.returnedFrom = null;
-		window.sendChatMessage(question, {
-			silent: true,
-			noTools: true
-		}).then((accepted) => {
+		window.sendChatMessage(question, { silent: true }).then((accepted) => {
 			if (accepted === false) {
 				if (ui.guidedKey === key) {
 					ui.guidedKey = "";

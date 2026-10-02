@@ -911,7 +911,7 @@ def generate_html(debug=False, skip_tour=False):
 # referenced nowhere — so retiring one broke the import rather than the code
 # that read it, and the failure surfaced at collection time in unrelated tests.
 # `_make_tools` composes the tool list; ALL_TOOL_DECLS is its own default.
-from backend.agent_tools import _make_tools, build_system_prompt
+from backend.agent_tools import ALL_TOOL_DECLS, _make_tools, build_system_prompt
 from gemini_live_tools import safe_eval_math, eval_math_sweep, MATH_NAMES, HAS_NUMPY
 
 
@@ -956,6 +956,46 @@ def _detect_navigation(message, context):
                 return (scene_num - 1, 0, 'prev_scene')
             return None
         return (scene_num, target_step, 'prev')
+
+
+#: Told to the model on a text-only turn. The system prompt still documents the
+#: tools, and a model offered none tends to write the call out as text instead.
+NO_TOOLS_NOTE = (
+    "\n\n## This turn has no tools\n"
+    "No tools are available for this reply. Answer in plain text only: don't write "
+    "tool calls, `<tool_code>` blocks or function-call syntax, and don't set preset "
+    "prompts."
+)
+
+_TOOL_CODE_BLOCK = re.compile(
+    r"<tool_code>.*?(?:</tool_code>|$)|```tool_code\b.*?(?:```|$)", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_written_tool_calls(text):
+    """Remove tool calls the model wrote out as text rather than calling.
+
+    Gemini sometimes answers with ``<tool_code> set_preset_prompts(...) </tool_code>``
+    (or a ```` ```tool_code ```` fence, or a bare ``print(default_api.x(...))`` line),
+    most often on a text-only turn whose system prompt still documents the tools.
+    That is never meant for the learner, so it is cut from the reply. A bare line
+    counts only when it is nothing but a call to one of the chat's own tools, so
+    prose that mentions a tool by name is left alone.
+    """
+    if not text:
+        return text
+    names = "|".join(re.escape(d.name) for d in ALL_TOOL_DECLS)
+    bare = re.compile(
+        rf"^[ \t]*(?:print\()?(?:default_api\.)?(?:{names})\(.*\)\)?[ \t]*$", re.MULTILINE)
+    cleaned = bare.sub("", _TOOL_CODE_BLOCK.sub("", text))
+    if cleaned != text:
+        print("   ⚠️  stripped a tool call written as text from the reply")
+    return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+
+
+def _finish_reply(text, tool_calls):
+    """The reply text the learner sees: written-out tool calls removed, and
+    preset prompts written as inline JSON recovered into a tool call."""
+    return _extract_inline_preset_prompts(_strip_written_tool_calls(text), tool_calls)
 
 
 def _extract_inline_preset_prompts(text, tool_calls):
@@ -1104,6 +1144,8 @@ def _call_gemini_chat(message, history, context, no_tools):
             return f"Navigated to step {step_num}.", tool_calls, {}
 
     system_prompt = build_system_prompt(context, agent_memory=_agent_memory)
+    if no_tools:
+        system_prompt += NO_TOOLS_NOTE
 
     # Build contents list
     contents = []
@@ -1555,14 +1597,14 @@ def _call_gemini_chat(message, history, context, no_tools):
                 ]))
 
             if text_response.strip() and not must_continue:
-                text_response = _extract_inline_preset_prompts(text_response, tool_calls)
+                text_response = _finish_reply(text_response, tool_calls)
                 return text_response, tool_calls, debug_info
             continue
         else:
-            text_response = _extract_inline_preset_prompts(text_response, tool_calls)
+            text_response = _finish_reply(text_response, tool_calls)
             return text_response or "I'm not sure how to respond to that.", tool_calls, debug_info
 
-    text_response = _extract_inline_preset_prompts(text_response, tool_calls)
+    text_response = _finish_reply(text_response, tool_calls)
     return text_response, tool_calls, debug_info
 
 
