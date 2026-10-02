@@ -182,9 +182,9 @@ def build_catalog(lesson: str, spec: dict) -> LessonCatalog:
     title = _text(spec.get("title")) or lesson
     headings = " ".join([e.title for e in entries if e.kind in ("scene", "proof")] + names)
     body = " ".join(f"{e.title} {e.detail}" for e in entries)
-    # Matched as whole phrases, so a short alias ("FTA") can't match inside a word.
+    # Matched as whole phrases, so a short alias ("GD", "FTA") can't match inside a word.
     phrases = {" ".join(_WORD.findall(n.lower())) for n in names}
-    terms = tuple(sorted(p for p in phrases if len(p) >= 3))
+    terms = tuple(sorted(p for p in phrases if len(p) >= 2))
     return LessonCatalog(lesson, title, tuple(entries), frozenset(words(title)),
                          frozenset(words(headings)), frozenset(words(body)), terms)
 

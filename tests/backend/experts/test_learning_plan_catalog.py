@@ -12,11 +12,19 @@ def test_a_glossary_alias_finds_its_lesson():
     assert [c.lesson for c in C.preselect("FTA")][:1] == ["quadratic-formula"]
 
 
+def test_a_two_letter_alias_finds_its_lesson():
+    # GD is gradient-descent-terrain's alias; PE is in the imported transformer domain.
+    assert [c.lesson for c in C.preselect("GD")][:1] == ["gradient-descent-terrain"]
+    assert [c.lesson for c in C.preselect("PE")][:1] == ["transformer-architecture"]
+
+
 def test_a_short_alias_matches_whole_words_only():
     cat = C.build_catalog("x", {"title": "X", "scenes": [],
                                 "glossary": {"fundamental theorem": {"term": "FT", "aliases": ["FTA"]}}})
     assert C.score(cat, "the FTA") > 0
     assert C.score(cat, "the ftable") == C.score(cat, "the table")
+    gd = C.build_catalog("y", {"title": "Y", "scenes": [], "glossary": {"gradient descent": {"aliases": ["GD"]}}})
+    assert C.score(gd, "what is GD") > 0 and C.score(gd, "a gdp chart") == 0
 
 
 def _lesson(tmp_path, monkeypatch, glossary):
