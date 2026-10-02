@@ -122,11 +122,43 @@ def test_a_text_only_turn_is_told_it_has_no_tools(monkeypatch):
     assert server.NO_TOOLS_NOTE not in normal.system_instruction
 
 
+def _strip(text):
+    calls = []
+    return server._strip_written_tool_calls(text, calls), calls
+
+
 def test_written_tool_calls_are_stripped_and_prose_is_kept():
-    strip = server._strip_written_tool_calls
-    assert strip("Hi.\n```tool_code\nnavigate_to(scene=2, step=1)\n```") == "Hi."
-    assert strip("Hi.\nprint(default_api.set_preset_prompts(prompts=['a']))") == "Hi."
-    assert strip("Hi.\n<tool_code>set_camera(view='top')") == "Hi."   # unclosed tag
+    assert _strip("Hi.\n```tool_code\nnavigate_to(scene=2, step=1)\n```") == ("Hi.", [])
+    assert _strip("Hi.\n<tool_code>set_camera(view='top')")[0] == "Hi."   # unclosed tag
     prose = "Call set_preset_prompts(prompts) to change the chips, as described above."
-    assert strip(prose) == prose
-    assert strip("Nothing to strip.") == "Nothing to strip."
+    assert _strip(prose) == (prose, [])   # mentioned, not written as a call: kept, never run
+    assert _strip("Nothing to strip.") == ("Nothing to strip.", [])
+
+
+def test_a_written_preset_prompts_call_becomes_the_real_call():
+    """Like inline JSON: the chips still appear instead of just vanishing."""
+    # The reply that was observed, shape for shape.
+    written = """<tool_code> set_preset_prompts(prompts=["What is 'elsewhere'?", "Why 45°?"]) </tool_code>"""
+    text, calls = _strip("Light is the limit.\n" + written)
+    assert text == "Light is the limit."
+    assert [c["name"] for c in calls] == ["set_preset_prompts"]
+    assert calls[0]["args"] == {"prompts": ["What is 'elsewhere'?", "Why 45°?"]}
+    _, calls = _strip("Hi.\nprint(default_api.set_preset_prompts(['a (b)', 'c']))")
+    assert calls[0]["args"] == {"prompts": ["a (b)", "c"]}
+
+
+def test_only_literal_string_lists_are_recovered():
+    for written in ("set_preset_prompts(prompts=make_prompts())", "set_preset_prompts(prompts=[1, 2])",
+                    "set_preset_prompts(prompts=[])", "set_preset_prompts(prompts=['a'"):
+        text, calls = _strip(f"Hi.\n<tool_code>{written}</tool_code>")
+        assert (text, calls) == ("Hi.", []), written
+
+
+def test_a_normal_turn_gets_the_recovered_chips(monkeypatch):
+    models = _wire(monkeypatch)
+    monkeypatch.setattr(server, "_detect_navigation", lambda *_a, **_k: None)
+    models.generate_content = _replying(models, (
+        "The cone is the speed limit.\n<tool_code>set_preset_prompts(prompts=['Why a cone?'])</tool_code>"))
+    text, tool_calls, _ = server.call_gemini_chat("explain", [], {})
+    assert text == "The cone is the speed limit."
+    assert [(c["name"], c["args"]) for c in tool_calls] == [("set_preset_prompts", {"prompts": ["Why a cone?"]})]
