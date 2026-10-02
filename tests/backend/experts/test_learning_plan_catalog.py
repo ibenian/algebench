@@ -56,3 +56,17 @@ def test_an_edited_domain_glossary_is_picked_up(tmp_path, monkeypatch):
 def test_an_unchanged_catalog_comes_from_the_cache(tmp_path, monkeypatch):
     _lesson(tmp_path, monkeypatch, {"drag": {"term": "drag"}})
     assert C.catalog_for("les") is C.catalog_for("les")
+
+
+def test_a_step_proof_carries_its_step_so_it_is_in_context():
+    """A step-level proof is only in context at or after its step, so its ref
+    (and its proof steps') names that step; a scene's own proof doesn't."""
+    cat = C.catalog_for("quadratic-formula")
+    proof = next(e for e in cat.entries if e.kind == "proof" and e.ref["pf"] == "complex-roots-derivation")
+    assert proof.ref == {"lesson": "quadratic-formula", "sc": "roots-leave-the-real-line-the-complex-plane-in-3d",
+                         "st": "the-formula-behind-it-all", "pf": "complex-roots-derivation"}
+    ps = next(e for e in cat.entries if e.kind == "proofStep" and e.ref["pf"] == "complex-roots-derivation")
+    assert ps.ref["st"] == "the-formula-behind-it-all"
+    scene_proof = next(e for e in C.catalog_for("atmospheric-entry-physics").entries
+                       if e.kind == "proof" and e.ref["pf"] == "terminal_velocity")
+    assert "st" not in scene_proof.ref

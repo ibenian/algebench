@@ -149,21 +149,32 @@ def build_catalog(lesson: str, spec: dict) -> LessonCatalog:
     """The catalog of one lesson, from its raw JSON."""
     entries: list[Entry] = []
     scene_id: Optional[str] = None
+    step_id: Optional[str] = None
     for t in iter_id_targets(spec):
         o = t.obj
         if t.kind == "scene":
-            scene_id = t.ident
+            scene_id, step_id = t.ident, None
             entries.append(Entry("scene", _text(o.get("title")) or t.ident,
                                  _text(o.get("description")), {"lesson": lesson, "sc": t.ident}))
         elif t.kind == "step":
+            step_id = t.ident   # its own proofs follow it in the walk
             entries.append(Entry("step", _text(o.get("title")) or t.ident, _text(o.get("description")),
                                  {"lesson": lesson, "sc": scene_id, "st": t.ident}, depth=1))
         elif t.kind == "proof":
-            # A root-level proof sits outside any scene. Scene- and step-level
-            # proofs carry their scene, so the jump loads it; never the step,
-            # because the proof's own step binding places the scene step.
+            # A root-level proof sits outside any scene. A scene's proof carries
+            # its scene, so the jump loads it, but no step: the proof's own step
+            # binding places the scene step. A step's proof carries that step
+            # too, because it is only in context at or after its step
+            # (`_isProofInContext` in src/proof.ts): without it the jump lands
+            # at the scene's start with the proof panel empty.
             at_root = not t.path.startswith("scenes[")
-            ref = {"lesson": lesson, "pf": t.ident} if at_root else {"lesson": lesson, "sc": scene_id, "pf": t.ident}
+            on_step = ".steps[" in t.path.split(".proof")[0]
+            if at_root:
+                ref = {"lesson": lesson, "pf": t.ident}
+            elif on_step:
+                ref = {"lesson": lesson, "sc": scene_id, "st": step_id, "pf": t.ident}
+            else:
+                ref = {"lesson": lesson, "sc": scene_id, "pf": t.ident}
             entries.append(Entry("proof", _text(o.get("title")) or t.ident,
                                  _text(o.get("goal")), ref, depth=0 if at_root else 1))
         elif t.kind == "proof-step":
