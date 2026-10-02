@@ -98,14 +98,47 @@ def _glossary_entries(glossary, lesson: str, seen: set[str]) -> list[Entry]:
     return out
 
 
-def _domain_glossary(name) -> dict:
-    """An imported domain's glossary, confined to static/domains/<name>/docs.json."""
+def _glossary_names(glossary) -> list[str]:
+    """Every name a glossary answers to: each entry's key, term and aliases,
+    as the lesson picker's index reads them (``_glossary_terms`` in server.py)."""
+    names: list[str] = []
+    if not isinstance(glossary, dict):
+        return names
+    for key, entry in glossary.items():
+        if isinstance(key, str):
+            names.append(key)
+        if isinstance(entry, dict):
+            if isinstance(entry.get("term"), str):
+                names.append(entry["term"])
+            if isinstance(entry.get("aliases"), list):
+                names += [a for a in entry["aliases"] if isinstance(a, str)]
+    return names
+
+
+def _domain_path(name) -> Optional[Path]:
+    """static/domains/<name>/docs.json, confined there; None for a bad name."""
     if not isinstance(name, str) or not _DOMAIN_NAME.fullmatch(name):
-        return {}
+        return None
     path = DOMAINS_DIR / name / "docs.json"
     try:
-        if not path.resolve().is_relative_to(DOMAINS_DIR.resolve()):
-            return {}
+        return path if path.resolve().is_relative_to(DOMAINS_DIR.resolve()) else None
+    except OSError:
+        return None
+
+
+def _mtime(path: Optional[Path]) -> int:
+    try:
+        return path.stat().st_mtime_ns if path else -1
+    except OSError:
+        return -1
+
+
+def _domain_glossary(name) -> dict:
+    """An imported domain's glossary, from static/domains/<name>/docs.json."""
+    path = _domain_path(name)
+    if path is None:
+        return {}
+    try:
         docs = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
@@ -139,21 +172,35 @@ def build_catalog(lesson: str, spec: dict) -> LessonCatalog:
                                  _text(o.get("justification")) or _text(o.get("explanation")),
                                  {**parent.ref, "ps": t.ident}, depth=parent.depth + 1))
     seen: set[str] = set()
+    names = _glossary_names(spec.get("glossary"))
     entries += _glossary_entries(spec.get("glossary"), lesson, seen)
-    imports = spec.get("import") if isinstance(spec.get("import"), list) else []
-    for name in imports:
-        entries += _glossary_entries(_domain_glossary(name), lesson, seen)
+    for name in lesson_imports(spec):
+        glossary = _domain_glossary(name)
+        names += _glossary_names(glossary)
+        entries += _glossary_entries(glossary, lesson, seen)
 
     title = _text(spec.get("title")) or lesson
-    headings = " ".join(e.title for e in entries if e.kind in ("scene", "proof", "glossary"))
+    headings = " ".join([e.title for e in entries if e.kind in ("scene", "proof")] + names)
     body = " ".join(f"{e.title} {e.detail}" for e in entries)
-    terms = tuple(sorted({e.title.lower() for e in entries if e.kind == "glossary" and len(e.title) >= 4}))
+    # Matched as whole phrases, so a short alias ("FTA") can't match inside a word.
+    phrases = {" ".join(_WORD.findall(n.lower())) for n in names}
+    terms = tuple(sorted(p for p in phrases if len(p) >= 3))
     return LessonCatalog(lesson, title, tuple(entries), frozenset(words(title)),
                          frozenset(words(headings)), frozenset(words(body)), terms)
 
 
-# lesson id -> (mtime_ns, catalog)
-_cache: dict[str, tuple[int, LessonCatalog]] = {}
+def lesson_imports(spec: dict) -> list:
+    return spec.get("import") if isinstance(spec.get("import"), list) else []
+
+
+def _fingerprint(lesson_mtime: int, imports: list) -> tuple:
+    """What a cached catalog was built from: the lesson file and every imported
+    domain's docs.json, whose glossary entries it carries."""
+    return (lesson_mtime, tuple((str(n), _mtime(_domain_path(n))) for n in imports))
+
+
+# lesson id -> (fingerprint, the lesson's imports, catalog)
+_cache: dict[str, tuple[tuple, list, LessonCatalog]] = {}
 _lock = threading.Lock()
 
 
@@ -183,17 +230,19 @@ def catalog_for(lesson: str, files: Optional[dict[str, Path]] = None) -> Optiona
         return None
     with _lock:
         cached = _cache.get(lesson)
-        if cached and cached[0] == mtime:
-            return cached[1]
+    if cached and cached[0] == _fingerprint(mtime, cached[1]):
+        return cached[2]
     try:
         spec = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     if not isinstance(spec, dict):
         return None
+    imports = lesson_imports(spec)
+    fingerprint = _fingerprint(mtime, imports)   # before building: an edit mid-build rebuilds next time
     cat = build_catalog(lesson, spec)
     with _lock:
-        _cache[lesson] = (mtime, cat)
+        _cache[lesson] = (fingerprint, imports, cat)
     return cat
 
 
