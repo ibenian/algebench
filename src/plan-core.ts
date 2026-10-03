@@ -52,7 +52,7 @@ export interface ContentStep extends StepBase {
     kind: ContentKind;
     ref: ContentRef;
     view: ViewState;
-    /** Where the learner last was while on this step; resuming lands here. */
+    /** Where the learner last was while on this step; resuming lands here (AI steps only: see resumeView). */
     lastView?: ViewState;
 }
 
@@ -228,10 +228,15 @@ export function viewShowsCurrentStep(plan: LearningPlan, lookup: PlanLookup, vie
     return showsRef(view, step.ref);
 }
 
-/** Where resuming a content step lands: where the learner left it, else its start. */
+/**
+ * Where resuming a content step lands: where the learner left it, else its
+ * start. A view the learner added ("+ This view") is a snapshot — its camera
+ * angle and sliders are the point — so it always opens exactly as added; the
+ * camera turned afterwards (to set up the next view, say) doesn't move it.
+ */
 export function resumeView(step: PlanStep): ViewState | null {
     if (step.kind === 'subplan') return null;
-    const v = navigableView(step.lastView ?? step.view);
+    const v = navigableView(step.source === 'learner' ? step.view : step.lastView ?? step.view);
     // A proof step's promise is its proof on screen: outside the Math page that
     // means the proof panel open in the Chat tab, whatever the stored view says
     // (an imported one may omit `pp` or say `panel: 'doc'`). Other steps keep

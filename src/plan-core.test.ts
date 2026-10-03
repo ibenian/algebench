@@ -785,6 +785,17 @@ test('resuming a proof step shows its proof; other steps resume exactly as recor
     assert.equal(resumeView(sceneStep)!.panel, 'doc', 'a share-link view is kept as is');
 });
 
+test('a view the learner added opens at its own camera, not where they turned it after', () => {
+    const cam = { position: [1, -16, 3] as [number, number, number], target: [2, -3, -1] as [number, number, number] };
+    const turned = { position: [0, 0, 14] as [number, number, number], target: [0, 0, 0] as [number, number, number] };
+    const base = content('v', { lesson: L, sc: 'a', st: 'b' });
+    const added = { ...base, source: 'learner' as const,
+        view: { builtin: L, sc: 'a', st: 'b', cam }, lastView: { builtin: L, sc: 'a', st: 'b', cam: turned } };
+    assert.deepEqual(resumeView(added)!.cam, cam);
+    const ai = { ...added, source: 'ai' as const };
+    assert.deepEqual(resumeView(ai)!.cam, turned, 'an AI step resumes where the learner left it');
+});
+
 test('viewShowsCurrentStep answers without moving anything', () => {
     const { root, lookup, save } = fixture();
     const p = save(startPlan(root, lookup, 1));   // on s1
