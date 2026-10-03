@@ -992,8 +992,7 @@ function stopSpeaking(): void {
 /**
  * Plan text quoted into a guide prompt. Titles, goals and reasons can come
  * from an imported file, so each is one line, bounded, and quoted, under a
- * note that quoted text is data to talk about — and the turn itself is
- * text-only (noTools), so nothing it says can act on the app.
+ * note that quoted text is data to talk about, never instructions.
  */
 function pt(s: string | undefined): string {
     const one = String(s ?? '').replace(/\s+/g, ' ').replace(/[“”"]/g, "'").trim().slice(0, 300);
@@ -1089,7 +1088,8 @@ function maybeGuide(delay = 1200): boolean {
         const question = guidePrompt(r, s);
         const back = ui.returnedFrom;   // kept for a retry of this same ask
         ui.returnedFrom = null;
-        void window.sendChatMessage(question, { silent: true, noTools: true })
+        // Like any other Ask AI, tools included; only the question isn't posted.
+        void window.sendChatMessage(question, { silent: true })
             .then((accepted) => {
                 // Turned away (another turn was in flight): this step hasn't
                 // been spoken about yet, so ask again once the chat is free.

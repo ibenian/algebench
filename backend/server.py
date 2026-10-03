@@ -9,6 +9,7 @@ Usage:
 """
 
 import sys
+import ast
 import json
 import os
 import re
@@ -911,7 +912,7 @@ def generate_html(debug=False, skip_tour=False):
 # referenced nowhere — so retiring one broke the import rather than the code
 # that read it, and the failure surfaced at collection time in unrelated tests.
 # `_make_tools` composes the tool list; ALL_TOOL_DECLS is its own default.
-from backend.agent_tools import _make_tools, build_system_prompt
+from backend.agent_tools import ALL_TOOL_DECLS, _make_tools, build_system_prompt
 from gemini_live_tools import safe_eval_math, eval_math_sweep, MATH_NAMES, HAS_NUMPY
 
 
@@ -958,6 +959,115 @@ def _detect_navigation(message, context):
         return (scene_num, target_step, 'prev')
 
 
+#: Told to the model on a text-only turn. The system prompt still documents the
+#: tools, and a model offered none tends to write the call out as text instead.
+NO_TOOLS_NOTE = (
+    "\n\n## This turn has no tools\n"
+    "No tools are available for this reply. Answer in plain text only: don't write "
+    "tool calls, `<tool_code>` blocks or function-call syntax, and don't set preset "
+    "prompts."
+)
+
+_TOOL_CODE_BLOCK = re.compile(
+    r"<tool_code>.*?(?:</tool_code>|$)|```tool_code\b.*?(?:```|$)", re.DOTALL | re.IGNORECASE)
+
+
+def _preset_prompts_call(prompts):
+    """The tool-call entry for preset prompts recovered from the reply text,
+    in the shape the client reads for a real set_preset_prompts call."""
+    return {
+        "name": "set_preset_prompts",
+        "rawArgs": {"prompts": prompts},
+        "args": {"prompts": prompts},
+        "result": {"status": "success", "count": len(prompts),
+                   "message": f"Set {len(prompts)} preset prompt{'s' if len(prompts) != 1 else ''}."},
+    }
+
+
+_PRESET_CALL_START = re.compile(r"(?:default_api\.)?set_preset_prompts\s*\(")
+
+
+def _call_source(text, start):
+    """``text[start:]`` up to the parenthesis that closes the first one, or ""."""
+    depth, quote, i = 0, None, start
+    while i < len(text):
+        c = text[i]
+        if quote:
+            if c == "\\":
+                i += 1
+            elif c == quote:
+                quote = None
+        elif c in "'\"":
+            quote = c
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+        i += 1
+    return ""
+
+
+def _recover_written_preset_prompts(segment, tool_calls):
+    """A set_preset_prompts call written out as text, run as the real call.
+
+    Only that tool: it just sets the chips under the reply, so running it from
+    text can't act on the app. The arguments are read with ``ast`` and kept
+    only when they are a literal list of strings; anything else is ignored.
+    """
+    for m in _PRESET_CALL_START.finditer(segment):
+        src = _call_source(segment, m.start())
+        try:
+            call = ast.parse(src.strip(), mode="eval").body
+        except (SyntaxError, ValueError):
+            continue
+        if not isinstance(call, ast.Call):
+            continue
+        arg = next((k.value for k in call.keywords if k.arg == "prompts"),
+                   call.args[0] if call.args else None)
+        try:
+            prompts = ast.literal_eval(arg) if arg is not None else None
+        except (ValueError, SyntaxError):
+            continue
+        if isinstance(prompts, list) and prompts and all(isinstance(p, str) for p in prompts):
+            print(f"   ⚠️  Gemini wrote set_preset_prompts out as text — recovering: {prompts}")
+            tool_calls.append(_preset_prompts_call(prompts))
+
+
+def _strip_written_tool_calls(text, tool_calls):
+    """Remove tool calls the model wrote out as text rather than calling.
+
+    Gemini sometimes answers with ``<tool_code> set_preset_prompts(...) </tool_code>``
+    (or a ```` ```tool_code ```` fence, or a bare ``print(default_api.x(...))`` line),
+    most often on a turn whose system prompt documents tools it wasn't offered.
+    That is never meant for the learner, so it is cut from the reply; a preset
+    prompts call in it is recovered into ``tool_calls`` first, as inline JSON is.
+    A bare line counts only when it is nothing but a call to one of the chat's
+    own tools, so prose that mentions a tool by name is left alone (and never run).
+    """
+    if not text:
+        return text
+    names = "|".join(re.escape(d.name) for d in ALL_TOOL_DECLS)
+    bare = re.compile(
+        rf"^[ \t]*(?:print\()?(?:default_api\.)?(?:{names})\(.*\)\)?[ \t]*$", re.MULTILINE)
+
+    def cut(m):
+        _recover_written_preset_prompts(m.group(0), tool_calls)
+        return ""
+
+    cleaned = bare.sub(cut, _TOOL_CODE_BLOCK.sub(cut, text))
+    if cleaned != text:
+        print("   ⚠️  stripped a tool call written as text from the reply")
+    return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+
+
+def _finish_reply(text, tool_calls):
+    """The reply text the learner sees: written-out tool calls removed, and
+    preset prompts written as text or inline JSON recovered into a tool call."""
+    return _extract_inline_preset_prompts(_strip_written_tool_calls(text, tool_calls), tool_calls)
+
+
 def _extract_inline_preset_prompts(text, tool_calls):
     """Detect {"prompts": [...]} JSON embedded in text by Gemini instead of a tool call.
     Strips it from the text and appends a synthetic set_preset_prompts tool call entry."""
@@ -973,13 +1083,7 @@ def _extract_inline_preset_prompts(text, tool_calls):
     except (json.JSONDecodeError, ValueError):
         return text
     print(f"   ⚠️  Gemini wrote set_preset_prompts as inline JSON — recovering: {prompts}")
-    tool_calls.append({
-        "name": "set_preset_prompts",
-        "rawArgs": {"prompts": prompts},
-        "args": {"prompts": prompts},
-        "result": {"status": "success", "count": len(prompts),
-                   "message": f"Set {len(prompts)} preset prompt{'s' if len(prompts) != 1 else ''}."},
-    })
+    tool_calls.append(_preset_prompts_call(prompts))
     cleaned = (text[:match.start()] + text[match.end():]).strip()
     return cleaned
 
@@ -1099,11 +1203,15 @@ def _call_gemini_chat(message, history, context, no_tools):
             if response.candidates and response.candidates[0].content.parts:
                 text = "".join(p.text for p in response.candidates[0].content.parts if p.text)
             debug_info = {"systemPrompt": system_prompt, "contents": [c.to_json_dict() for c in contents]}
-            return text.strip() or "Let me walk you through this step.", tool_calls, debug_info
+            # The same cleanup as every other reply: no written-out tool calls in
+            # the chat, and written-out preset prompts become the real chips.
+            return _finish_reply(text, tool_calls) or "Let me walk you through this step.", tool_calls, debug_info
         except Exception as e:
             return f"Navigated to step {step_num}.", tool_calls, {}
 
     system_prompt = build_system_prompt(context, agent_memory=_agent_memory)
+    if no_tools:
+        system_prompt += NO_TOOLS_NOTE
 
     # Build contents list
     contents = []
@@ -1555,14 +1663,14 @@ def _call_gemini_chat(message, history, context, no_tools):
                 ]))
 
             if text_response.strip() and not must_continue:
-                text_response = _extract_inline_preset_prompts(text_response, tool_calls)
+                text_response = _finish_reply(text_response, tool_calls)
                 return text_response, tool_calls, debug_info
             continue
         else:
-            text_response = _extract_inline_preset_prompts(text_response, tool_calls)
+            text_response = _finish_reply(text_response, tool_calls)
             return text_response or "I'm not sure how to respond to that.", tool_calls, debug_info
 
-    text_response = _extract_inline_preset_prompts(text_response, tool_calls)
+    text_response = _finish_reply(text_response, tool_calls)
     return text_response, tool_calls, debug_info
 
 
