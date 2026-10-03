@@ -3,6 +3,7 @@
 // Renders proofs inside the chat tab as a collapsible split panel.
 // ============================================================
 
+import { showProofSection } from '/side-sections.js';
 import { state } from '/state.js';
 import { FIRST_ICON, PREV_ICON, NEXT_ICON, LAST_ICON } from '/icons.js';
 import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openChatPanel, stripHtmlMacros } from '/labels.js';
@@ -624,6 +625,9 @@ export function navigateProof(index: number): void {
 
     // Ensure proof panel is expanded and active section is visible
     if (!proofState.proofExpanded) _toggleProofPanel(true);
+    // Navigated here directly (a click, the AI): unfold a folded Proof section.
+    // Following the scene (the sync latch) leaves the learner's fold alone.
+    if (!proofState._proofSyncInProgress) showProofSection();
     const activeSection = document.querySelector<HTMLElement>(`.proof-section[data-proof-idx="${proofState.proofActiveIndex}"]`);
     if (activeSection && activeSection.classList.contains('collapsed')) {
         activeSection.classList.remove('collapsed');
@@ -1211,14 +1215,9 @@ function _toggleProofPanel(show: boolean): void {
         if (handle) handle.classList.remove('hidden');
         if (btn) btn.classList.add('active');
 
-        // Restore saved height
-        const savedHeight = localStorage.getItem('algebench-proof-split');
-        if (savedHeight) {
-            const h = parseInt(savedHeight);
-            if (h >= 100 && h <= 600) panel.style.height = h + 'px';
-        } else {
-            panel.style.height = '250px';
-        }
+        // Restore the saved height, within the same bounds as the divider.
+        const saved = parseInt(localStorage.getItem('algebench-proof-split') ?? '', 10);
+        panel.style.height = _clampProofHeight(panel, Number.isFinite(saved) ? saved : PROOF_DEFAULT_PX) + 'px';
     } else {
         panel.classList.add('hidden');
         if (handle) handle.classList.add('hidden');
@@ -1242,31 +1241,80 @@ export function setProofPanelOpen(show: boolean): void {
 
 // ---- Resize handle ----
 
+/** The proof's height bounds; it leaves the chat some room below it. */
+const PROOF_MIN_PX = 100, PROOF_DEFAULT_PX = 250, PROOF_STEP_PX = 24;
+/** The chat's header and input, kept in view under a proof dragged tall. */
+const PROOF_CHAT_ROOM_PX = 120;
+
+/**
+ * A proof height within bounds: at least PROOF_MIN_PX, and short enough to
+ * leave the chat's header and input in view below it in the Chat tab. Used
+ * by the divider, the arrow keys, restoring a saved height and window resizes.
+ */
+function _clampProofHeight(panel: HTMLElement, h: number): number {
+    const tab = panel.parentElement;
+    let max = 600;
+    if (tab && tab.clientHeight > 0) {
+        const top = panel.getBoundingClientRect().top - tab.getBoundingClientRect().top;
+        max = Math.max(PROOF_MIN_PX, tab.clientHeight - top - PROOF_CHAT_ROOM_PX);
+    }
+    return Math.round(Math.max(PROOF_MIN_PX, Math.min(max, h)));
+}
+
+/**
+ * The divider between the proof and the chat, like the docked learning plan's
+ * (plan-ui.ts): drag it, or focus it and use the arrow keys; double-click
+ * goes back to the default height. The height is remembered.
+ */
 function _setupProofResize(): void {
     const handle = document.getElementById('proof-resize-handle');
     const panel = document.getElementById('proof-panel');
     if (!handle || !panel) return;
+    handle.setAttribute('role', 'separator');
+    handle.setAttribute('aria-orientation', 'horizontal');
+    handle.setAttribute('aria-label', 'Resize the proof and the chat');
+    handle.title = 'Drag to resize · double-click to reset';
+    handle.tabIndex = 0;
 
-    let startY: number, startHeight: number;
+    const setH = (h: number, save = true): void => {
+        const clamped = _clampProofHeight(panel, h);
+        panel.style.height = clamped + 'px';
+        if (save) localStorage.setItem('algebench-proof-split', String(clamped));
+    };
+    // A smaller window: keep the chat's header and input in view (not saved,
+    // so the learner's height comes back when there's room again).
+    window.addEventListener('resize', () => {
+        if (panel.classList.contains('hidden') || panel.classList.contains('side-folded')) return;
+        const h = panel.offsetHeight;
+        const fit = _clampProofHeight(panel, h);
+        if (fit < h) panel.style.height = fit + 'px';
+    });
 
     handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
         e.preventDefault();
-        startY = e.clientY;
-        startHeight = panel.offsetHeight;
-
-        const onMove = (e2: MouseEvent) => {
-            const delta = e2.clientY - startY;
-            const newH = Math.max(100, Math.min(600, startHeight + delta));
-            panel.style.height = newH + 'px';
-        };
+        const startY = e.clientY;
+        const startHeight = panel.offsetHeight;
+        handle.classList.add('dragging');
+        document.body.classList.add('side-split-resizing');
+        const onMove = (e2: MouseEvent) => setH(startHeight + (e2.clientY - startY), false);
         const onUp = () => {
+            handle.classList.remove('dragging');
+            document.body.classList.remove('side-split-resizing');
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
             localStorage.setItem('algebench-proof-split', panel.offsetHeight.toString());
+            window.dispatchEvent(new Event('resize'));
         };
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
     });
+    handle.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        setH(panel.offsetHeight + (e.key === 'ArrowDown' ? PROOF_STEP_PX : -PROOF_STEP_PX));
+    });
+    handle.addEventListener('dblclick', () => setH(PROOF_DEFAULT_PX));
 }
 
 // ---- Proof tab switching (Proofs in Context / All Proofs) ----

@@ -13209,10 +13209,15 @@ function viewShowsCurrentStep(plan, lookup, view) {
 	if (step.kind === "subplan" || step.kind === "glossary") return true;
 	return showsRef(view, step.ref);
 }
-/** Where resuming a content step lands: where the learner left it, else its start. */
+/**
+* Where resuming a content step lands: where the learner left it, else its
+* start. A view the learner added ("+ This view") is a snapshot — its camera
+* angle and sliders are the point — so it always opens exactly as added; the
+* camera turned afterwards (to set up the next view, say) doesn't move it.
+*/
 function resumeView(step) {
 	if (step.kind === "subplan") return null;
-	const v = navigableView(step.lastView ?? step.view);
+	const v = navigableView(step.source === "learner" ? step.view : step.lastView ?? step.view);
 	if ((step.kind === "proof" || step.kind === "proofStep") && v.view !== "math") {
 		v.pp = true;
 		v.panel = "chat";
@@ -14505,6 +14510,148 @@ function updateTreeHighlight$1() {
 	});
 }
 //#endregion
+//#region src/side-sections.ts
+var svg$1 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+var ICON_FOLD = svg$1("M6 9l6 6 6-6");
+var ICON_UNFOLD = svg$1("M6 15l6-6 6 6");
+var SECTIONS = [{
+	head: "proof-section-head",
+	host: "proof-panel",
+	cls: "side-folded",
+	key: "algebench.foldProof",
+	name: "proof"
+}, {
+	head: "chat-section-head",
+	host: "tab-chat",
+	cls: "chat-folded",
+	key: "algebench.foldChat",
+	name: "chat"
+}];
+function loadFolded(key) {
+	try {
+		return localStorage.getItem(key) === "1";
+	} catch {
+		return false;
+	}
+}
+function saveFolded(key, folded) {
+	try {
+		localStorage.setItem(key, folded ? "1" : "0");
+	} catch {}
+}
+var wired = [];
+var isFolded = (w) => w.host.classList.contains(w.sec.cls);
+/** On screen: the proof panel is closed (`hidden`) when there's no proof to show. */
+var isShown = (w) => !w.head.closest(".hidden");
+function setFolded(w, folded, remember = true) {
+	w.host.classList.toggle(w.sec.cls, folded);
+	w.head.classList.toggle("side-section-folded", folded);
+	if (!folded) w.head.classList.remove("side-unread");
+	if (remember) saveFolded(w.sec.key, folded);
+}
+/**
+* At least one shown section stays open: the tab must show something. Fold
+* one while the other is folded and the other opens; a section on its own
+* (the chat, with the proof closed) can't fold at all.
+*/
+function keepOneOpen(changed) {
+	const shown = wired.filter(isShown);
+	if (shown.length && shown.every(isFolded)) setFolded(shown.find((w) => w !== changed) ?? shown[0], false, !!changed);
+	refreshButtons();
+}
+/** Re-apply the saved folds: the proof has just been shown again. */
+function restoreSaved() {
+	for (const w of wired) setFolded(w, loadFolded(w.sec.key), false);
+	keepOneOpen();
+}
+function refreshButtons() {
+	const shown = wired.filter(isShown);
+	for (const w of wired) {
+		const folded = isFolded(w);
+		const alone = shown.length === 1 && shown[0] === w;
+		w.btn.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+		w.btn.disabled = alone && !folded;
+		w.btn.title = folded ? `Show the ${w.sec.name}` : alone ? `The ${w.sec.name} is the only section open, so it stays open` : `Fold the ${w.sec.name} down to its header`;
+		w.btn.setAttribute("aria-label", w.btn.title);
+		w.btn.setAttribute("aria-expanded", folded ? "false" : "true");
+		w.head.classList.toggle("side-section-foldable", !w.btn.disabled);
+	}
+}
+function wire(sec) {
+	const head = document.getElementById(sec.head);
+	const host = document.getElementById(sec.host);
+	if (!head || !host || head.dataset.foldable) return;
+	head.dataset.foldable = "1";
+	const btn = document.createElement("button");
+	btn.type = "button";
+	btn.className = "side-head-btn side-fold-btn";
+	const firstBtn = head.querySelector("button");
+	if (firstBtn) head.insertBefore(btn, firstBtn);
+	else head.appendChild(btn);
+	const w = {
+		sec,
+		head,
+		host,
+		btn
+	};
+	wired.push(w);
+	const toggle = () => {
+		if (btn.disabled) return;
+		setFolded(w, !isFolded(w));
+		keepOneOpen(w);
+		window.dispatchEvent(new Event("resize"));
+	};
+	btn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		toggle();
+	});
+	head.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) toggle();
+	});
+	setFolded(w, loadFolded(sec.key), false);
+}
+/**
+* Unfold the Proof: something navigated to a proof step (a plan step, a link,
+* the AI, a click in the proof), so the step must be on screen. Scene-driven
+* proof syncing doesn't call this — a fold the learner chose survives that.
+*/
+function showProofSection() {
+	const w = wired.find((x) => x.sec.host === "proof-panel");
+	if (!w || !isFolded(w)) return;
+	setFolded(w, false);
+	keepOneOpen(w);
+	window.dispatchEvent(new Event("resize"));
+}
+/** A reply that lands while the Chat is folded: mark its header so it isn't missed. */
+function watchUnread() {
+	const messages = document.getElementById("chat-messages");
+	const tab = document.getElementById("tab-chat");
+	const head = document.getElementById("chat-section-head");
+	if (!messages || !tab || !head || typeof MutationObserver !== "function") return;
+	new MutationObserver(() => {
+		if (tab.classList.contains("chat-folded")) head.classList.add("side-unread");
+	}).observe(messages, { childList: true });
+}
+function setupSideSections() {
+	for (const sec of SECTIONS) wire(sec);
+	const proof = document.getElementById("proof-panel");
+	if (proof && typeof MutationObserver === "function") {
+		let shown = !proof.classList.contains("hidden");
+		new MutationObserver(() => {
+			const now = !proof.classList.contains("hidden");
+			if (now === shown) return;
+			shown = now;
+			if (now) restoreSaved();
+			else keepOneOpen();
+		}).observe(proof, {
+			attributes: true,
+			attributeFilter: ["class"]
+		});
+	}
+	keepOneOpen();
+	watchUnread();
+}
+//#endregion
 //#region src/proof-animation/dock-seq.ts
 var _seq = 0;
 var nextDockSeq = () => ++_seq;
@@ -15790,6 +15937,7 @@ function navigateProof$1(index) {
 	index = Math.max(-1, Math.min(index, steps.length - 1));
 	proofState.proofStepIndex = index;
 	if (!proofState.proofExpanded) _toggleProofPanel(true);
+	if (!proofState._proofSyncInProgress) showProofSection();
 	const activeSection = document.querySelector(`.proof-section[data-proof-idx="${proofState.proofActiveIndex}"]`);
 	if (activeSection && activeSection.classList.contains("collapsed")) activeSection.classList.remove("collapsed");
 	_saveProofStepToMemory();
@@ -16164,11 +16312,8 @@ function _toggleProofPanel(show) {
 		panel.classList.remove("hidden");
 		if (handle) handle.classList.remove("hidden");
 		if (btn) btn.classList.add("active");
-		const savedHeight = localStorage.getItem("algebench-proof-split");
-		if (savedHeight) {
-			const h = parseInt(savedHeight);
-			if (h >= 100 && h <= 600) panel.style.height = h + "px";
-		} else panel.style.height = "250px";
+		const saved = parseInt(localStorage.getItem("algebench-proof-split") ?? "", 10);
+		panel.style.height = _clampProofHeight(panel, Number.isFinite(saved) ? saved : PROOF_DEFAULT_PX) + "px";
 	} else {
 		panel.classList.add("hidden");
 		if (handle) handle.classList.add("hidden");
@@ -16188,28 +16333,76 @@ function setProofPanelOpen(show) {
 	if (!!show === !!proofState.proofExpanded) return;
 	_toggleProofPanel(!!show);
 }
+/** The proof's height bounds; it leaves the chat some room below it. */
+var PROOF_MIN_PX = 100;
+var PROOF_DEFAULT_PX = 250;
+var PROOF_STEP_PX = 24;
+/** The chat's header and input, kept in view under a proof dragged tall. */
+var PROOF_CHAT_ROOM_PX = 120;
+/**
+* A proof height within bounds: at least PROOF_MIN_PX, and short enough to
+* leave the chat's header and input in view below it in the Chat tab. Used
+* by the divider, the arrow keys, restoring a saved height and window resizes.
+*/
+function _clampProofHeight(panel, h) {
+	const tab = panel.parentElement;
+	let max = 600;
+	if (tab && tab.clientHeight > 0) {
+		const top = panel.getBoundingClientRect().top - tab.getBoundingClientRect().top;
+		max = Math.max(PROOF_MIN_PX, tab.clientHeight - top - PROOF_CHAT_ROOM_PX);
+	}
+	return Math.round(Math.max(PROOF_MIN_PX, Math.min(max, h)));
+}
+/**
+* The divider between the proof and the chat, like the docked learning plan's
+* (plan-ui.ts): drag it, or focus it and use the arrow keys; double-click
+* goes back to the default height. The height is remembered.
+*/
 function _setupProofResize() {
 	const handle = document.getElementById("proof-resize-handle");
 	const panel = document.getElementById("proof-panel");
 	if (!handle || !panel) return;
-	let startY, startHeight;
+	handle.setAttribute("role", "separator");
+	handle.setAttribute("aria-orientation", "horizontal");
+	handle.setAttribute("aria-label", "Resize the proof and the chat");
+	handle.title = "Drag to resize · double-click to reset";
+	handle.tabIndex = 0;
+	const setH = (h, save = true) => {
+		const clamped = _clampProofHeight(panel, h);
+		panel.style.height = clamped + "px";
+		if (save) localStorage.setItem("algebench-proof-split", String(clamped));
+	};
+	window.addEventListener("resize", () => {
+		if (panel.classList.contains("hidden") || panel.classList.contains("side-folded")) return;
+		const h = panel.offsetHeight;
+		const fit = _clampProofHeight(panel, h);
+		if (fit < h) panel.style.height = fit + "px";
+	});
 	handle.addEventListener("mousedown", (e) => {
+		if (e.button !== 0) return;
 		e.preventDefault();
-		startY = e.clientY;
-		startHeight = panel.offsetHeight;
-		const onMove = (e2) => {
-			const delta = e2.clientY - startY;
-			const newH = Math.max(100, Math.min(600, startHeight + delta));
-			panel.style.height = newH + "px";
-		};
+		const startY = e.clientY;
+		const startHeight = panel.offsetHeight;
+		handle.classList.add("dragging");
+		document.body.classList.add("side-split-resizing");
+		const onMove = (e2) => setH(startHeight + (e2.clientY - startY), false);
 		const onUp = () => {
+			handle.classList.remove("dragging");
+			document.body.classList.remove("side-split-resizing");
 			document.removeEventListener("mousemove", onMove);
 			document.removeEventListener("mouseup", onUp);
 			localStorage.setItem("algebench-proof-split", panel.offsetHeight.toString());
+			window.dispatchEvent(new Event("resize"));
 		};
 		document.addEventListener("mousemove", onMove);
 		document.addEventListener("mouseup", onUp);
 	});
+	handle.addEventListener("keydown", (e) => {
+		if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+		e.preventDefault();
+		setH(panel.offsetHeight + (e.key === "ArrowDown" ? PROOF_STEP_PX : -24));
+	});
+	handle.addEventListener("dblclick", () => setH(PROOF_DEFAULT_PX));
 }
 function _setupProofTabs() {
 	document.querySelectorAll(".proof-tab").forEach((tab) => {
@@ -20324,6 +20517,7 @@ async function applyViewState(vs, opts = {}) {
 		}
 		if (typeof window.switchPanelTab === "function") window.switchPanelTab(vs.panel === "chat" ? "chat" : "doc");
 		setProofPanelOpen(!!vs.pp);
+		if (paLesson || vs.pf != null && vs.pp && vs.panel === "chat") showProofSection();
 		if (vs.aa && !opts.fromHistory && !_autoAskFired) {
 			_autoAskFired = true;
 			try {
@@ -22681,6 +22875,13 @@ var ICON_FINISH = svg("M5 12.5l4.5 4.5L19 7.5");
 var ICON_CLOSE = svg("M6 6l12 12M18 6L6 18");
 var ICON_RESTART = svg("M3 12a9 9 0 1 0 3-6.7M3 4v5h5");
 var ICON_RETURN = svg("M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11");
+var ICON_COLLAPSE = svg("M6 9l6 6 6-6");
+var ICON_PLUS = svg("M12 5v14M5 12h14");
+var ICON_IMPORT = svg("M12 20V8M7 13l5-5 5 5M5 4h14");
+var ICON_EXPORT = svg("M12 4v12M7 11l5 5 5-5M5 20h14");
+var ICON_TRASH = svg("M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13");
+var ICON_SPARK = svg("M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z");
+var ICON_EXPAND = svg("M6 15l6-6 6 6");
 var store = createPlanStore();
 var plans = /* @__PURE__ */ new Map();
 var lookup = (id) => plans.get(id);
@@ -22721,6 +22922,8 @@ var ui = {
 	returnedFrom: null,
 	/** Docked at the bottom of the Doc tab instead of floating; remembered. */
 	docked: false,
+	/** Docked and folded down to its header; remembered. */
+	dockCollapsed: false,
 	/** True while the plan itself is navigating: its own jumps are not the learner moving. */
 	driving: false,
 	/**
@@ -22738,6 +22941,9 @@ var ui = {
 	confirmRestart: null,
 	/** What the AI planner is working on, while a request is out. */
 	planning: null,
+	/** The plans list's search text and status filter. */
+	listQuery: "",
+	listFilter: "all",
 	/** A plan the AI made, shown for the learner to start, keep or discard; not saved yet. */
 	preview: null
 };
@@ -23063,6 +23269,12 @@ function insertAndEnter(holder, andEnter = true) {
 	} else maybeGuide();
 }
 /** Ask for a title in the panel itself; `submit` runs with a non-empty title. */
+/** Tooltips for the inline form's submit button, by its label. */
+var OK_TITLE = {
+	"Create": "Create the plan with this title (Enter)",
+	"Plan it": "Ask the AI to plan a path to this through the lessons (Enter)",
+	"Answer": "Send your answer to the planner (Enter)"
+};
 function askTitle(label, value, submit, ok = "Create") {
 	ui.asking = {
 		label,
@@ -23087,12 +23299,15 @@ function titleForm() {
 	});
 	form.appendChild(input);
 	const row = el("div", "plan-tools");
-	const ok = button(a.ok, () => form.requestSubmit(), { cls: "plan-btn-primary" });
+	const ok = button(a.ok, () => form.requestSubmit(), {
+		cls: "plan-btn-primary",
+		title: OK_TITLE[a.ok] ?? `${a.ok} (Enter)`
+	});
 	row.appendChild(ok);
 	row.appendChild(button("Cancel", () => {
 		ui.asking = null;
 		render();
-	}));
+	}, { title: "Close this without changing anything (Esc)" }));
 	form.appendChild(row);
 	form.addEventListener("submit", (e) => {
 		e.preventDefault();
@@ -23213,7 +23428,10 @@ function renderPlanning(body) {
 	box.appendChild(elMath("div", "plan-preview-title", ui.planning ?? ""));
 	box.appendChild(el("div", "plan-guide-status", "Picking lesson steps, proofs and terms… this takes a few seconds."));
 	const row = el("div", "plan-tools");
-	row.appendChild(button("Cancel", cancelPlanning));
+	row.appendChild(button("Cancel", cancelPlanning, {
+		cls: "plan-btn-ghost",
+		title: "Stop planning — nothing is saved"
+	}));
 	box.appendChild(row);
 	body.appendChild(box);
 }
@@ -23228,13 +23446,13 @@ function renderPreview(body) {
 		const li = el("li", "plan-preview-step");
 		const head = el("div", "plan-preview-step-head");
 		head.appendChild(stepTitle("plan-preview-step-title", s));
-		head.appendChild(el("span", "plan-badge", KIND_LABEL[s.kind]));
+		if (KIND_GLYPH[s.kind]) head.appendChild(el("span", "plan-step-kind", KIND_GLYPH[s.kind]));
 		li.appendChild(head);
 		if (s.why) li.appendChild(elMath("div", "plan-current-why", s.why));
 		ol.appendChild(li);
 	}
 	box.appendChild(ol);
-	const row = el("div", "plan-tools");
+	const row = el("div", "plan-tools plan-preview-actions");
 	const keep = () => {
 		ui.preview = null;
 		persist([plan]);
@@ -23242,14 +23460,20 @@ function renderPreview(body) {
 	row.appendChild(button("Start", () => {
 		keep();
 		startWalking(plan.id);
-	}, { cls: "plan-btn-primary" }));
+	}, {
+		cls: "plan-btn-primary",
+		title: "Save this plan and go to its first step"
+	}));
 	row.appendChild(button("Save for later", () => {
 		keep();
 		render();
-	}));
+	}, { title: "Save this plan to your plans without starting it" }));
 	row.appendChild(button("Discard", () => {
 		ui.preview = null;
 		render();
+	}, {
+		cls: "plan-btn-ghost",
+		title: "Throw this plan away — it was never saved"
 	}));
 	box.appendChild(row);
 	body.appendChild(box);
@@ -23382,6 +23606,19 @@ function button(label, onClick, opts = {}) {
 	});
 	return b;
 }
+/** A square button showing only `icon`; `label` is its accessible name. */
+function iconButton(label, icon, onClick, opts = {}) {
+	const b = elHtml("button", "plan-btn plan-btn-square", icon);
+	b.type = "button";
+	b.setAttribute("aria-label", label);
+	b.title = opts.title ?? label;
+	if (opts.disabled) b.disabled = true;
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		onClick();
+	});
+	return b;
+}
 function progressBar(p) {
 	const pr = progress(p, lookup);
 	const wrap = el("div", "plan-progress");
@@ -23391,7 +23628,9 @@ function progressBar(p) {
 	bar.appendChild(fill);
 	wrap.appendChild(bar);
 	const done = Number.isInteger(pr.done) ? String(pr.done) : pr.done.toFixed(1);
-	wrap.appendChild(el("span", "plan-progress-text", `${done} of ${pr.total} · ${Math.round(pr.fraction * 100)}%`));
+	const text = el("span", "plan-progress-text", `${done}/${pr.total}`);
+	text.title = `${done} of ${pr.total} steps done · ${Math.round(pr.fraction * 100)}%`;
+	wrap.appendChild(text);
 	return wrap;
 }
 /** Step markers: SVG, not glyphs (which sit at different heights per font). */
@@ -23426,23 +23665,45 @@ var KIND_LABEL = {
 	glossary: "term",
 	subplan: "sub-plan"
 };
+/** The step list tags only the kinds that open somewhere else; a plain step needs no tag. */
+var KIND_GLYPH = {
+	proof: "proof",
+	proofStep: "proof",
+	glossary: "term",
+	subplan: "sub-plan"
+};
 function stepTitle(cls, s) {
 	return elMath("span", cls, s.title || "(untitled)");
 }
 function renderWalk(root, body) {
 	const crumbs = breadcrumb(root, lookup);
 	const cur = currentStep(root, lookup);
-	const bc = el("div", "plan-breadcrumb");
-	crumbs.forEach((c, i) => {
-		if (i) bc.appendChild(el("span", "plan-crumb-sep", "›"));
-		bc.appendChild(elMath("span", "plan-crumb", c.title));
-	});
-	body.appendChild(bc);
-	body.appendChild(progressBar(root));
+	const head = el("div", "plan-head");
+	if (crumbs.length > 1) {
+		const bc = el("div", "plan-breadcrumb");
+		crumbs.slice(0, -1).forEach((c, i) => {
+			if (i) bc.appendChild(el("span", "plan-crumb-sep", "›"));
+			bc.appendChild(elMath("span", "plan-crumb", c.title));
+		});
+		head.appendChild(bc);
+	}
+	const titleRow = el("div", "plan-title-row");
+	titleRow.appendChild(elMath("div", "plan-title", crumbs[crumbs.length - 1]?.title ?? root.title));
+	titleRow.appendChild(button("All plans", () => {
+		ui.mode = "list";
+		render();
+	}, {
+		cls: "plan-btn-ghost plan-all-btn",
+		title: "See all your plans"
+	}));
+	head.appendChild(titleRow);
+	head.appendChild(progressBar(root));
+	body.appendChild(head);
 	if (cur) {
 		const card = el("div", "plan-current");
 		const last = crumbs[crumbs.length - 1];
-		card.appendChild(el("div", "plan-current-meta", `Step ${last.stepNumber} of ${last.stepCount} · ${KIND_LABEL[cur.kind]}`));
+		const kind = cur.kind === "step" ? "" : ` · ${KIND_LABEL[cur.kind]}`;
+		card.appendChild(el("div", "plan-current-meta", `Step ${last.stepNumber} of ${last.stepCount}${kind}`));
 		card.appendChild(elMath("div", "plan-current-title", cur.title || "(untitled)"));
 		if (cur.why) card.appendChild(elMath("div", "plan-current-why", cur.why));
 		if (ui.guide && ui.guideThinking) card.appendChild(el("div", "plan-guide-status", "AI guide is thinking about this step…"));
@@ -23453,7 +23714,10 @@ function renderWalk(root, body) {
 			if (!sub) {
 				const row = el("div", "plan-tools");
 				const holder = findInner(root, last.planId) ?? root;
-				if (holder.steps.length > 1) row.appendChild(button("Remove this step", () => removeStep(cur.id), { cls: "plan-btn-danger" }));
+				if (holder.steps.length > 1) row.appendChild(button("Remove this step", () => removeStep(cur.id), {
+					cls: "plan-btn-danger",
+					title: "Take this broken link out of the plan"
+				}));
 				else if (holder === root) row.appendChild(ui.confirmDelete === root.id ? button("Really delete?", () => deletePlan(root.id), {
 					cls: "plan-btn-danger plan-btn-armed",
 					title: "Click again to delete this plan for good"
@@ -23461,7 +23725,7 @@ function renderWalk(root, body) {
 					cls: "plan-btn-danger",
 					title: "Its only step links a plan that no longer exists"
 				}));
-				row.appendChild(button("Import…", importFile));
+				row.appendChild(button("Import…", importFile, { title: "Import a plan file — importing the linked plan again restores this step" }));
 				card.appendChild(row);
 			}
 		}
@@ -23472,14 +23736,16 @@ function renderWalk(root, body) {
 		off.appendChild(button("Back to step", () => apply({
 			changed: [],
 			go: resumeView(cur)
-		}), { cls: "plan-btn-link" }));
+		}), {
+			cls: "plan-btn-link",
+			title: "Go back to where you were on the current plan step"
+		}));
 		body.appendChild(off);
 	}
 	const nav = el("div", "plan-nav");
 	const depth = crumbs.length;
 	const atStart = crumbs[crumbs.length - 1]?.stepNumber === 1;
-	nav.appendChild(button("Back", () => apply(back(root, lookup, now())), {
-		icon: ICON_BACK,
+	nav.appendChild(iconButton("Back", ICON_BACK, () => apply(back(root, lookup, now())), {
 		title: atStart ? `This is the first step — use ${depth > 1 ? "Return" : "Leave"} to go back to where you came from` : "Previous step",
 		disabled: atStart
 	}));
@@ -23501,13 +23767,13 @@ function renderWalk(root, body) {
 		};
 		apply(forward(root, lookup, now()));
 	}, {
-		cls: cur?.kind === "subplan" ? "" : "plan-btn-primary",
+		cls: `plan-nav-main${cur?.kind === "subplan" ? "" : " plan-btn-primary"}`,
 		title: offStep ? "Go back to this step first (Back to step), then mark it done" : fwdTitle,
 		disabled: offStep || atEnd && depth <= 1 && ui.finished,
 		icon: atEnd ? ICON_FINISH : ICON_FORWARD,
 		iconAfter: true
 	}));
-	nav.appendChild(button(depth > 1 ? "Return" : "Leave", () => {
+	nav.appendChild(iconButton(depth > 1 ? "Return" : "Leave", ICON_RETURN, () => {
 		if (depth > 1) ui.returnedFrom = {
 			title: crumbs[crumbs.length - 1].title,
 			finished: false
@@ -23518,19 +23784,20 @@ function renderWalk(root, body) {
 			ui.mode = "list";
 		}
 		apply(r);
-	}, {
-		icon: ICON_RETURN,
-		title: depth > 1 ? "Leave this sub-plan without finishing it, back to where you entered it" : "Stop walking this plan (it stays saved) and go back to where you started"
-	}));
+	}, { title: depth > 1 ? "Return: leave this sub-plan without finishing it, back to where you entered it" : "Leave: stop walking this plan (it stays saved) and go back to where you started" }));
 	body.appendChild(nav);
 	if (ui.finished) {
 		const fin = el("div", "plan-finished", "You reached the end of this plan.");
-		fin.appendChild(button("Mark plan complete", () => completePlan(root.id), { cls: "plan-btn-primary" }));
+		fin.appendChild(button("Mark plan complete", () => completePlan(root.id), {
+			cls: "plan-btn-primary",
+			title: "Mark the whole plan done — it stays in your plans"
+		}));
 		body.appendChild(fin);
 	}
 	const innerId = crumbs[crumbs.length - 1]?.planId;
 	const inner = innerId === root.id ? root : findInner(root, innerId);
 	if (inner) {
+		body.appendChild(el("div", "plan-section-label", inner === root ? "Steps" : "Steps in this sub-plan"));
 		const list = el("ol", "plan-steps");
 		for (const s of inner.steps) {
 			const shown = shownState(s);
@@ -23543,7 +23810,11 @@ function renderWalk(root, body) {
 			markEl.title = STATE_LABEL[shown] ?? shown;
 			jump.appendChild(markEl);
 			jump.appendChild(stepTitle("plan-step-title", s));
-			jump.appendChild(el("span", "plan-step-kind", KIND_LABEL[s.kind] ?? s.kind));
+			if (KIND_GLYPH[s.kind]) {
+				const k = el("span", "plan-step-kind", KIND_GLYPH[s.kind]);
+				k.title = KIND_LABEL[s.kind] ?? s.kind;
+				jump.appendChild(k);
+			}
 			jump.title = s.why || s.title;
 			jump.setAttribute("aria-label", `${s.title} — ${STATE_LABEL[shown] ?? shown}, ${KIND_LABEL[s.kind] ?? s.kind}`);
 			jump.addEventListener("click", () => apply(jumpTo(root, lookup, s.id, now())));
@@ -23584,17 +23855,22 @@ function renderWalk(root, body) {
 		}
 		body.appendChild(list);
 	}
-	const tools = el("div", "plan-tools");
+	const tools = el("div", "plan-tools plan-foot");
 	tools.appendChild(restartButton(root));
-	tools.appendChild(button("+ This view", addCurrentView, { title: "Add what you are looking at as the next step" }));
+	tools.appendChild(button("+ This view", addCurrentView, {
+		cls: "plan-btn-ghost",
+		title: "Add what you are looking at to this plan, as the step after the current one"
+	}));
 	const full = atMaxDepth(root);
 	tools.appendChild(button("+ Sub-plan…", newSubplanHere, {
+		cls: "plan-btn-ghost",
 		title: full ? DEPTH_NOTE : "Start a sub-plan for something you need first, from this view — it goes in after the current step and you go into it",
 		disabled: full
 	}));
 	const others = [...plans.values()].filter((p) => p.id !== root.id && !crumbs.some((c) => c.planId === p.id));
 	if (others.length && !full) {
 		const sel = el("select", "plan-select");
+		sel.title = "Add one of your other plans as a sub-plan step here";
 		sel.appendChild(new Option("+ Link a plan…", ""));
 		for (const p of others) sel.appendChild(new Option(p.title, p.id));
 		sel.addEventListener("change", () => {
@@ -23626,7 +23902,7 @@ function restartButton(p) {
 		cls: "plan-btn-armed",
 		title: "Click again to reset this plan's progress and start from step 1"
 	}) : button("Restart", () => restart(p.id), {
-		cls: "plan-btn-icon",
+		cls: "plan-btn-icon plan-btn-ghost",
 		icon: ICON_RESTART,
 		title: "Start this plan over from step 1. Progress is reset (nested sub-plans too); linked plans keep theirs."
 	});
@@ -23641,63 +23917,195 @@ function glossaryCard(step) {
 	const name = entry ? glossaryTermName(resolved, entry) : key;
 	box.appendChild(elMath("div", "plan-glossary-term", name));
 	box.appendChild(entry ? elHtml("div", "plan-glossary-def", renderMarkdown$1(entry.markdown || "")) : el("div", "plan-muted", "Open the lesson to see this definition."));
-	if (!onLesson) box.appendChild(button("Open lesson", () => void go({ builtin: step.ref.lesson }), { cls: "plan-btn-link" }));
+	if (!onLesson) box.appendChild(button("Open lesson", () => void go({ builtin: step.ref.lesson }), {
+		cls: "plan-btn-link",
+		title: "Open the lesson this term belongs to, to read its definition"
+	}));
 	if (entry) box.appendChild(makeAiAskButton("plan-ask-ai", `Ask AI about ${name}`, () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
 	return box;
 }
+var LIST_FILTERS = [
+	[
+		"all",
+		"All",
+		"Every plan"
+	],
+	[
+		"progress",
+		"In progress",
+		"Plans you have started and not finished"
+	],
+	[
+		"new",
+		"Not started",
+		"Plans you saved but haven’t started"
+	],
+	[
+		"complete",
+		"Completed",
+		"Plans marked complete"
+	]
+];
+/**
+* Where a plan belongs in the list. In progress = being walked, or any step
+* has progress — a plan left part-way (Leave, or restarted then left) is still
+* underway even though nothing is walking it now.
+*/
+function planFilter(p) {
+	if (p.status === "complete") return "complete";
+	return p.nav || p.steps.some((st) => shownState(st) !== "todo") ? "progress" : "new";
+}
+/** A small square icon button for the plans list; `title` is its tooltip and name. */
+function listIcon(icon, title, onClick, cls = "") {
+	const b = elHtml("button", `plan-icon-btn${cls ? " " + cls : ""}`, icon);
+	b.type = "button";
+	b.title = title;
+	b.setAttribute("aria-label", title);
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		onClick();
+	});
+	return b;
+}
 function renderList(body) {
 	const all = [...plans.values()].sort((a, b) => b.updatedAt - a.updatedAt);
-	const top = el("div", "plan-tools");
-	top.appendChild(button("+ New plan", newPlanFromGoal, {
-		cls: "plan-btn-primary",
+	const top = el("div", "plan-list-toolbar");
+	top.appendChild(button("New plan", newPlanFromGoal, {
+		cls: "plan-btn-primary plan-btn-small",
+		icon: ICON_SPARK,
 		title: "Say what you want to understand, and the AI plans a path to it through the lessons"
 	}));
-	top.appendChild(button("+ From this view", createPlanFromHere, { title: "Start a plan by hand, from what you are looking at" }));
-	top.appendChild(button("Import…", importFile));
-	if (all.length) top.appendChild(button("Export all", () => exportAll(all.map((p) => p.id))));
+	const search = el("input", "plan-search");
+	if (all.length) top.appendChild(search);
+	const tools = el("span", "plan-list-tools");
+	tools.appendChild(listIcon(ICON_PLUS, "New plan from this view: start a plan by hand, with what you are looking at as its first step", createPlanFromHere));
+	tools.appendChild(listIcon(ICON_IMPORT, "Import plans from a plan file (.json) someone shared or you exported", importFile));
+	if (all.length) tools.appendChild(listIcon(ICON_EXPORT, "Export all your plans as one file, to back up or share", () => exportAll(all.map((p) => p.id))));
+	top.appendChild(tools);
 	body.appendChild(top);
 	if (!all.length) {
 		body.appendChild(el("div", "plan-empty", "No plans yet. A plan is a path to something you want to understand, built from lesson steps, proofs and terms — with sub-plans for anything you need first."));
 		return;
 	}
+	search.type = "search";
+	search.placeholder = "Search plans";
+	search.title = "Find a plan by its title or its steps";
+	search.setAttribute("aria-label", "Search plans");
+	search.value = ui.listQuery;
+	const chips = el("div", "plan-filter");
+	chips.setAttribute("role", "radiogroup");
+	chips.setAttribute("aria-label", "Show plans");
 	const list = el("ul", "plan-list");
-	for (const p of all) {
-		const li = el("li", `plan-item${p.status === "complete" ? " plan-item-complete" : ""}`);
-		const head = el("div", "plan-item-head");
-		head.appendChild(elMath("span", "plan-item-title", p.title));
-		if (p.status === "complete") head.appendChild(el("span", "plan-badge", "complete"));
-		else if (p.nav) head.appendChild(el("span", "plan-badge plan-badge-live", "in progress"));
-		li.appendChild(head);
-		li.appendChild(progressBar(p));
-		const actions = el("div", "plan-item-actions");
-		actions.appendChild(button(p.nav ? "Continue" : "Start", () => startWalking(p.id), { cls: "plan-btn-primary" }));
-		actions.appendChild(p.status === "complete" ? button("Reopen", () => reopenPlan(p.id)) : button("Mark complete", () => completePlan(p.id)));
-		actions.appendChild(restartButton(p));
-		actions.appendChild(button("Export", () => exportAll([p.id])));
-		actions.appendChild(ui.confirmDelete === p.id ? button("Really delete?", () => deletePlan(p.id), {
-			cls: "plan-btn-danger plan-btn-armed",
-			title: "Click again to delete this plan for good"
-		}) : button("Delete", () => deletePlan(p.id), { cls: "plan-btn-danger" }));
-		li.appendChild(actions);
-		list.appendChild(li);
+	const fill = () => {
+		const q = ui.listQuery.trim().toLowerCase();
+		list.innerHTML = "";
+		const counts = {
+			all: 0,
+			progress: 0,
+			new: 0,
+			complete: 0
+		};
+		let shown = 0;
+		for (const p of all) {
+			if (!(!q || p.title.toLowerCase().includes(q) || p.steps.some((st) => st.title.toLowerCase().includes(q)))) continue;
+			counts.all++;
+			counts[planFilter(p)]++;
+			if (ui.listFilter !== "all" && planFilter(p) !== ui.listFilter) continue;
+			list.appendChild(planRow(p));
+			shown++;
+		}
+		for (const c of chips.querySelectorAll("[data-filter]")) {
+			const n = c.querySelector(".plan-chip-count");
+			if (n) n.textContent = String(counts[c.dataset.filter]);
+		}
+		if (!shown) list.appendChild(el("li", "plan-empty plan-list-empty", q ? "No plans match." : "No plans here."));
+	};
+	for (const [key, label, tip] of LIST_FILTERS) {
+		const c = el("button", `plan-chip${ui.listFilter === key ? " plan-chip-on" : ""}`);
+		c.type = "button";
+		c.dataset.filter = key;
+		c.title = tip;
+		c.setAttribute("role", "radio");
+		c.setAttribute("aria-checked", ui.listFilter === key ? "true" : "false");
+		c.appendChild(el("span", void 0, label));
+		c.appendChild(el("span", "plan-chip-count"));
+		c.addEventListener("click", () => {
+			ui.listFilter = key;
+			for (const o of chips.children) {
+				o.classList.toggle("plan-chip-on", o === c);
+				o.setAttribute("aria-checked", o === c ? "true" : "false");
+			}
+			fill();
+		});
+		chips.appendChild(c);
 	}
+	search.addEventListener("input", () => {
+		ui.listQuery = search.value;
+		fill();
+	});
+	body.appendChild(chips);
 	body.appendChild(list);
+	fill();
 }
+/** One plan in the list: click it to continue; its other actions show on hover or focus. */
+function planRow(p) {
+	const li = el("li", `plan-item plan-item-${planFilter(p)}`);
+	const open = el("button", "plan-item-open");
+	open.type = "button";
+	open.title = p.nav ? "Continue this plan where you left off" : "Start this plan from its first step";
+	const head = el("span", "plan-item-head");
+	head.appendChild(elMath("span", "plan-item-title", p.title));
+	const where = planFilter(p);
+	if (where === "complete") head.appendChild(el("span", "plan-badge", "complete"));
+	else if (where === "progress") head.appendChild(el("span", "plan-badge plan-badge-live", "in progress"));
+	open.appendChild(head);
+	open.appendChild(progressBar(p));
+	open.addEventListener("click", () => startWalking(p.id));
+	li.appendChild(open);
+	const actions = el("div", "plan-item-actions");
+	actions.appendChild(p.status === "complete" ? listIcon(ICON_RETURN, "Reopen: mark this plan not complete again, keeping its progress", () => reopenPlan(p.id)) : listIcon(ICON_FINISH, "Mark complete: mark this plan done without walking the rest of it", () => completePlan(p.id)));
+	actions.appendChild(ui.confirmRestart === p.id ? button("Restart?", () => restart(p.id), {
+		cls: "plan-btn-armed plan-btn-small",
+		title: "Click again to reset this plan's progress and start from step 1"
+	}) : listIcon(ICON_RESTART, "Restart: start this plan over from step 1 (asks you to click again)", () => restart(p.id)));
+	actions.appendChild(listIcon(ICON_EXPORT, "Export this plan as a file, to back up or share", () => exportAll([p.id])));
+	actions.appendChild(ui.confirmDelete === p.id ? button("Delete?", () => deletePlan(p.id), {
+		cls: "plan-btn-danger plan-btn-armed plan-btn-small",
+		title: "Click again to delete this plan for good"
+	}) : listIcon(ICON_TRASH, "Delete this plan (asks you to click again)", () => deletePlan(p.id), "plan-icon-danger"));
+	if (ui.confirmRestart === p.id || ui.confirmDelete === p.id) li.classList.add("plan-item-armed");
+	li.appendChild(actions);
+	return li;
+}
+/** What the walk view shows of a plan's position: its step, and every step's state on the way to it. */
+function walkShown(root) {
+	const crumbs = breadcrumb(root, lookup);
+	const inner = findInner(root, crumbs[crumbs.length - 1]?.planId) ?? root;
+	return JSON.stringify([
+		crumbs.map((c) => [c.planId, c.stepNumber]),
+		inner.steps.map(shownState),
+		root.status
+	]);
+}
+/** walkShown() at the last render, so follow() knows whether anything visible changed. */
+var lastWalkShown = "";
 function render() {
 	const body = dom.body;
 	if (!body) return;
+	const r0 = active();
+	lastWalkShown = r0 ? walkShown(r0) : "";
 	body.innerHTML = "";
 	const root = active();
 	if (ui.mode === "walk" && !root) ui.mode = "list";
 	const switcher = el("div", "plan-switch");
-	if (ui.mode === "walk") switcher.appendChild(button("All plans", () => {
-		ui.mode = "list";
-		render();
-	}, { cls: "plan-btn-link" }));
-	else if (root) switcher.appendChild(button(`Back to “${root.title}”`, () => {
+	if (ui.mode !== "walk" && root) switcher.appendChild(button(root.title, () => {
 		ui.mode = "walk";
 		render();
-	}, { cls: "plan-btn-link" }));
+	}, {
+		cls: "plan-btn-ghost plan-btn-icon plan-back-btn",
+		icon: ICON_BACK,
+		title: `Back to “${root.title}”`
+	}));
 	if (switcher.childNodes.length) body.appendChild(switcher);
 	if (ui.storageError) body.appendChild(el("div", "plan-notice plan-notice-error", ui.storageError));
 	if (ui.notice) body.appendChild(el("div", "plan-notice", ui.notice));
@@ -23917,11 +24325,30 @@ function headerButtons() {
 		e.stopPropagation();
 		closePanel();
 	});
-	return [
+	return ui.docked ? [
+		guideButton(),
+		collapseButton(),
+		dock,
+		close
+	] : [
 		guideButton(),
 		dock,
 		close
 	];
+}
+/** Docked only: fold the plan down to its header, leaving the side panel to Doc and Chat. */
+function collapseButton() {
+	const b = elHtml("button", "plan-head-btn plan-collapse-btn", ui.dockCollapsed ? ICON_EXPAND : ICON_COLLAPSE);
+	b.type = "button";
+	b.title = ui.dockCollapsed ? "Show the plan" : "Fold the plan down to its header";
+	b.setAttribute("aria-label", b.title);
+	b.setAttribute("aria-expanded", ui.dockCollapsed ? "false" : "true");
+	b.addEventListener("mousedown", (e) => e.stopPropagation());
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		setDockCollapsed(!ui.dockCollapsed);
+	});
+	return b;
 }
 /** One wrapper for the floating header's buttons, so they can be re-rendered in place. */
 function floatingHeaderButtons() {
@@ -23965,10 +24392,17 @@ function mountDocked(body) {
 	const host = el("section", "plan-docked plan-panel");
 	host.id = "plan-dock-host";
 	host.setAttribute("aria-label", "Learning Plan");
+	host.appendChild(dockResizeHandle(host));
+	const h = loadDockHeight();
+	if (h) host.style.height = `${h}px`;
+	host.classList.toggle("plan-dock-collapsed", ui.dockCollapsed);
 	const head = elHtml("div", "side-section-head plan-docked-head", `${PLAN_ICON}<span class="side-section-title">Learning Plan</span>`);
 	const btns = el("span", "plan-docked-btns");
 	for (const b of headerButtons()) btns.appendChild(b);
 	head.appendChild(btns);
+	head.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) setDockCollapsed(!ui.dockCollapsed);
+	});
 	host.appendChild(head);
 	host.appendChild(body);
 	side.appendChild(host);
@@ -23992,6 +24426,82 @@ function setDocked(docked) {
 		showSidePanel();
 	} else mountFloating(body);
 	render();
+}
+var DOCK_HEIGHT_KEY = "algebench.planDockHeight";
+var DOCK_COLLAPSED_KEY = "algebench.planDockCollapsed";
+/** The docked plan's height bounds; CSS also leaves Doc and Chat room above it. */
+var DOCK_MIN_PX = 120;
+var DOCK_STEP_PX = 24;
+function loadDockHeight() {
+	try {
+		const h = Number(localStorage.getItem(DOCK_HEIGHT_KEY));
+		return Number.isFinite(h) && h >= DOCK_MIN_PX ? h : null;
+	} catch {
+		return null;
+	}
+}
+function saveDockHeight(h) {
+	try {
+		if (h === null) localStorage.removeItem(DOCK_HEIGHT_KEY);
+		else localStorage.setItem(DOCK_HEIGHT_KEY, String(Math.round(h)));
+	} catch {}
+}
+function setDockCollapsed(collapsed) {
+	ui.dockCollapsed = collapsed;
+	try {
+		localStorage.setItem(DOCK_COLLAPSED_KEY, collapsed ? "1" : "0");
+	} catch {}
+	dom.dockEl?.classList.toggle("plan-dock-collapsed", collapsed);
+	refreshHeaderButtons();
+}
+/**
+* The divider between Doc/Chat and the docked plan: drag it (or focus it and
+* use the arrow keys) to give either more room; double-click to go back to
+* the plan's natural height. The height is remembered.
+*/
+function dockResizeHandle(host) {
+	const handle = el("div", "plan-dock-resize");
+	handle.setAttribute("role", "separator");
+	handle.setAttribute("aria-orientation", "horizontal");
+	handle.setAttribute("aria-label", "Resize the learning plan");
+	handle.title = "Drag to resize · double-click to reset";
+	handle.tabIndex = 0;
+	const maxPx = () => {
+		const side = host.parentElement;
+		return Math.max(DOCK_MIN_PX, (side?.clientHeight ?? 600) - 140);
+	};
+	const setH = (h) => {
+		const clamped = Math.max(DOCK_MIN_PX, Math.min(maxPx(), h));
+		host.style.height = `${clamped}px`;
+		saveDockHeight(clamped);
+	};
+	handle.addEventListener("mousedown", (e) => {
+		if (e.button !== 0 || ui.dockCollapsed) return;
+		e.preventDefault();
+		const startY = e.clientY, startH = host.offsetHeight;
+		handle.classList.add("dragging");
+		document.body.classList.add("plan-dock-resizing");
+		const onMove = (m) => setH(startH - (m.clientY - startY));
+		const onUp = () => {
+			handle.classList.remove("dragging");
+			document.body.classList.remove("plan-dock-resizing");
+			document.removeEventListener("mousemove", onMove);
+			document.removeEventListener("mouseup", onUp);
+			window.dispatchEvent(new Event("resize"));
+		};
+		document.addEventListener("mousemove", onMove);
+		document.addEventListener("mouseup", onUp);
+	});
+	handle.addEventListener("keydown", (e) => {
+		if (ui.dockCollapsed || e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+		e.preventDefault();
+		setH(host.offsetHeight + (e.key === "ArrowUp" ? DOCK_STEP_PX : -24));
+	});
+	handle.addEventListener("dblclick", () => {
+		host.style.height = "";
+		saveDockHeight(null);
+	});
+	return handle;
 }
 /** Open the right-hand panel if it's hidden, so the docked plan is in view. */
 function showSidePanel() {
@@ -24095,7 +24605,9 @@ function follow(ev) {
 			if (r.moved) return;
 		} else landedAt = null;
 		persist(r.changed);
-		if (r.onStep !== ui.onStep || r.changed.length) {
+		const current = active();
+		const shown = current ? walkShown(current) : "";
+		if (r.onStep !== ui.onStep || shown !== lastWalkShown) {
 			ui.onStep = r.onStep;
 			render();
 		}
@@ -24147,6 +24659,9 @@ var FOLLOW_EVENTS = [
 /** Wire the Plan button, restore the plan being walked, and follow navigation. */
 async function setupPlanUi() {
 	ui.docked = loadDocked();
+	try {
+		ui.dockCollapsed = localStorage.getItem(DOCK_COLLAPSED_KEY) === "1";
+	} catch {}
 	ui.guide = loadGuide();
 	await reloadPlans();
 	buildButton$1();
@@ -24935,6 +25450,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupAboutPopup();
 	setupViewSync();
 	setupShareButton();
+	setupSideSections();
 	setupPopstateListener(applyViewState);
 	const planReady = setupPlanUi();
 	loadBuiltinScenesList();

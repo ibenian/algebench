@@ -3745,7 +3745,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
     flex-direction: column;
     overflow: hidden;
     flex-shrink: 0;
-    max-height: 60%;
+    /* Height bounds live in src/proof.ts (_clampProofHeight): drag, restore, resize. */
     background: var(--panel-bg);
 }
 #proof-panel.hidden { display: none; }
@@ -4127,18 +4127,28 @@ body.rotating-axis-z, body.rotating-axis-z * {
     text-align: center;
 }
 
-/* Proof resize handle (horizontal, between proof and chat) */
+/* Proof resize handle (between proof and chat): the same divider as the
+   docked learning plan's — a grab strip over the boundary, a grip on hover,
+   the accent while hovered, focused or dragged (src/proof.ts). */
 #proof-resize-handle {
-    height: 5px;
-    cursor: ns-resize;
-    margin: 0 12px;
-    background: color-mix(in srgb, var(--accent-color) 12%, transparent);
-    flex-shrink: 0;
-    transition: background 0.15s;
+    position: relative; height: 0; flex-shrink: 0; z-index: 3;
 }
-#proof-resize-handle:hover {
-    background: color-mix(in srgb, var(--accent-color) 28%, transparent);
+#proof-resize-handle::before {
+    content: ''; position: absolute; left: 0; right: 0; top: -3px; height: 7px;
+    cursor: ns-resize; background: transparent; transition: background .15s;
 }
+#proof-resize-handle::after {
+    content: ''; position: absolute; left: 50%; top: -1px; width: 28px; height: 3px; margin-left: -14px;
+    border-radius: 2px; background: color-mix(in srgb, var(--text-color) 22%, transparent);
+    opacity: 0; transition: opacity .15s; pointer-events: none;
+}
+#tab-chat:hover #proof-resize-handle::after { opacity: 1; }
+#proof-resize-handle:hover::before, #proof-resize-handle:focus-visible::before, #proof-resize-handle.dragging::before {
+    background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+#proof-resize-handle:focus-visible { outline: none; }
+body.side-split-resizing { cursor: ns-resize; user-select: none; }
+body.side-split-resizing iframe, body.side-split-resizing canvas { pointer-events: none; }
 #proof-resize-handle.hidden { display: none; }
 
 /* Highlight animations for KaTeX \htmlClass regions */
@@ -5227,7 +5237,7 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 #plan-layer .dockable-panel { pointer-events: auto; }
 .plan-panel { width: 320px; max-height: 70vh; }
 .plan-panel .dockable-panel-body { overflow-y: auto; }
-.plan-panel-body { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; font-size: 13px; color: var(--text-color); }
+.plan-panel-body { display: flex; flex-direction: column; gap: 14px; padding: 12px 14px 12px; font-size: 13px; color: var(--text-color); }
 /* One style for the side panel's section-header buttons — the plan's guide,
    dock and close (floating or docked) and the PROOF section's close. Plain,
    muted, pointer cursor even inside a draggable header. */
@@ -5317,96 +5327,249 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 }
 .side-section-head > svg { flex: none; color: var(--accent-color); }
 .side-section-title { flex: 1; min-width: 0; }
+/* Proof and Chat fold like the docked plan (src/side-sections.ts). */
+.side-section-foldable { cursor: pointer; user-select: none; }
+.side-section-foldable:hover { background: color-mix(in srgb, var(--text-color) 7%, transparent); }
+.side-fold-btn svg { width: 12px; height: 12px; }
+.side-fold-btn:disabled { opacity: 0.35; cursor: default; }
+.side-fold-btn:disabled:hover { background: transparent; color: var(--muted-color); }
+/* Folded proof: only its header, and no resize handle under it. */
+#proof-panel.side-folded { height: auto !important; }
+#proof-panel.side-folded > :not(.side-section-head) { display: none !important; }
+#proof-panel.side-folded + #proof-resize-handle { display: none; }
+/* Folded chat: its header at the bottom, and the proof takes the tab. */
+#tab-chat.chat-folded #chat-unavailable-msg,
+#tab-chat.chat-folded #chat-messages,
+#tab-chat.chat-folded #preset-prompts,
+#tab-chat.chat-folded #chat-input-area { display: none !important; }
+#tab-chat.chat-folded #chat-section-head { margin-top: auto; }
+#tab-chat.chat-folded #proof-panel:not(.side-folded) { flex: 1 1 auto; height: auto !important; max-height: none; }
+#tab-chat.chat-folded #proof-resize-handle { display: none; }
+/* A reply came in while the chat was folded. */
+.side-section-head.side-unread .side-section-title::after {
+    content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 7px; vertical-align: 1px;
+    border-radius: 50%; background: var(--accent-color);
+}
 .plan-docked.plan-panel {
-    width: auto; flex: none; max-height: 48%; display: flex; flex-direction: column;
+    position: relative; width: auto; flex: none; max-height: calc(100% - 140px); min-height: 0;
+    display: flex; flex-direction: column;
     background: var(--panel-bg);
     box-shadow: 0 -6px 14px -10px rgba(0, 0, 0, 0.45);
 }
-.plan-docked .plan-panel-body { overflow-y: auto; min-height: 0; }
-.plan-docked-head { padding-top: 2px; padding-bottom: 1px; padding-right: 6px; min-height: 26px; box-sizing: border-box; }
-
+/* With no height dragged in yet, the plan takes what it needs, up to about half. */
+.plan-docked.plan-panel:not([style*="height"]) { max-height: 48%; }
+.plan-docked .plan-panel-body { flex: 1; overflow-y: auto; min-height: 0; }
+.plan-docked-head { padding-top: 2px; padding-bottom: 1px; padding-right: 6px; min-height: 26px; box-sizing: border-box; cursor: pointer; user-select: none; }
 .plan-docked-btns { display: inline-flex; gap: 4px; }
+.plan-collapse-btn svg { width: 12px; height: 12px; }
+/* Folded: only the header shows, at its own height whatever was dragged. */
+.plan-docked.plan-dock-collapsed { height: auto !important; max-height: none; }
+.plan-docked.plan-dock-collapsed .plan-panel-body { display: none; }
+.plan-docked.plan-dock-collapsed .plan-dock-resize { cursor: default; pointer-events: none; }
+/* The divider above the docked plan: a grab strip on the section's top edge,
+   over the header's rule, like the side panel's other resize handles. */
+.plan-dock-resize {
+    position: absolute; left: 0; right: 0; top: -3px; height: 7px; z-index: 2;
+    cursor: ns-resize; background: transparent; transition: background .15s;
+}
+.plan-dock-resize::after {
+    content: ''; position: absolute; left: 50%; top: 2px; width: 28px; height: 3px; margin-left: -14px;
+    border-radius: 2px; background: color-mix(in srgb, var(--text-color) 22%, transparent); opacity: 0; transition: opacity .15s;
+}
+.plan-docked:hover > .plan-dock-resize::after { opacity: 1; }
+.plan-dock-resize:hover, .plan-dock-resize:focus-visible, .plan-dock-resize.dragging {
+    outline: none; background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+body.plan-dock-resizing { cursor: ns-resize; user-select: none; }
+body.plan-dock-resizing iframe, body.plan-dock-resizing canvas { pointer-events: none; }
 
-.plan-docked .plan-steps { max-height: none; }
-.plan-switch { display: flex; justify-content: flex-end; }
+/* Docked, the list scrolls between the step card and the tools; it keeps a
+   few rows even when the plan is dragged small (then the whole body scrolls). */
+.plan-docked .plan-steps { max-height: none; min-height: 84px; }
+.plan-switch { display: flex; justify-content: flex-start; min-width: 0; }
+.plan-back-btn { max-width: 100%; margin-left: -7px; }
+.plan-back-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ----- buttons ----- */
 .plan-btn {
-    font: inherit; font-size: 12px; padding: 3px 9px; border-radius: var(--radius-sm, 4px);
+    font: inherit; font-size: 12px; line-height: 1.2; padding: 5px 11px; border-radius: var(--radius-sm, 6px);
     border: 1px solid var(--border-color); background: var(--btn-bg, transparent); color: var(--text-color); cursor: pointer;
+    transition: border-color .15s, background .15s, color .15s;
 }
 .plan-btn:hover:not(:disabled) { border-color: var(--accent-color); }
-.plan-btn:disabled { opacity: 0.45; cursor: default; }
-.plan-btn-primary { background: color-mix(in srgb, var(--accent-color) 22%, transparent); border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); }
+.plan-btn:disabled { opacity: 0.4; cursor: default; }
+.plan-btn-primary { background: color-mix(in srgb, var(--accent-color) 22%, transparent); border-color: color-mix(in srgb, var(--accent-color) 55%, transparent); font-weight: 600; }
+.plan-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent-color) 32%, transparent); }
+/* Secondary actions: text until hovered. */
+.plan-btn-ghost { border-color: transparent; background: transparent; color: var(--muted-color); padding: 4px 7px; }
+.plan-btn-ghost:hover:not(:disabled) { border-color: transparent; color: var(--text-color); background: color-mix(in srgb, var(--text-color) 8%, transparent); }
 .plan-btn-danger:hover:not(:disabled) { border-color: #d9534f; color: #d9534f; }
+.plan-btn-ghost.plan-btn-danger:hover:not(:disabled) { border-color: transparent; background: color-mix(in srgb, #d9534f 14%, transparent); }
 .plan-btn-link { border: none; background: none; padding: 0; color: var(--accent-color); text-decoration: underline; }
-.plan-select { font: inherit; font-size: 12px; padding: 2px 4px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); }
-.plan-notice { font-size: 12px; padding: 5px 8px; border-radius: var(--radius-sm, 4px); background: color-mix(in srgb, var(--accent-color) 12%, transparent); }
+.plan-btn-square { width: 30px; padding: 0; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.plan-btn-square svg { display: block; }
+.plan-select { font: inherit; font-size: 12px; padding: 3px 4px; border-radius: var(--radius-sm, 6px); border: 1px solid transparent; background: transparent; color: var(--muted-color); cursor: pointer; }
+.plan-select:hover { color: var(--text-color); background: color-mix(in srgb, var(--text-color) 8%, transparent); }
+.plan-select option { background: var(--panel-bg); color: var(--text-color); }
+.plan-notice { font-size: 12px; padding: 7px 10px; border-radius: var(--radius-sm, 6px); background: color-mix(in srgb, var(--accent-color) 12%, transparent); }
 .plan-notice-error { background: color-mix(in srgb, #d9534f 18%, transparent); }
-.plan-muted, .plan-empty { color: var(--muted-color); font-size: 12px; }
-.plan-breadcrumb { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; color: var(--muted-color); font-size: 12px; }
-.plan-crumb:last-child { color: var(--text-color); font-weight: 600; }
+.plan-muted, .plan-empty { color: var(--muted-color); font-size: 12px; line-height: 1.5; }
+
+/* ----- walking a plan ----- */
+.plan-head { display: flex; flex-direction: column; gap: 6px; }
+.plan-breadcrumb { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; color: var(--muted-color); font-size: 11px; }
 .plan-crumb-sep { opacity: 0.6; }
-.plan-progress { display: flex; align-items: center; gap: 8px; }
-.plan-progress-bar { flex: 1; height: 5px; border-radius: var(--radius-full, 999px); background: color-mix(in srgb, var(--text-color) 12%, transparent); overflow: hidden; }
+.plan-title-row { display: flex; align-items: flex-start; gap: 8px; }
+.plan-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.35; }
+.plan-all-btn { flex: none; font-size: 11px; margin: -2px -6px 0 0; }
+.plan-progress { display: flex; align-items: center; gap: 10px; }
+.plan-progress-bar { flex: 1; height: 3px; border-radius: var(--radius-full, 999px); background: color-mix(in srgb, var(--text-color) 10%, transparent); overflow: hidden; }
 .plan-progress-fill { height: 100%; background: var(--accent-color); transition: width 0.25s ease; }
-.plan-progress-text { font-size: 11px; color: var(--muted-color); white-space: nowrap; }
-.plan-current { border: 1px solid var(--border-color); border-radius: var(--radius-md, 6px); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
-.plan-current-meta { font-size: 11px; color: var(--muted-color); text-transform: uppercase; letter-spacing: 0.04em; }
-.plan-current-title { font-weight: 600; }
-.plan-current-why { font-size: 12px; color: var(--muted-color); }
+.plan-progress-text { font-size: 11px; color: var(--muted-color); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The current step: set apart by a faint band, not a box. */
+.plan-current {
+    display: flex; flex-direction: column; gap: 5px; padding: 10px 12px;
+    border-radius: var(--radius-md, 8px);
+    background: color-mix(in srgb, var(--accent-color) 7%, transparent);
+}
+.plan-current-meta { font-size: 10.5px; font-weight: 600; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.06em; }
+.plan-current-title { font-weight: 600; font-size: 14px; line-height: 1.35; }
+.plan-current-why { font-size: 12.5px; line-height: 1.5; color: color-mix(in srgb, var(--text-color) 70%, var(--muted-color)); }
 .plan-current-why p { margin: 0; }
 .plan-glossary { font-size: 12px; border-left: 2px solid var(--accent-color); padding-left: 8px; display: flex; flex-direction: column; gap: 4px; position: relative; }
 .plan-glossary p { margin: 0; }
 .plan-glossary-term { font-weight: 600; }
 .plan-ask-ai { align-self: flex-start; background: none; border: none; cursor: pointer; color: var(--accent-color); padding: 0; }
-.plan-offstep, .plan-finished { font-size: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.plan-nav { display: flex; gap: 6px; flex-wrap: wrap; }
-/* Icon and label on one line, centred on the same axis; the row wraps whole
-   buttons rather than breaking a label under its arrow. */
-.plan-nav .plan-btn { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
+.plan-offstep, .plan-finished { font-size: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted-color); }
+.plan-finished { color: var(--text-color); }
+/* Back · Forward · Leave: one wide main action between two square ones. */
+.plan-nav { display: flex; gap: 6px; }
+.plan-nav .plan-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; min-height: 30px; }
+.plan-nav .plan-nav-main { flex: 1; }
+.plan-nav .plan-btn:not(.plan-btn-square):not(.plan-nav-main) { flex: 1 0 auto; }
 .plan-nav .plan-btn svg { flex: none; display: block; }
 .plan-btn-armed { border-color: #d9534f; color: #d9534f; }
 .plan-btn-icon { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .plan-btn-icon svg { flex: none; display: block; }
-.plan-ask { display: flex; flex-direction: column; gap: 6px; }
-.plan-ask-label { font-size: 12px; color: var(--muted-color); }
-.plan-planning, .plan-preview { display: flex; flex-direction: column; gap: 6px; }
+.plan-ask { display: flex; flex-direction: column; gap: 8px; }
+.plan-ask-label { font-size: 12.5px; color: var(--text-color); font-weight: 600; }
+.plan-planning, .plan-preview { display: flex; flex-direction: column; gap: 10px; }
 .plan-planning-text { font-size: 12px; color: var(--muted-color); }
 .plan-preview-title { font-weight: 600; font-size: 14px; }
-.plan-preview-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.plan-preview-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
 .plan-preview-step-head { display: flex; align-items: baseline; gap: 6px; }
-.plan-preview-step-title { flex: 1; }
-.plan-ask-input { font: inherit; padding: 5px 8px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); }
+.plan-preview-step-title { flex: 1; font-weight: 600; }
+.plan-preview-step .plan-current-why { margin-top: 2px; font-size: 12px; }
+.plan-preview-steps li::marker { color: var(--muted-color); }
+.plan-preview-actions {
+    position: sticky; bottom: -12px; z-index: 1; margin: 0 -14px -12px; padding: 10px 14px 12px;
+    background: var(--panel-bg); border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+.plan-ask-input { font: inherit; padding: 7px 10px; border-radius: var(--radius-sm, 6px); border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); }
 .plan-ask-input:focus { outline: none; border-color: var(--accent-color); }
-.plan-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 32vh; overflow-y: auto; }
-.plan-step { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-radius: var(--radius-sm, 4px); cursor: pointer; }
+
+/* The step list: a timeline — each step's mark on one line through them all. */
+.plan-section-label { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted-color); margin-bottom: -6px; }
+.plan-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 32vh; overflow-y: auto; --plan-mark-x: 14px; }
+.plan-step { display: flex; gap: 4px; align-items: center; padding: 5px 6px 5px 8px; border-radius: var(--radius-sm, 6px); cursor: pointer; }
+.plan-step::before {
+    content: ''; position: absolute; left: var(--plan-mark-x); top: 0; bottom: 0; width: 1px;
+    background: color-mix(in srgb, var(--text-color) 14%, transparent); pointer-events: none;
+}
+.plan-step:first-child::before { top: 50%; }
+.plan-step:last-child::before { bottom: 50%; }
+.plan-step:only-child::before { display: none; }
 /* The row's jump target: a plain-looking button filling the row. */
 .plan-step-jump {
-    flex: 1; min-width: 0; display: flex; gap: 6px; align-items: center;
-    padding: 0; margin: 0; border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+    flex: 1; min-width: 0; display: flex; gap: 9px; align-items: center;
+    padding: 0; margin: 0; border: none; background: none; color: color-mix(in srgb, var(--text-color) 82%, var(--muted-color)); font: inherit; font-size: 12.5px; line-height: 1.4; text-align: left; cursor: pointer;
 }
-.plan-step-jump:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm, 4px); }
-.plan-step:hover { background: color-mix(in srgb, var(--text-color) 7%, transparent); }
-.plan-step-current { background: color-mix(in srgb, var(--accent-color) 16%, transparent); }
+.plan-step-jump:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: var(--radius-sm, 6px); }
+.plan-step:hover { background: color-mix(in srgb, var(--text-color) 6%, transparent); }
+.plan-step:hover .plan-step-jump { color: var(--text-color); }
+.plan-step-current .plan-step-jump { color: var(--text-color); font-weight: 600; }
+.plan-step-current { background: color-mix(in srgb, var(--accent-color) 12%, transparent); }
 /* Done = green tick, matching the scene tree's and proof steps' ticks (full
    strength here: done is firmer than visited); darker on light themes. */
 .plan-panel { --plan-done: rgb(111, 214, 146); }
 html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
-.plan-step-mark { flex: none; width: 13px; height: 13px; align-self: center; color: var(--muted-color); }
+/* The mark sits on a disc of the panel's colour, so the timeline passes behind it. */
+.plan-step { --plan-row-bg: var(--panel-bg); }
+.plan-step:hover { --plan-row-bg: color-mix(in srgb, var(--text-color) 6%, var(--panel-bg)); }
+.plan-step-current, .plan-step-current:hover { --plan-row-bg: color-mix(in srgb, var(--accent-color) 12%, var(--panel-bg)); }
+.plan-step-mark { position: relative; flex: none; width: 13px; height: 13px; align-self: center; color: var(--muted-color); border-radius: 50%; background: var(--plan-row-bg); box-shadow: 0 0 0 2px var(--plan-row-bg); }
 .plan-step-mark svg { display: block; }
 .plan-step-visited .plan-step-mark { color: var(--accent-color); }
 .plan-step-done .plan-step-mark { color: var(--plan-done); }
+.plan-step-current .plan-step-mark { color: var(--accent-color); }
 .plan-step-skipped .plan-step-title { text-decoration: line-through; color: var(--muted-color); }
 .plan-step-title { flex: 1; min-width: 0; }
-.plan-step-kind { font-size: 10px; color: var(--muted-color); white-space: nowrap; }
+.plan-step-kind { flex: none; font-size: 10px; font-weight: 600; color: var(--muted-color); opacity: 0.8; white-space: nowrap; }
 .plan-tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.plan-item { border: 1px solid var(--border-color); border-radius: var(--radius-md, 6px); padding: 7px 9px; display: flex; flex-direction: column; gap: 6px; }
-.plan-item-complete { opacity: 0.75; }
-.plan-item-head { display: flex; gap: 6px; align-items: baseline; }
-.plan-item-title { flex: 1; font-weight: 600; }
-.plan-badge { font-size: 10px; padding: 1px 6px; border-radius: var(--radius-full, 999px); border: 1px solid var(--border-color); color: var(--muted-color); }
-.plan-badge-live { border-color: var(--accent-color); color: var(--accent-color); }
-.plan-item-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+/* Editing the plan: quiet, below everything else. */
+.plan-foot { gap: 2px; padding-top: 8px; margin-top: 2px; border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent); }
+.plan-foot .plan-btn-ghost { font-size: 11.5px; }
+
+/* ----- every plan ----- */
+.plan-btn-small { font-size: 11.5px; padding: 3px 9px; display: inline-flex; align-items: center; gap: 5px; }
+.plan-btn-small svg { width: 12px; height: 12px; display: block; }
+.plan-list-toolbar { display: flex; align-items: center; gap: 6px; }
+.plan-list-tools { margin-left: auto; flex: none; display: inline-flex; gap: 2px; }
+.plan-list-toolbar .plan-btn-primary { flex: none; }
+.plan-list-toolbar .plan-search { flex: 1; min-width: 0; padding: 4px 9px; font-size: 12px; }
+.plan-icon-btn {
+    flex: none; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: var(--radius-sm, 6px); background: transparent; color: var(--muted-color); cursor: pointer;
+    transition: color .15s, background .15s;
+}
+.plan-icon-btn svg { width: 14px; height: 14px; display: block; pointer-events: none; }
+.plan-icon-btn:hover { color: var(--text-color); background: color-mix(in srgb, var(--text-color) 9%, transparent); }
+.plan-icon-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.plan-icon-danger:hover { color: #d9534f; background: color-mix(in srgb, #d9534f 14%, transparent); }
+/* Search and status filter. */
+.plan-search {
+    font: inherit; font-size: 12.5px; padding: 6px 10px; border-radius: var(--radius-sm, 6px);
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+    background: color-mix(in srgb, var(--text-color) 3%, transparent); color: var(--text-color);
+}
+.plan-search::placeholder { color: var(--muted-color); }
+.plan-search:focus { outline: none; border-color: var(--accent-color); }
+.plan-filter { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -6px; }
+.plan-chip {
+    font: inherit; font-size: 11px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px;
+    border-radius: var(--radius-full, 999px); border: 1px solid transparent;
+    background: color-mix(in srgb, var(--text-color) 6%, transparent); color: var(--muted-color); cursor: pointer;
+    transition: color .15s, background .15s, border-color .15s;
+}
+.plan-chip:hover { color: var(--text-color); }
+.plan-chip:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.plan-chip-on { color: var(--text-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); border-color: color-mix(in srgb, var(--accent-color) 45%, transparent); }
+.plan-chip-count { font-size: 10px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.plan-list { list-style: none; margin: -4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.plan-list-empty { padding: 8px 2px; }
+/* A plan: a quiet row — click to continue; actions appear on hover or focus. */
+.plan-item { position: relative; border-radius: var(--radius-md, 8px); transition: background .15s; }
+.plan-item:hover, .plan-item:focus-within { background: color-mix(in srgb, var(--text-color) 5%, transparent); }
+.plan-item-open {
+    display: flex; flex-direction: column; gap: 7px; width: 100%; padding: 9px 10px; margin: 0;
+    border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: inherit;
+}
+.plan-item-open:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+.plan-item-complete .plan-item-title { color: var(--muted-color); }
+.plan-item-head { display: flex; gap: 8px; align-items: baseline; }
+.plan-item-title { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; line-height: 1.35; }
+.plan-badge { flex: none; font-size: 10px; padding: 1px 7px; border-radius: var(--radius-full, 999px); border: 1px solid var(--border-color); color: var(--muted-color); white-space: nowrap; }
+.plan-badge-live { border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); color: var(--accent-color); }
+/* The actions float over the row's top-right corner, covering the badge while shown. */
+.plan-item-actions {
+    position: absolute; top: 5px; right: 6px; display: flex; gap: 1px; align-items: center;
+    padding: 1px; border-radius: var(--radius-sm, 6px);
+    background: color-mix(in srgb, var(--text-color) 5%, var(--panel-bg));
+    box-shadow: -10px 0 10px -4px color-mix(in srgb, var(--text-color) 5%, var(--panel-bg));
+    opacity: 0; pointer-events: none; transition: opacity .12s;
+}
+.plan-item:hover .plan-item-actions, .plan-item:focus-within .plan-item-actions, .plan-item-armed .plan-item-actions { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .plan-item-actions { opacity: 1; pointer-events: auto; } }
 
 /* "AI is thinking…" — shown under whatever asked the AI silently (the quiz's
    hint and answer buttons), since no question appears in the chat to show the

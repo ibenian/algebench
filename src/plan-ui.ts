@@ -50,6 +50,13 @@ const ICON_FINISH = svg('M5 12.5l4.5 4.5L19 7.5');
 const ICON_CLOSE = svg('M6 6l12 12M18 6L6 18');
 const ICON_RESTART = svg('M3 12a9 9 0 1 0 3-6.7M3 4v5h5');
 const ICON_RETURN = svg('M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11');
+const ICON_COLLAPSE = svg('M6 9l6 6 6-6');
+const ICON_PLUS = svg('M12 5v14M5 12h14');
+const ICON_IMPORT = svg('M12 20V8M7 13l5-5 5 5M5 4h14');
+const ICON_EXPORT = svg('M12 4v12M7 11l5 5 5-5M5 20h14');
+const ICON_TRASH = svg('M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13');
+const ICON_SPARK = svg('M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z');
+const ICON_EXPAND = svg('M6 15l6-6 6 6');
 
 const store = createPlanStore();
 const plans = new Map<string, LearningPlan>();
@@ -93,6 +100,8 @@ const ui = {
     returnedFrom: null as null | { title: string; finished: boolean },
     /** Docked at the bottom of the Doc tab instead of floating; remembered. */
     docked: false,
+    /** Docked and folded down to its header; remembered. */
+    dockCollapsed: false,
     /** True while the plan itself is navigating: its own jumps are not the learner moving. */
     driving: false,
     /**
@@ -110,6 +119,9 @@ const ui = {
     confirmRestart: null as string | null,
     /** What the AI planner is working on, while a request is out. */
     planning: null as string | null,
+    /** The plans list's search text and status filter. */
+    listQuery: '' as string,
+    listFilter: 'all' as 'all' | 'progress' | 'new' | 'complete',
     /** A plan the AI made, shown for the learner to start, keep or discard; not saved yet. */
     preview: null as null | { plan: LearningPlan; caveat: string },
 };
@@ -430,6 +442,13 @@ function insertAndEnter(holder: SubplanStep, andEnter = true): void {
 }
 
 /** Ask for a title in the panel itself; `submit` runs with a non-empty title. */
+/** Tooltips for the inline form's submit button, by its label. */
+const OK_TITLE: Record<string, string> = {
+    'Create': 'Create the plan with this title (Enter)',
+    'Plan it': 'Ask the AI to plan a path to this through the lessons (Enter)',
+    'Answer': 'Send your answer to the planner (Enter)',
+};
+
 function askTitle(label: string, value: string, submit: (title: string) => void, ok = 'Create'): void {
     ui.asking = { label, value, submit, ok };
     render();
@@ -448,9 +467,9 @@ function titleForm(): HTMLElement {
     input.addEventListener('input', () => { a.value = input.value; });
     form.appendChild(input);
     const row = el('div', 'plan-tools');
-    const ok = button(a.ok, () => form.requestSubmit(), { cls: 'plan-btn-primary' });
+    const ok = button(a.ok, () => form.requestSubmit(), { cls: 'plan-btn-primary', title: OK_TITLE[a.ok] ?? `${a.ok} (Enter)` });
     row.appendChild(ok);
-    row.appendChild(button('Cancel', () => { ui.asking = null; render(); }));
+    row.appendChild(button('Cancel', () => { ui.asking = null; render(); }, { title: 'Close this without changing anything (Esc)' }));
     form.appendChild(row);
     form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -554,7 +573,7 @@ function renderPlanning(body: HTMLElement): void {
     box.appendChild(elMath('div', 'plan-preview-title', ui.planning ?? ''));
     box.appendChild(el('div', 'plan-guide-status', 'Picking lesson steps, proofs and terms… this takes a few seconds.'));
     const row = el('div', 'plan-tools');
-    row.appendChild(button('Cancel', cancelPlanning));
+    row.appendChild(button('Cancel', cancelPlanning, { cls: 'plan-btn-ghost', title: 'Stop planning — nothing is saved' }));
     box.appendChild(row);
     body.appendChild(box);
 }
@@ -571,17 +590,18 @@ function renderPreview(body: HTMLElement): void {
         const li = el('li', 'plan-preview-step');
         const head = el('div', 'plan-preview-step-head');
         head.appendChild(stepTitle('plan-preview-step-title', s));
-        head.appendChild(el('span', 'plan-badge', KIND_LABEL[s.kind]));
+        if (KIND_GLYPH[s.kind]) head.appendChild(el('span', 'plan-step-kind', KIND_GLYPH[s.kind]));
         li.appendChild(head);
         if (s.why) li.appendChild(elMath('div', 'plan-current-why', s.why));
         ol.appendChild(li);
     }
     box.appendChild(ol);
-    const row = el('div', 'plan-tools');
+    // Pinned to the bottom of the panel: the decision stays in reach of a long plan.
+    const row = el('div', 'plan-tools plan-preview-actions');
     const keep = (): void => { ui.preview = null; persist([plan]); };
-    row.appendChild(button('Start', () => { keep(); startWalking(plan.id); }, { cls: 'plan-btn-primary' }));
-    row.appendChild(button('Save for later', () => { keep(); render(); }));
-    row.appendChild(button('Discard', () => { ui.preview = null; render(); }));
+    row.appendChild(button('Start', () => { keep(); startWalking(plan.id); }, { cls: 'plan-btn-primary', title: 'Save this plan and go to its first step' }));
+    row.appendChild(button('Save for later', () => { keep(); render(); }, { title: 'Save this plan to your plans without starting it' }));
+    row.appendChild(button('Discard', () => { ui.preview = null; render(); }, { cls: 'plan-btn-ghost', title: 'Throw this plan away — it was never saved' }));
     box.appendChild(row);
     body.appendChild(box);
 }
@@ -724,6 +744,18 @@ function button(label: string, onClick: () => void,
     return b;
 }
 
+/** A square button showing only `icon`; `label` is its accessible name. */
+function iconButton(label: string, icon: string, onClick: () => void,
+                    opts: { title?: string; disabled?: boolean } = {}): HTMLButtonElement {
+    const b = elHtml('button', 'plan-btn plan-btn-square', icon);
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    b.title = opts.title ?? label;
+    if (opts.disabled) b.disabled = true;
+    b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+    return b;
+}
+
 function progressBar(p: LearningPlan): HTMLElement {
     const pr = progress(p, lookup);
     const wrap = el('div', 'plan-progress');
@@ -733,7 +765,9 @@ function progressBar(p: LearningPlan): HTMLElement {
     bar.appendChild(fill);
     wrap.appendChild(bar);
     const done = Number.isInteger(pr.done) ? String(pr.done) : pr.done.toFixed(1);
-    wrap.appendChild(el('span', 'plan-progress-text', `${done} of ${pr.total} · ${Math.round(pr.fraction * 100)}%`));
+    const text = el('span', 'plan-progress-text', `${done}/${pr.total}`);
+    text.title = `${done} of ${pr.total} steps done · ${Math.round(pr.fraction * 100)}%`;
+    wrap.appendChild(text);
     return wrap;
 }
 
@@ -766,6 +800,9 @@ const KIND_LABEL: Record<string, string> = {
     scene: 'scene', step: 'step', proof: 'proof', proofStep: 'proof step', glossary: 'term', subplan: 'sub-plan',
 };
 
+/** The step list tags only the kinds that open somewhere else; a plain step needs no tag. */
+const KIND_GLYPH: Record<string, string> = { proof: 'proof', proofStep: 'proof', glossary: 'term', subplan: 'sub-plan' };
+
 function stepTitle(cls: string, s: PlanStep): HTMLElement {
     return elMath('span', cls, s.title || '(untitled)');
 }
@@ -774,18 +811,30 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
     const crumbs = breadcrumb(root, lookup);
     const cur = currentStep(root, lookup);
 
-    const bc = el('div', 'plan-breadcrumb');
-    crumbs.forEach((c, i) => {
-        if (i) bc.appendChild(el('span', 'plan-crumb-sep', '›'));
-        bc.appendChild(elMath('span', 'plan-crumb', c.title));
-    });
-    body.appendChild(bc);
-    body.appendChild(progressBar(root));
+    // The plan's name, with the way into its sub-plans above it when nested.
+    const head = el('div', 'plan-head');
+    if (crumbs.length > 1) {
+        const bc = el('div', 'plan-breadcrumb');
+        crumbs.slice(0, -1).forEach((c, i) => {
+            if (i) bc.appendChild(el('span', 'plan-crumb-sep', '›'));
+            bc.appendChild(elMath('span', 'plan-crumb', c.title));
+        });
+        head.appendChild(bc);
+    }
+    const titleRow = el('div', 'plan-title-row');
+    titleRow.appendChild(elMath('div', 'plan-title', crumbs[crumbs.length - 1]?.title ?? root.title));
+    titleRow.appendChild(button('All plans', () => { ui.mode = 'list'; render(); },
+        { cls: 'plan-btn-ghost plan-all-btn', title: 'See all your plans' }));
+    head.appendChild(titleRow);
+    head.appendChild(progressBar(root));
+    body.appendChild(head);
 
     if (cur) {
         const card = el('div', 'plan-current');
         const last = crumbs[crumbs.length - 1]!;
-        card.appendChild(el('div', 'plan-current-meta', `Step ${last.stepNumber} of ${last.stepCount} · ${KIND_LABEL[cur.kind]}`));
+        // The kind only when it isn't a plain lesson step.
+        const kind = cur.kind === 'step' ? '' : ` · ${KIND_LABEL[cur.kind]}`;
+        card.appendChild(el('div', 'plan-current-meta', `Step ${last.stepNumber} of ${last.stepCount}${kind}`));
         card.appendChild(elMath('div', 'plan-current-title', cur.title || '(untitled)'));
         // Built as DOM (elMath): `why` may come from an imported plan.
         if (cur.why) card.appendChild(elMath('div', 'plan-current-why', cur.why));
@@ -802,13 +851,13 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
                 // there is, removing it means removing the plan (or leaving the sub-plan).
                 const holder = findInner(root, last.planId) ?? root;
                 if (holder.steps.length > 1) {
-                    row.appendChild(button('Remove this step', () => removeStep(cur.id), { cls: 'plan-btn-danger' }));
+                    row.appendChild(button('Remove this step', () => removeStep(cur.id), { cls: 'plan-btn-danger', title: 'Take this broken link out of the plan' }));
                 } else if (holder === root) {
                     row.appendChild(ui.confirmDelete === root.id
                         ? button('Really delete?', () => deletePlan(root.id), { cls: 'plan-btn-danger plan-btn-armed', title: 'Click again to delete this plan for good' })
                         : button('Delete this plan', () => deletePlan(root.id), { cls: 'plan-btn-danger', title: 'Its only step links a plan that no longer exists' }));
                 }
-                row.appendChild(button('Import…', importFile));
+                row.appendChild(button('Import…', importFile, { title: 'Import a plan file — importing the linked plan again restores this step' }));
                 card.appendChild(row);
             }
         }
@@ -818,7 +867,7 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
     // Sub-plan and glossary steps have no location of their own to be "off".
     if (!ui.onStep && cur && cur.kind !== 'subplan' && cur.kind !== 'glossary') {
         const off = el('div', 'plan-offstep', 'You’re exploring off the plan.');
-        off.appendChild(button('Back to step', () => apply({ changed: [], go: resumeView(cur) }), { cls: 'plan-btn-link' }));
+        off.appendChild(button('Back to step', () => apply({ changed: [], go: resumeView(cur) }), { cls: 'plan-btn-link', title: 'Go back to where you were on the current plan step' }));
         body.appendChild(off);
     }
 
@@ -826,8 +875,7 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
     const depth = crumbs.length;
     // Back has nowhere to go on step 1; leaving the plan is Return / Leave.
     const atStart = crumbs[crumbs.length - 1]?.stepNumber === 1;
-    nav.appendChild(button('Back', () => apply(back(root, lookup, now())), {
-        icon: ICON_BACK,
+    nav.appendChild(iconButton('Back', ICON_BACK, () => apply(back(root, lookup, now())), {
         title: atStart ? `This is the first step — use ${depth > 1 ? 'Return' : 'Leave'} to go back to where you came from` : 'Previous step',
         disabled: atStart,
     }));
@@ -853,21 +901,21 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
         if (atEnd && depth > 1) ui.returnedFrom = { title: last.title, finished: true };
         apply(forward(root, lookup, now()));
     },
-        { cls: cur?.kind === 'subplan' ? '' : 'plan-btn-primary',
+        { cls: `plan-nav-main${cur?.kind === 'subplan' ? '' : ' plan-btn-primary'}`,
           title: offStep ? 'Go back to this step first (Back to step), then mark it done' : fwdTitle,
           disabled: offStep || (atEnd && depth <= 1 && ui.finished),
           icon: atEnd ? ICON_FINISH : ICON_FORWARD, iconAfter: true }));
-    nav.appendChild(button(depth > 1 ? 'Return' : 'Leave', () => {
+    nav.appendChild(iconButton(depth > 1 ? 'Return' : 'Leave', ICON_RETURN, () => {
         if (depth > 1) ui.returnedFrom = { title: crumbs[crumbs.length - 1]!.title, finished: false };
         const r = returnUp(root, lookup, now());
         if (depth <= 1) { setActive(null); ui.mode = 'list'; }
         apply(r);
-    }, { icon: ICON_RETURN, title: depth > 1 ? 'Leave this sub-plan without finishing it, back to where you entered it' : 'Stop walking this plan (it stays saved) and go back to where you started' }));
+    }, { title: depth > 1 ? 'Return: leave this sub-plan without finishing it, back to where you entered it' : 'Leave: stop walking this plan (it stays saved) and go back to where you started' }));
     body.appendChild(nav);
 
     if (ui.finished) {
         const fin = el('div', 'plan-finished', 'You reached the end of this plan.');
-        fin.appendChild(button('Mark plan complete', () => completePlan(root.id), { cls: 'plan-btn-primary' }));
+        fin.appendChild(button('Mark plan complete', () => completePlan(root.id), { cls: 'plan-btn-primary', title: 'Mark the whole plan done — it stays in your plans' }));
         body.appendChild(fin);
     }
 
@@ -875,6 +923,7 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
     const innerId = crumbs[crumbs.length - 1]?.planId;
     const inner = innerId === root.id ? root : findInner(root, innerId);
     if (inner) {
+        body.appendChild(el('div', 'plan-section-label', inner === root ? 'Steps' : 'Steps in this sub-plan'));
         const list = el('ol', 'plan-steps');
         for (const s of inner.steps) {
             const shown = shownState(s);
@@ -889,7 +938,11 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
             markEl.title = STATE_LABEL[shown] ?? shown;
             jump.appendChild(markEl);
             jump.appendChild(stepTitle('plan-step-title', s));
-            jump.appendChild(el('span', 'plan-step-kind', KIND_LABEL[s.kind] ?? s.kind));
+            if (KIND_GLYPH[s.kind]) {
+                const k = el('span', 'plan-step-kind', KIND_GLYPH[s.kind]);
+                k.title = KIND_LABEL[s.kind] ?? s.kind;
+                jump.appendChild(k);
+            }
             jump.title = s.why || s.title;
             jump.setAttribute('aria-label', `${s.title} — ${STATE_LABEL[shown] ?? shown}, ${KIND_LABEL[s.kind] ?? s.kind}`);
             jump.addEventListener('click', () => apply(jumpTo(root, lookup, s.id, now())));
@@ -921,17 +974,19 @@ function renderWalk(root: LearningPlan, body: HTMLElement): void {
         body.appendChild(list);
     }
 
-    const tools = el('div', 'plan-tools');
+    const tools = el('div', 'plan-tools plan-foot');
     tools.appendChild(restartButton(root));
-    tools.appendChild(button('+ This view', addCurrentView, { title: 'Add what you are looking at as the next step' }));
+    tools.appendChild(button('+ This view', addCurrentView, { cls: 'plan-btn-ghost', title: 'Add what you are looking at to this plan, as the step after the current one' }));
     const full = atMaxDepth(root);
     tools.appendChild(button('+ Sub-plan…', newSubplanHere, {
+        cls: 'plan-btn-ghost',
         title: full ? DEPTH_NOTE : 'Start a sub-plan for something you need first, from this view — it goes in after the current step and you go into it',
         disabled: full,
     }));
     const others = [...plans.values()].filter((p) => p.id !== root.id && !crumbs.some((c) => c.planId === p.id));
     if (others.length && !full) {
         const sel = el('select', 'plan-select');
+        sel.title = 'Add one of your other plans as a sub-plan step here';
         sel.appendChild(new Option('+ Link a plan…', ''));
         for (const p of others) sel.appendChild(new Option(p.title, p.id));
         sel.addEventListener('change', () => { if (sel.value) linkPlan(sel.value); });
@@ -963,7 +1018,7 @@ function restartButton(p: LearningPlan): HTMLButtonElement {
     return ui.confirmRestart === p.id
         ? button('Really restart?', () => restart(p.id), { cls: 'plan-btn-armed', title: 'Click again to reset this plan\'s progress and start from step 1' })
         : button('Restart', () => restart(p.id), {
-            cls: 'plan-btn-icon',
+            cls: 'plan-btn-icon plan-btn-ghost',
             icon: ICON_RESTART,
             title: 'Start this plan over from step 1. Progress is reset (nested sub-plans too); linked plans keep theirs.',
         });
@@ -983,7 +1038,7 @@ function glossaryCard(step: ContentStep): HTMLElement {
     box.appendChild(entry
         ? elHtml('div', 'plan-glossary-def', renderMarkdown(entry.markdown || ''))
         : el('div', 'plan-muted', 'Open the lesson to see this definition.'));
-    if (!onLesson) box.appendChild(button('Open lesson', () => void go({ builtin: step.ref.lesson }), { cls: 'plan-btn-link' }));
+    if (!onLesson) box.appendChild(button('Open lesson', () => void go({ builtin: step.ref.lesson }), { cls: 'plan-btn-link', title: 'Open the lesson this term belongs to, to read its definition' }));
     // Only for a term the loaded lesson defines: then the name and prompt are
     // lesson content. An unresolved key is the imported plan's own text, and
     // must not become a (tool-enabled) chat turn.
@@ -994,54 +1049,165 @@ function glossaryCard(step: ContentStep): HTMLElement {
     return box;
 }
 
+type ListFilter = 'all' | 'progress' | 'new' | 'complete';
+const LIST_FILTERS: [ListFilter, string, string][] = [
+    ['all', 'All', 'Every plan'],
+    ['progress', 'In progress', 'Plans you have started and not finished'],
+    ['new', 'Not started', 'Plans you saved but haven\u2019t started'],
+    ['complete', 'Completed', 'Plans marked complete'],
+];
+
+/**
+ * Where a plan belongs in the list. In progress = being walked, or any step
+ * has progress — a plan left part-way (Leave, or restarted then left) is still
+ * underway even though nothing is walking it now.
+ */
+function planFilter(p: LearningPlan): ListFilter {
+    if (p.status === 'complete') return 'complete';
+    return p.nav || p.steps.some((st) => shownState(st) !== 'todo') ? 'progress' : 'new';
+}
+
+/** A small square icon button for the plans list; `title` is its tooltip and name. */
+function listIcon(icon: string, title: string, onClick: () => void, cls = ''): HTMLButtonElement {
+    const b = elHtml('button', `plan-icon-btn${cls ? ' ' + cls : ''}`, icon);
+    b.type = 'button';
+    b.title = title;
+    b.setAttribute('aria-label', title);
+    b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+    return b;
+}
+
 function renderList(body: HTMLElement): void {
     const all = [...plans.values()].sort((a, b) => b.updatedAt - a.updatedAt);
-    const top = el('div', 'plan-tools');
-    top.appendChild(button('+ New plan', newPlanFromGoal, { cls: 'plan-btn-primary', title: 'Say what you want to understand, and the AI plans a path to it through the lessons' }));
-    top.appendChild(button('+ From this view', createPlanFromHere, { title: 'Start a plan by hand, from what you are looking at' }));
-    top.appendChild(button('Import…', importFile));
-    if (all.length) top.appendChild(button('Export all', () => exportAll(all.map((p) => p.id))));
+    // One slim row: the AI planner, the search, then the by-hand and file tools as icons.
+    const top = el('div', 'plan-list-toolbar');
+    top.appendChild(button('New plan', newPlanFromGoal, { cls: 'plan-btn-primary plan-btn-small', icon: ICON_SPARK,
+        title: 'Say what you want to understand, and the AI plans a path to it through the lessons' }));
+    const search = el('input', 'plan-search');
+    if (all.length) top.appendChild(search);
+    const tools = el('span', 'plan-list-tools');
+    tools.appendChild(listIcon(ICON_PLUS, 'New plan from this view: start a plan by hand, with what you are looking at as its first step', createPlanFromHere));
+    tools.appendChild(listIcon(ICON_IMPORT, 'Import plans from a plan file (.json) someone shared or you exported', importFile));
+    if (all.length) tools.appendChild(listIcon(ICON_EXPORT, 'Export all your plans as one file, to back up or share', () => exportAll(all.map((p) => p.id))));
+    top.appendChild(tools);
     body.appendChild(top);
     if (!all.length) {
         body.appendChild(el('div', 'plan-empty',
             'No plans yet. A plan is a path to something you want to understand, built from lesson steps, proofs and terms — with sub-plans for anything you need first.'));
         return;
     }
+
+    // Search and status filter. Typing refills only the list, so the box keeps focus.
+    search.type = 'search';
+    search.placeholder = 'Search plans';
+    search.title = 'Find a plan by its title or its steps';
+    search.setAttribute('aria-label', 'Search plans');
+    search.value = ui.listQuery;
+    const chips = el('div', 'plan-filter');
+    chips.setAttribute('role', 'radiogroup');
+    chips.setAttribute('aria-label', 'Show plans');
     const list = el('ul', 'plan-list');
-    for (const p of all) {
-        const li = el('li', `plan-item${p.status === 'complete' ? ' plan-item-complete' : ''}`);
-        const head = el('div', 'plan-item-head');
-        head.appendChild(elMath('span', 'plan-item-title', p.title));
-        if (p.status === 'complete') head.appendChild(el('span', 'plan-badge', 'complete'));
-        else if (p.nav) head.appendChild(el('span', 'plan-badge plan-badge-live', 'in progress'));
-        li.appendChild(head);
-        li.appendChild(progressBar(p));
-        const actions = el('div', 'plan-item-actions');
-        actions.appendChild(button(p.nav ? 'Continue' : 'Start', () => startWalking(p.id), { cls: 'plan-btn-primary' }));
-        actions.appendChild(p.status === 'complete'
-            ? button('Reopen', () => reopenPlan(p.id))
-            : button('Mark complete', () => completePlan(p.id)));
-        actions.appendChild(restartButton(p));
-        actions.appendChild(button('Export', () => exportAll([p.id])));
-        actions.appendChild(ui.confirmDelete === p.id
-            ? button('Really delete?', () => deletePlan(p.id), { cls: 'plan-btn-danger plan-btn-armed', title: 'Click again to delete this plan for good' })
-            : button('Delete', () => deletePlan(p.id), { cls: 'plan-btn-danger' }));
-        li.appendChild(actions);
-        list.appendChild(li);
+    const fill = (): void => {
+        const q = ui.listQuery.trim().toLowerCase();
+        list.innerHTML = '';
+        const counts: Record<ListFilter, number> = { all: 0, progress: 0, new: 0, complete: 0 };
+        let shown = 0;
+        for (const p of all) {
+            const hit = !q || p.title.toLowerCase().includes(q) || p.steps.some((st) => st.title.toLowerCase().includes(q));
+            if (!hit) continue;
+            counts.all++;
+            counts[planFilter(p)]++;
+            if (ui.listFilter !== 'all' && planFilter(p) !== ui.listFilter) continue;
+            list.appendChild(planRow(p));
+            shown++;
+        }
+        for (const c of chips.querySelectorAll<HTMLElement>('[data-filter]')) {
+            const n = c.querySelector('.plan-chip-count');
+            if (n) n.textContent = String(counts[c.dataset.filter as ListFilter]);
+        }
+        if (!shown) list.appendChild(el('li', 'plan-empty plan-list-empty', q ? 'No plans match.' : 'No plans here.'));
+    };
+    for (const [key, label, tip] of LIST_FILTERS) {
+        const c = el('button', `plan-chip${ui.listFilter === key ? ' plan-chip-on' : ''}`);
+        c.type = 'button';
+        c.dataset.filter = key;
+        c.title = tip;
+        c.setAttribute('role', 'radio');
+        c.setAttribute('aria-checked', ui.listFilter === key ? 'true' : 'false');
+        c.appendChild(el('span', undefined, label));
+        c.appendChild(el('span', 'plan-chip-count'));
+        c.addEventListener('click', () => {
+            ui.listFilter = key;
+            for (const o of chips.children) {
+                o.classList.toggle('plan-chip-on', o === c);
+                o.setAttribute('aria-checked', o === c ? 'true' : 'false');
+            }
+            fill();
+        });
+        chips.appendChild(c);
     }
+    search.addEventListener('input', () => { ui.listQuery = search.value; fill(); });
+    body.appendChild(chips);
     body.appendChild(list);
+    fill();
 }
+
+/** One plan in the list: click it to continue; its other actions show on hover or focus. */
+function planRow(p: LearningPlan): HTMLElement {
+    const li = el('li', `plan-item plan-item-${planFilter(p)}`);
+    const open = el('button', 'plan-item-open');
+    open.type = 'button';
+    open.title = p.nav ? 'Continue this plan where you left off' : 'Start this plan from its first step';
+    const head = el('span', 'plan-item-head');
+    head.appendChild(elMath('span', 'plan-item-title', p.title));
+    const where = planFilter(p);
+    if (where === 'complete') head.appendChild(el('span', 'plan-badge', 'complete'));
+    else if (where === 'progress') head.appendChild(el('span', 'plan-badge plan-badge-live', 'in progress'));
+    open.appendChild(head);
+    open.appendChild(progressBar(p));
+    open.addEventListener('click', () => startWalking(p.id));
+    li.appendChild(open);
+
+    const actions = el('div', 'plan-item-actions');
+    actions.appendChild(p.status === 'complete'
+        ? listIcon(ICON_RETURN, 'Reopen: mark this plan not complete again, keeping its progress', () => reopenPlan(p.id))
+        : listIcon(ICON_FINISH, 'Mark complete: mark this plan done without walking the rest of it', () => completePlan(p.id)));
+    actions.appendChild(ui.confirmRestart === p.id
+        ? button('Restart?', () => restart(p.id), { cls: 'plan-btn-armed plan-btn-small', title: 'Click again to reset this plan\'s progress and start from step 1' })
+        : listIcon(ICON_RESTART, 'Restart: start this plan over from step 1 (asks you to click again)', () => restart(p.id)));
+    actions.appendChild(listIcon(ICON_EXPORT, 'Export this plan as a file, to back up or share', () => exportAll([p.id])));
+    actions.appendChild(ui.confirmDelete === p.id
+        ? button('Delete?', () => deletePlan(p.id), { cls: 'plan-btn-danger plan-btn-armed plan-btn-small', title: 'Click again to delete this plan for good' })
+        : listIcon(ICON_TRASH, 'Delete this plan (asks you to click again)', () => deletePlan(p.id), 'plan-icon-danger'));
+    // An armed confirm stays in view, not just on hover.
+    if (ui.confirmRestart === p.id || ui.confirmDelete === p.id) li.classList.add('plan-item-armed');
+    li.appendChild(actions);
+    return li;
+}
+
+/** What the walk view shows of a plan's position: its step, and every step's state on the way to it. */
+function walkShown(root: LearningPlan): string {
+    const crumbs = breadcrumb(root, lookup);
+    const inner = findInner(root, crumbs[crumbs.length - 1]?.planId) ?? root;
+    return JSON.stringify([crumbs.map((c) => [c.planId, c.stepNumber]), inner.steps.map(shownState), root.status]);
+}
+/** walkShown() at the last render, so follow() knows whether anything visible changed. */
+let lastWalkShown = '';
 
 function render(): void {
     const body = dom.body;
     if (!body) return;
+    const r0 = active();
+    lastWalkShown = r0 ? walkShown(r0) : '';
     body.innerHTML = '';
     const root = active();
     if (ui.mode === 'walk' && !root) ui.mode = 'list';
 
     const switcher = el('div', 'plan-switch');
-    if (ui.mode === 'walk') switcher.appendChild(button('All plans', () => { ui.mode = 'list'; render(); }, { cls: 'plan-btn-link' }));
-    else if (root) switcher.appendChild(button(`Back to “${root.title}”`, () => { ui.mode = 'walk'; render(); }, { cls: 'plan-btn-link' }));
+    if (ui.mode !== 'walk' && root) {
+        switcher.appendChild(button(root.title, () => { ui.mode = 'walk'; render(); },
+            { cls: 'plan-btn-ghost plan-btn-icon plan-back-btn', icon: ICON_BACK, title: `Back to “${root.title}”` }));
+    }
     if (switcher.childNodes.length) body.appendChild(switcher);
 
     if (ui.storageError) body.appendChild(el('div', 'plan-notice plan-notice-error', ui.storageError));
@@ -1294,7 +1460,19 @@ function headerButtons(): HTMLElement[] {
     close.setAttribute('aria-label', 'Close the learning plan');
     close.addEventListener('mousedown', (e) => e.stopPropagation());
     close.addEventListener('click', (e) => { e.stopPropagation(); closePanel(); });
-    return [guideButton(), dock, close];
+    return ui.docked ? [guideButton(), collapseButton(), dock, close] : [guideButton(), dock, close];
+}
+
+/** Docked only: fold the plan down to its header, leaving the side panel to Doc and Chat. */
+function collapseButton(): HTMLElement {
+    const b = elHtml('button', 'plan-head-btn plan-collapse-btn', ui.dockCollapsed ? ICON_EXPAND : ICON_COLLAPSE);
+    b.type = 'button';
+    b.title = ui.dockCollapsed ? 'Show the plan' : 'Fold the plan down to its header';
+    b.setAttribute('aria-label', b.title);
+    b.setAttribute('aria-expanded', ui.dockCollapsed ? 'false' : 'true');
+    b.addEventListener('mousedown', (e) => e.stopPropagation());
+    b.addEventListener('click', (e) => { e.stopPropagation(); setDockCollapsed(!ui.dockCollapsed); });
+    return b;
 }
 
 /** One wrapper for the floating header's buttons, so they can be re-rendered in place. */
@@ -1339,11 +1517,19 @@ function mountDocked(body: HTMLElement): void {
     const host = el('section', 'plan-docked plan-panel');
     host.id = 'plan-dock-host';
     host.setAttribute('aria-label', 'Learning Plan');
+    host.appendChild(dockResizeHandle(host));
+    const h = loadDockHeight();
+    if (h) host.style.height = `${h}px`;
+    host.classList.toggle('plan-dock-collapsed', ui.dockCollapsed);
     // Same section header as the side panel's Proof and Chat sections.
     const head = elHtml('div', 'side-section-head plan-docked-head', `${PLAN_ICON}<span class="side-section-title">Learning Plan</span>`);
     const btns = el('span', 'plan-docked-btns');
     for (const b of headerButtons()) btns.appendChild(b);
     head.appendChild(btns);
+    // The header folds the plan too, like a section of the side panel.
+    head.addEventListener('click', (e) => {
+        if (!(e.target as Element).closest('button')) setDockCollapsed(!ui.dockCollapsed);
+    });
     host.appendChild(head);
     host.appendChild(body);
     side.appendChild(host);
@@ -1367,6 +1553,83 @@ function setDocked(docked: boolean): void {
     if (docked) { mountDocked(body); showSidePanel(); }
     else mountFloating(body);
     render();
+}
+
+const DOCK_HEIGHT_KEY = 'algebench.planDockHeight';
+const DOCK_COLLAPSED_KEY = 'algebench.planDockCollapsed';
+/** The docked plan's height bounds; CSS also leaves Doc and Chat room above it. */
+const DOCK_MIN_PX = 120, DOCK_STEP_PX = 24;
+
+function loadDockHeight(): number | null {
+    try {
+        const h = Number(localStorage.getItem(DOCK_HEIGHT_KEY));
+        return Number.isFinite(h) && h >= DOCK_MIN_PX ? h : null;
+    } catch { return null; }
+}
+
+function saveDockHeight(h: number | null): void {
+    try {
+        if (h === null) localStorage.removeItem(DOCK_HEIGHT_KEY);
+        else localStorage.setItem(DOCK_HEIGHT_KEY, String(Math.round(h)));
+    } catch { /* not remembered */ }
+}
+
+function setDockCollapsed(collapsed: boolean): void {
+    ui.dockCollapsed = collapsed;
+    try { localStorage.setItem(DOCK_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch { /* not remembered */ }
+    dom.dockEl?.classList.toggle('plan-dock-collapsed', collapsed);
+    refreshHeaderButtons();
+}
+
+/**
+ * The divider between Doc/Chat and the docked plan: drag it (or focus it and
+ * use the arrow keys) to give either more room; double-click to go back to
+ * the plan's natural height. The height is remembered.
+ */
+function dockResizeHandle(host: HTMLElement): HTMLElement {
+    const handle = el('div', 'plan-dock-resize');
+    handle.setAttribute('role', 'separator');
+    handle.setAttribute('aria-orientation', 'horizontal');
+    handle.setAttribute('aria-label', 'Resize the learning plan');
+    handle.title = 'Drag to resize · double-click to reset';
+    handle.tabIndex = 0;
+    const maxPx = (): number => {
+        const side = host.parentElement;
+        // Leave the tabs and some of Doc/Chat in view above the plan.
+        return Math.max(DOCK_MIN_PX, (side?.clientHeight ?? 600) - 140);
+    };
+    const setH = (h: number): void => {
+        const clamped = Math.max(DOCK_MIN_PX, Math.min(maxPx(), h));
+        host.style.height = `${clamped}px`;
+        saveDockHeight(clamped);
+    };
+    handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || ui.dockCollapsed) return;
+        e.preventDefault();
+        const startY = e.clientY, startH = host.offsetHeight;
+        handle.classList.add('dragging');
+        document.body.classList.add('plan-dock-resizing');
+        const onMove = (m: MouseEvent): void => setH(startH - (m.clientY - startY));
+        const onUp = (): void => {
+            handle.classList.remove('dragging');
+            document.body.classList.remove('plan-dock-resizing');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            window.dispatchEvent(new Event('resize'));
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+    handle.addEventListener('keydown', (e) => {
+        if (ui.dockCollapsed || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+        e.preventDefault();
+        setH(host.offsetHeight + (e.key === 'ArrowUp' ? DOCK_STEP_PX : -DOCK_STEP_PX));
+    });
+    handle.addEventListener('dblclick', () => {
+        host.style.height = '';
+        saveDockHeight(null);
+    });
+    return handle;
 }
 
 /** Open the right-hand panel if it's hidden, so the docked plan is in view. */
@@ -1479,7 +1742,15 @@ function follow(ev?: Event): void {
             landedAt = null;
         }
         persist(r.changed);
-        if (r.onStep !== ui.onStep || r.changed.length) {
+        // Re-render only when what the panel shows changed. Most checks just
+        // record the camera or a slider on the current step, many times a
+        // second while a scene animates; rebuilding then would restart every
+        // button's tooltip delay, so hovering never showed one. recordView
+        // returns updated copies and persist() swaps them into `plans`, so
+        // the signature reads the plan as it is now, not `root` from before.
+        const current = active();
+        const shown = current ? walkShown(current) : '';
+        if (r.onStep !== ui.onStep || shown !== lastWalkShown) {
             ui.onStep = r.onStep;
             render();
         }
@@ -1530,6 +1801,7 @@ const FOLLOW_EVENTS = ['algebench:navchange', 'algebench:proofchange', 'algebenc
 /** Wire the Plan button, restore the plan being walked, and follow navigation. */
 export async function setupPlanUi(): Promise<void> {
     ui.docked = loadDocked();
+    try { ui.dockCollapsed = localStorage.getItem(DOCK_COLLAPSED_KEY) === '1'; } catch { /* default open */ }
     ui.guide = loadGuide();
     // Load before the button exists: a plan created or imported while the
     // first list() is pending would be wiped when it lands.
