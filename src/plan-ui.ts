@@ -1747,8 +1747,11 @@ function follow(ev?: Event): void {
         // Re-render only when what the panel shows changed. Most checks just
         // record the camera or a slider on the current step, many times a
         // second while a scene animates; rebuilding then would restart every
-        // button's tooltip delay, so hovering never showed one.
-        const shown = walkShown(root);
+        // button's tooltip delay, so hovering never showed one. recordView
+        // returns updated copies and persist() swaps them into `plans`, so
+        // the signature reads the plan as it is now, not `root` from before.
+        const current = active();
+        const shown = current ? walkShown(current) : '';
         if (r.onStep !== ui.onStep || shown !== lastWalkShown) {
             ui.onStep = r.onStep;
             render();

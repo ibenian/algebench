@@ -24452,7 +24452,8 @@ function follow(ev) {
 			if (r.moved) return;
 		} else landedAt = null;
 		persist(r.changed);
-		const shown = walkShown(root);
+		const current = active();
+		const shown = current ? walkShown(current) : "";
 		if (r.onStep !== ui.onStep || shown !== lastWalkShown) {
 			ui.onStep = r.onStep;
 			render();
