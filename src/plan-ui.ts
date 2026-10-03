@@ -33,6 +33,9 @@ import type {
     ContentKind, ContentRef, ContentStep, LearningPlan, NavResult, PlanLookup, PlanStep, SubplanStep,
 } from '/plan-core.js';
 import { createPlanStore, getActivePlanId, setActivePlanId } from '/plan-store.js';
+import { PLAN_EXPERT, PLAN_REQUEST_EVENT, PLAN_TIMEOUT_MS, planFromReply, planRequest, readPlanReply } from '/plan-request.js';
+import type { Clarification, PlanReply } from '/plan-request.js';
+import { invokeExpert } from '/expert-client.js';
 import { parseViewState, serializeViewState } from '/view-state.js';
 import type { ViewState } from '/view-state.js';
 
@@ -100,11 +103,15 @@ const ui = {
      */
     booting: true,
     /** An open inline title form (no prompt(): embedded browsers block it). */
-    asking: null as null | { label: string; value: string; submit: (title: string) => void },
+    asking: null as null | { label: string; value: string; submit: (title: string) => void; ok: string },
     /** A plan whose Delete was clicked once and now asks to be clicked again. */
     confirmDelete: null as string | null,
     /** Likewise for Restart, which wipes the plan's progress. */
     confirmRestart: null as string | null,
+    /** What the AI planner is working on, while a request is out. */
+    planning: null as string | null,
+    /** A plan the AI made, shown for the learner to start, keep or discard; not saved yet. */
+    preview: null as null | { plan: LearningPlan; caveat: string },
 };
 
 // ----- persistence -----
@@ -423,8 +430,8 @@ function insertAndEnter(holder: SubplanStep, andEnter = true): void {
 }
 
 /** Ask for a title in the panel itself; `submit` runs with a non-empty title. */
-function askTitle(label: string, value: string, submit: (title: string) => void): void {
-    ui.asking = { label, value, submit };
+function askTitle(label: string, value: string, submit: (title: string) => void, ok = 'Create'): void {
+    ui.asking = { label, value, submit, ok };
     render();
 }
 
@@ -441,7 +448,7 @@ function titleForm(): HTMLElement {
     input.addEventListener('input', () => { a.value = input.value; });
     form.appendChild(input);
     const row = el('div', 'plan-tools');
-    const ok = button('Create', () => form.requestSubmit(), { cls: 'plan-btn-primary' });
+    const ok = button(a.ok, () => form.requestSubmit(), { cls: 'plan-btn-primary' });
     row.appendChild(ok);
     row.appendChild(button('Cancel', () => { ui.asking = null; render(); }));
     form.appendChild(row);
@@ -481,6 +488,102 @@ function createPlanFromHere(): void {
         persist([p]);
         startWalking(p.id);
     });
+}
+
+// ----- AI plans -----
+
+/** Bumped by every request and by Cancel, so only the latest reply is used. */
+let planSeq = 0;
+
+/** "+ New plan": what do you want to understand? Then the AI plans a path to it. */
+function newPlanFromGoal(): void {
+    askTitle('What do you want to understand?', '', (target) => { void requestPlan(target); }, 'Plan it');
+}
+
+/**
+ * Ask the learning_plan expert for a path to `target` from the current view.
+ * A plan is shown as a preview first, so a weak one never lands in the list.
+ */
+async function requestPlan(target: string, clarifications: Clarification[] = []): Promise<void> {
+    target = target.trim();
+    if (!target) return;
+    openPanel();
+    const seq = ++planSeq;
+    // After a question, the answer is what the learner is after ("explain it" → "why β matters").
+    const goal = clarifications.length ? clarifications[clarifications.length - 1]!.answer.trim() || target : target;
+    Object.assign(ui, { asking: null, preview: null, notice: '', planning: goal, mode: 'list' });
+    render();
+    const origin = captureViewState({ includeCamera: true });
+    let reply: PlanReply;
+    try {
+        reply = readPlanReply(await invokeExpert(PLAN_EXPERT, planRequest(target, origin, clarifications),
+                                                 { timeoutMs: PLAN_TIMEOUT_MS }));
+    } catch (e) {
+        reply = { kind: 'reason', reason: (e as Error).message || 'The planner could not be reached.' };
+    }
+    if (seq !== planSeq) return;   // cancelled, or a newer request replaced this one
+    ui.planning = null;
+    if (reply.kind === 'result') {
+        try {
+            ui.preview = { plan: planFromReply(reply, goal, origin, now(), newId), caveat: reply.caveat };
+        } catch (e) {
+            ui.notice = `The plan that came back couldn't be used (${(e as Error).message}).`;
+        }
+    } else if (reply.kind === 'question') {
+        // One round: the answer goes back with the question, and the planner then commits.
+        const question = reply.question;
+        askTitle(question, '', (answer) => { void requestPlan(target, [...clarifications, { question, answer }]); }, 'Answer');
+        return;
+    } else if (reply.kind === 'chat') {
+        ui.notice = "That doesn't read as something to learn. Try asking it in the chat.";
+    } else {
+        ui.notice = reply.reason;
+    }
+    render();
+}
+
+function cancelPlanning(): void {
+    planSeq++;
+    ui.planning = null;
+    render();
+}
+
+function renderPlanning(body: HTMLElement): void {
+    const box = el('div', 'plan-planning');
+    box.appendChild(el('div', 'plan-planning-text', 'Planning a path to'));
+    box.appendChild(elMath('div', 'plan-preview-title', ui.planning ?? ''));
+    box.appendChild(el('div', 'plan-guide-status', 'Picking lesson steps, proofs and terms… this takes a few seconds.'));
+    const row = el('div', 'plan-tools');
+    row.appendChild(button('Cancel', cancelPlanning));
+    box.appendChild(row);
+    body.appendChild(box);
+}
+
+function renderPreview(body: HTMLElement): void {
+    const { plan, caveat } = ui.preview!;   // `!` — only rendered while a preview is open
+    const box = el('div', 'plan-preview');
+    box.appendChild(el('div', 'plan-current-meta', `AI plan · ${plan.steps.length} step${plan.steps.length === 1 ? '' : 's'}`));
+    box.appendChild(elMath('div', 'plan-preview-title', plan.title));
+    // Built as DOM (elMath): the reply's text comes from the network.
+    if (caveat) box.appendChild(elMath('div', 'plan-notice', caveat));
+    const ol = el('ol', 'plan-preview-steps');
+    for (const s of plan.steps) {
+        const li = el('li', 'plan-preview-step');
+        const head = el('div', 'plan-preview-step-head');
+        head.appendChild(stepTitle('plan-preview-step-title', s));
+        head.appendChild(el('span', 'plan-badge', KIND_LABEL[s.kind]));
+        li.appendChild(head);
+        if (s.why) li.appendChild(elMath('div', 'plan-current-why', s.why));
+        ol.appendChild(li);
+    }
+    box.appendChild(ol);
+    const row = el('div', 'plan-tools');
+    const keep = (): void => { ui.preview = null; persist([plan]); };
+    row.appendChild(button('Start', () => { keep(); startWalking(plan.id); }, { cls: 'plan-btn-primary' }));
+    row.appendChild(button('Save for later', () => { keep(); render(); }));
+    row.appendChild(button('Discard', () => { ui.preview = null; render(); }));
+    box.appendChild(row);
+    body.appendChild(box);
 }
 
 /** Click twice: the first click arms the button for a few seconds. */
@@ -894,7 +997,8 @@ function glossaryCard(step: ContentStep): HTMLElement {
 function renderList(body: HTMLElement): void {
     const all = [...plans.values()].sort((a, b) => b.updatedAt - a.updatedAt);
     const top = el('div', 'plan-tools');
-    top.appendChild(button('+ New plan', createPlanFromHere, { cls: 'plan-btn-primary', title: 'Start a plan from what you are looking at' }));
+    top.appendChild(button('+ New plan', newPlanFromGoal, { cls: 'plan-btn-primary', title: 'Say what you want to understand, and the AI plans a path to it through the lessons' }));
+    top.appendChild(button('+ From this view', createPlanFromHere, { title: 'Start a plan by hand, from what you are looking at' }));
     top.appendChild(button('Import…', importFile));
     if (all.length) top.appendChild(button('Export all', () => exportAll(all.map((p) => p.id))));
     body.appendChild(top);
@@ -944,6 +1048,8 @@ function render(): void {
     if (ui.notice) body.appendChild(el('div', 'plan-notice', ui.notice));
 
     if (ui.asking) body.appendChild(titleForm());
+    else if (ui.planning) renderPlanning(body);
+    else if (ui.preview) renderPreview(body);
     else if (ui.mode === 'walk' && root) renderWalk(root, body);
     else renderList(body);
     dom.btn?.classList.toggle('active', isOpen());
@@ -1448,5 +1554,11 @@ export async function setupPlanUi(): Promise<void> {
     for (const ev of FOLLOW_EVENTS) {
         window.addEventListener(ev, follow);
     }
+    // "Learn this" anywhere in the app (a glossary tip, say): plan a path to it.
+    window.addEventListener(PLAN_REQUEST_EVENT, (e) => {
+        const target = (e as CustomEvent<{ target?: unknown }>).detail?.target;
+        if (typeof target === 'string') void requestPlan(target);
+    });
+    window.algebenchPlanAvailable = true;
     if (ui.activeId) openPanel();
 }

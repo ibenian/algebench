@@ -49,6 +49,8 @@ class LearningPlanSig(dspy.Signature):
       whole scene, a proof step over its whole proof, when the step alone is
       enough. Use a scene or a proof when the learner should work through all
       of it.
+    - Never pick both a scene or proof AND parts of it: that sends the learner
+      through the same content twice. Choose the whole or the parts.
     - A glossary term ([term]) is good for a definition the learner needs on
       the way, not for the target itself.
     - Skip what `known` says they have already covered, and don't send them

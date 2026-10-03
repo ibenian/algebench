@@ -140,12 +140,23 @@ def test_duplicates_and_missing_why_are_dropped_and_titles_come_from_the_catalog
     steps, problems = plan_steps([PlanPick(handle=h, why="first"), PlanPick(handle=h, why="again"),
                                   PlanPick(handle=other, why="  ")], shown)
     assert len(steps) == 1 and steps[0]["title"] == shown[h].title
-    assert problems == [f"{other} has no why"]
+    assert problems == [f"{h} repeats a step already in the plan", f"{other} has no why"]
+
+
+def test_one_step_said_three_times_earns_the_retry(monkeypatch):
+    h = _handle(_shown(), st="terminal-velocity")
+    other = _handle(_shown(), st="aerodynamic-drag")
+    repeated = PlanProposal(is_plan=True, steps=[PlanPick(handle=h, why="w")] * 3)
+    good = PlanProposal(is_plan=True, steps=[PlanPick(handle=other, why="w"), PlanPick(handle=h, why="w")])
+    calls = _stub(monkeypatch, repeated, good)
+    out = H.learning_plan(_req())
+    assert len(calls) == 2 and "repeats a step" in calls[1]["refused"]
+    assert len(out["result"]["steps"]) == 2
 
 
 def test_plan_is_capped():
     shown = _shown()
-    picks = [PlanPick(handle=h, why="w") for h in list(shown)[:MAX_PLAN_STEPS + 5]]
+    picks = [PlanPick(handle=h, why="w") for h, e in shown.items() if e.kind == "step"][:MAX_PLAN_STEPS + 5]
     assert len(plan_steps(picks, shown)[0]) == MAX_PLAN_STEPS
 
 
@@ -257,3 +268,22 @@ def test_the_endpoint_exists_via_discovery():
          "print('learning_plan' in HANDLER_REGISTRY)"],
         capture_output=True, text=True, cwd=str(ROOT))
     assert out.stdout.strip().endswith("True"), out.stderr[-500:]
+
+
+def test_a_container_and_its_own_parts_are_not_both_kept():
+    shown = _shown()
+    ps = _handle(shown, pf="terminal_velocity", ps="weight-pulls-downward")
+    proof = next(h for h, e in shown.items() if e.kind == "proof" and e.ref["pf"] == "terminal_velocity")
+    scene = next(h for h, e in shown.items() if e.kind == "scene" and e.ref["sc"] == "splashdown-dynamics")
+    step = _handle(shown, sc="splashdown-dynamics", st="terminal-velocity")
+    steps, _ = plan_steps([PlanPick(handle=ps, why="w"), PlanPick(handle=proof, why="w")], shown)
+    assert [s["kind"] for s in steps] == ["proofStep"]
+    steps, _ = plan_steps([PlanPick(handle=scene, why="w"), PlanPick(handle=step, why="w")], shown)
+    assert [s["kind"] for s in steps] == ["scene"]
+
+
+def test_lesson_ids_with_dot_segments_are_refused():
+    for bad in ("../scenes/eigenvalues", "a/../b", ".hidden"):
+        with pytest.raises(ValueError):
+            LearningPlanRequest.model_validate({"target": "x", "where": {"lesson": bad}})
+    LearningPlanRequest.model_validate({"target": "x", "where": {"lesson": "draft/chart-demo"}})

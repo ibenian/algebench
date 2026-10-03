@@ -5197,6 +5197,21 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
     font-weight: 600;
 }
 .glossary-tip .glossary-ask-btn { opacity: 1; top: 0; }
+.glossary-tip-title { flex: 1; }
+/* "Learn this": a learning plan to the term (src/glossary.ts), beside Ask AI. */
+.glossary-learn-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 19px; height: 19px; padding: 0; flex: none;
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    border: 1px solid var(--border-color); border-radius: 50%;
+    color: var(--accent-color); cursor: pointer;
+}
+.glossary-learn-btn:hover {
+    background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+    color: var(--text-color);
+    border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+}
+.glossary-learn-btn svg { width: 11px; height: 11px; pointer-events: none; }
 .glossary-tip-body { margin-top: 4px; }
 .glossary-tip-body > :first-child { margin-top: 0; }
 .glossary-tip-body > :last-child { margin-bottom: 0; }
@@ -5354,6 +5369,12 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 .plan-btn-icon svg { flex: none; display: block; }
 .plan-ask { display: flex; flex-direction: column; gap: 6px; }
 .plan-ask-label { font-size: 12px; color: var(--muted-color); }
+.plan-planning, .plan-preview { display: flex; flex-direction: column; gap: 6px; }
+.plan-planning-text { font-size: 12px; color: var(--muted-color); }
+.plan-preview-title { font-weight: 600; font-size: 14px; }
+.plan-preview-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.plan-preview-step-head { display: flex; align-items: baseline; gap: 6px; }
+.plan-preview-step-title { flex: 1; }
 .plan-ask-input { font: inherit; padding: 5px 8px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--border-color); background: var(--panel-bg); color: var(--text-color); }
 .plan-ask-input:focus { outline: none; border-color: var(--accent-color); }
 .plan-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 32vh; overflow-y: auto; }

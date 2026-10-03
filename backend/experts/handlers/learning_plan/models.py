@@ -12,8 +12,12 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 MAX_TARGET_CHARS = 500
-#: Ids are plain tokens on the client too (``TOKEN`` in src/plan-core.ts).
-_ID = Field(default=None, max_length=200, pattern=r"^[A-Za-z0-9_.:\-/]+$")
+#: The client's own checks (``TOKEN`` and ``LESSON_ID`` in src/plan-core.ts):
+#: ids are plain tokens; a lesson id is path segments that can't start with a
+#: dot, so ``..`` is refused here rather than only failing the catalog lookup.
+_ID = Field(default=None, max_length=200, pattern=r"^[A-Za-z0-9_.:\-]+$")
+_LESSON = Field(default=None, max_length=200,
+                pattern=r"^[A-Za-z0-9_\-][A-Za-z0-9_.\-]*(/[A-Za-z0-9_\-][A-Za-z0-9_.\-]*)*$")
 
 
 class PlanWhere(BaseModel):
@@ -21,7 +25,7 @@ class PlanWhere(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    lesson: Optional[str] = _ID
+    lesson: Optional[str] = _LESSON
     sc: Optional[str] = _ID
     st: Optional[str] = _ID
     pf: Optional[str] = _ID

@@ -13079,6 +13079,1016 @@ function updateJsTrustPill() {
 	} : null;
 	pill.style.cursor = pillClickable ? "pointer" : "";
 }
+/**
+* The deep link for a content ref. A proof opens the proof panel, which lives
+* inside the Chat tab — so it also selects that tab, or the jump would land on
+* Doc with the proof panel open but out of sight.
+*/
+function refToView(ref) {
+	const vs = { builtin: ref.lesson };
+	if (ref.sc) vs.sc = ref.sc;
+	if (ref.st) vs.st = ref.st;
+	if (ref.pf) {
+		vs.pf = ref.pf;
+		vs.pp = true;
+		vs.panel = "chat";
+		if (ref.ps) vs.ps = ref.ps;
+	}
+	return vs;
+}
+/**
+* True when `view` is at the ref's location: same lesson, and every id the
+* ref names matches. A ref without `st` is satisfied by any step of its scene,
+* and a glossary ref by anywhere in its lesson.
+*/
+function viewMatchesRef(view, ref) {
+	if (!view || view.builtin !== ref.lesson) return false;
+	for (const k of [
+		"sc",
+		"st",
+		"pf",
+		"ps"
+	]) if (ref[k] && view[k] !== ref[k]) return false;
+	return true;
+}
+/** Ids and enum-ish values that end up in selectors and lookups: a plain token. */
+var TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
+/** Longest camera-view key kept — the same bound parseViewState applies to `cv`. */
+var CV_MAX_LEN$1 = 64;
+/** A built-in lesson id: plain-token path segments, e.g. "eigenvalues" or
+*  "draft/chart-demo" — no empty, dot-leading or traversal segments. */
+var LESSON_ID = /^(?=.{1,200}$)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/;
+/** A name safe to use as a plain-object key: not one Object.prototype answers
+*  to (`__proto__`, `constructor`, …) — applyViewState looks sliders up by it. */
+var safeKey = (k) => TOKEN.test(k) && !(k in Object.prototype);
+/**
+* `view` reduced to a location the app can apply safely: only the known,
+* non-directive fields, each of the right type — ids as plain tokens,
+* numbers finite, the camera three finite triples. `cv` is the exception: a
+* camera-view key is a scene-authored name (`side-(yz)`, `ride:-chased-ship`)
+* that the app matches exactly, never as selector syntax (findCamButton), so
+* any string is kept, bounded like parseViewState bounds it. Everything the navigator hands out goes through this, so
+* a stored or imported view can't carry a directive or a malformed value
+* into applyViewState.
+*/
+function navigableView(view) {
+	const src = isObject(view) ? view : {};
+	const v = {};
+	if (typeof src.builtin === "string" && LESSON_ID.test(src.builtin)) v.builtin = src.builtin;
+	for (const k of [
+		"view",
+		"panel",
+		"sc",
+		"st",
+		"pf",
+		"ps",
+		"proj",
+		"fa"
+	]) {
+		const val = src[k];
+		if (typeof val === "string" && TOKEN.test(val)) v[k] = val;
+	}
+	if (typeof src.cv === "string" && src.cv.length > 0 && src.cv.length <= CV_MAX_LEN$1) v.cv = src.cv;
+	if (typeof src.pp === "boolean") v.pp = src.pp;
+	if (typeof src.dock === "boolean") v.dock = src.dock;
+	if (Number.isFinite(src.oz) && src.oz > 0) v.oz = src.oz;
+	if (Array.isArray(src.nodes)) {
+		const nodes = src.nodes.filter((n) => typeof n === "string" && TOKEN.test(n));
+		if (nodes.length) v.nodes = nodes;
+	}
+	if (isObject(src.sliders)) {
+		const sl = Object.entries(src.sliders).filter(([id, n]) => safeKey(id) && Number.isFinite(n));
+		if (sl.length) v.sliders = Object.fromEntries(sl);
+	}
+	const cam = src.cam;
+	const triple = (t) => Array.isArray(t) && t.length === 3 && [
+		0,
+		1,
+		2
+	].every((i) => Number.isFinite(t[i]));
+	if (isObject(cam) && triple(cam.position) && triple(cam.target)) {
+		const copy = (t) => [
+			t[0],
+			t[1],
+			t[2]
+		];
+		v.cam = {
+			position: copy(cam.position),
+			target: copy(cam.target)
+		};
+		if (triple(cam.up)) v.cam.up = copy(cam.up);
+	}
+	return v;
+}
+/**
+* Whether the view shows its proof. Views carry the selected proof (`pf`/`ps`)
+* whether or not anyone is reading it — a scene keeps one selected, and some
+* open the proof panel behind the Doc tab — so the proof is on screen only on
+* the Math page (the step's equation as a graph), or when the proof panel is
+* open AND the Chat tab that holds it is showing.
+*/
+function proofOnScreen(view) {
+	return view.view === "math" || !!view.pp && view.panel === "chat";
+}
+/** `view` is at `ref`, and if `ref` is a proof, the proof is actually on screen. */
+function showsRef(view, ref) {
+	return viewMatchesRef(view, ref) && (!ref.pf || proofOnScreen(view));
+}
+/**
+* Whether `view` shows the plan's current step — the on-screen match alone,
+* nothing recorded or moved (after a reload, say). A sub-plan or glossary
+* step has no location of its own, so it counts as shown.
+*/
+function viewShowsCurrentStep(plan, lookup, view) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return false;
+	const chain = s.tryChain();
+	if (!chain) return false;
+	const step = stepById(chain[chain.length - 1], s.frames[s.frames.length - 1].stepId);
+	if (!step) return false;
+	if (step.kind === "subplan" || step.kind === "glossary") return true;
+	return showsRef(view, step.ref);
+}
+/** Where resuming a content step lands: where the learner left it, else its start. */
+function resumeView(step) {
+	if (step.kind === "subplan") return null;
+	const v = navigableView(step.lastView ?? step.view);
+	if ((step.kind === "proof" || step.kind === "proofStep") && v.view !== "math") {
+		v.pp = true;
+		v.panel = "chat";
+	}
+	return v;
+}
+function clone(v) {
+	return JSON.parse(JSON.stringify(v));
+}
+/**
+* A working copy of the plan being walked plus any referenced plans the
+* action touches, so an action edits copies and reports exactly what changed.
+*/
+var Session = class {
+	constructor(root, lookup) {
+		this.refs = /* @__PURE__ */ new Map();
+		this.dirty = /* @__PURE__ */ new Set();
+		this.recordOf = /* @__PURE__ */ new Map();
+		this.root = clone(root);
+		this.lookup = lookup;
+	}
+	get frames() {
+		return this.root.nav?.frames ?? [];
+	}
+	/** A referenced plan's working copy, loaded on first use. */
+	ref(id) {
+		if (id === this.root.id) return this.root;
+		let p = this.refs.get(id);
+		if (!p) {
+			const found = this.lookup(id);
+			if (!found) return void 0;
+			p = clone(found);
+			this.refs.set(id, p);
+		}
+		return p;
+	}
+	/**
+	* The plan a sub-plan step of `parent` holds: the nested object (saved as
+	* part of whatever record holds `parent`), or the referenced copy.
+	*/
+	subOf(step, parent) {
+		if ("nested" in step.sub) {
+			this.recordOf.set(step.sub.nested.id, this.recordOf.get(parent.id) ?? parent.id);
+			return step.sub.nested;
+		}
+		const p = this.ref(step.sub.planId);
+		if (p) this.recordOf.set(p.id, p.id);
+		return p;
+	}
+	/**
+	* The plans the frames walk, resolved down the chain: frame 0 is the
+	* root; frame k is the sub-plan held by frame k-1's current step.
+	*/
+	chain() {
+		const out = [];
+		this.recordOf.set(this.root.id, this.root.id);
+		let plan = this.root;
+		this.frames.forEach((f, i) => {
+			if (i > 0) {
+				const parent = out[i - 1];
+				const holder = parent && stepById(parent, this.frames[i - 1].stepId);
+				plan = holder && holder.kind === "subplan" ? this.subOf(holder, parent) : void 0;
+			}
+			if (!plan || plan.id !== f.planId || !stepById(plan, f.stepId)) throw new Error(`plan frame ${i} does not resolve`);
+			out.push(plan);
+		});
+		return out;
+	}
+	/**
+	* `chain()`, or null when the saved position no longer resolves — a step
+	* removed, a linked plan changed or deleted, a corrupt import. Navigator
+	* actions refuse in that case instead of throwing.
+	*/
+	tryChain() {
+		try {
+			return this.chain();
+		} catch {
+			return null;
+		}
+	}
+	/** Record that `plan` (or the top-level record holding it) changed. Every
+	*  navigator action also moves the frame stack, which lives on the root —
+	*  so the root is stamped too, keeping the store's recent-first order. */
+	touch(plan, now) {
+		plan.updatedAt = now;
+		this.root.updatedAt = now;
+		const record = this.recordOf.get(plan.id) ?? plan.id;
+		this.dirty.add(record);
+		if (record !== plan.id) {
+			const top = record === this.root.id ? this.root : this.refs.get(record);
+			if (top) top.updatedAt = now;
+		}
+	}
+	result(go, extra = {}) {
+		this.dirty.add(this.root.id);
+		return {
+			changed: [...this.dirty].map((id) => id === this.root.id ? this.root : this.refs.get(id)).filter(Boolean),
+			go: go && navigableView(go),
+			...extra
+		};
+	}
+};
+function stepById(plan, id) {
+	return plan.steps.find((s) => s.id === id);
+}
+function stepIndex(plan, id) {
+	return plan.steps.findIndex((s) => s.id === id);
+}
+function firstUnfinished(plan) {
+	return plan.steps.find((s) => s.state === "todo" || s.state === "visited") ?? plan.steps[0];
+}
+/** The refusal for a saved position that no longer resolves. */
+var STALE = "this plan's saved position no longer matches its steps — start it again";
+function refused(error) {
+	return {
+		changed: [],
+		go: null,
+		error
+	};
+}
+function markVisited(step) {
+	if (step.state === "todo") step.state = "visited";
+}
+/**
+* Start (or resume) walking `plan`. A plan already being walked resumes where
+* the learner is; otherwise it starts at its first unfinished step, and Return
+* from the outermost frame will land on `from` (default: the plan's origin).
+*/
+function startPlan(plan, lookup, now, from) {
+	const s = new Session(plan, lookup);
+	if (s.frames.length) {
+		const chain = s.tryChain();
+		if (chain) {
+			const top = chain[chain.length - 1];
+			const step = stepById(top, s.frames[s.frames.length - 1].stepId);
+			return {
+				changed: [],
+				go: step ? resumeView(step) : null
+			};
+		}
+		delete s.root.nav;
+	}
+	const first = firstUnfinished(s.root);
+	if (!first) return refused("this plan has no steps");
+	s.root.nav = { frames: [{
+		planId: s.root.id,
+		stepId: first.id,
+		cameFrom: from ?? s.root.target.origin
+	}] };
+	if (s.root.status === "complete") {
+		s.root.status = "active";
+		delete s.root.completedAt;
+	}
+	markVisited(first);
+	s.touch(s.root, now);
+	return s.result(resumeView(first));
+}
+/** Forward ›: finish the current step and move to the next one. */
+function forward(plan, lookup, now) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return refused("this plan is not being walked");
+	const chain = s.tryChain();
+	if (!chain) return refused(STALE);
+	const depth = chain.length - 1;
+	const cur = chain[depth];
+	const frame = s.frames[depth];
+	const i = stepIndex(cur, frame.stepId);
+	const step = cur.steps[i];
+	if (step && step.state !== "skipped") step.state = "done";
+	s.touch(cur, now);
+	const next = cur.steps[i + 1];
+	if (next) {
+		frame.stepId = next.id;
+		markVisited(next);
+		return s.result(resumeView(next));
+	}
+	if (depth === 0) return s.result(null, { finished: true });
+	cur.status = "complete";
+	cur.completedAt = now;
+	delete cur.nav;
+	s.frames.pop();
+	const parent = chain[depth - 1];
+	const holder = stepById(parent, s.frames[depth - 1].stepId);
+	if (holder && holder.state !== "skipped") holder.state = "done";
+	s.touch(parent, now);
+	return s.result(frame.cameFrom);
+}
+/** ‹ Back: the previous step of the current plan. Changes no step state. */
+function back(plan, lookup, now) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return refused("this plan is not being walked");
+	const chain = s.tryChain();
+	if (!chain) return refused(STALE);
+	const cur = chain[chain.length - 1];
+	const frame = s.frames[s.frames.length - 1];
+	const i = stepIndex(cur, frame.stepId);
+	if (i <= 0) return refused("already at the first step");
+	const prev = cur.steps[i - 1];
+	frame.stepId = prev.id;
+	s.touch(s.root, now);
+	return s.result(resumeView(prev));
+}
+/** Jump to a step of the current plan (a click in the step list). */
+function jumpTo(plan, lookup, stepId, now) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return refused("this plan is not being walked");
+	const chain = s.tryChain();
+	if (!chain) return refused(STALE);
+	const cur = chain[chain.length - 1];
+	const step = stepById(cur, stepId);
+	if (!step) return refused(`no step ${stepId} in "${cur.title}"`);
+	s.frames[s.frames.length - 1].stepId = stepId;
+	markVisited(step);
+	s.touch(cur, now);
+	return s.result(resumeView(step));
+}
+/**
+* Enter ↘: go into the current step's sub-plan. `from` is where the learner
+* is now; Return from the sub-plan lands back there.
+*/
+function enter(plan, lookup, from, now) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return refused("this plan is not being walked");
+	const chain = s.tryChain();
+	if (!chain) return refused(STALE);
+	const cur = chain[chain.length - 1];
+	const step = stepById(cur, s.frames[s.frames.length - 1].stepId);
+	if (!step || step.kind !== "subplan") return refused("the current step is not a sub-plan");
+	if (s.frames.length >= 4) return refused(`sub-plans can nest at most 4 deep`);
+	const sub = s.subOf(step, cur);
+	if (!sub) return refused("the linked plan was deleted");
+	if (chain.some((p) => p.id === sub.id)) return refused(`"${sub.title}" is already open further up`);
+	const first = firstUnfinished(sub);
+	if (!first) return refused(`"${sub.title}" has no steps`);
+	s.frames.push({
+		planId: sub.id,
+		stepId: first.id,
+		cameFrom: from
+	});
+	markVisited(step);
+	markVisited(first);
+	if (sub.status === "complete") {
+		sub.status = "active";
+		delete sub.completedAt;
+	}
+	s.touch(cur, now);
+	s.touch(sub, now);
+	return s.result(resumeView(first));
+}
+/**
+* Return ⤴: leave the current plan without completing anything, back to
+* where it was entered. From the outermost plan, the walk ends (the plan
+* stays active and resumable) and the learner lands where they started it.
+*/
+function returnUp(plan, lookup, now) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return refused("this plan is not being walked");
+	const frame = s.frames.pop();
+	if (!s.frames.length) delete s.root.nav;
+	s.touch(s.root, now);
+	return s.result(frame.cameFrom);
+}
+/** How precisely a ref pins a location: the number of ids it names. */
+function refSpecificity(ref) {
+	return (ref.sc ? 1 : 0) + (ref.st ? 2 : 0) + (ref.pf ? 4 : 0) + (ref.ps ? 8 : 0);
+}
+/**
+* The learner is now at `view` — however they got there: the plan, the scene
+* tree, the proof panel, the Math view. The plan follows:
+*
+* - On the current content step: it counts as visited and remembers the view
+*   as its resume point.
+* - On another content step of the plan being walked, or of a plan further
+*   out on the frame stack: the plan moves there (leaving any sub-plans above
+*   that level the way Return does — nothing is completed) and marks it
+*   visited. The innermost level with a match wins; within it, the most
+*   specific ref (a proof step over its scene), then the nearest step after
+*   the current one.
+* - Anywhere else (wandering off): nothing changes.
+*
+* Glossary steps never match — their ref names only a lesson, so they would
+* claim every view in it. A sub-plan the learner hasn't entered isn't entered
+* for them. `onStep` says whether the view is on (now) the current step;
+* `moved` whether the plan's position changed to follow the learner.
+*/
+function recordView(plan, lookup, view, now) {
+	const s = new Session(plan, lookup);
+	const none = {
+		changed: [],
+		go: null,
+		onStep: false,
+		moved: false
+	};
+	if (!s.frames.length) return none;
+	const chain = s.tryChain();
+	if (!chain) return none;
+	const depth = chain.length - 1;
+	chain[depth];
+	const hereId = s.frames[depth].stepId;
+	for (let d = depth; d >= 0; d--) {
+		const p = chain[d];
+		const at = stepIndex(p, s.frames[d].stepId);
+		let best = null;
+		p.steps.forEach((step, i) => {
+			if (step.kind === "subplan" || step.kind === "glossary" || !showsRef(view, step.ref)) return;
+			const score = refSpecificity(step.ref);
+			const dist = i === at ? -1 : i > at ? i - at : p.steps.length + (at - i);
+			if (!best || score > best.score || score === best.score && dist < best.dist) best = {
+				step,
+				score,
+				dist
+			};
+		});
+		if (!best) continue;
+		const { step } = best;
+		if (d === depth && step.id === hereId) {
+			markVisited(step);
+			step.lastView = clone(view);
+			s.touch(p, now);
+			return {
+				...s.result(null),
+				onStep: true,
+				moved: false
+			};
+		}
+		s.frames.length = d + 1;
+		s.frames[d].stepId = step.id;
+		markVisited(step);
+		step.lastView = clone(view);
+		s.touch(p, now);
+		return {
+			...s.result(null),
+			onStep: true,
+			moved: true
+		};
+	}
+	return none;
+}
+/**
+* How far through `plan` the learner is. A content step counts 1 once done or
+* skipped; a sub-plan step counts its sub-plan's fraction (a referenced plan
+* contributes its own, shared progress; a missing one counts 0) — even when
+* the step itself is marked done, since a linked plan reopened or edited
+* since has less to show. A skipped sub-plan counts 1. A complete plan is 100%.
+*/
+function progress(plan, lookup, seen = /* @__PURE__ */ new Set()) {
+	const total = plan.steps.length;
+	if (plan.status === "complete") return {
+		done: total,
+		total,
+		fraction: 1
+	};
+	if (!total) return {
+		done: 0,
+		total: 0,
+		fraction: 0
+	};
+	seen.add(plan.id);
+	let done = 0;
+	for (const step of plan.steps) {
+		if (step.state === "skipped") {
+			done += 1;
+			continue;
+		}
+		if (step.kind !== "subplan") {
+			if (step.state === "done") done += 1;
+			continue;
+		}
+		const sub = "nested" in step.sub ? step.sub.nested : lookup(step.sub.planId);
+		if (!sub) continue;
+		if (seen.has(sub.id) || !sub.steps.length) {
+			if (step.state === "done") done += 1;
+			continue;
+		}
+		done += progress(sub, lookup, new Set(seen)).fraction;
+	}
+	return {
+		done,
+		total,
+		fraction: done / total
+	};
+}
+/** "Understand terminal velocity › Newton's second law › step 1 of 2". */
+function breadcrumb(plan, lookup) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return [];
+	const chain = s.tryChain();
+	if (!chain) return [];
+	return chain.map((p, i) => {
+		const stepId = s.frames[i].stepId;
+		const idx = stepIndex(p, stepId);
+		return {
+			planId: p.id,
+			title: p.title,
+			stepId,
+			stepTitle: p.steps[idx]?.title ?? "",
+			stepNumber: idx + 1,
+			stepCount: p.steps.length
+		};
+	});
+}
+/** The step the learner is on (innermost frame), or null when not walking. */
+function currentStep(plan, lookup) {
+	const s = new Session(plan, lookup);
+	if (!s.frames.length) return null;
+	const chain = s.tryChain();
+	if (!chain) return null;
+	return stepById(chain[chain.length - 1], s.frames[s.frames.length - 1].stepId) ?? null;
+}
+/**
+* `plan` with its walk stepped out of `deletedId`, or null if it isn't inside
+* it. Deleting a linked plan the learner is walking inside would leave the
+* frame stack pointing at nothing; instead the stack is cut back to the frame
+* that holds the link, so the parent rests on its (now dangling) sub-plan step
+* — where the UI offers Remove or Import. Nothing is completed.
+*/
+function leaveDeletedPlan(plan, deletedId, now) {
+	const i = (plan.nav?.frames ?? []).findIndex((f) => f.planId === deletedId);
+	if (i <= 0) return null;
+	const p = clone(plan);
+	p.nav.frames = p.nav.frames.slice(0, i);
+	p.updatedAt = now;
+	return p;
+}
+/** Mark the plan complete. Step states stay as history; the walk ends. */
+function markComplete$1(plan, now) {
+	const p = clone(plan);
+	p.status = "complete";
+	p.completedAt = now;
+	delete p.nav;
+	p.updatedAt = now;
+	return p;
+}
+/**
+* Restart: the plan's progress back to the beginning — every step not
+* started, resume points forgotten, nested sub-plans reset too, the walk
+* ended. Linked plans are left alone: they're separate plans, and their
+* progress is shared with whatever else links them.
+*/
+function restartPlan(plan, now) {
+	const reset = (p) => {
+		p.status = "active";
+		delete p.completedAt;
+		delete p.nav;
+		p.updatedAt = now;
+		for (const s of p.steps) {
+			s.state = "todo";
+			if (s.kind === "subplan") {
+				if ("nested" in s.sub) reset(s.sub.nested);
+			} else delete s.lastView;
+		}
+	};
+	const p = clone(plan);
+	reset(p);
+	return p;
+}
+/** Reopen a complete plan. */
+function reopen(plan, now) {
+	const p = clone(plan);
+	p.status = "active";
+	delete p.completedAt;
+	p.updatedAt = now;
+	return p;
+}
+var CONTENT_KINDS = /* @__PURE__ */ new Set([
+	"scene",
+	"step",
+	"proof",
+	"proofStep",
+	"glossary"
+]);
+/** The ref ids each kind needs to land where it promises. */
+var KIND_IDS = {
+	scene: ["sc"],
+	step: ["sc", "st"],
+	proof: ["pf"],
+	proofStep: ["pf", "ps"],
+	glossary: ["glossary"]
+};
+var STATES = /* @__PURE__ */ new Set([
+	"todo",
+	"visited",
+	"done",
+	"skipped"
+]);
+/** Structural problems with a plan (e.g. an imported file); empty when valid. */
+/** How deep nested plans may go before validation stops descending. Far more
+*  than the navigator can walk (MAX_PLAN_DEPTH); it only bounds the recursion
+*  so a deep import or a cyclic IndexedDB record is reported, not a stack overflow. */
+var MAX_NESTING = 32;
+function validatePlan(plan, path = "plan", planIds = /* @__PURE__ */ new Set(), ancestors = /* @__PURE__ */ new Set()) {
+	const errs = [];
+	const p = plan;
+	if (!p || typeof p !== "object") return [`${path}: not an object`];
+	const outermost = ancestors.size === 0;
+	if (ancestors.has(p)) return [`${path}: a plan that contains itself`];
+	if (ancestors.size >= MAX_NESTING) return [`${path}: nested more than ${MAX_NESTING} deep`];
+	ancestors = new Set(ancestors).add(p);
+	if (typeof p.id === "string" && p.id) {
+		if (planIds.has(p.id)) errs.push(`${path}: plan id "${p.id}" is used twice in this plan`);
+		planIds.add(p.id);
+	}
+	if (p.schemaVersion !== 1) errs.push(`${path}: unsupported schemaVersion ${String(p.schemaVersion)}`);
+	if (typeof p.id !== "string" || !p.id) errs.push(`${path}: missing id`);
+	if (typeof p.title !== "string") errs.push(`${path}: missing title`);
+	if (!p.target || typeof p.target.text !== "string" || !isObject(p.target.origin)) errs.push(`${path}: missing target`);
+	if (p.status !== "active" && p.status !== "complete") errs.push(`${path}: bad status`);
+	if (!Number.isFinite(p.createdAt) || !Number.isFinite(p.updatedAt)) errs.push(`${path}: createdAt and updatedAt must be numbers`);
+	if (p.completedAt !== void 0 && !Number.isFinite(p.completedAt)) errs.push(`${path}: bad completedAt`);
+	if (!Array.isArray(p.steps)) return [...errs, `${path}: steps is not a list`];
+	const ids = /* @__PURE__ */ new Set();
+	Array.from(p.steps).forEach((step, i) => {
+		const at = `${path}.steps[${i}]`;
+		if (!step || typeof step.id !== "string" || !step.id) {
+			errs.push(`${at}: missing id`);
+			return;
+		}
+		if (ids.has(step.id)) errs.push(`${at}: duplicate id "${step.id}"`);
+		ids.add(step.id);
+		if (!STATES.has(step.state)) errs.push(`${at}: bad state`);
+		if (typeof step.title !== "string" || typeof step.why !== "string") errs.push(`${at}: needs a title and a why`);
+		if (step.source !== "ai" && step.source !== "learner") errs.push(`${at}: bad source`);
+		if (step.kind === "subplan") {
+			const sub = step.sub;
+			if (isObject(sub) && "nested" in sub && "planId" in sub) errs.push(`${at}: sub-plan has both a nested plan and a planId`);
+			else if (isObject(sub) && "nested" in sub) errs.push(...validatePlan(sub.nested, `${at}.sub.nested`, planIds, ancestors));
+			else if (!isObject(sub) || !nonEmpty(sub.planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
+		} else if (CONTENT_KINDS.has(step.kind)) {
+			const ref = step.ref;
+			const refOk = isObject(ref) && typeof ref.lesson === "string" && LESSON_ID.test(ref.lesson);
+			if (!refOk) errs.push(`${at}: missing ref.lesson`);
+			else {
+				const missing = KIND_IDS[step.kind].filter((k) => typeof ref[k] !== "string" || !ref[k]);
+				if (missing.length) errs.push(`${at}: a ${step.kind} ref needs ${missing.join(" and ")}`);
+				const bad = [
+					"sc",
+					"st",
+					"pf",
+					"ps"
+				].filter((k) => ref[k] !== void 0 && (typeof ref[k] !== "string" || !TOKEN.test(ref[k])));
+				if (bad.length) errs.push(`${at}: ref ${bad.join(", ")} not a plain id`);
+			}
+			const view = step.view;
+			if (!isObject(view)) errs.push(`${at}: missing view`);
+			else if (refOk && !viewMatchesRef(view, ref)) errs.push(`${at}: view is not at its ref`);
+			const last = step.lastView;
+			if (last !== void 0 && !isObject(last)) errs.push(`${at}: bad lastView`);
+			else if (last !== void 0 && refOk && !viewMatchesRef(last, ref)) errs.push(`${at}: lastView is not at its ref`);
+		} else errs.push(`${at}: unknown kind "${String(step.kind)}"`);
+	});
+	if (p.nav !== void 0 && p.status === "complete") errs.push(`${path}: a complete plan is not being walked, but has a saved position`);
+	if (p.nav !== void 0) {
+		const frames = isObject(p.nav) ? p.nav.frames : void 0;
+		if (!Array.isArray(frames) || !frames.length) errs.push(`${path}.nav: frames is not a non-empty list`);
+		else if (frames.length > 4) errs.push(`${path}.nav: deeper than 4 frames`);
+		else {
+			Array.from(frames).forEach((f, i) => {
+				const fr = f;
+				if (!isObject(fr) || !nonEmpty(fr.planId) || !nonEmpty(fr.stepId) || !isObject(fr.cameFrom)) errs.push(`${path}.nav.frames[${i}]: needs planId, stepId and a cameFrom view`);
+			});
+			const seen = /* @__PURE__ */ new Set();
+			Array.from(frames).forEach((f, i) => {
+				const id = isObject(f) ? f.planId : void 0;
+				if (typeof id !== "string") return;
+				if (seen.has(id)) errs.push(`${path}.nav.frames[${i}]: plan "${id}" is already on the stack`);
+				seen.add(id);
+			});
+			const f0 = frames[0];
+			if (isObject(f0) && (f0.planId !== p.id || !ids.has(String(f0.stepId)))) errs.push(`${path}.nav.frames[0]: must be this plan, on one of its steps`);
+		}
+	}
+	if (outermost && !errs.length) try {
+		JSON.stringify(p);
+	} catch {
+		errs.push(`${path}: not a JSON document (it contains a cycle)`);
+	}
+	return errs;
+}
+function nonEmpty(v) {
+	return typeof v === "string" && v.length > 0;
+}
+function isObject(v) {
+	return !!v && typeof v === "object" && !Array.isArray(v);
+}
+var PLAN_FILE_FORMAT = "algebench-learning-plans";
+/**
+* A file holding `plans` plus every plan they reference, transitively, so an
+* import on another browser keeps the links working. Walks are dropped: where
+* the learner was is not portable.
+*/
+function exportPlans(plans, lookup, now) {
+	const out = /* @__PURE__ */ new Map();
+	const visit = (p) => {
+		for (const s of p.steps) {
+			if (s.kind !== "subplan") continue;
+			if ("nested" in s.sub) {
+				visit(s.sub.nested);
+				continue;
+			}
+			const ref = lookup(s.sub.planId);
+			if (ref && !out.has(ref.id)) add(ref);
+		}
+	};
+	const dropWalk = (p) => {
+		delete p.nav;
+		for (const s of p.steps) if (s.kind === "subplan" && "nested" in s.sub) dropWalk(s.sub.nested);
+	};
+	const add = (p) => {
+		const c = clone(p);
+		dropWalk(c);
+		out.set(c.id, c);
+		visit(c);
+	};
+	for (const p of plans) if (!out.has(p.id)) add(p);
+	return {
+		format: PLAN_FILE_FORMAT,
+		version: 1,
+		exportedAt: now,
+		plans: [...out.values()]
+	};
+}
+/** Every stored view in `plan` (nested plans included) reduced to `navigableView`. */
+function withNavigableViews(plan) {
+	const p = clone(plan);
+	const walk = (q) => {
+		q.target.origin = navigableView(q.target.origin);
+		for (const f of q.nav?.frames ?? []) f.cameFrom = navigableView(f.cameFrom);
+		for (const st of q.steps) {
+			if (st.kind === "subplan") {
+				if ("nested" in st.sub) walk(st.sub.nested);
+				continue;
+			}
+			st.view = navigableView(st.view);
+			if (st.lastView) st.lastView = navigableView(st.lastView);
+		}
+	};
+	walk(p);
+	return p;
+}
+/** Every plan id in `plan`'s tree: its own and its nested plans'. */
+function planTreeIds(plan) {
+	const ids = /* @__PURE__ */ new Set();
+	const walk = (p) => {
+		ids.add(p.id);
+		for (const s of p.steps) if (s.kind === "subplan" && "nested" in s.sub) walk(s.sub.nested);
+	};
+	walk(plan);
+	return ids;
+}
+/**
+* Which parsed plans can join the stored ones. A plan replaces the stored
+* record with its id; otherwise every id in its tree must be new to the
+* stored forest (minus the records being replaced) — plan ids are identity to
+* the navigator, and Export all must stay a file parsePlanFile accepts.
+*/
+function mergeImport(stored, incoming) {
+	const replaced = new Set(incoming.map((p) => p.id));
+	const taken = /* @__PURE__ */ new Set();
+	for (const p of stored) if (!replaced.has(p.id)) for (const id of planTreeIds(p)) taken.add(id);
+	const plans = [];
+	const errors = [];
+	const storedById = new Map(stored.map((p) => [p.id, p]));
+	const ordered = [...incoming.filter((p) => storedById.has(p.id)), ...incoming.filter((p) => !storedById.has(p.id))];
+	for (const p of ordered) {
+		const ids = planTreeIds(p);
+		const clash = [...ids].filter((id) => taken.has(id));
+		if (clash.length) {
+			errors.push(`plan id "${clash[0]}" in “${p.title}” is already used by another saved plan`);
+			const kept = storedById.get(p.id);
+			if (kept) for (const id of planTreeIds(kept)) taken.add(id);
+			continue;
+		}
+		for (const id of ids) taken.add(id);
+		plans.push(p);
+	}
+	return {
+		plans,
+		errors
+	};
+}
+/** Parse an exported file: the plans that are valid, and why the others are not. */
+function parsePlanFile(text) {
+	let data;
+	try {
+		data = JSON.parse(text);
+	} catch {
+		return {
+			plans: [],
+			errors: ["not a JSON file"]
+		};
+	}
+	const file = data;
+	if (!file || file.format !== "algebench-learning-plans" || !Array.isArray(file.plans)) return {
+		plans: [],
+		errors: ["not an AlgeBench learning-plans file"]
+	};
+	if (file.version !== 1) return {
+		plans: [],
+		errors: [`unsupported file version ${String(file.version)}`]
+	};
+	const plans = [];
+	const errors = [];
+	const ids = /* @__PURE__ */ new Set();
+	file.plans.forEach((p, i) => {
+		const treeIds = /* @__PURE__ */ new Set();
+		const errs = validatePlan(p, `plans[${i}]`, treeIds);
+		if (!errs.length) {
+			if (ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
+			else {
+				const clash = [...treeIds].filter((id) => ids.has(id));
+				if (clash.length) errs.push(`plans[${i}]: nested plan id ${clash.map((c) => `"${c}"`).join(", ")} already used in this file`);
+			}
+		}
+		if (errs.length) errors.push(...errs);
+		else {
+			const clean = withNavigableViews(p);
+			const after = validatePlan(clean, `plans[${i}]`);
+			if (after.length) {
+				errors.push(...after);
+				return;
+			}
+			for (const id of treeIds) ids.add(id);
+			plans.push(clean);
+		}
+	});
+	return {
+		plans,
+		errors
+	};
+}
+//#endregion
+//#region src/plan-request.ts
+var PLAN_EXPERT = "learning_plan";
+/** Window event, `detail: { target }`: plan a path to `target` (glossary.ts fires it; plan-ui.ts listens). */
+var PLAN_REQUEST_EVENT = "algebench:plan-request";
+/** A plan takes 6–15 s; past this something is wrong. */
+var PLAN_TIMEOUT_MS = 9e4;
+var MAX_TARGET = 500;
+var MAX_TEXT = 600;
+var MAX_STEPS = 8;
+var KINDS = /* @__PURE__ */ new Set([
+	"scene",
+	"step",
+	"proof",
+	"proofStep",
+	"glossary"
+]);
+/** Where the learner is, keeping only ids the server's request model accepts. */
+function whereFromView(vs) {
+	const w = {};
+	if (!vs || typeof vs.builtin !== "string" || !LESSON_ID.test(vs.builtin)) return w;
+	w.lesson = vs.builtin;
+	for (const k of [
+		"sc",
+		"st",
+		"pf",
+		"ps"
+	]) {
+		const v = vs[k];
+		if (typeof v === "string" && TOKEN.test(v)) w[k] = v;
+	}
+	return w;
+}
+function planRequest(target, vs, clarifications = []) {
+	const body = {
+		target: target.trim().slice(0, MAX_TARGET),
+		where: whereFromView(vs)
+	};
+	if (clarifications.length) body.clarifications = clarifications.map((c) => ({
+		question: c.question.slice(0, 500),
+		answer: c.answer.slice(0, 500)
+	}));
+	return body;
+}
+var text = (v, max = MAX_TEXT) => typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
+function readRef(raw, kind) {
+	if (!raw || typeof raw !== "object") return null;
+	const r = raw;
+	if (typeof r.lesson !== "string" || !LESSON_ID.test(r.lesson)) return null;
+	const ref = { lesson: r.lesson };
+	for (const k of [
+		"sc",
+		"st",
+		"pf",
+		"ps"
+	]) {
+		const v = r[k];
+		if (v === void 0) continue;
+		if (typeof v !== "string" || !TOKEN.test(v)) return null;
+		ref[k] = v;
+	}
+	if (kind === "glossary") {
+		const g = text(r.glossary, 200);
+		if (!g) return null;
+		ref.glossary = g;
+	}
+	return {
+		scene: ["sc"],
+		step: ["sc", "st"],
+		proof: ["pf"],
+		proofStep: ["pf", "ps"],
+		glossary: ["glossary"]
+	}[kind].every((k) => ref[k]) ? ref : null;
+}
+/** The expert's reply, checked. Anything malformed reads as "no plan". */
+function readPlanReply(raw) {
+	const r = raw && typeof raw === "object" ? raw : {};
+	if (r.result && typeof r.result === "object") {
+		const res = r.result;
+		const steps = [];
+		for (const s of Array.isArray(res.steps) ? res.steps : []) {
+			if (!s || typeof s !== "object") continue;
+			const o = s;
+			if (typeof o.kind !== "string" || !KINDS.has(o.kind)) continue;
+			const kind = o.kind;
+			const ref = readRef(o.ref, kind);
+			const title = text(o.title, 200);
+			if (!ref || !title) continue;
+			steps.push({
+				kind,
+				title,
+				why: text(o.why),
+				ref
+			});
+			if (steps.length === MAX_STEPS) break;
+		}
+		if (steps.length) return {
+			kind: "result",
+			title: text(res.title, 200),
+			steps,
+			caveat: text(r.caveat)
+		};
+		return {
+			kind: "reason",
+			reason: "The plan that came back had no steps that could be used."
+		};
+	}
+	if (typeof r.question === "string" && text(r.question)) return {
+		kind: "question",
+		question: text(r.question)
+	};
+	if (r.fallback_to_chat === true) return { kind: "chat" };
+	return {
+		kind: "reason",
+		reason: text(r.reason) || "No plan came back."
+	};
+}
+/** A new plan from the expert's steps. Throws if the result isn't a valid plan. */
+function planFromReply(reply, target, origin, at, newId) {
+	const steps = reply.steps.map((s) => ({
+		id: newId(),
+		kind: s.kind,
+		title: s.title,
+		why: s.why,
+		state: "todo",
+		source: "ai",
+		ref: s.ref,
+		view: refToView(s.ref)
+	}));
+	const plan = {
+		schemaVersion: 1,
+		id: newId(),
+		title: reply.title || target,
+		target: {
+			text: target,
+			origin
+		},
+		steps,
+		status: "active",
+		createdAt: at,
+		updatedAt: at
+	};
+	const errs = validatePlan(plan);
+	if (errs.length) throw new Error(errs[0]);
+	return plan;
+}
 //#endregion
 //#region src/glossary.ts
 var _domainGlossaries = /* @__PURE__ */ new Map();
@@ -13236,6 +14246,20 @@ function _unlinkSelf(body, key) {
 		]) t.removeAttribute(a);
 	});
 }
+/** "Learn this": ask the learning-plan panel for a path to this term. */
+function _learnButton(name) {
+	const btn = document.createElement("button");
+	btn.type = "button";
+	btn.className = "glossary-learn-btn";
+	btn.innerHTML = PLAN_ICON;
+	btn.title = `Plan a path to understanding ${stripGlossaryMarkers(name)}`;
+	btn.setAttribute("aria-label", btn.title);
+	btn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		window.dispatchEvent(new CustomEvent(PLAN_REQUEST_EVENT, { detail: { target: stripGlossaryMarkers(name) } }));
+	});
+	return btn;
+}
 function _fill(tip, key, entry) {
 	const name = glossaryTermName(key, entry);
 	tip.el.innerHTML = "";
@@ -13246,6 +14270,7 @@ function _fill(tip, key, entry) {
 	title.innerHTML = renderKaTeX$1(name, false, { glossary: false });
 	head.appendChild(title);
 	head.appendChild(makeAiAskButton("ai-ask-btn glossary-ask-btn", `Ask AI about ${name}`, () => entry.prompt && stripGlossaryMarkers(entry.prompt) || `Explain "${name}" in the context of what I'm looking at.`));
+	if (window.algebenchPlanAvailable) head.appendChild(_learnButton(name));
 	tip.el.appendChild(head);
 	if (entry.markdown) {
 		const body = document.createElement("div");
@@ -16447,7 +17472,7 @@ var DEFAULT_UP = [
 	1,
 	0
 ];
-var CV_MAX_LEN$1 = 64;
+var CV_MAX_LEN = 64;
 /** Round to `dp` decimals and stringify, dropping trailing zeros. */
 function fmtNum(n, dp = CAM_DECIMALS) {
 	if (!Number.isFinite(n)) return "0";
@@ -16613,7 +17638,7 @@ function parseViewState(search) {
 		if (Object.keys(sliders).length) vs.sliders = sliders;
 	}
 	const cv = params.get("cv");
-	if (cv && cv.length <= CV_MAX_LEN$1) vs.cv = cv;
+	if (cv && cv.length <= CV_MAX_LEN) vs.cv = cv;
 	const proj = params.get("proj");
 	if (proj) vs.proj = proj;
 	const oz = params.get("oz");
@@ -21549,853 +22574,6 @@ function planTextInto(e, text) {
 	}
 	return e;
 }
-/**
-* True when `view` is at the ref's location: same lesson, and every id the
-* ref names matches. A ref without `st` is satisfied by any step of its scene,
-* and a glossary ref by anywhere in its lesson.
-*/
-function viewMatchesRef(view, ref) {
-	if (!view || view.builtin !== ref.lesson) return false;
-	for (const k of [
-		"sc",
-		"st",
-		"pf",
-		"ps"
-	]) if (ref[k] && view[k] !== ref[k]) return false;
-	return true;
-}
-/** Ids and enum-ish values that end up in selectors and lookups: a plain token. */
-var TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
-/** Longest camera-view key kept — the same bound parseViewState applies to `cv`. */
-var CV_MAX_LEN = 64;
-/** A built-in lesson id: plain-token path segments, e.g. "eigenvalues" or
-*  "draft/chart-demo" — no empty, dot-leading or traversal segments. */
-var LESSON_ID = /^(?=.{1,200}$)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/;
-/** A name safe to use as a plain-object key: not one Object.prototype answers
-*  to (`__proto__`, `constructor`, …) — applyViewState looks sliders up by it. */
-var safeKey = (k) => TOKEN.test(k) && !(k in Object.prototype);
-/**
-* `view` reduced to a location the app can apply safely: only the known,
-* non-directive fields, each of the right type — ids as plain tokens,
-* numbers finite, the camera three finite triples. `cv` is the exception: a
-* camera-view key is a scene-authored name (`side-(yz)`, `ride:-chased-ship`)
-* that the app matches exactly, never as selector syntax (findCamButton), so
-* any string is kept, bounded like parseViewState bounds it. Everything the navigator hands out goes through this, so
-* a stored or imported view can't carry a directive or a malformed value
-* into applyViewState.
-*/
-function navigableView(view) {
-	const src = isObject(view) ? view : {};
-	const v = {};
-	if (typeof src.builtin === "string" && LESSON_ID.test(src.builtin)) v.builtin = src.builtin;
-	for (const k of [
-		"view",
-		"panel",
-		"sc",
-		"st",
-		"pf",
-		"ps",
-		"proj",
-		"fa"
-	]) {
-		const val = src[k];
-		if (typeof val === "string" && TOKEN.test(val)) v[k] = val;
-	}
-	if (typeof src.cv === "string" && src.cv.length > 0 && src.cv.length <= CV_MAX_LEN) v.cv = src.cv;
-	if (typeof src.pp === "boolean") v.pp = src.pp;
-	if (typeof src.dock === "boolean") v.dock = src.dock;
-	if (Number.isFinite(src.oz) && src.oz > 0) v.oz = src.oz;
-	if (Array.isArray(src.nodes)) {
-		const nodes = src.nodes.filter((n) => typeof n === "string" && TOKEN.test(n));
-		if (nodes.length) v.nodes = nodes;
-	}
-	if (isObject(src.sliders)) {
-		const sl = Object.entries(src.sliders).filter(([id, n]) => safeKey(id) && Number.isFinite(n));
-		if (sl.length) v.sliders = Object.fromEntries(sl);
-	}
-	const cam = src.cam;
-	const triple = (t) => Array.isArray(t) && t.length === 3 && [
-		0,
-		1,
-		2
-	].every((i) => Number.isFinite(t[i]));
-	if (isObject(cam) && triple(cam.position) && triple(cam.target)) {
-		const copy = (t) => [
-			t[0],
-			t[1],
-			t[2]
-		];
-		v.cam = {
-			position: copy(cam.position),
-			target: copy(cam.target)
-		};
-		if (triple(cam.up)) v.cam.up = copy(cam.up);
-	}
-	return v;
-}
-/**
-* Whether the view shows its proof. Views carry the selected proof (`pf`/`ps`)
-* whether or not anyone is reading it — a scene keeps one selected, and some
-* open the proof panel behind the Doc tab — so the proof is on screen only on
-* the Math page (the step's equation as a graph), or when the proof panel is
-* open AND the Chat tab that holds it is showing.
-*/
-function proofOnScreen(view) {
-	return view.view === "math" || !!view.pp && view.panel === "chat";
-}
-/** `view` is at `ref`, and if `ref` is a proof, the proof is actually on screen. */
-function showsRef(view, ref) {
-	return viewMatchesRef(view, ref) && (!ref.pf || proofOnScreen(view));
-}
-/**
-* Whether `view` shows the plan's current step — the on-screen match alone,
-* nothing recorded or moved (after a reload, say). A sub-plan or glossary
-* step has no location of its own, so it counts as shown.
-*/
-function viewShowsCurrentStep(plan, lookup, view) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return false;
-	const chain = s.tryChain();
-	if (!chain) return false;
-	const step = stepById(chain[chain.length - 1], s.frames[s.frames.length - 1].stepId);
-	if (!step) return false;
-	if (step.kind === "subplan" || step.kind === "glossary") return true;
-	return showsRef(view, step.ref);
-}
-/** Where resuming a content step lands: where the learner left it, else its start. */
-function resumeView(step) {
-	if (step.kind === "subplan") return null;
-	const v = navigableView(step.lastView ?? step.view);
-	if ((step.kind === "proof" || step.kind === "proofStep") && v.view !== "math") {
-		v.pp = true;
-		v.panel = "chat";
-	}
-	return v;
-}
-function clone(v) {
-	return JSON.parse(JSON.stringify(v));
-}
-/**
-* A working copy of the plan being walked plus any referenced plans the
-* action touches, so an action edits copies and reports exactly what changed.
-*/
-var Session = class {
-	constructor(root, lookup) {
-		this.refs = /* @__PURE__ */ new Map();
-		this.dirty = /* @__PURE__ */ new Set();
-		this.recordOf = /* @__PURE__ */ new Map();
-		this.root = clone(root);
-		this.lookup = lookup;
-	}
-	get frames() {
-		return this.root.nav?.frames ?? [];
-	}
-	/** A referenced plan's working copy, loaded on first use. */
-	ref(id) {
-		if (id === this.root.id) return this.root;
-		let p = this.refs.get(id);
-		if (!p) {
-			const found = this.lookup(id);
-			if (!found) return void 0;
-			p = clone(found);
-			this.refs.set(id, p);
-		}
-		return p;
-	}
-	/**
-	* The plan a sub-plan step of `parent` holds: the nested object (saved as
-	* part of whatever record holds `parent`), or the referenced copy.
-	*/
-	subOf(step, parent) {
-		if ("nested" in step.sub) {
-			this.recordOf.set(step.sub.nested.id, this.recordOf.get(parent.id) ?? parent.id);
-			return step.sub.nested;
-		}
-		const p = this.ref(step.sub.planId);
-		if (p) this.recordOf.set(p.id, p.id);
-		return p;
-	}
-	/**
-	* The plans the frames walk, resolved down the chain: frame 0 is the
-	* root; frame k is the sub-plan held by frame k-1's current step.
-	*/
-	chain() {
-		const out = [];
-		this.recordOf.set(this.root.id, this.root.id);
-		let plan = this.root;
-		this.frames.forEach((f, i) => {
-			if (i > 0) {
-				const parent = out[i - 1];
-				const holder = parent && stepById(parent, this.frames[i - 1].stepId);
-				plan = holder && holder.kind === "subplan" ? this.subOf(holder, parent) : void 0;
-			}
-			if (!plan || plan.id !== f.planId || !stepById(plan, f.stepId)) throw new Error(`plan frame ${i} does not resolve`);
-			out.push(plan);
-		});
-		return out;
-	}
-	/**
-	* `chain()`, or null when the saved position no longer resolves — a step
-	* removed, a linked plan changed or deleted, a corrupt import. Navigator
-	* actions refuse in that case instead of throwing.
-	*/
-	tryChain() {
-		try {
-			return this.chain();
-		} catch {
-			return null;
-		}
-	}
-	/** Record that `plan` (or the top-level record holding it) changed. Every
-	*  navigator action also moves the frame stack, which lives on the root —
-	*  so the root is stamped too, keeping the store's recent-first order. */
-	touch(plan, now) {
-		plan.updatedAt = now;
-		this.root.updatedAt = now;
-		const record = this.recordOf.get(plan.id) ?? plan.id;
-		this.dirty.add(record);
-		if (record !== plan.id) {
-			const top = record === this.root.id ? this.root : this.refs.get(record);
-			if (top) top.updatedAt = now;
-		}
-	}
-	result(go, extra = {}) {
-		this.dirty.add(this.root.id);
-		return {
-			changed: [...this.dirty].map((id) => id === this.root.id ? this.root : this.refs.get(id)).filter(Boolean),
-			go: go && navigableView(go),
-			...extra
-		};
-	}
-};
-function stepById(plan, id) {
-	return plan.steps.find((s) => s.id === id);
-}
-function stepIndex(plan, id) {
-	return plan.steps.findIndex((s) => s.id === id);
-}
-function firstUnfinished(plan) {
-	return plan.steps.find((s) => s.state === "todo" || s.state === "visited") ?? plan.steps[0];
-}
-/** The refusal for a saved position that no longer resolves. */
-var STALE = "this plan's saved position no longer matches its steps — start it again";
-function refused(error) {
-	return {
-		changed: [],
-		go: null,
-		error
-	};
-}
-function markVisited(step) {
-	if (step.state === "todo") step.state = "visited";
-}
-/**
-* Start (or resume) walking `plan`. A plan already being walked resumes where
-* the learner is; otherwise it starts at its first unfinished step, and Return
-* from the outermost frame will land on `from` (default: the plan's origin).
-*/
-function startPlan(plan, lookup, now, from) {
-	const s = new Session(plan, lookup);
-	if (s.frames.length) {
-		const chain = s.tryChain();
-		if (chain) {
-			const top = chain[chain.length - 1];
-			const step = stepById(top, s.frames[s.frames.length - 1].stepId);
-			return {
-				changed: [],
-				go: step ? resumeView(step) : null
-			};
-		}
-		delete s.root.nav;
-	}
-	const first = firstUnfinished(s.root);
-	if (!first) return refused("this plan has no steps");
-	s.root.nav = { frames: [{
-		planId: s.root.id,
-		stepId: first.id,
-		cameFrom: from ?? s.root.target.origin
-	}] };
-	if (s.root.status === "complete") {
-		s.root.status = "active";
-		delete s.root.completedAt;
-	}
-	markVisited(first);
-	s.touch(s.root, now);
-	return s.result(resumeView(first));
-}
-/** Forward ›: finish the current step and move to the next one. */
-function forward(plan, lookup, now) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return refused("this plan is not being walked");
-	const chain = s.tryChain();
-	if (!chain) return refused(STALE);
-	const depth = chain.length - 1;
-	const cur = chain[depth];
-	const frame = s.frames[depth];
-	const i = stepIndex(cur, frame.stepId);
-	const step = cur.steps[i];
-	if (step && step.state !== "skipped") step.state = "done";
-	s.touch(cur, now);
-	const next = cur.steps[i + 1];
-	if (next) {
-		frame.stepId = next.id;
-		markVisited(next);
-		return s.result(resumeView(next));
-	}
-	if (depth === 0) return s.result(null, { finished: true });
-	cur.status = "complete";
-	cur.completedAt = now;
-	delete cur.nav;
-	s.frames.pop();
-	const parent = chain[depth - 1];
-	const holder = stepById(parent, s.frames[depth - 1].stepId);
-	if (holder && holder.state !== "skipped") holder.state = "done";
-	s.touch(parent, now);
-	return s.result(frame.cameFrom);
-}
-/** ‹ Back: the previous step of the current plan. Changes no step state. */
-function back(plan, lookup, now) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return refused("this plan is not being walked");
-	const chain = s.tryChain();
-	if (!chain) return refused(STALE);
-	const cur = chain[chain.length - 1];
-	const frame = s.frames[s.frames.length - 1];
-	const i = stepIndex(cur, frame.stepId);
-	if (i <= 0) return refused("already at the first step");
-	const prev = cur.steps[i - 1];
-	frame.stepId = prev.id;
-	s.touch(s.root, now);
-	return s.result(resumeView(prev));
-}
-/** Jump to a step of the current plan (a click in the step list). */
-function jumpTo(plan, lookup, stepId, now) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return refused("this plan is not being walked");
-	const chain = s.tryChain();
-	if (!chain) return refused(STALE);
-	const cur = chain[chain.length - 1];
-	const step = stepById(cur, stepId);
-	if (!step) return refused(`no step ${stepId} in "${cur.title}"`);
-	s.frames[s.frames.length - 1].stepId = stepId;
-	markVisited(step);
-	s.touch(cur, now);
-	return s.result(resumeView(step));
-}
-/**
-* Enter ↘: go into the current step's sub-plan. `from` is where the learner
-* is now; Return from the sub-plan lands back there.
-*/
-function enter(plan, lookup, from, now) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return refused("this plan is not being walked");
-	const chain = s.tryChain();
-	if (!chain) return refused(STALE);
-	const cur = chain[chain.length - 1];
-	const step = stepById(cur, s.frames[s.frames.length - 1].stepId);
-	if (!step || step.kind !== "subplan") return refused("the current step is not a sub-plan");
-	if (s.frames.length >= 4) return refused(`sub-plans can nest at most 4 deep`);
-	const sub = s.subOf(step, cur);
-	if (!sub) return refused("the linked plan was deleted");
-	if (chain.some((p) => p.id === sub.id)) return refused(`"${sub.title}" is already open further up`);
-	const first = firstUnfinished(sub);
-	if (!first) return refused(`"${sub.title}" has no steps`);
-	s.frames.push({
-		planId: sub.id,
-		stepId: first.id,
-		cameFrom: from
-	});
-	markVisited(step);
-	markVisited(first);
-	if (sub.status === "complete") {
-		sub.status = "active";
-		delete sub.completedAt;
-	}
-	s.touch(cur, now);
-	s.touch(sub, now);
-	return s.result(resumeView(first));
-}
-/**
-* Return ⤴: leave the current plan without completing anything, back to
-* where it was entered. From the outermost plan, the walk ends (the plan
-* stays active and resumable) and the learner lands where they started it.
-*/
-function returnUp(plan, lookup, now) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return refused("this plan is not being walked");
-	const frame = s.frames.pop();
-	if (!s.frames.length) delete s.root.nav;
-	s.touch(s.root, now);
-	return s.result(frame.cameFrom);
-}
-/** How precisely a ref pins a location: the number of ids it names. */
-function refSpecificity(ref) {
-	return (ref.sc ? 1 : 0) + (ref.st ? 2 : 0) + (ref.pf ? 4 : 0) + (ref.ps ? 8 : 0);
-}
-/**
-* The learner is now at `view` — however they got there: the plan, the scene
-* tree, the proof panel, the Math view. The plan follows:
-*
-* - On the current content step: it counts as visited and remembers the view
-*   as its resume point.
-* - On another content step of the plan being walked, or of a plan further
-*   out on the frame stack: the plan moves there (leaving any sub-plans above
-*   that level the way Return does — nothing is completed) and marks it
-*   visited. The innermost level with a match wins; within it, the most
-*   specific ref (a proof step over its scene), then the nearest step after
-*   the current one.
-* - Anywhere else (wandering off): nothing changes.
-*
-* Glossary steps never match — their ref names only a lesson, so they would
-* claim every view in it. A sub-plan the learner hasn't entered isn't entered
-* for them. `onStep` says whether the view is on (now) the current step;
-* `moved` whether the plan's position changed to follow the learner.
-*/
-function recordView(plan, lookup, view, now) {
-	const s = new Session(plan, lookup);
-	const none = {
-		changed: [],
-		go: null,
-		onStep: false,
-		moved: false
-	};
-	if (!s.frames.length) return none;
-	const chain = s.tryChain();
-	if (!chain) return none;
-	const depth = chain.length - 1;
-	chain[depth];
-	const hereId = s.frames[depth].stepId;
-	for (let d = depth; d >= 0; d--) {
-		const p = chain[d];
-		const at = stepIndex(p, s.frames[d].stepId);
-		let best = null;
-		p.steps.forEach((step, i) => {
-			if (step.kind === "subplan" || step.kind === "glossary" || !showsRef(view, step.ref)) return;
-			const score = refSpecificity(step.ref);
-			const dist = i === at ? -1 : i > at ? i - at : p.steps.length + (at - i);
-			if (!best || score > best.score || score === best.score && dist < best.dist) best = {
-				step,
-				score,
-				dist
-			};
-		});
-		if (!best) continue;
-		const { step } = best;
-		if (d === depth && step.id === hereId) {
-			markVisited(step);
-			step.lastView = clone(view);
-			s.touch(p, now);
-			return {
-				...s.result(null),
-				onStep: true,
-				moved: false
-			};
-		}
-		s.frames.length = d + 1;
-		s.frames[d].stepId = step.id;
-		markVisited(step);
-		step.lastView = clone(view);
-		s.touch(p, now);
-		return {
-			...s.result(null),
-			onStep: true,
-			moved: true
-		};
-	}
-	return none;
-}
-/**
-* How far through `plan` the learner is. A content step counts 1 once done or
-* skipped; a sub-plan step counts its sub-plan's fraction (a referenced plan
-* contributes its own, shared progress; a missing one counts 0) — even when
-* the step itself is marked done, since a linked plan reopened or edited
-* since has less to show. A skipped sub-plan counts 1. A complete plan is 100%.
-*/
-function progress(plan, lookup, seen = /* @__PURE__ */ new Set()) {
-	const total = plan.steps.length;
-	if (plan.status === "complete") return {
-		done: total,
-		total,
-		fraction: 1
-	};
-	if (!total) return {
-		done: 0,
-		total: 0,
-		fraction: 0
-	};
-	seen.add(plan.id);
-	let done = 0;
-	for (const step of plan.steps) {
-		if (step.state === "skipped") {
-			done += 1;
-			continue;
-		}
-		if (step.kind !== "subplan") {
-			if (step.state === "done") done += 1;
-			continue;
-		}
-		const sub = "nested" in step.sub ? step.sub.nested : lookup(step.sub.planId);
-		if (!sub) continue;
-		if (seen.has(sub.id) || !sub.steps.length) {
-			if (step.state === "done") done += 1;
-			continue;
-		}
-		done += progress(sub, lookup, new Set(seen)).fraction;
-	}
-	return {
-		done,
-		total,
-		fraction: done / total
-	};
-}
-/** "Understand terminal velocity › Newton's second law › step 1 of 2". */
-function breadcrumb(plan, lookup) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return [];
-	const chain = s.tryChain();
-	if (!chain) return [];
-	return chain.map((p, i) => {
-		const stepId = s.frames[i].stepId;
-		const idx = stepIndex(p, stepId);
-		return {
-			planId: p.id,
-			title: p.title,
-			stepId,
-			stepTitle: p.steps[idx]?.title ?? "",
-			stepNumber: idx + 1,
-			stepCount: p.steps.length
-		};
-	});
-}
-/** The step the learner is on (innermost frame), or null when not walking. */
-function currentStep(plan, lookup) {
-	const s = new Session(plan, lookup);
-	if (!s.frames.length) return null;
-	const chain = s.tryChain();
-	if (!chain) return null;
-	return stepById(chain[chain.length - 1], s.frames[s.frames.length - 1].stepId) ?? null;
-}
-/**
-* `plan` with its walk stepped out of `deletedId`, or null if it isn't inside
-* it. Deleting a linked plan the learner is walking inside would leave the
-* frame stack pointing at nothing; instead the stack is cut back to the frame
-* that holds the link, so the parent rests on its (now dangling) sub-plan step
-* — where the UI offers Remove or Import. Nothing is completed.
-*/
-function leaveDeletedPlan(plan, deletedId, now) {
-	const i = (plan.nav?.frames ?? []).findIndex((f) => f.planId === deletedId);
-	if (i <= 0) return null;
-	const p = clone(plan);
-	p.nav.frames = p.nav.frames.slice(0, i);
-	p.updatedAt = now;
-	return p;
-}
-/** Mark the plan complete. Step states stay as history; the walk ends. */
-function markComplete$1(plan, now) {
-	const p = clone(plan);
-	p.status = "complete";
-	p.completedAt = now;
-	delete p.nav;
-	p.updatedAt = now;
-	return p;
-}
-/**
-* Restart: the plan's progress back to the beginning — every step not
-* started, resume points forgotten, nested sub-plans reset too, the walk
-* ended. Linked plans are left alone: they're separate plans, and their
-* progress is shared with whatever else links them.
-*/
-function restartPlan(plan, now) {
-	const reset = (p) => {
-		p.status = "active";
-		delete p.completedAt;
-		delete p.nav;
-		p.updatedAt = now;
-		for (const s of p.steps) {
-			s.state = "todo";
-			if (s.kind === "subplan") {
-				if ("nested" in s.sub) reset(s.sub.nested);
-			} else delete s.lastView;
-		}
-	};
-	const p = clone(plan);
-	reset(p);
-	return p;
-}
-/** Reopen a complete plan. */
-function reopen(plan, now) {
-	const p = clone(plan);
-	p.status = "active";
-	delete p.completedAt;
-	p.updatedAt = now;
-	return p;
-}
-var CONTENT_KINDS = /* @__PURE__ */ new Set([
-	"scene",
-	"step",
-	"proof",
-	"proofStep",
-	"glossary"
-]);
-/** The ref ids each kind needs to land where it promises. */
-var KIND_IDS = {
-	scene: ["sc"],
-	step: ["sc", "st"],
-	proof: ["pf"],
-	proofStep: ["pf", "ps"],
-	glossary: ["glossary"]
-};
-var STATES = /* @__PURE__ */ new Set([
-	"todo",
-	"visited",
-	"done",
-	"skipped"
-]);
-/** Structural problems with a plan (e.g. an imported file); empty when valid. */
-/** How deep nested plans may go before validation stops descending. Far more
-*  than the navigator can walk (MAX_PLAN_DEPTH); it only bounds the recursion
-*  so a deep import or a cyclic IndexedDB record is reported, not a stack overflow. */
-var MAX_NESTING = 32;
-function validatePlan(plan, path = "plan", planIds = /* @__PURE__ */ new Set(), ancestors = /* @__PURE__ */ new Set()) {
-	const errs = [];
-	const p = plan;
-	if (!p || typeof p !== "object") return [`${path}: not an object`];
-	const outermost = ancestors.size === 0;
-	if (ancestors.has(p)) return [`${path}: a plan that contains itself`];
-	if (ancestors.size >= MAX_NESTING) return [`${path}: nested more than ${MAX_NESTING} deep`];
-	ancestors = new Set(ancestors).add(p);
-	if (typeof p.id === "string" && p.id) {
-		if (planIds.has(p.id)) errs.push(`${path}: plan id "${p.id}" is used twice in this plan`);
-		planIds.add(p.id);
-	}
-	if (p.schemaVersion !== 1) errs.push(`${path}: unsupported schemaVersion ${String(p.schemaVersion)}`);
-	if (typeof p.id !== "string" || !p.id) errs.push(`${path}: missing id`);
-	if (typeof p.title !== "string") errs.push(`${path}: missing title`);
-	if (!p.target || typeof p.target.text !== "string" || !isObject(p.target.origin)) errs.push(`${path}: missing target`);
-	if (p.status !== "active" && p.status !== "complete") errs.push(`${path}: bad status`);
-	if (!Number.isFinite(p.createdAt) || !Number.isFinite(p.updatedAt)) errs.push(`${path}: createdAt and updatedAt must be numbers`);
-	if (p.completedAt !== void 0 && !Number.isFinite(p.completedAt)) errs.push(`${path}: bad completedAt`);
-	if (!Array.isArray(p.steps)) return [...errs, `${path}: steps is not a list`];
-	const ids = /* @__PURE__ */ new Set();
-	Array.from(p.steps).forEach((step, i) => {
-		const at = `${path}.steps[${i}]`;
-		if (!step || typeof step.id !== "string" || !step.id) {
-			errs.push(`${at}: missing id`);
-			return;
-		}
-		if (ids.has(step.id)) errs.push(`${at}: duplicate id "${step.id}"`);
-		ids.add(step.id);
-		if (!STATES.has(step.state)) errs.push(`${at}: bad state`);
-		if (typeof step.title !== "string" || typeof step.why !== "string") errs.push(`${at}: needs a title and a why`);
-		if (step.source !== "ai" && step.source !== "learner") errs.push(`${at}: bad source`);
-		if (step.kind === "subplan") {
-			const sub = step.sub;
-			if (isObject(sub) && "nested" in sub && "planId" in sub) errs.push(`${at}: sub-plan has both a nested plan and a planId`);
-			else if (isObject(sub) && "nested" in sub) errs.push(...validatePlan(sub.nested, `${at}.sub.nested`, planIds, ancestors));
-			else if (!isObject(sub) || !nonEmpty(sub.planId)) errs.push(`${at}: sub-plan has neither nested plan nor planId`);
-		} else if (CONTENT_KINDS.has(step.kind)) {
-			const ref = step.ref;
-			const refOk = isObject(ref) && typeof ref.lesson === "string" && LESSON_ID.test(ref.lesson);
-			if (!refOk) errs.push(`${at}: missing ref.lesson`);
-			else {
-				const missing = KIND_IDS[step.kind].filter((k) => typeof ref[k] !== "string" || !ref[k]);
-				if (missing.length) errs.push(`${at}: a ${step.kind} ref needs ${missing.join(" and ")}`);
-				const bad = [
-					"sc",
-					"st",
-					"pf",
-					"ps"
-				].filter((k) => ref[k] !== void 0 && (typeof ref[k] !== "string" || !TOKEN.test(ref[k])));
-				if (bad.length) errs.push(`${at}: ref ${bad.join(", ")} not a plain id`);
-			}
-			const view = step.view;
-			if (!isObject(view)) errs.push(`${at}: missing view`);
-			else if (refOk && !viewMatchesRef(view, ref)) errs.push(`${at}: view is not at its ref`);
-			const last = step.lastView;
-			if (last !== void 0 && !isObject(last)) errs.push(`${at}: bad lastView`);
-			else if (last !== void 0 && refOk && !viewMatchesRef(last, ref)) errs.push(`${at}: lastView is not at its ref`);
-		} else errs.push(`${at}: unknown kind "${String(step.kind)}"`);
-	});
-	if (p.nav !== void 0 && p.status === "complete") errs.push(`${path}: a complete plan is not being walked, but has a saved position`);
-	if (p.nav !== void 0) {
-		const frames = isObject(p.nav) ? p.nav.frames : void 0;
-		if (!Array.isArray(frames) || !frames.length) errs.push(`${path}.nav: frames is not a non-empty list`);
-		else if (frames.length > 4) errs.push(`${path}.nav: deeper than 4 frames`);
-		else {
-			Array.from(frames).forEach((f, i) => {
-				const fr = f;
-				if (!isObject(fr) || !nonEmpty(fr.planId) || !nonEmpty(fr.stepId) || !isObject(fr.cameFrom)) errs.push(`${path}.nav.frames[${i}]: needs planId, stepId and a cameFrom view`);
-			});
-			const seen = /* @__PURE__ */ new Set();
-			Array.from(frames).forEach((f, i) => {
-				const id = isObject(f) ? f.planId : void 0;
-				if (typeof id !== "string") return;
-				if (seen.has(id)) errs.push(`${path}.nav.frames[${i}]: plan "${id}" is already on the stack`);
-				seen.add(id);
-			});
-			const f0 = frames[0];
-			if (isObject(f0) && (f0.planId !== p.id || !ids.has(String(f0.stepId)))) errs.push(`${path}.nav.frames[0]: must be this plan, on one of its steps`);
-		}
-	}
-	if (outermost && !errs.length) try {
-		JSON.stringify(p);
-	} catch {
-		errs.push(`${path}: not a JSON document (it contains a cycle)`);
-	}
-	return errs;
-}
-function nonEmpty(v) {
-	return typeof v === "string" && v.length > 0;
-}
-function isObject(v) {
-	return !!v && typeof v === "object" && !Array.isArray(v);
-}
-var PLAN_FILE_FORMAT = "algebench-learning-plans";
-/**
-* A file holding `plans` plus every plan they reference, transitively, so an
-* import on another browser keeps the links working. Walks are dropped: where
-* the learner was is not portable.
-*/
-function exportPlans(plans, lookup, now) {
-	const out = /* @__PURE__ */ new Map();
-	const visit = (p) => {
-		for (const s of p.steps) {
-			if (s.kind !== "subplan") continue;
-			if ("nested" in s.sub) {
-				visit(s.sub.nested);
-				continue;
-			}
-			const ref = lookup(s.sub.planId);
-			if (ref && !out.has(ref.id)) add(ref);
-		}
-	};
-	const dropWalk = (p) => {
-		delete p.nav;
-		for (const s of p.steps) if (s.kind === "subplan" && "nested" in s.sub) dropWalk(s.sub.nested);
-	};
-	const add = (p) => {
-		const c = clone(p);
-		dropWalk(c);
-		out.set(c.id, c);
-		visit(c);
-	};
-	for (const p of plans) if (!out.has(p.id)) add(p);
-	return {
-		format: PLAN_FILE_FORMAT,
-		version: 1,
-		exportedAt: now,
-		plans: [...out.values()]
-	};
-}
-/** Every stored view in `plan` (nested plans included) reduced to `navigableView`. */
-function withNavigableViews(plan) {
-	const p = clone(plan);
-	const walk = (q) => {
-		q.target.origin = navigableView(q.target.origin);
-		for (const f of q.nav?.frames ?? []) f.cameFrom = navigableView(f.cameFrom);
-		for (const st of q.steps) {
-			if (st.kind === "subplan") {
-				if ("nested" in st.sub) walk(st.sub.nested);
-				continue;
-			}
-			st.view = navigableView(st.view);
-			if (st.lastView) st.lastView = navigableView(st.lastView);
-		}
-	};
-	walk(p);
-	return p;
-}
-/** Every plan id in `plan`'s tree: its own and its nested plans'. */
-function planTreeIds(plan) {
-	const ids = /* @__PURE__ */ new Set();
-	const walk = (p) => {
-		ids.add(p.id);
-		for (const s of p.steps) if (s.kind === "subplan" && "nested" in s.sub) walk(s.sub.nested);
-	};
-	walk(plan);
-	return ids;
-}
-/**
-* Which parsed plans can join the stored ones. A plan replaces the stored
-* record with its id; otherwise every id in its tree must be new to the
-* stored forest (minus the records being replaced) — plan ids are identity to
-* the navigator, and Export all must stay a file parsePlanFile accepts.
-*/
-function mergeImport(stored, incoming) {
-	const replaced = new Set(incoming.map((p) => p.id));
-	const taken = /* @__PURE__ */ new Set();
-	for (const p of stored) if (!replaced.has(p.id)) for (const id of planTreeIds(p)) taken.add(id);
-	const plans = [];
-	const errors = [];
-	const storedById = new Map(stored.map((p) => [p.id, p]));
-	const ordered = [...incoming.filter((p) => storedById.has(p.id)), ...incoming.filter((p) => !storedById.has(p.id))];
-	for (const p of ordered) {
-		const ids = planTreeIds(p);
-		const clash = [...ids].filter((id) => taken.has(id));
-		if (clash.length) {
-			errors.push(`plan id "${clash[0]}" in “${p.title}” is already used by another saved plan`);
-			const kept = storedById.get(p.id);
-			if (kept) for (const id of planTreeIds(kept)) taken.add(id);
-			continue;
-		}
-		for (const id of ids) taken.add(id);
-		plans.push(p);
-	}
-	return {
-		plans,
-		errors
-	};
-}
-/** Parse an exported file: the plans that are valid, and why the others are not. */
-function parsePlanFile(text) {
-	let data;
-	try {
-		data = JSON.parse(text);
-	} catch {
-		return {
-			plans: [],
-			errors: ["not a JSON file"]
-		};
-	}
-	const file = data;
-	if (!file || file.format !== "algebench-learning-plans" || !Array.isArray(file.plans)) return {
-		plans: [],
-		errors: ["not an AlgeBench learning-plans file"]
-	};
-	if (file.version !== 1) return {
-		plans: [],
-		errors: [`unsupported file version ${String(file.version)}`]
-	};
-	const plans = [];
-	const errors = [];
-	const ids = /* @__PURE__ */ new Set();
-	file.plans.forEach((p, i) => {
-		const treeIds = /* @__PURE__ */ new Set();
-		const errs = validatePlan(p, `plans[${i}]`, treeIds);
-		if (!errs.length) {
-			if (ids.has(p.id)) errs.push(`plans[${i}]: duplicate id "${p.id}"`);
-			else {
-				const clash = [...treeIds].filter((id) => ids.has(id));
-				if (clash.length) errs.push(`plans[${i}]: nested plan id ${clash.map((c) => `"${c}"`).join(", ")} already used in this file`);
-			}
-		}
-		if (errs.length) errors.push(...errs);
-		else {
-			const clean = withNavigableViews(p);
-			const after = validatePlan(clean, `plans[${i}]`);
-			if (after.length) {
-				errors.push(...after);
-				return;
-			}
-			for (const id of treeIds) ids.add(id);
-			plans.push(clean);
-		}
-	});
-	return {
-		plans,
-		errors
-	};
-}
 //#endregion
 //#region src/plan-store.ts
 var DB_NAME = "algebench-plans";
@@ -22557,7 +22735,11 @@ var ui = {
 	/** A plan whose Delete was clicked once and now asks to be clicked again. */
 	confirmDelete: null,
 	/** Likewise for Restart, which wipes the plan's progress. */
-	confirmRestart: null
+	confirmRestart: null,
+	/** What the AI planner is working on, while a request is out. */
+	planning: null,
+	/** A plan the AI made, shown for the learner to start, keep or discard; not saved yet. */
+	preview: null
 };
 async function reloadPlans() {
 	try {
@@ -22881,11 +23063,12 @@ function insertAndEnter(holder, andEnter = true) {
 	} else maybeGuide();
 }
 /** Ask for a title in the panel itself; `submit` runs with a non-empty title. */
-function askTitle(label, value, submit) {
+function askTitle(label, value, submit, ok = "Create") {
 	ui.asking = {
 		label,
 		value,
-		submit
+		submit,
+		ok
 	};
 	render();
 }
@@ -22904,7 +23087,7 @@ function titleForm() {
 	});
 	form.appendChild(input);
 	const row = el("div", "plan-tools");
-	const ok = button("Create", () => form.requestSubmit(), { cls: "plan-btn-primary" });
+	const ok = button(a.ok, () => form.requestSubmit(), { cls: "plan-btn-primary" });
 	row.appendChild(ok);
 	row.appendChild(button("Cancel", () => {
 		ui.asking = null;
@@ -22959,6 +23142,117 @@ function createPlanFromHere() {
 		persist([p]);
 		startWalking(p.id);
 	});
+}
+/** Bumped by every request and by Cancel, so only the latest reply is used. */
+var planSeq = 0;
+/** "+ New plan": what do you want to understand? Then the AI plans a path to it. */
+function newPlanFromGoal() {
+	askTitle("What do you want to understand?", "", (target) => {
+		requestPlan(target);
+	}, "Plan it");
+}
+/**
+* Ask the learning_plan expert for a path to `target` from the current view.
+* A plan is shown as a preview first, so a weak one never lands in the list.
+*/
+async function requestPlan(target, clarifications = []) {
+	target = target.trim();
+	if (!target) return;
+	openPanel();
+	const seq = ++planSeq;
+	const goal = clarifications.length ? clarifications[clarifications.length - 1].answer.trim() || target : target;
+	Object.assign(ui, {
+		asking: null,
+		preview: null,
+		notice: "",
+		planning: goal,
+		mode: "list"
+	});
+	render();
+	const origin = captureViewState({ includeCamera: true });
+	let reply;
+	try {
+		reply = readPlanReply(await invokeExpert(PLAN_EXPERT, planRequest(target, origin, clarifications), { timeoutMs: PLAN_TIMEOUT_MS }));
+	} catch (e) {
+		reply = {
+			kind: "reason",
+			reason: e.message || "The planner could not be reached."
+		};
+	}
+	if (seq !== planSeq) return;
+	ui.planning = null;
+	if (reply.kind === "result") try {
+		ui.preview = {
+			plan: planFromReply(reply, goal, origin, now(), newId),
+			caveat: reply.caveat
+		};
+	} catch (e) {
+		ui.notice = `The plan that came back couldn't be used (${e.message}).`;
+	}
+	else if (reply.kind === "question") {
+		const question = reply.question;
+		askTitle(question, "", (answer) => {
+			requestPlan(target, [...clarifications, {
+				question,
+				answer
+			}]);
+		}, "Answer");
+		return;
+	} else if (reply.kind === "chat") ui.notice = "That doesn't read as something to learn. Try asking it in the chat.";
+	else ui.notice = reply.reason;
+	render();
+}
+function cancelPlanning() {
+	planSeq++;
+	ui.planning = null;
+	render();
+}
+function renderPlanning(body) {
+	const box = el("div", "plan-planning");
+	box.appendChild(el("div", "plan-planning-text", "Planning a path to"));
+	box.appendChild(elMath("div", "plan-preview-title", ui.planning ?? ""));
+	box.appendChild(el("div", "plan-guide-status", "Picking lesson steps, proofs and terms… this takes a few seconds."));
+	const row = el("div", "plan-tools");
+	row.appendChild(button("Cancel", cancelPlanning));
+	box.appendChild(row);
+	body.appendChild(box);
+}
+function renderPreview(body) {
+	const { plan, caveat } = ui.preview;
+	const box = el("div", "plan-preview");
+	box.appendChild(el("div", "plan-current-meta", `AI plan · ${plan.steps.length} step${plan.steps.length === 1 ? "" : "s"}`));
+	box.appendChild(elMath("div", "plan-preview-title", plan.title));
+	if (caveat) box.appendChild(elMath("div", "plan-notice", caveat));
+	const ol = el("ol", "plan-preview-steps");
+	for (const s of plan.steps) {
+		const li = el("li", "plan-preview-step");
+		const head = el("div", "plan-preview-step-head");
+		head.appendChild(stepTitle("plan-preview-step-title", s));
+		head.appendChild(el("span", "plan-badge", KIND_LABEL[s.kind]));
+		li.appendChild(head);
+		if (s.why) li.appendChild(elMath("div", "plan-current-why", s.why));
+		ol.appendChild(li);
+	}
+	box.appendChild(ol);
+	const row = el("div", "plan-tools");
+	const keep = () => {
+		ui.preview = null;
+		persist([plan]);
+	};
+	row.appendChild(button("Start", () => {
+		keep();
+		startWalking(plan.id);
+	}, { cls: "plan-btn-primary" }));
+	row.appendChild(button("Save for later", () => {
+		keep();
+		render();
+	}));
+	row.appendChild(button("Discard", () => {
+		ui.preview = null;
+		render();
+	}));
+	box.appendChild(row);
+	body.appendChild(box);
 }
 /** Click twice: the first click arms the button for a few seconds. */
 function armed(key, id) {
@@ -23354,10 +23648,11 @@ function glossaryCard(step) {
 function renderList(body) {
 	const all = [...plans.values()].sort((a, b) => b.updatedAt - a.updatedAt);
 	const top = el("div", "plan-tools");
-	top.appendChild(button("+ New plan", createPlanFromHere, {
+	top.appendChild(button("+ New plan", newPlanFromGoal, {
 		cls: "plan-btn-primary",
-		title: "Start a plan from what you are looking at"
+		title: "Say what you want to understand, and the AI plans a path to it through the lessons"
 	}));
+	top.appendChild(button("+ From this view", createPlanFromHere, { title: "Start a plan by hand, from what you are looking at" }));
 	top.appendChild(button("Import…", importFile));
 	if (all.length) top.appendChild(button("Export all", () => exportAll(all.map((p) => p.id))));
 	body.appendChild(top);
@@ -23407,6 +23702,8 @@ function render() {
 	if (ui.storageError) body.appendChild(el("div", "plan-notice plan-notice-error", ui.storageError));
 	if (ui.notice) body.appendChild(el("div", "plan-notice", ui.notice));
 	if (ui.asking) body.appendChild(titleForm());
+	else if (ui.planning) renderPlanning(body);
+	else if (ui.preview) renderPreview(body);
 	else if (ui.mode === "walk" && root) renderWalk(root, body);
 	else renderList(body);
 	dom.btn?.classList.toggle("active", isOpen());
@@ -23869,6 +24166,11 @@ async function setupPlanUi() {
 		attributeFilter: ["class"]
 	});
 	for (const ev of FOLLOW_EVENTS) window.addEventListener(ev, follow);
+	window.addEventListener(PLAN_REQUEST_EVENT, (e) => {
+		const target = e.detail?.target;
+		if (typeof target === "string") requestPlan(target);
+	});
+	window.algebenchPlanAvailable = true;
 	if (ui.activeId) openPanel();
 }
 //#endregion

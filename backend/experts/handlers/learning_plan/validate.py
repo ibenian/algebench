@@ -33,13 +33,19 @@ def plan_steps(picks, shown: dict[str, Entry]) -> tuple[list[dict], list[str]]:
             problems.append(f"{handle or '(empty)'} is not a handle in the catalog")
             continue
         key = tuple(sorted(entry.ref.items()))
+        # Repeats count as dropped picks, so an answer that is mostly one step
+        # said three times still earns the retry (see `mostly_invalid`).
         if key in seen:
+            problems.append(f"{handle} repeats a step already in the plan")
             continue
         why = _flat(getattr(pick, "why", ""), MAX_WHY)
         if not why:
             problems.append(f"{handle} has no why")
             continue
         seen.add(key)
+        if any(_contains(k["ref"], entry.ref) or _contains(entry.ref, k["ref"]) for k in steps):
+            problems.append(f"{handle} covers the same content as a step already in the plan")
+            continue
         steps.append({
             "kind": entry.kind,
             "title": _flat(entry.title, MAX_TITLE),
@@ -49,6 +55,14 @@ def plan_steps(picks, shown: dict[str, Entry]) -> tuple[list[dict], list[str]]:
         if len(steps) == MAX_PLAN_STEPS:
             break
     return steps, problems
+
+
+def _contains(outer: dict, inner: dict) -> bool:
+    """True when ``inner`` is part of ``outer``: a step of its scene, a proof
+    step of its proof, a proof of its scene. A plan keeps whichever came first,
+    so a proof after two of its own steps, or a scene's step after the whole
+    scene, is dropped rather than sending the learner through it twice."""
+    return len(inner) > len(outer) and all(inner.get(k) == v for k, v in outer.items())
 
 
 def mostly_invalid(steps: list[dict], problems: list[str]) -> bool:
