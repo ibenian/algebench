@@ -63,9 +63,18 @@ function keepOneOpen(changed?: Wired): void {
     const shown = wired.filter(isShown);
     if (shown.length && shown.every(isFolded)) {
         const other = shown.find((w) => w !== changed) ?? shown[0]!;
-        setFolded(other, false);
+        // Saved only when the learner's own fold forced it. Opened because the
+        // proof is closed (at load, before a scene shows one, say), the chat's
+        // saved fold is kept and comes back once the proof is shown again.
+        setFolded(other, false, !!changed);
     }
     refreshButtons();
+}
+
+/** Re-apply the saved folds: the proof has just been shown again. */
+function restoreSaved(): void {
+    for (const w of wired) setFolded(w, loadFolded(w.sec.key), false);
+    keepOneOpen();
 }
 
 function refreshButtons(): void {
@@ -114,6 +123,19 @@ function wire(sec: Section): void {
     setFolded(w, loadFolded(sec.key), false);
 }
 
+/**
+ * Unfold the Proof: something navigated to a proof step (a plan step, a link,
+ * the AI, a click in the proof), so the step must be on screen. Scene-driven
+ * proof syncing doesn't call this — a fold the learner chose survives that.
+ */
+export function showProofSection(): void {
+    const w = wired.find((x) => x.sec.host === 'proof-panel');
+    if (!w || !isFolded(w)) return;
+    setFolded(w, false);
+    keepOneOpen(w);
+    window.dispatchEvent(new Event('resize'));
+}
+
 /** A reply that lands while the Chat is folded: mark its header so it isn't missed. */
 function watchUnread(): void {
     const messages = document.getElementById('chat-messages');
@@ -131,7 +153,14 @@ export function setupSideSections(): void {
     // a proof that then closes must open again.
     const proof = document.getElementById('proof-panel');
     if (proof && typeof MutationObserver === 'function') {
-        new MutationObserver(() => keepOneOpen()).observe(proof, { attributes: true, attributeFilter: ['class'] });
+        let shown = !proof.classList.contains('hidden');
+        new MutationObserver(() => {
+            const now = !proof.classList.contains('hidden');
+            if (now === shown) return;   // a fold, not the proof opening or closing
+            shown = now;
+            if (now) restoreSaved();
+            else keepOneOpen();
+        }).observe(proof, { attributes: true, attributeFilter: ['class'] });
     }
     keepOneOpen();
     watchUnread();

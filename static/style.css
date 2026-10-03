@@ -3745,7 +3745,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
     flex-direction: column;
     overflow: hidden;
     flex-shrink: 0;
-    max-height: 60%;
+    /* Height bounds live in src/proof.ts (_clampProofHeight): drag, restore, resize. */
     background: var(--panel-bg);
 }
 #proof-panel.hidden { display: none; }
@@ -5338,6 +5338,7 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 #proof-panel.side-folded > :not(.side-section-head) { display: none !important; }
 #proof-panel.side-folded + #proof-resize-handle { display: none; }
 /* Folded chat: its header at the bottom, and the proof takes the tab. */
+#tab-chat.chat-folded #chat-unavailable-msg,
 #tab-chat.chat-folded #chat-messages,
 #tab-chat.chat-folded #preset-prompts,
 #tab-chat.chat-folded #chat-input-area { display: none !important; }
@@ -5513,7 +5514,9 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .plan-btn-small { font-size: 11.5px; padding: 3px 9px; display: inline-flex; align-items: center; gap: 5px; }
 .plan-btn-small svg { width: 12px; height: 12px; display: block; }
 .plan-list-toolbar { display: flex; align-items: center; gap: 6px; }
-.plan-list-tools { margin-left: auto; display: inline-flex; gap: 2px; }
+.plan-list-tools { margin-left: auto; flex: none; display: inline-flex; gap: 2px; }
+.plan-list-toolbar .plan-btn-primary { flex: none; }
+.plan-list-toolbar .plan-search { flex: 1; min-width: 0; padding: 4px 9px; font-size: 12px; }
 .plan-icon-btn {
     flex: none; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
     border: none; border-radius: var(--radius-sm, 6px); background: transparent; color: var(--muted-color); cursor: pointer;
@@ -5524,7 +5527,6 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .plan-icon-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
 .plan-icon-danger:hover { color: #d9534f; background: color-mix(in srgb, #d9534f 14%, transparent); }
 /* Search and status filter. */
-.plan-find { display: flex; flex-direction: column; gap: 8px; margin-top: -4px; }
 .plan-search {
     font: inherit; font-size: 12.5px; padding: 6px 10px; border-radius: var(--radius-sm, 6px);
     border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
@@ -5532,7 +5534,7 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 }
 .plan-search::placeholder { color: var(--muted-color); }
 .plan-search:focus { outline: none; border-color: var(--accent-color); }
-.plan-filter { display: flex; flex-wrap: wrap; gap: 4px; }
+.plan-filter { display: flex; flex-wrap: wrap; gap: 4px; margin-top: -6px; }
 .plan-chip {
     font: inherit; font-size: 11px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px;
     border-radius: var(--radius-full, 999px); border: 1px solid transparent;

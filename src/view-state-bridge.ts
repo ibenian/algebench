@@ -22,6 +22,7 @@ import { pushView, replaceView, isApplyingFromHistory } from '/nav-history.js';
 import { navigateTo, loadProofAsLesson } from '/scene-loader.js';
 import { loadBuiltinScene, loadSceneFromPath } from '/ui.js';
 import { setActiveProof, navigateProof, setProofPanelOpen } from '/proof.js';
+import { showProofSection } from '/side-sections.js';
 import { setSliderValue } from '/sliders.js';
 import { animateCamera, switchProjection } from '/camera.js';
 import { findCamButton } from '/cam-buttons.js';
@@ -404,6 +405,9 @@ export async function applyViewState(vs: ViewState | null | undefined, opts: App
             window.switchPanelTab(vs.panel === 'chat' ? 'chat' : 'doc');
         }
         setProofPanelOpen(!!vs.pp);
+        // A view that shows a proof (a plan's proof step, a link): unfold the
+        // Proof section if the learner had folded it, or the step isn't seen.
+        if (paLesson || (vs.pf != null && vs.pp && vs.panel === 'chat')) showProofSection();
 
         // 5d. Auto-ask: a deeplinked AI question (?aa=), e.g. from an embedded
         //     proof's "Ask AI". Fire ONCE, after navigation + proof open so the

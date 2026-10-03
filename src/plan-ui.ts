@@ -1079,10 +1079,12 @@ function listIcon(icon: string, title: string, onClick: () => void, cls = ''): H
 
 function renderList(body: HTMLElement): void {
     const all = [...plans.values()].sort((a, b) => b.updatedAt - a.updatedAt);
-    // One slim row: the AI planner first, then the by-hand and file tools as icons.
+    // One slim row: the AI planner, the search, then the by-hand and file tools as icons.
     const top = el('div', 'plan-list-toolbar');
     top.appendChild(button('New plan', newPlanFromGoal, { cls: 'plan-btn-primary plan-btn-small', icon: ICON_SPARK,
         title: 'Say what you want to understand, and the AI plans a path to it through the lessons' }));
+    const search = el('input', 'plan-search');
+    if (all.length) top.appendChild(search);
     const tools = el('span', 'plan-list-tools');
     tools.appendChild(listIcon(ICON_PLUS, 'New plan from this view: start a plan by hand, with what you are looking at as its first step', createPlanFromHere));
     tools.appendChild(listIcon(ICON_IMPORT, 'Import plans from a plan file (.json) someone shared or you exported', importFile));
@@ -1096,7 +1098,6 @@ function renderList(body: HTMLElement): void {
     }
 
     // Search and status filter. Typing refills only the list, so the box keeps focus.
-    const search = el('input', 'plan-search');
     search.type = 'search';
     search.placeholder = 'Search plans';
     search.title = 'Find a plan by its title or its steps';
@@ -1146,10 +1147,7 @@ function renderList(body: HTMLElement): void {
         chips.appendChild(c);
     }
     search.addEventListener('input', () => { ui.listQuery = search.value; fill(); });
-    const find = el('div', 'plan-find');
-    find.appendChild(search);
-    find.appendChild(chips);
-    body.appendChild(find);
+    body.appendChild(chips);
     body.appendChild(list);
     fill();
 }
