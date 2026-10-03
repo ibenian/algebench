@@ -22687,6 +22687,11 @@ var ICON_CLOSE = svg("M6 6l12 12M18 6L6 18");
 var ICON_RESTART = svg("M3 12a9 9 0 1 0 3-6.7M3 4v5h5");
 var ICON_RETURN = svg("M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11");
 var ICON_COLLAPSE = svg("M6 9l6 6 6-6");
+var ICON_PLUS = svg("M12 5v14M5 12h14");
+var ICON_IMPORT = svg("M12 20V8M7 13l5-5 5 5M5 4h14");
+var ICON_EXPORT = svg("M12 4v12M7 11l5 5 5-5M5 20h14");
+var ICON_TRASH = svg("M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13");
+var ICON_SPARK = svg("M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z");
 var ICON_EXPAND = svg("M6 15l6-6 6 6");
 var store = createPlanStore();
 var plans = /* @__PURE__ */ new Map();
@@ -22747,6 +22752,9 @@ var ui = {
 	confirmRestart: null,
 	/** What the AI planner is working on, while a request is out. */
 	planning: null,
+	/** The plans list's search text and status filter. */
+	listQuery: "",
+	listFilter: "all",
 	/** A plan the AI made, shown for the learner to start, keep or discard; not saved yet. */
 	preview: null
 };
@@ -23727,67 +23735,160 @@ function glossaryCard(step) {
 	if (entry) box.appendChild(makeAiAskButton("plan-ask-ai", `Ask AI about ${name}`, () => entry.prompt || `Explain "${name}" in the context of what I'm looking at.`));
 	return box;
 }
+var LIST_FILTERS = [
+	[
+		"all",
+		"All",
+		"Every plan"
+	],
+	[
+		"progress",
+		"In progress",
+		"Plans you have started and not finished"
+	],
+	[
+		"new",
+		"Not started",
+		"Plans you saved but haven’t started"
+	],
+	[
+		"complete",
+		"Completed",
+		"Plans marked complete"
+	]
+];
+/**
+* Where a plan belongs in the list. In progress = being walked, or any step
+* has progress — a plan left part-way (Leave, or restarted then left) is still
+* underway even though nothing is walking it now.
+*/
+function planFilter(p) {
+	if (p.status === "complete") return "complete";
+	return p.nav || p.steps.some((st) => shownState(st) !== "todo") ? "progress" : "new";
+}
+/** A small square icon button for the plans list; `title` is its tooltip and name. */
+function listIcon(icon, title, onClick, cls = "") {
+	const b = elHtml("button", `plan-icon-btn${cls ? " " + cls : ""}`, icon);
+	b.type = "button";
+	b.title = title;
+	b.setAttribute("aria-label", title);
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		onClick();
+	});
+	return b;
+}
 function renderList(body) {
 	const all = [...plans.values()].sort((a, b) => b.updatedAt - a.updatedAt);
-	const top = el("div", "plan-tools");
-	top.appendChild(button("+ New plan", newPlanFromGoal, {
-		cls: "plan-btn-primary",
+	const top = el("div", "plan-list-toolbar");
+	top.appendChild(button("New plan", newPlanFromGoal, {
+		cls: "plan-btn-primary plan-btn-small",
+		icon: ICON_SPARK,
 		title: "Say what you want to understand, and the AI plans a path to it through the lessons"
 	}));
-	top.appendChild(button("+ Plan from this view", createPlanFromHere, {
-		cls: "plan-btn-ghost",
-		title: "Start a new plan by hand, with what you are looking at as its first step"
-	}));
-	top.appendChild(button("Import…", importFile, {
-		cls: "plan-btn-ghost",
-		title: "Add plans from a plan file (.json) someone shared or you exported"
-	}));
-	if (all.length) top.appendChild(button("Export all", () => exportAll(all.map((p) => p.id)), {
-		cls: "plan-btn-ghost",
-		title: "Download all your plans as one file, to back up or share"
-	}));
+	const tools = el("span", "plan-list-tools");
+	tools.appendChild(listIcon(ICON_PLUS, "New plan from this view: start a plan by hand, with what you are looking at as its first step", createPlanFromHere));
+	tools.appendChild(listIcon(ICON_IMPORT, "Import plans from a plan file (.json) someone shared or you exported", importFile));
+	if (all.length) tools.appendChild(listIcon(ICON_EXPORT, "Export all your plans as one file, to back up or share", () => exportAll(all.map((p) => p.id))));
+	top.appendChild(tools);
 	body.appendChild(top);
 	if (!all.length) {
 		body.appendChild(el("div", "plan-empty", "No plans yet. A plan is a path to something you want to understand, built from lesson steps, proofs and terms — with sub-plans for anything you need first."));
 		return;
 	}
+	const search = el("input", "plan-search");
+	search.type = "search";
+	search.placeholder = "Search plans";
+	search.title = "Find a plan by its title or its steps";
+	search.setAttribute("aria-label", "Search plans");
+	search.value = ui.listQuery;
+	const chips = el("div", "plan-filter");
+	chips.setAttribute("role", "radiogroup");
+	chips.setAttribute("aria-label", "Show plans");
 	const list = el("ul", "plan-list");
-	for (const p of all) {
-		const li = el("li", `plan-item${p.status === "complete" ? " plan-item-complete" : ""}`);
-		const head = el("div", "plan-item-head");
-		head.appendChild(elMath("span", "plan-item-title", p.title));
-		if (p.status === "complete") head.appendChild(el("span", "plan-badge", "complete"));
-		else if (p.nav) head.appendChild(el("span", "plan-badge plan-badge-live", "in progress"));
-		li.appendChild(head);
-		li.appendChild(progressBar(p));
-		const actions = el("div", "plan-item-actions");
-		actions.appendChild(button(p.nav ? "Continue" : "Start", () => startWalking(p.id), {
-			cls: "plan-btn-primary",
-			title: p.nav ? "Pick up this plan where you left off" : "Start this plan from its first step"
-		}));
-		actions.appendChild(p.status === "complete" ? button("Reopen", () => reopenPlan(p.id), {
-			cls: "plan-btn-ghost",
-			title: "Mark this plan not complete again, keeping its progress"
-		}) : button("Mark complete", () => completePlan(p.id), {
-			cls: "plan-btn-ghost",
-			title: "Mark this plan done without walking the rest of it"
-		}));
-		actions.appendChild(restartButton(p));
-		actions.appendChild(button("Export", () => exportAll([p.id]), {
-			cls: "plan-btn-ghost",
-			title: "Download this plan as a file, to back up or share"
-		}));
-		actions.appendChild(ui.confirmDelete === p.id ? button("Really delete?", () => deletePlan(p.id), {
-			cls: "plan-btn-danger plan-btn-armed",
-			title: "Click again to delete this plan for good"
-		}) : button("Delete", () => deletePlan(p.id), {
-			cls: "plan-btn-ghost plan-btn-danger",
-			title: "Delete this plan (asks you to click again to confirm)"
-		}));
-		li.appendChild(actions);
-		list.appendChild(li);
+	const fill = () => {
+		const q = ui.listQuery.trim().toLowerCase();
+		list.innerHTML = "";
+		const counts = {
+			all: 0,
+			progress: 0,
+			new: 0,
+			complete: 0
+		};
+		let shown = 0;
+		for (const p of all) {
+			if (!(!q || p.title.toLowerCase().includes(q) || p.steps.some((st) => st.title.toLowerCase().includes(q)))) continue;
+			counts.all++;
+			counts[planFilter(p)]++;
+			if (ui.listFilter !== "all" && planFilter(p) !== ui.listFilter) continue;
+			list.appendChild(planRow(p));
+			shown++;
+		}
+		for (const c of chips.querySelectorAll("[data-filter]")) {
+			const n = c.querySelector(".plan-chip-count");
+			if (n) n.textContent = String(counts[c.dataset.filter]);
+		}
+		if (!shown) list.appendChild(el("li", "plan-empty plan-list-empty", q ? "No plans match." : "No plans here."));
+	};
+	for (const [key, label, tip] of LIST_FILTERS) {
+		const c = el("button", `plan-chip${ui.listFilter === key ? " plan-chip-on" : ""}`);
+		c.type = "button";
+		c.dataset.filter = key;
+		c.title = tip;
+		c.setAttribute("role", "radio");
+		c.setAttribute("aria-checked", ui.listFilter === key ? "true" : "false");
+		c.appendChild(el("span", void 0, label));
+		c.appendChild(el("span", "plan-chip-count"));
+		c.addEventListener("click", () => {
+			ui.listFilter = key;
+			for (const o of chips.children) {
+				o.classList.toggle("plan-chip-on", o === c);
+				o.setAttribute("aria-checked", o === c ? "true" : "false");
+			}
+			fill();
+		});
+		chips.appendChild(c);
 	}
+	search.addEventListener("input", () => {
+		ui.listQuery = search.value;
+		fill();
+	});
+	const find = el("div", "plan-find");
+	find.appendChild(search);
+	find.appendChild(chips);
+	body.appendChild(find);
 	body.appendChild(list);
+	fill();
+}
+/** One plan in the list: click it to continue; its other actions show on hover or focus. */
+function planRow(p) {
+	const li = el("li", `plan-item plan-item-${planFilter(p)}`);
+	const open = el("button", "plan-item-open");
+	open.type = "button";
+	open.title = p.nav ? "Continue this plan where you left off" : "Start this plan from its first step";
+	const head = el("span", "plan-item-head");
+	head.appendChild(elMath("span", "plan-item-title", p.title));
+	const where = planFilter(p);
+	if (where === "complete") head.appendChild(el("span", "plan-badge", "complete"));
+	else if (where === "progress") head.appendChild(el("span", "plan-badge plan-badge-live", "in progress"));
+	open.appendChild(head);
+	open.appendChild(progressBar(p));
+	open.addEventListener("click", () => startWalking(p.id));
+	li.appendChild(open);
+	const actions = el("div", "plan-item-actions");
+	actions.appendChild(p.status === "complete" ? listIcon(ICON_RETURN, "Reopen: mark this plan not complete again, keeping its progress", () => reopenPlan(p.id)) : listIcon(ICON_FINISH, "Mark complete: mark this plan done without walking the rest of it", () => completePlan(p.id)));
+	actions.appendChild(ui.confirmRestart === p.id ? button("Restart?", () => restart(p.id), {
+		cls: "plan-btn-armed plan-btn-small",
+		title: "Click again to reset this plan's progress and start from step 1"
+	}) : listIcon(ICON_RESTART, "Restart: start this plan over from step 1 (asks you to click again)", () => restart(p.id)));
+	actions.appendChild(listIcon(ICON_EXPORT, "Export this plan as a file, to back up or share", () => exportAll([p.id])));
+	actions.appendChild(ui.confirmDelete === p.id ? button("Delete?", () => deletePlan(p.id), {
+		cls: "plan-btn-danger plan-btn-armed plan-btn-small",
+		title: "Click again to delete this plan for good"
+	}) : listIcon(ICON_TRASH, "Delete this plan (asks you to click again)", () => deletePlan(p.id), "plan-icon-danger"));
+	if (ui.confirmRestart === p.id || ui.confirmDelete === p.id) li.classList.add("plan-item-armed");
+	li.appendChild(actions);
+	return li;
 }
 /** What the walk view shows of a plan's position: its step, and every step's state on the way to it. */
 function walkShown(root) {

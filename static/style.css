@@ -5478,19 +5478,64 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .plan-foot .plan-btn-ghost { font-size: 11.5px; }
 
 /* ----- every plan ----- */
-.plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.plan-item {
-    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent); border-radius: var(--radius-md, 8px);
-    padding: 11px 12px 9px; display: flex; flex-direction: column; gap: 8px;
-    background: color-mix(in srgb, var(--text-color) 2.5%, transparent);
+.plan-btn-small { font-size: 11.5px; padding: 3px 9px; display: inline-flex; align-items: center; gap: 5px; }
+.plan-btn-small svg { width: 12px; height: 12px; display: block; }
+.plan-list-toolbar { display: flex; align-items: center; gap: 6px; }
+.plan-list-tools { margin-left: auto; display: inline-flex; gap: 2px; }
+.plan-icon-btn {
+    flex: none; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: var(--radius-sm, 6px); background: transparent; color: var(--muted-color); cursor: pointer;
+    transition: color .15s, background .15s;
 }
-.plan-item-complete { opacity: 0.75; }
+.plan-icon-btn svg { width: 14px; height: 14px; display: block; pointer-events: none; }
+.plan-icon-btn:hover { color: var(--text-color); background: color-mix(in srgb, var(--text-color) 9%, transparent); }
+.plan-icon-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.plan-icon-danger:hover { color: #d9534f; background: color-mix(in srgb, #d9534f 14%, transparent); }
+/* Search and status filter. */
+.plan-find { display: flex; flex-direction: column; gap: 8px; margin-top: -4px; }
+.plan-search {
+    font: inherit; font-size: 12.5px; padding: 6px 10px; border-radius: var(--radius-sm, 6px);
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+    background: color-mix(in srgb, var(--text-color) 3%, transparent); color: var(--text-color);
+}
+.plan-search::placeholder { color: var(--muted-color); }
+.plan-search:focus { outline: none; border-color: var(--accent-color); }
+.plan-filter { display: flex; flex-wrap: wrap; gap: 4px; }
+.plan-chip {
+    font: inherit; font-size: 11px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 5px;
+    border-radius: var(--radius-full, 999px); border: 1px solid transparent;
+    background: color-mix(in srgb, var(--text-color) 6%, transparent); color: var(--muted-color); cursor: pointer;
+    transition: color .15s, background .15s, border-color .15s;
+}
+.plan-chip:hover { color: var(--text-color); }
+.plan-chip:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+.plan-chip-on { color: var(--text-color); background: color-mix(in srgb, var(--accent-color) 18%, transparent); border-color: color-mix(in srgb, var(--accent-color) 45%, transparent); }
+.plan-chip-count { font-size: 10px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.plan-list { list-style: none; margin: -4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.plan-list-empty { padding: 8px 2px; }
+/* A plan: a quiet row — click to continue; actions appear on hover or focus. */
+.plan-item { position: relative; border-radius: var(--radius-md, 8px); transition: background .15s; }
+.plan-item:hover, .plan-item:focus-within { background: color-mix(in srgb, var(--text-color) 5%, transparent); }
+.plan-item-open {
+    display: flex; flex-direction: column; gap: 7px; width: 100%; padding: 9px 10px; margin: 0;
+    border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: inherit;
+}
+.plan-item-open:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+.plan-item-complete .plan-item-title { color: var(--muted-color); }
 .plan-item-head { display: flex; gap: 8px; align-items: baseline; }
-.plan-item-title { flex: 1; font-weight: 600; line-height: 1.35; }
-.plan-badge { font-size: 10px; padding: 1px 7px; border-radius: var(--radius-full, 999px); border: 1px solid var(--border-color); color: var(--muted-color); white-space: nowrap; }
+.plan-item-title { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; line-height: 1.35; }
+.plan-badge { flex: none; font-size: 10px; padding: 1px 7px; border-radius: var(--radius-full, 999px); border: 1px solid var(--border-color); color: var(--muted-color); white-space: nowrap; }
 .plan-badge-live { border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); color: var(--accent-color); }
-.plan-item-actions { display: flex; gap: 2px; flex-wrap: wrap; align-items: center; }
-.plan-item-actions .plan-btn-primary { margin-right: 6px; }
+/* The actions float over the row's top-right corner, covering the badge while shown. */
+.plan-item-actions {
+    position: absolute; top: 5px; right: 6px; display: flex; gap: 1px; align-items: center;
+    padding: 1px; border-radius: var(--radius-sm, 6px);
+    background: color-mix(in srgb, var(--text-color) 5%, var(--panel-bg));
+    box-shadow: -10px 0 10px -4px color-mix(in srgb, var(--text-color) 5%, var(--panel-bg));
+    opacity: 0; pointer-events: none; transition: opacity .12s;
+}
+.plan-item:hover .plan-item-actions, .plan-item:focus-within .plan-item-actions, .plan-item-armed .plan-item-actions { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .plan-item-actions { opacity: 1; pointer-events: auto; } }
 
 /* "AI is thinking…" — shown under whatever asked the AI silently (the quiz's
    hint and answer buttons), since no question appears in the chat to show the
