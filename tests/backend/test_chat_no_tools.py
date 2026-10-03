@@ -162,3 +162,15 @@ def test_a_normal_turn_gets_the_recovered_chips(monkeypatch):
     text, tool_calls, _ = server.call_gemini_chat("explain", [], {})
     assert text == "The cone is the speed limit."
     assert [(c["name"], c["args"]) for c in tool_calls] == [("set_preset_prompts", {"prompts": ["Why a cone?"]})]
+
+
+def test_the_next_step_shortcut_reply_is_cleaned_too(monkeypatch):
+    """`next` takes the navigation shortcut, which has its own model call and
+    return; that reply gets the same cleanup and preset recovery."""
+    models = _wire(monkeypatch)
+    monkeypatch.setattr(server, "_detect_navigation", lambda *_a, **_k: (1, 2, "next"))
+    models.generate_content = _replying(models, (
+        "Now the light clock ticks.\n<tool_code>set_preset_prompts(prompts=['Why slower?'])</tool_code>"))
+    text, tool_calls, _ = server.call_gemini_chat("next", [], {"currentScene": {"steps": [{}, {}]}})
+    assert text == "Now the light clock ticks."
+    assert ("set_preset_prompts", {"prompts": ["Why slower?"]}) in [(c["name"], c.get("args")) for c in tool_calls]

@@ -1203,7 +1203,9 @@ def _call_gemini_chat(message, history, context, no_tools):
             if response.candidates and response.candidates[0].content.parts:
                 text = "".join(p.text for p in response.candidates[0].content.parts if p.text)
             debug_info = {"systemPrompt": system_prompt, "contents": [c.to_json_dict() for c in contents]}
-            return text.strip() or "Let me walk you through this step.", tool_calls, debug_info
+            # The same cleanup as every other reply: no written-out tool calls in
+            # the chat, and written-out preset prompts become the real chips.
+            return _finish_reply(text, tool_calls) or "Let me walk you through this step.", tool_calls, debug_info
         except Exception as e:
             return f"Navigated to step {step_num}.", tool_calls, {}
 
