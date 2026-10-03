@@ -70,3 +70,16 @@ def test_a_step_proof_carries_its_step_so_it_is_in_context():
     scene_proof = next(e for e in C.catalog_for("atmospheric-entry-physics").entries
                        if e.kind == "proof" and e.ref["pf"] == "terminal_velocity")
     assert "st" not in scene_proof.ref
+
+
+def test_symbols_and_short_names_find_their_lesson():
+    """A goal of just "π" (or "pi", or "e") scored zero everywhere: the
+    tokenizer was ASCII-only and dropped words under three letters."""
+    for goal in ("π", "pi", "what is e", "why π is irrational"):
+        assert [c.lesson for c in C.preselect(goal)][:1] == ["pi-and-e-constants"], goal
+
+
+def test_short_words_dont_match_every_title():
+    # "a" and "is" are stopwords, so they can't pull in a lesson by its title.
+    assert [c.lesson for c in C.preselect("what is a vector")][:1] == ["vector-operations"]
+    assert C.preselect("is a") == []

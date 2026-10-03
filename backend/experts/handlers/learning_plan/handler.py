@@ -38,7 +38,9 @@ NO_PLAN = "I couldn't put a plan together from the lessons for that. Try naming 
 
 @register_handler("learning_plan", request_model=LearningPlanRequest)
 def learning_plan(req: LearningPlanRequest) -> dict:
-    cats = preselect(req.target, req.where.lesson)
+    # An answer to the planner's question can name the actual subject ("explain
+    # it" → "terminal velocity"), so it picks lessons along with the target.
+    cats = preselect(" ".join([req.target] + [c.answer for c in req.clarifications]), req.where.lesson)
     if not cats:
         # Nothing published matches, so there is nothing for the model to choose.
         log.info("%s no lessons match %r", LOG_TAG, req.target[:120])

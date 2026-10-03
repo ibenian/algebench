@@ -287,3 +287,12 @@ def test_lesson_ids_with_dot_segments_are_refused():
         with pytest.raises(ValueError):
             LearningPlanRequest.model_validate({"target": "x", "where": {"lesson": bad}})
     LearningPlanRequest.model_validate({"target": "x", "where": {"lesson": "draft/chart-demo"}})
+
+
+def test_a_clarification_answer_picks_the_lessons(monkeypatch):
+    """Asked from eigenvalues, "explain it" answered "terminal velocity" must
+    bring in the lesson about terminal velocity, not just the vague target's."""
+    calls = _stub(monkeypatch, PlanProposal(is_plan=True, reason="stub"))
+    H.learning_plan(_req(target="explain it", where={"lesson": "eigenvalues"},
+                         clarifications=[{"question": "Explain what?", "answer": "terminal velocity"}]))
+    assert "Atmospheric Entry" in calls[0]["catalog"]

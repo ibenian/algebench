@@ -71,14 +71,33 @@ _STOP = frozenset("""
     are was were can will its it's your you them they their than then also just
     about understand understanding learn learning want need know explain show
     between using use used work works way ways get make our there here have has
+    a an is of to in on at it be as by or do me my i so
 """.split())
 
+#: Symbols spelled the way lesson text spells them, so a goal of "π" finds
+#: the lesson about pi (and one titled "π and e" is found by "pi").
+_GREEK = ("alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi "
+          "omicron pi rho sigma tau upsilon phi chi psi omega").split()
+_SYMBOLS = {chr(0x3B1 + i): f" {n} " for i, n in enumerate(_GREEK[:17])}           # α–ρ
+_SYMBOLS.update({chr(0x3C3 + i): f" {n} " for i, n in enumerate(_GREEK[17:])})     # σ–ω
+_SYMBOLS.update({"ς": " sigma ", "ϕ": " phi ", "ϑ": " theta ", "ε": " epsilon ",
+                 "∞": " infinity ", "∫": " integral ", "∑": " sum ", "∏": " product ",
+                 "√": " root ", "∂": " partial ", "∇": " gradient ", "ℏ": " hbar "})
+_SYMBOL_RE = re.compile("|".join(map(re.escape, _SYMBOLS)))
 
-def words(text: str) -> set[str]:
-    """Content words, lowercased, with a plural ``s`` dropped."""
+
+def _ascii(text: str) -> str:
+    """Lowercased, with Greek letters and common math symbols spelled out."""
+    return _SYMBOL_RE.sub(lambda m: _SYMBOLS[m.group(0)], text.lower())
+
+
+def words(text: str, min_len: int = 3) -> set[str]:
+    """Content words, lowercased, with a plural ``s`` dropped. Shorter than
+    ``min_len`` is dropped as noise in running text; lesson titles keep short
+    words, where "e" in "π and e" is the subject."""
     out = set()
-    for w in _WORD.findall(text.lower()):
-        if len(w) < 3 or w in _STOP:
+    for w in _WORD.findall(_ascii(text)):
+        if len(w) < min_len or w in _STOP:
             continue
         out.add(w[:-1] if len(w) > 4 and w.endswith("s") and not w.endswith("ss") else w)
     return out
@@ -194,9 +213,9 @@ def build_catalog(lesson: str, spec: dict) -> LessonCatalog:
     headings = " ".join([e.title for e in entries if e.kind in ("scene", "proof")] + names)
     body = " ".join(f"{e.title} {e.detail}" for e in entries)
     # Matched as whole phrases, so a short alias ("GD", "FTA") can't match inside a word.
-    phrases = {" ".join(_WORD.findall(n.lower())) for n in names}
+    phrases = {" ".join(_WORD.findall(_ascii(n))) for n in names}
     terms = tuple(sorted(p for p in phrases if len(p) >= 2))
-    return LessonCatalog(lesson, title, tuple(entries), frozenset(words(title)),
+    return LessonCatalog(lesson, title, tuple(entries), frozenset(words(title, min_len=1)),
                          frozenset(words(headings)), frozenset(words(body)), terms)
 
 
@@ -262,9 +281,9 @@ def score(cat: LessonCatalog, target: str) -> int:
     then scene/proof titles and glossary terms, then any text, plus a bonus
     for a glossary term named in the target."""
     tw = words(target)
-    s = (3 * len(tw & cat.title_words) + 2 * len(tw & cat.heading_words)
+    s = (3 * len(words(target, min_len=1) & cat.title_words) + 2 * len(tw & cat.heading_words)
          + len(tw & cat.body_words))
-    low = " ".join(_WORD.findall(target.lower()))
+    low = " ".join(_WORD.findall(_ascii(target)))
     s += sum(4 for term in cat.terms if f" {' '.join(_WORD.findall(term))} " in f" {low} ")
     return s
 
