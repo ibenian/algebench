@@ -25,6 +25,7 @@ import { renderMarkdown, renderKaTeX } from '/labels.js';
 import { setupProofPanel, navigateProof, loadProof, getProofContext, refreshProofPanel } from '/proof.js';
 import { captureViewState, applyViewState, setupViewSync, setupShareButton } from '/view-state-bridge.js';
 import { planBootDone, setupPlanUi } from '/plan-ui.js';
+import { setupSideSections } from '/side-sections.js';
 import { setupPopstateListener } from '/nav-history.js';
 import { setupObjectPicker } from '/object-picker.js';
 import { installGlossaryTooltip } from '/glossary.js';
@@ -84,6 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // reflects navigation, and applyViewState exists before ui.js calls it.
     setupViewSync();
     setupShareButton();
+    setupSideSections();
     setupPopstateListener(applyViewState);
     // After the view sync, before the first load: the plan follows navchange events.
     // Its stored plans load alongside the scene (not delaying it), but booting

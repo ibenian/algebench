@@ -16193,28 +16193,62 @@ function setProofPanelOpen(show) {
 	if (!!show === !!proofState.proofExpanded) return;
 	_toggleProofPanel(!!show);
 }
+/** The proof's height bounds; it leaves the chat some room below it. */
+var PROOF_MIN_PX = 100;
+var PROOF_DEFAULT_PX = 250;
+var PROOF_STEP_PX = 24;
+/** The chat's header and input, kept in view under a proof dragged tall. */
+var PROOF_CHAT_ROOM_PX = 120;
+/**
+* The divider between the proof and the chat, like the docked learning plan's
+* (plan-ui.ts): drag it, or focus it and use the arrow keys; double-click
+* goes back to the default height. The height is remembered.
+*/
 function _setupProofResize() {
 	const handle = document.getElementById("proof-resize-handle");
 	const panel = document.getElementById("proof-panel");
 	if (!handle || !panel) return;
-	let startY, startHeight;
+	handle.setAttribute("role", "separator");
+	handle.setAttribute("aria-orientation", "horizontal");
+	handle.setAttribute("aria-label", "Resize the proof and the chat");
+	handle.title = "Drag to resize · double-click to reset";
+	handle.tabIndex = 0;
+	const maxPx = () => {
+		const tab = panel.parentElement;
+		if (!tab) return 600;
+		const top = panel.getBoundingClientRect().top - tab.getBoundingClientRect().top;
+		return Math.max(PROOF_MIN_PX, tab.clientHeight - top - PROOF_CHAT_ROOM_PX);
+	};
+	const setH = (h, save = true) => {
+		const clamped = Math.round(Math.max(PROOF_MIN_PX, Math.min(maxPx(), h)));
+		panel.style.height = clamped + "px";
+		if (save) localStorage.setItem("algebench-proof-split", String(clamped));
+	};
 	handle.addEventListener("mousedown", (e) => {
+		if (e.button !== 0) return;
 		e.preventDefault();
-		startY = e.clientY;
-		startHeight = panel.offsetHeight;
-		const onMove = (e2) => {
-			const delta = e2.clientY - startY;
-			const newH = Math.max(100, Math.min(600, startHeight + delta));
-			panel.style.height = newH + "px";
-		};
+		const startY = e.clientY;
+		const startHeight = panel.offsetHeight;
+		handle.classList.add("dragging");
+		document.body.classList.add("side-split-resizing");
+		const onMove = (e2) => setH(startHeight + (e2.clientY - startY), false);
 		const onUp = () => {
+			handle.classList.remove("dragging");
+			document.body.classList.remove("side-split-resizing");
 			document.removeEventListener("mousemove", onMove);
 			document.removeEventListener("mouseup", onUp);
 			localStorage.setItem("algebench-proof-split", panel.offsetHeight.toString());
+			window.dispatchEvent(new Event("resize"));
 		};
 		document.addEventListener("mousemove", onMove);
 		document.addEventListener("mouseup", onUp);
 	});
+	handle.addEventListener("keydown", (e) => {
+		if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+		e.preventDefault();
+		setH(panel.offsetHeight + (e.key === "ArrowDown" ? PROOF_STEP_PX : -24));
+	});
+	handle.addEventListener("dblclick", () => setH(PROOF_DEFAULT_PX));
 }
 function _setupProofTabs() {
 	document.querySelectorAll(".proof-tab").forEach((tab) => {
@@ -22678,21 +22712,21 @@ function setActivePlanId(id) {
 //#endregion
 //#region src/plan-ui.ts
 /** Navigator icons: one stroke family, so every arrow sits on the same line. */
-var svg = (d) => `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-var ICON_BACK = svg("M15 18l-6-6 6-6");
-var ICON_FORWARD = svg("M9 18l6-6-6-6");
-var ICON_ENTER = svg("M7 7l10 10M17 9v8H9");
-var ICON_FINISH = svg("M5 12.5l4.5 4.5L19 7.5");
-var ICON_CLOSE = svg("M6 6l12 12M18 6L6 18");
-var ICON_RESTART = svg("M3 12a9 9 0 1 0 3-6.7M3 4v5h5");
-var ICON_RETURN = svg("M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11");
-var ICON_COLLAPSE = svg("M6 9l6 6 6-6");
-var ICON_PLUS = svg("M12 5v14M5 12h14");
-var ICON_IMPORT = svg("M12 20V8M7 13l5-5 5 5M5 4h14");
-var ICON_EXPORT = svg("M12 4v12M7 11l5 5 5-5M5 20h14");
-var ICON_TRASH = svg("M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13");
-var ICON_SPARK = svg("M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z");
-var ICON_EXPAND = svg("M6 15l6-6 6 6");
+var svg$1 = (d) => `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+var ICON_BACK = svg$1("M15 18l-6-6 6-6");
+var ICON_FORWARD = svg$1("M9 18l6-6-6-6");
+var ICON_ENTER = svg$1("M7 7l10 10M17 9v8H9");
+var ICON_FINISH = svg$1("M5 12.5l4.5 4.5L19 7.5");
+var ICON_CLOSE = svg$1("M6 6l12 12M18 6L6 18");
+var ICON_RESTART = svg$1("M3 12a9 9 0 1 0 3-6.7M3 4v5h5");
+var ICON_RETURN = svg$1("M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11");
+var ICON_COLLAPSE = svg$1("M6 9l6 6 6-6");
+var ICON_PLUS = svg$1("M12 5v14M5 12h14");
+var ICON_IMPORT = svg$1("M12 20V8M7 13l5-5 5 5M5 4h14");
+var ICON_EXPORT = svg$1("M12 4v12M7 11l5 5 5-5M5 20h14");
+var ICON_TRASH = svg$1("M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13");
+var ICON_SPARK = svg$1("M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z");
+var ICON_EXPAND = svg$1("M6 15l6-6 6 6");
 var store = createPlanStore();
 var plans = /* @__PURE__ */ new Map();
 var lookup = (id) => plans.get(id);
@@ -24501,6 +24535,122 @@ async function setupPlanUi() {
 	if (ui.activeId) openPanel();
 }
 //#endregion
+//#region src/side-sections.ts
+var svg = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+var ICON_FOLD = svg("M6 9l6 6 6-6");
+var ICON_UNFOLD = svg("M6 15l6-6 6 6");
+var SECTIONS = [{
+	head: "proof-section-head",
+	host: "proof-panel",
+	cls: "side-folded",
+	key: "algebench.foldProof",
+	name: "proof"
+}, {
+	head: "chat-section-head",
+	host: "tab-chat",
+	cls: "chat-folded",
+	key: "algebench.foldChat",
+	name: "chat"
+}];
+function loadFolded(key) {
+	try {
+		return localStorage.getItem(key) === "1";
+	} catch {
+		return false;
+	}
+}
+function saveFolded(key, folded) {
+	try {
+		localStorage.setItem(key, folded ? "1" : "0");
+	} catch {}
+}
+var wired = [];
+var isFolded = (w) => w.host.classList.contains(w.sec.cls);
+/** On screen: the proof panel is closed (`hidden`) when there's no proof to show. */
+var isShown = (w) => !w.head.closest(".hidden");
+function setFolded(w, folded, remember = true) {
+	w.host.classList.toggle(w.sec.cls, folded);
+	w.head.classList.toggle("side-section-folded", folded);
+	if (!folded) w.head.classList.remove("side-unread");
+	if (remember) saveFolded(w.sec.key, folded);
+}
+/**
+* At least one shown section stays open: the tab must show something. Fold
+* one while the other is folded and the other opens; a section on its own
+* (the chat, with the proof closed) can't fold at all.
+*/
+function keepOneOpen(changed) {
+	const shown = wired.filter(isShown);
+	if (shown.length && shown.every(isFolded)) setFolded(shown.find((w) => w !== changed) ?? shown[0], false);
+	refreshButtons();
+}
+function refreshButtons() {
+	const shown = wired.filter(isShown);
+	for (const w of wired) {
+		const folded = isFolded(w);
+		const alone = shown.length === 1 && shown[0] === w;
+		w.btn.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+		w.btn.disabled = alone && !folded;
+		w.btn.title = folded ? `Show the ${w.sec.name}` : alone ? `The ${w.sec.name} is the only section open, so it stays open` : `Fold the ${w.sec.name} down to its header`;
+		w.btn.setAttribute("aria-label", w.btn.title);
+		w.btn.setAttribute("aria-expanded", folded ? "false" : "true");
+		w.head.classList.toggle("side-section-foldable", !w.btn.disabled);
+	}
+}
+function wire(sec) {
+	const head = document.getElementById(sec.head);
+	const host = document.getElementById(sec.host);
+	if (!head || !host || head.dataset.foldable) return;
+	head.dataset.foldable = "1";
+	const btn = document.createElement("button");
+	btn.type = "button";
+	btn.className = "side-head-btn side-fold-btn";
+	const firstBtn = head.querySelector("button");
+	if (firstBtn) head.insertBefore(btn, firstBtn);
+	else head.appendChild(btn);
+	const w = {
+		sec,
+		head,
+		host,
+		btn
+	};
+	wired.push(w);
+	const toggle = () => {
+		if (btn.disabled) return;
+		setFolded(w, !isFolded(w));
+		keepOneOpen(w);
+		window.dispatchEvent(new Event("resize"));
+	};
+	btn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		toggle();
+	});
+	head.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) toggle();
+	});
+	setFolded(w, loadFolded(sec.key), false);
+}
+/** A reply that lands while the Chat is folded: mark its header so it isn't missed. */
+function watchUnread() {
+	const messages = document.getElementById("chat-messages");
+	const tab = document.getElementById("tab-chat");
+	const head = document.getElementById("chat-section-head");
+	if (!messages || !tab || !head || typeof MutationObserver !== "function") return;
+	new MutationObserver(() => {
+		if (tab.classList.contains("chat-folded")) head.classList.add("side-unread");
+	}).observe(messages, { childList: true });
+}
+function setupSideSections() {
+	for (const sec of SECTIONS) wire(sec);
+	const proof = document.getElementById("proof-panel");
+	if (proof && typeof MutationObserver === "function") new MutationObserver(() => keepOneOpen()).observe(proof, {
+		attributes: true,
+		attributeFilter: ["class"]
+	});
+	keepOneOpen();
+	watchUnread();
+}
+//#endregion
 //#region src/object-picker.ts
 var PICK_PX = 20;
 var HIDE_DELAY = 600;
@@ -25262,6 +25412,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupAboutPopup();
 	setupViewSync();
 	setupShareButton();
+	setupSideSections();
 	setupPopstateListener(applyViewState);
 	const planReady = setupPlanUi();
 	loadBuiltinScenesList();

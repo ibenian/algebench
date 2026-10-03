@@ -1242,31 +1242,64 @@ export function setProofPanelOpen(show: boolean): void {
 
 // ---- Resize handle ----
 
+/** The proof's height bounds; it leaves the chat some room below it. */
+const PROOF_MIN_PX = 100, PROOF_DEFAULT_PX = 250, PROOF_STEP_PX = 24;
+/** The chat's header and input, kept in view under a proof dragged tall. */
+const PROOF_CHAT_ROOM_PX = 120;
+
+/**
+ * The divider between the proof and the chat, like the docked learning plan's
+ * (plan-ui.ts): drag it, or focus it and use the arrow keys; double-click
+ * goes back to the default height. The height is remembered.
+ */
 function _setupProofResize(): void {
     const handle = document.getElementById('proof-resize-handle');
     const panel = document.getElementById('proof-panel');
     if (!handle || !panel) return;
+    handle.setAttribute('role', 'separator');
+    handle.setAttribute('aria-orientation', 'horizontal');
+    handle.setAttribute('aria-label', 'Resize the proof and the chat');
+    handle.title = 'Drag to resize · double-click to reset';
+    handle.tabIndex = 0;
 
-    let startY: number, startHeight: number;
+    const maxPx = (): number => {
+        const tab = panel.parentElement;
+        if (!tab) return 600;
+        // Leave the chat's header and input in view below the proof.
+        const top = panel.getBoundingClientRect().top - tab.getBoundingClientRect().top;
+        return Math.max(PROOF_MIN_PX, tab.clientHeight - top - PROOF_CHAT_ROOM_PX);
+    };
+    const setH = (h: number, save = true): void => {
+        const clamped = Math.round(Math.max(PROOF_MIN_PX, Math.min(maxPx(), h)));
+        panel.style.height = clamped + 'px';
+        if (save) localStorage.setItem('algebench-proof-split', String(clamped));
+    };
 
     handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
         e.preventDefault();
-        startY = e.clientY;
-        startHeight = panel.offsetHeight;
-
-        const onMove = (e2: MouseEvent) => {
-            const delta = e2.clientY - startY;
-            const newH = Math.max(100, Math.min(600, startHeight + delta));
-            panel.style.height = newH + 'px';
-        };
+        const startY = e.clientY;
+        const startHeight = panel.offsetHeight;
+        handle.classList.add('dragging');
+        document.body.classList.add('side-split-resizing');
+        const onMove = (e2: MouseEvent) => setH(startHeight + (e2.clientY - startY), false);
         const onUp = () => {
+            handle.classList.remove('dragging');
+            document.body.classList.remove('side-split-resizing');
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
             localStorage.setItem('algebench-proof-split', panel.offsetHeight.toString());
+            window.dispatchEvent(new Event('resize'));
         };
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
     });
+    handle.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        setH(panel.offsetHeight + (e.key === 'ArrowDown' ? PROOF_STEP_PX : -PROOF_STEP_PX));
+    });
+    handle.addEventListener('dblclick', () => setH(PROOF_DEFAULT_PX));
 }
 
 // ---- Proof tab switching (Proofs in Context / All Proofs) ----
