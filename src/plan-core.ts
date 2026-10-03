@@ -142,12 +142,12 @@ export function viewMatchesRef(view: ViewState | null | undefined, ref: ContentR
 export const VIEW_DIRECTIVES = ['aa', 'fax', 'pa', 'pas', 'scene'] as const;
 
 /** Ids and enum-ish values that end up in selectors and lookups: a plain token. */
-const TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
+export const TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
 /** Longest camera-view key kept — the same bound parseViewState applies to `cv`. */
 const CV_MAX_LEN = 64;
 /** A built-in lesson id: plain-token path segments, e.g. "eigenvalues" or
  *  "draft/chart-demo" — no empty, dot-leading or traversal segments. */
-const LESSON_ID = /^(?=.{1,200}$)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/;
+export const LESSON_ID = /^(?=.{1,200}$)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/;
 /** A name safe to use as a plain-object key: not one Object.prototype answers
  *  to (`__proto__`, `constructor`, …) — applyViewState looks sliders up by it. */
 const safeKey = (k: string): boolean => TOKEN.test(k) && !(k in Object.prototype);

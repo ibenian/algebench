@@ -13,6 +13,8 @@
 import { renderKaTeX, renderMarkdown, makeAiAskButton } from '/labels.js';
 import { getActiveGlossary, glossaryTermName, sanitizeGlossary, setActiveGlossary, setGlossaryThreshold, stripGlossaryMarkers } from '/glossary-core.js';
 import type { Glossary, GlossaryEntry } from '/glossary-core.js';
+import { PLAN_ICON } from '/icons.js';
+import { PLAN_REQUEST_EVENT } from '/plan-request.js';
 
 // ----- Loading -----
 
@@ -197,6 +199,21 @@ function _unlinkSelf(body: HTMLElement, key: string): void {
     });
 }
 
+/** "Learn this": ask the learning-plan panel for a path to this term. */
+function _learnButton(name: string): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'glossary-learn-btn';
+    btn.innerHTML = PLAN_ICON;
+    btn.title = `Plan a path to understanding ${stripGlossaryMarkers(name)}`;
+    btn.setAttribute('aria-label', btn.title);
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.dispatchEvent(new CustomEvent(PLAN_REQUEST_EVENT, { detail: { target: stripGlossaryMarkers(name) } }));
+    });
+    return btn;
+}
+
 function _fill(tip: Tip, key: string, entry: GlossaryEntry): void {
     const name = glossaryTermName(key, entry);
     tip.el.innerHTML = '';
@@ -208,6 +225,8 @@ function _fill(tip: Tip, key: string, entry: GlossaryEntry): void {
     head.appendChild(title);
     head.appendChild(makeAiAskButton('ai-ask-btn glossary-ask-btn', `Ask AI about ${name}`,
         () => (entry.prompt && stripGlossaryMarkers(entry.prompt)) || `Explain "${name}" in the context of what I'm looking at.`));
+    // Only where the plan panel is there to answer it (the main app).
+    if (window.algebenchPlanAvailable) head.appendChild(_learnButton(name));
     tip.el.appendChild(head);
     if (entry.markdown) {
         const body = document.createElement('div');

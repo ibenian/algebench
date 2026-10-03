@@ -424,6 +424,8 @@ interface Window {
   /** True while a chat turn is in flight (chat.ts). */
   algebenchChatBusy?: () => boolean;
   algebenchChatAvailable?: () => boolean;
+  /** Set by plan-ui.ts once the learning-plan panel listens for plan requests. */
+  algebenchPlanAvailable?: boolean;
   addChatMessage: (role: string, content: string) => HTMLDivElement;
   addChatLoading: () => HTMLDivElement;
   renderToolCallChip: (tc: AlgeBenchChatToolCall) => HTMLDivElement;
