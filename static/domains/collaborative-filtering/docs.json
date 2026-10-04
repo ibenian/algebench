@@ -1,0 +1,336 @@
+{
+  "name": "collaborative-filtering",
+  "description": "Collaborative filtering computed live from a 6-user x 6-movie ratings table: Pearson similarity and user-based kNN, matrix factorization by ALS and SGD (every epoch stored), the zero-fill / truncated-SVD fit, a k x lambda capacity sweep, the invertible-map invariance of the factors, mu + b_u + b_i biases, fold-in of a new user, and implicit-feedback weighted ALS (Hu, Koren & Volinsky 2008).",
+  "honesty_note": "THE DATA IS A DESIGNED TOY. Ratings are R = P* Q*^T from hand-chosen taste vectors on named axes (Action, Romance, Sci-fi), so the table is exactly rank 3 and recoverable from its 30 observed entries. The DESIGNED vectors are authored; the LEARNED ones are genuinely fitted by ALS / SGD from a seeded random start and come out on different, unlabelled axes. A lesson must not present the designed axes as something the algorithm discovers.",
+  "implementation": {
+    "sliders": "Functions read their inputs through _init({getSlider}); an absent slider falls back to the toy default, so every function works in any scene. The state is rebuilt only when a slider it read changes; expensive runs (ALS, SGD, zero-fill, sweep, implicit ALS) are memoised by exactly their inputs, so moving a rotation slider never retrains.",
+    "initialisation": "P then Q, row-major, uniform(0,1) from mulberry32(cf_seed). The checker re-implements mulberry32 bit for bit.",
+    "als": "One epoch = every p_u then every q_i, each a ridge solve over that row's observed cells; lambda is not scaled by the row count.",
+    "sgd": "Observed cells in row-major order; both updates use pre-step values; the factor 2 of the gradient is absorbed into gamma.",
+    "zero_fill": "ALS on the full matrix (hidden cells = 0) with lambda = 1e-9 for 200 epochs, which converges to the truncated SVD (Eckart-Young).",
+    "fold_in": "Against the DESIGNED movie vectors Q*, so your vector is readable on named axes; ridge 0.1.",
+    "implicit": "Preference p = [count > 0], confidence c = 1 + alpha * count, ALS over all 36 cells, lambda 0.1, 30 iterations."
+  },
+  "verified_values": {
+    "note": "Asserted by scripts/check_collaborative_filtering_domain.py, which also compares every function against an independent NumPy implementation. If a change breaks one, the lesson's arithmetic is wrong, not the test.",
+    "als_test_rmse": "2.684 at init, 0.140 after 10 epochs, 0.068 after 300 (k = 3, lambda = 0.01, seed 1)",
+    "sgd_test_rmse": "0.428 after 100 epochs, 0.239 after 300 (gamma = 0.05)",
+    "zero_fill_test_rmse": "2.7315; the hidden 5s come out as 0.77 and 0.60",
+    "capacity": "k = 3, lambda = 0: exact; k = 5, lambda = 0: test RMSE 12.27; k = 5, lambda = 0.01: 1.06",
+    "knn": "n = 2: test RMSE 1.614; Dan x Die Hard = 2.75 from Ava and Eli (truth 3)",
+    "baseline": "mu = 2.967; mu + b_u + b_i test RMSE 1.232",
+    "invariance": "learned P = P* A with max residual 0.011"
+  },
+  "functions": {
+    "cfUser": "cfUser(u) — user name: Ava, Ben, Cleo, Dan, Eli, Fay.",
+    "cfMovie": "cfMovie(i) — movie title: Die Hard, Notebook, Arrival, Mr&Mrs Smith, Matrix, Her.",
+    "cfGenre": "cfGenre(f) — name of designed taste axis f: Action, Romance, Sci-fi.",
+    "cfR": "cfR(u, i) — current rating r_ui from cf_R (observed or hidden).",
+    "cfObs": "cfObs(u, i) — 1 if (u, i) is in the training set Omega, 0 if hidden (cf_obs).",
+    "cfNObs": "cfNObs() — number of observed ratings |Omega| (30 by default).",
+    "cfMu": "cfMu() — global mean mu of the observed ratings.",
+    "cfUserMean": "cfUserMean(u) — mean of user u's observed ratings.",
+    "cfCoRated": "cfCoRated(u, v) — number of movies both users rated.",
+    "cfSim": "cfSim(u, v) — Pearson similarity over co-rated movies, each user centered on their own mean; 0 with fewer than 2 co-rated.",
+    "cfKnn": "cfKnn(u, i, n?) — user-based kNN prediction r_u_bar + sum w (r_vi - r_v_bar) / sum |w| over the n most similar users who rated i (n defaults to cf_knn).",
+    "cfKnnNbr": "cfKnnNbr(u, i, rank, n?) — index of the rank-th neighbour cfKnn used, or -1.",
+    "cfKnnRmse": "cfKnnRmse(n?) — kNN test RMSE over the hidden cells.",
+    "cfPstar": "cfPstar(u, f) — designed taste of user u on axis f (cf_pstar overrides).",
+    "cfQstar": "cfQstar(i, f) — designed vector of movie i on axis f (cf_qstar overrides).",
+    "cfStarPred": "cfStarPred(u, i) — designed prediction q*_i . p*_u.",
+    "cfPstarLen": "cfPstarLen(u) — |p*_u|.",
+    "cfQstarLen": "cfQstarLen(i) — |q*_i|: 2 for a single-genre movie, 2.83 for a two-genre one.",
+    "cfStarCos": "cfStarCos(u, i) — cosine of the angle between p*_u and q*_i.",
+    "cfEpochMax": "cfEpochMax() — last stored training epoch (300).",
+    "cfP": "cfP(u, f) — learned user factor at epoch cf_epoch for algorithm cf_algo (0 ALS, 1 SGD); 0 for f >= k.",
+    "cfQ": "cfQ(i, f) — learned movie factor, as cfP.",
+    "cfPred": "cfPred(u, i) — learned prediction q_i . p_u at the current epoch.",
+    "cfPredAt": "cfPredAt(u, i, e, algo?) — learned prediction at epoch e.",
+    "cfTrainRmse": "cfTrainRmse(e) — training RMSE at epoch e for the current algorithm.",
+    "cfTestRmse": "cfTestRmse(e) — test RMSE (hidden cells) at epoch e for the current algorithm.",
+    "cfAlsTrain": "cfAlsTrain(e) — ALS training RMSE at epoch e.",
+    "cfAlsTest": "cfAlsTest(e) — ALS test RMSE at epoch e.",
+    "cfSgdTrain": "cfSgdTrain(e) — SGD training RMSE at epoch e.",
+    "cfSgdTest": "cfSgdTest(e) — SGD test RMSE at epoch e.",
+    "cfLoss": "cfLoss(e) — the regularised objective sum_Omega (r - q.p)^2 + lambda(sum |p|^2 + sum |q|^2) at epoch e.",
+    "cfZeroPred": "cfZeroPred(u, i) — rank-k fit of the table with hidden cells set to 0 (= truncated SVD of the zero-filled matrix).",
+    "cfZeroRmse": "cfZeroRmse() — test RMSE of the zero-fill fit.",
+    "cfSweepTrain": "cfSweepTrain(k, lam) — ALS training RMSE with k factors and penalty lam (200 epochs).",
+    "cfSweepTest": "cfSweepTest(k, lam) — ALS test RMSE with k factors and penalty lam (200 epochs).",
+    "cfMapA": "cfMapA(r, c) — entry of the invertible map A = diag(cf_stretch, 1, 1) R_axis(cf_theta).",
+    "cfMapP": "cfMapP(u, f) — learned p_u after the map: p_u A (k = 3).",
+    "cfMapQ": "cfMapQ(i, f) — learned q_i after the compensating map: q_i A^-T (k = 3).",
+    "cfMapPred": "cfMapPred(u, i) — (p_u A).(q_i A^-T); equal to cfPred(u, i) for every A.",
+    "cfFitA": "cfFitA(r, c) — entry of the least-squares map A with P* A ~ P (learned P, k = 3).",
+    "cfFitResid": "cfFitResid() — largest |P* A - P| entry for that fit (0.011 by default).",
+    "cfBu": "cfBu(u) — user bias b_u.",
+    "cfBi": "cfBi(i) — item bias b_i.",
+    "cfBaseline": "cfBaseline(u, i) — baseline prediction mu + b_u + b_i.",
+    "cfBaselineRmse": "cfBaselineRmse() — test RMSE of the baseline.",
+    "cfMe": "cfMe(f) — your taste vector on (Action, Romance, Sci-fi), solved from cf_me against the designed movie vectors with ridge 0.1.",
+    "cfMeR": "cfMeR(i) — your rating of movie i from cf_me (0 = not seen).",
+    "cfMePred": "cfMePred(i) — your predicted rating of movie i.",
+    "cfMeRated": "cfMeRated() — how many movies you rated.",
+    "cfMeTop": "cfMeTop(rank) — index of your rank-th best unrated movie, or -1.",
+    "cfC": "cfC(u, i) — watch count (cf_C).",
+    "cfPref": "cfPref(u, i) — preference p_ui: 1 if watched at all, else 0.",
+    "cfConf": "cfConf(u, i) — confidence c_ui = 1 + alpha * count (alpha = cf_alpha).",
+    "cfImpX": "cfImpX(u, f) — implicit user factor from weighted ALS over ALL cells.",
+    "cfImpY": "cfImpY(i, f) — implicit movie factor.",
+    "cfImpPred": "cfImpPred(u, i) — predicted preference x_u . y_i.",
+    "cfImpPosOnly": "cfImpPosOnly(u, i) — the control: a fit of the watched cells only, which predicts ~1 everywhere.",
+    "cfImpTop": "cfImpTop(u) — index of user u's top unwatched movie by predicted preference, or -1."
+  },
+  "sliderContracts": {
+    "cf_R": {
+      "description": "Tensor [6,6], 1 to 5: the ratings table. Defaults to R = P* Q*^T. Editing a cell retrains everything downstream.",
+      "default": "R = P* Q*^T",
+      "scenes": [
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    "cf_obs": {
+      "description": "Tensor [6,6], 0/1: 1 = observed (training), 0 = hidden (test). Defaults to one hidden cell per row and column.",
+      "default": "six hidden cells",
+      "scenes": [
+        1,
+        4,
+        5
+      ]
+    },
+    "cf_knn": {
+      "description": "Neighborhood size n for cfKnn, 1 to 5.",
+      "default": 2,
+      "scenes": [
+        2
+      ]
+    },
+    "cf_pstar": {
+      "description": "Tensor [6,3]: designed user tastes on (Action, Romance, Sci-fi).",
+      "default": "P*",
+      "scenes": [
+        3
+      ]
+    },
+    "cf_qstar": {
+      "description": "Tensor [6,3]: designed movie vectors.",
+      "default": "Q*",
+      "scenes": [
+        3,
+        7
+      ]
+    },
+    "cf_k": {
+      "description": "Number of latent factors k, 1 to 5.",
+      "default": 3,
+      "scenes": [
+        4,
+        5,
+        7,
+        8
+      ]
+    },
+    "cf_lambda": {
+      "description": "Regularization lambda for ALS and SGD.",
+      "default": 0.01,
+      "scenes": [
+        5,
+        7
+      ]
+    },
+    "cf_epoch": {
+      "description": "Training epoch shown, 0 to 300 (absent = 300).",
+      "default": 300,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "cf_algo": {
+      "description": "0 = ALS, 1 = SGD.",
+      "default": 0,
+      "scenes": [
+        5
+      ]
+    },
+    "cf_gamma": {
+      "description": "SGD learning rate gamma.",
+      "default": 0.05,
+      "scenes": [
+        5
+      ]
+    },
+    "cf_seed": {
+      "description": "Seed of the uniform(0,1) initialisation (mulberry32).",
+      "default": 1,
+      "scenes": [
+        5
+      ]
+    },
+    "cf_theta": {
+      "description": "Rotation angle in degrees for the invariance demo.",
+      "default": 0,
+      "scenes": [
+        6
+      ]
+    },
+    "cf_axis": {
+      "description": "Rotation axis: 0, 1 or 2.",
+      "default": 2,
+      "scenes": [
+        6
+      ]
+    },
+    "cf_stretch": {
+      "description": "Stretch of axis 0 applied before the rotation; the movie vectors get the inverse stretch.",
+      "default": 1,
+      "scenes": [
+        6
+      ]
+    },
+    "cf_me": {
+      "description": "Tensor [1,6]: your ratings, 1 to 5; 0 = not rated.",
+      "default": "all 0",
+      "scenes": [
+        7
+      ]
+    },
+    "cf_C": {
+      "description": "Tensor [6,6]: watch counts for implicit feedback. Default: a 5 was watched 6 times, a 4 twice, the rest never; Ava watched Her once.",
+      "default": "derived from R",
+      "scenes": [
+        8
+      ]
+    },
+    "cf_alpha": {
+      "description": "Confidence slope alpha in c = 1 + alpha * count.",
+      "default": 10,
+      "scenes": [
+        8
+      ]
+    }
+  },
+  "glossary": {
+    "collaborative filtering": {
+      "term": "collaborative filtering",
+      "aliases": [
+        "CF",
+        "recommender system",
+        "recommender systems"
+      ],
+      "markdown": "Predicting what a user will like from the ratings of **many** users — no content features needed. Neighborhood methods borrow from similar users or items; latent-factor methods embed users and items in a shared space where a rating is a dot product.",
+      "prompt": "Explain collaborative filtering: what problem it solves, why it needs no item features, and the difference between neighborhood and latent-factor methods."
+    },
+    "rating matrix": {
+      "term": "rating matrix",
+      "aliases": [
+        "ratings matrix",
+        "utility matrix"
+      ],
+      "markdown": "$R \\in \\mathbb{R}^{m \\times n}$, users by items, with $r_{ui}$ known only on a small observed set $\\Omega$. The Netflix Prize matrix was about $1.2\\%$ filled.",
+      "prompt": "Explain the rating matrix in collaborative filtering and why its sparsity is the central difficulty."
+    },
+    "observed set": {
+      "term": "observed set",
+      "aliases": [
+        "Omega",
+        "training set Omega"
+      ],
+      "markdown": "$\\Omega = \\{(u,i) : r_{ui} \\text{ is known}\\}$. Matrix factorization fits only these entries; a missing rating is **unknown**, not zero.",
+      "prompt": "Explain the observed set Omega and why matrix factorization sums its loss only over observed entries."
+    },
+    "Pearson similarity": {
+      "term": "Pearson similarity",
+      "aliases": [
+        "Pearson correlation",
+        "user similarity"
+      ],
+      "markdown": "$w_{uv} = \\dfrac{\\sum_{i}(r_{ui}-\\bar r_u)(r_{vi}-\\bar r_v)}{\\sqrt{\\sum_i (r_{ui}-\\bar r_u)^2}\\sqrt{\\sum_i (r_{vi}-\\bar r_v)^2}}$ over co-rated items. Mean-centering removes each user's personal rating scale.",
+      "prompt": "Explain Pearson similarity between users in collaborative filtering and why each user is centered on their own mean."
+    },
+    "latent factor": {
+      "term": "latent factor",
+      "aliases": [
+        "latent factors",
+        "embedding",
+        "taste vector"
+      ],
+      "markdown": "A learned coordinate shared by users and items. A rating is predicted as $\\hat r_{ui} = q_i^\\top p_u$. The axes are not labeled genres: any invertible $A$ gives the same predictions via $(PA)(QA^{-\\top})^\\top = PQ^\\top$.",
+      "prompt": "Explain latent factors in matrix factorization and why the learned axes are not genres."
+    },
+    "matrix factorization": {
+      "term": "matrix factorization",
+      "aliases": [
+        "matrix factorisation",
+        "MF",
+        "low-rank factorization"
+      ],
+      "markdown": "Approximate $R \\approx PQ^\\top$ with $P \\in \\mathbb{R}^{m\\times k}$, $Q \\in \\mathbb{R}^{n\\times k}$, fitted on $\\Omega$ only with an $L_2$ penalty (Koren, Bell & Volinsky 2009).",
+      "prompt": "Explain matrix factorization for recommender systems: the model, the objective, and why it is low rank."
+    },
+    "ALS": {
+      "term": "alternating least squares",
+      "aliases": [
+        "ALS"
+      ],
+      "markdown": "Fix $Q$ and every $p_u$ has a closed form, $p_u = (Q_{I_u}^\\top Q_{I_u} + \\lambda I)^{-1} Q_{I_u}^\\top r_u$; then fix $P$ and solve for $Q$. Each half-step cannot increase the loss.",
+      "prompt": "Explain alternating least squares for matrix factorization and derive the per-user update."
+    },
+    "SGD": {
+      "term": "stochastic gradient descent",
+      "aliases": [
+        "SGD",
+        "Funk SVD"
+      ],
+      "markdown": "For each observed rating, $e = r_{ui} - q_i^\\top p_u$, then $q_i \\leftarrow q_i + \\gamma(e\\,p_u - \\lambda q_i)$ and $p_u \\leftarrow p_u + \\gamma(e\\,q_i - \\lambda p_u)$. Popularized by Simon Funk in the Netflix Prize.",
+      "prompt": "Explain stochastic gradient descent for matrix factorization and compare it with ALS."
+    },
+    "regularization": {
+      "term": "regularization",
+      "aliases": [
+        "regularisation",
+        "lambda",
+        "L2 penalty",
+        "ridge"
+      ],
+      "markdown": "The $\\lambda(\\lVert p_u\\rVert^2 + \\lVert q_i\\rVert^2)$ term. With few ratings per user and many factors, the unregularized fit memorizes the training cells and extrapolates wildly to the hidden ones.",
+      "prompt": "Explain why matrix factorization needs regularization and what happens without it."
+    },
+    "cold start": {
+      "term": "cold start",
+      "aliases": [
+        "cold-start problem"
+      ],
+      "markdown": "A new user or item has too few ratings to pin down its $k$-dimensional vector: with fewer than $k$ ratings the least-squares system is underdetermined and only $\\lambda$ keeps it finite.",
+      "prompt": "Explain the cold-start problem in collaborative filtering and common remedies."
+    },
+    "implicit feedback": {
+      "term": "implicit feedback",
+      "aliases": [
+        "implicit data"
+      ],
+      "markdown": "Behavior such as views, clicks or plays instead of stars. There are no negative examples: an unwatched item may be disliked or just unseen. Hu, Koren & Volinsky (2008) model a binary preference with a confidence weight.",
+      "prompt": "Explain implicit feedback in recommender systems and why it needs a different model from explicit ratings."
+    },
+    "confidence weight": {
+      "term": "confidence weight",
+      "aliases": [
+        "confidence",
+        "c_ui"
+      ],
+      "markdown": "$c_{ui} = 1 + \\alpha\\, r_{ui}$: how much the loss trusts preference $p_{ui}$. Every cell is fitted, unobserved ones as low-confidence zeros.",
+      "prompt": "Explain the confidence weight c_ui = 1 + alpha r_ui in implicit-feedback matrix factorization."
+    },
+    "RMSE": {
+      "term": "root mean squared error",
+      "aliases": [
+        "RMSE"
+      ],
+      "markdown": "$\\sqrt{\\tfrac{1}{|T|}\\sum_{(u,i)\\in T}(r_{ui}-\\hat r_{ui})^2}$ on a held-out set $T$. The Netflix Prize goal was a $10\\%$ cut from Cinematch's $0.9525$ to $0.8572$.",
+      "prompt": "Explain RMSE as an evaluation metric for rating prediction and its role in the Netflix Prize."
+    }
+  }
+}

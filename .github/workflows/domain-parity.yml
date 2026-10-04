@@ -20,6 +20,7 @@ on:
       - 'static/domains/**'
       - 'scripts/check_anomaly_domain.py'
       - 'scripts/check_transformer_domain.py'
+      - 'scripts/check_collaborative_filtering_domain.py'
   workflow_dispatch:
 
 jobs:
@@ -53,3 +54,6 @@ jobs:
 
       - name: Transformer domain parity
         run: python scripts/check_transformer_domain.py
+
+      - name: Collaborative-filtering domain parity
+        run: python scripts/check_collaborative_filtering_domain.py
