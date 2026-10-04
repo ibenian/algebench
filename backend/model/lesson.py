@@ -154,6 +154,13 @@ class View(BaseModel):
     angleLockVector: Optional[list[Union[int, str]]] = None
 
 
+class SliderDefaultData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    table: str
+    columns: Optional[Annotated[list[str], Field(min_length=1)]] = None
+
+
 class Slider(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -167,6 +174,9 @@ class Slider(BaseModel):
     kind: Optional[Literal["scalar", "tensor"]] = None
     shape: Optional[Annotated[list[Annotated[int, Field(ge=1)]], Field(min_length=1, max_length=2)]] = None
     default: Optional[Union[Num, list]] = None
+    #: TENSOR ONLY: read the initial table from a `data` table -- a table
+    #: name, or {"table": name, "columns": [...]}.
+    defaultData: Optional[Union[str, "SliderDefaultData"]] = None
     animate: Optional[bool] = None
     animateMode: Optional[Literal["loop", "once", "bounce"]] = None
     autoplay: Optional[bool] = None
@@ -186,6 +196,8 @@ class Slider(BaseModel):
             if self.valueExpr is not None:
                 raise ValueError("a tensor slider has no valueExpr")
         else:
+            if self.defaultData is not None:
+                raise ValueError("only a tensor slider takes defaultData")
             if isinstance(self.default, list):
                 raise ValueError("only a tensor slider takes a table as default")
             if self.shape is not None:

@@ -13,6 +13,11 @@
  * The designed vectors are AUTHORED, not learned; the learned ones (ALS,
  * SGD below) are genuinely fitted, and the lesson shows how they differ.
  *
+ * THE DATA. The lesson normally supplies the toy as `data` tables (see
+ * docs.json "dataContracts": ratings, observed, tastes, movies, watches),
+ * read through _init's getData; the constants below are only the fallback
+ * for a scene without them, and the checker asserts the two agree.
+ *
  * Every computation reads the current tables through sliders, so editing a
  * rating (tensor slider cf_R) or hiding a different cell (cf_obs) retrains
  * everything downstream on the next frame:
@@ -41,6 +46,7 @@
 (function () {
 
     let _getSlider = (id, fallback = 0) => fallback; // replaced by _init
+    let _getData = () => undefined;                   // replaced by _init (data tables)
 
     // ---- the toy -----------------------------------------------------------
 
@@ -236,6 +242,7 @@
 
     const ABSENT = Symbol('absent');
     let _reads = new Map();
+    let _dataReads = new Map();   // table name -> the array seen (compared by identity)
     let _cache = null;
 
     function _snapshot(raw) {
@@ -260,7 +267,7 @@
     }
     function _readRaw(id) {
         const raw = _getSlider(id, ABSENT);
-        _reads.set(id, _snapshot(raw));
+        _reads.set(id, { raw, snap: _snapshot(raw) });
         return raw;
     }
     function _read(id, fb) {
@@ -294,20 +301,56 @@
 
     function _stale() {
         if (!_cache) return true;
-        for (const [id, snap] of _reads) if (!_same(snap, _getSlider(id, ABSENT))) return true;
+        for (const [id, rec] of _reads) {
+            const live = _getSlider(id, ABSENT);
+            // Fast path: the app replaces a tensor slider's table on every edit
+            // (sliders.ts setTensorSliderCell), so the same array object means
+            // the same values. This check runs on every call -- per cell, per
+            // frame -- and the cell-by-cell compare was most of its cost.
+            if (live === rec.raw && live !== null && typeof live === 'object') continue;
+            if (!_same(rec.snap, live)) return true;
+        }
+        for (const [name, seen] of _dataReads) if (_getData(name) !== seen) return true;
         return false;
     }
 
+    /** A data table as row objects, or null; recorded for _stale(). */
+    function _dataRows(name) {
+        const t = _getData(name);
+        _dataReads.set(name, t);
+        return Array.isArray(t) && t.length ? t : null;
+    }
+    /** Column `key` of table `name` as strings (e.g. the movie titles), or `fallback`. */
+    function _dataNames(name, key, fallback) {
+        const rows = _dataRows(name);
+        if (!rows) return fallback;
+        return fallback.map((fb, k) => (rows[k] && rows[k][key] != null ? String(rows[k][key]) : fb));
+    }
+    /** Table `name` as a matrix over `cols`, shaped like `base`; any missing
+     *  row or non-numeric cell keeps the built-in value. */
+    function _dataMatrix(name, cols, base) {
+        const rows = _dataRows(name);
+        if (!rows) return base;
+        return base.map((row, r) => row.map((fb, c) => {
+            const x = rows[r] ? Number(rows[r][cols[c]]) : NaN;
+            return Number.isFinite(x) ? x : fb;
+        }));
+    }
+
     function _build() {
-        const R = _table('cf_R', R_DEFAULT);
-        const obsRaw = _table('cf_obs', OBS_DEFAULT);
+        // The dataset: data tables when the lesson has them, else built-ins;
+        // then any tensor slider of the same table edits on top.
+        const movies = _dataNames('movies', 'movie', MOVIES);
+        const users = _dataNames('ratings', 'user', USERS);
+        const R = _table('cf_R', _dataMatrix('ratings', movies, R_DEFAULT));
+        const obsRaw = _table('cf_obs', _dataMatrix('observed', movies, OBS_DEFAULT));
         const obs = obsRaw.map(row => row.map(v => (v >= 0.5 ? 1 : 0)));
-        const C = _table('cf_C', C_DEFAULT).map(row => row.map(v => Math.max(0, v)));
+        const C = _table('cf_C', _dataMatrix('watches', movies, C_DEFAULT)).map(row => row.map(v => Math.max(0, v)));
         const me = _table('cf_me', [[0, 0, 0, 0, 0, 0]])[0];
         return {
-            R, obs, C, me,
-            pstar: _table('cf_pstar', PSTAR),
-            qstar: _table('cf_qstar', QSTAR),
+            R, obs, C, me, users, movies,
+            pstar: _table('cf_pstar', _dataMatrix('tastes', GENRES, PSTAR)),
+            qstar: _table('cf_qstar', _dataMatrix('movies', GENRES, QSTAR)),
             k: _intRead('cf_k', 3, 1, K_MAX),
             lam: Math.max(0, _read('cf_lambda', 0.01)),
             epoch: _intRead('cf_epoch', MAX_EPOCH, 0, MAX_EPOCH),
@@ -326,6 +369,7 @@
     function _st() {
         if (_stale()) {
             _reads = new Map();
+            _dataReads = new Map();
             _cache = _build();
         }
         return _cache;
@@ -372,9 +416,9 @@
     // ---- data and names ----------------------------------------------------
 
     /** User name, e.g. cfUser(0) = 'Ava'. */
-    function cfUser(u) { return USERS[_u(u)]; }
+    function cfUser(u) { return _st().users[_u(u)]; }
     /** Movie title, e.g. cfMovie(4) = 'Matrix'. */
-    function cfMovie(i) { return MOVIES[_i(i)]; }
+    function cfMovie(i) { return _st().movies[_i(i)]; }
     /** Name of designed taste axis f: Action, Romance, Sci-fi. */
     function cfGenre(f) { return GENRES[_ci(f, 2)]; }
     /** Current rating r_ui (the editable table cf_R, observed or hidden). */
@@ -398,6 +442,13 @@
 
     // ---- neighbourhood CF (GroupLens-style user-based) ---------------------
 
+    /** Index of the k-th (0-based) hidden movie of user u, or -1. */
+    function cfHidden(u, k) {
+        const st = _st(); const uu = _u(u); const kk = Math.round(Number(k) || 0);
+        let seen = 0;
+        for (let i = 0; i < NI; i++) if (!st.obs[uu][i]) { if (seen === kk) return i; seen++; }
+        return -1;
+    }
     /** Number of movies both u and v have rated (observed). */
     function cfCoRated(u, v) {
         const st = _st(); const a = _u(u), b = _u(v); let n = 0;
@@ -711,9 +762,13 @@
     }
 
     window.AlgeBenchDomains.register('collaborative-filtering', {
-        _init({ getSlider }) { _getSlider = getSlider; _cache = null; },
+        _init({ getSlider, getData }) {
+            _getSlider = getSlider;
+            if (typeof getData === 'function') _getData = getData;
+            _cache = null;
+        },
         // data and names
-        cfUser, cfMovie, cfGenre, cfR, cfObs, cfNObs, cfMu, cfUserMean,
+        cfUser, cfMovie, cfGenre, cfR, cfObs, cfHidden, cfNObs, cfMu, cfUserMean,
         // neighbourhood CF
         cfCoRated, cfSim, cfKnn, cfKnnNbr, cfKnnRmse,
         // designed factor model

@@ -16,7 +16,7 @@ import type { SceneSlider } from '/sliders.js';
 (globalThis as unknown as { math: typeof mathjs }).math = mathjs;
 
 const { state } = await import('/state.js');
-const { _sliderValueNum, getSliderIds, formatTensorCell } = await import('/sliders.js');
+const { _sliderValueNum, getSliderIds, formatTensorCell, tensorDefaultFromData } = await import('/sliders.js');
 
 /**
  * Replace the shared slider registry with `entries` for one test.
@@ -115,4 +115,37 @@ test('formatTensorCell drops a decimal at each magnitude boundary', () => {
 
 test('formatTensorCell shows a placeholder for non-finite values', () => {
   for (const v of [NaN, Infinity, -Infinity]) assert.equal(formatTensorCell(v), '\u00b7');
+});
+
+// ----- tensorDefaultFromData: a tensor slider's table read from scene data -----
+
+const DATA = {
+  ratings: [
+    { user: 'Ava', 'Die Hard': 4, Notebook: 1 },
+    { user: 'Ben', 'Die Hard': 1, Notebook: 4 },
+  ],
+  you: [{ 'Die Hard': 5, Notebook: 0 }],
+};
+
+test('tensorDefaultFromData takes numeric columns in key order', () => {
+  assert.deepEqual(tensorDefaultFromData('ratings', DATA, [2, 2]), [[4, 1], [1, 4]]);
+});
+
+test('tensorDefaultFromData honours an explicit column order', () => {
+  assert.deepEqual(
+    tensorDefaultFromData({ table: 'ratings', columns: ['Notebook', 'Die Hard'] }, DATA, [2, 2]),
+    [[1, 4], [4, 1]],
+  );
+});
+
+test('tensorDefaultFromData gives a 1-D slider the first row', () => {
+  assert.deepEqual(tensorDefaultFromData('you', DATA, [2]), [5, 0]);
+  assert.deepEqual(tensorDefaultFromData('you', DATA, [1, 2]), [[5, 0]]);
+});
+
+test('tensorDefaultFromData returns undefined so `default` can apply', () => {
+  assert.equal(tensorDefaultFromData('missing', DATA, [2, 2]), undefined);
+  assert.equal(tensorDefaultFromData('ratings', null, [2, 2]), undefined);
+  assert.equal(tensorDefaultFromData({ columns: ['x'] }, DATA, [2, 2]), undefined);
+  assert.equal(tensorDefaultFromData('ratings', { ratings: [] }, [2, 2]), undefined);
 });

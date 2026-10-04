@@ -9,7 +9,8 @@
     "sgd": "Observed cells in row-major order; both updates use pre-step values; the factor 2 of the gradient is absorbed into gamma.",
     "zero_fill": "ALS on the full matrix (hidden cells = 0) with lambda = 1e-9 for 200 epochs, which converges to the truncated SVD (Eckart-Young).",
     "fold_in": "Against the DESIGNED movie vectors Q*, so your vector is readable on named axes; ridge 0.1.",
-    "implicit": "Preference p = [count > 0], confidence c = 1 + alpha * count, ALS over all 36 cells, lambda 0.1, 30 iterations."
+    "implicit": "Preference p = [count > 0], confidence c = 1 + alpha * count, ALS over all 36 cells, lambda 0.1, 30 iterations.",
+    "data": "The toy dataset is read from the lesson's data tables through _init's getData (see dataContracts); the constants in index.js are only the fallback for a scene without them. tests/test_collaborative_filtering_domain.py asserts the two agree, and a tensor slider of the same table (cf_R, cf_obs, cf_pstar, cf_qstar, cf_C) edits on top."
   },
   "verified_values": {
     "note": "Asserted by scripts/check_collaborative_filtering_domain.py, which also compares every function against an independent NumPy implementation. If a change breaks one, the lesson's arithmetic is wrong, not the test.",
@@ -21,12 +22,35 @@
     "baseline": "mu = 2.967; mu + b_u + b_i test RMSE 1.232",
     "invariance": "learned P = P* A with max residual 0.011"
   },
+  "dataContracts": {
+    "ratings": {
+      "description": "6 rows {user, <one numeric column per movie title, in movies-table order>}: star ratings 1-5, including the hidden test cells.",
+      "used_by": "cf_R default"
+    },
+    "observed": {
+      "description": "Same shape as ratings: 1 = in the training set Omega, 0 = hidden test cell.",
+      "used_by": "cf_obs default"
+    },
+    "tastes": {
+      "description": "6 rows {user, Action, Romance, Sci-fi}: the DESIGNED user vectors P*.",
+      "used_by": "cf_pstar default"
+    },
+    "movies": {
+      "description": "6 rows {movie, Action, Romance, Sci-fi}: titles (cfMovie) and the DESIGNED movie vectors Q*.",
+      "used_by": "cf_qstar default"
+    },
+    "watches": {
+      "description": "Same shape as ratings: implicit watch counts.",
+      "used_by": "cf_C default"
+    }
+  },
   "functions": {
     "cfUser": "cfUser(u) — user name: Ava, Ben, Cleo, Dan, Eli, Fay.",
     "cfMovie": "cfMovie(i) — movie title: Die Hard, Notebook, Arrival, Mr&Mrs Smith, Matrix, Her.",
     "cfGenre": "cfGenre(f) — name of designed taste axis f: Action, Romance, Sci-fi.",
     "cfR": "cfR(u, i) — current rating r_ui from cf_R (observed or hidden).",
     "cfObs": "cfObs(u, i) — 1 if (u, i) is in the training set Omega, 0 if hidden (cf_obs).",
+    "cfHidden": "cfHidden(u, k) — index of user u's k-th hidden (test) movie, or -1.",
     "cfNObs": "cfNObs() — number of observed ratings |Omega| (30 by default).",
     "cfMu": "cfMu() — global mean mu of the observed ratings.",
     "cfUserMean": "cfUserMean(u) — mean of user u's observed ratings.",
@@ -84,7 +108,7 @@
   "sliderContracts": {
     "cf_R": {
       "description": "Tensor [6,6], 1 to 5: the ratings table. Defaults to R = P* Q*^T. Editing a cell retrains everything downstream.",
-      "default": "R = P* Q*^T",
+      "default": "data table \"ratings\"",
       "scenes": [
         1,
         2,
@@ -94,7 +118,7 @@
     },
     "cf_obs": {
       "description": "Tensor [6,6], 0/1: 1 = observed (training), 0 = hidden (test). Defaults to one hidden cell per row and column.",
-      "default": "six hidden cells",
+      "default": "data table \"observed\"",
       "scenes": [
         1,
         4,
@@ -110,14 +134,14 @@
     },
     "cf_pstar": {
       "description": "Tensor [6,3]: designed user tastes on (Action, Romance, Sci-fi).",
-      "default": "P*",
+      "default": "data table \"tastes\"",
       "scenes": [
         3
       ]
     },
     "cf_qstar": {
       "description": "Tensor [6,3]: designed movie vectors.",
-      "default": "Q*",
+      "default": "data table \"movies\"",
       "scenes": [
         3,
         7
@@ -200,7 +224,7 @@
     },
     "cf_C": {
       "description": "Tensor [6,6]: watch counts for implicit feedback. Default: a 5 was watched 6 times, a 4 twice, the rest never; Ava watched Her once.",
-      "default": "derived from R",
+      "default": "data table \"watches\"",
       "scenes": [
         8
       ]
