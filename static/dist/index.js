@@ -11413,11 +11413,6 @@ function renderTensor(el, _view) {
 				const hv = Number(evalExpr(highlightFn, tSec, { overrideScope: scope }));
 				const amt = Number.isFinite(hv) ? Math.max(0, Math.min(1, hv)) : 0;
 				cellHi[cell] = amt;
-				if (amt > 0) {
-					const k = cell * 3;
-					const mixc = (x, hc) => Math.min(1, x + (hc - x) * .3 * amt + .12 * amt);
-					writeCellColour(cell, mixc(cellRgb[k], highlightRgb[0]), mixc(cellRgb[k + 1], highlightRgb[1]), mixc(cellRgb[k + 2], highlightRgb[2]));
-				}
 				placeRim(cell, r, c, amt);
 			}
 		}

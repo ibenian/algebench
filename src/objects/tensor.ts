@@ -828,17 +828,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                     const hv = Number(evalExpr(highlightFn, tSec, { overrideScope: scope }));
                     const amt = Number.isFinite(hv) ? Math.max(0, Math.min(1, hv)) : 0;
                     cellHi[cell] = amt;
-                    if (amt > 0) {
-                        // Lift the cell toward the highlight colour and brighten
-                        // it; the value colour stays recognisable underneath.
-                        // Into the vertex buffer only: cellRgb stays the VALUE colour, so
-                        // the text layer (keyed on it) is not repainted every frame by
-                        // a pulsing highlight -- that canvas upload is the expensive part.
-                        const k = cell * 3;
-                        const mixc = (x: number, hc: number) => Math.min(1, x + (hc - x) * 0.3 * amt + 0.12 * amt);
-                        writeCellColour(cell, mixc(cellRgb[k]!, highlightRgb[0]), mixc(cellRgb[k + 1]!, highlightRgb[1]),
-                                        mixc(cellRgb[k + 2]!, highlightRgb[2]));
-                    }
+                    // The cell keeps its value colour: the rim and halo carry the
+                    // highlight, so cell text keeps the contrast it was chosen for.
                     placeRim(cell, r, c, amt);
                 }
             }

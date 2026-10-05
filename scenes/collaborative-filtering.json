@@ -122,6 +122,14 @@
       {"user": "Eli", "Die Hard": 0, "Notebook": 0, "Arrival": 0, "Mr&Mrs Smith": 2, "Matrix": 2, "Her": 2},
       {"user": "Fay", "Die Hard": 0, "Notebook": 0, "Arrival": 0, "Mr&Mrs Smith": 0, "Matrix": 6, "Her": 2}
     ],
+    "playground": [
+      {"user": "Ava", "Die Hard": 4, "Notebook": 0, "Arrival": 1, "Mr&Mrs Smith": 5, "Matrix": 5, "Her": 2},
+      {"user": "Ben", "Die Hard": 1, "Notebook": 4, "Arrival": 1, "Mr&Mrs Smith": 5, "Matrix": 2, "Her": 0},
+      {"user": "Cleo", "Die Hard": 1, "Notebook": 1, "Arrival": 4, "Mr&Mrs Smith": 2, "Matrix": 0, "Her": 5},
+      {"user": "Dan", "Die Hard": 0, "Notebook": 2, "Arrival": 1, "Mr&Mrs Smith": 5, "Matrix": 4, "Her": 3},
+      {"user": "Eli", "Die Hard": 2, "Notebook": 2, "Arrival": 0, "Mr&Mrs Smith": 4, "Matrix": 4, "Her": 4},
+      {"user": "Fay", "Die Hard": 2, "Notebook": 1, "Arrival": 3, "Mr&Mrs Smith": 0, "Matrix": 5, "Her": 4}
+    ],
     "you_example": [
       {"Die Hard": 5, "Notebook": 2, "Arrival": 0, "Mr&Mrs Smith": 0, "Matrix": 4, "Her": 0}
     ],
@@ -467,27 +475,33 @@
         [-8, 8]
       ],
       "camera": {
-        "position": [-1.0, 0.6, 10.5],
-        "target": [-1.0, 0.6, 0]
+        "position": [-1.4, 2.6, 13.5],
+        "target": [-1.4, 2.6, 0]
       },
       "views": [
         {
           "name": "Overview",
-          "position": [-1.0, 0.6, 10.5],
-          "target": [-1.0, 0.6, 0],
-          "description": "Table, scatter and similarity matrix."
+          "description": "All four panels: ratings, scatter, co-rated counts, similarity.",
+          "position": [-1.6, -0.8, 15.5],
+          "target": [-1.6, -0.6, 0]
+        },
+        {
+          "name": "Top row",
+          "description": "Ratings table and the centered-ratings scatter.",
+          "position": [-1.4, 2.6, 13.5],
+          "target": [-1.4, 2.6, 0]
         },
         {
           "name": "Scatter",
-          "position": [3.7, 2.4, 8],
-          "target": [3.7, 2.4, 0],
+          "position": [3.25, 2.65, 8],
+          "target": [3.25, 2.65, 0],
           "description": "Face-on to the centered-ratings scatter."
         },
         {
           "name": "Similarity 3D",
-          "position": [3.8, -7.4, 4.6],
-          "target": [3.8, -3.2, 0.4],
-          "description": "Tilted view of the user-user similarity relief."
+          "description": "Tilted view of the user-user similarity relief.",
+          "position": [3.25, -8.6, 5.4],
+          "target": [3.25, -3.75, 0.4]
         }
       ],
       "elements": [
@@ -514,7 +528,7 @@
               "id": "s2_R",
               "type": "tensor",
               "shape": [6, 6],
-              "origin": [-7.2, -0.9, 0],
+              "origin": [-7.0, 0.4, 0],
               "cellSize": 0.75,
               "plane": "xy",
               "valueExpr": "cfObs(row, col) > 0.5 ? cfR(row, col) : 0",
@@ -551,11 +565,11 @@
               "color": "#ffee58",
               "width": 4,
               "points": [
-                ["-7.26", "-0.9 + (5 - s2_u) * 0.75 - 0.06", "0.06"],
-                ["-2.64", "-0.9 + (5 - s2_u) * 0.75 - 0.06", "0.06"],
-                ["-2.64", "-0.9 + (6 - s2_u) * 0.75 + 0.06", "0.06"],
-                ["-7.26", "-0.9 + (6 - s2_u) * 0.75 + 0.06", "0.06"],
-                ["-7.26", "-0.9 + (5 - s2_u) * 0.75 - 0.06", "0.06"]
+                ["-7.06", "0.4 + (5 - s2_u) * 0.75 - 0.06", "0.06"],
+                ["-2.44", "0.4 + (5 - s2_u) * 0.75 - 0.06", "0.06"],
+                ["-2.44", "0.4 + (6 - s2_u) * 0.75 + 0.06", "0.06"],
+                ["-7.06", "0.4 + (6 - s2_u) * 0.75 + 0.06", "0.06"],
+                ["-7.06", "0.4 + (5 - s2_u) * 0.75 - 0.06", "0.06"]
               ]
             },
             {
@@ -564,11 +578,11 @@
               "color": "#ff8a65",
               "width": 4,
               "points": [
-                ["-7.26", "-0.9 + (5 - s2_v) * 0.75 - 0.06", "0.06"],
-                ["-2.64", "-0.9 + (5 - s2_v) * 0.75 - 0.06", "0.06"],
-                ["-2.64", "-0.9 + (6 - s2_v) * 0.75 + 0.06", "0.06"],
-                ["-7.26", "-0.9 + (6 - s2_v) * 0.75 + 0.06", "0.06"],
-                ["-7.26", "-0.9 + (5 - s2_v) * 0.75 - 0.06", "0.06"]
+                ["-7.06", "0.4 + (5 - s2_v) * 0.75 - 0.06", "0.06"],
+                ["-2.44", "0.4 + (5 - s2_v) * 0.75 - 0.06", "0.06"],
+                ["-2.44", "0.4 + (6 - s2_v) * 0.75 + 0.06", "0.06"],
+                ["-7.06", "0.4 + (6 - s2_v) * 0.75 + 0.06", "0.06"],
+                ["-7.06", "0.4 + (5 - s2_v) * 0.75 - 0.06", "0.06"]
               ]
             },
             {
@@ -577,18 +591,18 @@
               "color": "#ffffff",
               "width": 3,
               "points": [
-                ["-7.2 + cfHidden(s2_u, 0) * 0.75 - 0.03", "-0.9 + (5 - s2_u) * 0.75 + 0.03", "0.07"],
-                ["-7.2 + (cfHidden(s2_u, 0) + 1) * 0.75 + 0.03", "-0.9 + (5 - s2_u) * 0.75 + 0.03", "0.07"],
-                ["-7.2 + (cfHidden(s2_u, 0) + 1) * 0.75 + 0.03", "-0.9 + (6 - s2_u) * 0.75 - 0.03", "0.07"],
-                ["-7.2 + cfHidden(s2_u, 0) * 0.75 - 0.03", "-0.9 + (6 - s2_u) * 0.75 - 0.03", "0.07"],
-                ["-7.2 + cfHidden(s2_u, 0) * 0.75 - 0.03", "-0.9 + (5 - s2_u) * 0.75 + 0.03", "0.07"]
+                ["-7.0 + cfHidden(s2_u, 0) * 0.75 - 0.03", "0.4 + (5 - s2_u) * 0.75 + 0.03", "0.07"],
+                ["-7.0 + (cfHidden(s2_u, 0) + 1) * 0.75 + 0.03", "0.4 + (5 - s2_u) * 0.75 + 0.03", "0.07"],
+                ["-7.0 + (cfHidden(s2_u, 0) + 1) * 0.75 + 0.03", "0.4 + (6 - s2_u) * 0.75 - 0.03", "0.07"],
+                ["-7.0 + cfHidden(s2_u, 0) * 0.75 - 0.03", "0.4 + (6 - s2_u) * 0.75 - 0.03", "0.07"],
+                ["-7.0 + cfHidden(s2_u, 0) * 0.75 - 0.03", "0.4 + (5 - s2_u) * 0.75 + 0.03", "0.07"]
               ]
             },
             {
               "id": "s2_scatter_uv",
               "type": "chart",
-              "origin": [1.4, 0.4, 0],
-              "size": [4.6, 4.6],
+              "origin": [1.0, 0.4, 0],
+              "size": [4.5, 4.5],
               "xDomain": [-3, 3],
               "yDomain": [-3, 3],
               "series": [
@@ -623,8 +637,8 @@
               "id": "s2_sims",
               "type": "tensor",
               "shape": [6, 6],
-              "origin": [2.0, -4.9, 0],
-              "cellSize": 0.6,
+              "origin": [1.0, -6.0, 0],
+              "cellSize": 0.75,
               "plane": "xy",
               "valueExpr": "cfSim(row, col)",
               "colorMap": "blueRed",
@@ -647,8 +661,8 @@
             {"id": "s2_info_pearson", "position": "top-right", "content": "### **{{cfUser(s2_u)}}** vs **{{cfUser(s2_v)}}**\n$w = $ **{{toFixed(cfSim(s2_u, s2_v), 2)}}** over {{cfCoRated(s2_u, s2_v)}} co-rated movies\n\n{{cfUser(s2_u)}}'s row: Ava {{toFixed(cfSim(s2_u,0),2)}} · Ben {{toFixed(cfSim(s2_u,1),2)}} · Cleo {{toFixed(cfSim(s2_u,2),2)}} · Dan {{toFixed(cfSim(s2_u,3),2)}} · Eli {{toFixed(cfSim(s2_u,4),2)}} · Fay {{toFixed(cfSim(s2_u,5),2)}}"}
           ],
           "camera": {
-            "position": [3.8, -7.4, 4.6],
-            "target": [3.8, -3.2, 0.4]
+            "position": [3.25, -8.6, 5.4],
+            "target": [3.25, -3.75, 0.4]
           },
           "prompt": "Pearson = cosine similarity of mean-centered rating vectors over co-rated items. The relief matrix: height and color are w_uv; symmetric, 1 on the diagonal; cell size is constant. Ask: why is it symmetric? Who are the best neighbors for Cleo (her row)? Why might a harsh and a generous rater with the same taste get cosine < 1 but Pearson = 1?"
         },
@@ -663,8 +677,8 @@
             {"id": "s2_info_knn", "position": "top-right", "content": "### **{{cfUser(s2_u)}}** × *{{cfMovie(cfHidden(s2_u, 0))}}*\nneighbors: **{{cfKnnNbr(s2_u,cfHidden(s2_u, 0),0) >= 0 ? cfUser(cfKnnNbr(s2_u,cfHidden(s2_u, 0),0)) : \"—\"}}{{cfKnnNbr(s2_u,cfHidden(s2_u, 0),1) >= 0 ? concat(\", \", cfUser(cfKnnNbr(s2_u,cfHidden(s2_u, 0),1))) : \"\"}}{{cfKnnNbr(s2_u,cfHidden(s2_u, 0),2) >= 0 ? concat(\", \", cfUser(cfKnnNbr(s2_u,cfHidden(s2_u, 0),2))) : \"\"}}**\n\n$\\bar r_u = $ {{toFixed(cfUserMean(s2_u), 2)}}\n\n$\\hat r = $ **{{toFixed(cfKnn(s2_u, cfHidden(s2_u, 0)), 2)}}**"}
           ],
           "camera": {
-            "position": [-1.0, 0.6, 10.5],
-            "target": [-1.0, 0.6, 0]
+            "position": [-1.6, -0.8, 15.5],
+            "target": [-1.6, -0.6, 0]
           },
           "prompt": "GroupLens-style user-based prediction (Resnick et al. 1994) for user 1's hidden movie. Default Dan x Die Hard, n = 2: Ava and Eli, 2.75. Do not reveal the truth yet — next step."
         },
@@ -677,7 +691,7 @@
               "id": "s2_R_knn",
               "type": "tensor",
               "shape": [6, 6],
-              "origin": [-7.2, -0.9, 0],
+              "origin": [-7.0, 0.4, 0],
               "cellSize": 0.75,
               "plane": "xy",
               "valueExpr": "cfObs(row, col) > 0.5 ? cfR(row, col) : cfKnn(row, col)",
@@ -716,8 +730,8 @@
               "id": "s2_corated",
               "type": "tensor",
               "shape": [6, 6],
-              "origin": [1.6, -1.4, 0],
-              "cellSize": 0.6,
+              "origin": [-7.0, -6.0, 0],
+              "cellSize": 0.75,
               "plane": "xy",
               "valueExpr": "cfCoRated(row, col)",
               "colorMap": "magma",
@@ -740,13 +754,13 @@
               "prompt": "How many movies each pair of users has both rated: exactly 4 for every pair in the toy; in Netflix-scale data two random users typically share almost nothing, which is what breaks user-based similarity."
             }
           ],
-          "remove": [
-            {"id": "s2_scatter_uv"},
-            {"id": "s2_sims"}
-          ],
           "info": [
             {"id": "s2_info_limits", "position": "top-right", "content": "### Limits of neighborhood CF\n- needs co-rated items\n- cost grows with users × items\n- no notion of *why* two people agree"}
           ],
+          "camera": {
+            "position": [-1.6, -0.8, 15.5],
+            "target": [-1.6, -0.6, 0]
+          },
           "prompt": "Item-based CF (Sarwar et al. 2001; Linden, Smith & York 2003) uses adjusted cosine between item columns and scales because item similarities are stable and precomputable. Motivate scene 3: a model that explains WHY people agree."
         },
         {
@@ -758,7 +772,7 @@
               "id": "s2_R_knn_edit",
               "type": "tensor",
               "shape": [6, 6],
-              "origin": [-7.2, -0.9, 0],
+              "origin": [-7.0, 0.4, 0],
               "cellSize": 0.75,
               "plane": "xy",
               "valueExpr": "cfObs(row, col) > 0.5 ? cfR(row, col) : cfKnn(row, col)",
@@ -800,6 +814,182 @@
             {"id": "s2_info_edit", "position": "top-right", "content": "### Live\ntest RMSE: **{{toFixed(cfKnnRmse(), 2)}}**\n\n**{{cfUser(s2_u)}}** × *{{cfMovie(cfHidden(s2_u, 0))}}*: **{{toFixed(cfKnn(s2_u, cfHidden(s2_u, 0)), 2)}}**"}
           ],
           "prompt": "Sandbox. Suggest (with Dan as user 1): make Ava hate Die Hard (row Ava, col Die Hard -> 1) and watch Dan's prediction drop, because Ava is his closest neighbor."
+        },
+        {
+          "id": "playground-trace-a-prediction",
+          "title": "Playground: trace a prediction",
+          "description": "Everything at once. **Edit any rating** (hover a cell; 0 means **?**, unknown — the scale is 1–5, so 0 is never a real rating). Choose the **user** and **movie to predict**: that cell glows and is **held out** of every calculation, even if it has a rating; it shows the **prediction** (“~2.75”, or “4→1.8” as actual→predicted). The co-rated counts, the similarity matrix, the scatter and the prediction all recompute instantly. Step the **walkthrough** slider through the six stages to see each formula with the current numbers substituted.",
+          "add": [
+            {
+              "id": "s2_play_R",
+              "type": "tensor",
+              "shape": [6, 6],
+              "origin": [-7.0, 0.4, 0],
+              "cellSize": 0.75,
+              "plane": "xy",
+              "bind": "cf_play",
+              "valueExpr": "cfPlay(row, col)",
+              "textExpr": "row == cf_tu and col == cf_ti ? (value > 0 ? concat(toFixed(value, 0), '→', toFixed(cfPlayPred(), 1)) : concat('~', toFixed(cfPlayPred(), 2))) : (value > 0 ? toFixed(value, 0) : '?')",
+              "colorMap": {
+                "stops": [
+                  {"t": 0, "color": "#3a3a3a"},
+                  {"t": 0.17, "color": "#3a3a3a"},
+                  {"t": 0.2, "color": "#440154"},
+                  {"t": 0.4, "color": "#3b528b"},
+                  {"t": 0.6, "color": "#21918c"},
+                  {"t": 0.8, "color": "#5ec962"},
+                  {"t": 1, "color": "#fde725"}
+                ]
+              },
+              "colorDomain": [0, 5],
+              "color": "#26c6da",
+              "opacity": 0.95,
+              "shader": {"ignorePlaneOpacity": true},
+              "highlightExpr": "row == cf_tu and col == cf_ti ? 1 : (col == cf_ti and cfUsedNbr(row) > 0.5 ? 0.55 : 0)",
+              "highlightColor": "#ffee58",
+              "axes": [
+                {
+                  "labels": ["Ava", "Ben", "Cleo", "Dan", "Eli", "Fay"],
+                  "title": "user",
+                  "color": "#ffa726",
+                  "highlightExpr": "row == cf_tu ? 1 : (row == cf_pv ? 0.6 : 0)",
+                  "highlightColor": "#ffee58"
+                },
+                {
+                  "labels": ["Die Hard", "Notebook", "Arrival", "Smith", "Matrix", "Her"],
+                  "title": "ratings — hover a cell to edit (0 = ?)",
+                  "color": "#26c6da",
+                  "highlightExpr": "col == cf_ti ? 1 : 0",
+                  "highlightColor": "#ffee58"
+                }
+              ],
+              "label": "playground ratings (editable)",
+              "prompt": "The playground rating table. Hover a cell to edit it; 0 means \"?\" (unknown) because the scale is 1-5, so 0 is never a real rating. The glowing cell is the prediction target: it is held out of every calculation and shows the PREDICTION: \"~2.75\" when the true rating is unknown, \"4→1.8\" (actual → predicted) when it has one. Cells in the target column that glow faintly are the neighbors whose votes are used."
+            },
+            {
+              "id": "s2_play_scatter",
+              "type": "chart",
+              "origin": [1.0, 0.4, 0],
+              "size": [4.5, 4.5],
+              "xDomain": [-3, 3],
+              "yDomain": [-3, 3],
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "cfObs(cf_tu, i) > 0.5 and cfObs(cf_pv, i) > 0.5 and cf_pv != cf_tu ? cfR(cf_tu, i) - cfUserMean(cf_tu) : 99", "yExpr": "cfObs(cf_tu, i) > 0.5 and cfObs(cf_pv, i) > 0.5 and cf_pv != cf_tu ? cfR(cf_pv, i) - cfUserMean(cf_pv) : 99", "pointLabelExpr": "cfMovie(i)", "color": "#ffee58", "size": 10, "label": "co-rated movies"}
+              ],
+              "hlines": [
+                {"y": 0, "color": "#78909c", "opacity": 0.6}
+              ],
+              "axes": [
+                {"title": "predict-for user: $r_{uk} - \\bar r_u$", "ticks": 7},
+                {"title": "compare-with user: $r_{vk} - \\bar r_v$", "ticks": 7}
+              ],
+              "label": "centered ratings: predict-for vs compare-with",
+              "prompt": "Centered ratings of the predict-for user (x) and the compare-with user (y) over the movies both rated, with the target cell held out. The Pearson similarity in walkthrough stage 3 is the cosine of these two centered vectors."
+            },
+            {
+              "id": "s2_play_sims",
+              "type": "tensor",
+              "shape": [6, 6],
+              "origin": [1.0, -6.0, 0],
+              "cellSize": 0.75,
+              "plane": "xy",
+              "valueExpr": "cfSim(row, col)",
+              "colorMap": "blueRed",
+              "colorDomain": [-1, 1],
+              "opacity": 0.95,
+              "shader": {"ignorePlaneOpacity": true},
+              "textExpr": "toFixed(value, 2)",
+              "axes": [
+                {
+                  "labels": ["Ava", "Ben", "Cleo", "Dan", "Eli", "Fay"],
+                  "color": "#ffa726",
+                  "highlightExpr": "row == cf_tu ? 1 : (row == cf_pv ? 0.6 : 0)",
+                  "highlightColor": "#ffee58"
+                },
+                {
+                  "labels": ["Ava", "Ben", "Cleo", "Dan", "Eli", "Fay"],
+                  "title": "user–user similarity $w_{uv}$",
+                  "color": "#ffa726",
+                  "highlightExpr": "col == cf_tu ? 1 : (col == cf_pv ? 0.6 : 0)",
+                  "highlightColor": "#ffee58"
+                }
+              ],
+              "label": "Pearson similarity (live)",
+              "prompt": "Live Pearson similarities from the playground table (target held out). Brightest glow: the predict-for x compare-with pair; fainter glow: the predict-for user's chosen neighbors.",
+              "depthExpr": "value * 0.6",
+              "highlightExpr": "(row == cf_tu and col == cf_pv) or (row == cf_pv and col == cf_tu) ? 1 : ((row == cf_tu and cfUsedNbr(col) > 0.5) or (col == cf_tu and cfUsedNbr(row) > 0.5) ? 0.45 : 0)",
+              "highlightColor": "#ffee58"
+            },
+            {
+              "id": "s2_play_corated",
+              "type": "tensor",
+              "shape": [6, 6],
+              "origin": [-7.0, -6.0, 0],
+              "cellSize": 0.75,
+              "plane": "xy",
+              "valueExpr": "cfCoRated(row, col)",
+              "colorMap": "magma",
+              "colorDomain": [0, 6],
+              "opacity": 0.95,
+              "shader": {"ignorePlaneOpacity": true},
+              "textExpr": "toFixed(value, 0)",
+              "axes": [
+                {
+                  "labels": ["Ava", "Ben", "Cleo", "Dan", "Eli", "Fay"],
+                  "color": "#ffa726",
+                  "highlightExpr": "row == cf_tu ? 1 : (row == cf_pv ? 0.6 : 0)",
+                  "highlightColor": "#ffee58"
+                },
+                {
+                  "labels": ["Ava", "Ben", "Cleo", "Dan", "Eli", "Fay"],
+                  "title": "co-rated movies $|I_{uv}|$",
+                  "color": "#ffa726",
+                  "highlightExpr": "col == cf_tu ? 1 : (col == cf_pv ? 0.6 : 0)",
+                  "highlightColor": "#ffee58"
+                }
+              ],
+              "label": "co-rated counts (live)",
+              "prompt": "How many movies each pair both rated — what Pearson is computed over. A \"?\" removes a movie from every pair that involves that user.",
+              "highlightExpr": "(row == cf_tu and col == cf_pv) or (row == cf_pv and col == cf_tu) ? 1 : 0",
+              "highlightColor": "#ffee58"
+            }
+          ],
+          "remove": [
+            {"id": "s2_R_knn_edit"},
+            {"id": "s2_corated"},
+            {"id": "s2_scatter_uv"},
+            {"id": "s2_sims"},
+            {"id": "s2_row_u1"},
+            {"id": "s2_row_u2"},
+            {"id": "s2_target"},
+            {"type": "slider"}
+          ],
+          "sliders": [
+            {
+              "id": "cf_play",
+              "kind": "tensor",
+              "label": "ratings (0 = ?) — hover a cell to edit",
+              "shape": [6, 6],
+              "min": 0,
+              "max": 5,
+              "step": 1,
+              "defaultData": "playground"
+            },
+            {"id": "cf_tu", "label": "user to predict", "min": 0, "max": 5, "step": 1, "default": 3, "valueExpr": "cfUser(cf_tu)"},
+            {"id": "cf_ti", "label": "movie to predict", "min": 0, "max": 5, "step": 1, "default": 0, "valueExpr": "cfMovie(cf_ti)"},
+            {"id": "cf_pv", "label": "compare with (stage 3, scatter)", "min": 0, "max": 5, "step": 1, "default": 0, "valueExpr": "cfUser(cf_pv)"},
+            {"id": "cf_knn", "label": "neighbors $n$", "min": 1, "max": 5, "step": 1, "default": 2},
+            {"id": "cf_stage", "label": "walkthrough stage", "min": 1, "max": 6, "step": 1, "default": 1, "valueExpr": "concat(string(cf_stage), '. ', cfWalkTitle(cf_stage))"}
+          ],
+          "info": [
+            {"id": "s2_info_walk", "position": "top-right", "content": "{{cfWalk(cf_stage)}}"},
+            {"id": "s2_info_play_sum", "position": "top-left", "content": "### Prediction\n{{cfWalkSummary()}}"}
+          ],
+          "camera": {
+            "position": [-1.6, -0.8, 15.5],
+            "target": [-1.6, -0.6, 0]
+          },
+          "prompt": "Playground. The walkthrough panel is generated live by cfWalk(stage) from the current table: stage 1 user mean, 2 who can vote (rated the movie), 3 Pearson worked for the compare-with user, 4 neighbor selection, 5 weighted deviations, 6 final prediction. Encourage experiments: hide a neighbor's rating of the target movie (set it to 0 = ?) and watch the neighbor set change; give two users identical centered ratings and watch w go to 1; predict a cell that HAS a rating and read the error. Every number on screen comes from the same domain functions as the walkthrough."
         }
       ],
       "proof": [

@@ -1029,7 +1029,7 @@ export interface Element {
    */
   depthExpr?: string;
   /**
-   * On tensor: per-cell highlight, evaluated with row, col, idx and value bound (and t, the scene time); 0 = none, 1 = full (clamped). A highlighted cell is brightened toward highlightColor and gets a rim around its lid plus a soft halo drawn additively; a raised cell glows on its lid, a sunk one at the mouth of its well. The expression sets the strength every frame, so it can pulse or fade with t. Use it to mark WHICH cells matter without borrowing a channel that encodes the value. Example: "row == u ? 0.8 + 0.2 * sin(2 * pi * t / 1.6) : 0".
+   * On tensor: per-cell highlight, evaluated with row, col, idx and value bound (and t, the scene time); 0 = none, 1 = full (clamped). A highlighted cell keeps its value colour and gets a rim around its lid plus a soft halo drawn additively in highlightColor; a raised cell glows on its lid, a sunk one at the mouth of its well. The expression sets the strength every frame, so it can pulse or fade with t. Use it to mark WHICH cells matter without borrowing a channel that encodes the value. Example: "row == u ? 0.8 + 0.2 * sin(2 * pi * t / 1.6) : 0".
    */
   highlightExpr?: string;
   /**

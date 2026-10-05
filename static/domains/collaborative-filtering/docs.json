@@ -42,6 +42,10 @@
     "watches": {
       "description": "Same shape as ratings: implicit watch counts.",
       "used_by": "cf_C default"
+    },
+    "playground": {
+      "description": "Same shape as ratings: the playground's starting table, 0 = '?' (the six test cells).",
+      "used_by": "cf_play default"
     }
   },
   "functions": {
@@ -103,7 +107,13 @@
     "cfImpY": "cfImpY(i, f) — implicit movie factor.",
     "cfImpPred": "cfImpPred(u, i) — predicted preference x_u . y_i.",
     "cfImpPosOnly": "cfImpPosOnly(u, i) — the control: a fit of the watched cells only, which predicts ~1 everywhere.",
-    "cfImpTop": "cfImpTop(u) — index of user u's top unwatched movie by predicted preference, or -1."
+    "cfImpTop": "cfImpTop(u) — index of user u's top unwatched movie by predicted preference, or -1.",
+    "cfPlay": "cfPlay(u, i) — playground cell: the rating 1-5, or 0 for '?' (cf_play).",
+    "cfPlayPred": "cfPlayPred() — user-based kNN prediction for the playground target (cf_tu, cf_ti), its own rating held out.",
+    "cfUsedNbr": "cfUsedNbr(v) — 1 if user v is one of the cf_knn neighbors used for the playground target.",
+    "cfWalk": "cfWalk(stage) — markdown + KaTeX walkthrough of stage 1-6 of the playground prediction: what and why, formula, substituted values, intermediate table, result.",
+    "cfWalkTitle": "cfWalkTitle(stage) — the walkthrough stage's title.",
+    "cfWalkSummary": "cfWalkSummary() — one-line playground summary: target, prediction, actual and error."
   },
   "sliderContracts": {
     "cf_R": {
@@ -234,6 +244,41 @@
       "default": 10,
       "scenes": [
         8
+      ]
+    },
+    "cf_play": {
+      "description": "Tensor [6,6], 0-5: the playground ratings. 0 = '?' (unknown); the rating scale is 1-5, so 0 is never a real rating. When present it replaces cf_R/cf_obs.",
+      "default": "data table \"playground\"",
+      "scenes": [
+        2
+      ]
+    },
+    "cf_tu": {
+      "description": "Playground: user to predict for. That cell is held out of every calculation even if it has a rating.",
+      "default": 3,
+      "scenes": [
+        2
+      ]
+    },
+    "cf_ti": {
+      "description": "Playground: movie to predict.",
+      "default": 0,
+      "scenes": [
+        2
+      ]
+    },
+    "cf_pv": {
+      "description": "Playground: the user whose Pearson similarity to cf_tu is worked out in stage 3 and plotted.",
+      "default": 0,
+      "scenes": [
+        2
+      ]
+    },
+    "cf_stage": {
+      "description": "Playground walkthrough stage 1-6, passed to cfWalk.",
+      "default": 1,
+      "scenes": [
+        2
       ]
     }
   },

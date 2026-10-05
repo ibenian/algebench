@@ -342,13 +342,29 @@
         // then any tensor slider of the same table edits on top.
         const movies = _dataNames('movies', 'movie', MOVIES);
         const users = _dataNames('ratings', 'user', USERS);
-        const R = _table('cf_R', _dataMatrix('ratings', movies, R_DEFAULT));
+        let R = _table('cf_R', _dataMatrix('ratings', movies, R_DEFAULT));
         const obsRaw = _table('cf_obs', _dataMatrix('observed', movies, OBS_DEFAULT));
-        const obs = obsRaw.map(row => row.map(v => (v >= 0.5 ? 1 : 0)));
+        let obs = obsRaw.map(row => row.map(v => (v >= 0.5 ? 1 : 0)));
+        // PLAYGROUND. A tensor slider `cf_play` replaces the ratings outright:
+        // a cell >= 1 is a rating (the scale is 1-5, so 0 can never be one)
+        // and 0 means "?" -- missing, excluded from every mean, similarity
+        // and co-rated count. The prediction target (cf_tu, cf_ti) is held
+        // out whether or not it holds a rating, so a known rating can be
+        // compared with its prediction.
+        let play = null;
+        const playRaw = _readRaw('cf_play');
+        if (Array.isArray(playRaw)) {
+            const P = _table('cf_play', R_DEFAULT.map(r => r.map(() => 0)));
+            R = P.map(row => row.map(v => Math.max(0, Math.min(5, Math.round(v)))));
+            obs = R.map(row => row.map(v => (v >= 1 ? 1 : 0)));
+            const tu = _intRead('cf_tu', 3, 0, NU - 1), ti = _intRead('cf_ti', 0, 0, NI - 1);
+            play = { tu, ti, actual: obs[tu][ti] ? R[tu][ti] : null, pv: _intRead('cf_pv', 0, 0, NU - 1) };
+            obs[tu][ti] = 0;
+        }
         const C = _table('cf_C', _dataMatrix('watches', movies, C_DEFAULT)).map(row => row.map(v => Math.max(0, v)));
         const me = _table('cf_me', [[0, 0, 0, 0, 0, 0]])[0];
         return {
-            R, obs, C, me, users, movies,
+            R, obs, C, me, users, movies, play,
             pstar: _table('cf_pstar', _dataMatrix('tastes', GENRES, PSTAR)),
             qstar: _table('cf_qstar', _dataMatrix('movies', GENRES, QSTAR)),
             k: _intRead('cf_k', 3, 1, K_MAX),
@@ -761,6 +777,137 @@
         return best;
     }
 
+    // ---- playground: a traced user-based prediction -------------------------
+
+    const _f = x => (Number.isFinite(x) ? (Math.abs(x) < 0.005 ? '0.00' : x.toFixed(2)) : '—');
+    const _sgn = x => (x < 0 ? `(${_f(x)})` : _f(x));   // wrap negatives inside sums
+    function _rated(st, u) { const out = []; for (let i = 0; i < NI; i++) if (st.obs[u][i]) out.push(i); return out; }
+    function _pearsonParts(st, a, b) {
+        const ma = _meanOf(st, a), mb = _meanOf(st, b);
+        const rows = [];
+        let sxy = 0, sxx = 0, syy = 0;
+        for (let i = 0; i < NI; i++) {
+            if (!(st.obs[a][i] && st.obs[b][i])) continue;
+            const x = st.R[a][i] - ma, y = st.R[b][i] - mb;
+            rows.push({ i, ra: st.R[a][i], rb: st.R[b][i], x, y });
+            sxy += x * y; sxx += x * x; syy += y * y;
+        }
+        return { ma, mb, rows, sxy, sxx, syy, w: _sim(st, a, b) };
+    }
+    function _playNbrs(st) {
+        const p = st.play; if (!p) return [];
+        return _neighbours(st, p.tu, p.ti, st.knn).map(([v]) => v);
+    }
+    /** 1 if user v is one of the n neighbors used for the playground target. */
+    function cfUsedNbr(v) { const st = _st(); return _playNbrs(st).includes(_u(v)) ? 1 : 0; }
+    /** Playground cell value: the rating 1-5, or 0 for "?" (the target keeps its value). */
+    function cfPlay(u, i) { return _st().R[_u(u)][_i(i)]; }
+    /** Prediction for the playground target (its own rating held out). */
+    function cfPlayPred() { const st = _st(); const p = st.play; return p ? _knn(st, p.tu, p.ti, st.knn) : NaN; }
+
+    const STAGES = ['Target and its user\'s mean', 'Who can vote?', 'Pearson similarity, worked',
+                    'Choose the neighbors', 'Weighted deviations', 'The prediction'];
+    /** Title of walkthrough stage s (1-based). */
+    function cfWalkTitle(s) { return STAGES[_ci(Number(s) - 1, STAGES.length - 1)]; }
+
+    /** One-line summary of the playground prediction. */
+    function cfWalkSummary() {
+        const st = _st(); const p = st.play; if (!p) return 'Playground inactive.';
+        const U = st.users, M = st.movies, pred = _knn(st, p.tu, p.ti, st.knn);
+        const act = p.actual == null ? 'unknown (?)' : `${p.actual} — error ${_f(pred - p.actual)}`;
+        return `**${U[p.tu]} × ${M[p.ti]}**: predicted $\\hat r = ${_f(pred)}$ · actual ${act}`;
+    }
+
+    /** The full walkthrough text for stage s: what and why, formula,
+     *  substituted values, intermediate steps, result. Markdown + KaTeX. */
+    function cfWalk(s) {
+        const st = _st(); const p = st.play;
+        if (!p) return 'Playground inactive.';
+        const U = st.users, M = st.movies, u = p.tu, i = p.ti, n = st.knn;
+        const stage = _ci(Number(s) - 1, STAGES.length - 1) + 1;
+        const Iu = _rated(st, u);
+        const mu = _meanOf(st, u);
+        const head = `### ${stage}/6 · ${STAGES[stage - 1]}\n`;
+        const cands = [];
+        for (let v = 0; v < NU; v++) if (v !== u && st.obs[v][i]) cands.push(v);
+        const ranked = cands.map(v => [v, _sim(st, u, v)]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+        const chosen = ranked.slice(0, n);
+
+        if (stage === 1) {
+            const sum = Iu.reduce((t, k) => t + st.R[u][k], 0);
+            const actual = p.actual == null ? 'is **?** — unknown' : `is **${p.actual}**, but it is **held out**: we predict it as if it were unknown and compare at the end`;
+            return head +
+                `**What and why.** We predict **${U[u]}**'s rating of **${M[i]}**. The cell ${actual}. ` +
+                `Everything starts from ${U[u]}'s *own* scale: their average rating over the movies they did rate.\n\n` +
+                `**Formula.** $\\bar r_u = \\dfrac{1}{|I_u|}\\sum_{k \\in I_u} r_{uk}$\n\n` +
+                `**Values.** ${U[u]} rated ${Iu.length ? Iu.map(k => `${M[k]} = ${st.R[u][k]}`).join(', ') : 'nothing'}.\n\n` +
+                (Iu.length
+                    ? `$$\\bar r_{\\text{${U[u]}}} = \\frac{${Iu.map(k => st.R[u][k]).join(' + ')}}{${Iu.length}} = \\frac{${sum}}{${Iu.length}} = ${_f(mu)}$$`
+                    : `No ratings left: the mean is undefined (shown as 0) and the prediction falls back to it.`);
+        }
+        if (stage === 2) {
+            const rows = cands.map(v => `| ${U[v]} | ${st.R[v][i]} | ${_rated(st, v).length} | ${_f(_meanOf(st, v))} | ${cfCoRated(u, v)} |`);
+            const out = [];
+            for (let v = 0; v < NU; v++) if (v !== u && !st.obs[v][i]) out.push(U[v]);
+            return head +
+                `**What and why.** Only people who **rated ${M[i]}** can say anything about it. For each we need their own mean ` +
+                `(to read their rating relative to their scale) and how many movies they share with ${U[u]} (similarity is computed on those).\n\n` +
+                `**Formulas.** $\\bar r_v = \\frac{1}{|I_v|}\\sum_{k\\in I_v} r_{vk}$, $\\;I_{uv} = I_u \\cap I_v$\n\n` +
+                (rows.length ? `| user $v$ | $r_{v,i}$ | $|I_v|$ | $\\bar r_v$ | $|I_{uv}|$ |\n|---|---|---|---|---|\n${rows.join('\n')}\n\n` : '**Nobody else rated it** — no prediction beyond the user mean.\n\n') +
+                (out.length ? `**Excluded** (did not rate ${M[i]}): ${out.join(', ')}.` : '');
+        }
+        if (stage === 3) {
+            const v = p.pv;
+            if (v === u) return head + `Pick a **compare with** user other than ${U[u]} to see the Pearson calculation.`;
+            const pp = _pearsonParts(st, u, v);
+            const rows = pp.rows.map(r => `| ${M[r.i]} | ${r.ra} | ${_f(r.x)} | ${r.rb} | ${_f(r.y)} | ${_f(r.x * r.y)} | ${_f(r.x * r.x)} | ${_f(r.y * r.y)} |`);
+            let result;
+            if (pp.rows.length < 2) result = `Only ${pp.rows.length} co-rated movie(s): a correlation needs at least 2, so $w = 0$.`;
+            else if (pp.sxx === 0 || pp.syy === 0) result = `One user's centered ratings are all 0 on the shared movies (no spread), so the correlation is undefined: $w = 0$.`;
+            else result = `$$w_{\\text{${U[u]}},\\text{${U[v]}}} = \\frac{${_f(pp.sxy)}}{\\sqrt{${_f(pp.sxx)}}\\,\\sqrt{${_f(pp.syy)}}} = \\frac{${_f(pp.sxy)}}{${_f(Math.sqrt(pp.sxx))} \\times ${_f(Math.sqrt(pp.syy))}} = ${_f(pp.w)}$$`;
+            const all = ranked.map(([c, w]) => `${U[c]} ${_f(w)}`).join(' · ');
+            return head +
+                `**What and why.** How much does **${U[v]}** rate like **${U[u]}**? Center each user's ratings on their own mean ` +
+                `($x$ for ${U[u]}, $y$ for ${U[v]}) over the movies both rated, then take the cosine of the angle between the two centered vectors.\n\n` +
+                `**Formula.** $w_{uv} = \\dfrac{\\sum x_k y_k}{\\sqrt{\\sum x_k^2}\\sqrt{\\sum y_k^2}}$, $\\;x_k = r_{uk} - \\bar r_u$, $\\;y_k = r_{vk} - \\bar r_v$\n\n` +
+                `**Means.** $\\bar r_{\\text{${U[u]}}} = ${_f(pp.ma)}$, $\\bar r_{\\text{${U[v]}}} = ${_f(pp.mb)}$\n\n` +
+                (rows.length ? `| movie | $r_u$ | $x$ | $r_v$ | $y$ | $xy$ | $x^2$ | $y^2$ |\n|---|---|---|---|---|---|---|---|\n${rows.join('\n')}\n| **sum** | | | | | **${_f(pp.sxy)}** | **${_f(pp.sxx)}** | **${_f(pp.syy)}** |\n\n` : '') +
+                `**Result.** ${result}\n\n**All voters for ${M[i]}:** ${all || '—'}`;
+        }
+        if (stage === 4) {
+            const rows = ranked.map(([v, w], k) => `| ${k + 1} | ${U[v]} | ${_f(w)} | ${k < n ? '**used**' : '—'} |`);
+            return head +
+                `**What and why.** Keep only the $n = ${n}$ voters **most similar** to ${U[u]} — the people whose taste best predicts theirs. ` +
+                `Negative similarity ranks last: such a user rates opposite to ${U[u]}.\n\n` +
+                `**Rule.** $N_i(u) = $ the top $n$ users by $w_{uv}$ among those with $r_{vi}$ known.\n\n` +
+                (rows.length ? `| rank | user | $w$ | |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : 'No voters.\n\n') +
+                `**Result.** $N_{\\text{${M[i].replace(/&/g, '\\&')}}}(\\text{${U[u]}}) = \\{${chosen.map(([v]) => `\\text{${U[v]}}`).join(', ') || '\\varnothing'}\\}$`;
+        }
+        const terms = chosen.map(([v, w]) => { const mv = _meanOf(st, v); const d = st.R[v][i] - mv; return { v, w, mv, d, wd: w * d }; });
+        const swd = terms.reduce((t, x) => t + x.wd, 0), sw = terms.reduce((t, x) => t + Math.abs(x.w), 0);
+        const dbar = sw > 0 ? swd / sw : 0;
+        if (stage === 5) {
+            const rows = terms.map(x => `| ${U[x.v]} | ${_f(x.w)} | ${st.R[x.v][i]} | ${_f(x.mv)} | ${_f(x.d)} | ${_f(x.wd)} | ${_f(Math.abs(x.w))} |`);
+            return head +
+                `**What and why.** A neighbor's raw star count is not comparable across people, so use how far **above or below their own mean** ` +
+                `they rated ${M[i]} ($d$), and weight it by similarity. Dividing by $\\sum|w|$ turns the sum into a weighted **average** deviation.\n\n` +
+                `**Formula.** $\\bar d = \\dfrac{\\sum_{v\\in N} w_{uv}\\,(r_{vi} - \\bar r_v)}{\\sum_{v\\in N} |w_{uv}|}$\n\n` +
+                (rows.length ? `| neighbor | $w$ | $r_{vi}$ | $\\bar r_v$ | $d = r_{vi}-\\bar r_v$ | $w\\,d$ | $|w|$ |\n|---|---|---|---|---|---|---|\n${rows.join('\n')}\n| **sum** | | | | | **${_f(swd)}** | **${_f(sw)}** |\n\n` : '') +
+                (sw > 0
+                    ? `$$\\bar d = \\frac{${terms.map(x => `${_f(x.w)}\\cdot${_sgn(x.d)}`).join(' + ')}}{${terms.map(x => _f(Math.abs(x.w))).join(' + ')}} = \\frac{${_f(swd)}}{${_f(sw)}} = ${_f(dbar)}$$`
+                    : `All weights are 0, so the average deviation is taken as 0.`);
+        }
+        const pred = mu + dbar;
+        const cmp = p.actual == null ? `The true rating is unknown (**?**) — this is a genuine prediction.`
+            : `The held-out rating is **${p.actual}**, so the error is $${_f(pred)} - ${p.actual} = ${_f(pred - p.actual)}$.`;
+        return head +
+            `**What and why.** Start from ${U[u]}'s own mean and shift it by the neighbors' average deviation: ` +
+            `"${U[u]} usually gives ${_f(mu)}; people like them rated ${M[i]} ${dbar >= 0 ? 'above' : 'below'} their usual by ${_f(Math.abs(dbar))}."\n\n` +
+            `**Formula.** $\\hat r_{ui} = \\bar r_u + \\dfrac{\\sum_{v\\in N} w_{uv}\\,(r_{vi}-\\bar r_v)}{\\sum_{v\\in N}|w_{uv}|}$\n\n` +
+            `$$\\hat r_{\\text{${U[u]}}} = ${_f(mu)} + \\frac{${_f(swd)}}{${_f(sw)}} = ${_f(mu)} ${dbar < 0 ? '-' : '+'} ${_f(Math.abs(dbar))} = ${_f(pred)}$$\n\n` +
+            `**Result.** ${cmp}`;
+    }
+
     window.AlgeBenchDomains.register('collaborative-filtering', {
         _init({ getSlider, getData }) {
             _getSlider = getSlider;
@@ -769,6 +916,8 @@
         },
         // data and names
         cfUser, cfMovie, cfGenre, cfR, cfObs, cfHidden, cfNObs, cfMu, cfUserMean,
+        // playground
+        cfPlay, cfPlayPred, cfUsedNbr, cfWalk, cfWalkTitle, cfWalkSummary,
         // neighbourhood CF
         cfCoRated, cfSim, cfKnn, cfKnnNbr, cfKnnRmse,
         // designed factor model

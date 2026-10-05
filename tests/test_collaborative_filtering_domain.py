@@ -165,3 +165,45 @@ table[0][0] = 2;
 sliders.cf_R = table;
 assert.equal(cf.cfR(0, 0), 2);
 ''')
+
+
+PLAY = '[[4,0,1,5,5,2],[1,4,1,5,2,0],[1,1,4,2,0,5],[0,2,1,5,4,3],[2,2,0,4,4,4],[2,1,3,0,5,4]]'
+
+
+def test_playground_question_marks_are_missing_not_zero():
+    _node(f'''
+sliders.cf_play = {PLAY};
+sliders.cf_tu = 3; sliders.cf_ti = 0; sliders.cf_knn = 2;
+near(cf.cfPlayPred(), 2.748456139, 1e-6);          // Dan x Die Hard, as in the scene
+assert.equal(cf.cfObs(0, 1), 0);                    // Ava x Notebook is "?"
+assert.equal(cf.cfCoRated(0, 3), 4);
+// Ava's Die Hard rating to "?": she can no longer vote for Die Hard.
+const p = {PLAY}; p[0][0] = 0; sliders.cf_play = p;
+assert.equal(cf.cfUsedNbr(0), 0);
+assert.equal(cf.cfObs(0, 0), 0);
+assert.ok(Math.abs(cf.cfPlayPred() - 2.748456139) > 1e-3);
+''')
+
+
+def test_playground_target_is_held_out_even_when_rated():
+    _node(f'''
+sliders.cf_play = {PLAY};
+sliders.cf_tu = 0; sliders.cf_ti = 0;               // Ava x Die Hard, actual 4
+assert.equal(cf.cfPlay(0, 0), 4);                   // the table still shows it
+assert.equal(cf.cfObs(0, 0), 0);                    // ...but no calculation sees it
+near(cf.cfUserMean(0), (1 + 5 + 5 + 2) / 4, 1e-12);
+assert.ok(cf.cfWalkSummary().includes('actual 4'));
+''')
+
+
+def test_walkthrough_numbers_match_the_computation():
+    _node(f'''
+sliders.cf_play = {PLAY};
+sliders.cf_tu = 3; sliders.cf_ti = 0; sliders.cf_pv = 0; sliders.cf_knn = 2;
+const pred = cf.cfPlayPred().toFixed(2);
+assert.ok(cf.cfWalk(6).includes('= ' + pred + '$$'), cf.cfWalk(6));
+assert.ok(cf.cfWalk(3).includes(cf.cfSim(3, 0).toFixed(2)));
+assert.ok(cf.cfWalk(1).includes('3.00'));           // Dan's mean
+assert.ok(cf.cfWalk(4).includes('Ava') && cf.cfWalk(4).includes('Eli'));
+for (let s = 1; s <= 6; s++) assert.ok(cf.cfWalk(s).startsWith('### ' + s + '/6'));
+''')
