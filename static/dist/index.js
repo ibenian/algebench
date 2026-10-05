@@ -469,9 +469,15 @@ async function importDomains(importList) {
 		}
 		const fns = window.AlgeBenchDomains._registry[name];
 		if (fns) {
-			if (typeof fns._init === "function") fns._init({ getSlider(id, fallback = 0) {
-				return sliderScopeValue(exprState.sceneSliders[id], fallback);
-			} });
+			if (typeof fns._init === "function") fns._init({
+				getSlider(id, fallback = 0) {
+					return sliderScopeValue(exprState.sceneSliders[id], fallback);
+				},
+				getData(name) {
+					const t = exprState.sceneData && exprState.sceneData[name];
+					return Array.isArray(t) ? t : void 0;
+				}
+			});
 			const { _init, ...publicFns } = fns;
 			Object.assign(exprState._activeDomainFunctions, publicFns);
 		}
@@ -2111,6 +2117,23 @@ function _flattenTable(raw, shape, min, max) {
 	}
 	return out;
 }
+/** The nested table a tensor slider's `defaultData` names, read from the
+*  scene's `data` tables: one row per table row, one cell per column. The
+*  columns are `columns` when given, otherwise every numeric field of the
+*  first row in its key order. A 1-D slider takes the first row. Returns
+*  undefined when the table is missing or empty, so `default` still applies. */
+function tensorDefaultFromData(spec, data, shape) {
+	const name = typeof spec === "string" ? spec : spec && typeof spec === "object" ? spec.table : void 0;
+	if (typeof name !== "string" || !data) return void 0;
+	const table = data[name];
+	if (!Array.isArray(table) || table.length === 0) return void 0;
+	const rows = table.filter((r) => !!r && typeof r === "object" && !Array.isArray(r));
+	if (!rows.length) return void 0;
+	const explicit = spec && typeof spec === "object" ? spec.columns : void 0;
+	const columns = Array.isArray(explicit) ? explicit.map(String) : Object.keys(rows[0]).filter((k) => typeof rows[0][k] === "number");
+	const pick = (r) => columns.map((c) => Number(r[c]));
+	return shape.length === 1 ? pick(rows[0]) : rows.map(pick);
+}
 function _parseSliderShape(raw) {
 	if (!Array.isArray(raw) || raw.length < 1 || raw.length > 2) return null;
 	const dims = raw.map((v) => Number(v));
@@ -2418,7 +2441,9 @@ function registerSliders(sliderDefs) {
 		const shape = def.kind === "tensor" ? _parseSliderShape(def.shape) : null;
 		const isTensor = !!shape;
 		if (def.kind === "tensor" && !shape) console.warn(`slider "${def.id}": kind "tensor" needs a shape of one or two positive integers; got`, def.shape);
-		const defaults = shape ? _flattenTable(def.default, shape, min, max) : null;
+		const fromData = shape && def.defaultData !== void 0 ? tensorDefaultFromData(def.defaultData, state.sceneData, shape) : void 0;
+		if (shape && def.defaultData !== void 0 && fromData === void 0) console.warn(`slider "${def.id}": defaultData names no usable data table; using "default".`, def.defaultData);
+		const defaults = shape ? _flattenTable(fromData !== void 0 ? fromData : def.default, shape, min, max) : null;
 		const scalarDefault = typeof def.default === "number" ? def.default : void 0;
 		sliderState.sceneSliders[def.id] = {
 			value: isTensor ? NaN : scalarDefault !== void 0 ? scalarDefault : (min + max) / 2,
@@ -11092,6 +11117,7 @@ function renderTensor(el, _view) {
 	const heightExprString = readExpr("heightExpr");
 	const depthExprString = readExpr("depthExpr");
 	const textExprString = readExpr("textExpr");
+	const highlightExprString = readExpr("highlightExpr");
 	const compileOpt = (src, what) => {
 		if (!src) return null;
 		const why = explainCompileDegrade(src);
@@ -11110,6 +11136,9 @@ function renderTensor(el, _view) {
 	let heightFn = compileOpt(heightExprString, "heightExpr");
 	let depthFn = compileOpt(depthExprString, "depthExpr");
 	let textFn = compileOpt(textExprString, "textExpr");
+	let highlightFn = compileOpt(highlightExprString, "highlightExpr");
+	const highlightDeclared = !!highlightExprString;
+	const highlightRgb = parseColor(el.highlightColor || "#fff59d");
 	const sizeChannelDeclared = !!(widthExprString || heightExprString);
 	let hasSizeExpr = !!(widthFn || heightFn);
 	const depthDeclared = !!depthExprString;
@@ -11170,6 +11199,10 @@ function renderTensor(el, _view) {
 		cellRgb[cell * 3] = r0;
 		cellRgb[cell * 3 + 1] = g0;
 		cellRgb[cell * 3 + 2] = b0;
+		writeCellColour(cell, r0, g0, b0);
+	}
+	/** The vertex-buffer half of colourCell, without recording the colour. */
+	function writeCellColour(cell, r0, g0, b0) {
 		for (let k = 0; k < vertsPerCell; k++) {
 			const shade = k < TOP_VERTS ? 1 : SIDE_SHADE;
 			const base = (cell * vertsPerCell + k) * 3;
@@ -11185,6 +11218,156 @@ function renderTensor(el, _view) {
 		const rgb = colorMapFn(u);
 		colourCell(cell, rgb[0], rgb[1], rgb[2]);
 	}
+	const cellHi = new Float64Array(drawn);
+	const RIM_VERTS = 4 * TOP_VERTS;
+	const rim = highlightDeclared ? (() => {
+		const pos = new Float32Array(drawn * RIM_VERTS * 3);
+		const col = new Float32Array(drawn * RIM_VERTS * 3);
+		const g = new THREE.BufferGeometry();
+		const pa = new THREE.BufferAttribute(pos, 3);
+		pa.setUsage(THREE.DynamicDrawUsage);
+		const ca = new THREE.BufferAttribute(col, 3);
+		ca.setUsage(THREE.DynamicDrawUsage);
+		g.setAttribute("position", pa);
+		g.setAttribute("color", ca);
+		const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+			vertexColors: true,
+			transparent: true,
+			blending: THREE.AdditiveBlending,
+			depthWrite: false,
+			side: THREE.DoubleSide
+		}));
+		m.userData.targetOpacity = 1;
+		m.userData.ignorePlaneOpacity = true;
+		return {
+			mesh: m,
+			pos,
+			col,
+			attrs: [pa, ca]
+		};
+	})() : null;
+	const HALO = .4;
+	const halo = highlightDeclared ? (() => {
+		const n = 128, inset = Math.round(n * HALO / 1.8);
+		const cv = document.createElement("canvas");
+		cv.width = cv.height = n;
+		const g2 = cv.getContext("2d");
+		g2.fillStyle = "rgba(255,255,255,0.18)";
+		g2.fillRect(inset, inset, 72, 72);
+		g2.strokeStyle = "#ffffff";
+		g2.shadowColor = "#ffffff";
+		for (const [blur, width] of [
+			[28, 8],
+			[14, 5],
+			[4, 3]
+		]) {
+			g2.shadowBlur = blur;
+			g2.lineWidth = width;
+			g2.strokeRect(inset, inset, 72, 72);
+		}
+		const tex = new THREE.CanvasTexture(cv);
+		const pos = new Float32Array(drawn * TOP_VERTS * 3);
+		const col = new Float32Array(drawn * TOP_VERTS * 3);
+		const uv = new Float32Array(drawn * TOP_VERTS * 2);
+		for (let cell = 0; cell < drawn; cell++) QUAD_CORNERS.forEach(([qx, qy], k) => {
+			uv[(cell * TOP_VERTS + k) * 2] = qx;
+			uv[(cell * TOP_VERTS + k) * 2 + 1] = qy;
+		});
+		const g = new THREE.BufferGeometry();
+		const pa = new THREE.BufferAttribute(pos, 3);
+		pa.setUsage(THREE.DynamicDrawUsage);
+		const ca = new THREE.BufferAttribute(col, 3);
+		ca.setUsage(THREE.DynamicDrawUsage);
+		g.setAttribute("position", pa);
+		g.setAttribute("color", ca);
+		g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+		const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+			map: tex,
+			vertexColors: true,
+			transparent: true,
+			blending: THREE.AdditiveBlending,
+			depthWrite: false,
+			side: THREE.DoubleSide
+		}));
+		m.userData.targetOpacity = 1;
+		m.userData.ignorePlaneOpacity = true;
+		return {
+			mesh: m,
+			pos,
+			col,
+			attrs: [pa, ca]
+		};
+	})() : null;
+	/** Rewrite one cell's rim and halo, lit by `amt` (0..1). */
+	function placeRim(cell, r, c, amt) {
+		if (!rim) return;
+		const w = cellW[cell] * cellSize, h = cellH[cell] * cellSize;
+		const lift = Math.max(0, cellD[cell]) * cellSize + .004 * cellSize;
+		const t = .09 * cellSize;
+		const ex = w > 0 ? t / w : 0, ey = h > 0 ? t / h : 0;
+		const o = [
+			-ex / 2,
+			-ey / 2,
+			1 + ex / 2,
+			1 + ey / 2
+		];
+		const i = [
+			ex / 2,
+			ey / 2,
+			1 - ex / 2,
+			1 - ey / 2
+		];
+		const strips = [
+			[
+				o[0],
+				o[1],
+				o[2],
+				i[1]
+			],
+			[
+				o[0],
+				i[3],
+				o[2],
+				o[3]
+			],
+			[
+				o[0],
+				i[1],
+				i[0],
+				i[3]
+			],
+			[
+				i[2],
+				i[1],
+				o[2],
+				i[3]
+			]
+		];
+		let k = cell * RIM_VERTS;
+		const glow = Math.max(0, Math.min(1, amt));
+		for (const [x0, y0, x1, y1] of strips) for (const [qx, qy] of QUAD_CORNERS) {
+			const p = dataToWorld(layout.corner(r, c, qx ? x1 : x0, qy ? y1 : y0, w, h, lift));
+			rim.pos[k * 3] = p[0];
+			rim.pos[k * 3 + 1] = p[1];
+			rim.pos[k * 3 + 2] = p[2];
+			rim.col[k * 3] = highlightRgb[0] * glow;
+			rim.col[k * 3 + 1] = highlightRgb[1] * glow;
+			rim.col[k * 3 + 2] = highlightRgb[2] * glow;
+			k++;
+		}
+		if (!halo) return;
+		let q = cell * TOP_VERTS;
+		for (const [qx, qy] of QUAD_CORNERS) {
+			const p = dataToWorld(layout.corner(r, c, qx ? 1.4 : -.4, qy ? 1.4 : -.4, w, h, lift));
+			halo.pos[q * 3] = p[0];
+			halo.pos[q * 3 + 1] = p[1];
+			halo.pos[q * 3 + 2] = p[2];
+			halo.col[q * 3] = highlightRgb[0] * glow;
+			halo.col[q * 3 + 1] = highlightRgb[1] * glow;
+			halo.col[q * 3 + 2] = highlightRgb[2] * glow;
+			q++;
+		}
+	}
 	for (let cell = 0; cell < drawn; cell++) colourCell(cell, baseColor[0], baseColor[1], baseColor[2]);
 	/**
 	* Evaluate every drawn cell at `tSec`, binding indices for that cell only:
@@ -11194,7 +11377,7 @@ function renderTensor(el, _view) {
 	*/
 	function paintAll(tSec) {
 		const bound = boundValues();
-		if (!(bound || literalValues || valueFn) && !hasSizeExpr && !hasDepthExpr) return;
+		if (!(bound || literalValues || valueFn) && !hasSizeExpr && !hasDepthExpr && !highlightFn) return;
 		if (bound && bound.length !== drawn && !boundShapeWarned) {
 			boundShapeWarned = true;
 			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: bound slider "${bindId}" holds ${bound.length} values but the lattice draws ${drawn}`);
@@ -11226,7 +11409,19 @@ function renderTensor(el, _view) {
 				cellD[cell] = d;
 				placeCell(cell, r, c, w * cellSize, h * cellSize, d * cellSize);
 			}
+			if (highlightFn) {
+				const hv = Number(evalExpr(highlightFn, tSec, { overrideScope: scope }));
+				const amt = Number.isFinite(hv) ? Math.max(0, Math.min(1, hv)) : 0;
+				cellHi[cell] = amt;
+				placeRim(cell, r, c, amt);
+			}
 		}
+		if (rim && highlightFn) rim.attrs.forEach((a) => {
+			a.needsUpdate = true;
+		});
+		if (halo && highlightFn) halo.attrs.forEach((a) => {
+			a.needsUpdate = true;
+		});
 	}
 	let boundShapeWarned = false;
 	try {
@@ -11269,6 +11464,12 @@ function renderTensor(el, _view) {
 	mesh.renderOrder = serial;
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
+	for (const fx of [halo, rim]) {
+		if (!fx) continue;
+		fx.mesh.renderOrder = serial + .5;
+		tensorState.three.scene.add(fx.mesh);
+		tensorState.planeMeshes.push(fx.mesh);
+	}
 	const axes = Array.isArray(el.axes) ? el.axes : [];
 	const axisPlane = el.axisLabels !== "screen";
 	const hAxisIdx = dims.length - 1;
@@ -11280,6 +11481,34 @@ function renderTensor(el, _view) {
 	const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
 	let hLabelFn = compileAxisLabelExpr(hAxis);
 	let vLabelFn = compileAxisLabelExpr(vAxis);
+	const axisHiSrc = (axis) => axis && typeof axis.highlightExpr === "string" && axis.highlightExpr.trim() ? axis.highlightExpr.trim() : null;
+	const hHiSrc = axisHiSrc(hAxis), vHiSrc = axisHiSrc(vAxis);
+	let hHiFn = compileOpt(hHiSrc, "axes highlightExpr");
+	let vHiFn = compileOpt(vHiSrc, "axes highlightExpr");
+	const axisHiRgb = (axis) => parseColor(axis && typeof axis.highlightColor === "string" && axis.highlightColor || el.highlightColor || "#fff59d");
+	const hHiRgb = axisHiRgb(hAxis), vHiRgb = axisHiRgb(vAxis);
+	const hHi = [], vHi = [];
+	/** One axis's highlight amounts this frame, quantised so the text cache key is stable. */
+	function axisHighlights(fn, n, isRow, tSec, out) {
+		out.length = n;
+		for (let k = 0; k < n; k++) {
+			let a = 0;
+			if (fn) try {
+				const v = Number(evalExpr(fn, tSec, { overrideScope: isRow ? {
+					row: k,
+					idx: k
+				} : {
+					col: k,
+					idx: k
+				} }));
+				a = Number.isFinite(v) ? Math.round(Math.max(0, Math.min(1, v)) * 20) / 20 : 0;
+			} catch (_err) {
+				a = 0;
+			}
+			out[k] = a;
+		}
+		return out;
+	}
 	const declaredLabelExpr = (axis) => axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
 	const hLabelSrc = declaredLabelExpr(hAxis);
 	const vLabelSrc = declaredLabelExpr(vAxis);
@@ -11527,6 +11756,10 @@ function renderTensor(el, _view) {
 		const vTexts = planeLabels && (vLabelFn || vLabelsStatic) ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
 		if (hTexts) keyParts.push(...hTexts);
 		if (vTexts) keyParts.push(...vTexts);
+		const hAmt = hTexts && hHiFn ? axisHighlights(hHiFn, cols, false, tSec, hHi) : null;
+		const vAmt = vTexts && vHiFn ? axisHighlights(vHiFn, rows, true, tSec, vHi) : null;
+		if (hAmt) keyParts.push(hAmt.join(","));
+		if (vAmt) keyParts.push(vAmt.join(","));
 		const key = keyParts.join("");
 		if (key === textLayer.lastKey) return;
 		textLayer.lastKey = key;
@@ -11542,11 +11775,51 @@ function renderTensor(el, _view) {
 		const hPx = axisPx(hTexts, cols, hW);
 		const vPx = axisPx(vTexts, rows, vW);
 		const labelPx = Math.min(hPx, vPx);
+		/** Soft glowing pill behind a label of width `w` (canvas px) centred on (cx, cy). */
+		const glowPill = (cx, cy, w, h, rgb, amt) => {
+			const [r8, g8, b8] = [
+				rgb[0] * 255,
+				rgb[1] * 255,
+				rgb[2] * 255
+			].map(Math.round);
+			const padX = .18 * h, x = cx - w / 2 - padX, y = cy - h / 2, ww = w + 2 * padX, rad = h / 2;
+			ctx.save();
+			ctx.shadowColor = `rgba(${r8},${g8},${b8},${.9 * amt})`;
+			ctx.shadowBlur = .9 * h * amt;
+			ctx.fillStyle = `rgba(${r8},${g8},${b8},${.28 * amt})`;
+			ctx.beginPath();
+			ctx.moveTo(x + rad, y);
+			ctx.lineTo(x + ww - rad, y);
+			ctx.arc(x + ww - rad, y + rad, rad, -Math.PI / 2, Math.PI / 2);
+			ctx.lineTo(x + rad, y + h);
+			ctx.arc(x + rad, y + rad, rad, Math.PI / 2, Math.PI * 1.5);
+			ctx.closePath();
+			ctx.fill();
+			ctx.restore();
+		};
+		const mixRgb = (a, b, t) => [
+			a[0] + (b[0] - a[0]) * t,
+			a[1] + (b[1] - a[1]) * t,
+			a[2] + (b[2] - a[2]) * t
+		];
 		if (hTexts) {
 			const band = LABEL_BAND * px;
-			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, hW, glyphH, cssColor(hColor), false, "center", hPx);
+			for (let c = 0; c < cols; c++) {
+				const amt = hAmt ? hAmt[c] : 0;
+				const cx = ox + (c + .5) * px, cy = oy - band / 2;
+				if (amt > 0 && hTexts[c] && Number.isFinite(hPx)) glowPill(cx, cy, measureLatex(hTexts[c]).w * hPx / 100, hPx * 1.25, hHiRgb, amt);
+				drawFitted(ctx, hTexts[c], cx, cy, hW, glyphH, cssColor(amt > 0 ? mixRgb(hColor, hHiRgb, amt) : hColor), false, "center", hPx);
+			}
 		}
-		if (vTexts) for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, vW, glyphH, cssColor(vColor), false, "right", vPx);
+		if (vTexts) for (let r = 0; r < rows; r++) {
+			const amt = vAmt ? vAmt[r] : 0;
+			const rx = ox - .2 * px, cy = oy + (r + .5) * px;
+			if (amt > 0 && vTexts[r] && Number.isFinite(vPx)) {
+				const w = measureLatex(vTexts[r]).w * vPx / 100;
+				glowPill(rx - w / 2, cy, w, vPx * 1.25, vHiRgb, amt);
+			}
+			drawFitted(ctx, vTexts[r], rx, cy, vW, glyphH, cssColor(amt > 0 ? mixRgb(vColor, vHiRgb, amt) : vColor), false, "right", vPx);
+		}
 		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor), false, "center", labelPx);
 		if (vTitle && planeLabels) {
 			let titleX = TITLE_BAND * px / 2;
@@ -11583,6 +11856,8 @@ function renderTensor(el, _view) {
 	const labelExprStrings = [];
 	if (hLabelSrc) labelExprStrings.push(hLabelSrc);
 	if (vLabelSrc) labelExprStrings.push(vLabelSrc);
+	if (hHiSrc) labelExprStrings.push(hHiSrc);
+	if (vHiSrc) labelExprStrings.push(vHiSrc);
 	if (axes.length && !planeLabels) {
 		const pad = cellSize * .35;
 		if (hLabelSrc && hLabelFn) for (let c = 0; c < cols; c++) {
@@ -11654,13 +11929,15 @@ function renderTensor(el, _view) {
 		widthExprString,
 		heightExprString,
 		depthExprString,
-		textExprString
+		textExprString,
+		highlightExprString
 	].filter((x) => !!x);
 	const channelFns = () => [
 		widthFn,
 		heightFn,
 		depthFn,
-		textFn
+		textFn,
+		highlightFn
 	].filter((x) => !!x);
 	const entry = {
 		exprStrings: [
@@ -11686,6 +11963,13 @@ function renderTensor(el, _view) {
 			heightFn = compileOpt(heightExprString, "heightExpr");
 			textFn = textCapped ? null : compileOpt(textExprString, "textExpr");
 			depthFn = compileOpt(depthExprString, "depthExpr");
+			highlightFn = compileOpt(highlightExprString, "highlightExpr");
+			if (!highlightFn) {
+				for (const fx of [rim, halo]) if (fx) {
+					fx.col.fill(0);
+					fx.attrs[1].needsUpdate = true;
+				}
+			}
 			const hadSize = hasSizeExpr || hasDepthExpr;
 			hasSizeExpr = !!(widthFn || heightFn);
 			hasDepthExpr = !!depthFn;
@@ -11704,6 +11988,8 @@ function renderTensor(el, _view) {
 			if (planeLabels) {
 				hLabelFn = compileAxisLabelExpr(hAxis);
 				vLabelFn = compileAxisLabelExpr(vAxis);
+				hHiFn = compileOpt(hHiSrc, "axes highlightExpr");
+				vHiFn = compileOpt(vHiSrc, "axes highlightExpr");
 			}
 			const recompiled = /* @__PURE__ */ new Map();
 			for (const dl of dynamicLabels) {
@@ -11724,9 +12010,11 @@ function renderTensor(el, _view) {
 		animState,
 		updateFrame(nowMs) {
 			if (textLayer) textLayer.mesh.visible = mesh.visible;
+			if (rim) rim.mesh.visible = mesh.visible;
+			if (halo) halo.mesh.visible = mesh.visible;
 			if (!mesh.visible) return;
 			const tSec = (nowMs - startTime) / 1e3;
-			if (valueFn || bindId || hasSizeExpr || hasDepthExpr) try {
+			if (valueFn || bindId || hasSizeExpr || hasDepthExpr || highlightFn) try {
 				paintAll(tSec);
 				colorAttr.needsUpdate = true;
 				if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
@@ -11735,7 +12023,7 @@ function renderTensor(el, _view) {
 					textQuads.attr.needsUpdate = true;
 				}
 			} catch (_err) {}
-			if (textLayer && (textFn || planeLabels && (hLabelFn || vLabelFn))) try {
+			if (textLayer && (textFn || planeLabels && (hLabelFn || vLabelFn || hHiFn || vHiFn))) try {
 				paintText(tSec);
 			} catch (_err) {}
 			if (dynamicLabels.length) paintLabels(tSec);

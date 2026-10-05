@@ -250,6 +250,22 @@ In info overlays: `{{dataTable('capsules', capsule, 'name')}}` → displays name
 
 Use single quotes for string arguments — they are auto-converted to double quotes for math.js.
 
+### A dataset in one place: `defaultData` and domain `getData`
+
+When a lesson works on a matrix the learner can edit, keep the numbers in a `data` table and point the
+tensor slider at it instead of pasting a literal `default`:
+
+```json
+"data": { "ratings": [ { "user": "Ava", "Die Hard": 4, "Notebook": 1 },
+                       { "user": "Ben", "Die Hard": 1, "Notebook": 4 } ] },
+"sliders": [{ "id": "cf_R", "kind": "tensor", "shape": [2, 2], "min": 1, "max": 5, "step": 1,
+              "defaultData": "ratings" }]
+```
+
+- A table name uses each row's **numeric** fields in key order (`user` is skipped); `{"table": "ratings", "columns": [...]}` picks and orders them. A 1-D slider takes the first row.
+- A missing table falls back to `default`; `validate_content.py` reports it, and a row/column count that does not fill `shape`.
+- A domain library reads the same tables through `_init({ getSlider, getData })`: `getData('ratings')` returns the row objects, or `undefined` so the library can fall back to built-in data. See `static/domains/collaborative-filtering/` (`dataContracts` in its `docs.json`).
+
 ---
 
 ## Camera Views

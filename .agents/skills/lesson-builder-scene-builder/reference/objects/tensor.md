@@ -41,6 +41,8 @@ elements. Use it instead of hand-writing cells — always.
 | `anchor` | `center` | Which edge a shrunken cell keeps: `bottom`, `top`, `left`, `right`, or a pair like `bottom-left`. See *Channels* |
 | `depthExpr` | `0` | Per-cell **depth** off the lattice plane as a fraction of `cellSize` (−3..3), same scope. Positive rises, negative sinks; either way a solid box with shaded walls |
 | `textExpr` | — | Text drawn **inside** each cell, same scope. Plain text, fitted to the cell, on the cell's face — the lattice plane, or the lid of a cell raised or sunk by `depthExpr` |
+| `highlightExpr` | — | Per-cell **highlight** 0–1, same scope. Lights a rim around the cell's lid and a soft halo in `highlightColor` (the cell keeps its value colour, so its text stays legible) that blooms over its neighbors; both follow depth and size (a sunk cell glows at the mouth of its well). Evaluated every frame with `t` in scope, so it can pulse: `sel ? 0.8 + 0.2 * sin(2 * pi * t / 1.6) : 0`. Marks *which* cells matter without borrowing size, depth or colour, which carry the value |
+| `highlightColor` | `#fff59d` | Colour of the `highlightExpr` glow and rim |
 | `textColor` | auto | Colour for cell text. Omit for automatic contrast per cell |
 | `label` | — | **One** legend entry for the whole tensor |
 | `prompt` | — | **One** Ask-AI button for the whole tensor |
@@ -142,6 +144,16 @@ relief in both directions: `"(value - 1/6) * 4"` on a softmax row shows each wei
 uniform, and a diverging `colorMap` on pre-softmax scores pairs naturally with `"value / 10"`. It is
 worth an angled camera: from straight on, a bump is just a tile.
 
+**To mark cells without distorting them**, use `highlightExpr`, not a size channel. Shrinking or
+enlarging cells to show a selection makes equal values look unequal (two diagonal 1.00s of different
+size read as different similarities). A highlight leaves every channel that encodes the value alone:
+
+```json
+{ "type": "tensor", "shape": [6, 6], "valueExpr": "cfSim(row, col)", "depthExpr": "value * 0.6",
+  "highlightExpr": "(row == u and col == v) or (row == v and col == u) ? 0.8 + 0.2 * sin(2 * pi * t / 1.6) : 0",
+  "highlightColor": "#ffee58" }
+```
+
 Rules for the size channels:
 
 - The result is clamped to `[0, 1]`; the default is `1 − gap`. A result that is not a number keeps
@@ -185,7 +197,9 @@ single row.
 ```
 
 Each entry takes `labels` (one per position along that axis), `title` (the axis's own name, placed
-beyond the labels), and `color`. All are optional — an axis with no entry is simply unlabelled.
+beyond the labels), and `color`. Add `highlightExpr` (index bound as `row` or `col`, 0–1) to light up chosen keys with a glowing
+pill in `highlightColor` — pair it with the tensor's own `highlightExpr` so a highlighted cell's row and
+column keys glow with it. Keep it steady (no `t`): a changing label repaints the label canvas. All are optional — an axis with no entry is simply unlabelled.
 A label count that disagrees with the axis length is a warning, not an error: the extras are
 ignored and the remainder is left blank.
 

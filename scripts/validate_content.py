@@ -476,7 +476,46 @@ def check_tensors(data):
                                 f'{dims[ai]} entries along that axis'
                             )
 
+    errors.extend(_check_slider_default_data(data))
     return errors, warnings
+
+
+def _check_slider_default_data(data):
+    """A tensor slider's `defaultData` must name a data table that fills its shape.
+
+    At runtime a missing table silently falls back to `default` (often absent,
+    so all zeros) — exactly the kind of quiet failure worth catching here.
+    """
+    errors = []
+    lesson_data = data.get('data') if isinstance(data.get('data'), dict) else {}
+    scenes = data.get('scenes') if isinstance(data.get('scenes'), list) else [data]
+    for si, scene in enumerate(scenes):
+        if not isinstance(scene, dict):
+            continue
+        tables = {**lesson_data, **(scene.get('data') if isinstance(scene.get('data'), dict) else {})}
+        for sti, step in enumerate(scene.get('steps') or []):
+            for sl in (step.get('sliders') or []) if isinstance(step, dict) else []:
+                spec = sl.get('defaultData') if isinstance(sl, dict) else None
+                if spec is None:
+                    continue
+                where = f'scenes[{si}].steps[{sti}].sliders "{sl.get("id")}".defaultData'
+                name = spec if isinstance(spec, str) else (spec.get('table') if isinstance(spec, dict) else None)
+                rows = tables.get(name)
+                if not isinstance(rows, list) or not rows:
+                    errors.append(f'{where}: no data table named {name!r}')
+                    continue
+                shape = sl.get('shape') if isinstance(sl.get('shape'), list) else []
+                cols = spec.get('columns') if isinstance(spec, dict) and spec.get('columns') else [
+                    k for k, v in rows[0].items() if isinstance(v, (int, float)) and not isinstance(v, bool)]
+                want_rows, want_cols = (1, shape[0]) if len(shape) == 1 else (shape[0] if shape else 0, shape[1] if len(shape) > 1 else 0)
+                if len(shape) == 2 and len(rows) != want_rows:
+                    errors.append(f'{where}: table {name!r} has {len(rows)} rows, slider shape needs {want_rows}')
+                if len(cols) != want_cols:
+                    errors.append(f'{where}: table {name!r} gives {len(cols)} columns, slider shape needs {want_cols}')
+                missing = [c for c in cols if any(c not in r for r in rows[:want_rows])]
+                if missing:
+                    errors.append(f'{where}: column(s) {missing} missing from some rows of {name!r}')
+    return errors
 
 
 def check_camera(data):

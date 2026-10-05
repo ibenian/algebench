@@ -167,6 +167,27 @@ function _flattenTable(raw: unknown, shape: number[], min: number, max: number):
     return out;
 }
 
+/** The nested table a tensor slider's `defaultData` names, read from the
+ *  scene's `data` tables: one row per table row, one cell per column. The
+ *  columns are `columns` when given, otherwise every numeric field of the
+ *  first row in its key order. A 1-D slider takes the first row. Returns
+ *  undefined when the table is missing or empty, so `default` still applies. */
+export function tensorDefaultFromData(spec: unknown, data: Record<string, unknown> | null | undefined,
+                                      shape: number[]): number[] | number[][] | undefined {
+    const name = typeof spec === 'string' ? spec
+        : (spec && typeof spec === 'object' ? (spec as { table?: unknown }).table : undefined);
+    if (typeof name !== 'string' || !data) return undefined;
+    const table = data[name];
+    if (!Array.isArray(table) || table.length === 0) return undefined;
+    const rows = table.filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && !Array.isArray(r));
+    if (!rows.length) return undefined;
+    const explicit = spec && typeof spec === 'object' ? (spec as { columns?: unknown }).columns : undefined;
+    const columns = Array.isArray(explicit) ? explicit.map(String)
+        : Object.keys(rows[0]!).filter(k => typeof rows[0]![k] === 'number');
+    const pick = (r: Record<string, unknown>) => columns.map(c => Number(r[c]));
+    return shape.length === 1 ? pick(rows[0]!) : rows.map(pick);
+}
+
 function _parseSliderShape(raw: unknown): number[] | null {
     if (!Array.isArray(raw) || raw.length < 1 || raw.length > 2) return null;
     const dims = raw.map(v => Number(v));
@@ -597,7 +618,13 @@ export function registerSliders(
         if (def.kind === 'tensor' && !shape) {
             console.warn(`slider "${def.id}": kind "tensor" needs a shape of one or two positive integers; got`, def.shape);
         }
-        const defaults = shape ? _flattenTable(def.default, shape, min, max) : null;
+        const fromData = shape && def.defaultData !== undefined
+            ? tensorDefaultFromData(def.defaultData, (state as { sceneData?: Record<string, unknown> }).sceneData, shape)
+            : undefined;
+        if (shape && def.defaultData !== undefined && fromData === undefined) {
+            console.warn(`slider "${def.id}": defaultData names no usable data table; using "default".`, def.defaultData);
+        }
+        const defaults = shape ? _flattenTable(fromData !== undefined ? fromData : def.default, shape, min, max) : null;
         const scalarDefault = typeof def.default === 'number' ? def.default : undefined;
         sliderState.sceneSliders[def.id] = {
             value: isTensor ? NaN : (scalarDefault !== undefined ? scalarDefault : (min + max) / 2),

@@ -100,7 +100,7 @@ declare const math: typeof import('mathjs');
  * function callable from scene expressions.
  */
 interface AlgeBenchDomainFunctions {
-  _init?: (api: { getSlider(id: string, fallback?: unknown): unknown }) => void;
+  _init?: (api: { getSlider(id: string, fallback?: unknown): unknown; getData(name: string): unknown[] | undefined }) => void;
   [fn: string]: unknown;
 }
 

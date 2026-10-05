@@ -488,6 +488,14 @@
               "color": {
                 "$ref": "#/$defs/color",
                 "description": "Colour for this axis's labels and title. Default: a muted grey-blue."
+              },
+              "highlightExpr": {
+                "type": "string",
+                "description": "TENSOR plane labels: per-label highlight, evaluated with this axis's index bound as 'row' (rows axis) or 'col' (columns axis) and 'idx'; 0 = none, 1 = full (clamped). A highlighted label takes the highlight colour and gets a soft glowing pill behind it, so the keys of a highlighted row or column light up with its cells. Re-evaluated every frame; avoid time-varying values (a changing label repaints the label canvas). Example: \"row == u or row == v ? 1 : 0\"."
+              },
+              "highlightColor": {
+                "type": "string",
+                "description": "TENSOR: colour of this axis's label highlight. Defaults to the tensor's highlightColor, else '#fff59d'."
               }
             },
             "additionalProperties": false
@@ -1015,6 +1023,14 @@
           "type": "string",
           "description": "TENSOR ONLY. Math.js expression giving one cell's DEPTH -- how far it stands off the lattice plane along the plane normal, as a fraction of 'cellSize', same scope as 'widthExpr'. Positive rises above the plane, negative sinks below it, clamped to -3..3; 0 (the default, and any non-numeric result) is flat. A cell with depth is drawn as a solid box with shaded walls, so a large value reads as a bump and a negative one as a well; signed data such as pre-softmax scores reads as relief in both directions. Cell text rides on the box's lid. Example: \"value * 2\" on a softmax matrix is a relief map of the attention weights; \"(value - 1/6) * 4\" shows each weight above or below uniform."
         },
+        "highlightExpr": {
+          "type": "string",
+          "description": "On tensor: per-cell highlight, evaluated with row, col, idx and value bound (and t, the scene time); 0 = none, 1 = full (clamped). A highlighted cell keeps its value colour and gets a rim around its lid plus a soft halo drawn additively in highlightColor; a raised cell glows on its lid, a sunk one at the mouth of its well. The expression sets the strength every frame, so it can pulse or fade with t. Use it to mark WHICH cells matter without borrowing a channel that encodes the value. Example: \"row == u ? 0.8 + 0.2 * sin(2 * pi * t / 1.6) : 0\"."
+        },
+        "highlightColor": {
+          "type": "string",
+          "description": "On tensor: colour of the highlightExpr glow and rim. Default '#fff59d'."
+        },
         "textExpr": {
           "type": "string",
           "description": "On text: Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: \"lambda * 100\". On tensor: the text drawn INSIDE each cell, evaluated per cell with 'row', 'col', 'idx' and 'value' bound (same scope as 'widthExpr'). Drawn on the cell's face as geometry -- the lattice plane, or the lid of a cell raised or sunk by 'depthExpr' -- so it tilts, moves and occludes with the cell rather than floating as a screen label, and each string is sized to fit its own cell's current width and height. Axis labels stay on the plane. Plain text only, no KaTeX; use toFixed(value, 2) or concat(...). An empty string draws nothing. The canvas is redrawn only when some text, size or colour changed."
@@ -1397,6 +1413,33 @@
             },
             {
               "type": "array"
+            }
+          ]
+        },
+        "defaultData": {
+          "description": "TENSOR ONLY. Take the initial table from a lesson/scene `data` table instead of a literal `default`, so a dataset lives in one place. A table name (its numeric columns, in the first row's key order, become the slider's columns; a 1-D slider takes the first row) or {\"table\": name, \"columns\": [...]} to choose and order the columns. Falls back to `default` when the table is missing. Example: {\"table\": \"ratings\", \"columns\": [\"Die Hard\", \"Notebook\"]}.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "required": [
+                "table"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "table": {
+                  "type": "string"
+                },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1
+                }
+              }
             }
           ]
         },

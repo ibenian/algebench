@@ -271,6 +271,14 @@ export async function importDomains(importList: unknown): Promise<void> {
                     getSlider(id: string, fallback: unknown = 0): unknown {
                         return sliderScopeValue(exprState.sceneSliders[id], fallback);
                     },
+                    // A whole `data` table (lesson- and scene-level merged) as
+                    // its array of row objects, or undefined when the scene
+                    // has none by that name — so a library can fall back to
+                    // its built-in data.
+                    getData(name: string): unknown[] | undefined {
+                        const t = exprState.sceneData && exprState.sceneData[name];
+                        return Array.isArray(t) ? t : undefined;
+                    },
                 });
             }
             const { _init, ...publicFns } = fns;
