@@ -112,90 +112,109 @@
 
 Release cooldown: **30 days** — set by [`uv.toml`](https://github.com/ibenian/algebench/blob/main/uv.toml) (`exclude-newer`), which uv applies to every command in this project. Nothing here restates the value; it is read from that file.
 
-_2026-09-28 17:30 UTC_
+_2026-10-05 18:11 UTC_
 
-## ✅ No known vulnerabilities
+## ⚠️ 4 advisory(s) found
 
-Every pinned version is clear of the advisory database.
+| Package | Pinned | Advisory | CVE | Fixed in |
+|---|---|---|---|---|
+| `litellm` | `1.89.2` | [PYSEC-2026-4066](https://github.com/advisories/GHSA-3cv6-jpf6-8222) | CVE-2026-84377 | `1.88.6, 1.89.7, 1.90.7, 1.91.5, 1.92.2, 1.93.2, 1.94.3, 1.95.1, 1.96.2` |
+| `urllib3` | `2.7.0` | [PYSEC-2026-4177](https://github.com/advisories/GHSA-vxq7-64xx-v4gw) | CVE-2026-97689 | `2.8.0` |
+| `urllib3` | `2.7.0` | [PYSEC-2026-4176](https://github.com/advisories/GHSA-gh4c-6fx4-qh6g) | CVE-2026-97688 | `2.8.0` |
+| `urllib3` | `2.7.0` | [PYSEC-2026-4175](https://github.com/advisories/GHSA-8988-9cw3-xx77) | CVE-2026-97687 | `2.8.0` |
+
+Take a fix with a targeted relock, then rebuild the venv:
+
+```bash
+uv pip compile requirements.txt -o requirements.lock \
+    --universal --python-version 3.12 --no-header --upgrade-package litellm --upgrade-package urllib3
+./scripts/setup-venv.sh
+```
+
+> If the fix is newer than the 30 days cooldown ([`uv.toml`](https://github.com/ibenian/algebench/blob/main/uv.toml)) it will be held back. Overriding the cooldown is a deliberate decision — see AGENTS.md.
 
 ## Versions
 
-**67** package(s) could move. Columns are three different ceilings, not a progression:
+**71** package(s) could move. Columns are three different ceilings, not a progression:
 
 | | Package | Current | Allowed (≥30 days old) | Latest on PyPI |
 |---|---|---|---|---|
 | ⬆️ | `aiohappyeyeballs` | `2.6.2` | `2.7.1` | `2.7.1` |
-| ⏳ | `alembic` | `1.18.4` | `1.19.1` | `1.20.0` |
+| ⏳ | `aiohttp` | `3.14.3` | `3.14.3` | `3.14.4` |
+| ⏳ | `alembic` | `1.18.4` | `1.19.2` | `1.20.0` |
 | ⬆️ | `annotated-doc` | `0.0.4` | `0.0.5` | `0.0.5` |
 | ⬆️ | `annotated-types` | `0.7.0` | `0.8.0` | `0.8.0` |
-| ⏳ | `anyio` | `4.14.2` | `4.14.2` | `4.15.1` |
-| ⏳ | `cachetools` | `7.1.4` | `7.1.7` | `7.2.0` |
+| ⬆️ | `anyio` | `4.14.2` | `4.15.1` | `4.15.1` |
+| ⏳ | `cachetools` | `7.1.4` | `7.1.8` | `7.2.0` |
 | ⬆️ | `certifi` | `2026.6.17` | `2026.7.22` | `2026.7.22` |
 | ⬆️ | `cffi` | `2.0.0` | `2.1.1` | `2.1.1` |
-| ⬆️ | `charset-normalizer` | `3.4.7` | `3.5.1` | `3.5.1` |
+| ⏳ | `charset-normalizer` | `3.4.7` | `3.5.1` | `3.5.2` |
 | ⬆️ | `click` | `8.4.1` | `8.5.0` | `8.5.0` |
 | ⬆️ | `colorlog` | `6.10.1` | `6.12.0` | `6.12.0` |
-| ⬆️ | `cryptography` | `50.0.0` | `50.0.1` | `50.0.1` |
+| ⏳ | `cryptography` | `50.0.0` | `50.0.1` | `50.0.2` |
 | ⏳ | `dspy` | `3.2.1` | `3.3.1` | `3.4.0` |
-| ⬆️ | `fastapi` | `0.138.0` | `0.141.1` | `0.141.1` |
-| ⏳ | `filelock` | `3.29.4` | `3.32.4` | `4.0.5` |
+| ⏳ | `fastapi` | `0.138.0` | `0.141.1` | `0.142.2` |
+| ⏳ | `filelock` | `3.29.4` | `3.32.5` | `4.0.12` |
 | ⏳ | `fsspec` | `2026.4.0` | `2026.7.0` | `2026.9.0` |
-| ⏳ | `genai-prices` | `0.0.66` | `0.1.4` | `0.1.9` |
+| ⏳ | `genai-prices` | `0.0.66` | `0.1.6` | `0.1.9` |
 | ⬆️ | `gepa` | `0.0.27` | `0.1.4` | `0.1.4` |
-| ⏳ | `google-api-core` | `2.31.0` | `2.34.0` | `2.39.0` |
-| ⏳ | `google-auth` | `2.55.0` | `2.57.0` | `2.58.1` |
-| ⬆️ | `google-cloud-core` | `2.6.0` | `2.7.0` | `2.7.0` |
-| ⏳ | `google-cloud-storage` | `3.12.1` | `3.13.1` | `3.15.0` |
+| ⏳ | `google-api-core` | `2.31.0` | `2.36.0` | `2.41.0` |
+| ⏳ | `google-auth` | `2.55.0` | `2.57.1` | `2.60.0` |
+| ⏳ | `google-cloud-core` | `2.6.0` | `2.7.0` | `2.8.0` |
+| ⏳ | `google-cloud-storage` | `3.12.1` | `3.13.1` | `3.16.0` |
 | ⏳ | `google-crc32c` | `1.8.0` | `1.8.0` | `1.9.0` |
-| ⏳ | `google-genai` | `2.9.0` | `2.20.0` | `2.25.0` |
-| ⬆️ | `google-resumable-media` | `2.10.0` | `2.10.2` | `2.10.2` |
-| ⏳ | `googleapis-common-protos` | `1.75.0` | `1.75.2` | `1.75.4` |
-| ⏳ | `griffelib` | `2.1.0` | `2.2.0` | `2.3.0` |
+| ⏳ | `google-genai` | `2.9.0` | `2.22.0` | `2.28.0` |
+| ⏳ | `google-resumable-media` | `2.10.0` | `2.10.2` | `2.11.0` |
+| ⏳ | `googleapis-common-protos` | `1.75.0` | `1.75.3` | `1.75.5` |
+| ⬆️ | `griffelib` | `2.1.0` | `2.3.0` | `2.3.0` |
 | ⬆️ | `hf-xet` | `1.5.1` | `1.6.0` | `1.6.0` |
 | ⏳ | `httpcore2` | `2.12.0` | `2.12.0` | `2.13.1` |
 | ⏳ | `httpx2` | `2.12.0` | `2.12.0` | `2.13.1` |
-| ⏳ | `huggingface-hub` | `1.20.1` | `1.29.0` | `2.0.0` |
+| ⏳ | `huggingface-hub` | `1.20.1` | `1.30.0` | `2.1.1` |
 | ⏳ | `idna` | `3.18` | `3.19` | `3.20` |
 | ⏳ | `jiter` | `0.15.0` | `0.16.0` | `0.17.0` |
 | ⏳ | `json-repair` | `0.61.0` | `0.63.4` | `0.63.5` |
-| ⏳ | `litellm` | `1.89.2` | `1.98.0` | `1.103.0` |
-| ⏳ | `logfire-api` | `4.37.0` | `4.41.0` | `5.1.1` |
+| ⏳ | `litellm` | `1.89.2` | `1.99.0` | `1.104.0` |
+| ⏳ | `logfire-api` | `4.37.0` | `5.0.0` | `5.1.1` |
 | ⏳ | `mako` | `1.3.12` | `1.4.1` | `1.4.3` |
+| ⏳ | `markupsafe` | `3.0.3` | `3.0.3` | `3.0.4` |
 | ⏳ | `multidict` | `6.7.1` | `6.7.1` | `7.0.0` |
 | ⏳ | `numpy` | `2.4.6` | `2.5.2` | `2.5.3` |
-| 🔒 | `openai` | `2.43.0` | `2.54.0` | `3.20.0` |
+| 🔒 | `openai` | `2.43.0` | `2.54.0` | `3.24.0` |
 | ⏳ | `opentelemetry-api` | `1.42.1` | `1.44.0` | `1.45.0` |
 | ⏳ | `optuna` | `4.9.0` | `4.9.0` | `5.0.0` |
 | ⬆️ | `orjson` | `3.11.9` | `3.12.0` | `3.12.0` |
 | ⬆️ | `packaging` | `26.2` | `26.3` | `26.3` |
 | ⏳ | `propcache` | `0.5.2` | `0.5.2` | `0.5.4` |
-| ⬆️ | `proto-plus` | `1.28.1` | `1.28.4` | `1.28.4` |
-| ⏳ | `protobuf` | `7.35.1` | `7.36.0` | `7.36.2` |
+| ⏳ | `proto-plus` | `1.28.1` | `1.28.4` | `1.29.0` |
+| ⏳ | `protobuf` | `7.35.1` | `7.36.1` | `7.36.2` |
 | ⬆️ | `pydantic` | `2.13.4` | `2.13.5` | `2.13.5` |
-| ⏳ | `pydantic-ai-slim` | `1.107.0` | `2.36.0` | `2.51.0` |
+| ⏳ | `pydantic-ai-slim` | `1.107.0` | `2.40.0` | `2.54.0` |
 | 🔒 | `pydantic-core` | `2.46.4` | `2.46.5` | `2.49.0` |
-| ⏳ | `pydantic-graph` | `1.107.0` | `2.36.0` | `2.51.0` |
-| ⬆️ | `python-dotenv` | `1.2.2` | `1.2.3` | `1.2.3` |
-| ⏳ | `regex` | `2026.5.9` | `2026.7.19` | `2026.9.10` |
-| ⬆️ | `rpds-py` | `2026.5.1` | `2026.6.3` | `2026.6.3` |
+| ⏳ | `pydantic-graph` | `1.107.0` | `2.40.0` | `2.54.0` |
+| ⏳ | `python-dotenv` | `1.2.2` | `1.2.3` | `1.2.4` |
+| ⏳ | `regex` | `2026.5.9` | `2026.9.3` | `2026.9.29` |
+| ⏳ | `rpds-py` | `2026.5.1` | `2026.6.3` | `2026.9.1` |
 | ⬆️ | `sounddevice` | `0.5.5` | `0.5.6` | `0.5.6` |
-| ⏳ | `sqlalchemy` | `2.0.51` | `2.0.52` | `2.1.1` |
+| ⏳ | `sqlalchemy` | `2.0.51` | `2.0.52` | `2.1.3` |
 | ⏳ | `starlette` | `1.3.1` | `1.6.0` | `1.7.0` |
 | ⬆️ | `tiktoken` | `0.13.0` | `0.14.0` | `0.14.0` |
-| ⏳ | `tokenizers` | `0.23.1` | `0.23.1` | `0.23.2` |
+| ⬆️ | `tokenizers` | `0.23.1` | `0.23.2` | `0.23.2` |
 | ⏳ | `tqdm` | `4.68.3` | `4.70.0` | `4.70.1` |
 | ⬆️ | `typing-extensions` | `4.15.0` | `4.16.0` | `4.16.0` |
 | ⬆️ | `typing-inspection` | `0.4.2` | `0.4.4` | `0.4.4` |
 | ⏳ | `urllib3` | `2.7.0` | `2.7.0` | `2.8.0` |
 | ⏳ | `uvicorn` | `0.49.0` | `0.52.4` | `0.54.0` |
+| ⏳ | `uvloop` | `0.22.1` | `0.22.1` | `0.23.0` |
 | ⏳ | `watchfiles` | `1.2.0` | `1.2.0` | `1.3.0` |
-| 🔒 | `websockets` | `16.0` | `16.1.1` | `17.1` |
+| 🔒 | `websockets` | `16.0` | `16.1.1` | `17.2` |
 | ⏳ | `yarl` | `1.24.2` | `1.24.5` | `1.25.1` |
+| ⏳ | `zipp` | `4.1.0` | `4.1.0` | `4.1.1` |
 
 ### How to read this
 
-- ⬆️ **Ready** (24) — a newer release has cleared the 30 days cooldown. Take it with a targeted relock.
-- ⏳ **Cooling** (40) — something newer exists but is younger than 30 days. **This is the policy working, not a problem.** Compromised packages are usually caught and yanked within hours to days; waiting removes most of that exposure.
+- ⬆️ **Ready** (19) — a newer release has cleared the 30 days cooldown. Take it with a targeted relock.
+- ⏳ **Cooling** (49) — something newer exists but is younger than 30 days. **This is the policy working, not a problem.** Compromised packages are usually caught and yanked within hours to days; waiting removes most of that exposure.
 - 🔒 **Capped** (3) — the cooldown is not what is holding this back; a constraint in `requirements.txt` (or a transitive dependency's own pin) is. Loosening the range is the only way forward.
 - 🔻 **Backwards** (0) — a relock would move this to an *older* release, because the current pin is itself younger than 30 days (a security fix taken deliberately). Older releases carry more advisories, never fewer — check the diff before committing any relock while this row is present.
 - ✅ **Current** — nothing newer exists.
