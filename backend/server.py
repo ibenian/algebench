@@ -54,6 +54,8 @@ from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode
 from backend.semantic_graph import SemanticGraphService
 from backend.semantic_graph.preprocessor import LaTeXPreprocessor, ends_with_command
 from backend.semantic_graph.constants import _DOT_ACCENT_ORDERS
+from backend.gemini_sampling import (CHAT_MAX_OUTPUT_TOKENS, gemini_temperature,
+                                     hit_output_limit, trim_runaway)
 
 _graph_service = SemanticGraphService()
 _strip_accent_commands = LaTeXPreprocessor.strip_accent_commands
@@ -1062,6 +1064,14 @@ def _strip_written_tool_calls(text, tool_calls):
     return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
 
+def _trim(text, hit_limit):
+    """trim_runaway, logged: a reply that ran into the output cap loses its runaway tail."""
+    out, trimmed = trim_runaway(text, hit_limit)
+    if trimmed:
+        print(f"   ⚠️  Reply hit the output limit — trimmed a runaway tail ({len(text)} -> {len(out)} chars)", flush=True)
+    return out
+
+
 def _finish_reply(text, tool_calls):
     """The reply text the learner sees: written-out tool calls removed, and
     preset prompts written as text or inline JSON recovered into a tool call."""
@@ -1189,7 +1199,8 @@ def _call_gemini_chat(message, history, context, no_tools):
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             tools=_make_tools('navigate_to'),
-            temperature=0.7,
+            temperature=gemini_temperature(GEMINI_MODEL, 0.7),
+            max_output_tokens=CHAT_MAX_OUTPUT_TOKENS,
         )
         print(f"   ⏩ Auto-navigation: scene {scene_num}, step {step_num} ({direction})")
 
@@ -1202,6 +1213,10 @@ def _call_gemini_chat(message, history, context, no_tools):
             text = ""
             if response.candidates and response.candidates[0].content.parts:
                 text = "".join(p.text for p in response.candidates[0].content.parts if p.text)
+            if response.candidates:
+                text, trimmed = trim_runaway(text, hit_output_limit(getattr(response.candidates[0], 'finish_reason', None)))
+                if trimmed:
+                    print("   ⚠️  Reply hit the output limit — trimmed a runaway tail", flush=True)
             debug_info = {"systemPrompt": system_prompt, "contents": [c.to_json_dict() for c in contents]}
             # The same cleanup as every other reply: no written-out tool calls in
             # the chat, and written-out preset prompts become the real chips.
@@ -1235,8 +1250,11 @@ def _call_gemini_chat(message, history, context, no_tools):
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
         tools=[] if no_tools else _make_tools(),
-        temperature=0.7,
+        # Gemini 3 is tuned for its default temperature; lower values can loop.
+        temperature=gemini_temperature(GEMINI_MODEL, 0.7),
+        max_output_tokens=CHAT_MAX_OUTPUT_TOKENS,
     )
+    hit_limit = False   # did the last model turn run out of output tokens?
 
     # Build debug payload — the full picture of what Gemini sees
     debug_info = {
@@ -1274,6 +1292,7 @@ def _call_gemini_chat(message, history, context, no_tools):
                 print(f"   Gemini finish_reason: {finish}")
             if str(finish) not in ('MAX_TOKENS', 'STOP', 'FinishReason.MAX_TOKENS', 'FinishReason.STOP'):
                 print(f"   ⚠️  Unexpected finish_reason: {finish}")
+            hit_limit = hit_output_limit(finish)
 
         if not response.candidates:
             return "", tool_calls, debug_info
@@ -1630,6 +1649,7 @@ def _call_gemini_chat(message, history, context, no_tools):
                         system_instruction=updated_prompt,
                         tools=_make_tools('navigate_to'),
                         temperature=config.temperature,
+                        max_output_tokens=config.max_output_tokens,
                     )
                     must_continue = True
 
@@ -1649,6 +1669,7 @@ def _call_gemini_chat(message, history, context, no_tools):
                         system_instruction=updated_prompt,
                         tools=[types.Tool(function_declarations=remaining_decls)] if remaining_decls else [],
                         temperature=config.temperature,
+                        max_output_tokens=config.max_output_tokens,
                     )
                     must_continue = True
 
@@ -1663,14 +1684,14 @@ def _call_gemini_chat(message, history, context, no_tools):
                 ]))
 
             if text_response.strip() and not must_continue:
-                text_response = _finish_reply(text_response, tool_calls)
+                text_response = _finish_reply(_trim(text_response, hit_limit), tool_calls)
                 return text_response, tool_calls, debug_info
             continue
         else:
-            text_response = _finish_reply(text_response, tool_calls)
+            text_response = _finish_reply(_trim(text_response, hit_limit), tool_calls)
             return text_response or "I'm not sure how to respond to that.", tool_calls, debug_info
 
-    text_response = _finish_reply(text_response, tool_calls)
+    text_response = _finish_reply(_trim(text_response, hit_limit), tool_calls)
     return text_response, tool_calls, debug_info
 
 
