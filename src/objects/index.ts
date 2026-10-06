@@ -1,3 +1,6 @@
+import { renderArray } from '/objects/array.js';
+import { renderStepMarker } from '/objects/step-marker.js';
+import { renderAlgorithmStructure } from '/objects/algorithm-structure.js';
 import { renderSkybox } from '/objects/skybox.js';
 import { renderAxis } from '/objects/axis.js';
 import { renderGrid } from '/objects/grid.js';
@@ -57,6 +60,10 @@ export function renderElement(el: Element, view: MathBoxNode) {
         case 'animated_cylinder': return renderAnimatedCylinder(el, view);
         case 'animated_polygon': return renderAnimatedPolygon(el, view);
         case 'animated_curve': return renderAnimatedCurve(el, view);
+        case 'algorithm_structure': return renderAlgorithmStructure(el, view);
+        case 'expression_label':
+        case 'step_marker': return renderStepMarker(el, view);
+        case 'array': return renderArray(el, view);
         case 'tensor': return renderTensor(el, view);
         case 'chart': return renderChart(el, view);
         default:

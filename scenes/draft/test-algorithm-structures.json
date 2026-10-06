@@ -1,0 +1,162 @@
+{
+  "title": "Algorithm Structures · Heap insertion",
+  "scenes": [
+    {
+      "id": "heap-insertion",
+      "title": "One heap, two views",
+      "description": "Follow a new value through a min-heap with linked array blocks and a binary tree.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          4.8
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          -2,
+          13
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            14
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Toy blocks",
+          "position": [
+            3,
+            -5,
+            12
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "markdown": "# Algorithm Structures\n\n## Insert 5 into a min-heap\n\nA min-heap is a **complete binary tree** whose parent is never larger than either child. The array and tree below are **two views of the same objects**. Colors travel with the objects; array indices stay put.\n\nUse **Execution state** to visit any of the seven states, forwards or backwards. Hover a block in either view to illuminate its partner. Click to keep that object selected; click empty space to clear.\n\n**0 · Ready** — the six existing values already satisfy the heap rule.\n\n**1 · Append** — place 5 in the next free array slot, index 6. This preserves the complete tree shape.\n\n**2 · Compare** — compare 5 with its parent, 10. For zero-based indexing, `p = floor((i − 1) / 2)`.\n\n**3 · Swap** — 5 moves up to index 2, while 10 moves down. Only the path to the root can need repair.\n\n**4 · Compare** — now compare 5 with 8 at the root.\n\n**5 · Swap** — 5 reaches index 0.\n\n**6 · Done** — the heap rule holds again. A heap is only partially ordered: siblings need not be sorted.\n\nThe scalar variables **key** and **n** hold numbers. **i** and **p** explicitly reference cells of array **A**; their arrows follow those cells. At the root there is no parent reference.\n\nTry jumping from state 0 to 5, then back to 2. Which objects move? Which parent relationships change? In a tree of height h, insertion makes at most h upward swaps: O(log n).\n\n## Free-play controls\n\nEdit **Starting min-heap A** in the slider panel and change **Insert key**. The starting six values must satisfy the min-heap rule; an invalid edit displays an explanation. Try key **25** (no swaps), **9** (one swap), and **5** (two swaps). Equal values keep separate identities and do not swap.\n\n**Execution state** selects a snapshot directly. The caption shows the actual state count; positions beyond a shorter run select its final state. **Movement seconds** controls the transition, with 0 for instant jumps. **Block depth** changes the relief. Drag to orbit, or choose **Front** / **Toy blocks**. The numbered walkthrough above describes the default inputs.",
+      "elements": [
+        {
+          "id": "workbench-grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -4.5,
+              4.5
+            ],
+            [
+              -2.5,
+              3.1
+            ]
+          ],
+          "divisions": [
+            9,
+            6
+          ],
+          "color": "#344253",
+          "opacity": 0.15
+        }
+      ],
+      "steps": [
+        {
+          "id": "explore-insertion",
+          "title": "Explore heap insertion",
+          "description": "Scrub Execution state (0–6). Hover or click either copy of a block to follow its identity.",
+          "sliders": [
+            {
+              "id": "heapState",
+              "label": "Execution state",
+              "min": 0,
+              "max": 6,
+              "step": 1,
+              "default": 0
+            },
+            {
+              "id": "heapValues",
+              "kind": "tensor",
+              "shape": [
+                6
+              ],
+              "label": "Starting min-heap A",
+              "min": 0,
+              "max": 30,
+              "step": 1,
+              "default": [
+                8,
+                12,
+                10,
+                20,
+                15,
+                18
+              ]
+            },
+            {
+              "id": "insertKey",
+              "label": "Insert key",
+              "min": 0,
+              "max": 30,
+              "step": 1,
+              "default": 5
+            },
+            {
+              "id": "moveSeconds",
+              "label": "Movement seconds (0 = instant)",
+              "min": 0,
+              "max": 2,
+              "step": 0.1,
+              "default": 0.7
+            },
+            {
+              "id": "blockDepth",
+              "label": "Block depth",
+              "min": 0.1,
+              "max": 0.8,
+              "step": 0.05,
+              "default": 0.35
+            }
+          ],
+          "add": [
+            {
+              "id": "heap-toy",
+              "type": "algorithm_structure",
+              "arrayId": "heap",
+              "stateSlider": "heapState",
+              "heapInsertion": {
+                "arraySlider": "heapValues",
+                "keySlider": "insertKey"
+              },
+              "motionSlider": "moveSeconds",
+              "depthSlider": "blockDepth"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

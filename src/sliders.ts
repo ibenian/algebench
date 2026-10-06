@@ -1202,6 +1202,8 @@ export function setSliderValue(id: string, value: number): boolean {
     }
     recompileActiveExprs();
     syncSliderState();
+    // Keep event-driven views synchronized after deeplink and programmatic seeks.
+    window.dispatchEvent(new CustomEvent('algebench:sliderchange'));
     return true;
 }
 

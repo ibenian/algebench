@@ -3,6 +3,9 @@
 // AI ask-button helpers.
 // ============================================================
 
+import { annotationGroups, annotationRows } from '/annotation-layout.js';
+import type { AnnotationValue } from '/annotation-layout.js';
+
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers, stripGlossaryMath } from '/glossary-core.js';
@@ -330,6 +333,9 @@ export interface Label3DOptions {
 export interface Label3D {
     el: HTMLDivElement;
     dataPos: number[];
+    /** Project a cell's corners to keep annotations outside its screen footprint. */
+    snapToProjection?: boolean;
+    cellAttachment?: {corners: number[][]; edge: 'top' | 'bottom'; gap: number};
     screenX: number | null;
     screenY: number | null;
     forceHidden: boolean;
@@ -360,6 +366,11 @@ export interface Label3D {
     /** Last z-index written to the DOM, so paint order only touches the style
      *  when the rank actually changes. */
     _zi?: number;
+    annotation?: AnnotationValue & {
+        kind: 'marker' | 'label'; badge: HTMLElement; measure: HTMLElement;
+        width: number; height: number; scale: number | null; rendered: string;
+    };
+    annotationHidden?: boolean;
 }
 
 // state.js is still untyped JavaScript, so describe the slice this module uses
@@ -457,13 +468,26 @@ export function updateLabels(): void {
         // useless here — a near-planar scene crushes every label to ~the same z.
         lbl.depth = camera.position.distanceTo(v);
         const projected = v.project(camera);
-        const targetX = (projected.x * 0.5 + 0.5) * w;
-        const targetY = (-projected.y * 0.5 + 0.5) * h;
+        let targetX = (projected.x * 0.5 + 0.5) * w;
+        let targetY = (-projected.y * 0.5 + 0.5) * h;
+        if (lbl.cellAttachment) {
+            const attachment = lbl.cellAttachment;
+            const corners = attachment.corners.map(point => {
+                const world = dataToWorld(point as [number, number, number]);
+                return new THREE.Vector3(...world).project(camera);
+            });
+            const xs = corners.map(p => (p.x * .5 + .5) * w);
+            const ys = corners.map(p => (-p.y * .5 + .5) * h);
+            targetX = (Math.min(...xs) + Math.max(...xs)) / 2;
+            targetY = attachment.edge === 'top' ? Math.min(...ys) - attachment.gap : Math.max(...ys) + attachment.gap;
+        }
         lbl.visible = !lbl.forceHidden && projected.z < 1
             && targetX > -50 && targetX < w + 50
             && targetY > -50 && targetY < h + 50;
 
-        if (lbl.screenX == null || lbl.screenY == null) {
+        // Discrete index changes must update the badge and anchor atomically.
+        // Keep camera smoothing, but never show a new index over the old cell.
+        if (lbl.snapToProjection || lbl.cellAttachment || lbl.screenX == null || lbl.screenY == null || (dataMoved && lbl.annotation?.kind === 'marker')) {
             lbl.screenX = targetX;
             lbl.screenY = targetY;
         } else {
@@ -481,6 +505,8 @@ export function updateLabels(): void {
         }
     }
 
+    groupAnnotations(s);
+
     // ----- Pass 2: resolve declutter (each resolver no-ops unless its mode is on)
     resolveLabelOffsets();  // position mode → targetOffsetY
     resolveDepthDimming();  // shade mode    → targetDim
@@ -494,9 +520,10 @@ export function updateLabels(): void {
         lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
         const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
         const y = lbl.screenY! + lbl.offsetY;
-        lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)`;
+        const ay = lbl.cellAttachment ? (lbl.cellAttachment.edge === 'top' ? '-100%' : '0%') : '-50%';
+        lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, ${ay})`;
         // Near-hidden far labels fade via opacity (fade); gentle recede uses brightness (dim).
-        lbl.el.style.opacity = lbl.visible ? (labelsState.displayParams.labelOpacity * lbl.fade).toFixed(3) : '0';
+        lbl.el.style.opacity = lbl.visible && !lbl.annotationHidden ? (labelsState.displayParams.labelOpacity * lbl.fade).toFixed(3) : '0';
         lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
     }
 
@@ -508,6 +535,38 @@ export function updateLabels(): void {
         const zi = ordered.length - i; // front (index 0) gets the highest z-index
         const o = ordered[i]!;
         if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
+    }
+}
+
+/** Group only annotation objects. Expressions are evaluated by bindings, never here.
+ * Intrinsic measurement nodes keep collision geometry independent of merged content. */
+let annotationLayoutKey = "";
+function groupAnnotations(scale: number): void {
+    const labels = labelsState.labels.filter(l => l.annotation && l.visible);
+    const boxes = labels.map(l => {
+        const a = l.annotation!; // Filtered above.
+        if (a.scale !== scale) {
+            a.width = a.measure.offsetWidth; a.height = a.measure.offsetHeight; a.scale = scale;
+        }
+        return {text:a.text, index:a.index, kind:a.kind, x:l.screenX!, y:l.screenY! + (l.cellAttachment?.edge === 'top' ? -(a.height + 11)/2 : a.kind === 'marker' ? -38 : 0), width:a.width, height:a.height};
+    });
+    const key = JSON.stringify(boxes.map((b,i) => [labels[i]!.seq, Math.round(b.x*10), Math.round(b.y*10), b.width, b.height, b.text, b.index]));
+    if (key === annotationLayoutKey) return;
+    annotationLayoutKey = key;
+    for (const l of labelsState.labels) l.annotationHidden = false;
+    for (const group of annotationGroups(boxes)) {
+        const leader = labels[group[0]!]!;
+        const a = leader.annotation!;
+        const rows = annotationRows(group.map(i => boxes[i]!));
+        const signature = JSON.stringify(rows);
+        if (signature !== a.rendered) {
+            a.badge.replaceChildren(...rows.map(text => {
+                const row = document.createElement('span'); row.className = 'annotation-row'; row.textContent = text; return row;
+            }));
+            leader.el.setAttribute('aria-label', rows.join('; '));
+            a.rendered = signature; leader.boxW = null; leader.boxH = null;
+        }
+        for (const i of group.slice(1)) labels[i]!.annotationHidden = true;
     }
 }
 
@@ -530,7 +589,7 @@ function resolveDepthDimming() {
     for (const lbl of labelsState.labels) {
         lbl.targetDim = 1;
         lbl.targetFade = 1;
-        if (lbl.visible && lbl.boxW != null) active.push(lbl);
+        if (lbl.visible && !lbl.annotation && !lbl.cellAttachment && lbl.boxW != null) active.push(lbl);
     }
     if (state.displayParams.labelDeclutterMode !== 'shade' || active.length < 2) return;
 
@@ -601,7 +660,7 @@ function resolveLabelOffsets() {
         // stays pinned and passes over static text (a purely-vertical offset
         // can't smoothly dodge a marker crossing through it anyway). When playback
         // pauses the marker rejoins the declutter so everything separates at rest.
-        if (lbl.visible && lbl.boxW != null && !lbl.moving) active.push(lbl);
+        if (lbl.visible && !lbl.annotation && !lbl.cellAttachment && lbl.boxW != null && !lbl.moving) active.push(lbl);
     }
     if (state.displayParams.labelDeclutterMode !== 'position' || active.length < 2) return;
 

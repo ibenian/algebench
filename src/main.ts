@@ -1,3 +1,5 @@
+import { setupStepPlayer } from '/step-player.js';
+import { setupCodePanel } from '/code-panel.js';
 // ============================================================
 // main.js — Application entry point (DOMContentLoaded).
 // Wires all modules together and exposes globals for chat.js
@@ -72,6 +74,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupDocSpeakButtons();
     setupProofPanel();
     setupSceneDock();
+    setupCodePanel();
+    setupStepPlayer();
     setupCaptionDrag();
     setupSceneDescDrag();
     setupBoardOverlays();

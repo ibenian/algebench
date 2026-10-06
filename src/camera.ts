@@ -1671,7 +1671,10 @@ export function initMathBox(): void {
 
     cameraState.mathbox = MathBox.mathBox({
         element: container,
-        plugins: ['core', 'controls', 'cursor'],
+        // Install MathBox explicitly so its factory does not also install splash.
+        // Custom Three.js-only scenes never enqueue MathBox geometry, so that
+        // splash never receives a completion event. AlgeBench owns loading UI.
+        plugins: ['core', 'controls', 'cursor', 'mathbox'],
         controls: { klass: CONTROL_CLASS },
         camera: { fov: 75 },
         renderer: { antialias: true },

@@ -229,6 +229,10 @@ export interface LessonFormat {
    * @minItems 1
    */
   scenes: [Scene, ...Scene[]];
+  /**
+   * Display-only source files in the Code dock. Never executed.
+   */
+  codeFiles?: CodeFile[];
 }
 /**
  * Lesson-wide glossary. Layered over the glossaries of imported domains; a lesson entry wins on a shared key.
@@ -488,6 +492,7 @@ export interface Scene {
    * Auto-play duration in milliseconds for the base scene (before step 0). Default: 3000.
    */
   duration?: number;
+  stepPlayback?: StepPlayback;
 }
 /**
  * Initial camera position and target for this scene.
@@ -642,7 +647,11 @@ export interface Element {
     | 'animated_polygon'
     | 'animated_curve'
     | 'tensor'
-    | 'chart';
+    | 'chart'
+    | 'algorithm_structure'
+    | 'step_marker'
+    | 'array'
+    | 'expression_label';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
    */
@@ -701,7 +710,7 @@ export interface Element {
    */
   colorDomain?: [number, number];
   /**
-   * TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6].
+   * ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6].
    *
    * @minItems 1
    */
@@ -732,7 +741,7 @@ export interface Element {
     color?: string | [number, number, number];
   }[];
   /**
-   * TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. "dataTable('attn', row, concat('w', col))" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame.
+   * ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. "dataTable('attn', row, concat('w', col))" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame.
    */
   valueExpr?: string;
   /**
@@ -740,7 +749,7 @@ export interface Element {
    */
   bind?: string;
   /**
-   * TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
+   * ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
    */
   values?: unknown[];
   /**
@@ -1320,6 +1329,59 @@ export interface Element {
           color?: Color;
         }
       ];
+  /**
+   * Complete semantic snapshots only. No visual deltas or highlight instructions.
+   *
+   * @minItems 1
+   */
+  algorithmStates?: [AlgorithmSnapshot, ...AlgorithmSnapshot[]];
+  /**
+   * Scalar slider selecting a zero-based snapshot.
+   */
+  stateSlider?: string;
+  /**
+   * Array displayed as both slots and a complete binary tree.
+   */
+  arrayId?: string;
+  /**
+   * Generate full deterministic heap-insertion snapshots from editable inputs. Starting values must form a min-heap.
+   */
+  heapInsertion?: {
+    arraySlider: string;
+    keySlider: string;
+  };
+  /**
+   * Slider controlling transition duration in seconds.
+   */
+  motionSlider?: string;
+  /**
+   * Slider controlling block depth in data units.
+   */
+  depthSlider?: string;
+  /**
+   * ARRAY ONLY. Logical cell type. Mixed preserves primitive types without numeric coercion.
+   */
+  itemType?: 'number' | 'character' | 'string' | 'boolean' | 'empty' | 'mixed';
+  /**
+   * ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes.
+   */
+  highlightExpr?: string;
+  /**
+   * STEP_MARKER: variable name displayed in the index badge.
+   */
+  indexName?: string;
+  /**
+   * STEP_MARKER: expression yielding a nonnegative integer index.
+   */
+  indexExpr?: string;
+  /**
+   * STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge.
+   */
+  indexGroup?: string;
+  /**
+   * ARRAY: owned index markers. Array supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression.
+   */
+  markers?: ArrayMarker[];
   [k: string]: unknown;
 }
 /**
@@ -1497,6 +1559,56 @@ export interface FillRegion {
    * Outline opacity.
    */
   outlineOpacity?: number | string;
+}
+export interface AlgorithmSnapshot {
+  entities: {
+    [k: string]: {
+      value: number;
+    };
+  };
+  arrays: {
+    [k: string]: string[];
+  };
+  variables: {
+    [k: string]: {
+      value: number;
+      reference?: {
+        array: string;
+      };
+    };
+  };
+  relations: {
+    id: string;
+    from: string;
+    to: string;
+    kind: string;
+  }[];
+  execution: {
+    phase: string;
+    operands: string[];
+  };
+}
+export interface ArrayMarker {
+  /**
+   * Uses the same marker component as a standalone step_marker.
+   */
+  type?: 'step_marker';
+  /**
+   * STEP_MARKER: variable name displayed in the index badge.
+   */
+  indexName: string;
+  /**
+   * STEP_MARKER: expression yielding a nonnegative integer index.
+   */
+  indexExpr: string;
+  /**
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+   */
+  color?: string | [number, number, number];
+  /**
+   * Math.js boolean expression controlling visibility. Element is visible when expression evaluates to truthy. Example: "orbitImpactT(1) >= 0".
+   */
+  visibleExpr?: string;
 }
 /**
  * An incremental step that adds/removes elements and configures sliders.
@@ -1680,6 +1792,36 @@ export interface VirtualTime {
    * Math.js expression producing the virtual time value. Use slider IDs. Example: "tau*T" where tau is a slider.
    */
   expr: string;
+}
+/**
+ * General discrete state player bound to an existing integer slider. No algorithm knowledge.
+ */
+export interface StepPlayback {
+  slider: string;
+  intervalMs?: number;
+}
+export interface CodeFile {
+  id: string;
+  path: string;
+  language?: string;
+  source: string;
+  /**
+   * Expression for one-based active line. Evaluated on lesson navigation and slider changes, not every frame. Zero clears the marker.
+   */
+  activeLineExpr?: string;
+  locations?: {
+    line: number;
+    scene: string;
+    step: string;
+    snapshot?: number;
+    label?: string;
+  }[];
+  marks?: {
+    line: number;
+    startColumn: number;
+    endColumn: number;
+    color?: 'gold' | 'blue' | 'green' | 'pink';
+  }[];
 }
 /**
  * Single-scene format with top-level 'elements' (no 'scenes' array).

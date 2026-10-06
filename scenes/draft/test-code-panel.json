@@ -1,0 +1,607 @@
+{
+  "title": "Code panel playground · Bracket stack",
+  "codeFiles": [
+    {
+      "id": "balanced",
+      "path": "brackets/balanced.py",
+      "language": "python",
+      "source": "def balanced(text):\n    stack = []\n    for i, ch in enumerate(text):\n        if ch in \"([\":\n            stack.append(i)\n        else:\n            if not stack or not matches(text[stack[-1]], ch):\n                return False\n            stack.pop()\n    return not stack",
+      "activeLineExpr": "dataTable('trace', snapshot, 'pc')",
+      "locations": [
+        {
+          "line": 2,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 0,
+          "label": "Start with an empty stack"
+        },
+        {
+          "line": 5,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 1,
+          "label": "Push opening parenthesis"
+        },
+        {
+          "line": 5,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 2,
+          "label": "Push opening bracket"
+        },
+        {
+          "line": 9,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 3,
+          "label": "Match and pop bracket"
+        },
+        {
+          "line": 9,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 4,
+          "label": "Match and pop parenthesis"
+        },
+        {
+          "line": 10,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 5,
+          "label": "All openings matched"
+        }
+      ],
+      "marks": [
+        {
+          "line": 5,
+          "startColumn": 13,
+          "endColumn": 18,
+          "color": "blue"
+        },
+        {
+          "line": 5,
+          "startColumn": 26,
+          "endColumn": 27,
+          "color": "gold"
+        },
+        {
+          "line": 9,
+          "startColumn": 13,
+          "endColumn": 24,
+          "color": "green"
+        }
+      ]
+    },
+    {
+      "id": "matches",
+      "path": "brackets/helpers/matches.py",
+      "language": "python",
+      "source": "def matches(opening, closing):\n    return (opening, closing) in [(\"(\", \")\"), (\"[\", \"]\")]"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "brackets",
+      "title": "Read the code, follow the stack",
+      "description": "Open the Code tab. Source is display-only; lesson snapshots drive the views.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          -1,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "trace": [
+          {
+            "pc": 2,
+            "i": 0,
+            "n": 0,
+            "s0": -1,
+            "s1": -1
+          },
+          {
+            "pc": 5,
+            "i": 0,
+            "n": 1,
+            "s0": 0,
+            "s1": -1
+          },
+          {
+            "pc": 5,
+            "i": 1,
+            "n": 2,
+            "s0": 0,
+            "s1": 1
+          },
+          {
+            "pc": 9,
+            "i": 2,
+            "n": 1,
+            "s0": 0,
+            "s1": -1
+          },
+          {
+            "pc": 9,
+            "i": 3,
+            "n": 0,
+            "s0": -1,
+            "s1": -1
+          },
+          {
+            "pc": 10,
+            "i": 4,
+            "n": 0,
+            "s0": -1,
+            "s1": -1
+          }
+        ]
+      },
+      "markdown": "# Code panel prototype\n\nOpen **Code**, next to Scenes and Math. The upper area is a folder browser; selecting a file opens it below without moving the lesson. Widen the left dock by dragging its edge.\n\nClick a line number or select part of an expression. **Ask AI** and **Go to step** appear together below the code. A line used more than once offers a choice of lesson steps. Nothing jumps merely because you selected it.\n\nThe gold left border indicates the current execution position; the thin selection outline is your independent reading selection. Blue, gold and green spans demonstrate authored expression marks.\n\n## Variables\n\n**text** is the input character sequence `([])`. **i** is the next/current reading position. **stack** contains input indices of unmatched opening characters, bottom to top. **ch** is the current character read by the displayed loop.\n\nThe code is never executed. Six complete lesson snapshots supply values to the ordinary expression bindings. Use the **state player** below the scene to inspect them directly. Lesson sections and execution states are separate.\n\nThis small prototype demonstrates panel interaction and bindings. Free-form input editing, full code syntax coloring and a dedicated stack renderer are outside this slice.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -4,
+              4
+            ],
+            [
+              -3,
+              3
+            ]
+          ],
+          "divisions": [
+            8,
+            6
+          ],
+          "opacity": 0.1
+        }
+      ],
+      "steps": [
+        {
+          "id": "explore",
+          "title": "Explore the bracket stack",
+          "description": "Use the state player below: step forward, step backward, play, or jump to any snapshot.",
+          "sliders": [
+            {
+              "id": "snapshot",
+              "label": "Snapshot",
+              "min": 0,
+              "max": 5,
+              "step": 1,
+              "default": 0
+            }
+          ],
+          "add": [
+            {
+              "id": "input-array",
+              "type": "array",
+              "itemType": "character",
+              "values": [
+                "(",
+                "[",
+                "]",
+                ")"
+              ],
+              "origin": [
+                -3,
+                1.5,
+                0
+              ],
+              "cellSize": 2,
+              "highlightExpr": "idx == dataTable('trace', snapshot, 'i')",
+              "label": "text · character array",
+              "labelOffset": [
+                0,
+                1.8,
+                0
+              ],
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "i",
+                  "indexExpr": "dataTable('trace', snapshot, 'i')",
+                  "color": "#f1c65b"
+                }
+              ]
+            },
+            {
+              "id": "stack",
+              "type": "tensor",
+              "shape": [
+                2,
+                1
+              ],
+              "origin": [
+                -2,
+                -2.3,
+                0
+              ],
+              "cellSize": 1,
+              "valueExpr": "dataTable('trace', snapshot, concat('s', 1 - row))",
+              "heightExpr": "value < 0 ? 0 : 0.85",
+              "depthExpr": "value < 0 ? 0 : 0.35",
+              "textExpr": "value < 0 ? '' : concat('', value)",
+              "color": "#65bca8",
+              "textColor": "#ffffff",
+              "shader": {
+                "ignorePlaneOpacity": true
+              }
+            },
+            {
+              "id": "stack-label",
+              "type": "text",
+              "text": "stack · input indices",
+              "position": [
+                -1.5,
+                -3.1,
+                0
+              ]
+            },
+            {
+              "id": "n-label",
+              "type": "expression_label",
+              "position": [
+                2,
+                -1.8,
+                0
+              ],
+              "textExpr": "concat('size = ', dataTable('trace', snapshot, 'n'))"
+            },
+            {
+              "id": "i-label",
+              "type": "expression_label",
+              "position": [
+                2,
+                -1.8,
+                0
+              ],
+              "textExpr": "concat('i = ', dataTable('trace', snapshot, 'i'))"
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "snapshot",
+        "intervalMs": 1000
+      }
+    },
+    {
+      "id": "array-types",
+      "title": "Array cell types",
+      "description": "The same array object displays different primitive types without coercion.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          13
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "markdown": "# Typed array objects\n\nEach row is a single array object with its own indexed cells.\n\n**Numbers** retain their numeric values. **Characters** display one Unicode code point; a space is shown as ␠. **Strings** keep quotation marks, so an empty string is distinct from **null**, shown as ∅. **Booleans** display true or false. A **mixed** row preserves the underlying type of each primitive value.\n\nArrays accept literal values or per-cell value expressions. Highlight expressions bind independently to state; no marker or other visual object is referenced. Nested arrays and object/reference cells are not part of this initial renderer.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -4,
+              4
+            ],
+            [
+              -4,
+              4
+            ]
+          ],
+          "divisions": [
+            8,
+            8
+          ],
+          "opacity": 0.1
+        },
+        {
+          "id": "array-numbers",
+          "type": "array",
+          "label": "numbers",
+          "itemType": "number",
+          "values": [
+            8,
+            12,
+            -3,
+            2.5
+          ],
+          "origin": [
+            -3,
+            3.5,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-characters",
+          "type": "array",
+          "label": "characters",
+          "itemType": "character",
+          "values": [
+            "A",
+            " ",
+            "λ",
+            "🙂"
+          ],
+          "origin": [
+            -3,
+            1.65,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-strings",
+          "type": "array",
+          "label": "strings",
+          "itemType": "string",
+          "values": [
+            "hi",
+            "42",
+            "",
+            "word"
+          ],
+          "origin": [
+            -3,
+            -0.20000000000000018,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-booleans",
+          "type": "array",
+          "label": "booleans",
+          "itemType": "boolean",
+          "values": [
+            true,
+            false,
+            true,
+            false
+          ],
+          "origin": [
+            -3,
+            -2.0500000000000007,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-mixed",
+          "type": "array",
+          "label": "mixed",
+          "itemType": "mixed",
+          "values": [
+            42,
+            "42",
+            false,
+            null
+          ],
+          "origin": [
+            -3,
+            -3.9000000000000004,
+            0
+          ],
+          "cellSize": 2
+        }
+      ]
+    },
+    {
+      "id": "annotations",
+      "title": "Index and label playground",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "markdown": "# Array-owned markers\n\nMove **i** and **j**. The array positions its own markers and combines equal indices. The lesson only specifies each name and index expression.\n\nThe expression labels below are independent objects. Overlapping labels share a box with separate rows.",
+      "elements": [
+        {
+          "id": "demo-array",
+          "type": "array",
+          "itemType": "character",
+          "values": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "origin": [
+            -3,
+            1,
+            0
+          ],
+          "cellSize": 2,
+          "label": "text",
+          "labelOffset": [
+            0,
+            1.8,
+            0
+          ],
+          "markers": [
+            {
+              "type": "step_marker",
+              "indexName": "i",
+              "indexExpr": "i"
+            },
+            {
+              "type": "step_marker",
+              "indexName": "j",
+              "indexExpr": "j"
+            }
+          ]
+        },
+        {
+          "id": "pair",
+          "type": "expression_label",
+          "position": [
+            0,
+            -1.3,
+            0
+          ],
+          "textExpr": "concat('Positions: ', i, ', ', j)"
+        },
+        {
+          "id": "equal",
+          "type": "expression_label",
+          "position": [
+            0,
+            -1.3,
+            0
+          ],
+          "textExpr": "concat('Same cell: ', i == j)"
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Move the indices",
+          "sliders": [
+            {
+              "id": "i",
+              "label": "i",
+              "min": 0,
+              "max": 3,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "j",
+              "label": "j",
+              "min": 0,
+              "max": 3,
+              "step": 1,
+              "default": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "standalone-marker",
+      "title": "Independent marker",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "markdown": "# Independent marker\n\nThis marker is placed directly in the scene. It uses the same marker component as the array-owned version, with its own position expression.",
+      "elements": [
+        {
+          "id": "free-marker",
+          "type": "step_marker",
+          "positionExpr": [
+            "x",
+            "0",
+            "0"
+          ],
+          "text": "Independent marker"
+        }
+      ],
+      "steps": [
+        {
+          "id": "move",
+          "title": "Move the independent marker",
+          "sliders": [
+            {
+              "id": "x",
+              "label": "Position",
+              "min": -3,
+              "max": 3,
+              "step": 1,
+              "default": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
