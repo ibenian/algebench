@@ -26,9 +26,12 @@ export function dynamicArrayLength(value: unknown): number {
 }
 
 /** Owned markers cannot point outside their array; the renderer hides null anchors. */
-export function arrayIndexPosition(index:number, length:number, origin:number[], pitch:number):[number,number,number]|null {
+export function arrayCellPosition(index:number,origin:number[],pitch:number,layout:Element['arrayLayout']='horizontal'):[number,number,number] {
+    return layout==='vertical' ? [origin[0]!,origin[1]!+index*.78,origin[2]!] : [origin[0]!+index*pitch,origin[1]!,origin[2]!];
+}
+export function arrayIndexPosition(index:number, length:number, origin:number[], pitch:number,layout:Element['arrayLayout']='horizontal'):[number,number,number]|null {
     if (!Number.isInteger(index) || index < 0 || index >= length) return null;
-    return [origin[0]! + index * pitch, origin[1]!, origin[2]!];
+    return arrayCellPosition(index,origin,pitch,layout);
 }
 
 /** Same dimensions as the rendered boxes; all corners support rotated cameras. */

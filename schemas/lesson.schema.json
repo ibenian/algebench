@@ -1375,6 +1375,11 @@
           "default": true,
           "description": "ARRAY ONLY. Show small index tags attached to cells. Disable for cells used in a stack."
         },
+        "arrayLayout": {
+          "enum": ["horizontal", "vertical"],
+          "default": "horizontal",
+          "description": "ARRAY ONLY. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap."
+        },
         "fontSize": {
           "type": "number",
           "exclusiveMinimum": 0,

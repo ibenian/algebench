@@ -3822,13 +3822,20 @@ function dynamicArrayLength(value) {
 	return value;
 }
 /** Owned markers cannot point outside their array; the renderer hides null anchors. */
-function arrayIndexPosition(index, length, origin, pitch) {
-	if (!Number.isInteger(index) || index < 0 || index >= length) return null;
-	return [
+function arrayCellPosition(index, origin, pitch, layout = "horizontal") {
+	return layout === "vertical" ? [
+		origin[0],
+		origin[1] + index * .78,
+		origin[2]
+	] : [
 		origin[0] + index * pitch,
 		origin[1],
 		origin[2]
 	];
+}
+function arrayIndexPosition(index, length, origin, pitch, layout = "horizontal") {
+	if (!Number.isInteger(index) || index < 0 || index >= length) return null;
+	return arrayCellPosition(index, origin, pitch, layout);
 }
 /** Same dimensions as the rendered boxes; all corners support rotated cameras. */
 function arrayCellCorners(centre, pitch) {
@@ -3893,11 +3900,7 @@ function renderArray(el, _view) {
 	if (origin.length !== 3 || origin.some((v) => !Number.isFinite(v))) throw new Error("Array origin must contain three finite coordinates.");
 	const pitch = Number(el.cellSize ?? 2);
 	if (!Number.isFinite(pitch) || pitch <= 0) throw new Error("Array cellSize must be positive.");
-	const centre = (i) => [
-		origin[0] + i * pitch,
-		origin[1],
-		origin[2]
-	];
+	const centre = (i) => arrayCellPosition(i, origin, pitch, el.arrayLayout);
 	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
 	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
@@ -3923,7 +3926,7 @@ function renderArray(el, _view) {
 	mesh.userData.ignorePlaneOpacity = true;
 	mesh.userData.targetOpacity = 1;
 	const cellTarget = { at(index) {
-		const position = arrayIndexPosition(index, n, origin, pitch);
+		const position = arrayIndexPosition(index, n, origin, pitch, el.arrayLayout);
 		return position ? {
 			position,
 			corners: arrayCellCorners(position, pitch)
@@ -4016,17 +4019,14 @@ function renderArray(el, _view) {
 	};
 	const labels = Array.from({ length: n }, (_, i) => makeCellLabel(i));
 	let titleLabel;
+	const titleCentre = () => centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
 	if (el.label) {
 		const offset = el.labelOffset ?? [
 			0,
 			.88,
 			0
 		];
-		titleLabel = addLabel3D("", [
-			origin[0] + Math.max(0, n - 1) * pitch / 2 + offset[0],
-			origin[1] + offset[1],
-			origin[2] + offset[2]
-		], "#b5c1cf");
+		titleLabel = addLabel3D("", titleCentre().map((value, i) => value + offset[i]), "#b5c1cf");
 		titleLabel.el.textContent = el.label;
 		titleLabel.snapToProjection = true;
 	}
@@ -4034,7 +4034,7 @@ function renderArray(el, _view) {
 	const owner = {
 		group: "array-markers:" + arrayMarkerGroup++,
 		animState,
-		position: (index) => arrayIndexPosition(index, n, origin, pitch),
+		position: (index) => arrayIndexPosition(index, n, origin, pitch, el.arrayLayout),
 		corners: (index) => arrayCellCorners(centre(index), pitch)
 	};
 	const markers = (el.markers ?? []).map((marker) => renderStepMarker({
@@ -4071,7 +4071,11 @@ function renderArray(el, _view) {
 		mesh.geometry.dispose();
 		mesh.geometry = replacement;
 		previous.length = 0;
-		if (titleLabel) titleLabel.dataPos[0] = origin[0] + Math.max(0, n - 1) * pitch / 2 + (el.labelOffset?.[0] ?? 0);
+		if (titleLabel) titleLabel.dataPos = titleCentre().map((value, i) => value + (el.labelOffset ?? [
+			0,
+			.88,
+			0
+		])[i]);
 	}
 	const entry = {
 		animState,

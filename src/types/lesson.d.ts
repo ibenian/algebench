@@ -1371,6 +1371,10 @@ export interface Element {
    */
   showIndices?: boolean;
   /**
+   * ARRAY ONLY. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap.
+   */
+  arrayLayout?: 'horizontal' | 'vertical';
+  /**
    * ARRAY ONLY. Cell value font size in CSS pixels.
    */
   fontSize?: number;

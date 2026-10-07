@@ -7,7 +7,7 @@ import { registerAnimExpr } from '/sliders.js';
 import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
 import { renderStepMarker } from '/objects/step-marker.js';
-import { arrayCell, arrayLength, dynamicArrayLength, arrayIndexPosition, arrayCellCorners } from '/objects/array-data.js';
+import { arrayCell, arrayLength, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners } from '/objects/array-data.js';
 import { ArrayChangeTracker } from '/objects/array-changes.js';
 
 let arrayMarkerGroup = 0;
@@ -23,7 +23,7 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     const pitch=Number(el.cellSize??2);
     if(!Number.isFinite(pitch)||pitch<=0)throw new Error('Array cellSize must be positive.');
     // Cell centres are origin + idx * cellSize; index labels belong to slots.
-    const centre=(i:number):[number,number,number]=>[origin[0]!+i*pitch,origin[1]!,origin[2]!];
+    const centre=(i:number):[number,number,number]=>arrayCellPosition(i,origin,pitch,el.arrayLayout);
     const unit=new THREE.BoxGeometry(1,1,1).toNonIndexed();
     const source=unit.getAttribute('position'),normal=unit.getAttribute('normal'),vertices=source.count;
     let positions=new Float32Array(n*vertices*3),colors=new Float32Array(n*vertices*3);
@@ -37,7 +37,7 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     const material=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:1});
     const mesh=new THREE.Mesh(geometry,material);mesh.userData.ignorePlaneOpacity=true;mesh.userData.targetOpacity=1;
     const cellTarget:ArrayCellTarget={at(index){
-        const position=arrayIndexPosition(index,n,origin,pitch);
+        const position=arrayIndexPosition(index,n,origin,pitch,el.arrayLayout);
         return position?{position,corners:arrayCellCorners(position,pitch)}:null;
     }};
     mesh.userData.arrayCellTarget=cellTarget;
@@ -99,15 +99,16 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     };
     const labels=Array.from({length:n},(_,i)=>makeCellLabel(i));
     let titleLabel: ReturnType<typeof addLabel3D>|undefined;
+    const titleCentre=()=>centre(Math.max(0,n-1)/(el.arrayLayout==='vertical'?1:2));
     if(el.label){
         const offset=el.labelOffset??[0,.88,0];
-        titleLabel = addLabel3D('',[origin[0]!+Math.max(0,n-1)*pitch/2+offset[0]!,origin[1]!+offset[1]!,origin[2]!+offset[2]!],'#b5c1cf');
+        titleLabel = addLabel3D('',titleCentre().map((value,i)=>value+offset[i]!),'#b5c1cf');
         titleLabel.el.textContent=el.label; titleLabel.snapToProjection=true;
     }
     const animState:{stopped:boolean;hiddenByRemove?:boolean}={stopped:false};
     // Children share the owner's lifetime and never register independent updaters.
     const owner = {group: 'array-markers:' + arrayMarkerGroup++, animState,
-        position: (index: number) => arrayIndexPosition(index, n, origin, pitch),
+        position: (index: number) => arrayIndexPosition(index, n, origin, pitch,el.arrayLayout),
         corners: (index: number) => arrayCellCorners(centre(index),pitch)};
     const markers = (el.markers ?? []).map(marker => renderStepMarker({...marker, type:'step_marker'}, _view, owner));
     const valueFn=el.valueExpr?compileExpr(el.valueExpr):null;
@@ -135,7 +136,7 @@ export function renderArray(el:Element,_view:MathBoxNode) {
         colorAttribute=new THREE.BufferAttribute(colors,3);replacement.setAttribute('color',colorAttribute);
         mesh.geometry.dispose();mesh.geometry=replacement;
         previous.length=0;
-        if(titleLabel)titleLabel.dataPos[0]=origin[0]!+Math.max(0,n-1)*pitch/2+(el.labelOffset?.[0]??0);
+        if(titleLabel)titleLabel.dataPos=titleCentre().map((value,i)=>value+(el.labelOffset??[0,.88,0])[i]!);
     }
     const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
         // Hidden lesson steps must not advance the last-visible comparison baseline.

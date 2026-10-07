@@ -1,10 +1,19 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {arrayCell,arrayLength,dynamicArrayLength,arrayIndexPosition} from './array-data.js';
+import {arrayCell,arrayLength,dynamicArrayLength,arrayIndexPosition,arrayCellPosition,arrayCellCorners} from './array-data.js';
 test('mixed arrays preserve primitive identity rather than coercing values',()=>{
  assert.equal(arrayCell(42).kind,'number');assert.equal(arrayCell('42').kind,'string');
  assert.equal(arrayCell(false).text,'false');assert.equal(arrayCell(null).text,'∅');
  assert.equal(arrayCell('').text,'""');assert.equal(arrayCell('42').value,'42');
+});
+test('vertical stacks keep array cell dimensions and compact upward spacing',()=>{
+ assert.deepEqual(arrayIndexPosition(2,4,[5,-2,0],2,'vertical'),[5,-.43999999999999995,0]);
+ assert.equal(arrayIndexPosition(4,4,[5,-2,0],2,'vertical'),null);
+ const first=arrayCellPosition(0,[5,-2,0],2,'vertical'),second=arrayCellPosition(1,[5,-2,0],2,'vertical');
+ assert.ok(Math.abs(second[1]-first[1]-.78)<1e-10);
+ assert.equal(second[0],first[0]);
+ const corners=arrayCellCorners(first,2);
+ assert.ok(Math.abs(Math.max(...corners.map(c=>c[1]!))-Math.min(...corners.map(c=>c[1]!))-.68)<1e-10);
 });
 test('character arrays accept Unicode code points and display whitespace explicitly',()=>{
  assert.equal(arrayCell('🙂','character').text,'🙂');assert.equal(arrayCell(' ','character').text,'␠');
