@@ -3,11 +3,11 @@
 // AI ask-button helpers.
 // ============================================================
 
-import { annotationGroups, annotationRows } from '/annotation-layout.js';
+import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle } from '/annotation-layout.js';
 import type { AnnotationValue } from '/annotation-layout.js';
 
 import { state } from '/state.js';
-import { dataToWorld } from '/coords.js';
+import { dataToWorld, worldToData } from '/coords.js';
 import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers, stripGlossaryMath } from '/glossary-core.js';
 
 export const AI_SPARKLE_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11"><path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
@@ -366,11 +366,22 @@ export interface Label3D {
     /** Last z-index written to the DOM, so paint order only touches the style
      *  when the rank actually changes. */
     _zi?: number;
+    /** Last presentation written; unchanged frames leave the DOM untouched. */
+    _paint?: {transform?: string; opacity?: string; filter?: string; inert?: boolean; overlay?: boolean; overlayOpacity?: number};
     annotation?: AnnotationValue & {
         kind: 'marker' | 'label'; badge: HTMLElement; measure: HTMLElement;
         width: number; height: number; scale: number | null; rendered: string;
+        startDrag?: (event:PointerEvent, members?:Label3D[])=>void;
     };
     annotationHidden?: boolean;
+    annotationAnchor?: {x:number; y:number};
+    /** User placement in viewport pixels, independent of the data anchor. */
+    annotationPosition?: {x:number; y:number};
+    annotationWorldPosition?: [number, number, number];
+    annotationOrder?: number;
+    annotationDragging?: boolean;
+    annotationDocked?: boolean;
+    annotationCoordinateMode?: 'world' | 'screen';
 }
 
 // state.js is still untyped JavaScript, so describe the slice this module uses
@@ -451,7 +462,7 @@ export function updateLabels(): void {
         // motion still declutters. The cooldown holds the exclusion through brief
         // pauses (e.g. a turnaround) so a slow stretch doesn't re-engage and
         // blip; once motion truly settles the label declutters again.
-        const dp = lbl.dataPos;
+        const dp = lbl.annotationWorldPosition ?? lbl.dataPos;
         const prev = lbl.lastDataPos;
         const dataMoved = prev && (
             Math.abs(dp[0]! - prev[0]!) > 1e-6 ||
@@ -481,7 +492,11 @@ export function updateLabels(): void {
             targetX = (Math.min(...xs) + Math.max(...xs)) / 2;
             targetY = attachment.edge === 'top' ? Math.min(...ys) - attachment.gap : Math.max(...ys) + attachment.gap;
         }
-        lbl.visible = !lbl.forceHidden && projected.z < 1
+        if (lbl.annotationPosition && lbl.annotationCoordinateMode === 'screen') {
+            targetX = lbl.annotationPosition.x;
+            targetY = lbl.annotationPosition.y;
+        }
+        lbl.visible = !lbl.forceHidden && ((lbl.annotationPosition && lbl.annotationCoordinateMode === 'screen') || projected.z < 1)
             && targetX > -50 && targetX < w + 50
             && targetY > -50 && targetY < h + 50;
 
@@ -515,16 +530,36 @@ export function updateLabels(): void {
     const declutterAlpha = state.displayParams.labelDeclutterAlpha;
     const dimAlpha = state.displayParams.labelDimAlpha;
     for (const lbl of labelsState.labels) {
+        const paint = lbl._paint ??= {};
         lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
         lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
         lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
         const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
-        const y = lbl.screenY! + lbl.offsetY;
+        const x = lbl.annotationAnchor?.x ?? lbl.screenX!;
+        const y = (lbl.annotationAnchor?.y ?? lbl.screenY!) + lbl.offsetY;
         const ay = lbl.cellAttachment ? (lbl.cellAttachment.edge === 'top' ? '-100%' : '0%') : '-50%';
-        lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, ${ay})`;
+        const transform = `translate(${x}px, ${y}px) translate(${ax}, ${ay})`;
+        if (paint.transform !== transform) { lbl.el.style.transform = transform; paint.transform = transform; }
         // Near-hidden far labels fade via opacity (fade); gentle recede uses brightness (dim).
-        lbl.el.style.opacity = lbl.visible && !lbl.annotationHidden ? (labelsState.displayParams.labelOpacity * lbl.fade).toFixed(3) : '0';
-        lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
+        const overlay = lbl.annotationCoordinateMode === 'screen';
+        if (paint.overlay !== overlay) {
+            lbl.el.classList.toggle('annotation-overlay', overlay);
+            paint.overlay = overlay;
+            paint.overlayOpacity = overlay ? 0.82 : 1;
+        }
+        const opacity = lbl.visible && !lbl.annotationHidden ? (labelsState.displayParams.labelOpacity * lbl.fade * paint.overlayOpacity!).toFixed(3) : '0';
+        if (paint.opacity !== opacity) { lbl.el.style.opacity = opacity; paint.opacity = opacity; }
+        // Hidden members must not intercept a drag intended for a shared row.
+        const inert = !lbl.visible || !!lbl.annotationHidden;
+        if (lbl.annotation && paint.inert !== inert) {
+            lbl.el.inert = inert;
+            // Scene transition fades also write opacity. Visibility keeps a
+            // merged-away empty badge hidden regardless of those fade writes.
+            lbl.el.classList.toggle('annotation-suppressed', inert);
+            paint.inert = inert;
+        }
+        const filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
+        if (paint.filter !== filter) { lbl.el.style.filter = filter; paint.filter = filter; }
     }
 
     // Paint order: nearest the camera draws on top. Assign z-index by depth rank
@@ -548,21 +583,50 @@ function groupAnnotations(scale: number): void {
         if (a.scale !== scale) {
             a.width = a.measure.offsetWidth; a.height = a.measure.offsetHeight; a.scale = scale;
         }
-        return {text:a.text, index:a.index, kind:a.kind, x:l.screenX!, y:l.screenY! + (l.cellAttachment?.edge === 'top' ? -(a.height + 11)/2 : a.kind === 'marker' ? -38 : 0), width:a.width, height:a.height};
+        return {text:a.text, index:a.index, kind:a.kind, coordinateMode:l.annotationCoordinateMode ?? 'world', detached:!!l.annotationDragging && !l.annotationDocked, x:l.screenX!, y:l.screenY! + (l.cellAttachment?.edge === 'top' ? -(a.height + 11)/2 : a.kind === 'marker' ? -38 : 0), width:a.width, height:a.height};
     });
-    const key = JSON.stringify(boxes.map((b,i) => [labels[i]!.seq, Math.round(b.x*10), Math.round(b.y*10), b.width, b.height, b.text, b.index]));
+    const key = JSON.stringify(boxes.map((b,i) => [labels[i]!.seq, labels[i]!.annotationOrder, b.coordinateMode, b.detached, Math.round(b.x*10), Math.round(b.y*10), b.width, b.height, b.text, b.index]));
     if (key === annotationLayoutKey) return;
     annotationLayoutKey = key;
-    for (const l of labelsState.labels) l.annotationHidden = false;
+    for (const l of labelsState.labels) { l.annotationHidden = false; l.annotationAnchor = undefined; }
     for (const group of annotationGroups(boxes)) {
+        if (boxes[group[0]!]!.kind === 'label') group.sort((i,j) => (labels[i]!.annotationOrder ?? labels[i]!.seq) - (labels[j]!.annotationOrder ?? labels[j]!.seq));
         const leader = labels[group[0]!]!;
         const a = leader.annotation!;
-        const rows = annotationRows(group.map(i => boxes[i]!));
-        const signature = JSON.stringify(rows);
+        const members = group.map(i => boxes[i]!);
+        if (a.kind === 'label') leader.annotationAnchor = annotationGroupAnchor(members);
+        const rows = annotationRows(members);
+        const signature = JSON.stringify([rows, group.map(i => [labels[i]!.seq, labels[i]!.annotationCoordinateMode ?? 'world'])]);
         if (signature !== a.rendered) {
-            a.badge.replaceChildren(...rows.map(text => {
-                const row = document.createElement('span'); row.className = 'annotation-row'; row.textContent = text; return row;
+            a.badge.replaceChildren(...rows.map((text, rowIndex) => {
+                const row = document.createElement('span'); row.className = 'annotation-row'; row.textContent = text;
+                if (a.kind === 'label') {
+                    row.dataset.labelSeq = String(labels[group[rowIndex]!]!.seq);
+                    const drag = labels[group[rowIndex]!]!.annotation!.startDrag;
+                    if (drag) { row.classList.add('annotation-row-draggable'); row.title='Drag to move this label'; row.addEventListener('pointerdown',drag); }
+                }
+                return row;
             }));
+            if (a.kind === 'label') {
+                const header = document.createElement('span');
+                header.className = 'annotation-titlebar';
+                header.textContent = `⠿ ${annotationContainerTitle(rows)} `;
+                header.title = 'Drag to move all labels in this box';
+                header.addEventListener('pointerdown', event => a.startDrag?.(event, group.map(i => labels[i]!)));
+                const mode = document.createElement('button');
+                mode.className = 'annotation-mode-toggle';
+                mode.type = 'button';
+                const members = group.map(i => labels[i]!);
+                const updateMode = () => {
+                    mode.textContent = members.every(member => member.annotationCoordinateMode === 'screen') ? 'Overlay' : '3D';
+                    mode.title = mode.textContent === 'Overlay' ? 'Return labels to 3D world coordinates' : 'Pin labels to screen overlay coordinates';
+                };
+                updateMode();
+                mode.addEventListener('pointerdown', event => { event.stopPropagation(); });
+                mode.addEventListener('click', event => { event.stopPropagation(); toggleExpressionLabelMode(members[0]!, members); updateMode(); });
+                header.append(mode);
+                a.badge.prepend(header);
+            }
             leader.el.setAttribute('aria-label', rows.join('; '));
             a.rendered = signature; leader.boxW = null; leader.boxH = null;
         }
@@ -570,10 +634,64 @@ function groupAnnotations(scale: number): void {
     }
 }
 
+/** Common presentation layer owns snapping and row order; renderers stay independent. */
+export function placeExpressionLabel(label: Label3D, x: number, y: number, clientX: number, clientY: number): void {
+    const targets = labelsState.labels.filter(l => l.visible && !l.annotationHidden && l.annotation?.kind === 'label' && (l.annotationCoordinateMode ?? 'world') === (label.annotationCoordinateMode ?? 'world'));
+    for (const target of targets) {
+        const rows = Array.from(target.annotation!.badge.querySelectorAll<HTMLElement>('.annotation-row'));
+        const others = rows.filter(row => Number(row.dataset.labelSeq) !== label.seq);
+        if (!others.length) continue;
+        const rect = target.el.getBoundingClientRect();
+        if (clientX < rect.left - 8 || clientX > rect.right + 8 || clientY < rect.top - 8 || clientY > rect.bottom + 8) continue;
+        const anchor = target.annotationAnchor ?? {x:target.screenX!, y:target.screenY!};
+        const members = others.map(row => labelsState.labels.find(l => l.seq === Number(row.dataset.labelSeq))!);
+        const insertion = annotationInsertionIndex(others.map(row => {const r = row.getBoundingClientRect(); return (r.top+r.bottom)/2;}), clientY);
+        members.splice(insertion, 0, label);
+        label.annotationDocked = true;
+        members.forEach((member, index) => {
+            setExpressionLabelPosition(member, anchor.x, anchor.y);
+            member.annotationOrder = index;
+        });
+        return;
+    }
+    label.annotationDocked = false;
+    setExpressionLabelPosition(label, x, y);
+}
+
+/** Move in the current mode. World placement uses the camera-facing plane at the label's depth. */
+export function setExpressionLabelPosition(label: Label3D, x: number, y: number): void {
+    if (label.annotationCoordinateMode === 'screen') {
+        label.annotationPosition = {x,y};
+        return;
+    }
+    const camera = labelsState.camera, renderer = labelsState.renderer;
+    if (!camera || !renderer) return;
+    const anchor = dataToWorld((label.annotationWorldPosition ?? label.dataPos) as [number,number,number]);
+    const depth = new THREE.Vector3(...anchor).project(camera).z;
+    const world = new THREE.Vector3(x / renderer.domElement.clientWidth * 2 - 1, 1 - y / renderer.domElement.clientHeight * 2, depth).unproject(camera);
+    label.annotationWorldPosition = worldToData([world.x,world.y,world.z]);
+}
+
+export function toggleExpressionLabelMode(label: Label3D, members: Label3D[] = [label]): void {
+    const toScreen = label.annotationCoordinateMode !== 'screen';
+    members.forEach(member => {
+        member.annotationCoordinateMode = toScreen ? 'screen' : 'world';
+        if (toScreen) member.annotationPosition = {x: member.screenX ?? 0, y: member.screenY ?? 0};
+        else {
+            if (member.annotationPosition) setExpressionLabelPosition(member, member.annotationPosition.x, member.annotationPosition.y);
+            member.annotationPosition = undefined;
+        }
+    });
+    annotationLayoutKey = '';
+}
+
 // Front-to-back order for paint (z-index): nearest the camera first. On a near
 // tie the moving label wins (it sits on top of what it passes over), then the
 // later-painted label.
 function frontToBack(a: Label3D, b: Label3D): number {
+    const overlayA = a.annotationCoordinateMode === 'screen';
+    const overlayB = b.annotationCoordinateMode === 'screen';
+    if (overlayA !== overlayB) return overlayA ? -1 : 1;
     if (Math.abs(a.depth - b.depth) > 0.01) return a.depth - b.depth;
     if (a.moving !== b.moving) return a.moving ? -1 : 1;
     return b.seq - a.seq;

@@ -6,6 +6,8 @@ export interface AnnotationValue {
 export interface AnnotationBox extends AnnotationValue {
     x: number; y: number; width: number; height: number;
     kind: 'marker' | 'label';
+    detached?: boolean;
+    coordinateMode?: 'world' | 'screen';
 }
 export function annotationText(value: unknown): string {
     if (typeof value === 'string') return value;
@@ -41,7 +43,7 @@ export function annotationGroups(items: AnnotationBox[]): number[][] {
     };
     for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
         const a = items[i]!, b = items[j]!;
-        if (a.kind !== b.kind) continue;
+        if (a.kind !== b.kind || a.detached || b.detached || a.coordinateMode !== b.coordinateMode) continue;
         const sameIndex = a.index && b.index && a.index.group === b.index.group && a.index.value === b.index.value;
         const overlaps = Math.abs(a.x-b.x) < (a.width+b.width)/2 && Math.abs(a.y-b.y) < (a.height+b.height)/2;
         if (sameIndex || overlaps) parent[root(j)] = root(i);
@@ -49,4 +51,24 @@ export function annotationGroups(items: AnnotationBox[]): number[][] {
     const groups = new Map<number, number[]>();
     items.forEach((_, i) => { const r=root(i); if (!groups.has(r)) groups.set(r, []); groups.get(r)!.push(i); });
     return [...groups.values()];
+}
+
+/** Shared expression-label boxes track their members without changing their anchors. */
+export function annotationGroupAnchor(items: Pick<AnnotationBox,'x'|'y'>[]): {x:number; y:number} {
+    if (!items.length) throw new Error('A label group must have a member');
+    return {x:items.reduce((sum,item)=>sum+item.x,0)/items.length,
+        y:items.reduce((sum,item)=>sum+item.y,0)/items.length};
+}
+
+/** Insert a dragged row before the first row whose midpoint is below it. */
+export function annotationInsertionIndex(midpoints: number[], y: number): number {
+    const index = midpoints.findIndex(midpoint => y < midpoint);
+    return index < 0 ? midpoints.length : index;
+}
+
+export function annotationContainerTitle(rows: string[]): 'Vars' | 'Labels' {
+    return rows.length > 0 && rows.every(row => {
+        const parts = row.split(/(?<![<>=!])=(?!=)/);
+        return parts.length > 1 && parts.every(part => part.trim().length > 0);
+    }) ? 'Vars' : 'Labels';
 }

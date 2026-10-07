@@ -585,7 +585,7 @@ function annotationGroups(items) {
 	};
 	for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
 		const a = items[i], b = items[j];
-		if (a.kind !== b.kind) continue;
+		if (a.kind !== b.kind || a.detached || b.detached || a.coordinateMode !== b.coordinateMode) continue;
 		const sameIndex = a.index && b.index && a.index.group === b.index.group && a.index.value === b.index.value;
 		const overlaps = Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.y - b.y) < (a.height + b.height) / 2;
 		if (sameIndex || overlaps) parent[root(j)] = root(i);
@@ -597,6 +597,25 @@ function annotationGroups(items) {
 		groups.get(r).push(i);
 	});
 	return [...groups.values()];
+}
+/** Shared expression-label boxes track their members without changing their anchors. */
+function annotationGroupAnchor(items) {
+	if (!items.length) throw new Error("A label group must have a member");
+	return {
+		x: items.reduce((sum, item) => sum + item.x, 0) / items.length,
+		y: items.reduce((sum, item) => sum + item.y, 0) / items.length
+	};
+}
+/** Insert a dragged row before the first row whose midpoint is below it. */
+function annotationInsertionIndex(midpoints, y) {
+	const index = midpoints.findIndex((midpoint) => y < midpoint);
+	return index < 0 ? midpoints.length : index;
+}
+function annotationContainerTitle(rows) {
+	return rows.length > 0 && rows.every((row) => {
+		const parts = row.split(/(?<![<>=!])=(?!=)/);
+		return parts.length > 1 && parts.every((part) => part.trim().length > 0);
+	}) ? "Vars" : "Labels";
 }
 //#endregion
 //#region src/coords.ts
@@ -1426,7 +1445,7 @@ function updateLabels() {
 		_appliedLabelScale = s;
 	}
 	for (const lbl of labelsState.labels) {
-		const dp = lbl.dataPos;
+		const dp = lbl.annotationWorldPosition ?? lbl.dataPos;
 		const prev = lbl.lastDataPos;
 		const dataMoved = prev && (Math.abs(dp[0] - prev[0]) > 1e-6 || Math.abs(dp[1] - prev[1]) > 1e-6 || Math.abs(dp[2] - prev[2]) > 1e-6);
 		if (dataMoved) lbl.moveCooldown = 20;
@@ -1454,7 +1473,11 @@ function updateLabels() {
 			targetX = (Math.min(...xs) + Math.max(...xs)) / 2;
 			targetY = attachment.edge === "top" ? Math.min(...ys) - attachment.gap : Math.max(...ys) + attachment.gap;
 		}
-		lbl.visible = !lbl.forceHidden && projected.z < 1 && targetX > -50 && targetX < w + 50 && targetY > -50 && targetY < h + 50;
+		if (lbl.annotationPosition && lbl.annotationCoordinateMode === "screen") {
+			targetX = lbl.annotationPosition.x;
+			targetY = lbl.annotationPosition.y;
+		}
+		lbl.visible = !lbl.forceHidden && (lbl.annotationPosition && lbl.annotationCoordinateMode === "screen" || projected.z < 1) && targetX > -50 && targetX < w + 50 && targetY > -50 && targetY < h + 50;
 		if (lbl.snapToProjection || lbl.cellAttachment || lbl.screenX == null || lbl.screenY == null || dataMoved && lbl.annotation?.kind === "marker") {
 			lbl.screenX = targetX;
 			lbl.screenY = targetY;
@@ -1475,15 +1498,38 @@ function updateLabels() {
 	const declutterAlpha = state.displayParams.labelDeclutterAlpha;
 	const dimAlpha = state.displayParams.labelDimAlpha;
 	for (const lbl of labelsState.labels) {
+		const paint = lbl._paint ??= {};
 		lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
 		lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
 		lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
 		const ax = lbl.align === "right" ? "-100%" : lbl.align === "left" ? "0%" : "-50%";
-		const y = lbl.screenY + lbl.offsetY;
-		const ay = lbl.cellAttachment ? lbl.cellAttachment.edge === "top" ? "-100%" : "0%" : "-50%";
-		lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, ${ay})`;
-		lbl.el.style.opacity = lbl.visible && !lbl.annotationHidden ? (labelsState.displayParams.labelOpacity * lbl.fade).toFixed(3) : "0";
-		lbl.el.style.filter = lbl.dim < .999 ? `brightness(${lbl.dim.toFixed(3)})` : "";
+		const transform = `translate(${lbl.annotationAnchor?.x ?? lbl.screenX}px, ${(lbl.annotationAnchor?.y ?? lbl.screenY) + lbl.offsetY}px) translate(${ax}, ${lbl.cellAttachment ? lbl.cellAttachment.edge === "top" ? "-100%" : "0%" : "-50%"})`;
+		if (paint.transform !== transform) {
+			lbl.el.style.transform = transform;
+			paint.transform = transform;
+		}
+		const overlay = lbl.annotationCoordinateMode === "screen";
+		if (paint.overlay !== overlay) {
+			lbl.el.classList.toggle("annotation-overlay", overlay);
+			paint.overlay = overlay;
+			paint.overlayOpacity = overlay ? .82 : 1;
+		}
+		const opacity = lbl.visible && !lbl.annotationHidden ? (labelsState.displayParams.labelOpacity * lbl.fade * paint.overlayOpacity).toFixed(3) : "0";
+		if (paint.opacity !== opacity) {
+			lbl.el.style.opacity = opacity;
+			paint.opacity = opacity;
+		}
+		const inert = !lbl.visible || !!lbl.annotationHidden;
+		if (lbl.annotation && paint.inert !== inert) {
+			lbl.el.inert = inert;
+			lbl.el.classList.toggle("annotation-suppressed", inert);
+			paint.inert = inert;
+		}
+		const filter = lbl.dim < .999 ? `brightness(${lbl.dim.toFixed(3)})` : "";
+		if (paint.filter !== filter) {
+			lbl.el.style.filter = filter;
+			paint.filter = filter;
+		}
 	}
 	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
@@ -1511,6 +1557,8 @@ function groupAnnotations(scale) {
 			text: a.text,
 			index: a.index,
 			kind: a.kind,
+			coordinateMode: l.annotationCoordinateMode ?? "world",
+			detached: !!l.annotationDragging && !l.annotationDocked,
 			x: l.screenX,
 			y: l.screenY + (l.cellAttachment?.edge === "top" ? -(a.height + 11) / 2 : a.kind === "marker" ? -38 : 0),
 			width: a.width,
@@ -1519,6 +1567,9 @@ function groupAnnotations(scale) {
 	});
 	const key = JSON.stringify(boxes.map((b, i) => [
 		labels[i].seq,
+		labels[i].annotationOrder,
+		b.coordinateMode,
+		b.detached,
 		Math.round(b.x * 10),
 		Math.round(b.y * 10),
 		b.width,
@@ -1528,19 +1579,60 @@ function groupAnnotations(scale) {
 	]));
 	if (key === annotationLayoutKey) return;
 	annotationLayoutKey = key;
-	for (const l of labelsState.labels) l.annotationHidden = false;
+	for (const l of labelsState.labels) {
+		l.annotationHidden = false;
+		l.annotationAnchor = void 0;
+	}
 	for (const group of annotationGroups(boxes)) {
+		if (boxes[group[0]].kind === "label") group.sort((i, j) => (labels[i].annotationOrder ?? labels[i].seq) - (labels[j].annotationOrder ?? labels[j].seq));
 		const leader = labels[group[0]];
 		const a = leader.annotation;
-		const rows = annotationRows(group.map((i) => boxes[i]));
-		const signature = JSON.stringify(rows);
+		const members = group.map((i) => boxes[i]);
+		if (a.kind === "label") leader.annotationAnchor = annotationGroupAnchor(members);
+		const rows = annotationRows(members);
+		const signature = JSON.stringify([rows, group.map((i) => [labels[i].seq, labels[i].annotationCoordinateMode ?? "world"])]);
 		if (signature !== a.rendered) {
-			a.badge.replaceChildren(...rows.map((text) => {
+			a.badge.replaceChildren(...rows.map((text, rowIndex) => {
 				const row = document.createElement("span");
 				row.className = "annotation-row";
 				row.textContent = text;
+				if (a.kind === "label") {
+					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
+					const drag = labels[group[rowIndex]].annotation.startDrag;
+					if (drag) {
+						row.classList.add("annotation-row-draggable");
+						row.title = "Drag to move this label";
+						row.addEventListener("pointerdown", drag);
+					}
+				}
 				return row;
 			}));
+			if (a.kind === "label") {
+				const header = document.createElement("span");
+				header.className = "annotation-titlebar";
+				header.textContent = `⠿ ${annotationContainerTitle(rows)} `;
+				header.title = "Drag to move all labels in this box";
+				header.addEventListener("pointerdown", (event) => a.startDrag?.(event, group.map((i) => labels[i])));
+				const mode = document.createElement("button");
+				mode.className = "annotation-mode-toggle";
+				mode.type = "button";
+				const members = group.map((i) => labels[i]);
+				const updateMode = () => {
+					mode.textContent = members.every((member) => member.annotationCoordinateMode === "screen") ? "Overlay" : "3D";
+					mode.title = mode.textContent === "Overlay" ? "Return labels to 3D world coordinates" : "Pin labels to screen overlay coordinates";
+				};
+				updateMode();
+				mode.addEventListener("pointerdown", (event) => {
+					event.stopPropagation();
+				});
+				mode.addEventListener("click", (event) => {
+					event.stopPropagation();
+					toggleExpressionLabelMode(members[0], members);
+					updateMode();
+				});
+				header.append(mode);
+				a.badge.prepend(header);
+			}
 			leader.el.setAttribute("aria-label", rows.join("; "));
 			a.rendered = signature;
 			leader.boxW = null;
@@ -1549,7 +1641,72 @@ function groupAnnotations(scale) {
 		for (const i of group.slice(1)) labels[i].annotationHidden = true;
 	}
 }
+/** Common presentation layer owns snapping and row order; renderers stay independent. */
+function placeExpressionLabel(label, x, y, clientX, clientY) {
+	const targets = labelsState.labels.filter((l) => l.visible && !l.annotationHidden && l.annotation?.kind === "label" && (l.annotationCoordinateMode ?? "world") === (label.annotationCoordinateMode ?? "world"));
+	for (const target of targets) {
+		const others = Array.from(target.annotation.badge.querySelectorAll(".annotation-row")).filter((row) => Number(row.dataset.labelSeq) !== label.seq);
+		if (!others.length) continue;
+		const rect = target.el.getBoundingClientRect();
+		if (clientX < rect.left - 8 || clientX > rect.right + 8 || clientY < rect.top - 8 || clientY > rect.bottom + 8) continue;
+		const anchor = target.annotationAnchor ?? {
+			x: target.screenX,
+			y: target.screenY
+		};
+		const members = others.map((row) => labelsState.labels.find((l) => l.seq === Number(row.dataset.labelSeq)));
+		const insertion = annotationInsertionIndex(others.map((row) => {
+			const r = row.getBoundingClientRect();
+			return (r.top + r.bottom) / 2;
+		}), clientY);
+		members.splice(insertion, 0, label);
+		label.annotationDocked = true;
+		members.forEach((member, index) => {
+			setExpressionLabelPosition(member, anchor.x, anchor.y);
+			member.annotationOrder = index;
+		});
+		return;
+	}
+	label.annotationDocked = false;
+	setExpressionLabelPosition(label, x, y);
+}
+/** Move in the current mode. World placement uses the camera-facing plane at the label's depth. */
+function setExpressionLabelPosition(label, x, y) {
+	if (label.annotationCoordinateMode === "screen") {
+		label.annotationPosition = {
+			x,
+			y
+		};
+		return;
+	}
+	const camera = labelsState.camera, renderer = labelsState.renderer;
+	if (!camera || !renderer) return;
+	const anchor = dataToWorld(label.annotationWorldPosition ?? label.dataPos);
+	const depth = new THREE.Vector3(...anchor).project(camera).z;
+	const world = new THREE.Vector3(x / renderer.domElement.clientWidth * 2 - 1, 1 - y / renderer.domElement.clientHeight * 2, depth).unproject(camera);
+	label.annotationWorldPosition = worldToData([
+		world.x,
+		world.y,
+		world.z
+	]);
+}
+function toggleExpressionLabelMode(label, members = [label]) {
+	const toScreen = label.annotationCoordinateMode !== "screen";
+	members.forEach((member) => {
+		member.annotationCoordinateMode = toScreen ? "screen" : "world";
+		if (toScreen) member.annotationPosition = {
+			x: member.screenX ?? 0,
+			y: member.screenY ?? 0
+		};
+		else {
+			if (member.annotationPosition) setExpressionLabelPosition(member, member.annotationPosition.x, member.annotationPosition.y);
+			member.annotationPosition = void 0;
+		}
+	});
+	annotationLayoutKey = "";
+}
 function frontToBack(a, b) {
+	const overlayA = a.annotationCoordinateMode === "screen";
+	if (overlayA !== (b.annotationCoordinateMode === "screen")) return overlayA ? -1 : 1;
 	if (Math.abs(a.depth - b.depth) > .01) return a.depth - b.depth;
 	if (a.moving !== b.moving) return a.moving ? -1 : 1;
 	return b.seq - a.seq;
@@ -2809,6 +2966,70 @@ function setupStepPlayer() {
 	refresh();
 }
 //#endregion
+//#region src/objects/label-drag.ts
+/** Independent screen placement for expression labels, including merged rows. */
+function labelDragHandler(label, animState) {
+	return (event, members) => {
+		if (event.button !== 0 || animState.stopped || !state.renderer) return;
+		const controls = state.controls;
+		const viewport = state.renderer.domElement.getBoundingClientRect();
+		const row = event.currentTarget.getBoundingClientRect();
+		const start = {
+			x: (row.left + row.right) / 2 - viewport.left,
+			y: (row.top + row.bottom) / 2 - viewport.top
+		};
+		const moving = members ?? [label];
+		const positions = moving.map((member) => ({
+			x: member.screenX,
+			y: member.screenY
+		}));
+		event.preventDefault();
+		event.stopPropagation();
+		const controller = new AbortController();
+		const wasEnabled = controls?.enabled;
+		if (controls) controls.enabled = false;
+		document.body.classList.add("dragging-expression-label");
+		moving.forEach((member) => {
+			member.annotationDragging = true;
+			member.annotationDocked = true;
+		});
+		const end = () => {
+			moving.forEach((member) => {
+				member.annotationDragging = false;
+			});
+			controller.abort();
+			if (controls && wasEnabled !== void 0) controls.enabled = wasEnabled;
+			document.body.classList.remove("dragging-expression-label");
+		};
+		const move = (e) => {
+			if (e.pointerId !== event.pointerId) return;
+			if (animState.stopped) {
+				end();
+				return;
+			}
+			e.preventDefault();
+			e.stopPropagation();
+			if (members) moving.forEach((member, index) => {
+				setExpressionLabelPosition(member, positions[index].x + e.clientX - event.clientX, positions[index].y + e.clientY - event.clientY);
+			});
+			else placeExpressionLabel(label, start.x + e.clientX - event.clientX, start.y + e.clientY - event.clientY, e.clientX, e.clientY);
+		};
+		window.addEventListener("pointermove", move, {
+			capture: true,
+			signal: controller.signal
+		});
+		window.addEventListener("pointerup", (e) => {
+			if (e.pointerId === event.pointerId) end();
+		}, {
+			capture: true,
+			signal: controller.signal
+		});
+		window.addEventListener("pointercancel", end, { signal: controller.signal });
+		window.addEventListener("blur", end, { signal: controller.signal });
+		window.addEventListener("algebench:navchange", end, { signal: controller.signal });
+	};
+}
+//#endregion
 //#region src/objects/step-marker.ts
 /** State-bound annotations. Projection/grouping belongs to the common label layer. */
 function renderStepMarker(el, _view, owner) {
@@ -2834,6 +3055,7 @@ function renderStepMarker(el, _view, owner) {
 		0,
 		0
 	], void 0, { cssClass: marker ? "label-3d step-marker" : "label-3d expression-label" });
+	if (!marker) label.snapToProjection = true;
 	const cursor = document.createElement("span");
 	cursor.className = marker ? "step-marker-cursor" : "expression-label-cursor";
 	const badge = document.createElement("span");
@@ -2850,7 +3072,7 @@ function renderStepMarker(el, _view, owner) {
 		cursor.append(pointer);
 	}
 	label.el.replaceChildren(cursor, measure);
-	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#c5d9ed")));
+	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#172e50")));
 	label.annotation = {
 		kind: marker ? "marker" : "label",
 		text: "",
@@ -2861,6 +3083,7 @@ function renderStepMarker(el, _view, owner) {
 		scale: null,
 		rendered: ""
 	};
+	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
 	const entry = {
 		animState,
 		exprStrings: sources,
@@ -2874,6 +3097,11 @@ function renderStepMarker(el, _view, owner) {
 					return;
 				}
 				if (point.length !== 3 || point.some((n) => !Number.isFinite(n))) throw new Error("Invalid annotation position");
+				if (!marker && point.some((value, index) => value !== label.dataPos[index])) {
+					label.annotationPosition = void 0;
+					label.annotationWorldPosition = void 0;
+					label.annotationOrder = void 0;
+				}
 				label.dataPos = point;
 				if (owner) label.cellAttachment = {
 					corners: owner.corners(indexValue),

@@ -86,8 +86,8 @@
       "description": "Open the Code tab. Source is display-only; lesson snapshots drive the views.",
       "range": [
         [
-          -5,
-          5
+          -6,
+          8
         ],
         [
           -4,
@@ -198,6 +198,7 @@
             {
               "id": "input-array",
               "type": "array",
+              "color": "#9dbde3",
               "itemType": "character",
               "values": [
                 "(",
@@ -235,8 +236,8 @@
                 1
               ],
               "origin": [
-                -2,
-                -2.3,
+                5,
+                -0.2,
                 0
               ],
               "cellSize": 1,
@@ -244,8 +245,15 @@
               "heightExpr": "value < 0 ? 0 : 0.85",
               "depthExpr": "value < 0 ? 0 : 0.35",
               "textExpr": "value < 0 ? '' : concat('', value)",
-              "color": "#65bca8",
-              "textColor": "#ffffff",
+              "color": "#77bfae",
+              "colorMap": {
+                "stops": [
+                  { "t": 0, "color": "#77bfae" },
+                  { "t": 1, "color": "#a0d6c4" }
+                ]
+              },
+              "colorDomain": [0, 1],
+              "textColor": "#102b28",
               "shader": {
                 "ignorePlaneOpacity": true
               }
@@ -253,10 +261,10 @@
             {
               "id": "stack-label",
               "type": "text",
-              "text": "stack · input indices",
+              "text": "stack",
               "position": [
-                -1.5,
-                -3.1,
+                5.5,
+                -0.9,
                 0
               ]
             },
@@ -264,8 +272,8 @@
               "id": "n-label",
               "type": "expression_label",
               "position": [
-                2,
-                -1.8,
+                5.5,
+                -2.7,
                 0
               ],
               "textExpr": "concat('size = ', dataTable('trace', snapshot, 'n'))"
@@ -274,8 +282,8 @@
               "id": "i-label",
               "type": "expression_label",
               "position": [
-                2,
-                -1.8,
+                5.5,
+                -2.7,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', snapshot, 'i'))"
@@ -461,7 +469,7 @@
           0
         ]
       },
-      "markdown": "# Array-owned markers\n\nMove **i** and **j**. The array positions its own markers and combines equal indices. The lesson only specifies each name and index expression.\n\nThe expression labels below are independent objects. Overlapping labels share a box with separate rows.",
+      "markdown": "# Drag the labels\n\nDrag either expression label directly to move it in the scene. When their boxes overlap they combine; each row in the shared box can be dragged back out independently. Each label can be placed independently anywhere in the visualization viewport. Dragging changes its screen position; moving its X/Y sliders returns it to its data anchor.\n\n**i** and **j** still control the array-owned index markers.",
       "elements": [
         {
           "id": "demo-array",
@@ -501,22 +509,22 @@
         {
           "id": "pair",
           "type": "expression_label",
-          "position": [
-            0,
-            -1.3,
-            0
-          ],
-          "textExpr": "concat('Positions: ', i, ', ', j)"
+          "textExpr": "concat('Positions: ', i, ', ', j)",
+          "positionExpr": [
+            "labelAX",
+            "labelAY",
+            "0"
+          ]
         },
         {
           "id": "equal",
           "type": "expression_label",
-          "position": [
-            0,
-            -1.3,
-            0
-          ],
-          "textExpr": "concat('Same cell: ', i == j)"
+          "textExpr": "concat('Same cell: ', i == j)",
+          "positionExpr": [
+            "labelX",
+            "labelY",
+            "0"
+          ]
         }
       ],
       "steps": [
@@ -539,6 +547,38 @@
               "max": 3,
               "step": 1,
               "default": 2
+            },
+            {
+              "id": "labelX",
+              "label": "Label B · X",
+              "min": -5,
+              "max": 5,
+              "step": 0.1,
+              "default": 4
+            },
+            {
+              "id": "labelY",
+              "label": "Label B · Y",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": -1.3
+            },
+            {
+              "id": "labelAX",
+              "label": "Label A · X",
+              "min": -5,
+              "max": 5,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "labelAY",
+              "label": "Label A · Y",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": -1.3
             }
           ]
         }

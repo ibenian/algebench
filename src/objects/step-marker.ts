@@ -1,5 +1,6 @@
 /** State-bound annotations. Projection/grouping belongs to the common label layer. */
 import { addLabel3D, colorToCSS } from '/labels.js';
+import { labelDragHandler } from '/objects/label-drag.js';
 import { annotationText } from '/annotation-layout.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr } from '/sliders.js';
@@ -23,6 +24,7 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
     const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
     const animState = owner?.animState ?? {stopped:false};
     const label = addLabel3D('', [0,0,0], undefined, {cssClass: marker ? 'label-3d step-marker' : 'label-3d expression-label'});
+    if (!marker) label.snapToProjection = true;
     const cursor = document.createElement('span'); cursor.className = marker ? 'step-marker-cursor' : 'expression-label-cursor';
     const badge = document.createElement('span'); badge.className = 'annotation-badge';
     const measure = document.createElement('span'); measure.className = 'annotation-badge annotation-measure'; measure.setAttribute('aria-hidden','true');
@@ -32,8 +34,9 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
         const pointer = document.createElement('span'); pointer.className='step-marker-pointer'; pointer.setAttribute('aria-hidden','true'); cursor.append(pointer);
     }
     label.el.replaceChildren(cursor, measure);
-    label.el.style.setProperty('--marker-color', colorToCSS(el.color ?? (marker ? '#f1c65b' : '#c5d9ed')));
+    label.el.style.setProperty('--marker-color', colorToCSS(el.color ?? (marker ? '#f1c65b' : '#172e50')));
     label.annotation = {kind: marker ? 'marker' : 'label', text: '', badge, measure, width: 0, height: 0, scale: null, rendered: ''};
+    if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
     const entry: AnimExprEntry = {animState, exprStrings:sources, _rebuildFn:()=>{
         if (animState.stopped) return;
         try {
@@ -41,6 +44,13 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
             const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map(fn => Number(evalExpr(fn,0)));
             if (!point) { label.forceHidden = true; return; }
             if (point.length !== 3 || point.some(n => !Number.isFinite(n))) throw new Error('Invalid annotation position');
+            // Position bindings reclaim placement when their value changes.
+            // Text-only updates preserve the user's dragged position and row order.
+            if (!marker && point.some((value, index) => value !== label.dataPos[index])) {
+                label.annotationPosition = undefined;
+                label.annotationWorldPosition = undefined;
+                label.annotationOrder = undefined;
+            }
             label.dataPos = point;
             if (owner) label.cellAttachment = {corners:owner.corners(indexValue!), edge:'top', gap:8};
             label.forceHidden = visibleFn ? !evalExpr(visibleFn,0) : false;

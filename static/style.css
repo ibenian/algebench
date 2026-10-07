@@ -5634,7 +5634,12 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 
 /* Annotation content is text-only. Hidden intrinsic copies prevent grouping feedback. */
 .expression-label { pointer-events: none; }
+.annotation-suppressed { visibility: hidden !important; }
 .expression-label-cursor { display: block; }
+.expression-label .annotation-badge { color: #edf4ff; }
+.expression-label .annotation-titlebar { border-bottom-color: #edf4ff44; }
+.expression-label .annotation-row + .annotation-row { border-top-color: #edf4ff33; }
+.expression-label .annotation-mode-toggle { background: #edf4ff12; border-color: #edf4ff55; }
 .annotation-badge { display: block; padding: 5px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 calc(13px * var(--label-scale, 1))/1.35 ui-monospace, monospace; white-space: pre; box-shadow: 0 2px 8px #0004; }
 .annotation-row { display: block; }
 .annotation-row + .annotation-row { border-top: 1px solid #171c2226; margin-top: 4px; padding-top: 4px; }
@@ -5644,3 +5649,10 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker, .expression-label { transition: none; }
 /* Owned markers sit above the projected cell edge, independent of camera zoom. */
 .step-marker-cursor.array-marker-cursor { transform: none; }
+.annotation-row-draggable { pointer-events: auto; cursor: grab; touch-action: none; user-select: none; }
+.dragging-expression-label, .dragging-expression-label .annotation-row-draggable { cursor: grabbing; user-select: none; }
+.annotation-titlebar { display: block; pointer-events: auto; cursor: grab; touch-action: none; user-select: none; font-size: .85em; opacity: .8; border-bottom: 1px solid #171c2233; padding-bottom: 4px; margin-bottom: 4px; }
+.annotation-mode-toggle { float: right; border: 1px solid #171c2244; border-radius: 4px; background: #ffffff55; color: inherit; font: inherit; font-size: .78em; padding: 1px 4px; cursor: pointer; }
+.annotation-overlay { filter: saturate(.82); }
+.expression-label .annotation-measure::before { content: '⠿ Labels'; display: block; font-size: .85em; border-bottom: 1px solid #171c2233; padding-bottom: 4px; margin-bottom: 4px; }
+.dragging-expression-label .annotation-titlebar { cursor: grabbing; }
