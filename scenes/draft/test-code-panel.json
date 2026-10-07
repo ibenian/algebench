@@ -653,6 +653,401 @@
       ]
     },
     {
+      "id": "array-operations",
+      "title": "Array operations",
+      "description": "Explore array operations with before and after views.",
+      "range": [
+        [
+          -6,
+          8
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "base": [
+          {
+            "values": [
+              30,
+              10,
+              20,
+              10
+            ]
+          }
+        ],
+        "operations": [
+          {
+            "name": "length",
+            "a": 0,
+            "b": 0,
+            "title": "Length",
+            "description": "Read the number of cells. No values change.",
+            "index": -1
+          },
+          {
+            "name": "get",
+            "a": 2,
+            "b": 0,
+            "title": "Access A[2]",
+            "description": "Read a cell by its zero-based index.",
+            "index": 2
+          },
+          {
+            "name": "set",
+            "a": 1,
+            "b": 99,
+            "title": "Update A[1] = 99",
+            "description": "Replace one value without changing the length.",
+            "index": 1
+          },
+          {
+            "name": "insert",
+            "a": 1,
+            "b": 99,
+            "title": "Insert 99 at index 1",
+            "description": "Make room by shifting the suffix one slot right.",
+            "index": 1
+          },
+          {
+            "name": "remove",
+            "a": 1,
+            "b": 0,
+            "title": "Delete index 1",
+            "description": "Remove the cell and shift its suffix one slot left.",
+            "index": 1
+          },
+          {
+            "name": "push",
+            "a": 99,
+            "b": 0,
+            "title": "Append 99",
+            "description": "Add a new last cell.",
+            "index": 4
+          },
+          {
+            "name": "pop",
+            "a": 0,
+            "b": 0,
+            "title": "Pop the last cell",
+            "description": "Remove and return the last value.",
+            "index": 3
+          },
+          {
+            "name": "unshift",
+            "a": 99,
+            "b": 0,
+            "title": "Prepend 99",
+            "description": "Insert at the start; every previous value shifts right.",
+            "index": 0
+          },
+          {
+            "name": "shift",
+            "a": 0,
+            "b": 0,
+            "title": "Remove the first cell",
+            "description": "Return the first value and shift the rest left.",
+            "index": 0
+          },
+          {
+            "name": "swap",
+            "a": 0,
+            "b": 2,
+            "title": "Swap indices 0 and 2",
+            "description": "Exchange two values; length stays the same.",
+            "index": 0
+          },
+          {
+            "name": "reverse",
+            "a": 0,
+            "b": 0,
+            "title": "Reverse",
+            "description": "Reverse the order of values.",
+            "index": -1
+          },
+          {
+            "name": "sort",
+            "a": 0,
+            "b": 0,
+            "title": "Sort ascending",
+            "description": "Order numeric values numerically, preserving duplicates.",
+            "index": -1
+          },
+          {
+            "name": "indexOf",
+            "a": 10,
+            "b": 0,
+            "title": "Search for 10",
+            "description": "Return the first matching index. Duplicate values stay distinct.",
+            "index": 1
+          },
+          {
+            "name": "indexOf",
+            "a": 99,
+            "b": 0,
+            "title": "Search for missing 99",
+            "description": "A missing value returns -1.",
+            "index": -1
+          },
+          {
+            "name": "includes",
+            "a": 20,
+            "b": 0,
+            "title": "Contains 20?",
+            "description": "Return true or false without changing the array.",
+            "index": 2
+          },
+          {
+            "name": "slice",
+            "a": 1,
+            "b": 3,
+            "title": "Slice [1, 3)",
+            "description": "Copy indices 1 and 2; the end index is excluded.",
+            "index": 1
+          },
+          {
+            "name": "concat",
+            "a": [
+              7,
+              8
+            ],
+            "b": 0,
+            "title": "Concatenate [7, 8]",
+            "description": "Produce a new array with both sequences joined.",
+            "index": 4
+          },
+          {
+            "name": "fill",
+            "a": 7,
+            "b": 0,
+            "title": "Fill with 7",
+            "description": "Replace all cell values with the same value.",
+            "index": -1
+          },
+          {
+            "name": "resize",
+            "a": 6,
+            "b": 0,
+            "title": "Grow to 6",
+            "description": "Keep existing values and fill newly added cells with zero.",
+            "index": 4
+          },
+          {
+            "name": "resize",
+            "a": 2,
+            "b": 0,
+            "title": "Shrink to 2",
+            "description": "Keep the prefix and remove the final cells.",
+            "index": -1
+          },
+          {
+            "name": "traverse",
+            "a": 0,
+            "b": 0,
+            "title": "Traverse: index 0",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 0
+          },
+          {
+            "name": "traverse",
+            "a": 1,
+            "b": 0,
+            "title": "Traverse: index 1",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 1
+          },
+          {
+            "name": "traverse",
+            "a": 2,
+            "b": 0,
+            "title": "Traverse: index 2",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 2
+          },
+          {
+            "name": "traverse",
+            "a": 3,
+            "b": 0,
+            "title": "Traverse: index 3",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 3
+          },
+          {
+            "name": "clear",
+            "a": 0,
+            "b": 0,
+            "title": "Clear",
+            "description": "Remove every cell. The array length becomes zero.",
+            "index": -1
+          }
+        ]
+      },
+      "functions": [
+        {
+          "name": "arrayBefore",
+          "args": [],
+          "expr": "dataTable('base', 0, 'values')"
+        },
+        {
+          "name": "arrayAfter",
+          "args": [],
+          "expr": "arrayValues(arrayBefore(), dataTable('operations', operation, 'name'), dataTable('operations', operation, 'a'), dataTable('operations', operation, 'b'))"
+        }
+      ],
+      "markdown": "# Array operations\n\nUse the state player to explore **25 examples**. Each example starts with `[30, 10, 20, 10]`; the upper row is the original and the lower row is the result. Gold marks changed or selected slots. Empty results show **empty**.\n\n**Read:** length, indexed access, search (`indexOf`), membership (`includes`), and traversal.\n\n**Change:** update, insert, delete, append/push, pop, prepend/unshift, shift, swap, reverse, sort, fill, resize, and clear.\n\n**Create a new sequence:** slice (start included, end excluded) and concatenate. The original row remains unchanged, including for sort and reverse.\n\nIndices are zero-based. Search returns the first exact match or `-1`; it never converts strings to numbers. Empty pop/shift returns ∅. Sorting accepts homogeneous numbers or strings. Invalid indices are errors. Arrays are limited to 256 cells.\n\nDirect access and update touch one slot. Middle insertions and deletions shift a suffix; prepend and shift move the whole remainder. Append and pop affect the end. Compare the two rows to see these differences.",
+      "elements": [
+        {
+          "id": "ops-grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -6,
+              8
+            ],
+            [
+              -4,
+              4
+            ]
+          ],
+          "divisions": [
+            14,
+            8
+          ],
+          "opacity": 0.1
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Explore all array operations",
+          "description": "Move through the examples to compare each operation.",
+          "sliders": [
+            {
+              "id": "operation",
+              "label": "Array operation",
+              "min": 0,
+              "max": 24,
+              "step": 1,
+              "default": 3
+            }
+          ],
+          "add": [
+            {
+              "id": "ops-before",
+              "type": "array",
+              "itemType": "number",
+              "values": [
+                30,
+                10,
+                20,
+                10
+              ],
+              "origin": [
+                -4,
+                1.2,
+                0
+              ],
+              "cellSize": 1.8,
+              "label": "Before",
+              "labelOffset": [
+                0,
+                1,
+                0
+              ],
+              "highlightExpr": "idx == dataTable('operations', operation, 'index')"
+            },
+            {
+              "id": "ops-after",
+              "type": "array",
+              "itemType": "number",
+              "origin": [
+                -4,
+                -0.6,
+                0
+              ],
+              "cellSize": 1.8,
+              "lengthExpr": "arrayCount(arrayAfter())",
+              "valueExpr": "arrayAt(arrayAfter(), idx)",
+              "highlightExpr": "(idx >= arrayCount(arrayBefore()) ? 1 : (arrayAt(arrayAfter(), idx) != arrayAt(arrayBefore(), idx) ? 1 : (idx == dataTable('operations', operation, 'index') ? 1 : 0))) > 0",
+              "label": "After",
+              "labelOffset": [
+                0,
+                0.95,
+                0
+              ]
+            },
+            {
+              "id": "ops-title",
+              "type": "expression_label",
+              "textExpr": "dataTable('operations', operation, 'title')",
+              "position": [
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "id": "ops-result",
+              "type": "expression_label",
+              "textExpr": "concat('result = ', arrayResult(arrayBefore(), dataTable('operations', operation, 'name'), dataTable('operations', operation, 'a'), dataTable('operations', operation, 'b')))",
+              "position": [
+                0,
+                -2.3,
+                0
+              ]
+            },
+            {
+              "id": "ops-length",
+              "type": "expression_label",
+              "textExpr": "concat('length = ', arrayCount(arrayAfter()))",
+              "position": [
+                0,
+                -2.3,
+                0
+              ],
+              "connectTo": {
+                "object": "ops-after"
+              }
+            },
+            {
+              "id": "ops-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                -4,
+                -0.6,
+                0
+              ],
+              "visibleExpr": "arrayCount(arrayAfter()) == 0",
+              "color": "#9dbde3"
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "operation",
+        "intervalMs": 1800
+      }
+    },
+    {
       "id": "annotations",
       "title": "Index and label playground",
       "range": [
