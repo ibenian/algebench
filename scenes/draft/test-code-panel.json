@@ -232,18 +232,19 @@
               "id": "stack",
               "type": "tensor",
               "shape": [
-                2,
+                1,
                 1
               ],
               "origin": [
-                5,
-                -0.2,
+                4.5,
+                -1.5,
                 0
               ],
-              "cellSize": 1,
-              "valueExpr": "dataTable('trace', snapshot, concat('s', 1 - row))",
-              "heightExpr": "value < 0 ? 0 : 0.85",
-              "depthExpr": "value < 0 ? 0 : 0.35",
+              "cellSize": 2,
+              "valueExpr": "dataTable('trace', snapshot, 's0')",
+              "widthExpr": "value < 0 ? 0 : 0.78",
+              "heightExpr": "value < 0 ? 0 : 0.34",
+              "depthExpr": "value < 0 ? 0 : 0.11",
               "textExpr": "value < 0 ? '' : concat('', value)",
               "color": "#77bfae",
               "colorMap": {
@@ -259,12 +260,34 @@
               }
             },
             {
+              "id": "stack-top",
+              "type": "tensor",
+              "shape": [1, 1],
+              "origin": [4.5, -0.72, 0],
+              "cellSize": 2,
+              "valueExpr": "dataTable('trace', snapshot, 's1')",
+              "widthExpr": "value < 0 ? 0 : 0.78",
+              "heightExpr": "value < 0 ? 0 : 0.34",
+              "depthExpr": "value < 0 ? 0 : 0.11",
+              "textExpr": "value < 0 ? '' : concat('', value)",
+              "color": "#77bfae",
+              "colorMap": {
+                "stops": [
+                  { "t": 0, "color": "#77bfae" },
+                  { "t": 1, "color": "#a0d6c4" }
+                ]
+              },
+              "colorDomain": [0, 1],
+              "textColor": "#102b28",
+              "shader": { "ignorePlaneOpacity": true }
+            },
+            {
               "id": "stack-label",
               "type": "text",
               "text": "stack",
               "position": [
                 5.5,
-                -0.9,
+                -1.2,
                 0
               ]
             },
@@ -287,6 +310,35 @@
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', snapshot, 'i'))"
+            }
+          ]
+        },
+        {
+          "id": "resize-array",
+          "title": "Add and remove array cells",
+          "description": "Move the Array length slider to append or delete cells, including an empty array.",
+          "sliders": [
+            { "id": "arrayLength", "label": "Array length · add / delete", "min": 0, "max": 6, "step": 1, "default": 3 }
+          ],
+          "remove": [{"id":"input-array"}, {"id":"stack"}, {"id":"stack-top"}, {"id":"stack-label"}, {"id":"n-label"}, {"id":"i-label"}],
+          "add": [
+            {
+              "id": "resizable-array",
+              "type": "array",
+              "origin": [-4, 0.5, 0],
+              "cellSize": 1.8,
+              "itemType": "number",
+              "lengthExpr": "arrayLength",
+              "valueExpr": "(idx + 1) * 10",
+              "label": "array · add / delete",
+              "labelOffset": [0, 1.8, 0],
+              "markers": [{ "type": "step_marker", "indexName": "last", "indexExpr": "arrayLength - 1", "color": "#f1c65b" }]
+            },
+            {
+              "id": "array-size",
+              "type": "expression_label",
+              "position": [0, -1.5, 0],
+              "textExpr": "concat('length = ', arrayLength)"
             }
           ]
         }

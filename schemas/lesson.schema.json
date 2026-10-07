@@ -507,6 +507,10 @@
             "additionalProperties": false
           }
         },
+        "lengthExpr": {
+          "type": "string",
+          "description": "ARRAY ONLY. Integer length from 0 to 256, evaluated on state changes. Cells, indices and owned markers update when the length changes; valueExpr supplies each cell using idx."
+        },
         "valueExpr": {
           "type": "string",
           "description": "ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. \"dataTable('attn', row, concat('w', col))\" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame."
@@ -1452,6 +1456,9 @@
           "then": {
             "anyOf": [
               {
+                "required": ["lengthExpr", "valueExpr"]
+              },
+              {
                 "required": [
                   "values"
                 ]
@@ -1489,6 +1496,7 @@
         }
       },
       "dependentRequired": {
+        "lengthExpr": ["valueExpr"],
         "indexName": [
           "indexExpr",
           "indexGroup"

@@ -3182,6 +3182,11 @@ function arrayLength(shape, values) {
 	if (values && values.length !== n) throw new Error("Array shape and values have different lengths.");
 	return n;
 }
+/** Dynamic arrays may be empty; reject invalid lengths instead of rounding them. */
+function dynamicArrayLength(value) {
+	if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 256) throw new Error("Array length must be an integer from 0 to 256.");
+	return value;
+}
 /** Owned markers cannot point outside their array; the renderer hides null anchors. */
 function arrayIndexPosition(index, length, origin, pitch) {
 	if (!Number.isInteger(index) || index < 0 || index >= length) return null;
@@ -3212,7 +3217,8 @@ var PALETTE = {
 };
 function renderArray(el, _view) {
 	if (!state.three) return null;
-	const n = arrayLength(el.shape, el.valueExpr ? void 0 : el.values);
+	const lengthFn = el.lengthExpr ? compileExpr(el.lengthExpr) : null;
+	let n = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : arrayLength(el.shape, el.valueExpr ? void 0 : el.values);
 	const origin = (el.origin ?? [
 		0,
 		0,
@@ -3228,7 +3234,7 @@ function renderArray(el, _view) {
 	];
 	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
-	const positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
+	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
 	for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
 		const c = centre(i);
 		const p = dataToWorld([
@@ -3240,7 +3246,7 @@ function renderArray(el, _view) {
 	}
 	const geometry = new THREE.BufferGeometry();
 	geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-	const colorAttribute = new THREE.BufferAttribute(colors, 3);
+	let colorAttribute = new THREE.BufferAttribute(colors, 3);
 	geometry.setAttribute("color", colorAttribute);
 	const material = new THREE.MeshBasicMaterial({
 		vertexColors: true,
@@ -3252,7 +3258,8 @@ function renderArray(el, _view) {
 	mesh.userData.targetOpacity = 1;
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
-	const labels = Array.from({ length: n }, (_, i) => {
+	const indexLabels = [];
+	const makeCellLabel = (i) => {
 		const c = centre(i), label = addLabel3D("", [
 			c[0],
 			c[1],
@@ -3260,21 +3267,24 @@ function renderArray(el, _view) {
 		], "#12212b", { cssClass: "label-3d array-cell-label" });
 		label.snapToProjection = true;
 		const indexLabel = addLabel3D(String(i), c, "#93a1b3");
+		indexLabels.push(indexLabel);
 		indexLabel.cellAttachment = {
 			corners: arrayCellCorners(c, pitch),
 			edge: "bottom",
 			gap: 8
 		};
 		return label;
-	});
+	};
+	const labels = Array.from({ length: n }, (_, i) => makeCellLabel(i));
+	let titleLabel;
 	if (el.label) {
 		const offset = el.labelOffset ?? [
 			0,
 			.88,
 			0
 		];
-		const titleLabel = addLabel3D("", [
-			origin[0] + (n - 1) * pitch / 2 + offset[0],
+		titleLabel = addLabel3D("", [
+			origin[0] + Math.max(0, n - 1) * pitch / 2 + offset[0],
 			origin[1] + offset[1],
 			origin[2] + offset[2]
 		], "#b5c1cf");
@@ -3295,15 +3305,45 @@ function renderArray(el, _view) {
 	const valueFn = el.valueExpr ? compileExpr(el.valueExpr) : null;
 	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
 	const previous = [];
+	function resize(next) {
+		if (next === n) return;
+		while (labels.length > next) for (const label of [labels.pop(), indexLabels.pop()]) {
+			label.el.remove();
+			const index = state.labels.indexOf(label);
+			if (index >= 0) state.labels.splice(index, 1);
+		}
+		while (labels.length < next) labels.push(makeCellLabel(labels.length));
+		n = next;
+		positions = new Float32Array(n * vertices * 3);
+		colors = new Float32Array(n * vertices * 3);
+		for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
+			const c = centre(i);
+			positions.set(dataToWorld([
+				c[0] + source.getX(v) * pitch * .78,
+				c[1] + source.getY(v) * .68,
+				c[2] + source.getZ(v) * .22
+			]), (i * vertices + v) * 3);
+		}
+		const replacement = new THREE.BufferGeometry();
+		replacement.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+		colorAttribute = new THREE.BufferAttribute(colors, 3);
+		replacement.setAttribute("color", colorAttribute);
+		mesh.geometry.dispose();
+		mesh.geometry = replacement;
+		previous.length = 0;
+		if (titleLabel) titleLabel.dataPos[0] = origin[0] + Math.max(0, n - 1) * pitch / 2 + (el.labelOffset?.[0] ?? 0);
+	}
 	const entry = {
 		animState,
 		exprStrings: [
+			el.lengthExpr,
 			el.valueExpr,
 			el.highlightExpr,
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
 		_rebuildFn: () => {
 			if (animState.stopped) return;
+			if (lengthFn) resize(dynamicArrayLength(evalExpr(lengthFn, 0)));
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {

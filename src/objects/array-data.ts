@@ -18,6 +18,13 @@ export function arrayLength(shape: number[]|undefined,values:unknown[]|undefined
     return n;
 }
 
+/** Dynamic arrays may be empty; reject invalid lengths instead of rounding them. */
+export function dynamicArrayLength(value: unknown): number {
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 256)
+        throw new Error('Array length must be an integer from 0 to 256.');
+    return value;
+}
+
 /** Owned markers cannot point outside their array; the renderer hides null anchors. */
 export function arrayIndexPosition(index:number, length:number, origin:number[], pitch:number):[number,number,number]|null {
     if (!Number.isInteger(index) || index < 0 || index >= length) return null;

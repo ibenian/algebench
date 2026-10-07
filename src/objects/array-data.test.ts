@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {arrayCell,arrayLength,arrayIndexPosition} from './array-data.js';
+import {arrayCell,arrayLength,dynamicArrayLength,arrayIndexPosition} from './array-data.js';
 test('mixed arrays preserve primitive identity rather than coercing values',()=>{
  assert.equal(arrayCell(42).kind,'number');assert.equal(arrayCell('42').kind,'string');
  assert.equal(arrayCell(false).text,'false');assert.equal(arrayCell(null).text,'∅');
@@ -25,4 +25,12 @@ test('owned marker layout follows array origin and pitch and hides out-of-range 
     assert.deepEqual(arrayIndexPosition(2,4,[-3,1,0],2),[1,1,0]);
     assert.deepEqual(arrayIndexPosition(2,4,[10,-2,3],.5),[11,-2,3]);
     for (const index of [-1,4,1.5,NaN,Infinity]) assert.equal(arrayIndexPosition(index,4,[0,0,0],2),null);
+});
+
+test('dynamic lengths support empty arrays and reject invalid resizing requests',()=>{
+    for(const length of [0,1,6,256])assert.equal(dynamicArrayLength(length),length);
+    for(const length of [-1,257,1.5,NaN,Infinity,'3',null,true])assert.throws(()=>dynamicArrayLength(length));
+    assert.equal(arrayIndexPosition(0,0,[0,0,0],2),null);
+    assert.equal(arrayIndexPosition(2,2,[0,0,0],2),null);
+    assert.deepEqual(arrayIndexPosition(2,3,[0,0,0],2),[4,0,0]);
 });
