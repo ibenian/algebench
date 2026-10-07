@@ -3839,6 +3839,38 @@ function arrayCellCorners(centre, pitch) {
 	])));
 }
 //#endregion
+//#region src/objects/array-changes.ts
+var ArrayChangeTracker = class {
+	constructor() {
+		this.previous = null;
+		this.transition = "";
+	}
+	update(keys, transition) {
+		if (this.previous === null) {
+			this.previous = keys.slice();
+			this.transition = transition;
+			return {
+				changed: [],
+				added: [],
+				removed: []
+			};
+		}
+		const before = this.previous;
+		if (this.transition === transition && before.length === keys.length && before.every((key, i) => key === keys[i])) return null;
+		const changes = {
+			changed: [],
+			added: [],
+			removed: []
+		};
+		for (let i = 0; i < keys.length; i++) if (i >= before.length) changes.added.push(i);
+		else if (before[i] !== keys[i]) changes.changed.push(i);
+		for (let i = keys.length; i < before.length; i++) changes.removed.push(i);
+		this.previous = keys.slice();
+		this.transition = transition;
+		return changes;
+	}
+};
+//#endregion
 //#region src/objects/array.ts
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 var arrayMarkerGroup = 0;
@@ -3900,6 +3932,64 @@ function renderArray(el, _view) {
 	mesh.userData.arrayCellTarget = cellTarget;
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
+	const glowMaterial = new THREE.ShaderMaterial({
+		transparent: true,
+		depthWrite: false,
+		side: THREE.DoubleSide,
+		uniforms: { opacity: { value: 1 } },
+		vertexShader: `attribute float removed; varying vec2 rimUV; varying float removedCell;
+            void main(){rimUV=uv*2.0-1.0;removedCell=removed;
+                gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+		fragmentShader: `uniform float opacity; varying vec2 rimUV; varying float removedCell;
+            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
+                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
+                float alpha=rim*mix(0.85,0.35,removedCell)*opacity;
+                if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
+	});
+	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
+	glowMesh.onBeforeRender = () => {
+		glowMaterial.uniforms.opacity.value = glowMaterial.opacity;
+	};
+	glowMesh.visible = false;
+	glowMesh.userData.ignorePlaneOpacity = true;
+	glowMesh.userData.targetOpacity = 1;
+	glowMesh.userData.annotationTextPlane = true;
+	glowMesh.raycast = () => {};
+	state.three.scene.add(glowMesh);
+	state.planeMeshes.push(glowMesh);
+	const changes = new ArrayChangeTracker();
+	let illuminated = /* @__PURE__ */ new Set();
+	function illuminate(changed, removed) {
+		const positions = [], uv = [], removedFlags = [];
+		const corners = [
+			[-1, -1],
+			[1, -1],
+			[1, 1],
+			[-1, -1],
+			[1, 1],
+			[-1, 1]
+		];
+		for (const [indices, isRemoved] of [[changed, 0], [removed, 1]]) for (const i of indices) {
+			const c = centre(i);
+			for (const [x, y] of corners) {
+				positions.push(...dataToWorld([
+					c[0] + x * pitch * .455,
+					c[1] + y * .397,
+					c[2] + .125
+				]));
+				uv.push((x + 1) / 2, (y + 1) / 2);
+				removedFlags.push(isRemoved);
+			}
+		}
+		const geometry = new THREE.BufferGeometry();
+		geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+		geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+		geometry.setAttribute("removed", new THREE.Float32BufferAttribute(removedFlags, 1));
+		glowMesh.geometry.dispose();
+		glowMesh.geometry = geometry;
+		glowMesh.visible = positions.length > 0;
+	}
 	const indexLabels = [];
 	const makeCellLabel = (i) => {
 		const c = centre(i), label = addLabel3D("", [
@@ -3992,20 +4082,39 @@ function renderArray(el, _view) {
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
 		_rebuildFn: () => {
-			if (animState.stopped) return;
-			if (lengthFn) resize(dynamicArrayLength(evalExpr(lengthFn, 0)));
+			if (animState.stopped || animState.hiddenByRemove) return;
+			const next = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : n;
+			const cells = Array.from({ length: next }, (_, i) => {
+				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType);
+				return {
+					cell,
+					highlighted: highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
+						idx: i,
+						value: cell.value
+					} }) : false
+				};
+			});
+			const transition = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
+				id,
+				s.value,
+				s.values
+			]));
+			const delta = changes.update(cells.map(({ cell }) => JSON.stringify([cell.kind, cell.value])), transition);
+			if (delta) {
+				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
+				illuminate([...illuminated], delta.removed);
+			}
+			resize(next);
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
-				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType);
-				const highlighted = highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
-					idx: i,
-					value: cell.value
-				} }) : false;
+				const { cell, highlighted } = cells[i];
+				const lit = illuminated.has(i);
 				const key = JSON.stringify([
 					cell.kind,
 					cell.value,
-					highlighted
+					highlighted,
+					lit
 				]);
 				if (previous[i] === key) continue;
 				previous[i] = key;
@@ -4017,6 +4126,7 @@ function renderArray(el, _view) {
 				label.boxW = null;
 				label.boxH = null;
 				const rgb = parseColor(highlighted ? "#f1cc59" : el.color ?? PALETTE[cell.kind]);
+				if (lit) for (let j = 0; j < 3; j++) rgb[j] = rgb[j] + (1 - rgb[j]) * .35;
 				for (let v = 0; v < vertices; v++) {
 					const shade = normal.getZ(v) > 0 ? 1 : normal.getY(v) > 0 ? .78 : .56;
 					const k = (i * vertices + v) * 3;

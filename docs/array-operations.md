@@ -59,3 +59,18 @@ The draft Code panel lesson includes **Array operations**, with 25 independent
 before/after examples and a state player. Gold highlights changed or selected
 slots. Traversal visits all four indices in separate execution states. Empty
 results are explicitly labelled.
+
+## Automatic change illumination
+
+Array renderers compare each successfully evaluated state with the last visible
+state at the same slot indices. Updated and added cells receive a soft gold rim
+and a brighter face; removed slots leave faint blue outline footprints. Effects
+remain until the next state change. The first display has no change effect.
+Backward steps and jumps use the state actually shown before the navigation.
+An equal-valued next state clears the effect, while duplicate binding rebuilds
+preserve it. Value types are part of the comparison; authored selection colors
+alone do not count as value changes.
+
+Comparison and glow geometry updates run on binding changes, never each frame.
+The glow follows world coordinates, zoom and camera rotation. It shares the
+array's visibility and resource lifetime and is excluded from wire targeting.

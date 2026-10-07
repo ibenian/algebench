@@ -78,7 +78,7 @@ test('every authored operation example evaluates its length, values, highlights 
   for(let idx=0;idx<expected.length;idx++){
    const cellScope={...scope,idx};
    assert.equal(math.evaluate(after.valueExpr,cellScope),expected[idx]);
-   assert.equal(typeof math.evaluate(after.highlightExpr,cellScope),'boolean');
+   if(after.highlightExpr)assert.equal(typeof math.evaluate(after.highlightExpr,cellScope),'boolean');
   }
   const result=scene.steps[0].add.find((e:{id:string})=>e.id==='ops-result');
   assert.equal(math.evaluate(result.textExpr,scope),'result = '+arrayResult(scene.data.base[0].values,row.name,row.a,row.b));

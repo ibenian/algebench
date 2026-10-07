@@ -8,6 +8,7 @@ import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
 import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, dynamicArrayLength, arrayIndexPosition, arrayCellCorners } from '/objects/array-data.js';
+import { ArrayChangeTracker } from '/objects/array-changes.js';
 
 let arrayMarkerGroup = 0;
 /** Shared presentation lookup for a cell, without references to other controls. */
@@ -41,6 +42,45 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     }};
     mesh.userData.arrayCellTarget=cellTarget;
     state.three.scene.add(mesh);state.planeMeshes.push(mesh);
+    // A world-space soft rim follows the cells without screen overlays or frame evaluation.
+    const glowMaterial=new THREE.ShaderMaterial({
+        transparent:true,depthWrite:false,side:THREE.DoubleSide,
+        uniforms:{opacity:{value:1}},
+        vertexShader:`attribute float removed; varying vec2 rimUV; varying float removedCell;
+            void main(){rimUV=uv*2.0-1.0;removedCell=removed;
+                gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+        fragmentShader:`uniform float opacity; varying vec2 rimUV; varying float removedCell;
+            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
+                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
+                float alpha=rim*mix(0.85,0.35,removedCell)*opacity;
+                if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`,
+    });
+    const glowMesh=new THREE.Mesh(new THREE.BufferGeometry(),glowMaterial);
+    glowMesh.onBeforeRender=()=>{glowMaterial.uniforms.opacity!.value=glowMaterial.opacity;};
+    glowMesh.visible=false;glowMesh.userData.ignorePlaneOpacity=true;glowMesh.userData.targetOpacity=1;
+    // Decorative rims must not alter wire anchors or capture object picking.
+    glowMesh.userData.annotationTextPlane=true;glowMesh.raycast=()=>{};
+    state.three.scene.add(glowMesh);state.planeMeshes.push(glowMesh);
+    const changes=new ArrayChangeTracker();
+    let illuminated=new Set<number>();
+    function illuminate(changed:number[],removed:number[]){
+        const positions:number[]=[],uv:number[]=[],removedFlags:number[]=[];
+        const corners=[[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
+        for(const [indices,isRemoved] of [[changed,0],[removed,1]] as const)for(const i of indices){
+            const c=centre(i);
+            for(const [x,y] of corners){
+                positions.push(...dataToWorld([c[0]+x!*pitch*.455,c[1]+y!*.397,c[2]+.125]));
+                uv.push((x!+1)/2,(y!+1)/2);removedFlags.push(isRemoved);
+            }
+        }
+        const geometry=new THREE.BufferGeometry();
+        geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+        geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+        geometry.setAttribute('removed',new THREE.Float32BufferAttribute(removedFlags,1));
+        glowMesh.geometry.dispose();glowMesh.geometry=geometry;
+        glowMesh.visible=positions.length>0;
+    }
     const indexLabels: ReturnType<typeof addLabel3D>[]=[];
     const makeCellLabel=(i:number)=>{
         const c=centre(i),label=addLabel3D('',[c[0],c[1],c[2]+.14],'#12212b',{cssClass:'label-3d array-cell-label'});
@@ -64,7 +104,7 @@ export function renderArray(el:Element,_view:MathBoxNode) {
         titleLabel = addLabel3D('',[origin[0]!+Math.max(0,n-1)*pitch/2+offset[0]!,origin[1]!+offset[1]!,origin[2]!+offset[2]!],'#b5c1cf');
         titleLabel.el.textContent=el.label; titleLabel.snapToProjection=true;
     }
-    const animState={stopped:false};
+    const animState:{stopped:boolean;hiddenByRemove?:boolean}={stopped:false};
     // Children share the owner's lifetime and never register independent updaters.
     const owner = {group: 'array-markers:' + arrayMarkerGroup++, animState,
         position: (index: number) => arrayIndexPosition(index, n, origin, pitch),
@@ -98,20 +138,34 @@ export function renderArray(el:Element,_view:MathBoxNode) {
         if(titleLabel)titleLabel.dataPos[0]=origin[0]!+Math.max(0,n-1)*pitch/2+(el.labelOffset?.[0]??0);
     }
     const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
-        if(animState.stopped)return;
-        if(lengthFn)resize(dynamicArrayLength(evalExpr(lengthFn,0)));
+        // Hidden lesson steps must not advance the last-visible comparison baseline.
+        if(animState.stopped||animState.hiddenByRemove)return;
+        const next=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):n;
+        // Evaluate the whole next state before advancing the comparison baseline.
+        const cells=Array.from({length:next},(_,i)=>{
+            const cell=arrayCell(valueFn?evalExpr(valueFn,0,{overrideScope:{idx:i}}):el.values?.[i],el.itemType);
+            const highlighted=highlightFn?!!evalExpr(highlightFn,0,{overrideScope:{idx:i,value:cell.value}}):false;
+            return {cell,highlighted};
+        });
+        const transition=JSON.stringify(Object.entries(state.sceneSliders).map(([id,s])=>[id,s.value,s.values]));
+        const delta=changes.update(cells.map(({cell})=>JSON.stringify([cell.kind,cell.value])),transition);
+        if(delta){
+            illuminated=new Set([...delta.changed,...delta.added]);
+            illuminate([...illuminated],delta.removed);
+        }
+        resize(next);
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;
         for(let i=0;i<n;i++){
-            const rawValue=valueFn?evalExpr(valueFn,0,{overrideScope:{idx:i}}):el.values?.[i];
-            const cell=arrayCell(rawValue,el.itemType);
-            const highlighted=highlightFn?!!evalExpr(highlightFn,0,{overrideScope:{idx:i,value:cell.value}}):false;
-            const key=JSON.stringify([cell.kind,cell.value,highlighted]);
+            const {cell,highlighted}=cells[i]!; // one successfully evaluated cell per slot
+            const lit=illuminated.has(i);
+            const key=JSON.stringify([cell.kind,cell.value,highlighted,lit]);
             if(previous[i]===key)continue;previous[i]=key;dirty=true;
             const label=labels[i]!; // one label allocated per cell
             label.el.textContent=cell.text;label.el.title=`[${i}] ${cell.kind}: ${cell.text}`;
             label.el.setAttribute('aria-label',label.el.title);label.boxW=null;label.boxH=null;
             const rgb=parseColor(highlighted?'#f1cc59':el.color??PALETTE[cell.kind]);
+            if(lit)for(let j=0;j<3;j++)rgb[j]=rgb[j]!+(1-rgb[j]!)*.35;
             for(let v=0;v<vertices;v++){
                 const shade=normal.getZ(v)>0?1:normal.getY(v)>0?.78:.56;
                 const k=(i*vertices+v)*3;colors[k]=rgb[0]!*shade;colors[k+1]=rgb[1]!*shade;colors[k+2]=rgb[2]!*shade;

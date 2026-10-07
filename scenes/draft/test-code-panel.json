@@ -483,7 +483,8 @@
               ],
               "textExpr": "concat('length = ', arrayLength)",
               "connectTo": {
-                "object": "resizable-array"
+                "object": "resizable-array",
+                "indexExpr": "arrayLength - 1"
               }
             },
             {
@@ -911,7 +912,7 @@
           "expr": "arrayValues(arrayBefore(), dataTable('operations', operation, 'name'), dataTable('operations', operation, 'a'), dataTable('operations', operation, 'b'))"
         }
       ],
-      "markdown": "# Array operations\n\nUse the state player to explore **25 examples**. Each example starts with `[30, 10, 20, 10]`; the upper row is the original and the lower row is the result. Gold marks changed or selected slots. Empty results show **empty**.\n\n**Read:** length, indexed access, search (`indexOf`), membership (`includes`), and traversal.\n\n**Change:** update, insert, delete, append/push, pop, prepend/unshift, shift, swap, reverse, sort, fill, resize, and clear.\n\n**Create a new sequence:** slice (start included, end excluded) and concatenate. The original row remains unchanged, including for sort and reverse.\n\nIndices are zero-based. Search returns the first exact match or `-1`; it never converts strings to numbers. Empty pop/shift returns ∅. Sorting accepts homogeneous numbers or strings. Invalid indices are errors. Arrays are limited to 256 cells.\n\nDirect access and update touch one slot. Middle insertions and deletions shift a suffix; prepend and shift move the whole remainder. Append and pop affect the end. Compare the two rows to see these differences.",
+      "markdown": "# Array operations\n\nUse the state player to explore **25 examples**. Each example starts with `[30, 10, 20, 10]`; the upper row is the original and the lower row is the result. Gold selects the input slot. The after row automatically illuminates values that differ from the previously visible execution state, including backward steps and jumps. New cells glow; deleted slots leave faint outlines. Empty results show **empty**.\n\n**Read:** length, indexed access, search (`indexOf`), membership (`includes`), and traversal.\n\n**Change:** update, insert, delete, append/push, pop, prepend/unshift, shift, swap, reverse, sort, fill, resize, and clear.\n\n**Create a new sequence:** slice (start included, end excluded) and concatenate. The original row remains unchanged, including for sort and reverse.\n\nIndices are zero-based. Search returns the first exact match or `-1`; it never converts strings to numbers. Empty pop/shift returns ∅. Sorting accepts homogeneous numbers or strings. Invalid indices are errors. Arrays are limited to 256 cells.\n\nDirect access and update touch one slot. Middle insertions and deletions shift a suffix; prepend and shift move the whole remainder. Append and pop affect the end. Compare the two rows to see these differences.",
       "elements": [
         {
           "id": "ops-grid",
@@ -986,7 +987,6 @@
               "cellSize": 1.8,
               "lengthExpr": "arrayCount(arrayAfter())",
               "valueExpr": "arrayAt(arrayAfter(), idx)",
-              "highlightExpr": "(idx >= arrayCount(arrayBefore()) ? 1 : (arrayAt(arrayAfter(), idx) != arrayAt(arrayBefore(), idx) ? 1 : (idx == dataTable('operations', operation, 'index') ? 1 : 0))) > 0",
               "label": "After",
               "labelOffset": [
                 0,
@@ -1024,7 +1024,8 @@
                 0
               ],
               "connectTo": {
-                "object": "ops-after"
+                "object": "ops-after",
+                "indexExpr": "arrayCount(arrayAfter()) - 1"
               }
             },
             {
