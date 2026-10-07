@@ -10,6 +10,8 @@ import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, dynamicArrayLength, arrayIndexPosition, arrayCellCorners } from '/objects/array-data.js';
 
 let arrayMarkerGroup = 0;
+/** Shared presentation lookup for a cell, without references to other controls. */
+export interface ArrayCellTarget { at(index:number):{position:[number,number,number];corners:number[][]}|null; }
 const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
 export function renderArray(el:Element,_view:MathBoxNode) {
     if(!state.three)return null;
@@ -33,14 +35,26 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     let colorAttribute=new THREE.BufferAttribute(colors,3);geometry.setAttribute('color',colorAttribute);
     const material=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:1});
     const mesh=new THREE.Mesh(geometry,material);mesh.userData.ignorePlaneOpacity=true;mesh.userData.targetOpacity=1;
+    const cellTarget:ArrayCellTarget={at(index){
+        const position=arrayIndexPosition(index,n,origin,pitch);
+        return position?{position,corners:arrayCellCorners(position,pitch)}:null;
+    }};
+    mesh.userData.arrayCellTarget=cellTarget;
     state.three.scene.add(mesh);state.planeMeshes.push(mesh);
     const indexLabels: ReturnType<typeof addLabel3D>[]=[];
     const makeCellLabel=(i:number)=>{
         const c=centre(i),label=addLabel3D('',[c[0],c[1],c[2]+.14],'#12212b',{cssClass:'label-3d array-cell-label'});
+        if(el.fontSize!=null)label.el.style.setProperty('--array-font-size',`${el.fontSize}px`);
+        label.ownerMesh=mesh;
         label.snapToProjection = true;
-        const indexLabel = addLabel3D(String(i),c,'#93a1b3');
-        indexLabels.push(indexLabel);
-        indexLabel.cellAttachment = {corners:arrayCellCorners(c,pitch),edge:'bottom',gap:8};
+        if(el.showIndices!==false){
+            const indexLabel = addLabel3D(String(i),c,'#e1ecf7',{cssClass:'label-3d array-index-tag'});
+            if(el.indexFontSize!=null)indexLabel.el.style.setProperty('--array-index-font-size',`${el.indexFontSize}px`);
+            indexLabel.ownerMesh=mesh;
+            indexLabel.el.setAttribute('aria-label',`Index ${i}`);
+            indexLabels.push(indexLabel);
+            indexLabel.cellAttachment = {corners:arrayCellCorners(c,pitch),edge:'bottom',gap:0};
+        }
         return label;
     };
     const labels=Array.from({length:n},(_,i)=>makeCellLabel(i));
@@ -62,7 +76,8 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     function resize(next:number) {
         if(next===n)return;
         while(labels.length>next) {
-            for(const label of [labels.pop()!,indexLabels.pop()!]) {
+            for(const label of [labels.pop()!,indexLabels.pop()]) {
+                if(!label)continue;
                 label.el.remove();
                 const index=state.labels.indexOf(label);
                 if(index>=0)state.labels.splice(index,1);

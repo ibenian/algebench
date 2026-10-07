@@ -230,56 +230,135 @@
             },
             {
               "id": "stack",
-              "type": "tensor",
-              "shape": [
-                1,
-                1
-              ],
+              "type": "array",
+              "itemType": "number",
               "origin": [
-                4.5,
-                -1.5,
+                5.5,
+                -0.5,
                 0
               ],
               "cellSize": 2,
+              "lengthExpr": "dataTable('trace', snapshot, 'n') > 0 ? 1 : 0",
               "valueExpr": "dataTable('trace', snapshot, 's0')",
-              "widthExpr": "value < 0 ? 0 : 0.78",
-              "heightExpr": "value < 0 ? 0 : 0.34",
-              "depthExpr": "value < 0 ? 0 : 0.11",
-              "textExpr": "value < 0 ? '' : concat('', value)",
-              "color": "#77bfae",
-              "colorMap": {
-                "stops": [
-                  { "t": 0, "color": "#77bfae" },
-                  { "t": 1, "color": "#a0d6c4" }
-                ]
-              },
-              "colorDomain": [0, 1],
-              "textColor": "#102b28",
-              "shader": {
-                "ignorePlaneOpacity": true
-              }
+              "color": "#9dbde3",
+              "showIndices": false
             },
             {
               "id": "stack-top",
-              "type": "tensor",
-              "shape": [1, 1],
-              "origin": [4.5, -0.72, 0],
+              "type": "array",
+              "itemType": "number",
+              "origin": [
+                5.5,
+                0.28,
+                0
+              ],
               "cellSize": 2,
+              "lengthExpr": "dataTable('trace', snapshot, 'n') > 1 ? 1 : 0",
               "valueExpr": "dataTable('trace', snapshot, 's1')",
-              "widthExpr": "value < 0 ? 0 : 0.78",
-              "heightExpr": "value < 0 ? 0 : 0.34",
-              "depthExpr": "value < 0 ? 0 : 0.11",
-              "textExpr": "value < 0 ? '' : concat('', value)",
-              "color": "#77bfae",
-              "colorMap": {
-                "stops": [
-                  { "t": 0, "color": "#77bfae" },
-                  { "t": 1, "color": "#a0d6c4" }
+              "color": "#9dbde3",
+              "showIndices": false
+            },
+            {
+              "id": "stack-container",
+              "type": "line",
+              "points": [
+                [
+                  "4.55",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  4.55,
+                  -1,
+                  -0.2
+                ],
+                [
+                  6.45,
+                  -1,
+                  -0.2
+                ],
+                [
+                  "6.45",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "4.55",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
                 ]
-              },
-              "colorDomain": [0, 1],
-              "textColor": "#102b28",
-              "shader": { "ignorePlaneOpacity": true }
+              ],
+              "color": "#77bfae",
+              "width": 2,
+              "opacity": 0.7
+            },
+            {
+              "id": "stack-back",
+              "type": "plane",
+              "points": [
+                [
+                  4.55,
+                  -1,
+                  -0.2
+                ],
+                [
+                  6.45,
+                  -1,
+                  -0.2
+                ],
+                [
+                  "4.55",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "6.45",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.15
+            },
+            {
+              "id": "stack-base",
+              "type": "plane",
+              "points": [
+                [
+                  4.55,
+                  -1,
+                  -0.2
+                ],
+                [
+                  6.45,
+                  -1,
+                  -0.2
+                ],
+                [
+                  4.55,
+                  -1,
+                  0.75
+                ],
+                [
+                  6.45,
+                  -1,
+                  0.75
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.45
+            },
+            {
+              "id": "stack-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                5.5,
+                -0.5,
+                0
+              ],
+              "visibleExpr": "dataTable('trace', snapshot, 'n') == 0",
+              "color": "#7b9b92"
             },
             {
               "id": "stack-label",
@@ -299,7 +378,10 @@
                 -2.7,
                 0
               ],
-              "textExpr": "concat('size = ', dataTable('trace', snapshot, 'n'))"
+              "textExpr": "concat('size = ', dataTable('trace', snapshot, 'n'))",
+              "connectTo": {
+                "object": "stack-container"
+              }
             },
             {
               "id": "i-label",
@@ -309,36 +391,114 @@
                 -2.7,
                 0
               ],
-              "textExpr": "concat('i = ', dataTable('trace', snapshot, 'i'))"
+              "textExpr": "concat('i = ', dataTable('trace', snapshot, 'i'))",
+              "connectTo": {
+                "object": "input-array",
+                "indexExpr": "dataTable('trace', snapshot, 'i')"
+              }
             }
           ]
         },
         {
           "id": "resize-array",
           "title": "Add and remove array cells",
-          "description": "Move the Array length slider to append or delete cells, including an empty array.",
+          "description": "Move Array length to add or delete cells. Hover i to see a curved wire meet its cell's edge; hover length to connect to the whole array.",
           "sliders": [
-            { "id": "arrayLength", "label": "Array length · add / delete", "min": 0, "max": 6, "step": 1, "default": 3 }
+            {
+              "id": "arrayLength",
+              "label": "Array length · add / delete",
+              "min": 0,
+              "max": 6,
+              "step": 1,
+              "default": 3
+            }
           ],
-          "remove": [{"id":"input-array"}, {"id":"stack"}, {"id":"stack-top"}, {"id":"stack-label"}, {"id":"n-label"}, {"id":"i-label"}],
+          "remove": [
+            {
+              "id": "input-array"
+            },
+            {
+              "id": "stack"
+            },
+            {
+              "id": "stack-top"
+            },
+            {
+              "id": "stack-container"
+            },
+            {
+              "id": "stack-back"
+            },
+            {
+              "id": "stack-base"
+            },
+            {
+              "id": "stack-empty"
+            },
+            {
+              "id": "stack-label"
+            },
+            {
+              "id": "n-label"
+            },
+            {
+              "id": "i-label"
+            }
+          ],
           "add": [
             {
               "id": "resizable-array",
               "type": "array",
-              "origin": [-4, 0.5, 0],
+              "origin": [
+                -4,
+                0.5,
+                0
+              ],
               "cellSize": 1.8,
               "itemType": "number",
               "lengthExpr": "arrayLength",
               "valueExpr": "(idx + 1) * 10",
               "label": "array · add / delete",
-              "labelOffset": [0, 1.8, 0],
-              "markers": [{ "type": "step_marker", "indexName": "last", "indexExpr": "arrayLength - 1", "color": "#f1c65b" }]
+              "labelOffset": [
+                0,
+                1.8,
+                0
+              ],
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "last",
+                  "indexExpr": "arrayLength - 1",
+                  "color": "#f1c65b"
+                }
+              ]
             },
             {
               "id": "array-size",
               "type": "expression_label",
-              "position": [0, -1.5, 0],
-              "textExpr": "concat('length = ', arrayLength)"
+              "position": [
+                0,
+                -1.5,
+                0
+              ],
+              "textExpr": "concat('length = ', arrayLength)",
+              "connectTo": {
+                "object": "resizable-array"
+              }
+            },
+            {
+              "id": "array-index-var",
+              "type": "expression_label",
+              "position": [
+                0,
+                -1.5,
+                0
+              ],
+              "textExpr": "concat('i = ', arrayLength - 1)",
+              "connectTo": {
+                "object": "resizable-array",
+                "indexExpr": "arrayLength - 1"
+              }
             }
           ]
         }

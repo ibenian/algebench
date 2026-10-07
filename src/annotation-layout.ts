@@ -1,4 +1,10 @@
 /** Presentation-only grouping. No renderer reads another renderer's state. */
+/** Keep a dragged badge reachable, even when the pointer leaves the viewport. */
+export function annotationDragPosition(x:number,y:number,width:number,height:number,viewportWidth:number,viewportHeight:number):{x:number;y:number} {
+    const insetX=Math.min(viewportWidth/2,width/2+8);
+    const insetY=Math.min(viewportHeight/2,height/2+8);
+    return {x:Math.max(insetX,Math.min(viewportWidth-insetX,x)),y:Math.max(insetY,Math.min(viewportHeight-insetY,y))};
+}
 export interface AnnotationValue {
     text: string;
     index?: { group: string; name: string; value: number };

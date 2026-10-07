@@ -1367,6 +1367,18 @@ export interface Element {
    */
   itemType?: 'number' | 'character' | 'string' | 'boolean' | 'empty' | 'mixed';
   /**
+   * ARRAY ONLY. Show small index tags attached to cells. Disable for cells used in a stack.
+   */
+  showIndices?: boolean;
+  /**
+   * ARRAY ONLY. Cell value font size in CSS pixels.
+   */
+  fontSize?: number;
+  /**
+   * ARRAY ONLY. Index tag font size in CSS pixels, multiplied by the display label scale.
+   */
+  indexFontSize?: number;
+  /**
    * ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes.
    */
   highlightExpr?: string;
@@ -1382,6 +1394,24 @@ export interface Element {
    * STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge.
    */
   indexGroup?: string;
+  /**
+   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.
+   */
+  connectTo?:
+    | {
+        object: string;
+        /**
+         * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
+         */
+        indexExpr?: string;
+      }
+    | {
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        positionExpr: [string, string, string];
+      };
   /**
    * ARRAY: owned index markers. Array supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression.
    */

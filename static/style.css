@@ -5630,7 +5630,19 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker-badge { display: block; padding: 4px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 13px/1.3 ui-monospace, monospace; white-space: nowrap; box-shadow: 0 2px 8px #0004; }
 .step-marker-pointer { display: block; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--marker-color); margin-top: 3px; }
 
-.array-cell-label { font: 600 14px/1.25 ui-monospace, monospace; text-shadow: none; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
+.array-cell-label { font: 600 var(--array-font-size, 14px)/1.25 ui-monospace, monospace; text-shadow: none; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
+.array-index-tag {
+    font: 600 calc(var(--array-index-font-size, 10px) * var(--label-scale, 1))/1.3 ui-monospace, monospace;
+    min-width: 18px;
+    padding: 1px 5px 2px;
+    box-sizing: border-box;
+    text-align: center;
+    text-shadow: none;
+    background: rgba(24, 48, 75, .9);
+    border: 1px solid rgba(157, 189, 227, .45);
+    border-top: 0;
+    border-radius: 0 0 5px 5px;
+}
 
 /* Annotation content is text-only. Hidden intrinsic copies prevent grouping feedback. */
 .expression-label { pointer-events: none; }
@@ -5642,6 +5654,12 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .expression-label .annotation-mode-toggle { background: #edf4ff12; border-color: #edf4ff55; }
 .annotation-badge { display: block; padding: 5px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 calc(13px * var(--label-scale, 1))/1.35 ui-monospace, monospace; white-space: pre; box-shadow: 0 2px 8px #0004; }
 .annotation-row { display: block; }
+.expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
+.expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
+.expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }
+.expression-wire-toggle:hover::after { opacity: 1; }
+.expression-wire-toggle:focus-visible { outline: 1px solid #a6d5ec; outline-offset: 2px; }
+.annotation-measure-wired { padding-right: 34px; }
 .annotation-row + .annotation-row { border-top: 1px solid #171c2226; margin-top: 4px; padding-top: 4px; }
 .annotation-measure { position: absolute; visibility: hidden; pointer-events: none; top: 0; left: 0; width: max-content; }
 

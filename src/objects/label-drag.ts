@@ -2,6 +2,7 @@
 import { state } from '/state.js';
 import type { Label3D } from '/labels.js';
 import { placeExpressionLabel, setExpressionLabelPosition } from '/labels.js';
+import { annotationDragPosition } from '/annotation-layout.js';
 
 export function labelDragHandler(label: Label3D, animState: {stopped: boolean}) {
     return (event: PointerEvent, members?: Label3D[]): void => {
@@ -13,7 +14,8 @@ export function labelDragHandler(label: Label3D, animState: {stopped: boolean}) 
         // A merged row starts at its visible position, not its hidden data anchor.
         const start = {x: (row.left + row.right) / 2 - viewport.left, y: (row.top + row.bottom) / 2 - viewport.top};
         const moving = members ?? [label];
-        const positions = moving.map(member => ({x: member.screenX!, y: member.screenY!}));
+        const box=(event.currentTarget as HTMLElement).closest('.annotation-badge')?.getBoundingClientRect()??row;
+        const groupStart={x:(box.left+box.right)/2-viewport.left,y:(box.top+box.bottom)/2-viewport.top};
         event.preventDefault();
         event.stopPropagation();
         const controller = new AbortController();
@@ -33,8 +35,9 @@ export function labelDragHandler(label: Label3D, animState: {stopped: boolean}) 
             e.preventDefault();
             e.stopPropagation();
             if (members) {
-                moving.forEach((member, index) => {
-                    setExpressionLabelPosition(member, positions[index]!.x + e.clientX - event.clientX, positions[index]!.y + e.clientY - event.clientY);
+                const position=annotationDragPosition(groupStart.x+e.clientX-event.clientX,groupStart.y+e.clientY-event.clientY,box.width,box.height,canvas.clientWidth,canvas.clientHeight);
+                moving.forEach(member => {
+                    setExpressionLabelPosition(member, position.x, position.y);
                 });
             } else {
                 placeExpressionLabel(label, start.x + e.clientX - event.clientX, start.y + e.clientY - event.clientY, e.clientX, e.clientY);

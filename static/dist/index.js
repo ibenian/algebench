@@ -542,6 +542,16 @@ function evalSurfaceExpr(compiled, u, v) {
 }
 //#endregion
 //#region src/annotation-layout.ts
+/** Presentation-only grouping. No renderer reads another renderer's state. */
+/** Keep a dragged badge reachable, even when the pointer leaves the viewport. */
+function annotationDragPosition(x, y, width, height, viewportWidth, viewportHeight) {
+	const insetX = Math.min(viewportWidth / 2, width / 2 + 8);
+	const insetY = Math.min(viewportHeight / 2, height / 2 + 8);
+	return {
+		x: Math.max(insetX, Math.min(viewportWidth - insetX, x)),
+		y: Math.max(insetY, Math.min(viewportHeight - insetY, y))
+	};
+}
 function annotationText(value) {
 	if (typeof value === "string") return value;
 	if (value === void 0) return "undefined";
@@ -787,6 +797,480 @@ function closestOnSegmentToRay(o, v, A, B) {
 	];
 	if (dot(sub(P, o), v) >= 0) return P;
 	return Math.hypot(...sub(A, o)) <= Math.hypot(...sub(B, o)) ? A.slice() : B.slice();
+}
+//#endregion
+//#region src/object-anchor.ts
+/** Presentation anchors resolved through the scene registry, without control coupling. */
+var boundsVersions = /* @__PURE__ */ new WeakMap();
+function worldBounds(tracker) {
+	const bounds = new THREE.Box3();
+	for (const mesh of [...tracker.planeMeshes ?? [], ...(tracker.arrowMeshes ?? []).flatMap((arrow) => arrow.mesh ? [arrow.mesh] : [])]) {
+		if (!mesh.visible || mesh.userData?.annotationTextPlane) continue;
+		const geometry = mesh.geometry;
+		const position = geometry?.getAttribute("position");
+		const version = position ? "version" in position ? position.version : position.data.version : void 0;
+		if (geometry && version !== void 0 && boundsVersions.get(geometry) !== version) {
+			geometry.computeBoundingBox();
+			boundsVersions.set(geometry, version);
+		}
+		bounds.expandByObject(mesh);
+	}
+	return bounds;
+}
+function namedObject(name) {
+	const entries = Object.entries(state.elementRegistry);
+	const named = entries.filter(([, reg]) => reg.label === name);
+	const match = entries.find(([id]) => id === name) ?? (named.length === 1 ? named[0] : void 0);
+	if (!match || match[1].hidden || state.legendToggledOff.has(match[0])) return null;
+	const array = (match[1].tracker.planeMeshes ?? []).find((mesh) => mesh.userData?.arrayCellTarget);
+	if (array && (!array.visible || !array.userData.arrayCellTarget.at(0))) return null;
+	return match;
+}
+function objectTargetExists(name, index) {
+	return index === void 0 ? !!namedObject(name) : !!objectCellAnchor(name, index);
+}
+function objectCellAnchor(name, index) {
+	const match = namedObject(name);
+	if (!match) return null;
+	const tracker = match[1].tracker;
+	for (const mesh of tracker.planeMeshes ?? []) {
+		const cells = mesh.userData.arrayCellTarget;
+		if (mesh.visible && cells) return cells.at(index);
+	}
+	return null;
+}
+/** World-space bounds for boundary attachment; never place a wire on centre text. */
+function objectWorldCorners(name) {
+	const match = namedObject(name);
+	if (!match) return [];
+	const tracker = match[1].tracker;
+	const bounds = worldBounds(tracker);
+	if (bounds.isEmpty()) return [];
+	return [bounds.min.x, bounds.max.x].flatMap((x) => [bounds.min.y, bounds.max.y].flatMap((y) => [bounds.min.z, bounds.max.z].map((z) => new THREE.Vector3(x, y, z))));
+}
+/** Text-only objects use their visible label boundary when they have no mesh. */
+function objectLabelElement(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	return match[1].tracker.labels?.find((label) => !label.forceHidden && !label.annotationHidden && label.el.isConnected)?.el ?? null;
+}
+/** Stable id first; display names must be unambiguous. Hidden targets have no anchor. */
+function objectWorldAnchor(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	const animated = state.animatedElementPos[match[0]];
+	if (animated) return new THREE.Vector3(...dataToWorld(animated.pos));
+	const tracker = match[1].tracker;
+	const bounds = worldBounds(tracker);
+	if (!bounds.isEmpty()) return bounds.getCenter(new THREE.Vector3());
+	for (const node of [
+		...tracker.lineNodes ?? [],
+		...tracker.pointNodes ?? [],
+		...tracker.axisLineNodes ?? [],
+		...tracker.vectorLineNodes ?? []
+	]) {
+		const data = node.anchorDataPosFn?.() ?? node.anchorDataPos ?? node.pivotPoints?.[0];
+		if (data) return new THREE.Vector3(...dataToWorld(data));
+	}
+	const label = tracker.labels?.[0];
+	return label ? new THREE.Vector3(...dataToWorld(label.dataPos)) : null;
+}
+//#endregion
+//#region src/label-wire-path.ts
+function wireBend(start, end, departure, approach) {
+	const distance = Math.hypot(end.x - start.x, end.y - start.y);
+	let bend = Math.min(120, distance * .45, Math.max(12, distance * .32));
+	const dx = end.x - start.x, dy = end.y - start.y;
+	if (departure && approach && departure.y === 0 && approach.y === 0 && departure.x * dx > 0 && approach.x * dx < 0) bend = Math.min(bend, Math.abs(dx) * .45);
+	if (departure && approach && departure.x === 0 && approach.x === 0 && departure.y * dy > 0 && approach.y * dy < 0) bend = Math.min(bend, Math.abs(dy) * .45);
+	return bend;
+}
+/** The source leaves toward the object; the target's outward normal points back. */
+function wholeObjectWireAttachment(start, centre, corners) {
+	const left = Math.min(...corners.map((p) => p.x)), right = Math.max(...corners.map((p) => p.x));
+	const top = Math.min(...corners.map((p) => p.y)), bottom = Math.max(...corners.map((p) => p.y));
+	centre = {
+		x: (left + right) / 2,
+		y: (top + bottom) / 2
+	};
+	const side = start.x < left ? -1 : start.x > right ? 1 : 0;
+	const aim = side ? {
+		x: centre.x + side * 1e3,
+		y: centre.y
+	} : start;
+	const approach = side ? {
+		x: side,
+		y: 0
+	} : start.y > bottom ? {
+		x: 0,
+		y: 1
+	} : start.y < top ? {
+		x: 0,
+		y: -1
+	} : {
+		x: start.x - centre.x,
+		y: start.y - centre.y
+	};
+	return {
+		end: projectedCellEdge(aim, centre, corners, 5, true),
+		approach
+	};
+}
+function labelWirePath(start, end, approach, departure) {
+	const bend = wireBend(start, end, departure, approach);
+	const direction = end.x >= start.x ? 1 : -1;
+	const length = approach ? Math.hypot(approach.x, approach.y) : 0;
+	const tangent = length ? {
+		x: approach.x / length,
+		y: approach.y / length
+	} : {
+		x: -direction,
+		y: 0
+	};
+	return `M ${start.x} ${start.y} C ${start.x + (departure?.x ?? direction) * bend} ${start.y + (departure?.y ?? 0) * bend}, ${end.x + tangent.x * bend} ${end.y + tangent.y * bend}, ${end.x} ${end.y}`;
+}
+/** Keep the source tangent outward, then use a side gutter only if text blocks the direct curve. */
+function routedLabelWire(start, end, departure, approach, obstacles) {
+	const bend = wireBend(start, end, departure, approach);
+	const norm = Math.hypot(approach.x, approach.y) || 1, unit = {
+		x: approach.x / norm,
+		y: approach.y / norm
+	};
+	const control1 = {
+		x: start.x + departure.x * bend,
+		y: start.y + departure.y * bend
+	};
+	const control2 = {
+		x: end.x + unit.x * bend,
+		y: end.y + unit.y * bend
+	};
+	const collisions = (points) => points.reduce((score, p) => score + Number(obstacles.some((b) => {
+		const padding = b.padding ?? 6;
+		return p.x > b.left - padding && p.x < b.right + padding && p.y > b.top - padding && p.y < b.bottom + padding;
+	})), 0);
+	const sample = (a, b, c, d) => Array.from({ length: 39 }, (_, i) => {
+		const t = (i + 1) / 40, u = 1 - t;
+		return {
+			x: u * u * u * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t * t * t * d.x,
+			y: u * u * u * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t * t * t * d.y
+		};
+	});
+	const cost = (points) => {
+		let length = 0, previous = start;
+		for (const p of [...points, end]) {
+			length += Math.hypot(p.x - previous.x, p.y - previous.y);
+			previous = p;
+		}
+		return collisions(points) * 1e5 + length;
+	};
+	const direct = sample(start, control1, control2, end);
+	let best = labelWirePath(start, end, unit, departure), score = cost(direct);
+	if (!collisions(direct)) return best;
+	for (const factor of [.65, .35]) {
+		const a = {
+			x: start.x + departure.x * bend * factor,
+			y: start.y + departure.y * bend * factor
+		};
+		const b = {
+			x: end.x + unit.x * bend * factor,
+			y: end.y + unit.y * bend * factor
+		};
+		const candidate = cost(sample(start, a, b, end));
+		if (candidate < score) {
+			best = `M ${start.x} ${start.y} C ${a.x} ${a.y}, ${b.x} ${b.y}, ${end.x} ${end.y}`;
+			score = candidate;
+		}
+	}
+	const relevant = obstacles.filter((b) => b.bottom >= Math.min(start.y, end.y) - 32 && b.top <= Math.max(start.y, end.y) + 32);
+	for (const side of [Math.sign(departure.x) || 1, -(Math.sign(departure.x) || 1)]) for (const padding of [
+		16,
+		32,
+		64
+	]) {
+		const gutter = side < 0 ? Math.min(start.x, end.x, ...relevant.map((b) => b.left)) - padding : Math.max(start.x, end.x, ...relevant.map((b) => b.right)) + padding;
+		const direction = Math.sign(end.y - start.y) || 1;
+		const waypoint = {
+			x: gutter,
+			y: end.y + (Math.abs(unit.y) > .5 ? unit.y : -direction) * 28
+		};
+		const handle = Math.min(24, Math.abs(gutter - start.x) / 2);
+		const a = {
+			x: start.x + departure.x * handle,
+			y: start.y + departure.y * handle
+		}, b = {
+			x: gutter,
+			y: start.y
+		};
+		const c = {
+			x: gutter,
+			y: waypoint.y + direction * 12
+		}, d = {
+			x: end.x + unit.x * 24,
+			y: end.y + unit.y * 24
+		};
+		const candidateScore = cost([...sample(start, a, b, waypoint), ...sample(waypoint, c, d, end)]);
+		if (candidateScore < score) {
+			best = `M ${start.x} ${start.y} C ${a.x} ${a.y}, ${b.x} ${b.y}, ${waypoint.x} ${waypoint.y} C ${c.x} ${c.y}, ${d.x} ${d.y}, ${end.x} ${end.y}`;
+			score = candidateScore;
+		}
+	}
+	return best;
+}
+/** Intersect the centre-to-label ray with the convex projected cell silhouette.
+* A small screen-space gap keeps the endpoint off the box's edge and text. */
+function projectedCellEdge(start, centre, corners, gap = 4, avoidIndex = false) {
+	const points = corners.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+	const cross = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+	const half = (values) => {
+		const hull = [];
+		for (const p of values) {
+			while (hull.length >= 2 && cross(hull[hull.length - 2], hull[hull.length - 1], p) <= 0) hull.pop();
+			hull.push(p);
+		}
+		return hull.slice(0, -1);
+	};
+	const hull = [...half(points), ...half(points.slice().reverse())];
+	const ray = {
+		x: start.x - centre.x,
+		y: start.y - centre.y
+	};
+	if (avoidIndex && corners.length && start.y > Math.max(...corners.map((p) => p.y))) {
+		ray.x = (start.x >= centre.x ? 1 : -1) * (Math.max(...corners.map((p) => p.x)) - Math.min(...corners.map((p) => p.x))) / 2;
+		ray.y = (Math.max(...corners.map((p) => p.y)) - Math.min(...corners.map((p) => p.y))) / 2;
+	}
+	const length = Math.hypot(ray.x, ray.y);
+	if (!length || hull.length < 3) return centre;
+	let nearest = Infinity;
+	for (let i = 0; i < hull.length; i++) {
+		const a = hull[i], b = hull[(i + 1) % hull.length], s = {
+			x: b.x - a.x,
+			y: b.y - a.y
+		};
+		const denominator = ray.x * s.y - ray.y * s.x;
+		if (Math.abs(denominator) < 1e-8) continue;
+		const dx = a.x - centre.x, dy = a.y - centre.y;
+		const t = (dx * s.y - dy * s.x) / denominator, u = (dx * ray.y - dy * ray.x) / denominator;
+		if (t >= 0 && u >= 0 && u <= 1) nearest = Math.min(nearest, t);
+	}
+	return Number.isFinite(nearest) ? {
+		x: centre.x + ray.x * (nearest + gap / length),
+		y: centre.y + ray.y * (nearest + gap / length)
+	} : centre;
+}
+//#endregion
+//#region src/label-wire.ts
+/** Hover wires are presentation only. Target expressions are evaluated by bindings. */
+var wires = /* @__PURE__ */ new Map();
+function wireRowHover(row, label) {
+	if (!label.wireTarget) return;
+	let record = wires.get(label);
+	if (record) {
+		record.row = row;
+		record.hovered = false;
+	} else {
+		record = {
+			label,
+			row,
+			hovered: false,
+			svg: null,
+			path: null,
+			dot: null,
+			previous: "",
+			routeKey: "",
+			routePath: ""
+		};
+		wires.set(label, record);
+	}
+	const wire = record;
+	row.addEventListener("pointerenter", () => {
+		wire.hovered = true;
+	});
+	row.addEventListener("pointerleave", () => {
+		if (wire.row === row) wire.hovered = false;
+	});
+	const button = document.createElement("button");
+	button.type = "button";
+	button.className = "expression-wire-toggle";
+	const paint = () => {
+		button.setAttribute("aria-pressed", String(!!label.wirePinned));
+		button.setAttribute("aria-label", label.wirePinned ? "Unpin connection" : "Pin connection");
+	};
+	button.addEventListener("pointerdown", (event) => event.stopPropagation());
+	button.addEventListener("click", (event) => {
+		event.stopPropagation();
+		label.wirePinned = !label.wirePinned;
+		paint();
+	});
+	paint();
+	row.append(button);
+	wire.button = button;
+	wire.available = void 0;
+}
+function updateLabelWire() {
+	for (const [label, wire] of wires) {
+		if (!label.el.isConnected) {
+			wire.svg?.remove();
+			wires.delete(label);
+			continue;
+		}
+		paintWire(wire);
+	}
+}
+function paintWire(record) {
+	const hovered = record;
+	let { svg, path, dot, previous, routeKey, routePath } = record;
+	const camera = state.camera, canvas = state.renderer?.domElement;
+	const target = record.label.wireTarget;
+	const available = !!target && (target.object ? objectTargetExists(target.object, target.index) : !!target.position);
+	if (record.available !== available) {
+		record.available = available;
+		if (record.button) record.button.style.display = available ? "" : "none";
+	}
+	if (!available) {
+		if (svg) svg.style.display = "none";
+		return;
+	}
+	if (!record.hovered && !record.label.wirePinned || !hovered.row.isConnected || hovered.label.forceHidden || hovered.label.visible === false || hovered.label.el.style.display === "none" || !camera || !canvas) {
+		if (svg) svg.style.display = "none";
+		return;
+	}
+	if (hovered.label.annotationDragging) {
+		if (svg) svg.style.display = "none";
+		return;
+	}
+	const cell = target?.object && target.index !== void 0 ? objectCellAnchor(target.object, target.index) : null;
+	const world = target?.index !== void 0 ? cell ? new THREE.Vector3(...dataToWorld(cell.position)) : null : target?.position ? new THREE.Vector3(...dataToWorld(target.position)) : target?.object ? objectWorldAnchor(target.object) : null;
+	if (!world) {
+		if (svg) svg.style.display = "none";
+		return;
+	}
+	const projected = world.project(camera);
+	if (projected.z < -1 || projected.z >= 1) {
+		if (svg) svg.style.display = "none";
+		return;
+	}
+	const container = document.getElementById("labels-container");
+	if (!container) return;
+	if (!svg?.isConnected) {
+		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		svg.classList.add("label-hover-wire");
+		svg.setAttribute("aria-hidden", "true");
+		Object.assign(svg.style, {
+			position: "absolute",
+			inset: "0",
+			width: "100%",
+			height: "100%",
+			overflow: "visible",
+			pointerEvents: "none",
+			zIndex: "2147483647"
+		});
+		path = document.createElementNS(svg.namespaceURI, "path");
+		path.setAttribute("fill", "none");
+		path.setAttribute("stroke", "#a6d5ec");
+		path.setAttribute("stroke-opacity", ".65");
+		path.setAttribute("stroke-width", "1.5");
+		path.setAttribute("stroke-linecap", "round");
+		dot = document.createElementNS(svg.namespaceURI, "circle");
+		dot.setAttribute("r", "2");
+		dot.setAttribute("fill", "#bce8ff");
+		svg.append(path, dot);
+		container.append(svg);
+		previous = "";
+		routeKey = "";
+		record.svg = svg;
+		record.path = path;
+		record.dot = dot;
+	}
+	const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect(), row = hovered.row.getBoundingClientRect();
+	const screen = (p) => ({
+		x: viewport.left - rect.left + (p.x * .5 + .5) * viewport.width,
+		y: viewport.top - rect.top + (-p.y * .5 + .5) * viewport.height
+	});
+	const centre = screen(projected);
+	const box = hovered.row.closest(".annotation-badge")?.getBoundingClientRect() ?? row;
+	let left = centre.x < (box.left + box.right) / 2 - rect.left;
+	const start = {
+		x: (left ? box.left : box.right) - rect.left,
+		y: (row.top + row.bottom) / 2 - rect.top
+	};
+	let corners = cell?.corners.map((p) => screen(new THREE.Vector3(...dataToWorld(p)).project(camera)));
+	if (!cell && target?.object && target.index === void 0) {
+		corners = objectWorldCorners(target.object).map((p) => screen(p.project(camera)));
+		if (!corners.length) {
+			const labelBox = objectLabelElement(target.object)?.getBoundingClientRect();
+			if (labelBox) corners = [labelBox.left, labelBox.right].flatMap((x) => [labelBox.top, labelBox.bottom].map((y) => ({
+				x: x - rect.left,
+				y: y - rect.top
+			})));
+		}
+	}
+	const hasOutline = !!corners?.length;
+	const belowCell = hasOutline && start.y > Math.max(...corners.map((p) => p.y));
+	const departure = {
+		x: left ? -1 : 1,
+		y: 0
+	};
+	const attachment = !cell && hasOutline ? wholeObjectWireAttachment({
+		x: (box.left + box.right) / 2 - rect.left,
+		y: start.y
+	}, centre, corners) : null;
+	const end = attachment?.end ?? (hasOutline ? projectedCellEdge(start, centre, corners, 5, !!cell) : centre);
+	if (attachment) {
+		left = end.x < (box.left + box.right) / 2 - rect.left;
+		departure.x = left ? -1 : 1;
+		start.x = (left ? box.left : box.right) - rect.left;
+	}
+	const approach = attachment?.approach ?? (belowCell ? {
+		x: 0,
+		y: 1
+	} : {
+		x: start.x - centre.x,
+		y: start.y - centre.y
+	});
+	const obstacles = state.labels.filter((label) => label.visible && !label.annotationHidden && label.el.style.display !== "none" && label.el.isConnected && !label.el.contains(hovered.row)).map((label) => {
+		const b = label.el.getBoundingClientRect();
+		return {
+			left: b.left - rect.left,
+			top: b.top - rect.top,
+			right: b.right - rect.left,
+			bottom: b.bottom - rect.top
+		};
+	});
+	obstacles.push({
+		left: box.left - rect.left,
+		top: box.top - rect.top,
+		right: box.right - rect.left,
+		bottom: box.bottom - rect.top,
+		padding: 0
+	});
+	if (hasOutline) obstacles.push({
+		left: Math.min(...corners.map((p) => p.x)),
+		right: Math.max(...corners.map((p) => p.x)),
+		top: Math.min(...corners.map((p) => p.y)),
+		bottom: Math.max(...corners.map((p) => p.y)),
+		padding: 0
+	});
+	const key = JSON.stringify([
+		start,
+		end,
+		departure,
+		approach,
+		obstacles
+	]);
+	if (key !== routeKey) {
+		routeKey = key;
+		routePath = routedLabelWire(start, end, departure, approach, obstacles);
+		record.routeKey = routeKey;
+		record.routePath = routePath;
+	}
+	const d = routePath;
+	svg.style.display = "";
+	if (d !== previous) {
+		path.setAttribute("d", d);
+		dot.setAttribute("cx", String(end.x));
+		dot.setAttribute("cy", String(end.y));
+		record.previous = d;
+	}
 }
 //#endregion
 //#region src/glossary-core.ts
@@ -1540,12 +2024,13 @@ function updateLabels() {
 			o._zi = zi;
 		}
 	}
+	updateLabelWire();
 }
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
 * Intrinsic measurement nodes keep collision geometry independent of merged content. */
 var annotationLayoutKey = "";
 function groupAnnotations(scale) {
-	const labels = labelsState.labels.filter((l) => l.annotation && l.visible);
+	const labels = labelsState.labels.filter((l) => l.annotation && l.visible && l.el.style.display !== "none");
 	const boxes = labels.map((l) => {
 		const a = l.annotation;
 		if (a.scale !== scale) {
@@ -1597,11 +2082,12 @@ function groupAnnotations(scale) {
 				row.className = "annotation-row";
 				row.textContent = text;
 				if (a.kind === "label") {
+					wireRowHover(row, labels[group[rowIndex]]);
 					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
 						row.classList.add("annotation-row-draggable");
-						row.title = "Drag to move this label";
+						if (!labels[group[rowIndex]].wireTarget) row.title = "Drag to move this label";
 						row.addEventListener("pointerdown", drag);
 					}
 				}
@@ -1643,7 +2129,7 @@ function groupAnnotations(scale) {
 }
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
 function placeExpressionLabel(label, x, y, clientX, clientY) {
-	const targets = labelsState.labels.filter((l) => l.visible && !l.annotationHidden && l.annotation?.kind === "label" && (l.annotationCoordinateMode ?? "world") === (label.annotationCoordinateMode ?? "world"));
+	const targets = labelsState.labels.filter((l) => l.visible && l.el.style.display !== "none" && !l.annotationHidden && l.annotation?.kind === "label" && (l.annotationCoordinateMode ?? "world") === (label.annotationCoordinateMode ?? "world"));
 	for (const target of targets) {
 		const others = Array.from(target.annotation.badge.querySelectorAll(".annotation-row")).filter((row) => Number(row.dataset.labelSeq) !== label.seq);
 		if (!others.length) continue;
@@ -1671,6 +2157,12 @@ function placeExpressionLabel(label, x, y, clientX, clientY) {
 }
 /** Move in the current mode. World placement uses the camera-facing plane at the label's depth. */
 function setExpressionLabelPosition(label, x, y) {
+	const camera = labelsState.camera, renderer = labelsState.renderer;
+	if (!renderer) return;
+	const bounds = label.annotation?.badge.getBoundingClientRect();
+	const bounded = annotationDragPosition(x, y, bounds?.width || label.annotation?.width || 0, bounds?.height || label.annotation?.height || 0, renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+	x = bounded.x;
+	y = bounded.y;
 	if (label.annotationCoordinateMode === "screen") {
 		label.annotationPosition = {
 			x,
@@ -1678,8 +2170,7 @@ function setExpressionLabelPosition(label, x, y) {
 		};
 		return;
 	}
-	const camera = labelsState.camera, renderer = labelsState.renderer;
-	if (!camera || !renderer) return;
+	if (!camera) return;
 	const anchor = dataToWorld(label.annotationWorldPosition ?? label.dataPos);
 	const depth = new THREE.Vector3(...anchor).project(camera).z;
 	const world = new THREE.Vector3(x / renderer.domElement.clientWidth * 2 - 1, 1 - y / renderer.domElement.clientHeight * 2, depth).unproject(camera);
@@ -2972,17 +3463,19 @@ function labelDragHandler(label, animState) {
 	return (event, members) => {
 		if (event.button !== 0 || animState.stopped || !state.renderer) return;
 		const controls = state.controls;
-		const viewport = state.renderer.domElement.getBoundingClientRect();
+		const canvas = state.renderer.domElement;
+		const viewport = canvas.getBoundingClientRect();
 		const row = event.currentTarget.getBoundingClientRect();
 		const start = {
 			x: (row.left + row.right) / 2 - viewport.left,
 			y: (row.top + row.bottom) / 2 - viewport.top
 		};
 		const moving = members ?? [label];
-		const positions = moving.map((member) => ({
-			x: member.screenX,
-			y: member.screenY
-		}));
+		const box = event.currentTarget.closest(".annotation-badge")?.getBoundingClientRect() ?? row;
+		const groupStart = {
+			x: (box.left + box.right) / 2 - viewport.left,
+			y: (box.top + box.bottom) / 2 - viewport.top
+		};
 		event.preventDefault();
 		event.stopPropagation();
 		const controller = new AbortController();
@@ -3009,10 +3502,12 @@ function labelDragHandler(label, animState) {
 			}
 			e.preventDefault();
 			e.stopPropagation();
-			if (members) moving.forEach((member, index) => {
-				setExpressionLabelPosition(member, positions[index].x + e.clientX - event.clientX, positions[index].y + e.clientY - event.clientY);
-			});
-			else placeExpressionLabel(label, start.x + e.clientX - event.clientX, start.y + e.clientY - event.clientY, e.clientX, e.clientY);
+			if (members) {
+				const position = annotationDragPosition(groupStart.x + e.clientX - event.clientX, groupStart.y + e.clientY - event.clientY, box.width, box.height, canvas.clientWidth, canvas.clientHeight);
+				moving.forEach((member) => {
+					setExpressionLabelPosition(member, position.x, position.y);
+				});
+			} else placeExpressionLabel(label, start.x + e.clientX - event.clientX, start.y + e.clientY - event.clientY, e.clientX, e.clientY);
 		};
 		window.addEventListener("pointermove", move, {
 			capture: true,
@@ -3034,6 +3529,9 @@ function labelDragHandler(label, animState) {
 /** State-bound annotations. Projection/grouping belongs to the common label layer. */
 function renderStepMarker(el, _view, owner) {
 	const marker = el.type === "step_marker";
+	const targetPosition = !marker && el.connectTo && "positionExpr" in el.connectTo ? el.connectTo.positionExpr : [];
+	const targetFns = targetPosition.length ? targetPosition.map((source) => compileExpr(source)) : null;
+	const targetIndex = !marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
 	const position = owner ? [] : el.positionExpr ?? (el.position ?? [
 		0,
 		0,
@@ -3043,7 +3541,9 @@ function renderStepMarker(el, _view, owner) {
 		...position,
 		...el.textExpr ? [el.textExpr] : [],
 		...el.visibleExpr ? [el.visibleExpr] : [],
-		...el.indexExpr ? [el.indexExpr] : []
+		...el.indexExpr ? [el.indexExpr] : [],
+		...targetPosition,
+		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
 	];
 	const positionFns = position.map((source) => compileExpr(source));
 	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
@@ -3063,6 +3563,7 @@ function renderStepMarker(el, _view, owner) {
 	const measure = document.createElement("span");
 	measure.className = "annotation-badge annotation-measure";
 	measure.setAttribute("aria-hidden", "true");
+	if (!marker && el.connectTo) measure.classList.add("annotation-measure-wired");
 	cursor.append(badge);
 	if (owner) cursor.classList.add("array-marker-cursor");
 	if (marker) {
@@ -3084,12 +3585,18 @@ function renderStepMarker(el, _view, owner) {
 		rendered: ""
 	};
 	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
+	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
 	const entry = {
 		animState,
 		exprStrings: sources,
 		_rebuildFn: () => {
 			if (animState.stopped) return;
 			try {
+				if (targetIndex) label.wireTarget.index = Number(evalExpr(targetIndex, 0));
+				if (targetFns) {
+					const target = targetFns.map((fn) => Number(evalExpr(fn, 0)));
+					label.wireTarget = target.every(Number.isFinite) ? { position: target } : {};
+				}
 				const indexValue = indexFn ? Number(evalExpr(indexFn, 0)) : null;
 				const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map((fn) => Number(evalExpr(fn, 0)));
 				if (!point) {
@@ -3256,6 +3763,14 @@ function renderArray(el, _view) {
 	const mesh = new THREE.Mesh(geometry, material);
 	mesh.userData.ignorePlaneOpacity = true;
 	mesh.userData.targetOpacity = 1;
+	const cellTarget = { at(index) {
+		const position = arrayIndexPosition(index, n, origin, pitch);
+		return position ? {
+			position,
+			corners: arrayCellCorners(position, pitch)
+		} : null;
+	} };
+	mesh.userData.arrayCellTarget = cellTarget;
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
 	const indexLabels = [];
@@ -3265,14 +3780,21 @@ function renderArray(el, _view) {
 			c[1],
 			c[2] + .14
 		], "#12212b", { cssClass: "label-3d array-cell-label" });
+		if (el.fontSize != null) label.el.style.setProperty("--array-font-size", `${el.fontSize}px`);
+		label.ownerMesh = mesh;
 		label.snapToProjection = true;
-		const indexLabel = addLabel3D(String(i), c, "#93a1b3");
-		indexLabels.push(indexLabel);
-		indexLabel.cellAttachment = {
-			corners: arrayCellCorners(c, pitch),
-			edge: "bottom",
-			gap: 8
-		};
+		if (el.showIndices !== false) {
+			const indexLabel = addLabel3D(String(i), c, "#e1ecf7", { cssClass: "label-3d array-index-tag" });
+			if (el.indexFontSize != null) indexLabel.el.style.setProperty("--array-index-font-size", `${el.indexFontSize}px`);
+			indexLabel.ownerMesh = mesh;
+			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
+			indexLabels.push(indexLabel);
+			indexLabel.cellAttachment = {
+				corners: arrayCellCorners(c, pitch),
+				edge: "bottom",
+				gap: 0
+			};
+		}
 		return label;
 	};
 	const labels = Array.from({ length: n }, (_, i) => makeCellLabel(i));
@@ -3308,6 +3830,7 @@ function renderArray(el, _view) {
 	function resize(next) {
 		if (next === n) return;
 		while (labels.length > next) for (const label of [labels.pop(), indexLabels.pop()]) {
+			if (!label) continue;
 			label.el.remove();
 			const index = state.labels.indexOf(label);
 			if (index >= 0) state.labels.splice(index, 1);
@@ -8742,7 +9265,7 @@ function renderPoint(el, view) {
 //#region src/objects/line.ts
 var lineState = state;
 function renderLine(el, view) {
-	const points = el.points || el.data || (el.from && el.to ? [el.from, el.to] : null) || [[
+	const sources = el.points || el.data || (el.from && el.to ? [el.from, el.to] : null) || [[
 		0,
 		0,
 		0
@@ -8751,6 +9274,10 @@ function renderLine(el, view) {
 		1,
 		1
 	]];
+	const dynamic = sources.some((point) => point.some((value) => typeof value === "string"));
+	const fns = dynamic ? sources.map((point) => point.map((value) => compileExpr(String(value)))) : null;
+	const evaluatePoints = () => fns.map((point) => point.map((fn) => Number(evalExpr(fn, 0))));
+	const points = dynamic ? evaluatePoints() : sources;
 	const color = parseColor(el.color || "#88aaff");
 	const width = el.width || 3;
 	const opacity = el.opacity !== void 0 ? Number(el.opacity) : 1;
@@ -8768,11 +9295,12 @@ function renderLine(el, view) {
 		]
 	};
 	const lineW = resolveLineWidth(lineEntry);
-	lineEntry.node = view.array({
+	const lineData = view.array({
 		channels: 3,
 		width: points.length,
 		data: points
-	}).line({
+	});
+	lineEntry.node = lineData.line({
 		color: new THREE.Color(...color),
 		width: lineW,
 		zBias: 1,
@@ -8782,6 +9310,34 @@ function renderLine(el, view) {
 	if (label) {
 		const mid = points[Math.floor(points.length / 2)];
 		addLabel3D(label, mid, color);
+	}
+	if (dynamic) {
+		const animState = { stopped: false };
+		let previous = JSON.stringify(points);
+		const entry = {
+			animState,
+			exprStrings: sources.flat().map(String),
+			_rebuildFn: () => {
+				if (animState.stopped) return;
+				const next = evaluatePoints(), key = JSON.stringify(next);
+				if (key === previous) return;
+				previous = key;
+				lineData.set("data", next);
+				lineEntry.anchorDataPos = next[Math.floor(next.length / 2)] ?? [
+					0,
+					0,
+					0
+				];
+			}
+		};
+		registerAnimExpr(entry);
+		return {
+			type: "line",
+			color,
+			label,
+			_animState: animState,
+			_animExprEntry: entry
+		};
 	}
 	return {
 		type: "line",
@@ -9408,6 +9964,45 @@ function renderPlane(el, view) {
 	];
 	const size = typeof el.size === "number" && el.size > 0 ? el.size : 4;
 	const label = el.label;
+	if (el.points?.length === 4) {
+		const sources = el.points;
+		const fns = sources.map((point) => point.map((value) => compileExpr(String(value))));
+		const evaluate = () => fns.map((point) => point.map((fn) => Number(evalExpr(fn, 0))));
+		const data = evaluate();
+		const matrix = view.matrix({
+			channels: 3,
+			width: 2,
+			height: 2,
+			data
+		});
+		matrix.surface({
+			shaded: false,
+			color: new THREE.Color(...color),
+			opacity,
+			zBias: -2
+		});
+		const animState = { stopped: false };
+		let previous = JSON.stringify(data);
+		const entry = {
+			animState,
+			exprStrings: sources.flat().map(String),
+			_rebuildFn: () => {
+				if (animState.stopped) return;
+				const next = evaluate(), key = JSON.stringify(next);
+				if (key === previous) return;
+				previous = key;
+				matrix.set("data", next);
+			}
+		};
+		if (sources.some((point) => point.some((value) => typeof value === "string"))) registerAnimExpr(entry);
+		return {
+			type: "plane",
+			color,
+			label,
+			_animState: animState,
+			_animExprEntry: entry
+		};
+	}
 	const n = new THREE.Vector3(...normal).normalize();
 	let t1;
 	if (Math.abs(n.x) < .9) t1 = new THREE.Vector3(1, 0, 0).cross(n).normalize();
@@ -12757,6 +13352,7 @@ function renderTensor(el, _view) {
 				tex.dispose();
 			});
 			const qMesh = new THREE.Mesh(qGeom, qMat);
+			qMesh.userData.annotationTextPlane = true;
 			qMesh.userData.targetOpacity = opacity;
 			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
 			if (tensorCell) qMesh.userData.tensorCell = tensorCell;
@@ -17959,11 +18555,15 @@ function snapshotBefore() {
 	};
 }
 function buildSubTracker(group, before) {
+	const labels = sceneState.labels.slice(before.labels);
+	const planeMeshes = sceneState.planeMeshes.slice(before.planes);
 	return {
 		group,
 		arrowMeshes: sceneState.arrowMeshes.slice(before.arrows),
-		labels: sceneState.labels.slice(before.labels),
-		planeMeshes: sceneState.planeMeshes.slice(before.planes),
+		get labels() {
+			return [...labels, ...sceneState.labels.filter((label) => label.ownerMesh && planeMeshes.includes(label.ownerMesh) && !labels.includes(label))];
+		},
+		planeMeshes,
 		lineNodes: sceneState.lineNodes.slice(before.lines),
 		vectorLineNodes: sceneState.vectorLineNodes.slice(before.vecLines),
 		axisLineNodes: sceneState.axisLineNodes.slice(before.axisLines),

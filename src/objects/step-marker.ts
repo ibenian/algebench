@@ -16,8 +16,11 @@ export interface MarkerOwner {
 }
 export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: MarkerOwner) {
     const marker = el.type === 'step_marker';
+    const targetPosition = !marker && el.connectTo && 'positionExpr' in el.connectTo ? el.connectTo.positionExpr : [];
+    const targetFns = targetPosition.length ? targetPosition.map(source=>compileExpr(source)) : null;
+    const targetIndex = !marker && el.connectTo && 'object' in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
     const position = owner ? [] : el.positionExpr ?? (el.position ?? [0,0,0]).map(String);
-    const sources = [...position, ...(el.textExpr ? [el.textExpr] : []), ...(el.visibleExpr ? [el.visibleExpr] : []), ...(el.indexExpr ? [el.indexExpr] : [])];
+    const sources = [...position, ...(el.textExpr ? [el.textExpr] : []), ...(el.visibleExpr ? [el.visibleExpr] : []), ...(el.indexExpr ? [el.indexExpr] : []), ...targetPosition, ...(!marker && el.connectTo && 'object' in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : [])];
     const positionFns = position.map(source => compileExpr(source));
     const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
     const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
@@ -28,6 +31,7 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
     const cursor = document.createElement('span'); cursor.className = marker ? 'step-marker-cursor' : 'expression-label-cursor';
     const badge = document.createElement('span'); badge.className = 'annotation-badge';
     const measure = document.createElement('span'); measure.className = 'annotation-badge annotation-measure'; measure.setAttribute('aria-hidden','true');
+    if(!marker&&el.connectTo)measure.classList.add('annotation-measure-wired');
     cursor.append(badge);
     if (owner) cursor.classList.add('array-marker-cursor');
     if (marker) {
@@ -37,9 +41,15 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
     label.el.style.setProperty('--marker-color', colorToCSS(el.color ?? (marker ? '#f1c65b' : '#172e50')));
     label.annotation = {kind: marker ? 'marker' : 'label', text: '', badge, measure, width: 0, height: 0, scale: null, rendered: ''};
     if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
+    if(!marker && el.connectTo && 'object' in el.connectTo)label.wireTarget={object:el.connectTo.object};
     const entry: AnimExprEntry = {animState, exprStrings:sources, _rebuildFn:()=>{
         if (animState.stopped) return;
         try {
+            if(targetIndex)label.wireTarget!.index=Number(evalExpr(targetIndex,0));
+            if(targetFns){
+                const target=targetFns.map(fn=>Number(evalExpr(fn,0)));
+                label.wireTarget = target.every(Number.isFinite) ? {position:target as [number,number,number]} : {};
+            }
             const indexValue = indexFn ? Number(evalExpr(indexFn,0)) : null;
             const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map(fn => Number(evalExpr(fn,0)));
             if (!point) { label.forceHidden = true; return; }

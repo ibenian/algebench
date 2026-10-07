@@ -3,10 +3,11 @@
 // AI ask-button helpers.
 // ============================================================
 
-import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle } from '/annotation-layout.js';
+import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition } from '/annotation-layout.js';
 import type { AnnotationValue } from '/annotation-layout.js';
 
 import { state } from '/state.js';
+import { wireRowHover, updateLabelWire } from '/label-wire.js';
 import { dataToWorld, worldToData } from '/coords.js';
 import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers, stripGlossaryMath } from '/glossary-core.js';
 
@@ -331,6 +332,8 @@ export interface Label3DOptions {
 /** A live 3D label: its DOM node plus the per-frame projection/declutter state
  *  that updateLabels reads and writes. */
 export interface Label3D {
+    /** Dynamic labels share the lifetime of this mesh even after creation snapshots. */
+    ownerMesh?: object;
     el: HTMLDivElement;
     dataPos: number[];
     /** Project a cell's corners to keep annotations outside its screen footprint. */
@@ -382,6 +385,8 @@ export interface Label3D {
     annotationDragging?: boolean;
     annotationDocked?: boolean;
     annotationCoordinateMode?: 'world' | 'screen';
+    wireTarget?: {object?:string;index?:number;position?:[number,number,number]};
+    wirePinned?: boolean;
 }
 
 // state.js is still untyped JavaScript, so describe the slice this module uses
@@ -571,13 +576,14 @@ export function updateLabels(): void {
         const o = ordered[i]!;
         if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
     }
+    updateLabelWire();
 }
 
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
  * Intrinsic measurement nodes keep collision geometry independent of merged content. */
 let annotationLayoutKey = "";
 function groupAnnotations(scale: number): void {
-    const labels = labelsState.labels.filter(l => l.annotation && l.visible);
+    const labels = labelsState.labels.filter(l => l.annotation && l.visible && l.el.style.display !== 'none');
     const boxes = labels.map(l => {
         const a = l.annotation!; // Filtered above.
         if (a.scale !== scale) {
@@ -601,9 +607,15 @@ function groupAnnotations(scale: number): void {
             a.badge.replaceChildren(...rows.map((text, rowIndex) => {
                 const row = document.createElement('span'); row.className = 'annotation-row'; row.textContent = text;
                 if (a.kind === 'label') {
+                    wireRowHover(row,labels[group[rowIndex]!]!);
                     row.dataset.labelSeq = String(labels[group[rowIndex]!]!.seq);
                     const drag = labels[group[rowIndex]!]!.annotation!.startDrag;
-                    if (drag) { row.classList.add('annotation-row-draggable'); row.title='Drag to move this label'; row.addEventListener('pointerdown',drag); }
+                    if (drag) {
+                        row.classList.add('annotation-row-draggable');
+                        // A native drag tooltip would obscure the hover connection.
+                        if(!labels[group[rowIndex]!]!.wireTarget)row.title='Drag to move this label';
+                        row.addEventListener('pointerdown',drag);
+                    }
                 }
                 return row;
             }));
@@ -636,7 +648,7 @@ function groupAnnotations(scale: number): void {
 
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
 export function placeExpressionLabel(label: Label3D, x: number, y: number, clientX: number, clientY: number): void {
-    const targets = labelsState.labels.filter(l => l.visible && !l.annotationHidden && l.annotation?.kind === 'label' && (l.annotationCoordinateMode ?? 'world') === (label.annotationCoordinateMode ?? 'world'));
+    const targets = labelsState.labels.filter(l => l.visible && l.el.style.display !== 'none' && !l.annotationHidden && l.annotation?.kind === 'label' && (l.annotationCoordinateMode ?? 'world') === (label.annotationCoordinateMode ?? 'world'));
     for (const target of targets) {
         const rows = Array.from(target.annotation!.badge.querySelectorAll<HTMLElement>('.annotation-row'));
         const others = rows.filter(row => Number(row.dataset.labelSeq) !== label.seq);
@@ -660,12 +672,16 @@ export function placeExpressionLabel(label: Label3D, x: number, y: number, clien
 
 /** Move in the current mode. World placement uses the camera-facing plane at the label's depth. */
 export function setExpressionLabelPosition(label: Label3D, x: number, y: number): void {
+    const camera = labelsState.camera, renderer = labelsState.renderer;
+    if (!renderer) return;
+    const bounds=label.annotation?.badge.getBoundingClientRect();
+    const bounded=annotationDragPosition(x,y,bounds?.width||label.annotation?.width||0,bounds?.height||label.annotation?.height||0,renderer.domElement.clientWidth,renderer.domElement.clientHeight);
+    x=bounded.x;y=bounded.y;
     if (label.annotationCoordinateMode === 'screen') {
         label.annotationPosition = {x,y};
         return;
     }
-    const camera = labelsState.camera, renderer = labelsState.renderer;
-    if (!camera || !renderer) return;
+    if (!camera) return;
     const anchor = dataToWorld((label.annotationWorldPosition ?? label.dataPos) as [number,number,number]);
     const depth = new THREE.Vector3(...anchor).project(camera).z;
     const world = new THREE.Vector3(x / renderer.domElement.clientWidth * 2 - 1, 1 - y / renderer.domElement.clientHeight * 2, depth).unproject(camera);

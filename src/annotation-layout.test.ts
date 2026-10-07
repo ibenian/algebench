@@ -1,8 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { annotationGroups, annotationRows, annotationText, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle } from '/annotation-layout.js';
+import { annotationGroups, annotationRows, annotationText, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition } from '/annotation-layout.js';
 import type { AnnotationBox } from '/annotation-layout.js';
 const marker = (name: string, value: number, group='input', x=0): AnnotationBox => ({kind:'marker',text:'',index:{name,value,group},x,y:0,width:60,height:25});
+test('dragged badges stay within the viewport and can be moved back from an edge',()=>{
+    assert.deepEqual(annotationDragPosition(900,500,100,60,600,400),{x:542,y:362});
+    assert.deepEqual(annotationDragPosition(-100,-100,100,60,600,400),{x:58,y:38});
+    assert.deepEqual(annotationDragPosition(200,150,100,60,600,400),{x:200,y:150});
+    assert.deepEqual(annotationDragPosition(900,500,100,60,40,30),{x:20,y:15});
+});
 test('Vars requires every row to contain an assignment form', () => {
     assert.equal(annotationContainerTitle(['i = 2', 'size = 3']), 'Vars');
     assert.equal(annotationContainerTitle(['i = j = 2']), 'Vars');
