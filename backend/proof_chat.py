@@ -25,6 +25,9 @@ from typing import Optional
 
 from google.genai import types
 
+from backend.gemini_sampling import (CHAT_MAX_OUTPUT_TOKENS, gemini_temperature,
+                                     hit_output_limit, trim_runaway)
+
 log = logging.getLogger(__name__)
 
 # Prefix so proof-chat lines stand out in a busy log, like the experts' tags.
@@ -473,7 +476,10 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
         system_instruction=_proof_chat_system_prompt(proof, current_step,
                                                      allow_edits=allow_edits,
                                                      in_derive=in_derive),
-        temperature=0.4,   # tutoring — favour precision over flourish
+        # Tutoring favours precision (0.4) -- except on Gemini 3, which is tuned
+        # for its default temperature and can loop below it.
+        temperature=gemini_temperature(_server().GEMINI_MODEL, 0.4),
+        max_output_tokens=CHAT_MAX_OUTPUT_TOKENS,
     )
     if allow_edits:
         # Every tool rides the SAME lock: `derive` replaces or extends the
@@ -484,6 +490,7 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
             model=_server().GEMINI_MODEL, contents=contents, config=config)
         text = ""
         calls: dict = {}                 # tool name -> payload
+        finish = getattr(response.candidates[0], "finish_reason", None) if response.candidates else None
         if response.candidates and response.candidates[0].content.parts:
             for part in response.candidates[0].content.parts:
                 if part.text:
@@ -498,6 +505,11 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
                                         proof=proof, current_step=current_step)
                 if payload is not None:
                     calls[tool["name"]] = payload
+        # A reply that ran into the output cap may be a runaway loop: keep the
+        # answer, drop the self-extending tail.
+        text, _trimmed = trim_runaway(text, hit_output_limit(finish))
+        if _trimmed:
+            print(f"   ⚠️  {_LOG_TAG}: reply hit the output limit — trimmed a runaway tail", flush=True)
         # Trace the ROUTING decision with the reader's own words beside it. The
         # tool args are the agent's paraphrase, so without the typed message
         # there is no record of what was actually asked — and "why did it do

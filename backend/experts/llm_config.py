@@ -18,6 +18,7 @@ from dspy.adapters.chat_adapter import ChatAdapter
 from dspy.utils.exceptions import AdapterParseError
 
 from backend.experts.adapters import LineAdapter
+from backend.gemini_sampling import is_gemini3
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +63,10 @@ def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
     env_temp = os.environ.get("ALGEBENCH_LM_TEMPERATURE")
     if env_temp is not None:
         temperature = float(env_temp)
+    elif is_gemini3(LM_MODEL) and temperature < 1.0:
+        # Gemini 3 is tuned for temperature 1.0; below it Google warns of
+        # looping. An explicit ALGEBENCH_LM_TEMPERATURE still wins (eval runs).
+        temperature = 1.0
     kwargs = dict(api_key=api_key, temperature=temperature, max_tokens=max_tokens,
                   cache=_cache_enabled())
     effort = os.environ.get("ALGEBENCH_LM_REASONING")
@@ -254,11 +259,17 @@ def _build_scoped(overrides: dict) -> Optional[dspy.LM]:
     # a ``GEMINI_API_KEY`` would override the auth it resolves for itself.
     # ``None`` means "resolve from the environment", which is what a non-Gemini
     # provider should be trusted to do (Copilot, #519).
-    kwargs: dict = dict(temperature=0.7, max_tokens=32768, cache=_cache_enabled())
+    kwargs: dict = dict(temperature=1.0 if is_gemini3(LM_MODEL) else 0.7, max_tokens=32768,
+                        cache=_cache_enabled())
     if LM_MODEL.startswith("gemini/"):
         kwargs["api_key"] = (os.environ.get("GEMINI_API_KEY")
                              or os.environ.get("GOOGLE_API_KEY"))
     kwargs.update(overrides)
+    # An explicit ALGEBENCH_LM_TEMPERATURE wins over every default and override,
+    # as in ``make_lm`` -- a deterministic eval must reach the scoped experts too.
+    env_temp = os.environ.get("ALGEBENCH_LM_TEMPERATURE")
+    if env_temp is not None:
+        kwargs["temperature"] = float(env_temp)
     try:
         return dspy.LM(LM_MODEL, **kwargs)
     except Exception:
