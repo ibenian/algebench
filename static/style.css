@@ -5586,3 +5586,105 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 @media (prefers-reduced-motion: reduce) {
     .ai-thinking-status::before { animation: none; opacity: 0.8; }
 }
+
+/* Display-only lesson source: browsing does not navigate the lesson. */
+#dock-tab-code { overflow: hidden; }
+.code-file-tree { flex: 0 1 25%; min-height: 90px; overflow: auto; padding: 12px; border-bottom: 1px solid var(--border-color); }
+.code-file-tree details { padding-left: 12px; }
+.code-file-tree summary { cursor: pointer; padding: 5px 0; font-size: 13px; }
+.code-file-tree button { display: block; text-align: left; width: 100%; padding: 6px 10px; color: var(--text-color); background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
+.code-file-tree button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent-color) 20%, transparent); }
+.code-file-title { padding: 10px; font: 11px monospace; overflow-wrap: anywhere; opacity: .8; }
+.code-source { flex: 1; overflow: auto; min-height: 100px; padding-bottom: 20px; }
+.code-line { display: flex; min-width: max-content; font: 12px/1.9 ui-monospace, monospace; border-left: 3px solid transparent; }
+.code-line code { white-space: pre; padding-right: 14px; font: inherit; user-select: text; }
+.code-line-number { flex: 0 0 36px; width: 36px; border: 0; background: transparent; color: var(--text-color); opacity: .45; cursor: pointer; font: inherit; user-select: none; }
+.code-line.execution-line { border-left-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 13%, transparent); }
+.code-line.selected { outline: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent); outline-offset: -1px; }
+.code-selection-actions { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; padding: 10px; border-top: 1px solid var(--border-color); font-size: 11px; }
+.code-selection-actions[hidden], .code-step-targets[hidden] { display: none; }
+.code-selection-actions .ai-ask-btn { position: static; opacity: 1; visibility: visible; }
+.code-selection-actions button:not(.ai-ask-btn), .code-step-targets button { color: var(--text-color); background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 5px; padding: 5px 8px; cursor: pointer; }
+.code-selection-actions button:disabled { opacity: .4; cursor: default; }
+.code-step-targets { max-height: 130px; overflow: auto; padding: 8px; }
+.code-step-targets button { display: block; width: 100%; text-align: left; margin-bottom: 5px; }
+.code-mark-gold { background: #c49a3044; }
+.code-mark-blue { background: #438fc944; }
+.code-mark-green { background: #36a77944; }
+.code-mark-pink { background: #d268a444; }
+
+#state-player { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; width: min(460px, calc(100% - 200px)); padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); }
+#state-player[hidden], .slider-row[hidden] { display: none; }
+#state-player button { border: 1px solid var(--border-color); background: transparent; color: var(--text-color); border-radius: 5px; min-width: 29px; height: 29px; cursor: pointer; }
+#state-player button:disabled { opacity: .35; cursor: default; }
+#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); }
+#state-player output { white-space: nowrap; font: 12px ui-monospace, monospace; }
+@media (max-width: 750px) { #state-player { bottom: 58px; width: calc(100% - 50px); } }
+/* Reserve the left corner for the existing lesson-section navigation. */
+#state-player { box-sizing: border-box; left: auto; right: 16px; transform: none; width: min(460px, calc(100% - 190px)); }
+@media (max-width: 750px) { #state-player { left: 25px; right: auto; width: calc(100% - 50px); } }
+
+/* Bottom stack: docked caption, execution player, then legend. */
+#mathbox-wrapper { --state-player-base-bottom: 12px; }
+#state-player {
+    bottom: calc(var(--state-player-base-bottom) + var(--caption-dock-h, 0px));
+    padding: 6px 10px;
+}
+#state-player button { height: 32px; }
+#mathbox-wrapper.has-state-player #legend {
+    bottom: calc(var(--caption-dock-h, 0px) + var(--state-player-base-bottom) + var(--state-player-h, 49px) + 12px);
+}
+@media (max-width: 750px) {
+    #mathbox-wrapper { --state-player-base-bottom: 58px; }
+}
+
+/* One reading marker, not an independently positioned text + vector pair. */
+.step-marker { pointer-events: none; }
+.step-marker-cursor { display: flex; flex-direction: column; align-items: center; transform: translateY(-38px); }
+.step-marker-badge { display: block; padding: 4px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 13px/1.3 ui-monospace, monospace; white-space: nowrap; box-shadow: 0 2px 8px #0004; }
+.step-marker-pointer { display: block; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--marker-color); margin-top: 3px; }
+
+.array-cell-label { font: 600 var(--array-font-size, 14px)/1.25 ui-monospace, monospace; text-shadow: none; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
+.array-index-tag {
+    font: 600 calc(var(--array-index-font-size, 10px) * var(--label-scale, 1))/1.3 ui-monospace, monospace;
+    min-width: 18px;
+    padding: 1px 5px 2px;
+    box-sizing: border-box;
+    text-align: center;
+    text-shadow: none;
+    background: rgba(24, 48, 75, .9);
+    border: 1px solid rgba(157, 189, 227, .45);
+    border-top: 0;
+    border-radius: 0 0 5px 5px;
+}
+
+/* Annotation content is text-only. Hidden intrinsic copies prevent grouping feedback. */
+.expression-label { pointer-events: none; }
+.annotation-suppressed { visibility: hidden !important; }
+.expression-label-cursor { display: block; }
+.expression-label .annotation-badge { color: #edf4ff; }
+.expression-label .annotation-titlebar { border-bottom-color: #edf4ff44; }
+.expression-label .annotation-row + .annotation-row { border-top-color: #edf4ff33; }
+.expression-label .annotation-mode-toggle { background: #edf4ff12; border-color: #edf4ff55; }
+.annotation-badge { display: block; padding: 5px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 calc(13px * var(--label-scale, 1))/1.35 ui-monospace, monospace; white-space: pre; box-shadow: 0 2px 8px #0004; }
+.annotation-row { display: block; }
+.expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
+.expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
+.expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }
+.expression-wire-toggle:hover::after { opacity: 1; }
+.expression-wire-toggle:focus-visible { outline: 1px solid #a6d5ec; outline-offset: 2px; }
+.annotation-measure-wired { padding-right: 34px; }
+.annotation-row + .annotation-row { border-top: 1px solid #171c2226; margin-top: 4px; padding-top: 4px; }
+.annotation-measure { position: absolute; visibility: hidden; pointer-events: none; top: 0; left: 0; width: max-content; }
+
+/* A regroup is an atomic replacement: fading retains stale overlapping badges. */
+.step-marker, .expression-label { transition: none; }
+/* Owned markers sit above the projected cell edge, independent of camera zoom. */
+.step-marker-cursor.array-marker-cursor { transform: none; }
+.annotation-row-draggable { pointer-events: auto; cursor: grab; touch-action: none; user-select: none; }
+.dragging-expression-label, .dragging-expression-label .annotation-row-draggable { cursor: grabbing; user-select: none; }
+.annotation-titlebar { display: block; pointer-events: auto; cursor: grab; touch-action: none; user-select: none; font-size: .85em; opacity: .8; border-bottom: 1px solid #171c2233; padding-bottom: 4px; margin-bottom: 4px; }
+.annotation-mode-toggle { float: right; border: 1px solid #171c2244; border-radius: 4px; background: #ffffff55; color: inherit; font: inherit; font-size: .78em; padding: 1px 4px; cursor: pointer; }
+.annotation-overlay { filter: saturate(.82); }
+.expression-label .annotation-measure::before { content: '⠿ Labels'; display: block; font-size: .85em; border-bottom: 1px solid #171c2233; padding-bottom: 4px; margin-bottom: 4px; }
+.dragging-expression-label .annotation-titlebar { cursor: grabbing; }

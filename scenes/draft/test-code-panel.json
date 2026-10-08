@@ -1,0 +1,1255 @@
+{
+  "title": "Code panel playground · Bracket stack",
+  "codeFiles": [
+    {
+      "id": "balanced",
+      "path": "brackets/balanced.py",
+      "language": "python",
+      "source": "def balanced(text):\n    stack = []\n    for i, ch in enumerate(text):\n        if ch in \"([\":\n            stack.append(i)\n        else:\n            if not stack or not matches(text[stack[-1]], ch):\n                return False\n            stack.pop()\n    return not stack",
+      "activeLineExpr": "dataTable('trace', snapshot, 'pc')",
+      "locations": [
+        {
+          "line": 2,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 0,
+          "label": "Start with an empty stack"
+        },
+        {
+          "line": 5,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 1,
+          "label": "Push opening parenthesis"
+        },
+        {
+          "line": 5,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 2,
+          "label": "Push opening bracket"
+        },
+        {
+          "line": 9,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 3,
+          "label": "Match and pop bracket"
+        },
+        {
+          "line": 9,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 4,
+          "label": "Match and pop parenthesis"
+        },
+        {
+          "line": 10,
+          "scene": "brackets",
+          "step": "explore",
+          "snapshot": 5,
+          "label": "All openings matched"
+        }
+      ],
+      "marks": [
+        {
+          "line": 5,
+          "startColumn": 13,
+          "endColumn": 18,
+          "color": "blue"
+        },
+        {
+          "line": 5,
+          "startColumn": 26,
+          "endColumn": 27,
+          "color": "gold"
+        },
+        {
+          "line": 9,
+          "startColumn": 13,
+          "endColumn": 24,
+          "color": "green"
+        }
+      ]
+    },
+    {
+      "id": "matches",
+      "path": "brackets/helpers/matches.py",
+      "language": "python",
+      "source": "def matches(opening, closing):\n    return (opening, closing) in [(\"(\", \")\"), (\"[\", \"]\")]"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "brackets",
+      "title": "Read the code, follow the stack",
+      "description": "Open the Code tab. Source is display-only; lesson snapshots drive the views.",
+      "range": [
+        [
+          -6,
+          8
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          -1,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "trace": [
+          {
+            "pc": 2,
+            "i": 0,
+            "n": 0,
+            "s0": -1,
+            "s1": -1
+          },
+          {
+            "pc": 5,
+            "i": 0,
+            "n": 1,
+            "s0": 0,
+            "s1": -1
+          },
+          {
+            "pc": 5,
+            "i": 1,
+            "n": 2,
+            "s0": 0,
+            "s1": 1
+          },
+          {
+            "pc": 9,
+            "i": 2,
+            "n": 1,
+            "s0": 0,
+            "s1": -1
+          },
+          {
+            "pc": 9,
+            "i": 3,
+            "n": 0,
+            "s0": -1,
+            "s1": -1
+          },
+          {
+            "pc": 10,
+            "i": 4,
+            "n": 0,
+            "s0": -1,
+            "s1": -1
+          }
+        ]
+      },
+      "markdown": "# Code panel prototype\n\nOpen **Code**, next to Scenes and Math. The upper area is a folder browser; selecting a file opens it below without moving the lesson. Widen the left dock by dragging its edge.\n\nClick a line number or select part of an expression. **Ask AI** and **Go to step** appear together below the code. A line used more than once offers a choice of lesson steps. Nothing jumps merely because you selected it.\n\nThe gold left border indicates the current execution position; the thin selection outline is your independent reading selection. Blue, gold and green spans demonstrate authored expression marks.\n\n## Variables\n\n**text** is the input character sequence `([])`. **i** is the next/current reading position. **stack** contains input indices of unmatched opening characters, bottom to top. **ch** is the current character read by the displayed loop.\n\nThe code is never executed. Six complete lesson snapshots supply values to the ordinary expression bindings. Use the **state player** below the scene to inspect them directly. Lesson sections and execution states are separate.\n\nThis small prototype demonstrates panel interaction and bindings. Free-form input editing, full code syntax coloring and a dedicated stack renderer are outside this slice.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -4,
+              4
+            ],
+            [
+              -3,
+              3
+            ]
+          ],
+          "divisions": [
+            8,
+            6
+          ],
+          "opacity": 0.1
+        }
+      ],
+      "steps": [
+        {
+          "id": "explore",
+          "title": "Explore the bracket stack",
+          "description": "Use the state player below: step forward, step backward, play, or jump to any snapshot.",
+          "sliders": [
+            {
+              "id": "snapshot",
+              "label": "Snapshot",
+              "min": 0,
+              "max": 5,
+              "step": 1,
+              "default": 0
+            }
+          ],
+          "add": [
+            {
+              "id": "input-array",
+              "type": "array",
+              "color": "#9dbde3",
+              "itemType": "character",
+              "values": [
+                "(",
+                "[",
+                "]",
+                ")"
+              ],
+              "origin": [
+                -3,
+                1.5,
+                0
+              ],
+              "cellSize": 2,
+              "highlightExpr": "idx == dataTable('trace', snapshot, 'i')",
+              "label": "text · character array",
+              "labelOffset": [
+                0,
+                1.8,
+                0
+              ],
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "i",
+                  "indexExpr": "dataTable('trace', snapshot, 'i')",
+                  "color": "#f1c65b"
+                }
+              ]
+            },
+            {
+              "id": "stack",
+              "type": "array",
+              "itemType": "number",
+              "origin": [
+                5.5,
+                -0.5,
+                0
+              ],
+              "cellSize": 2,
+              "lengthExpr": "dataTable('trace', snapshot, 'n') > 0 ? 1 : 0",
+              "valueExpr": "dataTable('trace', snapshot, 's0')",
+              "color": "#9dbde3",
+              "showIndices": false
+            },
+            {
+              "id": "stack-top",
+              "type": "array",
+              "itemType": "number",
+              "origin": [
+                5.5,
+                0.28,
+                0
+              ],
+              "cellSize": 2,
+              "lengthExpr": "dataTable('trace', snapshot, 'n') > 1 ? 1 : 0",
+              "valueExpr": "dataTable('trace', snapshot, 's1')",
+              "color": "#9dbde3",
+              "showIndices": false
+            },
+            {
+              "id": "stack-container",
+              "type": "line",
+              "points": [
+                [
+                  "4.55",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  4.55,
+                  -1,
+                  -0.2
+                ],
+                [
+                  6.45,
+                  -1,
+                  -0.2
+                ],
+                [
+                  "6.45",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "4.55",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "width": 2,
+              "opacity": 0.7
+            },
+            {
+              "id": "stack-back",
+              "type": "plane",
+              "points": [
+                [
+                  4.55,
+                  -1,
+                  -0.2
+                ],
+                [
+                  6.45,
+                  -1,
+                  -0.2
+                ],
+                [
+                  "4.55",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "6.45",
+                  "-0.5 + (max(1, dataTable('trace', snapshot, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.15
+            },
+            {
+              "id": "stack-base",
+              "type": "plane",
+              "points": [
+                [
+                  4.55,
+                  -1,
+                  -0.2
+                ],
+                [
+                  6.45,
+                  -1,
+                  -0.2
+                ],
+                [
+                  4.55,
+                  -1,
+                  0.75
+                ],
+                [
+                  6.45,
+                  -1,
+                  0.75
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.45
+            },
+            {
+              "id": "stack-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                5.5,
+                -0.5,
+                0
+              ],
+              "visibleExpr": "dataTable('trace', snapshot, 'n') == 0",
+              "color": "#7b9b92"
+            },
+            {
+              "id": "stack-label",
+              "type": "text",
+              "text": "stack",
+              "position": [
+                5.5,
+                -1.2,
+                0
+              ]
+            },
+            {
+              "id": "n-label",
+              "type": "expression_label",
+              "position": [
+                5.5,
+                -2.7,
+                0
+              ],
+              "textExpr": "concat('size = ', dataTable('trace', snapshot, 'n'))",
+              "connectTo": {
+                "object": "stack-container"
+              }
+            },
+            {
+              "id": "i-label",
+              "type": "expression_label",
+              "position": [
+                5.5,
+                -2.7,
+                0
+              ],
+              "textExpr": "concat('i = ', dataTable('trace', snapshot, 'i'))",
+              "connectTo": {
+                "object": "input-array",
+                "indexExpr": "dataTable('trace', snapshot, 'i')"
+              }
+            }
+          ]
+        },
+        {
+          "id": "resize-array",
+          "title": "Add and remove array cells",
+          "description": "Move Array length to add or delete cells. Hover i to see a curved wire meet its cell's edge; hover length to connect to the whole array.",
+          "sliders": [
+            {
+              "id": "arrayLength",
+              "label": "Array length · add / delete",
+              "min": 0,
+              "max": 6,
+              "step": 1,
+              "default": 3
+            }
+          ],
+          "remove": [
+            {
+              "id": "input-array"
+            },
+            {
+              "id": "stack"
+            },
+            {
+              "id": "stack-top"
+            },
+            {
+              "id": "stack-container"
+            },
+            {
+              "id": "stack-back"
+            },
+            {
+              "id": "stack-base"
+            },
+            {
+              "id": "stack-empty"
+            },
+            {
+              "id": "stack-label"
+            },
+            {
+              "id": "n-label"
+            },
+            {
+              "id": "i-label"
+            }
+          ],
+          "add": [
+            {
+              "id": "resizable-array",
+              "type": "array",
+              "origin": [
+                -4,
+                0.5,
+                0
+              ],
+              "cellSize": 1.8,
+              "itemType": "number",
+              "lengthExpr": "arrayLength",
+              "valueExpr": "(idx + 1) * 10",
+              "label": "array · add / delete",
+              "labelOffset": [
+                0,
+                1.8,
+                0
+              ],
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "last",
+                  "indexExpr": "arrayLength - 1",
+                  "color": "#f1c65b"
+                }
+              ]
+            },
+            {
+              "id": "array-size",
+              "type": "expression_label",
+              "position": [
+                0,
+                -1.5,
+                0
+              ],
+              "textExpr": "concat('length = ', arrayLength)",
+              "connectTo": {
+                "object": "resizable-array",
+                "indexExpr": "arrayLength - 1"
+              }
+            },
+            {
+              "id": "array-index-var",
+              "type": "expression_label",
+              "position": [
+                0,
+                -1.5,
+                0
+              ],
+              "textExpr": "concat('i = ', arrayLength - 1)",
+              "connectTo": {
+                "object": "resizable-array",
+                "indexExpr": "arrayLength - 1"
+              }
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "snapshot",
+        "intervalMs": 1000
+      }
+    },
+    {
+      "id": "array-types",
+      "title": "Array cell types",
+      "description": "The same array object displays different primitive types without coercion.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          13
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "markdown": "# Typed array objects\n\nEach row is a single array object with its own indexed cells.\n\n**Numbers** retain their numeric values. **Characters** display one Unicode code point; a space is shown as ␠. **Strings** keep quotation marks, so an empty string is distinct from **null**, shown as ∅. **Booleans** display true or false. A **mixed** row preserves the underlying type of each primitive value.\n\nArrays accept literal values or per-cell value expressions. Highlight expressions bind independently to state; no marker or other visual object is referenced. Nested arrays and object/reference cells are not part of this initial renderer.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -4,
+              4
+            ],
+            [
+              -4,
+              4
+            ]
+          ],
+          "divisions": [
+            8,
+            8
+          ],
+          "opacity": 0.1
+        },
+        {
+          "id": "array-numbers",
+          "type": "array",
+          "label": "numbers",
+          "itemType": "number",
+          "values": [
+            8,
+            12,
+            -3,
+            2.5
+          ],
+          "origin": [
+            -3,
+            3.5,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-characters",
+          "type": "array",
+          "label": "characters",
+          "itemType": "character",
+          "values": [
+            "A",
+            " ",
+            "λ",
+            "🙂"
+          ],
+          "origin": [
+            -3,
+            1.65,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-strings",
+          "type": "array",
+          "label": "strings",
+          "itemType": "string",
+          "values": [
+            "hi",
+            "42",
+            "",
+            "word"
+          ],
+          "origin": [
+            -3,
+            -0.20000000000000018,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-booleans",
+          "type": "array",
+          "label": "booleans",
+          "itemType": "boolean",
+          "values": [
+            true,
+            false,
+            true,
+            false
+          ],
+          "origin": [
+            -3,
+            -2.0500000000000007,
+            0
+          ],
+          "cellSize": 2
+        },
+        {
+          "id": "array-mixed",
+          "type": "array",
+          "label": "mixed",
+          "itemType": "mixed",
+          "values": [
+            42,
+            "42",
+            false,
+            null
+          ],
+          "origin": [
+            -3,
+            -3.9000000000000004,
+            0
+          ],
+          "cellSize": 2
+        }
+      ]
+    },
+    {
+      "id": "array-operations",
+      "title": "Array operations",
+      "description": "Explore array operations with before and after views.",
+      "range": [
+        [
+          -6,
+          8
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "base": [
+          {
+            "values": [
+              30,
+              10,
+              20,
+              10
+            ]
+          }
+        ],
+        "operations": [
+          {
+            "name": "length",
+            "a": 0,
+            "b": 0,
+            "title": "Length",
+            "description": "Read the number of cells. No values change.",
+            "index": -1
+          },
+          {
+            "name": "get",
+            "a": 2,
+            "b": 0,
+            "title": "Access A[2]",
+            "description": "Read a cell by its zero-based index.",
+            "index": 2
+          },
+          {
+            "name": "set",
+            "a": 1,
+            "b": 99,
+            "title": "Update A[1] = 99",
+            "description": "Replace one value without changing the length.",
+            "index": 1
+          },
+          {
+            "name": "insert",
+            "a": 1,
+            "b": 99,
+            "title": "Insert 99 at index 1",
+            "description": "Make room by shifting the suffix one slot right.",
+            "index": 1
+          },
+          {
+            "name": "remove",
+            "a": 1,
+            "b": 0,
+            "title": "Delete index 1",
+            "description": "Remove the cell and shift its suffix one slot left.",
+            "index": 1
+          },
+          {
+            "name": "push",
+            "a": 99,
+            "b": 0,
+            "title": "Append 99",
+            "description": "Add a new last cell.",
+            "index": 4
+          },
+          {
+            "name": "pop",
+            "a": 0,
+            "b": 0,
+            "title": "Pop the last cell",
+            "description": "Remove and return the last value.",
+            "index": 3
+          },
+          {
+            "name": "unshift",
+            "a": 99,
+            "b": 0,
+            "title": "Prepend 99",
+            "description": "Insert at the start; every previous value shifts right.",
+            "index": 0
+          },
+          {
+            "name": "shift",
+            "a": 0,
+            "b": 0,
+            "title": "Remove the first cell",
+            "description": "Return the first value and shift the rest left.",
+            "index": 0
+          },
+          {
+            "name": "swap",
+            "a": 0,
+            "b": 2,
+            "title": "Swap indices 0 and 2",
+            "description": "Exchange two values; length stays the same.",
+            "index": 0
+          },
+          {
+            "name": "reverse",
+            "a": 0,
+            "b": 0,
+            "title": "Reverse",
+            "description": "Reverse the order of values.",
+            "index": -1
+          },
+          {
+            "name": "sort",
+            "a": 0,
+            "b": 0,
+            "title": "Sort ascending",
+            "description": "Order numeric values numerically, preserving duplicates.",
+            "index": -1
+          },
+          {
+            "name": "indexOf",
+            "a": 10,
+            "b": 0,
+            "title": "Search for 10",
+            "description": "Return the first matching index. Duplicate values stay distinct.",
+            "index": 1
+          },
+          {
+            "name": "indexOf",
+            "a": 99,
+            "b": 0,
+            "title": "Search for missing 99",
+            "description": "A missing value returns -1.",
+            "index": -1
+          },
+          {
+            "name": "includes",
+            "a": 20,
+            "b": 0,
+            "title": "Contains 20?",
+            "description": "Return true or false without changing the array.",
+            "index": 2
+          },
+          {
+            "name": "slice",
+            "a": 1,
+            "b": 3,
+            "title": "Slice [1, 3)",
+            "description": "Copy indices 1 and 2; the end index is excluded.",
+            "index": 1
+          },
+          {
+            "name": "concat",
+            "a": [
+              7,
+              8
+            ],
+            "b": 0,
+            "title": "Concatenate [7, 8]",
+            "description": "Produce a new array with both sequences joined.",
+            "index": 4
+          },
+          {
+            "name": "fill",
+            "a": 7,
+            "b": 0,
+            "title": "Fill with 7",
+            "description": "Replace all cell values with the same value.",
+            "index": -1
+          },
+          {
+            "name": "resize",
+            "a": 6,
+            "b": 0,
+            "title": "Grow to 6",
+            "description": "Keep existing values and fill newly added cells with zero.",
+            "index": 4
+          },
+          {
+            "name": "resize",
+            "a": 2,
+            "b": 0,
+            "title": "Shrink to 2",
+            "description": "Keep the prefix and remove the final cells.",
+            "index": -1
+          },
+          {
+            "name": "traverse",
+            "a": 0,
+            "b": 0,
+            "title": "Traverse: index 0",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 0
+          },
+          {
+            "name": "traverse",
+            "a": 1,
+            "b": 0,
+            "title": "Traverse: index 1",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 1
+          },
+          {
+            "name": "traverse",
+            "a": 2,
+            "b": 0,
+            "title": "Traverse: index 2",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 2
+          },
+          {
+            "name": "traverse",
+            "a": 3,
+            "b": 0,
+            "title": "Traverse: index 3",
+            "description": "Visit each cell in order. Values remain unchanged.",
+            "index": 3
+          },
+          {
+            "name": "clear",
+            "a": 0,
+            "b": 0,
+            "title": "Clear",
+            "description": "Remove every cell. The array length becomes zero.",
+            "index": -1
+          }
+        ]
+      },
+      "functions": [
+        {
+          "name": "arrayBefore",
+          "args": [],
+          "expr": "dataTable('base', 0, 'values')"
+        },
+        {
+          "name": "arrayAfter",
+          "args": [],
+          "expr": "arrayValues(arrayBefore(), dataTable('operations', operation, 'name'), dataTable('operations', operation, 'a'), dataTable('operations', operation, 'b'))"
+        }
+      ],
+      "markdown": "# Array operations\n\nUse the state player to explore **25 examples**. Each example starts with `[30, 10, 20, 10]`; the upper row is the original and the lower row is the result. Gold selects the input slot. The after row automatically illuminates values that differ from the previously visible execution state, including backward steps and jumps. New cells glow; deleted slots leave faint outlines. Empty results show **empty**.\n\n**Read:** length, indexed access, search (`indexOf`), membership (`includes`), and traversal.\n\n**Change:** update, insert, delete, append/push, pop, prepend/unshift, shift, swap, reverse, sort, fill, resize, and clear.\n\n**Create a new sequence:** slice (start included, end excluded) and concatenate. The original row remains unchanged, including for sort and reverse.\n\nIndices are zero-based. Search returns the first exact match or `-1`; it never converts strings to numbers. Empty pop/shift returns ∅. Sorting accepts homogeneous numbers or strings. Invalid indices are errors. Arrays are limited to 256 cells.\n\nDirect access and update touch one slot. Middle insertions and deletions shift a suffix; prepend and shift move the whole remainder. Append and pop affect the end. Compare the two rows to see these differences.",
+      "elements": [
+        {
+          "id": "ops-grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -6,
+              8
+            ],
+            [
+              -4,
+              4
+            ]
+          ],
+          "divisions": [
+            14,
+            8
+          ],
+          "opacity": 0.1
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Explore all array operations",
+          "description": "Move through the examples to compare each operation.",
+          "sliders": [
+            {
+              "id": "operation",
+              "label": "Array operation",
+              "min": 0,
+              "max": 24,
+              "step": 1,
+              "default": 3
+            }
+          ],
+          "add": [
+            {
+              "id": "ops-before",
+              "type": "array",
+              "itemType": "number",
+              "values": [
+                30,
+                10,
+                20,
+                10
+              ],
+              "origin": [
+                -4,
+                1.2,
+                0
+              ],
+              "cellSize": 1.8,
+              "label": "Before",
+              "labelOffset": [
+                0,
+                1,
+                0
+              ],
+              "highlightExpr": "idx == dataTable('operations', operation, 'index')"
+            },
+            {
+              "id": "ops-after",
+              "type": "array",
+              "itemType": "number",
+              "origin": [
+                -4,
+                -0.6,
+                0
+              ],
+              "cellSize": 1.8,
+              "lengthExpr": "arrayCount(arrayAfter())",
+              "valueExpr": "arrayAt(arrayAfter(), idx)",
+              "label": "After",
+              "labelOffset": [
+                0,
+                0.95,
+                0
+              ]
+            },
+            {
+              "id": "ops-title",
+              "type": "expression_label",
+              "textExpr": "dataTable('operations', operation, 'title')",
+              "position": [
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "id": "ops-result",
+              "type": "expression_label",
+              "textExpr": "concat('result = ', arrayResult(arrayBefore(), dataTable('operations', operation, 'name'), dataTable('operations', operation, 'a'), dataTable('operations', operation, 'b')))",
+              "position": [
+                0,
+                -2.3,
+                0
+              ]
+            },
+            {
+              "id": "ops-length",
+              "type": "expression_label",
+              "textExpr": "concat('length = ', arrayCount(arrayAfter()))",
+              "position": [
+                0,
+                -2.3,
+                0
+              ],
+              "connectTo": {
+                "object": "ops-after",
+                "indexExpr": "arrayCount(arrayAfter()) - 1"
+              }
+            },
+            {
+              "id": "ops-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                -4,
+                -0.6,
+                0
+              ],
+              "visibleExpr": "arrayCount(arrayAfter()) == 0",
+              "color": "#9dbde3"
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "operation",
+        "intervalMs": 1800
+      }
+    },
+    {
+      "id": "annotations",
+      "title": "Index and label playground",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "markdown": "# Drag the labels\n\nDrag either expression label directly to move it in the scene. When their boxes overlap they combine; each row in the shared box can be dragged back out independently. Each label can be placed independently anywhere in the visualization viewport. Dragging changes its screen position; moving its X/Y sliders returns it to its data anchor.\n\n**i** and **j** still control the array-owned index markers.",
+      "elements": [
+        {
+          "id": "demo-array",
+          "type": "array",
+          "itemType": "character",
+          "values": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "origin": [
+            -3,
+            1,
+            0
+          ],
+          "cellSize": 2,
+          "label": "text",
+          "labelOffset": [
+            0,
+            1.8,
+            0
+          ],
+          "markers": [
+            {
+              "type": "step_marker",
+              "indexName": "i",
+              "indexExpr": "i"
+            },
+            {
+              "type": "step_marker",
+              "indexName": "j",
+              "indexExpr": "j"
+            }
+          ]
+        },
+        {
+          "id": "pair",
+          "type": "expression_label",
+          "textExpr": "concat('Positions: ', i, ', ', j)",
+          "positionExpr": [
+            "labelAX",
+            "labelAY",
+            "0"
+          ]
+        },
+        {
+          "id": "equal",
+          "type": "expression_label",
+          "textExpr": "concat('Same cell: ', i == j)",
+          "positionExpr": [
+            "labelX",
+            "labelY",
+            "0"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Move the indices",
+          "sliders": [
+            {
+              "id": "i",
+              "label": "i",
+              "min": 0,
+              "max": 3,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "j",
+              "label": "j",
+              "min": 0,
+              "max": 3,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "labelX",
+              "label": "Label B · X",
+              "min": -5,
+              "max": 5,
+              "step": 0.1,
+              "default": 4
+            },
+            {
+              "id": "labelY",
+              "label": "Label B · Y",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": -1.3
+            },
+            {
+              "id": "labelAX",
+              "label": "Label A · X",
+              "min": -5,
+              "max": 5,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "labelAY",
+              "label": "Label A · Y",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": -1.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "standalone-marker",
+      "title": "Independent marker",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "markdown": "# Independent marker\n\nThis marker is placed directly in the scene. It uses the same marker component as the array-owned version, with its own position expression.",
+      "elements": [
+        {
+          "id": "free-marker",
+          "type": "step_marker",
+          "positionExpr": [
+            "x",
+            "0",
+            "0"
+          ],
+          "text": "Independent marker"
+        }
+      ],
+      "steps": [
+        {
+          "id": "move",
+          "title": "Move the independent marker",
+          "sliders": [
+            {
+              "id": "x",
+              "label": "Position",
+              "min": -3,
+              "max": 3,
+              "step": 1,
+              "default": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

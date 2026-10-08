@@ -21,6 +21,10 @@ from __future__ import annotations
 #: Order matches the declaration in src/expr.ts, so a diff of the two reads the
 #: same way.
 EXTENSION_NAMES: tuple[str, ...] = (
+    "arrayValues",
+    "arrayResult",
+    "arrayCount",
+    "arrayAt",
     "toFixed",
     "concat",
     "bar",

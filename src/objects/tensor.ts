@@ -968,6 +968,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             const offFonts = onLatexFontsReady(() => { if (textLayer) { textLayer.lastKey = ''; try { paintText(lastPaintT); } catch (_e) { /* next frame */ } } });
             qMat.addEventListener('dispose', () => { offFonts(); tex.dispose(); });
             const qMesh = new THREE.Mesh(qGeom, qMat);
+            qMesh.userData.annotationTextPlane = true;
             qMesh.userData.targetOpacity = opacity;
             qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
             // The text quad sits over the cells and takes the raycast first.

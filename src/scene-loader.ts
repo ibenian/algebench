@@ -265,11 +265,15 @@ function snapshotBefore(): RegistrySnapshot {
 }
 
 function buildSubTracker(group: MathBoxNode, before: RegistrySnapshot): SubTracker {
+    const labels=sceneState.labels.slice(before.labels);
+    const planeMeshes=sceneState.planeMeshes.slice(before.planes);
     return {
         group,
         arrowMeshes:     sceneState.arrowMeshes.slice(before.arrows),
-        labels:          sceneState.labels.slice(before.labels),
-        planeMeshes:     sceneState.planeMeshes.slice(before.planes),
+        // Resizing can add labels after this snapshot. Include them in every
+        // hide, show, fade and teardown operation through their owning mesh.
+        get labels() {return [...labels,...sceneState.labels.filter(label=>label.ownerMesh&&planeMeshes.includes(label.ownerMesh as RemovableMesh)&&!labels.includes(label))];},
+        planeMeshes,
         lineNodes:       sceneState.lineNodes.slice(before.lines),
         vectorLineNodes: sceneState.vectorLineNodes.slice(before.vecLines),
         axisLineNodes:   sceneState.axisLineNodes.slice(before.axisLines),

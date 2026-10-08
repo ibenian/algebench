@@ -196,6 +196,8 @@ ELEMENT_SCOPED_VARS = {
     # bound there but missing here produces exactly the spurious warning this
     # table exists to prevent.
     'tensor': {'row', 'col', 'idx', 'value'},
+    'array': {'idx', 'value'},
+    'stack': {'idx', 'value'},
     # Keep in step with `sample()` and `tickText()` in renderChart (src/objects/chart.ts).
     'chart': {'i', 'n', 'x', 'value'},
 }

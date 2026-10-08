@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { arrayValues, arrayResult, arrayCount, arrayAt } from '/array-operations.js';
 
 /**
  * A scope handed to a compiled expression: slider values, scene functions,
@@ -80,6 +81,10 @@ const _mathjs = math.create(math.all!);
 // that does not exist, which renders as nothing at all.
 // tests/test_mathjs_extensions_sync.py fails if the two lists disagree.
 const _MATHJS_EXTENSIONS = {
+    arrayValues: arrayValues,
+    arrayResult: arrayResult,
+    arrayCount: arrayCount,
+    arrayAt: arrayAt,
     toFixed: (val: unknown, decimals: unknown): string => Number(val).toFixed(Number(decimals)),
     concat: (...args: unknown[]): string => args.map((a) => String(a)).join(''),
     // bar(value, width=20) — Unicode block progress bar, e.g. bar(0.4) → "████████░░░░░░░░░░░░"

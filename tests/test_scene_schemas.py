@@ -52,6 +52,25 @@ def test_schema_is_well_formed(schema: dict) -> None:
     Draft202012Validator.check_schema(schema)
 
 
+@pytest.mark.parametrize("fields,valid", [
+    ({"values": []}, True),
+    ({"values": [0, "(", True, None]}, True),
+    ({"lengthExpr": "n", "valueExpr": "idx"}, True),
+    ({"shape": [1], "valueExpr": "idx"}, True),
+    ({"shape": [0], "valueExpr": "idx"}, False),
+    ({}, False),
+    ({"shape": [2, 2], "valueExpr": "idx"}, False),
+    ({"values": [0] * 257}, False),
+    ({"values": [{}]}, False),
+])
+def test_stack_schema(schema: dict, fields: dict, valid: bool) -> None:
+    """Stacks accept empty primitives but reject unusable cell sources."""
+    element_validator = Draft202012Validator({
+        "$defs": schema["$defs"], "$ref": "#/$defs/element",
+    })
+    assert element_validator.is_valid({"type": "stack", **fields}) is valid
+
+
 @pytest.mark.parametrize("scene_path", scene_files(), ids=lambda p: str(p.relative_to(Path(__file__).parent.parent)))
 def test_scene_matches_schema(scene_path: Path, validator: Draft202012Validator) -> None:
     with open(scene_path) as f:

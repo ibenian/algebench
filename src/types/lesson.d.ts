@@ -77,543 +77,11 @@ export type Vec3Number6 = [number, number, number];
  */
 export type Vec3Number7 = [number, number, number];
 /**
- * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
- */
-export type Color = string | [number, number, number];
-/**
- * Position in data space as [x,y,z]. Used by point, sphere, cylinder, text.
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec3 = [number | string, number | string, number | string];
-/**
- * Center position [x,y,z]. Used by sphere, ellipsoid, cylinder. Alias for position.
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec31 = [number | string, number | string, number | string];
-/**
- * Start point [x,y,z] for vectors, lines, cylinders.
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec32 = [number | string, number | string, number | string];
-/**
- * End point [x,y,z] for vectors, lines, cylinders.
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec33 = [number | string, number | string, number | string];
-/**
- * Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0]. On tensor it is the lattice's near corner: [horizontal, vertical, normal] in the chosen 'plane'.
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec34 = [number | string, number | string, number | string];
-/**
- * 3D point [x,y,z] where each component can be a number or math.js expression string.
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec3OrExpr = [number | string, number | string, number | string];
-/**
- * Per-axis ranges for a plane as [[aMin,aMax],[bMin,bMax]], in plane order.
- *
- * @minItems 2
- * @maxItems 2
- */
-export type RangePlane = [[number, number], [number, number]];
-/**
- * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Range3D1 = [[number, number], [number, number], [number, number]];
-/**
- * Offset [dx,dy,dz] for label positioning relative to the element. Default: [0,0.3,0].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec3Number8 = [number, number, number];
-/**
- * Explicit position [x,y,z] for the label instead of auto-computed.
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec35 = [number | string, number | string, number | string];
-/**
- * Alias for 'position'. Point/text position [x,y,z].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec36 = [number | string, number | string, number | string];
-/**
- * Normal vector [x,y,z] for plane element. Default: [0,1,0].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec3Number9 = [number, number, number];
-/**
- * Point on the plane [x,y,z] for plane element positioning. Default: [0,0,0].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec3Number10 = [number, number, number];
-/**
- * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Range3D2 = [[number, number], [number, number], [number, number]];
-/**
- * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Range3D3 = [[number, number], [number, number], [number, number]];
-/**
- * Axis scale factors as [sx,sy,sz]. Default: [1,1,1].
- *
- * @minItems 3
- * @maxItems 3
- */
-export type Vec3Number11 = [number, number, number];
-
-/**
- * Multi-scene lesson format with a 'scenes' array.
- */
-export interface LessonFormat {
-  /**
-   * Lesson title displayed in the UI header. Example: "Eigenvalues & Eigenvectors".
-   */
-  title: string;
-  /**
-   * Domain library names to import from static/domains/<name>/index.js. These register additional math functions available in expressions. Example: ["astrodynamics"].
-   */
-  import?: string[];
-  glossary?: Glossary;
-  /**
-   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked.
-   */
-  glossaryMatchThreshold?: number;
-  /**
-   * When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.
-   */
-  unsafe?: boolean;
-  /**
-   * Human-readable explanation of why this lesson uses unsafe JS, shown in the trust dialog. Example: "This lesson uses scene-level reusable functions with IIFE loops."
-   */
-  unsafeExplanation?: string;
-  data?: DataTable;
-  /**
-   * Root-level proof(s) visible across all scenes. Can be a single proof object or an array of proofs.
-   */
-  proof?: Proof | Proof[];
-  /**
-   * Array of scenes in the lesson. Each scene has its own 3D elements, steps, camera, and optional proof.
-   *
-   * @minItems 1
-   */
-  scenes: [Scene, ...Scene[]];
-}
-/**
- * Lesson-wide glossary. Layered over the glossaries of imported domains; a lesson entry wins on a shared key.
- */
-export interface Glossary {
-  [k: string]: GlossaryEntry;
-}
-/**
- * One glossary term. The key it is stored under is what an explicit {{glossary:KEY}} marker names.
- */
-export interface GlossaryEntry {
-  /**
-   * Display name shown as the tooltip title. Defaults to the key. Example: "Gaussian RBF kernel".
-   */
-  term?: string;
-  /**
-   * Other spellings that resolve to this term, both for explicit markers and automatic matching. Example: ["radial basis function", "Gaussian kernel"].
-   */
-  aliases?: string[];
-  /**
-   * Definition shown in the tooltip. Markdown with KaTeX math via $inline$ and $$display$$, rendered like scene markdown.
-   */
-  markdown?: string;
-  /**
-   * Message sent to the AI chat by the tooltip's Ask AI button. Defaults to asking the AI to explain the term in the context of the lesson.
-   */
-  prompt?: string;
-}
-/**
- * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions.
- */
-export interface DataTable {
-  [k: string]:
-    | {
-        [k: string]: unknown;
-      }[]
-    | {
-        [k: string]: unknown;
-      };
-}
-/**
- * A step-by-step mathematical proof or derivation displayed in the proof panel.
- */
-export interface Proof {
-  /**
-   * Unique proof ID for stable navigation state persistence across scene switches.
-   */
-  id?: string;
-  /**
-   * Proof title displayed in the panel header. Example: "Bayes' Theorem Derivation".
-   */
-  title: string;
-  /**
-   * Goal statement rendered with renderKaTeX. Use $...$ or $$...$$ delimiters for math — bare LaTeX renders as plain text. Example (display math): "$$P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$$". Example (prose): "Show that $P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$".
-   */
-  goal?: string;
-  /**
-   * Proof technique shown as a colored badge. 'derivation' is hidden (no badge shown).
-   */
-  technique?:
-    | 'direct'
-    | 'contradiction'
-    | 'contrapositive'
-    | 'cases'
-    | 'induction'
-    | 'strongInduction'
-    | 'wellOrdering'
-    | 'construction'
-    | 'nonConstructive'
-    | 'counterexample'
-    | 'exhaustion'
-    | 'equivalence'
-    | 'invariant'
-    | 'probabilistic'
-    | 'existence'
-    | 'uniqueness'
-    | 'derivation';
-  /**
-   * Tooltip text explaining why this technique was chosen. Shown on hover over the technique badge.
-   */
-  techniqueHint?: string;
-  /**
-   * Subject domain of the proof ("physics", "algebra", "calculus", "quantum", "statistics", …). Free-form, not enumerated. Read by the Function Analysis page as `mathDomain` context: it is the signal that decides whether e.g. negative time is exploration or nonsense, which the CAS's purely mathematical domain can never know. Set on standalone proofs under proofs/domains/.
-   */
-  domain?: string;
-  /**
-   * Scene step to navigate to when viewing the proof goal. Integer for step index, or 'sceneIdx:stepIdx' string. Enables bidirectional sync between proof and scene navigation.
-   */
-  sceneStep?: number | string;
-  /**
-   * System prompt for the AI when discussing this proof. Provides context about the proof for the chat tutor.
-   */
-  prompt?: string;
-  /**
-   * Array of proof steps rendered sequentially.
-   *
-   * @minItems 1
-   */
-  steps: [ProofStep, ...ProofStep[]];
-}
-/**
- * A single step in a mathematical proof.
- */
-export interface ProofStep {
-  /**
-   * Optional stable proof-step ID for references, context, and future navigation/state features.
-   */
-  id?: string;
-  /**
-   * Step type displayed as a badge. Common values: 'step', 'definition', 'axiom', 'theorem', 'lemma', 'assumption', 'substitution', 'simplification', 'conclusion'. Default: 'step'.
-   */
-  type?: string;
-  /**
-   * Step label/title. Example: "Apply definition of conditional probability".
-   */
-  label: string;
-  /**
-   * LaTeX math expression rendered via KaTeX in display mode. Example: "P(A|B) = \\frac{P(A \\cap B)}{P(B)}". Can include highlight spans via \\htmlClass{hl-name}{content}.
-   */
-  math?: string;
-  /**
-   * Short justification text rendered below the math. Supports inline KaTeX. Example: "By the multiplication rule".
-   */
-  justification?: string;
-  /**
-   * Longer explanation rendered as markdown below the justification. For additional context.
-   */
-  explanation?: string;
-  /**
-   * System prompt hint for the AI when this proof step is active. Provides step-specific teaching guidance for the chat tutor.
-   */
-  prompt?: string;
-  /**
-   * Tags displayed as small badges on the step. Example: ["algebra", "key-insight"].
-   */
-  tags?: string[];
-  /**
-   * Named highlight regions in the math expression. Keys match \\htmlClass{hl-<name>}{...} spans in the math field.
-   */
-  highlights?: {
-    [k: string]: ProofHighlight;
-  };
-  /**
-   * Scene step to sync to when this proof step is active. Integer for step index in current scene, or 'sceneIdx:stepIdx' for cross-scene.
-   */
-  sceneStep?: number | string;
-  /**
-   * Optional semantic graph for this step. Contains either a successfully derived graph or an error record explaining why derivation failed.
-   */
-  semanticGraph?:
-    | {
-        /**
-         * Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py.
-         */
-        graph: {
-          [k: string]: unknown;
-        };
-      }
-    | {
-        /**
-         * Diagnostic record attached by the server when auto-derivation failed. Surfaced in the Math dock view so the user can see why a graph is missing.
-         */
-        error: {
-          /**
-           * 'parse_failed' — parser returned no graph (unsupported construct). 'parse_crashed' — parser raised an exception.
-           */
-          reason: 'parse_failed' | 'parse_crashed';
-          /**
-           * Human-readable explanation of the failure.
-           */
-          message: string;
-          /**
-           * The original LaTeX source that failed to parse.
-           */
-          math?: string;
-        };
-      };
-}
-/**
- * Highlight configuration for a named region in proof math expressions.
- */
-export interface ProofHighlight {
-  /**
-   * Highlight color. Default: 'cyan'.
-   */
-  color?:
-    | 'cyan'
-    | 'yellow'
-    | 'green'
-    | 'orange'
-    | 'magenta'
-    | 'red'
-    | 'blue'
-    | 'pink'
-    | 'white'
-    | 'gray'
-    | 'gold'
-    | 'silver'
-    | 'purple'
-    | 'teal'
-    | 'lime';
-  /**
-   * Tooltip and annotation text for the highlight. Shown on hover and click.
-   */
-  label?: string;
-}
-/**
- * A single scene within a lesson, containing 3D elements and optional steps.
- */
-export interface Scene {
-  /**
-   * Stable scene id for deeplinking (the `sc=` param). Resolution is id → slug(title) → index, so an explicit id keeps a share/AI-jump link valid even when the title changes. Kebab-case recommended.
-   */
-  id?: string;
-  /**
-   * Scene title displayed in the navigation dock. Example: "$P(A)$ — Prior".
-   */
-  title: string;
-  /**
-   * Short description of the scene shown below the title. Supports markdown.
-   */
-  description?: string;
-  /**
-   * Markdown content for the explanation/documentation panel. Supports KaTeX math via $inline$ and $$display$$ delimiters.
-   */
-  markdown?: string;
-  /**
-   * System prompt for the AI chat tutor in this scene. Tells the AI what/how to teach. Example: "You are a patient tutor helping a student understand Bayes' theorem..."
-   */
-  prompt?: string;
-  range?: Range3D;
-  scale?: Vec3Number;
-  camera?: Camera;
-  /**
-   * Named camera presets rendered as clickable buttons. Example: Overview, Face On, Iso.
-   */
-  views?: View[];
-  /**
-   * Reusable scene-level functions callable from expressions. Registered in the math.js sandbox.
-   */
-  functions?: SceneFunction[];
-  data?: DataTable1;
-  starfield?: Starfield;
-  /**
-   * Base scene elements rendered when the scene loads (before any steps).
-   */
-  elements?: Element[];
-  /**
-   * Incremental steps that add/remove elements and sliders. Navigated with Next/Prev.
-   */
-  steps?: Step[];
-  /**
-   * Proof(s) associated with this scene. Displayed in the proof panel.
-   */
-  proof?: Proof | Proof[];
-  /**
-   * Auto-play duration in milliseconds for the base scene (before step 0). Default: 3000.
-   */
-  duration?: number;
-}
-/**
- * Initial camera position and target for this scene.
- */
-export interface Camera {
-  position?: Vec3Number1;
-  target?: Vec3Number2;
-  up?: Vec3Number3;
-}
-/**
- * Named camera preset shown as a clickable button.
- */
-export interface View {
-  /**
-   * Button label. Example: "Overview", "Face On".
-   */
-  name: string;
-  /**
-   * Tooltip text describing this view.
-   */
-  description?: string;
-  position?: Vec3Number4;
-  /**
-   * Dynamic camera position as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space.
-   *
-   * @minItems 3
-   * @maxItems 3
-   */
-  positionExpr?: [string, string, string];
-  target?: Vec3Number5;
-  /**
-   * Dynamic camera target as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space.
-   *
-   * @minItems 3
-   * @maxItems 3
-   */
-  targetExpr?: [string, string, string];
-  up?: Vec3Number6;
-  /**
-   * Element ID (or list of candidate IDs — the live one is tracked) to follow with the camera. The camera tracks the element's animated position.
-   */
-  follow?: string | [string, ...string[]];
-  offset?: Vec3Number7;
-  /**
-   * Axis indices for angle-lock camera mode.
-   */
-  angleLockAxis?: number[];
-  /**
-   * Element IDs defining the angle-lock direction vector.
-   */
-  angleLockDirection?: string[];
-  /**
-   * Element IDs defining the angle-lock reference vector.
-   */
-  angleLockVector?: string[];
-}
-/**
- * Reusable function registered in the math.js sandbox. Can be called from any expression in the scene.
- */
-export interface SceneFunction {
-  /**
-   * Function name usable in expressions. Example: "hx" allows calling hx() in expressions.
-   */
-  name: string;
-  /**
-   * Function argument names. Example: ["mode"] for a function that takes one argument.
-   */
-  args?: string[];
-  /**
-   * Function body as a math.js expression or IIFE JavaScript string. For complex logic, use an IIFE: "(()=>{...})()". Requires 'unsafe: true' at lesson level.
-   */
-  expr: string;
-}
-/**
- * Scene-level data tables. Override lesson-level tables with the same name.
- */
-export interface DataTable1 {
-  [k: string]:
-    | {
-        [k: string]: unknown;
-      }[]
-    | {
-        [k: string]: unknown;
-      };
-}
-/**
- * Background starfield configuration for space-themed scenes.
- */
-export interface Starfield {
-  /**
-   * Whether starfield is visible. Default: true.
-   */
-  enabled?: boolean;
-  /**
-   * Number of star particles. Default: 900.
-   */
-  count?: number;
-  /**
-   * Inner radius of the star shell. Default: auto-calculated from scene range.
-   */
-  radiusMin?: number;
-  /**
-   * Outer radius of the star shell. Default: auto-calculated from scene range.
-   */
-  radiusMax?: number;
-  /**
-   * Star particle size. Default: 2.1.
-   */
-  size?: number;
-  /**
-   * Star opacity. Default: 0.9.
-   */
-  opacity?: number;
-  /**
-   * Twinkle intensity 0-1. Default: 0.25.
-   */
-  twinkle?: number;
-  /**
-   * Star color as hex string. Default: '#d9e6ff'.
-   */
-  color?: string;
-}
-/**
  * A 3D visual element. The 'type' field determines which renderer is used and which properties are valid.
  */
-export interface Element {
+export type Element = {
+  [k: string]: unknown;
+} & {
   /**
    * Element type determining the renderer. Must be one of the supported types.
    */
@@ -642,7 +110,12 @@ export interface Element {
     | 'animated_polygon'
     | 'animated_curve'
     | 'tensor'
-    | 'chart';
+    | 'chart'
+    | 'algorithm_structure'
+    | 'step_marker'
+    | 'array'
+    | 'expression_label'
+    | 'stack';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
    */
@@ -701,7 +174,7 @@ export interface Element {
    */
   colorDomain?: [number, number];
   /**
-   * TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6].
+   * ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6].
    *
    * @minItems 1
    */
@@ -732,7 +205,11 @@ export interface Element {
     color?: string | [number, number, number];
   }[];
   /**
-   * TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. "dataTable('attn', row, concat('w', col))" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame.
+   * ARRAY / STACK. Integer length from 0 to 256, evaluated on state changes. Cells, indices and owned markers update when the length changes; valueExpr supplies each cell using idx.
+   */
+  lengthExpr?: string;
+  /**
+   * ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. "dataTable('attn', row, concat('w', col))" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame.
    */
   valueExpr?: string;
   /**
@@ -740,7 +217,7 @@ export interface Element {
    */
   bind?: string;
   /**
-   * TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
+   * ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
    */
   values?: unknown[];
   /**
@@ -1320,7 +797,645 @@ export interface Element {
           color?: Color;
         }
       ];
+  /**
+   * Complete semantic snapshots only. No visual deltas or highlight instructions.
+   *
+   * @minItems 1
+   */
+  algorithmStates?: [AlgorithmSnapshot, ...AlgorithmSnapshot[]];
+  /**
+   * Scalar slider selecting a zero-based snapshot.
+   */
+  stateSlider?: string;
+  /**
+   * Array displayed as both slots and a complete binary tree.
+   */
+  arrayId?: string;
+  /**
+   * Generate full deterministic heap-insertion snapshots from editable inputs. Starting values must form a min-heap.
+   */
+  heapInsertion?: {
+    arraySlider: string;
+    keySlider: string;
+  };
+  /**
+   * Slider controlling transition duration in seconds.
+   */
+  motionSlider?: string;
+  /**
+   * Slider controlling block depth in data units.
+   */
+  depthSlider?: string;
+  /**
+   * ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion.
+   */
+  itemType?: 'number' | 'character' | 'string' | 'boolean' | 'empty' | 'mixed';
+  /**
+   * ARRAY / STACK. Show small index tags attached to cells. Defaults to true for arrays and false for stacks.
+   */
+  showIndices?: boolean;
+  /**
+   * ARRAY ONLY. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap.
+   */
+  arrayLayout?: 'horizontal' | 'vertical';
+  /**
+   * ARRAY ONLY. Cell value font size in CSS pixels.
+   */
+  fontSize?: number;
+  /**
+   * ARRAY ONLY. Index tag font size in CSS pixels, multiplied by the display label scale.
+   */
+  indexFontSize?: number;
+  /**
+   * ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes.
+   */
+  highlightExpr?: string;
+  /**
+   * STEP_MARKER: variable name displayed in the index badge.
+   */
+  indexName?: string;
+  /**
+   * STEP_MARKER: expression yielding a nonnegative integer index.
+   */
+  indexExpr?: string;
+  /**
+   * STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge.
+   */
+  indexGroup?: string;
+  /**
+   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.
+   */
+  connectTo?:
+    | {
+        object: string;
+        /**
+         * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
+         */
+        indexExpr?: string;
+      }
+    | {
+        /**
+         * @minItems 3
+         * @maxItems 3
+         */
+        positionExpr: [string, string, string];
+      };
+  /**
+   * ARRAY / STACK: owned index markers. The owner supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression.
+   */
+  markers?: ArrayMarker[];
+  /**
+   * STACK: color of the owned growing container.
+   */
+  containerColor?: string;
+  /**
+   * STACK: text shown inside the empty container.
+   */
+  emptyText?: string;
+  /**
+   * STACK: show an owned top slot index marker; hidden automatically when empty.
+   */
+  showTop?: boolean;
   [k: string]: unknown;
+};
+/**
+ * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+ */
+export type Color = string | [number, number, number];
+/**
+ * Position in data space as [x,y,z]. Used by point, sphere, cylinder, text.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec3 = [number | string, number | string, number | string];
+/**
+ * Center position [x,y,z]. Used by sphere, ellipsoid, cylinder. Alias for position.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec31 = [number | string, number | string, number | string];
+/**
+ * Start point [x,y,z] for vectors, lines, cylinders.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec32 = [number | string, number | string, number | string];
+/**
+ * End point [x,y,z] for vectors, lines, cylinders.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec33 = [number | string, number | string, number | string];
+/**
+ * Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0]. On tensor it is the lattice's near corner: [horizontal, vertical, normal] in the chosen 'plane'.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec34 = [number | string, number | string, number | string];
+/**
+ * 3D point [x,y,z] where each component can be a number or math.js expression string.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec3OrExpr = [number | string, number | string, number | string];
+/**
+ * Per-axis ranges for a plane as [[aMin,aMax],[bMin,bMax]], in plane order.
+ *
+ * @minItems 2
+ * @maxItems 2
+ */
+export type RangePlane = [[number, number], [number, number]];
+/**
+ * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Range3D1 = [[number, number], [number, number], [number, number]];
+/**
+ * Offset [dx,dy,dz] for label positioning relative to the element. Default: [0,0.3,0].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec3Number8 = [number, number, number];
+/**
+ * Explicit position [x,y,z] for the label instead of auto-computed.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec35 = [number | string, number | string, number | string];
+/**
+ * Alias for 'position'. Point/text position [x,y,z].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec36 = [number | string, number | string, number | string];
+/**
+ * Normal vector [x,y,z] for plane element. Default: [0,1,0].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec3Number9 = [number, number, number];
+/**
+ * Point on the plane [x,y,z] for plane element positioning. Default: [0,0,0].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec3Number10 = [number, number, number];
+/**
+ * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Range3D2 = [[number, number], [number, number], [number, number]];
+/**
+ * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Range3D3 = [[number, number], [number, number], [number, number]];
+/**
+ * Axis scale factors as [sx,sy,sz]. Default: [1,1,1].
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec3Number11 = [number, number, number];
+
+/**
+ * Multi-scene lesson format with a 'scenes' array.
+ */
+export interface LessonFormat {
+  /**
+   * Lesson title displayed in the UI header. Example: "Eigenvalues & Eigenvectors".
+   */
+  title: string;
+  /**
+   * Domain library names to import from static/domains/<name>/index.js. These register additional math functions available in expressions. Example: ["astrodynamics"].
+   */
+  import?: string[];
+  glossary?: Glossary;
+  /**
+   * Automatic glossary matching for the whole lesson: a glossary key, term or alias at least this many characters long is linked at its first appearance in each paragraph (list items, table rows and headings each count as one), without an explicit marker (longest match wins; all-caps acronyms match their exact case only). Defaults to 2 when absent; set 0 to turn automatic matching off so only explicit {{glossary:KEY}} markers are linked.
+   */
+  glossaryMatchThreshold?: number;
+  /**
+   * When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.
+   */
+  unsafe?: boolean;
+  /**
+   * Human-readable explanation of why this lesson uses unsafe JS, shown in the trust dialog. Example: "This lesson uses scene-level reusable functions with IIFE loops."
+   */
+  unsafeExplanation?: string;
+  data?: DataTable;
+  /**
+   * Root-level proof(s) visible across all scenes. Can be a single proof object or an array of proofs.
+   */
+  proof?: Proof | Proof[];
+  /**
+   * Array of scenes in the lesson. Each scene has its own 3D elements, steps, camera, and optional proof.
+   *
+   * @minItems 1
+   */
+  scenes: [Scene, ...Scene[]];
+  /**
+   * Display-only source files in the Code dock. Never executed.
+   */
+  codeFiles?: CodeFile[];
+}
+/**
+ * Lesson-wide glossary. Layered over the glossaries of imported domains; a lesson entry wins on a shared key.
+ */
+export interface Glossary {
+  [k: string]: GlossaryEntry;
+}
+/**
+ * One glossary term. The key it is stored under is what an explicit {{glossary:KEY}} marker names.
+ */
+export interface GlossaryEntry {
+  /**
+   * Display name shown as the tooltip title. Defaults to the key. Example: "Gaussian RBF kernel".
+   */
+  term?: string;
+  /**
+   * Other spellings that resolve to this term, both for explicit markers and automatic matching. Example: ["radial basis function", "Gaussian kernel"].
+   */
+  aliases?: string[];
+  /**
+   * Definition shown in the tooltip. Markdown with KaTeX math via $inline$ and $$display$$, rendered like scene markdown.
+   */
+  markdown?: string;
+  /**
+   * Message sent to the AI chat by the tooltip's Ask AI button. Defaults to asking the AI to explain the term in the context of the lesson.
+   */
+  prompt?: string;
+}
+/**
+ * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions.
+ */
+export interface DataTable {
+  [k: string]:
+    | {
+        [k: string]: unknown;
+      }[]
+    | {
+        [k: string]: unknown;
+      };
+}
+/**
+ * A step-by-step mathematical proof or derivation displayed in the proof panel.
+ */
+export interface Proof {
+  /**
+   * Unique proof ID for stable navigation state persistence across scene switches.
+   */
+  id?: string;
+  /**
+   * Proof title displayed in the panel header. Example: "Bayes' Theorem Derivation".
+   */
+  title: string;
+  /**
+   * Goal statement rendered with renderKaTeX. Use $...$ or $$...$$ delimiters for math — bare LaTeX renders as plain text. Example (display math): "$$P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$$". Example (prose): "Show that $P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$".
+   */
+  goal?: string;
+  /**
+   * Proof technique shown as a colored badge. 'derivation' is hidden (no badge shown).
+   */
+  technique?:
+    | 'direct'
+    | 'contradiction'
+    | 'contrapositive'
+    | 'cases'
+    | 'induction'
+    | 'strongInduction'
+    | 'wellOrdering'
+    | 'construction'
+    | 'nonConstructive'
+    | 'counterexample'
+    | 'exhaustion'
+    | 'equivalence'
+    | 'invariant'
+    | 'probabilistic'
+    | 'existence'
+    | 'uniqueness'
+    | 'derivation';
+  /**
+   * Tooltip text explaining why this technique was chosen. Shown on hover over the technique badge.
+   */
+  techniqueHint?: string;
+  /**
+   * Subject domain of the proof ("physics", "algebra", "calculus", "quantum", "statistics", …). Free-form, not enumerated. Read by the Function Analysis page as `mathDomain` context: it is the signal that decides whether e.g. negative time is exploration or nonsense, which the CAS's purely mathematical domain can never know. Set on standalone proofs under proofs/domains/.
+   */
+  domain?: string;
+  /**
+   * Scene step to navigate to when viewing the proof goal. Integer for step index, or 'sceneIdx:stepIdx' string. Enables bidirectional sync between proof and scene navigation.
+   */
+  sceneStep?: number | string;
+  /**
+   * System prompt for the AI when discussing this proof. Provides context about the proof for the chat tutor.
+   */
+  prompt?: string;
+  /**
+   * Array of proof steps rendered sequentially.
+   *
+   * @minItems 1
+   */
+  steps: [ProofStep, ...ProofStep[]];
+}
+/**
+ * A single step in a mathematical proof.
+ */
+export interface ProofStep {
+  /**
+   * Optional stable proof-step ID for references, context, and future navigation/state features.
+   */
+  id?: string;
+  /**
+   * Step type displayed as a badge. Common values: 'step', 'definition', 'axiom', 'theorem', 'lemma', 'assumption', 'substitution', 'simplification', 'conclusion'. Default: 'step'.
+   */
+  type?: string;
+  /**
+   * Step label/title. Example: "Apply definition of conditional probability".
+   */
+  label: string;
+  /**
+   * LaTeX math expression rendered via KaTeX in display mode. Example: "P(A|B) = \\frac{P(A \\cap B)}{P(B)}". Can include highlight spans via \\htmlClass{hl-name}{content}.
+   */
+  math?: string;
+  /**
+   * Short justification text rendered below the math. Supports inline KaTeX. Example: "By the multiplication rule".
+   */
+  justification?: string;
+  /**
+   * Longer explanation rendered as markdown below the justification. For additional context.
+   */
+  explanation?: string;
+  /**
+   * System prompt hint for the AI when this proof step is active. Provides step-specific teaching guidance for the chat tutor.
+   */
+  prompt?: string;
+  /**
+   * Tags displayed as small badges on the step. Example: ["algebra", "key-insight"].
+   */
+  tags?: string[];
+  /**
+   * Named highlight regions in the math expression. Keys match \\htmlClass{hl-<name>}{...} spans in the math field.
+   */
+  highlights?: {
+    [k: string]: ProofHighlight;
+  };
+  /**
+   * Scene step to sync to when this proof step is active. Integer for step index in current scene, or 'sceneIdx:stepIdx' for cross-scene.
+   */
+  sceneStep?: number | string;
+  /**
+   * Optional semantic graph for this step. Contains either a successfully derived graph or an error record explaining why derivation failed.
+   */
+  semanticGraph?:
+    | {
+        /**
+         * Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py.
+         */
+        graph: {
+          [k: string]: unknown;
+        };
+      }
+    | {
+        /**
+         * Diagnostic record attached by the server when auto-derivation failed. Surfaced in the Math dock view so the user can see why a graph is missing.
+         */
+        error: {
+          /**
+           * 'parse_failed' — parser returned no graph (unsupported construct). 'parse_crashed' — parser raised an exception.
+           */
+          reason: 'parse_failed' | 'parse_crashed';
+          /**
+           * Human-readable explanation of the failure.
+           */
+          message: string;
+          /**
+           * The original LaTeX source that failed to parse.
+           */
+          math?: string;
+        };
+      };
+}
+/**
+ * Highlight configuration for a named region in proof math expressions.
+ */
+export interface ProofHighlight {
+  /**
+   * Highlight color. Default: 'cyan'.
+   */
+  color?:
+    | 'cyan'
+    | 'yellow'
+    | 'green'
+    | 'orange'
+    | 'magenta'
+    | 'red'
+    | 'blue'
+    | 'pink'
+    | 'white'
+    | 'gray'
+    | 'gold'
+    | 'silver'
+    | 'purple'
+    | 'teal'
+    | 'lime';
+  /**
+   * Tooltip and annotation text for the highlight. Shown on hover and click.
+   */
+  label?: string;
+}
+/**
+ * A single scene within a lesson, containing 3D elements and optional steps.
+ */
+export interface Scene {
+  /**
+   * Stable scene id for deeplinking (the `sc=` param). Resolution is id → slug(title) → index, so an explicit id keeps a share/AI-jump link valid even when the title changes. Kebab-case recommended.
+   */
+  id?: string;
+  /**
+   * Scene title displayed in the navigation dock. Example: "$P(A)$ — Prior".
+   */
+  title: string;
+  /**
+   * Short description of the scene shown below the title. Supports markdown.
+   */
+  description?: string;
+  /**
+   * Markdown content for the explanation/documentation panel. Supports KaTeX math via $inline$ and $$display$$ delimiters.
+   */
+  markdown?: string;
+  /**
+   * System prompt for the AI chat tutor in this scene. Tells the AI what/how to teach. Example: "You are a patient tutor helping a student understand Bayes' theorem..."
+   */
+  prompt?: string;
+  range?: Range3D;
+  scale?: Vec3Number;
+  camera?: Camera;
+  /**
+   * Named camera presets rendered as clickable buttons. Example: Overview, Face On, Iso.
+   */
+  views?: View[];
+  /**
+   * Reusable scene-level functions callable from expressions. Registered in the math.js sandbox.
+   */
+  functions?: SceneFunction[];
+  data?: DataTable1;
+  starfield?: Starfield;
+  /**
+   * Base scene elements rendered when the scene loads (before any steps).
+   */
+  elements?: Element[];
+  /**
+   * Incremental steps that add/remove elements and sliders. Navigated with Next/Prev.
+   */
+  steps?: Step[];
+  /**
+   * Proof(s) associated with this scene. Displayed in the proof panel.
+   */
+  proof?: Proof | Proof[];
+  /**
+   * Auto-play duration in milliseconds for the base scene (before step 0). Default: 3000.
+   */
+  duration?: number;
+  stepPlayback?: StepPlayback;
+}
+/**
+ * Initial camera position and target for this scene.
+ */
+export interface Camera {
+  position?: Vec3Number1;
+  target?: Vec3Number2;
+  up?: Vec3Number3;
+}
+/**
+ * Named camera preset shown as a clickable button.
+ */
+export interface View {
+  /**
+   * Button label. Example: "Overview", "Face On".
+   */
+  name: string;
+  /**
+   * Tooltip text describing this view.
+   */
+  description?: string;
+  position?: Vec3Number4;
+  /**
+   * Dynamic camera position as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space.
+   *
+   * @minItems 3
+   * @maxItems 3
+   */
+  positionExpr?: [string, string, string];
+  target?: Vec3Number5;
+  /**
+   * Dynamic camera target as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space.
+   *
+   * @minItems 3
+   * @maxItems 3
+   */
+  targetExpr?: [string, string, string];
+  up?: Vec3Number6;
+  /**
+   * Element ID (or list of candidate IDs — the live one is tracked) to follow with the camera. The camera tracks the element's animated position.
+   */
+  follow?: string | [string, ...string[]];
+  offset?: Vec3Number7;
+  /**
+   * Axis indices for angle-lock camera mode.
+   */
+  angleLockAxis?: number[];
+  /**
+   * Element IDs defining the angle-lock direction vector.
+   */
+  angleLockDirection?: string[];
+  /**
+   * Element IDs defining the angle-lock reference vector.
+   */
+  angleLockVector?: string[];
+}
+/**
+ * Reusable function registered in the math.js sandbox. Can be called from any expression in the scene.
+ */
+export interface SceneFunction {
+  /**
+   * Function name usable in expressions. Example: "hx" allows calling hx() in expressions.
+   */
+  name: string;
+  /**
+   * Function argument names. Example: ["mode"] for a function that takes one argument.
+   */
+  args?: string[];
+  /**
+   * Function body as a math.js expression or IIFE JavaScript string. For complex logic, use an IIFE: "(()=>{...})()". Requires 'unsafe: true' at lesson level.
+   */
+  expr: string;
+}
+/**
+ * Scene-level data tables. Override lesson-level tables with the same name.
+ */
+export interface DataTable1 {
+  [k: string]:
+    | {
+        [k: string]: unknown;
+      }[]
+    | {
+        [k: string]: unknown;
+      };
+}
+/**
+ * Background starfield configuration for space-themed scenes.
+ */
+export interface Starfield {
+  /**
+   * Whether starfield is visible. Default: true.
+   */
+  enabled?: boolean;
+  /**
+   * Number of star particles. Default: 900.
+   */
+  count?: number;
+  /**
+   * Inner radius of the star shell. Default: auto-calculated from scene range.
+   */
+  radiusMin?: number;
+  /**
+   * Outer radius of the star shell. Default: auto-calculated from scene range.
+   */
+  radiusMax?: number;
+  /**
+   * Star particle size. Default: 2.1.
+   */
+  size?: number;
+  /**
+   * Star opacity. Default: 0.9.
+   */
+  opacity?: number;
+  /**
+   * Twinkle intensity 0-1. Default: 0.25.
+   */
+  twinkle?: number;
+  /**
+   * Star color as hex string. Default: '#d9e6ff'.
+   */
+  color?: string;
 }
 /**
  * Material shader configuration for 3D objects (sphere, cylinder, polygon, parametric_surface).
@@ -1497,6 +1612,56 @@ export interface FillRegion {
    * Outline opacity.
    */
   outlineOpacity?: number | string;
+}
+export interface AlgorithmSnapshot {
+  entities: {
+    [k: string]: {
+      value: number;
+    };
+  };
+  arrays: {
+    [k: string]: string[];
+  };
+  variables: {
+    [k: string]: {
+      value: number;
+      reference?: {
+        array: string;
+      };
+    };
+  };
+  relations: {
+    id: string;
+    from: string;
+    to: string;
+    kind: string;
+  }[];
+  execution: {
+    phase: string;
+    operands: string[];
+  };
+}
+export interface ArrayMarker {
+  /**
+   * Uses the same marker component as a standalone step_marker.
+   */
+  type?: 'step_marker';
+  /**
+   * STEP_MARKER: variable name displayed in the index badge.
+   */
+  indexName: string;
+  /**
+   * STEP_MARKER: expression yielding a nonnegative integer index.
+   */
+  indexExpr: string;
+  /**
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+   */
+  color?: string | [number, number, number];
+  /**
+   * Math.js boolean expression controlling visibility. Element is visible when expression evaluates to truthy. Example: "orbitImpactT(1) >= 0".
+   */
+  visibleExpr?: string;
 }
 /**
  * An incremental step that adds/removes elements and configures sliders.
@@ -1680,6 +1845,36 @@ export interface VirtualTime {
    * Math.js expression producing the virtual time value. Use slider IDs. Example: "tau*T" where tau is a slider.
    */
   expr: string;
+}
+/**
+ * General discrete state player bound to an existing integer slider. No algorithm knowledge.
+ */
+export interface StepPlayback {
+  slider: string;
+  intervalMs?: number;
+}
+export interface CodeFile {
+  id: string;
+  path: string;
+  language?: string;
+  source: string;
+  /**
+   * Expression for one-based active line. Evaluated on lesson navigation and slider changes, not every frame. Zero clears the marker.
+   */
+  activeLineExpr?: string;
+  locations?: {
+    line: number;
+    scene: string;
+    step: string;
+    snapshot?: number;
+    label?: string;
+  }[];
+  marks?: {
+    line: number;
+    startColumn: number;
+    endColumn: number;
+    color?: 'gold' | 'blue' | 'green' | 'pink';
+  }[];
 }
 /**
  * Single-scene format with top-level 'elements' (no 'scenes' array).

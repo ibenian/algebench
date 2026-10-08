@@ -66,6 +66,13 @@
           },
           "minItems": 1,
           "description": "Array of scenes in the lesson. Each scene has its own 3D elements, steps, camera, and optional proof."
+        },
+        "codeFiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/codeFile"
+          },
+          "description": "Display-only source files in the Code dock. Never executed."
         }
       },
       "additionalProperties": false
@@ -259,6 +266,9 @@
           "type": "integer",
           "description": "Auto-play duration in milliseconds for the base scene (before step 0). Default: 3000.",
           "default": 3000
+        },
+        "stepPlayback": {
+          "$ref": "#/$defs/stepPlayback"
         }
       },
       "additionalProperties": false
@@ -377,7 +387,12 @@
             "animated_polygon",
             "animated_curve",
             "tensor",
-            "chart"
+            "chart",
+            "algorithm_structure",
+            "step_marker",
+            "array",
+            "expression_label",
+            "stack"
           ],
           "description": "Element type determining the renderer. Must be one of the supported types."
         },
@@ -456,7 +471,7 @@
             "minimum": 1
           },
           "minItems": 1,
-          "description": "TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6]."
+          "description": "ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6]."
         },
         "axes": {
           "type": "array",
@@ -493,9 +508,13 @@
             "additionalProperties": false
           }
         },
+        "lengthExpr": {
+          "type": "string",
+          "description": "ARRAY / STACK. Integer length from 0 to 256, evaluated on state changes. Cells, indices and owned markers update when the length changes; valueExpr supplies each cell using idx."
+        },
         "valueExpr": {
           "type": "string",
-          "description": "TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. \"dataTable('attn', row, concat('w', col))\" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame."
+          "description": "ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. \"dataTable('attn', row, concat('w', col))\" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame."
         },
         "bind": {
           "type": "string",
@@ -503,7 +522,7 @@
         },
         "values": {
           "type": "array",
-          "description": "TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.",
+          "description": "ARRAY: shape is [length]; values is a flat list of number, string, boolean or null; valueExpr reads each cell with idx bound on state changes, never every frame. TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.",
           "items": {}
         },
         "widthExpr": {
@@ -1298,8 +1317,182 @@
             },
             "additionalProperties": false
           }
+        },
+        "algorithmStates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/algorithmSnapshot"
+          },
+          "description": "Complete semantic snapshots only. No visual deltas or highlight instructions."
+        },
+        "stateSlider": {
+          "type": "string",
+          "description": "Scalar slider selecting a zero-based snapshot."
+        },
+        "arrayId": {
+          "type": "string",
+          "description": "Array displayed as both slots and a complete binary tree."
+        },
+        "heapInsertion": {
+          "type": "object",
+          "properties": {
+            "arraySlider": {
+              "type": "string"
+            },
+            "keySlider": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "arraySlider",
+            "keySlider"
+          ],
+          "additionalProperties": false,
+          "description": "Generate full deterministic heap-insertion snapshots from editable inputs. Starting values must form a min-heap."
+        },
+        "motionSlider": {
+          "type": "string",
+          "description": "Slider controlling transition duration in seconds."
+        },
+        "depthSlider": {
+          "type": "string",
+          "description": "Slider controlling block depth in data units."
+        },
+        "itemType": {
+          "enum": [
+            "number",
+            "character",
+            "string",
+            "boolean",
+            "empty",
+            "mixed"
+          ],
+          "description": "ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion.",
+          "default": "mixed"
+        },
+        "showIndices": {
+          "type": "boolean",
+          "default": true,
+          "description": "ARRAY / STACK. Show small index tags attached to cells. Defaults to true for arrays and false for stacks."
+        },
+        "arrayLayout": {
+          "enum": [
+            "horizontal",
+            "vertical"
+          ],
+          "default": "horizontal",
+          "description": "ARRAY ONLY. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap."
+        },
+        "fontSize": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 14,
+          "description": "ARRAY ONLY. Cell value font size in CSS pixels."
+        },
+        "indexFontSize": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 10,
+          "description": "ARRAY ONLY. Index tag font size in CSS pixels, multiplied by the display label scale."
+        },
+        "highlightExpr": {
+          "type": "string",
+          "description": "ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes."
+        },
+        "indexName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "STEP_MARKER: variable name displayed in the index badge."
+        },
+        "indexExpr": {
+          "type": "string",
+          "minLength": 1,
+          "description": "STEP_MARKER: expression yielding a nonnegative integer index."
+        },
+        "indexGroup": {
+          "type": "string",
+          "minLength": 1,
+          "description": "STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge."
+        },
+        "connectTo": {
+          "type": "object",
+          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "indexExpr": {
+                  "type": "string",
+                  "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "positionExpr"
+              ],
+              "properties": {
+                "positionExpr": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/arrayMarker"
+          },
+          "description": "ARRAY / STACK: owned index markers. The owner supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression."
+        },
+        "containerColor": {
+          "type": "string",
+          "description": "STACK: color of the owned growing container."
+        },
+        "emptyText": {
+          "type": "string",
+          "default": "empty",
+          "description": "STACK: text shown inside the empty container."
+        },
+        "showTop": {
+          "type": "boolean",
+          "default": true,
+          "description": "STACK: show an owned top slot index marker; hidden automatically when empty."
         }
       },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "stack" } } },
+          "then": {
+            "anyOf": [
+              { "required": ["values"] },
+              { "required": ["lengthExpr", "valueExpr"] },
+              { "required": ["shape", "valueExpr"] }
+            ],
+            "properties": {
+              "shape": { "maxItems": 1, "items": { "type": "integer", "minimum": 1, "maximum": 256 } },
+              "values": { "maxItems": 256, "items": { "type": ["number", "string", "boolean", "null"] } }
+            }
+          }
+        }
+      ],
       "additionalProperties": true,
       "if": {
         "properties": {
@@ -1322,7 +1515,101 @@
             "type": "integer",
             "description": "Only a chart takes the [w, h] form; every other type reads a pixel size."
           }
+        },
+        "if": {
+          "properties": {
+            "type": {
+              "const": "algorithm_structure"
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "stateSlider",
+            "arrayId"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "algorithmStates"
+              ]
+            },
+            {
+              "required": [
+                "heapInsertion"
+              ]
+            }
+          ]
+        },
+        "else": {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "array"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "lengthExpr",
+                  "valueExpr"
+                ]
+              },
+              {
+                "required": [
+                  "values"
+                ]
+              },
+              {
+                "required": [
+                  "shape",
+                  "valueExpr"
+                ]
+              }
+            ],
+            "properties": {
+              "shape": {
+                "maxItems": 1,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 256
+                }
+              },
+              "values": {
+                "minItems": 1,
+                "maxItems": 256,
+                "items": {
+                  "type": [
+                    "number",
+                    "string",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
         }
+      },
+      "dependentRequired": {
+        "lengthExpr": [
+          "valueExpr"
+        ],
+        "indexName": [
+          "indexExpr",
+          "indexGroup"
+        ],
+        "indexExpr": [
+          "indexName",
+          "indexGroup"
+        ],
+        "indexGroup": [
+          "indexName",
+          "indexExpr"
+        ]
       }
     },
     "removeDirective": {
@@ -2362,6 +2649,272 @@
       "description": "Glossary of terms, keyed by the name an explicit {{glossary:KEY}} marker uses. Marked terms in scene markdown, scene and step descriptions and info overlays become hoverable, showing the definition in a tooltip with an Ask AI button. Terms from the glossary of every imported domain (static/domains/<name>/docs.json) are included; an entry here with the same key replaces the domain's. Keys should avoid underscores, which markdown reads as emphasis.",
       "additionalProperties": {
         "$ref": "#/$defs/glossaryEntry"
+      }
+    },
+    "algorithmSnapshot": {
+      "title": "AlgorithmSnapshot",
+      "type": "object",
+      "properties": {
+        "entities": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "arrays": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          }
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "reference": {
+                "type": "object",
+                "properties": {
+                  "array": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "array"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "from": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "from",
+              "to",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string",
+              "minLength": 1
+            },
+            "operands": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "phase",
+            "operands"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "entities",
+        "arrays",
+        "variables",
+        "relations",
+        "execution"
+      ],
+      "additionalProperties": false
+    },
+    "codeFile": {
+      "title": "CodeFile",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "activeLineExpr": {
+          "type": "string",
+          "description": "Expression for one-based active line. Evaluated on lesson navigation and slider changes, not every frame. Zero clears the marker."
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "scene": {
+                "type": "string"
+              },
+              "step": {
+                "type": "string"
+              },
+              "snapshot": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "line",
+              "scene",
+              "step"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "startColumn": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "endColumn": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "color": {
+                "enum": [
+                  "gold",
+                  "blue",
+                  "green",
+                  "pink"
+                ]
+              }
+            },
+            "required": [
+              "line",
+              "startColumn",
+              "endColumn"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "stepPlayback": {
+      "title": "StepPlayback",
+      "type": "object",
+      "properties": {
+        "slider": {
+          "type": "string"
+        },
+        "intervalMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 10000,
+          "default": 900
+        }
+      },
+      "required": [
+        "slider"
+      ],
+      "additionalProperties": false,
+      "description": "General discrete state player bound to an existing integer slider. No algorithm knowledge."
+    },
+    "arrayMarker": {
+      "title": "ArrayMarker",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "indexName",
+        "indexExpr"
+      ],
+      "properties": {
+        "type": {
+          "const": "step_marker",
+          "description": "Uses the same marker component as a standalone step_marker."
+        },
+        "indexName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "STEP_MARKER: variable name displayed in the index badge."
+        },
+        "indexExpr": {
+          "type": "string",
+          "minLength": 1,
+          "description": "STEP_MARKER: expression yielding a nonnegative integer index."
+        },
+        "color": {
+          "$ref": "#/$defs/color",
+          "description": "Element color as hex string '#rrggbb' or RGB array [r,g,b] with values 0-1. Default varies by type."
+        },
+        "visibleExpr": {
+          "type": "string",
+          "description": "Math.js boolean expression controlling visibility. Element is visible when expression evaluates to truthy. Example: \"orbitImpactT(1) >= 0\"."
+        }
       }
     }
   }

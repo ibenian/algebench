@@ -1,5 +1,7 @@
 import { parseColor, addLabel3D } from '/labels.js';
 import type { Element } from '/types/lesson.js';
+import { compileExpr, evalExpr } from '/expr.js';
+import { registerAnimExpr } from '/sliders.js';
 
 /** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
 type Rgb3 = [number, number, number];
@@ -11,6 +13,25 @@ export function renderPlane(el: Element, view: MathBoxNode) {
     const point = el.point || [0, 0, 0];
     const size = typeof el.size === 'number' && el.size > 0 ? el.size : 4;
     const label = el.label;
+    // Four corners in matrix order allow rectangular, state-bound panels.
+    if(el.points?.length===4){
+        const sources=el.points;
+        const fns=sources.map(point=>point.map(value=>compileExpr(String(value))));
+        const evaluate=()=>fns.map(point=>point.map(fn=>Number(evalExpr(fn,0))));
+        const data=evaluate();
+        const matrix=view.matrix({channels:3,width:2,height:2,data});
+        matrix.surface({shaded:false,color:new THREE.Color(...color),opacity,zBias:-2});
+        const animState={stopped:false};
+        let previous=JSON.stringify(data);
+        const entry={animState,exprStrings:sources.flat().map(String),_rebuildFn:()=>{
+            if(animState.stopped)return;
+            const next=evaluate(),key=JSON.stringify(next);
+            if(key===previous)return;
+            previous=key;matrix.set('data',next);
+        }};
+        if(sources.some(point=>point.some(value=>typeof value==='string')))registerAnimExpr(entry);
+        return {type:'plane',color,label,_animState:animState,_animExprEntry:entry};
+    }
 
     const n = new THREE.Vector3(...normal).normalize();
 
