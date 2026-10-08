@@ -492,10 +492,9 @@ export function updateLabels(): void {
                 const world = dataToWorld(point as [number, number, number]);
                 return new THREE.Vector3(...world).project(camera);
             });
-            const xs = corners.map(p => (p.x * .5 + .5) * w);
-            const ys = corners.map(p => (-p.y * .5 + .5) * h);
-            targetX = (Math.min(...xs) + Math.max(...xs)) / 2;
-            targetY = attachment.edge === 'top' ? Math.min(...ys) - attachment.gap : Math.max(...ys) + attachment.gap;
+            const anchor = cellEdgeAnchor(corners.map(p => ({x:(p.x * .5 + .5) * w,y:(-p.y * .5 + .5) * h})), attachment.edge, attachment.gap);
+            targetX = anchor.x;
+            targetY = anchor.y;
         }
         if (lbl.annotationPosition && lbl.annotationCoordinateMode === 'screen') {
             targetX = lbl.annotationPosition.x;
@@ -572,8 +571,10 @@ export function updateLabels(): void {
     // exactly the one kept bright.
     const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
     for (let i = 0; i < ordered.length; i++) {
-        const zi = ordered.length - i; // front (index 0) gets the highest z-index
         const o = ordered[i]!;
+        // Screen overlays have their own paint band above every world label,
+        // including array index tags. Preserve depth order within each band.
+        const zi = ordered.length - i + (o.annotationCoordinateMode === 'screen' ? ordered.length : 0);
         if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
     }
     updateLabelWire();
@@ -1093,3 +1094,4 @@ export function injectAskButtons(contentEl: Element): void {
         el.appendChild(btn);
     });
 }
+import { cellEdgeAnchor } from '/cell-attachment.js';

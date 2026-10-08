@@ -1185,6 +1185,16 @@ function projectedCellEdge(start, centre, corners, gap = 4, avoidIndex = false) 
 	} : centre;
 }
 //#endregion
+//#region src/cell-attachment.ts
+/** Shared screen-space anchor for a cell's index tag and connection endpoint. */
+function cellEdgeAnchor(corners, edge, gap = 0) {
+	const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+	return {
+		x: (Math.min(...xs) + Math.max(...xs)) / 2,
+		y: edge === "top" ? Math.min(...ys) - gap : Math.max(...ys) + gap
+	};
+}
+//#endregion
 //#region src/label-wire.ts
 /** Hover wires are presentation only. Target expressions are evaluated by bindings. */
 var wires = /* @__PURE__ */ new Map();
@@ -1341,13 +1351,16 @@ function paintWire(record) {
 		x: (box.left + box.right) / 2 - rect.left,
 		y: start.y
 	}, centre, corners) : null;
-	const end = attachment?.end ?? (hasOutline ? projectedCellEdge(start, centre, corners, 5, !!cell) : centre);
+	const end = cell && hasOutline ? cellEdgeAnchor(corners, "bottom") : attachment?.end ?? (hasOutline ? projectedCellEdge(start, centre, corners, 5, !!cell) : centre);
 	if (attachment) {
 		left = end.x < (box.left + box.right) / 2 - rect.left;
 		departure.x = left ? -1 : 1;
 		start.x = (left ? box.left : box.right) - rect.left;
 	}
-	const approach = attachment?.approach ?? (belowCell ? {
+	const approach = cell ? {
+		x: start.x < end.x ? -1 : 1,
+		y: 0
+	} : attachment?.approach ?? (belowCell ? {
 		x: 0,
 		y: 1
 	} : {
@@ -2075,14 +2088,15 @@ function updateLabels() {
 		let targetY = (-projected.y * .5 + .5) * h;
 		if (lbl.cellAttachment) {
 			const attachment = lbl.cellAttachment;
-			const corners = attachment.corners.map((point) => {
+			const anchor = cellEdgeAnchor(attachment.corners.map((point) => {
 				const world = dataToWorld(point);
 				return new THREE.Vector3(...world).project(camera);
-			});
-			const xs = corners.map((p) => (p.x * .5 + .5) * w);
-			const ys = corners.map((p) => (-p.y * .5 + .5) * h);
-			targetX = (Math.min(...xs) + Math.max(...xs)) / 2;
-			targetY = attachment.edge === "top" ? Math.min(...ys) - attachment.gap : Math.max(...ys) + attachment.gap;
+			}).map((p) => ({
+				x: (p.x * .5 + .5) * w,
+				y: (-p.y * .5 + .5) * h
+			})), attachment.edge, attachment.gap);
+			targetX = anchor.x;
+			targetY = anchor.y;
 		}
 		if (lbl.annotationPosition && lbl.annotationCoordinateMode === "screen") {
 			targetX = lbl.annotationPosition.x;
@@ -2144,8 +2158,8 @@ function updateLabels() {
 	}
 	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
-		const zi = ordered.length - i;
 		const o = ordered[i];
+		const zi = ordered.length - i + (o.annotationCoordinateMode === "screen" ? ordered.length : 0);
 		if (o._zi !== zi) {
 			o.el.style.zIndex = String(zi);
 			o._zi = zi;
@@ -3478,8 +3492,9 @@ function playbackPosition(value, min, max) {
 	};
 }
 function setupStepPlayer() {
-	const host = document.getElementById("mathbox-wrapper");
-	if (!host) return;
+	const wrapper = document.getElementById("mathbox-wrapper");
+	if (!wrapper) return;
+	const host = wrapper;
 	const bar = document.createElement("div");
 	bar.id = "state-player";
 	bar.hidden = true;
@@ -3503,6 +3518,9 @@ function setupStepPlayer() {
 	counter.setAttribute("aria-label", "Execution position");
 	bar.append(previous, play, next, track, counter);
 	host.append(bar);
+	new ResizeObserver(() => {
+		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
+	}).observe(bar);
 	let timer = null;
 	let config;
 	const slider = () => config ? state.sceneSliders[config.slider] : void 0;
@@ -3517,9 +3535,11 @@ function setupStepPlayer() {
 		if (!s || s.kind === "tensor" || !Number.isInteger(s.min) || !Number.isInteger(s.max)) {
 			pause();
 			bar.hidden = true;
+			host.classList.remove("has-state-player");
 			return;
 		}
 		bar.hidden = false;
+		host.classList.add("has-state-player");
 		const p = playbackPosition(s.value, s.min, s.max);
 		track.min = String(s.min);
 		track.max = String(s.max);

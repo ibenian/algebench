@@ -1451,6 +1451,694 @@
           "label": "Unicode character · Valid: the input ended and the stack is empty."
         }
       ]
+    },
+    {
+      "id": "repair",
+      "path": "algorithms/repair.py",
+      "language": "python",
+      "source": "def repair(text):\n    chars = list(text)\n    pairs = {'(': ')', '[': ']', '{': '}'}\n    openers = {')': '(', ']': '[', '}': '{'}\n    stack = []\n    i = 0\n    while i < len(chars):\n        ch = chars[i]\n        if ch in pairs:\n            stack.append(i)\n        elif ch in openers:\n            if not stack:\n                chars.insert(i, openers[ch])\n                i += 1\n            else:\n                top = stack[-1]\n                expected = pairs[chars[top]]\n                if ch != expected:\n                    chars[i] = expected\n                stack.pop()\n        i += 1\n    while stack:\n        chars.append(pairs[chars[stack.pop()]])\n    return ''.join(chars)",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {
+          "line": 6,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 0,
+          "label": "Fix mismatched closers · Start with a mutable character array and an empty stack."
+        },
+        {
+          "line": 8,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 1,
+          "label": "Fix mismatched closers · Read \"(\" at index 0."
+        },
+        {
+          "line": 9,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 2,
+          "label": "Fix mismatched closers · Check whether this is an opener."
+        },
+        {
+          "line": 10,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 3,
+          "label": "Fix mismatched closers · Push opener index 0."
+        },
+        {
+          "line": 21,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 4,
+          "label": "Fix mismatched closers · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 5,
+          "label": "Fix mismatched closers · Read \"[\" at index 1."
+        },
+        {
+          "line": 9,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 6,
+          "label": "Fix mismatched closers · Check whether this is an opener."
+        },
+        {
+          "line": 10,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 7,
+          "label": "Fix mismatched closers · Push opener index 1."
+        },
+        {
+          "line": 21,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 8,
+          "label": "Fix mismatched closers · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 9,
+          "label": "Fix mismatched closers · Read \")\" at index 2."
+        },
+        {
+          "line": 9,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 10,
+          "label": "Fix mismatched closers · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 11,
+          "label": "Fix mismatched closers · Check whether this is a closer."
+        },
+        {
+          "line": 12,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 12,
+          "label": "Fix mismatched closers · Check whether an unmatched opener exists."
+        },
+        {
+          "line": 16,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 13,
+          "label": "Fix mismatched closers · Peek at opener index 1."
+        },
+        {
+          "line": 17,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 14,
+          "label": "Fix mismatched closers · The stack top requires ]."
+        },
+        {
+          "line": 18,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 15,
+          "label": "Fix mismatched closers · Compare ) with ]."
+        },
+        {
+          "line": 19,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 16,
+          "label": "Fix mismatched closers · Replace ) with ] to close the most recent opener."
+        },
+        {
+          "line": 20,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 17,
+          "label": "Fix mismatched closers · The pair is complete; pop its opener."
+        },
+        {
+          "line": 21,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 18,
+          "label": "Fix mismatched closers · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 19,
+          "label": "Fix mismatched closers · Read \"]\" at index 3."
+        },
+        {
+          "line": 9,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 20,
+          "label": "Fix mismatched closers · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 21,
+          "label": "Fix mismatched closers · Check whether this is a closer."
+        },
+        {
+          "line": 12,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 22,
+          "label": "Fix mismatched closers · Check whether an unmatched opener exists."
+        },
+        {
+          "line": 16,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 23,
+          "label": "Fix mismatched closers · Peek at opener index 0."
+        },
+        {
+          "line": 17,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 24,
+          "label": "Fix mismatched closers · The stack top requires )."
+        },
+        {
+          "line": 18,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 25,
+          "label": "Fix mismatched closers · Compare ] with )."
+        },
+        {
+          "line": 19,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 26,
+          "label": "Fix mismatched closers · Replace ] with ) to close the most recent opener."
+        },
+        {
+          "line": 20,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 27,
+          "label": "Fix mismatched closers · The pair is complete; pop its opener."
+        },
+        {
+          "line": 21,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 28,
+          "label": "Fix mismatched closers · Advance to the next character."
+        },
+        {
+          "line": 24,
+          "scene": "repair-mismatch",
+          "step": "repair",
+          "snapshot": 29,
+          "label": "Fix mismatched closers · Valid result: \"([])\". 2 edits."
+        },
+        {
+          "line": 6,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 0,
+          "label": "Fix an extra closer · Start with a mutable character array and an empty stack."
+        },
+        {
+          "line": 8,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 1,
+          "label": "Fix an extra closer · Read \"(\" at index 0."
+        },
+        {
+          "line": 9,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 2,
+          "label": "Fix an extra closer · Check whether this is an opener."
+        },
+        {
+          "line": 10,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 3,
+          "label": "Fix an extra closer · Push opener index 0."
+        },
+        {
+          "line": 21,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 4,
+          "label": "Fix an extra closer · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 5,
+          "label": "Fix an extra closer · Read \")\" at index 1."
+        },
+        {
+          "line": 9,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 6,
+          "label": "Fix an extra closer · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 7,
+          "label": "Fix an extra closer · Check whether this is a closer."
+        },
+        {
+          "line": 12,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 8,
+          "label": "Fix an extra closer · Check whether an unmatched opener exists."
+        },
+        {
+          "line": 16,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 9,
+          "label": "Fix an extra closer · Peek at opener index 0."
+        },
+        {
+          "line": 17,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 10,
+          "label": "Fix an extra closer · The stack top requires )."
+        },
+        {
+          "line": 18,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 11,
+          "label": "Fix an extra closer · Compare ) with )."
+        },
+        {
+          "line": 20,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 12,
+          "label": "Fix an extra closer · The pair is complete; pop its opener."
+        },
+        {
+          "line": 21,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 13,
+          "label": "Fix an extra closer · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 14,
+          "label": "Fix an extra closer · Read \")\" at index 2."
+        },
+        {
+          "line": 9,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 15,
+          "label": "Fix an extra closer · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 16,
+          "label": "Fix an extra closer · Check whether this is a closer."
+        },
+        {
+          "line": 12,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 17,
+          "label": "Fix an extra closer · Check whether an unmatched opener exists."
+        },
+        {
+          "line": 13,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 18,
+          "label": "Fix an extra closer · Insert ( before the orphan closer )."
+        },
+        {
+          "line": 14,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 19,
+          "label": "Fix an extra closer · Skip the inserted opener; this pair is already complete."
+        },
+        {
+          "line": 21,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 20,
+          "label": "Fix an extra closer · Advance to the next character."
+        },
+        {
+          "line": 24,
+          "scene": "repair-orphan",
+          "step": "repair",
+          "snapshot": 21,
+          "label": "Fix an extra closer · Valid result: \"()()\". 1 edit."
+        },
+        {
+          "line": 6,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 0,
+          "label": "Close leftover openers · Start with a mutable character array and an empty stack."
+        },
+        {
+          "line": 8,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 1,
+          "label": "Close leftover openers · Read \"(\" at index 0."
+        },
+        {
+          "line": 9,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 2,
+          "label": "Close leftover openers · Check whether this is an opener."
+        },
+        {
+          "line": 10,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 3,
+          "label": "Close leftover openers · Push opener index 0."
+        },
+        {
+          "line": 21,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 4,
+          "label": "Close leftover openers · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 5,
+          "label": "Close leftover openers · Read \"[\" at index 1."
+        },
+        {
+          "line": 9,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 6,
+          "label": "Close leftover openers · Check whether this is an opener."
+        },
+        {
+          "line": 10,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 7,
+          "label": "Close leftover openers · Push opener index 1."
+        },
+        {
+          "line": 21,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 8,
+          "label": "Close leftover openers · Advance to the next character."
+        },
+        {
+          "line": 22,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 9,
+          "label": "Close leftover openers · An unmatched opener still needs a closer."
+        },
+        {
+          "line": 23,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 10,
+          "label": "Close leftover openers · Append ] to close opener index 1."
+        },
+        {
+          "line": 22,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 11,
+          "label": "Close leftover openers · An unmatched opener still needs a closer."
+        },
+        {
+          "line": 23,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 12,
+          "label": "Close leftover openers · Append ) to close opener index 0."
+        },
+        {
+          "line": 24,
+          "scene": "repair-unclosed",
+          "step": "repair",
+          "snapshot": 13,
+          "label": "Close leftover openers · Valid result: \"([])\". 2 edits."
+        },
+        {
+          "line": 6,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 0,
+          "label": "Repair brackets in text · Start with a mutable character array and an empty stack."
+        },
+        {
+          "line": 8,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 1,
+          "label": "Repair brackets in text · Read \"a\" at index 0."
+        },
+        {
+          "line": 9,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 2,
+          "label": "Repair brackets in text · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 3,
+          "label": "Repair brackets in text · Check whether this is a closer."
+        },
+        {
+          "line": 11,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 4,
+          "label": "Repair brackets in text · Preserve ordinary text unchanged."
+        },
+        {
+          "line": 21,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 5,
+          "label": "Repair brackets in text · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 6,
+          "label": "Repair brackets in text · Read \"[\" at index 1."
+        },
+        {
+          "line": 9,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 7,
+          "label": "Repair brackets in text · Check whether this is an opener."
+        },
+        {
+          "line": 10,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 8,
+          "label": "Repair brackets in text · Push opener index 1."
+        },
+        {
+          "line": 21,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 9,
+          "label": "Repair brackets in text · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 10,
+          "label": "Repair brackets in text · Read \"b\" at index 2."
+        },
+        {
+          "line": 9,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 11,
+          "label": "Repair brackets in text · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 12,
+          "label": "Repair brackets in text · Check whether this is a closer."
+        },
+        {
+          "line": 11,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 13,
+          "label": "Repair brackets in text · Preserve ordinary text unchanged."
+        },
+        {
+          "line": 21,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 14,
+          "label": "Repair brackets in text · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 15,
+          "label": "Repair brackets in text · Read \")\" at index 3."
+        },
+        {
+          "line": 9,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 16,
+          "label": "Repair brackets in text · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 17,
+          "label": "Repair brackets in text · Check whether this is a closer."
+        },
+        {
+          "line": 12,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 18,
+          "label": "Repair brackets in text · Check whether an unmatched opener exists."
+        },
+        {
+          "line": 16,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 19,
+          "label": "Repair brackets in text · Peek at opener index 1."
+        },
+        {
+          "line": 17,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 20,
+          "label": "Repair brackets in text · The stack top requires ]."
+        },
+        {
+          "line": 18,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 21,
+          "label": "Repair brackets in text · Compare ) with ]."
+        },
+        {
+          "line": 19,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 22,
+          "label": "Repair brackets in text · Replace ) with ] to close the most recent opener."
+        },
+        {
+          "line": 20,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 23,
+          "label": "Repair brackets in text · The pair is complete; pop its opener."
+        },
+        {
+          "line": 21,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 24,
+          "label": "Repair brackets in text · Advance to the next character."
+        },
+        {
+          "line": 8,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 25,
+          "label": "Repair brackets in text · Read \"c\" at index 4."
+        },
+        {
+          "line": 9,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 26,
+          "label": "Repair brackets in text · Check whether this is an opener."
+        },
+        {
+          "line": 11,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 27,
+          "label": "Repair brackets in text · Check whether this is a closer."
+        },
+        {
+          "line": 11,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 28,
+          "label": "Repair brackets in text · Preserve ordinary text unchanged."
+        },
+        {
+          "line": 21,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 29,
+          "label": "Repair brackets in text · Advance to the next character."
+        },
+        {
+          "line": 24,
+          "scene": "repair-text",
+          "step": "repair",
+          "snapshot": 30,
+          "label": "Repair brackets in text · Valid result: \"a[b]c\". 1 edit."
+        }
+      ]
     }
   ],
   "scenes": [
@@ -1678,13 +2366,13 @@
             ],
             "n": 3,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 3.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -1697,13 +2385,13 @@
             ],
             "n": 3,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -1716,13 +2404,13 @@
             ],
             "n": 3,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -1809,13 +2497,13 @@
             ],
             "n": 2,
             "top": 2,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Read character \"]\" at index 4.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -1827,13 +2515,13 @@
             ],
             "n": 2,
             "top": 2,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -1845,13 +2533,13 @@
             ],
             "n": 2,
             "top": 2,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -1933,13 +2621,13 @@
             ],
             "n": 1,
             "top": 1,
-            "expected": "",
+            "expected": "{",
             "status": "Running",
             "message": "Read character \"}\" at index 5.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -1950,13 +2638,13 @@
             ],
             "n": 1,
             "top": 1,
-            "expected": "",
+            "expected": "{",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -1967,13 +2655,13 @@
             ],
             "n": 1,
             "top": 1,
-            "expected": "",
+            "expected": "{",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -2048,13 +2736,13 @@
             "stack": [],
             "n": 0,
             "top": 0,
-            "expected": "",
+            "expected": "{",
             "status": "Valid",
             "message": "Valid: the input ended and the stack is empty.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 0,
-            "hasExpected": 0
+            "hasExpected": 1
           }
         ]
       },
@@ -2113,7 +2801,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -2122,7 +2810,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -2242,7 +2930,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -2276,7 +2964,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -2290,7 +2978,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -2304,7 +2992,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -2318,7 +3006,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -2331,8 +3019,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -2341,8 +3029,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -2478,13 +3166,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 1.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -2495,13 +3183,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -2512,13 +3200,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -2642,13 +3330,13 @@
             ],
             "n": 1,
             "top": 0,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Read character \"]\" at index 3.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -2659,13 +3347,13 @@
             ],
             "n": 1,
             "top": 0,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -2676,13 +3364,13 @@
             ],
             "n": 1,
             "top": 0,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -2806,13 +3494,13 @@
             ],
             "n": 1,
             "top": 2,
-            "expected": "",
+            "expected": "{",
             "status": "Running",
             "message": "Read character \"}\" at index 5.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -2823,13 +3511,13 @@
             ],
             "n": 1,
             "top": 2,
-            "expected": "",
+            "expected": "{",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -2840,13 +3528,13 @@
             ],
             "n": 1,
             "top": 2,
-            "expected": "",
+            "expected": "{",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -2921,13 +3609,13 @@
             "stack": [],
             "n": 0,
             "top": 4,
-            "expected": "",
+            "expected": "{",
             "status": "Valid",
             "message": "Valid: the input ended and the stack is empty.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 0,
-            "hasExpected": 0
+            "hasExpected": 1
           }
         ]
       },
@@ -2986,7 +3674,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -2995,7 +3683,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -3115,7 +3803,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -3149,7 +3837,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -3163,7 +3851,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -3177,7 +3865,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -3191,7 +3879,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -3204,8 +3892,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -3214,8 +3902,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -3402,13 +4090,13 @@
             ],
             "n": 2,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 2.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -3420,13 +4108,13 @@
             ],
             "n": 2,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -3438,13 +4126,13 @@
             ],
             "n": 2,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -3575,7 +4263,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -3584,7 +4272,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -3704,7 +4392,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -3738,7 +4426,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -3752,7 +4440,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -3766,7 +4454,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -3780,7 +4468,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -3793,8 +4481,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -3803,8 +4491,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -3937,13 +4625,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 1.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -3954,13 +4642,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -3971,13 +4659,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -4052,13 +4740,13 @@
             "stack": [],
             "n": 0,
             "top": 0,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 2.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -4067,13 +4755,13 @@
             "stack": [],
             "n": 0,
             "top": 0,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -4082,13 +4770,13 @@
             "stack": [],
             "n": 0,
             "top": 0,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -4177,7 +4865,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -4186,7 +4874,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -4306,7 +4994,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -4340,7 +5028,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -4354,7 +5042,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -4368,7 +5056,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -4382,7 +5070,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -4395,8 +5083,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -4405,8 +5093,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -4656,7 +5344,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -4665,7 +5353,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -4785,7 +5473,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -4819,7 +5507,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -4833,7 +5521,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -4847,7 +5535,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -4861,7 +5549,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -4874,8 +5562,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -4884,8 +5572,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -4967,13 +5655,13 @@
             "stack": [],
             "n": 0,
             "top": -1,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Read character \"]\" at index 0.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -4982,13 +5670,13 @@
             "stack": [],
             "n": 0,
             "top": -1,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -4997,13 +5685,13 @@
             "stack": [],
             "n": 0,
             "top": -1,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -5092,7 +5780,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -5101,7 +5789,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -5221,7 +5909,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -5255,7 +5943,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -5269,7 +5957,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -5283,7 +5971,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -5297,7 +5985,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -5310,8 +5998,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -5320,8 +6008,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -5712,13 +6400,13 @@
             ],
             "n": 2,
             "top": -1,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Read character \"]\" at index 5.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -5730,13 +6418,13 @@
             ],
             "n": 2,
             "top": -1,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -5748,13 +6436,13 @@
             ],
             "n": 2,
             "top": -1,
-            "expected": "",
+            "expected": "[",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -5904,13 +6592,13 @@
             ],
             "n": 1,
             "top": 3,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 7.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -5921,13 +6609,13 @@
             ],
             "n": 1,
             "top": 3,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -5938,13 +6626,13 @@
             ],
             "n": 1,
             "top": 3,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -6019,13 +6707,13 @@
             "stack": [],
             "n": 0,
             "top": 1,
-            "expected": "",
+            "expected": "(",
             "status": "Valid",
             "message": "Valid: the input ended and the stack is empty.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 0,
-            "hasExpected": 0
+            "hasExpected": 1
           }
         ]
       },
@@ -6084,7 +6772,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -6093,7 +6781,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -6213,7 +6901,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -6247,7 +6935,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -6261,7 +6949,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -6275,7 +6963,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -6289,7 +6977,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -6302,8 +6990,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -6312,8 +7000,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -6459,7 +7147,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -6468,7 +7156,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -6587,7 +7275,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -6621,7 +7309,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -6635,7 +7323,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -6649,7 +7337,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -6663,7 +7351,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -6676,8 +7364,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -6686,8 +7374,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -6993,13 +7681,13 @@
             ],
             "n": 4,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 4.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -7013,13 +7701,13 @@
             ],
             "n": 4,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -7033,13 +7721,13 @@
             ],
             "n": 4,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -7131,13 +7819,13 @@
             ],
             "n": 3,
             "top": 3,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 5.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -7150,13 +7838,13 @@
             ],
             "n": 3,
             "top": 3,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -7169,13 +7857,13 @@
             ],
             "n": 3,
             "top": 3,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -7262,13 +7950,13 @@
             ],
             "n": 2,
             "top": 2,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 6.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -7280,13 +7968,13 @@
             ],
             "n": 2,
             "top": 2,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -7298,13 +7986,13 @@
             ],
             "n": 2,
             "top": 2,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -7386,13 +8074,13 @@
             ],
             "n": 1,
             "top": 1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 7.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -7403,13 +8091,13 @@
             ],
             "n": 1,
             "top": 1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -7420,13 +8108,13 @@
             ],
             "n": 1,
             "top": 1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -7501,13 +8189,13 @@
             "stack": [],
             "n": 0,
             "top": 0,
-            "expected": "",
+            "expected": "(",
             "status": "Valid",
             "message": "Valid: the input ended and the stack is empty.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 0,
-            "hasExpected": 0
+            "hasExpected": 1
           }
         ]
       },
@@ -7566,7 +8254,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -7575,7 +8263,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -7695,7 +8383,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -7729,7 +8417,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -7743,7 +8431,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -7757,7 +8445,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -7771,7 +8459,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -7784,8 +8472,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -7794,8 +8482,8 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
@@ -7996,13 +8684,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Read character \")\" at index 2.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 5,
@@ -8013,13 +8701,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character an opening bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 7,
@@ -8030,13 +8718,13 @@
             ],
             "n": 1,
             "top": -1,
-            "expected": "",
+            "expected": "(",
             "status": "Running",
             "message": "Is this character a closing bracket?",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 1,
-            "hasExpected": 0
+            "hasExpected": 1
           },
           {
             "line": 8,
@@ -8111,13 +8799,13 @@
             "stack": [],
             "n": 0,
             "top": 0,
-            "expected": "",
+            "expected": "(",
             "status": "Valid",
             "message": "Valid: the input ended and the stack is empty.",
             "matchedOpen": -1,
             "matchedClose": -1,
             "running": 0,
-            "hasExpected": 0
+            "hasExpected": 1
           }
         ]
       },
@@ -8176,7 +8864,7 @@
               "label": "text",
               "labelOffset": [
                 0,
-                2.1,
+                3,
                 0
               ],
               "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
@@ -8185,7 +8873,7 @@
                   "type": "step_marker",
                   "indexName": "i",
                   "indexExpr": "dataTable('trace', frame, 'i')",
-                  "visibleExpr": "dataTable('trace', frame, 'running') == 1",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
                   "color": "#f1c65b"
                 }
               ],
@@ -8305,7 +8993,7 @@
               "text": "stack",
               "position": [
                 7,
-                -2.85,
+                -3.5,
                 0
               ],
               "color": "#b5c1cf"
@@ -8339,7 +9027,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
@@ -8353,7 +9041,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
@@ -8367,7 +9055,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
@@ -8381,7 +9069,7 @@
               "type": "expression_label",
               "position": [
                 -3.5,
-                -1.3,
+                -2.6,
                 0
               ],
               "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
@@ -8394,8 +9082,8 @@
               "id": "status",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
@@ -8404,11 +9092,3503 @@
               "id": "expected",
               "type": "expression_label",
               "position": [
-                3.5,
-                -0.6,
+                2.5,
+                -3.2,
                 0
               ],
               "textExpr": "concat('closers[ch] = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
+            }
+          ],
+          "info": [
+            {
+              "id": "current-action",
+              "title": "Current action",
+              "content": "{{dataTable('trace', frame, 'message')}}",
+              "position": "top-center"
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "frame",
+        "intervalMs": 1200
+      }
+    },
+    {
+      "id": "repair-mismatch",
+      "title": "Fix mismatched closers",
+      "description": "Repair \"([)]\" with insertions and replacements.",
+      "range": [
+        [
+          -7,
+          10
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          1,
+          0,
+          15
+        ],
+        "target": [
+          1,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "input": [
+          {
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ]
+          }
+        ],
+        "trace": [
+          {
+            "line": 6,
+            "i": 0,
+            "ch": "",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Start with a mutable character array and an empty stack."
+          },
+          {
+            "line": 8,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"(\" at index 0."
+          },
+          {
+            "line": 9,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 10,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Push opener index 0."
+          },
+          {
+            "line": 21,
+            "i": 1,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"[\" at index 1."
+          },
+          {
+            "line": 9,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 10,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Push opener index 1."
+          },
+          {
+            "line": 21,
+            "i": 2,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 2,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \")\" at index 2."
+          },
+          {
+            "line": 9,
+            "i": 2,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 2,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 12,
+            "i": 2,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether an unmatched opener exists."
+          },
+          {
+            "line": 16,
+            "i": 2,
+            "ch": ")",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Peek at opener index 1."
+          },
+          {
+            "line": 17,
+            "i": 2,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The stack top requires ]."
+          },
+          {
+            "line": 18,
+            "i": 2,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "(",
+              "[",
+              ")",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Compare ) with ]."
+          },
+          {
+            "line": 19,
+            "i": 2,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Replace ) with ] to close the most recent opener."
+          },
+          {
+            "line": 20,
+            "i": 2,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The pair is complete; pop its opener."
+          },
+          {
+            "line": 21,
+            "i": 3,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 3,
+            "ch": "]",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"]\" at index 3."
+          },
+          {
+            "line": 9,
+            "i": 3,
+            "ch": "]",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 3,
+            "ch": "]",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 12,
+            "i": 3,
+            "ch": "]",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether an unmatched opener exists."
+          },
+          {
+            "line": 16,
+            "i": 3,
+            "ch": "]",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Peek at opener index 0."
+          },
+          {
+            "line": 17,
+            "i": 3,
+            "ch": "]",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The stack top requires )."
+          },
+          {
+            "line": 18,
+            "i": 3,
+            "ch": "]",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Compare ] with )."
+          },
+          {
+            "line": 19,
+            "i": 3,
+            "ch": "]",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 2,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Replace ] with ) to close the most recent opener."
+          },
+          {
+            "line": 20,
+            "i": 3,
+            "ch": "]",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 2,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The pair is complete; pop its opener."
+          },
+          {
+            "line": 21,
+            "i": 4,
+            "ch": "]",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 2,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 24,
+            "i": 3,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 2,
+            "running": 0,
+            "hasExpected": 0,
+            "status": "Valid",
+            "message": "Valid result: \"([])\". 2 edits."
+          }
+        ]
+      },
+      "markdown": "# Fix mismatched closers\n\nInput: `([)]`. Open **algorithms/repair.py** in Code and use the execution player. The character array changes as edits happen; changed cells illuminate.\n\nAn orphan closer gets a matching opener inserted before it. A mismatched closer is replaced with the closer required by the stack top. At the end, leftover openers receive closers in LIFO order. Ordinary text stays unchanged.\n\nThis deterministic greedy policy always produces balanced brackets. It does **not** promise the fewest edits or recover the author's intended meaning. The displayed Python is read-only; complete snapshots drive the visualization.\n\n**edits** counts inserted or replaced characters. The stack stores positions in the evolving character array.",
+      "prompt": "Explain the repair policy and how it differs from validation and minimum-edit repair.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -7,
+              10
+            ],
+            [
+              -5,
+              5
+            ]
+          ],
+          "divisions": [
+            17,
+            10
+          ],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "repair",
+          "title": "Repair the brackets",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Execution state",
+              "min": 0,
+              "max": 29,
+              "step": 1,
+              "default": 0
+            }
+          ],
+          "add": [
+            {
+              "id": "input",
+              "type": "array",
+              "itemType": "character",
+              "origin": [
+                -5,
+                2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "label": "chars",
+              "labelOffset": [
+                0,
+                3,
+                0
+              ],
+              "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "i",
+                  "indexExpr": "dataTable('trace', frame, 'i')",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
+                  "color": "#f1c65b"
+                }
+              ],
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'chars'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'chars'), idx)"
+            },
+            {
+              "id": "stack",
+              "type": "array",
+              "arrayLayout": "vertical",
+              "itemType": "number",
+              "origin": [
+                7,
+                -2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "showIndices": false,
+              "lengthExpr": "dataTable('trace', frame, 'n')",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "stack-outline",
+              "type": "line",
+              "points": [
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "width": 2,
+              "opacity": 0.7
+            },
+            {
+              "id": "stack-back",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.12
+            },
+            {
+              "id": "stack-base",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  0.7
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  0.7
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.4
+            },
+            {
+              "id": "stack-title",
+              "type": "text",
+              "text": "stack",
+              "position": [
+                7,
+                -3.5,
+                0
+              ],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "stack-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                7,
+                -2,
+                0
+              ],
+              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
+              "color": "#8ca9a0"
+            },
+            {
+              "id": "input-empty",
+              "type": "text",
+              "text": "empty input",
+              "position": [
+                -5,
+                2,
+                0
+              ],
+              "visibleExpr": "0",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "i",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "ch",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "n",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
+              "connectTo": {
+                "object": "stack",
+                "indexExpr": "dataTable('trace', frame, 'n') - 1"
+              }
+            },
+            {
+              "id": "top",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'top')"
+              }
+            },
+            {
+              "id": "status",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
+            },
+            {
+              "id": "expected",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('expected = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
+            },
+            {
+              "id": "edits",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('edits = ', dataTable('trace', frame, 'edits'))"
+            }
+          ],
+          "info": [
+            {
+              "id": "current-action",
+              "title": "Current action",
+              "content": "{{dataTable('trace', frame, 'message')}}",
+              "position": "top-center"
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "frame",
+        "intervalMs": 1200
+      }
+    },
+    {
+      "id": "repair-orphan",
+      "title": "Fix an extra closer",
+      "description": "Repair \"())\" with insertions and replacements.",
+      "range": [
+        [
+          -7,
+          10
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          1,
+          0,
+          15
+        ],
+        "target": [
+          1,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "input": [
+          {
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ]
+          }
+        ],
+        "trace": [
+          {
+            "line": 6,
+            "i": 0,
+            "ch": "",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Start with a mutable character array and an empty stack."
+          },
+          {
+            "line": 8,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"(\" at index 0."
+          },
+          {
+            "line": 9,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 10,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Push opener index 0."
+          },
+          {
+            "line": 21,
+            "i": 1,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 1,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \")\" at index 1."
+          },
+          {
+            "line": 9,
+            "i": 1,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 1,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 12,
+            "i": 1,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether an unmatched opener exists."
+          },
+          {
+            "line": 16,
+            "i": 1,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Peek at opener index 0."
+          },
+          {
+            "line": 17,
+            "i": 1,
+            "ch": ")",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The stack top requires )."
+          },
+          {
+            "line": 18,
+            "i": 1,
+            "ch": ")",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Compare ) with )."
+          },
+          {
+            "line": 20,
+            "i": 1,
+            "ch": ")",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The pair is complete; pop its opener."
+          },
+          {
+            "line": 21,
+            "i": 2,
+            "ch": ")",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 2,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \")\" at index 2."
+          },
+          {
+            "line": 9,
+            "i": 2,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 2,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 12,
+            "i": 2,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether an unmatched opener exists."
+          },
+          {
+            "line": 13,
+            "i": 2,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              "(",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Insert ( before the orphan closer )."
+          },
+          {
+            "line": 14,
+            "i": 3,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              "(",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Skip the inserted opener; this pair is already complete."
+          },
+          {
+            "line": 21,
+            "i": 4,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              "(",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 24,
+            "i": 3,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              ")",
+              "(",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 0,
+            "hasExpected": 0,
+            "status": "Valid",
+            "message": "Valid result: \"()()\". 1 edit."
+          }
+        ]
+      },
+      "markdown": "# Fix an extra closer\n\nInput: `())`. Open **algorithms/repair.py** in Code and use the execution player. The character array changes as edits happen; changed cells illuminate.\n\nAn orphan closer gets a matching opener inserted before it. A mismatched closer is replaced with the closer required by the stack top. At the end, leftover openers receive closers in LIFO order. Ordinary text stays unchanged.\n\nThis deterministic greedy policy always produces balanced brackets. It does **not** promise the fewest edits or recover the author's intended meaning. The displayed Python is read-only; complete snapshots drive the visualization.\n\n**edits** counts inserted or replaced characters. The stack stores positions in the evolving character array.",
+      "prompt": "Explain the repair policy and how it differs from validation and minimum-edit repair.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -7,
+              10
+            ],
+            [
+              -5,
+              5
+            ]
+          ],
+          "divisions": [
+            17,
+            10
+          ],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "repair",
+          "title": "Repair the brackets",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Execution state",
+              "min": 0,
+              "max": 21,
+              "step": 1,
+              "default": 0
+            }
+          ],
+          "add": [
+            {
+              "id": "input",
+              "type": "array",
+              "itemType": "character",
+              "origin": [
+                -5,
+                2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "label": "chars",
+              "labelOffset": [
+                0,
+                3,
+                0
+              ],
+              "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "i",
+                  "indexExpr": "dataTable('trace', frame, 'i')",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
+                  "color": "#f1c65b"
+                }
+              ],
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'chars'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'chars'), idx)"
+            },
+            {
+              "id": "stack",
+              "type": "array",
+              "arrayLayout": "vertical",
+              "itemType": "number",
+              "origin": [
+                7,
+                -2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "showIndices": false,
+              "lengthExpr": "dataTable('trace', frame, 'n')",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "stack-outline",
+              "type": "line",
+              "points": [
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "width": 2,
+              "opacity": 0.7
+            },
+            {
+              "id": "stack-back",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.12
+            },
+            {
+              "id": "stack-base",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  0.7
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  0.7
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.4
+            },
+            {
+              "id": "stack-title",
+              "type": "text",
+              "text": "stack",
+              "position": [
+                7,
+                -3.5,
+                0
+              ],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "stack-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                7,
+                -2,
+                0
+              ],
+              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
+              "color": "#8ca9a0"
+            },
+            {
+              "id": "input-empty",
+              "type": "text",
+              "text": "empty input",
+              "position": [
+                -5,
+                2,
+                0
+              ],
+              "visibleExpr": "0",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "i",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "ch",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "n",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
+              "connectTo": {
+                "object": "stack",
+                "indexExpr": "dataTable('trace', frame, 'n') - 1"
+              }
+            },
+            {
+              "id": "top",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'top')"
+              }
+            },
+            {
+              "id": "status",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
+            },
+            {
+              "id": "expected",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('expected = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
+            },
+            {
+              "id": "edits",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('edits = ', dataTable('trace', frame, 'edits'))"
+            }
+          ],
+          "info": [
+            {
+              "id": "current-action",
+              "title": "Current action",
+              "content": "{{dataTable('trace', frame, 'message')}}",
+              "position": "top-center"
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "frame",
+        "intervalMs": 1200
+      }
+    },
+    {
+      "id": "repair-unclosed",
+      "title": "Close leftover openers",
+      "description": "Repair \"([\" with insertions and replacements.",
+      "range": [
+        [
+          -7,
+          10
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          1,
+          0,
+          15
+        ],
+        "target": [
+          1,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "input": [
+          {
+            "chars": [
+              "(",
+              "["
+            ]
+          }
+        ],
+        "trace": [
+          {
+            "line": 6,
+            "i": 0,
+            "ch": "",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Start with a mutable character array and an empty stack."
+          },
+          {
+            "line": 8,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"(\" at index 0."
+          },
+          {
+            "line": 9,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 10,
+            "i": 0,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Push opener index 0."
+          },
+          {
+            "line": 21,
+            "i": 1,
+            "ch": "(",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"[\" at index 1."
+          },
+          {
+            "line": 9,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 10,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Push opener index 1."
+          },
+          {
+            "line": 21,
+            "i": 2,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 22,
+            "i": 2,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "(",
+              "["
+            ],
+            "stack": [
+              0,
+              1
+            ],
+            "n": 2,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "An unmatched opener still needs a closer."
+          },
+          {
+            "line": 23,
+            "i": 2,
+            "ch": "]",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "(",
+              "[",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Append ] to close opener index 1."
+          },
+          {
+            "line": 22,
+            "i": 2,
+            "ch": "]",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "(",
+              "[",
+              "]"
+            ],
+            "stack": [
+              0
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "An unmatched opener still needs a closer."
+          },
+          {
+            "line": 23,
+            "i": 3,
+            "ch": ")",
+            "top": 0,
+            "expected": ")",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 2,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Append ) to close opener index 0."
+          },
+          {
+            "line": 24,
+            "i": 3,
+            "ch": ")",
+            "top": 0,
+            "expected": "",
+            "chars": [
+              "(",
+              "[",
+              "]",
+              ")"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 2,
+            "running": 0,
+            "hasExpected": 0,
+            "status": "Valid",
+            "message": "Valid result: \"([])\". 2 edits."
+          }
+        ]
+      },
+      "markdown": "# Close leftover openers\n\nInput: `([`. Open **algorithms/repair.py** in Code and use the execution player. The character array changes as edits happen; changed cells illuminate.\n\nAn orphan closer gets a matching opener inserted before it. A mismatched closer is replaced with the closer required by the stack top. At the end, leftover openers receive closers in LIFO order. Ordinary text stays unchanged.\n\nThis deterministic greedy policy always produces balanced brackets. It does **not** promise the fewest edits or recover the author's intended meaning. The displayed Python is read-only; complete snapshots drive the visualization.\n\n**edits** counts inserted or replaced characters. The stack stores positions in the evolving character array.",
+      "prompt": "Explain the repair policy and how it differs from validation and minimum-edit repair.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -7,
+              10
+            ],
+            [
+              -5,
+              5
+            ]
+          ],
+          "divisions": [
+            17,
+            10
+          ],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "repair",
+          "title": "Repair the brackets",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Execution state",
+              "min": 0,
+              "max": 13,
+              "step": 1,
+              "default": 0
+            }
+          ],
+          "add": [
+            {
+              "id": "input",
+              "type": "array",
+              "itemType": "character",
+              "origin": [
+                -5,
+                2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "label": "chars",
+              "labelOffset": [
+                0,
+                3,
+                0
+              ],
+              "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "i",
+                  "indexExpr": "dataTable('trace', frame, 'i')",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
+                  "color": "#f1c65b"
+                }
+              ],
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'chars'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'chars'), idx)"
+            },
+            {
+              "id": "stack",
+              "type": "array",
+              "arrayLayout": "vertical",
+              "itemType": "number",
+              "origin": [
+                7,
+                -2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "showIndices": false,
+              "lengthExpr": "dataTable('trace', frame, 'n')",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "stack-outline",
+              "type": "line",
+              "points": [
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "width": 2,
+              "opacity": 0.7
+            },
+            {
+              "id": "stack-back",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.12
+            },
+            {
+              "id": "stack-base",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  0.7
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  0.7
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.4
+            },
+            {
+              "id": "stack-title",
+              "type": "text",
+              "text": "stack",
+              "position": [
+                7,
+                -3.5,
+                0
+              ],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "stack-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                7,
+                -2,
+                0
+              ],
+              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
+              "color": "#8ca9a0"
+            },
+            {
+              "id": "input-empty",
+              "type": "text",
+              "text": "empty input",
+              "position": [
+                -5,
+                2,
+                0
+              ],
+              "visibleExpr": "0",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "i",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "ch",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "n",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
+              "connectTo": {
+                "object": "stack",
+                "indexExpr": "dataTable('trace', frame, 'n') - 1"
+              }
+            },
+            {
+              "id": "top",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'top')"
+              }
+            },
+            {
+              "id": "status",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
+            },
+            {
+              "id": "expected",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('expected = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
+            },
+            {
+              "id": "edits",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('edits = ', dataTable('trace', frame, 'edits'))"
+            }
+          ],
+          "info": [
+            {
+              "id": "current-action",
+              "title": "Current action",
+              "content": "{{dataTable('trace', frame, 'message')}}",
+              "position": "top-center"
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "frame",
+        "intervalMs": 1200
+      }
+    },
+    {
+      "id": "repair-text",
+      "title": "Repair brackets in text",
+      "description": "Repair \"a[b)c\" with insertions and replacements.",
+      "range": [
+        [
+          -7,
+          10
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          1,
+          0,
+          15
+        ],
+        "target": [
+          1,
+          0,
+          0
+        ]
+      },
+      "data": {
+        "input": [
+          {
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ]
+          }
+        ],
+        "trace": [
+          {
+            "line": 6,
+            "i": 0,
+            "ch": "",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Start with a mutable character array and an empty stack."
+          },
+          {
+            "line": 8,
+            "i": 0,
+            "ch": "a",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"a\" at index 0."
+          },
+          {
+            "line": 9,
+            "i": 0,
+            "ch": "a",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 0,
+            "ch": "a",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 11,
+            "i": 0,
+            "ch": "a",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Preserve ordinary text unchanged."
+          },
+          {
+            "line": 21,
+            "i": 1,
+            "ch": "a",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"[\" at index 1."
+          },
+          {
+            "line": 9,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 10,
+            "i": 1,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Push opener index 1."
+          },
+          {
+            "line": 21,
+            "i": 2,
+            "ch": "[",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 2,
+            "ch": "b",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"b\" at index 2."
+          },
+          {
+            "line": 9,
+            "i": 2,
+            "ch": "b",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 2,
+            "ch": "b",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 11,
+            "i": 2,
+            "ch": "b",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Preserve ordinary text unchanged."
+          },
+          {
+            "line": 21,
+            "i": 3,
+            "ch": "b",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 3,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \")\" at index 3."
+          },
+          {
+            "line": 9,
+            "i": 3,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 3,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 12,
+            "i": 3,
+            "ch": ")",
+            "top": -1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether an unmatched opener exists."
+          },
+          {
+            "line": 16,
+            "i": 3,
+            "ch": ")",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Peek at opener index 1."
+          },
+          {
+            "line": 17,
+            "i": 3,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The stack top requires ]."
+          },
+          {
+            "line": 18,
+            "i": 3,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              ")",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 0,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Compare ) with ]."
+          },
+          {
+            "line": 19,
+            "i": 3,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [
+              1
+            ],
+            "n": 1,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Replace ) with ] to close the most recent opener."
+          },
+          {
+            "line": 20,
+            "i": 3,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "The pair is complete; pop its opener."
+          },
+          {
+            "line": 21,
+            "i": 4,
+            "ch": ")",
+            "top": 1,
+            "expected": "]",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 1,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 8,
+            "i": 4,
+            "ch": "c",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Read \"c\" at index 4."
+          },
+          {
+            "line": 9,
+            "i": 4,
+            "ch": "c",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is an opener."
+          },
+          {
+            "line": 11,
+            "i": 4,
+            "ch": "c",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Check whether this is a closer."
+          },
+          {
+            "line": 11,
+            "i": 4,
+            "ch": "c",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Preserve ordinary text unchanged."
+          },
+          {
+            "line": 21,
+            "i": 5,
+            "ch": "c",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 1,
+            "hasExpected": 0,
+            "status": "Repairing",
+            "message": "Advance to the next character."
+          },
+          {
+            "line": 24,
+            "i": 4,
+            "ch": "c",
+            "top": 1,
+            "expected": "",
+            "chars": [
+              "a",
+              "[",
+              "b",
+              "]",
+              "c"
+            ],
+            "stack": [],
+            "n": 0,
+            "edits": 1,
+            "running": 0,
+            "hasExpected": 0,
+            "status": "Valid",
+            "message": "Valid result: \"a[b]c\". 1 edit."
+          }
+        ]
+      },
+      "markdown": "# Repair brackets in text\n\nInput: `a[b)c`. Open **algorithms/repair.py** in Code and use the execution player. The character array changes as edits happen; changed cells illuminate.\n\nAn orphan closer gets a matching opener inserted before it. A mismatched closer is replaced with the closer required by the stack top. At the end, leftover openers receive closers in LIFO order. Ordinary text stays unchanged.\n\nThis deterministic greedy policy always produces balanced brackets. It does **not** promise the fewest edits or recover the author's intended meaning. The displayed Python is read-only; complete snapshots drive the visualization.\n\n**edits** counts inserted or replaced characters. The stack stores positions in the evolving character array.",
+      "prompt": "Explain the repair policy and how it differs from validation and minimum-edit repair.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              -7,
+              10
+            ],
+            [
+              -5,
+              5
+            ]
+          ],
+          "divisions": [
+            17,
+            10
+          ],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "repair",
+          "title": "Repair the brackets",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Execution state",
+              "min": 0,
+              "max": 30,
+              "step": 1,
+              "default": 0
+            }
+          ],
+          "add": [
+            {
+              "id": "input",
+              "type": "array",
+              "itemType": "character",
+              "origin": [
+                -5,
+                2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "label": "chars",
+              "labelOffset": [
+                0,
+                3,
+                0
+              ],
+              "highlightExpr": "dataTable('trace', frame, 'running') == 1 ? idx == dataTable('trace', frame, 'i') : 0",
+              "markers": [
+                {
+                  "type": "step_marker",
+                  "indexName": "i",
+                  "indexExpr": "dataTable('trace', frame, 'i')",
+                  "visibleExpr": "dataTable('trace', frame, 'i') >= 0",
+                  "color": "#f1c65b"
+                }
+              ],
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'chars'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'chars'), idx)"
+            },
+            {
+              "id": "stack",
+              "type": "array",
+              "arrayLayout": "vertical",
+              "itemType": "number",
+              "origin": [
+                7,
+                -2,
+                0
+              ],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "showIndices": false,
+              "lengthExpr": "dataTable('trace', frame, 'n')",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "stack-outline",
+              "type": "line",
+              "points": [
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "width": 2,
+              "opacity": 0.7
+            },
+            {
+              "id": "stack-back",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  "6.25",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ],
+                [
+                  "7.75",
+                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
+                  "-0.2"
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.12
+            },
+            {
+              "id": "stack-base",
+              "type": "plane",
+              "points": [
+                [
+                  6.25,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  -0.2
+                ],
+                [
+                  6.25,
+                  -2.5,
+                  0.7
+                ],
+                [
+                  7.75,
+                  -2.5,
+                  0.7
+                ]
+              ],
+              "color": "#77bfae",
+              "opacity": 0.4
+            },
+            {
+              "id": "stack-title",
+              "type": "text",
+              "text": "stack",
+              "position": [
+                7,
+                -3.5,
+                0
+              ],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "stack-empty",
+              "type": "text",
+              "text": "empty",
+              "position": [
+                7,
+                -2,
+                0
+              ],
+              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
+              "color": "#8ca9a0"
+            },
+            {
+              "id": "input-empty",
+              "type": "text",
+              "text": "empty input",
+              "position": [
+                -5,
+                2,
+                0
+              ],
+              "visibleExpr": "0",
+              "color": "#9dbde3"
+            },
+            {
+              "id": "i",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "ch",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('ch = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'ch'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'i')"
+              }
+            },
+            {
+              "id": "n",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('len(stack) = ', dataTable('trace', frame, 'n'))",
+              "connectTo": {
+                "object": "stack",
+                "indexExpr": "dataTable('trace', frame, 'n') - 1"
+              }
+            },
+            {
+              "id": "top",
+              "type": "expression_label",
+              "position": [
+                -3.5,
+                -2.6,
+                0
+              ],
+              "textExpr": "concat('top = ', dataTable('trace', frame, 'top') < 0 ? 'unset' : dataTable('trace', frame, 'top'))",
+              "connectTo": {
+                "object": "input",
+                "indexExpr": "dataTable('trace', frame, 'top')"
+              }
+            },
+            {
+              "id": "status",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('status = ', dataTable('trace', frame, 'status'))"
+            },
+            {
+              "id": "expected",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('expected = ', dataTable('trace', frame, 'hasExpected') == 0 ? '—' : dataTable('trace', frame, 'expected'))"
+            },
+            {
+              "id": "edits",
+              "type": "expression_label",
+              "position": [
+                2.5,
+                -3.2,
+                0
+              ],
+              "textExpr": "concat('edits = ', dataTable('trace', frame, 'edits'))"
             }
           ],
           "info": [

@@ -90,13 +90,13 @@ function paintWire(record:WireRecord):void {
     const departure={x:left?-1:1,y:0};
     // Whole-object connections meet an outer side, rather than the gap between cells.
     const attachment=!cell&&hasOutline?wholeObjectWireAttachment({x:(box.left+box.right)/2-rect.left,y:start.y},centre,corners!):null;
-    const end=attachment?.end??(hasOutline?projectedCellEdge(start,centre,corners!,5,!!cell):centre);
+    const end=cell&&hasOutline?cellEdgeAnchor(corners!,'bottom'):attachment?.end??(hasOutline?projectedCellEdge(start,centre,corners!,5,!!cell):centre);
     if(attachment){
         left=end.x<(box.left+box.right)/2-rect.left;
         departure.x=left?-1:1;
         start.x=(left?box.left:box.right)-rect.left;
     }
-    const approach=attachment?.approach??(belowCell?{x:0,y:1}:{x:start.x-centre.x,y:start.y-centre.y});
+    const approach=cell?{x:start.x<end.x?-1:1,y:0}:attachment?.approach??(belowCell?{x:0,y:1}:{x:start.x-centre.x,y:start.y-centre.y});
     const obstacles:WireObstacle[]=state.labels.filter(label=>label.visible&&!label.annotationHidden&&label.el.style.display!=='none'&&label.el.isConnected&&!label.el.contains(hovered!.row)).map(label=>{
         const b=label.el.getBoundingClientRect();return {left:b.left-rect.left,top:b.top-rect.top,right:b.right-rect.left,bottom:b.bottom-rect.top};
     });
@@ -111,3 +111,4 @@ function paintWire(record:WireRecord):void {
     svg.style.display='';
     if(d!==previous){path!.setAttribute('d',d);dot!.setAttribute('cx',String(end.x));dot!.setAttribute('cy',String(end.y));record.previous=d;}
 }
+import { cellEdgeAnchor } from '/cell-attachment.js';

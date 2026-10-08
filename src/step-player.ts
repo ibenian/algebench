@@ -9,8 +9,9 @@ export function playbackPosition(value: number, min: number, max: number) {
 }
 
 export function setupStepPlayer(): void {
-    const host=document.getElementById('mathbox-wrapper');
-    if(!host)return;
+    const wrapper=document.getElementById('mathbox-wrapper');
+    if(!wrapper)return;
+    const host=wrapper;
     const bar=document.createElement('div');bar.id='state-player';bar.hidden=true;
     bar.setAttribute('role','group');bar.setAttribute('aria-label','Execution state player');
     const previous=document.createElement('button'),play=document.createElement('button'),next=document.createElement('button');
@@ -20,14 +21,21 @@ export function setupStepPlayer(): void {
     const track=document.createElement('input');track.type='range';track.step='1';track.setAttribute('aria-label','Execution state');
     const counter=document.createElement('output');counter.setAttribute('aria-label','Execution position');
     bar.append(previous,play,next,track,counter);host.append(bar);
+    // Reserve the actual player height for legends, including responsive wrapping.
+    // ResizeObserver runs on geometry changes, not on animation frames.
+    const resizeObserver=new ResizeObserver(()=>{
+        host.style.setProperty('--state-player-h',`${bar.offsetHeight}px`);
+    });
+    resizeObserver.observe(bar);
     let timer:ReturnType<typeof setInterval>|null=null;
     let config:StepPlayback|undefined;
     const slider=()=>config?state.sceneSliders[config.slider]:undefined;
     function pause(){if(timer!==null)clearInterval(timer);timer=null;play.textContent='▷';play.setAttribute('aria-label','Play execution');}
     function render(){
         const s=slider();
-        if(!s||s.kind==='tensor'||!Number.isInteger(s.min)||!Number.isInteger(s.max)){pause();bar.hidden=true;return;}
+        if(!s||s.kind==='tensor'||!Number.isInteger(s.min)||!Number.isInteger(s.max)){pause();bar.hidden=true;host.classList.remove('has-state-player');return;}
         bar.hidden=false;
+        host.classList.add('has-state-player');
         const p=playbackPosition(s.value,s.min,s.max);
         track.min=String(s.min);track.max=String(s.max);track.value=String(p.current);
         track.setAttribute('aria-valuetext',`${p.ordinal} of ${p.total}`);

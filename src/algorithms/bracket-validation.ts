@@ -37,7 +37,7 @@ export function bracketTrace(text:string):BracketFrame[] {
     const emit=(line:number,message:string,status:BracketFrame['status']='Running')=>trace.push({line,i,ch,stack:stack.slice(),n:stack.length,top,expected,status,message,matchedOpen,matchedClose,running:status==='Running'?1:0,hasExpected:expected?1:0});
     emit(3,'Start with an empty stack of opening-character positions.');
     for(i=0;i<chars.length;i++){
-        ch=chars[i]!;expected='';matchedOpen=matchedClose=-1;
+        ch=chars[i]!;expected=closers[ch]??'';matchedOpen=matchedClose=-1;
         emit(4,`Read character ${JSON.stringify(ch)} at index ${i}.`);
         emit(5,'Is this character an opening bracket?');
         if('([{'.includes(ch)){
@@ -56,7 +56,7 @@ export function bracketTrace(text:string):BracketFrame[] {
         stack.pop();matchedOpen=top;matchedClose=i;
         emit(13,`Matched ${chars[top]}${ch}: pop index ${top} from the stack.`);
     }
-    i=chars.length-1;ch=chars.at(-1)??'';expected='';matchedOpen=matchedClose=-1;
+    i=chars.length-1;ch=chars.at(-1)??'';expected=closers[ch]??'';matchedOpen=matchedClose=-1;
     emit(14,stack.length?`Invalid: ${stack.length} opening bracket${stack.length===1?' is':'s are'} still unclosed.`:'Valid: the input ended and the stack is empty.',stack.length?'Invalid':'Valid');
     return trace;
 }

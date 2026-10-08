@@ -5624,6 +5624,20 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 #state-player { box-sizing: border-box; left: auto; right: 16px; transform: none; width: min(460px, calc(100% - 190px)); }
 @media (max-width: 750px) { #state-player { left: 25px; right: auto; width: calc(100% - 50px); } }
 
+/* Bottom stack: docked caption, execution player, then legend. */
+#mathbox-wrapper { --state-player-base-bottom: 12px; }
+#state-player {
+    bottom: calc(var(--state-player-base-bottom) + var(--caption-dock-h, 0px));
+    padding: 6px 10px;
+}
+#state-player button { height: 32px; }
+#mathbox-wrapper.has-state-player #legend {
+    bottom: calc(var(--caption-dock-h, 0px) + var(--state-player-base-bottom) + var(--state-player-h, 49px) + 12px);
+}
+@media (max-width: 750px) {
+    #mathbox-wrapper { --state-player-base-bottom: 58px; }
+}
+
 /* One reading marker, not an independently positioned text + vector pair. */
 .step-marker { pointer-events: none; }
 .step-marker-cursor { display: flex; flex-direction: column; align-items: center; transform: translateY(-38px); }
