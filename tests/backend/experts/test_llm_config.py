@@ -111,6 +111,22 @@ def test_the_gemini_key_is_not_handed_to_another_provider(monkeypatch, clear_key
     assert gemini.kwargs.get("api_key") == "gemini-only-key"
 
 
+def test_the_env_temperature_reaches_scoped_lms(monkeypatch, clear_keys):
+    """`ALGEBENCH_LM_TEMPERATURE` wins over a scoped LM's defaults, as in `make_lm`.
+
+    The proof-completion, proof-edit, learning-plan and expression-analysis
+    experts all run on a scoped LM; a deterministic eval (`=0`) must reach them
+    too, not just the global LM (Copilot, #700).
+    """
+    monkeypatch.setattr(C, "LM_MODEL", "gemini/gemini-3-flash-preview")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.delenv("ALGEBENCH_LM_TEMPERATURE", raising=False)
+    assert C._build_scoped({"reasoning_effort": "disable"}).kwargs["temperature"] == 1.0
+
+    monkeypatch.setenv("ALGEBENCH_LM_TEMPERATURE", "0")
+    assert C._build_scoped({"reasoning_effort": "disable"}).kwargs["temperature"] == 0.0
+
+
 def test_the_context_is_a_noop_when_inapplicable(monkeypatch):
     """An inapplicable override must yield a usable, do-nothing context.
 

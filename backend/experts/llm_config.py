@@ -265,6 +265,11 @@ def _build_scoped(overrides: dict) -> Optional[dspy.LM]:
         kwargs["api_key"] = (os.environ.get("GEMINI_API_KEY")
                              or os.environ.get("GOOGLE_API_KEY"))
     kwargs.update(overrides)
+    # An explicit ALGEBENCH_LM_TEMPERATURE wins over every default and override,
+    # as in ``make_lm`` -- a deterministic eval must reach the scoped experts too.
+    env_temp = os.environ.get("ALGEBENCH_LM_TEMPERATURE")
+    if env_temp is not None:
+        kwargs["temperature"] = float(env_temp)
     try:
         return dspy.LM(LM_MODEL, **kwargs)
     except Exception:

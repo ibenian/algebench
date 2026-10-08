@@ -15,9 +15,12 @@ from __future__ import annotations
 
 import re
 
-# Generous for a tutoring reply (a long worked answer is ~1-2k tokens), small
-# enough that a degenerate loop costs seconds, not a minute of tokens.
-CHAT_MAX_OUTPUT_TOKENS = 4096
+# On Gemini this budget covers thinking tokens as well as the visible reply, and
+# chat runs at the model's default (high) thinking level -- a hard proof prompt
+# can think for several thousand tokens before writing a word. So: thinking
+# headroom plus a long worked answer (~1-2k tokens), while a degenerate loop
+# still stops an order of magnitude short of the ~171k-character runaway.
+CHAT_MAX_OUTPUT_TOKENS = 16384
 
 
 def is_gemini3(model: str | None) -> bool:
