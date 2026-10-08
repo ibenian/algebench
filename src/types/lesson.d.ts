@@ -902,7 +902,7 @@ export type Element = {
    */
   indexFontSize?: number;
   /**
-   * ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes.
+   * ARRAY / STACK: boolean expression per cell with idx and value. EXPRESSION_LABEL: truthy highlights the label's row in its box, e.g. when a running total reaches its target. Evaluated on state changes.
    */
   highlightExpr?: string;
   /**
@@ -918,7 +918,11 @@ export type Element = {
    */
   indexGroup?: string;
   /**
-   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.
+   * EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. In math.js strings, write a LaTeX backslash as two (\\text). Evaluated on state changes.
+   */
+  tooltipExpr?: string;
+  /**
+   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it.
    */
   connectTo?:
     | {
@@ -927,6 +931,10 @@ export type Element = {
          * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
          */
         indexExpr?: string;
+        /**
+         * Show the wire without hovering. The reader can still unpin it.
+         */
+        pinned?: boolean;
       }
     | {
         /**
@@ -934,6 +942,10 @@ export type Element = {
          * @maxItems 3
          */
         positionExpr: [string, string, string];
+        /**
+         * Show the wire without hovering. The reader can still unpin it.
+         */
+        pinned?: boolean;
       };
   /**
    * ARRAY / STACK: owned index markers. The owner supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression.

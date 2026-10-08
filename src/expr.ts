@@ -161,7 +161,8 @@ const _MATH_SCOPE: ExprScope = Object.fromEntries(
     ]),
 );
 
-function _normalizeSingleQuotes(str: string): string {
+/** Single-quoted math.js strings keep their contents literally (LaTeX backslashes included). Exported for tests. */
+export function _normalizeSingleQuotes(str: string): string {
     return str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match: string, content: string) =>
         JSON.stringify(content.replace(/\\'/g, "'"))
     );

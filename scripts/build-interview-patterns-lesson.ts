@@ -28,12 +28,66 @@ function array(id: string, label: string, origin: number[], opts: Json & { from:
     };
 }
 /** Expression labels at the same position merge into one draggable "Vars" box. */
-const label = (id: string, textExpr: string, position: number[], connect?: [string, string]) =>
-    ({ id, type: 'expression_label', position, textExpr, ...(connect ? { connectTo: { object: connect[0], indexExpr: connect[1] } } : {}) });
+const label = (id: string, textExpr: string, position: number[], connect?: [string, string], highlightExpr?: string) =>
+    ({ id, type: 'expression_label', position, textExpr, ...(connect ? { connectTo: { object: connect[0], indexExpr: connect[1] } } : {}), ...(highlightExpr ? { highlightExpr } : {}) });
+/** LaTeX inside a single-quoted lesson string: the app keeps its contents literally, so backslashes stay single. */
+const TEX = (latex: string) => latex;
 const unset = (col: string, name = col) => `concat('${name} = ', ${tr(col)} < 0 ? 'unset' : ${tr(col)})`;
 
+// ── The problem each scene solves. It is the scene's caption on entry (step 0) and
+// opens its doc, before the technique. Example answers come from the traces, so
+// the doc always states what the player will show. ──
+const end = (trace: Frame[]) => trace.at(-1)!;
+const list = (v: unknown) => `[${(v as unknown[]).join(', ')}]`;
+const PROBLEMS: Record<string, { problem: string; example?: string }> = {
+    'prefix-sum': { problem: 'Given an array, answer many queries of the form "what is the sum of nums[i..j]?"',
+        example: `nums = ${list(IN.prefix.nums)}: ${IN.prefix.queries.map(([i, j]) => `sum(${i}..${j}) = ${IN.prefix.nums.slice(i, j + 1).reduce((a, b) => a + b, 0)}`).join(', ')}.` },
+    'two-pointers': { problem: 'Given a sorted array and a target, find two numbers that add up to the target, and return their indices.',
+        example: (() => { const f = end(twoPointersTrace(IN.twoPointers.nums, IN.twoPointers.target)); return `nums = ${list(IN.twoPointers.nums)}, target = ${IN.twoPointers.target} → indices ${f.left} and ${f.right} (${IN.twoPointers.nums[f.left as number]} + ${IN.twoPointers.nums[f.right as number]}).`; })() },
+    'sliding-window': { problem: 'Find the largest sum of any k consecutive numbers in an array.',
+        example: (() => { const f = end(slidingWindowTrace(IN.slidingWindow.nums, IN.slidingWindow.k)); return `nums = ${list(IN.slidingWindow.nums)}, k = ${IN.slidingWindow.k} → ${f.best}, from nums[${f.left}..${f.right}].`; })() },
+    'rotated-search': { problem: 'A sorted array was rotated at an unknown point. Find the index of a target value in O(log n) time.',
+        example: `nums = ${list(IN.rotated.nums)}, target = ${IN.rotated.target} → index ${end(rotatedSearchTrace(IN.rotated.nums, IN.rotated.target)).found}.` },
+    'merge-intervals': { problem: 'Given a list of [start, end] intervals, merge every group that overlaps and return the result.',
+        example: (() => { const f = end(mergeIntervalsTrace(IN.intervals.input)); return `${IN.intervals.input.map(iv => `[${iv}]`).join(' ')} → ${(f.mStarts as number[]).map((st, k) => `[${st},${(f.mEnds as number[])[k]}]`).join(' ')}.`; })() },
+    'greedy': { problem: 'Each value is the longest jump allowed from that index. Starting at index 0, can you reach the last index?',
+        example: `nums = ${list(IN.greedy.nums)} → ${end(greedyTrace(IN.greedy.nums)).ok ? 'True' : 'False'}: every path gets stuck on the 0.` },
+    'bit-manipulation': { problem: 'Every number appears exactly twice except one. Find it, using O(1) extra space.',
+        example: `nums = ${list(IN.bits.nums)} → ${end(bitsTrace(IN.bits.nums)).result}.` },
+    'string-matching': { problem: 'Find every index where a pattern occurs in a text, overlaps included.',
+        example: `text = "${IN.kmp.text}", p = "${IN.kmp.pattern}" → ${list(end(kmpTrace(IN.kmp.text, IN.kmp.pattern)).hits)}.` },
+    'trie': { problem: 'Store a set of words so you can quickly answer "is this a word?" and "does any word start with this prefix?"' },
+    'monotonic-stack': { problem: 'Given daily temperatures, find for each day how many days you must wait for a warmer one (0 if never).',
+        example: `temps = ${list(IN.monotonic.temps)} → ${list(end(monotonicStackTrace(IN.monotonic.temps)).answer)}.` },
+    'monotonic-queue': { problem: 'Return the maximum of every window of k consecutive numbers.',
+        example: `nums = ${list(IN.monoQueue.nums)}, k = ${IN.monoQueue.k} → ${list(end(monotonicQueueTrace(IN.monoQueue.nums, IN.monoQueue.k)).out)}.` },
+    'top-k': { problem: 'Find the k-th largest element of an unsorted array.' },
+    'fast-slow': { problem: 'An array holds n + 1 values from 1 to n, so one value repeats. Find it without changing the array and with O(1) extra space.',
+        example: `nums = ${list(IN.fastSlow.nums)} → ${end(fastSlowTrace(IN.fastSlow.nums)).slow}.` },
+    'linked-list-reversal': { problem: 'Reverse a singly linked list in place and return its new head.' },
+    'tree-traversal': { problem: 'Visit every node of a binary tree in a chosen order: preorder, inorder or postorder.' },
+    'dfs': { problem: 'List every root-to-leaf path in a binary tree.' },
+    'bfs': { problem: "Return a binary tree's values level by level, top to bottom." },
+    'matrix-traversal': { problem: 'In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.' },
+    'topological-sort': { problem: 'Courses have prerequisites. Find an order in which to take every course, or report that none exists.' },
+    'shortest-path': { problem: 'A network has directed edges with travel times. How long does a signal from one node take to reach every node?' },
+    'union-find': { problem: 'Given n nodes and a list of undirected edges, count the connected components.',
+        example: `n = ${IN.unionFind.n}, edges = ${IN.unionFind.edges.map(e => `${e[0]}–${e[1]}`).join(', ')} → ${end(unionFindTrace(IN.unionFind.n, IN.unionFind.edges)).count}.` },
+    'recursion': { problem: 'Compute x to the power n using O(log n) multiplications.' },
+    'backtracking': { problem: 'Generate every permutation of a list of distinct numbers.' },
+    'dynamic-programming': { problem: 'Houses in a row each hold some money, and you cannot rob two neighbours. What is the most you can rob?',
+        example: `houses = ${list(IN.dp.houses)} → ${(end(houseRobberTrace(IN.dp.houses)).dp as number[]).at(-1)}.` },
+};
+/** Put the problem (and its worked example) right under the title, before the technique. */
+function withProblem(id: string, markdown: string): string {
+    const pr = PROBLEMS[id];
+    if (!pr) throw new Error(`no problem statement for scene ${id}`);
+    const block = `**Problem:** ${pr.problem}\n\n${pr.example ? `**Example:** ${pr.example}\n\n` : ''}`;
+    return markdown.replace(/^(# [^\n]*\n\n)/, `$1${block}`);
+}
+
 interface PatternScene {
-    id: string; title: string; description: string; markdown: string; prompt: string; file: string; source: string;
+    id: string; title: string; markdown: string; prompt: string; file: string; source: string;
     trace: Frame[]; input: Json; elements: Json[]; cameraX?: number;
 }
 const scenes: Json[] = [], codeFiles: Json[] = [];
@@ -46,9 +100,9 @@ function withTitle(el: Json): Json[] {
 function pattern(p: PatternScene) {
     const x = p.cameraX ?? 0;
     scenes.push({
-        id: p.id, title: p.title, description: p.description, range: RANGE,
+        id: p.id, title: p.title, description: PROBLEMS[p.id]!.problem, range: RANGE,
         camera: { position: [x, 0, 16], target: [x, 0, 0] },
-        data: { input: [p.input], trace: p.trace }, markdown: p.markdown, prompt: p.prompt, elements: [grid],
+        data: { input: [p.input], trace: p.trace }, markdown: withProblem(p.id, p.markdown), prompt: p.prompt, elements: [grid],
         steps: [{
             id: 'run', title: 'Run the algorithm', description: 'Follow the highlighted code line with the execution player.',
             sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: p.trace.length - 1, step: 1, default: 0 }],
@@ -63,9 +117,10 @@ function pattern(p: PatternScene) {
         locations: p.trace.map((f, snapshot) => ({ line: f.line, scene: p.id, step: 'run', snapshot, label: `${p.title} · ${f.message}` })),
     });
 }
-function placeholder(id: string, title: string, description: string, markdown: string, prompt: string) {
+function placeholder(id: string, title: string, markdown: string, prompt: string) {
     scenes.push({
-        id, title, description, range: RANGE, camera: { position: [1.5, 0, 15], target: [1.5, 0, 0] }, markdown, prompt,
+        id, title, description: PROBLEMS[id]!.problem, range: RANGE, camera: { position: [1.5, 0, 15], target: [1.5, 0, 0] },
+        markdown: withProblem(id, markdown), prompt,
         elements: [grid, { id: 'placeholder', type: 'text', text: 'Visualization coming soon', position: [1.5, 0, 0], color: BLUE }],
     });
 }
@@ -116,7 +171,6 @@ Each following scene runs one pattern on a small example. Scenes marked *coming 
 // ── Prefix sum ──
 pattern({
     id: 'prefix-sum', title: 'Running totals (prefix sum)', file: 'prefix_sum.py', source: PREFIX_SOURCE,
-    description: 'Precompute running totals so any range sum costs one subtraction.',
     input: { nums: IN.prefix.nums }, trace: prefixSumTrace(IN.prefix.nums, IN.prefix.queries),
     markdown: `# Running totals (prefix sum)
 
@@ -152,7 +206,6 @@ ${MD_TAIL}
 // ── Two pointers ──
 pattern({
     id: 'two-pointers', title: 'Squeeze from both ends (two pointers)', file: 'two_pointers.py', source: TWO_POINTERS_SOURCE,
-    description: 'Walk inward from both ends of a sorted array to find a pair.',
     input: { nums: IN.twoPointers.nums, target: IN.twoPointers.target }, trace: twoPointersTrace(IN.twoPointers.nums, IN.twoPointers.target),
     markdown: `# Squeeze from both ends (two pointers)
 
@@ -176,15 +229,20 @@ ${MD_TAIL}
         }),
         label('left', `concat('left = ', ${tr('left')})`, [-4, -2.6, 0], ['nums', tr('left')]),
         label('right', `concat('right = ', ${tr('right')})`, [-4, -2.6, 0], ['nums', tr('right')]),
-        label('total', `concat('total = ', ${tr('hasTotal')} == 1 ? ${tr('total')} : '—')`, [-4, -2.6, 0]),
-        label('target', `concat('target = ', ${inp('target')})`, [4, -2.6, 0]),
+        // total is linked to target; both, and the comparison, light up on a match.
+        ...((hit: string) => [
+            { ...label('total', `concat('total = ', ${tr('hasTotal')} == 1 ? ${tr('total')} : '—')`, [-4, -2.6, 0], undefined, hit), connectTo: { object: 'target', pinned: true },
+              tooltipExpr: `${tr('hasTotal')} == 1 ? concat('${TEX(String.raw`\text{total} = \text{nums}[\text{left}] + \text{nums}[\text{right}] = `)}', arrayAt(${inp('nums')}, ${tr('left')}), ' + ', arrayAt(${inp('nums')}, ${tr('right')}), ' = ', ${tr('total')}) : '${TEX(String.raw`\text{total} = \text{nums}[\text{left}] + \text{nums}[\text{right}]`)}'` },
+            label('target', `concat('target = ', ${inp('target')})`, [4, -2.6, 0], undefined, hit),
+            { ...label('compare', `${tr('hasTotal')} == 1 ? concat(${tr('total')}, ${tr('total')} < ${inp('target')} ? ' < ' : (${tr('total')} > ${inp('target')} ? ' > ' : ' = '), ${inp('target')}, ${tr('total')} < ${inp('target')} ? ': move left' : (${tr('total')} > ${inp('target')} ? ': move right' : ': found')) : 'compare: —'`, [4, -2.6, 0], undefined, hit),
+              tooltipExpr: `${tr('hasTotal')} == 1 ? (${tr('total')} < ${inp('target')} ? concat(${tr('total')}, '${TEX(String.raw` < `)}', ${inp('target')}, '${TEX(String.raw` \;\Rightarrow\; \text{left} \mathrel{+}= 1`)}') : (${tr('total')} > ${inp('target')} ? concat(${tr('total')}, '${TEX(String.raw` > `)}', ${inp('target')}, '${TEX(String.raw` \;\Rightarrow\; \text{right} \mathrel{-}= 1`)}') : concat(${tr('total')}, ' = ', ${inp('target')}, '${TEX(String.raw` \;\Rightarrow\; \text{found at } (`)}', ${tr('left')}, ', ', ${tr('right')}, ')'))) : '${TEX(String.raw`\text{compare total with target}`)}'` },
+        ])(`${tr('hasTotal')} == 1 and ${tr('total')} == ${inp('target')}`),
     ],
 });
 
 // ── Sliding window ──
 pattern({
     id: 'sliding-window', title: 'Slide a window (sliding window)', file: 'sliding_window.py', source: SLIDING_WINDOW_SOURCE,
-    description: 'Reuse the last window\'s sum: add the entering element, subtract the leaving one.',
     input: { nums: IN.slidingWindow.nums, k: IN.slidingWindow.k }, trace: slidingWindowTrace(IN.slidingWindow.nums, IN.slidingWindow.k),
     markdown: `# Slide a window (sliding window)
 
@@ -222,7 +280,6 @@ fsNums.forEach((to, from) => {
 });
 pattern({
     id: 'fast-slow', title: 'Tortoise and hare (fast & slow pointers)', file: 'fast_slow.py', source: FAST_SLOW_SOURCE,
-    description: 'Floyd\'s cycle detection finds a duplicate without extra memory.',
     input: { nums: fsNums }, trace: fastSlowTrace(fsNums),
     markdown: `# Tortoise and hare (fast & slow pointers)
 
@@ -253,7 +310,6 @@ ${MD_TAIL}
 // ── Monotonic stack ──
 pattern({
     id: 'monotonic-stack', title: 'Next bigger value (monotonic stack)', file: 'monotonic_stack.py', source: MONOTONIC_STACK_SOURCE,
-    description: 'Find each day\'s next warmer day with a stack of waiting days.',
     input: { temps: IN.monotonic.temps }, trace: monotonicStackTrace(IN.monotonic.temps), cameraX: 1,
     markdown: `# Next bigger value (monotonic stack)
 
@@ -289,7 +345,6 @@ ${MD_TAIL}
 // ── Modified binary search ──
 pattern({
     id: 'rotated-search', title: 'Halve the search (binary search)', file: 'rotated_search.py', source: ROTATED_SEARCH_SOURCE,
-    description: 'Binary search a rotated sorted array by finding the sorted half.',
     input: { nums: IN.rotated.nums, target: IN.rotated.target }, trace: rotatedSearchTrace(IN.rotated.nums, IN.rotated.target),
     markdown: `# Halve the search (binary search)
 
@@ -337,7 +392,6 @@ const intervalChart = {
 };
 pattern({
     id: 'merge-intervals', title: 'Merge overlapping ranges (intervals)', file: 'merge_intervals.py', source: MERGE_INTERVALS_SOURCE,
-    description: 'Sort by start, then sweep once and merge into the last group.',
     input: { intervals: ivs.map(([s, e]) => `[${s},${e}]`) }, trace: mergeIntervalsTrace(ivs),
     markdown: `# Merge overlapping ranges (intervals)
 
@@ -369,7 +423,6 @@ ${MD_TAIL}
 // ── Dynamic programming ──
 pattern({
     id: 'dynamic-programming', title: 'Reuse answers (dynamic programming)', file: 'house_robber.py', source: HOUSE_ROBBER_SOURCE,
-    description: 'House robber: build each answer from the two before it.',
     input: { houses: IN.dp.houses }, trace: houseRobberTrace(IN.dp.houses),
     markdown: `# Reuse answers (dynamic programming)
 
@@ -404,7 +457,6 @@ ${MD_TAIL}
 // ── Monotonic queue ──
 pattern({
     id: 'monotonic-queue', title: 'Max of every window (monotonic queue)', file: 'monotonic_queue.py', source: MONOTONIC_QUEUE_SOURCE,
-    description: 'Keep a deque of candidates so every window maximum costs O(1).',
     input: { nums: IN.monoQueue.nums, k: IN.monoQueue.k }, trace: monotonicQueueTrace(IN.monoQueue.nums, IN.monoQueue.k),
     markdown: `# Max of every window (monotonic queue)
 
@@ -433,7 +485,6 @@ ${MD_TAIL}
 // ── Greedy ──
 pattern({
     id: 'greedy', title: 'Take the best step now (greedy)', file: 'greedy.py', source: GREEDY_SOURCE,
-    description: 'Jump game: track only the farthest reachable index.',
     input: { nums: IN.greedy.nums }, trace: greedyTrace(IN.greedy.nums),
     markdown: `# Take the best step now (greedy)
 
@@ -461,7 +512,6 @@ ${MD_TAIL}
 // ── Bit manipulation ──
 pattern({
     id: 'bit-manipulation', title: 'Flip bits (bit manipulation)', file: 'single_number.py', source: BITS_SOURCE,
-    description: 'XOR cancels pairs, leaving the value that appears once.',
     input: { nums: IN.bits.nums }, trace: bitsTrace(IN.bits.nums),
     markdown: `# Flip bits (bit manipulation)
 
@@ -487,7 +537,6 @@ ${MD_TAIL}
 // ── String matching ──
 pattern({
     id: 'string-matching', title: 'Find a word fast (KMP string matching)', file: 'kmp.py', source: KMP_SOURCE,
-    description: 'Never re-read the text: fall back along the pattern instead.',
     input: { text: [...IN.kmp.text], pattern: [...IN.kmp.pattern] }, trace: kmpTrace(IN.kmp.text, IN.kmp.pattern),
     markdown: `# Find a word fast (KMP string matching)
 
@@ -521,7 +570,6 @@ ${MD_TAIL}
 // ── Union-find ──
 pattern({
     id: 'union-find', title: 'Group connected items (union-find)', file: 'union_find.py', source: UNION_FIND_SOURCE,
-    description: 'Count components by pointing each root at another root.',
     input: { from: IN.unionFind.edges.map(e => e[0]), to: IN.unionFind.edges.map(e => e[1]) }, trace: unionFindTrace(IN.unionFind.n, IN.unionFind.edges),
     markdown: `# Group connected items (union-find)
 
@@ -550,7 +598,7 @@ ${MD_TAIL}
 
 // ── Placeholders for patterns that need data structures AlgeBench does not render yet ──
 const SOON = 'This pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder.';
-placeholder('linked-list-reversal', 'Flip the links (linked list reversal)', 'Rewire next pointers in place.', `# Flip the links (linked list reversal)
+placeholder('linked-list-reversal', 'Flip the links (linked list reversal)', `# Flip the links (linked list reversal)
 
 **Signal:** reverse a list or a sublist, swap pairs, or reorder nodes, with O(1) extra space.
 
@@ -560,7 +608,7 @@ ${SOON} *(Needs a linked-list object with nodes and pointer arrows.)*
 
 **Practice:** Reverse Linked List (206), Reverse Linked List II (92), Swap Nodes in Pairs (24).`,
     'Explain the prev/curr/next dance and why saving next first matters. This scene has no visualization yet.');
-placeholder('top-k', 'Keep the best k (heap)', 'Keep a size-k heap of the best candidates.', `# Keep the best k (heap)
+placeholder('top-k', 'Keep the best k (heap)', `# Keep the best k (heap)
 
 **Signal:** the k largest, k smallest, or k most frequent items.
 
@@ -570,7 +618,7 @@ ${SOON} *(Needs a general heap view with push and pop.)*
 
 **Practice:** Kth Largest Element in an Array (215), Top K Frequent Elements (347), Find K Pairs with Smallest Sums (373).`,
     'Explain why a min-heap (not a max-heap) keeps the k largest. This scene has no visualization yet.');
-placeholder('tree-traversal', 'Walk a tree (traversal orders)', 'Preorder, inorder, postorder.', `# Walk a tree (traversal orders)
+placeholder('tree-traversal', 'Walk a tree (traversal orders)', `# Walk a tree (traversal orders)
 
 **Signal:** process every node of a tree in a specific order.
 
@@ -582,7 +630,7 @@ ${SOON} *(Needs a binary-tree object.)*
 
 **Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder).`,
     'Explain the three orders and what each is good for. This scene has no visualization yet.');
-placeholder('dfs', 'Go deep first (DFS)', 'Go deep, then backtrack.', `# Go deep first (DFS)
+placeholder('dfs', 'Go deep first (DFS)', `# Go deep first (DFS)
 
 **Signal:** explore every path, find connected components, detect cycles, or order dependencies.
 
@@ -592,7 +640,7 @@ ${SOON} *(Needs a graph object.)*
 
 **Practice:** Clone Graph (133), Path Sum II (113), Course Schedule II (210).`,
     'Explain recursion vs an explicit stack, and the visited set. This scene has no visualization yet.');
-placeholder('bfs', 'Go wide first (BFS)', 'Explore level by level with a queue.', `# Go wide first (BFS)
+placeholder('bfs', 'Go wide first (BFS)', `# Go wide first (BFS)
 
 **Signal:** shortest path in an unweighted graph, or anything "level by level".
 
@@ -602,7 +650,7 @@ ${SOON} *(Needs a graph or tree object and a queue.)*
 
 **Practice:** Binary Tree Level Order Traversal (102), Rotting Oranges (994), Word Ladder (127).`,
     'Explain why a queue gives shortest paths in unweighted graphs. This scene has no visualization yet.');
-placeholder('matrix-traversal', 'Explore a grid (matrix traversal)', 'DFS or BFS on a grid.', `# Explore a grid (matrix traversal)
+placeholder('matrix-traversal', 'Explore a grid (matrix traversal)', `# Explore a grid (matrix traversal)
 
 **Signal:** a 2D grid: islands, flood fill, regions, shortest moves.
 
@@ -612,7 +660,7 @@ ${SOON} *(Needs a 2D grid object with per-cell state.)*
 
 **Practice:** Flood Fill (733), Number of Islands (200), Surrounded Regions (130).`,
     'Explain the grid-as-graph view and neighbour iteration. This scene has no visualization yet.');
-placeholder('backtracking', 'Try, undo, retry (backtracking)', 'Choose, explore, un-choose.', `# Try, undo, retry (backtracking)
+placeholder('backtracking', 'Try, undo, retry (backtracking)', `# Try, undo, retry (backtracking)
 
 **Signal:** generate all permutations, subsets or combinations, or place pieces under constraints.
 
@@ -623,7 +671,7 @@ ${SOON} *(Needs a recursion-tree view.)*
 **Practice:** Permutations (46), Subsets (78), N-Queens (51).`,
     'Explain choose / explore / un-choose and pruning. This scene has no visualization yet.');
 
-placeholder('trie', 'Share prefixes (trie)', 'A tree of characters for prefix questions.', `# Share prefixes (trie)
+placeholder('trie', 'Share prefixes (trie)', `# Share prefixes (trie)
 
 **Signal:** autocomplete, "starts with", word search over many words, or longest common prefix.
 
@@ -633,7 +681,7 @@ ${SOON} *(Needs a tree object with labelled edges.)*
 
 **Practice:** Implement Trie (208), Design Add and Search Words Data Structure (211), Word Search II (212).`,
     'Explain shared prefixes and the end-of-word marker. This scene has no visualization yet.');
-placeholder('topological-sort', 'Order by dependencies (topological sort)', 'Schedule tasks so every prerequisite comes first.', `# Order by dependencies (topological sort)
+placeholder('topological-sort', 'Order by dependencies (topological sort)', `# Order by dependencies (topological sort)
 
 **Signal:** prerequisites, build order, course schedules: "what order satisfies every dependency?", or "is there a cycle?".
 
@@ -643,7 +691,7 @@ ${SOON} *(Needs a directed graph object.)*
 
 **Practice:** Course Schedule (207), Course Schedule II (210), Alien Dictionary (269).`,
     'Explain in-degrees and why leftover nodes mean a cycle. This scene has no visualization yet.');
-placeholder('shortest-path', 'Cheapest route (Dijkstra)', 'Shortest paths with weighted edges.', `# Cheapest route (Dijkstra)
+placeholder('shortest-path', 'Cheapest route (Dijkstra)', `# Cheapest route (Dijkstra)
 
 **Signal:** shortest or cheapest path when edges have non-negative weights: network delay, cheapest flights, minimum effort.
 
@@ -653,7 +701,7 @@ ${SOON} *(Needs a weighted graph object and a heap view.)*
 
 **Practice:** Network Delay Time (743), Path with Minimum Effort (1631), Cheapest Flights Within K Stops (787).`,
     'Explain why the closest unsettled node is final with non-negative weights. This scene has no visualization yet.');
-placeholder('recursion', 'Solve smaller copies (recursion)', 'Define a problem in terms of smaller versions of itself.', `# Solve smaller copies (recursion)
+placeholder('recursion', 'Solve smaller copies (recursion)', `# Solve smaller copies (recursion)
 
 **Signal:** the problem contains smaller copies of itself: trees, nested structures, divide and conquer (merge sort, fast power).
 

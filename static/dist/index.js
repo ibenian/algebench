@@ -344,6 +344,7 @@ var _CORE_MATH_NAMES = [
 	"E"
 ];
 var _MATH_SCOPE = Object.fromEntries(_CORE_MATH_NAMES.map((n) => [n, Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, n) ? _EXPR_HELPERS[n] : Math[n]]));
+/** Single-quoted math.js strings keep their contents literally (LaTeX backslashes included). Exported for tests. */
 function _normalizeSingleQuotes(str) {
 	return str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, content) => JSON.stringify(content.replace(/\\'/g, "'")));
 }
@@ -725,7 +726,7 @@ function annotationGroups(items) {
 		if (a.kind !== b.kind || a.detached || b.detached || a.coordinateMode !== b.coordinateMode) continue;
 		const sameIndex = a.index && b.index && a.index.group === b.index.group && a.index.value === b.index.value;
 		const overlaps = Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.y - b.y) < (a.height + b.height) / 2;
-		if (sameIndex || overlaps) parent[root(j)] = root(i);
+		if (sameIndex || overlaps && a.kind === "label") parent[root(j)] = root(i);
 	}
 	const groups = /* @__PURE__ */ new Map();
 	items.forEach((_, i) => {
@@ -734,6 +735,30 @@ function annotationGroups(items) {
 		groups.get(r).push(i);
 	});
 	return [...groups.values()];
+}
+/**
+* Upward lift, in px, for each marker badge so badges on different indexes never
+* overlap. Badges are placed left to right; one that would collide with a placed
+* badge climbs one badge height (plus a gap) at a time until it is clear. Its
+* pointer stretches into a stem, so it still points at its own cell.
+*/
+function markerLifts(boxes, gap = 4) {
+	const lifts = boxes.map(() => 0);
+	const placed = [];
+	for (const i of boxes.map((_, i) => i).sort((a, b) => boxes[a].x - boxes[b].x || a - b)) {
+		const b = boxes[i];
+		let lift = 0;
+		const hits = () => placed.some((p) => Math.abs(p.x - b.x) < (p.width + b.width) / 2 + gap && Math.abs(p.y - (b.y - lift)) < (p.height + b.height) / 2 + gap);
+		while (hits()) lift += b.height + gap;
+		lifts[i] = lift;
+		placed.push({
+			x: b.x,
+			y: b.y - lift,
+			width: b.width,
+			height: b.height
+		});
+	}
+	return lifts;
 }
 /** Shared expression-label boxes track their members without changing their anchors. */
 function annotationGroupAnchor(items) {
@@ -1002,6 +1027,18 @@ function objectWorldAnchor(name) {
 	const label = tracker.labels?.[0];
 	return label ? new THREE.Vector3(...dataToWorld(label.dataPos)) : null;
 }
+/**
+* The visible box row of an expression label named by id, wherever it is drawn:
+* in its own box or merged into another label's box. Null for other objects.
+*/
+function objectLabelRow(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	const label = match[1].tracker.labels?.find((l) => l.annotation?.kind === "label");
+	if (!label) return null;
+	const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+	return row && row.offsetParent ? row : null;
+}
 //#endregion
 //#region src/label-wire-path.ts
 function wireBend(start, end, departure, approach) {
@@ -1184,6 +1221,15 @@ function projectedCellEdge(start, centre, corners, gap = 4, avoidIndex = false) 
 		y: centre.y + ray.y * (nearest + gap / length)
 	} : centre;
 }
+/**
+* A link between two rows of the same label box: a bracket that leaves one row
+* sideways, bows out past the box edge and returns to the other row. Its bow
+* grows with the distance between the rows so adjacent rows stay tight.
+*/
+function rowBracketWire(edgeX, fromY, toY, side) {
+	const bow = side * (10 + Math.min(28, Math.abs(toY - fromY) * .3));
+	return `M ${edgeX} ${fromY} C ${edgeX + bow} ${fromY}, ${edgeX + bow} ${toY}, ${edgeX} ${toY}`;
+}
 //#endregion
 //#region src/cell-attachment.ts
 /** Shared screen-space anchor for a cell's index tag and connection endpoint. */
@@ -1275,6 +1321,56 @@ function paintWire(record) {
 		if (svg) svg.style.display = "none";
 		return;
 	}
+	const targetRow = target?.object && target.index === void 0 ? objectLabelRow(target.object) : null;
+	if (targetRow && targetRow !== hovered.row) {
+		const container = document.getElementById("labels-container");
+		if (!container) return;
+		({svg, path, dot} = ensureWireSvg(record, container));
+		const rect = container.getBoundingClientRect(), from = hovered.row.getBoundingClientRect(), to = targetRow.getBoundingClientRect();
+		const fromBox = hovered.row.closest(".annotation-badge").getBoundingClientRect(), toBox = targetRow.closest(".annotation-badge").getBoundingClientRect();
+		const fromY = (from.top + from.bottom) / 2 - rect.top, toY = (to.top + to.bottom) / 2 - rect.top;
+		let d, end;
+		if (hovered.row.closest(".annotation-badge") === targetRow.closest(".annotation-badge")) {
+			const edge = fromBox.right - rect.left;
+			d = rowBracketWire(edge, fromY, toY, 1);
+			end = {
+				x: edge,
+				y: toY
+			};
+		} else {
+			const rightward = (toBox.left + toBox.right) / 2 > (fromBox.left + fromBox.right) / 2;
+			const start = {
+				x: (rightward ? fromBox.right : fromBox.left) - rect.left,
+				y: fromY
+			};
+			end = {
+				x: (rightward ? toBox.left : toBox.right) - rect.left,
+				y: toY
+			};
+			const obstacles = [fromBox, toBox].map((b) => ({
+				left: b.left - rect.left,
+				top: b.top - rect.top,
+				right: b.right - rect.left,
+				bottom: b.bottom - rect.top,
+				padding: 0
+			}));
+			d = routedLabelWire(start, end, {
+				x: rightward ? 1 : -1,
+				y: 0
+			}, {
+				x: rightward ? -1 : 1,
+				y: 0
+			}, obstacles);
+		}
+		svg.style.display = "";
+		if (d !== record.previous) {
+			path.setAttribute("d", d);
+			dot.setAttribute("cx", String(end.x));
+			dot.setAttribute("cy", String(end.y));
+			record.previous = d;
+		}
+		return;
+	}
 	const cell = target?.object && target.index !== void 0 ? objectCellAnchor(target.object, target.index) : null;
 	const world = target?.index !== void 0 ? cell ? new THREE.Vector3(...dataToWorld(cell.position)) : null : target?.position ? new THREE.Vector3(...dataToWorld(target.position)) : target?.object ? objectWorldAnchor(target.object) : null;
 	if (!world) {
@@ -1288,36 +1384,9 @@ function paintWire(record) {
 	}
 	const container = document.getElementById("labels-container");
 	if (!container) return;
-	if (!svg?.isConnected) {
-		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		svg.classList.add("label-hover-wire");
-		svg.setAttribute("aria-hidden", "true");
-		Object.assign(svg.style, {
-			position: "absolute",
-			inset: "0",
-			width: "100%",
-			height: "100%",
-			overflow: "visible",
-			pointerEvents: "none",
-			zIndex: "2147483647"
-		});
-		path = document.createElementNS(svg.namespaceURI, "path");
-		path.setAttribute("fill", "none");
-		path.setAttribute("stroke", "#a6d5ec");
-		path.setAttribute("stroke-opacity", ".65");
-		path.setAttribute("stroke-width", "1.5");
-		path.setAttribute("stroke-linecap", "round");
-		dot = document.createElementNS(svg.namespaceURI, "circle");
-		dot.setAttribute("r", "2");
-		dot.setAttribute("fill", "#bce8ff");
-		svg.append(path, dot);
-		container.append(svg);
-		previous = "";
-		routeKey = "";
-		record.svg = svg;
-		record.path = path;
-		record.dot = dot;
-	}
+	({svg, path, dot} = ensureWireSvg(record, container));
+	previous = record.previous;
+	routeKey = record.routeKey;
 	const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect(), row = hovered.row.getBoundingClientRect();
 	const screen = (p) => ({
 		x: viewport.left - rect.left + (p.x * .5 + .5) * viewport.width,
@@ -1411,6 +1480,102 @@ function paintWire(record) {
 		dot.setAttribute("cy", String(end.y));
 		record.previous = d;
 	}
+}
+/** The record's SVG wire, created on first use and after the container was rebuilt. */
+function ensureWireSvg(record, container) {
+	if (!record.svg?.isConnected) {
+		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		svg.classList.add("label-hover-wire");
+		svg.setAttribute("aria-hidden", "true");
+		Object.assign(svg.style, {
+			position: "absolute",
+			inset: "0",
+			width: "100%",
+			height: "100%",
+			overflow: "visible",
+			pointerEvents: "none",
+			zIndex: "2147483647"
+		});
+		const path = document.createElementNS(svg.namespaceURI, "path");
+		path.setAttribute("fill", "none");
+		path.setAttribute("stroke", "#a6d5ec");
+		path.setAttribute("stroke-opacity", ".65");
+		path.setAttribute("stroke-width", "1.5");
+		path.setAttribute("stroke-linecap", "round");
+		const dot = document.createElementNS(svg.namespaceURI, "circle");
+		dot.setAttribute("r", "2");
+		dot.setAttribute("fill", "#bce8ff");
+		svg.append(path, dot);
+		container.append(svg);
+		record.svg = svg;
+		record.path = path;
+		record.dot = dot;
+		record.previous = "";
+		record.routeKey = "";
+	}
+	return {
+		svg: record.svg,
+		path: record.path,
+		dot: record.dot
+	};
+}
+//#endregion
+//#region src/label-tooltip.ts
+var tip = null;
+var owner = null;
+var shown = "";
+function element() {
+	if (!tip?.isConnected) {
+		tip = document.createElement("div");
+		tip.className = "graph-panel-tooltip label-row-tooltip";
+		tip.setAttribute("role", "tooltip");
+		document.body.append(tip);
+		shown = "";
+	}
+	return tip;
+}
+function render$1(tex) {
+	if (tex === shown) return;
+	const el = element();
+	const katex = window.katex;
+	if (katex) katex.render(tex, el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else el.textContent = tex;
+	shown = tex;
+}
+function hide() {
+	owner = null;
+	tip?.classList.remove("visible");
+}
+/** Show `label`'s tooltip while the pointer is over this row. Rows are rebuilt as values change; each new row is wired again. */
+function wireRowTooltip(row, label) {
+	if (label.annotation?.tooltip === void 0) return;
+	row.addEventListener("pointerenter", () => {
+		owner = label;
+		render$1(label.annotation?.tooltip ?? "");
+		element().classList.add("visible");
+	});
+	row.addEventListener("pointermove", (event) => {
+		const el = element();
+		el.style.left = `${event.clientX + 16}px`;
+		el.style.top = `${event.clientY - 40}px`;
+	});
+	row.addEventListener("pointerleave", () => {
+		if (owner === label) hide();
+	});
+}
+/** Called with the label layout each frame: follow value changes while open, and close when the row goes away. */
+function refreshLabelTooltip() {
+	if (!owner) return;
+	const tex = owner.annotation?.tooltip;
+	if (tex === void 0 || !owner.el.isConnected || owner.forceHidden || owner.visible === false) {
+		hide();
+		return;
+	}
+	render$1(tex);
 }
 //#endregion
 //#region src/glossary-core.ts
@@ -2167,6 +2332,7 @@ function updateLabels() {
 		}
 	}
 	updateLabelWire();
+	refreshLabelTooltip();
 }
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
 * Intrinsic measurement nodes keep collision geometry independent of merged content. */
@@ -2202,7 +2368,8 @@ function groupAnnotations(scale) {
 		b.width,
 		b.height,
 		b.text,
-		b.index
+		b.index,
+		!!labels[i].annotation.highlighted
 	]));
 	if (key === annotationLayoutKey) return;
 	annotationLayoutKey = key;
@@ -2217,19 +2384,25 @@ function groupAnnotations(scale) {
 		const members = group.map((i) => boxes[i]);
 		if (a.kind === "label") leader.annotationAnchor = annotationGroupAnchor(members);
 		const rows = annotationRows(members);
-		const signature = JSON.stringify([rows, group.map((i) => [labels[i].seq, labels[i].annotationCoordinateMode ?? "world"])]);
+		const signature = JSON.stringify([rows, group.map((i) => [
+			labels[i].seq,
+			labels[i].annotationCoordinateMode ?? "world",
+			!!labels[i].annotation.highlighted
+		])]);
 		if (signature !== a.rendered) {
 			a.badge.replaceChildren(...rows.map((text, rowIndex) => {
 				const row = document.createElement("span");
 				row.className = "annotation-row";
 				row.textContent = text;
 				if (a.kind === "label") {
+					if (labels[group[rowIndex]].annotation.highlighted) row.classList.add("annotation-row-highlight");
 					wireRowHover(row, labels[group[rowIndex]]);
+					wireRowTooltip(row, labels[group[rowIndex]]);
 					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
 						row.classList.add("annotation-row-draggable");
-						if (!labels[group[rowIndex]].wireTarget) row.title = "Drag to move this label";
+						if (!labels[group[rowIndex]].wireTarget && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label";
 						row.addEventListener("pointerdown", drag);
 					}
 				}
@@ -2268,6 +2441,12 @@ function groupAnnotations(scale) {
 		}
 		for (const i of group.slice(1)) labels[i].annotationHidden = true;
 	}
+	const markerGroups = annotationGroups(boxes).filter((g) => boxes[g[0]].kind === "marker" && labels[g[0]].cellAttachment);
+	const lifts = markerLifts(markerGroups.map((g) => boxes[g[0]]));
+	markerGroups.forEach((g, k) => {
+		const el = labels[g[0]].el, stem = `${lifts[k]}px`;
+		if (el.style.getPropertyValue("--marker-stem") !== stem) el.style.setProperty("--marker-stem", stem);
+	});
 }
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
 function placeExpressionLabel(label, x, y, clientX, clientY) {
@@ -3690,6 +3869,8 @@ function renderStepMarker(el, _view, owner) {
 		...el.textExpr ? [el.textExpr] : [],
 		...el.visibleExpr ? [el.visibleExpr] : [],
 		...el.indexExpr ? [el.indexExpr] : [],
+		...!marker && el.highlightExpr ? [el.highlightExpr] : [],
+		...!marker && el.tooltipExpr ? [el.tooltipExpr] : [],
 		...targetPosition,
 		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
 	];
@@ -3697,6 +3878,8 @@ function renderStepMarker(el, _view, owner) {
 	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
 	const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
 	const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
+	const highlightFn = !marker && el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const tooltipFn = !marker && el.tooltipExpr ? compileExpr(el.tooltipExpr) : null;
 	const animState = owner?.animState ?? { stopped: false };
 	const label = addLabel3D("", [
 		0,
@@ -3715,10 +3898,13 @@ function renderStepMarker(el, _view, owner) {
 	cursor.append(badge);
 	if (owner) cursor.classList.add("array-marker-cursor");
 	if (marker) {
+		const stem = document.createElement("span");
+		stem.className = "step-marker-stem";
+		stem.setAttribute("aria-hidden", "true");
 		const pointer = document.createElement("span");
 		pointer.className = "step-marker-pointer";
 		pointer.setAttribute("aria-hidden", "true");
-		cursor.append(pointer);
+		cursor.append(stem, pointer);
 	}
 	label.el.replaceChildren(cursor, measure);
 	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#172e50")));
@@ -3734,6 +3920,7 @@ function renderStepMarker(el, _view, owner) {
 	};
 	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
 	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
+	if (!marker && el.connectTo?.pinned) label.wirePinned = true;
 	const entry = {
 		animState,
 		exprStrings: sources,
@@ -3777,6 +3964,12 @@ function renderStepMarker(el, _view, owner) {
 					};
 				}
 				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
+				if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn, 0);
+				if (tooltipFn) try {
+					annotation.tooltip = String(evalExpr(tooltipFn, 0));
+				} catch {
+					annotation.tooltip = "";
+				}
 				if (measure.textContent !== annotation.text) {
 					measure.textContent = annotation.text;
 					annotation.scale = null;

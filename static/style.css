@@ -5646,6 +5646,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker-cursor { display: flex; flex-direction: column; align-items: center; transform: translateY(-38px); }
 .step-marker-badge { display: block; padding: 4px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 13px/1.3 ui-monospace, monospace; white-space: nowrap; box-shadow: 0 2px 8px #0004; }
 .step-marker-pointer { display: block; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--marker-color); margin-top: 3px; }
+/* A badge lifted above a neighbour on another index reaches its own cell through a stem. */
+.step-marker-stem { display: block; width: 2px; height: var(--marker-stem, 0px); margin-top: 3px; margin-bottom: -3px; background: var(--marker-color); opacity: .85; }
 
 .array-cell-label { font: 600 var(--array-font-size, 14px)/1.25 ui-monospace, monospace; text-shadow: none; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
 .array-index-tag {
@@ -5671,6 +5673,19 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .expression-label .annotation-mode-toggle { background: #edf4ff12; border-color: #edf4ff55; }
 .annotation-badge { display: block; padding: 5px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 calc(13px * var(--label-scale, 1))/1.35 ui-monospace, monospace; white-space: pre; box-shadow: 0 2px 8px #0004; }
 .annotation-row { display: block; }
+/* Label-row KaTeX tooltips: the semantic graph's tooltip chrome at the glossary tooltip's size. */
+.graph-panel-tooltip.label-row-tooltip { font-size: 13px; padding: 6px 10px; max-width: min(520px, calc(100vw - 16px)); }
+.label-row-tooltip .katex-display { margin: 0; }
+/* A label whose highlightExpr is truthy: the same gold an array uses for a selected cell. */
+.annotation-row.annotation-row-highlight {
+    color: #1b1606; border-radius: 4px; padding-inline: 4px; margin-inline: -4px;
+    /* Lit like a changed array cell: a brighter centre and a soft gold glow. */
+    background: radial-gradient(ellipse at 50% 40%, #ffe9a3 0%, #f1cc59 70%);
+    box-shadow: 0 0 0 1px #ffe28a, 0 0 10px 2px #f1cc59a6, 0 0 22px 4px #f1cc5940;
+    animation: annotation-row-light .45s ease-out;
+}
+@keyframes annotation-row-light { from { box-shadow: 0 0 0 1px #fff3c4, 0 0 18px 6px #f1cc59d9, 0 0 36px 10px #f1cc5966; } }
+@media (prefers-reduced-motion: reduce) { .annotation-row.annotation-row-highlight { animation: none; } }
 .expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
 .expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
 .expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }

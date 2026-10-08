@@ -1,8 +1,8 @@
 /** Hover wires are presentation only. Target expressions are evaluated by bindings. */
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
-import { objectWorldAnchor, objectCellAnchor, objectWorldCorners, objectLabelElement, objectTargetExists } from '/object-anchor.js';
-import { routedLabelWire, projectedCellEdge, wholeObjectWireAttachment } from '/label-wire-path.js';
+import { objectWorldAnchor, objectCellAnchor, objectWorldCorners, objectLabelElement, objectTargetExists, objectLabelRow } from '/object-anchor.js';
+import { routedLabelWire, projectedCellEdge, wholeObjectWireAttachment, rowBracketWire } from '/label-wire-path.js';
 import type { WireObstacle } from '/label-wire-path.js';
 import type { Label3D } from '/labels.js';
 
@@ -53,6 +53,32 @@ function paintWire(record:WireRecord):void {
         return;
     }
     if(hovered.label.annotationDragging){if(svg)svg.style.display='none';return;}
+    // A link to another expression label ends at that label's row, wherever it
+    // is drawn: a bracket beside the box when both rows share one, otherwise a
+    // wire to the near side of the other row.
+    const targetRow=target?.object&&target.index===undefined?objectLabelRow(target.object):null;
+    if(targetRow&&targetRow!==hovered.row){
+        const container=document.getElementById('labels-container');
+        if(!container)return;
+        ({svg,path,dot}=ensureWireSvg(record,container));
+        const rect=container.getBoundingClientRect(),from=hovered.row.getBoundingClientRect(),to=targetRow.getBoundingClientRect();
+        const fromBox=hovered.row.closest('.annotation-badge')!.getBoundingClientRect(),toBox=targetRow.closest('.annotation-badge')!.getBoundingClientRect();
+        const fromY=(from.top+from.bottom)/2-rect.top,toY=(to.top+to.bottom)/2-rect.top;
+        let d:string,end:{x:number;y:number};
+        if(hovered.row.closest('.annotation-badge')===targetRow.closest('.annotation-badge')){
+            const edge=fromBox.right-rect.left;
+            d=rowBracketWire(edge,fromY,toY,1);end={x:edge,y:toY};
+        } else {
+            const rightward=(toBox.left+toBox.right)/2>(fromBox.left+fromBox.right)/2;
+            const start={x:(rightward?fromBox.right:fromBox.left)-rect.left,y:fromY};
+            end={x:(rightward?toBox.left:toBox.right)-rect.left,y:toY};
+            const obstacles:WireObstacle[]=[fromBox,toBox].map(b=>({left:b.left-rect.left,top:b.top-rect.top,right:b.right-rect.left,bottom:b.bottom-rect.top,padding:0}));
+            d=routedLabelWire(start,end,{x:rightward?1:-1,y:0},{x:rightward?-1:1,y:0},obstacles);
+        }
+        svg!.style.display='';
+        if(d!==record.previous){path!.setAttribute('d',d);dot!.setAttribute('cx',String(end.x));dot!.setAttribute('cy',String(end.y));record.previous=d;}
+        return;
+    }
     const cell=target?.object&&target.index!==undefined?objectCellAnchor(target.object,target.index):null;
     const world=target?.index!==undefined ? cell?new THREE.Vector3(...dataToWorld(cell.position)):null : target?.position ? new THREE.Vector3(...dataToWorld(target.position)) : target?.object ? objectWorldAnchor(target.object) : null;
     if(!world){if(svg)svg.style.display='none';return;}
@@ -60,17 +86,7 @@ function paintWire(record:WireRecord):void {
     if(projected.z < -1 || projected.z>=1){if(svg)svg.style.display='none';return;}
     const container=document.getElementById('labels-container');
     if(!container)return;
-    if(!svg?.isConnected){
-        svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-        svg.classList.add('label-hover-wire');svg.setAttribute('aria-hidden','true');
-        Object.assign(svg.style,{position:'absolute',inset:'0',width:'100%',height:'100%',overflow:'visible',pointerEvents:'none',zIndex:'2147483647'});
-        path=document.createElementNS(svg.namespaceURI,'path') as SVGPathElement;
-        path.setAttribute('fill','none');path.setAttribute('stroke','#a6d5ec');path.setAttribute('stroke-opacity','.65');path.setAttribute('stroke-width','1.5');path.setAttribute('stroke-linecap','round');
-        dot=document.createElementNS(svg.namespaceURI,'circle') as SVGCircleElement;
-        dot.setAttribute('r','2');dot.setAttribute('fill','#bce8ff');
-        svg.append(path,dot);container.append(svg);previous='';routeKey='';
-        record.svg=svg;record.path=path;record.dot=dot;
-    }
+    ({svg,path,dot}=ensureWireSvg(record,container));previous=record.previous;routeKey=record.routeKey;
     const rect=container.getBoundingClientRect(),viewport=canvas.getBoundingClientRect(),row=hovered.row.getBoundingClientRect();
     const screen=(p:{x:number;y:number})=>({x:viewport.left-rect.left+(p.x*.5+.5)*viewport.width,y:viewport.top-rect.top+(-p.y*.5+.5)*viewport.height});
     const centre=screen(projected);
@@ -110,5 +126,20 @@ function paintWire(record:WireRecord):void {
     const d=routePath;
     svg.style.display='';
     if(d!==previous){path!.setAttribute('d',d);dot!.setAttribute('cx',String(end.x));dot!.setAttribute('cy',String(end.y));record.previous=d;}
+}
+/** The record's SVG wire, created on first use and after the container was rebuilt. */
+function ensureWireSvg(record:WireRecord,container:HTMLElement):{svg:SVGSVGElement;path:SVGPathElement;dot:SVGCircleElement} {
+    if(!record.svg?.isConnected){
+        const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+        svg.classList.add('label-hover-wire');svg.setAttribute('aria-hidden','true');
+        Object.assign(svg.style,{position:'absolute',inset:'0',width:'100%',height:'100%',overflow:'visible',pointerEvents:'none',zIndex:'2147483647'});
+        const path=document.createElementNS(svg.namespaceURI,'path') as SVGPathElement;
+        path.setAttribute('fill','none');path.setAttribute('stroke','#a6d5ec');path.setAttribute('stroke-opacity','.65');path.setAttribute('stroke-width','1.5');path.setAttribute('stroke-linecap','round');
+        const dot=document.createElementNS(svg.namespaceURI,'circle') as SVGCircleElement;
+        dot.setAttribute('r','2');dot.setAttribute('fill','#bce8ff');
+        svg.append(path,dot);container.append(svg);
+        record.svg=svg;record.path=path;record.dot=dot;record.previous='';record.routeKey='';
+    }
+    return {svg:record.svg!,path:record.path!,dot:record.dot!};
 }
 import { cellEdgeAnchor } from '/cell-attachment.js';

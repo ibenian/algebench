@@ -1428,7 +1428,7 @@
         },
         "highlightExpr": {
           "type": "string",
-          "description": "ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes."
+          "description": "ARRAY / STACK: boolean expression per cell with idx and value. EXPRESSION_LABEL: truthy highlights the label's row in its box, e.g. when a running total reaches its target. Evaluated on state changes."
         },
         "indexName": {
           "type": "string",
@@ -1445,9 +1445,13 @@
           "minLength": 1,
           "description": "STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge."
         },
+        "tooltipExpr": {
+          "type": "string",
+          "description": "EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\\text{total}'): their contents are kept literally. Evaluated on state changes."
+        },
         "connectTo": {
           "type": "object",
-          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.",
+          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it.",
           "oneOf": [
             {
               "type": "object",
@@ -1462,6 +1466,11 @@
                 "indexExpr": {
                   "type": "string",
                   "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
                 }
               },
               "additionalProperties": false
@@ -1479,6 +1488,11 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
                 }
               },
               "additionalProperties": false

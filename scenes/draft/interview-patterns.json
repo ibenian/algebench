@@ -557,7 +557,7 @@
     {
       "id": "prefix-sum",
       "title": "Running totals (prefix sum)",
-      "description": "Precompute running totals so any range sum costs one subtraction.",
+      "description": "Given an array, answer many queries of the form \"what is the sum of nums[i..j]?\"",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -906,7 +906,7 @@
           }
         ]
       },
-      "markdown": "# Running totals (prefix sum)\n\n**Signal:** many \"sum of nums[i..j]\" queries on an array that does not change.\n\nBuild `prefix` once, where `prefix[m]` is the sum of the first `m` numbers. Each prefix cell sits on the boundary *before* position m, so it covers everything to its left. Then\n\n$$\\text{sum}(i..j) = \\text{prefix}[j+1] - \\text{prefix}[i]$$\n\nbecause the larger prefix includes the range and the smaller one removes everything before it. Building costs O(n); every query after that costs O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Range Sum Query (303), Contiguous Array (525), Subarray Sum Equals K (560).",
+      "markdown": "# Running totals (prefix sum)\n\n**Problem:** Given an array, answer many queries of the form \"what is the sum of nums[i..j]?\"\n\n**Example:** nums = [3, 1, 4, 1, 5, 9, 2, 6]: sum(2..5) = 19, sum(0..3) = 9.\n\n**Signal:** many \"sum of nums[i..j]\" queries on an array that does not change.\n\nBuild `prefix` once, where `prefix[m]` is the sum of the first `m` numbers. Each prefix cell sits on the boundary *before* position m, so it covers everything to its left. Then\n\n$$\\text{sum}(i..j) = \\text{prefix}[j+1] - \\text{prefix}[i]$$\n\nbecause the larger prefix includes the range and the smaller one removes everything before it. Building costs O(n); every query after that costs O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Range Sum Query (303), Contiguous Array (525), Subarray Sum Equals K (560).",
       "prompt": "Explain why prefix[j+1] - prefix[i] isolates the range. Stress the off-by-one: prefix has n+1 entries and prefix[0] = 0. Ask the learner to predict a query answer before the player reveals it. Displayed Python is not executing in the browser.",
       "elements": [
         {
@@ -1010,7 +1010,7 @@
     {
       "id": "two-pointers",
       "title": "Squeeze from both ends (two pointers)",
-      "description": "Walk inward from both ends of a sorted array to find a pair.",
+      "description": "Given a sorted array and a target, find two numbers that add up to the target, and return their indices.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -1050,7 +1050,7 @@
           {"left": 2, "right": 6, "total": 18, "hasTotal": 1, "found": 1, "line": 6, "message": "Found it: indices 2 and 6.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Squeeze from both ends (two pointers)\n\n**Signal:** a **sorted** array and a question about a pair (or triple) of elements.\n\nPut `left` at the smallest value and `right` at the largest. Compare their sum with the target:\n\n- **Too small:** `nums[right]` is the largest value still available, so `nums[left]` cannot reach the target with anything. Discard it: `left += 1`.\n- **Too big:** `nums[left]` is the smallest value still available, so `nums[right]` overshoots with everything. Discard it: `right -= 1`.\n\nEach step rules out one element for good, so the scan is O(n) with O(1) space, compared with O(n²) for checking every pair. Target here: **18**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Two Sum II (167), 3Sum (15), Container With Most Water (11).",
+      "markdown": "# Squeeze from both ends (two pointers)\n\n**Problem:** Given a sorted array and a target, find two numbers that add up to the target, and return their indices.\n\n**Example:** nums = [2, 3, 5, 7, 8, 11, 13, 17], target = 18 → indices 2 and 6 (5 + 13).\n\n**Signal:** a **sorted** array and a question about a pair (or triple) of elements.\n\nPut `left` at the smallest value and `right` at the largest. Compare their sum with the target:\n\n- **Too small:** `nums[right]` is the largest value still available, so `nums[left]` cannot reach the target with anything. Discard it: `left += 1`.\n- **Too big:** `nums[left]` is the smallest value still available, so `nums[right]` overshoots with everything. Discard it: `right -= 1`.\n\nEach step rules out one element for good, so the scan is O(n) with O(1) space, compared with O(n²) for checking every pair. Target here: **18**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Two Sum II (167), 3Sum (15), Container With Most Water (11).",
       "prompt": "Explain why moving a pointer never skips a valid pair: the discarded element cannot be part of any solution. Ask the learner to predict which pointer moves before each step.",
       "elements": [
         {
@@ -1115,13 +1115,25 @@
               "id": "total",
               "type": "expression_label",
               "position": [-4, -2.6, 0],
-              "textExpr": "concat('total = ', dataTable('trace', frame, 'hasTotal') == 1 ? dataTable('trace', frame, 'total') : '—')"
+              "textExpr": "concat('total = ', dataTable('trace', frame, 'hasTotal') == 1 ? dataTable('trace', frame, 'total') : '—')",
+              "highlightExpr": "dataTable('trace', frame, 'hasTotal') == 1 and dataTable('trace', frame, 'total') == dataTable('input', 0, 'target')",
+              "connectTo": {"object": "target", "pinned": true},
+              "tooltipExpr": "dataTable('trace', frame, 'hasTotal') == 1 ? concat('\\text{total} = \\text{nums}[\\text{left}] + \\text{nums}[\\text{right}] = ', arrayAt(dataTable('input', 0, 'nums'), dataTable('trace', frame, 'left')), ' + ', arrayAt(dataTable('input', 0, 'nums'), dataTable('trace', frame, 'right')), ' = ', dataTable('trace', frame, 'total')) : '\\text{total} = \\text{nums}[\\text{left}] + \\text{nums}[\\text{right}]'"
             },
             {
               "id": "target",
               "type": "expression_label",
               "position": [4, -2.6, 0],
-              "textExpr": "concat('target = ', dataTable('input', 0, 'target'))"
+              "textExpr": "concat('target = ', dataTable('input', 0, 'target'))",
+              "highlightExpr": "dataTable('trace', frame, 'hasTotal') == 1 and dataTable('trace', frame, 'total') == dataTable('input', 0, 'target')"
+            },
+            {
+              "id": "compare",
+              "type": "expression_label",
+              "position": [4, -2.6, 0],
+              "textExpr": "dataTable('trace', frame, 'hasTotal') == 1 ? concat(dataTable('trace', frame, 'total'), dataTable('trace', frame, 'total') < dataTable('input', 0, 'target') ? ' < ' : (dataTable('trace', frame, 'total') > dataTable('input', 0, 'target') ? ' > ' : ' = '), dataTable('input', 0, 'target'), dataTable('trace', frame, 'total') < dataTable('input', 0, 'target') ? ': move left' : (dataTable('trace', frame, 'total') > dataTable('input', 0, 'target') ? ': move right' : ': found')) : 'compare: —'",
+              "highlightExpr": "dataTable('trace', frame, 'hasTotal') == 1 and dataTable('trace', frame, 'total') == dataTable('input', 0, 'target')",
+              "tooltipExpr": "dataTable('trace', frame, 'hasTotal') == 1 ? (dataTable('trace', frame, 'total') < dataTable('input', 0, 'target') ? concat(dataTable('trace', frame, 'total'), ' < ', dataTable('input', 0, 'target'), ' \\;\\Rightarrow\\; \\text{left} \\mathrel{+}= 1') : (dataTable('trace', frame, 'total') > dataTable('input', 0, 'target') ? concat(dataTable('trace', frame, 'total'), ' > ', dataTable('input', 0, 'target'), ' \\;\\Rightarrow\\; \\text{right} \\mathrel{-}= 1') : concat(dataTable('trace', frame, 'total'), ' = ', dataTable('input', 0, 'target'), ' \\;\\Rightarrow\\; \\text{found at } (', dataTable('trace', frame, 'left'), ', ', dataTable('trace', frame, 'right'), ')'))) : '\\text{compare total with target}'"
             }
           ],
           "info": [
@@ -1135,7 +1147,7 @@
     {
       "id": "sliding-window",
       "title": "Slide a window (sliding window)",
-      "description": "Reuse the last window's sum: add the entering element, subtract the leaving one.",
+      "description": "Find the largest sum of any k consecutive numbers in an array.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -1173,7 +1185,7 @@
           {"left": 4, "right": 6, "dropped": -1, "window": 9, "best": 11, "bestLeft": 4, "line": 7, "message": "The best window is nums[4..6], with sum 11.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Slide a window (sliding window)\n\n**Signal:** the best (largest, smallest, longest) **contiguous** subarray or substring.\n\nNeighbouring windows share all but two elements. Instead of re-summing each window of size k = 3, slide it one step: add the element that enters on the right, subtract the one that leaves on the left. That turns O(n·k) into O(n).\n\nThis scene uses a fixed-size window. Variable-size windows (longest substring without repeats, minimum window substring) grow `right` every step and shrink `left` while a constraint is broken. The invariant is the same: the window state is updated incrementally, never recomputed.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Maximum Average Subarray I (643), Longest Substring Without Repeating Characters (3), Minimum Window Substring (76).",
+      "markdown": "# Slide a window (sliding window)\n\n**Problem:** Find the largest sum of any k consecutive numbers in an array.\n\n**Example:** nums = [2, 1, 5, 1, 3, 2, 6, 1], k = 3 → 11, from nums[4..6].\n\n**Signal:** the best (largest, smallest, longest) **contiguous** subarray or substring.\n\nNeighbouring windows share all but two elements. Instead of re-summing each window of size k = 3, slide it one step: add the element that enters on the right, subtract the one that leaves on the left. That turns O(n·k) into O(n).\n\nThis scene uses a fixed-size window. Variable-size windows (longest substring without repeats, minimum window substring) grow `right` every step and shrink `left` while a constraint is broken. The invariant is the same: the window state is updated incrementally, never recomputed.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Maximum Average Subarray I (643), Longest Substring Without Repeating Characters (3), Minimum Window Substring (76).",
       "prompt": "Explain the incremental update and why it is O(1). Contrast fixed and variable windows. Ask the learner to predict the next window sum before the player shows it.",
       "elements": [
         {
@@ -1251,7 +1263,7 @@
     {
       "id": "rotated-search",
       "title": "Halve the search (binary search)",
-      "description": "Binary search a rotated sorted array by finding the sorted half.",
+      "description": "A sorted array was rotated at an unknown point. Find the index of a target value in O(log n) time.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -1288,7 +1300,7 @@
           {"lo": 8, "hi": 9, "mid": 8, "half": 0, "found": 8, "line": 6, "message": "Found 15 at index 8.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Halve the search (binary search)\n\n**Signal:** data that is sorted *with a twist* (rotated, sorted rows and columns, or a monotone yes/no condition) and an O(log n) expectation.\n\nA rotated sorted array is two sorted runs. Cut it at `mid` and **at least one half is fully sorted**: if `nums[lo] ≤ nums[mid]` the left half is, otherwise the right half is. A sorted half lets you check in O(1) whether the target lies inside it, so you still discard half the candidates each step. Highlighted cells are the candidates still in play. Target here: **15**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Search in Rotated Sorted Array (33), Find Minimum in Rotated Sorted Array (153), Search a 2D Matrix II (240).",
+      "markdown": "# Halve the search (binary search)\n\n**Problem:** A sorted array was rotated at an unknown point. Find the index of a target value in O(log n) time.\n\n**Example:** nums = [22, 27, 31, 2, 5, 8, 11, 13, 15, 18], target = 15 → index 8.\n\n**Signal:** data that is sorted *with a twist* (rotated, sorted rows and columns, or a monotone yes/no condition) and an O(log n) expectation.\n\nA rotated sorted array is two sorted runs. Cut it at `mid` and **at least one half is fully sorted**: if `nums[lo] ≤ nums[mid]` the left half is, otherwise the right half is. A sorted half lets you check in O(1) whether the target lies inside it, so you still discard half the candidates each step. Highlighted cells are the candidates still in play. Target here: **15**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Search in Rotated Sorted Array (33), Find Minimum in Rotated Sorted Array (153), Search a 2D Matrix II (240).",
       "prompt": "Explain why one half is always sorted and how that keeps O(log n). Ask the learner to predict which half survives before each step.",
       "elements": [
         {
@@ -1381,7 +1393,7 @@
     {
       "id": "merge-intervals",
       "title": "Merge overlapping ranges (intervals)",
-      "description": "Sort by start, then sweep once and merge into the last group.",
+      "description": "Given a list of [start, end] intervals, merge every group that overlaps and return the result.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -1628,7 +1640,7 @@
           }
         ]
       },
-      "markdown": "# Merge overlapping ranges (intervals)\n\n**Signal:** meetings, bookings, ranges, or anything with a start and an end.\n\nSort by start time. After sorting, an interval can only overlap the group immediately before it, so a single sweep suffices: if the next interval starts at or before the last merged end, extend that end; otherwise start a new group. The chart below draws the same state as bars: input intervals on the upper lanes, and the merged groups growing on the bottom lane as the sweep runs.\n\nSorting dominates: O(n log n) time.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Merge Intervals (56), Insert Interval (57), Non-overlapping Intervals (435).",
+      "markdown": "# Merge overlapping ranges (intervals)\n\n**Problem:** Given a list of [start, end] intervals, merge every group that overlaps and return the result.\n\n**Example:** [8,10] [1,3] [2,6] [15,18] [9,12] → [1,6] [8,12] [15,18].\n\n**Signal:** meetings, bookings, ranges, or anything with a start and an end.\n\nSort by start time. After sorting, an interval can only overlap the group immediately before it, so a single sweep suffices: if the next interval starts at or before the last merged end, extend that end; otherwise start a new group. The chart below draws the same state as bars: input intervals on the upper lanes, and the merged groups growing on the bottom lane as the sweep runs.\n\nSorting dominates: O(n log n) time.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Merge Intervals (56), Insert Interval (57), Non-overlapping Intervals (435).",
       "prompt": "Explain why sorting by start means only the last merged interval can overlap the next one. Ask the learner to predict whether the next interval extends the last group or starts a new one.",
       "elements": [
         {
@@ -1780,7 +1792,7 @@
     {
       "id": "greedy",
       "title": "Take the best step now (greedy)",
-      "description": "Jump game: track only the farthest reachable index.",
+      "description": "Each value is the longest jump allowed from that index. Starting at index 0, can you reach the last index?",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -1815,7 +1827,7 @@
           {"i": 4, "jump": 4, "reach": 3, "ok": 0, "line": 5, "message": "Yes: index 4 cannot be reached, so neither can the end.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Take the best step now (greedy)\n\n**Signal:** a sequence of choices where the locally best choice never hurts later ones, often \"can you reach…\", \"minimum number of…\", or scheduling.\n\nJump game: each value is the longest jump allowed from that index. Instead of exploring every path, keep one number, **reach**: the farthest index any path found so far can get to. Walking left to right, every index up to reach is reachable (gold), and each one may push reach farther. If the walk ever steps past reach, the rest is cut off.\n\nA greedy solution needs an argument for why the local choice is safe; here, any index within reach is as good as any other for extending it. O(n) time, O(1) space.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Jump Game (55), Jump Game II (45), Gas Station (134), Non-overlapping Intervals (435).",
+      "markdown": "# Take the best step now (greedy)\n\n**Problem:** Each value is the longest jump allowed from that index. Starting at index 0, can you reach the last index?\n\n**Example:** nums = [3, 2, 1, 0, 4] → False: every path gets stuck on the 0.\n\n**Signal:** a sequence of choices where the locally best choice never hurts later ones, often \"can you reach…\", \"minimum number of…\", or scheduling.\n\nJump game: each value is the longest jump allowed from that index. Instead of exploring every path, keep one number, **reach**: the farthest index any path found so far can get to. Walking left to right, every index up to reach is reachable (gold), and each one may push reach farther. If the walk ever steps past reach, the rest is cut off.\n\nA greedy solution needs an argument for why the local choice is safe; here, any index within reach is as good as any other for extending it. O(n) time, O(1) space.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Jump Game (55), Jump Game II (45), Gas Station (134), Non-overlapping Intervals (435).",
       "prompt": "Explain why tracking only the farthest reach is enough, and why greedy needs a safety argument. Ask the learner to predict whether the walk will get stuck before it does.",
       "elements": [
         {
@@ -1894,7 +1906,7 @@
     {
       "id": "bit-manipulation",
       "title": "Flip bits (bit manipulation)",
-      "description": "XOR cancels pairs, leaving the value that appears once.",
+      "description": "Every number appears exactly twice except one. Find it, using O(1) extra space.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -2045,7 +2057,7 @@
           }
         ]
       },
-      "markdown": "# Flip bits (bit manipulation)\n\n**Signal:** \"appears once / twice\", parity, subsets as bitmasks, powers of two, or an O(1)-space requirement on integers.\n\nXOR has two facts that do all the work: `a ^ a = 0` and `a ^ 0 = a`, and it does not care about order. XOR every number together and each pair cancels, leaving the number that appears once. Watch the result's bits: each step flips exactly the bits where x has a 1 (gold).\n\nOther everyday tricks: `x & (x − 1)` clears the lowest set bit, `x & −x` isolates it, and the bits of a counter from 0 to 2ⁿ − 1 enumerate every subset.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Single Number (136), Number of 1 Bits (191), Counting Bits (338), Missing Number (268), Subsets (78, as bitmasks).",
+      "markdown": "# Flip bits (bit manipulation)\n\n**Problem:** Every number appears exactly twice except one. Find it, using O(1) extra space.\n\n**Example:** nums = [4, 1, 2, 1, 2] → 4.\n\n**Signal:** \"appears once / twice\", parity, subsets as bitmasks, powers of two, or an O(1)-space requirement on integers.\n\nXOR has two facts that do all the work: `a ^ a = 0` and `a ^ 0 = a`, and it does not care about order. XOR every number together and each pair cancels, leaving the number that appears once. Watch the result's bits: each step flips exactly the bits where x has a 1 (gold).\n\nOther everyday tricks: `x & (x − 1)` clears the lowest set bit, `x & −x` isolates it, and the bits of a counter from 0 to 2ⁿ − 1 enumerate every subset.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Single Number (136), Number of 1 Bits (191), Counting Bits (338), Missing Number (268), Subsets (78, as bitmasks).",
       "prompt": "Explain XOR cancellation bit by bit. Ask the learner to predict the result bits before each step.",
       "elements": [
         {
@@ -2156,7 +2168,7 @@
     {
       "id": "string-matching",
       "title": "Find a word fast (KMP string matching)",
-      "description": "Never re-read the text: fall back along the pattern instead.",
+      "description": "Find every index where a pattern occurs in a text, overlaps included.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -3282,7 +3294,7 @@
           }
         ]
       },
-      "markdown": "# Find a word fast (KMP string matching)\n\n**Signal:** find every occurrence of a pattern in a text, repeated-substring questions, or \"longest prefix that is also a suffix\".\n\nThe naive search restarts one character later after every mismatch: O(n·m). KMP first precomputes, for every prefix of the pattern, the length of its longest proper **border** (a prefix that is also a suffix): the `lps` table. On a mismatch it keeps that border as already matched instead of starting over, so the text pointer **never moves backwards**. Total cost O(n + m).\n\nPhase 1 builds `lps` from the pattern itself; phase 2 scans the text. Gold text cells are the stretch currently matched by the pattern's prefix.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Find the Index of the First Occurrence in a String (28), Repeated Substring Pattern (459), Shortest Palindrome (214).",
+      "markdown": "# Find a word fast (KMP string matching)\n\n**Problem:** Find every index where a pattern occurs in a text, overlaps included.\n\n**Example:** text = \"aabaacaadaabaaba\", p = \"aaba\" → [0, 9, 12].\n\n**Signal:** find every occurrence of a pattern in a text, repeated-substring questions, or \"longest prefix that is also a suffix\".\n\nThe naive search restarts one character later after every mismatch: O(n·m). KMP first precomputes, for every prefix of the pattern, the length of its longest proper **border** (a prefix that is also a suffix): the `lps` table. On a mismatch it keeps that border as already matched instead of starting over, so the text pointer **never moves backwards**. Total cost O(n + m).\n\nPhase 1 builds `lps` from the pattern itself; phase 2 scans the text. Gold text cells are the stretch currently matched by the pattern's prefix.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Find the Index of the First Occurrence in a String (28), Repeated Substring Pattern (459), Shortest Palindrome (214).",
       "prompt": "Explain borders and the lps table, and why the text pointer never moves back. Ask the learner to predict k after each fallback.",
       "elements": [
         {
@@ -3416,7 +3428,7 @@
     {
       "id": "trie",
       "title": "Share prefixes (trie)",
-      "description": "A tree of characters for prefix questions.",
+      "description": "Store a set of words so you can quickly answer \"is this a word?\" and \"does any word start with this prefix?\"",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -3426,7 +3438,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Share prefixes (trie)\n\n**Signal:** autocomplete, \"starts with\", word search over many words, or longest common prefix.\n\nA **trie** stores words character by character down a tree, so words that share a prefix share a path. Insert and lookup cost O(length of the word), independent of how many words are stored.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a tree object with labelled edges.)*\n\n**Practice:** Implement Trie (208), Design Add and Search Words Data Structure (211), Word Search II (212).",
+      "markdown": "# Share prefixes (trie)\n\n**Problem:** Store a set of words so you can quickly answer \"is this a word?\" and \"does any word start with this prefix?\"\n\n**Signal:** autocomplete, \"starts with\", word search over many words, or longest common prefix.\n\nA **trie** stores words character by character down a tree, so words that share a prefix share a path. Insert and lookup cost O(length of the word), independent of how many words are stored.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a tree object with labelled edges.)*\n\n**Practice:** Implement Trie (208), Design Add and Search Words Data Structure (211), Word Search II (212).",
       "prompt": "Explain shared prefixes and the end-of-word marker. This scene has no visualization yet.",
       "elements": [
         {
@@ -3452,7 +3464,7 @@
     {
       "id": "monotonic-stack",
       "title": "Next bigger value (monotonic stack)",
-      "description": "Find each day's next warmer day with a stack of waiting days.",
+      "description": "Given daily temperatures, find for each day how many days you must wait for a warmer one (0 if never).",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -4056,7 +4068,7 @@
           }
         ]
       },
-      "markdown": "# Next bigger value (monotonic stack)\n\n**Signal:** \"next greater element\", \"next smaller element\", or \"how far until…\".\n\nThe stack holds the **indices** of days that have not yet seen a warmer day. Their temperatures never increase from bottom to top, so a new day only needs to compare with the top. While today is warmer than the top day, pop it: today is its answer. Then push today.\n\nEvery index is pushed once and popped at most once, so the whole scan is O(n), even though there is a loop inside a loop.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Next Greater Element I (496), Daily Temperatures (739), Largest Rectangle in Histogram (84).",
+      "markdown": "# Next bigger value (monotonic stack)\n\n**Problem:** Given daily temperatures, find for each day how many days you must wait for a warmer one (0 if never).\n\n**Example:** temps = [73, 74, 75, 71, 69, 72, 76, 73] → [1, 1, 4, 2, 1, 1, 0, 0].\n\n**Signal:** \"next greater element\", \"next smaller element\", or \"how far until…\".\n\nThe stack holds the **indices** of days that have not yet seen a warmer day. Their temperatures never increase from bottom to top, so a new day only needs to compare with the top. While today is warmer than the top day, pop it: today is its answer. Then push today.\n\nEvery index is pushed once and popped at most once, so the whole scan is O(n), even though there is a loop inside a loop.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Next Greater Element I (496), Daily Temperatures (739), Largest Rectangle in Histogram (84).",
       "prompt": "Explain the stack invariant (temperatures non-increasing bottom to top) and the amortized O(n) argument. Ask the learner to predict how many days the next temperature will pop.",
       "elements": [
         {
@@ -4174,7 +4186,7 @@
     {
       "id": "monotonic-queue",
       "title": "Max of every window (monotonic queue)",
-      "description": "Keep a deque of candidates so every window maximum costs O(1).",
+      "description": "Return the maximum of every window of k consecutive numbers.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -4862,7 +4874,7 @@
           }
         ]
       },
-      "markdown": "# Max of every window (monotonic queue)\n\n**Signal:** the maximum (or minimum) of every window of size k, or \"the best value within the last k steps\".\n\nKeep a **deque of indices** whose values decrease from front to back. A new value first evicts every smaller value from the back: those can never be a maximum while the new one is in the window. The front is then the window maximum, once indices that slid out of the window are dropped from the front.\n\nEach index enters and leaves the deque at most once, so all windows cost O(n) instead of O(n·k). It is the monotonic stack's idea with an exit at both ends. Window size here: **3**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Sliding Window Maximum (239), Shortest Subarray with Sum at Least K (862), Constrained Subsequence Sum (1425).",
+      "markdown": "# Max of every window (monotonic queue)\n\n**Problem:** Return the maximum of every window of k consecutive numbers.\n\n**Example:** nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3 → [3, 3, 5, 5, 6, 7].\n\n**Signal:** the maximum (or minimum) of every window of size k, or \"the best value within the last k steps\".\n\nKeep a **deque of indices** whose values decrease from front to back. A new value first evicts every smaller value from the back: those can never be a maximum while the new one is in the window. The front is then the window maximum, once indices that slid out of the window are dropped from the front.\n\nEach index enters and leaves the deque at most once, so all windows cost O(n) instead of O(n·k). It is the monotonic stack's idea with an exit at both ends. Window size here: **3**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Sliding Window Maximum (239), Shortest Subarray with Sum at Least K (862), Constrained Subsequence Sum (1425).",
       "prompt": "Explain why smaller values behind a new value can be discarded, and why the front is the maximum. Ask the learner to predict which indices the next value evicts.",
       "elements": [
         {
@@ -4973,7 +4985,7 @@
     {
       "id": "top-k",
       "title": "Keep the best k (heap)",
-      "description": "Keep a size-k heap of the best candidates.",
+      "description": "Find the k-th largest element of an unsorted array.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -4983,7 +4995,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Keep the best k (heap)\n\n**Signal:** the k largest, k smallest, or k most frequent items.\n\nKeep a **min-heap of size k**. Push each item; when the heap grows past k, pop its smallest. The heap then holds the k largest, and its root is the k-th largest. O(n log k) time, which beats sorting when k is small.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a general heap view with push and pop.)*\n\n**Practice:** Kth Largest Element in an Array (215), Top K Frequent Elements (347), Find K Pairs with Smallest Sums (373).",
+      "markdown": "# Keep the best k (heap)\n\n**Problem:** Find the k-th largest element of an unsorted array.\n\n**Signal:** the k largest, k smallest, or k most frequent items.\n\nKeep a **min-heap of size k**. Push each item; when the heap grows past k, pop its smallest. The heap then holds the k largest, and its root is the k-th largest. O(n log k) time, which beats sorting when k is small.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a general heap view with push and pop.)*\n\n**Practice:** Kth Largest Element in an Array (215), Top K Frequent Elements (347), Find K Pairs with Smallest Sums (373).",
       "prompt": "Explain why a min-heap (not a max-heap) keeps the k largest. This scene has no visualization yet.",
       "elements": [
         {
@@ -5009,7 +5021,7 @@
     {
       "id": "fast-slow",
       "title": "Tortoise and hare (fast & slow pointers)",
-      "description": "Floyd's cycle detection finds a duplicate without extra memory.",
+      "description": "An array holds n + 1 values from 1 to n, so one value repeats. Find it without changing the array and with O(1) extra space.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5054,7 +5066,7 @@
           {"slow": 1, "fast": 1, "phase": 2, "hop": -1, "line": 12, "message": "They meet at the cycle entrance, 1. Two indices point to it, so 1 is the duplicate.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Tortoise and hare (fast & slow pointers)\n\n**Signal:** a cycle in a linked structure, or \"find the duplicate\" with O(1) extra space.\n\nHere `nums` holds 7 values from 1 to 6, so one value repeats. Read each cell as a pointer: index i points to index `nums[i]` (the arcs). Following pointers from index 0 must eventually loop, and the loop's entrance is the value two indices point to: the duplicate.\n\n**Phase 1:** `slow` moves one hop, `fast` moves two. Inside the cycle fast gains one step per move, so they must meet.\n\n**Phase 2:** restart `slow` from the beginning and move both one hop at a time. The distance from the start to the entrance equals the distance from the meeting point to the entrance (mod the cycle length), so they meet exactly at the entrance.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Linked List Cycle (141), Happy Number (202), Find the Duplicate Number (287).",
+      "markdown": "# Tortoise and hare (fast & slow pointers)\n\n**Problem:** An array holds n + 1 values from 1 to n, so one value repeats. Find it without changing the array and with O(1) extra space.\n\n**Example:** nums = [2, 6, 4, 1, 3, 1, 5] → 1.\n\n**Signal:** a cycle in a linked structure, or \"find the duplicate\" with O(1) extra space.\n\nHere `nums` holds 7 values from 1 to 6, so one value repeats. Read each cell as a pointer: index i points to index `nums[i]` (the arcs). Following pointers from index 0 must eventually loop, and the loop's entrance is the value two indices point to: the duplicate.\n\n**Phase 1:** `slow` moves one hop, `fast` moves two. Inside the cycle fast gains one step per move, so they must meet.\n\n**Phase 2:** restart `slow` from the beginning and move both one hop at a time. The distance from the start to the entrance equals the distance from the meeting point to the entrance (mod the cycle length), so they meet exactly at the entrance.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Linked List Cycle (141), Happy Number (202), Find the Duplicate Number (287).",
       "prompt": "Explain why fast catches slow inside the cycle and why phase 2 lands on the entrance. Use the arcs as a linked list. Ask the learner to predict where each pointer lands after the next hop.",
       "elements": [
         {
@@ -5358,7 +5370,7 @@
     {
       "id": "linked-list-reversal",
       "title": "Flip the links (linked list reversal)",
-      "description": "Rewire next pointers in place.",
+      "description": "Reverse a singly linked list in place and return its new head.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5368,7 +5380,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Flip the links (linked list reversal)\n\n**Signal:** reverse a list or a sublist, swap pairs, or reorder nodes, with O(1) extra space.\n\nWalk the list with three pointers, `prev`, `curr` and `next`. Save `curr.next`, point `curr.next` back at `prev`, then advance both. Each node is rewired once: O(n) time, O(1) space.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a linked-list object with nodes and pointer arrows.)*\n\n**Practice:** Reverse Linked List (206), Reverse Linked List II (92), Swap Nodes in Pairs (24).",
+      "markdown": "# Flip the links (linked list reversal)\n\n**Problem:** Reverse a singly linked list in place and return its new head.\n\n**Signal:** reverse a list or a sublist, swap pairs, or reorder nodes, with O(1) extra space.\n\nWalk the list with three pointers, `prev`, `curr` and `next`. Save `curr.next`, point `curr.next` back at `prev`, then advance both. Each node is rewired once: O(n) time, O(1) space.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a linked-list object with nodes and pointer arrows.)*\n\n**Practice:** Reverse Linked List (206), Reverse Linked List II (92), Swap Nodes in Pairs (24).",
       "prompt": "Explain the prev/curr/next dance and why saving next first matters. This scene has no visualization yet.",
       "elements": [
         {
@@ -5394,7 +5406,7 @@
     {
       "id": "tree-traversal",
       "title": "Walk a tree (traversal orders)",
-      "description": "Preorder, inorder, postorder.",
+      "description": "Visit every node of a binary tree in a chosen order: preorder, inorder or postorder.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5404,7 +5416,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Walk a tree (traversal orders)\n\n**Signal:** process every node of a tree in a specific order.\n\n- **Preorder** (node, left, right): copy or serialize a tree, print root-to-leaf paths.\n- **Inorder** (left, node, right): visits a binary search tree in sorted order.\n- **Postorder** (left, right, node): compute something from both children first, such as height or the maximum path sum.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a binary-tree object.)*\n\n**Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder).",
+      "markdown": "# Walk a tree (traversal orders)\n\n**Problem:** Visit every node of a binary tree in a chosen order: preorder, inorder or postorder.\n\n**Signal:** process every node of a tree in a specific order.\n\n- **Preorder** (node, left, right): copy or serialize a tree, print root-to-leaf paths.\n- **Inorder** (left, node, right): visits a binary search tree in sorted order.\n- **Postorder** (left, right, node): compute something from both children first, such as height or the maximum path sum.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a binary-tree object.)*\n\n**Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder).",
       "prompt": "Explain the three orders and what each is good for. This scene has no visualization yet.",
       "elements": [
         {
@@ -5430,7 +5442,7 @@
     {
       "id": "dfs",
       "title": "Go deep first (DFS)",
-      "description": "Go deep, then backtrack.",
+      "description": "List every root-to-leaf path in a binary tree.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5440,7 +5452,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Go deep first (DFS)\n\n**Signal:** explore every path, find connected components, detect cycles, or order dependencies.\n\nFollow one branch as far as it goes before backing up, using recursion or an explicit stack. Mark nodes as visited so cycles do not loop forever. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph object.)*\n\n**Practice:** Clone Graph (133), Path Sum II (113), Course Schedule II (210).",
+      "markdown": "# Go deep first (DFS)\n\n**Problem:** List every root-to-leaf path in a binary tree.\n\n**Signal:** explore every path, find connected components, detect cycles, or order dependencies.\n\nFollow one branch as far as it goes before backing up, using recursion or an explicit stack. Mark nodes as visited so cycles do not loop forever. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph object.)*\n\n**Practice:** Clone Graph (133), Path Sum II (113), Course Schedule II (210).",
       "prompt": "Explain recursion vs an explicit stack, and the visited set. This scene has no visualization yet.",
       "elements": [
         {
@@ -5466,7 +5478,7 @@
     {
       "id": "bfs",
       "title": "Go wide first (BFS)",
-      "description": "Explore level by level with a queue.",
+      "description": "Return a binary tree's values level by level, top to bottom.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5476,7 +5488,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Go wide first (BFS)\n\n**Signal:** shortest path in an unweighted graph, or anything \"level by level\".\n\nStart from the source, push it on a **queue**, and repeatedly pop the front and push its unvisited neighbours. Nodes come out in order of distance, so the first time you reach a node is along a shortest path. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph or tree object and a queue.)*\n\n**Practice:** Binary Tree Level Order Traversal (102), Rotting Oranges (994), Word Ladder (127).",
+      "markdown": "# Go wide first (BFS)\n\n**Problem:** Return a binary tree's values level by level, top to bottom.\n\n**Signal:** shortest path in an unweighted graph, or anything \"level by level\".\n\nStart from the source, push it on a **queue**, and repeatedly pop the front and push its unvisited neighbours. Nodes come out in order of distance, so the first time you reach a node is along a shortest path. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph or tree object and a queue.)*\n\n**Practice:** Binary Tree Level Order Traversal (102), Rotting Oranges (994), Word Ladder (127).",
       "prompt": "Explain why a queue gives shortest paths in unweighted graphs. This scene has no visualization yet.",
       "elements": [
         {
@@ -5502,7 +5514,7 @@
     {
       "id": "matrix-traversal",
       "title": "Explore a grid (matrix traversal)",
-      "description": "DFS or BFS on a grid.",
+      "description": "In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5512,7 +5524,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Explore a grid (matrix traversal)\n\n**Signal:** a 2D grid: islands, flood fill, regions, shortest moves.\n\nTreat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS. Check bounds before moving and mark cells as visited (often by overwriting them). O(rows × cols).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a 2D grid object with per-cell state.)*\n\n**Practice:** Flood Fill (733), Number of Islands (200), Surrounded Regions (130).",
+      "markdown": "# Explore a grid (matrix traversal)\n\n**Problem:** In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.\n\n**Signal:** a 2D grid: islands, flood fill, regions, shortest moves.\n\nTreat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS. Check bounds before moving and mark cells as visited (often by overwriting them). O(rows × cols).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a 2D grid object with per-cell state.)*\n\n**Practice:** Flood Fill (733), Number of Islands (200), Surrounded Regions (130).",
       "prompt": "Explain the grid-as-graph view and neighbour iteration. This scene has no visualization yet.",
       "elements": [
         {
@@ -5538,7 +5550,7 @@
     {
       "id": "topological-sort",
       "title": "Order by dependencies (topological sort)",
-      "description": "Schedule tasks so every prerequisite comes first.",
+      "description": "Courses have prerequisites. Find an order in which to take every course, or report that none exists.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5548,7 +5560,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Order by dependencies (topological sort)\n\n**Signal:** prerequisites, build order, course schedules: \"what order satisfies every dependency?\", or \"is there a cycle?\".\n\nKahn's algorithm counts each node's incoming edges, starts a queue with every node that has none, and repeatedly removes a node and decrements its neighbours' counts, enqueuing any that reach zero. If some nodes never reach zero, the graph has a cycle. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a directed graph object.)*\n\n**Practice:** Course Schedule (207), Course Schedule II (210), Alien Dictionary (269).",
+      "markdown": "# Order by dependencies (topological sort)\n\n**Problem:** Courses have prerequisites. Find an order in which to take every course, or report that none exists.\n\n**Signal:** prerequisites, build order, course schedules: \"what order satisfies every dependency?\", or \"is there a cycle?\".\n\nKahn's algorithm counts each node's incoming edges, starts a queue with every node that has none, and repeatedly removes a node and decrements its neighbours' counts, enqueuing any that reach zero. If some nodes never reach zero, the graph has a cycle. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a directed graph object.)*\n\n**Practice:** Course Schedule (207), Course Schedule II (210), Alien Dictionary (269).",
       "prompt": "Explain in-degrees and why leftover nodes mean a cycle. This scene has no visualization yet.",
       "elements": [
         {
@@ -5574,7 +5586,7 @@
     {
       "id": "shortest-path",
       "title": "Cheapest route (Dijkstra)",
-      "description": "Shortest paths with weighted edges.",
+      "description": "A network has directed edges with travel times. How long does a signal from one node take to reach every node?",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -5584,7 +5596,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Cheapest route (Dijkstra)\n\n**Signal:** shortest or cheapest path when edges have non-negative weights: network delay, cheapest flights, minimum effort.\n\nDijkstra keeps a **min-heap** of (distance, node). It repeatedly takes the closest unsettled node, which is final, and relaxes its edges. It is BFS with a priority queue in place of a plain queue. O((V + E) log V).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a weighted graph object and a heap view.)*\n\n**Practice:** Network Delay Time (743), Path with Minimum Effort (1631), Cheapest Flights Within K Stops (787).",
+      "markdown": "# Cheapest route (Dijkstra)\n\n**Problem:** A network has directed edges with travel times. How long does a signal from one node take to reach every node?\n\n**Signal:** shortest or cheapest path when edges have non-negative weights: network delay, cheapest flights, minimum effort.\n\nDijkstra keeps a **min-heap** of (distance, node). It repeatedly takes the closest unsettled node, which is final, and relaxes its edges. It is BFS with a priority queue in place of a plain queue. O((V + E) log V).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a weighted graph object and a heap view.)*\n\n**Practice:** Network Delay Time (743), Path with Minimum Effort (1631), Cheapest Flights Within K Stops (787).",
       "prompt": "Explain why the closest unsettled node is final with non-negative weights. This scene has no visualization yet.",
       "elements": [
         {
@@ -5610,7 +5622,7 @@
     {
       "id": "union-find",
       "title": "Group connected items (union-find)",
-      "description": "Count components by pointing each root at another root.",
+      "description": "Given n nodes and a list of undirected edges, count the connected components.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -6344,7 +6356,7 @@
           }
         ]
       },
-      "markdown": "# Group connected items (union-find)\n\n**Signal:** \"are these connected?\", counting groups or islands as edges arrive, detecting a cycle in an undirected graph, or Kruskal's minimum spanning tree.\n\nEach node points to a **parent**; a node that points to itself is a **root** (gold) and names its group. `find` climbs parent pointers to the root. Joining an edge's two groups is one assignment: point one root at the other. If both ends already share a root, the edge adds nothing, which is exactly how a redundant edge or cycle is detected.\n\nThe parent array *is* the forest: each column is a node, its value is the node it points to. This version climbs without shortcuts; adding **path compression** (point every visited node straight at the root) and **union by rank** makes each operation nearly O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Number of Provinces (547), Redundant Connection (684), Accounts Merge (721), Number of Connected Components in an Undirected Graph (323).",
+      "markdown": "# Group connected items (union-find)\n\n**Problem:** Given n nodes and a list of undirected edges, count the connected components.\n\n**Example:** n = 6, edges = 0–1, 1–2, 3–4, 2–0, 4–5 → 2.\n\n**Signal:** \"are these connected?\", counting groups or islands as edges arrive, detecting a cycle in an undirected graph, or Kruskal's minimum spanning tree.\n\nEach node points to a **parent**; a node that points to itself is a **root** (gold) and names its group. `find` climbs parent pointers to the root. Joining an edge's two groups is one assignment: point one root at the other. If both ends already share a root, the edge adds nothing, which is exactly how a redundant edge or cycle is detected.\n\nThe parent array *is* the forest: each column is a node, its value is the node it points to. This version climbs without shortcuts; adding **path compression** (point every visited node straight at the root) and **union by rank** makes each operation nearly O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Number of Provinces (547), Redundant Connection (684), Accounts Merge (721), Number of Connected Components in an Undirected Graph (323).",
       "prompt": "Explain the parent array as a forest, find as climbing to the root, and union as linking roots. Ask the learner to predict each find result before the climb.",
       "elements": [
         {
@@ -6467,7 +6479,7 @@
     {
       "id": "recursion",
       "title": "Solve smaller copies (recursion)",
-      "description": "Define a problem in terms of smaller versions of itself.",
+      "description": "Compute x to the power n using O(log n) multiplications.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -6477,7 +6489,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Solve smaller copies (recursion)\n\n**Signal:** the problem contains smaller copies of itself: trees, nested structures, divide and conquer (merge sort, fast power).\n\nWrite the **base case** first, then assume the recursive call already solves the smaller problem and combine its answer. Each call gets its own frame on the call stack, so recursion depth costs memory. Memoizing repeated calls turns it into dynamic programming.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a recursion-tree view alongside the call stack.)*\n\n**Practice:** Pow(x, n) (50), Merge Two Sorted Lists (21), Sort an Array (912, merge sort).",
+      "markdown": "# Solve smaller copies (recursion)\n\n**Problem:** Compute x to the power n using O(log n) multiplications.\n\n**Signal:** the problem contains smaller copies of itself: trees, nested structures, divide and conquer (merge sort, fast power).\n\nWrite the **base case** first, then assume the recursive call already solves the smaller problem and combine its answer. Each call gets its own frame on the call stack, so recursion depth costs memory. Memoizing repeated calls turns it into dynamic programming.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a recursion-tree view alongside the call stack.)*\n\n**Practice:** Pow(x, n) (50), Merge Two Sorted Lists (21), Sort an Array (912, merge sort).",
       "prompt": "Explain base case, trusting the recursive call, and the call stack. This scene has no visualization yet.",
       "elements": [
         {
@@ -6503,7 +6515,7 @@
     {
       "id": "backtracking",
       "title": "Try, undo, retry (backtracking)",
-      "description": "Choose, explore, un-choose.",
+      "description": "Generate every permutation of a list of distinct numbers.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -6513,7 +6525,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Try, undo, retry (backtracking)\n\n**Signal:** generate all permutations, subsets or combinations, or place pieces under constraints.\n\nBuild a candidate one choice at a time. After exploring a choice, **undo it** and try the next. Prune any branch that already breaks a constraint. The search is exponential in the worst case; pruning is what makes it practical.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a recursion-tree view.)*\n\n**Practice:** Permutations (46), Subsets (78), N-Queens (51).",
+      "markdown": "# Try, undo, retry (backtracking)\n\n**Problem:** Generate every permutation of a list of distinct numbers.\n\n**Signal:** generate all permutations, subsets or combinations, or place pieces under constraints.\n\nBuild a candidate one choice at a time. After exploring a choice, **undo it** and try the next. Prune any branch that already breaks a constraint. The search is exponential in the worst case; pruning is what makes it practical.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a recursion-tree view.)*\n\n**Practice:** Permutations (46), Subsets (78), N-Queens (51).",
       "prompt": "Explain choose / explore / un-choose and pruning. This scene has no visualization yet.",
       "elements": [
         {
@@ -6539,7 +6551,7 @@
     {
       "id": "dynamic-programming",
       "title": "Reuse answers (dynamic programming)",
-      "description": "House robber: build each answer from the two before it.",
+      "description": "Houses in a row each hold some money, and you cannot rob two neighbours. What is the most you can rob?",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -6880,7 +6892,7 @@
           }
         ]
       },
-      "markdown": "# Reuse answers (dynamic programming)\n\n**Signal:** \"maximum / minimum / number of ways\", where a choice now affects which choices remain, and the same subproblems recur.\n\nHouse robber: you cannot rob two adjacent houses. Let `dp[i]` be the most you can steal from the first `i` houses. For house `i − 1` there are only two options:\n\n$$dp[i] = \\max(\\underbrace{dp[i-1]}_{\\text{skip}},\\; \\underbrace{dp[i-2] + \\text{houses}[i-1]}_{\\text{take}})$$\n\nLike a prefix sum, `dp[i]` sits on the boundary after the first i houses. Each cell is computed once from cells already filled, giving O(n) time instead of the 2ⁿ subsets a brute force would try.\n\nThe same recipe (define the state, write the recurrence, fill in order) drives the classic families: Fibonacci-style, 0/1 knapsack, longest common subsequence, longest increasing subsequence, subset sum.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Climbing Stairs (70), House Robber (198), Coin Change (322), Longest Common Subsequence (1143), Longest Increasing Subsequence (300), Partition Equal Subset Sum (416).",
+      "markdown": "# Reuse answers (dynamic programming)\n\n**Problem:** Houses in a row each hold some money, and you cannot rob two neighbours. What is the most you can rob?\n\n**Example:** houses = [2, 7, 9, 3, 1, 4] → 15.\n\n**Signal:** \"maximum / minimum / number of ways\", where a choice now affects which choices remain, and the same subproblems recur.\n\nHouse robber: you cannot rob two adjacent houses. Let `dp[i]` be the most you can steal from the first `i` houses. For house `i − 1` there are only two options:\n\n$$dp[i] = \\max(\\underbrace{dp[i-1]}_{\\text{skip}},\\; \\underbrace{dp[i-2] + \\text{houses}[i-1]}_{\\text{take}})$$\n\nLike a prefix sum, `dp[i]` sits on the boundary after the first i houses. Each cell is computed once from cells already filled, giving O(n) time instead of the 2ⁿ subsets a brute force would try.\n\nThe same recipe (define the state, write the recurrence, fill in order) drives the classic families: Fibonacci-style, 0/1 knapsack, longest common subsequence, longest increasing subsequence, subset sum.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Climbing Stairs (70), House Robber (198), Coin Change (322), Longest Common Subsequence (1143), Longest Increasing Subsequence (300), Partition Equal Subset Sum (416).",
       "prompt": "Explain state, recurrence, and fill order. Ask the learner to predict dp[i] from the two cells before it before the player reveals it. Note dp only needs the last two values, so space can drop to O(1).",
       "elements": [
         {

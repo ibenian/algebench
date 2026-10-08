@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {labelWirePath,projectedCellEdge,routedLabelWire,wholeObjectWireAttachment} from './label-wire-path.js';
+import {labelWirePath,projectedCellEdge,routedLabelWire,wholeObjectWireAttachment,rowBracketWire} from './label-wire-path.js';
 test('whole-object wires meet the facing edge without doubling back through the object',()=>{
     const corners=[{x:100,y:80},{x:400,y:80},{x:400,y:120},{x:100,y:120}];
     const right=wholeObjectWireAttachment({x:500,y:100},{x:250,y:100},corners);
@@ -95,4 +95,13 @@ test('connections stay outside source and target boxes from every direction and 
             a=end;
         }
     }
+});
+
+test('a row-to-row bracket leaves and returns at the box edge, bowing outward more for distant rows', () => {
+    const near = rowBracketWire(100, 10, 30, 1), far = rowBracketWire(100, 10, 130, 1);
+    assert.match(near, /^M 100 10 C /); assert.match(near, /, 100 30$/);
+    const bow = (d: string) => Number(d.split(' ')[4]) - 100;
+    assert.ok(bow(near) > 0 && bow(far) > bow(near), 'bows outward, further for distant rows');
+    assert.ok(bow(rowBracketWire(100, 0, 1000, 1)) <= 38, 'the bow is capped');
+    assert.ok(bow(rowBracketWire(100, 10, 30, -1)) < 0, 'side -1 bows left');
 });

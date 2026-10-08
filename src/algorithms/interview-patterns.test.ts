@@ -16,7 +16,7 @@ import {INTERVIEW_INPUTS as IN} from './interview-pattern-inputs.js';
 // expr.ts reads the browser's math.js global at import time.
 const g=globalThis as unknown as {math:typeof mathjs;window:typeof globalThis};
 g.math=mathjs;g.window??=globalThis;
-const {_JS_ONLY_RE}=await import('/expr.js') as {_JS_ONLY_RE:RegExp};
+const {_JS_ONLY_RE,_normalizeSingleQuotes}=await import('/expr.js') as {_JS_ONLY_RE:RegExp;_normalizeSingleQuotes:(s:string)=>string};
 const last=(trace:Frame[])=>trace.at(-1)!;
 
 test('prefix sums answer each range query',()=>{
@@ -120,8 +120,10 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
   'union-find':[UNION_FIND_SOURCE,unionFindTrace(IN.unionFind.n,IN.unionFind.edges)],
   'string-matching':[KMP_SOURCE,kmpTrace(IN.kmp.text,IN.kmp.pattern)],
  };
- const math=create(all!); // The math.js package supplies its full factory map.
- math.import({arrayAt,arrayCount,concat:(...v:unknown[])=>v.join('')},{override:true});
+ const raw=create(all!); // The math.js package supplies its full factory map.
+ raw.import({arrayAt,arrayCount,concat:(...v:unknown[])=>v.join('')},{override:true});
+ // Evaluate as the app does: single-quoted strings keep their contents literally.
+ const math={evaluate:(expr:string,scope:Record<string,unknown>)=>raw.evaluate(_normalizeSingleQuotes(expr),scope)};
  const animated=lesson.scenes.filter((s:{data?:unknown})=>s.data);
  assert.deepEqual(animated.map((s:{id:string})=>s.id).sort(),Object.keys(expected).sort());
  for(const scene of animated){
@@ -134,7 +136,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
    const line=math.evaluate(scene.codeRef.lineExpr,scope);
    assert.equal(line,trace[frame]!.line);assert.ok(line>=1&&line<=lines);
    for(const el of scene.steps[0].add){
-    for(const key of ['textExpr','visibleExpr'])if(el[key])assert.doesNotThrow(()=>math.evaluate(el[key],scope),`${scene.id}/${el.id}.${key}`);
+    for(const key of ['textExpr','visibleExpr','highlightExpr','tooltipExpr'])if(el[key]&&el.type!=='array'&&el.type!=='stack')assert.doesNotThrow(()=>math.evaluate(el[key],scope),`${scene.id}/${el.id}.${key}`);
     if(el.type!=='array'&&el.type!=='stack')continue;
     const length=math.evaluate(el.lengthExpr,scope);
     for(let idx=0;idx<length;idx++){
@@ -161,4 +163,14 @@ test('no lesson expression reads as native JavaScript, so the lesson never asks 
  };
  walk(lesson,'');
  assert.deepEqual(flagged,[]);
+});
+
+test('every pattern scene states its problem first: as the step-0 caption and at the top of its doc',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ for(const scene of lesson.scenes.slice(1)){
+  const [heading,,problem]=scene.markdown.split('\n');
+  assert.equal(heading,`# ${scene.title}`,scene.id);
+  assert.equal(problem,`**Problem:** ${scene.description}`,scene.id);
+  if(scene.data)assert.match(scene.markdown,/\n\*\*Example:\*\* /,`${scene.id} has a worked example`);
+ }
 });

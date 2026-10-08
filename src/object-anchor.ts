@@ -82,3 +82,17 @@ export function objectWorldAnchor(name:string):Vector3|null {
     const label=tracker.labels?.[0];
     return label?new THREE.Vector3(...dataToWorld(label.dataPos as Vec3)):null;
 }
+
+/**
+ * The visible box row of an expression label named by id, wherever it is drawn:
+ * in its own box or merged into another label's box. Null for other objects.
+ */
+export function objectLabelRow(name:string):HTMLElement|null {
+    const match=namedObject(name);
+    if(!match)return null;
+    const tracker=match[1].tracker as {labels?:{seq:number;annotation?:{kind:string}}[]};
+    const label=tracker.labels?.find(l=>l.annotation?.kind==='label');
+    if(!label)return null;
+    const row=document.querySelector<HTMLElement>(`.annotation-row[data-label-seq="${label.seq}"]`);
+    return row&&row.offsetParent?row:null;
+}

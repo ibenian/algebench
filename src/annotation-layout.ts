@@ -52,11 +52,33 @@ export function annotationGroups(items: AnnotationBox[]): number[][] {
         if (a.kind !== b.kind || a.detached || b.detached || a.coordinateMode !== b.coordinateMode) continue;
         const sameIndex = a.index && b.index && a.index.group === b.index.group && a.index.value === b.index.value;
         const overlaps = Math.abs(a.x-b.x) < (a.width+b.width)/2 && Math.abs(a.y-b.y) < (a.height+b.height)/2;
-        if (sameIndex || overlaps) parent[root(j)] = root(i);
+        // Markers merge only when they name the same index; markers on different
+        // indexes never share a badge, however close (markerLifts separates them).
+        if (sameIndex || (overlaps && a.kind === 'label')) parent[root(j)] = root(i);
     }
     const groups = new Map<number, number[]>();
     items.forEach((_, i) => { const r=root(i); if (!groups.has(r)) groups.set(r, []); groups.get(r)!.push(i); });
     return [...groups.values()];
+}
+
+/**
+ * Upward lift, in px, for each marker badge so badges on different indexes never
+ * overlap. Badges are placed left to right; one that would collide with a placed
+ * badge climbs one badge height (plus a gap) at a time until it is clear. Its
+ * pointer stretches into a stem, so it still points at its own cell.
+ */
+export function markerLifts(boxes: Pick<AnnotationBox,'x'|'y'|'width'|'height'>[], gap = 4): number[] {
+    const lifts = boxes.map(() => 0);
+    const placed: {x:number; y:number; width:number; height:number}[] = [];
+    for (const i of boxes.map((_, i) => i).sort((a, b) => boxes[a]!.x - boxes[b]!.x || a - b)) {
+        const b = boxes[i]!;
+        let lift = 0;
+        const hits = () => placed.some(p => Math.abs(p.x - b.x) < (p.width + b.width) / 2 + gap && Math.abs(p.y - (b.y - lift)) < (p.height + b.height) / 2 + gap);
+        while (hits()) lift += b.height + gap;
+        lifts[i] = lift;
+        placed.push({x:b.x, y:b.y - lift, width:b.width, height:b.height});
+    }
+    return lifts;
 }
 
 /** Shared expression-label boxes track their members without changing their anchors. */
