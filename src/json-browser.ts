@@ -281,6 +281,7 @@ function _escHtml(str: unknown): string {
 // ─── JSON tree helpers ────────────────────────────────────────────────────────
 
 const _JT_TYPE_ICONS: Record<string, TreeIcon | undefined> = {
+    stack:              { icon: '\u25A4', cls: 'jti-grid' },
     point:              { icon: '\u25CF', cls: 'jti-point' },
     animated_point:     { icon: '\u25C9', cls: 'jti-anim' },
     vector:             { icon: '\u2197', cls: 'jti-vector' },

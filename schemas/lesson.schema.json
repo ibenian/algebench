@@ -391,7 +391,8 @@
             "algorithm_structure",
             "step_marker",
             "array",
-            "expression_label"
+            "expression_label",
+            "stack"
           ],
           "description": "Element type determining the renderer. Must be one of the supported types."
         },
@@ -509,7 +510,7 @@
         },
         "lengthExpr": {
           "type": "string",
-          "description": "ARRAY ONLY. Integer length from 0 to 256, evaluated on state changes. Cells, indices and owned markers update when the length changes; valueExpr supplies each cell using idx."
+          "description": "ARRAY / STACK. Integer length from 0 to 256, evaluated on state changes. Cells, indices and owned markers update when the length changes; valueExpr supplies each cell using idx."
         },
         "valueExpr": {
           "type": "string",
@@ -1367,16 +1368,19 @@
             "empty",
             "mixed"
           ],
-          "description": "ARRAY ONLY. Logical cell type. Mixed preserves primitive types without numeric coercion.",
+          "description": "ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion.",
           "default": "mixed"
         },
         "showIndices": {
           "type": "boolean",
           "default": true,
-          "description": "ARRAY ONLY. Show small index tags attached to cells. Disable for cells used in a stack."
+          "description": "ARRAY / STACK. Show small index tags attached to cells. Defaults to true for arrays and false for stacks."
         },
         "arrayLayout": {
-          "enum": ["horizontal", "vertical"],
+          "enum": [
+            "horizontal",
+            "vertical"
+          ],
           "default": "horizontal",
           "description": "ARRAY ONLY. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap."
         },
@@ -1415,8 +1419,40 @@
           "type": "object",
           "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.",
           "oneOf": [
-            {"type":"object", "required":["object"], "properties":{"object":{"type":"string", "minLength":1},"indexExpr":{"type":"string", "description":"For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."}}, "additionalProperties":false},
-            {"type":"object", "required":["positionExpr"], "properties":{"positionExpr":{"type":"array", "minItems":3, "maxItems":3, "items":{"type":"string"}}}, "additionalProperties":false}
+            {
+              "type": "object",
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "indexExpr": {
+                  "type": "string",
+                  "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "positionExpr"
+              ],
+              "properties": {
+                "positionExpr": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
           ]
         },
         "markers": {
@@ -1424,9 +1460,39 @@
           "items": {
             "$ref": "#/$defs/arrayMarker"
           },
-          "description": "ARRAY: owned index markers. Array supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression."
+          "description": "ARRAY / STACK: owned index markers. The owner supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression."
+        },
+        "containerColor": {
+          "type": "string",
+          "description": "STACK: color of the owned growing container."
+        },
+        "emptyText": {
+          "type": "string",
+          "default": "empty",
+          "description": "STACK: text shown inside the empty container."
+        },
+        "showTop": {
+          "type": "boolean",
+          "default": true,
+          "description": "STACK: show an owned top slot index marker; hidden automatically when empty."
         }
       },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "stack" } } },
+          "then": {
+            "anyOf": [
+              { "required": ["values"] },
+              { "required": ["lengthExpr", "valueExpr"] },
+              { "required": ["shape", "valueExpr"] }
+            ],
+            "properties": {
+              "shape": { "maxItems": 1, "items": { "type": "integer", "minimum": 1, "maximum": 256 } },
+              "values": { "maxItems": 256, "items": { "type": ["number", "string", "boolean", "null"] } }
+            }
+          }
+        }
+      ],
       "additionalProperties": true,
       "if": {
         "properties": {
@@ -1486,7 +1552,10 @@
           "then": {
             "anyOf": [
               {
-                "required": ["lengthExpr", "valueExpr"]
+                "required": [
+                  "lengthExpr",
+                  "valueExpr"
+                ]
               },
               {
                 "required": [
@@ -1526,7 +1595,9 @@
         }
       },
       "dependentRequired": {
-        "lengthExpr": ["valueExpr"],
+        "lengthExpr": [
+          "valueExpr"
+        ],
         "indexName": [
           "indexExpr",
           "indexGroup"

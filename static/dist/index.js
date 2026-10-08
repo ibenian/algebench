@@ -3908,7 +3908,7 @@ var PALETTE = {
 	boolean: "#efa768",
 	empty: "#8793a6"
 };
-function renderArray(el, _view) {
+function renderArray(el, _view, decorate) {
 	if (!state.three) return null;
 	const lengthFn = el.lengthExpr ? compileExpr(el.lengthExpr) : null;
 	let n = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : arrayLength(el.shape, el.valueExpr ? void 0 : el.values);
@@ -3955,6 +3955,7 @@ function renderArray(el, _view) {
 	mesh.userData.arrayCellTarget = cellTarget;
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
+	const decoration = decorate?.(n, origin, pitch, mesh);
 	const glowMaterial = new THREE.ShaderMaterial({
 		transparent: true,
 		depthWrite: false,
@@ -4129,6 +4130,7 @@ function renderArray(el, _view) {
 				illuminate([...illuminated], delta.removed);
 			}
 			resize(next);
+			decoration?.resize(next);
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
@@ -4172,8 +4174,167 @@ function renderArray(el, _view) {
 	return {
 		_animState: animState,
 		_animExprEntry: entry,
-		type: "array"
+		type: el.type
 	};
+}
+//#endregion
+//#region src/objects/stack-layout.ts
+/** A fixed base and an open container that grows with its bottom-to-top cells. */
+function stackBounds(length, origin, pitch) {
+	const [x, y, z] = origin;
+	return {
+		left: x - pitch * .39 - .12,
+		right: x + pitch * .39 + .12,
+		bottom: y - .5,
+		top: y + Math.max(0, length - 1) * .78 + .55,
+		back: z - .2,
+		front: z + .7
+	};
+}
+//#endregion
+//#region src/objects/stack.ts
+/** One state-bound stack owner; its cells reuse the array renderer. */
+function renderStack(el, view) {
+	if (el.shape && el.shape.length !== 1) throw new Error("A stack needs a one-dimensional shape.");
+	const lengthExpr = el.lengthExpr ?? String(el.shape?.[0] ?? el.values?.length ?? 0);
+	return renderArray({
+		...el,
+		arrayLayout: "vertical",
+		lengthExpr,
+		showIndices: el.showIndices ?? false,
+		label: void 0,
+		markers: [...el.markers ?? [], ...el.showTop === false ? [] : [{
+			type: "step_marker",
+			indexName: "top slot",
+			indexExpr: `(${lengthExpr}) - 1`,
+			color: "#f1c65b"
+		}]]
+	}, view, (initial, origin, pitch, owner) => {
+		const color = el.containerColor ?? "#77bfae";
+		const makeMesh = (opacity) => {
+			const material = new THREE.MeshBasicMaterial({
+				color,
+				transparent: true,
+				opacity,
+				side: THREE.DoubleSide,
+				depthWrite: false
+			});
+			const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+			mesh.userData.ignorePlaneOpacity = true;
+			mesh.userData.targetOpacity = opacity;
+			state.three.scene.add(mesh);
+			state.planeMeshes.push(mesh);
+			return mesh;
+		};
+		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7);
+		const title = addLabel3D(el.label ?? "stack", [
+			origin[0],
+			origin[1] - 1.5,
+			origin[2]
+		], "#b5c1cf");
+		title.ownerMesh = owner;
+		title.snapToProjection = true;
+		const empty = addLabel3D(el.emptyText ?? "empty", origin, "#8ca9a0", { cssClass: "label-3d array-cell-label" });
+		empty.ownerMesh = owner;
+		empty.snapToProjection = true;
+		empty.el.setAttribute("aria-label", "Empty stack");
+		let previous = -1;
+		const replace = (mesh, quads) => {
+			const positions = [];
+			for (const q of quads) for (const i of [
+				0,
+				1,
+				2,
+				0,
+				2,
+				3
+			]) positions.push(...dataToWorld(q[i]));
+			const geometry = new THREE.BufferGeometry();
+			geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+			mesh.geometry.dispose();
+			mesh.geometry = geometry;
+		};
+		const resize = (length) => {
+			if (length === previous) return;
+			previous = length;
+			const b = stackBounds(length, origin, pitch), t = .035, z = b.back;
+			replace(back, [[
+				[
+					b.left,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.top,
+					z
+				],
+				[
+					b.left,
+					b.top,
+					z
+				]
+			]]);
+			replace(base, [[
+				[
+					b.left,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.bottom,
+					b.front
+				],
+				[
+					b.left,
+					b.bottom,
+					b.front
+				]
+			]]);
+			const rect = (left, bottom, right, top) => [
+				[
+					left,
+					bottom,
+					z + .005
+				],
+				[
+					right,
+					bottom,
+					z + .005
+				],
+				[
+					right,
+					top,
+					z + .005
+				],
+				[
+					left,
+					top,
+					z + .005
+				]
+			];
+			replace(outline, [
+				rect(b.left, b.bottom, b.left + t, b.top),
+				rect(b.right - t, b.bottom, b.right, b.top),
+				rect(b.left, b.bottom, b.right, b.bottom + t)
+			]);
+			empty.forceHidden = length !== 0;
+			empty.el.style.display = length === 0 ? "" : "none";
+		};
+		resize(initial);
+		return { resize };
+	});
 }
 //#endregion
 //#region src/algorithm/state.ts
@@ -15145,6 +15306,7 @@ function renderElement(el, view) {
 		case "expression_label":
 		case "step_marker": return renderStepMarker(el, view);
 		case "array": return renderArray(el, view);
+		case "stack": return renderStack(el, view);
 		case "tensor": return renderTensor(el, view);
 		case "chart": return renderChart(el, view);
 		default:
@@ -21422,6 +21584,10 @@ function _escHtml$1(str) {
 	return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 var _JT_TYPE_ICONS = {
+	stack: {
+		icon: "▤",
+		cls: "jti-grid"
+	},
 	point: {
 		icon: "●",
 		cls: "jti-point"

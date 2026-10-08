@@ -71,7 +71,7 @@ test('draft traces match the algorithm and every bound display expression evalua
    assert.equal(math.evaluate(lesson.codeFiles[0].activeLineExpr,scope),scene.data.trace[frame].line);
    for(const element of scene.steps[0].add){
     for(const key of ['textExpr','visibleExpr'])if(element[key])assert.doesNotThrow(()=>math.evaluate(element[key],scope));
-    if(element.type==='array'){
+    if(element.type==='array'||element.type==='stack'){
      const length=math.evaluate(element.lengthExpr,scope);
      assert.equal(length,element.id==='stack'?scene.data.trace[frame].n:repairing?scene.data.trace[frame].chars.length:scene.data.input[0].chars.length);
      for(let idx=0;idx<length;idx++)assert.doesNotThrow(()=>math.evaluate(element.valueExpr,{...scope,idx}));

@@ -1,4 +1,5 @@
 import { renderArray } from '/objects/array.js';
+import { renderStack } from '/objects/stack.js';
 import { renderStepMarker } from '/objects/step-marker.js';
 import { renderAlgorithmStructure } from '/objects/algorithm-structure.js';
 import { renderSkybox } from '/objects/skybox.js';
@@ -64,6 +65,7 @@ export function renderElement(el: Element, view: MathBoxNode) {
         case 'expression_label':
         case 'step_marker': return renderStepMarker(el, view);
         case 'array': return renderArray(el, view);
+        case 'stack': return renderStack(el, view);
         case 'tensor': return renderTensor(el, view);
         case 'chart': return renderChart(el, view);
         default:

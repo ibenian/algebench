@@ -6,6 +6,7 @@ import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr } from '/sliders.js';
 import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
+import type { Mesh } from 'three';
 import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners } from '/objects/array-data.js';
 import { ArrayChangeTracker } from '/objects/array-changes.js';
@@ -14,7 +15,8 @@ let arrayMarkerGroup = 0;
 /** Shared presentation lookup for a cell, without references to other controls. */
 export interface ArrayCellTarget { at(index:number):{position:[number,number,number];corners:number[][]}|null; }
 const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
-export function renderArray(el:Element,_view:MathBoxNode) {
+export interface ArrayDecoration { resize(length:number):void; }
+export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:number,origin:number[],pitch:number,owner:Mesh)=>ArrayDecoration) {
     if(!state.three)return null;
     const lengthFn=el.lengthExpr?compileExpr(el.lengthExpr):null;
     let n=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):arrayLength(el.shape,el.valueExpr?undefined:el.values);
@@ -42,6 +44,7 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     }};
     mesh.userData.arrayCellTarget=cellTarget;
     state.three.scene.add(mesh);state.planeMeshes.push(mesh);
+    const decoration=decorate?.(n,origin,pitch,mesh);
     // A world-space soft rim follows the cells without screen overlays or frame evaluation.
     const glowMaterial=new THREE.ShaderMaterial({
         transparent:true,depthWrite:false,side:THREE.DoubleSide,
@@ -155,6 +158,7 @@ export function renderArray(el:Element,_view:MathBoxNode) {
             illuminate([...illuminated],delta.removed);
         }
         resize(next);
+        decoration?.resize(next);
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;
         for(let i=0;i<n;i++){
@@ -178,5 +182,5 @@ export function renderArray(el:Element,_view:MathBoxNode) {
     // Shader/lifecycle resources follow the same registry as tensor boxes.
     material.addEventListener('dispose',()=>unit.dispose());
     if(entry.exprStrings?.length)registerAnimExpr(entry);
-    return {_animState:animState,_animExprEntry:entry,type:'array'};
+    return {_animState:animState,_animExprEntry:entry,type:el.type};
 }

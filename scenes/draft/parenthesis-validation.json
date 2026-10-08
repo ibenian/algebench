@@ -2819,8 +2819,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -2832,120 +2831,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -3692,8 +3580,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -3705,120 +3592,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -4281,8 +4057,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -4294,120 +4069,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -4883,8 +4547,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -4896,120 +4559,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -5362,8 +4914,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -5375,120 +4926,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -5798,8 +5238,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -5811,120 +5250,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -6790,8 +6118,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -6803,120 +6130,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -7164,8 +6380,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -7177,120 +6392,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -8272,8 +7376,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -8285,120 +7388,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -8882,8 +7874,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -8895,120 +7886,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -9889,8 +8769,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -9902,120 +8781,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -10687,8 +9455,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -10700,120 +9467,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -11323,8 +9979,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -11336,120 +9991,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
@@ -12364,8 +10908,7 @@
             },
             {
               "id": "stack",
-              "type": "array",
-              "arrayLayout": "vertical",
+              "type": "stack",
               "itemType": "number",
               "origin": [
                 7,
@@ -12377,120 +10920,9 @@
               "showIndices": false,
               "lengthExpr": "dataTable('trace', frame, 'n')",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
-              "color": "#9dbde3"
-            },
-            {
-              "id": "stack-outline",
-              "type": "line",
-              "points": [
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "width": 2,
-              "opacity": 0.7
-            },
-            {
-              "id": "stack-back",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  "6.25",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ],
-                [
-                  "7.75",
-                  "-2 + (max(1, dataTable('trace', frame, 'n')) - 1) * 0.78 + 0.55",
-                  "-0.2"
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.12
-            },
-            {
-              "id": "stack-base",
-              "type": "plane",
-              "points": [
-                [
-                  6.25,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  -0.2
-                ],
-                [
-                  6.25,
-                  -2.5,
-                  0.7
-                ],
-                [
-                  7.75,
-                  -2.5,
-                  0.7
-                ]
-              ],
-              "color": "#77bfae",
-              "opacity": 0.4
-            },
-            {
-              "id": "stack-title",
-              "type": "text",
-              "text": "stack",
-              "position": [
-                7,
-                -3.5,
-                0
-              ],
-              "color": "#b5c1cf"
-            },
-            {
-              "id": "stack-empty",
-              "type": "text",
-              "text": "empty",
-              "position": [
-                7,
-                -2,
-                0
-              ],
-              "visibleExpr": "dataTable('trace', frame, 'n') == 0",
-              "color": "#8ca9a0"
+              "color": "#9dbde3",
+              "label": "stack",
+              "containerColor": "#77bfae"
             },
             {
               "id": "input-empty",
