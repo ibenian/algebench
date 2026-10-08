@@ -1,0 +1,3357 @@
+{
+  "title": "Algorithm patterns for interviews",
+  "codeFiles": [
+    {
+      "id": "prefix-sum",
+      "path": "patterns/prefix_sum.py",
+      "language": "python",
+      "source": "def build_prefix(nums):\n    prefix = [0]\n    for k, x in enumerate(nums):\n        prefix.append(prefix[-1] + x)\n    return prefix\n\ndef range_sum(prefix, i, j):\n    return prefix[j + 1] - prefix[i]",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 2, "scene": "prefix-sum", "step": "run", "snapshot": 0, "label": "Prefix sum · Start the prefix array with 0, the sum of no elements."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 1, "label": "Prefix sum · Read nums[0] = 3."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 2, "label": "Prefix sum · prefix[1] = prefix[0] + 3 = 0 + 3 = 3, the sum of the first 1 numbers."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 3, "label": "Prefix sum · Read nums[1] = 1."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 4, "label": "Prefix sum · prefix[2] = prefix[1] + 1 = 3 + 1 = 4, the sum of the first 2 numbers."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 5, "label": "Prefix sum · Read nums[2] = 4."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 6, "label": "Prefix sum · prefix[3] = prefix[2] + 4 = 4 + 4 = 8, the sum of the first 3 numbers."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 7, "label": "Prefix sum · Read nums[3] = 1."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 8, "label": "Prefix sum · prefix[4] = prefix[3] + 1 = 8 + 1 = 9, the sum of the first 4 numbers."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 9, "label": "Prefix sum · Read nums[4] = 5."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 10, "label": "Prefix sum · prefix[5] = prefix[4] + 5 = 9 + 5 = 14, the sum of the first 5 numbers."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 11, "label": "Prefix sum · Read nums[5] = 9."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 12, "label": "Prefix sum · prefix[6] = prefix[5] + 9 = 14 + 9 = 23, the sum of the first 6 numbers."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 13, "label": "Prefix sum · Read nums[6] = 2."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 14, "label": "Prefix sum · prefix[7] = prefix[6] + 2 = 23 + 2 = 25, the sum of the first 7 numbers."},
+        {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 15, "label": "Prefix sum · Read nums[7] = 6."},
+        {"line": 4, "scene": "prefix-sum", "step": "run", "snapshot": 16, "label": "Prefix sum · prefix[8] = prefix[7] + 6 = 25 + 6 = 31, the sum of the first 8 numbers."},
+        {"line": 5, "scene": "prefix-sum", "step": "run", "snapshot": 17, "label": "Prefix sum · Built in one O(n) pass. prefix[m] is the sum of everything left of position m."},
+        {"line": 7, "scene": "prefix-sum", "step": "run", "snapshot": 18, "label": "Prefix sum · Query: the sum of nums[2..5]."},
+        {"line": 8, "scene": "prefix-sum", "step": "run", "snapshot": 19, "label": "Prefix sum · prefix[6] − prefix[2] = 23 − 4 = 19. One subtraction, no loop."},
+        {"line": 7, "scene": "prefix-sum", "step": "run", "snapshot": 20, "label": "Prefix sum · Query: the sum of nums[0..3]."},
+        {"line": 8, "scene": "prefix-sum", "step": "run", "snapshot": 21, "label": "Prefix sum · prefix[4] − prefix[0] = 9 − 0 = 9. One subtraction, no loop."}
+      ]
+    },
+    {
+      "id": "two-pointers",
+      "path": "patterns/two_pointers.py",
+      "language": "python",
+      "source": "def two_sum_sorted(nums, target):\n    left, right = 0, len(nums) - 1\n    while left < right:\n        total = nums[left] + nums[right]\n        if total == target:\n            return [left, right]\n        if total < target:\n            left += 1\n        else:\n            right -= 1\n    return []",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 2, "scene": "two-pointers", "step": "run", "snapshot": 0, "label": "Two pointers · Start at both ends: left = 0, right = 7."},
+        {"line": 3, "scene": "two-pointers", "step": "run", "snapshot": 1, "label": "Two pointers · left < right, so candidate pairs remain."},
+        {"line": 4, "scene": "two-pointers", "step": "run", "snapshot": 2, "label": "Two pointers · nums[0] + nums[7] = 2 + 17 = 19."},
+        {"line": 5, "scene": "two-pointers", "step": "run", "snapshot": 3, "label": "Two pointers · Is 19 equal to the target 18?"},
+        {"line": 7, "scene": "two-pointers", "step": "run", "snapshot": 4, "label": "Two pointers · Is 19 less than 18?"},
+        {"line": 10, "scene": "two-pointers", "step": "run", "snapshot": 5, "label": "Two pointers · Too big. nums[left] is the smallest value left, so 17 overshoots with everything. Drop it: right = 6."},
+        {"line": 3, "scene": "two-pointers", "step": "run", "snapshot": 6, "label": "Two pointers · left < right, so candidate pairs remain."},
+        {"line": 4, "scene": "two-pointers", "step": "run", "snapshot": 7, "label": "Two pointers · nums[0] + nums[6] = 2 + 13 = 15."},
+        {"line": 5, "scene": "two-pointers", "step": "run", "snapshot": 8, "label": "Two pointers · Is 15 equal to the target 18?"},
+        {"line": 7, "scene": "two-pointers", "step": "run", "snapshot": 9, "label": "Two pointers · Is 15 less than 18?"},
+        {"line": 8, "scene": "two-pointers", "step": "run", "snapshot": 10, "label": "Two pointers · Too small. nums[right] is the largest value left, so 2 cannot reach the target with anything. Drop it: left = 1."},
+        {"line": 3, "scene": "two-pointers", "step": "run", "snapshot": 11, "label": "Two pointers · left < right, so candidate pairs remain."},
+        {"line": 4, "scene": "two-pointers", "step": "run", "snapshot": 12, "label": "Two pointers · nums[1] + nums[6] = 3 + 13 = 16."},
+        {"line": 5, "scene": "two-pointers", "step": "run", "snapshot": 13, "label": "Two pointers · Is 16 equal to the target 18?"},
+        {"line": 7, "scene": "two-pointers", "step": "run", "snapshot": 14, "label": "Two pointers · Is 16 less than 18?"},
+        {"line": 8, "scene": "two-pointers", "step": "run", "snapshot": 15, "label": "Two pointers · Too small. nums[right] is the largest value left, so 3 cannot reach the target with anything. Drop it: left = 2."},
+        {"line": 3, "scene": "two-pointers", "step": "run", "snapshot": 16, "label": "Two pointers · left < right, so candidate pairs remain."},
+        {"line": 4, "scene": "two-pointers", "step": "run", "snapshot": 17, "label": "Two pointers · nums[2] + nums[6] = 5 + 13 = 18."},
+        {"line": 5, "scene": "two-pointers", "step": "run", "snapshot": 18, "label": "Two pointers · Is 18 equal to the target 18?"},
+        {"line": 6, "scene": "two-pointers", "step": "run", "snapshot": 19, "label": "Two pointers · Found it: indices 2 and 6."}
+      ]
+    },
+    {
+      "id": "sliding-window",
+      "path": "patterns/sliding_window.py",
+      "language": "python",
+      "source": "def max_window_sum(nums, k):\n    window = sum(nums[:k])\n    best = window\n    for right in range(k, len(nums)):\n        window += nums[right] - nums[right - k]\n        best = max(best, window)\n    return best",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 2, "scene": "sliding-window", "step": "run", "snapshot": 0, "label": "Sliding window · Sum the first window, nums[0..2]: 8."},
+        {"line": 3, "scene": "sliding-window", "step": "run", "snapshot": 1, "label": "Sliding window · best = 8."},
+        {"line": 4, "scene": "sliding-window", "step": "run", "snapshot": 2, "label": "Sliding window · Slide right: nums[3] = 1 enters, nums[0] = 2 leaves."},
+        {"line": 5, "scene": "sliding-window", "step": "run", "snapshot": 3, "label": "Sliding window · window = 8 + 1 − 2 = 7. An O(1) update instead of re-summing 3 numbers."},
+        {"line": 6, "scene": "sliding-window", "step": "run", "snapshot": 4, "label": "Sliding window · 7 does not beat best = 8."},
+        {"line": 4, "scene": "sliding-window", "step": "run", "snapshot": 5, "label": "Sliding window · Slide right: nums[4] = 3 enters, nums[1] = 1 leaves."},
+        {"line": 5, "scene": "sliding-window", "step": "run", "snapshot": 6, "label": "Sliding window · window = 7 + 3 − 1 = 9. An O(1) update instead of re-summing 3 numbers."},
+        {"line": 6, "scene": "sliding-window", "step": "run", "snapshot": 7, "label": "Sliding window · 9 beats the old best: best = 9."},
+        {"line": 4, "scene": "sliding-window", "step": "run", "snapshot": 8, "label": "Sliding window · Slide right: nums[5] = 2 enters, nums[2] = 5 leaves."},
+        {"line": 5, "scene": "sliding-window", "step": "run", "snapshot": 9, "label": "Sliding window · window = 9 + 2 − 5 = 6. An O(1) update instead of re-summing 3 numbers."},
+        {"line": 6, "scene": "sliding-window", "step": "run", "snapshot": 10, "label": "Sliding window · 6 does not beat best = 9."},
+        {"line": 4, "scene": "sliding-window", "step": "run", "snapshot": 11, "label": "Sliding window · Slide right: nums[6] = 6 enters, nums[3] = 1 leaves."},
+        {"line": 5, "scene": "sliding-window", "step": "run", "snapshot": 12, "label": "Sliding window · window = 6 + 6 − 1 = 11. An O(1) update instead of re-summing 3 numbers."},
+        {"line": 6, "scene": "sliding-window", "step": "run", "snapshot": 13, "label": "Sliding window · 11 beats the old best: best = 11."},
+        {"line": 4, "scene": "sliding-window", "step": "run", "snapshot": 14, "label": "Sliding window · Slide right: nums[7] = 1 enters, nums[4] = 3 leaves."},
+        {"line": 5, "scene": "sliding-window", "step": "run", "snapshot": 15, "label": "Sliding window · window = 11 + 1 − 3 = 9. An O(1) update instead of re-summing 3 numbers."},
+        {"line": 6, "scene": "sliding-window", "step": "run", "snapshot": 16, "label": "Sliding window · 9 does not beat best = 11."},
+        {"line": 7, "scene": "sliding-window", "step": "run", "snapshot": 17, "label": "Sliding window · The best window is nums[4..6], with sum 11."}
+      ]
+    },
+    {
+      "id": "fast-slow",
+      "path": "patterns/fast_slow.py",
+      "language": "python",
+      "source": "def find_duplicate(nums):\n    slow = fast = nums[0]\n    while True:\n        slow = nums[slow]\n        fast = nums[nums[fast]]\n        if slow == fast:\n            break\n    slow = nums[0]\n    while slow != fast:\n        slow = nums[slow]\n        fast = nums[fast]\n    return slow",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 2, "scene": "fast-slow", "step": "run", "snapshot": 0, "label": "Fast & slow pointers · Both pointers start at nums[0] = 2. Read each value as a pointer to the index it names."},
+        {"line": 3, "scene": "fast-slow", "step": "run", "snapshot": 1, "label": "Fast & slow pointers · Phase 1: slow moves one hop, fast moves two, until they meet."},
+        {"line": 4, "scene": "fast-slow", "step": "run", "snapshot": 2, "label": "Fast & slow pointers · slow takes one hop: nums[2] = 4."},
+        {"line": 5, "scene": "fast-slow", "step": "run", "snapshot": 3, "label": "Fast & slow pointers · fast takes two hops: nums[2] = 4, then nums[4] = 3."},
+        {"line": 6, "scene": "fast-slow", "step": "run", "snapshot": 4, "label": "Fast & slow pointers · Do they meet? slow = 4, fast = 3."},
+        {"line": 3, "scene": "fast-slow", "step": "run", "snapshot": 5, "label": "Fast & slow pointers · Phase 1: slow moves one hop, fast moves two, until they meet."},
+        {"line": 4, "scene": "fast-slow", "step": "run", "snapshot": 6, "label": "Fast & slow pointers · slow takes one hop: nums[4] = 3."},
+        {"line": 5, "scene": "fast-slow", "step": "run", "snapshot": 7, "label": "Fast & slow pointers · fast takes two hops: nums[3] = 1, then nums[1] = 6."},
+        {"line": 6, "scene": "fast-slow", "step": "run", "snapshot": 8, "label": "Fast & slow pointers · Do they meet? slow = 3, fast = 6."},
+        {"line": 3, "scene": "fast-slow", "step": "run", "snapshot": 9, "label": "Fast & slow pointers · Phase 1: slow moves one hop, fast moves two, until they meet."},
+        {"line": 4, "scene": "fast-slow", "step": "run", "snapshot": 10, "label": "Fast & slow pointers · slow takes one hop: nums[3] = 1."},
+        {"line": 5, "scene": "fast-slow", "step": "run", "snapshot": 11, "label": "Fast & slow pointers · fast takes two hops: nums[6] = 5, then nums[5] = 1."},
+        {"line": 6, "scene": "fast-slow", "step": "run", "snapshot": 12, "label": "Fast & slow pointers · Do they meet? slow = 1, fast = 1."},
+        {"line": 7, "scene": "fast-slow", "step": "run", "snapshot": 13, "label": "Fast & slow pointers · They meet at index 1, somewhere inside the cycle."},
+        {"line": 8, "scene": "fast-slow", "step": "run", "snapshot": 14, "label": "Fast & slow pointers · Phase 2: restart slow at nums[0] = 2; fast stays put. Both now move one hop at a time."},
+        {"line": 9, "scene": "fast-slow", "step": "run", "snapshot": 15, "label": "Fast & slow pointers · slow = 2, fast = 1: not yet equal."},
+        {"line": 10, "scene": "fast-slow", "step": "run", "snapshot": 16, "label": "Fast & slow pointers · slow: nums[2] = 4."},
+        {"line": 11, "scene": "fast-slow", "step": "run", "snapshot": 17, "label": "Fast & slow pointers · fast: nums[1] = 6."},
+        {"line": 9, "scene": "fast-slow", "step": "run", "snapshot": 18, "label": "Fast & slow pointers · slow = 4, fast = 6: not yet equal."},
+        {"line": 10, "scene": "fast-slow", "step": "run", "snapshot": 19, "label": "Fast & slow pointers · slow: nums[4] = 3."},
+        {"line": 11, "scene": "fast-slow", "step": "run", "snapshot": 20, "label": "Fast & slow pointers · fast: nums[6] = 5."},
+        {"line": 9, "scene": "fast-slow", "step": "run", "snapshot": 21, "label": "Fast & slow pointers · slow = 3, fast = 5: not yet equal."},
+        {"line": 10, "scene": "fast-slow", "step": "run", "snapshot": 22, "label": "Fast & slow pointers · slow: nums[3] = 1."},
+        {"line": 11, "scene": "fast-slow", "step": "run", "snapshot": 23, "label": "Fast & slow pointers · fast: nums[5] = 1."},
+        {"line": 9, "scene": "fast-slow", "step": "run", "snapshot": 24, "label": "Fast & slow pointers · slow = fast = 1."},
+        {"line": 12, "scene": "fast-slow", "step": "run", "snapshot": 25, "label": "Fast & slow pointers · They meet at the cycle entrance, 1. Two indices point to it, so 1 is the duplicate."}
+      ]
+    },
+    {
+      "id": "monotonic-stack",
+      "path": "patterns/monotonic_stack.py",
+      "language": "python",
+      "source": "def daily_temperatures(temps):\n    answer = [0] * len(temps)\n    stack = []\n    for i, t in enumerate(temps):\n        while stack and temps[stack[-1]] < t:\n            j = stack.pop()\n            answer[j] = i - j\n        stack.append(i)\n    return answer",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 2, "scene": "monotonic-stack", "step": "run", "snapshot": 0, "label": "Monotonic stack · Every answer starts at 0, meaning no warmer day yet."},
+        {"line": 3, "scene": "monotonic-stack", "step": "run", "snapshot": 1, "label": "Monotonic stack · The stack holds days still waiting for a warmer day. Their temperatures never increase from bottom to top."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 2, "label": "Monotonic stack · Day 0: 73°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 3, "label": "Monotonic stack · The stack is empty, so nobody is waiting."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 4, "label": "Monotonic stack · Push day 0. It waits for a warmer day."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 5, "label": "Monotonic stack · Day 1: 74°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 6, "label": "Monotonic stack · Is day 0's 73° below 74°? Yes."},
+        {"line": 6, "scene": "monotonic-stack", "step": "run", "snapshot": 7, "label": "Monotonic stack · Pop day 0: day 1 is its first warmer day."},
+        {"line": 7, "scene": "monotonic-stack", "step": "run", "snapshot": 8, "label": "Monotonic stack · answer[0] = 1 − 0 = 1."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 9, "label": "Monotonic stack · The stack is empty, so nobody is waiting."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 10, "label": "Monotonic stack · Push day 1. It waits for a warmer day."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 11, "label": "Monotonic stack · Day 2: 75°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 12, "label": "Monotonic stack · Is day 1's 74° below 75°? Yes."},
+        {"line": 6, "scene": "monotonic-stack", "step": "run", "snapshot": 13, "label": "Monotonic stack · Pop day 1: day 2 is its first warmer day."},
+        {"line": 7, "scene": "monotonic-stack", "step": "run", "snapshot": 14, "label": "Monotonic stack · answer[1] = 2 − 1 = 1."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 15, "label": "Monotonic stack · The stack is empty, so nobody is waiting."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 16, "label": "Monotonic stack · Push day 2. It waits for a warmer day."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 17, "label": "Monotonic stack · Day 3: 71°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 18, "label": "Monotonic stack · Is day 2's 75° below 71°? No, so the stack stays as it is."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 19, "label": "Monotonic stack · Push day 3. It waits for a warmer day."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 20, "label": "Monotonic stack · Day 4: 69°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 21, "label": "Monotonic stack · Is day 3's 71° below 69°? No, so the stack stays as it is."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 22, "label": "Monotonic stack · Push day 4. It waits for a warmer day."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 23, "label": "Monotonic stack · Day 5: 72°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 24, "label": "Monotonic stack · Is day 4's 69° below 72°? Yes."},
+        {"line": 6, "scene": "monotonic-stack", "step": "run", "snapshot": 25, "label": "Monotonic stack · Pop day 4: day 5 is its first warmer day."},
+        {"line": 7, "scene": "monotonic-stack", "step": "run", "snapshot": 26, "label": "Monotonic stack · answer[4] = 5 − 4 = 1."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 27, "label": "Monotonic stack · Is day 3's 71° below 72°? Yes."},
+        {"line": 6, "scene": "monotonic-stack", "step": "run", "snapshot": 28, "label": "Monotonic stack · Pop day 3: day 5 is its first warmer day."},
+        {"line": 7, "scene": "monotonic-stack", "step": "run", "snapshot": 29, "label": "Monotonic stack · answer[3] = 5 − 3 = 2."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 30, "label": "Monotonic stack · Is day 2's 75° below 72°? No, so the stack stays as it is."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 31, "label": "Monotonic stack · Push day 5. It waits for a warmer day."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 32, "label": "Monotonic stack · Day 6: 76°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 33, "label": "Monotonic stack · Is day 5's 72° below 76°? Yes."},
+        {"line": 6, "scene": "monotonic-stack", "step": "run", "snapshot": 34, "label": "Monotonic stack · Pop day 5: day 6 is its first warmer day."},
+        {"line": 7, "scene": "monotonic-stack", "step": "run", "snapshot": 35, "label": "Monotonic stack · answer[5] = 6 − 5 = 1."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 36, "label": "Monotonic stack · Is day 2's 75° below 76°? Yes."},
+        {"line": 6, "scene": "monotonic-stack", "step": "run", "snapshot": 37, "label": "Monotonic stack · Pop day 2: day 6 is its first warmer day."},
+        {"line": 7, "scene": "monotonic-stack", "step": "run", "snapshot": 38, "label": "Monotonic stack · answer[2] = 6 − 2 = 4."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 39, "label": "Monotonic stack · The stack is empty, so nobody is waiting."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 40, "label": "Monotonic stack · Push day 6. It waits for a warmer day."},
+        {"line": 4, "scene": "monotonic-stack", "step": "run", "snapshot": 41, "label": "Monotonic stack · Day 7: 73°."},
+        {"line": 5, "scene": "monotonic-stack", "step": "run", "snapshot": 42, "label": "Monotonic stack · Is day 6's 76° below 73°? No, so the stack stays as it is."},
+        {"line": 8, "scene": "monotonic-stack", "step": "run", "snapshot": 43, "label": "Monotonic stack · Push day 7. It waits for a warmer day."},
+        {"line": 9, "scene": "monotonic-stack", "step": "run", "snapshot": 44, "label": "Monotonic stack · Each day was pushed once and popped at most once: O(n). Days left on the stack keep answer 0."}
+      ]
+    },
+    {
+      "id": "merge-intervals",
+      "path": "patterns/merge_intervals.py",
+      "language": "python",
+      "source": "def merge(intervals):\n    intervals.sort(key=lambda iv: iv[0])\n    merged = []\n    for start, end in intervals:\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 1, "scene": "merge-intervals", "step": "run", "snapshot": 0, "label": "Overlapping intervals · The input intervals, in the order given. Each column is one interval."},
+        {"line": 2, "scene": "merge-intervals", "step": "run", "snapshot": 1, "label": "Overlapping intervals · Sort by start. Now any interval that overlaps the current group must come right after it."},
+        {"line": 3, "scene": "merge-intervals", "step": "run", "snapshot": 2, "label": "Overlapping intervals · merged starts empty."},
+        {"line": 4, "scene": "merge-intervals", "step": "run", "snapshot": 3, "label": "Overlapping intervals · Next interval: [1,3]."},
+        {"line": 5, "scene": "merge-intervals", "step": "run", "snapshot": 4, "label": "Overlapping intervals · merged is empty, so there is nothing to overlap."},
+        {"line": 8, "scene": "merge-intervals", "step": "run", "snapshot": 5, "label": "Overlapping intervals · No overlap: start a new group, [1,3]."},
+        {"line": 4, "scene": "merge-intervals", "step": "run", "snapshot": 6, "label": "Overlapping intervals · Next interval: [2,6]."},
+        {"line": 5, "scene": "merge-intervals", "step": "run", "snapshot": 7, "label": "Overlapping intervals · Does it start at or before the last merged end, 3? Yes."},
+        {"line": 6, "scene": "merge-intervals", "step": "run", "snapshot": 8, "label": "Overlapping intervals · Overlap: extend the last interval to [1,6]."},
+        {"line": 4, "scene": "merge-intervals", "step": "run", "snapshot": 9, "label": "Overlapping intervals · Next interval: [8,10]."},
+        {"line": 5, "scene": "merge-intervals", "step": "run", "snapshot": 10, "label": "Overlapping intervals · Does it start at or before the last merged end, 6? No."},
+        {"line": 8, "scene": "merge-intervals", "step": "run", "snapshot": 11, "label": "Overlapping intervals · No overlap: start a new group, [8,10]."},
+        {"line": 4, "scene": "merge-intervals", "step": "run", "snapshot": 12, "label": "Overlapping intervals · Next interval: [9,12]."},
+        {"line": 5, "scene": "merge-intervals", "step": "run", "snapshot": 13, "label": "Overlapping intervals · Does it start at or before the last merged end, 10? Yes."},
+        {"line": 6, "scene": "merge-intervals", "step": "run", "snapshot": 14, "label": "Overlapping intervals · Overlap: extend the last interval to [8,12]."},
+        {"line": 4, "scene": "merge-intervals", "step": "run", "snapshot": 15, "label": "Overlapping intervals · Next interval: [15,18]."},
+        {"line": 5, "scene": "merge-intervals", "step": "run", "snapshot": 16, "label": "Overlapping intervals · Does it start at or before the last merged end, 12? No."},
+        {"line": 8, "scene": "merge-intervals", "step": "run", "snapshot": 17, "label": "Overlapping intervals · No overlap: start a new group, [15,18]."},
+        {"line": 9, "scene": "merge-intervals", "step": "run", "snapshot": 18, "label": "Overlapping intervals · 3 disjoint intervals. Sorting costs O(n log n); the sweep is O(n)."}
+      ]
+    },
+    {
+      "id": "rotated-search",
+      "path": "patterns/rotated_search.py",
+      "language": "python",
+      "source": "def search_rotated(nums, target):\n    lo, hi = 0, len(nums) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[lo] <= nums[mid]:\n            if nums[lo] <= target < nums[mid]:\n                hi = mid - 1\n            else:\n                lo = mid + 1\n        else:\n            if nums[mid] < target <= nums[hi]:\n                lo = mid + 1\n            else:\n                hi = mid - 1\n    return -1",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 2, "scene": "rotated-search", "step": "run", "snapshot": 0, "label": "Modified binary search · Search all of nums: lo = 0, hi = 9."},
+        {"line": 3, "scene": "rotated-search", "step": "run", "snapshot": 1, "label": "Modified binary search · lo ≤ hi, so 10 candidates remain."},
+        {"line": 4, "scene": "rotated-search", "step": "run", "snapshot": 2, "label": "Modified binary search · mid = (0 + 9) // 2 = 4."},
+        {"line": 5, "scene": "rotated-search", "step": "run", "snapshot": 3, "label": "Modified binary search · Is nums[4] = 5 the target 15?"},
+        {"line": 7, "scene": "rotated-search", "step": "run", "snapshot": 4, "label": "Modified binary search · At least one half is sorted. Is nums[lo] = 22 ≤ nums[mid] = 5?"},
+        {"line": 13, "scene": "rotated-search", "step": "run", "snapshot": 5, "label": "Modified binary search · No, so nums[4..9] runs 5 to 18 in order. Is 15 inside that range?"},
+        {"line": 14, "scene": "rotated-search", "step": "run", "snapshot": 6, "label": "Modified binary search · Yes: keep the right half. lo = 5."},
+        {"line": 3, "scene": "rotated-search", "step": "run", "snapshot": 7, "label": "Modified binary search · lo ≤ hi, so 5 candidates remain."},
+        {"line": 4, "scene": "rotated-search", "step": "run", "snapshot": 8, "label": "Modified binary search · mid = (5 + 9) // 2 = 7."},
+        {"line": 5, "scene": "rotated-search", "step": "run", "snapshot": 9, "label": "Modified binary search · Is nums[7] = 13 the target 15?"},
+        {"line": 7, "scene": "rotated-search", "step": "run", "snapshot": 10, "label": "Modified binary search · At least one half is sorted. Is nums[lo] = 8 ≤ nums[mid] = 13?"},
+        {"line": 8, "scene": "rotated-search", "step": "run", "snapshot": 11, "label": "Modified binary search · Yes: nums[5..7] runs 8 to 13 in order. Is 15 inside that range?"},
+        {"line": 11, "scene": "rotated-search", "step": "run", "snapshot": 12, "label": "Modified binary search · No: the target can only be right of mid. lo = 8."},
+        {"line": 3, "scene": "rotated-search", "step": "run", "snapshot": 13, "label": "Modified binary search · lo ≤ hi, so 2 candidates remain."},
+        {"line": 4, "scene": "rotated-search", "step": "run", "snapshot": 14, "label": "Modified binary search · mid = (8 + 9) // 2 = 8."},
+        {"line": 5, "scene": "rotated-search", "step": "run", "snapshot": 15, "label": "Modified binary search · Is nums[8] = 15 the target 15?"},
+        {"line": 6, "scene": "rotated-search", "step": "run", "snapshot": 16, "label": "Modified binary search · Found 15 at index 8."}
+      ]
+    },
+    {
+      "id": "dynamic-programming",
+      "path": "patterns/house_robber.py",
+      "language": "python",
+      "source": "def rob(houses):\n    dp = [0] * (len(houses) + 1)\n    dp[1] = houses[0]\n    for i in range(2, len(houses) + 1):\n        skip = dp[i - 1]\n        take = dp[i - 2] + houses[i - 1]\n        dp[i] = max(skip, take)\n    return dp[-1]",
+      "activeLineExpr": "dataTable('trace', frame, 'line')",
+      "locations": [
+        {"line": 2, "scene": "dynamic-programming", "step": "run", "snapshot": 0, "label": "Dynamic programming · dp[i] will hold the most you can steal from the first i houses. dp[0] = 0: no houses, no loot."},
+        {"line": 3, "scene": "dynamic-programming", "step": "run", "snapshot": 1, "label": "Dynamic programming · With one house, take it: dp[1] = 2."},
+        {"line": 4, "scene": "dynamic-programming", "step": "run", "snapshot": 2, "label": "Dynamic programming · Decide house 1 (value 7), using answers already computed."},
+        {"line": 5, "scene": "dynamic-programming", "step": "run", "snapshot": 3, "label": "Dynamic programming · Skip house 1: keep the best from 1 houses, dp[1] = 2."},
+        {"line": 6, "scene": "dynamic-programming", "step": "run", "snapshot": 4, "label": "Dynamic programming · Take house 1: its neighbour is off limits, so add 7 to dp[0] = 0: 7."},
+        {"line": 7, "scene": "dynamic-programming", "step": "run", "snapshot": 5, "label": "Dynamic programming · dp[2] = max(2, 7) = 7."},
+        {"line": 4, "scene": "dynamic-programming", "step": "run", "snapshot": 6, "label": "Dynamic programming · Decide house 2 (value 9), using answers already computed."},
+        {"line": 5, "scene": "dynamic-programming", "step": "run", "snapshot": 7, "label": "Dynamic programming · Skip house 2: keep the best from 2 houses, dp[2] = 7."},
+        {"line": 6, "scene": "dynamic-programming", "step": "run", "snapshot": 8, "label": "Dynamic programming · Take house 2: its neighbour is off limits, so add 9 to dp[1] = 2: 11."},
+        {"line": 7, "scene": "dynamic-programming", "step": "run", "snapshot": 9, "label": "Dynamic programming · dp[3] = max(7, 11) = 11."},
+        {"line": 4, "scene": "dynamic-programming", "step": "run", "snapshot": 10, "label": "Dynamic programming · Decide house 3 (value 3), using answers already computed."},
+        {"line": 5, "scene": "dynamic-programming", "step": "run", "snapshot": 11, "label": "Dynamic programming · Skip house 3: keep the best from 3 houses, dp[3] = 11."},
+        {"line": 6, "scene": "dynamic-programming", "step": "run", "snapshot": 12, "label": "Dynamic programming · Take house 3: its neighbour is off limits, so add 3 to dp[2] = 7: 10."},
+        {"line": 7, "scene": "dynamic-programming", "step": "run", "snapshot": 13, "label": "Dynamic programming · dp[4] = max(11, 10) = 11."},
+        {"line": 4, "scene": "dynamic-programming", "step": "run", "snapshot": 14, "label": "Dynamic programming · Decide house 4 (value 1), using answers already computed."},
+        {"line": 5, "scene": "dynamic-programming", "step": "run", "snapshot": 15, "label": "Dynamic programming · Skip house 4: keep the best from 4 houses, dp[4] = 11."},
+        {"line": 6, "scene": "dynamic-programming", "step": "run", "snapshot": 16, "label": "Dynamic programming · Take house 4: its neighbour is off limits, so add 1 to dp[3] = 11: 12."},
+        {"line": 7, "scene": "dynamic-programming", "step": "run", "snapshot": 17, "label": "Dynamic programming · dp[5] = max(11, 12) = 12."},
+        {"line": 4, "scene": "dynamic-programming", "step": "run", "snapshot": 18, "label": "Dynamic programming · Decide house 5 (value 4), using answers already computed."},
+        {"line": 5, "scene": "dynamic-programming", "step": "run", "snapshot": 19, "label": "Dynamic programming · Skip house 5: keep the best from 5 houses, dp[5] = 12."},
+        {"line": 6, "scene": "dynamic-programming", "step": "run", "snapshot": 20, "label": "Dynamic programming · Take house 5: its neighbour is off limits, so add 4 to dp[4] = 11: 15."},
+        {"line": 7, "scene": "dynamic-programming", "step": "run", "snapshot": 21, "label": "Dynamic programming · dp[6] = max(12, 15) = 15."},
+        {"line": 8, "scene": "dynamic-programming", "step": "run", "snapshot": 22, "label": "Dynamic programming · Answer: dp[6] = 15. Each subproblem was solved once: O(n)."}
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "id": "overview",
+      "title": "Pattern map",
+      "description": "Recognize which pattern a problem is asking for.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "title",
+          "type": "text",
+          "text": "Interview algorithm patterns",
+          "position": [1.5, 0.6, 0],
+          "color": "#f1c65b"
+        },
+        {
+          "id": "subtitle",
+          "type": "text",
+          "text": "Spot the signal, pick the plan",
+          "position": [1.5, -0.6, 0],
+          "color": "#9dbde3"
+        }
+      ],
+      "markdown": "# Algorithm patterns for interviews\n\nMost interview problems are variations on a small set of patterns. The skill is recognizing the **signal** in the problem statement and reaching for the matching plan.\n\n| Signal in the problem | Pattern | Typical cost |\n| --- | --- | --- |\n| Many range-sum queries on a fixed array | Prefix sum | O(n) build, O(1) per query |\n| Sorted array, find a pair or triple | Two pointers | O(n) |\n| Best contiguous subarray or substring | Sliding window | O(n) |\n| Cycle, or \"find the duplicate\" in O(1) space | Fast & slow pointers | O(n), O(1) space |\n| Reverse or reorder linked-list nodes | In-place reversal | O(n), O(1) space |\n| \"Next greater / smaller element\" | Monotonic stack | O(n) |\n| k largest, k smallest, k most frequent | Top-K with a heap | O(n log k) |\n| Intervals, meetings, ranges | Sort and merge | O(n log n) |\n| Sorted data with a twist (rotated, 2D) | Modified binary search | O(log n) |\n| Visit every tree node in a set order | Tree traversal | O(n) |\n| Explore every path or component | Depth-first search | O(V + E) |\n| Shortest path in steps, level by level | Breadth-first search | O(V + E) |\n| Grid of cells, islands, flood fill | Matrix traversal | O(rows × cols) |\n| All permutations, subsets, placements | Backtracking | Exponential, pruned |\n| Optimal value from overlapping subproblems | Dynamic programming | Subproblems × work each |\n\nEach following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.",
+      "prompt": "Help the learner recognize which pattern fits a problem. Ask them to name the signal (sorted input, contiguous range, cycle, next-greater, overlapping subproblems) before naming a pattern. Encourage predicting the pattern before revealing it."
+    },
+    {
+      "id": "prefix-sum",
+      "title": "Prefix sum",
+      "description": "Precompute running totals so any range sum costs one subtraction.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "nums": [3, 1, 4, 1, 5, 9, 2, 6]
+          }
+        ],
+        "trace": [
+          {
+            "k": -1,
+            "x": 0,
+            "prefix": [0],
+            "n": 1,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 2,
+            "message": "Start the prefix array with 0, the sum of no elements.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 0,
+            "x": 3,
+            "prefix": [0],
+            "n": 1,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[0] = 3.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 0,
+            "x": 3,
+            "prefix": [0, 3],
+            "n": 2,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[1] = prefix[0] + 3 = 0 + 3 = 3, the sum of the first 1 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 1,
+            "x": 1,
+            "prefix": [0, 3],
+            "n": 2,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[1] = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 1,
+            "x": 1,
+            "prefix": [0, 3, 4],
+            "n": 3,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[2] = prefix[1] + 1 = 3 + 1 = 4, the sum of the first 2 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 2,
+            "x": 4,
+            "prefix": [0, 3, 4],
+            "n": 3,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[2] = 4.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 2,
+            "x": 4,
+            "prefix": [0, 3, 4, 8],
+            "n": 4,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[3] = prefix[2] + 4 = 4 + 4 = 8, the sum of the first 3 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 3,
+            "x": 1,
+            "prefix": [0, 3, 4, 8],
+            "n": 4,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[3] = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 3,
+            "x": 1,
+            "prefix": [0, 3, 4, 8, 9],
+            "n": 5,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[4] = prefix[3] + 1 = 8 + 1 = 9, the sum of the first 4 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 4,
+            "x": 5,
+            "prefix": [0, 3, 4, 8, 9],
+            "n": 5,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[4] = 5.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 4,
+            "x": 5,
+            "prefix": [0, 3, 4, 8, 9, 14],
+            "n": 6,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[5] = prefix[4] + 5 = 9 + 5 = 14, the sum of the first 5 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 5,
+            "x": 9,
+            "prefix": [0, 3, 4, 8, 9, 14],
+            "n": 6,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[5] = 9.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 5,
+            "x": 9,
+            "prefix": [0, 3, 4, 8, 9, 14, 23],
+            "n": 7,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[6] = prefix[5] + 9 = 14 + 9 = 23, the sum of the first 6 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 6,
+            "x": 2,
+            "prefix": [0, 3, 4, 8, 9, 14, 23],
+            "n": 7,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[6] = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 6,
+            "x": 2,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25],
+            "n": 8,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[7] = prefix[6] + 2 = 23 + 2 = 25, the sum of the first 7 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 7,
+            "x": 6,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25],
+            "n": 8,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 3,
+            "message": "Read nums[7] = 6.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 7,
+            "x": 6,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25, 31],
+            "n": 9,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 4,
+            "message": "prefix[8] = prefix[7] + 6 = 25 + 6 = 31, the sum of the first 8 numbers.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "x": 0,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25, 31],
+            "n": 9,
+            "qi": -1,
+            "qj": -1,
+            "querying": 0,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 5,
+            "message": "Built in one O(n) pass. prefix[m] is the sum of everything left of position m.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "x": 0,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25, 31],
+            "n": 9,
+            "qi": 2,
+            "qj": 5,
+            "querying": 1,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 7,
+            "message": "Query: the sum of nums[2..5].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "x": 0,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25, 31],
+            "n": 9,
+            "qi": 2,
+            "qj": 5,
+            "querying": 1,
+            "answer": 19,
+            "hasAnswer": 1,
+            "line": 8,
+            "message": "prefix[6] − prefix[2] = 23 − 4 = 19. One subtraction, no loop.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "x": 0,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25, 31],
+            "n": 9,
+            "qi": 0,
+            "qj": 3,
+            "querying": 1,
+            "answer": 0,
+            "hasAnswer": 0,
+            "line": 7,
+            "message": "Query: the sum of nums[0..3].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "x": 0,
+            "prefix": [0, 3, 4, 8, 9, 14, 23, 25, 31],
+            "n": 9,
+            "qi": 0,
+            "qj": 3,
+            "querying": 1,
+            "answer": 9,
+            "hasAnswer": 1,
+            "line": 8,
+            "message": "prefix[4] − prefix[0] = 9 − 0 = 9. One subtraction, no loop.",
+            "status": "Done",
+            "running": 0
+          }
+        ]
+      },
+      "markdown": "# Prefix sum\n\n**Signal:** many \"sum of nums[i..j]\" queries on an array that does not change.\n\nBuild `prefix` once, where `prefix[m]` is the sum of the first `m` numbers. Each prefix cell sits on the boundary *before* position m, so it covers everything to its left. Then\n\n$$\\text{sum}(i..j) = \\text{prefix}[j+1] - \\text{prefix}[i]$$\n\nbecause the larger prefix includes the range and the smaller one removes everything before it. Building costs O(n); every query after that costs O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Range Sum Query (303), Contiguous Array (525), Subarray Sum Equals K (560).",
+      "prompt": "Explain why prefix[j+1] - prefix[i] isolates the range. Stress the off-by-one: prefix has n+1 entries and prefix[0] = 0. Ask the learner to predict a query answer before the player reveals it. Displayed Python is not executing in the browser.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 21, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "nums-title",
+              "type": "text",
+              "text": "nums",
+              "position": [-6.614999999999999, 1.8, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "nums",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-5, 1.8, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'nums'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'nums'), idx)",
+              "highlightExpr": "dataTable('trace', frame, 'querying') == 1 ? (idx >= dataTable('trace', frame, 'qi') and idx <= dataTable('trace', frame, 'qj')) : idx == dataTable('trace', frame, 'k')",
+              "markers": [
+                {"type": "step_marker", "indexName": "k", "indexExpr": "dataTable('trace', frame, 'k')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "i", "indexExpr": "dataTable('trace', frame, 'qi')", "color": "#e67db0"},
+                {"type": "step_marker", "indexName": "j", "indexExpr": "dataTable('trace', frame, 'qj')", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "prefix-title",
+              "type": "text",
+              "text": "prefix",
+              "position": [-7.609999999999999, -0.9, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "prefix",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-5.675, -0.9, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'prefix'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'prefix'), idx)",
+              "color": "#b69bea",
+              "highlightExpr": "dataTable('trace', frame, 'querying') == 1 ? (idx == dataTable('trace', frame, 'qi') or idx == dataTable('trace', frame, 'qj') + 1) : false",
+              "markers": [
+                {"type": "step_marker", "indexName": "i", "indexExpr": "dataTable('trace', frame, 'qi')", "color": "#e67db0"},
+                {"type": "step_marker", "indexName": "j + 1", "indexExpr": "dataTable('trace', frame, 'qj') + 1", "visibleExpr": "dataTable('trace', frame, 'querying') == 1", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "x",
+              "type": "expression_label",
+              "position": [-4.5, -3.6, 0],
+              "textExpr": "concat('k = ', dataTable('trace', frame, 'k') < 0 ? 'unset' : dataTable('trace', frame, 'k'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'k')"}
+            },
+            {
+              "id": "last",
+              "type": "expression_label",
+              "position": [-4.5, -3.6, 0],
+              "textExpr": "concat('prefix[-1] = ', arrayAt(dataTable('trace', frame, 'prefix'), dataTable('trace', frame, 'n') - 1))",
+              "connectTo": {"object": "prefix", "indexExpr": "dataTable('trace', frame, 'n') - 1"}
+            },
+            {
+              "id": "answer",
+              "type": "expression_label",
+              "position": [4, -3.6, 0],
+              "textExpr": "concat('range sum = ', dataTable('trace', frame, 'hasAnswer') == 1 ? dataTable('trace', frame, 'answer') : '—')"
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    },
+    {
+      "id": "two-pointers",
+      "title": "Two pointers",
+      "description": "Walk inward from both ends of a sorted array to find a pair.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "nums": [2, 3, 5, 7, 8, 11, 13, 17],
+            "target": 18
+          }
+        ],
+        "trace": [
+          {"left": 0, "right": 7, "total": 0, "hasTotal": 0, "found": 0, "line": 2, "message": "Start at both ends: left = 0, right = 7.", "status": "Running", "running": 1},
+          {"left": 0, "right": 7, "total": 0, "hasTotal": 0, "found": 0, "line": 3, "message": "left < right, so candidate pairs remain.", "status": "Running", "running": 1},
+          {"left": 0, "right": 7, "total": 19, "hasTotal": 1, "found": 0, "line": 4, "message": "nums[0] + nums[7] = 2 + 17 = 19.", "status": "Running", "running": 1},
+          {"left": 0, "right": 7, "total": 19, "hasTotal": 1, "found": 0, "line": 5, "message": "Is 19 equal to the target 18?", "status": "Running", "running": 1},
+          {"left": 0, "right": 7, "total": 19, "hasTotal": 1, "found": 0, "line": 7, "message": "Is 19 less than 18?", "status": "Running", "running": 1},
+          {"left": 0, "right": 6, "total": 19, "hasTotal": 1, "found": 0, "line": 10, "message": "Too big. nums[left] is the smallest value left, so 17 overshoots with everything. Drop it: right = 6.", "status": "Running", "running": 1},
+          {"left": 0, "right": 6, "total": 19, "hasTotal": 1, "found": 0, "line": 3, "message": "left < right, so candidate pairs remain.", "status": "Running", "running": 1},
+          {"left": 0, "right": 6, "total": 15, "hasTotal": 1, "found": 0, "line": 4, "message": "nums[0] + nums[6] = 2 + 13 = 15.", "status": "Running", "running": 1},
+          {"left": 0, "right": 6, "total": 15, "hasTotal": 1, "found": 0, "line": 5, "message": "Is 15 equal to the target 18?", "status": "Running", "running": 1},
+          {"left": 0, "right": 6, "total": 15, "hasTotal": 1, "found": 0, "line": 7, "message": "Is 15 less than 18?", "status": "Running", "running": 1},
+          {"left": 1, "right": 6, "total": 15, "hasTotal": 1, "found": 0, "line": 8, "message": "Too small. nums[right] is the largest value left, so 2 cannot reach the target with anything. Drop it: left = 1.", "status": "Running", "running": 1},
+          {"left": 1, "right": 6, "total": 15, "hasTotal": 1, "found": 0, "line": 3, "message": "left < right, so candidate pairs remain.", "status": "Running", "running": 1},
+          {"left": 1, "right": 6, "total": 16, "hasTotal": 1, "found": 0, "line": 4, "message": "nums[1] + nums[6] = 3 + 13 = 16.", "status": "Running", "running": 1},
+          {"left": 1, "right": 6, "total": 16, "hasTotal": 1, "found": 0, "line": 5, "message": "Is 16 equal to the target 18?", "status": "Running", "running": 1},
+          {"left": 1, "right": 6, "total": 16, "hasTotal": 1, "found": 0, "line": 7, "message": "Is 16 less than 18?", "status": "Running", "running": 1},
+          {"left": 2, "right": 6, "total": 16, "hasTotal": 1, "found": 0, "line": 8, "message": "Too small. nums[right] is the largest value left, so 3 cannot reach the target with anything. Drop it: left = 2.", "status": "Running", "running": 1},
+          {"left": 2, "right": 6, "total": 16, "hasTotal": 1, "found": 0, "line": 3, "message": "left < right, so candidate pairs remain.", "status": "Running", "running": 1},
+          {"left": 2, "right": 6, "total": 18, "hasTotal": 1, "found": 0, "line": 4, "message": "nums[2] + nums[6] = 5 + 13 = 18.", "status": "Running", "running": 1},
+          {"left": 2, "right": 6, "total": 18, "hasTotal": 1, "found": 0, "line": 5, "message": "Is 18 equal to the target 18?", "status": "Running", "running": 1},
+          {"left": 2, "right": 6, "total": 18, "hasTotal": 1, "found": 1, "line": 6, "message": "Found it: indices 2 and 6.", "status": "Done", "running": 0}
+        ]
+      },
+      "markdown": "# Two pointers\n\n**Signal:** a **sorted** array and a question about a pair (or triple) of elements.\n\nPut `left` at the smallest value and `right` at the largest. Compare their sum with the target:\n\n- **Too small:** `nums[right]` is the largest value still available, so `nums[left]` cannot reach the target with anything. Discard it: `left += 1`.\n- **Too big:** `nums[left]` is the smallest value still available, so `nums[right]` overshoots with everything. Discard it: `right -= 1`.\n\nEach step rules out one element for good, so the scan is O(n) with O(1) space, compared with O(n²) for checking every pair. Target here: **18**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Two Sum II (167), 3Sum (15), Container With Most Water (11).",
+      "prompt": "Explain why moving a pointer never skips a valid pair: the discarded element cannot be part of any solution. Ask the learner to predict which pointer moves before each step.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 19, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "nums-title",
+              "type": "text",
+              "text": "nums",
+              "position": [-6.114999999999999, 1.2, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "nums",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4.5, 1.2, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'nums'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'nums'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'left') or idx == dataTable('trace', frame, 'right')",
+              "markers": [
+                {"type": "step_marker", "indexName": "left", "indexExpr": "dataTable('trace', frame, 'left')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "right", "indexExpr": "dataTable('trace', frame, 'right')", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "left",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "concat('left = ', dataTable('trace', frame, 'left'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'left')"}
+            },
+            {
+              "id": "right",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "concat('right = ', dataTable('trace', frame, 'right'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'right')"}
+            },
+            {
+              "id": "total",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "concat('total = ', dataTable('trace', frame, 'hasTotal') == 1 ? dataTable('trace', frame, 'total') : '—')"
+            },
+            {
+              "id": "target",
+              "type": "expression_label",
+              "position": [4, -2.6, 0],
+              "textExpr": "concat('target = ', dataTable('input', 0, 'target'))"
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    },
+    {
+      "id": "sliding-window",
+      "title": "Sliding window",
+      "description": "Reuse the last window's sum: add the entering element, subtract the leaving one.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "nums": [2, 1, 5, 1, 3, 2, 6, 1],
+            "k": 3
+          }
+        ],
+        "trace": [
+          {"left": 0, "right": 2, "dropped": -1, "window": 8, "best": 0, "bestLeft": 0, "line": 2, "message": "Sum the first window, nums[0..2]: 8.", "status": "Running", "running": 1},
+          {"left": 0, "right": 2, "dropped": -1, "window": 8, "best": 8, "bestLeft": 0, "line": 3, "message": "best = 8.", "status": "Running", "running": 1},
+          {"left": 1, "right": 3, "dropped": 0, "window": 8, "best": 8, "bestLeft": 0, "line": 4, "message": "Slide right: nums[3] = 1 enters, nums[0] = 2 leaves.", "status": "Running", "running": 1},
+          {"left": 1, "right": 3, "dropped": 0, "window": 7, "best": 8, "bestLeft": 0, "line": 5, "message": "window = 8 + 1 − 2 = 7. An O(1) update instead of re-summing 3 numbers.", "status": "Running", "running": 1},
+          {"left": 1, "right": 3, "dropped": -1, "window": 7, "best": 8, "bestLeft": 0, "line": 6, "message": "7 does not beat best = 8.", "status": "Running", "running": 1},
+          {"left": 2, "right": 4, "dropped": 1, "window": 7, "best": 8, "bestLeft": 0, "line": 4, "message": "Slide right: nums[4] = 3 enters, nums[1] = 1 leaves.", "status": "Running", "running": 1},
+          {"left": 2, "right": 4, "dropped": 1, "window": 9, "best": 8, "bestLeft": 0, "line": 5, "message": "window = 7 + 3 − 1 = 9. An O(1) update instead of re-summing 3 numbers.", "status": "Running", "running": 1},
+          {"left": 2, "right": 4, "dropped": -1, "window": 9, "best": 9, "bestLeft": 2, "line": 6, "message": "9 beats the old best: best = 9.", "status": "Running", "running": 1},
+          {"left": 3, "right": 5, "dropped": 2, "window": 9, "best": 9, "bestLeft": 2, "line": 4, "message": "Slide right: nums[5] = 2 enters, nums[2] = 5 leaves.", "status": "Running", "running": 1},
+          {"left": 3, "right": 5, "dropped": 2, "window": 6, "best": 9, "bestLeft": 2, "line": 5, "message": "window = 9 + 2 − 5 = 6. An O(1) update instead of re-summing 3 numbers.", "status": "Running", "running": 1},
+          {"left": 3, "right": 5, "dropped": -1, "window": 6, "best": 9, "bestLeft": 2, "line": 6, "message": "6 does not beat best = 9.", "status": "Running", "running": 1},
+          {"left": 4, "right": 6, "dropped": 3, "window": 6, "best": 9, "bestLeft": 2, "line": 4, "message": "Slide right: nums[6] = 6 enters, nums[3] = 1 leaves.", "status": "Running", "running": 1},
+          {"left": 4, "right": 6, "dropped": 3, "window": 11, "best": 9, "bestLeft": 2, "line": 5, "message": "window = 6 + 6 − 1 = 11. An O(1) update instead of re-summing 3 numbers.", "status": "Running", "running": 1},
+          {"left": 4, "right": 6, "dropped": -1, "window": 11, "best": 11, "bestLeft": 4, "line": 6, "message": "11 beats the old best: best = 11.", "status": "Running", "running": 1},
+          {"left": 5, "right": 7, "dropped": 4, "window": 11, "best": 11, "bestLeft": 4, "line": 4, "message": "Slide right: nums[7] = 1 enters, nums[4] = 3 leaves.", "status": "Running", "running": 1},
+          {"left": 5, "right": 7, "dropped": 4, "window": 9, "best": 11, "bestLeft": 4, "line": 5, "message": "window = 11 + 1 − 3 = 9. An O(1) update instead of re-summing 3 numbers.", "status": "Running", "running": 1},
+          {"left": 5, "right": 7, "dropped": -1, "window": 9, "best": 11, "bestLeft": 4, "line": 6, "message": "9 does not beat best = 11.", "status": "Running", "running": 1},
+          {"left": 4, "right": 6, "dropped": -1, "window": 9, "best": 11, "bestLeft": 4, "line": 7, "message": "The best window is nums[4..6], with sum 11.", "status": "Done", "running": 0}
+        ]
+      },
+      "markdown": "# Sliding window\n\n**Signal:** the best (largest, smallest, longest) **contiguous** subarray or substring.\n\nNeighbouring windows share all but two elements. Instead of re-summing each window of size k = 3, slide it one step: add the element that enters on the right, subtract the one that leaves on the left. That turns O(n·k) into O(n).\n\nThis scene uses a fixed-size window. Variable-size windows (longest substring without repeats, minimum window substring) grow `right` every step and shrink `left` while a constraint is broken. The invariant is the same: the window state is updated incrementally, never recomputed.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Maximum Average Subarray I (643), Longest Substring Without Repeating Characters (3), Minimum Window Substring (76).",
+      "prompt": "Explain the incremental update and why it is O(1). Contrast fixed and variable windows. Ask the learner to predict the next window sum before the player shows it.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 17, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "nums-title",
+              "type": "text",
+              "text": "nums",
+              "position": [-6.114999999999999, 1.2, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "nums",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4.5, 1.2, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'nums'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'nums'), idx)",
+              "highlightExpr": "idx >= dataTable('trace', frame, 'left') and idx <= dataTable('trace', frame, 'right')",
+              "markers": [
+                {"type": "step_marker", "indexName": "left", "indexExpr": "dataTable('trace', frame, 'left')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "right", "indexExpr": "dataTable('trace', frame, 'right')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "right − k", "indexExpr": "dataTable('trace', frame, 'dropped')", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "window",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "concat('window = ', dataTable('trace', frame, 'window'))"
+            },
+            {
+              "id": "best",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "concat('best = ', dataTable('trace', frame, 'best'))"
+            },
+            {
+              "id": "k",
+              "type": "expression_label",
+              "position": [4, -2.6, 0],
+              "textExpr": "concat('k = ', dataTable('input', 0, 'k'))"
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    },
+    {
+      "id": "fast-slow",
+      "title": "Fast & slow pointers",
+      "description": "Floyd's cycle detection finds a duplicate without extra memory.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "nums": [2, 6, 4, 1, 3, 1, 5]
+          }
+        ],
+        "trace": [
+          {"slow": 2, "fast": 2, "phase": 1, "hop": -1, "line": 2, "message": "Both pointers start at nums[0] = 2. Read each value as a pointer to the index it names.", "status": "Running", "running": 1},
+          {"slow": 2, "fast": 2, "phase": 1, "hop": -1, "line": 3, "message": "Phase 1: slow moves one hop, fast moves two, until they meet.", "status": "Running", "running": 1},
+          {"slow": 4, "fast": 2, "phase": 1, "hop": -1, "line": 4, "message": "slow takes one hop: nums[2] = 4.", "status": "Running", "running": 1},
+          {"slow": 4, "fast": 3, "phase": 1, "hop": 4, "line": 5, "message": "fast takes two hops: nums[2] = 4, then nums[4] = 3.", "status": "Running", "running": 1},
+          {"slow": 4, "fast": 3, "phase": 1, "hop": -1, "line": 6, "message": "Do they meet? slow = 4, fast = 3.", "status": "Running", "running": 1},
+          {"slow": 4, "fast": 3, "phase": 1, "hop": -1, "line": 3, "message": "Phase 1: slow moves one hop, fast moves two, until they meet.", "status": "Running", "running": 1},
+          {"slow": 3, "fast": 3, "phase": 1, "hop": -1, "line": 4, "message": "slow takes one hop: nums[4] = 3.", "status": "Running", "running": 1},
+          {"slow": 3, "fast": 6, "phase": 1, "hop": 1, "line": 5, "message": "fast takes two hops: nums[3] = 1, then nums[1] = 6.", "status": "Running", "running": 1},
+          {"slow": 3, "fast": 6, "phase": 1, "hop": -1, "line": 6, "message": "Do they meet? slow = 3, fast = 6.", "status": "Running", "running": 1},
+          {"slow": 3, "fast": 6, "phase": 1, "hop": -1, "line": 3, "message": "Phase 1: slow moves one hop, fast moves two, until they meet.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 6, "phase": 1, "hop": -1, "line": 4, "message": "slow takes one hop: nums[3] = 1.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 1, "phase": 1, "hop": 5, "line": 5, "message": "fast takes two hops: nums[6] = 5, then nums[5] = 1.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 1, "phase": 1, "hop": -1, "line": 6, "message": "Do they meet? slow = 1, fast = 1.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 1, "phase": 1, "hop": -1, "line": 7, "message": "They meet at index 1, somewhere inside the cycle.", "status": "Running", "running": 1},
+          {"slow": 2, "fast": 1, "phase": 2, "hop": -1, "line": 8, "message": "Phase 2: restart slow at nums[0] = 2; fast stays put. Both now move one hop at a time.", "status": "Running", "running": 1},
+          {"slow": 2, "fast": 1, "phase": 2, "hop": -1, "line": 9, "message": "slow = 2, fast = 1: not yet equal.", "status": "Running", "running": 1},
+          {"slow": 4, "fast": 1, "phase": 2, "hop": -1, "line": 10, "message": "slow: nums[2] = 4.", "status": "Running", "running": 1},
+          {"slow": 4, "fast": 6, "phase": 2, "hop": -1, "line": 11, "message": "fast: nums[1] = 6.", "status": "Running", "running": 1},
+          {"slow": 4, "fast": 6, "phase": 2, "hop": -1, "line": 9, "message": "slow = 4, fast = 6: not yet equal.", "status": "Running", "running": 1},
+          {"slow": 3, "fast": 6, "phase": 2, "hop": -1, "line": 10, "message": "slow: nums[4] = 3.", "status": "Running", "running": 1},
+          {"slow": 3, "fast": 5, "phase": 2, "hop": -1, "line": 11, "message": "fast: nums[6] = 5.", "status": "Running", "running": 1},
+          {"slow": 3, "fast": 5, "phase": 2, "hop": -1, "line": 9, "message": "slow = 3, fast = 5: not yet equal.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 5, "phase": 2, "hop": -1, "line": 10, "message": "slow: nums[3] = 1.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 1, "phase": 2, "hop": -1, "line": 11, "message": "fast: nums[5] = 1.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 1, "phase": 2, "hop": -1, "line": 9, "message": "slow = fast = 1.", "status": "Running", "running": 1},
+          {"slow": 1, "fast": 1, "phase": 2, "hop": -1, "line": 12, "message": "They meet at the cycle entrance, 1. Two indices point to it, so 1 is the duplicate.", "status": "Done", "running": 0}
+        ]
+      },
+      "markdown": "# Fast & slow pointers\n\n**Signal:** a cycle in a linked structure, or \"find the duplicate\" with O(1) extra space.\n\nHere `nums` holds 7 values from 1 to 6, so one value repeats. Read each cell as a pointer: index i points to index `nums[i]` (the arcs). Following pointers from index 0 must eventually loop, and the loop's entrance is the value two indices point to: the duplicate.\n\n**Phase 1:** `slow` moves one hop, `fast` moves two. Inside the cycle fast gains one step per move, so they must meet.\n\n**Phase 2:** restart `slow` from the beginning and move both one hop at a time. The distance from the start to the entrance equals the distance from the meeting point to the entrance (mod the cycle length), so they meet exactly at the entrance.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Linked List Cycle (141), Happy Number (202), Find the Duplicate Number (287).",
+      "prompt": "Explain why fast catches slow inside the cycle and why phase 2 lands on the entrance. Use the arcs as a linked list. Ask the learner to predict where each pointer lands after the next hop.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 25, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "next-0",
+              "type": "line",
+              "points": [
+                [-4, 1.05, 0],
+                [-3.831, 1.257, 0],
+                [-3.663, 1.456, 0],
+                [-3.494, 1.639, 0],
+                [-3.325, 1.8, 0],
+                [-3.156, 1.931, 0],
+                [-2.987, 2.029, 0],
+                [-2.819, 2.09, 0],
+                [-2.65, 2.11, 0],
+                [-2.481, 2.09, 0],
+                [-2.313, 2.029, 0],
+                [-2.144, 1.931, 0],
+                [-1.975, 1.8, 0],
+                [-1.806, 1.639, 0],
+                [-1.637, 1.456, 0],
+                [-1.469, 1.257, 0],
+                [-1.3, 1.05, 0]
+              ],
+              "color": "#5f7186",
+              "width": 2
+            },
+            {
+              "id": "head-0",
+              "type": "vector",
+              "from": [-1.637, 1.456, 0],
+              "to": [-1.3, 1.05, 0],
+              "color": "#5f7186"
+            },
+            {
+              "id": "next-1",
+              "type": "line",
+              "points": [
+                [-2.65, 1.05, 0],
+                [-2.228, 1.421, 0],
+                [-1.806, 1.777, 0],
+                [-1.384, 2.106, 0],
+                [-0.962, 2.394, 0],
+                [-0.541, 2.63, 0],
+                [-0.119, 2.805, 0],
+                [0.303, 2.913, 0],
+                [0.725, 2.95, 0],
+                [1.147, 2.913, 0],
+                [1.569, 2.805, 0],
+                [1.991, 2.63, 0],
+                [2.413, 2.394, 0],
+                [2.834, 2.106, 0],
+                [3.256, 1.777, 0],
+                [3.678, 1.421, 0],
+                [4.1, 1.05, 0]
+              ],
+              "color": "#5f7186",
+              "width": 2
+            },
+            {
+              "id": "head-1",
+              "type": "vector",
+              "from": [3.256, 1.777, 0],
+              "to": [4.1, 1.05, 0],
+              "color": "#5f7186"
+            },
+            {
+              "id": "next-2",
+              "type": "line",
+              "points": [
+                [-1.3, 1.05, 0],
+                [-1.131, 1.257, 0],
+                [-0.962, 1.456, 0],
+                [-0.794, 1.639, 0],
+                [-0.625, 1.8, 0],
+                [-0.456, 1.931, 0],
+                [-0.287, 2.029, 0],
+                [-0.119, 2.09, 0],
+                [0.05, 2.11, 0],
+                [0.219, 2.09, 0],
+                [0.388, 2.029, 0],
+                [0.556, 1.931, 0],
+                [0.725, 1.8, 0],
+                [0.894, 1.639, 0],
+                [1.063, 1.456, 0],
+                [1.231, 1.257, 0],
+                [1.4, 1.05, 0]
+              ],
+              "color": "#5f7186",
+              "width": 2
+            },
+            {
+              "id": "head-2",
+              "type": "vector",
+              "from": [1.063, 1.456, 0],
+              "to": [1.4, 1.05, 0],
+              "color": "#5f7186"
+            },
+            {
+              "id": "next-3",
+              "type": "line",
+              "points": [
+                [0.05, 0.15, 0],
+                [-0.119, -0.057, 0],
+                [-0.287, -0.256, 0],
+                [-0.456, -0.439, 0],
+                [-0.625, -0.6, 0],
+                [-0.794, -0.731, 0],
+                [-0.962, -0.829, 0],
+                [-1.131, -0.89, 0],
+                [-1.3, -0.91, 0],
+                [-1.469, -0.89, 0],
+                [-1.637, -0.829, 0],
+                [-1.806, -0.731, 0],
+                [-1.975, -0.6, 0],
+                [-2.144, -0.439, 0],
+                [-2.313, -0.256, 0],
+                [-2.481, -0.057, 0],
+                [-2.65, 0.15, 0]
+              ],
+              "color": "#5f7186",
+              "width": 2
+            },
+            {
+              "id": "head-3",
+              "type": "vector",
+              "from": [-2.313, -0.256, 0],
+              "to": [-2.65, 0.15, 0],
+              "color": "#5f7186"
+            },
+            {
+              "id": "next-4",
+              "type": "line",
+              "points": [
+                [1.4, 0.15, 0],
+                [1.316, -0.002, 0],
+                [1.231, -0.148, 0],
+                [1.147, -0.283, 0],
+                [1.063, -0.402, 0],
+                [0.978, -0.499, 0],
+                [0.894, -0.571, 0],
+                [0.809, -0.615, 0],
+                [0.725, -0.63, 0],
+                [0.641, -0.615, 0],
+                [0.556, -0.571, 0],
+                [0.472, -0.499, 0],
+                [0.388, -0.402, 0],
+                [0.303, -0.283, 0],
+                [0.219, -0.148, 0],
+                [0.134, -0.002, 0],
+                [0.05, 0.15, 0]
+              ],
+              "color": "#5f7186",
+              "width": 2
+            },
+            {
+              "id": "head-4",
+              "type": "vector",
+              "from": [0.219, -0.148, 0],
+              "to": [0.05, 0.15, 0],
+              "color": "#5f7186"
+            },
+            {
+              "id": "next-5",
+              "type": "line",
+              "points": [
+                [2.75, 0.15, 0],
+                [2.413, -0.166, 0],
+                [2.075, -0.47, 0],
+                [1.737, -0.75, 0],
+                [1.4, -0.996, 0],
+                [1.063, -1.197, 0],
+                [0.725, -1.347, 0],
+                [0.387, -1.439, 0],
+                [0.05, -1.47, 0],
+                [-0.288, -1.439, 0],
+                [-0.625, -1.347, 0],
+                [-0.963, -1.197, 0],
+                [-1.3, -0.996, 0],
+                [-1.638, -0.75, 0],
+                [-1.975, -0.47, 0],
+                [-2.313, -0.166, 0],
+                [-2.65, 0.15, 0]
+              ],
+              "color": "#5f7186",
+              "width": 2
+            },
+            {
+              "id": "head-5",
+              "type": "vector",
+              "from": [-1.975, -0.47, 0],
+              "to": [-2.65, 0.15, 0],
+              "color": "#5f7186"
+            },
+            {
+              "id": "next-6",
+              "type": "line",
+              "points": [
+                [4.1, 0.15, 0],
+                [4.016, -0.002, 0],
+                [3.931, -0.148, 0],
+                [3.847, -0.283, 0],
+                [3.763, -0.402, 0],
+                [3.678, -0.499, 0],
+                [3.594, -0.571, 0],
+                [3.509, -0.615, 0],
+                [3.425, -0.63, 0],
+                [3.341, -0.615, 0],
+                [3.256, -0.571, 0],
+                [3.172, -0.499, 0],
+                [3.088, -0.402, 0],
+                [3.003, -0.283, 0],
+                [2.919, -0.148, 0],
+                [2.834, -0.002, 0],
+                [2.75, 0.15, 0]
+              ],
+              "color": "#5f7186",
+              "width": 2
+            },
+            {
+              "id": "head-6",
+              "type": "vector",
+              "from": [2.919, -0.148, 0],
+              "to": [2.75, 0.15, 0],
+              "color": "#5f7186"
+            },
+            {
+              "id": "nums-title",
+              "type": "text",
+              "text": "nums",
+              "position": [-5.614999999999999, 0.6, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "nums",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4, 0.6, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'nums'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'nums'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'slow') or idx == dataTable('trace', frame, 'fast')",
+              "markers": [
+                {"type": "step_marker", "indexName": "slow", "indexExpr": "dataTable('trace', frame, 'slow')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "fast", "indexExpr": "dataTable('trace', frame, 'fast')", "color": "#e67db0"},
+                {"type": "step_marker", "indexName": "fast (mid-hop)", "indexExpr": "dataTable('trace', frame, 'hop')", "color": "#9dbde3"}
+              ]
+            },
+            {
+              "id": "slow",
+              "type": "expression_label",
+              "position": [-4, -3.4, 0],
+              "textExpr": "concat('slow = ', dataTable('trace', frame, 'slow'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'slow')"}
+            },
+            {
+              "id": "fast",
+              "type": "expression_label",
+              "position": [-4, -3.4, 0],
+              "textExpr": "concat('fast = ', dataTable('trace', frame, 'fast'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'fast')"}
+            },
+            {
+              "id": "phase",
+              "type": "expression_label",
+              "position": [4, -3.4, 0],
+              "textExpr": "concat('phase = ', dataTable('trace', frame, 'phase'))"
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    },
+    {
+      "id": "linked-list-reversal",
+      "title": "Linked list reversal",
+      "description": "Rewire next pointers in place.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Linked list in-place reversal\n\n**Signal:** reverse a list or a sublist, swap pairs, or reorder nodes, with O(1) extra space.\n\nWalk the list with three pointers, `prev`, `curr` and `next`. Save `curr.next`, point `curr.next` back at `prev`, then advance both. Each node is rewired once: O(n) time, O(1) space.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a linked-list object with nodes and pointer arrows.)*\n\n**Practice:** Reverse Linked List (206), Reverse Linked List II (92), Swap Nodes in Pairs (24).",
+      "prompt": "Explain the prev/curr/next dance and why saving next first matters. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Linked list reversal: visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "monotonic-stack",
+      "title": "Monotonic stack",
+      "description": "Find each day's next warmer day with a stack of waiting days.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1, 0, 16],
+        "target": [1, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "temps": [73, 74, 75, 71, 69, 72, 76, 73]
+          }
+        ],
+        "trace": [
+          {
+            "i": -1,
+            "t": 0,
+            "j": -1,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 2,
+            "message": "Every answer starts at 0, meaning no warmer day yet.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": -1,
+            "t": 0,
+            "j": -1,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 3,
+            "message": "The stack holds days still waiting for a warmer day. Their temperatures never increase from bottom to top.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 0,
+            "t": 73,
+            "j": -1,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Day 0: 73°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 0,
+            "t": 73,
+            "j": -1,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "The stack is empty, so nobody is waiting.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 0,
+            "t": 73,
+            "j": -1,
+            "top": -1,
+            "stack": [0],
+            "n": 1,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 8,
+            "message": "Push day 0. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "t": 74,
+            "j": -1,
+            "top": -1,
+            "stack": [0],
+            "n": 1,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Day 1: 74°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "t": 74,
+            "j": -1,
+            "top": 0,
+            "stack": [0],
+            "n": 1,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 0's 73° below 74°? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "t": 74,
+            "j": 0,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [0, 0, 0, 0, 0, 0, 0, 0],
+            "line": 6,
+            "message": "Pop day 0: day 1 is its first warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "t": 74,
+            "j": 0,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 0, 0, 0, 0, 0, 0, 0],
+            "line": 7,
+            "message": "answer[0] = 1 − 0 = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "t": 74,
+            "j": 0,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 0, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "The stack is empty, so nobody is waiting.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "t": 74,
+            "j": -1,
+            "top": -1,
+            "stack": [1],
+            "n": 1,
+            "answer": [1, 0, 0, 0, 0, 0, 0, 0],
+            "line": 8,
+            "message": "Push day 1. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "t": 75,
+            "j": -1,
+            "top": -1,
+            "stack": [1],
+            "n": 1,
+            "answer": [1, 0, 0, 0, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Day 2: 75°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "t": 75,
+            "j": -1,
+            "top": 1,
+            "stack": [1],
+            "n": 1,
+            "answer": [1, 0, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 1's 74° below 75°? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "t": 75,
+            "j": 1,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 0, 0, 0, 0, 0, 0, 0],
+            "line": 6,
+            "message": "Pop day 1: day 2 is its first warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "t": 75,
+            "j": 1,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 7,
+            "message": "answer[1] = 2 − 1 = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "t": 75,
+            "j": 1,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "The stack is empty, so nobody is waiting.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "t": 75,
+            "j": -1,
+            "top": -1,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 8,
+            "message": "Push day 2. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "t": 71,
+            "j": -1,
+            "top": -1,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Day 3: 71°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "t": 71,
+            "j": -1,
+            "top": 2,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 2's 75° below 71°? No, so the stack stays as it is.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "t": 71,
+            "j": -1,
+            "top": -1,
+            "stack": [2, 3],
+            "n": 2,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 8,
+            "message": "Push day 3. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "t": 69,
+            "j": -1,
+            "top": -1,
+            "stack": [2, 3],
+            "n": 2,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Day 4: 69°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "t": 69,
+            "j": -1,
+            "top": 3,
+            "stack": [2, 3],
+            "n": 2,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 3's 71° below 69°? No, so the stack stays as it is.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "t": 69,
+            "j": -1,
+            "top": -1,
+            "stack": [2, 3, 4],
+            "n": 3,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 8,
+            "message": "Push day 4. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": -1,
+            "top": -1,
+            "stack": [2, 3, 4],
+            "n": 3,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Day 5: 72°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": -1,
+            "top": 4,
+            "stack": [2, 3, 4],
+            "n": 3,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 4's 69° below 72°? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": 4,
+            "top": -1,
+            "stack": [2, 3],
+            "n": 2,
+            "answer": [1, 1, 0, 0, 0, 0, 0, 0],
+            "line": 6,
+            "message": "Pop day 4: day 5 is its first warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": 4,
+            "top": -1,
+            "stack": [2, 3],
+            "n": 2,
+            "answer": [1, 1, 0, 0, 1, 0, 0, 0],
+            "line": 7,
+            "message": "answer[4] = 5 − 4 = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": 4,
+            "top": 3,
+            "stack": [2, 3],
+            "n": 2,
+            "answer": [1, 1, 0, 0, 1, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 3's 71° below 72°? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": 3,
+            "top": -1,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 0, 1, 0, 0, 0],
+            "line": 6,
+            "message": "Pop day 3: day 5 is its first warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": 3,
+            "top": -1,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 2, 1, 0, 0, 0],
+            "line": 7,
+            "message": "answer[3] = 5 − 3 = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": 3,
+            "top": 2,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 2, 1, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 2's 75° below 72°? No, so the stack stays as it is.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "t": 72,
+            "j": -1,
+            "top": -1,
+            "stack": [2, 5],
+            "n": 2,
+            "answer": [1, 1, 0, 2, 1, 0, 0, 0],
+            "line": 8,
+            "message": "Push day 5. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": -1,
+            "top": -1,
+            "stack": [2, 5],
+            "n": 2,
+            "answer": [1, 1, 0, 2, 1, 0, 0, 0],
+            "line": 4,
+            "message": "Day 6: 76°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": -1,
+            "top": 5,
+            "stack": [2, 5],
+            "n": 2,
+            "answer": [1, 1, 0, 2, 1, 0, 0, 0],
+            "line": 5,
+            "message": "Is day 5's 72° below 76°? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": 5,
+            "top": -1,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 2, 1, 0, 0, 0],
+            "line": 6,
+            "message": "Pop day 5: day 6 is its first warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": 5,
+            "top": -1,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 2, 1, 1, 0, 0],
+            "line": 7,
+            "message": "answer[5] = 6 − 5 = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": 5,
+            "top": 2,
+            "stack": [2],
+            "n": 1,
+            "answer": [1, 1, 0, 2, 1, 1, 0, 0],
+            "line": 5,
+            "message": "Is day 2's 75° below 76°? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": 2,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 1, 0, 2, 1, 1, 0, 0],
+            "line": 6,
+            "message": "Pop day 2: day 6 is its first warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": 2,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 1, 4, 2, 1, 1, 0, 0],
+            "line": 7,
+            "message": "answer[2] = 6 − 2 = 4.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": 2,
+            "top": -1,
+            "stack": [],
+            "n": 0,
+            "answer": [1, 1, 4, 2, 1, 1, 0, 0],
+            "line": 5,
+            "message": "The stack is empty, so nobody is waiting.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "t": 76,
+            "j": -1,
+            "top": -1,
+            "stack": [6],
+            "n": 1,
+            "answer": [1, 1, 4, 2, 1, 1, 0, 0],
+            "line": 8,
+            "message": "Push day 6. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 7,
+            "t": 73,
+            "j": -1,
+            "top": -1,
+            "stack": [6],
+            "n": 1,
+            "answer": [1, 1, 4, 2, 1, 1, 0, 0],
+            "line": 4,
+            "message": "Day 7: 73°.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 7,
+            "t": 73,
+            "j": -1,
+            "top": 6,
+            "stack": [6],
+            "n": 1,
+            "answer": [1, 1, 4, 2, 1, 1, 0, 0],
+            "line": 5,
+            "message": "Is day 6's 76° below 73°? No, so the stack stays as it is.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 7,
+            "t": 73,
+            "j": -1,
+            "top": -1,
+            "stack": [6, 7],
+            "n": 2,
+            "answer": [1, 1, 4, 2, 1, 1, 0, 0],
+            "line": 8,
+            "message": "Push day 7. It waits for a warmer day.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": -1,
+            "t": 0,
+            "j": -1,
+            "top": -1,
+            "stack": [6, 7],
+            "n": 2,
+            "answer": [1, 1, 4, 2, 1, 1, 0, 0],
+            "line": 9,
+            "message": "Each day was pushed once and popped at most once: O(n). Days left on the stack keep answer 0.",
+            "status": "Done",
+            "running": 0
+          }
+        ]
+      },
+      "markdown": "# Monotonic stack\n\n**Signal:** \"next greater element\", \"next smaller element\", or \"how far until…\".\n\nThe stack holds the **indices** of days that have not yet seen a warmer day. Their temperatures never increase from bottom to top, so a new day only needs to compare with the top. While today is warmer than the top day, pop it: today is its answer. Then push today.\n\nEvery index is pushed once and popped at most once, so the whole scan is O(n), even though there is a loop inside a loop.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Next Greater Element I (496), Daily Temperatures (739), Largest Rectangle in Histogram (84).",
+      "prompt": "Explain the stack invariant (temperatures non-increasing bottom to top) and the amortized O(n) argument. Ask the learner to predict how many days the next temperature will pop.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 44, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "temps-title",
+              "type": "text",
+              "text": "temps",
+              "position": [-6.7749999999999995, 2.2, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "temps",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-5, 2.2, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'temps'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'temps'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'i')",
+              "markers": [
+                {"type": "step_marker", "indexName": "i", "indexExpr": "dataTable('trace', frame, 'i')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "j", "indexExpr": "dataTable('trace', frame, 'j')", "color": "#e67db0"},
+                {"type": "step_marker", "indexName": "stack[-1]", "indexExpr": "dataTable('trace', frame, 'top')", "color": "#9dbde3"}
+              ]
+            },
+            {
+              "id": "answer-title",
+              "type": "text",
+              "text": "answer",
+              "position": [-6.935, -0.8, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "answer",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-5, -0.8, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'answer'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'answer'), idx)",
+              "color": "#b69bea",
+              "highlightExpr": "idx == dataTable('trace', frame, 'j') and dataTable('trace', frame, 'line') == 7",
+              "markers": [
+                {"type": "step_marker", "indexName": "j", "indexExpr": "dataTable('trace', frame, 'j')", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "stack",
+              "type": "stack",
+              "itemType": "number",
+              "origin": [6.3, -3.4, 0],
+              "cellSize": 1.1,
+              "fontSize": 15,
+              "showIndices": false,
+              "lengthExpr": "dataTable('trace', frame, 'n')",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
+              "color": "#9dbde3",
+              "label": "stack (days)",
+              "containerColor": "#77bfae"
+            },
+            {
+              "id": "i",
+              "type": "expression_label",
+              "position": [-4.5, -3.6, 0],
+              "textExpr": "concat('i = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 'i'))",
+              "connectTo": {"object": "temps", "indexExpr": "dataTable('trace', frame, 'i')"}
+            },
+            {
+              "id": "t",
+              "type": "expression_label",
+              "position": [-4.5, -3.6, 0],
+              "textExpr": "concat('t = ', dataTable('trace', frame, 'i') < 0 ? 'unset' : dataTable('trace', frame, 't'))",
+              "connectTo": {"object": "temps", "indexExpr": "dataTable('trace', frame, 'i')"}
+            },
+            {
+              "id": "j",
+              "type": "expression_label",
+              "position": [-4.5, -3.6, 0],
+              "textExpr": "concat('j = ', dataTable('trace', frame, 'j') < 0 ? 'unset' : dataTable('trace', frame, 'j'))",
+              "connectTo": {"object": "answer", "indexExpr": "dataTable('trace', frame, 'j')"}
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    },
+    {
+      "id": "top-k",
+      "title": "Top K elements",
+      "description": "Keep a size-k heap of the best candidates.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Top K elements\n\n**Signal:** the k largest, k smallest, or k most frequent items.\n\nKeep a **min-heap of size k**. Push each item; when the heap grows past k, pop its smallest. The heap then holds the k largest, and its root is the k-th largest. O(n log k) time, which beats sorting when k is small.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a general heap view with push and pop.)*\n\n**Practice:** Kth Largest Element in an Array (215), Top K Frequent Elements (347), Find K Pairs with Smallest Sums (373).",
+      "prompt": "Explain why a min-heap (not a max-heap) keeps the k largest. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Top K elements: visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "merge-intervals",
+      "title": "Overlapping intervals",
+      "description": "Sort by start, then sweep once and merge into the last group.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "intervals": ["[8,10]", "[1,3]", "[2,6]", "[15,18]", "[9,12]"]
+          }
+        ],
+        "trace": [
+          {
+            "k": -1,
+            "starts": [8, 1, 2, 15, 9],
+            "ends": [10, 3, 6, 18, 12],
+            "mStarts": [],
+            "mEnds": [],
+            "m": 0,
+            "line": 1,
+            "message": "The input intervals, in the order given. Each column is one interval.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [],
+            "mEnds": [],
+            "m": 0,
+            "line": 2,
+            "message": "Sort by start. Now any interval that overlaps the current group must come right after it.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [],
+            "mEnds": [],
+            "m": 0,
+            "line": 3,
+            "message": "merged starts empty.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 0,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [],
+            "mEnds": [],
+            "m": 0,
+            "line": 4,
+            "message": "Next interval: [1,3].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 0,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [],
+            "mEnds": [],
+            "m": 0,
+            "line": 5,
+            "message": "merged is empty, so there is nothing to overlap.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 0,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1],
+            "mEnds": [3],
+            "m": 1,
+            "line": 8,
+            "message": "No overlap: start a new group, [1,3].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 1,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1],
+            "mEnds": [3],
+            "m": 1,
+            "line": 4,
+            "message": "Next interval: [2,6].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 1,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1],
+            "mEnds": [3],
+            "m": 1,
+            "line": 5,
+            "message": "Does it start at or before the last merged end, 3? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 1,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1],
+            "mEnds": [6],
+            "m": 1,
+            "line": 6,
+            "message": "Overlap: extend the last interval to [1,6].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 2,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1],
+            "mEnds": [6],
+            "m": 1,
+            "line": 4,
+            "message": "Next interval: [8,10].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 2,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1],
+            "mEnds": [6],
+            "m": 1,
+            "line": 5,
+            "message": "Does it start at or before the last merged end, 6? No.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 2,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8],
+            "mEnds": [6, 10],
+            "m": 2,
+            "line": 8,
+            "message": "No overlap: start a new group, [8,10].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 3,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8],
+            "mEnds": [6, 10],
+            "m": 2,
+            "line": 4,
+            "message": "Next interval: [9,12].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 3,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8],
+            "mEnds": [6, 10],
+            "m": 2,
+            "line": 5,
+            "message": "Does it start at or before the last merged end, 10? Yes.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 3,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8],
+            "mEnds": [6, 12],
+            "m": 2,
+            "line": 6,
+            "message": "Overlap: extend the last interval to [8,12].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 4,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8],
+            "mEnds": [6, 12],
+            "m": 2,
+            "line": 4,
+            "message": "Next interval: [15,18].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 4,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8],
+            "mEnds": [6, 12],
+            "m": 2,
+            "line": 5,
+            "message": "Does it start at or before the last merged end, 12? No.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": 4,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8, 15],
+            "mEnds": [6, 12, 18],
+            "m": 3,
+            "line": 8,
+            "message": "No overlap: start a new group, [15,18].",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "k": -1,
+            "starts": [1, 2, 8, 9, 15],
+            "ends": [3, 6, 10, 12, 18],
+            "mStarts": [1, 8, 15],
+            "mEnds": [6, 12, 18],
+            "m": 3,
+            "line": 9,
+            "message": "3 disjoint intervals. Sorting costs O(n log n); the sweep is O(n).",
+            "status": "Done",
+            "running": 0
+          }
+        ]
+      },
+      "markdown": "# Overlapping intervals\n\n**Signal:** meetings, bookings, ranges, or anything with a start and an end.\n\nSort by start time. After sorting, an interval can only overlap the group immediately before it, so a single sweep suffices: if the next interval starts at or before the last merged end, extend that end; otherwise start a new group. The bars below show the intervals on a number line.\n\nSorting dominates: O(n log n) time.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Merge Intervals (56), Insert Interval (57), Non-overlapping Intervals (435).",
+      "prompt": "Explain why sorting by start means only the last merged interval can overlap the next one. Ask the learner to predict whether the next interval extends the last group or starts a new one.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 18, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "axis",
+              "type": "line",
+              "points": [
+                [-5, -3.3, 0],
+                [6.4, -3.3, 0]
+              ],
+              "color": "#5f7186",
+              "width": 1.5
+            },
+            {
+              "id": "tick-0",
+              "type": "text",
+              "text": "0",
+              "position": [-5, -3.7, 0],
+              "color": "#8793a6"
+            },
+            {
+              "id": "tick-5",
+              "type": "text",
+              "text": "5",
+              "position": [-2, -3.7, 0],
+              "color": "#8793a6"
+            },
+            {
+              "id": "tick-10",
+              "type": "text",
+              "text": "10",
+              "position": [1, -3.7, 0],
+              "color": "#8793a6"
+            },
+            {
+              "id": "tick-15",
+              "type": "text",
+              "text": "15",
+              "position": [4, -3.7, 0],
+              "color": "#8793a6"
+            },
+            {
+              "id": "bar-0",
+              "type": "line",
+              "points": [
+                [-4.4, -2.9, 0],
+                [-3.2, -2.9, 0]
+              ],
+              "color": "#74d0c2",
+              "width": 6
+            },
+            {
+              "id": "bar-1",
+              "type": "line",
+              "points": [
+                [-3.8, -2.55, 0],
+                [-1.4000000000000004, -2.55, 0]
+              ],
+              "color": "#74d0c2",
+              "width": 6
+            },
+            {
+              "id": "bar-2",
+              "type": "line",
+              "points": [
+                [-0.20000000000000018, -2.9, 0],
+                [1, -2.9, 0]
+              ],
+              "color": "#74d0c2",
+              "width": 6
+            },
+            {
+              "id": "bar-3",
+              "type": "line",
+              "points": [
+                [0.39999999999999947, -2.55, 0],
+                [2.1999999999999993, -2.55, 0]
+              ],
+              "color": "#74d0c2",
+              "width": 6
+            },
+            {
+              "id": "bar-4",
+              "type": "line",
+              "points": [
+                [4, -2.9, 0],
+                [5.799999999999999, -2.9, 0]
+              ],
+              "color": "#74d0c2",
+              "width": 6
+            },
+            {
+              "id": "starts-title",
+              "type": "text",
+              "text": "start",
+              "position": [-5.7749999999999995, 3, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "starts",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4, 3, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'starts'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'starts'), idx)",
+              "showIndices": false,
+              "highlightExpr": "idx == dataTable('trace', frame, 'k')",
+              "markers": [
+                {"type": "step_marker", "indexName": "k", "indexExpr": "dataTable('trace', frame, 'k')", "color": "#f1c65b"}
+              ]
+            },
+            {
+              "id": "ends-title",
+              "type": "text",
+              "text": "end",
+              "position": [-5.455, 2.15, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "ends",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4, 2.15, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'ends'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'ends'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'k')"
+            },
+            {
+              "id": "merged-starts-title",
+              "type": "text",
+              "text": "merged start",
+              "position": [-6.895, 0.05, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "merged-starts",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4, 0.05, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'mStarts'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'mStarts'), idx)",
+              "color": "#b69bea",
+              "showIndices": false,
+              "markers": [
+                {"type": "step_marker", "indexName": "merged[-1]", "indexExpr": "dataTable('trace', frame, 'm') - 1", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "merged-ends-title",
+              "type": "text",
+              "text": "merged end",
+              "position": [-6.574999999999999, -0.8, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "merged-ends",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4, -0.8, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'mEnds'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'mEnds'), idx)",
+              "showIndices": true,
+              "color": "#b69bea",
+              "highlightExpr": "idx == dataTable('trace', frame, 'm') - 1 and (dataTable('trace', frame, 'line') == 6 or dataTable('trace', frame, 'line') == 5)"
+            },
+            {
+              "id": "k",
+              "type": "expression_label",
+              "position": [5, 0.6, 0],
+              "textExpr": "concat('k = ', dataTable('trace', frame, 'k') < 0 ? 'unset' : dataTable('trace', frame, 'k'))",
+              "connectTo": {"object": "starts", "indexExpr": "dataTable('trace', frame, 'k')"}
+            },
+            {
+              "id": "m",
+              "type": "expression_label",
+              "position": [5, 0.6, 0],
+              "textExpr": "concat('len(merged) = ', dataTable('trace', frame, 'm'))",
+              "connectTo": {"object": "merged-ends", "indexExpr": "dataTable('trace', frame, 'm') - 1"}
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    },
+    {
+      "id": "rotated-search",
+      "title": "Modified binary search",
+      "description": "Binary search a rotated sorted array by finding the sorted half.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "nums": [22, 27, 31, 2, 5, 8, 11, 13, 15, 18],
+            "target": 15
+          }
+        ],
+        "trace": [
+          {"lo": 0, "hi": 9, "mid": -1, "half": 0, "found": -1, "line": 2, "message": "Search all of nums: lo = 0, hi = 9.", "status": "Running", "running": 1},
+          {"lo": 0, "hi": 9, "mid": -1, "half": 0, "found": -1, "line": 3, "message": "lo ≤ hi, so 10 candidates remain.", "status": "Running", "running": 1},
+          {"lo": 0, "hi": 9, "mid": 4, "half": 0, "found": -1, "line": 4, "message": "mid = (0 + 9) // 2 = 4.", "status": "Running", "running": 1},
+          {"lo": 0, "hi": 9, "mid": 4, "half": 0, "found": -1, "line": 5, "message": "Is nums[4] = 5 the target 15?", "status": "Running", "running": 1},
+          {"lo": 0, "hi": 9, "mid": 4, "half": 0, "found": -1, "line": 7, "message": "At least one half is sorted. Is nums[lo] = 22 ≤ nums[mid] = 5?", "status": "Running", "running": 1},
+          {"lo": 0, "hi": 9, "mid": 4, "half": 2, "found": -1, "line": 13, "message": "No, so nums[4..9] runs 5 to 18 in order. Is 15 inside that range?", "status": "Running", "running": 1},
+          {"lo": 5, "hi": 9, "mid": 4, "half": 2, "found": -1, "line": 14, "message": "Yes: keep the right half. lo = 5.", "status": "Running", "running": 1},
+          {"lo": 5, "hi": 9, "mid": 4, "half": 0, "found": -1, "line": 3, "message": "lo ≤ hi, so 5 candidates remain.", "status": "Running", "running": 1},
+          {"lo": 5, "hi": 9, "mid": 7, "half": 0, "found": -1, "line": 4, "message": "mid = (5 + 9) // 2 = 7.", "status": "Running", "running": 1},
+          {"lo": 5, "hi": 9, "mid": 7, "half": 0, "found": -1, "line": 5, "message": "Is nums[7] = 13 the target 15?", "status": "Running", "running": 1},
+          {"lo": 5, "hi": 9, "mid": 7, "half": 0, "found": -1, "line": 7, "message": "At least one half is sorted. Is nums[lo] = 8 ≤ nums[mid] = 13?", "status": "Running", "running": 1},
+          {"lo": 5, "hi": 9, "mid": 7, "half": 1, "found": -1, "line": 8, "message": "Yes: nums[5..7] runs 8 to 13 in order. Is 15 inside that range?", "status": "Running", "running": 1},
+          {"lo": 8, "hi": 9, "mid": 7, "half": 1, "found": -1, "line": 11, "message": "No: the target can only be right of mid. lo = 8.", "status": "Running", "running": 1},
+          {"lo": 8, "hi": 9, "mid": 7, "half": 0, "found": -1, "line": 3, "message": "lo ≤ hi, so 2 candidates remain.", "status": "Running", "running": 1},
+          {"lo": 8, "hi": 9, "mid": 8, "half": 0, "found": -1, "line": 4, "message": "mid = (8 + 9) // 2 = 8.", "status": "Running", "running": 1},
+          {"lo": 8, "hi": 9, "mid": 8, "half": 0, "found": -1, "line": 5, "message": "Is nums[8] = 15 the target 15?", "status": "Running", "running": 1},
+          {"lo": 8, "hi": 9, "mid": 8, "half": 0, "found": 8, "line": 6, "message": "Found 15 at index 8.", "status": "Done", "running": 0}
+        ]
+      },
+      "markdown": "# Modified binary search\n\n**Signal:** data that is sorted *with a twist* (rotated, sorted rows and columns, or a monotone yes/no condition) and an O(log n) expectation.\n\nA rotated sorted array is two sorted runs. Cut it at `mid` and **at least one half is fully sorted**: if `nums[lo] ≤ nums[mid]` the left half is, otherwise the right half is. A sorted half lets you check in O(1) whether the target lies inside it, so you still discard half the candidates each step. Highlighted cells are the candidates still in play. Target here: **15**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Search in Rotated Sorted Array (33), Find Minimum in Rotated Sorted Array (153), Search a 2D Matrix II (240).",
+      "prompt": "Explain why one half is always sorted and how that keeps O(log n). Ask the learner to predict which half survives before each step.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 16, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "nums-title",
+              "type": "text",
+              "text": "nums",
+              "position": [-7.0649999999999995, 1.2, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "nums",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-5.5, 1.2, 0],
+              "cellSize": 1.25,
+              "fontSize": 15,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'nums'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'nums'), idx)",
+              "highlightExpr": "idx >= dataTable('trace', frame, 'lo') and idx <= dataTable('trace', frame, 'hi')",
+              "markers": [
+                {"type": "step_marker", "indexName": "lo", "indexExpr": "dataTable('trace', frame, 'lo')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "mid", "indexExpr": "dataTable('trace', frame, 'mid')", "color": "#e67db0"},
+                {"type": "step_marker", "indexName": "hi", "indexExpr": "dataTable('trace', frame, 'hi')", "color": "#f1c65b"}
+              ]
+            },
+            {
+              "id": "lo",
+              "type": "expression_label",
+              "position": [-4.5, -2.6, 0],
+              "textExpr": "concat('lo = ', dataTable('trace', frame, 'lo'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'lo')"}
+            },
+            {
+              "id": "mid",
+              "type": "expression_label",
+              "position": [-4.5, -2.6, 0],
+              "textExpr": "concat('mid = ', dataTable('trace', frame, 'mid') < 0 ? 'unset' : dataTable('trace', frame, 'mid'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'mid')"}
+            },
+            {
+              "id": "hi",
+              "type": "expression_label",
+              "position": [-4.5, -2.6, 0],
+              "textExpr": "concat('hi = ', dataTable('trace', frame, 'hi'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'hi')"}
+            },
+            {
+              "id": "half",
+              "type": "expression_label",
+              "position": [4, -2.6, 0],
+              "textExpr": "concat('sorted half = ', dataTable('trace', frame, 'half') == 1 ? 'left' : (dataTable('trace', frame, 'half') == 2 ? 'right' : '—'))"
+            },
+            {
+              "id": "target",
+              "type": "expression_label",
+              "position": [4, -2.6, 0],
+              "textExpr": "concat('target = ', dataTable('input', 0, 'target'))"
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    },
+    {
+      "id": "tree-traversal",
+      "title": "Binary tree traversal",
+      "description": "Preorder, inorder, postorder.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Binary tree traversal\n\n**Signal:** process every node of a tree in a specific order.\n\n- **Preorder** (node, left, right): copy or serialize a tree, print root-to-leaf paths.\n- **Inorder** (left, node, right): visits a binary search tree in sorted order.\n- **Postorder** (left, right, node): compute something from both children first, such as height or the maximum path sum.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a binary-tree object.)*\n\n**Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder).",
+      "prompt": "Explain the three orders and what each is good for. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Binary tree traversal: visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "dfs",
+      "title": "Depth-first search",
+      "description": "Go deep, then backtrack.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Depth-first search\n\n**Signal:** explore every path, find connected components, detect cycles, or order dependencies.\n\nFollow one branch as far as it goes before backing up, using recursion or an explicit stack. Mark nodes as visited so cycles do not loop forever. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph object.)*\n\n**Practice:** Clone Graph (133), Path Sum II (113), Course Schedule II (210).",
+      "prompt": "Explain recursion vs an explicit stack, and the visited set. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Depth-first search: visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "bfs",
+      "title": "Breadth-first search",
+      "description": "Explore level by level with a queue.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Breadth-first search\n\n**Signal:** shortest path in an unweighted graph, or anything \"level by level\".\n\nStart from the source, push it on a **queue**, and repeatedly pop the front and push its unvisited neighbours. Nodes come out in order of distance, so the first time you reach a node is along a shortest path. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph or tree object and a queue.)*\n\n**Practice:** Binary Tree Level Order Traversal (102), Rotting Oranges (994), Word Ladder (127).",
+      "prompt": "Explain why a queue gives shortest paths in unweighted graphs. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Breadth-first search: visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "matrix-traversal",
+      "title": "Matrix traversal",
+      "description": "DFS or BFS on a grid.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Matrix traversal\n\n**Signal:** a 2D grid: islands, flood fill, regions, shortest moves.\n\nTreat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS. Check bounds before moving and mark cells as visited (often by overwriting them). O(rows × cols).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a 2D grid object with per-cell state.)*\n\n**Practice:** Flood Fill (733), Number of Islands (200), Surrounded Regions (130).",
+      "prompt": "Explain the grid-as-graph view and neighbour iteration. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Matrix traversal: visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "backtracking",
+      "title": "Backtracking",
+      "description": "Choose, explore, un-choose.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Backtracking\n\n**Signal:** generate all permutations, subsets or combinations, or place pieces under constraints.\n\nBuild a candidate one choice at a time. After exploring a choice, **undo it** and try the next. Prune any branch that already breaks a constraint. The search is exponential in the worst case; pruning is what makes it practical.\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a recursion-tree view.)*\n\n**Practice:** Permutations (46), Subsets (78), N-Queens (51).",
+      "prompt": "Explain choose / explore / un-choose and pruning. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Backtracking: visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-programming",
+      "title": "Dynamic programming",
+      "description": "House robber: build each answer from the two before it.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "houses": [2, 7, 9, 3, 1, 4]
+          }
+        ],
+        "trace": [
+          {
+            "i": -1,
+            "house": -1,
+            "read": -1,
+            "skip": 0,
+            "take": 0,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 0, 0, 0, 0, 0, 0],
+            "line": 2,
+            "message": "dp[i] will hold the most you can steal from the first i houses. dp[0] = 0: no houses, no loot.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "house": 0,
+            "read": -1,
+            "skip": 0,
+            "take": 0,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 2, 0, 0, 0, 0, 0],
+            "line": 3,
+            "message": "With one house, take it: dp[1] = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "house": -1,
+            "read": -1,
+            "skip": 0,
+            "take": 0,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 2, 0, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Decide house 1 (value 7), using answers already computed.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "house": -1,
+            "read": 1,
+            "skip": 2,
+            "take": 0,
+            "hasSkip": 1,
+            "hasTake": 0,
+            "dp": [0, 2, 0, 0, 0, 0, 0],
+            "line": 5,
+            "message": "Skip house 1: keep the best from 1 houses, dp[1] = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "house": 1,
+            "read": 0,
+            "skip": 2,
+            "take": 7,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 0, 0, 0, 0, 0],
+            "line": 6,
+            "message": "Take house 1: its neighbour is off limits, so add 7 to dp[0] = 0: 7.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "house": -1,
+            "read": -1,
+            "skip": 2,
+            "take": 7,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 0, 0, 0, 0],
+            "line": 7,
+            "message": "dp[2] = max(2, 7) = 7.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "house": -1,
+            "read": -1,
+            "skip": 2,
+            "take": 7,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 0, 0, 0, 0],
+            "line": 4,
+            "message": "Decide house 2 (value 9), using answers already computed.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "house": -1,
+            "read": 2,
+            "skip": 7,
+            "take": 7,
+            "hasSkip": 1,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 0, 0, 0, 0],
+            "line": 5,
+            "message": "Skip house 2: keep the best from 2 houses, dp[2] = 7.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "house": 2,
+            "read": 1,
+            "skip": 7,
+            "take": 11,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 0, 0, 0, 0],
+            "line": 6,
+            "message": "Take house 2: its neighbour is off limits, so add 9 to dp[1] = 2: 11.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "house": -1,
+            "read": -1,
+            "skip": 7,
+            "take": 11,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 11, 0, 0, 0],
+            "line": 7,
+            "message": "dp[3] = max(7, 11) = 11.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "house": -1,
+            "read": -1,
+            "skip": 7,
+            "take": 11,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 11, 0, 0, 0],
+            "line": 4,
+            "message": "Decide house 3 (value 3), using answers already computed.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "house": -1,
+            "read": 3,
+            "skip": 11,
+            "take": 11,
+            "hasSkip": 1,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 11, 0, 0, 0],
+            "line": 5,
+            "message": "Skip house 3: keep the best from 3 houses, dp[3] = 11.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "house": 3,
+            "read": 2,
+            "skip": 11,
+            "take": 10,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 11, 0, 0, 0],
+            "line": 6,
+            "message": "Take house 3: its neighbour is off limits, so add 3 to dp[2] = 7: 10.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "house": -1,
+            "read": -1,
+            "skip": 11,
+            "take": 10,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 11, 11, 0, 0],
+            "line": 7,
+            "message": "dp[4] = max(11, 10) = 11.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "house": -1,
+            "read": -1,
+            "skip": 11,
+            "take": 10,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 11, 11, 0, 0],
+            "line": 4,
+            "message": "Decide house 4 (value 1), using answers already computed.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "house": -1,
+            "read": 4,
+            "skip": 11,
+            "take": 10,
+            "hasSkip": 1,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 11, 11, 0, 0],
+            "line": 5,
+            "message": "Skip house 4: keep the best from 4 houses, dp[4] = 11.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "house": 4,
+            "read": 3,
+            "skip": 11,
+            "take": 12,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 11, 11, 0, 0],
+            "line": 6,
+            "message": "Take house 4: its neighbour is off limits, so add 1 to dp[3] = 11: 12.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 5,
+            "house": -1,
+            "read": -1,
+            "skip": 11,
+            "take": 12,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 11, 11, 12, 0],
+            "line": 7,
+            "message": "dp[5] = max(11, 12) = 12.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "house": -1,
+            "read": -1,
+            "skip": 11,
+            "take": 12,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 11, 11, 12, 0],
+            "line": 4,
+            "message": "Decide house 5 (value 4), using answers already computed.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "house": -1,
+            "read": 5,
+            "skip": 12,
+            "take": 12,
+            "hasSkip": 1,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 11, 11, 12, 0],
+            "line": 5,
+            "message": "Skip house 5: keep the best from 5 houses, dp[5] = 12.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "house": 5,
+            "read": 4,
+            "skip": 12,
+            "take": 15,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 11, 11, 12, 0],
+            "line": 6,
+            "message": "Take house 5: its neighbour is off limits, so add 4 to dp[4] = 11: 15.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "house": -1,
+            "read": -1,
+            "skip": 12,
+            "take": 15,
+            "hasSkip": 1,
+            "hasTake": 1,
+            "dp": [0, 2, 7, 11, 11, 12, 15],
+            "line": 7,
+            "message": "dp[6] = max(12, 15) = 15.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 6,
+            "house": -1,
+            "read": -1,
+            "skip": 12,
+            "take": 15,
+            "hasSkip": 0,
+            "hasTake": 0,
+            "dp": [0, 2, 7, 11, 11, 12, 15],
+            "line": 8,
+            "message": "Answer: dp[6] = 15. Each subproblem was solved once: O(n).",
+            "status": "Done",
+            "running": 0
+          }
+        ]
+      },
+      "markdown": "# Dynamic programming\n\n**Signal:** \"maximum / minimum / number of ways\", where a choice now affects which choices remain, and the same subproblems recur.\n\nHouse robber: you cannot rob two adjacent houses. Let `dp[i]` be the most you can steal from the first `i` houses. For house `i − 1` there are only two options:\n\n$$dp[i] = \\max(\\underbrace{dp[i-1]}_{\\text{skip}},\\; \\underbrace{dp[i-2] + \\text{houses}[i-1]}_{\\text{take}})$$\n\nLike a prefix sum, `dp[i]` sits on the boundary after the first i houses. Each cell is computed once from cells already filled, giving O(n) time instead of the 2ⁿ subsets a brute force would try.\n\nThe same recipe (define the state, write the recurrence, fill in order) drives the classic families: Fibonacci-style, 0/1 knapsack, longest common subsequence, longest increasing subsequence, subset sum.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Climbing Stairs (70), House Robber (198), Coin Change (322), Longest Common Subsequence (1143), Longest Increasing Subsequence (300), Partition Equal Subset Sum (416).",
+      "prompt": "Explain state, recurrence, and fill order. Ask the learner to predict dp[i] from the two cells before it before the player reveals it. Note dp only needs the last two values, so space can drop to O(1).",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run the algorithm",
+          "description": "Follow the highlighted code line with the execution player.",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 22, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "houses-title",
+              "type": "text",
+              "text": "houses",
+              "position": [-6.435, 1.8, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "houses",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4.5, 1.8, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'houses'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'houses'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'house')",
+              "markers": [
+                {"type": "step_marker", "indexName": "i − 1", "indexExpr": "dataTable('trace', frame, 'house')", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "dp-title",
+              "type": "text",
+              "text": "dp",
+              "position": [-6.47, -0.9, 0],
+              "color": "#b5c1cf"
+            },
+            {
+              "id": "dp",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-5.175, -0.9, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'dp'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'dp'), idx)",
+              "color": "#b69bea",
+              "highlightExpr": "idx == dataTable('trace', frame, 'read') or (idx == dataTable('trace', frame, 'i') and (dataTable('trace', frame, 'line') == 7 or dataTable('trace', frame, 'line') == 3))",
+              "markers": [
+                {"type": "step_marker", "indexName": "i", "indexExpr": "dataTable('trace', frame, 'i')", "color": "#f1c65b"},
+                {"type": "step_marker", "indexName": "read", "indexExpr": "dataTable('trace', frame, 'read')", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "skip",
+              "type": "expression_label",
+              "position": [-4, -3.6, 0],
+              "textExpr": "concat('skip = ', dataTable('trace', frame, 'hasSkip') == 1 ? dataTable('trace', frame, 'skip') : '—')"
+            },
+            {
+              "id": "take",
+              "type": "expression_label",
+              "position": [-4, -3.6, 0],
+              "textExpr": "concat('take = ', dataTable('trace', frame, 'hasTake') == 1 ? dataTable('trace', frame, 'take') : '—')"
+            }
+          ],
+          "info": [
+            {"id": "current-action", "title": "Current action", "content": "{{dataTable('trace', frame, 'message')}}", "position": "top-center"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200}
+    }
+  ]
+}

@@ -20249,9 +20249,12 @@ function setupCodePanel() {
 			selected = void 0;
 			active = null;
 			build(fileTree(files), tree);
-			if (files[0]) open(files[0]);
-			else title.textContent = "This lesson has no code files.";
+			if (!files[0]) title.textContent = "This lesson has no code files.";
 		}
+		const sceneId = state.lessonSpec?.scenes?.[state.currentSceneIndex]?.id;
+		const cited = files.find((f) => f.locations?.some((l) => l.scene === sceneId));
+		const target = cited && !selected?.locations?.some((l) => l.scene === sceneId) ? cited : selected ?? files[0];
+		if (target && target !== selected) open(target);
 		refreshBinding();
 	}
 	window.addEventListener("algebench:navchange", refresh);

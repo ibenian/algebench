@@ -98,8 +98,13 @@ export function setupCodePanel(): void {
         if(lesson!==state.lessonSpec){
             lesson=state.lessonSpec;files=(lesson as LessonFormat|null)?.codeFiles??[];tree.replaceChildren();body.replaceChildren();actions.hidden=targets.hidden=true;
             selected=undefined;active=null;build(fileTree(files),tree);
-            if(files[0])open(files[0]);else title.textContent='This lesson has no code files.';
+            if(!files[0])title.textContent='This lesson has no code files.';
         }
+        // Follow navigation to the file whose locations cite the current scene; otherwise keep the reader's choice.
+        const sceneId=state.lessonSpec?.scenes?.[state.currentSceneIndex]?.id;
+        const cited=files.find(f=>f.locations?.some(l=>l.scene===sceneId));
+        const target=cited&&!selected?.locations?.some(l=>l.scene===sceneId)?cited:selected??files[0];
+        if(target&&target!==selected)open(target);
         refreshBinding();
     }
     window.addEventListener('algebench:navchange',refresh);
