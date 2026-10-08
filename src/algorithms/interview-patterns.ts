@@ -303,3 +303,207 @@ export function houseRobberTrace(houses: number[]) {
     emit(8, `Answer: dp[${houses.length}] = ${v.dp[houses.length]}. Each subproblem was solved once: O(n).`, 'Done');
     return trace;
 }
+
+export const MONOTONIC_QUEUE_SOURCE = `from collections import deque
+
+def max_sliding_window(nums, k):
+    dq, out = deque(), []
+    for i, x in enumerate(nums):
+        while dq and nums[dq[-1]] <= x:
+            dq.pop()
+        dq.append(i)
+        if dq[0] <= i - k:
+            dq.popleft()
+        if i >= k - 1:
+            out.append(nums[dq[0]])
+    return out`;
+export function monotonicQueueTrace(nums: number[], k: number) {
+    const v = { i: -1, x: 0, left: -1, dq: [] as number[], out: [] as number[], popped: -1 };
+    const { trace, emit } = recorder(v);
+    emit(4, 'The deque holds indices whose values decrease from front to back. The front is always the window maximum.');
+    nums.forEach((x, i) => {
+        v.i = i; v.x = x; v.left = Math.max(0, i - k + 1); v.popped = -1;
+        emit(5, `Index ${i}: ${x} enters the window nums[${v.left}..${i}].`);
+        while (true) {
+            const back = v.dq.at(-1);
+            if (back === undefined) { emit(6, 'The deque is empty.'); break; }
+            const smaller = nums[back]! <= x;
+            emit(6, `Is nums[${back}] = ${nums[back]} ≤ ${x}? ${smaller ? 'Yes: it can never be a maximum again.' : 'No: keep it.'}`);
+            if (!smaller) break;
+            v.popped = v.dq.pop()!;
+            emit(7, `Drop index ${v.popped} from the back.`);
+        }
+        v.popped = -1; v.dq.push(i);
+        emit(8, `Append index ${i} at the back.`);
+        const expired = v.dq[0]! <= i - k;
+        emit(9, expired ? `Front index ${v.dq[0]} has left the window.` : `Front index ${v.dq[0]} is still inside the window.`);
+        if (expired) { v.popped = v.dq.shift()!; emit(10, `Drop index ${v.popped} from the front.`); v.popped = -1; }
+        if (i >= k - 1) {
+            v.out.push(nums[v.dq[0]!]!);
+            emit(12, `Window nums[${v.left}..${i}] is full: its maximum is nums[${v.dq[0]}] = ${nums[v.dq[0]!]}.`);
+        } else emit(11, `The first window is not full yet (${i + 1} of ${k}).`);
+    });
+    v.i = -1; v.left = -1;
+    emit(13, 'Each index entered and left the deque at most once: O(n) for all windows.', 'Done');
+    // The front index, for bindings that cannot index an empty deque.
+    return trace.map(f => ({ ...f, front: (f.dq as number[])[0] ?? -1 }));
+}
+
+export const GREEDY_SOURCE = `def can_jump(nums):
+    reach = 0
+    for i, jump in enumerate(nums):
+        if i > reach:
+            return False
+        reach = max(reach, i + jump)
+    return True`;
+export function greedyTrace(nums: number[]) {
+    const v = { i: -1, jump: 0, reach: 0, ok: -1 };
+    const { trace, emit } = recorder(v);
+    emit(2, 'reach is the farthest index we know we can get to. At first, only index 0.');
+    for (let i = 0; i < nums.length; i++) {
+        v.i = i; v.jump = nums[i]!;
+        emit(3, `Stand on index ${i}; it allows a jump of up to ${v.jump}.`);
+        emit(4, `Is index ${i} beyond reach = ${v.reach}?`);
+        if (i > v.reach) { v.ok = 0; emit(5, `Yes: index ${i} cannot be reached, so neither can the end.`, 'Done'); return trace; }
+        const old = v.reach; v.reach = Math.max(v.reach, i + v.jump);
+        emit(6, v.reach > old ? `From here we reach ${i} + ${v.jump} = ${i + v.jump}: reach grows to ${v.reach}.` : `${i} + ${v.jump} = ${i + v.jump} does not beat reach = ${v.reach}.`);
+    }
+    v.ok = 1;
+    emit(7, 'Every index was within reach, including the last.', 'Done');
+    return trace;
+}
+
+export const BITS_SOURCE = `def single_number(nums):
+    result = 0
+    for x in nums:
+        result ^= x
+    return result`;
+const bitsOf = (n: number, width: number) => Array.from({ length: width }, (_, b) => (n >> (width - 1 - b)) & 1);
+export function bitsTrace(nums: number[], width = 3) {
+    const v = { k: -1, x: 0, result: 0, xBits: bitsOf(0, width), rBits: bitsOf(0, width) };
+    const { trace, emit } = recorder(v);
+    emit(2, 'result starts at 0. XOR rules: a ^ a = 0 and a ^ 0 = a, in any order.');
+    nums.forEach((x, k) => {
+        v.k = k; v.x = x; v.xBits = bitsOf(x, width);
+        emit(3, `Take nums[${k}] = ${x}, binary ${v.xBits.join('')}.`);
+        const old = v.result; v.result ^= x; v.rBits = bitsOf(v.result, width);
+        emit(4, `${old} ^ ${x} = ${v.result}: each bit flips where x has a 1.`);
+    });
+    v.k = -1;
+    emit(5, `Every value that appears twice cancelled itself out. ${v.result} is left: the single number. O(n) time, O(1) space.`, 'Done');
+    return trace;
+}
+
+export const UNION_FIND_SOURCE = `def count_components(n, edges):
+    parent = list(range(n))
+    def find(x):
+        while parent[x] != x:
+            x = parent[x]
+        return x
+    for a, b in edges:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+            n -= 1
+    return n`;
+export function unionFindTrace(n: number, edges: [number, number][]) {
+    const v = { e: -1, a: -1, b: -1, x: -1, ra: -1, rb: -1, parent: Array.from({ length: n }, (_, i) => i), count: n };
+    const { trace, emit } = recorder(v);
+    emit(2, `Each of the ${n} nodes starts as its own root: ${n} components.`);
+    const find = (start: number) => {
+        v.x = start;
+        while (true) {
+            const p = v.parent[v.x]!;
+            emit(4, p === v.x ? `parent[${v.x}] = ${v.x}: ${v.x} is a root.` : `parent[${v.x}] = ${p}: not a root, keep climbing.`);
+            if (p === v.x) break;
+            v.x = p;
+            emit(5, `Climb to ${v.x}.`);
+        }
+        emit(6, `find(${start}) = ${v.x}.`);
+        const root = v.x; v.x = -1; return root;
+    };
+    edges.forEach(([a, b], e) => {
+        v.e = e; v.a = a; v.b = b; v.ra = v.rb = -1;
+        emit(7, `Edge ${a}–${b}.`);
+        v.ra = find(a); v.rb = find(b);
+        emit(8, `ra = ${v.ra}, rb = ${v.rb}.`);
+        emit(9, v.ra !== v.rb ? 'Different roots: two separate components meet.' : 'Same root: already connected, so this edge changes nothing.');
+        if (v.ra !== v.rb) {
+            v.parent[v.rb] = v.ra;
+            emit(10, `Attach root ${v.rb} under ${v.ra}: parent[${v.rb}] = ${v.ra}.`);
+            v.count--;
+            emit(11, `${v.count} components remain.`);
+        }
+    });
+    v.e = v.a = v.b = v.ra = v.rb = -1;
+    emit(12, `${v.count} connected components. With path compression and union by rank, each find is nearly O(1).`, 'Done');
+    return trace;
+}
+
+export const KMP_SOURCE = `def build_lps(p):
+    lps, k = [0] * len(p), 0
+    for i in range(1, len(p)):
+        while k and p[i] != p[k]:
+            k = lps[k - 1]
+        if p[i] == p[k]:
+            k += 1
+        lps[i] = k
+    return lps
+
+def kmp_search(text, p):
+    lps, k, hits = build_lps(p), 0, []
+    for i, ch in enumerate(text):
+        while k and ch != p[k]:
+            k = lps[k - 1]
+        if ch == p[k]:
+            k += 1
+        if k == len(p):
+            hits.append(i - k + 1)
+            k = lps[k - 1]
+    return hits`;
+export function kmpTrace(text: string, p: string) {
+    const v = { phase: 1, i: -1, k: 0, pi: -1, lps: [...p].map(() => 0), hits: [] as number[], lo: -1, hi: -1 };
+    const { trace, emit } = recorder(v);
+    const T = [...text], P = [...p];
+    // lo..hi is the stretch of text currently matched by p[0..k-1].
+    const span = (end: number) => { v.lo = v.k ? end - v.k + 1 : -1; v.hi = v.k ? end : -1; };
+    emit(2, 'Phase 1: lps[i] = length of the longest proper prefix of p that is also a suffix of p[0..i].');
+    for (let i = 1; i < P.length; i++) {
+        v.i = -1; v.pi = i;
+        emit(3, `Extend to p[${i}] = ${P[i]}.`);
+        while (v.k && P[i] !== P[v.k]) {
+            emit(4, `p[${i}] = ${P[i]} ≠ p[${v.k}] = ${P[v.k]}: fall back.`);
+            v.k = v.lps[v.k - 1]!;
+            emit(5, `k = lps[k − 1] = ${v.k}.`);
+        }
+        const eq = P[i] === P[v.k];
+        emit(6, `Does p[${i}] = ${P[i]} match p[${v.k}] = ${P[v.k]}? ${eq ? 'Yes.' : 'No.'}`);
+        if (eq) { v.k++; emit(7, `k = ${v.k}.`); }
+        v.lps[i] = v.k;
+        emit(8, `lps[${i}] = ${v.k}.`);
+    }
+    v.pi = -1; v.k = 0; v.phase = 2;
+    emit(12, 'Phase 2: scan the text once. k counts how much of p matches so far.');
+    T.forEach((ch, i) => {
+        v.i = i; span(i - 1);
+        emit(13, `Read text[${i}] = ${ch}.`);
+        while (v.k && ch !== P[v.k]) {
+            emit(14, `${ch} ≠ p[${v.k}] = ${P[v.k]}: keep the longest border instead of restarting.`);
+            v.k = v.lps[v.k - 1]!; span(i - 1);
+            emit(15, `k = lps[k − 1] = ${v.k}. The text pointer never moves back.`);
+        }
+        const eq = ch === P[v.k];
+        emit(16, `Does ${ch} match p[${v.k}] = ${P[v.k]}? ${eq ? 'Yes.' : 'No.'}`);
+        if (eq) { v.k++; span(i); emit(17, `k = ${v.k}.`); }
+        if (v.k === P.length) {
+            emit(18, 'All of p matched.');
+            v.hits.push(i - v.k + 1);
+            emit(19, `Match at index ${i - v.k + 1}.`);
+            v.k = v.lps[v.k - 1]!; span(i);
+            emit(20, `k = lps[k − 1] = ${v.k}, so overlapping matches are still found.`);
+        }
+    });
+    v.i = -1; v.lo = v.hi = -1;
+    emit(21, `Matches at ${v.hits.join(', ') || 'none'}. O(n + m): the text pointer only moves forward.`, 'Done');
+    return trace;
+}

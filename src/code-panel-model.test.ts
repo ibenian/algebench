@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fileTree, relatedLocations, markedSegments } from './code-panel-model.js';
+import { fileTree, relatedLocations, markedSegments, executionTarget } from './code-panel-model.js';
 import type { CodeFile } from './code-panel-model.js';
 test('file browser preserves full paths and groups folders independently of lesson steps',()=>{
  const a={id:'a',path:'brackets/main.py',source:'a'},b={id:'b',path:'brackets/helpers/main.py',source:'b'};
@@ -20,4 +20,15 @@ test('one-based end-exclusive marks retain exact source, including HTML-looking 
 test('repeated code lines can link to distinct snapshots within one lesson section',()=>{
  const f:CodeFile={id:'stack',path:'stack.py',source:'push()',locations:[{line:1,scene:'s',step:'explore',snapshot:1},{line:1,scene:'s',step:'explore',snapshot:2},{line:1,scene:'s',step:'explore',snapshot:2}]};
  assert.deepEqual(relatedLocations(f,1,1).map(l=>l.snapshot),[1,2]);
+});
+test('a scene names its active file explicitly, statically or per state',()=>{
+ const main:CodeFile={id:'main',path:'main.py',source:'x'},helper:CodeFile={id:'helper',path:'helper.py',source:'y'};
+ const files=[main,helper],state:Record<string,unknown>={file:'helper',line:3};
+ const evaluate=(expr:string)=>{if(!(expr in state))throw new Error('missing');return state[expr];};
+ assert.deepEqual(executionTarget({codeRef:{file:'main',lineExpr:'line'}},files,evaluate),{file:main,lineExpr:'line'});
+ assert.deepEqual(executionTarget({codeRef:{fileExpr:'file',lineExpr:'line'}},files,evaluate),{file:helper,lineExpr:'line'});
+ assert.equal(executionTarget({codeRef:{fileExpr:'unknown'}},files,evaluate),null,'unavailable state marks no file');
+ assert.equal(executionTarget({codeRef:{fileExpr:'line'}},files,evaluate),null,'an unknown id marks no file');
+ assert.equal(executionTarget({codeRef:{file:'missing'}},files,evaluate),null);
+ assert.equal(executionTarget({},files,evaluate),null,'locations alone never bind a scene to a file');
 });

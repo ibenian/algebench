@@ -2159,7 +2159,8 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-top: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--text-color) 7%, transparent);
 }
-#slider-dock-host:not(:has(#slider-overlay:not(.hidden))) { display: none; }
+/* Empty when no row is visible, e.g. a scene whose only slider drives the step player, which hides that row. */
+#slider-dock-host:not(:has(#slider-overlay:not(.hidden) .slider-row:not([hidden]))) { display: none; }
 #slider-overlay.docked {
     position: static;
     left: auto !important;
@@ -2999,6 +3000,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
     max-width: 340px;
 }
 #slider-overlay.hidden { display: none; }
+#slider-overlay:not(:has(.slider-row:not([hidden]))) { display: none; }
 .slider-row {
     display: flex;
     align-items: center;
@@ -5617,7 +5619,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 #state-player[hidden], .slider-row[hidden] { display: none; }
 #state-player button { border: 1px solid var(--border-color); background: transparent; color: var(--text-color); border-radius: 5px; min-width: 29px; height: 29px; cursor: pointer; }
 #state-player button:disabled { opacity: .35; cursor: default; }
-#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); }
+#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); cursor: pointer; }
+#state-player input:disabled { cursor: default; }
 #state-player output { white-space: nowrap; font: 12px ui-monospace, monospace; }
 @media (max-width: 750px) { #state-player { bottom: 58px; width: calc(100% - 50px); } }
 /* Reserve the left corner for the existing lesson-section navigation. */

@@ -1,5 +1,5 @@
 /** Display-only code data. No evaluation of source text. */
-import type { CodeFile } from '/types/lesson.js';
+import type { CodeFile, Scene } from '/types/lesson.js';
 export type { CodeFile } from '/types/lesson.js';
 export interface FileTree { folders: Map<string, FileTree>; files: CodeFile[] }
 export function fileTree(files: CodeFile[]): FileTree {
@@ -21,6 +21,20 @@ export function relatedLocations(file: CodeFile, first: number, last: number) {
         if(location.line<first||location.line>last||seen.has(key))return false;
         seen.add(key);return true;
     });
+}
+/**
+ * The file a scene's current state executes, and the expression for its line. The file is
+ * always named explicitly (`file`, or `fileExpr` per state); there is no default. Null when
+ * the scene declares no codeRef or the id is unknown or unavailable.
+ */
+export function executionTarget(scene: Pick<Scene,'codeRef'> | undefined, files: CodeFile[], evaluate: (expr: string) => unknown): {file: CodeFile; lineExpr?: string} | null {
+    const code=scene?.codeRef;
+    if(!code)return null;
+    let id:string|undefined;
+    if('file' in code)id=code.file;
+    else try{id=String(evaluate(code.fileExpr));}catch{/* unavailable state marks no file */}
+    const file=files.find(f=>f.id===id);
+    return file?{file,lineExpr:code.lineExpr}:null;
 }
 /** Split at authored range boundaries; columns are one-based, end-exclusive. */
 export function markedSegments(text: string, marks: NonNullable<CodeFile['marks']>) {

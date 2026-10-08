@@ -70,3 +70,23 @@ Dragging a row or title bar preserves its coordinate mode. World dragging moves 
 Container titles and controls rebuild only when row content, membership, order, or coordinate mode changes. Overlay styling is cached by mode, and label presentation writes are skipped when their values are unchanged. Camera projection still updates with the render loop.
 
 Changing a label's position expression (for example with its X/Y sliders) returns that label to its data anchor. Text updates alone preserve its dragged screen placement.
+
+## Scene code reference
+
+A scene names the code it executes with `codeRef`. Files live in the lesson's top-level `codeFiles`; the scene points to one by id, so every active line belongs to an explicitly named file:
+
+```json
+"codeRef": {"file": "balanced", "lineExpr": "dataTable('trace', snapshot, 'pc')"}
+```
+
+When a trace moves between files, replace `file` with `fileExpr`, which returns the executing file's id at each state. A trace frame then carries both, like a debugger's file and line:
+
+```json
+"codeRef": {"fileExpr": "dataTable('trace', snapshot, 'file')", "lineExpr": "dataTable('trace', snapshot, 'line')"}
+```
+
+Exactly one of `file` and `fileExpr` is required. `lineExpr` is the one-based line in the active file; zero clears the marker. Expressions evaluate on navigation and slider changes, not every frame. There is no default file: an unknown id, or an expression that cannot evaluate yet, marks nothing.
+
+The Code panel opens the active file when a scene is entered and whenever the active file changes. A reader may open another file in between; it stays open, unmarked, until execution moves to a different file. The line marker appears only in the active file.
+
+A code file's `locations` serve only the reverse lookup: selecting a line offers the scenes, steps and snapshots where it executes. They never decide which file a scene shows.

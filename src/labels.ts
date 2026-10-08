@@ -572,9 +572,12 @@ export function updateLabels(): void {
     const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
     for (let i = 0; i < ordered.length; i++) {
         const o = ordered[i]!;
-        // Screen overlays have their own paint band above every world label,
-        // including array index tags. Preserve depth order within each band.
-        const zi = ordered.length - i + (o.annotationCoordinateMode === 'screen' ? ordered.length : 0);
+        // Paint bands, bottom to top: plain world labels (array index tags, titles),
+        // index markers, expression-label boxes (Vars/Labels), then screen
+        // overlays. Nothing in the scene may cover a Vars box, however near the
+        // camera it is; depth order still decides within each band.
+        const band = o.annotationCoordinateMode === 'screen' ? 3 : o.annotation?.kind === 'label' ? 2 : o.annotation ? 1 : 0;
+        const zi = ordered.length - i + band * ordered.length;
         if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
     }
     updateLabelWire();

@@ -321,6 +321,61 @@ export type Element = {
     opacity?: number;
   }[];
   /**
+   * CHART ONLY. Gantt bars: each set draws [start, end] spans as horizontal bars on lanes (y values), over the chart's x axis. Give literal 'start'/'end' arrays (static), or 'countExpr' plus per-bar 'startExpr'/'endExpr' with 'i' (bar index) and 'n' (bar count) bound, so the bars can follow lesson state. Example: {"label": "merged", "countExpr": "dataTable('trace', frame, 'm')", "startExpr": "arrayAt(dataTable('trace', frame, 'mStarts'), i)", "endExpr": "arrayAt(dataTable('trace', frame, 'mEnds'), i)", "lane": 0}.
+   */
+  intervals?: {
+    id?: string;
+    /**
+     * Legend text for the set, drawn with a bar swatch.
+     */
+    label?: string;
+    color?: Color;
+    /**
+     * Bar opacity. Default 0.85.
+     */
+    opacity?: number;
+    /**
+     * Bar height in lane (y) units. Default 0.6.
+     */
+    thickness?: number;
+    /**
+     * Literal bar starts, one per bar.
+     */
+    start?: number[];
+    /**
+     * Literal bar ends, one per bar.
+     */
+    end?: number[];
+    /**
+     * The lane (y value) of every bar, or one per bar. Default 0.
+     */
+    lane?: number | number[];
+    /**
+     * Expression for the number of bars (0-256). Required when spans come from expressions.
+     */
+    countExpr?: string;
+    /**
+     * Expression for bar i's start, with 'i' and 'n' bound. Wins over 'start'.
+     */
+    startExpr?: string;
+    /**
+     * Expression for bar i's end, with 'i' and 'n' bound. Wins over 'end'.
+     */
+    endExpr?: string;
+    /**
+     * Expression for bar i's lane, with 'i' and 'n' bound. Wins over 'lane'.
+     */
+    laneExpr?: string;
+    /**
+     * Expression, per bar with 'i' and 'n' bound; truthy draws the bar in the highlight gold.
+     */
+    highlightExpr?: string;
+    /**
+     * Expression for text drawn just above bar i, with 'i' and 'n' bound.
+     */
+    labelExpr?: string;
+  }[];
+  /**
    * CHART ONLY. Draw faint grid lines at the ticks. Default true.
    */
   grid?: boolean;
@@ -1001,6 +1056,14 @@ export type Vec3Number10 = [number, number, number];
  */
 export type Range3D2 = [[number, number], [number, number], [number, number]];
 /**
+ * The code this scene executes: which file and which line are active. Name the file statically with `file`, or per state with `fileExpr` when a trace moves between files. Evaluated on lesson navigation and slider changes, not every frame. The Code panel opens the active file when it changes and marks the line only in that file.
+ */
+export type SceneCodeRef = StaticCodeRef | TracedCodeRef;
+/**
+ * Expression for the one-based active line in the active file. Zero clears the marker.
+ */
+export type CodeRefLineExpr = string;
+/**
  * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
  *
  * @minItems 3
@@ -1315,6 +1378,7 @@ export interface Scene {
    */
   duration?: number;
   stepPlayback?: StepPlayback;
+  codeRef?: SceneCodeRef;
 }
 /**
  * Initial camera position and target for this scene.
@@ -1853,15 +1917,25 @@ export interface StepPlayback {
   slider: string;
   intervalMs?: number;
 }
+export interface StaticCodeRef {
+  /**
+   * Id of the lesson codeFile this scene executes.
+   */
+  file: string;
+  lineExpr?: CodeRefLineExpr;
+}
+export interface TracedCodeRef {
+  /**
+   * Expression returning the id of the codeFile executing at the current state. An unknown id marks no file.
+   */
+  fileExpr: string;
+  lineExpr?: CodeRefLineExpr;
+}
 export interface CodeFile {
   id: string;
   path: string;
   language?: string;
   source: string;
-  /**
-   * Expression for one-based active line. Evaluated on lesson navigation and slider changes, not every frame. Zero clears the marker.
-   */
-  activeLineExpr?: string;
   locations?: {
     line: number;
     scene: string;

@@ -8,4 +8,9 @@ export const INTERVIEW_INPUTS = {
     rotated: { nums: [22, 27, 31, 2, 5, 8, 11, 13, 15, 18], target: 15 },
     intervals: { input: [[8, 10], [1, 3], [2, 6], [15, 18], [9, 12]] as [number, number][] },
     dp: { houses: [2, 7, 9, 3, 1, 4] },
+    monoQueue: { nums: [1, 3, -1, -3, 5, 3, 6, 7], k: 3 },
+    greedy: { nums: [3, 2, 1, 0, 4] },
+    bits: { nums: [4, 1, 2, 1, 2] },
+    unionFind: { n: 6, edges: [[0, 1], [1, 2], [3, 4], [2, 0], [4, 5]] as [number, number][] },
+    kmp: { text: 'aabaacaadaabaaba', pattern: 'aaba' },
 };

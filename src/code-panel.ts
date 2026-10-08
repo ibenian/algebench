@@ -4,7 +4,7 @@ import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { makeAiAskButton } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
-import { fileTree, markedSegments, relatedLocations } from '/code-panel-model.js';
+import { executionTarget, fileTree, markedSegments, relatedLocations } from '/code-panel-model.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
@@ -17,7 +17,8 @@ export function setupCodePanel(): void {
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
     let lesson: AlgeBenchLessonSpec | null | undefined, files: CodeFile[]=[], selected: CodeFile | undefined;
-    let first=0,last=0,excerpt='',active: CompiledExpr|null=null;
+    let first=0,last=0,excerpt='',followed: CodeFile | undefined;
+    const compiled=new Map<string,CompiledExpr|null>();
     const targets=document.createElement('div');targets.className='code-step-targets';targets.hidden=true;
     const ask=makeAiAskButton('ai-ask-btn','Ask AI about selected code',()=>{
         if(!selected||!first)return null;
@@ -55,9 +56,20 @@ export function setupCodePanel(): void {
         targets.replaceChildren();targets.hidden=false;
         for(const choice of choices){const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.onclick=()=>{targets.hidden=true;go(choice);};targets.append(button);}
     });
-    function refreshBinding() {
+    function evaluate(expr: string) {
+        if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
+        const c=compiled.get(expr);
+        if(!c)throw new Error('Invalid code expression.');
+        return evalExpr(c,0);
+    }
+    /** Follow execution into its file when the active file changes (or on scene entry), then mark its line. */
+    function refreshBinding(entering=false) {
+        const target=executionTarget(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined,files,evaluate);
+        if(target&&(entering||target.file!==followed)&&target.file!==selected)open(target.file);
+        followed=target?.file;
+        const lineExpr=target?.file===selected?target?.lineExpr:undefined;
         let line=0;
-        if(active)try{line=Number(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        if(lineExpr)try{line=Number(evaluate(lineExpr));}catch{ /* unavailable slider or data clears the active marker */ }
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
             const current=Number(row.dataset.line)===line;
             row.classList.toggle('execution-line',current);
@@ -65,9 +77,8 @@ export function setupCodePanel(): void {
         });
     }
     function open(file: CodeFile) {
-        selected=file;first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;
+        selected=file;first=last=0;excerpt='';actions.hidden=targets.hidden=true;
         title.textContent=file.path+' · read only';body.replaceChildren();
-        if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{
             const row=document.createElement('div');row.className='code-line';row.dataset.line=String(i+1);
             const number=document.createElement('button');number.type='button';number.className='code-line-number';number.textContent=String(i+1);number.setAttribute('aria-label',`Select line ${i+1}`);
@@ -97,17 +108,12 @@ export function setupCodePanel(): void {
     function refresh() {
         if(lesson!==state.lessonSpec){
             lesson=state.lessonSpec;files=(lesson as LessonFormat|null)?.codeFiles??[];tree.replaceChildren();body.replaceChildren();actions.hidden=targets.hidden=true;
-            selected=undefined;active=null;build(fileTree(files),tree);
-            if(!files[0])title.textContent='This lesson has no code files.';
+            selected=followed=undefined;compiled.clear();build(fileTree(files),tree);
+            if(files[0])open(files[0]);else title.textContent='This lesson has no code files.';
         }
-        // Follow navigation to the file whose locations cite the current scene; otherwise keep the reader's choice.
-        const sceneId=state.lessonSpec?.scenes?.[state.currentSceneIndex]?.id;
-        const cited=files.find(f=>f.locations?.some(l=>l.scene===sceneId));
-        const target=cited&&!selected?.locations?.some(l=>l.scene===sceneId)?cited:selected??files[0];
-        if(target&&target!==selected)open(target);
-        refreshBinding();
+        refreshBinding(true);
     }
     window.addEventListener('algebench:navchange',refresh);
-    window.addEventListener('algebench:sliderchange',refreshBinding);
+    window.addEventListener('algebench:sliderchange',()=>refreshBinding());
     refresh();
 }

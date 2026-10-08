@@ -2159,7 +2159,8 @@ function updateLabels() {
 	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
 		const o = ordered[i];
-		const zi = ordered.length - i + (o.annotationCoordinateMode === "screen" ? ordered.length : 0);
+		const band = o.annotationCoordinateMode === "screen" ? 3 : o.annotation?.kind === "label" ? 2 : o.annotation ? 1 : 0;
+		const zi = ordered.length - i + band * ordered.length;
 		if (o._zi !== zi) {
 			o.el.style.zIndex = String(zi);
 			o._zi = zi;
@@ -14328,6 +14329,33 @@ function axisLabelList(axis, hasLabelExpr) {
 function staticTickLabel(list, k) {
 	return list[k] ?? "";
 }
+/**
+* The bars an interval set draws. `n` is clamped to 0..max (a non-finite count
+* draws nothing); a bar whose start, end or lane is not finite is dropped
+* rather than drawn at 0; and a reversed span is normalised so start <= end.
+*/
+function intervalBars(n, max, read) {
+	const count = Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : 0;
+	const bars = [];
+	for (let i = 0; i < count; i++) {
+		const b = read(i, count);
+		if (!Number.isFinite(b.s) || !Number.isFinite(b.e) || !Number.isFinite(b.lane)) continue;
+		bars.push({
+			...b,
+			s: Math.min(b.s, b.e),
+			e: Math.max(b.s, b.e)
+		});
+	}
+	return bars;
+}
+/** Most bars one interval set draws; a counted set reserves this many once. */
+var MAX_INTERVALS = 256;
+/** The gold an array cell uses for a highlighted slot, so a bar reads as "selected" the same way. */
+var HIGHLIGHT = [
+	241 / 255,
+	204 / 255,
+	89 / 255
+];
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 var MAX_TICKS = 50;
 var PLANE_AXES = {
@@ -14471,6 +14499,44 @@ function renderChart(el, view) {
 			bands.splice(k, 1);
 		}
 	}
+	const numList = (v) => Array.isArray(v) ? v.map(Number) : null;
+	const srcOf = (v) => typeof v === "string" ? v.trim() || null : null;
+	const intervalSets = [];
+	(Array.isArray(chart.intervals) ? chart.intervals : []).forEach((sp, k) => {
+		const starts = numList(sp.start), ends = numList(sp.end);
+		const set = {
+			color: parseColor(sp.color || el.color || "#74d0c2"),
+			opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .85,
+			thickness: Number(sp.thickness) > 0 ? Number(sp.thickness) : .6,
+			label: typeof sp.label === "string" && sp.label.trim() ? sp.label.trim() : null,
+			starts,
+			ends,
+			lanes: numList(sp.lane),
+			lane: Number.isFinite(Number(sp.lane)) ? Number(sp.lane) : 0,
+			countSrc: srcOf(sp.countExpr),
+			startSrc: srcOf(sp.startExpr),
+			endSrc: srcOf(sp.endExpr),
+			laneSrc: srcOf(sp.laneExpr),
+			hlSrc: srcOf(sp.highlightExpr),
+			labelSrc: srcOf(sp.labelExpr),
+			countFn: compileOpt(sp.countExpr, `intervals[${k}].countExpr`),
+			startFn: compileOpt(sp.startExpr, `intervals[${k}].startExpr`),
+			endFn: compileOpt(sp.endExpr, `intervals[${k}].endExpr`),
+			laneFn: compileOpt(sp.laneExpr, `intervals[${k}].laneExpr`),
+			hlFn: compileOpt(sp.highlightExpr, `intervals[${k}].highlightExpr`),
+			labelFn: compileOpt(sp.labelExpr, `intervals[${k}].labelExpr`),
+			max: srcOf(sp.countExpr) ? MAX_INTERVALS : Math.min(MAX_INTERVALS, Math.min(starts?.length ?? 0, ends?.length ?? 0)),
+			bars: [],
+			mesh: null,
+			attr: null,
+			colors: null
+		};
+		if (!set.countSrc && !set.max) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: intervals[${k}] needs start/end arrays or a countExpr; skipped.`);
+			return;
+		}
+		intervalSets.push(set);
+	});
 	const axes = Array.isArray(chart.axes) ? chart.axes : [];
 	const xAxis = axes[0], yAxis = axes[1];
 	const xTitle = xAxis && xAxis.title ? String(xAxis.title) : null;
@@ -14521,7 +14587,49 @@ function renderChart(el, view) {
 	/** Plot-local v for a value read on right axis `a`. The mapping is affine,
 	*  so the two endpoints fix it and the interior interpolates. */
 	const toPlaneYOn = (y, a) => rightAxisPlace(y, a.dom, H);
-	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || rightAxes.length > 0;
+	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || intervalSets.some((v) => v.countSrc || v.startSrc || v.endSrc || v.laneSrc || v.hlSrc || v.labelSrc) || rightAxes.length > 0;
+	/** Evaluate one interval set's bars through the pure `intervalBars`. */
+	function sampleIntervals(v, tSec) {
+		let n = v.max;
+		if (v.countFn) try {
+			n = Number(evalExpr(v.countFn.fn, tSec, {}));
+		} catch (_e) {
+			n = 0;
+		}
+		else if (v.countSrc) n = 0;
+		const scope = {
+			i: 0,
+			n: 0
+		};
+		const run = (fn) => fn ? evalExpr(fn.fn, tSec, { overrideScope: scope }) : void 0;
+		v.bars = intervalBars(n, v.max, (i, count) => {
+			scope.i = i;
+			scope.n = count;
+			const num = (fn, lit) => {
+				if (!fn) return lit ?? NaN;
+				try {
+					return Number(run(fn));
+				} catch (_e) {
+					return NaN;
+				}
+			};
+			let hl = false, text = "";
+			if (v.hlFn) try {
+				hl = !!run(v.hlFn);
+			} catch (_e) {}
+			if (v.labelFn) try {
+				const out = run(v.labelFn);
+				text = out === null || out === void 0 ? "" : String(out);
+			} catch (_e) {}
+			return {
+				s: num(v.startFn, v.starts?.[i]),
+				e: num(v.endFn, v.ends?.[i]),
+				lane: num(v.laneFn, v.lanes ? v.lanes[i] : v.lane),
+				hl,
+				text
+			};
+		});
+	}
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -14572,9 +14680,14 @@ function renderChart(el, view) {
 				if (Number.isFinite(v)) b.hi = v;
 			} catch (_e) {}
 		}
+		for (const v of intervalSets) sampleIntervals(v, tSec);
 		if (!xFixed) {
 			const xs = [];
 			for (const s of series) for (const x of s.px) xs.push(x);
+			for (const v of intervalSets) for (const b of v.bars) {
+				xs.push(b.s);
+				xs.push(b.e);
+			}
 			xDom = autoDomain(xs, 0);
 		}
 		if (!yFixed) {
@@ -14584,6 +14697,10 @@ function renderChart(el, view) {
 			for (const b of bands) {
 				ys.push(b.lo);
 				ys.push(b.hi);
+			}
+			for (const v of intervalSets) for (const b of v.bars) {
+				ys.push(b.lane - v.thickness / 2);
+				ys.push(b.lane + v.thickness / 2);
 			}
 			yDom = autoDomain(ys);
 		}
@@ -14755,6 +14872,43 @@ function renderChart(el, view) {
 		}
 		attr.needsUpdate = true;
 	};
+	/** Write every bar of a set as two triangles, clipped to the plot; unused slots collapse to nothing. */
+	function placeIntervals(v) {
+		if (!v.attr || !v.colors) return;
+		const a = v.attr.array, c = v.colors.array;
+		a.fill(0);
+		const order = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		];
+		v.bars.forEach((b, k) => {
+			const [h0] = toPlane(b.s, 0), [h1] = toPlane(b.e, 0);
+			const [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+			const clip = (x, hi) => Math.max(0, Math.min(hi, x));
+			const P = [
+				at(clip(h0, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v1, H), lift * 1.5),
+				at(clip(h0, W), clip(v1, H), lift * 1.5)
+			].map(dataToWorld);
+			const rgb = b.hl ? HIGHLIGHT : v.color;
+			for (let j = 0; j < 6; j++) {
+				const p = P[order[j]], o = (k * 6 + j) * 3;
+				a[o] = p[0];
+				a[o + 1] = p[1];
+				a[o + 2] = p[2];
+				c[o] = rgb[0];
+				c[o + 1] = rgb[1];
+				c[o + 2] = rgb[2];
+			}
+		});
+		v.attr.needsUpdate = true;
+		v.colors.needsUpdate = true;
+	}
 	/** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
 	const placeBand = (b) => {
 		if (!b.attr) return;
@@ -14770,6 +14924,34 @@ function renderChart(el, view) {
 		b.mesh = q.mesh;
 		b.attr = q.attr;
 		placeBand(b);
+	}
+	const barOrder = intervalSets.length ? el.renderOrder !== void 0 ? serial + 2 : chartState._planeMeshSerial++ : serial + 2;
+	for (const v of intervalSets) {
+		const pos = new Float32Array(v.max * 18), col = new Float32Array(v.max * 18);
+		const attr = new THREE.BufferAttribute(pos, 3), colors = new THREE.BufferAttribute(col, 3);
+		attr.setUsage(THREE.DynamicDrawUsage);
+		colors.setUsage(THREE.DynamicDrawUsage);
+		const geom = new THREE.BufferGeometry();
+		geom.setAttribute("position", attr);
+		geom.setAttribute("color", colors);
+		const mat = new THREE.MeshBasicMaterial({
+			vertexColors: true,
+			transparent: true,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			opacity: ignoresPlaneOpacity ? v.opacity : chartState.displayParams.planeOpacity * v.opacity
+		});
+		const mesh = new THREE.Mesh(geom, mat);
+		mesh.frustumCulled = false;
+		mesh.userData.targetOpacity = v.opacity;
+		mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+		mesh.renderOrder = barOrder;
+		chartState.three.scene.add(mesh);
+		chartState.planeMeshes.push(mesh);
+		v.mesh = mesh;
+		v.attr = attr;
+		v.colors = colors;
+		placeIntervals(v);
 	}
 	const mL = yTitle ? 1.6 : 1.1;
 	const mB = xTitle ? 1.1 : .7;
@@ -14861,6 +15043,7 @@ function renderChart(el, view) {
 				labels: t.ticks.map((v) => tickText(a.labelFn, v, t.step, tSec))
 			};
 		});
+		const barLabelKey = intervalSets.filter((v) => v.labelSrc).map((v) => v.bars.map((b) => `${b.text}\u0001${b.s}\u0001${b.e}\u0001${b.lane}`).join("")).join("");
 		const key = JSON.stringify([
 			xDom,
 			yDom,
@@ -14868,7 +15051,8 @@ function renderChart(el, view) {
 			yLabels,
 			rightAxes.map((a) => a.dom),
 			rightTicks.map((t) => t && t.labels),
-			pointLabelKey
+			pointLabelKey,
+			barLabelKey
 		]);
 		if (key === paperKey) return;
 		paperKey = key;
@@ -15125,7 +15309,28 @@ function renderChart(el, view) {
 				});
 			});
 		}
-		const legendRows = series.filter((sr) => sr.label);
+		for (const v of intervalSets) for (const b of v.bars) {
+			if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
+			const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
+			const [, top] = toPlane(0, b.lane + v.thickness / 2);
+			if (top > H) continue;
+			const fontPx = Math.min(pxPer * .3, fitLatexPx(b.text, Math.max(pxPer * .6, (h1 - h0) * pxPer * 1.4), pxPer * .6));
+			drawLatex(ctx, b.text, X((h0 + h1) / 2), Y(top) - pxPer * .04, {
+				fontPx,
+				color: css(inkRgb),
+				align: "center",
+				vAlign: "bottom"
+			});
+		}
+		const legendRows = [...series.filter((sr) => sr.label).map((sr) => ({
+			label: sr.label,
+			color: sr.color,
+			swatch: sr.kind
+		})), ...intervalSets.filter((v) => v.label).map((v) => ({
+			label: v.label,
+			color: v.color,
+			swatch: "bar"
+		}))];
 		if (legendRows.length) {
 			const titleRef = xTitle || yTitle;
 			const fontPx = titleRef ? fitLatexPx(titleRef, (xTitle ? W : H) * pxPer, pxPer * .5) : pxPer * .4;
@@ -15139,11 +15344,12 @@ function renderChart(el, view) {
 				const sx = bx + pad;
 				ctx.fillStyle = css(sr.color);
 				ctx.strokeStyle = css(sr.color);
-				if (sr.kind === "points") {
+				if (sr.swatch === "points") {
 					ctx.beginPath();
 					ctx.arc(sx + swatchW / 2, cy, fontPx * .2, 0, Math.PI * 2);
 					ctx.fill();
-				} else {
+				} else if (sr.swatch === "bar") ctx.fillRect(sx, cy - fontPx * .22, swatchW, fontPx * .44);
+				else {
 					ctx.lineWidth = Math.max(1.5, fontPx * .12);
 					ctx.beginPath();
 					ctx.moveTo(sx, cy);
@@ -15177,6 +15383,7 @@ function renderChart(el, view) {
 			}
 		}
 		for (const b of bands) placeBand(b);
+		for (const v of intervalSets) placeIntervals(v);
 	}
 	const animState = { stopped: false };
 	const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === "string" ? seriesSpecs[0].label : void 0);
@@ -15193,6 +15400,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.src),
 		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
+		...intervalSets.flatMap((v) => [
+			v.countSrc,
+			v.startSrc,
+			v.endSrc,
+			v.laneSrc,
+			v.hlSrc,
+			v.labelSrc
+		]),
 		...rightAxes.flatMap((a) => [a.src, a.labelSrc]),
 		xLabelSrc,
 		yLabelSrc
@@ -15206,6 +15421,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.fn?.fn),
 		...bands.flatMap((b) => [b.loFn?.fn, b.hiFn?.fn]),
+		...intervalSets.flatMap((v) => [
+			v.countFn?.fn,
+			v.startFn?.fn,
+			v.endFn?.fn,
+			v.laneFn?.fn,
+			v.hlFn?.fn,
+			v.labelFn?.fn
+		]),
 		...rightAxes.flatMap((a) => [a.fn?.fn, a.labelFn?.fn]),
 		xLabelFn?.fn,
 		yLabelFn?.fn
@@ -15231,6 +15454,14 @@ function renderChart(el, view) {
 			bands.forEach((b, k) => {
 				if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
 				if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
+			});
+			intervalSets.forEach((v, k) => {
+				v.countFn = compileOpt(v.countSrc, `intervals[${k}].countExpr`);
+				v.startFn = compileOpt(v.startSrc, `intervals[${k}].startExpr`);
+				v.endFn = compileOpt(v.endSrc, `intervals[${k}].endExpr`);
+				v.laneFn = compileOpt(v.laneSrc, `intervals[${k}].laneExpr`);
+				v.hlFn = compileOpt(v.hlSrc, `intervals[${k}].highlightExpr`);
+				v.labelFn = compileOpt(v.labelSrc, `intervals[${k}].labelExpr`);
 			});
 			if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
 			if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
@@ -20063,6 +20294,25 @@ function relatedLocations(file, first, last) {
 		return true;
 	});
 }
+/**
+* The file a scene's current state executes, and the expression for its line. The file is
+* always named explicitly (`file`, or `fileExpr` per state); there is no default. Null when
+* the scene declares no codeRef or the id is unknown or unavailable.
+*/
+function executionTarget(scene, files, evaluate) {
+	const code = scene?.codeRef;
+	if (!code) return null;
+	let id;
+	if ("file" in code) id = code.file;
+	else try {
+		id = String(evaluate(code.fileExpr));
+	} catch {}
+	const file = files.find((f) => f.id === id);
+	return file ? {
+		file,
+		lineExpr: code.lineExpr
+	} : null;
+}
 /** Split at authored range boundaries; columns are one-based, end-exclusive. */
 function markedSegments(text, marks) {
 	const boundaries = /* @__PURE__ */ new Set([0, text.length]);
@@ -20094,7 +20344,8 @@ function setupCodePanel() {
 	actions.hidden = true;
 	const selectionLabel = document.createElement("span");
 	let lesson, files = [], selected;
-	let first = 0, last = 0, excerpt = "", active = null;
+	let first = 0, last = 0, excerpt = "", followed;
+	const compiled = /* @__PURE__ */ new Map();
 	const targets = document.createElement("div");
 	targets.className = "code-step-targets";
 	targets.hidden = true;
@@ -20156,10 +20407,25 @@ function setupCodePanel() {
 			targets.append(button);
 		}
 	});
-	function refreshBinding() {
+	function evaluate(expr) {
+		if (!compiled.has(expr)) try {
+			compiled.set(expr, compileExpr(expr));
+		} catch {
+			compiled.set(expr, null);
+		}
+		const c = compiled.get(expr);
+		if (!c) throw new Error("Invalid code expression.");
+		return evalExpr(c, 0);
+	}
+	/** Follow execution into its file when the active file changes (or on scene entry), then mark its line. */
+	function refreshBinding(entering = false) {
+		const target = executionTarget(state.lessonSpec?.scenes?.[state.currentSceneIndex], files, evaluate);
+		if (target && (entering || target.file !== followed) && target.file !== selected) open(target.file);
+		followed = target?.file;
+		const lineExpr = target?.file === selected ? target?.lineExpr : void 0;
 		let line = 0;
-		if (active) try {
-			line = Number(evalExpr(active, 0));
+		if (lineExpr) try {
+			line = Number(evaluate(lineExpr));
 		} catch {}
 		body.querySelectorAll(".code-line").forEach((row) => {
 			const current = Number(row.dataset.line) === line;
@@ -20173,12 +20439,8 @@ function setupCodePanel() {
 		first = last = 0;
 		excerpt = "";
 		actions.hidden = targets.hidden = true;
-		active = null;
 		title.textContent = file.path + " · read only";
 		body.replaceChildren();
-		if (file.activeLineExpr) try {
-			active = compileExpr(file.activeLineExpr);
-		} catch {}
 		file.source.split("\n").forEach((text, i) => {
 			const row = document.createElement("div");
 			row.className = "code-line";
@@ -20246,19 +20508,16 @@ function setupCodePanel() {
 			tree.replaceChildren();
 			body.replaceChildren();
 			actions.hidden = targets.hidden = true;
-			selected = void 0;
-			active = null;
+			selected = followed = void 0;
+			compiled.clear();
 			build(fileTree(files), tree);
-			if (!files[0]) title.textContent = "This lesson has no code files.";
+			if (files[0]) open(files[0]);
+			else title.textContent = "This lesson has no code files.";
 		}
-		const sceneId = state.lessonSpec?.scenes?.[state.currentSceneIndex]?.id;
-		const cited = files.find((f) => f.locations?.some((l) => l.scene === sceneId));
-		const target = cited && !selected?.locations?.some((l) => l.scene === sceneId) ? cited : selected ?? files[0];
-		if (target && target !== selected) open(target);
-		refreshBinding();
+		refreshBinding(true);
 	}
 	window.addEventListener("algebench:navchange", refresh);
-	window.addEventListener("algebench:sliderchange", refreshBinding);
+	window.addEventListener("algebench:sliderchange", () => refreshBinding());
 	refresh();
 }
 //#endregion
