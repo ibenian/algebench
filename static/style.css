@@ -5705,3 +5705,7 @@ body:has(.push-array) #legend { display: none; }
 
 .code-execution-status { padding: 0 10px 8px; font: 11px ui-monospace, monospace; color: var(--accent-color); }
 .code-execution-status:empty { display: none; }
+
+.step-code-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 6px; font: 11px ui-monospace, monospace; }
+.step-code-links button { color: var(--accent-color); background: transparent; border: 1px solid currentColor; border-radius: 4px; padding: 2px 5px; font: inherit; cursor: pointer; }
+.step-code-links button:hover, .step-code-links button:focus-visible { background: var(--button-hover-bg, #ffffff18); }

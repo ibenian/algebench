@@ -16617,34 +16617,1292 @@
       "path": "push_delivery/flink_job.py",
       "language": "python",
       "source": "\"\"\"Real PyFlink 1.20 DataStream job. Run outside the AlgeBench browser.\"\"\"\nimport json\nimport os\nimport psycopg\nfrom pyflink.common import Types, WatermarkStrategy\nfrom pyflink.common.serialization import SimpleStringSchema\nfrom pyflink.datastream import StreamExecutionEnvironment\nfrom pyflink.datastream.connectors.base import DeliveryGuarantee\nfrom pyflink.datastream.connectors.kafka import (\n    KafkaSource, KafkaSink, KafkaRecordSerializationSchema,\n    KafkaOffsetsInitializer, KafkaOffsetResetStrategy,\n)\nfrom pyflink.datastream.functions import FlatMapFunction\n\n\nclass FanOut(FlatMapFunction):\n    def open(self, runtime_context):\n        self.db = psycopg.connect(os.environ[\"DATABASE_URL\"], autocommit=True)\n\n    def flat_map(self, raw):\n        intent = json.loads(raw)\n        # Real SQL lookup; sender can be a publisher, channel, or user.\n        rows = self.db.execute(\n            \"SELECT target FROM followers WHERE source = %s \"\n            \"ORDER BY target LIMIT %s\",\n            (intent[\"sender\"], int(os.getenv(\"QUERY_LIMIT\", \"40\"))),\n        ).fetchall()\n        for (target,) in rows:\n            yield json.dumps({\n                \"id\": intent[\"id\"] + \":\" + target,\n                \"intent\": intent[\"id\"], \"target\": target,\n                \"body\": intent[\"body\"], \"attempt\": 1,\n            })\n\n    def close(self):\n        self.db.close()\n\n\ndef main():\n    env = StreamExecutionEnvironment.get_execution_environment()\n    env.set_parallelism(int(os.getenv(\"PARALLELISM\", \"2\")))\n    env.enable_checkpointing(5000)\n    env.add_jars(os.environ[\"KAFKA_CONNECTOR_JAR_URI\"])\n    brokers = os.getenv(\"KAFKA_BOOTSTRAP\", \"localhost:9092\")\n    source = (KafkaSource.builder()\n        .set_bootstrap_servers(brokers)\n        .set_topics(\"notification-intents\")\n        .set_group_id(\"notification-fanout\")\n        .set_starting_offsets(KafkaOffsetsInitializer.committed_offsets(\n            KafkaOffsetResetStrategy.EARLIEST))\n        .set_value_only_deserializer(SimpleStringSchema())\n        .build())\n    intents = env.from_source(\n        source, WatermarkStrategy.no_watermarks(), \"KafkaSource\")\n    jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")\n    serializer = (KafkaRecordSerializationSchema.builder()\n        .set_topic(\"delivery-jobs\")\n        .set_value_serialization_schema(SimpleStringSchema())\n        .build())\n    sink = (KafkaSink.builder()\n        .set_bootstrap_servers(brokers)\n        .set_record_serializer(serializer)\n        .set_delivery_guarantee(DeliveryGuarantee.AT_LEAST_ONCE)\n        .build())\n    jobs.sink_to(sink).name(\"KafkaSink\")\n    env.execute(\"notification-fanout\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
-      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'expand') > 0 ? 53 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'expand') > 0 ? 23 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'fanout') > 0 ? 29 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'expand') > 0 ? 55 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'fanout') > 0 ? 65 : 0)]"
+      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'expand') > 0 ? 53 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'expand') > 0 ? 23 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'fanout') > 0 ? 29 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'expand') > 0 ? 55 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'fanout') > 0 ? 65 : 0)]",
+      "locations": [
+        {
+          "line": 53,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "outbox-baseline",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "outbox-baseline",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 53,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "fanout-write",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "fanout-write",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 53,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "fanout-read",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "fanout-read",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 53,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "scaling",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "scaling",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 53,
+          "scene": "retries",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "retries",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "retries",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "retries",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "retries",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "retries",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "retries",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 53,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "idempotency",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "idempotency",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 53,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "backpressure",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "backpressure",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 53,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "intents = env.from_source("
+        },
+        {
+          "line": 23,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "rows = self.db.execute("
+        },
+        {
+          "line": 29,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "yield json.dumps({"
+        },
+        {
+          "line": 55,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "jobs = intents.flat_map(FanOut(), output_type=Types.STRING()).name(\"FanOut\")"
+        },
+        {
+          "line": 65,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "jobs.sink_to(sink).name(\"KafkaSink\")"
+        },
+        {
+          "line": 42,
+          "scene": "guarantees-capstone",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 63,
+          "scene": "guarantees-capstone",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        }
+      ]
     },
     {
       "id": "submit",
       "path": "push_delivery/submit.py",
       "language": "python",
       "source": "\"\"\"Commit an intent and outbox row in the same PostgreSQL transaction.\"\"\"\nimport json\nimport os\nimport sys\nimport psycopg\nfrom psycopg.types.json import Jsonb\n\n\ndef submit(intent):\n    with psycopg.connect(os.environ[\"DATABASE_URL\"]) as db:\n        # Existing id means replay of the original request, not a new intent.\n        row = db.execute(\n            \"INSERT INTO notifications(id, payload) VALUES (%s, %s) \"\n            \"ON CONFLICT DO NOTHING RETURNING id\",\n            (intent[\"id\"], Jsonb(intent)),\n        ).fetchone()\n        if row:\n            db.execute(\n                \"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\",\n                (\"intent:\" + intent[\"id\"], \"notification-intents\", Jsonb(intent)),\n            )\n        # Connection context commits both inserts together or rolls both back.\n\n\nif __name__ == \"__main__\":\n    submit(json.loads(sys.argv[1]))\n",
-      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'commit') > 0 ? 13 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'commit') > 0 ? 19 : 0)]"
+      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'commit') > 0 ? 13 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'commit') > 0 ? 19 : 0)]",
+      "locations": [
+        {
+          "line": 13,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "outbox-baseline",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "outbox-baseline",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 13,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "fanout-write",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "fanout-write",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 13,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "fanout-read",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "fanout-read",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 13,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "scaling",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "scaling",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 13,
+          "scene": "retries",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "retries",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "retries",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "retries",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 13,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "idempotency",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "idempotency",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 13,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "backpressure",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "backpressure",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 13,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "\"INSERT INTO notifications(id, payload) VALUES (%s, %s) \""
+        },
+        {
+          "line": 19,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "\"INSERT INTO outbox(id, topic, payload) VALUES (%s, %s, %s)\","
+        },
+        {
+          "line": 13,
+          "scene": "guarantees-capstone",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 19,
+          "scene": "guarantees-capstone",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        }
+      ]
     },
     {
       "id": "outbox_relay",
       "path": "push_delivery/outbox_relay.py",
       "language": "python",
       "source": "\"\"\"Real Kafka producer: publish committed intents and due retry rows.\"\"\"\nimport json\nimport os\nimport time\nimport psycopg\nfrom confluent_kafka import Producer\n\n\ndef publish(producer, topic, payload):\n    result = []\n    producer.produce(topic, key=payload[\"id\"], value=json.dumps(payload),\n                     on_delivery=lambda error, message: result.append(error))\n    remaining = producer.flush(10)\n    if remaining or not result or result[0] is not None:\n        raise RuntimeError(\"Kafka publication was not acknowledged\")\n\n\ndef main():\n    producer = Producer({\n        \"bootstrap.servers\": os.getenv(\"KAFKA_BOOTSTRAP\", \"localhost:9092\"),\n        \"enable.idempotence\": True,\n        \"acks\": \"all\",\n    })\n    with psycopg.connect(os.environ[\"DATABASE_URL\"], autocommit=True) as db:\n        while True:\n            with db.transaction():\n                row = db.execute(\n                    \"SELECT id, topic, payload FROM outbox \"\n                    \"WHERE NOT published AND due_at <= now() \"\n                    \"ORDER BY due_at, id LIMIT 1 FOR UPDATE SKIP LOCKED\"\n                ).fetchone()\n                if row:\n                    event_id, topic, payload = row\n                    publish(producer, topic, payload)\n                    db.execute(\"UPDATE outbox SET published = true WHERE id = %s\",\n                               (event_id,))\n                    # Crash after Kafka ACK but before DB commit can replay.\n            if not row:\n                time.sleep(0.2)\n\n\nif __name__ == \"__main__\":\n    main()\n",
-      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'relay') > 0 or dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'resume') > 0 ? 34 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'relay') > 0 or dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'resume') > 0 ? 35 : 0)]"
+      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'relay') > 0 or dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'resume') > 0 ? 34 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'relay') > 0 or dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'resume') > 0 ? 35 : 0)]",
+      "locations": [
+        {
+          "line": 34,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "outbox-baseline",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 34,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "fanout-write",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 34,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "fanout-read",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 34,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "scaling",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 34,
+          "scene": "retries",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "retries",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "retries",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 34,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "idempotency",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 34,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "backpressure",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 34,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "publish(producer, topic, payload)"
+        },
+        {
+          "line": 35,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "db.execute(\"UPDATE outbox SET published = true WHERE id = %s\","
+        },
+        {
+          "line": 37,
+          "scene": "guarantees-capstone",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        }
+      ]
     },
     {
       "id": "worker",
       "path": "push_delivery/worker.py",
       "language": "python",
       "source": "\"\"\"Real Kafka consumer with PostgreSQL completion/retry state and HTTP push.\"\"\"\nimport json\nimport os\nimport psycopg\nimport requests\nfrom psycopg.types.json import Jsonb\nfrom confluent_kafka import Consumer, KafkaException\n\n\ndef enqueue(db, event_id, topic, job, delay=0):\n    db.execute(\n        \"INSERT INTO outbox(id, topic, payload, due_at) \"\n        \"VALUES (%s, %s, %s, now() + %s * interval '1 second') \"\n        \"ON CONFLICT DO NOTHING\", (event_id, topic, Jsonb(job), delay),\n    )\n\n\ndef handle(db, job):\n    # Serialize concurrent replays of one job while checking/updating the ledger.\n    db.execute(\"SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))\", (job[\"id\"],))\n    done = db.execute(\"SELECT 1 FROM completed WHERE id = %s\", (job[\"id\"],)).fetchone()\n    if done:\n        return  # acknowledged completion suppresses a replay\n    terminal = db.execute(\"SELECT 1 FROM terminal WHERE id = %s\", (job[\"id\"],)).fetchone()\n    if terminal:\n        return\n    attempt = job[\"attempt\"]\n    # If a prior copy already scheduled this attempt's retry, don't send it again.\n    scheduled = db.execute(\"SELECT 1 FROM outbox WHERE id = %s\",\n                           (f\"retry:{job['id']}:{attempt + 1}\",)).fetchone()\n    if scheduled:\n        return\n    try:\n        response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)\n        accepted = 200 <= response.status_code < 300\n        permanent = 400 <= response.status_code < 500 and response.status_code not in (408, 429)\n    except requests.RequestException:\n        accepted, permanent = False, False  # ambiguous: effect may have happened\n    if accepted:\n        db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\",\n                   (job[\"id\"],))\n    elif permanent:\n        db.execute(\"INSERT INTO terminal(id) VALUES (%s) ON CONFLICT DO NOTHING\", (job[\"id\"],))\n        enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)\n    elif os.getenv(\"DELIVERY_POLICY\", \"at-least-once\") == \"at-most-once\":\n        # Abandon ambiguous/failed responses without scheduling another attempt.\n        db.execute(\"INSERT INTO terminal(id) VALUES (%s) ON CONFLICT DO NOTHING\", (job[\"id\"],))\n    elif attempt >= int(os.getenv(\"MAX_ATTEMPTS\", \"3\")):\n        db.execute(\"INSERT INTO terminal(id) VALUES (%s) ON CONFLICT DO NOTHING\", (job[\"id\"],))\n        enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)\n    else:\n        retry = {**job, \"attempt\": attempt + 1}\n        enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)\n    # HTTP effect and this DB transaction are NOT atomic. Lost ACKs may duplicate pushes.\n\n\ndef main():\n    consumer = Consumer({\n        \"bootstrap.servers\": os.getenv(\"KAFKA_BOOTSTRAP\", \"localhost:9092\"),\n        \"group.id\": \"push-workers\", \"auto.offset.reset\": \"earliest\",\n        \"enable.auto.commit\": False, \"enable.auto.offset.store\": False,\n        \"isolation.level\": \"read_committed\",\n    })\n    consumer.subscribe([\"delivery-jobs\"])\n    try:\n        with psycopg.connect(os.environ[\"DATABASE_URL\"], autocommit=True) as db:\n            while True:\n                message = consumer.poll(1.0)\n                if message is None:\n                    continue\n                if message.error():\n                    raise KafkaException(message.error())\n                job = json.loads(message.value())\n                with db.transaction():\n                    handle(db, job)\n                consumer.commit(message=message, asynchronous=False)\n                # Commit next offset only AFTER durable completion/retry/terminal state.\n    finally:\n        consumer.close()\n\n\nif __name__ == \"__main__\":\n    main()\n",
-      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'claim') > 0 ? 68 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'dedupe') > 0 ? 23 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'claim') > 0 ? 34 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'ack') > 0 ? 40 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'permanent') > 0 ? 44 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'abandon') > 0 ? 46 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'retry') > 0 ? 53 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'exhausted') > 0 ? 50 : 0)]"
+      "activeLineExpr": "[(dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'claim') > 0 ? 68 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'dedupe') > 0 ? 23 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'claim') > 0 ? 34 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'ack') > 0 ? 40 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'permanent') > 0 ? 44 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'abandon') > 0 ? 46 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'retry') > 0 ? 53 : 0), (dsFlow(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'exhausted') > 0 ? 50 : 0)]",
+      "locations": [
+        {
+          "line": 68,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "outbox-baseline",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "outbox-baseline",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "outbox-baseline",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 68,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "fanout-write",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "fanout-write",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "fanout-write",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 68,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "fanout-read",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "fanout-read",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "fanout-read",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 68,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "scaling",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "scaling",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "scaling",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 68,
+          "scene": "retries",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "retries",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "retries",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "retries",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "retries",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "retries",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "retries",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "retries",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "retries",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "retries",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 68,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "idempotency",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "idempotency",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "idempotency",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 68,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "backpressure",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "backpressure",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "backpressure",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 68,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "message = consumer.poll(1.0)"
+        },
+        {
+          "line": 23,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "return  # acknowledged completion suppresses a replay"
+        },
+        {
+          "line": 34,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "response = requests.post(os.environ[\"PUSH_GATEWAY_URL\"], json=job, timeout=5)"
+        },
+        {
+          "line": 40,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "db.execute(\"INSERT INTO completed(id) VALUES (%s) ON CONFLICT DO NOTHING\","
+        },
+        {
+          "line": 44,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 46,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "# Abandon ambiguous/failed responses without scheduling another attempt."
+        },
+        {
+          "line": 53,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "enqueue(db, f\"retry:{job['id']}:{retry['attempt']}\", \"delivery-jobs\", retry, 2 ** attempt)"
+        },
+        {
+          "line": 50,
+          "scene": "guarantees-capstone",
+          "step": "execute",
+          "label": "enqueue(db, \"dead:\" + job[\"id\"], \"dead-letters\", job)"
+        },
+        {
+          "line": 40,
+          "scene": "guarantees-capstone",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        },
+        {
+          "line": 76,
+          "scene": "guarantees-capstone",
+          "step": "defend",
+          "label": "Recovery and delivery guarantee boundary"
+        }
+      ]
     },
     {
       "id": "database-schema",
       "path": "push_delivery/schema.sql",
       "language": "sql",
-      "source": "-- PostgreSQL schema for the concrete sample; apply once before starting services.\nCREATE TABLE followers (\n    source text NOT NULL,\n    target text NOT NULL,\n    PRIMARY KEY (source, target)\n);\nCREATE TABLE notifications (id text PRIMARY KEY, payload jsonb NOT NULL);\nCREATE TABLE outbox (\n    id text PRIMARY KEY,\n    topic text NOT NULL,\n    payload jsonb NOT NULL,\n    due_at timestamptz NOT NULL DEFAULT now(),\n    published boolean NOT NULL DEFAULT false\n);\nCREATE INDEX outbox_due ON outbox(due_at, id) WHERE NOT published;\nCREATE TABLE completed (id text PRIMARY KEY);\nCREATE TABLE terminal (id text PRIMARY KEY);\nINSERT INTO followers(source, target) VALUES\n    ('publisher-1', 'u1'), ('publisher-1', 'u2'), ('publisher-1', 'u3'),\n    ('channel-2', 'u2'), ('channel-2', 'u4');\n"
+      "source": "-- PostgreSQL schema for the concrete sample; apply once before starting services.\nCREATE TABLE followers (\n    source text NOT NULL,\n    target text NOT NULL,\n    PRIMARY KEY (source, target)\n);\nCREATE TABLE notifications (id text PRIMARY KEY, payload jsonb NOT NULL);\nCREATE TABLE outbox (\n    id text PRIMARY KEY,\n    topic text NOT NULL,\n    payload jsonb NOT NULL,\n    due_at timestamptz NOT NULL DEFAULT now(),\n    published boolean NOT NULL DEFAULT false\n);\nCREATE INDEX outbox_due ON outbox(due_at, id) WHERE NOT published;\nCREATE TABLE completed (id text PRIMARY KEY);\nCREATE TABLE terminal (id text PRIMARY KEY);\nINSERT INTO followers(source, target) VALUES\n    ('publisher-1', 'u1'), ('publisher-1', 'u2'), ('publisher-1', 'u3'),\n    ('channel-2', 'u2'), ('channel-2', 'u4');\n",
+      "locations": [
+        {
+          "line": 7,
+          "scene": "outbox-baseline",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "outbox-baseline",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 7,
+          "scene": "fanout-write",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "fanout-write",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 7,
+          "scene": "fanout-read",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "fanout-read",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 7,
+          "scene": "scaling",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "scaling",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 7,
+          "scene": "retries",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "retries",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 7,
+          "scene": "idempotency",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "idempotency",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 7,
+          "scene": "backpressure",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "backpressure",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 7,
+          "scene": "guarantees-capstone",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        },
+        {
+          "line": 8,
+          "scene": "guarantees-capstone",
+          "step": "predict",
+          "label": "Atomic durable boundary"
+        }
+      ]
     }
   ]
 }

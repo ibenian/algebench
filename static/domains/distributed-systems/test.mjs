@@ -278,3 +278,19 @@ test('real service files highlight causal transitions without placeholder operat
   for(let scenario=0;scenario<lesson.scenes.length;scenario++)for(let frame=0;frame<=24;frame++)assert.ok([...marked(file.id,scenario,frame)].every(s=>s.length>0));
  }
 });
+
+test('every lesson step has valid source links, including all live code markers',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
+ for(const file of lesson.codeFiles)for(const location of file.locations??[]){
+  const scene=lesson.scenes.find(s=>s.id===location.scene);
+  assert.ok(scene?.steps.some(s=>s.id===location.step));
+  assert.ok(location.line>0&&location.line<=file.source.split('\n').length);
+ }
+ for(const scene of lesson.scenes){
+  for(const step of scene.steps)assert.ok(lesson.codeFiles.some(f=>f.locations?.some(l=>l.scene===scene.id&&l.step===step.id)),scene.id+':'+step.id);
+  for(const file of lesson.codeFiles){
+   const markers=[...file.activeLineExpr?.matchAll(/\? (\d+) : 0/g)??[]].map(m=>Number(m[1]));
+   for(const line of markers)assert.ok(file.locations.some(l=>l.scene===scene.id&&l.step==='execute'&&l.line===line));
+  }
+ }
+});

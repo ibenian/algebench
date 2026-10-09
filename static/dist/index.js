@@ -3521,6 +3521,116 @@ function animateSlider$1(id, target, duration) {
 	});
 }
 //#endregion
+//#region src/code-panel-model.ts
+function fileTree(files) {
+	const root = {
+		folders: /* @__PURE__ */ new Map(),
+		files: []
+	};
+	for (const file of files) {
+		const parts = file.path.split("/").filter(Boolean);
+		let node = root;
+		for (const part of parts.slice(0, -1)) {
+			if (!node.folders.has(part)) node.folders.set(part, {
+				folders: /* @__PURE__ */ new Map(),
+				files: []
+			});
+			node = node.folders.get(part);
+		}
+		node.files.push(file);
+	}
+	return root;
+}
+function relatedLocations(file, first, last) {
+	const seen = /* @__PURE__ */ new Set();
+	return (file.locations ?? []).filter((location) => {
+		const key = JSON.stringify([
+			location.scene,
+			location.step,
+			location.snapshot
+		]);
+		if (location.line < first || location.line > last || seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+}
+/** Split at authored range boundaries; columns are one-based, end-exclusive. */
+function markedSegments(text, marks) {
+	const boundaries = /* @__PURE__ */ new Set([0, text.length]);
+	for (const m of marks) {
+		boundaries.add(Math.max(0, Math.min(text.length, m.startColumn - 1)));
+		boundaries.add(Math.max(0, Math.min(text.length, m.endColumn - 1)));
+	}
+	const offsets = [...boundaries].sort((a, b) => a - b);
+	return offsets.slice(0, -1).map((start, i) => ({
+		text: text.slice(start, offsets[i + 1]),
+		color: marks.find((m) => start >= m.startColumn - 1 && start < m.endColumn - 1)?.color
+	}));
+}
+/** Accept scalar PCs and simultaneous transitions (math.js arrays are matrices). */
+function activeCodeLines(value) {
+	const matrix = value;
+	const raw = matrix && typeof matrix.toArray === "function" ? matrix.toArray() : value;
+	return new Set((Array.isArray(raw) ? raw : [raw]).filter((line) => typeof line === "number" && Number.isInteger(line) && line > 0));
+}
+/** Reverse the authored code→step map, optionally narrowing it to live lines. */
+function stepCodeLocations(files, scene, step, snapshot, active) {
+	return files.flatMap((file) => {
+		const seen = /* @__PURE__ */ new Set();
+		const lines = active?.(file);
+		const count = file.source.split("\n").length;
+		return (file.locations ?? []).filter((location) => {
+			if (location.scene !== scene || location.step !== step || location.snapshot !== void 0 && location.snapshot !== snapshot || !Number.isInteger(location.line) || location.line < 1 || location.line > count || lines && !lines.has(location.line) || seen.has(location.line)) return false;
+			seen.add(location.line);
+			return true;
+		}).map((location) => ({
+			file,
+			location
+		}));
+	});
+}
+//#endregion
+//#region src/step-code-links.ts
+/** Step captions link into the same authored locations used by the code browser. */
+function makeStepCodeLinks() {
+	const lesson = state.lessonSpec;
+	const scene = lesson?.scenes?.[state.currentSceneIndex];
+	const step = scene?.steps?.[state.currentStepIndex];
+	if (!scene?.id || !step?.id) return null;
+	const slider = scene.stepPlayback ? state.sceneSliders[scene.stepPlayback.slider] : void 0;
+	const snapshot = slider && slider.kind !== "tensor" ? slider.value : void 0;
+	const refs = stepCodeLocations(lesson?.codeFiles ?? [], scene.id, step.id, snapshot, (file) => {
+		if (!step.descriptionExpr || !file.activeLineExpr) return void 0;
+		try {
+			return activeCodeLines(evalExpr(compileExpr(file.activeLineExpr), 0));
+		} catch {
+			return /* @__PURE__ */ new Set();
+		}
+	});
+	if (!refs.length) return null;
+	const links = document.createElement("div");
+	links.className = "step-code-links";
+	links.setAttribute("role", "group");
+	links.setAttribute("aria-label", "Code for this step");
+	const label = document.createElement("span");
+	label.textContent = "Code:";
+	links.append(label);
+	for (const { file, location } of refs) {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.textContent = file.path.split("/").pop() + ":" + location.line;
+		button.title = location.label ?? file.path + ":" + location.line;
+		button.setAttribute("aria-label", "Open " + file.path + " line " + location.line);
+		button.addEventListener("mousedown", (event) => event.stopPropagation());
+		button.onclick = () => window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
+			fileId: file.id,
+			line: location.line
+		} }));
+		links.append(button);
+	}
+	return links;
+}
+//#endregion
 //#region src/follow-cam.ts
 var followState = state;
 function findElementSpecById(id) {
@@ -7464,6 +7574,8 @@ function updateStepCaption(scene, stepIdx, preservePosition = false) {
 		el.dataset.markdown = plain;
 		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${plain}"`);
 		fillBoardOverlay(el, renderMarkdown$1(text), btn);
+		const codeLinks = makeStepCodeLinks();
+		if (codeLinks) el.querySelector(".bo-body").prepend(codeLinks);
 		el.style.opacity = String(overlayState.displayParams.overlayOpacity);
 		if (!preservePosition) resetCaptionPosition(el);
 		el.classList.remove("hidden");
@@ -21139,59 +21251,6 @@ function setupSceneDock() {
 	});
 }
 //#endregion
-//#region src/code-panel-model.ts
-function fileTree(files) {
-	const root = {
-		folders: /* @__PURE__ */ new Map(),
-		files: []
-	};
-	for (const file of files) {
-		const parts = file.path.split("/").filter(Boolean);
-		let node = root;
-		for (const part of parts.slice(0, -1)) {
-			if (!node.folders.has(part)) node.folders.set(part, {
-				folders: /* @__PURE__ */ new Map(),
-				files: []
-			});
-			node = node.folders.get(part);
-		}
-		node.files.push(file);
-	}
-	return root;
-}
-function relatedLocations(file, first, last) {
-	const seen = /* @__PURE__ */ new Set();
-	return (file.locations ?? []).filter((location) => {
-		const key = JSON.stringify([
-			location.scene,
-			location.step,
-			location.snapshot
-		]);
-		if (location.line < first || location.line > last || seen.has(key)) return false;
-		seen.add(key);
-		return true;
-	});
-}
-/** Split at authored range boundaries; columns are one-based, end-exclusive. */
-function markedSegments(text, marks) {
-	const boundaries = /* @__PURE__ */ new Set([0, text.length]);
-	for (const m of marks) {
-		boundaries.add(Math.max(0, Math.min(text.length, m.startColumn - 1)));
-		boundaries.add(Math.max(0, Math.min(text.length, m.endColumn - 1)));
-	}
-	const offsets = [...boundaries].sort((a, b) => a - b);
-	return offsets.slice(0, -1).map((start, i) => ({
-		text: text.slice(start, offsets[i + 1]),
-		color: marks.find((m) => start >= m.startColumn - 1 && start < m.endColumn - 1)?.color
-	}));
-}
-/** Accept scalar PCs and simultaneous transitions (math.js arrays are matrices). */
-function activeCodeLines(value) {
-	const matrix = value;
-	const raw = matrix && typeof matrix.toArray === "function" ? matrix.toArray() : value;
-	return new Set((Array.isArray(raw) ? raw : [raw]).filter((line) => typeof line === "number" && Number.isInteger(line) && line > 0));
-}
-//#endregion
 //#region src/code-panel.ts
 function setupCodePanel() {
 	const host = document.getElementById("dock-tab-code");
@@ -21383,6 +21442,22 @@ function setupCodePanel() {
 		}
 		refreshBinding();
 	}
+	window.addEventListener("algebench:opencode", (event) => {
+		const target = event.detail;
+		refresh();
+		const file = files.find((file) => file.id === target?.fileId);
+		if (!file || !Number.isInteger(target.line) || target.line < 1 || target.line > file.source.split("\n").length) return;
+		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+		document.querySelector(".dock-tab[data-dock-tab=\"code\"]")?.click();
+		open(file);
+		choose(target.line, target.line, file.source.split("\n")[target.line - 1]);
+		const row = body.querySelector(`[data-line="${target.line}"]`);
+		if (row) {
+			const rect = row.getBoundingClientRect(), viewport = body.getBoundingClientRect();
+			body.scrollTop += rect.top - viewport.top - Math.max(0, (viewport.height - rect.height) / 2);
+			row.querySelector("button")?.focus({ preventScroll: true });
+		}
+	});
 	window.addEventListener("algebench:navchange", refresh);
 	window.addEventListener("algebench:sliderchange", refreshBinding);
 	refresh();

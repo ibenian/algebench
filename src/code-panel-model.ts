@@ -37,3 +37,21 @@ export function activeCodeLines(value: unknown): Set<number> {
     const values=Array.isArray(raw)?raw:[raw];
     return new Set(values.filter((line):line is number=>typeof line==='number'&&Number.isInteger(line)&&line>0));
 }
+
+/** Reverse the authored code→step map, optionally narrowing it to live lines. */
+export function stepCodeLocations(files: CodeFile[], scene: string, step: string, snapshot?: number,
+    active?: (file: CodeFile) => Set<number> | undefined) {
+    return files.flatMap(file => {
+        const seen = new Set<number>();
+        const lines = active?.(file);
+        const count = file.source.split('\n').length;
+        return (file.locations ?? []).filter(location => {
+            if (location.scene !== scene || location.step !== step ||
+                (location.snapshot !== undefined && location.snapshot !== snapshot) ||
+                !Number.isInteger(location.line) || location.line < 1 || location.line > count ||
+                (lines && !lines.has(location.line)) || seen.has(location.line)) return false;
+            seen.add(location.line);
+            return true;
+        }).map(location => ({file, location}));
+    });
+}

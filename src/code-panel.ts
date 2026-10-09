@@ -113,6 +113,22 @@ export function setupCodePanel(): void {
         }
         refreshBinding();
     }
+    window.addEventListener('algebench:opencode', event => {
+        const target = (event as CustomEvent<{fileId: string; line: number}>).detail;
+        refresh();
+        const file = files.find(file => file.id === target?.fileId);
+        if (!file || !Number.isInteger(target.line) || target.line < 1 || target.line > file.source.split('\n').length) return;
+        window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+        document.querySelector<HTMLButtonElement>('.dock-tab[data-dock-tab="code"]')?.click();
+        open(file);
+        choose(target.line, target.line, file.source.split('\n')[target.line - 1]!); // bounds checked above
+        const row = body.querySelector<HTMLElement>(`[data-line="${target.line}"]`);
+        if (row) {
+            const rect = row.getBoundingClientRect(), viewport = body.getBoundingClientRect();
+            body.scrollTop += rect.top - viewport.top - Math.max(0, (viewport.height - rect.height) / 2);
+            row.querySelector<HTMLButtonElement>('button')?.focus({preventScroll: true});
+        }
+    });
     window.addEventListener('algebench:navchange',refresh);
     window.addEventListener('algebench:sliderchange',refreshBinding);
     refresh();

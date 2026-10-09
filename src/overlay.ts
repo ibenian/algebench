@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { makeStepCodeLinks } from '/step-code-links.js';
 import { GEAR_ICON, DOCK_BOTTOM_ICON, UNDOCK_ICON } from '/icons.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
 import { stripGlossaryMarkers } from '/glossary-core.js';
@@ -1696,6 +1697,9 @@ export function updateStepCaption(scene: OverlayScene | null | undefined, stepId
         el.dataset.markdown = plain;
         const btn = makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${plain}"`);
         fillBoardOverlay(el, renderMarkdown(text), btn);
+        const codeLinks = makeStepCodeLinks();
+        // fillBoardOverlay creates this body synchronously.
+        if (codeLinks) el.querySelector('.bo-body')!.prepend(codeLinks);
         el.style.opacity = String(overlayState.displayParams.overlayOpacity);
         if (!preservePosition) resetCaptionPosition(el);
         el.classList.remove('hidden');
