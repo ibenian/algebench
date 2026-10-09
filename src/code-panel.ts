@@ -4,7 +4,7 @@ import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { makeAiAskButton } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
-import { fileTree, markedSegments, relatedLocations } from '/code-panel-model.js';
+import { fileTree, markedSegments, relatedLocations, activeCodeLines } from '/code-panel-model.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
@@ -13,6 +13,8 @@ export function setupCodePanel(): void {
     if(!host)return;
     const tree=document.createElement('div');tree.className='code-file-tree';tree.setAttribute('aria-label','Code files');
     const title=document.createElement('div');title.className='code-file-title';
+    const execution=document.createElement('div');execution.className='code-execution-status';execution.setAttribute('role','status');
+    let lastExecution='';
     const body=document.createElement('div');body.className='code-source';body.setAttribute('aria-label','Source code');
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
@@ -25,7 +27,7 @@ export function setupCodePanel(): void {
         return `Explain this selected code in the context of the current lesson. This source is displayed, not executed.\nFile: ${selected.path}\nLines: ${first}–${last}\nSelected text:\n${excerpt}\nCurrent scene: ${scene?.title??''}\nCurrent lesson step: ${state.currentStepIndex+1}\nScalar variables: ${JSON.stringify(Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value])))}`;
     });
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
-    actions.append(selectionLabel,ask,jump);host.append(tree,title,body,actions,targets);
+    actions.append(selectionLabel,ask,jump);host.append(tree,title,execution,body,actions,targets);
     function resolve(location: NonNullable<CodeFile['locations']>[number]) {
         const scenes=state.lessonSpec?.scenes??[];
         const scene=scenes.findIndex(s=>s.id===location.scene);
@@ -56,16 +58,25 @@ export function setupCodePanel(): void {
         for(const choice of choices){const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.onclick=()=>{targets.hidden=true;go(choice);};targets.append(button);}
     });
     function refreshBinding() {
-        let line=0;
-        if(active)try{line=Number(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        let lines=new Set<number>();
+        if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        const signature=[...lines].join(', ');
+        execution.textContent=active?(signature?'Active lines: '+signature:'No active lines at this position'):'';
+        let firstActive:HTMLElement|undefined;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
-            const current=Number(row.dataset.line)===line;
+            const current=lines.has(Number(row.dataset.line));
+            if(current&&!firstActive)firstActive=row;
             row.classList.toggle('execution-line',current);
             if(current)row.setAttribute('aria-current','step');else row.removeAttribute('aria-current');
         });
+        if(signature!==lastExecution&&firstActive&&body.clientHeight>0){
+            const row=firstActive.getBoundingClientRect(),viewport=body.getBoundingClientRect();
+            if(row.top<viewport.top||row.bottom>viewport.bottom)body.scrollTop+=row.top-viewport.top;
+        }
+        lastExecution=signature;
     }
     function open(file: CodeFile) {
-        selected=file;first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;
+        selected=file;lastExecution='';first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;
         title.textContent=file.path+' · read only';body.replaceChildren();
         if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{

@@ -63,7 +63,7 @@
         const outstanding = () => s.outbox.reduce((n,r)=>n+r.remaining,0)+fanout.reduce((n,r)=>n+r.remaining,0)+s.queue.length+s.workers.length+s.retry.length+s.deferred.length;
         for (let tick=1;tick<=frame;tick++) {
             const events = [];
-            s.flows={lookup:0,commit:0,relay:0,fanout:0,claim:0,accept:0,receipt:0,retry:0,resume:0,read:0,terminal:0,dedupe:0,ack:0,dead:0};
+            s.flows={lookup:0,commit:0,relay:0,fanout:0,claim:0,accept:0,receipt:0,retry:0,resume:0,read:0,terminal:0,dedupe:0,ack:0,dead:0,expand:0,defer:0,replay:0,reject:0,abandon:0,admit:0,permanent:0,exhausted:0};
             const before = { accepted:s.effectAccepted, duplicates:s.duplicates, retries:s.retries, terminal:s.dlq.length, expired:s.expired, attempts:s.attempts };
             // An external effect can succeed without a downstream receipt.
             for (let i=scheduledReceipts.length-1;i>=0;i--) if (scheduledReceipts[i].due<=tick) {
@@ -79,7 +79,7 @@
                 const permanent=failure===3 && w.u===1;
                 const outage=(failure===1 && tick>=model.outageStart && tick<=model.outageEnd) || (failure===4 && tick>=model.outageStart);
                 const throttled=acceptedThisTick>=rate;
-                if(permanent) {s.dlq.push({...w,reason:'permanent-target'});s.flows.terminal++;s.flows.dead++; events.push(`${w.id}: permanent target failure → DLQ`); continue;}
+                if(permanent) {s.dlq.push({...w,reason:'permanent-target'});s.flows.terminal++;s.flows.dead++;s.flows.permanent++; events.push(`${w.id}: permanent target failure → DLQ`); continue;}
                 const lostAck=failure===2 && w.n===1 && w.u===1 && w.attempt===1 && !lostAckInjected;
                 if(!outage && !throttled) {
                     acceptedThisTick++; s.effectAccepted++;s.flows.accept++;
@@ -91,8 +91,8 @@
                     if(!lostAck) {s.flows.ack++;completed.add(w.id); if(!s.ledger.includes(w.id)) s.ledger.push(w.id); events.push(`External service accepted ${w.id}; acknowledgement stored`); continue;}
                 }
                 const reason=lostAck?'lost-ack':outage?'unavailable':'rate-limit';
-                if(policy===0) {s.expired++;s.flows.terminal++; events.push(`${w.id}: ${reason}; at-most-once abandons`);}
-                else if(w.attempt>=model.maxAttempts) {s.dlq.push({...w,reason});s.flows.terminal++;s.flows.dead++; events.push(`${w.id}: attempts exhausted → DLQ`);}
+                if(policy===0) {s.expired++;s.flows.terminal++;s.flows.abandon++; events.push(`${w.id}: ${reason}; at-most-once abandons`);}
+                else if(w.attempt>=model.maxAttempts) {s.dlq.push({...w,reason});s.flows.terminal++;s.flows.dead++;s.flows.exhausted++; events.push(`${w.id}: attempts exhausted → DLQ`);}
                 else {const due=tick+model.backoffBase**w.attempt; s.retry.push({...w,due,reason}); s.retries++;s.flows.retry++; events.push(`${w.id}: ${reason}; retry due t${due}`);}
             }
             const ready=s.retry.filter(r=>r.due<=tick);
@@ -107,11 +107,11 @@
             }
             // A separate service materializes recipient jobs after outbox relay.
             while(fanout.length) {
-                const row=fanout.shift();s.sourceConsumed++;
+                const row=fanout.shift();s.sourceConsumed++;s.flows.expand++;
                 const audience=targetsFor(),active=audience.length-Math.floor(audience.length*model.deferredFraction);
                 row.users=audience.slice(0,active);row.deferred=audience.slice(active);
                 if(directoryBacked){s.flows.lookup+=audience.length;s.resolved.push(...audience.map(u=>model.requestPrefix+row.n+' → '+model.targets[u-1]));events.push('Resolve '+model.source+' subscriptions: '+audience.length+' known targets');}
-                for(const u of row.deferred)s.deferred.push(job(row.n,u));
+                for(const u of row.deferred)s.deferred.push(job(row.n,u));s.flows.defer+=row.deferred.length;
                 s.delivery.push(...row.users.map(u=>job(row.n,u).id));s.flows.fanout+=row.users.length;
                 s.queue.push(...row.users.map(u=>({...job(row.n,u),enqueued:tick})));
                 s.writes+=row.users.length;
@@ -132,13 +132,13 @@
             }
             for(const replay of model.replays.filter(e=>e.tick===tick)) {
                 if(!requestTargets.get(replay.request)?.includes(replay.target))continue;
-                const item=job(replay.request,replay.target);s.queue.push({...item,enqueued:tick});s.delivery.push(item.id);events.push('Replay publisher appends '+item.id);
+                const item=job(replay.request,replay.target);s.queue.push({...item,enqueued:tick});s.delivery.push(item.id);s.flows.replay++;events.push('Replay publisher appends '+item.id);
             }
             const batch=model.submissions.filter(e=>e.tick===tick).reduce((n,e)=>n+e.count,0);
             for(let b=0;b<batch;b++) {
-                const n=nextNotification++;
+                const n=nextNotification++;s.flows.admit++;
                 const audience=targetsFor(),targetCount=audience.length;
-                if(model.admissionBound && outstanding()+targetCount>capacity) {s.rejected+=targetCount; events.push(`Reject ${model.requestPrefix}${n} before commit: admission capacity ${capacity}`);continue;}
+                if(model.admissionBound && outstanding()+targetCount>capacity) {s.rejected+=targetCount;s.flows.reject++; events.push(`Reject ${model.requestPrefix}${n} before commit: admission capacity ${capacity}`);continue;}
                 s.accepted+=targetCount;s.flows.commit+=targetCount; s.db.push(`${model.requestPrefix}${n}`);s.intents.push(identity(n));requestTargets.set(n,audience);s.outbox.push({n,remaining:targetCount});s.writes+=2;
                 events.push(`Atomic commit ${identity(n)}: request + outbox (${targetCount} targets)`);
             }

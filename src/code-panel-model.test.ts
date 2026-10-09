@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fileTree, relatedLocations, markedSegments } from './code-panel-model.js';
+import { fileTree, relatedLocations, markedSegments, activeCodeLines } from './code-panel-model.js';
 import type { CodeFile } from './code-panel-model.js';
 test('file browser preserves full paths and groups folders independently of lesson steps',()=>{
  const a={id:'a',path:'brackets/main.py',source:'a'},b={id:'b',path:'brackets/helpers/main.py',source:'b'};
@@ -20,4 +20,11 @@ test('one-based end-exclusive marks retain exact source, including HTML-looking 
 test('repeated code lines can link to distinct snapshots within one lesson section',()=>{
  const f:CodeFile={id:'stack',path:'stack.py',source:'push()',locations:[{line:1,scene:'s',step:'explore',snapshot:1},{line:1,scene:'s',step:'explore',snapshot:2},{line:1,scene:'s',step:'explore',snapshot:2}]};
  assert.deepEqual(relatedLocations(f,1,1).map(l=>l.snapshot),[1,2]);
+});
+
+test('execution bindings accept simultaneous matrix lines and reject invalid positions',()=>{
+ assert.deepEqual([...activeCodeLines(4)],[4]);
+ assert.deepEqual([...activeCodeLines([3,0,7,3,-1,NaN,2.5,'8'])],[3,7]);
+ assert.deepEqual([...activeCodeLines({toArray:()=>[2,5]})],[2,5]);
+ assert.equal(activeCodeLines([]).size,0);assert.equal(activeCodeLines(undefined).size,0);
 });

@@ -21185,6 +21185,12 @@ function markedSegments(text, marks) {
 		color: marks.find((m) => start >= m.startColumn - 1 && start < m.endColumn - 1)?.color
 	}));
 }
+/** Accept scalar PCs and simultaneous transitions (math.js arrays are matrices). */
+function activeCodeLines(value) {
+	const matrix = value;
+	const raw = matrix && typeof matrix.toArray === "function" ? matrix.toArray() : value;
+	return new Set((Array.isArray(raw) ? raw : [raw]).filter((line) => typeof line === "number" && Number.isInteger(line) && line > 0));
+}
 //#endregion
 //#region src/code-panel.ts
 function setupCodePanel() {
@@ -21195,6 +21201,10 @@ function setupCodePanel() {
 	tree.setAttribute("aria-label", "Code files");
 	const title = document.createElement("div");
 	title.className = "code-file-title";
+	const execution = document.createElement("div");
+	execution.className = "code-execution-status";
+	execution.setAttribute("role", "status");
+	let lastExecution = "";
 	const body = document.createElement("div");
 	body.className = "code-source";
 	body.setAttribute("aria-label", "Source code");
@@ -21216,7 +21226,7 @@ function setupCodePanel() {
 	jump.type = "button";
 	jump.textContent = "↗ Go to step";
 	actions.append(selectionLabel, ask, jump);
-	host.append(tree, title, body, actions, targets);
+	host.append(tree, title, execution, body, actions, targets);
 	function resolve(location) {
 		const scenes = state.lessonSpec?.scenes ?? [];
 		const scene = scenes.findIndex((s) => s.id === location.scene);
@@ -21266,19 +21276,29 @@ function setupCodePanel() {
 		}
 	});
 	function refreshBinding() {
-		let line = 0;
+		let lines = /* @__PURE__ */ new Set();
 		if (active) try {
-			line = Number(evalExpr(active, 0));
+			lines = activeCodeLines(evalExpr(active, 0));
 		} catch {}
+		const signature = [...lines].join(", ");
+		execution.textContent = active ? signature ? "Active lines: " + signature : "No active lines at this position" : "";
+		let firstActive;
 		body.querySelectorAll(".code-line").forEach((row) => {
-			const current = Number(row.dataset.line) === line;
+			const current = lines.has(Number(row.dataset.line));
+			if (current && !firstActive) firstActive = row;
 			row.classList.toggle("execution-line", current);
 			if (current) row.setAttribute("aria-current", "step");
 			else row.removeAttribute("aria-current");
 		});
+		if (signature !== lastExecution && firstActive && body.clientHeight > 0) {
+			const row = firstActive.getBoundingClientRect(), viewport = body.getBoundingClientRect();
+			if (row.top < viewport.top || row.bottom > viewport.bottom) body.scrollTop += row.top - viewport.top;
+		}
+		lastExecution = signature;
 	}
 	function open(file) {
 		selected = file;
+		lastExecution = "";
 		first = last = 0;
 		excerpt = "";
 		actions.hidden = targets.hidden = true;

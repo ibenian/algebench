@@ -29,3 +29,11 @@ export function markedSegments(text: string, marks: NonNullable<CodeFile['marks'
     const offsets=[...boundaries].sort((a,b)=>a-b);
     return offsets.slice(0,-1).map((start,i)=>({text:text.slice(start,offsets[i+1]),color:marks.find(m=>start>=m.startColumn-1&&start<m.endColumn-1)?.color}));
 }
+
+/** Accept scalar PCs and simultaneous transitions (math.js arrays are matrices). */
+export function activeCodeLines(value: unknown): Set<number> {
+    const matrix=value as {toArray?:()=>unknown}|null;
+    const raw=matrix && typeof matrix.toArray==='function'?matrix.toArray():value;
+    const values=Array.isArray(raw)?raw:[raw];
+    return new Set(values.filter((line):line is number=>typeof line==='number'&&Number.isInteger(line)&&line>0));
+}

@@ -1962,7 +1962,7 @@ export interface CodeFile {
   language?: string;
   source: string;
   /**
-   * Expression for one-based active line. Evaluated on lesson navigation and slider changes, not every frame. Zero clears the marker.
+   * Expression returning a one-based active line or array of simultaneously active lines. Evaluated on lesson navigation and slider changes, not every frame. Zero or an empty array clears the markers.
    */
   activeLineExpr?: string;
   locations?: {

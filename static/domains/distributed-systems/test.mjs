@@ -243,3 +243,38 @@ test('separate data tables stay editable and update the audience without seriali
  assert.throws(()=>api.dsModel([{model:'serialized config'}],submissions,sources,targets,memberships,[],[],1));
  assert.throws(()=>api.dsModel(settings,'serialized events',sources,targets,memberships,[],[],1));
 });
+
+test('real service files highlight causal transitions without placeholder operations',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
+ const math=create(all);math.import({...api,dataTable:name=>tables[name]},{override:true});
+ let tables;
+ const files=new Map(lesson.codeFiles.map(file=>[file.id,{...file,compiled:file.activeLineExpr?math.compile(file.activeLineExpr):null}]));
+ for(const file of files.values())assert.equal(file.source,readFileSync(new URL('../../../examples/push-notifications/'+file.path.split('/').at(-1),import.meta.url),'utf8'));
+ const marked=(id,scenario,frame,overrides={})=>{
+  const file=files.get(id);tables=lesson.scenes[scenario].data;
+  const result=file.compiled.evaluate({frame,recipients:1,workers:1,gatewayRate:1,failure:0,dedupe:1,capacity:24,policy:1,sender:1,...overrides});
+  const lines=file.source.split('\n');
+  return new Set(result.toArray().filter(n=>n>0).map(n=>{assert.ok(Number.isInteger(n)&&n<=lines.length);return lines[n-1].trim();}));
+ };
+ const has=(id,frame,needle,overrides={})=>[...marked(id,0,frame,overrides)].some(s=>s.includes(needle));
+ assert.ok(has('submit',1,'INSERT INTO notifications'));
+ assert.ok(has('submit',1,'INSERT INTO outbox'));
+ assert.ok(has('outbox_relay',2,'publish(producer, topic, payload)'));
+ assert.ok(!has('outbox_relay',2,'def publish'));
+ assert.ok(has('flink-job',3,'env.from_source'));
+ assert.ok(has('flink-job',3,'self.db.execute'));
+ assert.ok(has('flink-job',3,'yield json.dumps'));
+ assert.ok(has('flink-job',3,'jobs.sink_to'));
+ assert.ok(has('worker',4,'consumer.poll'));
+ assert.ok(has('worker',4,'requests.post'));
+ assert.ok(has('worker',5,'enqueue(db, f"retry:',{failure:2}));
+ assert.ok(!has('worker',5,'INSERT INTO completed',{failure:2}));
+ assert.ok(has('worker',5,'INSERT INTO completed'));
+ assert.ok(has('worker',5,'"dead-letters"',{failure:3}));
+ assert.ok(has('worker',5,'# Abandon',{failure:2,policy:0}));
+ for(const file of files.values())if(file.compiled){
+  assert.equal(marked(file.id,0,0).size,0);
+  assert.equal(marked(file.id,0,24).size,0);
+  for(let scenario=0;scenario<lesson.scenes.length;scenario++)for(let frame=0;frame<=24;frame++)assert.ok([...marked(file.id,scenario,frame)].every(s=>s.length>0));
+ }
+});

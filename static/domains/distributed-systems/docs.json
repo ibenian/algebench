@@ -176,5 +176,6 @@
     "memberships": "Rows {source,target}; subscriptions joining the identity directories.",
     "replays": "Rows {tick,request,target}; replay schedule.",
     "receiptExclusions": "Rows {target}; target ordinals with no modeled downstream receipt."
-  }
+  },
+  "codeTransitions": "dsFlow also exposes expand (intents consumed), defer (jobs deferred), replay (jobs republished), admit (submission attempts), reject (requests rejected), abandon (jobs abandoned), permanent (permanent delivery failures), and exhausted (retry budgets exhausted). Counts describe only the selected tick and can drive code line highlights."
 }
