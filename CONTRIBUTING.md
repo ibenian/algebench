@@ -245,3 +245,25 @@ Voice characters are defined in [`gemini-live-tools`](https://github.com/ibenian
 ## License
 
 By submitting a contribution (including pull requests), you agree that your contribution will be licensed under the same MIT License that covers this project.
+
+### System architecture objects
+
+Use `system_dag` for reusable architecture diagrams. `blocks` form a containment tree; `connections` define directed flow independently, including feedback such as retries. Each block has a unique `id`, `label`, `size: [width,height,depth]`, optional named `ports`, and optional nested `blocks` and `connections`. A port chooses a face (left/right/top/bottom/front/back) and a normalized `offset` from -1 to 1 along that face. Endpoints use `{block, port}`; an explicit `side` works without a named port.
+
+Block `position` is parent-local by default. `space: "world"` uses scene coordinates. `placement: {relativeTo, side, gap, offset}` positions a block against another block. Cyclic placement and children escaping their parent are rejected. Colors inherit from the containing block; explicit colors override the role palette.
+
+A block's `elements` array accepts existing AlgeBench elements through the normal renderer dispatcher. Their coordinates are local to the block center, in scene data units, and slider/animation updates keep that frame. Reserve space below the title/status and declare sufficient block dimensions; contents are not automatically scaled or clipped. A scene-wide object such as a skybox retains its original scene-wide meaning.
+
+Connections are actual cylindrical pipes with `pipeRadius` (default 0.055 data units), proportional cone arrowheads, and round joints. Per-connection `radius`, `color`, `activeColor`, `activeExpr`, and `direction` (forward/backward/both/none) are supported. Orthogonal routing avoids unrelated leaf blocks; `route: "straight"` or `via: [{position, relativeTo?, space?}]` gives explicit routing. Waypoints are local to the connection's containing block by default. `textExpr`/`valueExpr` on blocks and `activeExpr` on wires respond to lesson sliders. Geometry remains stable while activity colors change.
+
+See `scenes/push-notification-system-design.json` for Kafka topic arrays embedded inside broker blocks, nested Flink operators, and external delivery/retry wiring.
+
+### Reusable distributed-systems simulations
+
+Import `distributed-systems` for a deterministic durable fan-out pipeline. Store configuration in ordinary scene tables: `settings`, `submissions`, `sources`, `targets`, `memberships`, `replays`, and `receiptExclusions`. Use `dataTable('submissions')` to pass all rows, or `dataTable('submissions', 0, 'tick')` to read a cell. `dsModel` combines these tables with a 1-based source selection into a structured configuration object consumed by `dsCount`, `dsCell`, `dsMetric`, `dsFlow`, and `dsExplain`. No serialized model cell is needed. See `static/domains/distributed-systems/docs.json` for table columns and webhook/background-job examples. The simulator models one staged pipeline; `system_dag` independently visualizes architecture blocks and wiring.
+
+System diagram blocks, status text, ports, pipes, and embedded elements are independent hover-to-Ask-AI targets. Status questions include the current displayed value; connection questions identify endpoint blocks and ports. Their pick targets inherit containing-object visibility and are removed or restored with the owning lesson step.
+
+System blocks can set `childElevation` to a small gap above their front surface. Locally positioned child blocks then stack above the parent, including both block depths and their local z offset. This repeats through nested containment; explicit world positions and relative placements retain their existing meaning. For a thin floating platform, use a shallow parent depth and a gap around 0.2 data units. Ports, embedded objects, and cylindrical wiring follow the resolved depth.
+
+The distributed-systems domain optionally accepts source and target identity directories and `{source,target}` membership rows. With these records, the targets parameter is a query limit; identities come from matching subscriptions. `dsModel` selects the 1-based source from ordinary directory rows without mutating lesson data. Requests carry source provenance, and `resolved` records show the audience lookup. These are explicit lesson fixtures rather than a connection to a live user database. The lookup uses a fixed snapshot also preflighted for admission accounting.

@@ -1,3 +1,4 @@
+import { renderSystemDAG } from "/objects/system-dag.js";
 import { renderArray } from '/objects/array.js';
 import { renderStack } from '/objects/stack.js';
 import { renderStepMarker } from '/objects/step-marker.js';
@@ -38,6 +39,7 @@ import type { Element } from '/types/lesson.js';
  */
 export function renderElement(el: Element, view: MathBoxNode) {
     switch (el.type) {
+        case "system_dag": return renderSystemDAG(el, view);
         case 'skybox': return renderSkybox(el);
         case 'axis': return renderAxis(el, view);
         case 'grid': return renderGrid(el, view);

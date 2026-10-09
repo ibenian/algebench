@@ -10,6 +10,8 @@ import type { Mesh } from 'three';
 import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners } from '/objects/array-data.js';
 import { ArrayChangeTracker } from '/objects/array-changes.js';
+import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
+import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 
 let arrayMarkerGroup = 0;
 /** Shared presentation lookup for a cell, without references to other controls. */
@@ -84,16 +86,32 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         glowMesh.geometry.dispose();glowMesh.geometry=geometry;
         glowMesh.visible=positions.length>0;
     }
+    const planeText=el.axisLabels==='plane';
+    const cellTextPlanes:ArrayPlaneText[]=[];
+    const indexTextPlanes:ArrayPlaneText[]=[];
+    const addTextPlane=(width:number,height:number,color:NonNullable<Element['color']>)=>{
+        const layer=createArrayPlaneText(width,height,color);
+        // Parent ownership handles hide/show and dynamically added cell lifetimes.
+        mesh.add(layer.mesh);
+        layer.mesh.onBeforeRender=(renderer,_scene,camera)=>{layer.prepare(renderer,camera);layer.mesh.material.opacity=material.opacity;};
+        return layer;
+    };
+    const removeTextPlane=(layer:ArrayPlaneText|undefined)=>{
+        if(!layer)return;
+        layer.dispose();
+    };
     const indexLabels: ReturnType<typeof addLabel3D>[]=[];
     const makeCellLabel=(i:number)=>{
         const c=centre(i),label=addLabel3D('',[c[0],c[1],c[2]+.14],'#12212b',{cssClass:'label-3d array-cell-label'});
         if(el.fontSize!=null)label.el.style.setProperty('--array-font-size',`${el.fontSize}px`);
         label.ownerMesh=mesh;
         label.snapToProjection = true;
+        if(planeText){label.forceHidden=true;label.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(label.el);cellTextPlanes.push(addTextPlane(pitch*.78,.68,'#12212b'));}
         if(el.showIndices!==false){
             const indexLabel = addLabel3D(String(i),c,'#e1ecf7',{cssClass:'label-3d array-index-tag'});
             if(el.indexFontSize!=null)indexLabel.el.style.setProperty('--array-index-font-size',`${el.indexFontSize}px`);
             indexLabel.ownerMesh=mesh;
+            if(planeText){indexLabel.forceHidden=true;indexLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(indexLabel.el);indexTextPlanes.push(addTextPlane(.7,.35,'#e1ecf7'));}
             indexLabel.el.setAttribute('aria-label',`Index ${i}`);
             indexLabels.push(indexLabel);
             indexLabel.cellAttachment = {corners:arrayCellCorners(c,pitch),edge:'bottom',gap:0};
@@ -103,11 +121,24 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const labels=Array.from({length:n},(_,i)=>makeCellLabel(i));
     let titleLabel: ReturnType<typeof addLabel3D>|undefined;
     const titleCentre=()=>centre(Math.max(0,n-1)/(el.arrayLayout==='vertical'?1:2));
+    const titleWidth=Math.max(1,(el.label?.length??0)*.38);
+    const titlePosition=():[number,number,number]=>{
+        const at=el.labelPosition??titleCentre().map((value,i)=>value+(el.labelOffset??[0,.88,0])[i]!);
+        return [Number(at[0])+(planeText&&el.align==='left'?titleWidth/2:planeText&&el.align==='right'?-titleWidth/2:0),Number(at[1]),Number(at[2])+.14];
+    };
+    const titlePlane=planeText&&el.label?addTextPlane(titleWidth,.95,el.color??'#b5c1cf'):null;
+    const emptyPlane=planeText?addTextPlane(.7,.68,'#8793a6'):null;
     if(el.label){
-        const offset=el.labelOffset??[0,.88,0];
-        titleLabel = addLabel3D('',titleCentre().map((value,i)=>value+offset[i]!),'#b5c1cf');
-        titleLabel.el.textContent=el.label; titleLabel.snapToProjection=true;
+        titleLabel = addLabel3D('',titlePosition(),'#b5c1cf',{align:el.align,cssClass:`label-3d ${el.cssClass??''}`});
+        if(planeText){titleLabel.forceHidden=true;titleLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(titleLabel.el);}
+        titleLabel.el.textContent=el.label; titleLabel.snapToProjection=true;titleLabel.ownerMesh=mesh;
     }
+    const updateTitle=()=>{
+        if(titleLabel)titleLabel.dataPos=titlePosition();
+        if(titlePlane)titlePlane.set(el.label!,titlePosition()); // allocated only for a non-empty array label.
+        if(emptyPlane){emptyPlane.mesh.visible=n===0;emptyPlane.set('∅',[origin[0]!,origin[1]!,origin[2]!+.14]);}
+    };
+    updateTitle();
     const animState:{stopped:boolean;hiddenByRemove?:boolean}={stopped:false};
     // Children share the owner's lifetime and never register independent updaters.
     const owner = {group: 'array-markers:' + arrayMarkerGroup++, animState,
@@ -120,6 +151,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     function resize(next:number) {
         if(next===n)return;
         while(labels.length>next) {
+            removeTextPlane(cellTextPlanes.pop());removeTextPlane(indexTextPlanes.pop());
             for(const label of [labels.pop()!,indexLabels.pop()]) {
                 if(!label)continue;
                 label.el.remove();
@@ -139,7 +171,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         colorAttribute=new THREE.BufferAttribute(colors,3);replacement.setAttribute('color',colorAttribute);
         mesh.geometry.dispose();mesh.geometry=replacement;
         previous.length=0;
-        if(titleLabel)titleLabel.dataPos=titleCentre().map((value,i)=>value+(el.labelOffset??[0,.88,0])[i]!);
+        updateTitle();
     }
     const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
         // Hidden lesson steps must not advance the last-visible comparison baseline.
@@ -158,6 +190,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             illuminate([...illuminated],delta.removed);
         }
         resize(next);
+        updateTitle();
         decoration?.resize(next);
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;
@@ -169,6 +202,11 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             const label=labels[i]!; // one label allocated per cell
             label.el.textContent=cell.text;label.el.title=`[${i}] ${cell.kind}: ${cell.text}`;
             label.el.setAttribute('aria-label',label.el.title);label.boxW=null;label.boxH=null;
+            if(planeText){
+                const c=centre(i);
+                cellTextPlanes[i]!.set(cell.text,[c[0],c[1],c[2]+.14]); // makeCellLabel allocates one text plane per slot.
+                indexTextPlanes[i]?.set(String(i),[c[0],c[1]-.58,c[2]+.14]);
+            }
             const rgb=parseColor(highlighted?'#f1cc59':el.color??PALETTE[cell.kind]);
             if(lit)for(let j=0;j<3;j++)rgb[j]=rgb[j]!+(1-rgb[j]!)*.35;
             for(let v=0;v<vertices;v++){
@@ -180,7 +218,10 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     }};
     try{entry._rebuildFn?.();}catch(error){console.warn('array:',error);}
     // Shader/lifecycle resources follow the same registry as tensor boxes.
-    material.addEventListener('dispose',()=>unit.dispose());
+    material.addEventListener('dispose',()=>{
+        unit.dispose();
+        for(const layer of [...cellTextPlanes,...indexTextPlanes,titlePlane,emptyPlane])layer?.dispose();
+    });
     if(entry.exprStrings?.length)registerAnimExpr(entry);
     return {_animState:animState,_animExprEntry:entry,type:el.type};
 }

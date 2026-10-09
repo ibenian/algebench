@@ -1,0 +1,180 @@
+{
+  "name": "distributed-systems",
+  "description": "Deterministic teaching primitives for durable fan-out work: transactional outbox, retained logs and consumer positions, expansion, worker dispatch, external effects, downstream receipts, retries, completed-job dedupe, and admission backpressure. Reusable for webhooks, asynchronous job delivery, and notification pipelines.",
+  "limits": [
+    "This is a bounded staged fan-out pipeline, not an arbitrary graph execution engine. system_dag is a separate visualization object.",
+    "Ticks are scheduler intervals, not elapsed seconds. No network calls, randomness, partitions, checkpoint recovery, broker transactions, lease crashes, or persistence across browser reloads.",
+    "A successful external effect and an acknowledged ledger completion do not prove downstream receipt. Lost acknowledgments may duplicate effects. Finite retries can terminate without delivery.",
+    "Directory resolution uses a static snapshot, runs synchronously within fan-out, and does not model lookup latency, pagination, relationship updates, authentication, or device addresses. Admission preflights the same snapshot for exact capacity reservation."
+  ],
+  "arguments": {
+    "common": "model, frame, targets, workers, effectRate, failure, dedupe, capacity, policy",
+    "model": "Structured configuration object assembled by dsModel from separate scene tables. No serialized JSON input or model cell.",
+    "frame": "0..240; recomputes deterministic state from the beginning.",
+    "targets": "1..40. Without a directory, generated targets per request. With source/target directories and memberships, query limit on unique known targets subscribed to the selected source.",
+    "workers": "1..12 concurrent in-flight slots. Long response delays hold slots across ticks.",
+    "effectRate": "1..12 attempts per tick; dispatch is paced at min(available worker slots,effectRate).",
+    "failure": "0 healthy; 1 temporary external-service outage; 2 one lost acknowledgment on request 1 / target 1 / attempt 1; 3 permanent target-1 failure; 4 outage from outageStart through the remainder of the run.",
+    "dedupe": "0 disable or 1 enable pre-dispatch lookup of acknowledged completed jobs.",
+    "capacity": "1..120 outstanding obligations; enforced only when admissionBound is true, before commit. Counts outbox, staging, deferred, queue, in-flight, and retry obligations.",
+    "policy": "0 abandon transient/ambiguous attempts; 1 retry up to maxAttempts with backoffBase^attempt tick delays."
+  },
+  "model": {
+    "submissions": "[{tick,count}], default one request at tick 1. Up to 120 requests total; ticks 1..240, count 1..12.",
+    "deferredFraction": "0..1 (default 0). floor(targets*fraction) jobs per request wait for the deferred trigger.",
+    "resumeTick": "1..240, default 12. A single trigger releases jobs already deferred at this tick; jobs deferred later remain pending.",
+    "replays": "[{tick,request,target}], default []. Appends another delivery record for an already committed request. Requests not yet committed and targets outside the selected fan-out are skipped.",
+    "admissionBound": "Boolean, default false.",
+    "receiptExcluded": "Target numbers with no downstream receipt; default []. External acceptance and acknowledged completion still occur.",
+    "requestPrefix": "Identity prefix, default r. 1..24 letters, digits, underscore or hyphen.",
+    "targetPrefix": "Identity prefix, default t. Same constraints.",
+    "maxAttempts": "1..10, default 3.",
+    "backoffBase": "1..4, default 2.",
+    "responseDelay": "1..24 ticks after claim, default 1.",
+    "receiptDelay": "1..24 ticks after external acceptance, default 1.",
+    "outageStart": "1..240, default 5.",
+    "outageEnd": "1..240, default 10; inclusive end of temporary outage.",
+    "sources": "Optional source identity directory, 1..40 unique identifiers. A source need not be a user.",
+    "targets": "Optional target identity directory, 1..40 unique identifiers.",
+    "memberships": "Optional [{source,target}] subscription relations; endpoints must exist in directories. Up to 1600 rows; duplicates removed during lookup.",
+    "source": "Selected source identity; defaults to first source. The directory fields must be supplied together."
+  },
+  "phaseOrder": [
+    "downstream receipts",
+    "external responses",
+    "due retries",
+    "worker claims",
+    "fan-out expansion",
+    "deferred trigger",
+    "outbox relay",
+    "replay publications",
+    "admission"
+  ],
+  "stores": {
+    "db": "Committed request identities",
+    "outbox": "Committed intents awaiting relay",
+    "source": "Retained intent log",
+    "stage": "Unread processor intents",
+    "delivery": "Retained per-target job log",
+    "queue": "Unclaimed consumer backlog",
+    "workers": "In-flight attempts",
+    "retry": "Delayed jobs with eligibility tick",
+    "effects": "Append-only external acceptance history, including repeated effects",
+    "receipts": "Append-only downstream receipt history",
+    "ledger": "Distinct acknowledged completions",
+    "dlq": "Permanent or exhausted jobs",
+    "deferred": "Jobs awaiting a configured trigger",
+    "sources": "All configured source identities",
+    "senders": "Selected request source",
+    "targets": "All configured target identities",
+    "memberships": "Subscription links for selected source",
+    "followers": "Unique follower identities for selected source",
+    "intents": "Committed intent identities with source provenance",
+    "resolved": "Append-only resolved request-to-target pairs"
+  },
+  "functions": {
+    "dsCount": {
+      "signature": "dsCount(model, frame, targets, workers, effectRate, failure, dedupe, capacity, policy, store)",
+      "description": "Exact entry count in a store."
+    },
+    "dsCell": {
+      "signature": "dsCell(model, frame, targets, workers, effectRate, failure, dedupe, capacity, policy, store, idx)",
+      "description": "Identity at idx (0-based). Render min(dsCount(...),8) cells; when more than 8 entries exist, cell 7 summarizes the remainder."
+    },
+    "dsMetric": {
+      "signature": "dsMetric(model, frame, targets, workers, effectRate, failure, dedupe, capacity, policy, metric)",
+      "description": "Metrics: accepted, effectAccepted, receiptCount (distinct targets), duplicates, rejected, expired, terminal, retries, attempts, writes (two commit rows plus expanded jobs), queued, backlog, sourceConsumed, deliveryConsumed, relayed."
+    },
+    "dsFlow": {
+      "signature": "dsFlow(model, frame, targets, workers, effectRate, failure, dedupe, capacity, policy, edge)",
+      "description": "Current-tick transition counts: commit, relay, fanout, claim, accept, receipt, retry, resume, read (deferred trigger), terminal, dedupe, ack, dead."
+    },
+    "dsAction": {
+      "signature": "dsAction(model, frame, targets, workers, effectRate, failure, dedupe, capacity, policy)",
+      "description": "Event summary capped at 220 characters."
+    },
+    "dsExplain": {
+      "signature": "dsExplain(model, frame, targets, workers, effectRate, failure, dedupe, capacity, policy)",
+      "description": "Markdown narration derived from transitions and current scheduling state."
+    },
+    "dsModel": {
+      "signature": "dsModel(settings, submissions, sources, targets, memberships, replays, receiptExclusions, sourceIndex)",
+      "description": "Accepts ordinary arrays of row objects from dataTable(tableName), validates them, selects a 1-based source, and assembles a structured configuration without mutating table rows."
+    }
+  },
+  "examples": {
+    "webhook": {
+      "settings": [
+        {
+          "requestPrefix": "event",
+          "targetPrefix": "endpoint",
+          "responseDelay": 2,
+          "receiptDelay": 3
+        }
+      ],
+      "submissions": [
+        {
+          "tick": 3,
+          "count": 2
+        }
+      ],
+      "sources": [],
+      "targets": [],
+      "memberships": [],
+      "replays": [],
+      "receiptExclusions": []
+    },
+    "backgroundJobs": {
+      "settings": [
+        {
+          "admissionBound": true,
+          "maxAttempts": 5,
+          "backoffBase": 2
+        }
+      ],
+      "submissions": [
+        {
+          "tick": 1,
+          "count": 3
+        },
+        {
+          "tick": 5,
+          "count": 1
+        }
+      ],
+      "sources": [],
+      "targets": [],
+      "memberships": [],
+      "replays": [],
+      "receiptExclusions": []
+    },
+    "deferredFanout": {
+      "settings": [
+        {
+          "deferredFraction": 0.75,
+          "resumeTick": 8
+        }
+      ],
+      "submissions": [
+        {
+          "tick": 1,
+          "count": 1
+        }
+      ],
+      "sources": [],
+      "targets": [],
+      "memberships": [],
+      "replays": [],
+      "receiptExclusions": []
+    }
+  },
+  "tables": {
+    "settings": "One row of scalar simulator options such as deferredFraction, resumeTick, maxAttempts and requestPrefix.",
+    "submissions": "Rows {tick,count}; each row schedules an incoming batch.",
+    "sources": "Rows {id}; sender/source identities.",
+    "targets": "Rows {id}; known recipient identities.",
+    "memberships": "Rows {source,target}; subscriptions joining the identity directories.",
+    "replays": "Rows {tick,request,target}; replay schedule.",
+    "receiptExclusions": "Rows {target}; target ordinals with no modeled downstream receipt."
+  }
+}

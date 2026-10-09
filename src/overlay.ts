@@ -13,7 +13,7 @@ import { worldCameraToData } from '/coords.js';
 import { applyCanvasClearColor } from '/camera.js';
 import { createDockablePanel } from '/dockable-panel.js';
 import type { DockablePanel, DockGeometry } from '/dockable-panel.js';
-import type { Element } from '/types/lesson.js';
+import type { Element, Step } from '/types/lesson.js';
 import type { Material, Mesh } from 'three';
 
 /** A mesh the settings panel can restyle. Mirrors the shapes src/objects/ and
@@ -100,6 +100,7 @@ interface OverlayScene {
         title?: string;
         caption?: string;
         description?: string;
+        descriptionExpr?: Step['descriptionExpr'];
         add?: Element[];
         remove?: { id?: string; type?: string }[];
     }[];
@@ -1669,7 +1670,7 @@ export function setupBoardOverlays(): void {
 
 // ----- Caption drag -----
 
-export function updateStepCaption(scene: OverlayScene | null | undefined, stepIdx: number): void {
+export function updateStepCaption(scene: OverlayScene | null | undefined, stepIdx: number, preservePosition = false): void {
     const el = document.getElementById('step-caption');
     if (!el) return;
     let text: string | null | undefined = null;
@@ -1681,13 +1682,22 @@ export function updateStepCaption(scene: OverlayScene | null | undefined, stepId
     } else if (stepIdx === -1 && scene!.description) {
         text = scene!.description;
     }
+    const descriptionExpr = scene?.steps?.[stepIdx]?.descriptionExpr;
+    if (descriptionExpr) {
+        try {
+            const resolved = evalExpr(compileExpr(descriptionExpr), 0);
+            if (typeof resolved === 'string' && resolved.trim()) text = resolved;
+        } catch (error) {
+            console.warn('step descriptionExpr evaluation error:', error);
+        }
+    }
     if (text) {
         const plain = stripGlossaryMarkers(text);
         el.dataset.markdown = plain;
         const btn = makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${plain}"`);
         fillBoardOverlay(el, renderMarkdown(text), btn);
         el.style.opacity = String(overlayState.displayParams.overlayOpacity);
-        resetCaptionPosition(el);
+        if (!preservePosition) resetCaptionPosition(el);
         el.classList.remove('hidden');
     } else {
         el.classList.add('hidden');

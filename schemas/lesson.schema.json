@@ -349,6 +349,10 @@
         "caption": {
           "type": "string",
           "description": "Short caption text displayed in the step caption bar. Overrides auto-generated caption from title."
+        },
+        "descriptionExpr": {
+          "type": "string",
+          "description": "Optional expression returning markdown for the step caption. Re-evaluated on navigation and slider changes. Falls back to description if evaluation fails."
         }
       },
       "additionalProperties": false
@@ -392,7 +396,8 @@
             "step_marker",
             "array",
             "expression_label",
-            "stack"
+            "stack",
+            "system_dag"
           ],
           "description": "Element type determining the renderer. Must be one of the supported types."
         },
@@ -539,7 +544,7 @@
             "screen",
             "plane"
           ],
-          "description": "TENSOR ONLY. How 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j')."
+          "description": "ARRAY and TENSOR. On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j')."
         },
         "anchor": {
           "type": "string",
@@ -1475,20 +1480,100 @@
           "type": "boolean",
           "default": true,
           "description": "STACK: show an owned top slot index marker; hidden automatically when empty."
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/systemBlock"
+          },
+          "description": "SYSTEM_DAG: reusable nested blocks. Child positions are parent-local unless space is world or placement references another block."
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/systemConnection"
+          },
+          "description": "SYSTEM_DAG: directed pipe connections, independent of containment. Flow feedback is allowed; placement references must be acyclic."
+        },
+        "pipeRadius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 0.5,
+          "default": 0.055,
+          "description": "SYSTEM_DAG: default physical pipe radius in scene units."
         }
       },
       "allOf": [
         {
-          "if": { "properties": { "type": { "const": "stack" } } },
+          "if": {
+            "properties": {
+              "type": {
+                "const": "stack"
+              }
+            }
+          },
           "then": {
             "anyOf": [
-              { "required": ["values"] },
-              { "required": ["lengthExpr", "valueExpr"] },
-              { "required": ["shape", "valueExpr"] }
+              {
+                "required": [
+                  "values"
+                ]
+              },
+              {
+                "required": [
+                  "lengthExpr",
+                  "valueExpr"
+                ]
+              },
+              {
+                "required": [
+                  "shape",
+                  "valueExpr"
+                ]
+              }
             ],
             "properties": {
-              "shape": { "maxItems": 1, "items": { "type": "integer", "minimum": 1, "maximum": 256 } },
-              "values": { "maxItems": 256, "items": { "type": ["number", "string", "boolean", "null"] } }
+              "shape": {
+                "maxItems": 1,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 256
+                }
+              },
+              "values": {
+                "maxItems": 256,
+                "items": {
+                  "type": [
+                    "number",
+                    "string",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "system_dag"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "blocks"
+            ],
+            "properties": {
+              "blocks": {
+                "minItems": 1
+              }
             }
           }
         }
@@ -2914,6 +2999,300 @@
         "visibleExpr": {
           "type": "string",
           "description": "Math.js boolean expression controlling visibility. Element is visible when expression evaluates to truthy. Example: \"orbitImpactT(1) >= 0\"."
+        }
+      }
+    },
+    "systemPort": {
+      "title": "SystemPort",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "side"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right",
+            "top",
+            "bottom",
+            "front",
+            "back"
+          ]
+        },
+        "offset": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Normalized position along a side; zero is its center."
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        }
+      }
+    },
+    "systemPlacement": {
+      "title": "SystemPlacement",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relativeTo"
+      ],
+      "properties": {
+        "relativeTo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right",
+            "top",
+            "bottom",
+            "front",
+            "back"
+          ]
+        },
+        "gap": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.7
+        },
+        "offset": {
+          "$ref": "#/$defs/vec3Number"
+        }
+      }
+    },
+    "systemEndpoint": {
+      "title": "SystemEndpoint",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "block"
+      ],
+      "properties": {
+        "block": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "string"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right",
+            "top",
+            "bottom",
+            "front",
+            "back"
+          ]
+        },
+        "inside": {
+          "type": "boolean",
+          "description": "Route into a containing block rather than away from its boundary."
+        }
+      }
+    },
+    "systemWaypoint": {
+      "title": "SystemWaypoint",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position"
+      ],
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/vec3Number"
+        },
+        "relativeTo": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string",
+          "enum": [
+            "local",
+            "world"
+          ],
+          "default": "local"
+        }
+      }
+    },
+    "systemConnection": {
+      "title": "SystemConnection",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from": {
+          "$ref": "#/$defs/systemEndpoint"
+        },
+        "to": {
+          "$ref": "#/$defs/systemEndpoint"
+        },
+        "route": {
+          "type": "string",
+          "enum": [
+            "orthogonal",
+            "straight"
+          ],
+          "default": "orthogonal"
+        },
+        "via": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/systemWaypoint"
+          }
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        },
+        "activeColor": {
+          "$ref": "#/$defs/color"
+        },
+        "activeExpr": {
+          "type": "string",
+          "description": "An active flow changes color without changing pipe radius."
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 0.5,
+          "description": "Pipe radius in scene data units, not a camera-scaled line width."
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "forward",
+            "backward",
+            "both",
+            "none"
+          ],
+          "default": "forward"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "systemBlock": {
+      "title": "SystemBlock",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "size"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "group",
+            "service",
+            "database",
+            "broker",
+            "processor",
+            "worker",
+            "gateway",
+            "client",
+            "store"
+          ],
+          "default": "service"
+        },
+        "size": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Width, height, and depth in scene data units."
+        },
+        "position": {
+          "$ref": "#/$defs/vec3Number"
+        },
+        "space": {
+          "type": "string",
+          "enum": [
+            "local",
+            "world"
+          ],
+          "default": "local"
+        },
+        "placement": {
+          "$ref": "#/$defs/systemPlacement"
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "valueExpr": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "textExpr": {
+          "type": "string"
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/systemPort"
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/systemBlock"
+          }
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/systemConnection"
+          }
+        },
+        "elements": {
+          "type": "array",
+          "description": "Existing AlgeBench elements contained by this block, in block-local coordinates.",
+          "items": {
+            "$ref": "#/$defs/element"
+          }
+        },
+        "childElevation": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Optional gap above this platform front surface for children with local positions. Child depth and local z offset are added; world and relative placement remain explicit."
         }
       }
     }

@@ -148,6 +148,18 @@ var state = {
 	}
 };
 //#endregion
+//#region src/data-table.ts
+/** Read scene table rows or a cell without changing the underlying data. */
+function readDataTable(data, table, rowIndex, column) {
+	const rows = data?.[String(table)];
+	if (!Array.isArray(rows)) return 0;
+	if (rowIndex === void 0 && column === void 0) return rows;
+	const row = rows[Math.max(0, Math.min(rows.length - 1, Math.round(Number(rowIndex))))];
+	if (!row) return 0;
+	const value = row[String(column)];
+	return value != null ? value : 0;
+}
+//#endregion
 //#region src/array-operations.ts
 function primitiveArray(input) {
 	const values = input && typeof input === "object" && "toArray" in input && typeof input.toArray === "function" ? input.toArray() : input;
@@ -285,14 +297,7 @@ var _MATHJS_EXTENSIONS = {
 		const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
 		return "█".repeat(n) + "░".repeat(Number(w) - n);
 	},
-	dataTable: (table, rowIndex, column) => {
-		const t = exprState.sceneData && exprState.sceneData[String(table)];
-		if (!Array.isArray(t)) return 0;
-		const row = t[Math.max(0, Math.min(t.length - 1, Math.round(Number(rowIndex))))];
-		if (!row) return 0;
-		const val = row[String(column)];
-		return val != null ? val : 0;
-	},
+	dataTable: (table, rowIndex, column) => readDataTable(exprState.sceneData, table, rowIndex, column),
 	binomial: (n, k) => _mathjs.combinations(n, k),
 	erfc: (x) => 1 - _mathjs.erf(x),
 	beta: (a, b) => _mathjs.gamma(a) * _mathjs.gamma(b) / _mathjs.gamma(a + b),
@@ -815,7 +820,26 @@ function isotropicScale(range) {
 	const longest = Math.max(...widths);
 	return widths.map((w) => w / longest);
 }
+var dataOffset = [
+	0,
+	0,
+	0
+];
+function currentDataOffset() {
+	return [...dataOffset];
+}
+/** Scope existing renderers and their updates to a containing object's frame. */
+function withDataOffset(offset, run) {
+	const previous = dataOffset;
+	dataOffset = offset;
+	try {
+		return run();
+	} finally {
+		dataOffset = previous;
+	}
+}
 function dataToWorld(pos) {
+	pos = pos.map((v, i) => v + dataOffset[i]);
 	const r = range();
 	const s = scale();
 	const [rx, ry, rz] = r ?? [];
@@ -844,7 +868,7 @@ function worldToData(pos) {
 		(pos[0] / s[0] + 1) / 2 * (rx[1] - rx[0]) + rx[0],
 		(pos[1] / s[1] + 1) / 2 * (ry[1] - ry[0]) + ry[0],
 		(pos[2] / s[2] + 1) / 2 * (rz[1] - rz[0]) + rz[0]
-	];
+	].map((v, i) => v - dataOffset[i]);
 }
 function dataCameraToWorld$1(pos) {
 	const r = range();
@@ -940,7 +964,10 @@ function worldBounds(tracker) {
 			geometry.computeBoundingBox();
 			boundsVersions.set(geometry, version);
 		}
-		bounds.expandByObject(mesh);
+		if (mesh.userData?.arrayCellTarget && geometry?.boundingBox) {
+			mesh.updateWorldMatrix(true, false);
+			bounds.union(geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
+		} else bounds.expandByObject(mesh);
 	}
 	return bounds;
 }
@@ -2026,6 +2053,7 @@ function addLabel3D(text, dataPos, color, opts) {
 	container.appendChild(el);
 	const align = o.align || "center";
 	const entry = {
+		coordinateOffset: currentDataOffset(),
 		el,
 		dataPos: dataPos.slice(),
 		screenX: null,
@@ -2080,7 +2108,11 @@ function updateLabels() {
 			dp[2]
 		];
 		lbl.moving = lbl.moveCooldown > 0;
-		const world = dataToWorld(dp);
+		const world = withDataOffset(lbl.coordinateOffset ?? [
+			0,
+			0,
+			0
+		], () => dataToWorld(dp));
 		const v = new THREE.Vector3(world[0], world[1], world[2]);
 		lbl.depth = camera.position.distanceTo(v);
 		const projected = v.project(camera);
@@ -2089,7 +2121,11 @@ function updateLabels() {
 		if (lbl.cellAttachment) {
 			const attachment = lbl.cellAttachment;
 			const anchor = cellEdgeAnchor(attachment.corners.map((point) => {
-				const world = dataToWorld(point);
+				const world = withDataOffset(lbl.coordinateOffset ?? [
+					0,
+					0,
+					0
+				], () => dataToWorld(point));
 				return new THREE.Vector3(...world).project(camera);
 			}).map((p) => ({
 				x: (p.x * .5 + .5) * w,
@@ -2312,7 +2348,11 @@ function setExpressionLabelPosition(label, x, y) {
 		return;
 	}
 	if (!camera) return;
-	const anchor = dataToWorld(label.annotationWorldPosition ?? label.dataPos);
+	const anchor = withDataOffset(label.coordinateOffset ?? [
+		0,
+		0,
+		0
+	], () => dataToWorld(label.annotationWorldPosition ?? label.dataPos));
 	const depth = new THREE.Vector3(...anchor).project(camera).z;
 	const world = new THREE.Vector3(x / renderer.domElement.clientWidth * 2 - 1, 1 - y / renderer.domElement.clientHeight * 2, depth).unproject(camera);
 	label.annotationWorldPosition = worldToData([
@@ -3481,1577 +3521,6 @@ function animateSlider$1(id, target, duration) {
 	});
 }
 //#endregion
-//#region src/step-player.ts
-/** Generic discrete state playback. It writes a slider; views bind to its data. */
-function playbackPosition(value, min, max) {
-	const current = Math.max(min, Math.min(max, Math.round(value)));
-	return {
-		current,
-		ordinal: current - min + 1,
-		total: max - min + 1
-	};
-}
-function setupStepPlayer() {
-	const wrapper = document.getElementById("mathbox-wrapper");
-	if (!wrapper) return;
-	const host = wrapper;
-	const bar = document.createElement("div");
-	bar.id = "state-player";
-	bar.hidden = true;
-	bar.setAttribute("role", "group");
-	bar.setAttribute("aria-label", "Execution state player");
-	const previous = document.createElement("button"), play = document.createElement("button"), next = document.createElement("button");
-	previous.textContent = "◀";
-	next.textContent = "▶";
-	previous.setAttribute("aria-label", "Previous execution state");
-	next.setAttribute("aria-label", "Next execution state");
-	for (const button of [
-		previous,
-		play,
-		next
-	]) button.type = "button";
-	const track = document.createElement("input");
-	track.type = "range";
-	track.step = "1";
-	track.setAttribute("aria-label", "Execution state");
-	const counter = document.createElement("output");
-	counter.setAttribute("aria-label", "Execution position");
-	bar.append(previous, play, next, track, counter);
-	host.append(bar);
-	new ResizeObserver(() => {
-		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
-	}).observe(bar);
-	let timer = null;
-	let config;
-	const slider = () => config ? state.sceneSliders[config.slider] : void 0;
-	function pause() {
-		if (timer !== null) clearInterval(timer);
-		timer = null;
-		play.textContent = "▷";
-		play.setAttribute("aria-label", "Play execution");
-	}
-	function render() {
-		const s = slider();
-		if (!s || s.kind === "tensor" || !Number.isInteger(s.min) || !Number.isInteger(s.max)) {
-			pause();
-			bar.hidden = true;
-			host.classList.remove("has-state-player");
-			return;
-		}
-		bar.hidden = false;
-		host.classList.add("has-state-player");
-		const p = playbackPosition(s.value, s.min, s.max);
-		track.min = String(s.min);
-		track.max = String(s.max);
-		track.value = String(p.current);
-		track.setAttribute("aria-valuetext", `${p.ordinal} of ${p.total}`);
-		counter.textContent = `${p.ordinal} / ${p.total}`;
-		previous.disabled = p.current <= s.min;
-		next.disabled = p.current >= s.max;
-		play.disabled = p.total <= 1;
-		if (p.current >= s.max) pause();
-	}
-	function move(value) {
-		if (config) setSliderValue(config.slider, value);
-		render();
-	}
-	previous.onclick = () => {
-		pause();
-		const s = slider();
-		if (s) move(s.value - 1);
-	};
-	next.onclick = () => {
-		pause();
-		const s = slider();
-		if (s) move(s.value + 1);
-	};
-	track.oninput = () => {
-		pause();
-		move(Number(track.value));
-	};
-	play.onclick = () => {
-		if (timer !== null) {
-			pause();
-			return;
-		}
-		const s = slider();
-		if (!s) return;
-		if (s.value >= s.max) move(s.min);
-		play.textContent = "Ⅱ";
-		play.setAttribute("aria-label", "Pause execution");
-		timer = setInterval(() => {
-			const current = slider();
-			if (current) move(current.value + 1);
-			else pause();
-		}, config?.intervalMs ?? 900);
-	};
-	function refresh() {
-		pause();
-		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
-		render();
-		document.querySelectorAll(".slider-range").forEach((input) => {
-			const row = input.closest(".slider-row");
-			if (row) row.hidden = input.dataset.sliderId === config?.slider;
-		});
-	}
-	window.addEventListener("algebench:playbackpause", pause);
-	window.addEventListener("algebench:navchange", refresh);
-	window.addEventListener("algebench:sliderchange", render);
-	document.addEventListener("visibilitychange", () => {
-		if (document.hidden) pause();
-	});
-	pause();
-	refresh();
-}
-//#endregion
-//#region src/objects/label-drag.ts
-/** Independent screen placement for expression labels, including merged rows. */
-function labelDragHandler(label, animState) {
-	return (event, members) => {
-		if (event.button !== 0 || animState.stopped || !state.renderer) return;
-		const controls = state.controls;
-		const canvas = state.renderer.domElement;
-		const viewport = canvas.getBoundingClientRect();
-		const row = event.currentTarget.getBoundingClientRect();
-		const start = {
-			x: (row.left + row.right) / 2 - viewport.left,
-			y: (row.top + row.bottom) / 2 - viewport.top
-		};
-		const moving = members ?? [label];
-		const box = event.currentTarget.closest(".annotation-badge")?.getBoundingClientRect() ?? row;
-		const groupStart = {
-			x: (box.left + box.right) / 2 - viewport.left,
-			y: (box.top + box.bottom) / 2 - viewport.top
-		};
-		event.preventDefault();
-		event.stopPropagation();
-		const controller = new AbortController();
-		const wasEnabled = controls?.enabled;
-		if (controls) controls.enabled = false;
-		document.body.classList.add("dragging-expression-label");
-		moving.forEach((member) => {
-			member.annotationDragging = true;
-			member.annotationDocked = true;
-		});
-		const end = () => {
-			moving.forEach((member) => {
-				member.annotationDragging = false;
-			});
-			controller.abort();
-			if (controls && wasEnabled !== void 0) controls.enabled = wasEnabled;
-			document.body.classList.remove("dragging-expression-label");
-		};
-		const move = (e) => {
-			if (e.pointerId !== event.pointerId) return;
-			if (animState.stopped) {
-				end();
-				return;
-			}
-			e.preventDefault();
-			e.stopPropagation();
-			if (members) {
-				const position = annotationDragPosition(groupStart.x + e.clientX - event.clientX, groupStart.y + e.clientY - event.clientY, box.width, box.height, canvas.clientWidth, canvas.clientHeight);
-				moving.forEach((member) => {
-					setExpressionLabelPosition(member, position.x, position.y);
-				});
-			} else placeExpressionLabel(label, start.x + e.clientX - event.clientX, start.y + e.clientY - event.clientY, e.clientX, e.clientY);
-		};
-		window.addEventListener("pointermove", move, {
-			capture: true,
-			signal: controller.signal
-		});
-		window.addEventListener("pointerup", (e) => {
-			if (e.pointerId === event.pointerId) end();
-		}, {
-			capture: true,
-			signal: controller.signal
-		});
-		window.addEventListener("pointercancel", end, { signal: controller.signal });
-		window.addEventListener("blur", end, { signal: controller.signal });
-		window.addEventListener("algebench:navchange", end, { signal: controller.signal });
-	};
-}
-//#endregion
-//#region src/objects/step-marker.ts
-/** State-bound annotations. Projection/grouping belongs to the common label layer. */
-function renderStepMarker(el, _view, owner) {
-	const marker = el.type === "step_marker";
-	const targetPosition = !marker && el.connectTo && "positionExpr" in el.connectTo ? el.connectTo.positionExpr : [];
-	const targetFns = targetPosition.length ? targetPosition.map((source) => compileExpr(source)) : null;
-	const targetIndex = !marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
-	const position = owner ? [] : el.positionExpr ?? (el.position ?? [
-		0,
-		0,
-		0
-	]).map(String);
-	const sources = [
-		...position,
-		...el.textExpr ? [el.textExpr] : [],
-		...el.visibleExpr ? [el.visibleExpr] : [],
-		...el.indexExpr ? [el.indexExpr] : [],
-		...targetPosition,
-		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
-	];
-	const positionFns = position.map((source) => compileExpr(source));
-	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
-	const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
-	const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
-	const animState = owner?.animState ?? { stopped: false };
-	const label = addLabel3D("", [
-		0,
-		0,
-		0
-	], void 0, { cssClass: marker ? "label-3d step-marker" : "label-3d expression-label" });
-	if (!marker) label.snapToProjection = true;
-	const cursor = document.createElement("span");
-	cursor.className = marker ? "step-marker-cursor" : "expression-label-cursor";
-	const badge = document.createElement("span");
-	badge.className = "annotation-badge";
-	const measure = document.createElement("span");
-	measure.className = "annotation-badge annotation-measure";
-	measure.setAttribute("aria-hidden", "true");
-	if (!marker && el.connectTo) measure.classList.add("annotation-measure-wired");
-	cursor.append(badge);
-	if (owner) cursor.classList.add("array-marker-cursor");
-	if (marker) {
-		const pointer = document.createElement("span");
-		pointer.className = "step-marker-pointer";
-		pointer.setAttribute("aria-hidden", "true");
-		cursor.append(pointer);
-	}
-	label.el.replaceChildren(cursor, measure);
-	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#172e50")));
-	label.annotation = {
-		kind: marker ? "marker" : "label",
-		text: "",
-		badge,
-		measure,
-		width: 0,
-		height: 0,
-		scale: null,
-		rendered: ""
-	};
-	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
-	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
-	const entry = {
-		animState,
-		exprStrings: sources,
-		_rebuildFn: () => {
-			if (animState.stopped) return;
-			try {
-				if (targetIndex) label.wireTarget.index = Number(evalExpr(targetIndex, 0));
-				if (targetFns) {
-					const target = targetFns.map((fn) => Number(evalExpr(fn, 0)));
-					label.wireTarget = target.every(Number.isFinite) ? { position: target } : {};
-				}
-				const indexValue = indexFn ? Number(evalExpr(indexFn, 0)) : null;
-				const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map((fn) => Number(evalExpr(fn, 0)));
-				if (!point) {
-					label.forceHidden = true;
-					return;
-				}
-				if (point.length !== 3 || point.some((n) => !Number.isFinite(n))) throw new Error("Invalid annotation position");
-				if (!marker && point.some((value, index) => value !== label.dataPos[index])) {
-					label.annotationPosition = void 0;
-					label.annotationWorldPosition = void 0;
-					label.annotationOrder = void 0;
-				}
-				label.dataPos = point;
-				if (owner) label.cellAttachment = {
-					corners: owner.corners(indexValue),
-					edge: "top",
-					gap: 8
-				};
-				label.forceHidden = visibleFn ? !evalExpr(visibleFn, 0) : false;
-				const text = textFn ? annotationText(evalExpr(textFn, 0)) : el.text ?? "";
-				const annotation = label.annotation;
-				annotation.index = void 0;
-				if (indexFn && el.indexName && (owner || el.indexGroup)) {
-					const value = indexValue;
-					if (!Number.isInteger(value) || value < 0) throw new Error("Invalid index");
-					annotation.index = {
-						group: owner?.group ?? el.indexGroup,
-						name: el.indexName,
-						value
-					};
-				}
-				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
-				if (measure.textContent !== annotation.text) {
-					measure.textContent = annotation.text;
-					annotation.scale = null;
-				}
-			} catch {
-				label.forceHidden = true;
-			}
-		}
-	};
-	if (!owner) {
-		registerAnimExpr(entry);
-		entry._rebuildFn?.();
-	}
-	return {
-		_animState: animState,
-		_animExprEntry: entry,
-		type: el.type
-	};
-}
-//#endregion
-//#region src/objects/array-data.ts
-function arrayCell(value, type = "mixed") {
-	const kind = type === "mixed" ? value === null ? "empty" : typeof value === "string" ? "string" : typeof value === "boolean" ? "boolean" : "number" : type;
-	if (kind === "empty" && value === null) return {
-		value,
-		kind,
-		text: "∅"
-	};
-	if (kind === "number" && typeof value === "number" && Number.isFinite(value)) return {
-		value,
-		kind,
-		text: String(value)
-	};
-	if (kind === "boolean" && typeof value === "boolean") return {
-		value,
-		kind,
-		text: String(value)
-	};
-	if (kind === "string" && typeof value === "string") return {
-		value,
-		kind,
-		text: JSON.stringify(value)
-	};
-	if (kind === "character" && typeof value === "string" && [...value].length === 1) return {
-		value,
-		kind,
-		text: {
-			" ": "␠",
-			"\n": "↵",
-			"	": "⇥"
-		}[value] ?? value
-	};
-	throw new Error(`Array cell does not match ${kind}`);
-}
-function arrayLength(shape, values) {
-	const n = shape?.[0] ?? values?.length ?? 0;
-	if (shape && shape.length !== 1 || !Number.isInteger(n) || n < 1 || n > 256) throw new Error("An array needs 1–256 cells and a one-dimensional shape.");
-	if (values && values.length !== n) throw new Error("Array shape and values have different lengths.");
-	return n;
-}
-/** Dynamic arrays may be empty; reject invalid lengths instead of rounding them. */
-function dynamicArrayLength(value) {
-	if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 256) throw new Error("Array length must be an integer from 0 to 256.");
-	return value;
-}
-/** Owned markers cannot point outside their array; the renderer hides null anchors. */
-function arrayCellPosition(index, origin, pitch, layout = "horizontal") {
-	return layout === "vertical" ? [
-		origin[0],
-		origin[1] + index * .78,
-		origin[2]
-	] : [
-		origin[0] + index * pitch,
-		origin[1],
-		origin[2]
-	];
-}
-function arrayIndexPosition(index, length, origin, pitch, layout = "horizontal") {
-	if (!Number.isInteger(index) || index < 0 || index >= length) return null;
-	return arrayCellPosition(index, origin, pitch, layout);
-}
-/** Same dimensions as the rendered boxes; all corners support rotated cameras. */
-function arrayCellCorners(centre, pitch) {
-	return [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => [
-		centre[0] + x * pitch * .39,
-		centre[1] + y * .34,
-		centre[2] + z * .11
-	])));
-}
-//#endregion
-//#region src/objects/array-changes.ts
-var ArrayChangeTracker = class {
-	constructor() {
-		this.previous = null;
-		this.transition = "";
-	}
-	update(keys, transition) {
-		if (this.previous === null) {
-			this.previous = keys.slice();
-			this.transition = transition;
-			return {
-				changed: [],
-				added: [],
-				removed: []
-			};
-		}
-		const before = this.previous;
-		if (this.transition === transition && before.length === keys.length && before.every((key, i) => key === keys[i])) return null;
-		const changes = {
-			changed: [],
-			added: [],
-			removed: []
-		};
-		for (let i = 0; i < keys.length; i++) if (i >= before.length) changes.added.push(i);
-		else if (before[i] !== keys[i]) changes.changed.push(i);
-		for (let i = keys.length; i < before.length; i++) changes.removed.push(i);
-		this.previous = keys.slice();
-		this.transition = transition;
-		return changes;
-	}
-};
-//#endregion
-//#region src/objects/array.ts
-/** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
-var arrayMarkerGroup = 0;
-var PALETTE = {
-	number: "#75bfe9",
-	character: "#74d0c2",
-	string: "#b69bea",
-	boolean: "#efa768",
-	empty: "#8793a6"
-};
-function renderArray(el, _view, decorate) {
-	if (!state.three) return null;
-	const lengthFn = el.lengthExpr ? compileExpr(el.lengthExpr) : null;
-	let n = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : arrayLength(el.shape, el.valueExpr ? void 0 : el.values);
-	const origin = (el.origin ?? [
-		0,
-		0,
-		0
-	]).map(Number);
-	if (origin.length !== 3 || origin.some((v) => !Number.isFinite(v))) throw new Error("Array origin must contain three finite coordinates.");
-	const pitch = Number(el.cellSize ?? 2);
-	if (!Number.isFinite(pitch) || pitch <= 0) throw new Error("Array cellSize must be positive.");
-	const centre = (i) => arrayCellPosition(i, origin, pitch, el.arrayLayout);
-	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
-	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
-	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
-	for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
-		const c = centre(i);
-		const p = dataToWorld([
-			c[0] + source.getX(v) * pitch * .78,
-			c[1] + source.getY(v) * .68,
-			c[2] + source.getZ(v) * .22
-		]);
-		positions.set(p, (i * vertices + v) * 3);
-	}
-	const geometry = new THREE.BufferGeometry();
-	geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-	let colorAttribute = new THREE.BufferAttribute(colors, 3);
-	geometry.setAttribute("color", colorAttribute);
-	const material = new THREE.MeshBasicMaterial({
-		vertexColors: true,
-		transparent: true,
-		opacity: 1
-	});
-	const mesh = new THREE.Mesh(geometry, material);
-	mesh.userData.ignorePlaneOpacity = true;
-	mesh.userData.targetOpacity = 1;
-	const cellTarget = { at(index) {
-		const position = arrayIndexPosition(index, n, origin, pitch, el.arrayLayout);
-		return position ? {
-			position,
-			corners: arrayCellCorners(position, pitch)
-		} : null;
-	} };
-	mesh.userData.arrayCellTarget = cellTarget;
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
-	const decoration = decorate?.(n, origin, pitch, mesh);
-	const glowMaterial = new THREE.ShaderMaterial({
-		transparent: true,
-		depthWrite: false,
-		side: THREE.DoubleSide,
-		uniforms: { opacity: { value: 1 } },
-		vertexShader: `attribute float removed; varying vec2 rimUV; varying float removedCell;
-            void main(){rimUV=uv*2.0-1.0;removedCell=removed;
-                gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-		fragmentShader: `uniform float opacity; varying vec2 rimUV; varying float removedCell;
-            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
-                float rim=exp(-pow((edge-0.86)/0.09,2.0));
-                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float alpha=rim*mix(0.85,0.35,removedCell)*opacity;
-                if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
-	});
-	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
-	glowMesh.onBeforeRender = () => {
-		glowMaterial.uniforms.opacity.value = glowMaterial.opacity;
-	};
-	glowMesh.visible = false;
-	glowMesh.userData.ignorePlaneOpacity = true;
-	glowMesh.userData.targetOpacity = 1;
-	glowMesh.userData.annotationTextPlane = true;
-	glowMesh.raycast = () => {};
-	state.three.scene.add(glowMesh);
-	state.planeMeshes.push(glowMesh);
-	const changes = new ArrayChangeTracker();
-	let illuminated = /* @__PURE__ */ new Set();
-	function illuminate(changed, removed) {
-		const positions = [], uv = [], removedFlags = [];
-		const corners = [
-			[-1, -1],
-			[1, -1],
-			[1, 1],
-			[-1, -1],
-			[1, 1],
-			[-1, 1]
-		];
-		for (const [indices, isRemoved] of [[changed, 0], [removed, 1]]) for (const i of indices) {
-			const c = centre(i);
-			for (const [x, y] of corners) {
-				positions.push(...dataToWorld([
-					c[0] + x * pitch * .455,
-					c[1] + y * .397,
-					c[2] + .125
-				]));
-				uv.push((x + 1) / 2, (y + 1) / 2);
-				removedFlags.push(isRemoved);
-			}
-		}
-		const geometry = new THREE.BufferGeometry();
-		geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-		geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-		geometry.setAttribute("removed", new THREE.Float32BufferAttribute(removedFlags, 1));
-		glowMesh.geometry.dispose();
-		glowMesh.geometry = geometry;
-		glowMesh.visible = positions.length > 0;
-	}
-	const indexLabels = [];
-	const makeCellLabel = (i) => {
-		const c = centre(i), label = addLabel3D("", [
-			c[0],
-			c[1],
-			c[2] + .14
-		], "#12212b", { cssClass: "label-3d array-cell-label" });
-		if (el.fontSize != null) label.el.style.setProperty("--array-font-size", `${el.fontSize}px`);
-		label.ownerMesh = mesh;
-		label.snapToProjection = true;
-		if (el.showIndices !== false) {
-			const indexLabel = addLabel3D(String(i), c, "#e1ecf7", { cssClass: "label-3d array-index-tag" });
-			if (el.indexFontSize != null) indexLabel.el.style.setProperty("--array-index-font-size", `${el.indexFontSize}px`);
-			indexLabel.ownerMesh = mesh;
-			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
-			indexLabels.push(indexLabel);
-			indexLabel.cellAttachment = {
-				corners: arrayCellCorners(c, pitch),
-				edge: "bottom",
-				gap: 0
-			};
-		}
-		return label;
-	};
-	const labels = Array.from({ length: n }, (_, i) => makeCellLabel(i));
-	let titleLabel;
-	const titleCentre = () => centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
-	if (el.label) {
-		const offset = el.labelOffset ?? [
-			0,
-			.88,
-			0
-		];
-		titleLabel = addLabel3D("", titleCentre().map((value, i) => value + offset[i]), "#b5c1cf");
-		titleLabel.el.textContent = el.label;
-		titleLabel.snapToProjection = true;
-	}
-	const animState = { stopped: false };
-	const owner = {
-		group: "array-markers:" + arrayMarkerGroup++,
-		animState,
-		position: (index) => arrayIndexPosition(index, n, origin, pitch, el.arrayLayout),
-		corners: (index) => arrayCellCorners(centre(index), pitch)
-	};
-	const markers = (el.markers ?? []).map((marker) => renderStepMarker({
-		...marker,
-		type: "step_marker"
-	}, _view, owner));
-	const valueFn = el.valueExpr ? compileExpr(el.valueExpr) : null;
-	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
-	const previous = [];
-	function resize(next) {
-		if (next === n) return;
-		while (labels.length > next) for (const label of [labels.pop(), indexLabels.pop()]) {
-			if (!label) continue;
-			label.el.remove();
-			const index = state.labels.indexOf(label);
-			if (index >= 0) state.labels.splice(index, 1);
-		}
-		while (labels.length < next) labels.push(makeCellLabel(labels.length));
-		n = next;
-		positions = new Float32Array(n * vertices * 3);
-		colors = new Float32Array(n * vertices * 3);
-		for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
-			const c = centre(i);
-			positions.set(dataToWorld([
-				c[0] + source.getX(v) * pitch * .78,
-				c[1] + source.getY(v) * .68,
-				c[2] + source.getZ(v) * .22
-			]), (i * vertices + v) * 3);
-		}
-		const replacement = new THREE.BufferGeometry();
-		replacement.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-		colorAttribute = new THREE.BufferAttribute(colors, 3);
-		replacement.setAttribute("color", colorAttribute);
-		mesh.geometry.dispose();
-		mesh.geometry = replacement;
-		previous.length = 0;
-		if (titleLabel) titleLabel.dataPos = titleCentre().map((value, i) => value + (el.labelOffset ?? [
-			0,
-			.88,
-			0
-		])[i]);
-	}
-	const entry = {
-		animState,
-		exprStrings: [
-			el.lengthExpr,
-			el.valueExpr,
-			el.highlightExpr,
-			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
-		].filter((v) => !!v),
-		_rebuildFn: () => {
-			if (animState.stopped || animState.hiddenByRemove) return;
-			const next = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : n;
-			const cells = Array.from({ length: next }, (_, i) => {
-				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType);
-				return {
-					cell,
-					highlighted: highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
-						idx: i,
-						value: cell.value
-					} }) : false
-				};
-			});
-			const transition = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
-				id,
-				s.value,
-				s.values
-			]));
-			const delta = changes.update(cells.map(({ cell }) => JSON.stringify([cell.kind, cell.value])), transition);
-			if (delta) {
-				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
-				illuminate([...illuminated], delta.removed);
-			}
-			resize(next);
-			decoration?.resize(next);
-			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
-			let dirty = false;
-			for (let i = 0; i < n; i++) {
-				const { cell, highlighted } = cells[i];
-				const lit = illuminated.has(i);
-				const key = JSON.stringify([
-					cell.kind,
-					cell.value,
-					highlighted,
-					lit
-				]);
-				if (previous[i] === key) continue;
-				previous[i] = key;
-				dirty = true;
-				const label = labels[i];
-				label.el.textContent = cell.text;
-				label.el.title = `[${i}] ${cell.kind}: ${cell.text}`;
-				label.el.setAttribute("aria-label", label.el.title);
-				label.boxW = null;
-				label.boxH = null;
-				const rgb = parseColor(highlighted ? "#f1cc59" : el.color ?? PALETTE[cell.kind]);
-				if (lit) for (let j = 0; j < 3; j++) rgb[j] = rgb[j] + (1 - rgb[j]) * .35;
-				for (let v = 0; v < vertices; v++) {
-					const shade = normal.getZ(v) > 0 ? 1 : normal.getY(v) > 0 ? .78 : .56;
-					const k = (i * vertices + v) * 3;
-					colors[k] = rgb[0] * shade;
-					colors[k + 1] = rgb[1] * shade;
-					colors[k + 2] = rgb[2] * shade;
-				}
-			}
-			if (dirty) colorAttribute.needsUpdate = true;
-		}
-	};
-	try {
-		entry._rebuildFn?.();
-	} catch (error) {
-		console.warn("array:", error);
-	}
-	material.addEventListener("dispose", () => unit.dispose());
-	if (entry.exprStrings?.length) registerAnimExpr(entry);
-	return {
-		_animState: animState,
-		_animExprEntry: entry,
-		type: el.type
-	};
-}
-//#endregion
-//#region src/objects/stack-layout.ts
-/** A fixed base and an open container that grows with its bottom-to-top cells. */
-function stackBounds(length, origin, pitch) {
-	const [x, y, z] = origin;
-	return {
-		left: x - pitch * .39 - .12,
-		right: x + pitch * .39 + .12,
-		bottom: y - .5,
-		top: y + Math.max(0, length - 1) * .78 + .55,
-		back: z - .2,
-		front: z + .7
-	};
-}
-//#endregion
-//#region src/objects/stack.ts
-/** One state-bound stack owner; its cells reuse the array renderer. */
-function renderStack(el, view) {
-	if (el.shape && el.shape.length !== 1) throw new Error("A stack needs a one-dimensional shape.");
-	const lengthExpr = el.lengthExpr ?? String(el.shape?.[0] ?? el.values?.length ?? 0);
-	return renderArray({
-		...el,
-		arrayLayout: "vertical",
-		lengthExpr,
-		showIndices: el.showIndices ?? false,
-		label: void 0,
-		markers: [...el.markers ?? [], ...el.showTop === false ? [] : [{
-			type: "step_marker",
-			indexName: "top slot",
-			indexExpr: `(${lengthExpr}) - 1`,
-			color: "#f1c65b"
-		}]]
-	}, view, (initial, origin, pitch, owner) => {
-		const color = el.containerColor ?? "#77bfae";
-		const makeMesh = (opacity) => {
-			const material = new THREE.MeshBasicMaterial({
-				color,
-				transparent: true,
-				opacity,
-				side: THREE.DoubleSide,
-				depthWrite: false
-			});
-			const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
-			mesh.userData.ignorePlaneOpacity = true;
-			mesh.userData.targetOpacity = opacity;
-			state.three.scene.add(mesh);
-			state.planeMeshes.push(mesh);
-			return mesh;
-		};
-		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7);
-		const title = addLabel3D(el.label ?? "stack", [
-			origin[0],
-			origin[1] - 1.5,
-			origin[2]
-		], "#b5c1cf");
-		title.ownerMesh = owner;
-		title.snapToProjection = true;
-		const empty = addLabel3D(el.emptyText ?? "empty", origin, "#8ca9a0", { cssClass: "label-3d array-cell-label" });
-		empty.ownerMesh = owner;
-		empty.snapToProjection = true;
-		empty.el.setAttribute("aria-label", "Empty stack");
-		let previous = -1;
-		const replace = (mesh, quads) => {
-			const positions = [];
-			for (const q of quads) for (const i of [
-				0,
-				1,
-				2,
-				0,
-				2,
-				3
-			]) positions.push(...dataToWorld(q[i]));
-			const geometry = new THREE.BufferGeometry();
-			geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-			mesh.geometry.dispose();
-			mesh.geometry = geometry;
-		};
-		const resize = (length) => {
-			if (length === previous) return;
-			previous = length;
-			const b = stackBounds(length, origin, pitch), t = .035, z = b.back;
-			replace(back, [[
-				[
-					b.left,
-					b.bottom,
-					z
-				],
-				[
-					b.right,
-					b.bottom,
-					z
-				],
-				[
-					b.right,
-					b.top,
-					z
-				],
-				[
-					b.left,
-					b.top,
-					z
-				]
-			]]);
-			replace(base, [[
-				[
-					b.left,
-					b.bottom,
-					z
-				],
-				[
-					b.right,
-					b.bottom,
-					z
-				],
-				[
-					b.right,
-					b.bottom,
-					b.front
-				],
-				[
-					b.left,
-					b.bottom,
-					b.front
-				]
-			]]);
-			const rect = (left, bottom, right, top) => [
-				[
-					left,
-					bottom,
-					z + .005
-				],
-				[
-					right,
-					bottom,
-					z + .005
-				],
-				[
-					right,
-					top,
-					z + .005
-				],
-				[
-					left,
-					top,
-					z + .005
-				]
-			];
-			replace(outline, [
-				rect(b.left, b.bottom, b.left + t, b.top),
-				rect(b.right - t, b.bottom, b.right, b.top),
-				rect(b.left, b.bottom, b.right, b.bottom + t)
-			]);
-			empty.forceHidden = length !== 0;
-			empty.el.style.display = length === 0 ? "" : "none";
-		};
-		resize(initial);
-		return { resize };
-	});
-}
-//#endregion
-//#region src/algorithm/state.ts
-function equal(a, b) {
-	if (a === b) return true;
-	if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
-	const x = a, y = b;
-	return Object.keys(x).length === Object.keys(y).length && Object.keys(x).every((k) => Object.hasOwn(y, k) && equal(x[k], y[k]));
-}
-function compare(a, b) {
-	const out = {};
-	for (const id of /* @__PURE__ */ new Set([...Object.keys(a), ...Object.keys(b)])) if (!equal(a[id], b[id])) out[id] = {
-		before: a[id] ?? null,
-		after: b[id] ?? null
-	};
-	return out;
-}
-function locations(s) {
-	return Object.fromEntries(Object.entries(s.arrays).flatMap(([array, ids]) => ids.map((id, index) => [id, {
-		array,
-		index
-	}])));
-}
-function references(s) {
-	return Object.fromEntries(Object.entries(s.variables).flatMap(([name, variable]) => {
-		if (!variable.reference) return [];
-		const array = variable.reference.array, index = variable.value;
-		return [[name, {
-			array,
-			index,
-			entity: s.arrays[array]?.[index] ?? null
-		}]];
-	}));
-}
-/** Identity, never value or position, establishes correspondence between states. */
-function compareStates(before, after) {
-	return {
-		entities: compare(Object.fromEntries(Object.entries(before.entities).map(([id, e]) => [id, e.value])), Object.fromEntries(Object.entries(after.entities).map(([id, e]) => [id, e.value]))),
-		moves: compare(locations(before), locations(after)),
-		variables: compare(before.variables, after.variables),
-		references: compare(references(before), references(after)),
-		relations: compare(Object.fromEntries(before.relations.map((r) => [r.id, r])), Object.fromEntries(after.relations.map((r) => [r.id, r]))),
-		execution: equal(before.execution, after.execution) ? null : {
-			before: before.execution,
-			after: after.execution
-		}
-	};
-}
-/** Cross-field integrity checks supplement the authoring schema. */
-function validateSnapshot(s) {
-	const seen = /* @__PURE__ */ new Set();
-	for (const ids of Object.values(s.arrays)) for (const id of ids) {
-		if (!s.entities[id] || seen.has(id)) throw new Error(`Invalid or repeated entity: ${id}`);
-		seen.add(id);
-	}
-	for (const [name, v] of Object.entries(s.variables)) {
-		if (!Number.isFinite(v.value)) throw new Error(`Non-finite variable: ${name}`);
-		if (v.reference && (!Number.isInteger(v.value) || !s.arrays[v.reference.array]?.[v.value])) throw new Error(`Invalid reference: ${name}`);
-	}
-	const relations = /* @__PURE__ */ new Set();
-	for (const r of s.relations) {
-		if (relations.has(r.id) || !s.entities[r.from] || !s.entities[r.to]) throw new Error(`Invalid relation: ${r.id}`);
-		relations.add(r.id);
-	}
-	for (const id of s.execution.operands) if (!s.entities[id]) throw new Error(`Invalid operand: ${id}`);
-}
-function snapshotIndex(value, count) {
-	return Math.max(0, Math.min(count - 1, Number.isFinite(value) ? Math.round(value) : 0));
-}
-/** Position interpolation is presentation-only; the destination is exact at t=1. */
-function interpolate(from, to, t) {
-	const u = Math.max(0, Math.min(1, t));
-	const eased = u * u * (3 - 2 * u);
-	return [
-		0,
-		1,
-		2
-	].map((i) => (from[i] ?? 0) + ((to[i] ?? 0) - (from[i] ?? 0)) * eased);
-}
-/** Deterministic execution: record full states, including comparison-only states. */
-function heapInsertionSnapshots(values, key, array = "heap") {
-	if (!values.length || values.length > 15 || ![...values, key].every(Number.isFinite)) throw new Error("Use 1–15 finite starting values.");
-	if (values.some((v, i) => i > 0 && v < values[Math.floor((i - 1) / 2)])) throw new Error("Starting array is not a min-heap: each parent must be ≤ its children. Edit the values to restore this rule.");
-	const ids = values.map((_, i) => `item-${i}`), entities = Object.fromEntries(values.map((value, i) => [`item-${i}`, { value }]));
-	const snapshots = [];
-	const record = (phase, i, p, operands = []) => {
-		const variables = {
-			key: { value: key },
-			n: { value: ids.length }
-		};
-		if (i !== null) variables.i = {
-			value: i,
-			reference: { array }
-		};
-		if (p !== null) variables.p = {
-			value: p,
-			reference: { array }
-		};
-		snapshots.push(structuredClone({
-			entities,
-			arrays: { [array]: ids },
-			variables,
-			relations: ids.slice(1).map((id, k) => ({
-				id: `parent-of-${id}`,
-				from: ids[Math.floor(k / 2)],
-				to: id,
-				kind: "parent"
-			})),
-			execution: {
-				phase,
-				operands
-			}
-		}));
-	};
-	record(`Ready · insert ${key}`, null, null);
-	ids.push("inserted");
-	entities.inserted = { value: key };
-	let i = ids.length - 1;
-	record(`Append ${key} · next free slot ${i}`, i, Math.floor((i - 1) / 2));
-	while (i > 0) {
-		const p = Math.floor((i - 1) / 2), child = ids[i], parent = ids[p];
-		const parentValue = entities[parent].value;
-		record(`Compare · ${key} < ${parentValue} ? ${key < parentValue ? "yes" : "no"}`, i, p, [child, parent]);
-		if (key >= parentValue) break;
-		[ids[i], ids[p]] = [parent, child];
-		i = p;
-		record(`Swap upward · ${key} moves to slot ${i}`, i, i > 0 ? Math.floor((i - 1) / 2) : null);
-	}
-	record(i === 0 ? "Done · root reached" : "Done · parent is already ≤ the new value", i, i > 0 ? Math.floor((i - 1) / 2) : null);
-	return snapshots;
-}
-//#endregion
-//#region src/objects/algorithm-structure.ts
-/** Two spatial projections of one semantic state. No execution rules live here. */
-var COLORS = [
-	5748968,
-	12225514,
-	5818787,
-	15703653,
-	15105456,
-	9748328,
-	15847256
-];
-function renderAlgorithmStructure(el, _view) {
-	const scene = state.three?.scene, canvas = state.renderer?.domElement;
-	if (!scene || !canvas) return null;
-	const array = el.arrayId ?? "heap", slider = el.stateSlider ?? "";
-	const animState = { stopped: false };
-	const meshes = [], labels = [], blocks = [];
-	const identityColors = /* @__PURE__ */ new Map();
-	let snapshots = [], current = null;
-	let changes = null, selected = "", hovered = "", inputSignature = "", index = -1, started = 0;
-	const scalar = (name, fallback) => name ? Number(state.sceneSliders[name]?.value ?? fallback) : fallback;
-	const label = (text, pos, fontSize = 15) => {
-		const l = addLabel3D("", pos, "#e8edf6");
-		l.el.textContent = text;
-		l.el.style.fontSize = `${fontSize}px`;
-		l.el.style.whiteSpace = "nowrap";
-		labels.push(l);
-		return l;
-	};
-	const caption = label("", [
-		0,
-		4.3,
-		0
-	], 17);
-	caption.el.style.whiteSpace = "normal";
-	caption.el.style.maxWidth = "380px";
-	const setText = (l, text) => {
-		if (l.el.textContent !== text) {
-			l.el.textContent = text;
-			l.boxW = null;
-			l.boxH = null;
-		}
-	};
-	label("BINARY TREE · parent → child", [
-		0,
-		3.65,
-		0
-	], 13);
-	label("ARRAY A · zero-based slots", [
-		-2.7,
-		-1.3,
-		0
-	], 13);
-	const feedback = label("Hover to link · click to pin", [
-		0,
-		-4.6,
-		0
-	], 13);
-	const makeMesh = (geometry, color) => {
-		const material = new THREE.MeshBasicMaterial({
-			color,
-			transparent: true,
-			opacity: 1
-		});
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.userData.ignorePlaneOpacity = true;
-		mesh.userData.targetOpacity = 1;
-		scene.add(mesh);
-		state.planeMeshes.push(mesh);
-		meshes.push(mesh);
-		return mesh;
-	};
-	const place = (mesh, pos) => mesh.position.set(...dataToWorld(pos));
-	const unit = () => Math.abs(dataToWorld([
-		1,
-		0,
-		0
-	])[0] - dataToWorld([
-		0,
-		0,
-		0
-	])[0]);
-	const layout = (slot, view) => {
-		if (view === "array") return [
-			-3.9 + slot * 1.3,
-			-2.05,
-			0
-		];
-		const level = Math.floor(Math.log2(slot + 1));
-		return [
-			((slot - (2 ** level - 1) + .5) / 2 ** level - .5) * 8,
-			2.7 - level * 1.55,
-			0
-		];
-	};
-	const listeners = new AbortController();
-	function paint() {
-		for (const b of blocks) {
-			const active = b.id === (hovered || selected);
-			const comparing = current?.execution.operands.includes(b.id);
-			const moved = !!changes?.moves[b.id] && performance.now() - started < 900;
-			b.mesh.material.color.setHex(active ? 16777215 : comparing ? 16767828 : moved ? 16759145 : identityColors.get(b.id) ?? COLORS[0]);
-			b.label.el.style.color = active ? "#ffffff" : "#111827";
-			b.label.el.style.background = active ? "#385c80" : "#ffffffdd";
-			b.label.el.style.borderRadius = "5px";
-			b.label.el.style.padding = "1px 5px";
-		}
-		const id = hovered || selected;
-		setText(feedback, id && current?.entities[id] ? `Same object: ${id} · value ${current.entities[id].value} · highlighted in both views` : "Hover to link · click to pin · click empty space to clear");
-	}
-	const ensureBlocks = (states) => {
-		for (const s of states) for (const id of Object.keys(s.entities)) {
-			if (identityColors.has(id)) continue;
-			identityColors.set(id, COLORS[identityColors.size % COLORS.length]);
-			for (const view of ["array", "tree"]) {
-				const geometry = new THREE.BoxGeometry(1, 1, 1);
-				const normals = geometry.getAttribute("normal"), shades = [];
-				for (let i = 0; i < normals.count; i++) {
-					const v = normals.getZ(i) > 0 ? 1 : normals.getY(i) > 0 ? .8 : .55;
-					shades.push(v, v, v);
-				}
-				geometry.setAttribute("color", new THREE.Float32BufferAttribute(shades, 3));
-				const mesh = makeMesh(geometry, identityColors.get(id));
-				mesh.material.vertexColors = true;
-				const l = label("", [
-					0,
-					0,
-					0
-				], 17);
-				l.el.style.pointerEvents = "auto";
-				l.el.style.cursor = "pointer";
-				l.el.addEventListener("pointerenter", () => {
-					hovered = id;
-					paint();
-				}, { signal: listeners.signal });
-				l.el.addEventListener("pointerleave", () => {
-					hovered = "";
-					paint();
-				}, { signal: listeners.signal });
-				l.el.addEventListener("click", () => {
-					selected = selected === id ? "" : id;
-					paint();
-				}, { signal: listeners.signal });
-				blocks.push({
-					mesh,
-					label: l,
-					position: [
-						0,
-						0,
-						0
-					],
-					from: [
-						0,
-						0,
-						0
-					],
-					to: [
-						0,
-						0,
-						0
-					],
-					id,
-					view
-				});
-			}
-		}
-	};
-	const edges = Array.from({ length: 15 }, () => makeMesh(new THREE.CylinderGeometry(1, 1, 1, 8), 6322326));
-	const arrows = Array.from({ length: 2 }, () => ({
-		shaft: makeMesh(new THREE.CylinderGeometry(1, 1, 1, 8), 8117469),
-		head: makeMesh(new THREE.ConeGeometry(1, 1, 10), 8117469),
-		label: label("", [
-			0,
-			0,
-			0
-		])
-	}));
-	const variableLabels = [label("", [
-		-1,
-		-3.95,
-		0
-	]), label("", [
-		1,
-		-3.95,
-		0
-	])];
-	const slots = Array.from({ length: 7 }, (_, i) => label(String(i), [
-		-3.9 + i * 1.3,
-		-2.75,
-		0
-	], 12));
-	function segment(mesh, a, b, radius) {
-		const start = new THREE.Vector3(...dataToWorld(a)), end = new THREE.Vector3(...dataToWorld(b));
-		const direction = end.clone().sub(start);
-		mesh.position.copy(start.add(end).multiplyScalar(.5));
-		mesh.scale.set(radius * unit(), direction.length(), radius * unit());
-		mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-	}
-	function selectSnapshot(next, now, reset) {
-		const after = snapshots[next];
-		if (!after) return;
-		const before = current ?? after;
-		changes = compareStates(before, after);
-		current = after;
-		index = next;
-		started = now;
-		for (const b of blocks) {
-			const slot = after.arrays[array]?.indexOf(b.id) ?? -1;
-			b.mesh.visible = slot >= 0;
-			b.label.forceHidden = slot < 0;
-			if (slot < 0) continue;
-			b.to = layout(slot, b.view);
-			b.from = reset ? b.to : before.entities[b.id] ? [...b.position] : [
-				b.to[0],
-				b.to[1] - .6,
-				b.to[2] + .8
-			];
-			b.label.el.textContent = String(after.entities[b.id]?.value ?? "");
-		}
-		caption.el.textContent = `${next} / ${snapshots.length - 1} · ${after.execution.phase}`;
-		caption.boxW = null;
-		canvas.dispatchEvent(new CustomEvent("algebench:algorithm-transition", {
-			bubbles: true,
-			detail: {
-				elementId: el.id,
-				before,
-				after,
-				changes
-			}
-		}));
-		paint();
-	}
-	function update(now) {
-		if (animState.stopped) return;
-		const input = el.heapInsertion;
-		const values = input ? state.sceneSliders[input.arraySlider]?.values : null;
-		const key = input ? scalar(input.keySlider, 5) : 5;
-		const signature = JSON.stringify([values, key]);
-		let reset = false;
-		if (signature !== inputSignature) {
-			inputSignature = signature;
-			try {
-				snapshots = input ? heapInsertionSnapshots(values ?? [
-					8,
-					12,
-					10,
-					20,
-					15,
-					18
-				], key, array) : el.algorithmStates ?? [];
-				snapshots.forEach(validateSnapshot);
-				if (!snapshots.length) throw new Error("No execution snapshots.");
-				if (snapshots.some((s) => (s.arrays[array]?.length ?? 0) > 7)) throw new Error("This playground supports up to seven visible cells.");
-				ensureBlocks(snapshots);
-				reset = true;
-				index = -1;
-				slots.forEach((l) => {
-					l.forceHidden = false;
-				});
-			} catch (error) {
-				snapshots = [];
-				current = null;
-				index = -1;
-				caption.el.textContent = String(error instanceof Error ? error.message : error);
-				caption.boxW = null;
-				for (const m of meshes) m.visible = false;
-				for (const l of labels) if (l !== caption) l.forceHidden = true;
-				return;
-			}
-			labels.forEach((l) => {
-				l.forceHidden = false;
-			});
-		}
-		if (!snapshots.length) return;
-		const next = snapshotIndex(scalar(slider, 0), snapshots.length);
-		if (next !== index) selectSnapshot(next, now, reset);
-		if (!current) return;
-		const seconds = scalar(el.motionSlider, .7);
-		const t = seconds > 0 ? Math.min(1, (now - started) / (seconds * 1e3)) : 1;
-		const depth = scalar(el.depthSlider, .35), u = unit();
-		for (const b of blocks) {
-			if (!b.mesh.visible) continue;
-			b.position = interpolate(b.from, b.to, t);
-			place(b.mesh, b.position);
-			b.mesh.scale.set(.86 * u, .68 * u, depth * u);
-			b.label.dataPos = [
-				b.position[0],
-				b.position[1],
-				b.position[2] + depth / 2 + .04
-			];
-		}
-		const tree = new Map(blocks.filter((b) => b.view === "tree" && b.mesh.visible).map((b) => [b.id, b.position]));
-		edges.forEach((edge, i) => {
-			const r = current?.relations[i], a = r ? tree.get(r.from) : null, b = r ? tree.get(r.to) : null;
-			edge.visible = !!a && !!b;
-			if (a && b) {
-				segment(edge, [
-					a[0],
-					a[1],
-					-.15
-				], [
-					b[0],
-					b[1],
-					-.15
-				], .026);
-				edge.material.color.setHex(r && changes?.relations[r.id] && t < 1 ? 16759908 : 6322326);
-			}
-		});
-		const refs = Object.entries(current.variables).filter(([, v]) => v.reference?.array === array);
-		arrows.forEach((arrow, j) => {
-			const ref = refs[j];
-			arrow.shaft.visible = arrow.head.visible = !!ref;
-			arrow.label.forceHidden = !ref;
-			if (!ref) return;
-			const [name, v] = ref, x = layout(v.value, "array")[0];
-			arrow.label.el.textContent = `${name} = ${v.value}`;
-			arrow.label.dataPos = [
-				x,
-				-3.35,
-				.25
-			];
-			segment(arrow.shaft, [
-				x,
-				-3.08,
-				.1
-			], [
-				x,
-				-2.55,
-				.1
-			], .018);
-			place(arrow.head, [
-				x,
-				-2.48,
-				.1
-			]);
-			arrow.head.scale.set(.08 * u, .15 * u, .08 * u);
-		});
-		const scalars = Object.entries(current.variables).filter(([, v]) => !v.reference);
-		variableLabels.forEach((l, i) => {
-			const item = scalars[i];
-			l.el.textContent = item ? `${item[0]} = ${item[1].value}` : "";
-		});
-		paint();
-	}
-	const raycaster = new THREE.Raycaster();
-	function pick(event) {
-		if (!state.camera || animState.stopped) return "";
-		const rect = canvas.getBoundingClientRect();
-		raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1), state.camera);
-		const hit = raycaster.intersectObjects(blocks.filter((b) => b.mesh.visible).map((b) => b.mesh), false)[0];
-		return hit ? blocks.find((b) => b.mesh === hit.object)?.id ?? "" : "";
-	}
-	canvas.addEventListener("pointermove", (e) => {
-		hovered = e.buttons ? "" : pick(e);
-		paint();
-	}, { signal: listeners.signal });
-	canvas.addEventListener("pointerleave", () => {
-		hovered = "";
-		paint();
-	}, { signal: listeners.signal });
-	let down = null;
-	canvas.addEventListener("pointerdown", (e) => {
-		down = [e.clientX, e.clientY];
-	}, { signal: listeners.signal });
-	canvas.addEventListener("pointerup", (e) => {
-		if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4) {
-			const id = pick(e);
-			selected = id === selected ? "" : id;
-			paint();
-		}
-		down = null;
-	}, { signal: listeners.signal });
-	meshes[0]?.material.addEventListener("dispose", () => listeners.abort());
-	state.activeAnimUpdaters.push({
-		animState,
-		updateFrame: update
-	});
-	update(performance.now());
-	return {
-		_animState: animState,
-		type: "algorithm_structure"
-	};
-}
-//#endregion
-//#region src/objects/skybox.ts
-var skyboxState = state;
-function clearWorldStarfield() {
-	if (skyboxState._starfieldAnimId) {
-		cancelAnimationFrame(skyboxState._starfieldAnimId);
-		skyboxState._starfieldAnimId = null;
-	}
-	if (!skyboxState.worldStarfield || !skyboxState.three || !skyboxState.three.scene) return;
-	skyboxState.three.scene.remove(skyboxState.worldStarfield);
-	if (skyboxState.worldStarfield.geometry) skyboxState.worldStarfield.geometry.dispose();
-	if (skyboxState.worldStarfield.material) skyboxState.worldStarfield.material.dispose();
-	skyboxState.worldStarfield = null;
-}
-function clearWorldSkybox() {
-	if (!skyboxState.three || !skyboxState.three.scene) return;
-	if (skyboxState.worldSkybox && skyboxState.worldSkybox.texture && typeof skyboxState.worldSkybox.texture.dispose === "function") skyboxState.worldSkybox.texture.dispose();
-	skyboxState.worldSkybox = null;
-	skyboxState.three.scene.background = null;
-}
-function _makeGradientSkyboxTexture(topHex, bottomHex, starCount = 0, starColor = "#e6efff", starMin = .5, starMax = 2) {
-	const canvas = document.createElement("canvas");
-	canvas.width = 2048;
-	canvas.height = 1024;
-	const ctx = canvas.getContext("2d");
-	const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-	grad.addColorStop(0, topHex || "#070b18");
-	grad.addColorStop(1, bottomHex || "#010205");
-	ctx.fillStyle = grad;
-	ctx.fillRect(0, 0, canvas.width, canvas.height);
-	const n = Math.max(0, Math.floor(starCount || 0));
-	if (n > 0) {
-		ctx.fillStyle = starColor || "#e6efff";
-		for (let i = 0; i < n; i++) {
-			const x = Math.random() * canvas.width;
-			const y = Math.random() * canvas.height;
-			const r = (starMin || .5) + Math.random() * Math.max(.05, (starMax || 2) - (starMin || .5));
-			ctx.globalAlpha = .35 + Math.random() * .65;
-			ctx.beginPath();
-			ctx.arc(x, y, r, 0, Math.PI * 2);
-			ctx.fill();
-		}
-		ctx.globalAlpha = 1;
-	}
-	const tex = new THREE.CanvasTexture(canvas);
-	tex.mapping = THREE.EquirectangularReflectionMapping;
-	return tex;
-}
-function configureWorldStarfield(spec) {
-	clearWorldStarfield();
-	const cfg = spec && spec.starfield;
-	if (!cfg || cfg.enabled === false) return;
-	const currentRange = skyboxState.currentRange;
-	skyboxState.currentScale;
-	const spanX = Math.abs(currentRange[0][1] - currentRange[0][0]);
-	const spanY = Math.abs(currentRange[1][1] - currentRange[1][0]);
-	const spanZ = Math.abs(currentRange[2][1] - currentRange[2][0]);
-	const halfMaxSpan = Math.max(spanX, spanY, spanZ, 1) / 2;
-	const count = Math.max(50, Math.floor(cfg.count || 900));
-	const radiusMin = Number.isFinite(cfg.radiusMin) ? cfg.radiusMin : halfMaxSpan * 3;
-	const radiusMax = Number.isFinite(cfg.radiusMax) ? cfg.radiusMax : halfMaxSpan * 7;
-	const size = Number.isFinite(cfg.size) ? cfg.size : 2.1;
-	const opacity = Number.isFinite(cfg.opacity) ? cfg.opacity : .9;
-	const twinkle = Number.isFinite(cfg.twinkle) ? Math.max(0, Math.min(1, cfg.twinkle)) : .25;
-	const baseColor = new THREE.Color(cfg.color || "#d9e6ff");
-	const positions = new Float32Array(count * 3);
-	const colors = new Float32Array(count * 3);
-	const sizes = new Float32Array(count);
-	const phases = new Float32Array(count);
-	for (let i = 0; i < count; i++) {
-		const z = Math.random() * 2 - 1;
-		const theta = Math.random() * Math.PI * 2;
-		const rXY = Math.sqrt(Math.max(0, 1 - z * z));
-		const dirX = rXY * Math.cos(theta);
-		const dirY = rXY * Math.sin(theta);
-		const dirZ = z;
-		const u = Math.random();
-		const radius = radiusMin + (radiusMax - radiusMin) * Math.pow(u, .6);
-		const w = dataToWorld([
-			dirX * radius,
-			dirY * radius,
-			dirZ * radius
-		]);
-		const pi = i * 3;
-		positions[pi] = w[0];
-		positions[pi + 1] = w[1];
-		positions[pi + 2] = w[2];
-		const r = Math.random();
-		sizes[i] = r < .6 ? size * (.8 + Math.random() * .6) : r < .85 ? size * (1.5 + Math.random() * 1) : r < .95 ? size * (2.5 + Math.random() * 1.5) : size * (4 + Math.random() * 2);
-		phases[i] = Math.random() * Math.PI * 2;
-		const f = 1 - twinkle * Math.random();
-		colors[pi] = baseColor.r * f;
-		colors[pi + 1] = baseColor.g * f;
-		colors[pi + 2] = baseColor.b * f;
-	}
-	const geom = new THREE.BufferGeometry();
-	geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-	geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-	geom.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
-	geom.setAttribute("phase", new THREE.BufferAttribute(phases, 1));
-	const mat = new THREE.ShaderMaterial({
-		uniforms: {
-			uTime: { value: 0 },
-			uOpacity: { value: opacity },
-			uTwinkle: { value: twinkle }
-		},
-		vertexShader: `
-            attribute float size;
-            attribute float phase;
-            varying vec3 vColor;
-            varying float vPhase;
-            uniform float uTime;
-            uniform float uTwinkle;
-            void main() {
-                vColor = color;
-                vPhase = phase;
-                float flicker = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * (1.0 + fract(vPhase) * 3.0) + vPhase));
-                gl_PointSize = size * max(flicker, 0.1);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-		fragmentShader: `
-            uniform float uOpacity;
-            varying vec3 vColor;
-            varying float vPhase;
-            uniform float uTime;
-            uniform float uTwinkle;
-            void main() {
-                float d = length(gl_PointCoord - 0.5) * 2.0;
-                float flicker = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * (1.0 + fract(vPhase) * 3.0) + vPhase));
-                float alpha = smoothstep(1.0, 0.3, d) * uOpacity * max(flicker, 0.1);
-                gl_FragColor = vec4(vColor, alpha);
-            }
-        `,
-		transparent: true,
-		depthWrite: false,
-		vertexColors: true
-	});
-	skyboxState.worldStarfield = new THREE.Points(geom, mat);
-	skyboxState.worldStarfield.renderOrder = -1e3;
-	skyboxState.worldStarfield.frustumCulled = false;
-	skyboxState.three.scene.add(skyboxState.worldStarfield);
-	skyboxState._starfieldAnimId = null;
-	if (twinkle > 0) {
-		const thisStarfield = skyboxState.worldStarfield;
-		const startTime = performance.now();
-		function animateStarfield() {
-			if (!skyboxState.worldStarfield || skyboxState.worldStarfield !== thisStarfield) return;
-			mat.uniforms.uTime.value = (performance.now() - startTime) / 1e3;
-			skyboxState._starfieldAnimId = requestAnimationFrame(animateStarfield);
-		}
-		animateStarfield();
-	}
-}
-function renderSkybox(el) {
-	if (!skyboxState.three || !skyboxState.three.scene) return null;
-	clearWorldSkybox();
-	const style = (el.style || el.mode || "solid").toLowerCase();
-	if (style === "none" || style === "off") return {
-		type: "skybox",
-		style
-	};
-	if (style === "solid" || style === "color") {
-		skyboxState.three.scene.background = new THREE.Color(el.color || "#02040b");
-		return {
-			type: "skybox",
-			style
-		};
-	}
-	if (style === "gradient") {
-		const tex = _makeGradientSkyboxTexture(el.topColor || el.top, el.bottomColor || el.bottom, el.starCount || 0, el.starColor || "#e6efff", el.starMinSize || .5, el.starMaxSize || 2);
-		skyboxState.three.scene.background = tex;
-		skyboxState.worldSkybox = { texture: tex };
-		return {
-			type: "skybox",
-			style
-		};
-	}
-	if (style === "cubemap" && Array.isArray(el.urls) && el.urls.length === 6) try {
-		const tex = new THREE.CubeTextureLoader().load(el.urls);
-		skyboxState.three.scene.background = tex;
-		skyboxState.worldSkybox = { texture: tex };
-		return {
-			type: "skybox",
-			style
-		};
-	} catch (err) {
-		console.warn("skybox cubemap load failed:", err);
-		skyboxState.three.scene.background = new THREE.Color("#02040b");
-		return {
-			type: "skybox",
-			style: "fallback-solid"
-		};
-	}
-	console.warn("Unknown skybox style:", style);
-	skyboxState.three.scene.background = new THREE.Color(el.color || "#02040b");
-	return {
-		type: "skybox",
-		style: "fallback-solid"
-	};
-}
-//#endregion
 //#region src/follow-cam.ts
 var followState = state;
 function findElementSpecById(id) {
@@ -5423,1724 +3892,6 @@ function _normalizeUpVector(up) {
 function findCamButton(view, root = document) {
 	for (const btn of root.querySelectorAll(".cam-btn")) if (btn.dataset.view === view) return btn;
 	return null;
-}
-//#endregion
-//#region src/dockable-panel.ts
-var CORNERS = [
-	"top-left",
-	"top-right",
-	"bottom-left",
-	"bottom-right",
-	"top-center",
-	"bottom-center"
-];
-/**
-* Where a panel opens: the corner, and the offsets measured from it.
-*
-* The three travel together, which is the whole point of resolving them in one
-* place. `h`/`v` are written only by a drag, and the corner is recomputed in
-* the same breath, so an offset means nothing without the corner it was
-* measured from -- keeping stale offsets against a different corner puts the
-* panel somewhere the viewer never left it.
-*
-* So the placement is honoured only when the blob carries all three: a corner
-* that is one of CORNERS, and BOTH offsets as finite numbers. Anything less is
-* a blob the viewer never moved (or one half-written, or hand-edited -- this
-* comes out of `localStorage`, which the viewer can write), the scene's own
-* corner wins, and the offsets go back to null so `applyGeom` anchors by CSS
-* class instead of writing "nullpx", "badpx", or a coordinate measured from
-* somebody else's corner.
-*/
-function resolvePlacement(saved, corner) {
-	const storedOk = !!(saved && CORNERS.includes(saved.corner));
-	if (!!(saved && storedOk && Number.isFinite(saved.h) && Number.isFinite(saved.v))) return {
-		corner: saved.corner,
-		h: saved.h,
-		v: saved.v
-	};
-	return {
-		corner: CORNERS.includes(corner) ? corner : storedOk ? saved.corner : "top-left",
-		h: null,
-		v: null
-	};
-}
-function _clamp(v, lo, hi) {
-	return Math.max(lo, Math.min(hi, v));
-}
-/** Create a dockable panel. */
-function createDockablePanel(opts) {
-	const { persistKey, corner = "top-left", title = "", bodyEl, container, headerButtons = [], resizable = true, titleAlwaysVisible = false, minWidth = 120, minHeight = 36, opacity = 1, legacyMigrate = null, onCollapseChange = null } = opts;
-	const KEY = "dockable-panel-" + persistKey;
-	function loadGeom() {
-		try {
-			const raw = localStorage.getItem(KEY);
-			if (raw) return JSON.parse(raw);
-		} catch {}
-		if (legacyMigrate) try {
-			const migrated = legacyMigrate();
-			if (migrated) {
-				saveGeom(migrated);
-				return migrated;
-			}
-		} catch {}
-		return null;
-	}
-	function saveGeom(g) {
-		try {
-			localStorage.setItem(KEY, JSON.stringify(g));
-		} catch {}
-	}
-	const saved = loadGeom();
-	const placement = resolvePlacement(saved, corner);
-	const geom = {
-		corner: placement.corner,
-		h: placement.h,
-		v: placement.v,
-		w: saved && saved.w != null ? saved.w : null,
-		ht: saved && saved.ht != null ? saved.ht : null,
-		collapsed: !!(saved && saved.collapsed)
-	};
-	const el = document.createElement("div");
-	el.className = "dockable-panel";
-	if (titleAlwaysVisible) el.classList.add("title-always");
-	el.style.opacity = String(opacity);
-	const header = document.createElement("div");
-	header.className = "dockable-panel-header";
-	const caret = document.createElement("button");
-	caret.type = "button";
-	caret.className = "dp-collapse";
-	caret.title = "Expand / collapse";
-	caret.addEventListener("mousedown", (e) => e.stopPropagation());
-	caret.addEventListener("click", (e) => {
-		e.stopPropagation();
-		setCollapsed(!geom.collapsed);
-	});
-	header.appendChild(caret);
-	const titleEl = document.createElement("span");
-	titleEl.className = "dp-title";
-	titleEl.innerHTML = title || "";
-	header.appendChild(titleEl);
-	const btnWrap = document.createElement("span");
-	btnWrap.className = "dp-buttons";
-	for (const b of headerButtons) {
-		b.addEventListener("mousedown", (e) => e.stopPropagation());
-		btnWrap.appendChild(b);
-	}
-	header.appendChild(btnWrap);
-	el.appendChild(header);
-	const bodyContainer = document.createElement("div");
-	bodyContainer.className = "dockable-panel-body";
-	if (bodyEl) bodyContainer.appendChild(bodyEl);
-	el.appendChild(bodyContainer);
-	let grip = null;
-	if (resizable) {
-		grip = document.createElement("div");
-		grip.className = "dp-resize";
-		grip.title = "Resize";
-		grip.addEventListener("mousedown", beginResize);
-		el.appendChild(grip);
-	}
-	(container || document.body).appendChild(el);
-	function applyGeom() {
-		for (const c of CORNERS) el.classList.remove("pos-" + c);
-		for (const c of CORNERS) el.classList.remove("anchor-" + c);
-		el.style.left = el.style.right = el.style.top = el.style.bottom = el.style.transform = "";
-		el.classList.add("anchor-" + geom.corner);
-		el.style.width = geom.w ? geom.w + "px" : "";
-		el.style.height = geom.ht && !geom.collapsed ? geom.ht + "px" : "";
-		if (geom.h == null || geom.v == null) el.classList.add("pos-" + geom.corner);
-		else {
-			const isRight = geom.corner.includes("right");
-			const isBottom = geom.corner.includes("bottom");
-			if (isRight) el.style.right = geom.h + "px";
-			else el.style.left = geom.h + "px";
-			if (isBottom) el.style.bottom = geom.v + "px";
-			else el.style.top = geom.v + "px";
-		}
-		el.classList.toggle("collapsed", !!geom.collapsed);
-	}
-	header.addEventListener("mousedown", (e) => {
-		if (e.button !== 0) return;
-		if (e.target.closest("button, .dp-resize")) return;
-		beginDrag(e);
-	});
-	function pickCornerByProximity() {
-		const parentRect = (container || el.offsetParent || document.body).getBoundingClientRect();
-		const rect = el.getBoundingClientRect();
-		const cx = rect.left + rect.width / 2 - parentRect.left;
-		const cy = rect.top + rect.height / 2 - parentRect.top;
-		const horiz = cx > parentRect.width / 2 ? "right" : "left";
-		return (cy > parentRect.height / 2 ? "bottom" : "top") + "-" + horiz;
-	}
-	function beginDrag(e) {
-		e.preventDefault();
-		const parent = container || el.offsetParent || document.body;
-		const startX = e.clientX, startY = e.clientY;
-		const DRAG_THRESHOLD = 4;
-		let moved = false;
-		let isRight, isBottom, startH, startV, parentRect;
-		function initDrag() {
-			if (geom.corner.includes("center")) {
-				const r = el.getBoundingClientRect();
-				const isB = geom.corner.includes("bottom");
-				geom.corner = (isB ? "bottom" : "top") + "-" + (r.left + r.width / 2 > window.innerWidth / 2 ? "right" : "left");
-			}
-			isRight = geom.corner.includes("right");
-			isBottom = geom.corner.includes("bottom");
-			const rect = el.getBoundingClientRect();
-			parentRect = parent.getBoundingClientRect();
-			startH = isRight ? parentRect.right - rect.right : rect.left - parentRect.left;
-			startV = isBottom ? parentRect.bottom - rect.bottom : rect.top - parentRect.top;
-			geom.h = startH;
-			geom.v = startV;
-			applyGeom();
-			el.classList.add("dragging");
-		}
-		const onMove = (me) => {
-			const dx = me.clientX - startX, dy = me.clientY - startY;
-			if (!moved) {
-				if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
-				moved = true;
-				initDrag();
-			}
-			let newH = isRight ? startH - dx : startH + dx;
-			let newV = isBottom ? startV - dy : startV + dy;
-			newH = _clamp(newH, 0, Math.max(0, parentRect.width - el.offsetWidth));
-			newV = _clamp(newV, 0, Math.max(0, parentRect.height - el.offsetHeight));
-			geom.h = newH;
-			geom.v = newV;
-			if (isRight) el.style.right = newH + "px";
-			else el.style.left = newH + "px";
-			if (isBottom) el.style.bottom = newV + "px";
-			else el.style.top = newV + "px";
-		};
-		const onUp = () => {
-			window.removeEventListener("mousemove", onMove);
-			window.removeEventListener("mouseup", onUp);
-			if (!moved) {
-				setCollapsed(!geom.collapsed);
-				return;
-			}
-			el.classList.remove("dragging");
-			const newCorner = pickCornerByProximity();
-			geom.corner = newCorner;
-			const nowRight = newCorner.includes("right");
-			const nowBottom = newCorner.includes("bottom");
-			const rect = el.getBoundingClientRect();
-			const pr = parent.getBoundingClientRect();
-			geom.h = Math.max(0, nowRight ? pr.right - rect.right : rect.left - pr.left);
-			geom.v = Math.max(0, nowBottom ? pr.bottom - rect.bottom : rect.top - pr.top);
-			applyGeom();
-			saveGeom(geom);
-		};
-		window.addEventListener("mousemove", onMove);
-		window.addEventListener("mouseup", onUp);
-	}
-	function beginResize(e) {
-		if (e.button !== 0) return;
-		e.preventDefault();
-		e.stopPropagation();
-		if (geom.collapsed) return;
-		const isRight = geom.corner.includes("right");
-		const isBottom = geom.corner.includes("bottom");
-		const rect = el.getBoundingClientRect();
-		const startW = rect.width, startHt = rect.height;
-		const startX = e.clientX, startY = e.clientY;
-		const capW = () => Math.min(window.innerWidth * .9, 1e3);
-		const capH = () => window.innerHeight * .9;
-		el.classList.add("resizing");
-		const onMove = (me) => {
-			const dx = me.clientX - startX, dy = me.clientY - startY;
-			let newW = isRight ? startW - dx : startW + dx;
-			let newHt = isBottom ? startHt - dy : startHt + dy;
-			newW = _clamp(newW, minWidth, capW());
-			newHt = _clamp(newHt, minHeight, capH());
-			geom.w = Math.round(newW);
-			geom.ht = Math.round(newHt);
-			el.style.width = geom.w + "px";
-			el.style.height = geom.ht + "px";
-		};
-		const onUp = () => {
-			el.classList.remove("resizing");
-			window.removeEventListener("mousemove", onMove);
-			window.removeEventListener("mouseup", onUp);
-			saveGeom(geom);
-		};
-		window.addEventListener("mousemove", onMove);
-		window.addEventListener("mouseup", onUp);
-	}
-	function setCollapsed(c) {
-		geom.collapsed = !!c;
-		el.classList.toggle("collapsed", geom.collapsed);
-		el.style.height = !geom.collapsed && geom.ht ? geom.ht + "px" : "";
-		saveGeom(geom);
-		if (onCollapseChange) onCollapseChange(geom.collapsed);
-	}
-	applyGeom();
-	return {
-		el,
-		bodyContainer,
-		headerEl: header,
-		setTitle(html) {
-			titleEl.innerHTML = html || "";
-		},
-		setCollapsed,
-		isCollapsed() {
-			return !!geom.collapsed;
-		},
-		getCorner() {
-			return geom.corner;
-		},
-		setOpacity(o) {
-			el.style.opacity = String(o);
-		},
-		destroy() {
-			el.remove();
-		}
-	};
-}
-//#endregion
-//#region src/overlay.ts
-var overlayState = state;
-function updateExplanationPanel(spec) {
-	const panel = document.getElementById("explanation-panel");
-	const content = document.getElementById("explanation-content");
-	const handle = document.getElementById("panel-resize-handle");
-	const toggle = document.getElementById("explain-toggle");
-	if (spec && spec.markdown) {
-		content.innerHTML = renderMarkdown$1(spec.markdown);
-		content.dataset.markdown = stripGlossaryMarkers(spec.markdown);
-		injectAskButtons(content);
-	} else content.innerHTML = "<p style=\"color: rgba(180,180,200,0.5); font-style: italic;\">No explanation available for this scene.</p>";
-	panel.classList.remove("hidden");
-	handle.style.display = "block";
-	toggle.style.display = "block";
-	toggle.classList.add("active");
-	const savedWidth = localStorage.getItem("algebench-panel-width");
-	if (savedWidth) {
-		const w = parseInt(savedWidth);
-		if (w >= 250 && w <= 600) panel.style.width = w + "px";
-	}
-	setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-}
-function setupPanelResize() {
-	const handle = document.getElementById("panel-resize-handle");
-	const panel = document.getElementById("explanation-panel");
-	let dragging = false;
-	let startX, startWidth;
-	handle.addEventListener("mousedown", (e) => {
-		e.preventDefault();
-		dragging = true;
-		startX = e.clientX;
-		startWidth = panel.offsetWidth;
-		handle.classList.add("dragging");
-		document.body.style.cursor = "col-resize";
-		document.body.style.userSelect = "none";
-	});
-	document.addEventListener("mousemove", (e) => {
-		if (!dragging) return;
-		const dx = startX - e.clientX;
-		let newWidth = Math.max(250, Math.min(600, startWidth + dx));
-		panel.style.width = newWidth + "px";
-		window.dispatchEvent(new Event("resize"));
-	});
-	document.addEventListener("mouseup", () => {
-		if (!dragging) return;
-		dragging = false;
-		handle.classList.remove("dragging");
-		document.body.style.cursor = "";
-		document.body.style.userSelect = "";
-		localStorage.setItem("algebench-panel-width", String(panel.offsetWidth));
-	});
-}
-function setupExplainToggle() {
-	const toggle = document.getElementById("explain-toggle");
-	const panel = document.getElementById("explanation-panel");
-	const handle = document.getElementById("panel-resize-handle");
-	toggle.addEventListener("click", () => {
-		const isHidden = panel.classList.toggle("hidden");
-		toggle.classList.toggle("active", !isHidden);
-		handle.style.display = isHidden ? "none" : "block";
-		if (!isHidden && typeof window.refreshProofPanel === "function") window.refreshProofPanel();
-		setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-	});
-	document.addEventListener("keydown", (e) => {
-		const target = e.target;
-		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-		if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-			if (overlayState.currentSpec && overlayState.currentSpec.markdown && toggle.style.display !== "none") toggle.click();
-		}
-	});
-}
-function setupDocSpeakButtons() {
-	const speakBtn = document.getElementById("doc-speak-btn");
-	const commentateBtn = document.getElementById("doc-commentate-btn");
-	if (!speakBtn || !commentateBtn) return;
-	if (document.body.dataset.debugMode !== "true") speakBtn.style.display = "none";
-	function resetSpeakBtn() {
-		speakBtn.textContent = "🔊 Speak";
-		speakBtn.classList.remove("active");
-	}
-	speakBtn.addEventListener("click", () => {
-		if (speakBtn.classList.contains("active")) {
-			if (typeof window.algebenchStopTTS === "function") window.algebenchStopTTS();
-			resetSpeakBtn();
-			return;
-		}
-		const contentEl = document.getElementById("explanation-content");
-		const text = overlayState.currentSpec && overlayState.currentSpec.markdown ? stripGlossaryMarkers(overlayState.currentSpec.markdown) : contentEl.dataset.markdown || contentEl.textContent;
-		if (!text || !text.trim()) return;
-		if (typeof window.algebenchSpeakText === "function") {
-			speakBtn.textContent = "⏹ Stop";
-			speakBtn.classList.add("active");
-			window.algebenchSpeakText(text, resetSpeakBtn);
-		}
-	});
-	commentateBtn.addEventListener("click", () => {
-		if (typeof sendChatMessage !== "function") return;
-		if (speakBtn.classList.contains("active")) {
-			if (typeof window.algebenchStopTTS === "function") window.algebenchStopTTS();
-			resetSpeakBtn();
-		}
-		const panel = document.getElementById("explanation-panel");
-		const handle = document.getElementById("panel-resize-handle");
-		const toggle = document.getElementById("explain-toggle");
-		if (panel.classList.contains("hidden")) {
-			panel.classList.remove("hidden");
-			handle.style.display = "block";
-			toggle.style.display = "block";
-			toggle.classList.add("active");
-			setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-		}
-		if (typeof switchPanelTab === "function") switchPanelTab("chat");
-		sendChatMessage("Please commentate on the Documentation of this scene. Specifically go into the details of how the visualization ties to the equations that we see in the Documentation.");
-	});
-}
-function updateTitle(spec) {
-	const titleEl = document.getElementById("scene-title");
-	const descEl = document.getElementById("scene-description");
-	const sourceEl = document.getElementById("scene-source-file");
-	if (spec && spec.title) titleEl.innerHTML = renderKaTeX$1(spec.title, false);
-	else titleEl.innerHTML = "AlgeBench";
-	if (spec && spec.description) {
-		const descText = stripGlossaryMarkers(spec.description);
-		descEl.dataset.markdown = descText;
-		const btn = makeAiAskButton("ai-ask-btn", "Ask AI to explain this scene", () => "Can you explain this scene:\n" + descText.trim());
-		fillBoardOverlay(descEl, renderKaTeX$1(spec.description, false), btn);
-		resetSceneDescPosition(descEl);
-	} else if (spec && spec.title) descEl.innerHTML = "";
-	else descEl.innerHTML = "<div class=\"bo-body\">Load a scene to begin</div>";
-	updateBoardDockHeight();
-	if (sourceEl) {
-		sourceEl.textContent = overlayState.currentSceneSourceLabel ? `- ${overlayState.currentSceneSourceLabel}` : "- no file";
-		sourceEl.title = overlayState.currentSceneSourcePath || "";
-	}
-}
-function buildLegend(elements) {
-	const legend = document.getElementById("legend");
-	const grouped = /* @__PURE__ */ new Map();
-	for (const el of elements) {
-		if (el.type === "axis" || el.type === "grid") continue;
-		const groupLabel = el.legendGroup || el.label;
-		if (!groupLabel || !el.color) continue;
-		const key = `${groupLabel}__${colorToCSS(el.color)}`;
-		if (!grouped.has(key)) grouped.set(key, {
-			label: el.label || null,
-			color: el.color,
-			ids: []
-		});
-		if (el.label && !grouped.get(key).label) grouped.get(key).label = el.label;
-		if (el.id) grouped.get(key).ids.push(el.id);
-	}
-	for (const [key, val] of grouped) if (!val.label) grouped.delete(key);
-	const items = [...grouped.values()];
-	legend.innerHTML = "";
-	if (items.length === 0) {
-		legend.classList.add("hidden");
-		return;
-	}
-	legend.classList.remove("hidden");
-	const declaredIds = /* @__PURE__ */ new Set();
-	for (const it of items) for (const id of it.ids || []) declaredIds.add(id);
-	for (const it of items) {
-		const elementIds = it.ids || [];
-		const hidden = elementIds.length > 0 && elementIds.every((id) => {
-			if (overlayState.legendToggledOff.has(id)) return true;
-			const reg = overlayState.elementRegistry[id];
-			return !!(reg && reg.hidden);
-		});
-		const div = document.createElement("div");
-		div.className = "legend-item" + (elementIds.length ? " legend-clickable" : "") + (hidden ? " legend-hidden" : "");
-		if (elementIds.length) div.dataset.elementIds = elementIds.join(",");
-		const swatch = document.createElement("div");
-		swatch.className = "legend-swatch";
-		swatch.style.background = colorToCSS(it.color);
-		if (hidden) swatch.style.opacity = "0.3";
-		div.appendChild(swatch);
-		const span = document.createElement("span");
-		span.innerHTML = renderKaTeX$1(it.label, false);
-		div.appendChild(span);
-		legend.appendChild(div);
-	}
-	for (const div of legend.querySelectorAll(".legend-clickable")) div.addEventListener("click", () => {
-		const elIds = (div.dataset.elementIds || "").split(",").map((s) => s.trim()).filter(Boolean);
-		if (elIds.length === 0) return;
-		const wasOff = div.classList.contains("legend-hidden");
-		for (const elId of elIds) {
-			const live = !!overlayState.elementRegistry[elId];
-			if (wasOff) {
-				overlayState.legendToggledOff.delete(elId);
-				if (live && typeof window._algebenchShowElementById === "function") window._algebenchShowElementById(elId);
-			} else {
-				overlayState.legendToggledOff.add(elId);
-				if (live && typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(elId);
-			}
-		}
-		div.classList.toggle("legend-hidden", !wasOff);
-		div.querySelector(".legend-swatch").style.opacity = wasOff ? "" : "0.3";
-	});
-	for (const id of [...overlayState.legendToggledOff]) {
-		if (!declaredIds.has(id)) {
-			overlayState.legendToggledOff.delete(id);
-			continue;
-		}
-		const reg = overlayState.elementRegistry[id];
-		if (reg && !reg.hidden) {
-			if (typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(id);
-		}
-	}
-}
-var infoState = {
-	forcedMode: null,
-	mode: "free",
-	items: {},
-	drawerPanel: null,
-	drawerBodyEl: null,
-	_routeScheduled: false,
-	_pendingDrawerCorner: null
-};
-function _fmtNum(val) {
-	if (typeof val === "string") return val;
-	if (!isFinite(val)) return String(val);
-	const n = Number(val);
-	if (Number.isInteger(n)) return String(n);
-	return parseFloat(n.toFixed(3)).toString();
-}
-function _isKnownInfoExprIdentifier(name) {
-	if (!name) return false;
-	if (Object.prototype.hasOwnProperty.call(overlayState.sceneSliders, name)) return true;
-	if (Object.prototype.hasOwnProperty.call(overlayState.activeSceneExprFunctions, name)) return true;
-	if (window.agentMemoryValues && Object.prototype.hasOwnProperty.call(window.agentMemoryValues, name)) return true;
-	if (name === "t" || name === "u" || name === "v") return true;
-	if (name === "pi" || name === "e" || name === "PI" || name === "E") return true;
-	if (name === "true" || name === "false" || name === "Infinity" || name === "NaN") return true;
-	if (EXTENSION_NAMES.includes(name)) return true;
-	return _getMathNamesAndValues().names.includes(name);
-}
-function _exprHasUnknownIdentifiers(expr) {
-	const matches = String(expr).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, " ").match(/[A-Za-z_][A-Za-z0-9_]*/g);
-	if (!matches) return false;
-	for (const id of matches) if (!_isKnownInfoExprIdentifier(id)) return true;
-	return false;
-}
-function _evalInfoExpr(expr) {
-	const trimmed = String(expr || "").trim();
-	if (!trimmed) return "";
-	if (_exprHasUnknownIdentifiers(trimmed)) return "?";
-	const memScope = window.agentMemoryValues && typeof window.agentMemoryValues === "object" ? window.agentMemoryValues : null;
-	try {
-		return _fmtNum(evalExpr(compileExpr(trimmed), 0, { extraScope: memScope }));
-	} catch {
-		if (overlayState._sceneJsTrustState === "trusted") try {
-			const ids = getSliderIds();
-			const memNames = memScope ? Object.keys(memScope) : [];
-			const { names, vals: mathVals } = _getMathNamesAndValues();
-			const fn = Function("t", ...ids, ...memNames, ...names, "return (" + trimmed + ")");
-			const sliderVals = ids.map((id) => {
-				const s = overlayState.sceneSliders[id];
-				return s ? s.value : 0;
-			});
-			const memVals = memNames.map((k) => memScope[k]);
-			return _fmtNum(fn(0, ...sliderVals, ...memVals, ...mathVals));
-		} catch {}
-		return "?";
-	}
-}
-function _replaceDoubleBraceExprs(template, evaluator) {
-	if (typeof template !== "string" || template.indexOf("{{") === -1) return template;
-	return template.replace(/\{\{([\s\S]*?)\}\}/g, (_m, expr) => {
-		if (/^\s*glossary:/.test(expr)) return _m;
-		const v = evaluator(expr);
-		return v == null ? _m : String(v);
-	});
-}
-function resolveInfoContent(template) {
-	return _replaceDoubleBraceExprs(template, (expr) => _evalInfoExpr(expr));
-}
-function updateInfoOverlays$1() {
-	for (const item of Object.values(infoState.items)) {
-		if (!item.contentEl) continue;
-		const resolved = resolveInfoContent(item.content);
-		item.contentEl.innerHTML = renderKaTeX$1(resolved, false);
-		const titleHtml = _titleHtml(item);
-		if (item.panel) item.panel.setTitle(titleHtml);
-		if (item.sectionTitleEl) item.sectionTitleEl.innerHTML = titleHtml;
-	}
-	_updateDrawerHeader();
-}
-window._algebenchUpdateInfoOverlays = updateInfoOverlays$1;
-function _infoContainer() {
-	return document.getElementById("info-overlays");
-}
-function _deriveTitle(content) {
-	const lines = String(content || "").split("\n");
-	for (let ln of lines) {
-		ln = ln.trim();
-		if (!ln) continue;
-		ln = ln.replace(/^#{1,6}\s*/, "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/^[*_>\s-]+/, "").replace(/[*_]+$/, "").trim();
-		if (ln) return ln;
-	}
-	return "Info";
-}
-function _titleHtml(item) {
-	return renderKaTeX$1(resolveInfoContent(item.explicitTitle ? item.title : _deriveTitle(item.content)), false);
-}
-function _loadPlacement(id) {
-	try {
-		const v = localStorage.getItem("info-item-placement-" + id);
-		return v === "free" || v === "drawer" ? v : null;
-	} catch {
-		return null;
-	}
-}
-function _savePlacement(id, placement) {
-	try {
-		localStorage.setItem("info-item-placement-" + id, placement);
-	} catch {}
-}
-function _loadSectionCollapsed() {
-	try {
-		return JSON.parse(localStorage.getItem("info-drawer-sections") || "{}") || {};
-	} catch {
-		return {};
-	}
-}
-function _saveSectionCollapsed(map) {
-	try {
-		localStorage.setItem("info-drawer-sections", JSON.stringify(map));
-	} catch {}
-}
-function _migrateOldOverlayKeys(id) {
-	let geom = null;
-	try {
-		const raw = localStorage.getItem("info-overlay-pos-" + id);
-		const saved = raw ? JSON.parse(raw) : null;
-		if (saved && saved.pos && saved.h != null && saved.v != null) geom = {
-			corner: saved.pos,
-			h: saved.h,
-			v: saved.v
-		};
-		else if (saved && saved.left && saved.top) geom = {
-			corner: "top-left",
-			h: parseFloat(saved.left) || 0,
-			v: parseFloat(saved.top) || 0
-		};
-	} catch {}
-	try {
-		if (localStorage.getItem("info-overlay-collapsed-" + id) === "1") {
-			geom = geom || { corner: "top-left" };
-			geom.collapsed = true;
-		}
-	} catch {}
-	return geom;
-}
-function _makeItemAiBtn(item) {
-	return makeAiAskButton("info-overlay-ai-btn", "Ask AI about this", () => "Can you explain this:\n" + stripGlossaryMarkers(resolveInfoContent(item.content)).trim());
-}
-function _makeDockBtn(item) {
-	const b = document.createElement("button");
-	b.type = "button";
-	b.className = "info-dock-btn";
-	b.title = "Move into drawer";
-	b.textContent = "⤵";
-	b.addEventListener("mousedown", (e) => e.stopPropagation());
-	b.addEventListener("click", (e) => {
-		e.stopPropagation();
-		const corner = item.panel ? item.panel.getCorner() : item.position;
-		_setItemPlacement(item.id, "drawer", corner);
-	});
-	return b;
-}
-function _makePopBtn(item) {
-	const b = document.createElement("button");
-	b.type = "button";
-	b.className = "info-dock-btn";
-	b.title = "Pop out of drawer";
-	b.textContent = "⤴";
-	b.addEventListener("mousedown", (e) => e.stopPropagation());
-	b.addEventListener("click", (e) => {
-		e.stopPropagation();
-		_setItemPlacement(item.id, "free", null);
-	});
-	return b;
-}
-function _setItemPlacement(id, placement, inheritCorner) {
-	if (!infoState.items[id]) return;
-	_savePlacement(id, placement);
-	if (placement === "drawer" && inheritCorner) infoState._pendingDrawerCorner = inheritCorner;
-	_route();
-}
-function _mountFree(item) {
-	if (item.panel) {
-		if (item.contentEl.parentElement !== item.freeInner) item.freeInner.appendChild(item.contentEl);
-		return;
-	}
-	const inner = document.createElement("div");
-	inner.className = "info-overlay";
-	inner.appendChild(item.contentEl);
-	item.freeInner = inner;
-	item.panel = createDockablePanel({
-		persistKey: "info-" + item.id,
-		corner: item.position,
-		title: _titleHtml(item),
-		bodyEl: inner,
-		container: _infoContainer(),
-		headerButtons: [_makeItemAiBtn(item), _makeDockBtn(item)],
-		titleAlwaysVisible: !!item.explicitTitle,
-		opacity: overlayState.displayParams.overlayOpacity,
-		legacyMigrate: () => _migrateOldOverlayKeys(item.id)
-	});
-}
-function _unmountFree(item) {
-	if (!item.panel) return;
-	if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
-	item.panel.destroy();
-	item.panel = null;
-	item.freeInner = null;
-}
-function _chooseDrawerCorner(items) {
-	if (infoState._pendingDrawerCorner) return infoState._pendingDrawerCorner;
-	const counts = {};
-	let best = "top-right", bestN = 0;
-	for (const it of items) {
-		if (it.placement !== "drawer") continue;
-		const c = it.position || "top-right";
-		counts[c] = (counts[c] || 0) + 1;
-		if (counts[c] > bestN) {
-			bestN = counts[c];
-			best = c;
-		}
-	}
-	return best;
-}
-var _CHEVRON_UP = "<svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"17 12 12 7 7 12\"/><polyline points=\"17 18 12 13 7 18\"/></svg>";
-var _CHEVRON_DOWN = "<svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"7 12 12 17 17 12\"/><polyline points=\"7 6 12 11 17 6\"/></svg>";
-function _makeDrawerIconBtn(glyph, title, onClick) {
-	const b = document.createElement("button");
-	b.type = "button";
-	b.className = "info-dock-btn";
-	b.title = title;
-	if (glyph.trimStart().startsWith("<")) b.innerHTML = glyph;
-	else b.textContent = glyph;
-	b.addEventListener("mousedown", (e) => e.stopPropagation());
-	b.addEventListener("click", (e) => {
-		e.stopPropagation();
-		onClick();
-	});
-	return b;
-}
-function _setAllSectionsCollapsed(collapsed) {
-	const map = _loadSectionCollapsed();
-	for (const item of Object.values(infoState.items)) if (item.placement === "drawer" && item.sectionEl) {
-		item.sectionEl.classList.toggle("collapsed", collapsed);
-		map[item.id] = collapsed;
-	}
-	_saveSectionCollapsed(map);
-}
-function _ensureDrawer(corner) {
-	if (infoState.drawerPanel) return;
-	const body = document.createElement("div");
-	body.className = "info-drawer";
-	infoState.drawerBodyEl = body;
-	const collapseAllBtn = _makeDrawerIconBtn(_CHEVRON_UP, "Collapse all sections", () => _setAllSectionsCollapsed(true));
-	const expandAllBtn = _makeDrawerIconBtn(_CHEVRON_DOWN, "Expand all sections", () => _setAllSectionsCollapsed(false));
-	const dissolveBtn = _makeDrawerIconBtn("⤴", "Pop all overlays out of the drawer", () => _dissolveDrawer());
-	infoState.drawerPanel = createDockablePanel({
-		persistKey: "info-drawer",
-		corner: corner || "top-right",
-		title: "Info",
-		bodyEl: body,
-		container: _infoContainer(),
-		headerButtons: [
-			collapseAllBtn,
-			expandAllBtn,
-			dissolveBtn
-		],
-		titleAlwaysVisible: true,
-		opacity: overlayState.displayParams.overlayOpacity
-	});
-	infoState.drawerPanel.el.classList.add("dp-drawer");
-}
-function _destroyDrawerIfEmpty() {
-	if (!infoState.drawerPanel) return;
-	if (Object.values(infoState.items).some((it) => it.placement === "drawer")) return;
-	infoState.drawerPanel.destroy();
-	infoState.drawerPanel = null;
-	infoState.drawerBodyEl = null;
-}
-function _dissolveDrawer() {
-	for (const item of Object.values(infoState.items)) if (item.placement === "drawer") _savePlacement(item.id, "free");
-	_route();
-}
-function _mountSection(item) {
-	if (item.sectionEl) {
-		if (item.contentEl.parentElement !== item.sectionBodyEl) item.sectionBodyEl.appendChild(item.contentEl);
-		if (item.sectionEl.parentElement !== infoState.drawerBodyEl) infoState.drawerBodyEl.appendChild(item.sectionEl);
-		return;
-	}
-	const section = document.createElement("div");
-	section.className = "info-drawer-section";
-	if (item.explicitTitle) section.classList.add("title-always");
-	const header = document.createElement("div");
-	header.className = "info-drawer-section-header";
-	const caret = document.createElement("button");
-	caret.type = "button";
-	caret.className = "dp-collapse";
-	caret.title = "Expand / collapse";
-	const titleEl = document.createElement("span");
-	titleEl.className = "info-drawer-section-title";
-	titleEl.innerHTML = _titleHtml(item);
-	const btns = document.createElement("span");
-	btns.className = "info-drawer-section-buttons";
-	btns.appendChild(_makeItemAiBtn(item));
-	btns.appendChild(_makePopBtn(item));
-	header.appendChild(caret);
-	header.appendChild(titleEl);
-	header.appendChild(btns);
-	const sBody = document.createElement("div");
-	sBody.className = "info-drawer-section-body";
-	sBody.appendChild(item.contentEl);
-	const collapsed = !!_loadSectionCollapsed()[item.id];
-	section.classList.toggle("collapsed", collapsed);
-	header.addEventListener("click", (e) => {
-		if (e.target.closest(".info-dock-btn, .info-overlay-ai-btn")) return;
-		const nowCollapsed = !section.classList.contains("collapsed");
-		section.classList.toggle("collapsed", nowCollapsed);
-		const map = _loadSectionCollapsed();
-		map[item.id] = nowCollapsed;
-		_saveSectionCollapsed(map);
-	});
-	section.appendChild(header);
-	section.appendChild(sBody);
-	infoState.drawerBodyEl.appendChild(section);
-	item.sectionEl = section;
-	item.sectionBodyEl = sBody;
-	item.sectionTitleEl = titleEl;
-}
-function _unmountSection(item) {
-	if (!item.sectionEl) return;
-	if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
-	item.sectionEl.remove();
-	item.sectionEl = null;
-	item.sectionBodyEl = null;
-	item.sectionTitleEl = null;
-}
-function _updateDrawerHeader() {
-	if (!infoState.drawerPanel) return;
-	const n = Object.values(infoState.items).filter((it) => it.placement === "drawer").length;
-	infoState.drawerPanel.setTitle("Info <span class=\"info-drawer-count\">" + n + "</span>");
-}
-function _scheduleRoute() {
-	if (infoState._routeScheduled) return;
-	infoState._routeScheduled = true;
-	Promise.resolve().then(() => {
-		infoState._routeScheduled = false;
-		_route();
-	});
-}
-function _route() {
-	const items = Object.values(infoState.items);
-	const count = items.length;
-	const mode = infoState.forcedMode || (count > 3 ? "drawer" : "free");
-	infoState.mode = mode;
-	let anyDrawer = false;
-	for (const item of items) {
-		item.placement = _loadPlacement(item.id) || (mode === "drawer" ? "drawer" : "free");
-		if (item.placement === "drawer") anyDrawer = true;
-	}
-	if (anyDrawer) _ensureDrawer(_chooseDrawerCorner(items));
-	infoState._pendingDrawerCorner = null;
-	for (const item of items) if (item.placement === "drawer") {
-		_unmountFree(item);
-		_mountSection(item);
-	} else {
-		_unmountSection(item);
-		_mountFree(item);
-	}
-	_destroyDrawerIfEmpty();
-	updateInfoOverlays$1();
-}
-function removeStepInfoOverlays() {
-	let changed = false;
-	for (const id of Object.keys(infoState.items)) {
-		const item = infoState.items[id];
-		if (item.stepDefined && !item.keep) {
-			_disposeItem(item);
-			changed = true;
-		}
-	}
-	if (changed) _scheduleRoute();
-}
-function addInfoOverlay$1(id, content, position, stepDefined = false, keep = false, title = null) {
-	if (!_infoContainer()) return;
-	if (!id) {
-		const preview = typeof content === "string" ? content.length > 80 ? content.slice(0, 80) + "…" : content : void 0;
-		console.warn("addInfoOverlay: id is required; ignoring overlay", {
-			position,
-			contentPreview: preview
-		});
-		return;
-	}
-	let item = infoState.items[id];
-	if (!item) {
-		const contentEl = document.createElement("div");
-		contentEl.className = "info-overlay-content";
-		item = infoState.items[id] = {
-			id,
-			contentEl,
-			panel: null,
-			freeInner: null,
-			sectionEl: null,
-			sectionBodyEl: null,
-			sectionTitleEl: null,
-			placement: "free"
-		};
-	}
-	item.content = content;
-	item.title = title || null;
-	item.explicitTitle = !!title;
-	item.position = position || "top-left";
-	item.stepDefined = stepDefined;
-	item.keep = keep;
-	_scheduleRoute();
-}
-function _disposeItem(item) {
-	_unmountFree(item);
-	_unmountSection(item);
-	delete infoState.items[item.id];
-}
-function removeInfoOverlay(id) {
-	const item = infoState.items[id];
-	if (!item) return;
-	_disposeItem(item);
-	_scheduleRoute();
-}
-function removeAllInfoOverlays$1() {
-	for (const id of Object.keys(infoState.items)) _disposeItem(infoState.items[id]);
-	if (infoState.drawerPanel) {
-		infoState.drawerPanel.destroy();
-		infoState.drawerPanel = null;
-		infoState.drawerBodyEl = null;
-	}
-}
-function getAllElements$1(scene, stepIdx) {
-	let elements = [...scene.elements || []];
-	const removedIds = /* @__PURE__ */ new Set();
-	const removedTypes = /* @__PURE__ */ new Set();
-	let removeAll = false;
-	if (scene.steps) for (let i = 0; i <= stepIdx; i++) {
-		const step = scene.steps[i];
-		if (step.remove) {
-			for (const item of step.remove) if (item.id === "*" || item.type === "*") removeAll = true;
-			else if (item.id) removedIds.add(item.id);
-			else if (item.type) removedTypes.add(item.type);
-		}
-		if (removeAll || removedIds.size > 0 || removedTypes.size > 0) {
-			elements = elements.filter((el) => {
-				if (removeAll) return false;
-				if (el.id && removedIds.has(el.id)) return false;
-				if (el.type && removedTypes.has(el.type)) return false;
-				return true;
-			});
-			removedIds.clear();
-			removedTypes.clear();
-			removeAll = false;
-		}
-		elements = elements.concat(step.add || []);
-	}
-	return elements;
-}
-function updateStatusBar() {
-	if (!document.getElementById("status-bar")) return;
-	if (typeof window._algebenchUpdateJsTrustPill === "function") window._algebenchUpdateJsTrustPill();
-	const pill = document.getElementById("slider-status");
-	const countEl = pill && pill.querySelector(".slider-status-count");
-	const tooltipEl = pill && pill.querySelector(".slider-status-tooltip");
-	const ids = Object.keys(overlayState.sceneSliders);
-	if (pill) {
-		if (ids.length > 0) {
-			if (countEl) countEl.textContent = String(ids.length);
-			if (tooltipEl) tooltipEl.textContent = ids.map((id) => {
-				const s = overlayState.sceneSliders[id];
-				const label = (s.label || id).replace(/\$|\\[a-z]+\{?|\}|_|\^/gi, "").trim() || id;
-				if (s.kind === "tensor") return `${label} (${id}) = ${(s.shape || []).join("×")} table  [${s.min} … ${s.max}]`;
-				return `${label} (${id}) = ${Number(s.value).toFixed(2)}  [${s.min} … ${s.max}]`;
-			}).join("\n");
-			pill.classList.remove("hidden");
-		} else pill.classList.add("hidden");
-	}
-	const camPopup = document.getElementById("cam-popup-content");
-	const camPopupText = document.getElementById("cam-popup-text");
-	if (camPopup && overlayState.camera && overlayState.controls) {
-		const pw = overlayState.camera.position;
-		const tw = overlayState.controls.target;
-		const u = overlayState.camera.up;
-		const p = worldCameraToData$1([
-			pw.x,
-			pw.y,
-			pw.z
-		]);
-		const t = worldCameraToData$1([
-			tw.x,
-			tw.y,
-			tw.z
-		]);
-		const dist = Math.sqrt((p[0] - t[0]) ** 2 + (p[1] - t[1]) ** 2 + (p[2] - t[2]) ** 2);
-		const fov = overlayState.camera.isPerspectiveCamera ? overlayState.camera.fov : null;
-		const fmt = (v) => v.toFixed(3);
-		const activeViewBtn = document.querySelector(".cam-btn.active");
-		const viewName = activeViewBtn ? activeViewBtn.dataset.view : null;
-		let txt = "";
-		if (viewName) txt += `view ${viewName}\n`;
-		txt += `pos  x: ${fmt(p[0])}  y: ${fmt(p[1])}  z: ${fmt(p[2])}\ntgt  x: ${fmt(t[0])}  y: ${fmt(t[1])}  z: ${fmt(t[2])}\nup   x: ${fmt(u.x)}  y: ${fmt(u.y)}  z: ${fmt(u.z)}\ndist ${dist.toFixed(3)}`;
-		if (fov != null) txt += `\nfov  ${Math.round(fov)}°`;
-		if (camPopupText) camPopupText.textContent = txt;
-		else camPopup.textContent = txt;
-	}
-	const debugText = document.getElementById("debug-status-text");
-	if (debugText) {
-		const sceneNum = overlayState.currentSceneIndex + 1;
-		const totalScenes = overlayState.lessonSpec && overlayState.lessonSpec.scenes ? overlayState.lessonSpec.scenes.length : "?";
-		const stepNum = overlayState.currentStepIndex + 1;
-		const scene = overlayState.lessonSpec && overlayState.lessonSpec.scenes ? overlayState.lessonSpec.scenes[overlayState.currentSceneIndex] : null;
-		debugText.textContent = `scene ${sceneNum}/${totalScenes}  step ${stepNum}/${scene && scene.steps ? scene.steps.length : 0}`;
-	}
-}
-window._algebenchUpdateStatusBar = updateStatusBar;
-function setupSettingsPanel() {
-	const toggle = document.getElementById("settings-toggle");
-	const panel = document.getElementById("settings-panel");
-	toggle.innerHTML = GEAR_ICON;
-	toggle.addEventListener("click", () => {
-		panel.classList.toggle("hidden");
-		toggle.classList.toggle("active");
-	});
-	const paletteSel = document.getElementById("palette-select");
-	const PALETTE_KEY = "algebench-palette";
-	const PALETTES = [
-		"blueprint",
-		"sepia",
-		"plum",
-		"cerulean",
-		"graphite",
-		"contrast"
-	];
-	if (paletteSel) {
-		paletteSel.value = document.documentElement.dataset.palette || "slate";
-		paletteSel.addEventListener("change", () => {
-			const v = paletteSel.value;
-			if (PALETTES.includes(v)) {
-				document.documentElement.dataset.palette = v;
-				try {
-					localStorage.setItem(PALETTE_KEY, v);
-				} catch (e) {}
-			} else {
-				delete document.documentElement.dataset.palette;
-				try {
-					localStorage.removeItem(PALETTE_KEY);
-				} catch (e) {}
-			}
-			applyCanvasClearColor();
-		});
-	}
-	const momentumSlider = document.getElementById("momentum-slider");
-	const valMomentum = document.getElementById("val-momentum");
-	const MOMENTUM_KEY = "algebench-momentum";
-	const savedMomentum = parseFloat(String(localStorage.getItem(MOMENTUM_KEY)));
-	if (!isNaN(savedMomentum)) overlayState.arcballMomentum = Math.max(0, Math.min(1, savedMomentum));
-	if (momentumSlider) {
-		momentumSlider.value = String(Math.round(overlayState.arcballMomentum * 100));
-		if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + "%";
-		momentumSlider.addEventListener("input", () => {
-			overlayState.arcballMomentum = Number(momentumSlider.value) / 100;
-			if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + "%";
-			localStorage.setItem(MOMENTUM_KEY, String(overlayState.arcballMomentum));
-		});
-	}
-	for (const [key, val] of Object.entries(overlayState.displayParams)) {
-		const el = document.getElementById("val-" + key);
-		if (el) el.textContent = val.toFixed(1);
-	}
-	const _iniOp = overlayState.displayParams.overlayOpacity;
-	const _sliderOv = document.getElementById("slider-overlay");
-	const _legend = document.getElementById("legend");
-	if (_sliderOv) _sliderOv.style.opacity = String(_iniOp);
-	if (_legend) _legend.style.opacity = String(_iniOp);
-	const isOpacity = (p) => p.endsWith("Opacity");
-	panel.querySelectorAll(".sp-btn").forEach((btn) => {
-		btn.addEventListener("click", () => {
-			const param = btn.dataset.param;
-			const dir = btn.dataset.dir === "+" ? 1 : -1;
-			const step = isOpacity(param) ? .1 : .2;
-			const min = isOpacity(param) ? 0 : .2;
-			const max = isOpacity(param) ? 1 : 5;
-			let val = overlayState.displayParams[param] + dir * step;
-			val = Math.round(Math.max(min, Math.min(max, val)) * 10) / 10;
-			overlayState.displayParams[param] = val;
-			document.getElementById("val-" + param).textContent = val.toFixed(1);
-			if (param === "labelOpacity") document.querySelectorAll(".label-3d").forEach((el) => {
-				el.style.opacity = String(val);
-			});
-			else if (param === "arrowScale") {
-				if (typeof window._algebenchApplyArrowScale === "function") window._algebenchApplyArrowScale(val);
-			} else if (param === "arrowOpacity") for (const entry of overlayState.arrowMeshes) {
-				if (entry.isShaft) continue;
-				const baseOp = entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === "number" ? entry.mesh.userData.baseOpacity : 1;
-				const targetOp = Math.max(0, Math.min(1, baseOp * val));
-				entry.mesh.material.opacity = targetOp;
-				entry.mesh.material.transparent = targetOp < 1;
-			}
-			else if (param === "axisWidth") {
-				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of overlayState.axisLineNodes) window._algebenchApplyLineWidth(entry);
-			} else if (param === "axisOpacity") for (const entry of overlayState.axisLineNodes) {
-				const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
-				entry.node.set("opacity", baseOp * val);
-			}
-			else if (param === "vectorWidth") {
-				if (typeof window._algebenchApplyShaftThickness === "function" && typeof window._algebenchApplyLineWidth === "function") {
-					for (const entry of overlayState.arrowMeshes) {
-						if (!window._algebenchIsShaftEntry || !window._algebenchIsShaftEntry(entry)) continue;
-						if (entry.mesh && entry.mesh.userData && entry.mesh.userData.dynamicVector) continue;
-						window._algebenchApplyShaftThickness(entry.mesh);
-					}
-					for (const entry of overlayState.vectorLineNodes) window._algebenchApplyLineWidth(entry);
-				}
-			} else if (param === "vectorOpacity") for (const entry of overlayState.arrowMeshes) {
-				if (typeof window._algebenchIsShaftEntry === "function" && !window._algebenchIsShaftEntry(entry)) continue;
-				const baseOp = entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === "number" ? entry.mesh.userData.baseOpacity : 1;
-				const targetOp = Math.max(0, Math.min(1, baseOp * val));
-				entry.mesh.material.opacity = targetOp;
-				entry.mesh.material.transparent = targetOp < 1;
-			}
-			else if (param === "lineWidth") {
-				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of overlayState.lineNodes) window._algebenchApplyLineWidth(entry);
-			} else if (param === "lineOpacity") for (const entry of overlayState.lineNodes) {
-				const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
-				entry.node.set("opacity", baseOp * val);
-			}
-			else if (param === "planeScale") for (const m of overlayState.planeMeshes) {
-				if (m._hiddenByRemove) continue;
-				if (m.userData.buildSlab) {
-					const newPositions = m.userData.buildSlab(m.userData.baseHalf * val);
-					m.geometry.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
-					m.geometry.computeVertexNormals();
-					m.geometry.attributes.position.needsUpdate = true;
-				}
-			}
-			else if (param === "planeOpacity") for (const m of overlayState.planeMeshes) {
-				if (m._hiddenByRemove) continue;
-				if (m.isSprite) continue;
-				if (m.userData && m.userData.ignorePlaneOpacity) {
-					const baseOp = typeof m.userData.targetOpacity === "number" ? m.userData.targetOpacity : 1;
-					m.visible = baseOp > .001;
-					m.material.opacity = baseOp;
-					m.material.transparent = baseOp < 1;
-					m.material.needsUpdate = true;
-					continue;
-				}
-				const baseOp = m.userData && typeof m.userData.targetOpacity === "number" ? m.userData.targetOpacity : 1;
-				const targetOp = Math.max(0, Math.min(1, baseOp * val));
-				m.visible = targetOp > .001;
-				m.material.opacity = targetOp;
-				m.material.transparent = targetOp < 1;
-				m.material.depthWrite = targetOp >= .999;
-				m.material.needsUpdate = true;
-			}
-			else if (param === "captionScale") {
-				const cap = document.getElementById("step-caption");
-				if (cap && isBoardOverlayDocked()) cap.style.setProperty("--caption-scale", String(val));
-				else if (cap) {
-					const dragged = cap.style.left && cap.style.left.endsWith("px");
-					cap.style.transformOrigin = dragged ? "left bottom" : "";
-					cap.style.transform = (dragged ? "" : "translateX(-50%) ") + "scale(" + val + ")";
-					clampCaptionIntoView(cap);
-				}
-			} else if (param === "overlayOpacity") {
-				const cap = document.getElementById("step-caption");
-				if (cap && !cap.classList.contains("hidden")) cap.style.opacity = String(val);
-				const sliderOv = document.getElementById("slider-overlay");
-				if (sliderOv) sliderOv.style.opacity = String(val);
-				const legend = document.getElementById("legend");
-				if (legend) legend.style.opacity = String(val);
-				document.querySelectorAll("#info-overlays .dockable-panel").forEach((el) => {
-					el.style.opacity = String(val);
-				});
-			}
-		});
-	});
-	const declutterMode = document.getElementById("declutter-mode");
-	if (declutterMode) {
-		declutterMode.value = overlayState.displayParams.labelDeclutterMode;
-		declutterMode.addEventListener("change", () => {
-			overlayState.displayParams.labelDeclutterMode = declutterMode.value;
-		});
-	}
-}
-function initLightControls() {
-	const azEl = document.getElementById("light-az");
-	const elEl = document.getElementById("light-el");
-	const intEl = document.getElementById("light-int");
-	if (!azEl || !overlayState.mainDirLight) return;
-	function applyLight() {
-		const azDeg = parseFloat(azEl.value);
-		const elDeg = parseFloat(elEl.value);
-		const intensity = parseFloat(intEl.value) / 100;
-		const az = azDeg * Math.PI / 180;
-		const el = elDeg * Math.PI / 180;
-		const dist = 20;
-		overlayState.mainDirLight.position.set(dist * Math.cos(el) * Math.sin(az), dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az));
-		overlayState.mainDirLight.intensity = intensity;
-		document.getElementById("val-light-az").textContent = azDeg + "°";
-		document.getElementById("val-light-el").textContent = elDeg + "°";
-		document.getElementById("val-light-int").textContent = intensity.toFixed(2);
-	}
-	azEl.addEventListener("input", applyLight);
-	elEl.addEventListener("input", applyLight);
-	intEl.addEventListener("input", applyLight);
-	applyLight();
-}
-var BOARD_IDS = ["step-caption", "scene-description"];
-var BOARD_DOCK_KEY = "board-overlay-docked";
-var BOARD_DOCK_H_KEY = "board-overlay-dock-h";
-var BOARD_MIN_W = 160;
-var BOARD_MIN_H = 48;
-var BOARD_MAX_H_FRAC = .45;
-var BOARD_DOCK_MAX_H_FRAC = .4;
-var BOARD_RESIZE_DEADBAND = 4;
-var _boardDocked = null;
-var _boardObserver = null;
-function isBoardOverlayDocked() {
-	if (_boardDocked === null) try {
-		_boardDocked = localStorage.getItem(BOARD_DOCK_KEY) === "1";
-	} catch {
-		_boardDocked = false;
-	}
-	return _boardDocked;
-}
-function _boardSizeKey(el) {
-	return el.id === "step-caption" ? "caption-size" : "scene-desc-size";
-}
-/** True when the mousedown landed on the overlay chrome (buttons, grip, or the
-*  body's scrollbar) rather than on the text — those must not start a drag. */
-function isBoardChromeEvent(e) {
-	if (!(e.target instanceof Element)) return false;
-	const t = e.target;
-	if (t.closest(".ai-ask-btn, .bo-side, .bo-resize")) return true;
-	const body = t.closest(".bo-body");
-	if (body && t === body && body.offsetWidth > 0) {
-		const r = body.getBoundingClientRect();
-		if ((e.clientX - r.left) / r.width > body.clientWidth / body.offsetWidth) return true;
-	}
-	return false;
-}
-/** Apply the persisted free-floating size. `legacyWidth` is the width the old
-*  position blobs carried before sizes got their own key. */
-function applyBoardOverlaySize(el, legacyWidth) {
-	let w = null, h = null;
-	try {
-		const saved = JSON.parse(localStorage.getItem(_boardSizeKey(el)) || "null");
-		if (saved && typeof saved === "object") {
-			if (typeof saved.w === "number" && saved.w >= BOARD_MIN_W) w = saved.w;
-			if (typeof saved.h === "number" && saved.h >= BOARD_MIN_H) h = saved.h;
-		}
-	} catch {}
-	if (w == null && legacyWidth && legacyWidth.endsWith("px")) w = parseFloat(legacyWidth) || null;
-	el.style.width = w != null ? w + "px" : "";
-	el.style.height = h != null ? h + "px" : "";
-	el.classList.toggle("sized", w != null);
-}
-/** Docked geometry: the CSS `.docked` rule pins the strip; here we only clear
-*  the inline position a drag may have left and restore the saved height. */
-function applyBoardDockGeometry(el) {
-	el.classList.add("docked");
-	el.classList.remove("sized");
-	el.style.left = el.style.right = el.style.top = el.style.bottom = "";
-	el.style.width = el.style.transform = el.style.transformOrigin = "";
-	let h = null;
-	try {
-		h = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || "") || null;
-	} catch {}
-	el.style.height = h != null && h >= BOARD_MIN_H ? h + "px" : "";
-	el.style.setProperty("--caption-scale", String(overlayState.displayParams.captionScale || 1));
-}
-/** Recompute --caption-dock-h from whichever docked overlay is showing. */
-function updateBoardDockHeight() {
-	const wrap = document.getElementById("mathbox-wrapper");
-	if (!wrap) return;
-	let h = 0;
-	if (isBoardOverlayDocked()) {
-		const cap = document.getElementById("step-caption");
-		const desc = document.getElementById("scene-description");
-		if (!!cap && !cap.classList.contains("hidden")) h = cap.offsetHeight;
-		else if (desc) h = desc.offsetHeight;
-	}
-	wrap.classList.toggle("caption-docked", isBoardOverlayDocked());
-	wrap.style.setProperty("--caption-dock-h", h + "px");
-}
-function setBoardOverlayDocked(docked) {
-	_boardDocked = !!docked;
-	try {
-		localStorage.setItem(BOARD_DOCK_KEY, docked ? "1" : "0");
-	} catch {}
-	for (const id of BOARD_IDS) {
-		const el = document.getElementById(id);
-		if (!el) continue;
-		if (docked) applyBoardDockGeometry(el);
-		else {
-			el.classList.remove("docked");
-			el.style.height = "";
-			if (id === "step-caption") {
-				resetCaptionPosition(el);
-				el.style.setProperty("--caption-scale", "1");
-			} else resetSceneDescPosition(el);
-		}
-		for (const b of el.querySelectorAll(".bo-dock-btn")) _styleDockBtn(b, docked, el);
-	}
-	updateBoardDockHeight();
-}
-function _styleDockBtn(b, docked, overlay) {
-	const what = overlay.id === "step-caption" ? "caption" : "description";
-	b.title = docked ? `Float the ${what} again` : `Dock the ${what} along the bottom edge`;
-	b.setAttribute("aria-label", b.title);
-	b.setAttribute("aria-pressed", docked ? "true" : "false");
-	b.innerHTML = docked ? UNDOCK_ICON : DOCK_BOTTOM_ICON;
-}
-/** Replace the overlay's content with `html` wrapped in the shared chrome. */
-function fillBoardOverlay(el, html, aiBtn) {
-	el.innerHTML = "";
-	const body = document.createElement("div");
-	body.className = "bo-body";
-	body.innerHTML = html;
-	const side = document.createElement("div");
-	side.className = "bo-side";
-	const dock = document.createElement("button");
-	dock.type = "button";
-	dock.className = "info-dock-btn bo-dock-btn";
-	_styleDockBtn(dock, isBoardOverlayDocked(), el);
-	dock.addEventListener("mousedown", (e) => e.stopPropagation());
-	dock.addEventListener("click", (e) => {
-		e.stopPropagation();
-		setBoardOverlayDocked(!isBoardOverlayDocked());
-	});
-	side.appendChild(dock);
-	side.appendChild(aiBtn);
-	const grip = document.createElement("div");
-	grip.className = "bo-resize";
-	grip.title = "Resize";
-	grip.addEventListener("mousedown", (e) => _beginBoardResize(el, e));
-	el.appendChild(body);
-	el.appendChild(side);
-	el.appendChild(grip);
-	el.classList.toggle("docked", isBoardOverlayDocked());
-	_observeBoardOverlays();
-}
-function _observeBoardOverlays() {
-	if (_boardObserver || typeof ResizeObserver === "undefined") return;
-	_boardObserver = new ResizeObserver(() => updateBoardDockHeight());
-	for (const id of BOARD_IDS) {
-		const el = document.getElementById(id);
-		if (el) _boardObserver.observe(el);
-	}
-}
-function _beginBoardResize(el, e) {
-	if (e.button !== 0) return;
-	e.preventDefault();
-	e.stopPropagation();
-	const docked = isBoardOverlayDocked();
-	const pr = (el.offsetParent || document.body).getBoundingClientRect();
-	const scale = el.id === "step-caption" && !docked ? overlayState.displayParams.captionScale || 1 : 1;
-	const centred = !docked && !(el.style.left && el.style.left.endsWith("px"));
-	const startW = el.offsetWidth, startH = el.offsetHeight;
-	const startX = e.clientX, startY = e.clientY;
-	const maxH = pr.height * (docked ? BOARD_DOCK_MAX_H_FRAC : BOARD_MAX_H_FRAC);
-	let w = el.classList.contains("sized") ? startW : null;
-	let h = startH;
-	el.classList.add("resizing");
-	const onMove = (me) => {
-		const rawDx = me.clientX - startX;
-		const dx = rawDx / scale * (centred ? 2 : 1);
-		const dy = (startY - me.clientY) / scale;
-		if (!docked && (w != null || Math.abs(rawDx) >= BOARD_RESIZE_DEADBAND)) {
-			w = Math.round(Math.max(BOARD_MIN_W, Math.min(startW + dx, pr.width - 16)));
-			el.style.width = w + "px";
-			el.classList.add("sized");
-		}
-		h = Math.round(Math.max(BOARD_MIN_H, Math.min(startH + dy, maxH)));
-		el.style.height = h + "px";
-	};
-	const onUp = () => {
-		window.removeEventListener("mousemove", onMove);
-		window.removeEventListener("mouseup", onUp);
-		el.classList.remove("resizing");
-		try {
-			if (docked) localStorage.setItem(BOARD_DOCK_H_KEY, String(h));
-			else localStorage.setItem(_boardSizeKey(el), JSON.stringify(w != null ? {
-				w,
-				h
-			} : { h }));
-		} catch {}
-		if (el.id === "step-caption") clampCaptionIntoView(el);
-		updateBoardDockHeight();
-	};
-	window.addEventListener("mousemove", onMove);
-	window.addEventListener("mouseup", onUp);
-}
-/** Wire the dock state at startup (called once from main). Re-applying the
-*  persisted state is idempotent and makes the overlays match the wrapper
-*  whatever order the other setup calls ran in. */
-function setupBoardOverlays() {
-	setBoardOverlayDocked(isBoardOverlayDocked());
-	_observeBoardOverlays();
-}
-function updateStepCaption(scene, stepIdx) {
-	const el = document.getElementById("step-caption");
-	if (!el) return;
-	let text = null;
-	if (stepIdx >= 0 && scene.steps && scene.steps[stepIdx] && scene.steps[stepIdx].description) text = scene.steps[stepIdx].description;
-	else if (stepIdx === -1 && scene.description) text = scene.description;
-	if (text) {
-		const plain = stripGlossaryMarkers(text);
-		el.dataset.markdown = plain;
-		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${plain}"`);
-		fillBoardOverlay(el, renderMarkdown$1(text), btn);
-		el.style.opacity = String(overlayState.displayParams.overlayOpacity);
-		resetCaptionPosition(el);
-		el.classList.remove("hidden");
-	} else el.classList.add("hidden");
-	updateBoardDockHeight();
-}
-/** `bottom` and `left` are CSS lengths ('64px', '50%'), not numbers — the
-*  '50%' default and the `endsWith('px')` test below both depend on that. */
-function _applyBottomPos(el, bottom, left) {
-	el.style.bottom = bottom;
-	el.style.left = left || "50%";
-	el.style.top = "auto";
-	el.style.right = "auto";
-	el.style.width = "";
-	const scale = "scale(" + (overlayState.displayParams.captionScale || 1) + ")";
-	if (left && left.endsWith("px")) {
-		el.style.transform = scale;
-		el.style.transformOrigin = "left bottom";
-	} else {
-		el.style.transform = "translateX(-50%) " + scale;
-		el.style.transformOrigin = "";
-	}
-}
-function _defaultCaptionPos(el) {
-	_applyBottomPos(el, "64px", "50%");
-}
-function clampCaptionIntoView(el) {
-	el = el || document.getElementById("step-caption");
-	if (!el || el.classList.contains("hidden")) return;
-	if (!el.style.left || !el.style.left.endsWith("px")) return;
-	const p = (el.offsetParent || document.body).getBoundingClientRect();
-	const r = el.getBoundingClientRect();
-	const m = 8;
-	let left = parseFloat(el.style.left) || 0;
-	let bottom = parseFloat(el.style.bottom) || 0;
-	if (r.left < p.left + m) left += p.left + m - r.left;
-	else if (r.right > p.right - m) left -= r.right - (p.right - m);
-	if (r.bottom > p.bottom - m) bottom += r.bottom - (p.bottom - m);
-	else if (r.top < p.top + m) bottom -= p.top + m - r.top;
-	el.style.left = left + "px";
-	el.style.bottom = Math.max(0, bottom) + "px";
-}
-function resetCaptionPosition(el) {
-	if (isBoardOverlayDocked()) {
-		applyBoardDockGeometry(el);
-		return;
-	}
-	try {
-		const saved = JSON.parse(localStorage.getItem("caption-pos") || "null");
-		if (saved && typeof saved.bottom === "string" && saved.bottom.endsWith("px")) {
-			_applyBottomPos(el, saved.bottom, saved.left);
-			applyBoardOverlaySize(el, saved.width);
-			requestAnimationFrame(() => {
-				const parent = el.offsetParent || document.body;
-				const b = parseFloat(el.style.bottom) || 0;
-				if (b < 0 || b > parent.clientHeight - 20) {
-					localStorage.removeItem("caption-pos");
-					_defaultCaptionPos(el);
-					applyBoardOverlaySize(el);
-				}
-			});
-			return;
-		}
-	} catch {}
-	_defaultCaptionPos(el);
-	applyBoardOverlaySize(el);
-}
-function setupCaptionDrag() {
-	const el = document.getElementById("step-caption");
-	if (!el) return;
-	let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
-	let parentW = 0, parentH = 0, dragW = 0, dragH = 0;
-	const EDGE_MARGIN = 8;
-	el.addEventListener("mousedown", (e) => {
-		if (isBoardChromeEvent(e) || isBoardOverlayDocked()) return;
-		dragging = true;
-		startX = e.clientX;
-		startY = e.clientY;
-		const parentRect = (el.offsetParent || document.body).getBoundingClientRect();
-		const elRect = el.getBoundingClientRect();
-		const s = overlayState.displayParams.captionScale || 1;
-		startLeft = elRect.left - parentRect.left;
-		startBottom = parentRect.bottom - elRect.bottom;
-		const cs = getComputedStyle(el);
-		let frozenW = el.offsetWidth;
-		if (cs.boxSizing !== "border-box") frozenW -= parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
-		el.style.transformOrigin = "left bottom";
-		el.style.width = frozenW + "px";
-		el.style.left = startLeft + "px";
-		el.style.bottom = startBottom + "px";
-		el.style.top = "auto";
-		el.style.right = "auto";
-		el.style.transform = "scale(" + s + ")";
-		parentW = parentRect.width;
-		parentH = parentRect.height;
-		const box = el.getBoundingClientRect();
-		dragW = box.width;
-		dragH = box.height;
-		e.preventDefault();
-	});
-	document.addEventListener("mousemove", (e) => {
-		if (!dragging) return;
-		const m = EDGE_MARGIN;
-		let left = startLeft + (e.clientX - startX);
-		let bottom = startBottom - (e.clientY - startY);
-		left = Math.max(m, Math.min(left, Math.max(m, parentW - dragW - m)));
-		bottom = Math.max(m, Math.min(bottom, Math.max(m, parentH - dragH - m)));
-		el.style.left = left + "px";
-		el.style.bottom = bottom + "px";
-	});
-	document.addEventListener("mouseup", () => {
-		if (!dragging) return;
-		dragging = false;
-		clampCaptionIntoView(el);
-		try {
-			localStorage.setItem("caption-pos", JSON.stringify({
-				bottom: el.style.bottom,
-				left: el.style.left,
-				width: el.style.width
-			}));
-		} catch {}
-	});
-	window.addEventListener("resize", () => clampCaptionIntoView(el));
-	resetCaptionPosition(el);
-	setupOverlayHoverBoost();
-}
-var _overlayHoverWired = false;
-var _overlayZ = 10;
-function bringOverlayToFront(panel) {
-	panel.style.zIndex = String(++_overlayZ);
-}
-function setupOverlayHoverBoost() {
-	if (_overlayHoverWired) return;
-	_overlayHoverWired = true;
-	const SEL = "#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel";
-	document.addEventListener("mouseover", (e) => {
-		const target = e.target;
-		const t = target.closest && target.closest(SEL);
-		if (!t) return;
-		const panel = target.closest("#info-overlays .dockable-panel");
-		if (panel) bringOverlayToFront(panel);
-		if (t._hoverBoosted) return;
-		t._hoverBoosted = true;
-		t._preHoverOp = t.style.opacity;
-		const base = parseFloat(getComputedStyle(t).opacity);
-		t._boostedOp = String(Math.min(1, (isNaN(base) ? 1 : base) * 2));
-		t.style.opacity = t._boostedOp;
-	});
-	document.addEventListener("mousedown", (e) => {
-		const target = e.target;
-		const panel = target.closest && target.closest("#info-overlays .dockable-panel");
-		if (panel) bringOverlayToFront(panel);
-	}, true);
-	document.addEventListener("mouseout", (e) => {
-		const target = e.target;
-		const t = target.closest && target.closest(SEL);
-		if (!t || !t._hoverBoosted) return;
-		if (e.relatedTarget && t.contains(e.relatedTarget)) return;
-		t._hoverBoosted = false;
-		if (t.style.opacity === t._boostedOp) t.style.opacity = t._preHoverOp || "";
-	});
-}
-function resetSceneDescPosition(el) {
-	if (!el) el = document.getElementById("scene-description");
-	if (!el) return;
-	if (isBoardOverlayDocked()) {
-		applyBoardDockGeometry(el);
-		return;
-	}
-	try {
-		const saved = JSON.parse(localStorage.getItem("scene-desc-pos") || "null");
-		if (saved && typeof saved.bottom === "string" && saved.bottom.endsWith("px")) {
-			const left = saved.left || "50%";
-			el.style.bottom = saved.bottom;
-			el.style.left = left;
-			el.style.top = "auto";
-			el.style.transform = left.endsWith("px") ? "none" : "translateX(-50%)";
-			applyBoardOverlaySize(el, saved.width);
-			requestAnimationFrame(() => {
-				const parent = el.offsetParent || document.body;
-				const b = parseFloat(el.style.bottom) || 0;
-				if (b < 0 || b > parent.clientHeight - 20) {
-					localStorage.removeItem("scene-desc-pos");
-					el.style.bottom = "64px";
-					el.style.left = "50%";
-					el.style.top = "auto";
-					el.style.transform = "translateX(-50%)";
-					applyBoardOverlaySize(el);
-				}
-			});
-			return;
-		}
-	} catch {}
-	el.style.bottom = "64px";
-	el.style.left = "50%";
-	el.style.top = "auto";
-	el.style.transform = "translateX(-50%)";
-	applyBoardOverlaySize(el);
-}
-function setupSceneDescDrag() {
-	const el = document.getElementById("scene-description");
-	if (!el) return;
-	let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
-	el.addEventListener("mousedown", (e) => {
-		if (isBoardChromeEvent(e) || isBoardOverlayDocked()) return;
-		dragging = true;
-		startX = e.clientX;
-		startY = e.clientY;
-		const parentRect = (el.offsetParent || document.body).getBoundingClientRect();
-		const elRect = el.getBoundingClientRect();
-		startLeft = elRect.left - parentRect.left;
-		startBottom = parentRect.bottom - elRect.bottom;
-		el.style.width = elRect.width + "px";
-		el.style.left = startLeft + "px";
-		el.style.bottom = startBottom + "px";
-		el.style.top = "auto";
-		el.style.transform = "none";
-		el.classList.add("dragging");
-		e.preventDefault();
-	});
-	document.addEventListener("mousemove", (e) => {
-		if (!dragging) return;
-		el.style.left = startLeft + (e.clientX - startX) + "px";
-		el.style.bottom = Math.max(0, startBottom - (e.clientY - startY)) + "px";
-	});
-	document.addEventListener("mouseup", () => {
-		if (!dragging) return;
-		dragging = false;
-		el.classList.remove("dragging");
-		try {
-			localStorage.setItem("scene-desc-pos", JSON.stringify({
-				bottom: el.style.bottom,
-				left: el.style.left,
-				width: el.style.width
-			}));
-		} catch {}
-	});
-	resetSceneDescPosition(el);
-}
-function setCamPopupPinned(pinned, suppressHover = false) {
-	const camStatus = document.getElementById("cam-status");
-	if (!camStatus) return;
-	overlayState.camPopupPinned = !!pinned;
-	camStatus.classList.toggle("pinned", overlayState.camPopupPinned);
-	if (overlayState.camPopupPinned) camStatus.classList.remove("suppress-hover");
-	else if (suppressHover) camStatus.classList.add("suppress-hover");
-}
-function setupCamStatusPopup() {
-	const camStatus = document.getElementById("cam-status");
-	const closeBtn = document.getElementById("cam-popup-close");
-	const copyBtn = document.getElementById("cam-popup-copy");
-	const popupText = document.getElementById("cam-popup-text");
-	if (!camStatus) return;
-	camStatus.addEventListener("click", (e) => {
-		if (e.target && e.target.closest("#cam-popup-close")) return;
-		if (e.target && e.target.closest("#cam-popup-copy")) return;
-		if (e.target && e.target.closest(".cam-status-popup")) return;
-		setCamPopupPinned(!overlayState.camPopupPinned, overlayState.camPopupPinned);
-	});
-	camStatus.addEventListener("mouseleave", () => {
-		camStatus.classList.remove("suppress-hover");
-	});
-	if (closeBtn) closeBtn.addEventListener("click", (e) => {
-		e.stopPropagation();
-		setCamPopupPinned(false, true);
-	});
-	if (copyBtn && popupText) copyBtn.addEventListener("click", async (e) => {
-		e.stopPropagation();
-		const txt = popupText.textContent || "";
-		if (!txt) return;
-		try {
-			await navigator.clipboard.writeText(txt);
-			const prev = copyBtn.textContent;
-			copyBtn.textContent = "Copied";
-			setTimeout(() => {
-				copyBtn.textContent = prev;
-			}, 900);
-		} catch (_err) {}
-	});
-}
-function setupAboutPopup() {
-	const about = document.getElementById("about-status");
-	if (!about) return;
-	const versionStr = `v${document.body.dataset.appVersion || "dev"}`;
-	const pillVersion = about.querySelector(".about-status-version");
-	if (pillVersion) pillVersion.textContent = versionStr;
-	const popupVersion = document.getElementById("about-popup-version");
-	if (popupVersion) popupVersion.textContent = versionStr;
-	const closeBtn = document.getElementById("about-popup-close");
-	const setPinned = (pinned, suppressHover) => {
-		about.classList.toggle("pinned", pinned);
-		about.setAttribute("aria-expanded", pinned ? "true" : "false");
-		if (pinned) about.classList.remove("suppress-hover");
-		else if (suppressHover) about.classList.add("suppress-hover");
-	};
-	about.addEventListener("click", (e) => {
-		if (e.target && e.target.closest("#about-popup-close")) return;
-		if (e.target && e.target.closest(".about-status-popup")) return;
-		const pinned = about.classList.contains("pinned");
-		setPinned(!pinned, pinned);
-	});
-	about.addEventListener("keydown", (e) => {
-		if (e.target && e.target.closest(".about-status-popup")) return;
-		if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
-			e.preventDefault();
-			setPinned(!about.classList.contains("pinned"), true);
-		} else if (e.key === "Escape" && about.classList.contains("pinned")) {
-			setPinned(false, true);
-			about.focus();
-		}
-	});
-	about.addEventListener("mouseleave", () => {
-		about.classList.remove("suppress-hover");
-	});
-	if (closeBtn) closeBtn.addEventListener("click", (e) => {
-		e.stopPropagation();
-		setPinned(false, true);
-	});
 }
 //#endregion
 //#region src/smoothing.ts
@@ -8656,10 +5407,14 @@ function initMathBox() {
 		configureControlsInstance(cameraState.controls, target);
 	}
 	updateControlsHint();
-	window.addEventListener("resize", () => {
-		dropLingeringBall();
+	let lastWidth = -1, lastHeight = -1;
+	const resizeViewport = () => {
 		const w2 = container.clientWidth;
 		const h2 = container.clientHeight;
+		if (w2 <= 0 || h2 <= 0 || w2 === lastWidth && h2 === lastHeight) return;
+		lastWidth = w2;
+		lastHeight = h2;
+		dropLingeringBall();
 		cameraState.renderer.setSize(w2, h2);
 		if (cameraState.camera.isOrthographicCamera) {
 			const aspect2 = w2 / h2;
@@ -8668,7 +5423,9 @@ function initMathBox() {
 			cameraState.camera.right = halfH * aspect2;
 		} else cameraState.camera.aspect = w2 / h2;
 		cameraState.camera.updateProjectionMatrix();
-	});
+	};
+	window.addEventListener("resize", resizeViewport);
+	new ResizeObserver(resizeViewport).observe(container);
 	let _statusFrameTick = 0;
 	function updateLoop() {
 		cameraState.animationFrameId = requestAnimationFrame(updateLoop);
@@ -9302,6 +6059,5774 @@ function buildCameraButtons(spec) {
 	updateFollowAngleLockButtonState();
 }
 //#endregion
+//#region src/dockable-panel.ts
+var CORNERS = [
+	"top-left",
+	"top-right",
+	"bottom-left",
+	"bottom-right",
+	"top-center",
+	"bottom-center"
+];
+/**
+* Where a panel opens: the corner, and the offsets measured from it.
+*
+* The three travel together, which is the whole point of resolving them in one
+* place. `h`/`v` are written only by a drag, and the corner is recomputed in
+* the same breath, so an offset means nothing without the corner it was
+* measured from -- keeping stale offsets against a different corner puts the
+* panel somewhere the viewer never left it.
+*
+* So the placement is honoured only when the blob carries all three: a corner
+* that is one of CORNERS, and BOTH offsets as finite numbers. Anything less is
+* a blob the viewer never moved (or one half-written, or hand-edited -- this
+* comes out of `localStorage`, which the viewer can write), the scene's own
+* corner wins, and the offsets go back to null so `applyGeom` anchors by CSS
+* class instead of writing "nullpx", "badpx", or a coordinate measured from
+* somebody else's corner.
+*/
+function resolvePlacement(saved, corner) {
+	const storedOk = !!(saved && CORNERS.includes(saved.corner));
+	if (!!(saved && storedOk && Number.isFinite(saved.h) && Number.isFinite(saved.v))) return {
+		corner: saved.corner,
+		h: saved.h,
+		v: saved.v
+	};
+	return {
+		corner: CORNERS.includes(corner) ? corner : storedOk ? saved.corner : "top-left",
+		h: null,
+		v: null
+	};
+}
+function _clamp(v, lo, hi) {
+	return Math.max(lo, Math.min(hi, v));
+}
+/** Create a dockable panel. */
+function createDockablePanel(opts) {
+	const { persistKey, corner = "top-left", title = "", bodyEl, container, headerButtons = [], resizable = true, titleAlwaysVisible = false, minWidth = 120, minHeight = 36, opacity = 1, legacyMigrate = null, onCollapseChange = null } = opts;
+	const KEY = "dockable-panel-" + persistKey;
+	function loadGeom() {
+		try {
+			const raw = localStorage.getItem(KEY);
+			if (raw) return JSON.parse(raw);
+		} catch {}
+		if (legacyMigrate) try {
+			const migrated = legacyMigrate();
+			if (migrated) {
+				saveGeom(migrated);
+				return migrated;
+			}
+		} catch {}
+		return null;
+	}
+	function saveGeom(g) {
+		try {
+			localStorage.setItem(KEY, JSON.stringify(g));
+		} catch {}
+	}
+	const saved = loadGeom();
+	const placement = resolvePlacement(saved, corner);
+	const geom = {
+		corner: placement.corner,
+		h: placement.h,
+		v: placement.v,
+		w: saved && saved.w != null ? saved.w : null,
+		ht: saved && saved.ht != null ? saved.ht : null,
+		collapsed: !!(saved && saved.collapsed)
+	};
+	const el = document.createElement("div");
+	el.className = "dockable-panel";
+	if (titleAlwaysVisible) el.classList.add("title-always");
+	el.style.opacity = String(opacity);
+	const header = document.createElement("div");
+	header.className = "dockable-panel-header";
+	const caret = document.createElement("button");
+	caret.type = "button";
+	caret.className = "dp-collapse";
+	caret.title = "Expand / collapse";
+	caret.addEventListener("mousedown", (e) => e.stopPropagation());
+	caret.addEventListener("click", (e) => {
+		e.stopPropagation();
+		setCollapsed(!geom.collapsed);
+	});
+	header.appendChild(caret);
+	const titleEl = document.createElement("span");
+	titleEl.className = "dp-title";
+	titleEl.innerHTML = title || "";
+	header.appendChild(titleEl);
+	const btnWrap = document.createElement("span");
+	btnWrap.className = "dp-buttons";
+	for (const b of headerButtons) {
+		b.addEventListener("mousedown", (e) => e.stopPropagation());
+		btnWrap.appendChild(b);
+	}
+	header.appendChild(btnWrap);
+	el.appendChild(header);
+	const bodyContainer = document.createElement("div");
+	bodyContainer.className = "dockable-panel-body";
+	if (bodyEl) bodyContainer.appendChild(bodyEl);
+	el.appendChild(bodyContainer);
+	let grip = null;
+	if (resizable) {
+		grip = document.createElement("div");
+		grip.className = "dp-resize";
+		grip.title = "Resize";
+		grip.addEventListener("mousedown", beginResize);
+		el.appendChild(grip);
+	}
+	(container || document.body).appendChild(el);
+	function applyGeom() {
+		for (const c of CORNERS) el.classList.remove("pos-" + c);
+		for (const c of CORNERS) el.classList.remove("anchor-" + c);
+		el.style.left = el.style.right = el.style.top = el.style.bottom = el.style.transform = "";
+		el.classList.add("anchor-" + geom.corner);
+		el.style.width = geom.w ? geom.w + "px" : "";
+		el.style.height = geom.ht && !geom.collapsed ? geom.ht + "px" : "";
+		if (geom.h == null || geom.v == null) el.classList.add("pos-" + geom.corner);
+		else {
+			const isRight = geom.corner.includes("right");
+			const isBottom = geom.corner.includes("bottom");
+			if (isRight) el.style.right = geom.h + "px";
+			else el.style.left = geom.h + "px";
+			if (isBottom) el.style.bottom = geom.v + "px";
+			else el.style.top = geom.v + "px";
+		}
+		el.classList.toggle("collapsed", !!geom.collapsed);
+	}
+	header.addEventListener("mousedown", (e) => {
+		if (e.button !== 0) return;
+		if (e.target.closest("button, .dp-resize")) return;
+		beginDrag(e);
+	});
+	function pickCornerByProximity() {
+		const parentRect = (container || el.offsetParent || document.body).getBoundingClientRect();
+		const rect = el.getBoundingClientRect();
+		const cx = rect.left + rect.width / 2 - parentRect.left;
+		const cy = rect.top + rect.height / 2 - parentRect.top;
+		const horiz = cx > parentRect.width / 2 ? "right" : "left";
+		return (cy > parentRect.height / 2 ? "bottom" : "top") + "-" + horiz;
+	}
+	function beginDrag(e) {
+		e.preventDefault();
+		const parent = container || el.offsetParent || document.body;
+		const startX = e.clientX, startY = e.clientY;
+		const DRAG_THRESHOLD = 4;
+		let moved = false;
+		let isRight, isBottom, startH, startV, parentRect;
+		function initDrag() {
+			if (geom.corner.includes("center")) {
+				const r = el.getBoundingClientRect();
+				const isB = geom.corner.includes("bottom");
+				geom.corner = (isB ? "bottom" : "top") + "-" + (r.left + r.width / 2 > window.innerWidth / 2 ? "right" : "left");
+			}
+			isRight = geom.corner.includes("right");
+			isBottom = geom.corner.includes("bottom");
+			const rect = el.getBoundingClientRect();
+			parentRect = parent.getBoundingClientRect();
+			startH = isRight ? parentRect.right - rect.right : rect.left - parentRect.left;
+			startV = isBottom ? parentRect.bottom - rect.bottom : rect.top - parentRect.top;
+			geom.h = startH;
+			geom.v = startV;
+			applyGeom();
+			el.classList.add("dragging");
+		}
+		const onMove = (me) => {
+			const dx = me.clientX - startX, dy = me.clientY - startY;
+			if (!moved) {
+				if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+				moved = true;
+				initDrag();
+			}
+			let newH = isRight ? startH - dx : startH + dx;
+			let newV = isBottom ? startV - dy : startV + dy;
+			newH = _clamp(newH, 0, Math.max(0, parentRect.width - el.offsetWidth));
+			newV = _clamp(newV, 0, Math.max(0, parentRect.height - el.offsetHeight));
+			geom.h = newH;
+			geom.v = newV;
+			if (isRight) el.style.right = newH + "px";
+			else el.style.left = newH + "px";
+			if (isBottom) el.style.bottom = newV + "px";
+			else el.style.top = newV + "px";
+		};
+		const onUp = () => {
+			window.removeEventListener("mousemove", onMove);
+			window.removeEventListener("mouseup", onUp);
+			if (!moved) {
+				setCollapsed(!geom.collapsed);
+				return;
+			}
+			el.classList.remove("dragging");
+			const newCorner = pickCornerByProximity();
+			geom.corner = newCorner;
+			const nowRight = newCorner.includes("right");
+			const nowBottom = newCorner.includes("bottom");
+			const rect = el.getBoundingClientRect();
+			const pr = parent.getBoundingClientRect();
+			geom.h = Math.max(0, nowRight ? pr.right - rect.right : rect.left - pr.left);
+			geom.v = Math.max(0, nowBottom ? pr.bottom - rect.bottom : rect.top - pr.top);
+			applyGeom();
+			saveGeom(geom);
+		};
+		window.addEventListener("mousemove", onMove);
+		window.addEventListener("mouseup", onUp);
+	}
+	function beginResize(e) {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		e.stopPropagation();
+		if (geom.collapsed) return;
+		const isRight = geom.corner.includes("right");
+		const isBottom = geom.corner.includes("bottom");
+		const rect = el.getBoundingClientRect();
+		const startW = rect.width, startHt = rect.height;
+		const startX = e.clientX, startY = e.clientY;
+		const capW = () => Math.min(window.innerWidth * .9, 1e3);
+		const capH = () => window.innerHeight * .9;
+		el.classList.add("resizing");
+		const onMove = (me) => {
+			const dx = me.clientX - startX, dy = me.clientY - startY;
+			let newW = isRight ? startW - dx : startW + dx;
+			let newHt = isBottom ? startHt - dy : startHt + dy;
+			newW = _clamp(newW, minWidth, capW());
+			newHt = _clamp(newHt, minHeight, capH());
+			geom.w = Math.round(newW);
+			geom.ht = Math.round(newHt);
+			el.style.width = geom.w + "px";
+			el.style.height = geom.ht + "px";
+		};
+		const onUp = () => {
+			el.classList.remove("resizing");
+			window.removeEventListener("mousemove", onMove);
+			window.removeEventListener("mouseup", onUp);
+			saveGeom(geom);
+		};
+		window.addEventListener("mousemove", onMove);
+		window.addEventListener("mouseup", onUp);
+	}
+	function setCollapsed(c) {
+		geom.collapsed = !!c;
+		el.classList.toggle("collapsed", geom.collapsed);
+		el.style.height = !geom.collapsed && geom.ht ? geom.ht + "px" : "";
+		saveGeom(geom);
+		if (onCollapseChange) onCollapseChange(geom.collapsed);
+	}
+	applyGeom();
+	return {
+		el,
+		bodyContainer,
+		headerEl: header,
+		setTitle(html) {
+			titleEl.innerHTML = html || "";
+		},
+		setCollapsed,
+		isCollapsed() {
+			return !!geom.collapsed;
+		},
+		getCorner() {
+			return geom.corner;
+		},
+		setOpacity(o) {
+			el.style.opacity = String(o);
+		},
+		destroy() {
+			el.remove();
+		}
+	};
+}
+//#endregion
+//#region src/overlay.ts
+var overlayState = state;
+function updateExplanationPanel(spec) {
+	const panel = document.getElementById("explanation-panel");
+	const content = document.getElementById("explanation-content");
+	const handle = document.getElementById("panel-resize-handle");
+	const toggle = document.getElementById("explain-toggle");
+	if (spec && spec.markdown) {
+		content.innerHTML = renderMarkdown$1(spec.markdown);
+		content.dataset.markdown = stripGlossaryMarkers(spec.markdown);
+		injectAskButtons(content);
+	} else content.innerHTML = "<p style=\"color: rgba(180,180,200,0.5); font-style: italic;\">No explanation available for this scene.</p>";
+	panel.classList.remove("hidden");
+	handle.style.display = "block";
+	toggle.style.display = "block";
+	toggle.classList.add("active");
+	const savedWidth = localStorage.getItem("algebench-panel-width");
+	if (savedWidth) {
+		const w = parseInt(savedWidth);
+		if (w >= 250 && w <= 600) panel.style.width = w + "px";
+	}
+	setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+}
+function setupPanelResize() {
+	const handle = document.getElementById("panel-resize-handle");
+	const panel = document.getElementById("explanation-panel");
+	let dragging = false;
+	let startX, startWidth;
+	handle.addEventListener("mousedown", (e) => {
+		e.preventDefault();
+		dragging = true;
+		startX = e.clientX;
+		startWidth = panel.offsetWidth;
+		handle.classList.add("dragging");
+		document.body.style.cursor = "col-resize";
+		document.body.style.userSelect = "none";
+	});
+	document.addEventListener("mousemove", (e) => {
+		if (!dragging) return;
+		const dx = startX - e.clientX;
+		let newWidth = Math.max(250, Math.min(600, startWidth + dx));
+		panel.style.width = newWidth + "px";
+		window.dispatchEvent(new Event("resize"));
+	});
+	document.addEventListener("mouseup", () => {
+		if (!dragging) return;
+		dragging = false;
+		handle.classList.remove("dragging");
+		document.body.style.cursor = "";
+		document.body.style.userSelect = "";
+		localStorage.setItem("algebench-panel-width", String(panel.offsetWidth));
+	});
+}
+function setupExplainToggle() {
+	const toggle = document.getElementById("explain-toggle");
+	const panel = document.getElementById("explanation-panel");
+	const handle = document.getElementById("panel-resize-handle");
+	toggle.addEventListener("click", () => {
+		const isHidden = panel.classList.toggle("hidden");
+		toggle.classList.toggle("active", !isHidden);
+		handle.style.display = isHidden ? "none" : "block";
+		if (!isHidden && typeof window.refreshProofPanel === "function") window.refreshProofPanel();
+		setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+	});
+	document.addEventListener("keydown", (e) => {
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+		if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			if (overlayState.currentSpec && overlayState.currentSpec.markdown && toggle.style.display !== "none") toggle.click();
+		}
+	});
+}
+function setupDocSpeakButtons() {
+	const speakBtn = document.getElementById("doc-speak-btn");
+	const commentateBtn = document.getElementById("doc-commentate-btn");
+	if (!speakBtn || !commentateBtn) return;
+	if (document.body.dataset.debugMode !== "true") speakBtn.style.display = "none";
+	function resetSpeakBtn() {
+		speakBtn.textContent = "🔊 Speak";
+		speakBtn.classList.remove("active");
+	}
+	speakBtn.addEventListener("click", () => {
+		if (speakBtn.classList.contains("active")) {
+			if (typeof window.algebenchStopTTS === "function") window.algebenchStopTTS();
+			resetSpeakBtn();
+			return;
+		}
+		const contentEl = document.getElementById("explanation-content");
+		const text = overlayState.currentSpec && overlayState.currentSpec.markdown ? stripGlossaryMarkers(overlayState.currentSpec.markdown) : contentEl.dataset.markdown || contentEl.textContent;
+		if (!text || !text.trim()) return;
+		if (typeof window.algebenchSpeakText === "function") {
+			speakBtn.textContent = "⏹ Stop";
+			speakBtn.classList.add("active");
+			window.algebenchSpeakText(text, resetSpeakBtn);
+		}
+	});
+	commentateBtn.addEventListener("click", () => {
+		if (typeof sendChatMessage !== "function") return;
+		if (speakBtn.classList.contains("active")) {
+			if (typeof window.algebenchStopTTS === "function") window.algebenchStopTTS();
+			resetSpeakBtn();
+		}
+		const panel = document.getElementById("explanation-panel");
+		const handle = document.getElementById("panel-resize-handle");
+		const toggle = document.getElementById("explain-toggle");
+		if (panel.classList.contains("hidden")) {
+			panel.classList.remove("hidden");
+			handle.style.display = "block";
+			toggle.style.display = "block";
+			toggle.classList.add("active");
+			setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+		}
+		if (typeof switchPanelTab === "function") switchPanelTab("chat");
+		sendChatMessage("Please commentate on the Documentation of this scene. Specifically go into the details of how the visualization ties to the equations that we see in the Documentation.");
+	});
+}
+function updateTitle(spec) {
+	const titleEl = document.getElementById("scene-title");
+	const descEl = document.getElementById("scene-description");
+	const sourceEl = document.getElementById("scene-source-file");
+	if (spec && spec.title) titleEl.innerHTML = renderKaTeX$1(spec.title, false);
+	else titleEl.innerHTML = "AlgeBench";
+	if (spec && spec.description) {
+		const descText = stripGlossaryMarkers(spec.description);
+		descEl.dataset.markdown = descText;
+		const btn = makeAiAskButton("ai-ask-btn", "Ask AI to explain this scene", () => "Can you explain this scene:\n" + descText.trim());
+		fillBoardOverlay(descEl, renderKaTeX$1(spec.description, false), btn);
+		resetSceneDescPosition(descEl);
+	} else if (spec && spec.title) descEl.innerHTML = "";
+	else descEl.innerHTML = "<div class=\"bo-body\">Load a scene to begin</div>";
+	updateBoardDockHeight();
+	if (sourceEl) {
+		sourceEl.textContent = overlayState.currentSceneSourceLabel ? `- ${overlayState.currentSceneSourceLabel}` : "- no file";
+		sourceEl.title = overlayState.currentSceneSourcePath || "";
+	}
+}
+function buildLegend(elements) {
+	const legend = document.getElementById("legend");
+	const grouped = /* @__PURE__ */ new Map();
+	for (const el of elements) {
+		if (el.type === "axis" || el.type === "grid") continue;
+		const groupLabel = el.legendGroup || el.label;
+		if (!groupLabel || !el.color) continue;
+		const key = `${groupLabel}__${colorToCSS(el.color)}`;
+		if (!grouped.has(key)) grouped.set(key, {
+			label: el.label || null,
+			color: el.color,
+			ids: []
+		});
+		if (el.label && !grouped.get(key).label) grouped.get(key).label = el.label;
+		if (el.id) grouped.get(key).ids.push(el.id);
+	}
+	for (const [key, val] of grouped) if (!val.label) grouped.delete(key);
+	const items = [...grouped.values()];
+	legend.innerHTML = "";
+	if (items.length === 0) {
+		legend.classList.add("hidden");
+		return;
+	}
+	legend.classList.remove("hidden");
+	const declaredIds = /* @__PURE__ */ new Set();
+	for (const it of items) for (const id of it.ids || []) declaredIds.add(id);
+	for (const it of items) {
+		const elementIds = it.ids || [];
+		const hidden = elementIds.length > 0 && elementIds.every((id) => {
+			if (overlayState.legendToggledOff.has(id)) return true;
+			const reg = overlayState.elementRegistry[id];
+			return !!(reg && reg.hidden);
+		});
+		const div = document.createElement("div");
+		div.className = "legend-item" + (elementIds.length ? " legend-clickable" : "") + (hidden ? " legend-hidden" : "");
+		if (elementIds.length) div.dataset.elementIds = elementIds.join(",");
+		const swatch = document.createElement("div");
+		swatch.className = "legend-swatch";
+		swatch.style.background = colorToCSS(it.color);
+		if (hidden) swatch.style.opacity = "0.3";
+		div.appendChild(swatch);
+		const span = document.createElement("span");
+		span.innerHTML = renderKaTeX$1(it.label, false);
+		div.appendChild(span);
+		legend.appendChild(div);
+	}
+	for (const div of legend.querySelectorAll(".legend-clickable")) div.addEventListener("click", () => {
+		const elIds = (div.dataset.elementIds || "").split(",").map((s) => s.trim()).filter(Boolean);
+		if (elIds.length === 0) return;
+		const wasOff = div.classList.contains("legend-hidden");
+		for (const elId of elIds) {
+			const live = !!overlayState.elementRegistry[elId];
+			if (wasOff) {
+				overlayState.legendToggledOff.delete(elId);
+				if (live && typeof window._algebenchShowElementById === "function") window._algebenchShowElementById(elId);
+			} else {
+				overlayState.legendToggledOff.add(elId);
+				if (live && typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(elId);
+			}
+		}
+		div.classList.toggle("legend-hidden", !wasOff);
+		div.querySelector(".legend-swatch").style.opacity = wasOff ? "" : "0.3";
+	});
+	for (const id of [...overlayState.legendToggledOff]) {
+		if (!declaredIds.has(id)) {
+			overlayState.legendToggledOff.delete(id);
+			continue;
+		}
+		const reg = overlayState.elementRegistry[id];
+		if (reg && !reg.hidden) {
+			if (typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(id);
+		}
+	}
+}
+var infoState = {
+	forcedMode: null,
+	mode: "free",
+	items: {},
+	drawerPanel: null,
+	drawerBodyEl: null,
+	_routeScheduled: false,
+	_pendingDrawerCorner: null
+};
+function _fmtNum(val) {
+	if (typeof val === "string") return val;
+	if (!isFinite(val)) return String(val);
+	const n = Number(val);
+	if (Number.isInteger(n)) return String(n);
+	return parseFloat(n.toFixed(3)).toString();
+}
+function _isKnownInfoExprIdentifier(name) {
+	if (!name) return false;
+	if (Object.prototype.hasOwnProperty.call(overlayState.sceneSliders, name)) return true;
+	if (Object.prototype.hasOwnProperty.call(overlayState.activeSceneExprFunctions, name)) return true;
+	if (window.agentMemoryValues && Object.prototype.hasOwnProperty.call(window.agentMemoryValues, name)) return true;
+	if (name === "t" || name === "u" || name === "v") return true;
+	if (name === "pi" || name === "e" || name === "PI" || name === "E") return true;
+	if (name === "true" || name === "false" || name === "Infinity" || name === "NaN") return true;
+	if (EXTENSION_NAMES.includes(name)) return true;
+	return _getMathNamesAndValues().names.includes(name);
+}
+function _exprHasUnknownIdentifiers(expr) {
+	const matches = String(expr).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, " ").match(/[A-Za-z_][A-Za-z0-9_]*/g);
+	if (!matches) return false;
+	for (const id of matches) if (!_isKnownInfoExprIdentifier(id)) return true;
+	return false;
+}
+function _evalInfoExpr(expr) {
+	const trimmed = String(expr || "").trim();
+	if (!trimmed) return "";
+	if (_exprHasUnknownIdentifiers(trimmed)) return "?";
+	const memScope = window.agentMemoryValues && typeof window.agentMemoryValues === "object" ? window.agentMemoryValues : null;
+	try {
+		return _fmtNum(evalExpr(compileExpr(trimmed), 0, { extraScope: memScope }));
+	} catch {
+		if (overlayState._sceneJsTrustState === "trusted") try {
+			const ids = getSliderIds();
+			const memNames = memScope ? Object.keys(memScope) : [];
+			const { names, vals: mathVals } = _getMathNamesAndValues();
+			const fn = Function("t", ...ids, ...memNames, ...names, "return (" + trimmed + ")");
+			const sliderVals = ids.map((id) => {
+				const s = overlayState.sceneSliders[id];
+				return s ? s.value : 0;
+			});
+			const memVals = memNames.map((k) => memScope[k]);
+			return _fmtNum(fn(0, ...sliderVals, ...memVals, ...mathVals));
+		} catch {}
+		return "?";
+	}
+}
+function _replaceDoubleBraceExprs(template, evaluator) {
+	if (typeof template !== "string" || template.indexOf("{{") === -1) return template;
+	return template.replace(/\{\{([\s\S]*?)\}\}/g, (_m, expr) => {
+		if (/^\s*glossary:/.test(expr)) return _m;
+		const v = evaluator(expr);
+		return v == null ? _m : String(v);
+	});
+}
+function resolveInfoContent(template) {
+	return _replaceDoubleBraceExprs(template, (expr) => _evalInfoExpr(expr));
+}
+function updateInfoOverlays$1() {
+	for (const item of Object.values(infoState.items)) {
+		if (!item.contentEl) continue;
+		const resolved = resolveInfoContent(item.content);
+		item.contentEl.innerHTML = renderKaTeX$1(resolved, false);
+		const titleHtml = _titleHtml(item);
+		if (item.panel) item.panel.setTitle(titleHtml);
+		if (item.sectionTitleEl) item.sectionTitleEl.innerHTML = titleHtml;
+	}
+	_updateDrawerHeader();
+}
+window._algebenchUpdateInfoOverlays = updateInfoOverlays$1;
+function _infoContainer() {
+	return document.getElementById("info-overlays");
+}
+function _deriveTitle(content) {
+	const lines = String(content || "").split("\n");
+	for (let ln of lines) {
+		ln = ln.trim();
+		if (!ln) continue;
+		ln = ln.replace(/^#{1,6}\s*/, "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/^[*_>\s-]+/, "").replace(/[*_]+$/, "").trim();
+		if (ln) return ln;
+	}
+	return "Info";
+}
+function _titleHtml(item) {
+	return renderKaTeX$1(resolveInfoContent(item.explicitTitle ? item.title : _deriveTitle(item.content)), false);
+}
+function _loadPlacement(id) {
+	try {
+		const v = localStorage.getItem("info-item-placement-" + id);
+		return v === "free" || v === "drawer" ? v : null;
+	} catch {
+		return null;
+	}
+}
+function _savePlacement(id, placement) {
+	try {
+		localStorage.setItem("info-item-placement-" + id, placement);
+	} catch {}
+}
+function _loadSectionCollapsed() {
+	try {
+		return JSON.parse(localStorage.getItem("info-drawer-sections") || "{}") || {};
+	} catch {
+		return {};
+	}
+}
+function _saveSectionCollapsed(map) {
+	try {
+		localStorage.setItem("info-drawer-sections", JSON.stringify(map));
+	} catch {}
+}
+function _migrateOldOverlayKeys(id) {
+	let geom = null;
+	try {
+		const raw = localStorage.getItem("info-overlay-pos-" + id);
+		const saved = raw ? JSON.parse(raw) : null;
+		if (saved && saved.pos && saved.h != null && saved.v != null) geom = {
+			corner: saved.pos,
+			h: saved.h,
+			v: saved.v
+		};
+		else if (saved && saved.left && saved.top) geom = {
+			corner: "top-left",
+			h: parseFloat(saved.left) || 0,
+			v: parseFloat(saved.top) || 0
+		};
+	} catch {}
+	try {
+		if (localStorage.getItem("info-overlay-collapsed-" + id) === "1") {
+			geom = geom || { corner: "top-left" };
+			geom.collapsed = true;
+		}
+	} catch {}
+	return geom;
+}
+function _makeItemAiBtn(item) {
+	return makeAiAskButton("info-overlay-ai-btn", "Ask AI about this", () => "Can you explain this:\n" + stripGlossaryMarkers(resolveInfoContent(item.content)).trim());
+}
+function _makeDockBtn(item) {
+	const b = document.createElement("button");
+	b.type = "button";
+	b.className = "info-dock-btn";
+	b.title = "Move into drawer";
+	b.textContent = "⤵";
+	b.addEventListener("mousedown", (e) => e.stopPropagation());
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		const corner = item.panel ? item.panel.getCorner() : item.position;
+		_setItemPlacement(item.id, "drawer", corner);
+	});
+	return b;
+}
+function _makePopBtn(item) {
+	const b = document.createElement("button");
+	b.type = "button";
+	b.className = "info-dock-btn";
+	b.title = "Pop out of drawer";
+	b.textContent = "⤴";
+	b.addEventListener("mousedown", (e) => e.stopPropagation());
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		_setItemPlacement(item.id, "free", null);
+	});
+	return b;
+}
+function _setItemPlacement(id, placement, inheritCorner) {
+	if (!infoState.items[id]) return;
+	_savePlacement(id, placement);
+	if (placement === "drawer" && inheritCorner) infoState._pendingDrawerCorner = inheritCorner;
+	_route();
+}
+function _mountFree(item) {
+	if (item.panel) {
+		if (item.contentEl.parentElement !== item.freeInner) item.freeInner.appendChild(item.contentEl);
+		return;
+	}
+	const inner = document.createElement("div");
+	inner.className = "info-overlay";
+	inner.appendChild(item.contentEl);
+	item.freeInner = inner;
+	item.panel = createDockablePanel({
+		persistKey: "info-" + item.id,
+		corner: item.position,
+		title: _titleHtml(item),
+		bodyEl: inner,
+		container: _infoContainer(),
+		headerButtons: [_makeItemAiBtn(item), _makeDockBtn(item)],
+		titleAlwaysVisible: !!item.explicitTitle,
+		opacity: overlayState.displayParams.overlayOpacity,
+		legacyMigrate: () => _migrateOldOverlayKeys(item.id)
+	});
+}
+function _unmountFree(item) {
+	if (!item.panel) return;
+	if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
+	item.panel.destroy();
+	item.panel = null;
+	item.freeInner = null;
+}
+function _chooseDrawerCorner(items) {
+	if (infoState._pendingDrawerCorner) return infoState._pendingDrawerCorner;
+	const counts = {};
+	let best = "top-right", bestN = 0;
+	for (const it of items) {
+		if (it.placement !== "drawer") continue;
+		const c = it.position || "top-right";
+		counts[c] = (counts[c] || 0) + 1;
+		if (counts[c] > bestN) {
+			bestN = counts[c];
+			best = c;
+		}
+	}
+	return best;
+}
+var _CHEVRON_UP = "<svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"17 12 12 7 7 12\"/><polyline points=\"17 18 12 13 7 18\"/></svg>";
+var _CHEVRON_DOWN = "<svg viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"7 12 12 17 17 12\"/><polyline points=\"7 6 12 11 17 6\"/></svg>";
+function _makeDrawerIconBtn(glyph, title, onClick) {
+	const b = document.createElement("button");
+	b.type = "button";
+	b.className = "info-dock-btn";
+	b.title = title;
+	if (glyph.trimStart().startsWith("<")) b.innerHTML = glyph;
+	else b.textContent = glyph;
+	b.addEventListener("mousedown", (e) => e.stopPropagation());
+	b.addEventListener("click", (e) => {
+		e.stopPropagation();
+		onClick();
+	});
+	return b;
+}
+function _setAllSectionsCollapsed(collapsed) {
+	const map = _loadSectionCollapsed();
+	for (const item of Object.values(infoState.items)) if (item.placement === "drawer" && item.sectionEl) {
+		item.sectionEl.classList.toggle("collapsed", collapsed);
+		map[item.id] = collapsed;
+	}
+	_saveSectionCollapsed(map);
+}
+function _ensureDrawer(corner) {
+	if (infoState.drawerPanel) return;
+	const body = document.createElement("div");
+	body.className = "info-drawer";
+	infoState.drawerBodyEl = body;
+	const collapseAllBtn = _makeDrawerIconBtn(_CHEVRON_UP, "Collapse all sections", () => _setAllSectionsCollapsed(true));
+	const expandAllBtn = _makeDrawerIconBtn(_CHEVRON_DOWN, "Expand all sections", () => _setAllSectionsCollapsed(false));
+	const dissolveBtn = _makeDrawerIconBtn("⤴", "Pop all overlays out of the drawer", () => _dissolveDrawer());
+	infoState.drawerPanel = createDockablePanel({
+		persistKey: "info-drawer",
+		corner: corner || "top-right",
+		title: "Info",
+		bodyEl: body,
+		container: _infoContainer(),
+		headerButtons: [
+			collapseAllBtn,
+			expandAllBtn,
+			dissolveBtn
+		],
+		titleAlwaysVisible: true,
+		opacity: overlayState.displayParams.overlayOpacity
+	});
+	infoState.drawerPanel.el.classList.add("dp-drawer");
+}
+function _destroyDrawerIfEmpty() {
+	if (!infoState.drawerPanel) return;
+	if (Object.values(infoState.items).some((it) => it.placement === "drawer")) return;
+	infoState.drawerPanel.destroy();
+	infoState.drawerPanel = null;
+	infoState.drawerBodyEl = null;
+}
+function _dissolveDrawer() {
+	for (const item of Object.values(infoState.items)) if (item.placement === "drawer") _savePlacement(item.id, "free");
+	_route();
+}
+function _mountSection(item) {
+	if (item.sectionEl) {
+		if (item.contentEl.parentElement !== item.sectionBodyEl) item.sectionBodyEl.appendChild(item.contentEl);
+		if (item.sectionEl.parentElement !== infoState.drawerBodyEl) infoState.drawerBodyEl.appendChild(item.sectionEl);
+		return;
+	}
+	const section = document.createElement("div");
+	section.className = "info-drawer-section";
+	if (item.explicitTitle) section.classList.add("title-always");
+	const header = document.createElement("div");
+	header.className = "info-drawer-section-header";
+	const caret = document.createElement("button");
+	caret.type = "button";
+	caret.className = "dp-collapse";
+	caret.title = "Expand / collapse";
+	const titleEl = document.createElement("span");
+	titleEl.className = "info-drawer-section-title";
+	titleEl.innerHTML = _titleHtml(item);
+	const btns = document.createElement("span");
+	btns.className = "info-drawer-section-buttons";
+	btns.appendChild(_makeItemAiBtn(item));
+	btns.appendChild(_makePopBtn(item));
+	header.appendChild(caret);
+	header.appendChild(titleEl);
+	header.appendChild(btns);
+	const sBody = document.createElement("div");
+	sBody.className = "info-drawer-section-body";
+	sBody.appendChild(item.contentEl);
+	const collapsed = !!_loadSectionCollapsed()[item.id];
+	section.classList.toggle("collapsed", collapsed);
+	header.addEventListener("click", (e) => {
+		if (e.target.closest(".info-dock-btn, .info-overlay-ai-btn")) return;
+		const nowCollapsed = !section.classList.contains("collapsed");
+		section.classList.toggle("collapsed", nowCollapsed);
+		const map = _loadSectionCollapsed();
+		map[item.id] = nowCollapsed;
+		_saveSectionCollapsed(map);
+	});
+	section.appendChild(header);
+	section.appendChild(sBody);
+	infoState.drawerBodyEl.appendChild(section);
+	item.sectionEl = section;
+	item.sectionBodyEl = sBody;
+	item.sectionTitleEl = titleEl;
+}
+function _unmountSection(item) {
+	if (!item.sectionEl) return;
+	if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
+	item.sectionEl.remove();
+	item.sectionEl = null;
+	item.sectionBodyEl = null;
+	item.sectionTitleEl = null;
+}
+function _updateDrawerHeader() {
+	if (!infoState.drawerPanel) return;
+	const n = Object.values(infoState.items).filter((it) => it.placement === "drawer").length;
+	infoState.drawerPanel.setTitle("Info <span class=\"info-drawer-count\">" + n + "</span>");
+}
+function _scheduleRoute() {
+	if (infoState._routeScheduled) return;
+	infoState._routeScheduled = true;
+	Promise.resolve().then(() => {
+		infoState._routeScheduled = false;
+		_route();
+	});
+}
+function _route() {
+	const items = Object.values(infoState.items);
+	const count = items.length;
+	const mode = infoState.forcedMode || (count > 3 ? "drawer" : "free");
+	infoState.mode = mode;
+	let anyDrawer = false;
+	for (const item of items) {
+		item.placement = _loadPlacement(item.id) || (mode === "drawer" ? "drawer" : "free");
+		if (item.placement === "drawer") anyDrawer = true;
+	}
+	if (anyDrawer) _ensureDrawer(_chooseDrawerCorner(items));
+	infoState._pendingDrawerCorner = null;
+	for (const item of items) if (item.placement === "drawer") {
+		_unmountFree(item);
+		_mountSection(item);
+	} else {
+		_unmountSection(item);
+		_mountFree(item);
+	}
+	_destroyDrawerIfEmpty();
+	updateInfoOverlays$1();
+}
+function removeStepInfoOverlays() {
+	let changed = false;
+	for (const id of Object.keys(infoState.items)) {
+		const item = infoState.items[id];
+		if (item.stepDefined && !item.keep) {
+			_disposeItem(item);
+			changed = true;
+		}
+	}
+	if (changed) _scheduleRoute();
+}
+function addInfoOverlay$1(id, content, position, stepDefined = false, keep = false, title = null) {
+	if (!_infoContainer()) return;
+	if (!id) {
+		const preview = typeof content === "string" ? content.length > 80 ? content.slice(0, 80) + "…" : content : void 0;
+		console.warn("addInfoOverlay: id is required; ignoring overlay", {
+			position,
+			contentPreview: preview
+		});
+		return;
+	}
+	let item = infoState.items[id];
+	if (!item) {
+		const contentEl = document.createElement("div");
+		contentEl.className = "info-overlay-content";
+		item = infoState.items[id] = {
+			id,
+			contentEl,
+			panel: null,
+			freeInner: null,
+			sectionEl: null,
+			sectionBodyEl: null,
+			sectionTitleEl: null,
+			placement: "free"
+		};
+	}
+	item.content = content;
+	item.title = title || null;
+	item.explicitTitle = !!title;
+	item.position = position || "top-left";
+	item.stepDefined = stepDefined;
+	item.keep = keep;
+	_scheduleRoute();
+}
+function _disposeItem(item) {
+	_unmountFree(item);
+	_unmountSection(item);
+	delete infoState.items[item.id];
+}
+function removeInfoOverlay(id) {
+	const item = infoState.items[id];
+	if (!item) return;
+	_disposeItem(item);
+	_scheduleRoute();
+}
+function removeAllInfoOverlays$1() {
+	for (const id of Object.keys(infoState.items)) _disposeItem(infoState.items[id]);
+	if (infoState.drawerPanel) {
+		infoState.drawerPanel.destroy();
+		infoState.drawerPanel = null;
+		infoState.drawerBodyEl = null;
+	}
+}
+function getAllElements$1(scene, stepIdx) {
+	let elements = [...scene.elements || []];
+	const removedIds = /* @__PURE__ */ new Set();
+	const removedTypes = /* @__PURE__ */ new Set();
+	let removeAll = false;
+	if (scene.steps) for (let i = 0; i <= stepIdx; i++) {
+		const step = scene.steps[i];
+		if (step.remove) {
+			for (const item of step.remove) if (item.id === "*" || item.type === "*") removeAll = true;
+			else if (item.id) removedIds.add(item.id);
+			else if (item.type) removedTypes.add(item.type);
+		}
+		if (removeAll || removedIds.size > 0 || removedTypes.size > 0) {
+			elements = elements.filter((el) => {
+				if (removeAll) return false;
+				if (el.id && removedIds.has(el.id)) return false;
+				if (el.type && removedTypes.has(el.type)) return false;
+				return true;
+			});
+			removedIds.clear();
+			removedTypes.clear();
+			removeAll = false;
+		}
+		elements = elements.concat(step.add || []);
+	}
+	return elements;
+}
+function updateStatusBar() {
+	if (!document.getElementById("status-bar")) return;
+	if (typeof window._algebenchUpdateJsTrustPill === "function") window._algebenchUpdateJsTrustPill();
+	const pill = document.getElementById("slider-status");
+	const countEl = pill && pill.querySelector(".slider-status-count");
+	const tooltipEl = pill && pill.querySelector(".slider-status-tooltip");
+	const ids = Object.keys(overlayState.sceneSliders);
+	if (pill) {
+		if (ids.length > 0) {
+			if (countEl) countEl.textContent = String(ids.length);
+			if (tooltipEl) tooltipEl.textContent = ids.map((id) => {
+				const s = overlayState.sceneSliders[id];
+				const label = (s.label || id).replace(/\$|\\[a-z]+\{?|\}|_|\^/gi, "").trim() || id;
+				if (s.kind === "tensor") return `${label} (${id}) = ${(s.shape || []).join("×")} table  [${s.min} … ${s.max}]`;
+				return `${label} (${id}) = ${Number(s.value).toFixed(2)}  [${s.min} … ${s.max}]`;
+			}).join("\n");
+			pill.classList.remove("hidden");
+		} else pill.classList.add("hidden");
+	}
+	const camPopup = document.getElementById("cam-popup-content");
+	const camPopupText = document.getElementById("cam-popup-text");
+	if (camPopup && overlayState.camera && overlayState.controls) {
+		const pw = overlayState.camera.position;
+		const tw = overlayState.controls.target;
+		const u = overlayState.camera.up;
+		const p = worldCameraToData$1([
+			pw.x,
+			pw.y,
+			pw.z
+		]);
+		const t = worldCameraToData$1([
+			tw.x,
+			tw.y,
+			tw.z
+		]);
+		const dist = Math.sqrt((p[0] - t[0]) ** 2 + (p[1] - t[1]) ** 2 + (p[2] - t[2]) ** 2);
+		const fov = overlayState.camera.isPerspectiveCamera ? overlayState.camera.fov : null;
+		const fmt = (v) => v.toFixed(3);
+		const activeViewBtn = document.querySelector(".cam-btn.active");
+		const viewName = activeViewBtn ? activeViewBtn.dataset.view : null;
+		let txt = "";
+		if (viewName) txt += `view ${viewName}\n`;
+		txt += `pos  x: ${fmt(p[0])}  y: ${fmt(p[1])}  z: ${fmt(p[2])}\ntgt  x: ${fmt(t[0])}  y: ${fmt(t[1])}  z: ${fmt(t[2])}\nup   x: ${fmt(u.x)}  y: ${fmt(u.y)}  z: ${fmt(u.z)}\ndist ${dist.toFixed(3)}`;
+		if (fov != null) txt += `\nfov  ${Math.round(fov)}°`;
+		if (camPopupText) camPopupText.textContent = txt;
+		else camPopup.textContent = txt;
+	}
+	const debugText = document.getElementById("debug-status-text");
+	if (debugText) {
+		const sceneNum = overlayState.currentSceneIndex + 1;
+		const totalScenes = overlayState.lessonSpec && overlayState.lessonSpec.scenes ? overlayState.lessonSpec.scenes.length : "?";
+		const stepNum = overlayState.currentStepIndex + 1;
+		const scene = overlayState.lessonSpec && overlayState.lessonSpec.scenes ? overlayState.lessonSpec.scenes[overlayState.currentSceneIndex] : null;
+		debugText.textContent = `scene ${sceneNum}/${totalScenes}  step ${stepNum}/${scene && scene.steps ? scene.steps.length : 0}`;
+	}
+}
+window._algebenchUpdateStatusBar = updateStatusBar;
+function setupSettingsPanel() {
+	const toggle = document.getElementById("settings-toggle");
+	const panel = document.getElementById("settings-panel");
+	toggle.innerHTML = GEAR_ICON;
+	toggle.addEventListener("click", () => {
+		panel.classList.toggle("hidden");
+		toggle.classList.toggle("active");
+	});
+	const paletteSel = document.getElementById("palette-select");
+	const PALETTE_KEY = "algebench-palette";
+	const PALETTES = [
+		"blueprint",
+		"sepia",
+		"plum",
+		"cerulean",
+		"graphite",
+		"contrast"
+	];
+	if (paletteSel) {
+		paletteSel.value = document.documentElement.dataset.palette || "slate";
+		paletteSel.addEventListener("change", () => {
+			const v = paletteSel.value;
+			if (PALETTES.includes(v)) {
+				document.documentElement.dataset.palette = v;
+				try {
+					localStorage.setItem(PALETTE_KEY, v);
+				} catch (e) {}
+			} else {
+				delete document.documentElement.dataset.palette;
+				try {
+					localStorage.removeItem(PALETTE_KEY);
+				} catch (e) {}
+			}
+			applyCanvasClearColor();
+		});
+	}
+	const momentumSlider = document.getElementById("momentum-slider");
+	const valMomentum = document.getElementById("val-momentum");
+	const MOMENTUM_KEY = "algebench-momentum";
+	const savedMomentum = parseFloat(String(localStorage.getItem(MOMENTUM_KEY)));
+	if (!isNaN(savedMomentum)) overlayState.arcballMomentum = Math.max(0, Math.min(1, savedMomentum));
+	if (momentumSlider) {
+		momentumSlider.value = String(Math.round(overlayState.arcballMomentum * 100));
+		if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + "%";
+		momentumSlider.addEventListener("input", () => {
+			overlayState.arcballMomentum = Number(momentumSlider.value) / 100;
+			if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + "%";
+			localStorage.setItem(MOMENTUM_KEY, String(overlayState.arcballMomentum));
+		});
+	}
+	for (const [key, val] of Object.entries(overlayState.displayParams)) {
+		const el = document.getElementById("val-" + key);
+		if (el) el.textContent = val.toFixed(1);
+	}
+	const _iniOp = overlayState.displayParams.overlayOpacity;
+	const _sliderOv = document.getElementById("slider-overlay");
+	const _legend = document.getElementById("legend");
+	if (_sliderOv) _sliderOv.style.opacity = String(_iniOp);
+	if (_legend) _legend.style.opacity = String(_iniOp);
+	const isOpacity = (p) => p.endsWith("Opacity");
+	panel.querySelectorAll(".sp-btn").forEach((btn) => {
+		btn.addEventListener("click", () => {
+			const param = btn.dataset.param;
+			const dir = btn.dataset.dir === "+" ? 1 : -1;
+			const step = isOpacity(param) ? .1 : .2;
+			const min = isOpacity(param) ? 0 : .2;
+			const max = isOpacity(param) ? 1 : 5;
+			let val = overlayState.displayParams[param] + dir * step;
+			val = Math.round(Math.max(min, Math.min(max, val)) * 10) / 10;
+			overlayState.displayParams[param] = val;
+			document.getElementById("val-" + param).textContent = val.toFixed(1);
+			if (param === "labelOpacity") document.querySelectorAll(".label-3d").forEach((el) => {
+				el.style.opacity = String(val);
+			});
+			else if (param === "arrowScale") {
+				if (typeof window._algebenchApplyArrowScale === "function") window._algebenchApplyArrowScale(val);
+			} else if (param === "arrowOpacity") for (const entry of overlayState.arrowMeshes) {
+				if (entry.isShaft) continue;
+				const baseOp = entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === "number" ? entry.mesh.userData.baseOpacity : 1;
+				const targetOp = Math.max(0, Math.min(1, baseOp * val));
+				entry.mesh.material.opacity = targetOp;
+				entry.mesh.material.transparent = targetOp < 1;
+			}
+			else if (param === "axisWidth") {
+				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of overlayState.axisLineNodes) window._algebenchApplyLineWidth(entry);
+			} else if (param === "axisOpacity") for (const entry of overlayState.axisLineNodes) {
+				const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
+				entry.node.set("opacity", baseOp * val);
+			}
+			else if (param === "vectorWidth") {
+				if (typeof window._algebenchApplyShaftThickness === "function" && typeof window._algebenchApplyLineWidth === "function") {
+					for (const entry of overlayState.arrowMeshes) {
+						if (!window._algebenchIsShaftEntry || !window._algebenchIsShaftEntry(entry)) continue;
+						if (entry.mesh && entry.mesh.userData && entry.mesh.userData.dynamicVector) continue;
+						window._algebenchApplyShaftThickness(entry.mesh);
+					}
+					for (const entry of overlayState.vectorLineNodes) window._algebenchApplyLineWidth(entry);
+				}
+			} else if (param === "vectorOpacity") for (const entry of overlayState.arrowMeshes) {
+				if (typeof window._algebenchIsShaftEntry === "function" && !window._algebenchIsShaftEntry(entry)) continue;
+				const baseOp = entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === "number" ? entry.mesh.userData.baseOpacity : 1;
+				const targetOp = Math.max(0, Math.min(1, baseOp * val));
+				entry.mesh.material.opacity = targetOp;
+				entry.mesh.material.transparent = targetOp < 1;
+			}
+			else if (param === "lineWidth") {
+				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of overlayState.lineNodes) window._algebenchApplyLineWidth(entry);
+			} else if (param === "lineOpacity") for (const entry of overlayState.lineNodes) {
+				const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
+				entry.node.set("opacity", baseOp * val);
+			}
+			else if (param === "planeScale") for (const m of overlayState.planeMeshes) {
+				if (m._hiddenByRemove) continue;
+				if (m.userData.buildSlab) {
+					const newPositions = m.userData.buildSlab(m.userData.baseHalf * val);
+					m.geometry.setAttribute("position", new THREE.Float32BufferAttribute(newPositions, 3));
+					m.geometry.computeVertexNormals();
+					m.geometry.attributes.position.needsUpdate = true;
+				}
+			}
+			else if (param === "planeOpacity") for (const m of overlayState.planeMeshes) {
+				if (m._hiddenByRemove) continue;
+				if (m.isSprite) continue;
+				if (m.userData && m.userData.ignorePlaneOpacity) {
+					const baseOp = typeof m.userData.targetOpacity === "number" ? m.userData.targetOpacity : 1;
+					m.visible = baseOp > .001;
+					m.material.opacity = baseOp;
+					m.material.transparent = baseOp < 1;
+					m.material.needsUpdate = true;
+					continue;
+				}
+				const baseOp = m.userData && typeof m.userData.targetOpacity === "number" ? m.userData.targetOpacity : 1;
+				const targetOp = Math.max(0, Math.min(1, baseOp * val));
+				m.visible = targetOp > .001;
+				m.material.opacity = targetOp;
+				m.material.transparent = targetOp < 1;
+				m.material.depthWrite = targetOp >= .999;
+				m.material.needsUpdate = true;
+			}
+			else if (param === "captionScale") {
+				const cap = document.getElementById("step-caption");
+				if (cap && isBoardOverlayDocked()) cap.style.setProperty("--caption-scale", String(val));
+				else if (cap) {
+					const dragged = cap.style.left && cap.style.left.endsWith("px");
+					cap.style.transformOrigin = dragged ? "left bottom" : "";
+					cap.style.transform = (dragged ? "" : "translateX(-50%) ") + "scale(" + val + ")";
+					clampCaptionIntoView(cap);
+				}
+			} else if (param === "overlayOpacity") {
+				const cap = document.getElementById("step-caption");
+				if (cap && !cap.classList.contains("hidden")) cap.style.opacity = String(val);
+				const sliderOv = document.getElementById("slider-overlay");
+				if (sliderOv) sliderOv.style.opacity = String(val);
+				const legend = document.getElementById("legend");
+				if (legend) legend.style.opacity = String(val);
+				document.querySelectorAll("#info-overlays .dockable-panel").forEach((el) => {
+					el.style.opacity = String(val);
+				});
+			}
+		});
+	});
+	const declutterMode = document.getElementById("declutter-mode");
+	if (declutterMode) {
+		declutterMode.value = overlayState.displayParams.labelDeclutterMode;
+		declutterMode.addEventListener("change", () => {
+			overlayState.displayParams.labelDeclutterMode = declutterMode.value;
+		});
+	}
+}
+function initLightControls() {
+	const azEl = document.getElementById("light-az");
+	const elEl = document.getElementById("light-el");
+	const intEl = document.getElementById("light-int");
+	if (!azEl || !overlayState.mainDirLight) return;
+	function applyLight() {
+		const azDeg = parseFloat(azEl.value);
+		const elDeg = parseFloat(elEl.value);
+		const intensity = parseFloat(intEl.value) / 100;
+		const az = azDeg * Math.PI / 180;
+		const el = elDeg * Math.PI / 180;
+		const dist = 20;
+		overlayState.mainDirLight.position.set(dist * Math.cos(el) * Math.sin(az), dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az));
+		overlayState.mainDirLight.intensity = intensity;
+		document.getElementById("val-light-az").textContent = azDeg + "°";
+		document.getElementById("val-light-el").textContent = elDeg + "°";
+		document.getElementById("val-light-int").textContent = intensity.toFixed(2);
+	}
+	azEl.addEventListener("input", applyLight);
+	elEl.addEventListener("input", applyLight);
+	intEl.addEventListener("input", applyLight);
+	applyLight();
+}
+var BOARD_IDS = ["step-caption", "scene-description"];
+var BOARD_DOCK_KEY = "board-overlay-docked";
+var BOARD_DOCK_H_KEY = "board-overlay-dock-h";
+var BOARD_MIN_W = 160;
+var BOARD_MIN_H = 48;
+var BOARD_MAX_H_FRAC = .45;
+var BOARD_DOCK_MAX_H_FRAC = .4;
+var BOARD_RESIZE_DEADBAND = 4;
+var _boardDocked = null;
+var _boardObserver = null;
+function isBoardOverlayDocked() {
+	if (_boardDocked === null) try {
+		_boardDocked = localStorage.getItem(BOARD_DOCK_KEY) === "1";
+	} catch {
+		_boardDocked = false;
+	}
+	return _boardDocked;
+}
+function _boardSizeKey(el) {
+	return el.id === "step-caption" ? "caption-size" : "scene-desc-size";
+}
+/** True when the mousedown landed on the overlay chrome (buttons, grip, or the
+*  body's scrollbar) rather than on the text — those must not start a drag. */
+function isBoardChromeEvent(e) {
+	if (!(e.target instanceof Element)) return false;
+	const t = e.target;
+	if (t.closest(".ai-ask-btn, .bo-side, .bo-resize")) return true;
+	const body = t.closest(".bo-body");
+	if (body && t === body && body.offsetWidth > 0) {
+		const r = body.getBoundingClientRect();
+		if ((e.clientX - r.left) / r.width > body.clientWidth / body.offsetWidth) return true;
+	}
+	return false;
+}
+/** Apply the persisted free-floating size. `legacyWidth` is the width the old
+*  position blobs carried before sizes got their own key. */
+function applyBoardOverlaySize(el, legacyWidth) {
+	let w = null, h = null;
+	try {
+		const saved = JSON.parse(localStorage.getItem(_boardSizeKey(el)) || "null");
+		if (saved && typeof saved === "object") {
+			if (typeof saved.w === "number" && saved.w >= BOARD_MIN_W) w = saved.w;
+			if (typeof saved.h === "number" && saved.h >= BOARD_MIN_H) h = saved.h;
+		}
+	} catch {}
+	if (w == null && legacyWidth && legacyWidth.endsWith("px")) w = parseFloat(legacyWidth) || null;
+	el.style.width = w != null ? w + "px" : "";
+	el.style.height = h != null ? h + "px" : "";
+	el.classList.toggle("sized", w != null);
+}
+/** Docked geometry: the CSS `.docked` rule pins the strip; here we only clear
+*  the inline position a drag may have left and restore the saved height. */
+function applyBoardDockGeometry(el) {
+	el.classList.add("docked");
+	el.classList.remove("sized");
+	el.style.left = el.style.right = el.style.top = el.style.bottom = "";
+	el.style.width = el.style.transform = el.style.transformOrigin = "";
+	let h = null;
+	try {
+		h = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || "") || null;
+	} catch {}
+	el.style.height = h != null && h >= BOARD_MIN_H ? h + "px" : "";
+	el.style.setProperty("--caption-scale", String(overlayState.displayParams.captionScale || 1));
+}
+/** Recompute --caption-dock-h from whichever docked overlay is showing. */
+function updateBoardDockHeight() {
+	const wrap = document.getElementById("mathbox-wrapper");
+	if (!wrap) return;
+	let h = 0;
+	if (isBoardOverlayDocked()) {
+		const cap = document.getElementById("step-caption");
+		const desc = document.getElementById("scene-description");
+		if (!!cap && !cap.classList.contains("hidden")) h = cap.offsetHeight;
+		else if (desc) h = desc.offsetHeight;
+	}
+	wrap.classList.toggle("caption-docked", isBoardOverlayDocked());
+	wrap.style.setProperty("--caption-dock-h", h + "px");
+}
+function setBoardOverlayDocked(docked) {
+	_boardDocked = !!docked;
+	try {
+		localStorage.setItem(BOARD_DOCK_KEY, docked ? "1" : "0");
+	} catch {}
+	for (const id of BOARD_IDS) {
+		const el = document.getElementById(id);
+		if (!el) continue;
+		if (docked) applyBoardDockGeometry(el);
+		else {
+			el.classList.remove("docked");
+			el.style.height = "";
+			if (id === "step-caption") {
+				resetCaptionPosition(el);
+				el.style.setProperty("--caption-scale", "1");
+			} else resetSceneDescPosition(el);
+		}
+		for (const b of el.querySelectorAll(".bo-dock-btn")) _styleDockBtn(b, docked, el);
+	}
+	updateBoardDockHeight();
+}
+function _styleDockBtn(b, docked, overlay) {
+	const what = overlay.id === "step-caption" ? "caption" : "description";
+	b.title = docked ? `Float the ${what} again` : `Dock the ${what} along the bottom edge`;
+	b.setAttribute("aria-label", b.title);
+	b.setAttribute("aria-pressed", docked ? "true" : "false");
+	b.innerHTML = docked ? UNDOCK_ICON : DOCK_BOTTOM_ICON;
+}
+/** Replace the overlay's content with `html` wrapped in the shared chrome. */
+function fillBoardOverlay(el, html, aiBtn) {
+	el.innerHTML = "";
+	const body = document.createElement("div");
+	body.className = "bo-body";
+	body.innerHTML = html;
+	const side = document.createElement("div");
+	side.className = "bo-side";
+	const dock = document.createElement("button");
+	dock.type = "button";
+	dock.className = "info-dock-btn bo-dock-btn";
+	_styleDockBtn(dock, isBoardOverlayDocked(), el);
+	dock.addEventListener("mousedown", (e) => e.stopPropagation());
+	dock.addEventListener("click", (e) => {
+		e.stopPropagation();
+		setBoardOverlayDocked(!isBoardOverlayDocked());
+	});
+	side.appendChild(dock);
+	side.appendChild(aiBtn);
+	const grip = document.createElement("div");
+	grip.className = "bo-resize";
+	grip.title = "Resize";
+	grip.addEventListener("mousedown", (e) => _beginBoardResize(el, e));
+	el.appendChild(body);
+	el.appendChild(side);
+	el.appendChild(grip);
+	el.classList.toggle("docked", isBoardOverlayDocked());
+	_observeBoardOverlays();
+}
+function _observeBoardOverlays() {
+	if (_boardObserver || typeof ResizeObserver === "undefined") return;
+	_boardObserver = new ResizeObserver(() => updateBoardDockHeight());
+	for (const id of BOARD_IDS) {
+		const el = document.getElementById(id);
+		if (el) _boardObserver.observe(el);
+	}
+}
+function _beginBoardResize(el, e) {
+	if (e.button !== 0) return;
+	e.preventDefault();
+	e.stopPropagation();
+	const docked = isBoardOverlayDocked();
+	const pr = (el.offsetParent || document.body).getBoundingClientRect();
+	const scale = el.id === "step-caption" && !docked ? overlayState.displayParams.captionScale || 1 : 1;
+	const centred = !docked && !(el.style.left && el.style.left.endsWith("px"));
+	const startW = el.offsetWidth, startH = el.offsetHeight;
+	const startX = e.clientX, startY = e.clientY;
+	const maxH = pr.height * (docked ? BOARD_DOCK_MAX_H_FRAC : BOARD_MAX_H_FRAC);
+	let w = el.classList.contains("sized") ? startW : null;
+	let h = startH;
+	el.classList.add("resizing");
+	const onMove = (me) => {
+		const rawDx = me.clientX - startX;
+		const dx = rawDx / scale * (centred ? 2 : 1);
+		const dy = (startY - me.clientY) / scale;
+		if (!docked && (w != null || Math.abs(rawDx) >= BOARD_RESIZE_DEADBAND)) {
+			w = Math.round(Math.max(BOARD_MIN_W, Math.min(startW + dx, pr.width - 16)));
+			el.style.width = w + "px";
+			el.classList.add("sized");
+		}
+		h = Math.round(Math.max(BOARD_MIN_H, Math.min(startH + dy, maxH)));
+		el.style.height = h + "px";
+	};
+	const onUp = () => {
+		window.removeEventListener("mousemove", onMove);
+		window.removeEventListener("mouseup", onUp);
+		el.classList.remove("resizing");
+		try {
+			if (docked) localStorage.setItem(BOARD_DOCK_H_KEY, String(h));
+			else localStorage.setItem(_boardSizeKey(el), JSON.stringify(w != null ? {
+				w,
+				h
+			} : { h }));
+		} catch {}
+		if (el.id === "step-caption") clampCaptionIntoView(el);
+		updateBoardDockHeight();
+	};
+	window.addEventListener("mousemove", onMove);
+	window.addEventListener("mouseup", onUp);
+}
+/** Wire the dock state at startup (called once from main). Re-applying the
+*  persisted state is idempotent and makes the overlays match the wrapper
+*  whatever order the other setup calls ran in. */
+function setupBoardOverlays() {
+	setBoardOverlayDocked(isBoardOverlayDocked());
+	_observeBoardOverlays();
+}
+function updateStepCaption(scene, stepIdx, preservePosition = false) {
+	const el = document.getElementById("step-caption");
+	if (!el) return;
+	let text = null;
+	if (stepIdx >= 0 && scene.steps && scene.steps[stepIdx] && scene.steps[stepIdx].description) text = scene.steps[stepIdx].description;
+	else if (stepIdx === -1 && scene.description) text = scene.description;
+	const descriptionExpr = scene?.steps?.[stepIdx]?.descriptionExpr;
+	if (descriptionExpr) try {
+		const resolved = evalExpr(compileExpr(descriptionExpr), 0);
+		if (typeof resolved === "string" && resolved.trim()) text = resolved;
+	} catch (error) {
+		console.warn("step descriptionExpr evaluation error:", error);
+	}
+	if (text) {
+		const plain = stripGlossaryMarkers(text);
+		el.dataset.markdown = plain;
+		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${plain}"`);
+		fillBoardOverlay(el, renderMarkdown$1(text), btn);
+		el.style.opacity = String(overlayState.displayParams.overlayOpacity);
+		if (!preservePosition) resetCaptionPosition(el);
+		el.classList.remove("hidden");
+	} else el.classList.add("hidden");
+	updateBoardDockHeight();
+}
+/** `bottom` and `left` are CSS lengths ('64px', '50%'), not numbers — the
+*  '50%' default and the `endsWith('px')` test below both depend on that. */
+function _applyBottomPos(el, bottom, left) {
+	el.style.bottom = bottom;
+	el.style.left = left || "50%";
+	el.style.top = "auto";
+	el.style.right = "auto";
+	el.style.width = "";
+	const scale = "scale(" + (overlayState.displayParams.captionScale || 1) + ")";
+	if (left && left.endsWith("px")) {
+		el.style.transform = scale;
+		el.style.transformOrigin = "left bottom";
+	} else {
+		el.style.transform = "translateX(-50%) " + scale;
+		el.style.transformOrigin = "";
+	}
+}
+function _defaultCaptionPos(el) {
+	_applyBottomPos(el, "64px", "50%");
+}
+function clampCaptionIntoView(el) {
+	el = el || document.getElementById("step-caption");
+	if (!el || el.classList.contains("hidden")) return;
+	if (!el.style.left || !el.style.left.endsWith("px")) return;
+	const p = (el.offsetParent || document.body).getBoundingClientRect();
+	const r = el.getBoundingClientRect();
+	const m = 8;
+	let left = parseFloat(el.style.left) || 0;
+	let bottom = parseFloat(el.style.bottom) || 0;
+	if (r.left < p.left + m) left += p.left + m - r.left;
+	else if (r.right > p.right - m) left -= r.right - (p.right - m);
+	if (r.bottom > p.bottom - m) bottom += r.bottom - (p.bottom - m);
+	else if (r.top < p.top + m) bottom -= p.top + m - r.top;
+	el.style.left = left + "px";
+	el.style.bottom = Math.max(0, bottom) + "px";
+}
+function resetCaptionPosition(el) {
+	if (isBoardOverlayDocked()) {
+		applyBoardDockGeometry(el);
+		return;
+	}
+	try {
+		const saved = JSON.parse(localStorage.getItem("caption-pos") || "null");
+		if (saved && typeof saved.bottom === "string" && saved.bottom.endsWith("px")) {
+			_applyBottomPos(el, saved.bottom, saved.left);
+			applyBoardOverlaySize(el, saved.width);
+			requestAnimationFrame(() => {
+				const parent = el.offsetParent || document.body;
+				const b = parseFloat(el.style.bottom) || 0;
+				if (b < 0 || b > parent.clientHeight - 20) {
+					localStorage.removeItem("caption-pos");
+					_defaultCaptionPos(el);
+					applyBoardOverlaySize(el);
+				}
+			});
+			return;
+		}
+	} catch {}
+	_defaultCaptionPos(el);
+	applyBoardOverlaySize(el);
+}
+function setupCaptionDrag() {
+	const el = document.getElementById("step-caption");
+	if (!el) return;
+	let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
+	let parentW = 0, parentH = 0, dragW = 0, dragH = 0;
+	const EDGE_MARGIN = 8;
+	el.addEventListener("mousedown", (e) => {
+		if (isBoardChromeEvent(e) || isBoardOverlayDocked()) return;
+		dragging = true;
+		startX = e.clientX;
+		startY = e.clientY;
+		const parentRect = (el.offsetParent || document.body).getBoundingClientRect();
+		const elRect = el.getBoundingClientRect();
+		const s = overlayState.displayParams.captionScale || 1;
+		startLeft = elRect.left - parentRect.left;
+		startBottom = parentRect.bottom - elRect.bottom;
+		const cs = getComputedStyle(el);
+		let frozenW = el.offsetWidth;
+		if (cs.boxSizing !== "border-box") frozenW -= parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+		el.style.transformOrigin = "left bottom";
+		el.style.width = frozenW + "px";
+		el.style.left = startLeft + "px";
+		el.style.bottom = startBottom + "px";
+		el.style.top = "auto";
+		el.style.right = "auto";
+		el.style.transform = "scale(" + s + ")";
+		parentW = parentRect.width;
+		parentH = parentRect.height;
+		const box = el.getBoundingClientRect();
+		dragW = box.width;
+		dragH = box.height;
+		e.preventDefault();
+	});
+	document.addEventListener("mousemove", (e) => {
+		if (!dragging) return;
+		const m = EDGE_MARGIN;
+		let left = startLeft + (e.clientX - startX);
+		let bottom = startBottom - (e.clientY - startY);
+		left = Math.max(m, Math.min(left, Math.max(m, parentW - dragW - m)));
+		bottom = Math.max(m, Math.min(bottom, Math.max(m, parentH - dragH - m)));
+		el.style.left = left + "px";
+		el.style.bottom = bottom + "px";
+	});
+	document.addEventListener("mouseup", () => {
+		if (!dragging) return;
+		dragging = false;
+		clampCaptionIntoView(el);
+		try {
+			localStorage.setItem("caption-pos", JSON.stringify({
+				bottom: el.style.bottom,
+				left: el.style.left,
+				width: el.style.width
+			}));
+		} catch {}
+	});
+	window.addEventListener("resize", () => clampCaptionIntoView(el));
+	resetCaptionPosition(el);
+	setupOverlayHoverBoost();
+}
+var _overlayHoverWired = false;
+var _overlayZ = 10;
+function bringOverlayToFront(panel) {
+	panel.style.zIndex = String(++_overlayZ);
+}
+function setupOverlayHoverBoost() {
+	if (_overlayHoverWired) return;
+	_overlayHoverWired = true;
+	const SEL = "#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel";
+	document.addEventListener("mouseover", (e) => {
+		const target = e.target;
+		const t = target.closest && target.closest(SEL);
+		if (!t) return;
+		const panel = target.closest("#info-overlays .dockable-panel");
+		if (panel) bringOverlayToFront(panel);
+		if (t._hoverBoosted) return;
+		t._hoverBoosted = true;
+		t._preHoverOp = t.style.opacity;
+		const base = parseFloat(getComputedStyle(t).opacity);
+		t._boostedOp = String(Math.min(1, (isNaN(base) ? 1 : base) * 2));
+		t.style.opacity = t._boostedOp;
+	});
+	document.addEventListener("mousedown", (e) => {
+		const target = e.target;
+		const panel = target.closest && target.closest("#info-overlays .dockable-panel");
+		if (panel) bringOverlayToFront(panel);
+	}, true);
+	document.addEventListener("mouseout", (e) => {
+		const target = e.target;
+		const t = target.closest && target.closest(SEL);
+		if (!t || !t._hoverBoosted) return;
+		if (e.relatedTarget && t.contains(e.relatedTarget)) return;
+		t._hoverBoosted = false;
+		if (t.style.opacity === t._boostedOp) t.style.opacity = t._preHoverOp || "";
+	});
+}
+function resetSceneDescPosition(el) {
+	if (!el) el = document.getElementById("scene-description");
+	if (!el) return;
+	if (isBoardOverlayDocked()) {
+		applyBoardDockGeometry(el);
+		return;
+	}
+	try {
+		const saved = JSON.parse(localStorage.getItem("scene-desc-pos") || "null");
+		if (saved && typeof saved.bottom === "string" && saved.bottom.endsWith("px")) {
+			const left = saved.left || "50%";
+			el.style.bottom = saved.bottom;
+			el.style.left = left;
+			el.style.top = "auto";
+			el.style.transform = left.endsWith("px") ? "none" : "translateX(-50%)";
+			applyBoardOverlaySize(el, saved.width);
+			requestAnimationFrame(() => {
+				const parent = el.offsetParent || document.body;
+				const b = parseFloat(el.style.bottom) || 0;
+				if (b < 0 || b > parent.clientHeight - 20) {
+					localStorage.removeItem("scene-desc-pos");
+					el.style.bottom = "64px";
+					el.style.left = "50%";
+					el.style.top = "auto";
+					el.style.transform = "translateX(-50%)";
+					applyBoardOverlaySize(el);
+				}
+			});
+			return;
+		}
+	} catch {}
+	el.style.bottom = "64px";
+	el.style.left = "50%";
+	el.style.top = "auto";
+	el.style.transform = "translateX(-50%)";
+	applyBoardOverlaySize(el);
+}
+function setupSceneDescDrag() {
+	const el = document.getElementById("scene-description");
+	if (!el) return;
+	let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
+	el.addEventListener("mousedown", (e) => {
+		if (isBoardChromeEvent(e) || isBoardOverlayDocked()) return;
+		dragging = true;
+		startX = e.clientX;
+		startY = e.clientY;
+		const parentRect = (el.offsetParent || document.body).getBoundingClientRect();
+		const elRect = el.getBoundingClientRect();
+		startLeft = elRect.left - parentRect.left;
+		startBottom = parentRect.bottom - elRect.bottom;
+		el.style.width = elRect.width + "px";
+		el.style.left = startLeft + "px";
+		el.style.bottom = startBottom + "px";
+		el.style.top = "auto";
+		el.style.transform = "none";
+		el.classList.add("dragging");
+		e.preventDefault();
+	});
+	document.addEventListener("mousemove", (e) => {
+		if (!dragging) return;
+		el.style.left = startLeft + (e.clientX - startX) + "px";
+		el.style.bottom = Math.max(0, startBottom - (e.clientY - startY)) + "px";
+	});
+	document.addEventListener("mouseup", () => {
+		if (!dragging) return;
+		dragging = false;
+		el.classList.remove("dragging");
+		try {
+			localStorage.setItem("scene-desc-pos", JSON.stringify({
+				bottom: el.style.bottom,
+				left: el.style.left,
+				width: el.style.width
+			}));
+		} catch {}
+	});
+	resetSceneDescPosition(el);
+}
+function setCamPopupPinned(pinned, suppressHover = false) {
+	const camStatus = document.getElementById("cam-status");
+	if (!camStatus) return;
+	overlayState.camPopupPinned = !!pinned;
+	camStatus.classList.toggle("pinned", overlayState.camPopupPinned);
+	if (overlayState.camPopupPinned) camStatus.classList.remove("suppress-hover");
+	else if (suppressHover) camStatus.classList.add("suppress-hover");
+}
+function setupCamStatusPopup() {
+	const camStatus = document.getElementById("cam-status");
+	const closeBtn = document.getElementById("cam-popup-close");
+	const copyBtn = document.getElementById("cam-popup-copy");
+	const popupText = document.getElementById("cam-popup-text");
+	if (!camStatus) return;
+	camStatus.addEventListener("click", (e) => {
+		if (e.target && e.target.closest("#cam-popup-close")) return;
+		if (e.target && e.target.closest("#cam-popup-copy")) return;
+		if (e.target && e.target.closest(".cam-status-popup")) return;
+		setCamPopupPinned(!overlayState.camPopupPinned, overlayState.camPopupPinned);
+	});
+	camStatus.addEventListener("mouseleave", () => {
+		camStatus.classList.remove("suppress-hover");
+	});
+	if (closeBtn) closeBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		setCamPopupPinned(false, true);
+	});
+	if (copyBtn && popupText) copyBtn.addEventListener("click", async (e) => {
+		e.stopPropagation();
+		const txt = popupText.textContent || "";
+		if (!txt) return;
+		try {
+			await navigator.clipboard.writeText(txt);
+			const prev = copyBtn.textContent;
+			copyBtn.textContent = "Copied";
+			setTimeout(() => {
+				copyBtn.textContent = prev;
+			}, 900);
+		} catch (_err) {}
+	});
+}
+function setupAboutPopup() {
+	const about = document.getElementById("about-status");
+	if (!about) return;
+	const versionStr = `v${document.body.dataset.appVersion || "dev"}`;
+	const pillVersion = about.querySelector(".about-status-version");
+	if (pillVersion) pillVersion.textContent = versionStr;
+	const popupVersion = document.getElementById("about-popup-version");
+	if (popupVersion) popupVersion.textContent = versionStr;
+	const closeBtn = document.getElementById("about-popup-close");
+	const setPinned = (pinned, suppressHover) => {
+		about.classList.toggle("pinned", pinned);
+		about.setAttribute("aria-expanded", pinned ? "true" : "false");
+		if (pinned) about.classList.remove("suppress-hover");
+		else if (suppressHover) about.classList.add("suppress-hover");
+	};
+	about.addEventListener("click", (e) => {
+		if (e.target && e.target.closest("#about-popup-close")) return;
+		if (e.target && e.target.closest(".about-status-popup")) return;
+		const pinned = about.classList.contains("pinned");
+		setPinned(!pinned, pinned);
+	});
+	about.addEventListener("keydown", (e) => {
+		if (e.target && e.target.closest(".about-status-popup")) return;
+		if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+			e.preventDefault();
+			setPinned(!about.classList.contains("pinned"), true);
+		} else if (e.key === "Escape" && about.classList.contains("pinned")) {
+			setPinned(false, true);
+			about.focus();
+		}
+	});
+	about.addEventListener("mouseleave", () => {
+		about.classList.remove("suppress-hover");
+	});
+	if (closeBtn) closeBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		setPinned(false, true);
+	});
+}
+//#endregion
+//#region src/step-player.ts
+/** Generic discrete state playback. It writes a slider; views bind to its data. */
+function playbackPosition(value, min, max) {
+	const current = Math.max(min, Math.min(max, Math.round(value)));
+	return {
+		current,
+		ordinal: current - min + 1,
+		total: max - min + 1
+	};
+}
+function setupStepPlayer() {
+	const wrapper = document.getElementById("mathbox-wrapper");
+	if (!wrapper) return;
+	const host = wrapper;
+	const bar = document.createElement("div");
+	bar.id = "state-player";
+	bar.hidden = true;
+	bar.setAttribute("role", "group");
+	bar.setAttribute("aria-label", "Execution state player");
+	const previous = document.createElement("button"), play = document.createElement("button"), next = document.createElement("button");
+	previous.textContent = "◀";
+	next.textContent = "▶";
+	previous.setAttribute("aria-label", "Previous execution state");
+	next.setAttribute("aria-label", "Next execution state");
+	for (const button of [
+		previous,
+		play,
+		next
+	]) button.type = "button";
+	const track = document.createElement("input");
+	track.type = "range";
+	track.step = "1";
+	track.setAttribute("aria-label", "Execution state");
+	const counter = document.createElement("output");
+	counter.setAttribute("aria-label", "Execution position");
+	bar.append(previous, play, next, track, counter);
+	host.append(bar);
+	new ResizeObserver(() => {
+		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
+	}).observe(bar);
+	let timer = null;
+	let config;
+	const slider = () => config ? state.sceneSliders[config.slider] : void 0;
+	function pause() {
+		if (timer !== null) clearInterval(timer);
+		timer = null;
+		play.textContent = "▷";
+		play.setAttribute("aria-label", "Play execution");
+	}
+	function render() {
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		if (scene?.steps?.[state.currentStepIndex]?.descriptionExpr) updateStepCaption(scene, state.currentStepIndex, true);
+		const s = slider();
+		if (!s || s.kind === "tensor" || !Number.isInteger(s.min) || !Number.isInteger(s.max)) {
+			pause();
+			bar.hidden = true;
+			host.classList.remove("has-state-player");
+			return;
+		}
+		bar.hidden = false;
+		host.classList.add("has-state-player");
+		const p = playbackPosition(s.value, s.min, s.max);
+		track.min = String(s.min);
+		track.max = String(s.max);
+		track.value = String(p.current);
+		track.setAttribute("aria-valuetext", `${p.ordinal} of ${p.total}`);
+		counter.textContent = `${p.ordinal} / ${p.total}`;
+		previous.disabled = p.current <= s.min;
+		next.disabled = p.current >= s.max;
+		play.disabled = p.total <= 1;
+		if (p.current >= s.max) pause();
+	}
+	function move(value) {
+		if (config) setSliderValue(config.slider, value);
+		render();
+	}
+	previous.onclick = () => {
+		pause();
+		const s = slider();
+		if (s) move(s.value - 1);
+	};
+	next.onclick = () => {
+		pause();
+		const s = slider();
+		if (s) move(s.value + 1);
+	};
+	track.oninput = () => {
+		pause();
+		move(Number(track.value));
+	};
+	play.onclick = () => {
+		if (timer !== null) {
+			pause();
+			return;
+		}
+		const s = slider();
+		if (!s) return;
+		if (s.value >= s.max) move(s.min);
+		play.textContent = "Ⅱ";
+		play.setAttribute("aria-label", "Pause execution");
+		timer = setInterval(() => {
+			const current = slider();
+			if (current) move(current.value + 1);
+			else pause();
+		}, config?.intervalMs ?? 900);
+	};
+	function refresh() {
+		pause();
+		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
+		render();
+		document.querySelectorAll(".slider-range").forEach((input) => {
+			const row = input.closest(".slider-row");
+			if (row) row.hidden = input.dataset.sliderId === config?.slider;
+		});
+	}
+	window.addEventListener("algebench:playbackpause", pause);
+	window.addEventListener("algebench:navchange", refresh);
+	window.addEventListener("algebench:sliderchange", render);
+	document.addEventListener("visibilitychange", () => {
+		if (document.hidden) pause();
+	});
+	pause();
+	refresh();
+}
+//#endregion
+//#region src/objects/composite-parts.ts
+/** Register owned composite parts with the existing per-object Ask AI picker. */
+function registerCompositePart(id, parentId, view, meshes, labels, label, prompt, type = "system_dag") {
+	let hidden = false;
+	const entry = {
+		tracker: {
+			group: view.group(),
+			planeMeshes: meshes,
+			labels,
+			arrowMeshes: [],
+			lineNodes: [],
+			vectorLineNodes: [],
+			axisLineNodes: [],
+			pointNodes: []
+		},
+		type,
+		label,
+		prompt: prompt ?? null,
+		get hidden() {
+			return hidden || !!state.elementRegistry[parentId]?.hidden || state.legendToggledOff.has(parentId);
+		},
+		set hidden(value) {
+			hidden = value;
+		}
+	};
+	state.elementRegistry[id] = entry;
+	for (const mesh of meshes) mesh.userData.askObjectId = id;
+	return entry;
+}
+//#endregion
+//#region src/latex-raster.ts
+/**
+* Real KaTeX on a canvas.
+*
+* On-plane text (tensor cells and axis labels, chart paper) is painted into
+* a canvas texture, and a canvas cannot host KaTeX's HTML. Instead of
+* flattening the LaTeX to a string of glyphs -- which loses fractions,
+* radicals, sub/superscripts, everything KaTeX lays out -- this module lets
+* KaTeX do the layout in a hidden DOM host and then *replays* that layout
+* onto the canvas: every text run is drawn with `fillText` in the font and
+* at the baseline the browser laid it out with, every rule (fraction bars,
+* overlines) is a `fillRect` from its border, and every stretchy glyph KaTeX
+* draws as inline SVG (radicals, wide arrows) is a `Path2D`.
+*
+* Fonts come from the page's own KaTeX stylesheet through `document.fonts`,
+* so nothing is fetched or inlined, and no `<foreignObject>` image is
+* involved -- WebKit taints a canvas drawn from one, which would break the
+* WebGL upload. The first use of a KaTeX face starts its load; rasters made
+* while a face is still loading are laid out in the fallback font, so the
+* cache is dropped and `onLatexFontsReady` listeners are told to repaint
+* once the load settles.
+*/
+var SUPERSAMPLE = 2;
+var FAMILY = "system-ui, sans-serif";
+var CACHE_MAX = 512;
+var cache = /* @__PURE__ */ new Map();
+/** Layout-only cache: measuring a label must not cost a canvas. */
+var metrics = /* @__PURE__ */ new Map();
+var listeners = /* @__PURE__ */ new Set();
+var host = null;
+var probe = null;
+var fontsHooked = false;
+function hasDom() {
+	return typeof document !== "undefined" && typeof document.createElement === "function";
+}
+function getHost() {
+	if (host && host.isConnected) return host;
+	host = document.createElement("div");
+	host.setAttribute("aria-hidden", "true");
+	host.style.cssText = "position:absolute;left:-100000px;top:0;white-space:nowrap;pointer-events:none;line-height:normal";
+	document.body.appendChild(host);
+	probe = document.createElement("span");
+	probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+	return host;
+}
+/** When a KaTeX face is still loading, drop the rasters laid out without it and tell listeners to repaint. */
+function watchFonts() {
+	if (fontsHooked || typeof document === "undefined" || !document.fonts) return;
+	fontsHooked = true;
+	document.fonts.ready.then(() => {
+		fontsHooked = false;
+		cache.clear();
+		metrics.clear();
+		for (const cb of Array.from(listeners)) try {
+			cb();
+		} catch (_e) {}
+	}).catch(() => {
+		fontsHooked = false;
+	});
+}
+/**
+* Subscribe to "the KaTeX fonts finished loading, repaint". Returns the
+* unsubscribe; call it when the element that painted is torn down.
+*/
+function onLatexFontsReady(cb) {
+	listeners.add(cb);
+	return () => {
+		listeners.delete(cb);
+	};
+}
+function remember(key, r) {
+	if (cache.size >= CACHE_MAX) {
+		const oldest = cache.keys().next().value;
+		if (oldest !== void 0) cache.delete(oldest);
+	}
+	cache.set(key, r);
+	return r;
+}
+/**
+* Lay `src` out with KaTeX (markdown-lite plus `$...$`, the way every label
+* in the app is written) at `fontPx` in `color`, and replay it onto a
+* canvas. Cached by (size, colour, source).
+*/
+function rasterLatex(src, fontPx, color) {
+	const size = Math.max(1, Math.round(fontPx));
+	const key = `${size}${color}${src}`;
+	const hit = cache.get(key);
+	if (hit) return hit;
+	if (!hasDom() || !src) return remember(key, {
+		canvas: null,
+		w: src.length * size * .55,
+		h: size * 1.2
+	});
+	const h = getHost();
+	h.style.font = `${size}px ${FAMILY}`;
+	h.style.color = color;
+	h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
+	for (const m of h.querySelectorAll(".katex-mathml")) m.remove();
+	const box = h.getBoundingClientRect();
+	const w = Math.ceil(box.width), ht = Math.ceil(box.height);
+	if (w < 1 || ht < 1) {
+		h.innerHTML = "";
+		return remember(key, {
+			canvas: null,
+			w: 0,
+			h: 0
+		});
+	}
+	const canvas = document.createElement("canvas");
+	canvas.width = w * SUPERSAMPLE;
+	canvas.height = ht * SUPERSAMPLE;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) {
+		h.innerHTML = "";
+		return remember(key, {
+			canvas: null,
+			w,
+			h: ht
+		});
+	}
+	ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
+	ctx.textBaseline = "alphabetic";
+	ctx.textAlign = "left";
+	let pending = false;
+	const fonts = document.fonts;
+	const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+	let node;
+	const runs = [];
+	while (node = walker.nextNode()) if ((node.textContent || "").trim()) runs.push(node);
+	for (const t of runs) {
+		const el = t.parentElement;
+		if (!el || !probe) continue;
+		const cs = getComputedStyle(el);
+		const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+		el.insertBefore(probe, t);
+		const baseline = probe.getBoundingClientRect().top - box.top;
+		probe.remove();
+		const range = document.createRange();
+		range.selectNodeContents(t);
+		const rr = range.getBoundingClientRect();
+		ctx.font = font;
+		ctx.fillStyle = cs.color;
+		ctx.fillText(t.textContent || "", rr.left - box.left, baseline);
+		if (fonts && !pending) try {
+			if (!fonts.check(font, t.textContent || "")) pending = true;
+		} catch (_e) {}
+	}
+	for (const el of Array.from(h.querySelectorAll("*"))) {
+		const cs = getComputedStyle(el);
+		const bw = parseFloat(cs.borderBottomWidth) || 0;
+		if (bw > 0 && cs.borderBottomStyle !== "none") {
+			const r = el.getBoundingClientRect();
+			ctx.fillStyle = cs.borderBottomColor;
+			ctx.fillRect(r.left - box.left, r.bottom - box.top - bw, r.width, bw);
+		}
+		const bt = parseFloat(cs.borderTopWidth) || 0;
+		if (bt > 0 && cs.borderTopStyle !== "none") {
+			const r = el.getBoundingClientRect();
+			ctx.fillStyle = cs.borderTopColor;
+			ctx.fillRect(r.left - box.left, r.top - box.top, r.width, bt);
+		}
+	}
+	for (const svg of Array.from(h.querySelectorAll("svg"))) {
+		const r = svg.getBoundingClientRect();
+		const vb = svg.viewBox.baseVal;
+		if (!vb || vb.width <= 0 || vb.height <= 0 || r.width <= 0 || r.height <= 0) continue;
+		const color = getComputedStyle(svg).color;
+		const par = (svg.getAttribute("preserveAspectRatio") || "xMidYMid meet").trim().split(/\s+/);
+		const align = par[0] || "xMidYMid";
+		let sx = r.width / vb.width, sy = r.height / vb.height;
+		if (align !== "none") sx = sy = par[1] === "slice" ? Math.max(sx, sy) : Math.min(sx, sy);
+		const slack = (extent, span, key) => key.endsWith("Mid") ? (extent - span) / 2 : key.endsWith("Max") ? extent - span : 0;
+		const ox = align === "none" ? 0 : slack(r.width, vb.width * sx, align.slice(0, 4));
+		const oy = align === "none" ? 0 : slack(r.height, vb.height * sy, align.slice(4));
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(r.left - box.left, r.top - box.top, r.width, r.height);
+		ctx.clip();
+		ctx.translate(r.left - box.left + ox, r.top - box.top + oy);
+		ctx.scale(sx, sy);
+		ctx.translate(-vb.x, -vb.y);
+		ctx.fillStyle = color;
+		for (const p of Array.from(svg.querySelectorAll("path"))) {
+			const d = p.getAttribute("d");
+			if (d) ctx.fill(new Path2D(d));
+		}
+		ctx.restore();
+	}
+	h.innerHTML = "";
+	if (fonts && (pending || fonts.status === "loading")) watchFonts();
+	return remember(key, {
+		canvas,
+		w,
+		h: ht
+	});
+}
+/** Width and height (CSS px) of `src` laid out at 100px; the ratio is what fitting needs. */
+function measureLatex(src) {
+	const hit = metrics.get(src);
+	if (hit) return hit;
+	let m;
+	if (!hasDom() || !src) m = {
+		w: src.length * 55,
+		h: 120
+	};
+	else {
+		const h = getHost();
+		h.style.font = `100px ${FAMILY}`;
+		h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
+		for (const el of h.querySelectorAll(".katex-mathml")) el.remove();
+		const box = h.getBoundingClientRect();
+		h.innerHTML = "";
+		m = {
+			w: Math.ceil(box.width),
+			h: Math.ceil(box.height)
+		};
+		if (document.fonts && document.fonts.status === "loading") watchFonts();
+	}
+	if (metrics.size >= CACHE_MAX) {
+		const oldest = metrics.keys().next().value;
+		if (oldest !== void 0) metrics.delete(oldest);
+	}
+	metrics.set(src, m);
+	return m;
+}
+/**
+* The largest font size at which `src` fits a `wPx` × `hPx` box. A plain
+* word's laid-out height is about 1.15× its font size, so this lands where
+* the older glyph-height rule did while letting a fraction be as tall as it
+* needs.
+*/
+function fitLatexPx(src, wPx, hPx) {
+	const m = measureLatex(src);
+	if (m.w <= 0 || m.h <= 0) return Math.max(1, Math.floor(hPx * .62));
+	const byHeight = hPx * .72 * 100 / m.h;
+	const byWidth = wPx * .9 * 100 / m.w;
+	return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
+}
+/** Draw `src` on `ctx` at (x, y) per the alignment, in the raster cache's colour and size. */
+function drawLatex(ctx, src, x, y, o) {
+	if (!src) return;
+	const r = rasterLatex(src, o.fontPx, o.color);
+	if (!r.canvas || r.w <= 0) return;
+	const align = o.align ?? "center";
+	const vAlign = o.vAlign ?? "middle";
+	const dx = align === "left" ? 0 : align === "right" ? -r.w : -r.w / 2;
+	const dy = vAlign === "top" ? 0 : vAlign === "bottom" ? -r.h : -r.h / 2;
+	ctx.save();
+	ctx.translate(x, y);
+	if (o.rotate) ctx.rotate(o.rotate);
+	ctx.drawImage(r.canvas, dx, dy, r.w, r.h);
+	ctx.restore();
+}
+//#endregion
+//#region src/colormaps.ts
+/**
+* Colormaps — turn a scalar in [0,1] into an RGB triple.
+*
+* One implementation serves two callers that would otherwise drift: `polygon`'s
+* static `gradient.stops`, and the per-cell colour of a `tensor`. Keeping them
+* on the same interpolator is the point — a two-stop colormap and a two-stop
+* gradient must produce the same colour, or an author who reaches for one after
+* the other gets a silent mismatch.
+*
+* Colours are normalized RGB (0-1), which is what `parseColor` returns and what
+* `THREE.Color.setRGB` wants, so nothing converts on the way through.
+*/
+/**
+* Build a ramp from stops.
+*
+* Stops are sorted by `t`, so an author may list them in any order. Values
+* outside the stop range **clamp** to the terminal stops rather than
+* extrapolating — extrapolating an RGB ramp produces out-of-gamut colours that
+* three.js silently saturates, which reads as "the heatmap has a flat top".
+*/
+function buildStopsFn(stops) {
+	const parsed = stops.slice().sort((a, b) => a.t - b.t).map((s) => ({
+		t: s.t,
+		c: parseColor(s.color)
+	}));
+	if (parsed.length === 1) {
+		const only = parsed[0].c;
+		return () => only.slice();
+	}
+	return (u) => {
+		if (!(u > parsed[0].t)) return parsed[0].c.slice();
+		const last = parsed[parsed.length - 1];
+		if (u >= last.t) return last.c.slice();
+		for (let i = 0; i < parsed.length - 1; i++) {
+			const hi = parsed[i + 1];
+			if (u <= hi.t) {
+				const lo = parsed[i];
+				const span = hi.t - lo.t;
+				const f = span === 0 ? 0 : (u - lo.t) / span;
+				return [
+					lo.c[0] + f * (hi.c[0] - lo.c[0]),
+					lo.c[1] + f * (hi.c[1] - lo.c[1]),
+					lo.c[2] + f * (hi.c[2] - lo.c[2])
+				];
+			}
+		}
+		return last.c.slice();
+	};
+}
+/**
+* Named ramps, as 9 evenly-spaced stops each.
+*
+* `viridis` and `magma` are perceptually uniform and stay legible in both
+* themes — the default choice for a non-negative quantity. `blueRed` is
+* diverging and is correct **only** for signed data; using it for something
+* non-negative (an attention weight, a probability) implies a sign that isn't
+* there.
+*/
+var NAMED_STOPS = {
+	viridis: [
+		"#440154",
+		"#472d7b",
+		"#3b528b",
+		"#2c728e",
+		"#21918c",
+		"#28ae80",
+		"#5ec962",
+		"#addc30",
+		"#fde725"
+	],
+	magma: [
+		"#000004",
+		"#1c1044",
+		"#4f127b",
+		"#812581",
+		"#b5367a",
+		"#e55964",
+		"#fb8761",
+		"#fec287",
+		"#fcfdbf"
+	],
+	blueRed: [
+		"#2166ac",
+		"#4393c3",
+		"#92c5de",
+		"#d1e5f0",
+		"#f7f7f7",
+		"#fddbc7",
+		"#f4a582",
+		"#d6604d",
+		"#b2182b"
+	]
+};
+var DEFAULT_MAP = "viridis";
+function namedMap(name) {
+	const hexes = NAMED_STOPS[name] || NAMED_STOPS[DEFAULT_MAP];
+	return buildStopsFn(hexes.map((color, i) => ({
+		t: i / (hexes.length - 1),
+		color
+	})));
+}
+/**
+* Resolve a `colorMap` value into a ramp.
+*
+* Accepts a name, a `{stops:[…]}` object, or nothing (→ the default). An
+* unknown name falls back rather than throwing: a misspelled colormap should
+* cost the author the palette they wanted, not the whole scene.
+*/
+function buildColorMap(spec) {
+	if (spec && typeof spec === "object") {
+		const stops = spec.stops;
+		if (Array.isArray(stops) && stops.length > 0) return buildStopsFn(stops);
+	}
+	if (typeof spec === "string" && spec) {
+		if (!NAMED_STOPS[spec]) console.warn(`Unknown colorMap "${spec}" — falling back to ${DEFAULT_MAP}`);
+		return namedMap(spec);
+	}
+	return namedMap(DEFAULT_MAP);
+}
+/**
+* Normalize a raw cell value onto [0,1] over `domain`, or `null` when it
+* is not a usable number.
+*
+* Returning `null` rather than 0 for a bad value matters: 0 is a legitimate
+* colour at the cold end of the ramp, so a caller that cannot distinguish
+* "black because the value is low" from "black because the expression returned
+* a matrix" has no way to keep the previous frame's colour instead.
+*/
+function normalizeColorValue(raw, domain) {
+	const v = Number(raw);
+	if (!Number.isFinite(v)) return null;
+	let lo = 0;
+	let hi = 1;
+	if (Array.isArray(domain) && domain.length >= 2) {
+		const a = Number(domain[0]);
+		const b = Number(domain[1]);
+		if (Number.isFinite(a) && Number.isFinite(b)) {
+			lo = a;
+			hi = b;
+		}
+	}
+	if (hi === lo) return 0;
+	const u = (v - lo) / (hi - lo);
+	return u < 0 ? 0 : u > 1 ? 1 : u;
+}
+//#endregion
+//#region src/objects/tensor.ts
+/**
+* `tensor` — N-dimensional logical data, and a spatial view of it.
+*
+* The separation is deliberate and is the point of the module: a tensor's
+* *data* is a flat row-major array plus a `shape`, and where its cells land in
+* 3D is a *layout* decision made separately. Today there is one layout (a grid:
+* 1D renders as a row of cells, 2D as a matrix). Row vectors, column vectors
+* and stacked slices are all additions to `gridLayout`'s neighbourhood rather
+* than rewrites, because nothing outside `cellCentre`/`axisAnchor` knows where
+* a cell goes.
+*
+* Nested `values` are a convenience spelling, normalized to flat + shape on the
+* way in, so the logical representation never depends on how the author chose
+* to write it down.
+*
+* The authoring win is that one element replaces N*M near-identical
+* `animated_polygon`s. The rendering win is bigger and less obvious: because
+* the lattice is *derived* from `shape` rather than written out, cell geometry
+* is arithmetic instead of expressions. A hand-written 8x8 spends ~768
+* expression evaluations per frame on vertex positions that never move; this
+* spends none, and evaluates one compiled `valueExpr` per cell instead.
+*
+* The whole tensor is a single merged, non-indexed BufferGeometry with a
+* vertex-colour attribute — one mesh, one material, one draw call. A frame
+* update is a typed-array write plus one buffer upload, not N*M material
+* mutations.
+*
+* Static and animated in one type, decided by which input is given: literal
+* `values` build once and register no updater (zero per-frame cost, exactly the
+* static contract); a `valueExpr` registers one. The batch element types this
+* follows — `vectors`, `vector_field`, `point` with `positions[]` — have no
+* `animated_` twins either, and here the geometry never animates at all.
+*
+* "Tensor" is used in the machine-learning sense: an n-dimensional array, whose
+* *components* this renders. It carries no transformation law, so it is not a
+* tensor in the differential-geometry sense that `special-relativity.json`
+* means by the word.
+*/
+/**
+* Read a `widthExpr` / `heightExpr` result as a fraction of the cell pitch.
+* Anything that is not a finite number keeps the fallback (the `gap`-derived
+* fill), so a cell whose extent expression misfires stays the size it was
+* rather than collapsing to a sliver or exploding over its neighbours.
+*/
+function resolveExtent(raw, fallback) {
+	if (raw === null || raw === void 0 || raw === "" || typeof raw === "boolean") return fallback;
+	const n = Number(raw);
+	if (!Number.isFinite(n)) return fallback;
+	return Math.max(0, Math.min(1, n));
+}
+/**
+* Read a `depthExpr` result as a fraction of the cell pitch: how far the cell
+* stands off the lattice plane. Positive rises above it, negative sinks below
+* it, so signed data reads as relief in both directions. Not a number is
+* flat; the cap of 3 pitches either way keeps a runaway value from becoming
+* a tower or a well.
+*/
+function resolveDepth(raw) {
+	if (raw === null || raw === void 0 || raw === "" || typeof raw === "boolean") return 0;
+	const n = Number(raw);
+	if (!Number.isFinite(n)) return 0;
+	return Math.max(-3, Math.min(3, n));
+}
+/**
+* Which edge of its slot a shrunken cell keeps. `-1` keeps the low edge
+* (left / bottom), `0` centres, `+1` keeps the high edge (right / top). A
+* height-only lattice anchored at the bottom is a bar chart on its lattice;
+* centred, it is a strip of lozenges — same numbers, a different reading.
+*/
+function parseAnchor(raw) {
+	const out = {
+		h: 0,
+		v: 0
+	};
+	if (typeof raw !== "string") return out;
+	for (const word of raw.toLowerCase().split(/[\s,-]+/)) if (word === "left") out.h = -1;
+	else if (word === "right") out.h = 1;
+	else if (word === "bottom") out.v = -1;
+	else if (word === "top") out.v = 1;
+	return out;
+}
+/**
+* An authored `textColor` as a canvas fill style, or null for "decide per
+* cell". Accepts everything `$defs/color` does -- a hex string or an [r,g,b]
+* tuple in 0..1 -- plus the explicit `"auto"`, which means the same as
+* leaving it out. Goes through parseColor so the two spellings cannot drift.
+*/
+function resolveTextColor(raw) {
+	if (raw === void 0 || raw === null) return null;
+	if (typeof raw === "string") {
+		raw = raw.trim();
+		if (!raw || raw.toLowerCase() === "auto") return null;
+	} else if (!Array.isArray(raw)) return null;
+	const rgb = parseColor(raw);
+	const ch = (v) => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 255);
+	let alpha = 1;
+	if (typeof raw === "string") {
+		const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw);
+		if (m) alpha = parseInt(m[1], 16) / 255;
+	}
+	return alpha < 1 ? `rgba(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])}, ${Math.round(alpha * 1e3) / 1e3})` : `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
+}
+/** Near-black or near-white, whichever reads against the cell's colour. */
+function contrastTextColor(rgb) {
+	return .2126 * (rgb[0] ?? 0) + .7152 * (rgb[1] ?? 0) + .0722 * (rgb[2] ?? 0) > .45 ? "#101418" : "#f4f6f8";
+}
+var tensorState = state;
+/** Element count implied by a shape. */
+function shapeSize(dims) {
+	return dims.reduce((a, b) => a * b, 1);
+}
+/**
+* Read `shape` into a list of positive integer dimensions.
+*
+* Any rank is accepted, including 1D — the *layout* decides what it can draw,
+* which is what keeps higher-rank shapes from being a parse-time error.
+*/
+function parseShape(raw) {
+	if (!Array.isArray(raw) || raw.length < 1) return null;
+	const dims = [];
+	for (const d of raw) {
+		const n = Number(d);
+		if (!Number.isInteger(n) || n < 1) return null;
+		dims.push(n);
+	}
+	return dims;
+}
+/** Describe a shape the way an author wrote it, for error messages. */
+function fmtShape(dims) {
+	return `[${dims.join(", ")}]`;
+}
+/**
+* Normalize `values` — nested or flat — into a flat row-major array checked
+* against `dims`.
+*
+* Returns `{ error }` rather than throwing or silently padding: a shape that
+* disagrees with its data is an authoring mistake, and the useful response is
+* to say exactly where it disagrees. (The previous revision padded short input
+* with zeros, which turned a typo into a plausible-looking half-empty grid.)
+*/
+function normalizeValues(raw, dims) {
+	if (!Array.isArray(raw)) return { error: "`values` must be an array" };
+	const expected = shapeSize(dims);
+	if (!raw.some((v) => Array.isArray(v))) {
+		if (raw.length !== expected) return { error: `flat \`values\` has ${raw.length} entries but shape ${fmtShape(dims)} needs ${expected}` };
+		return { values: raw.map((v) => Number.isFinite(Number(v)) ? Number(v) : 0) };
+	}
+	const out = [];
+	let failure = null;
+	const walk = (node, depth, path) => {
+		if (failure) return;
+		const where = path.length ? ` at values[${path.join("][")}]` : "";
+		if (depth === dims.length) {
+			if (Array.isArray(node)) {
+				failure = `nested \`values\`${where} is deeper than shape ${fmtShape(dims)}`;
+				return;
+			}
+			const n = Number(node);
+			out.push(Number.isFinite(n) ? n : 0);
+			return;
+		}
+		if (!Array.isArray(node)) {
+			failure = `nested \`values\`${where} is shallower than shape ${fmtShape(dims)}: expected an array of ${dims[depth]}`;
+			return;
+		}
+		if (node.length !== dims[depth]) {
+			failure = `nested \`values\`${where} has ${node.length} entries but shape ${fmtShape(dims)} needs ${dims[depth]} at dimension ${depth}`;
+			return;
+		}
+		for (let i = 0; i < node.length; i++) walk(node[i], depth + 1, [...path, i]);
+	};
+	walk(raw, 0, []);
+	if (failure) return { error: failure };
+	return { values: out };
+}
+/** Read one axis's labels, trimmed to the axis length. */
+function readAxisLabels(axis, length) {
+	if (!axis || !Array.isArray(axis.labels)) return null;
+	const labels = axis.labels.slice(0, length).map((l) => String(l));
+	if (labels.length < length) console.warn(`tensor: axis has ${labels.length} labels for ${length} entries; the rest are unlabelled`);
+	return labels;
+}
+/**
+* Compile one axis's `labelExpr`. It wins over `labels` for the same reason
+* `valueExpr` wins over `values`: it is the "labels are a view over data held
+* elsewhere" contract, so an axis carrying both is asking for the live one.
+* The expression may evaluate to a string — `concat`, `toFixed` and
+* `dataTable` all return one — which is the point of the key.
+*/
+function compileAxisLabelExpr(axis) {
+	const src = axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
+	if (!src) return null;
+	const why = explainCompileDegrade(src);
+	if (why) {
+		console.warn(`tensor axis labelExpr ${why}; the axis is left unlabelled.`);
+		return null;
+	}
+	try {
+		return compileExpr(src);
+	} catch (err) {
+		console.warn("tensor axis labelExpr compile error:", err);
+		return null;
+	}
+}
+/** Axis indices for the two in-plane directions, per plane. */
+var PLANE_AXES$2 = {
+	xy: [
+		0,
+		1,
+		2
+	],
+	xz: [
+		0,
+		2,
+		1
+	],
+	yz: [
+		1,
+		2,
+		0
+	]
+};
+/** Six vertices — two triangles — per quad, in the order the buffer expects. */
+var QUAD_CORNERS = [
+	[0, 0],
+	[1, 0],
+	[1, 1],
+	[0, 0],
+	[1, 1],
+	[0, 1]
+];
+/**
+* The grid layout: the last shape dimension runs horizontally, the one before
+* it vertically (index 0 at the top, so the picture reads like a written
+* matrix). A 1D shape is a single row.
+*
+* This is the only place that knows where a cell goes. Alternative layouts —
+* a tensor drawn as separate row vectors, as column vectors, or as stacked
+* slices for rank 3 — are new functions of this shape, and nothing downstream
+* changes.
+*/
+function gridLayout(dims, origin, cellSize, plane, fill, anchor) {
+	const [hAxis, vAxis, nAxis] = PLANE_AXES$2[plane] || PLANE_AXES$2["xy"];
+	const cols = dims[dims.length - 1];
+	const rows = dims.length >= 2 ? dims[dims.length - 2] : 1;
+	/** Position from in-plane (horizontal, vertical) offsets, and an optional lift off the plane. */
+	const at = (h, v, nOff = 0) => {
+		const p = [
+			0,
+			0,
+			0
+		];
+		p[hAxis] = origin[0] + h;
+		p[vAxis] = origin[1] + v;
+		p[nAxis] = origin[2] + nOff;
+		return p;
+	};
+	return {
+		rows,
+		cols,
+		/** How many logical cells this layout draws — the trailing 2D slice. */
+		drawn: rows * cols,
+		/**
+		* Corner of the cell at (r, c), `d` in [0,1]^2, for a `w` x `h` cell.
+		* A full-size cell (`w = h = fill`) lands in the same place whatever
+		* the anchor; the anchor only decides where a smaller one sits.
+		*/
+		corner: (r, c, dx, dy, w, h, nOff = 0) => at((c + .5) * cellSize + anchor.h * (fill - w) / 2 + (dx - .5) * w, (rows - 1 - r + .5) * cellSize + anchor.v * (fill - h) / 2 + (dy - .5) * h, nOff),
+		/** Absolute in-plane point, lifted `nOff` off the lattice plane. */
+		point: at,
+		/** Whole-lattice extent in the plane. */
+		width: cols * cellSize,
+		height: rows * cellSize,
+		/** Where an axis label sits. `k` is the index along that axis. */
+		rowLabelAt: (r, pad) => at(-pad, (rows - 1 - r + .5) * cellSize),
+		colLabelAt: (c, pad) => at((c + .5) * cellSize, rows * cellSize + pad),
+		rowTitleAt: (pad) => at(-pad, rows * cellSize / 2),
+		colTitleAt: (pad) => at(cols * cellSize / 2, rows * cellSize + pad)
+	};
+}
+/**
+* Does a cell's text carry LaTeX? `textExpr` documents itself as plain -- a
+* "toFixed(value, 2)" and the like -- so the answer is no for nearly every
+* cell, and the cheap fillText path is taken. A string that does carry LaTeX,
+* against that contract, is still honoured through the rasteriser.
+*/
+function cellTextIsLatex(txt) {
+	return txt.indexOf("$") >= 0 || txt.indexOf("\\") >= 0;
+}
+/**
+* The font size a plain cell string is drawn at: fit the cell's height first,
+* then shrink to its width if the string is wide. `measureAt` is called once,
+* at the height-fitted size, and hands back the width the string takes there.
+*/
+function fitPlainCellPx(wPx, hPx, measureAt) {
+	const base = Math.max(1, Math.floor(hPx * .62));
+	const w = measureAt(base);
+	const maxW = wPx * .9;
+	if (!(w > maxW)) return base;
+	return Math.max(1, Math.floor(base * maxW / w));
+}
+function renderTensor(el, _view) {
+	const dims = parseShape(el.shape);
+	if (!dims) {
+		console.warn("tensor: `shape` must be an array of positive integers; got", el.shape);
+		return null;
+	}
+	const originRaw = Array.isArray(el.origin) ? el.origin : [];
+	const origin = [
+		0,
+		1,
+		2
+	].map((i) => {
+		const raw = originRaw[i];
+		if (raw === void 0 || raw === null) return 0;
+		const n = Number(raw);
+		if (Number.isFinite(n)) return n;
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: origin[${i}] is ${JSON.stringify(raw)}, which is not a number. tensor builds its lattice once and does not evaluate expression origins, so this component is treated as 0.`);
+		return 0;
+	});
+	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
+	const gapRaw = Number.isFinite(el.gap) ? el.gap : .08;
+	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
+	const plane = typeof el.plane === "string" && PLANE_AXES$2[el.plane] ? el.plane : "xy";
+	const anchor = parseAnchor(el.anchor);
+	const layout = gridLayout(dims, origin, cellSize, plane, fill, anchor);
+	const { rows, cols, drawn } = layout;
+	if (dims.length > 2) {
+		const total = shapeSize(dims);
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: shape [${dims.join(", ")}] has rank ${dims.length}; the grid layout draws the trailing ${rows}x${cols} slice, so ${total - drawn} of ${total} values are not shown. Split it into separate tensors with their own origin until slice layouts exist.`);
+	}
+	const baseColor = parseColor(el.color || "#3b528b");
+	const colorMapFn = buildColorMap(el.colorMap);
+	const colorDomain = el.colorDomain;
+	const bindId = typeof el.bind === "string" && el.bind.trim() ? el.bind.trim() : null;
+	/** The bound slider's flat table, or null while the slider is absent. */
+	function boundValues() {
+		if (!bindId) return null;
+		const s = tensorState.sceneSliders[bindId];
+		return s && s.kind === "tensor" && s.values ? s.values : null;
+	}
+	const valueExprString = typeof el.valueExpr === "string" && el.valueExpr.trim() ? el.valueExpr.trim() : null;
+	let literalValues = null;
+	if (!valueExprString && el.values !== void 0) {
+		const parsed = normalizeValues(el.values, dims);
+		if ("error" in parsed) {
+			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: ${parsed.error}`);
+			return null;
+		}
+		literalValues = parsed.values;
+	}
+	let valueFn = null;
+	if (valueExprString) try {
+		valueFn = compileExpr(valueExprString);
+	} catch (err) {
+		console.warn("tensor valueExpr compile error:", err);
+	}
+	const readExpr = (key) => {
+		const raw = el[key];
+		return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+	};
+	const widthExprString = readExpr("widthExpr");
+	const heightExprString = readExpr("heightExpr");
+	const depthExprString = readExpr("depthExpr");
+	const textExprString = readExpr("textExpr");
+	const compileOpt = (src, what) => {
+		if (!src) return null;
+		const why = explainCompileDegrade(src);
+		if (why) {
+			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: ${what} ${why}; the channel is disabled and cells keep their default.`);
+			return null;
+		}
+		try {
+			return compileExpr(src);
+		} catch (err) {
+			console.warn(`tensor ${what} compile error:`, err);
+			return null;
+		}
+	};
+	let widthFn = compileOpt(widthExprString, "widthExpr");
+	let heightFn = compileOpt(heightExprString, "heightExpr");
+	let depthFn = compileOpt(depthExprString, "depthExpr");
+	let textFn = compileOpt(textExprString, "textExpr");
+	const sizeChannelDeclared = !!(widthExprString || heightExprString);
+	let hasSizeExpr = !!(widthFn || heightFn);
+	const depthDeclared = !!depthExprString;
+	let hasDepthExpr = !!depthFn;
+	const textColorFixed = resolveTextColor(el.textColor);
+	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
+	const sh = el.shader || {};
+	const TOP_VERTS = QUAD_CORNERS.length;
+	const vertsPerCell = depthDeclared ? TOP_VERTS + 4 * TOP_VERTS : TOP_VERTS;
+	const positions = new Float32Array(drawn * vertsPerCell * 3);
+	const colors = new Float32Array(drawn * vertsPerCell * 3);
+	/** The four side walls of a box, each as two triangles between the plane and the lid. */
+	const SIDE_EDGES = [
+		[[0, 0], [1, 0]],
+		[[1, 0], [1, 1]],
+		[[1, 1], [0, 1]],
+		[[0, 1], [0, 0]]
+	];
+	/** Write one cell's vertices for a `w` x `h` cell in data units, lifted `d` off the plane. */
+	function placeCell(cell, r, c, w, h, d = 0) {
+		let k = 0;
+		const put = (dx, dy, nOff) => {
+			const p = dataToWorld(layout.corner(r, c, dx, dy, w, h, nOff));
+			const base = (cell * vertsPerCell + k) * 3;
+			positions[base] = p[0];
+			positions[base + 1] = p[1];
+			positions[base + 2] = p[2];
+			k++;
+		};
+		for (const [dx, dy] of QUAD_CORNERS) put(dx, dy, d);
+		if (!depthDeclared) return;
+		for (const [[ax, ay], [bx, by]] of SIDE_EDGES) {
+			put(ax, ay, 0);
+			put(bx, by, 0);
+			put(bx, by, d);
+			put(ax, ay, 0);
+			put(bx, by, d);
+			put(ax, ay, d);
+		}
+	}
+	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill, 0);
+	const geom = new THREE.BufferGeometry();
+	const posAttr = new THREE.BufferAttribute(positions, 3);
+	if (sizeChannelDeclared || depthDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
+	geom.setAttribute("position", posAttr);
+	const colorAttr = new THREE.BufferAttribute(colors, 3);
+	colorAttr.setUsage(THREE.DynamicDrawUsage);
+	geom.setAttribute("color", colorAttr);
+	const fillFrac = fill / cellSize;
+	const cellValue = new Float64Array(drawn).fill(NaN);
+	const cellW = new Float64Array(drawn).fill(fillFrac);
+	const cellH = new Float64Array(drawn).fill(fillFrac);
+	const cellD = new Float64Array(drawn);
+	const cellRgb = new Float32Array(drawn * 3);
+	const SIDE_SHADE = .68;
+	/** Write one colour to a cell's vertices: full on the lid, shaded on the walls. */
+	function colourCell(cell, r0, g0, b0) {
+		cellRgb[cell * 3] = r0;
+		cellRgb[cell * 3 + 1] = g0;
+		cellRgb[cell * 3 + 2] = b0;
+		for (let k = 0; k < vertsPerCell; k++) {
+			const shade = k < TOP_VERTS ? 1 : SIDE_SHADE;
+			const base = (cell * vertsPerCell + k) * 3;
+			colors[base] = r0 * shade;
+			colors[base + 1] = g0 * shade;
+			colors[base + 2] = b0 * shade;
+		}
+	}
+	/** Paint one cell from a raw value. */
+	function paintCell(cell, raw) {
+		const u = normalizeColorValue(raw, colorDomain);
+		if (u === null) return;
+		const rgb = colorMapFn(u);
+		colourCell(cell, rgb[0], rgb[1], rgb[2]);
+	}
+	for (let cell = 0; cell < drawn; cell++) colourCell(cell, baseColor[0], baseColor[1], baseColor[2]);
+	/**
+	* Evaluate every drawn cell at `tSec`, binding indices for that cell only:
+	* the value first (colour), then the size channels with that value in
+	* scope. Literal values still run the size channels, so a static matrix
+	* can have slider-driven cell sizes without paying for a valueExpr.
+	*/
+	function paintAll(tSec) {
+		const bound = boundValues();
+		if (!(bound || literalValues || valueFn) && !hasSizeExpr && !hasDepthExpr) return;
+		if (bound && bound.length !== drawn && !boundShapeWarned) {
+			boundShapeWarned = true;
+			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: bound slider "${bindId}" holds ${bound.length} values but the lattice draws ${drawn}`);
+		}
+		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+			const cell = r * cols + c;
+			const idxScope = {
+				row: r,
+				col: c,
+				idx: cell
+			};
+			let raw;
+			if (bound) raw = bound[cell];
+			else if (literalValues) raw = literalValues[cell];
+			else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: idxScope });
+			if (raw !== void 0) paintCell(cell, raw);
+			const v = Number(raw);
+			const scope = {
+				...idxScope,
+				value: Number.isFinite(v) ? v : NaN
+			};
+			cellValue[cell] = scope.value;
+			if (hasSizeExpr || hasDepthExpr) {
+				const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+				const h = heightFn ? resolveExtent(evalExpr(heightFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+				const d = depthFn ? resolveDepth(evalExpr(depthFn, tSec, { overrideScope: scope })) : 0;
+				cellW[cell] = w;
+				cellH[cell] = h;
+				cellD[cell] = d;
+				placeCell(cell, r, c, w * cellSize, h * cellSize, d * cellSize);
+			}
+		}
+	}
+	let boundShapeWarned = false;
+	try {
+		paintAll(0);
+	} catch (err) {
+		console.warn("tensor value evaluation error:", err);
+	}
+	colorAttr.needsUpdate = true;
+	if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
+	const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
+	const mat = new THREE.MeshBasicMaterial({
+		vertexColors: true,
+		transparent: true,
+		opacity: ignoresPlaneOpacity ? opacity : tensorState.displayParams.planeOpacity * opacity,
+		side: THREE.DoubleSide,
+		depthWrite: depthDeclared
+	});
+	const mesh = new THREE.Mesh(geom, mat);
+	mesh.userData.targetOpacity = opacity;
+	mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+	const tensorCell = bindId ? {
+		id: el.id || "",
+		bind: bindId,
+		cellAt(world) {
+			const d = worldToData(world);
+			const [hAxis, vAxis] = PLANE_AXES$2[plane] || PLANE_AXES$2["xy"];
+			const h = d[hAxis] - origin[0];
+			const v = d[vAxis] - origin[1];
+			const c = Math.floor(h / cellSize);
+			const up = Math.floor(v / cellSize);
+			if (c < 0 || c >= cols || up < 0 || up >= rows) return null;
+			return {
+				row: rows - 1 - up,
+				col: c
+			};
+		}
+	} : null;
+	if (tensorCell) mesh.userData.tensorCell = tensorCell;
+	const serial = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
+	mesh.renderOrder = serial;
+	tensorState.three.scene.add(mesh);
+	tensorState.planeMeshes.push(mesh);
+	const axes = Array.isArray(el.axes) ? el.axes : [];
+	const axisPlane = el.axisLabels !== "screen";
+	const hAxisIdx = dims.length - 1;
+	const vAxisIdx = dims.length - 2;
+	const defaultLabelColor = "#aabbcc";
+	const hAxis = axes[hAxisIdx];
+	const vAxis = vAxisIdx >= 0 ? axes[vAxisIdx] : void 0;
+	const hColor = parseColor(hAxis && hAxis.color || defaultLabelColor);
+	const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
+	let hLabelFn = compileAxisLabelExpr(hAxis);
+	let vLabelFn = compileAxisLabelExpr(vAxis);
+	const declaredLabelExpr = (axis) => axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
+	const hLabelSrc = declaredLabelExpr(hAxis);
+	const vLabelSrc = declaredLabelExpr(vAxis);
+	const hLabelsStatic = hLabelSrc ? null : readAxisLabels(hAxis, cols);
+	const vLabelsStatic = vLabelSrc ? null : readAxisLabels(vAxis, rows);
+	const hTitle = hAxis && hAxis.title ? String(hAxis.title) : null;
+	const vTitle = vAxis && vAxis.title ? String(vAxis.title) : null;
+	const hasHLabels = !!(hLabelSrc || hLabelsStatic);
+	const hasVLabels = !!(vLabelSrc || vLabelsStatic);
+	const hLabelScratch = new Array(cols).fill("");
+	const vLabelScratch = new Array(rows).fill("");
+	const LABEL_BAND = .9, TITLE_BAND = .7, LABEL_GLYPH = .5;
+	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
+	let vBand = 0;
+	if (axisPlane && hasVLabels) {
+		const firstTexts = axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, 0);
+		let widest = 0;
+		for (const t of firstTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
+		const measured = widest * LABEL_GLYPH / 100 + .45;
+		vBand = Math.max(1, Math.min(4, vLabelSrc ? Math.max(measured, 2.4) : measured));
+	}
+	let mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
+	let planeLabels = axisPlane && (mT > 0 || mL > 0);
+	if (planeLabels && Math.max(rows + mT, cols + mL) > 2048) {
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: axis labels fall back to the screen on a ${rows}x${cols} lattice; plane labels need the canvas (lattice plus label margins) to fit 2048 pixels a side.`);
+		planeLabels = false;
+		mT = 0;
+		mL = 0;
+	}
+	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
+	let textLayer = null;
+	let lastPaintT = 0;
+	/** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
+	let textQuads = null;
+	const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
+	if (textCapped) {
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
+		textFn = null;
+	}
+	const textDeclared = !!textExprString && !textCapped;
+	if (textDeclared || planeLabels) {
+		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows + mT, cols + mL))));
+		const canvas = document.createElement("canvas");
+		canvas.width = Math.ceil((cols + mL) * px);
+		canvas.height = Math.ceil((rows + mT) * px);
+		const ctx = canvas.getContext("2d");
+		if (ctx) {
+			const tex = new THREE.CanvasTexture(canvas);
+			tex.minFilter = THREE.LinearFilter;
+			tex.magFilter = THREE.LinearFilter;
+			tex.generateMipmaps = false;
+			const lift = cellSize * .02;
+			const cellQuads = textDeclared ? drawn : 0;
+			const quads = cellQuads + 2;
+			const qPos = new Float32Array(quads * 6 * 3);
+			const qUv = new Float32Array(quads * 6 * 2);
+			const U = cols + mL, V = rows + mT;
+			/** Two triangles over a quad's four corners, in the order the buffer expects. */
+			const QUAD_ORDER = [
+				0,
+				1,
+				2,
+				0,
+				2,
+				3
+			];
+			/** Write one quad: plane rect [h0,h1]x[v0,v1] (pitch units), lifted `n`, canvas rect [u0,u1]x[vTop,vBot] (canvas fractions from the top). */
+			const putQuad = (qi, h0, h1, v0, v1, n, u0, u1, cTop, cBot) => {
+				const P = [
+					dataToWorld(layout.point(h0 * cellSize, v0 * cellSize, n)),
+					dataToWorld(layout.point(h1 * cellSize, v0 * cellSize, n)),
+					dataToWorld(layout.point(h1 * cellSize, v1 * cellSize, n)),
+					dataToWorld(layout.point(h0 * cellSize, v1 * cellSize, n))
+				];
+				const uAt = [
+					u0,
+					u1,
+					u1,
+					u0
+				], vAt = [
+					1 - cBot,
+					1 - cBot,
+					1 - cTop,
+					1 - cTop
+				];
+				for (let i = 0; i < 6; i++) {
+					const k = QUAD_ORDER[i];
+					const p = P[k];
+					const pb = (qi * 6 + i) * 3, tb = (qi * 6 + i) * 2;
+					qPos[pb] = p[0];
+					qPos[pb + 1] = p[1];
+					qPos[pb + 2] = p[2];
+					qUv[tb] = uAt[k];
+					qUv[tb + 1] = vAt[k];
+				}
+			};
+			const placeTextCell = (cell, r, c) => {
+				putQuad(cell, c, c + 1, rows - 1 - r, rows - r, cellD[cell] * cellSize + lift, (mL + c) / U, (mL + c + 1) / U, (mT + r) / V, (mT + r + 1) / V);
+			};
+			if (textDeclared) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
+			putQuad(cellQuads, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
+			putQuad(cellQuads + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
+			const qGeom = new THREE.BufferGeometry();
+			const qPosAttr = new THREE.BufferAttribute(qPos, 3);
+			if (depthDeclared && textDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
+			qGeom.setAttribute("position", qPosAttr);
+			qGeom.setAttribute("uv", new THREE.BufferAttribute(qUv, 2));
+			textQuads = textDeclared ? {
+				attr: qPosAttr,
+				place: placeTextCell
+			} : null;
+			const qMat = new THREE.MeshBasicMaterial({
+				map: tex,
+				transparent: true,
+				opacity: mat.opacity,
+				side: THREE.DoubleSide,
+				depthWrite: depthDeclared,
+				alphaTest: depthDeclared ? .05 : 0
+			});
+			const offFonts = onLatexFontsReady(() => {
+				if (textLayer) {
+					textLayer.lastKey = "";
+					try {
+						paintText(lastPaintT);
+					} catch (_e) {}
+				}
+			});
+			qMat.addEventListener("dispose", () => {
+				offFonts();
+				tex.dispose();
+			});
+			const qMesh = new THREE.Mesh(qGeom, qMat);
+			qMesh.userData.annotationTextPlane = true;
+			qMesh.userData.targetOpacity = opacity;
+			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+			if (tensorCell) qMesh.userData.tensorCell = tensorCell;
+			qMesh.renderOrder = el.renderOrder !== void 0 ? serial + 1 : tensorState._planeMeshSerial++;
+			tensorState.three.scene.add(qMesh);
+			tensorState.planeMeshes.push(qMesh);
+			textLayer = {
+				canvas,
+				ctx,
+				tex,
+				mesh: qMesh,
+				px,
+				lastKey: ""
+			};
+		}
+	}
+	/** One axis's label strings for this frame: the expression per entry, or the static list. */
+	function axisLabelTexts(fn, statics, n, isRow, tSec) {
+		const out = isRow ? vLabelScratch : hLabelScratch;
+		for (let k = 0; k < n; k++) {
+			out[k] = "";
+			if (fn) try {
+				const v = evalExpr(fn, tSec, { overrideScope: isRow ? {
+					row: k,
+					idx: k
+				} : {
+					col: k,
+					idx: k
+				} });
+				out[k] = v === null || v === void 0 ? "" : String(v);
+			} catch (_err) {
+				out[k] = "";
+			}
+			else if (statics && k < statics.length) out[k] = statics[k];
+		}
+		return out;
+	}
+	/** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
+	/** The face the LaTeX rasteriser falls back to, so plain and LaTeX cells match. */
+	const FAMILY = "system-ui, sans-serif";
+	/**
+	* A cell's own text, which `textExpr` defines as plain -- "toFixed(value, 2)"
+	* and the like, no KaTeX. Sending it through the LaTeX rasteriser laid every
+	* string out in a hidden DOM and replayed it onto the canvas, and both of
+	* that module's caches are keyed BY THE STRING: a lattice of numbers that
+	* changes as a slider moves misses on every cell of every update, which is
+	* where an update frame's hundreds of milliseconds were going.
+	*
+	* `fillText` needs neither. A string that does carry LaTeX -- against the
+	* documented contract, but cheap to honour -- still takes the old path.
+	*/
+	function drawCellText(ctx, txt, cx, cy, wPx, hPx, color) {
+		if (cellTextIsLatex(txt)) {
+			drawLatex(ctx, txt, cx, cy, {
+				fontPx: fitLatexPx(txt, wPx, hPx),
+				color
+			});
+			return;
+		}
+		ctx.font = `${fitPlainCellPx(wPx, hPx, (px) => {
+			ctx.font = `${px}px ${FAMILY}`;
+			return ctx.measureText(txt).width;
+		})}px ${FAMILY}`;
+		ctx.fillStyle = color;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(txt, cx, cy);
+	}
+	/** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above
+	*  `maxFontPx`; returns the size used (0 when nothing was drawn). */
+	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center", maxFontPx = Infinity) {
+		if (!txt || wPx < 2 || hPx < 2) return 0;
+		const fontPx = Math.min(maxFontPx, fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx));
+		drawLatex(ctx, txt, cx, cy, {
+			fontPx,
+			color,
+			align,
+			rotate: rotate ? -Math.PI / 2 : 0
+		});
+		return fontPx;
+	}
+	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
+	const keyParts = [];
+	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
+	function paintText(tSec) {
+		if (!textLayer || !textFn && !planeLabels) return;
+		lastPaintT = tSec;
+		const { ctx, tex, px } = textLayer;
+		const ox = mL * px, oy = mT * px;
+		const texts = cellTexts;
+		keyParts.length = 0;
+		if (textFn) {
+			if (texts.length !== drawn) texts.length = drawn;
+			for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+				const cell = r * cols + c;
+				let txt = "";
+				try {
+					const out = evalExpr(textFn, tSec, { overrideScope: {
+						row: r,
+						col: c,
+						idx: cell,
+						value: cellValue[cell]
+					} });
+					txt = out === null || out === void 0 ? "" : String(out);
+				} catch (_err) {
+					txt = "";
+				}
+				texts[cell] = txt;
+				keyParts.push(txt, cellW[cell].toFixed(3), cellH[cell].toFixed(3), String(Math.round(cellRgb[cell * 3] * 255)), String(Math.round(cellRgb[cell * 3 + 1] * 255)), String(Math.round(cellRgb[cell * 3 + 2] * 255)));
+			}
+		}
+		const hTexts = planeLabels && (hLabelFn || hLabelsStatic) ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
+		const vTexts = planeLabels && (vLabelFn || vLabelsStatic) ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
+		if (hTexts) keyParts.push(...hTexts);
+		if (vTexts) keyParts.push(...vTexts);
+		const key = keyParts.join("");
+		if (key === textLayer.lastKey) return;
+		textLayer.lastKey = key;
+		ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
+		const hW = .92 * px, vW = vBand * px - .35 * px, glyphH = LABEL_GLYPH / .62 * px;
+		const axisPx = (texts, n, wPx) => {
+			let m = Infinity;
+			if (texts && wPx >= 2) {
+				for (let i = 0; i < n; i++) if (texts[i]) m = Math.min(m, fitLatexPx(texts[i], wPx, glyphH));
+			}
+			return m;
+		};
+		const hPx = axisPx(hTexts, cols, hW);
+		const vPx = axisPx(vTexts, rows, vW);
+		const labelPx = Math.min(hPx, vPx);
+		if (hTexts) {
+			const band = LABEL_BAND * px;
+			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, hW, glyphH, cssColor(hColor), false, "center", hPx);
+		}
+		if (vTexts) for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, vW, glyphH, cssColor(vColor), false, "right", vPx);
+		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor), false, "center", labelPx);
+		if (vTitle && planeLabels) {
+			let titleX = TITLE_BAND * px / 2;
+			if (vTexts && Number.isFinite(vPx)) {
+				let widest = 0;
+				for (const t of vTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
+				const beside = ox - .2 * px - widest * vPx / 100 - .9 * Math.min(vPx, labelPx);
+				titleX = Math.max(titleX, beside);
+			}
+			drawFitted(ctx, vTitle, titleX, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true, "center", labelPx);
+		}
+		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+			const cell = r * cols + c;
+			const txt = texts[cell];
+			if (!txt) continue;
+			const wPx = cellW[cell] * px;
+			const hPx = cellH[cell] * px;
+			if (wPx < 2 || hPx < 2) continue;
+			const color = textColorFixed || contrastTextColor([
+				cellRgb[cell * 3],
+				cellRgb[cell * 3 + 1],
+				cellRgb[cell * 3 + 2]
+			]);
+			drawCellText(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, wPx, hPx, color);
+		}
+		tex.needsUpdate = true;
+	}
+	if (textLayer) try {
+		paintText(0);
+	} catch (err) {
+		console.warn("tensor textExpr evaluation error:", err);
+	}
+	const dynamicLabels = [];
+	const labelExprStrings = [];
+	if (hLabelSrc) labelExprStrings.push(hLabelSrc);
+	if (vLabelSrc) labelExprStrings.push(vLabelSrc);
+	if (axes.length && !planeLabels) {
+		const pad = cellSize * .35;
+		if (hLabelSrc && hLabelFn) for (let c = 0; c < cols; c++) {
+			const label = addLabel3D("", layout.colLabelAt(c, pad), hColor);
+			dynamicLabels.push({
+				label,
+				src: hLabelSrc,
+				fn: hLabelFn,
+				scope: {
+					col: c,
+					idx: c
+				}
+			});
+		}
+		else if (hLabelsStatic) for (let c = 0; c < hLabelsStatic.length; c++) addLabel3D(hLabelsStatic[c], layout.colLabelAt(c, pad), hColor);
+		if (hTitle) addLabel3D(hTitle, layout.colTitleAt(pad * 3), hColor);
+		if (vAxisIdx >= 0) {
+			if (vLabelSrc && vLabelFn) for (let r = 0; r < rows; r++) {
+				const label = addLabel3D("", layout.rowLabelAt(r, pad), vColor);
+				dynamicLabels.push({
+					label,
+					src: vLabelSrc,
+					fn: vLabelFn,
+					scope: {
+						row: r,
+						idx: r
+					}
+				});
+			}
+			else if (vLabelsStatic) for (let r = 0; r < vLabelsStatic.length; r++) addLabel3D(vLabelsStatic[r], layout.rowLabelAt(r, pad), vColor);
+			if (vTitle) addLabel3D(vTitle, layout.rowTitleAt(pad * 4), vColor);
+		}
+	}
+	const planeDynamic = planeLabels && !!(hLabelSrc || vLabelSrc);
+	/**
+	* Re-evaluate every expression-driven axis label. The memo is what makes
+	* this affordable per frame: a label whose text has not changed is left
+	* alone, so the common case costs one eval and a string compare rather
+	* than a KaTeX render.
+	*/
+	function paintLabels(tSec) {
+		for (const dl of dynamicLabels) {
+			let txt;
+			if (!dl.fn) txt = "";
+			else try {
+				txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope }));
+			} catch (_err) {
+				continue;
+			}
+			if (txt === dl.label._lastDynamicText) continue;
+			dl.label.el.innerHTML = renderKaTeX$1(txt, false);
+			dl.label.boxW = null;
+			dl.label._lastDynamicText = txt;
+		}
+	}
+	if (dynamicLabels.length) try {
+		paintLabels(0);
+	} catch (err) {
+		console.warn("tensor axis label evaluation error:", err);
+	}
+	const animState = { stopped: false };
+	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !depthDeclared && !textDeclared && !planeDynamic) return {
+		type: "tensor",
+		color: baseColor,
+		label: el.label
+	};
+	let compiledUnderTrust = tensorState._sceneJsTrustState;
+	const channelStrings = [
+		widthExprString,
+		heightExprString,
+		depthExprString,
+		textExprString
+	].filter((x) => !!x);
+	const channelFns = () => [
+		widthFn,
+		heightFn,
+		depthFn,
+		textFn
+	].filter((x) => !!x);
+	const entry = {
+		exprStrings: [
+			...valueExprString ? [valueExprString] : [],
+			...channelStrings,
+			...labelExprStrings
+		],
+		animState,
+		compiledFns: [
+			...valueFn ? [valueFn] : [],
+			...channelFns(),
+			...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x)
+		],
+		_rebuildFn() {
+			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
+			compiledUnderTrust = tensorState._sceneJsTrustState;
+			if (valueExprString) try {
+				valueFn = compileExpr(valueExprString);
+			} catch (err) {
+				console.warn("Slider tensor valueExpr recompile error:", err);
+			}
+			widthFn = compileOpt(widthExprString, "widthExpr");
+			heightFn = compileOpt(heightExprString, "heightExpr");
+			textFn = textCapped ? null : compileOpt(textExprString, "textExpr");
+			depthFn = compileOpt(depthExprString, "depthExpr");
+			const hadSize = hasSizeExpr || hasDepthExpr;
+			hasSizeExpr = !!(widthFn || heightFn);
+			hasDepthExpr = !!depthFn;
+			if (hadSize && !hasSizeExpr && !hasDepthExpr) {
+				for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+					const cell = r * cols + c;
+					cellW[cell] = fillFrac;
+					cellH[cell] = fillFrac;
+					cellD[cell] = 0;
+					placeCell(cell, r, c, fill, fill, 0);
+					if (textQuads) textQuads.place(cell, r, c);
+				}
+				posAttr.needsUpdate = true;
+				if (textQuads) textQuads.attr.needsUpdate = true;
+			}
+			if (planeLabels) {
+				hLabelFn = compileAxisLabelExpr(hAxis);
+				vLabelFn = compileAxisLabelExpr(vAxis);
+			}
+			const recompiled = /* @__PURE__ */ new Map();
+			for (const dl of dynamicLabels) {
+				if (!recompiled.has(dl.src)) recompiled.set(dl.src, compileAxisLabelExpr({ labelExpr: dl.src }));
+				dl.fn = recompiled.get(dl.src) ?? null;
+			}
+			entry.compiledFns = [
+				...valueFn ? [valueFn] : [],
+				...channelFns(),
+				...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x),
+				...planeLabels ? [hLabelFn, vLabelFn].filter((x) => !!x) : []
+			];
+		}
+	};
+	tensorState.activeAnimExprs.push(entry);
+	const startTime = tensorState.sceneStartTime;
+	tensorState.activeAnimUpdaters.push({
+		animState,
+		updateFrame(nowMs) {
+			if (textLayer) textLayer.mesh.visible = mesh.visible;
+			if (!mesh.visible) return;
+			const tSec = (nowMs - startTime) / 1e3;
+			if (valueFn || bindId || hasSizeExpr || hasDepthExpr) try {
+				paintAll(tSec);
+				colorAttr.needsUpdate = true;
+				if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
+				if (hasDepthExpr && textQuads) {
+					for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) textQuads.place(r * cols + c, r, c);
+					textQuads.attr.needsUpdate = true;
+				}
+			} catch (_err) {}
+			if (textLayer && (textFn || planeLabels && (hLabelFn || vLabelFn))) try {
+				paintText(tSec);
+			} catch (_err) {}
+			if (dynamicLabels.length) paintLabels(tSec);
+		}
+	});
+	return {
+		type: "tensor",
+		color: baseColor,
+		label: el.label,
+		_animState: animState,
+		_animExprEntry: entry
+	};
+}
+//#endregion
+//#region src/objects/array-plane-text.ts
+/** Text attached to an array's XY face, using the tensor's plain-text fitter. */
+/** Keep the accessibility mirror out of every visual pass, including step fades. */
+function clipArrayPlaneMirror(element) {
+	element.style.clipPath = "inset(50%)";
+	element.style.width = "1px";
+	element.style.height = "1px";
+	element.style.overflow = "hidden";
+}
+/** Uniform texel density preserves font proportions while bounding GPU memory. */
+function planeTextTextureSize(width, height, density = 128) {
+	const scale = Math.min(Math.max(128, density), 2048 / width, 2048 / height, Math.sqrt(1048576 / (width * height)));
+	return [Math.max(1, Math.floor(width * scale)), Math.max(1, Math.floor(height * scale))];
+}
+function createArrayPlaneText(width, height, color) {
+	const canvas = document.createElement("canvas");
+	[canvas.width, canvas.height] = planeTextTextureSize(width, height);
+	const ctx = canvas.getContext("2d");
+	if (!ctx) throw new Error("Array plane text needs a 2D canvas.");
+	const cssColor = `rgb(${parseColor(color).map((v) => Math.round(v * 255)).join(",")})`;
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.minFilter = THREE.LinearFilter;
+	texture.magFilter = THREE.LinearFilter;
+	texture.generateMipmaps = false;
+	const geometry = new THREE.BufferGeometry();
+	geometry.setAttribute("position", new THREE.Float32BufferAttribute(/* @__PURE__ */ new Float32Array(18), 3));
+	geometry.setAttribute("uv", new THREE.Float32BufferAttribute([
+		0,
+		0,
+		1,
+		0,
+		1,
+		1,
+		0,
+		0,
+		1,
+		1,
+		0,
+		1
+	], 2));
+	const material = new THREE.MeshBasicMaterial({
+		map: texture,
+		transparent: true,
+		depthWrite: false,
+		side: THREE.DoubleSide
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.userData.annotationTextPlane = true;
+	mesh.userData.ignorePlaneOpacity = true;
+	mesh.userData.targetOpacity = 1;
+	mesh.raycast = () => {};
+	let previousText;
+	let previousPosition;
+	let disposed = false;
+	let resolutionDensity = 128;
+	const projected = new THREE.Vector3(), bufferSize = new THREE.Vector2();
+	function repaint() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		const text = previousText ?? "";
+		const px = fitPlainCellPx(canvas.width, canvas.height * 1.25, (size) => {
+			ctx.font = `600 ${size}px ui-monospace, monospace`;
+			return ctx.measureText(text).width;
+		});
+		ctx.font = `600 ${px}px ui-monospace, monospace`;
+		ctx.fillStyle = cssColor;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+		texture.needsUpdate = true;
+	}
+	function prepare(renderer, camera) {
+		if (disposed || previousText === void 0) return;
+		renderer.getDrawingBufferSize(bufferSize);
+		const attribute = geometry.getAttribute("position");
+		const corners = [];
+		for (const index of [
+			0,
+			1,
+			2,
+			5
+		]) {
+			projected.set(attribute.getX(index), attribute.getY(index), attribute.getZ(index)).applyMatrix4(mesh.matrixWorld).project(camera);
+			if (!Number.isFinite(projected.x) || !Number.isFinite(projected.y) || projected.z < -1 || projected.z > 1) return;
+			corners.push([
+				(projected.x + 1) * bufferSize.x / 2,
+				(1 - projected.y) * bufferSize.y / 2,
+				projected.z
+			]);
+		}
+		if (Math.max(...corners.map((p) => p[0])) < 0 || Math.min(...corners.map((p) => p[0])) > bufferSize.x || Math.max(...corners.map((p) => p[1])) < 0 || Math.min(...corners.map((p) => p[1])) > bufferSize.y) return;
+		const distance = (a, b) => Math.hypot(corners[a][0] - corners[b][0], corners[a][1] - corners[b][1]);
+		const required = Math.max(distance(0, 1) / width, distance(3, 2) / width, distance(0, 3) / height, distance(1, 2) / height) * 1.5;
+		const density = Math.max(128, 2 ** Math.ceil(Math.log2(required)));
+		if (density === resolutionDensity) return;
+		const [w, h] = planeTextTextureSize(width, height, density);
+		resolutionDensity = density;
+		if (w === canvas.width && h === canvas.height) return;
+		canvas.width = w;
+		canvas.height = h;
+		repaint();
+	}
+	mesh.onBeforeRender = (renderer, _scene, camera) => prepare(renderer, camera);
+	material.addEventListener("dispose", () => texture.dispose());
+	return {
+		mesh,
+		prepare,
+		set(text, position) {
+			if (text !== previousText) {
+				previousText = text;
+				repaint();
+			}
+			const key = position.join(":");
+			if (key !== previousPosition) {
+				previousPosition = key;
+				const attribute = geometry.getAttribute("position");
+				[
+					[-1, -1],
+					[1, -1],
+					[1, 1],
+					[-1, -1],
+					[1, 1],
+					[-1, 1]
+				].forEach(([x, y], i) => {
+					const p = dataToWorld([
+						position[0] + x * width / 2,
+						position[1] + y * height / 2,
+						position[2]
+					]);
+					attribute.setXYZ(i, ...p);
+				});
+				attribute.needsUpdate = true;
+				geometry.computeBoundingSphere();
+			}
+		},
+		dispose() {
+			if (disposed) return;
+			disposed = true;
+			mesh.removeFromParent();
+			geometry.dispose();
+			material.dispose();
+		}
+	};
+}
+//#endregion
+//#region src/objects/system-dag-layout.ts
+var NORMALS = {
+	left: [
+		-1,
+		0,
+		0
+	],
+	right: [
+		1,
+		0,
+		0
+	],
+	top: [
+		0,
+		1,
+		0
+	],
+	bottom: [
+		0,
+		-1,
+		0
+	],
+	front: [
+		0,
+		0,
+		1
+	],
+	back: [
+		0,
+		0,
+		-1
+	]
+};
+var add = (a, b) => a.map((v, i) => v + b[i]);
+function vector(v, fallback) {
+	const result = v ?? fallback;
+	if (result.length !== 3 || result.some((n) => !Number.isFinite(n))) throw new Error("System diagram coordinates must contain three finite numbers.");
+	return [...result];
+}
+function simplifyPipe(points) {
+	const result = [];
+	for (const p of points) {
+		if (result.length && p.every((v, i) => Math.abs(v - result.at(-1)[i]) < 1e-8)) continue;
+		if (result.length >= 2) {
+			const a = result.at(-2), b = result.at(-1);
+			const u = b.map((v, i) => v - a[i]), v = p.map((n, i) => n - b[i]);
+			if ([
+				u[1] * v[2] - u[2] * v[1],
+				u[2] * v[0] - u[0] * v[2],
+				u[0] * v[1] - u[1] * v[0]
+			].every((n) => Math.abs(n) < 1e-8) && u.reduce((s, n, i) => s + n * v[i], 0) > 0) result.pop();
+		}
+		result.push(p);
+	}
+	return result;
+}
+/** Arrowheads stay proportional to pipe radius, including short terminal segments. */
+function pipeArrowDimensions(radius, segmentLength) {
+	const length = Math.min(radius * 7, segmentLength * .75);
+	return {
+		length,
+		radius: Math.min(radius * 3, length * .44)
+	};
+}
+function resolveSystemDAG(blocks, connections = [], origin = [
+	0,
+	0,
+	0
+], defaultRadius = .055) {
+	const nodes = /* @__PURE__ */ new Map(), wires = [], edgeIds = /* @__PURE__ */ new Set();
+	function collect(list, parent) {
+		for (const spec of list) {
+			if (nodes.has(spec.id)) throw new Error(`Duplicate system block: ${spec.id}`);
+			const size = vector(spec.size, [
+				4,
+				2,
+				.16
+			]);
+			if (size.some((v) => v <= 0)) throw new Error(`System block ${spec.id} needs positive dimensions.`);
+			const ports = /* @__PURE__ */ new Set();
+			for (const port of spec.ports ?? []) {
+				if (ports.has(port.id)) throw new Error(`Duplicate port ${spec.id}.${port.id}`);
+				ports.add(port.id);
+				if (!NORMALS[port.side] || !Number.isFinite(port.offset ?? 0) || Math.abs(port.offset ?? 0) > 1) throw new Error(`Invalid port ${spec.id}.${port.id}`);
+			}
+			nodes.set(spec.id, {
+				spec,
+				parent,
+				size,
+				position: [
+					0,
+					0,
+					0
+				]
+			});
+			collect(spec.blocks ?? [], spec.id);
+			collectWires(spec.connections ?? [], spec.id);
+		}
+	}
+	function collectWires(list, owner) {
+		for (const spec of list) {
+			if (edgeIds.has(spec.id)) throw new Error(`Duplicate connection: ${spec.id}`);
+			edgeIds.add(spec.id);
+			wires.push({
+				spec,
+				owner
+			});
+		}
+	}
+	collect(blocks);
+	collectWires(connections);
+	if (nodes.size > 64 || wires.length > 128) throw new Error("System diagrams support up to 64 blocks and 128 connections.");
+	const visiting = /* @__PURE__ */ new Set(), done = /* @__PURE__ */ new Set();
+	function place(id) {
+		const node = nodes.get(id);
+		if (!node) throw new Error(`Unknown system block: ${id}`);
+		if (done.has(id)) return node;
+		if (visiting.has(id)) throw new Error(`Cyclic system placement involving ${id}`);
+		visiting.add(id);
+		const s = node.spec;
+		if (s.placement) {
+			const anchor = place(s.placement.relativeTo), normal = NORMALS[s.placement.side ?? "right"];
+			const gap = s.placement.gap ?? .7;
+			if (!Number.isFinite(gap) || gap < 0) throw new Error(`Invalid placement gap for ${id}`);
+			node.position = add(anchor.position, normal.map((v, i) => v * ((anchor.size[i] + node.size[i]) / 2 + gap)));
+			node.position = add(node.position, vector(s.placement.offset, [
+				0,
+				0,
+				0
+			]));
+		} else {
+			const parent = node.parent ? place(node.parent) : void 0;
+			node.position = add(s.space === "world" ? [
+				0,
+				0,
+				0
+			] : parent ? parent.position : origin, vector(s.position, [
+				0,
+				0,
+				0
+			]));
+			if (parent && s.space !== "world" && parent.spec.childElevation !== void 0) {
+				const gap = parent.spec.childElevation;
+				if (!Number.isFinite(gap) || gap < 0) throw new Error("System platform elevation must be finite and non-negative.");
+				node.position[2] += parent.size[2] / 2 + node.size[2] / 2 + gap;
+			}
+		}
+		visiting.delete(id);
+		done.add(id);
+		return node;
+	}
+	for (const id of nodes.keys()) place(id);
+	for (const node of nodes.values()) if (node.parent) {
+		const parent = nodes.get(node.parent);
+		for (const i of [0, 1]) if (Math.abs(node.position[i] - parent.position[i]) + node.size[i] / 2 > parent.size[i] / 2 + 1e-7) throw new Error(`Block ${node.spec.id} lies outside container ${node.parent}`);
+	}
+	function descendant(id, parent) {
+		let node = nodes.get(id);
+		while (node?.parent) {
+			if (node.parent === parent) return true;
+			node = nodes.get(node.parent);
+		}
+		return false;
+	}
+	function endpoint(e, other) {
+		const node = nodes.get(e.block), target = nodes.get(other.block);
+		if (!node || !target) throw new Error(`Unknown connection endpoint: ${!node ? e.block : other.block}`);
+		const port = e.port ? node.spec.ports?.find((p) => p.id === e.port) : void 0;
+		if (e.port && !port) throw new Error(`Unknown port ${e.block}.${e.port}`);
+		const delta = target.position.map((v, i) => v - node.position[i]);
+		const normal = [...NORMALS[port?.side ?? e.side ?? (Math.abs(delta[0]) > Math.abs(delta[1]) ? delta[0] >= 0 ? "right" : "left" : delta[1] >= 0 ? "top" : "bottom")]];
+		const point = add(node.position, normal.map((v, i) => v * node.size[i] / 2));
+		const along = normal[0] !== 0 ? 1 : 0;
+		point[along] += (port?.offset ?? 0) * node.size[along] / 2;
+		if (normal[2] === 0) point[2] = node.position[2] + node.size[2] / 2 + .06;
+		if (e.inside ?? descendant(other.block, e.block)) for (let i = 0; i < 3; i++) normal[i] = -normal[i];
+		return {
+			point,
+			normal
+		};
+	}
+	return {
+		nodes,
+		wires: wires.map(({ spec, owner }) => {
+			const a = endpoint(spec.from, spec.to), b = endpoint(spec.to, spec.from), radius = spec.radius ?? defaultRadius;
+			if (!Number.isFinite(radius) || radius <= 0 || radius > .5) throw new Error(`Invalid pipe radius for ${spec.id}`);
+			const lead = Math.max(.25, radius * 5), start = add(a.point, a.normal.map((v) => v * lead)), end = add(b.point, b.normal.map((v) => v * lead));
+			let middle;
+			if (spec.via?.length) middle = spec.via.map((v) => add(v.space === "world" ? [
+				0,
+				0,
+				0
+			] : v.relativeTo ? place(v.relativeTo).position : owner ? place(owner).position : origin, vector(v.position, [
+				0,
+				0,
+				0
+			])));
+			else if (spec.route === "straight") middle = [];
+			else middle = routeOrthogonal(start, end, a.normal, b.normal, [...nodes.values()].filter((n) => !n.spec.blocks?.length && n.spec.id !== spec.from.block && n.spec.id !== spec.to.block), radius);
+			const points = simplifyPipe(spec.route === "straight" && !spec.via?.length ? [a.point, b.point] : [
+				a.point,
+				start,
+				...middle,
+				end,
+				b.point
+			]);
+			if (points.length < 2) throw new Error(`Connection ${spec.id} has coincident endpoints.`);
+			return {
+				spec,
+				owner,
+				points
+			};
+		})
+	};
+}
+/** Find an orthogonal route outside unrelated leaf blocks. Containers are boundaries, not obstacles. */
+function routeOrthogonal(a, b, an, bn, nodes, radius) {
+	const z = Math.max(a[2], b[2]);
+	const clearance = radius * 3 + .08;
+	const boxes = nodes.map((n) => ({
+		x0: n.position[0] - n.size[0] / 2 - clearance,
+		x1: n.position[0] + n.size[0] / 2 + clearance,
+		y0: n.position[1] - n.size[1] / 2 - clearance,
+		y1: n.position[1] + n.size[1] / 2 + clearance
+	}));
+	const blocked = (p, q) => boxes.some((r) => p[0] === q[0] ? p[0] > r.x0 + 1e-7 && p[0] < r.x1 - 1e-7 && Math.max(p[1], q[1]) > r.y0 + 1e-7 && Math.min(p[1], q[1]) < r.y1 - 1e-7 : p[1] > r.y0 + 1e-7 && p[1] < r.y1 - 1e-7 && Math.max(p[0], q[0]) > r.x0 + 1e-7 && Math.min(p[0], q[0]) < r.x1 - 1e-7);
+	const xs = [.../* @__PURE__ */ new Set([
+		a[0],
+		b[0],
+		...boxes.flatMap((r) => [r.x0, r.x1])
+	])].sort((x, y) => x - y), ys = [.../* @__PURE__ */ new Set([
+		a[1],
+		b[1],
+		...boxes.flatMap((r) => [r.y0, r.y1])
+	])].sort((x, y) => x - y);
+	const start = [xs.indexOf(a[0]), ys.indexOf(a[1])], goal = [xs.indexOf(b[0]), ys.indexOf(b[1])];
+	const queue = [], cost = /* @__PURE__ */ new Map(), prev = /* @__PURE__ */ new Map();
+	const point = (x, y) => [
+		xs[x],
+		ys[y],
+		z
+	];
+	const push = (v) => {
+		queue.push(v);
+		let i = queue.length - 1;
+		while (i > 0) {
+			const p = i - 1 >> 1;
+			if (queue[p].score <= v.score) break;
+			queue[i] = queue[p];
+			i = p;
+		}
+		queue[i] = v;
+	};
+	const pop = () => {
+		const first = queue[0], last = queue.pop();
+		if (queue.length) {
+			let i = 0;
+			while (i * 2 + 1 < queue.length) {
+				let child = i * 2 + 1;
+				if (child + 1 < queue.length && queue[child + 1].score < queue[child].score) child++;
+				if (queue[child].score >= last.score) break;
+				queue[i] = queue[child];
+				i = child;
+			}
+			queue[i] = last;
+		}
+		return first;
+	};
+	const initial = {
+		x: start[0],
+		y: start[1],
+		dir: an[0] !== 0 ? 0 : 1,
+		cost: 0,
+		score: 0,
+		key: `${start[0]},${start[1]},${an[0] !== 0 ? 0 : 1}`
+	};
+	push(initial);
+	cost.set(initial.key, 0);
+	let last;
+	while (queue.length) {
+		const item = pop();
+		if (item.cost !== cost.get(item.key)) continue;
+		if (item.x === goal[0] && item.y === goal[1]) {
+			last = item.key;
+			break;
+		}
+		for (const [dx, dy] of [
+			[1, 0],
+			[-1, 0],
+			[0, 1],
+			[0, -1]
+		]) {
+			const x = item.x + dx, y = item.y + dy;
+			if (x < 0 || x >= xs.length || y < 0 || y >= ys.length) continue;
+			const p = point(item.x, item.y), q = point(x, y);
+			if (blocked(p, q)) continue;
+			const dir = dx !== 0 ? 0 : 1, next = item.cost + Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]) + (dir === item.dir ? 0 : .2), key = `${x},${y},${dir}`;
+			if (next >= (cost.get(key) ?? Infinity)) continue;
+			cost.set(key, next);
+			prev.set(key, item.key);
+			push({
+				x,
+				y,
+				dir,
+				cost: next,
+				score: next + Math.abs(q[0] - b[0]) + Math.abs(q[1] - b[1]),
+				key
+			});
+		}
+	}
+	if (!last) throw new Error("No unobstructed pipe route; move blocks or supply via waypoints.");
+	const path = [];
+	while (last) {
+		const [x, y] = last.split(",").map(Number);
+		path.push(point(x, y));
+		last = prev.get(last);
+	}
+	path.reverse();
+	return simplifyPipe([
+		[
+			a[0],
+			a[1],
+			z
+		],
+		...path,
+		[
+			b[0],
+			b[1],
+			z
+		]
+	]);
+}
+//#endregion
+//#region src/objects/system-dag.ts
+/** Reusable system blocks and directed cylindrical pipes; no simulation rules. */
+var PALETTE$1 = {
+	group: "#8fa8be",
+	service: "#80b9d6",
+	database: "#80b9d6",
+	broker: "#80b9d6",
+	processor: "#b9a1dd",
+	worker: "#e7be63",
+	gateway: "#7ac9b7",
+	client: "#7ac9b7",
+	store: "#b9a1dd"
+};
+function renderSystemDAG(el, _view) {
+	if (!state.three) return null;
+	const pipeRadius = el.pipeRadius ?? .055;
+	const layout = resolveSystemDAG(el.blocks ?? [], el.connections ?? [], el.origin ?? [
+		0,
+		0,
+		0
+	], pipeRadius);
+	const points = [...layout.nodes.values()].flatMap((n) => [-1, 1].map((sign) => n.position.map((v, i) => v + sign * n.size[i] / 2)));
+	points.push(...layout.wires.flatMap((w) => w.points));
+	const lo = [
+		0,
+		1,
+		2
+	].map((i) => Math.min(...points.map((p) => p[i])) - .2), hi = [
+		0,
+		1,
+		2
+	].map((i) => Math.max(...points.map((p) => p[i])) + .2);
+	const worldLo = dataToWorld(lo), worldHi = dataToWorld(hi), centre = worldLo.map((v, i) => (v + worldHi[i]) / 2);
+	const rootGeometry = new THREE.BoxGeometry(...worldLo.map((v, i) => worldHi[i] - v));
+	rootGeometry.translate(...centre);
+	const rootMaterial = new THREE.MeshBasicMaterial({
+		transparent: true,
+		opacity: 1,
+		colorWrite: false,
+		depthWrite: false
+	});
+	const root = new THREE.Mesh(rootGeometry, rootMaterial);
+	root.userData.ignorePlaneOpacity = true;
+	root.userData.targetOpacity = 1;
+	const objectId = el.id ?? "system-dag";
+	const blockId = (id) => objectId + "::block:" + id;
+	root.raycast = () => {};
+	const geometries = /* @__PURE__ */ new Set(), materials = /* @__PURE__ */ new Set(), textLayers = [];
+	const cylinder = new THREE.CylinderGeometry(1, 1, 1, 12), sphere = new THREE.SphereGeometry(1, 12, 8), cone = new THREE.ConeGeometry(1, 1, 12);
+	geometries.add(cylinder);
+	geometries.add(sphere);
+	geometries.add(cone);
+	function owned(geometry, material, opacity = 1) {
+		geometries.add(geometry);
+		materials.add(material);
+		const mesh = new THREE.Mesh(geometry, material);
+		root.add(mesh);
+		mesh.onBeforeRender = () => {
+			material.opacity = opacity * rootMaterial.opacity * (material.userData.activityOpacity ?? 1);
+		};
+		return mesh;
+	}
+	const rgb = (color) => parseColor(color);
+	const tint = /* @__PURE__ */ new Map();
+	for (const n of layout.nodes.values()) tint.set(n.spec.id, n.spec.color ?? (n.parent ? tint.get(n.parent) : void 0) ?? PALETTE$1[n.spec.kind ?? "service"]);
+	function segment(a, b, radius, material) {
+		const start = new THREE.Vector3(...dataToWorld(a)), end = new THREE.Vector3(...dataToWorld(b)), delta = end.clone().sub(start);
+		if (delta.length() < 1e-8) return;
+		const mesh = owned(cylinder, material);
+		mesh.position.copy(start.add(end).multiplyScalar(.5));
+		mesh.scale.set(dataLenToWorld(radius), delta.length(), dataLenToWorld(radius));
+		mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+		return mesh;
+	}
+	function ball(p, radius, material) {
+		const mesh = owned(sphere, material);
+		mesh.position.set(...dataToWorld(p));
+		mesh.scale.setScalar(dataLenToWorld(radius));
+		return mesh;
+	}
+	function text(value, p, width, height, color) {
+		const layer = createArrayPlaneText(width, height, color);
+		root.add(layer.mesh);
+		textLayers.push(layer);
+		layer.mesh.onBeforeRender = (renderer, _scene, camera) => {
+			layer.prepare(renderer, camera);
+			layer.mesh.material.opacity = rootMaterial.opacity;
+		};
+		layer.set(value, p);
+		const mirror = addLabel3D("", p, color, { cssClass: "label-3d array-plane-accessible" });
+		mirror.forceHidden = true;
+		mirror.ownerMesh = root;
+		clipArrayPlaneMirror(mirror.el);
+		mirror.el.textContent = value;
+		return {
+			layer,
+			mirror,
+			p
+		};
+	}
+	const values = [];
+	const expressions = [];
+	const nodeLighting = /* @__PURE__ */ new Map();
+	function glowMaterial(color) {
+		const material = new THREE.MeshBasicMaterial({
+			color: new THREE.Color(...rgb(color)),
+			transparent: true,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending
+		});
+		material.userData.activityOpacity = 0;
+		return material;
+	}
+	const containedStates = [];
+	for (const node of layout.nodes.values()) {
+		const { spec, position: p, size } = node, color = tint.get(spec.id);
+		const w0 = dataToWorld(p.map((v, i) => v - size[i] / 2)), w1 = dataToWorld(p.map((v, i) => v + size[i] / 2));
+		const geometry = new THREE.BoxGeometry(...w0.map((v, i) => w1[i] - v));
+		geometry.translate(...dataToWorld(p));
+		const fill = new THREE.MeshBasicMaterial({
+			color: new THREE.Color(...rgb(color)),
+			transparent: true,
+			depthWrite: false
+		});
+		const blockMesh = owned(geometry, fill, spec.opacity ?? (spec.blocks?.length ? .1 : .24));
+		const z = p[2] + size[2] / 2 + .025, corners = [
+			[
+				p[0] - size[0] / 2,
+				p[1] - size[1] / 2,
+				z
+			],
+			[
+				p[0] + size[0] / 2,
+				p[1] - size[1] / 2,
+				z
+			],
+			[
+				p[0] + size[0] / 2,
+				p[1] + size[1] / 2,
+				z
+			],
+			[
+				p[0] - size[0] / 2,
+				p[1] + size[1] / 2,
+				z
+			]
+		];
+		const border = new THREE.MeshPhongMaterial({
+			color: new THREE.Color(...rgb(color)),
+			emissive: new THREE.Color(...rgb(color)),
+			emissiveIntensity: .25,
+			shininess: 28,
+			transparent: true,
+			depthWrite: false
+		});
+		const glow = glowMaterial(color), ports = [];
+		const rimRadius = spec.blocks?.length ? .018 : .014;
+		for (let i = 0; i < 4; i++) {
+			segment(corners[i], corners[(i + 1) % 4], rimRadius, border);
+			const halo = segment(corners[i], corners[(i + 1) % 4], rimRadius * 3, glow);
+			if (halo) halo.onBeforeRender = () => {
+				glow.opacity = .18 * rootMaterial.opacity * glow.userData.activityOpacity;
+			};
+		}
+		const backZ = p[2] - size[2] / 2;
+		for (let i = 0; i < 4; i++) {
+			const back = [
+				corners[i][0],
+				corners[i][1],
+				backZ
+			];
+			const next = [
+				corners[(i + 1) % 4][0],
+				corners[(i + 1) % 4][1],
+				backZ
+			];
+			segment(back, corners[i], rimRadius * .7, border);
+			segment(back, next, rimRadius * .7, border);
+		}
+		if (node.parent) {
+			const parent = layout.nodes.get(node.parent);
+			if (parent.spec.childElevation !== void 0) {
+				const shadow = new THREE.MeshBasicMaterial({
+					color: 0,
+					transparent: true,
+					depthWrite: false
+				});
+				const footprint = owned(new THREE.PlaneGeometry(dataLenToWorld(size[0] * .96), dataLenToWorld(size[1] * .96)), shadow, .18);
+				footprint.position.set(...dataToWorld([
+					p[0] + .08,
+					p[1] - .08,
+					parent.position[2] + parent.size[2] / 2 + .01
+				]));
+				footprint.raycast = () => {};
+			}
+		}
+		nodeLighting.set(spec.id, {
+			fill,
+			border,
+			glow,
+			ports,
+			color
+		});
+		const headerHeight = spec.blocks?.length ? .85 : Math.min(.78, size[1] * .48);
+		const title = text(spec.label, [
+			p[0],
+			p[1] + size[1] / 2 - headerHeight * .62,
+			z + .06
+		], Math.max(.1, size[0] - .3), headerHeight, color);
+		title.layer.mesh.raycast = THREE.Mesh.prototype.raycast;
+		registerCompositePart(blockId(spec.id), node.parent ? blockId(node.parent) : objectId, _view, [blockMesh, title.layer.mesh], [title.mirror], spec.label, "Explain the " + (spec.kind ?? "service") + " block \"" + spec.label + "\" inside this system architecture, its responsibility, contained objects, and connected ports.");
+		const expression = spec.textExpr ?? spec.valueExpr;
+		if (expression || spec.text) {
+			if (expression) expressions.push(expression);
+			const draw = text("", [
+				p[0],
+				spec.blocks?.length ? p[1] + size[1] / 2 - 1.13 : spec.elements?.length ? p[1] + .02 : p[1] - size[1] * .19,
+				z + .06
+			], Math.max(.1, size[0] - .3), spec.elements?.length ? .32 : Math.min(.65, size[1] * .38), "#ecf4ff");
+			draw.layer.mesh.raycast = THREE.Mesh.prototype.raycast;
+			const status = registerCompositePart(blockId(spec.id) + "::status", blockId(spec.id), _view, [draw.layer.mesh], [draw.mirror], spec.label + " status", "Explain the status displayed in \"" + spec.label + "\", the meaning of each value, and what it does or does not establish. Expression: " + (expression ?? spec.text), "text");
+			values.push({
+				status,
+				draw,
+				fn: expression ? compileExpr(expression) : null,
+				literal: spec.text ?? "",
+				label: spec.label
+			});
+		}
+		for (const port of spec.ports ?? []) {
+			const normal = {
+				left: [
+					-1,
+					0,
+					0
+				],
+				right: [
+					1,
+					0,
+					0
+				],
+				top: [
+					0,
+					1,
+					0
+				],
+				bottom: [
+					0,
+					-1,
+					0
+				],
+				front: [
+					0,
+					0,
+					1
+				],
+				back: [
+					0,
+					0,
+					-1
+				]
+			}[port.side];
+			const at = p.map((v, i) => v + normal[i] * size[i] / 2);
+			const along = normal[0] !== 0 ? 1 : 0;
+			at[along] += (port.offset ?? 0) * size[along] / 2;
+			if (normal[2] === 0) at[2] = z + .035;
+			const portMaterial = new THREE.MeshPhongMaterial({
+				color: new THREE.Color(...rgb(port.color ?? color)),
+				emissive: new THREE.Color(...rgb(port.color ?? color)),
+				emissiveIntensity: 0,
+				shininess: 28,
+				transparent: true
+			});
+			ports.push(portMaterial);
+			const portMesh = ball(at, pipeRadius * 2.4, portMaterial);
+			registerCompositePart(blockId(spec.id) + "::port:" + port.id, blockId(spec.id), _view, [portMesh], [], spec.label + " port " + port.id, "Explain port \"" + port.id + "\" on \"" + spec.label + "\", its boundary and the connections using it.");
+		}
+	}
+	const flows = [];
+	for (const wire of layout.wires) {
+		const wireStart = root.children.length;
+		const spec = wire.spec, radius = spec.radius ?? pipeRadius, color = spec.color ?? "#8296a4";
+		const material = new THREE.MeshPhongMaterial({
+			color: new THREE.Color(...rgb(color)),
+			shininess: 28,
+			transparent: true
+		});
+		const glow = glowMaterial(spec.activeColor ?? "#f1c96b");
+		const path = wire.points;
+		for (let i = 1; i < path.length; i++) {
+			const halo = segment(path[i - 1], path[i], radius * 2.2, glow);
+			if (halo) halo.onBeforeRender = () => {
+				glow.opacity = .18 * rootMaterial.opacity * glow.userData.activityOpacity;
+			};
+		}
+		for (let i = 1; i < path.length; i++) {
+			let a = path[i - 1], b = path[i];
+			const len = Math.hypot(...b.map((v, j) => v - a[j]));
+			const trim = pipeArrowDimensions(radius, len).length;
+			const start = a, end = b;
+			if (i === 1 && (spec.direction === "backward" || spec.direction === "both")) a = start.map((v, j) => v + (end[j] - v) * trim / len);
+			if (i === path.length - 1 && spec.direction !== "none" && spec.direction !== "backward") b = end.map((v, j) => v - (v - start[j]) * trim / len);
+			segment(a, b, radius, material);
+		}
+		for (const p of path.slice(1, -1)) ball(p, radius, material);
+		function head(end, previous) {
+			const delta = end.map((v, i) => v - previous[i]), len = Math.hypot(...delta), dims = pipeArrowDimensions(radius, len);
+			if (len < 1e-7) return;
+			const dir = new THREE.Vector3(...dataToWorld(end)).sub(new THREE.Vector3(...dataToWorld(previous))).normalize();
+			const mesh = owned(cone, material);
+			mesh.scale.set(dataLenToWorld(dims.radius), dataLenToWorld(dims.length), dataLenToWorld(dims.radius));
+			mesh.position.set(...dataToWorld(end));
+			mesh.position.addScaledVector(dir, -dataLenToWorld(dims.length) / 2);
+			mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+		}
+		if (spec.direction !== "none" && spec.direction !== "backward") head(path.at(-1), path.at(-2));
+		if (spec.direction === "backward" || spec.direction === "both") head(path[0], path[1]);
+		if (spec.label) {
+			const middle = path[Math.floor(path.length / 2)];
+			text(spec.label, [
+				middle[0],
+				middle[1] + .28,
+				middle[2] + .06
+			], Math.min(5, Math.max(1, spec.label.length * .28)), .42, "#becdd8");
+		}
+		if (spec.activeExpr) expressions.push(spec.activeExpr);
+		const coreMeshes = root.children.slice(wireStart).filter((child) => child instanceof THREE.Mesh && child.material === material);
+		registerCompositePart(objectId + "::connection:" + spec.id, wire.owner ? blockId(wire.owner) : objectId, _view, coreMeshes, [], spec.label ?? layout.nodes.get(spec.from.block).spec.label + " → " + layout.nodes.get(spec.to.block).spec.label, "Explain this directed connection from \"" + layout.nodes.get(spec.from.block).spec.label + "\" port " + (spec.from.port ?? spec.from.side ?? "automatic") + " to \"" + layout.nodes.get(spec.to.block).spec.label + "\" port " + (spec.to.port ?? spec.to.side ?? "automatic") + ". Explain its direction and what active highlighting means.", "animated_vector");
+		flows.push({
+			material,
+			glow,
+			from: spec.from.block,
+			to: spec.to.block,
+			color,
+			activeColor: spec.activeColor ?? "#f1c96b",
+			fn: spec.activeExpr ? compileExpr(spec.activeExpr) : null
+		});
+	}
+	const enclosing = currentDataOffset();
+	for (const node of layout.nodes.values()) {
+		if (!node.spec.elements?.length) continue;
+		const offset = node.position.map((v, i) => v + enclosing[i]);
+		const contentView = _view.transform({ position: node.position });
+		for (const child of node.spec.elements) {
+			const exprStart = state.activeAnimExprs.length, updaterStart = state.activeAnimUpdaters.length;
+			const planes = state.planeMeshes.length, labels = state.labels.length, arrows = state.arrowMeshes.length;
+			const childId = blockId(node.spec.id) + "::content:" + (child.id ?? node.spec.elements.indexOf(child));
+			withDataOffset(offset, () => renderElement({
+				...child,
+				id: childId
+			}, contentView));
+			const contentMeshes = [...state.planeMeshes.slice(planes)];
+			for (const owner of [...contentMeshes]) owner.traverse((part) => {
+				if (part instanceof THREE.Mesh && part !== owner && part.userData.annotationTextPlane && !Array.isArray(part.material) && part.material instanceof THREE.MeshBasicMaterial && part.material.map) {
+					part.raycast = THREE.Mesh.prototype.raycast;
+					contentMeshes.push(part);
+				}
+			});
+			registerCompositePart(childId, blockId(node.spec.id), contentView, contentMeshes, state.labels.slice(labels), child.label ?? node.spec.label + " " + child.type, child.prompt ?? "Explain the " + child.type + " object inside \"" + node.spec.label + "\", including its current contents and how it relates to the enclosing block.", child.type).tracker.arrowMeshes.push(...state.arrowMeshes.slice(arrows));
+			for (const arrow of state.arrowMeshes.slice(arrows)) arrow.mesh.userData.askObjectId = childId;
+			for (const entry of state.activeAnimExprs.slice(exprStart)) {
+				if (entry.animState) containedStates.push(entry.animState);
+				const rebuild = entry._rebuildFn;
+				if (rebuild) entry._rebuildFn = () => withDataOffset(offset, () => rebuild());
+			}
+			for (const updater of state.activeAnimUpdaters.slice(updaterStart)) {
+				if (updater.animState) containedStates.push(updater.animState);
+				const update = updater.updateFrame.bind(updater);
+				updater.updateFrame = (now) => withDataOffset(offset, () => update(now));
+			}
+		}
+	}
+	state.three.scene.add(root);
+	state.planeMeshes.push(root);
+	let stopped = false, hidden = false;
+	const animState = {
+		get stopped() {
+			return stopped;
+		},
+		set stopped(value) {
+			stopped = value;
+			for (const child of containedStates) {
+				child.stopped = value;
+				if (value) {
+					unregisterAnimExpr(child);
+					unregisterAnimUpdater(child);
+				}
+			}
+		},
+		get hiddenByRemove() {
+			return hidden;
+		},
+		set hiddenByRemove(value) {
+			hidden = value;
+			for (const child of containedStates) child.hiddenByRemove = value;
+		}
+	};
+	const entry = {
+		animState,
+		exprStrings: expressions,
+		_rebuildFn: () => {
+			if (animState.stopped || animState.hiddenByRemove) return;
+			for (const v of values) {
+				const value = v.fn ? evalExpr(v.fn, 0) : v.literal, content = String(value ?? "");
+				v.draw.layer.set(content, v.draw.p);
+				v.draw.mirror.el.textContent = `${v.label}: ${content}`;
+				v.status.label = `${v.label} status: ${content}`;
+			}
+			const activeNodes = /* @__PURE__ */ new Set();
+			function lightNode(id) {
+				while (!activeNodes.has(id)) {
+					activeNodes.add(id);
+					const parent = layout.nodes.get(id)?.parent;
+					if (!parent) break;
+					id = parent;
+				}
+			}
+			for (const f of flows) {
+				const active = !!(f.fn && evalExpr(f.fn, 0));
+				f.material.color.setRGB(...rgb(active ? f.activeColor : f.color));
+				f.material.emissive.setRGB(...rgb(f.activeColor));
+				f.material.emissiveIntensity = active ? .65 : 0;
+				f.glow.userData.activityOpacity = active ? 1 : 0;
+				if (active) {
+					lightNode(f.from);
+					lightNode(f.to);
+				}
+			}
+			for (const [id, lighting] of nodeLighting) {
+				const active = activeNodes.has(id);
+				lighting.fill.color.setRGB(...rgb(lighting.color));
+				if (active) lighting.fill.color.lerp(new THREE.Color("#ffffff"), .18);
+				lighting.border.emissiveIntensity = active ? .8 : .25;
+				lighting.glow.userData.activityOpacity = active ? 1 : 0;
+				for (const port of lighting.ports) port.emissiveIntensity = active ? .65 : 0;
+			}
+			for (const child of root.children) if (child instanceof THREE.Mesh && !Array.isArray(child.material) && child.material.userData.activityOpacity !== void 0) child.visible = child.material.userData.activityOpacity > 0;
+		}
+	};
+	entry._rebuildFn?.();
+	if (expressions.length) registerAnimExpr(entry);
+	rootMaterial.addEventListener("dispose", () => {
+		animState.stopped = true;
+		for (const t of textLayers) t.dispose();
+		for (const g of geometries) g.dispose();
+		for (const m of materials) m.dispose();
+		root.clear();
+	});
+	return {
+		_animState: animState,
+		_animExprEntry: entry,
+		type: el.type
+	};
+}
+//#endregion
+//#region src/objects/label-drag.ts
+/** Independent screen placement for expression labels, including merged rows. */
+function labelDragHandler(label, animState) {
+	return (event, members) => {
+		if (event.button !== 0 || animState.stopped || !state.renderer) return;
+		const controls = state.controls;
+		const canvas = state.renderer.domElement;
+		const viewport = canvas.getBoundingClientRect();
+		const row = event.currentTarget.getBoundingClientRect();
+		const start = {
+			x: (row.left + row.right) / 2 - viewport.left,
+			y: (row.top + row.bottom) / 2 - viewport.top
+		};
+		const moving = members ?? [label];
+		const box = event.currentTarget.closest(".annotation-badge")?.getBoundingClientRect() ?? row;
+		const groupStart = {
+			x: (box.left + box.right) / 2 - viewport.left,
+			y: (box.top + box.bottom) / 2 - viewport.top
+		};
+		event.preventDefault();
+		event.stopPropagation();
+		const controller = new AbortController();
+		const wasEnabled = controls?.enabled;
+		if (controls) controls.enabled = false;
+		document.body.classList.add("dragging-expression-label");
+		moving.forEach((member) => {
+			member.annotationDragging = true;
+			member.annotationDocked = true;
+		});
+		const end = () => {
+			moving.forEach((member) => {
+				member.annotationDragging = false;
+			});
+			controller.abort();
+			if (controls && wasEnabled !== void 0) controls.enabled = wasEnabled;
+			document.body.classList.remove("dragging-expression-label");
+		};
+		const move = (e) => {
+			if (e.pointerId !== event.pointerId) return;
+			if (animState.stopped) {
+				end();
+				return;
+			}
+			e.preventDefault();
+			e.stopPropagation();
+			if (members) {
+				const position = annotationDragPosition(groupStart.x + e.clientX - event.clientX, groupStart.y + e.clientY - event.clientY, box.width, box.height, canvas.clientWidth, canvas.clientHeight);
+				moving.forEach((member) => {
+					setExpressionLabelPosition(member, position.x, position.y);
+				});
+			} else placeExpressionLabel(label, start.x + e.clientX - event.clientX, start.y + e.clientY - event.clientY, e.clientX, e.clientY);
+		};
+		window.addEventListener("pointermove", move, {
+			capture: true,
+			signal: controller.signal
+		});
+		window.addEventListener("pointerup", (e) => {
+			if (e.pointerId === event.pointerId) end();
+		}, {
+			capture: true,
+			signal: controller.signal
+		});
+		window.addEventListener("pointercancel", end, { signal: controller.signal });
+		window.addEventListener("blur", end, { signal: controller.signal });
+		window.addEventListener("algebench:navchange", end, { signal: controller.signal });
+	};
+}
+//#endregion
+//#region src/objects/step-marker.ts
+/** State-bound annotations. Projection/grouping belongs to the common label layer. */
+function renderStepMarker(el, _view, owner) {
+	const marker = el.type === "step_marker";
+	const targetPosition = !marker && el.connectTo && "positionExpr" in el.connectTo ? el.connectTo.positionExpr : [];
+	const targetFns = targetPosition.length ? targetPosition.map((source) => compileExpr(source)) : null;
+	const targetIndex = !marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
+	const position = owner ? [] : el.positionExpr ?? (el.position ?? [
+		0,
+		0,
+		0
+	]).map(String);
+	const sources = [
+		...position,
+		...el.textExpr ? [el.textExpr] : [],
+		...el.visibleExpr ? [el.visibleExpr] : [],
+		...el.indexExpr ? [el.indexExpr] : [],
+		...targetPosition,
+		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
+	];
+	const positionFns = position.map((source) => compileExpr(source));
+	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
+	const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
+	const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
+	const animState = owner?.animState ?? { stopped: false };
+	const label = addLabel3D("", [
+		0,
+		0,
+		0
+	], void 0, { cssClass: marker ? "label-3d step-marker" : "label-3d expression-label" });
+	if (!marker) label.snapToProjection = true;
+	const cursor = document.createElement("span");
+	cursor.className = marker ? "step-marker-cursor" : "expression-label-cursor";
+	const badge = document.createElement("span");
+	badge.className = "annotation-badge";
+	const measure = document.createElement("span");
+	measure.className = "annotation-badge annotation-measure";
+	measure.setAttribute("aria-hidden", "true");
+	if (!marker && el.connectTo) measure.classList.add("annotation-measure-wired");
+	cursor.append(badge);
+	if (owner) cursor.classList.add("array-marker-cursor");
+	if (marker) {
+		const pointer = document.createElement("span");
+		pointer.className = "step-marker-pointer";
+		pointer.setAttribute("aria-hidden", "true");
+		cursor.append(pointer);
+	}
+	label.el.replaceChildren(cursor, measure);
+	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#172e50")));
+	label.annotation = {
+		kind: marker ? "marker" : "label",
+		text: "",
+		badge,
+		measure,
+		width: 0,
+		height: 0,
+		scale: null,
+		rendered: ""
+	};
+	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
+	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
+	const entry = {
+		animState,
+		exprStrings: sources,
+		_rebuildFn: () => {
+			if (animState.stopped) return;
+			try {
+				if (targetIndex) label.wireTarget.index = Number(evalExpr(targetIndex, 0));
+				if (targetFns) {
+					const target = targetFns.map((fn) => Number(evalExpr(fn, 0)));
+					label.wireTarget = target.every(Number.isFinite) ? { position: target } : {};
+				}
+				const indexValue = indexFn ? Number(evalExpr(indexFn, 0)) : null;
+				const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map((fn) => Number(evalExpr(fn, 0)));
+				if (!point) {
+					label.forceHidden = true;
+					return;
+				}
+				if (point.length !== 3 || point.some((n) => !Number.isFinite(n))) throw new Error("Invalid annotation position");
+				if (!marker && point.some((value, index) => value !== label.dataPos[index])) {
+					label.annotationPosition = void 0;
+					label.annotationWorldPosition = void 0;
+					label.annotationOrder = void 0;
+				}
+				label.dataPos = point;
+				if (owner) label.cellAttachment = {
+					corners: owner.corners(indexValue),
+					edge: "top",
+					gap: 8
+				};
+				label.forceHidden = visibleFn ? !evalExpr(visibleFn, 0) : false;
+				const text = textFn ? annotationText(evalExpr(textFn, 0)) : el.text ?? "";
+				const annotation = label.annotation;
+				annotation.index = void 0;
+				if (indexFn && el.indexName && (owner || el.indexGroup)) {
+					const value = indexValue;
+					if (!Number.isInteger(value) || value < 0) throw new Error("Invalid index");
+					annotation.index = {
+						group: owner?.group ?? el.indexGroup,
+						name: el.indexName,
+						value
+					};
+				}
+				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
+				if (measure.textContent !== annotation.text) {
+					measure.textContent = annotation.text;
+					annotation.scale = null;
+				}
+			} catch {
+				label.forceHidden = true;
+			}
+		}
+	};
+	if (!owner) {
+		registerAnimExpr(entry);
+		entry._rebuildFn?.();
+	}
+	return {
+		_animState: animState,
+		_animExprEntry: entry,
+		type: el.type
+	};
+}
+//#endregion
+//#region src/objects/array-data.ts
+function arrayCell(value, type = "mixed") {
+	const kind = type === "mixed" ? value === null ? "empty" : typeof value === "string" ? "string" : typeof value === "boolean" ? "boolean" : "number" : type;
+	if (kind === "empty" && value === null) return {
+		value,
+		kind,
+		text: "∅"
+	};
+	if (kind === "number" && typeof value === "number" && Number.isFinite(value)) return {
+		value,
+		kind,
+		text: String(value)
+	};
+	if (kind === "boolean" && typeof value === "boolean") return {
+		value,
+		kind,
+		text: String(value)
+	};
+	if (kind === "string" && typeof value === "string") return {
+		value,
+		kind,
+		text: JSON.stringify(value)
+	};
+	if (kind === "character" && typeof value === "string" && [...value].length === 1) return {
+		value,
+		kind,
+		text: {
+			" ": "␠",
+			"\n": "↵",
+			"	": "⇥"
+		}[value] ?? value
+	};
+	throw new Error(`Array cell does not match ${kind}`);
+}
+function arrayLength(shape, values) {
+	const n = shape?.[0] ?? values?.length ?? 0;
+	if (shape && shape.length !== 1 || !Number.isInteger(n) || n < 1 || n > 256) throw new Error("An array needs 1–256 cells and a one-dimensional shape.");
+	if (values && values.length !== n) throw new Error("Array shape and values have different lengths.");
+	return n;
+}
+/** Dynamic arrays may be empty; reject invalid lengths instead of rounding them. */
+function dynamicArrayLength(value) {
+	if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 256) throw new Error("Array length must be an integer from 0 to 256.");
+	return value;
+}
+/** Owned markers cannot point outside their array; the renderer hides null anchors. */
+function arrayCellPosition(index, origin, pitch, layout = "horizontal") {
+	return layout === "vertical" ? [
+		origin[0],
+		origin[1] + index * .78,
+		origin[2]
+	] : [
+		origin[0] + index * pitch,
+		origin[1],
+		origin[2]
+	];
+}
+function arrayIndexPosition(index, length, origin, pitch, layout = "horizontal") {
+	if (!Number.isInteger(index) || index < 0 || index >= length) return null;
+	return arrayCellPosition(index, origin, pitch, layout);
+}
+/** Same dimensions as the rendered boxes; all corners support rotated cameras. */
+function arrayCellCorners(centre, pitch) {
+	return [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => [
+		centre[0] + x * pitch * .39,
+		centre[1] + y * .34,
+		centre[2] + z * .11
+	])));
+}
+//#endregion
+//#region src/objects/array-changes.ts
+var ArrayChangeTracker = class {
+	constructor() {
+		this.previous = null;
+		this.transition = "";
+	}
+	update(keys, transition) {
+		if (this.previous === null) {
+			this.previous = keys.slice();
+			this.transition = transition;
+			return {
+				changed: [],
+				added: [],
+				removed: []
+			};
+		}
+		const before = this.previous;
+		if (this.transition === transition && before.length === keys.length && before.every((key, i) => key === keys[i])) return null;
+		const changes = {
+			changed: [],
+			added: [],
+			removed: []
+		};
+		for (let i = 0; i < keys.length; i++) if (i >= before.length) changes.added.push(i);
+		else if (before[i] !== keys[i]) changes.changed.push(i);
+		for (let i = keys.length; i < before.length; i++) changes.removed.push(i);
+		this.previous = keys.slice();
+		this.transition = transition;
+		return changes;
+	}
+};
+//#endregion
+//#region src/objects/array.ts
+/** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
+var arrayMarkerGroup = 0;
+var PALETTE = {
+	number: "#75bfe9",
+	character: "#74d0c2",
+	string: "#b69bea",
+	boolean: "#efa768",
+	empty: "#8793a6"
+};
+function renderArray(el, _view, decorate) {
+	if (!state.three) return null;
+	const lengthFn = el.lengthExpr ? compileExpr(el.lengthExpr) : null;
+	let n = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : arrayLength(el.shape, el.valueExpr ? void 0 : el.values);
+	const origin = (el.origin ?? [
+		0,
+		0,
+		0
+	]).map(Number);
+	if (origin.length !== 3 || origin.some((v) => !Number.isFinite(v))) throw new Error("Array origin must contain three finite coordinates.");
+	const pitch = Number(el.cellSize ?? 2);
+	if (!Number.isFinite(pitch) || pitch <= 0) throw new Error("Array cellSize must be positive.");
+	const centre = (i) => arrayCellPosition(i, origin, pitch, el.arrayLayout);
+	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
+	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
+	for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
+		const c = centre(i);
+		const p = dataToWorld([
+			c[0] + source.getX(v) * pitch * .78,
+			c[1] + source.getY(v) * .68,
+			c[2] + source.getZ(v) * .22
+		]);
+		positions.set(p, (i * vertices + v) * 3);
+	}
+	const geometry = new THREE.BufferGeometry();
+	geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+	let colorAttribute = new THREE.BufferAttribute(colors, 3);
+	geometry.setAttribute("color", colorAttribute);
+	const material = new THREE.MeshBasicMaterial({
+		vertexColors: true,
+		transparent: true,
+		opacity: 1
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.userData.ignorePlaneOpacity = true;
+	mesh.userData.targetOpacity = 1;
+	const cellTarget = { at(index) {
+		const position = arrayIndexPosition(index, n, origin, pitch, el.arrayLayout);
+		return position ? {
+			position,
+			corners: arrayCellCorners(position, pitch)
+		} : null;
+	} };
+	mesh.userData.arrayCellTarget = cellTarget;
+	state.three.scene.add(mesh);
+	state.planeMeshes.push(mesh);
+	const decoration = decorate?.(n, origin, pitch, mesh);
+	const glowMaterial = new THREE.ShaderMaterial({
+		transparent: true,
+		depthWrite: false,
+		side: THREE.DoubleSide,
+		uniforms: { opacity: { value: 1 } },
+		vertexShader: `attribute float removed; varying vec2 rimUV; varying float removedCell;
+            void main(){rimUV=uv*2.0-1.0;removedCell=removed;
+                gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+		fragmentShader: `uniform float opacity; varying vec2 rimUV; varying float removedCell;
+            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
+                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
+                float alpha=rim*mix(0.85,0.35,removedCell)*opacity;
+                if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
+	});
+	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
+	glowMesh.onBeforeRender = () => {
+		glowMaterial.uniforms.opacity.value = glowMaterial.opacity;
+	};
+	glowMesh.visible = false;
+	glowMesh.userData.ignorePlaneOpacity = true;
+	glowMesh.userData.targetOpacity = 1;
+	glowMesh.userData.annotationTextPlane = true;
+	glowMesh.raycast = () => {};
+	state.three.scene.add(glowMesh);
+	state.planeMeshes.push(glowMesh);
+	const changes = new ArrayChangeTracker();
+	let illuminated = /* @__PURE__ */ new Set();
+	function illuminate(changed, removed) {
+		const positions = [], uv = [], removedFlags = [];
+		const corners = [
+			[-1, -1],
+			[1, -1],
+			[1, 1],
+			[-1, -1],
+			[1, 1],
+			[-1, 1]
+		];
+		for (const [indices, isRemoved] of [[changed, 0], [removed, 1]]) for (const i of indices) {
+			const c = centre(i);
+			for (const [x, y] of corners) {
+				positions.push(...dataToWorld([
+					c[0] + x * pitch * .455,
+					c[1] + y * .397,
+					c[2] + .125
+				]));
+				uv.push((x + 1) / 2, (y + 1) / 2);
+				removedFlags.push(isRemoved);
+			}
+		}
+		const geometry = new THREE.BufferGeometry();
+		geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+		geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+		geometry.setAttribute("removed", new THREE.Float32BufferAttribute(removedFlags, 1));
+		glowMesh.geometry.dispose();
+		glowMesh.geometry = geometry;
+		glowMesh.visible = positions.length > 0;
+	}
+	const planeText = el.axisLabels === "plane";
+	const cellTextPlanes = [];
+	const indexTextPlanes = [];
+	const addTextPlane = (width, height, color) => {
+		const layer = createArrayPlaneText(width, height, color);
+		mesh.add(layer.mesh);
+		layer.mesh.onBeforeRender = (renderer, _scene, camera) => {
+			layer.prepare(renderer, camera);
+			layer.mesh.material.opacity = material.opacity;
+		};
+		return layer;
+	};
+	const removeTextPlane = (layer) => {
+		if (!layer) return;
+		layer.dispose();
+	};
+	const indexLabels = [];
+	const makeCellLabel = (i) => {
+		const c = centre(i), label = addLabel3D("", [
+			c[0],
+			c[1],
+			c[2] + .14
+		], "#12212b", { cssClass: "label-3d array-cell-label" });
+		if (el.fontSize != null) label.el.style.setProperty("--array-font-size", `${el.fontSize}px`);
+		label.ownerMesh = mesh;
+		label.snapToProjection = true;
+		if (planeText) {
+			label.forceHidden = true;
+			label.el.classList.add("array-plane-accessible");
+			clipArrayPlaneMirror(label.el);
+			cellTextPlanes.push(addTextPlane(pitch * .78, .68, "#12212b"));
+		}
+		if (el.showIndices !== false) {
+			const indexLabel = addLabel3D(String(i), c, "#e1ecf7", { cssClass: "label-3d array-index-tag" });
+			if (el.indexFontSize != null) indexLabel.el.style.setProperty("--array-index-font-size", `${el.indexFontSize}px`);
+			indexLabel.ownerMesh = mesh;
+			if (planeText) {
+				indexLabel.forceHidden = true;
+				indexLabel.el.classList.add("array-plane-accessible");
+				clipArrayPlaneMirror(indexLabel.el);
+				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7"));
+			}
+			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
+			indexLabels.push(indexLabel);
+			indexLabel.cellAttachment = {
+				corners: arrayCellCorners(c, pitch),
+				edge: "bottom",
+				gap: 0
+			};
+		}
+		return label;
+	};
+	const labels = Array.from({ length: n }, (_, i) => makeCellLabel(i));
+	let titleLabel;
+	const titleCentre = () => centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
+	const titleWidth = Math.max(1, (el.label?.length ?? 0) * .38);
+	const titlePosition = () => {
+		const at = el.labelPosition ?? titleCentre().map((value, i) => value + (el.labelOffset ?? [
+			0,
+			.88,
+			0
+		])[i]);
+		return [
+			Number(at[0]) + (planeText && el.align === "left" ? titleWidth / 2 : planeText && el.align === "right" ? -titleWidth / 2 : 0),
+			Number(at[1]),
+			Number(at[2]) + .14
+		];
+	};
+	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.color ?? "#b5c1cf") : null;
+	const emptyPlane = planeText ? addTextPlane(.7, .68, "#8793a6") : null;
+	if (el.label) {
+		titleLabel = addLabel3D("", titlePosition(), "#b5c1cf", {
+			align: el.align,
+			cssClass: `label-3d ${el.cssClass ?? ""}`
+		});
+		if (planeText) {
+			titleLabel.forceHidden = true;
+			titleLabel.el.classList.add("array-plane-accessible");
+			clipArrayPlaneMirror(titleLabel.el);
+		}
+		titleLabel.el.textContent = el.label;
+		titleLabel.snapToProjection = true;
+		titleLabel.ownerMesh = mesh;
+	}
+	const updateTitle = () => {
+		if (titleLabel) titleLabel.dataPos = titlePosition();
+		if (titlePlane) titlePlane.set(el.label, titlePosition());
+		if (emptyPlane) {
+			emptyPlane.mesh.visible = n === 0;
+			emptyPlane.set("∅", [
+				origin[0],
+				origin[1],
+				origin[2] + .14
+			]);
+		}
+	};
+	updateTitle();
+	const animState = { stopped: false };
+	const owner = {
+		group: "array-markers:" + arrayMarkerGroup++,
+		animState,
+		position: (index) => arrayIndexPosition(index, n, origin, pitch, el.arrayLayout),
+		corners: (index) => arrayCellCorners(centre(index), pitch)
+	};
+	const markers = (el.markers ?? []).map((marker) => renderStepMarker({
+		...marker,
+		type: "step_marker"
+	}, _view, owner));
+	const valueFn = el.valueExpr ? compileExpr(el.valueExpr) : null;
+	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const previous = [];
+	function resize(next) {
+		if (next === n) return;
+		while (labels.length > next) {
+			removeTextPlane(cellTextPlanes.pop());
+			removeTextPlane(indexTextPlanes.pop());
+			for (const label of [labels.pop(), indexLabels.pop()]) {
+				if (!label) continue;
+				label.el.remove();
+				const index = state.labels.indexOf(label);
+				if (index >= 0) state.labels.splice(index, 1);
+			}
+		}
+		while (labels.length < next) labels.push(makeCellLabel(labels.length));
+		n = next;
+		positions = new Float32Array(n * vertices * 3);
+		colors = new Float32Array(n * vertices * 3);
+		for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
+			const c = centre(i);
+			positions.set(dataToWorld([
+				c[0] + source.getX(v) * pitch * .78,
+				c[1] + source.getY(v) * .68,
+				c[2] + source.getZ(v) * .22
+			]), (i * vertices + v) * 3);
+		}
+		const replacement = new THREE.BufferGeometry();
+		replacement.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+		colorAttribute = new THREE.BufferAttribute(colors, 3);
+		replacement.setAttribute("color", colorAttribute);
+		mesh.geometry.dispose();
+		mesh.geometry = replacement;
+		previous.length = 0;
+		updateTitle();
+	}
+	const entry = {
+		animState,
+		exprStrings: [
+			el.lengthExpr,
+			el.valueExpr,
+			el.highlightExpr,
+			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
+		].filter((v) => !!v),
+		_rebuildFn: () => {
+			if (animState.stopped || animState.hiddenByRemove) return;
+			const next = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : n;
+			const cells = Array.from({ length: next }, (_, i) => {
+				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType);
+				return {
+					cell,
+					highlighted: highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
+						idx: i,
+						value: cell.value
+					} }) : false
+				};
+			});
+			const transition = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
+				id,
+				s.value,
+				s.values
+			]));
+			const delta = changes.update(cells.map(({ cell }) => JSON.stringify([cell.kind, cell.value])), transition);
+			if (delta) {
+				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
+				illuminate([...illuminated], delta.removed);
+			}
+			resize(next);
+			updateTitle();
+			decoration?.resize(next);
+			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
+			let dirty = false;
+			for (let i = 0; i < n; i++) {
+				const { cell, highlighted } = cells[i];
+				const lit = illuminated.has(i);
+				const key = JSON.stringify([
+					cell.kind,
+					cell.value,
+					highlighted,
+					lit
+				]);
+				if (previous[i] === key) continue;
+				previous[i] = key;
+				dirty = true;
+				const label = labels[i];
+				label.el.textContent = cell.text;
+				label.el.title = `[${i}] ${cell.kind}: ${cell.text}`;
+				label.el.setAttribute("aria-label", label.el.title);
+				label.boxW = null;
+				label.boxH = null;
+				if (planeText) {
+					const c = centre(i);
+					cellTextPlanes[i].set(cell.text, [
+						c[0],
+						c[1],
+						c[2] + .14
+					]);
+					indexTextPlanes[i]?.set(String(i), [
+						c[0],
+						c[1] - .58,
+						c[2] + .14
+					]);
+				}
+				const rgb = parseColor(highlighted ? "#f1cc59" : el.color ?? PALETTE[cell.kind]);
+				if (lit) for (let j = 0; j < 3; j++) rgb[j] = rgb[j] + (1 - rgb[j]) * .35;
+				for (let v = 0; v < vertices; v++) {
+					const shade = normal.getZ(v) > 0 ? 1 : normal.getY(v) > 0 ? .78 : .56;
+					const k = (i * vertices + v) * 3;
+					colors[k] = rgb[0] * shade;
+					colors[k + 1] = rgb[1] * shade;
+					colors[k + 2] = rgb[2] * shade;
+				}
+			}
+			if (dirty) colorAttribute.needsUpdate = true;
+		}
+	};
+	try {
+		entry._rebuildFn?.();
+	} catch (error) {
+		console.warn("array:", error);
+	}
+	material.addEventListener("dispose", () => {
+		unit.dispose();
+		for (const layer of [
+			...cellTextPlanes,
+			...indexTextPlanes,
+			titlePlane,
+			emptyPlane
+		]) layer?.dispose();
+	});
+	if (entry.exprStrings?.length) registerAnimExpr(entry);
+	return {
+		_animState: animState,
+		_animExprEntry: entry,
+		type: el.type
+	};
+}
+//#endregion
+//#region src/objects/stack-layout.ts
+/** A fixed base and an open container that grows with its bottom-to-top cells. */
+function stackBounds(length, origin, pitch) {
+	const [x, y, z] = origin;
+	return {
+		left: x - pitch * .39 - .12,
+		right: x + pitch * .39 + .12,
+		bottom: y - .5,
+		top: y + Math.max(0, length - 1) * .78 + .55,
+		back: z - .2,
+		front: z + .7
+	};
+}
+//#endregion
+//#region src/objects/stack.ts
+/** One state-bound stack owner; its cells reuse the array renderer. */
+function renderStack(el, view) {
+	if (el.shape && el.shape.length !== 1) throw new Error("A stack needs a one-dimensional shape.");
+	const lengthExpr = el.lengthExpr ?? String(el.shape?.[0] ?? el.values?.length ?? 0);
+	return renderArray({
+		...el,
+		arrayLayout: "vertical",
+		lengthExpr,
+		showIndices: el.showIndices ?? false,
+		label: void 0,
+		markers: [...el.markers ?? [], ...el.showTop === false ? [] : [{
+			type: "step_marker",
+			indexName: "top slot",
+			indexExpr: `(${lengthExpr}) - 1`,
+			color: "#f1c65b"
+		}]]
+	}, view, (initial, origin, pitch, owner) => {
+		const color = el.containerColor ?? "#77bfae";
+		const makeMesh = (opacity) => {
+			const material = new THREE.MeshBasicMaterial({
+				color,
+				transparent: true,
+				opacity,
+				side: THREE.DoubleSide,
+				depthWrite: false
+			});
+			const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+			mesh.userData.ignorePlaneOpacity = true;
+			mesh.userData.targetOpacity = opacity;
+			state.three.scene.add(mesh);
+			state.planeMeshes.push(mesh);
+			return mesh;
+		};
+		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7);
+		const title = addLabel3D(el.label ?? "stack", [
+			origin[0],
+			origin[1] - 1.5,
+			origin[2]
+		], "#b5c1cf");
+		title.ownerMesh = owner;
+		title.snapToProjection = true;
+		const empty = addLabel3D(el.emptyText ?? "empty", origin, "#8ca9a0", { cssClass: "label-3d array-cell-label" });
+		empty.ownerMesh = owner;
+		empty.snapToProjection = true;
+		empty.el.setAttribute("aria-label", "Empty stack");
+		let previous = -1;
+		const replace = (mesh, quads) => {
+			const positions = [];
+			for (const q of quads) for (const i of [
+				0,
+				1,
+				2,
+				0,
+				2,
+				3
+			]) positions.push(...dataToWorld(q[i]));
+			const geometry = new THREE.BufferGeometry();
+			geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+			mesh.geometry.dispose();
+			mesh.geometry = geometry;
+		};
+		const resize = (length) => {
+			if (length === previous) return;
+			previous = length;
+			const b = stackBounds(length, origin, pitch), t = .035, z = b.back;
+			replace(back, [[
+				[
+					b.left,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.top,
+					z
+				],
+				[
+					b.left,
+					b.top,
+					z
+				]
+			]]);
+			replace(base, [[
+				[
+					b.left,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.bottom,
+					z
+				],
+				[
+					b.right,
+					b.bottom,
+					b.front
+				],
+				[
+					b.left,
+					b.bottom,
+					b.front
+				]
+			]]);
+			const rect = (left, bottom, right, top) => [
+				[
+					left,
+					bottom,
+					z + .005
+				],
+				[
+					right,
+					bottom,
+					z + .005
+				],
+				[
+					right,
+					top,
+					z + .005
+				],
+				[
+					left,
+					top,
+					z + .005
+				]
+			];
+			replace(outline, [
+				rect(b.left, b.bottom, b.left + t, b.top),
+				rect(b.right - t, b.bottom, b.right, b.top),
+				rect(b.left, b.bottom, b.right, b.bottom + t)
+			]);
+			empty.forceHidden = length !== 0;
+			empty.el.style.display = length === 0 ? "" : "none";
+		};
+		resize(initial);
+		return { resize };
+	});
+}
+//#endregion
+//#region src/algorithm/state.ts
+function equal(a, b) {
+	if (a === b) return true;
+	if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
+	const x = a, y = b;
+	return Object.keys(x).length === Object.keys(y).length && Object.keys(x).every((k) => Object.hasOwn(y, k) && equal(x[k], y[k]));
+}
+function compare(a, b) {
+	const out = {};
+	for (const id of /* @__PURE__ */ new Set([...Object.keys(a), ...Object.keys(b)])) if (!equal(a[id], b[id])) out[id] = {
+		before: a[id] ?? null,
+		after: b[id] ?? null
+	};
+	return out;
+}
+function locations(s) {
+	return Object.fromEntries(Object.entries(s.arrays).flatMap(([array, ids]) => ids.map((id, index) => [id, {
+		array,
+		index
+	}])));
+}
+function references(s) {
+	return Object.fromEntries(Object.entries(s.variables).flatMap(([name, variable]) => {
+		if (!variable.reference) return [];
+		const array = variable.reference.array, index = variable.value;
+		return [[name, {
+			array,
+			index,
+			entity: s.arrays[array]?.[index] ?? null
+		}]];
+	}));
+}
+/** Identity, never value or position, establishes correspondence between states. */
+function compareStates(before, after) {
+	return {
+		entities: compare(Object.fromEntries(Object.entries(before.entities).map(([id, e]) => [id, e.value])), Object.fromEntries(Object.entries(after.entities).map(([id, e]) => [id, e.value]))),
+		moves: compare(locations(before), locations(after)),
+		variables: compare(before.variables, after.variables),
+		references: compare(references(before), references(after)),
+		relations: compare(Object.fromEntries(before.relations.map((r) => [r.id, r])), Object.fromEntries(after.relations.map((r) => [r.id, r]))),
+		execution: equal(before.execution, after.execution) ? null : {
+			before: before.execution,
+			after: after.execution
+		}
+	};
+}
+/** Cross-field integrity checks supplement the authoring schema. */
+function validateSnapshot(s) {
+	const seen = /* @__PURE__ */ new Set();
+	for (const ids of Object.values(s.arrays)) for (const id of ids) {
+		if (!s.entities[id] || seen.has(id)) throw new Error(`Invalid or repeated entity: ${id}`);
+		seen.add(id);
+	}
+	for (const [name, v] of Object.entries(s.variables)) {
+		if (!Number.isFinite(v.value)) throw new Error(`Non-finite variable: ${name}`);
+		if (v.reference && (!Number.isInteger(v.value) || !s.arrays[v.reference.array]?.[v.value])) throw new Error(`Invalid reference: ${name}`);
+	}
+	const relations = /* @__PURE__ */ new Set();
+	for (const r of s.relations) {
+		if (relations.has(r.id) || !s.entities[r.from] || !s.entities[r.to]) throw new Error(`Invalid relation: ${r.id}`);
+		relations.add(r.id);
+	}
+	for (const id of s.execution.operands) if (!s.entities[id]) throw new Error(`Invalid operand: ${id}`);
+}
+function snapshotIndex(value, count) {
+	return Math.max(0, Math.min(count - 1, Number.isFinite(value) ? Math.round(value) : 0));
+}
+/** Position interpolation is presentation-only; the destination is exact at t=1. */
+function interpolate(from, to, t) {
+	const u = Math.max(0, Math.min(1, t));
+	const eased = u * u * (3 - 2 * u);
+	return [
+		0,
+		1,
+		2
+	].map((i) => (from[i] ?? 0) + ((to[i] ?? 0) - (from[i] ?? 0)) * eased);
+}
+/** Deterministic execution: record full states, including comparison-only states. */
+function heapInsertionSnapshots(values, key, array = "heap") {
+	if (!values.length || values.length > 15 || ![...values, key].every(Number.isFinite)) throw new Error("Use 1–15 finite starting values.");
+	if (values.some((v, i) => i > 0 && v < values[Math.floor((i - 1) / 2)])) throw new Error("Starting array is not a min-heap: each parent must be ≤ its children. Edit the values to restore this rule.");
+	const ids = values.map((_, i) => `item-${i}`), entities = Object.fromEntries(values.map((value, i) => [`item-${i}`, { value }]));
+	const snapshots = [];
+	const record = (phase, i, p, operands = []) => {
+		const variables = {
+			key: { value: key },
+			n: { value: ids.length }
+		};
+		if (i !== null) variables.i = {
+			value: i,
+			reference: { array }
+		};
+		if (p !== null) variables.p = {
+			value: p,
+			reference: { array }
+		};
+		snapshots.push(structuredClone({
+			entities,
+			arrays: { [array]: ids },
+			variables,
+			relations: ids.slice(1).map((id, k) => ({
+				id: `parent-of-${id}`,
+				from: ids[Math.floor(k / 2)],
+				to: id,
+				kind: "parent"
+			})),
+			execution: {
+				phase,
+				operands
+			}
+		}));
+	};
+	record(`Ready · insert ${key}`, null, null);
+	ids.push("inserted");
+	entities.inserted = { value: key };
+	let i = ids.length - 1;
+	record(`Append ${key} · next free slot ${i}`, i, Math.floor((i - 1) / 2));
+	while (i > 0) {
+		const p = Math.floor((i - 1) / 2), child = ids[i], parent = ids[p];
+		const parentValue = entities[parent].value;
+		record(`Compare · ${key} < ${parentValue} ? ${key < parentValue ? "yes" : "no"}`, i, p, [child, parent]);
+		if (key >= parentValue) break;
+		[ids[i], ids[p]] = [parent, child];
+		i = p;
+		record(`Swap upward · ${key} moves to slot ${i}`, i, i > 0 ? Math.floor((i - 1) / 2) : null);
+	}
+	record(i === 0 ? "Done · root reached" : "Done · parent is already ≤ the new value", i, i > 0 ? Math.floor((i - 1) / 2) : null);
+	return snapshots;
+}
+//#endregion
+//#region src/objects/algorithm-structure.ts
+/** Two spatial projections of one semantic state. No execution rules live here. */
+var COLORS = [
+	5748968,
+	12225514,
+	5818787,
+	15703653,
+	15105456,
+	9748328,
+	15847256
+];
+function renderAlgorithmStructure(el, _view) {
+	const scene = state.three?.scene, canvas = state.renderer?.domElement;
+	if (!scene || !canvas) return null;
+	const array = el.arrayId ?? "heap", slider = el.stateSlider ?? "";
+	const animState = { stopped: false };
+	const meshes = [], labels = [], blocks = [];
+	const identityColors = /* @__PURE__ */ new Map();
+	let snapshots = [], current = null;
+	let changes = null, selected = "", hovered = "", inputSignature = "", index = -1, started = 0;
+	const scalar = (name, fallback) => name ? Number(state.sceneSliders[name]?.value ?? fallback) : fallback;
+	const label = (text, pos, fontSize = 15) => {
+		const l = addLabel3D("", pos, "#e8edf6");
+		l.el.textContent = text;
+		l.el.style.fontSize = `${fontSize}px`;
+		l.el.style.whiteSpace = "nowrap";
+		labels.push(l);
+		return l;
+	};
+	const caption = label("", [
+		0,
+		4.3,
+		0
+	], 17);
+	caption.el.style.whiteSpace = "normal";
+	caption.el.style.maxWidth = "380px";
+	const setText = (l, text) => {
+		if (l.el.textContent !== text) {
+			l.el.textContent = text;
+			l.boxW = null;
+			l.boxH = null;
+		}
+	};
+	label("BINARY TREE · parent → child", [
+		0,
+		3.65,
+		0
+	], 13);
+	label("ARRAY A · zero-based slots", [
+		-2.7,
+		-1.3,
+		0
+	], 13);
+	const feedback = label("Hover to link · click to pin", [
+		0,
+		-4.6,
+		0
+	], 13);
+	const makeMesh = (geometry, color) => {
+		const material = new THREE.MeshBasicMaterial({
+			color,
+			transparent: true,
+			opacity: 1
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.userData.ignorePlaneOpacity = true;
+		mesh.userData.targetOpacity = 1;
+		scene.add(mesh);
+		state.planeMeshes.push(mesh);
+		meshes.push(mesh);
+		return mesh;
+	};
+	const place = (mesh, pos) => mesh.position.set(...dataToWorld(pos));
+	const unit = () => Math.abs(dataToWorld([
+		1,
+		0,
+		0
+	])[0] - dataToWorld([
+		0,
+		0,
+		0
+	])[0]);
+	const layout = (slot, view) => {
+		if (view === "array") return [
+			-3.9 + slot * 1.3,
+			-2.05,
+			0
+		];
+		const level = Math.floor(Math.log2(slot + 1));
+		return [
+			((slot - (2 ** level - 1) + .5) / 2 ** level - .5) * 8,
+			2.7 - level * 1.55,
+			0
+		];
+	};
+	const listeners = new AbortController();
+	function paint() {
+		for (const b of blocks) {
+			const active = b.id === (hovered || selected);
+			const comparing = current?.execution.operands.includes(b.id);
+			const moved = !!changes?.moves[b.id] && performance.now() - started < 900;
+			b.mesh.material.color.setHex(active ? 16777215 : comparing ? 16767828 : moved ? 16759145 : identityColors.get(b.id) ?? COLORS[0]);
+			b.label.el.style.color = active ? "#ffffff" : "#111827";
+			b.label.el.style.background = active ? "#385c80" : "#ffffffdd";
+			b.label.el.style.borderRadius = "5px";
+			b.label.el.style.padding = "1px 5px";
+		}
+		const id = hovered || selected;
+		setText(feedback, id && current?.entities[id] ? `Same object: ${id} · value ${current.entities[id].value} · highlighted in both views` : "Hover to link · click to pin · click empty space to clear");
+	}
+	const ensureBlocks = (states) => {
+		for (const s of states) for (const id of Object.keys(s.entities)) {
+			if (identityColors.has(id)) continue;
+			identityColors.set(id, COLORS[identityColors.size % COLORS.length]);
+			for (const view of ["array", "tree"]) {
+				const geometry = new THREE.BoxGeometry(1, 1, 1);
+				const normals = geometry.getAttribute("normal"), shades = [];
+				for (let i = 0; i < normals.count; i++) {
+					const v = normals.getZ(i) > 0 ? 1 : normals.getY(i) > 0 ? .8 : .55;
+					shades.push(v, v, v);
+				}
+				geometry.setAttribute("color", new THREE.Float32BufferAttribute(shades, 3));
+				const mesh = makeMesh(geometry, identityColors.get(id));
+				mesh.material.vertexColors = true;
+				const l = label("", [
+					0,
+					0,
+					0
+				], 17);
+				l.el.style.pointerEvents = "auto";
+				l.el.style.cursor = "pointer";
+				l.el.addEventListener("pointerenter", () => {
+					hovered = id;
+					paint();
+				}, { signal: listeners.signal });
+				l.el.addEventListener("pointerleave", () => {
+					hovered = "";
+					paint();
+				}, { signal: listeners.signal });
+				l.el.addEventListener("click", () => {
+					selected = selected === id ? "" : id;
+					paint();
+				}, { signal: listeners.signal });
+				blocks.push({
+					mesh,
+					label: l,
+					position: [
+						0,
+						0,
+						0
+					],
+					from: [
+						0,
+						0,
+						0
+					],
+					to: [
+						0,
+						0,
+						0
+					],
+					id,
+					view
+				});
+			}
+		}
+	};
+	const edges = Array.from({ length: 15 }, () => makeMesh(new THREE.CylinderGeometry(1, 1, 1, 8), 6322326));
+	const arrows = Array.from({ length: 2 }, () => ({
+		shaft: makeMesh(new THREE.CylinderGeometry(1, 1, 1, 8), 8117469),
+		head: makeMesh(new THREE.ConeGeometry(1, 1, 10), 8117469),
+		label: label("", [
+			0,
+			0,
+			0
+		])
+	}));
+	const variableLabels = [label("", [
+		-1,
+		-3.95,
+		0
+	]), label("", [
+		1,
+		-3.95,
+		0
+	])];
+	const slots = Array.from({ length: 7 }, (_, i) => label(String(i), [
+		-3.9 + i * 1.3,
+		-2.75,
+		0
+	], 12));
+	function segment(mesh, a, b, radius) {
+		const start = new THREE.Vector3(...dataToWorld(a)), end = new THREE.Vector3(...dataToWorld(b));
+		const direction = end.clone().sub(start);
+		mesh.position.copy(start.add(end).multiplyScalar(.5));
+		mesh.scale.set(radius * unit(), direction.length(), radius * unit());
+		mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+	}
+	function selectSnapshot(next, now, reset) {
+		const after = snapshots[next];
+		if (!after) return;
+		const before = current ?? after;
+		changes = compareStates(before, after);
+		current = after;
+		index = next;
+		started = now;
+		for (const b of blocks) {
+			const slot = after.arrays[array]?.indexOf(b.id) ?? -1;
+			b.mesh.visible = slot >= 0;
+			b.label.forceHidden = slot < 0;
+			if (slot < 0) continue;
+			b.to = layout(slot, b.view);
+			b.from = reset ? b.to : before.entities[b.id] ? [...b.position] : [
+				b.to[0],
+				b.to[1] - .6,
+				b.to[2] + .8
+			];
+			b.label.el.textContent = String(after.entities[b.id]?.value ?? "");
+		}
+		caption.el.textContent = `${next} / ${snapshots.length - 1} · ${after.execution.phase}`;
+		caption.boxW = null;
+		canvas.dispatchEvent(new CustomEvent("algebench:algorithm-transition", {
+			bubbles: true,
+			detail: {
+				elementId: el.id,
+				before,
+				after,
+				changes
+			}
+		}));
+		paint();
+	}
+	function update(now) {
+		if (animState.stopped) return;
+		const input = el.heapInsertion;
+		const values = input ? state.sceneSliders[input.arraySlider]?.values : null;
+		const key = input ? scalar(input.keySlider, 5) : 5;
+		const signature = JSON.stringify([values, key]);
+		let reset = false;
+		if (signature !== inputSignature) {
+			inputSignature = signature;
+			try {
+				snapshots = input ? heapInsertionSnapshots(values ?? [
+					8,
+					12,
+					10,
+					20,
+					15,
+					18
+				], key, array) : el.algorithmStates ?? [];
+				snapshots.forEach(validateSnapshot);
+				if (!snapshots.length) throw new Error("No execution snapshots.");
+				if (snapshots.some((s) => (s.arrays[array]?.length ?? 0) > 7)) throw new Error("This playground supports up to seven visible cells.");
+				ensureBlocks(snapshots);
+				reset = true;
+				index = -1;
+				slots.forEach((l) => {
+					l.forceHidden = false;
+				});
+			} catch (error) {
+				snapshots = [];
+				current = null;
+				index = -1;
+				caption.el.textContent = String(error instanceof Error ? error.message : error);
+				caption.boxW = null;
+				for (const m of meshes) m.visible = false;
+				for (const l of labels) if (l !== caption) l.forceHidden = true;
+				return;
+			}
+			labels.forEach((l) => {
+				l.forceHidden = false;
+			});
+		}
+		if (!snapshots.length) return;
+		const next = snapshotIndex(scalar(slider, 0), snapshots.length);
+		if (next !== index) selectSnapshot(next, now, reset);
+		if (!current) return;
+		const seconds = scalar(el.motionSlider, .7);
+		const t = seconds > 0 ? Math.min(1, (now - started) / (seconds * 1e3)) : 1;
+		const depth = scalar(el.depthSlider, .35), u = unit();
+		for (const b of blocks) {
+			if (!b.mesh.visible) continue;
+			b.position = interpolate(b.from, b.to, t);
+			place(b.mesh, b.position);
+			b.mesh.scale.set(.86 * u, .68 * u, depth * u);
+			b.label.dataPos = [
+				b.position[0],
+				b.position[1],
+				b.position[2] + depth / 2 + .04
+			];
+		}
+		const tree = new Map(blocks.filter((b) => b.view === "tree" && b.mesh.visible).map((b) => [b.id, b.position]));
+		edges.forEach((edge, i) => {
+			const r = current?.relations[i], a = r ? tree.get(r.from) : null, b = r ? tree.get(r.to) : null;
+			edge.visible = !!a && !!b;
+			if (a && b) {
+				segment(edge, [
+					a[0],
+					a[1],
+					-.15
+				], [
+					b[0],
+					b[1],
+					-.15
+				], .026);
+				edge.material.color.setHex(r && changes?.relations[r.id] && t < 1 ? 16759908 : 6322326);
+			}
+		});
+		const refs = Object.entries(current.variables).filter(([, v]) => v.reference?.array === array);
+		arrows.forEach((arrow, j) => {
+			const ref = refs[j];
+			arrow.shaft.visible = arrow.head.visible = !!ref;
+			arrow.label.forceHidden = !ref;
+			if (!ref) return;
+			const [name, v] = ref, x = layout(v.value, "array")[0];
+			arrow.label.el.textContent = `${name} = ${v.value}`;
+			arrow.label.dataPos = [
+				x,
+				-3.35,
+				.25
+			];
+			segment(arrow.shaft, [
+				x,
+				-3.08,
+				.1
+			], [
+				x,
+				-2.55,
+				.1
+			], .018);
+			place(arrow.head, [
+				x,
+				-2.48,
+				.1
+			]);
+			arrow.head.scale.set(.08 * u, .15 * u, .08 * u);
+		});
+		const scalars = Object.entries(current.variables).filter(([, v]) => !v.reference);
+		variableLabels.forEach((l, i) => {
+			const item = scalars[i];
+			l.el.textContent = item ? `${item[0]} = ${item[1].value}` : "";
+		});
+		paint();
+	}
+	const raycaster = new THREE.Raycaster();
+	function pick(event) {
+		if (!state.camera || animState.stopped) return "";
+		const rect = canvas.getBoundingClientRect();
+		raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1), state.camera);
+		const hit = raycaster.intersectObjects(blocks.filter((b) => b.mesh.visible).map((b) => b.mesh), false)[0];
+		return hit ? blocks.find((b) => b.mesh === hit.object)?.id ?? "" : "";
+	}
+	canvas.addEventListener("pointermove", (e) => {
+		hovered = e.buttons ? "" : pick(e);
+		paint();
+	}, { signal: listeners.signal });
+	canvas.addEventListener("pointerleave", () => {
+		hovered = "";
+		paint();
+	}, { signal: listeners.signal });
+	let down = null;
+	canvas.addEventListener("pointerdown", (e) => {
+		down = [e.clientX, e.clientY];
+	}, { signal: listeners.signal });
+	canvas.addEventListener("pointerup", (e) => {
+		if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4) {
+			const id = pick(e);
+			selected = id === selected ? "" : id;
+			paint();
+		}
+		down = null;
+	}, { signal: listeners.signal });
+	meshes[0]?.material.addEventListener("dispose", () => listeners.abort());
+	state.activeAnimUpdaters.push({
+		animState,
+		updateFrame: update
+	});
+	update(performance.now());
+	return {
+		_animState: animState,
+		type: "algorithm_structure"
+	};
+}
+//#endregion
+//#region src/objects/skybox.ts
+var skyboxState = state;
+function clearWorldStarfield() {
+	if (skyboxState._starfieldAnimId) {
+		cancelAnimationFrame(skyboxState._starfieldAnimId);
+		skyboxState._starfieldAnimId = null;
+	}
+	if (!skyboxState.worldStarfield || !skyboxState.three || !skyboxState.three.scene) return;
+	skyboxState.three.scene.remove(skyboxState.worldStarfield);
+	if (skyboxState.worldStarfield.geometry) skyboxState.worldStarfield.geometry.dispose();
+	if (skyboxState.worldStarfield.material) skyboxState.worldStarfield.material.dispose();
+	skyboxState.worldStarfield = null;
+}
+function clearWorldSkybox() {
+	if (!skyboxState.three || !skyboxState.three.scene) return;
+	if (skyboxState.worldSkybox && skyboxState.worldSkybox.texture && typeof skyboxState.worldSkybox.texture.dispose === "function") skyboxState.worldSkybox.texture.dispose();
+	skyboxState.worldSkybox = null;
+	skyboxState.three.scene.background = null;
+}
+function _makeGradientSkyboxTexture(topHex, bottomHex, starCount = 0, starColor = "#e6efff", starMin = .5, starMax = 2) {
+	const canvas = document.createElement("canvas");
+	canvas.width = 2048;
+	canvas.height = 1024;
+	const ctx = canvas.getContext("2d");
+	const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+	grad.addColorStop(0, topHex || "#070b18");
+	grad.addColorStop(1, bottomHex || "#010205");
+	ctx.fillStyle = grad;
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	const n = Math.max(0, Math.floor(starCount || 0));
+	if (n > 0) {
+		ctx.fillStyle = starColor || "#e6efff";
+		for (let i = 0; i < n; i++) {
+			const x = Math.random() * canvas.width;
+			const y = Math.random() * canvas.height;
+			const r = (starMin || .5) + Math.random() * Math.max(.05, (starMax || 2) - (starMin || .5));
+			ctx.globalAlpha = .35 + Math.random() * .65;
+			ctx.beginPath();
+			ctx.arc(x, y, r, 0, Math.PI * 2);
+			ctx.fill();
+		}
+		ctx.globalAlpha = 1;
+	}
+	const tex = new THREE.CanvasTexture(canvas);
+	tex.mapping = THREE.EquirectangularReflectionMapping;
+	return tex;
+}
+function configureWorldStarfield(spec) {
+	clearWorldStarfield();
+	const cfg = spec && spec.starfield;
+	if (!cfg || cfg.enabled === false) return;
+	const currentRange = skyboxState.currentRange;
+	skyboxState.currentScale;
+	const spanX = Math.abs(currentRange[0][1] - currentRange[0][0]);
+	const spanY = Math.abs(currentRange[1][1] - currentRange[1][0]);
+	const spanZ = Math.abs(currentRange[2][1] - currentRange[2][0]);
+	const halfMaxSpan = Math.max(spanX, spanY, spanZ, 1) / 2;
+	const count = Math.max(50, Math.floor(cfg.count || 900));
+	const radiusMin = Number.isFinite(cfg.radiusMin) ? cfg.radiusMin : halfMaxSpan * 3;
+	const radiusMax = Number.isFinite(cfg.radiusMax) ? cfg.radiusMax : halfMaxSpan * 7;
+	const size = Number.isFinite(cfg.size) ? cfg.size : 2.1;
+	const opacity = Number.isFinite(cfg.opacity) ? cfg.opacity : .9;
+	const twinkle = Number.isFinite(cfg.twinkle) ? Math.max(0, Math.min(1, cfg.twinkle)) : .25;
+	const baseColor = new THREE.Color(cfg.color || "#d9e6ff");
+	const positions = new Float32Array(count * 3);
+	const colors = new Float32Array(count * 3);
+	const sizes = new Float32Array(count);
+	const phases = new Float32Array(count);
+	for (let i = 0; i < count; i++) {
+		const z = Math.random() * 2 - 1;
+		const theta = Math.random() * Math.PI * 2;
+		const rXY = Math.sqrt(Math.max(0, 1 - z * z));
+		const dirX = rXY * Math.cos(theta);
+		const dirY = rXY * Math.sin(theta);
+		const dirZ = z;
+		const u = Math.random();
+		const radius = radiusMin + (radiusMax - radiusMin) * Math.pow(u, .6);
+		const w = dataToWorld([
+			dirX * radius,
+			dirY * radius,
+			dirZ * radius
+		]);
+		const pi = i * 3;
+		positions[pi] = w[0];
+		positions[pi + 1] = w[1];
+		positions[pi + 2] = w[2];
+		const r = Math.random();
+		sizes[i] = r < .6 ? size * (.8 + Math.random() * .6) : r < .85 ? size * (1.5 + Math.random() * 1) : r < .95 ? size * (2.5 + Math.random() * 1.5) : size * (4 + Math.random() * 2);
+		phases[i] = Math.random() * Math.PI * 2;
+		const f = 1 - twinkle * Math.random();
+		colors[pi] = baseColor.r * f;
+		colors[pi + 1] = baseColor.g * f;
+		colors[pi + 2] = baseColor.b * f;
+	}
+	const geom = new THREE.BufferGeometry();
+	geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+	geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+	geom.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
+	geom.setAttribute("phase", new THREE.BufferAttribute(phases, 1));
+	const mat = new THREE.ShaderMaterial({
+		uniforms: {
+			uTime: { value: 0 },
+			uOpacity: { value: opacity },
+			uTwinkle: { value: twinkle }
+		},
+		vertexShader: `
+            attribute float size;
+            attribute float phase;
+            varying vec3 vColor;
+            varying float vPhase;
+            uniform float uTime;
+            uniform float uTwinkle;
+            void main() {
+                vColor = color;
+                vPhase = phase;
+                float flicker = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * (1.0 + fract(vPhase) * 3.0) + vPhase));
+                gl_PointSize = size * max(flicker, 0.1);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+		fragmentShader: `
+            uniform float uOpacity;
+            varying vec3 vColor;
+            varying float vPhase;
+            uniform float uTime;
+            uniform float uTwinkle;
+            void main() {
+                float d = length(gl_PointCoord - 0.5) * 2.0;
+                float flicker = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * (1.0 + fract(vPhase) * 3.0) + vPhase));
+                float alpha = smoothstep(1.0, 0.3, d) * uOpacity * max(flicker, 0.1);
+                gl_FragColor = vec4(vColor, alpha);
+            }
+        `,
+		transparent: true,
+		depthWrite: false,
+		vertexColors: true
+	});
+	skyboxState.worldStarfield = new THREE.Points(geom, mat);
+	skyboxState.worldStarfield.renderOrder = -1e3;
+	skyboxState.worldStarfield.frustumCulled = false;
+	skyboxState.three.scene.add(skyboxState.worldStarfield);
+	skyboxState._starfieldAnimId = null;
+	if (twinkle > 0) {
+		const thisStarfield = skyboxState.worldStarfield;
+		const startTime = performance.now();
+		function animateStarfield() {
+			if (!skyboxState.worldStarfield || skyboxState.worldStarfield !== thisStarfield) return;
+			mat.uniforms.uTime.value = (performance.now() - startTime) / 1e3;
+			skyboxState._starfieldAnimId = requestAnimationFrame(animateStarfield);
+		}
+		animateStarfield();
+	}
+}
+function renderSkybox(el) {
+	if (!skyboxState.three || !skyboxState.three.scene) return null;
+	clearWorldSkybox();
+	const style = (el.style || el.mode || "solid").toLowerCase();
+	if (style === "none" || style === "off") return {
+		type: "skybox",
+		style
+	};
+	if (style === "solid" || style === "color") {
+		skyboxState.three.scene.background = new THREE.Color(el.color || "#02040b");
+		return {
+			type: "skybox",
+			style
+		};
+	}
+	if (style === "gradient") {
+		const tex = _makeGradientSkyboxTexture(el.topColor || el.top, el.bottomColor || el.bottom, el.starCount || 0, el.starColor || "#e6efff", el.starMinSize || .5, el.starMaxSize || 2);
+		skyboxState.three.scene.background = tex;
+		skyboxState.worldSkybox = { texture: tex };
+		return {
+			type: "skybox",
+			style
+		};
+	}
+	if (style === "cubemap" && Array.isArray(el.urls) && el.urls.length === 6) try {
+		const tex = new THREE.CubeTextureLoader().load(el.urls);
+		skyboxState.three.scene.background = tex;
+		skyboxState.worldSkybox = { texture: tex };
+		return {
+			type: "skybox",
+			style
+		};
+	} catch (err) {
+		console.warn("skybox cubemap load failed:", err);
+		skyboxState.three.scene.background = new THREE.Color("#02040b");
+		return {
+			type: "skybox",
+			style: "fallback-solid"
+		};
+	}
+	console.warn("Unknown skybox style:", style);
+	skyboxState.three.scene.background = new THREE.Color(el.color || "#02040b");
+	return {
+		type: "skybox",
+		style: "fallback-solid"
+	};
+}
+//#endregion
 //#region src/objects/axis.ts
 var axisState = state;
 function renderAxis(el, view) {
@@ -9388,7 +11913,7 @@ function renderAxis(el, view) {
 * `[[xMin,xMax],[yMin,yMax],[zMin,zMax]]`) and the MathBox axis ids that
 * `area` wants for the same pair.
 */
-var PLANE_AXES$2 = {
+var PLANE_AXES$1 = {
 	xy: {
 		scene: [0, 1],
 		mathbox: [1, 2]
@@ -9449,7 +11974,7 @@ function toDivisions(v) {
 * positions along two axes of different extent.
 */
 function resolveGridArea(el, sceneRange) {
-	const spec = PLANE_AXES$2[el.plane || "xy"] || PLANE_AXES$2["xy"];
+	const spec = PLANE_AXES$1[el.plane || "xy"] || PLANE_AXES$1["xy"];
 	/** The scene's own extent for the i-th axis of this plane. */
 	const inherited = (i) => toInterval(sceneRange && sceneRange[spec.scene[i]]) || [-5, 5];
 	const raw = el.range;
@@ -11049,153 +13574,6 @@ function renderAnimatedVector(el, view) {
 		_animExprEntry: animExprEntry,
 		_arrowOwner: ownerToken
 	};
-}
-//#endregion
-//#region src/colormaps.ts
-/**
-* Colormaps — turn a scalar in [0,1] into an RGB triple.
-*
-* One implementation serves two callers that would otherwise drift: `polygon`'s
-* static `gradient.stops`, and the per-cell colour of a `tensor`. Keeping them
-* on the same interpolator is the point — a two-stop colormap and a two-stop
-* gradient must produce the same colour, or an author who reaches for one after
-* the other gets a silent mismatch.
-*
-* Colours are normalized RGB (0-1), which is what `parseColor` returns and what
-* `THREE.Color.setRGB` wants, so nothing converts on the way through.
-*/
-/**
-* Build a ramp from stops.
-*
-* Stops are sorted by `t`, so an author may list them in any order. Values
-* outside the stop range **clamp** to the terminal stops rather than
-* extrapolating — extrapolating an RGB ramp produces out-of-gamut colours that
-* three.js silently saturates, which reads as "the heatmap has a flat top".
-*/
-function buildStopsFn(stops) {
-	const parsed = stops.slice().sort((a, b) => a.t - b.t).map((s) => ({
-		t: s.t,
-		c: parseColor(s.color)
-	}));
-	if (parsed.length === 1) {
-		const only = parsed[0].c;
-		return () => only.slice();
-	}
-	return (u) => {
-		if (!(u > parsed[0].t)) return parsed[0].c.slice();
-		const last = parsed[parsed.length - 1];
-		if (u >= last.t) return last.c.slice();
-		for (let i = 0; i < parsed.length - 1; i++) {
-			const hi = parsed[i + 1];
-			if (u <= hi.t) {
-				const lo = parsed[i];
-				const span = hi.t - lo.t;
-				const f = span === 0 ? 0 : (u - lo.t) / span;
-				return [
-					lo.c[0] + f * (hi.c[0] - lo.c[0]),
-					lo.c[1] + f * (hi.c[1] - lo.c[1]),
-					lo.c[2] + f * (hi.c[2] - lo.c[2])
-				];
-			}
-		}
-		return last.c.slice();
-	};
-}
-/**
-* Named ramps, as 9 evenly-spaced stops each.
-*
-* `viridis` and `magma` are perceptually uniform and stay legible in both
-* themes — the default choice for a non-negative quantity. `blueRed` is
-* diverging and is correct **only** for signed data; using it for something
-* non-negative (an attention weight, a probability) implies a sign that isn't
-* there.
-*/
-var NAMED_STOPS = {
-	viridis: [
-		"#440154",
-		"#472d7b",
-		"#3b528b",
-		"#2c728e",
-		"#21918c",
-		"#28ae80",
-		"#5ec962",
-		"#addc30",
-		"#fde725"
-	],
-	magma: [
-		"#000004",
-		"#1c1044",
-		"#4f127b",
-		"#812581",
-		"#b5367a",
-		"#e55964",
-		"#fb8761",
-		"#fec287",
-		"#fcfdbf"
-	],
-	blueRed: [
-		"#2166ac",
-		"#4393c3",
-		"#92c5de",
-		"#d1e5f0",
-		"#f7f7f7",
-		"#fddbc7",
-		"#f4a582",
-		"#d6604d",
-		"#b2182b"
-	]
-};
-var DEFAULT_MAP = "viridis";
-function namedMap(name) {
-	const hexes = NAMED_STOPS[name] || NAMED_STOPS[DEFAULT_MAP];
-	return buildStopsFn(hexes.map((color, i) => ({
-		t: i / (hexes.length - 1),
-		color
-	})));
-}
-/**
-* Resolve a `colorMap` value into a ramp.
-*
-* Accepts a name, a `{stops:[…]}` object, or nothing (→ the default). An
-* unknown name falls back rather than throwing: a misspelled colormap should
-* cost the author the palette they wanted, not the whole scene.
-*/
-function buildColorMap(spec) {
-	if (spec && typeof spec === "object") {
-		const stops = spec.stops;
-		if (Array.isArray(stops) && stops.length > 0) return buildStopsFn(stops);
-	}
-	if (typeof spec === "string" && spec) {
-		if (!NAMED_STOPS[spec]) console.warn(`Unknown colorMap "${spec}" — falling back to ${DEFAULT_MAP}`);
-		return namedMap(spec);
-	}
-	return namedMap(DEFAULT_MAP);
-}
-/**
-* Normalize a raw cell value onto [0,1] over `domain`, or `null` when it
-* is not a usable number.
-*
-* Returning `null` rather than 0 for a bad value matters: 0 is a legitimate
-* colour at the cold end of the ramp, so a caller that cannot distinguish
-* "black because the value is low" from "black because the expression returned
-* a matrix" has no way to keep the previous frame's colour instead.
-*/
-function normalizeColorValue(raw, domain) {
-	const v = Number(raw);
-	if (!Number.isFinite(v)) return null;
-	let lo = 0;
-	let hi = 1;
-	if (Array.isArray(domain) && domain.length >= 2) {
-		const a = Number(domain[0]);
-		const b = Number(domain[1]);
-		if (Number.isFinite(a) && Number.isFinite(b)) {
-			lo = a;
-			hi = b;
-		}
-	}
-	if (hi === lo) return 0;
-	const u = (v - lo) / (hi - lo);
-	return u < 0 ? 0 : u > 1 ? 1 : u;
 }
 //#endregion
 //#region src/objects/polygon.ts
@@ -12834,1285 +15212,6 @@ function renderAnimatedCurve(el, view) {
 	};
 }
 //#endregion
-//#region src/latex-raster.ts
-/**
-* Real KaTeX on a canvas.
-*
-* On-plane text (tensor cells and axis labels, chart paper) is painted into
-* a canvas texture, and a canvas cannot host KaTeX's HTML. Instead of
-* flattening the LaTeX to a string of glyphs -- which loses fractions,
-* radicals, sub/superscripts, everything KaTeX lays out -- this module lets
-* KaTeX do the layout in a hidden DOM host and then *replays* that layout
-* onto the canvas: every text run is drawn with `fillText` in the font and
-* at the baseline the browser laid it out with, every rule (fraction bars,
-* overlines) is a `fillRect` from its border, and every stretchy glyph KaTeX
-* draws as inline SVG (radicals, wide arrows) is a `Path2D`.
-*
-* Fonts come from the page's own KaTeX stylesheet through `document.fonts`,
-* so nothing is fetched or inlined, and no `<foreignObject>` image is
-* involved -- WebKit taints a canvas drawn from one, which would break the
-* WebGL upload. The first use of a KaTeX face starts its load; rasters made
-* while a face is still loading are laid out in the fallback font, so the
-* cache is dropped and `onLatexFontsReady` listeners are told to repaint
-* once the load settles.
-*/
-var SUPERSAMPLE = 2;
-var FAMILY = "system-ui, sans-serif";
-var CACHE_MAX = 512;
-var cache = /* @__PURE__ */ new Map();
-/** Layout-only cache: measuring a label must not cost a canvas. */
-var metrics = /* @__PURE__ */ new Map();
-var listeners = /* @__PURE__ */ new Set();
-var host = null;
-var probe = null;
-var fontsHooked = false;
-function hasDom() {
-	return typeof document !== "undefined" && typeof document.createElement === "function";
-}
-function getHost() {
-	if (host && host.isConnected) return host;
-	host = document.createElement("div");
-	host.setAttribute("aria-hidden", "true");
-	host.style.cssText = "position:absolute;left:-100000px;top:0;white-space:nowrap;pointer-events:none;line-height:normal";
-	document.body.appendChild(host);
-	probe = document.createElement("span");
-	probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
-	return host;
-}
-/** When a KaTeX face is still loading, drop the rasters laid out without it and tell listeners to repaint. */
-function watchFonts() {
-	if (fontsHooked || typeof document === "undefined" || !document.fonts) return;
-	fontsHooked = true;
-	document.fonts.ready.then(() => {
-		fontsHooked = false;
-		cache.clear();
-		metrics.clear();
-		for (const cb of Array.from(listeners)) try {
-			cb();
-		} catch (_e) {}
-	}).catch(() => {
-		fontsHooked = false;
-	});
-}
-/**
-* Subscribe to "the KaTeX fonts finished loading, repaint". Returns the
-* unsubscribe; call it when the element that painted is torn down.
-*/
-function onLatexFontsReady(cb) {
-	listeners.add(cb);
-	return () => {
-		listeners.delete(cb);
-	};
-}
-function remember(key, r) {
-	if (cache.size >= CACHE_MAX) {
-		const oldest = cache.keys().next().value;
-		if (oldest !== void 0) cache.delete(oldest);
-	}
-	cache.set(key, r);
-	return r;
-}
-/**
-* Lay `src` out with KaTeX (markdown-lite plus `$...$`, the way every label
-* in the app is written) at `fontPx` in `color`, and replay it onto a
-* canvas. Cached by (size, colour, source).
-*/
-function rasterLatex(src, fontPx, color) {
-	const size = Math.max(1, Math.round(fontPx));
-	const key = `${size}${color}${src}`;
-	const hit = cache.get(key);
-	if (hit) return hit;
-	if (!hasDom() || !src) return remember(key, {
-		canvas: null,
-		w: src.length * size * .55,
-		h: size * 1.2
-	});
-	const h = getHost();
-	h.style.font = `${size}px ${FAMILY}`;
-	h.style.color = color;
-	h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
-	for (const m of h.querySelectorAll(".katex-mathml")) m.remove();
-	const box = h.getBoundingClientRect();
-	const w = Math.ceil(box.width), ht = Math.ceil(box.height);
-	if (w < 1 || ht < 1) {
-		h.innerHTML = "";
-		return remember(key, {
-			canvas: null,
-			w: 0,
-			h: 0
-		});
-	}
-	const canvas = document.createElement("canvas");
-	canvas.width = w * SUPERSAMPLE;
-	canvas.height = ht * SUPERSAMPLE;
-	const ctx = canvas.getContext("2d");
-	if (!ctx) {
-		h.innerHTML = "";
-		return remember(key, {
-			canvas: null,
-			w,
-			h: ht
-		});
-	}
-	ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
-	ctx.textBaseline = "alphabetic";
-	ctx.textAlign = "left";
-	let pending = false;
-	const fonts = document.fonts;
-	const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
-	let node;
-	const runs = [];
-	while (node = walker.nextNode()) if ((node.textContent || "").trim()) runs.push(node);
-	for (const t of runs) {
-		const el = t.parentElement;
-		if (!el || !probe) continue;
-		const cs = getComputedStyle(el);
-		const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-		el.insertBefore(probe, t);
-		const baseline = probe.getBoundingClientRect().top - box.top;
-		probe.remove();
-		const range = document.createRange();
-		range.selectNodeContents(t);
-		const rr = range.getBoundingClientRect();
-		ctx.font = font;
-		ctx.fillStyle = cs.color;
-		ctx.fillText(t.textContent || "", rr.left - box.left, baseline);
-		if (fonts && !pending) try {
-			if (!fonts.check(font, t.textContent || "")) pending = true;
-		} catch (_e) {}
-	}
-	for (const el of Array.from(h.querySelectorAll("*"))) {
-		const cs = getComputedStyle(el);
-		const bw = parseFloat(cs.borderBottomWidth) || 0;
-		if (bw > 0 && cs.borderBottomStyle !== "none") {
-			const r = el.getBoundingClientRect();
-			ctx.fillStyle = cs.borderBottomColor;
-			ctx.fillRect(r.left - box.left, r.bottom - box.top - bw, r.width, bw);
-		}
-		const bt = parseFloat(cs.borderTopWidth) || 0;
-		if (bt > 0 && cs.borderTopStyle !== "none") {
-			const r = el.getBoundingClientRect();
-			ctx.fillStyle = cs.borderTopColor;
-			ctx.fillRect(r.left - box.left, r.top - box.top, r.width, bt);
-		}
-	}
-	for (const svg of Array.from(h.querySelectorAll("svg"))) {
-		const r = svg.getBoundingClientRect();
-		const vb = svg.viewBox.baseVal;
-		if (!vb || vb.width <= 0 || vb.height <= 0 || r.width <= 0 || r.height <= 0) continue;
-		const color = getComputedStyle(svg).color;
-		const par = (svg.getAttribute("preserveAspectRatio") || "xMidYMid meet").trim().split(/\s+/);
-		const align = par[0] || "xMidYMid";
-		let sx = r.width / vb.width, sy = r.height / vb.height;
-		if (align !== "none") sx = sy = par[1] === "slice" ? Math.max(sx, sy) : Math.min(sx, sy);
-		const slack = (extent, span, key) => key.endsWith("Mid") ? (extent - span) / 2 : key.endsWith("Max") ? extent - span : 0;
-		const ox = align === "none" ? 0 : slack(r.width, vb.width * sx, align.slice(0, 4));
-		const oy = align === "none" ? 0 : slack(r.height, vb.height * sy, align.slice(4));
-		ctx.save();
-		ctx.beginPath();
-		ctx.rect(r.left - box.left, r.top - box.top, r.width, r.height);
-		ctx.clip();
-		ctx.translate(r.left - box.left + ox, r.top - box.top + oy);
-		ctx.scale(sx, sy);
-		ctx.translate(-vb.x, -vb.y);
-		ctx.fillStyle = color;
-		for (const p of Array.from(svg.querySelectorAll("path"))) {
-			const d = p.getAttribute("d");
-			if (d) ctx.fill(new Path2D(d));
-		}
-		ctx.restore();
-	}
-	h.innerHTML = "";
-	if (fonts && (pending || fonts.status === "loading")) watchFonts();
-	return remember(key, {
-		canvas,
-		w,
-		h: ht
-	});
-}
-/** Width and height (CSS px) of `src` laid out at 100px; the ratio is what fitting needs. */
-function measureLatex(src) {
-	const hit = metrics.get(src);
-	if (hit) return hit;
-	let m;
-	if (!hasDom() || !src) m = {
-		w: src.length * 55,
-		h: 120
-	};
-	else {
-		const h = getHost();
-		h.style.font = `100px ${FAMILY}`;
-		h.innerHTML = renderKaTeX$1(src, false, { glossary: false });
-		for (const el of h.querySelectorAll(".katex-mathml")) el.remove();
-		const box = h.getBoundingClientRect();
-		h.innerHTML = "";
-		m = {
-			w: Math.ceil(box.width),
-			h: Math.ceil(box.height)
-		};
-		if (document.fonts && document.fonts.status === "loading") watchFonts();
-	}
-	if (metrics.size >= CACHE_MAX) {
-		const oldest = metrics.keys().next().value;
-		if (oldest !== void 0) metrics.delete(oldest);
-	}
-	metrics.set(src, m);
-	return m;
-}
-/**
-* The largest font size at which `src` fits a `wPx` × `hPx` box. A plain
-* word's laid-out height is about 1.15× its font size, so this lands where
-* the older glyph-height rule did while letting a fraction be as tall as it
-* needs.
-*/
-function fitLatexPx(src, wPx, hPx) {
-	const m = measureLatex(src);
-	if (m.w <= 0 || m.h <= 0) return Math.max(1, Math.floor(hPx * .62));
-	const byHeight = hPx * .72 * 100 / m.h;
-	const byWidth = wPx * .9 * 100 / m.w;
-	return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
-}
-/** Draw `src` on `ctx` at (x, y) per the alignment, in the raster cache's colour and size. */
-function drawLatex(ctx, src, x, y, o) {
-	if (!src) return;
-	const r = rasterLatex(src, o.fontPx, o.color);
-	if (!r.canvas || r.w <= 0) return;
-	const align = o.align ?? "center";
-	const vAlign = o.vAlign ?? "middle";
-	const dx = align === "left" ? 0 : align === "right" ? -r.w : -r.w / 2;
-	const dy = vAlign === "top" ? 0 : vAlign === "bottom" ? -r.h : -r.h / 2;
-	ctx.save();
-	ctx.translate(x, y);
-	if (o.rotate) ctx.rotate(o.rotate);
-	ctx.drawImage(r.canvas, dx, dy, r.w, r.h);
-	ctx.restore();
-}
-//#endregion
-//#region src/objects/tensor.ts
-/**
-* `tensor` — N-dimensional logical data, and a spatial view of it.
-*
-* The separation is deliberate and is the point of the module: a tensor's
-* *data* is a flat row-major array plus a `shape`, and where its cells land in
-* 3D is a *layout* decision made separately. Today there is one layout (a grid:
-* 1D renders as a row of cells, 2D as a matrix). Row vectors, column vectors
-* and stacked slices are all additions to `gridLayout`'s neighbourhood rather
-* than rewrites, because nothing outside `cellCentre`/`axisAnchor` knows where
-* a cell goes.
-*
-* Nested `values` are a convenience spelling, normalized to flat + shape on the
-* way in, so the logical representation never depends on how the author chose
-* to write it down.
-*
-* The authoring win is that one element replaces N*M near-identical
-* `animated_polygon`s. The rendering win is bigger and less obvious: because
-* the lattice is *derived* from `shape` rather than written out, cell geometry
-* is arithmetic instead of expressions. A hand-written 8x8 spends ~768
-* expression evaluations per frame on vertex positions that never move; this
-* spends none, and evaluates one compiled `valueExpr` per cell instead.
-*
-* The whole tensor is a single merged, non-indexed BufferGeometry with a
-* vertex-colour attribute — one mesh, one material, one draw call. A frame
-* update is a typed-array write plus one buffer upload, not N*M material
-* mutations.
-*
-* Static and animated in one type, decided by which input is given: literal
-* `values` build once and register no updater (zero per-frame cost, exactly the
-* static contract); a `valueExpr` registers one. The batch element types this
-* follows — `vectors`, `vector_field`, `point` with `positions[]` — have no
-* `animated_` twins either, and here the geometry never animates at all.
-*
-* "Tensor" is used in the machine-learning sense: an n-dimensional array, whose
-* *components* this renders. It carries no transformation law, so it is not a
-* tensor in the differential-geometry sense that `special-relativity.json`
-* means by the word.
-*/
-/**
-* Read a `widthExpr` / `heightExpr` result as a fraction of the cell pitch.
-* Anything that is not a finite number keeps the fallback (the `gap`-derived
-* fill), so a cell whose extent expression misfires stays the size it was
-* rather than collapsing to a sliver or exploding over its neighbours.
-*/
-function resolveExtent(raw, fallback) {
-	if (raw === null || raw === void 0 || raw === "" || typeof raw === "boolean") return fallback;
-	const n = Number(raw);
-	if (!Number.isFinite(n)) return fallback;
-	return Math.max(0, Math.min(1, n));
-}
-/**
-* Read a `depthExpr` result as a fraction of the cell pitch: how far the cell
-* stands off the lattice plane. Positive rises above it, negative sinks below
-* it, so signed data reads as relief in both directions. Not a number is
-* flat; the cap of 3 pitches either way keeps a runaway value from becoming
-* a tower or a well.
-*/
-function resolveDepth(raw) {
-	if (raw === null || raw === void 0 || raw === "" || typeof raw === "boolean") return 0;
-	const n = Number(raw);
-	if (!Number.isFinite(n)) return 0;
-	return Math.max(-3, Math.min(3, n));
-}
-/**
-* Which edge of its slot a shrunken cell keeps. `-1` keeps the low edge
-* (left / bottom), `0` centres, `+1` keeps the high edge (right / top). A
-* height-only lattice anchored at the bottom is a bar chart on its lattice;
-* centred, it is a strip of lozenges — same numbers, a different reading.
-*/
-function parseAnchor(raw) {
-	const out = {
-		h: 0,
-		v: 0
-	};
-	if (typeof raw !== "string") return out;
-	for (const word of raw.toLowerCase().split(/[\s,-]+/)) if (word === "left") out.h = -1;
-	else if (word === "right") out.h = 1;
-	else if (word === "bottom") out.v = -1;
-	else if (word === "top") out.v = 1;
-	return out;
-}
-/**
-* An authored `textColor` as a canvas fill style, or null for "decide per
-* cell". Accepts everything `$defs/color` does -- a hex string or an [r,g,b]
-* tuple in 0..1 -- plus the explicit `"auto"`, which means the same as
-* leaving it out. Goes through parseColor so the two spellings cannot drift.
-*/
-function resolveTextColor(raw) {
-	if (raw === void 0 || raw === null) return null;
-	if (typeof raw === "string") {
-		raw = raw.trim();
-		if (!raw || raw.toLowerCase() === "auto") return null;
-	} else if (!Array.isArray(raw)) return null;
-	const rgb = parseColor(raw);
-	const ch = (v) => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 255);
-	let alpha = 1;
-	if (typeof raw === "string") {
-		const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw);
-		if (m) alpha = parseInt(m[1], 16) / 255;
-	}
-	return alpha < 1 ? `rgba(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])}, ${Math.round(alpha * 1e3) / 1e3})` : `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
-}
-/** Near-black or near-white, whichever reads against the cell's colour. */
-function contrastTextColor(rgb) {
-	return .2126 * (rgb[0] ?? 0) + .7152 * (rgb[1] ?? 0) + .0722 * (rgb[2] ?? 0) > .45 ? "#101418" : "#f4f6f8";
-}
-var tensorState = state;
-/** Element count implied by a shape. */
-function shapeSize(dims) {
-	return dims.reduce((a, b) => a * b, 1);
-}
-/**
-* Read `shape` into a list of positive integer dimensions.
-*
-* Any rank is accepted, including 1D — the *layout* decides what it can draw,
-* which is what keeps higher-rank shapes from being a parse-time error.
-*/
-function parseShape(raw) {
-	if (!Array.isArray(raw) || raw.length < 1) return null;
-	const dims = [];
-	for (const d of raw) {
-		const n = Number(d);
-		if (!Number.isInteger(n) || n < 1) return null;
-		dims.push(n);
-	}
-	return dims;
-}
-/** Describe a shape the way an author wrote it, for error messages. */
-function fmtShape(dims) {
-	return `[${dims.join(", ")}]`;
-}
-/**
-* Normalize `values` — nested or flat — into a flat row-major array checked
-* against `dims`.
-*
-* Returns `{ error }` rather than throwing or silently padding: a shape that
-* disagrees with its data is an authoring mistake, and the useful response is
-* to say exactly where it disagrees. (The previous revision padded short input
-* with zeros, which turned a typo into a plausible-looking half-empty grid.)
-*/
-function normalizeValues(raw, dims) {
-	if (!Array.isArray(raw)) return { error: "`values` must be an array" };
-	const expected = shapeSize(dims);
-	if (!raw.some((v) => Array.isArray(v))) {
-		if (raw.length !== expected) return { error: `flat \`values\` has ${raw.length} entries but shape ${fmtShape(dims)} needs ${expected}` };
-		return { values: raw.map((v) => Number.isFinite(Number(v)) ? Number(v) : 0) };
-	}
-	const out = [];
-	let failure = null;
-	const walk = (node, depth, path) => {
-		if (failure) return;
-		const where = path.length ? ` at values[${path.join("][")}]` : "";
-		if (depth === dims.length) {
-			if (Array.isArray(node)) {
-				failure = `nested \`values\`${where} is deeper than shape ${fmtShape(dims)}`;
-				return;
-			}
-			const n = Number(node);
-			out.push(Number.isFinite(n) ? n : 0);
-			return;
-		}
-		if (!Array.isArray(node)) {
-			failure = `nested \`values\`${where} is shallower than shape ${fmtShape(dims)}: expected an array of ${dims[depth]}`;
-			return;
-		}
-		if (node.length !== dims[depth]) {
-			failure = `nested \`values\`${where} has ${node.length} entries but shape ${fmtShape(dims)} needs ${dims[depth]} at dimension ${depth}`;
-			return;
-		}
-		for (let i = 0; i < node.length; i++) walk(node[i], depth + 1, [...path, i]);
-	};
-	walk(raw, 0, []);
-	if (failure) return { error: failure };
-	return { values: out };
-}
-/** Read one axis's labels, trimmed to the axis length. */
-function readAxisLabels(axis, length) {
-	if (!axis || !Array.isArray(axis.labels)) return null;
-	const labels = axis.labels.slice(0, length).map((l) => String(l));
-	if (labels.length < length) console.warn(`tensor: axis has ${labels.length} labels for ${length} entries; the rest are unlabelled`);
-	return labels;
-}
-/**
-* Compile one axis's `labelExpr`. It wins over `labels` for the same reason
-* `valueExpr` wins over `values`: it is the "labels are a view over data held
-* elsewhere" contract, so an axis carrying both is asking for the live one.
-* The expression may evaluate to a string — `concat`, `toFixed` and
-* `dataTable` all return one — which is the point of the key.
-*/
-function compileAxisLabelExpr(axis) {
-	const src = axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
-	if (!src) return null;
-	const why = explainCompileDegrade(src);
-	if (why) {
-		console.warn(`tensor axis labelExpr ${why}; the axis is left unlabelled.`);
-		return null;
-	}
-	try {
-		return compileExpr(src);
-	} catch (err) {
-		console.warn("tensor axis labelExpr compile error:", err);
-		return null;
-	}
-}
-/** Axis indices for the two in-plane directions, per plane. */
-var PLANE_AXES$1 = {
-	xy: [
-		0,
-		1,
-		2
-	],
-	xz: [
-		0,
-		2,
-		1
-	],
-	yz: [
-		1,
-		2,
-		0
-	]
-};
-/** Six vertices — two triangles — per quad, in the order the buffer expects. */
-var QUAD_CORNERS = [
-	[0, 0],
-	[1, 0],
-	[1, 1],
-	[0, 0],
-	[1, 1],
-	[0, 1]
-];
-/**
-* The grid layout: the last shape dimension runs horizontally, the one before
-* it vertically (index 0 at the top, so the picture reads like a written
-* matrix). A 1D shape is a single row.
-*
-* This is the only place that knows where a cell goes. Alternative layouts —
-* a tensor drawn as separate row vectors, as column vectors, or as stacked
-* slices for rank 3 — are new functions of this shape, and nothing downstream
-* changes.
-*/
-function gridLayout(dims, origin, cellSize, plane, fill, anchor) {
-	const [hAxis, vAxis, nAxis] = PLANE_AXES$1[plane] || PLANE_AXES$1["xy"];
-	const cols = dims[dims.length - 1];
-	const rows = dims.length >= 2 ? dims[dims.length - 2] : 1;
-	/** Position from in-plane (horizontal, vertical) offsets, and an optional lift off the plane. */
-	const at = (h, v, nOff = 0) => {
-		const p = [
-			0,
-			0,
-			0
-		];
-		p[hAxis] = origin[0] + h;
-		p[vAxis] = origin[1] + v;
-		p[nAxis] = origin[2] + nOff;
-		return p;
-	};
-	return {
-		rows,
-		cols,
-		/** How many logical cells this layout draws — the trailing 2D slice. */
-		drawn: rows * cols,
-		/**
-		* Corner of the cell at (r, c), `d` in [0,1]^2, for a `w` x `h` cell.
-		* A full-size cell (`w = h = fill`) lands in the same place whatever
-		* the anchor; the anchor only decides where a smaller one sits.
-		*/
-		corner: (r, c, dx, dy, w, h, nOff = 0) => at((c + .5) * cellSize + anchor.h * (fill - w) / 2 + (dx - .5) * w, (rows - 1 - r + .5) * cellSize + anchor.v * (fill - h) / 2 + (dy - .5) * h, nOff),
-		/** Absolute in-plane point, lifted `nOff` off the lattice plane. */
-		point: at,
-		/** Whole-lattice extent in the plane. */
-		width: cols * cellSize,
-		height: rows * cellSize,
-		/** Where an axis label sits. `k` is the index along that axis. */
-		rowLabelAt: (r, pad) => at(-pad, (rows - 1 - r + .5) * cellSize),
-		colLabelAt: (c, pad) => at((c + .5) * cellSize, rows * cellSize + pad),
-		rowTitleAt: (pad) => at(-pad, rows * cellSize / 2),
-		colTitleAt: (pad) => at(cols * cellSize / 2, rows * cellSize + pad)
-	};
-}
-/**
-* Does a cell's text carry LaTeX? `textExpr` documents itself as plain -- a
-* "toFixed(value, 2)" and the like -- so the answer is no for nearly every
-* cell, and the cheap fillText path is taken. A string that does carry LaTeX,
-* against that contract, is still honoured through the rasteriser.
-*/
-function cellTextIsLatex(txt) {
-	return txt.indexOf("$") >= 0 || txt.indexOf("\\") >= 0;
-}
-/**
-* The font size a plain cell string is drawn at: fit the cell's height first,
-* then shrink to its width if the string is wide. `measureAt` is called once,
-* at the height-fitted size, and hands back the width the string takes there.
-*/
-function fitPlainCellPx(wPx, hPx, measureAt) {
-	const base = Math.max(1, Math.floor(hPx * .62));
-	const w = measureAt(base);
-	const maxW = wPx * .9;
-	if (!(w > maxW)) return base;
-	return Math.max(1, Math.floor(base * maxW / w));
-}
-function renderTensor(el, _view) {
-	const dims = parseShape(el.shape);
-	if (!dims) {
-		console.warn("tensor: `shape` must be an array of positive integers; got", el.shape);
-		return null;
-	}
-	const originRaw = Array.isArray(el.origin) ? el.origin : [];
-	const origin = [
-		0,
-		1,
-		2
-	].map((i) => {
-		const raw = originRaw[i];
-		if (raw === void 0 || raw === null) return 0;
-		const n = Number(raw);
-		if (Number.isFinite(n)) return n;
-		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: origin[${i}] is ${JSON.stringify(raw)}, which is not a number. tensor builds its lattice once and does not evaluate expression origins, so this component is treated as 0.`);
-		return 0;
-	});
-	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
-	const gapRaw = Number.isFinite(el.gap) ? el.gap : .08;
-	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
-	const plane = typeof el.plane === "string" && PLANE_AXES$1[el.plane] ? el.plane : "xy";
-	const anchor = parseAnchor(el.anchor);
-	const layout = gridLayout(dims, origin, cellSize, plane, fill, anchor);
-	const { rows, cols, drawn } = layout;
-	if (dims.length > 2) {
-		const total = shapeSize(dims);
-		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: shape [${dims.join(", ")}] has rank ${dims.length}; the grid layout draws the trailing ${rows}x${cols} slice, so ${total - drawn} of ${total} values are not shown. Split it into separate tensors with their own origin until slice layouts exist.`);
-	}
-	const baseColor = parseColor(el.color || "#3b528b");
-	const colorMapFn = buildColorMap(el.colorMap);
-	const colorDomain = el.colorDomain;
-	const bindId = typeof el.bind === "string" && el.bind.trim() ? el.bind.trim() : null;
-	/** The bound slider's flat table, or null while the slider is absent. */
-	function boundValues() {
-		if (!bindId) return null;
-		const s = tensorState.sceneSliders[bindId];
-		return s && s.kind === "tensor" && s.values ? s.values : null;
-	}
-	const valueExprString = typeof el.valueExpr === "string" && el.valueExpr.trim() ? el.valueExpr.trim() : null;
-	let literalValues = null;
-	if (!valueExprString && el.values !== void 0) {
-		const parsed = normalizeValues(el.values, dims);
-		if ("error" in parsed) {
-			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: ${parsed.error}`);
-			return null;
-		}
-		literalValues = parsed.values;
-	}
-	let valueFn = null;
-	if (valueExprString) try {
-		valueFn = compileExpr(valueExprString);
-	} catch (err) {
-		console.warn("tensor valueExpr compile error:", err);
-	}
-	const readExpr = (key) => {
-		const raw = el[key];
-		return typeof raw === "string" && raw.trim() ? raw.trim() : null;
-	};
-	const widthExprString = readExpr("widthExpr");
-	const heightExprString = readExpr("heightExpr");
-	const depthExprString = readExpr("depthExpr");
-	const textExprString = readExpr("textExpr");
-	const compileOpt = (src, what) => {
-		if (!src) return null;
-		const why = explainCompileDegrade(src);
-		if (why) {
-			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: ${what} ${why}; the channel is disabled and cells keep their default.`);
-			return null;
-		}
-		try {
-			return compileExpr(src);
-		} catch (err) {
-			console.warn(`tensor ${what} compile error:`, err);
-			return null;
-		}
-	};
-	let widthFn = compileOpt(widthExprString, "widthExpr");
-	let heightFn = compileOpt(heightExprString, "heightExpr");
-	let depthFn = compileOpt(depthExprString, "depthExpr");
-	let textFn = compileOpt(textExprString, "textExpr");
-	const sizeChannelDeclared = !!(widthExprString || heightExprString);
-	let hasSizeExpr = !!(widthFn || heightFn);
-	const depthDeclared = !!depthExprString;
-	let hasDepthExpr = !!depthFn;
-	const textColorFixed = resolveTextColor(el.textColor);
-	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
-	const sh = el.shader || {};
-	const TOP_VERTS = QUAD_CORNERS.length;
-	const vertsPerCell = depthDeclared ? TOP_VERTS + 4 * TOP_VERTS : TOP_VERTS;
-	const positions = new Float32Array(drawn * vertsPerCell * 3);
-	const colors = new Float32Array(drawn * vertsPerCell * 3);
-	/** The four side walls of a box, each as two triangles between the plane and the lid. */
-	const SIDE_EDGES = [
-		[[0, 0], [1, 0]],
-		[[1, 0], [1, 1]],
-		[[1, 1], [0, 1]],
-		[[0, 1], [0, 0]]
-	];
-	/** Write one cell's vertices for a `w` x `h` cell in data units, lifted `d` off the plane. */
-	function placeCell(cell, r, c, w, h, d = 0) {
-		let k = 0;
-		const put = (dx, dy, nOff) => {
-			const p = dataToWorld(layout.corner(r, c, dx, dy, w, h, nOff));
-			const base = (cell * vertsPerCell + k) * 3;
-			positions[base] = p[0];
-			positions[base + 1] = p[1];
-			positions[base + 2] = p[2];
-			k++;
-		};
-		for (const [dx, dy] of QUAD_CORNERS) put(dx, dy, d);
-		if (!depthDeclared) return;
-		for (const [[ax, ay], [bx, by]] of SIDE_EDGES) {
-			put(ax, ay, 0);
-			put(bx, by, 0);
-			put(bx, by, d);
-			put(ax, ay, 0);
-			put(bx, by, d);
-			put(ax, ay, d);
-		}
-	}
-	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill, 0);
-	const geom = new THREE.BufferGeometry();
-	const posAttr = new THREE.BufferAttribute(positions, 3);
-	if (sizeChannelDeclared || depthDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
-	geom.setAttribute("position", posAttr);
-	const colorAttr = new THREE.BufferAttribute(colors, 3);
-	colorAttr.setUsage(THREE.DynamicDrawUsage);
-	geom.setAttribute("color", colorAttr);
-	const fillFrac = fill / cellSize;
-	const cellValue = new Float64Array(drawn).fill(NaN);
-	const cellW = new Float64Array(drawn).fill(fillFrac);
-	const cellH = new Float64Array(drawn).fill(fillFrac);
-	const cellD = new Float64Array(drawn);
-	const cellRgb = new Float32Array(drawn * 3);
-	const SIDE_SHADE = .68;
-	/** Write one colour to a cell's vertices: full on the lid, shaded on the walls. */
-	function colourCell(cell, r0, g0, b0) {
-		cellRgb[cell * 3] = r0;
-		cellRgb[cell * 3 + 1] = g0;
-		cellRgb[cell * 3 + 2] = b0;
-		for (let k = 0; k < vertsPerCell; k++) {
-			const shade = k < TOP_VERTS ? 1 : SIDE_SHADE;
-			const base = (cell * vertsPerCell + k) * 3;
-			colors[base] = r0 * shade;
-			colors[base + 1] = g0 * shade;
-			colors[base + 2] = b0 * shade;
-		}
-	}
-	/** Paint one cell from a raw value. */
-	function paintCell(cell, raw) {
-		const u = normalizeColorValue(raw, colorDomain);
-		if (u === null) return;
-		const rgb = colorMapFn(u);
-		colourCell(cell, rgb[0], rgb[1], rgb[2]);
-	}
-	for (let cell = 0; cell < drawn; cell++) colourCell(cell, baseColor[0], baseColor[1], baseColor[2]);
-	/**
-	* Evaluate every drawn cell at `tSec`, binding indices for that cell only:
-	* the value first (colour), then the size channels with that value in
-	* scope. Literal values still run the size channels, so a static matrix
-	* can have slider-driven cell sizes without paying for a valueExpr.
-	*/
-	function paintAll(tSec) {
-		const bound = boundValues();
-		if (!(bound || literalValues || valueFn) && !hasSizeExpr && !hasDepthExpr) return;
-		if (bound && bound.length !== drawn && !boundShapeWarned) {
-			boundShapeWarned = true;
-			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: bound slider "${bindId}" holds ${bound.length} values but the lattice draws ${drawn}`);
-		}
-		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-			const cell = r * cols + c;
-			const idxScope = {
-				row: r,
-				col: c,
-				idx: cell
-			};
-			let raw;
-			if (bound) raw = bound[cell];
-			else if (literalValues) raw = literalValues[cell];
-			else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: idxScope });
-			if (raw !== void 0) paintCell(cell, raw);
-			const v = Number(raw);
-			const scope = {
-				...idxScope,
-				value: Number.isFinite(v) ? v : NaN
-			};
-			cellValue[cell] = scope.value;
-			if (hasSizeExpr || hasDepthExpr) {
-				const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
-				const h = heightFn ? resolveExtent(evalExpr(heightFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
-				const d = depthFn ? resolveDepth(evalExpr(depthFn, tSec, { overrideScope: scope })) : 0;
-				cellW[cell] = w;
-				cellH[cell] = h;
-				cellD[cell] = d;
-				placeCell(cell, r, c, w * cellSize, h * cellSize, d * cellSize);
-			}
-		}
-	}
-	let boundShapeWarned = false;
-	try {
-		paintAll(0);
-	} catch (err) {
-		console.warn("tensor value evaluation error:", err);
-	}
-	colorAttr.needsUpdate = true;
-	if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
-	const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
-	const mat = new THREE.MeshBasicMaterial({
-		vertexColors: true,
-		transparent: true,
-		opacity: ignoresPlaneOpacity ? opacity : tensorState.displayParams.planeOpacity * opacity,
-		side: THREE.DoubleSide,
-		depthWrite: depthDeclared
-	});
-	const mesh = new THREE.Mesh(geom, mat);
-	mesh.userData.targetOpacity = opacity;
-	mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
-	const tensorCell = bindId ? {
-		id: el.id || "",
-		bind: bindId,
-		cellAt(world) {
-			const d = worldToData(world);
-			const [hAxis, vAxis] = PLANE_AXES$1[plane] || PLANE_AXES$1["xy"];
-			const h = d[hAxis] - origin[0];
-			const v = d[vAxis] - origin[1];
-			const c = Math.floor(h / cellSize);
-			const up = Math.floor(v / cellSize);
-			if (c < 0 || c >= cols || up < 0 || up >= rows) return null;
-			return {
-				row: rows - 1 - up,
-				col: c
-			};
-		}
-	} : null;
-	if (tensorCell) mesh.userData.tensorCell = tensorCell;
-	const serial = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
-	mesh.renderOrder = serial;
-	tensorState.three.scene.add(mesh);
-	tensorState.planeMeshes.push(mesh);
-	const axes = Array.isArray(el.axes) ? el.axes : [];
-	const axisPlane = el.axisLabels !== "screen";
-	const hAxisIdx = dims.length - 1;
-	const vAxisIdx = dims.length - 2;
-	const defaultLabelColor = "#aabbcc";
-	const hAxis = axes[hAxisIdx];
-	const vAxis = vAxisIdx >= 0 ? axes[vAxisIdx] : void 0;
-	const hColor = parseColor(hAxis && hAxis.color || defaultLabelColor);
-	const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
-	let hLabelFn = compileAxisLabelExpr(hAxis);
-	let vLabelFn = compileAxisLabelExpr(vAxis);
-	const declaredLabelExpr = (axis) => axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
-	const hLabelSrc = declaredLabelExpr(hAxis);
-	const vLabelSrc = declaredLabelExpr(vAxis);
-	const hLabelsStatic = hLabelSrc ? null : readAxisLabels(hAxis, cols);
-	const vLabelsStatic = vLabelSrc ? null : readAxisLabels(vAxis, rows);
-	const hTitle = hAxis && hAxis.title ? String(hAxis.title) : null;
-	const vTitle = vAxis && vAxis.title ? String(vAxis.title) : null;
-	const hasHLabels = !!(hLabelSrc || hLabelsStatic);
-	const hasVLabels = !!(vLabelSrc || vLabelsStatic);
-	const hLabelScratch = new Array(cols).fill("");
-	const vLabelScratch = new Array(rows).fill("");
-	const LABEL_BAND = .9, TITLE_BAND = .7, LABEL_GLYPH = .5;
-	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
-	let vBand = 0;
-	if (axisPlane && hasVLabels) {
-		const firstTexts = axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, 0);
-		let widest = 0;
-		for (const t of firstTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
-		const measured = widest * LABEL_GLYPH / 100 + .45;
-		vBand = Math.max(1, Math.min(4, vLabelSrc ? Math.max(measured, 2.4) : measured));
-	}
-	let mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
-	let planeLabels = axisPlane && (mT > 0 || mL > 0);
-	if (planeLabels && Math.max(rows + mT, cols + mL) > 2048) {
-		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: axis labels fall back to the screen on a ${rows}x${cols} lattice; plane labels need the canvas (lattice plus label margins) to fit 2048 pixels a side.`);
-		planeLabels = false;
-		mT = 0;
-		mL = 0;
-	}
-	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
-	let textLayer = null;
-	let lastPaintT = 0;
-	/** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
-	let textQuads = null;
-	const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
-	if (textCapped) {
-		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
-		textFn = null;
-	}
-	const textDeclared = !!textExprString && !textCapped;
-	if (textDeclared || planeLabels) {
-		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows + mT, cols + mL))));
-		const canvas = document.createElement("canvas");
-		canvas.width = Math.ceil((cols + mL) * px);
-		canvas.height = Math.ceil((rows + mT) * px);
-		const ctx = canvas.getContext("2d");
-		if (ctx) {
-			const tex = new THREE.CanvasTexture(canvas);
-			tex.minFilter = THREE.LinearFilter;
-			tex.magFilter = THREE.LinearFilter;
-			tex.generateMipmaps = false;
-			const lift = cellSize * .02;
-			const cellQuads = textDeclared ? drawn : 0;
-			const quads = cellQuads + 2;
-			const qPos = new Float32Array(quads * 6 * 3);
-			const qUv = new Float32Array(quads * 6 * 2);
-			const U = cols + mL, V = rows + mT;
-			/** Two triangles over a quad's four corners, in the order the buffer expects. */
-			const QUAD_ORDER = [
-				0,
-				1,
-				2,
-				0,
-				2,
-				3
-			];
-			/** Write one quad: plane rect [h0,h1]x[v0,v1] (pitch units), lifted `n`, canvas rect [u0,u1]x[vTop,vBot] (canvas fractions from the top). */
-			const putQuad = (qi, h0, h1, v0, v1, n, u0, u1, cTop, cBot) => {
-				const P = [
-					dataToWorld(layout.point(h0 * cellSize, v0 * cellSize, n)),
-					dataToWorld(layout.point(h1 * cellSize, v0 * cellSize, n)),
-					dataToWorld(layout.point(h1 * cellSize, v1 * cellSize, n)),
-					dataToWorld(layout.point(h0 * cellSize, v1 * cellSize, n))
-				];
-				const uAt = [
-					u0,
-					u1,
-					u1,
-					u0
-				], vAt = [
-					1 - cBot,
-					1 - cBot,
-					1 - cTop,
-					1 - cTop
-				];
-				for (let i = 0; i < 6; i++) {
-					const k = QUAD_ORDER[i];
-					const p = P[k];
-					const pb = (qi * 6 + i) * 3, tb = (qi * 6 + i) * 2;
-					qPos[pb] = p[0];
-					qPos[pb + 1] = p[1];
-					qPos[pb + 2] = p[2];
-					qUv[tb] = uAt[k];
-					qUv[tb + 1] = vAt[k];
-				}
-			};
-			const placeTextCell = (cell, r, c) => {
-				putQuad(cell, c, c + 1, rows - 1 - r, rows - r, cellD[cell] * cellSize + lift, (mL + c) / U, (mL + c + 1) / U, (mT + r) / V, (mT + r + 1) / V);
-			};
-			if (textDeclared) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
-			putQuad(cellQuads, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
-			putQuad(cellQuads + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
-			const qGeom = new THREE.BufferGeometry();
-			const qPosAttr = new THREE.BufferAttribute(qPos, 3);
-			if (depthDeclared && textDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
-			qGeom.setAttribute("position", qPosAttr);
-			qGeom.setAttribute("uv", new THREE.BufferAttribute(qUv, 2));
-			textQuads = textDeclared ? {
-				attr: qPosAttr,
-				place: placeTextCell
-			} : null;
-			const qMat = new THREE.MeshBasicMaterial({
-				map: tex,
-				transparent: true,
-				opacity: mat.opacity,
-				side: THREE.DoubleSide,
-				depthWrite: depthDeclared,
-				alphaTest: depthDeclared ? .05 : 0
-			});
-			const offFonts = onLatexFontsReady(() => {
-				if (textLayer) {
-					textLayer.lastKey = "";
-					try {
-						paintText(lastPaintT);
-					} catch (_e) {}
-				}
-			});
-			qMat.addEventListener("dispose", () => {
-				offFonts();
-				tex.dispose();
-			});
-			const qMesh = new THREE.Mesh(qGeom, qMat);
-			qMesh.userData.annotationTextPlane = true;
-			qMesh.userData.targetOpacity = opacity;
-			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
-			if (tensorCell) qMesh.userData.tensorCell = tensorCell;
-			qMesh.renderOrder = el.renderOrder !== void 0 ? serial + 1 : tensorState._planeMeshSerial++;
-			tensorState.three.scene.add(qMesh);
-			tensorState.planeMeshes.push(qMesh);
-			textLayer = {
-				canvas,
-				ctx,
-				tex,
-				mesh: qMesh,
-				px,
-				lastKey: ""
-			};
-		}
-	}
-	/** One axis's label strings for this frame: the expression per entry, or the static list. */
-	function axisLabelTexts(fn, statics, n, isRow, tSec) {
-		const out = isRow ? vLabelScratch : hLabelScratch;
-		for (let k = 0; k < n; k++) {
-			out[k] = "";
-			if (fn) try {
-				const v = evalExpr(fn, tSec, { overrideScope: isRow ? {
-					row: k,
-					idx: k
-				} : {
-					col: k,
-					idx: k
-				} });
-				out[k] = v === null || v === void 0 ? "" : String(v);
-			} catch (_err) {
-				out[k] = "";
-			}
-			else if (statics && k < statics.length) out[k] = statics[k];
-		}
-		return out;
-	}
-	/** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
-	/** The face the LaTeX rasteriser falls back to, so plain and LaTeX cells match. */
-	const FAMILY = "system-ui, sans-serif";
-	/**
-	* A cell's own text, which `textExpr` defines as plain -- "toFixed(value, 2)"
-	* and the like, no KaTeX. Sending it through the LaTeX rasteriser laid every
-	* string out in a hidden DOM and replayed it onto the canvas, and both of
-	* that module's caches are keyed BY THE STRING: a lattice of numbers that
-	* changes as a slider moves misses on every cell of every update, which is
-	* where an update frame's hundreds of milliseconds were going.
-	*
-	* `fillText` needs neither. A string that does carry LaTeX -- against the
-	* documented contract, but cheap to honour -- still takes the old path.
-	*/
-	function drawCellText(ctx, txt, cx, cy, wPx, hPx, color) {
-		if (cellTextIsLatex(txt)) {
-			drawLatex(ctx, txt, cx, cy, {
-				fontPx: fitLatexPx(txt, wPx, hPx),
-				color
-			});
-			return;
-		}
-		ctx.font = `${fitPlainCellPx(wPx, hPx, (px) => {
-			ctx.font = `${px}px ${FAMILY}`;
-			return ctx.measureText(txt).width;
-		})}px ${FAMILY}`;
-		ctx.fillStyle = color;
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(txt, cx, cy);
-	}
-	/** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above
-	*  `maxFontPx`; returns the size used (0 when nothing was drawn). */
-	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center", maxFontPx = Infinity) {
-		if (!txt || wPx < 2 || hPx < 2) return 0;
-		const fontPx = Math.min(maxFontPx, fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx));
-		drawLatex(ctx, txt, cx, cy, {
-			fontPx,
-			color,
-			align,
-			rotate: rotate ? -Math.PI / 2 : 0
-		});
-		return fontPx;
-	}
-	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
-	const keyParts = [];
-	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
-	function paintText(tSec) {
-		if (!textLayer || !textFn && !planeLabels) return;
-		lastPaintT = tSec;
-		const { ctx, tex, px } = textLayer;
-		const ox = mL * px, oy = mT * px;
-		const texts = cellTexts;
-		keyParts.length = 0;
-		if (textFn) {
-			if (texts.length !== drawn) texts.length = drawn;
-			for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-				const cell = r * cols + c;
-				let txt = "";
-				try {
-					const out = evalExpr(textFn, tSec, { overrideScope: {
-						row: r,
-						col: c,
-						idx: cell,
-						value: cellValue[cell]
-					} });
-					txt = out === null || out === void 0 ? "" : String(out);
-				} catch (_err) {
-					txt = "";
-				}
-				texts[cell] = txt;
-				keyParts.push(txt, cellW[cell].toFixed(3), cellH[cell].toFixed(3), String(Math.round(cellRgb[cell * 3] * 255)), String(Math.round(cellRgb[cell * 3 + 1] * 255)), String(Math.round(cellRgb[cell * 3 + 2] * 255)));
-			}
-		}
-		const hTexts = planeLabels && (hLabelFn || hLabelsStatic) ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
-		const vTexts = planeLabels && (vLabelFn || vLabelsStatic) ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
-		if (hTexts) keyParts.push(...hTexts);
-		if (vTexts) keyParts.push(...vTexts);
-		const key = keyParts.join("");
-		if (key === textLayer.lastKey) return;
-		textLayer.lastKey = key;
-		ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
-		const hW = .92 * px, vW = vBand * px - .35 * px, glyphH = LABEL_GLYPH / .62 * px;
-		const axisPx = (texts, n, wPx) => {
-			let m = Infinity;
-			if (texts && wPx >= 2) {
-				for (let i = 0; i < n; i++) if (texts[i]) m = Math.min(m, fitLatexPx(texts[i], wPx, glyphH));
-			}
-			return m;
-		};
-		const hPx = axisPx(hTexts, cols, hW);
-		const vPx = axisPx(vTexts, rows, vW);
-		const labelPx = Math.min(hPx, vPx);
-		if (hTexts) {
-			const band = LABEL_BAND * px;
-			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, hW, glyphH, cssColor(hColor), false, "center", hPx);
-		}
-		if (vTexts) for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, vW, glyphH, cssColor(vColor), false, "right", vPx);
-		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor), false, "center", labelPx);
-		if (vTitle && planeLabels) {
-			let titleX = TITLE_BAND * px / 2;
-			if (vTexts && Number.isFinite(vPx)) {
-				let widest = 0;
-				for (const t of vTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
-				const beside = ox - .2 * px - widest * vPx / 100 - .9 * Math.min(vPx, labelPx);
-				titleX = Math.max(titleX, beside);
-			}
-			drawFitted(ctx, vTitle, titleX, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true, "center", labelPx);
-		}
-		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-			const cell = r * cols + c;
-			const txt = texts[cell];
-			if (!txt) continue;
-			const wPx = cellW[cell] * px;
-			const hPx = cellH[cell] * px;
-			if (wPx < 2 || hPx < 2) continue;
-			const color = textColorFixed || contrastTextColor([
-				cellRgb[cell * 3],
-				cellRgb[cell * 3 + 1],
-				cellRgb[cell * 3 + 2]
-			]);
-			drawCellText(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, wPx, hPx, color);
-		}
-		tex.needsUpdate = true;
-	}
-	if (textLayer) try {
-		paintText(0);
-	} catch (err) {
-		console.warn("tensor textExpr evaluation error:", err);
-	}
-	const dynamicLabels = [];
-	const labelExprStrings = [];
-	if (hLabelSrc) labelExprStrings.push(hLabelSrc);
-	if (vLabelSrc) labelExprStrings.push(vLabelSrc);
-	if (axes.length && !planeLabels) {
-		const pad = cellSize * .35;
-		if (hLabelSrc && hLabelFn) for (let c = 0; c < cols; c++) {
-			const label = addLabel3D("", layout.colLabelAt(c, pad), hColor);
-			dynamicLabels.push({
-				label,
-				src: hLabelSrc,
-				fn: hLabelFn,
-				scope: {
-					col: c,
-					idx: c
-				}
-			});
-		}
-		else if (hLabelsStatic) for (let c = 0; c < hLabelsStatic.length; c++) addLabel3D(hLabelsStatic[c], layout.colLabelAt(c, pad), hColor);
-		if (hTitle) addLabel3D(hTitle, layout.colTitleAt(pad * 3), hColor);
-		if (vAxisIdx >= 0) {
-			if (vLabelSrc && vLabelFn) for (let r = 0; r < rows; r++) {
-				const label = addLabel3D("", layout.rowLabelAt(r, pad), vColor);
-				dynamicLabels.push({
-					label,
-					src: vLabelSrc,
-					fn: vLabelFn,
-					scope: {
-						row: r,
-						idx: r
-					}
-				});
-			}
-			else if (vLabelsStatic) for (let r = 0; r < vLabelsStatic.length; r++) addLabel3D(vLabelsStatic[r], layout.rowLabelAt(r, pad), vColor);
-			if (vTitle) addLabel3D(vTitle, layout.rowTitleAt(pad * 4), vColor);
-		}
-	}
-	const planeDynamic = planeLabels && !!(hLabelSrc || vLabelSrc);
-	/**
-	* Re-evaluate every expression-driven axis label. The memo is what makes
-	* this affordable per frame: a label whose text has not changed is left
-	* alone, so the common case costs one eval and a string compare rather
-	* than a KaTeX render.
-	*/
-	function paintLabels(tSec) {
-		for (const dl of dynamicLabels) {
-			let txt;
-			if (!dl.fn) txt = "";
-			else try {
-				txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope }));
-			} catch (_err) {
-				continue;
-			}
-			if (txt === dl.label._lastDynamicText) continue;
-			dl.label.el.innerHTML = renderKaTeX$1(txt, false);
-			dl.label.boxW = null;
-			dl.label._lastDynamicText = txt;
-		}
-	}
-	if (dynamicLabels.length) try {
-		paintLabels(0);
-	} catch (err) {
-		console.warn("tensor axis label evaluation error:", err);
-	}
-	const animState = { stopped: false };
-	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !depthDeclared && !textDeclared && !planeDynamic) return {
-		type: "tensor",
-		color: baseColor,
-		label: el.label
-	};
-	let compiledUnderTrust = tensorState._sceneJsTrustState;
-	const channelStrings = [
-		widthExprString,
-		heightExprString,
-		depthExprString,
-		textExprString
-	].filter((x) => !!x);
-	const channelFns = () => [
-		widthFn,
-		heightFn,
-		depthFn,
-		textFn
-	].filter((x) => !!x);
-	const entry = {
-		exprStrings: [
-			...valueExprString ? [valueExprString] : [],
-			...channelStrings,
-			...labelExprStrings
-		],
-		animState,
-		compiledFns: [
-			...valueFn ? [valueFn] : [],
-			...channelFns(),
-			...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x)
-		],
-		_rebuildFn() {
-			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
-			compiledUnderTrust = tensorState._sceneJsTrustState;
-			if (valueExprString) try {
-				valueFn = compileExpr(valueExprString);
-			} catch (err) {
-				console.warn("Slider tensor valueExpr recompile error:", err);
-			}
-			widthFn = compileOpt(widthExprString, "widthExpr");
-			heightFn = compileOpt(heightExprString, "heightExpr");
-			textFn = textCapped ? null : compileOpt(textExprString, "textExpr");
-			depthFn = compileOpt(depthExprString, "depthExpr");
-			const hadSize = hasSizeExpr || hasDepthExpr;
-			hasSizeExpr = !!(widthFn || heightFn);
-			hasDepthExpr = !!depthFn;
-			if (hadSize && !hasSizeExpr && !hasDepthExpr) {
-				for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-					const cell = r * cols + c;
-					cellW[cell] = fillFrac;
-					cellH[cell] = fillFrac;
-					cellD[cell] = 0;
-					placeCell(cell, r, c, fill, fill, 0);
-					if (textQuads) textQuads.place(cell, r, c);
-				}
-				posAttr.needsUpdate = true;
-				if (textQuads) textQuads.attr.needsUpdate = true;
-			}
-			if (planeLabels) {
-				hLabelFn = compileAxisLabelExpr(hAxis);
-				vLabelFn = compileAxisLabelExpr(vAxis);
-			}
-			const recompiled = /* @__PURE__ */ new Map();
-			for (const dl of dynamicLabels) {
-				if (!recompiled.has(dl.src)) recompiled.set(dl.src, compileAxisLabelExpr({ labelExpr: dl.src }));
-				dl.fn = recompiled.get(dl.src) ?? null;
-			}
-			entry.compiledFns = [
-				...valueFn ? [valueFn] : [],
-				...channelFns(),
-				...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x),
-				...planeLabels ? [hLabelFn, vLabelFn].filter((x) => !!x) : []
-			];
-		}
-	};
-	tensorState.activeAnimExprs.push(entry);
-	const startTime = tensorState.sceneStartTime;
-	tensorState.activeAnimUpdaters.push({
-		animState,
-		updateFrame(nowMs) {
-			if (textLayer) textLayer.mesh.visible = mesh.visible;
-			if (!mesh.visible) return;
-			const tSec = (nowMs - startTime) / 1e3;
-			if (valueFn || bindId || hasSizeExpr || hasDepthExpr) try {
-				paintAll(tSec);
-				colorAttr.needsUpdate = true;
-				if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
-				if (hasDepthExpr && textQuads) {
-					for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) textQuads.place(r * cols + c, r, c);
-					textQuads.attr.needsUpdate = true;
-				}
-			} catch (_err) {}
-			if (textLayer && (textFn || planeLabels && (hLabelFn || vLabelFn))) try {
-				paintText(tSec);
-			} catch (_err) {}
-			if (dynamicLabels.length) paintLabels(tSec);
-		}
-	});
-	return {
-		type: "tensor",
-		color: baseColor,
-		label: el.label,
-		_animState: animState,
-		_animExprEntry: entry
-	};
-}
-//#endregion
 //#region src/objects/chart.ts
 /**
 * `chart` — a 2D plot that lives in the 3D scene as a planar object.
@@ -15279,6 +16378,7 @@ var objects_exports = /* @__PURE__ */ __exportAll({ renderElement: () => renderE
 */
 function renderElement(el, view) {
 	switch (el.type) {
+		case "system_dag": return renderSystemDAG(el, view);
 		case "skybox": return renderSkybox(el);
 		case "axis": return renderAxis(el, view);
 		case "grid": return renderGrid(el, view);
@@ -19021,6 +20121,7 @@ function renderStepAdd(elements, sliderDefs) {
 		}
 		const elBefore = el.id ? snapshotBefore() : null;
 		const elGroup = el.id ? group.group() : group;
+		const beforePartEntries = { ...sceneState.elementRegistry };
 		let result = null;
 		try {
 			result = renderElement(el, elGroup);
@@ -19028,6 +20129,14 @@ function renderStepAdd(elements, sliderDefs) {
 			console.error("Error rendering step element:", el, e);
 		}
 		if (result) renderResults.push(result);
+		for (const [partId, entry] of Object.entries(sceneState.elementRegistry)) {
+			if (entry === beforePartEntries[partId]) continue;
+			addedElementIds.push(partId);
+			if (beforePartEntries[partId]) {
+				replacedElements ??= {};
+				replacedElements[partId] = beforePartEntries[partId];
+			}
+		}
 		if (el.id) {
 			addedElementIds.push(el.id);
 			const subTracker = buildSubTracker(elGroup, elBefore);
@@ -27318,8 +28427,8 @@ function buildMeshIdMap() {
 	for (const [id, reg] of Object.entries(state.elementRegistry)) {
 		if (!reg || reg.hidden || !reg.tracker) continue;
 		const t = reg.tracker;
-		for (const e of t.arrowMeshes || []) if (e && e.mesh) map.set(e.mesh, id);
-		for (const m of t.planeMeshes || []) if (m) map.set(m, id);
+		for (const e of t.arrowMeshes || []) if (e && e.mesh) map.set(e.mesh, e.mesh.userData.askObjectId ?? id);
+		for (const m of t.planeMeshes || []) if (m) map.set(m, m.userData.askObjectId ?? id);
 	}
 	return map;
 }
@@ -27328,7 +28437,19 @@ function pickableMeshes() {
 	const meshes = [];
 	for (const e of state.arrowMeshes) if (e && e.mesh && e.mesh.visible) meshes.push(e.mesh);
 	for (const m of state.planeMeshes) if (m && m.visible) meshes.push(m);
-	return meshes;
+	for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (isHidden(id)) continue;
+		for (const mesh of reg.tracker.planeMeshes ?? []) {
+			if (!mesh) continue;
+			let visible = true;
+			for (let node = mesh; node; node = node.parent) if (!node.visible) {
+				visible = false;
+				break;
+			}
+			if (visible) meshes.push(mesh);
+		}
+	}
+	return [...new Set(meshes)];
 }
 function isHidden(id) {
 	const reg = state.elementRegistry[id];
@@ -27357,7 +28478,11 @@ function worldAnchor(id, reg) {
 	const t = reg && reg.tracker || {};
 	const ap = state.animatedElementPos[id];
 	if (ap && ap.pos) return new THREE.Vector3(...dataToWorld(ap.pos));
-	if (t.labels && t.labels.length && t.labels[0].dataPos) return new THREE.Vector3(...dataToWorld(t.labels[0].dataPos));
+	if (t.labels && t.labels.length && t.labels[0].dataPos) return new THREE.Vector3(...withDataOffset(t.labels[0].coordinateOffset ?? [
+		0,
+		0,
+		0
+	], () => dataToWorld(t.labels[0].dataPos)));
 	for (const e of t.arrowMeshes || []) if (e && e.tipWorld) return e.tipWorld.clone();
 	for (const m of t.planeMeshes || []) {
 		if (!m) continue;

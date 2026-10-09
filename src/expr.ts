@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { readDataTable } from '/data-table.js';
 import { arrayValues, arrayResult, arrayCount, arrayAt } from '/array-operations.js';
 
 /**
@@ -92,16 +93,10 @@ const _MATHJS_EXTENSIONS = {
         const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
         return '\u2588'.repeat(n) + '\u2591'.repeat(Number(w) - n);
     },
-    // dataTable(table, rowIndex, column) — look up a value from the scene's "data" tables.
+    // dataTable(table) returns table rows; dataTable(table, rowIndex, column) looks up a value from the scene's "data" tables.
     // Example: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass
-    dataTable: (table: unknown, rowIndex: unknown, column: unknown): unknown => {
-        const t = exprState.sceneData && exprState.sceneData[String(table)];
-        if (!Array.isArray(t)) return 0;
-        const row = t[Math.max(0, Math.min(t.length - 1, Math.round(Number(rowIndex))))];
-        if (!row) return 0;
-        const val = (row as Record<string, unknown>)[String(column)];
-        return val != null ? val : 0;
-    },
+    dataTable: (table: unknown, rowIndex?: unknown, column?: unknown): unknown =>
+        readDataTable(exprState.sceneData, table, rowIndex, column),
 
     // ── SymPy jscode compatibility ──────────────────────────────────────
     // SymPy's jscode(strict=False) emits bare function names for functions

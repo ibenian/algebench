@@ -115,7 +115,8 @@ export type Element = {
     | 'step_marker'
     | 'array'
     | 'expression_label'
-    | 'stack';
+    | 'stack'
+    | 'system_dag';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
    */
@@ -229,7 +230,7 @@ export type Element = {
    */
   heightExpr?: string;
   /**
-   * TENSOR ONLY. How 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
+   * ARRAY and TENSOR. On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
    */
   axisLabels?: 'screen' | 'plane';
   /**
@@ -896,6 +897,18 @@ export type Element = {
    * STACK: show an owned top slot index marker; hidden automatically when empty.
    */
   showTop?: boolean;
+  /**
+   * SYSTEM_DAG: reusable nested blocks. Child positions are parent-local unless space is world or placement references another block.
+   */
+  blocks?: SystemBlock[];
+  /**
+   * SYSTEM_DAG: directed pipe connections, independent of containment. Flow feedback is allowed; placement references must be acyclic.
+   */
+  connections?: SystemConnection[];
+  /**
+   * SYSTEM_DAG: default physical pipe radius in scene units.
+   */
+  pipeRadius?: number;
   [k: string]: unknown;
 };
 /**
@@ -994,6 +1007,13 @@ export type Vec3Number9 = [number, number, number];
  */
 export type Vec3Number10 = [number, number, number];
 /**
+ * 3D vector as [x,y,z] numeric array.
+ *
+ * @minItems 3
+ * @maxItems 3
+ */
+export type Vec3Number11 = [number, number, number];
+/**
  * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
  *
  * @minItems 3
@@ -1008,12 +1028,12 @@ export type Range3D2 = [[number, number], [number, number], [number, number]];
  */
 export type Range3D3 = [[number, number], [number, number], [number, number]];
 /**
- * Axis scale factors as [sx,sy,sz]. Default: [1,1,1].
+ * 3D vector as [x,y,z] numeric array.
  *
  * @minItems 3
  * @maxItems 3
  */
-export type Vec3Number11 = [number, number, number];
+export type Vec3Number12 = [number, number, number];
 
 /**
  * Multi-scene lesson format with a 'scenes' array.
@@ -1663,6 +1683,85 @@ export interface ArrayMarker {
    */
   visibleExpr?: string;
 }
+export interface SystemBlock {
+  id: string;
+  label: string;
+  kind?: 'group' | 'service' | 'database' | 'broker' | 'processor' | 'worker' | 'gateway' | 'client' | 'store';
+  /**
+   * Width, height, and depth in scene data units.
+   *
+   * @minItems 3
+   * @maxItems 3
+   */
+  size: [number, number, number];
+  position?: Vec3Number11;
+  space?: 'local' | 'world';
+  placement?: SystemPlacement;
+  color?: Color;
+  opacity?: number;
+  valueExpr?: string;
+  text?: string;
+  textExpr?: string;
+  ports?: SystemPort[];
+  blocks?: SystemBlock[];
+  connections?: SystemConnection[];
+  /**
+   * Existing AlgeBench elements contained by this block, in block-local coordinates.
+   */
+  elements?: Element[];
+  /**
+   * Optional gap above this platform front surface for children with local positions. Child depth and local z offset are added; world and relative placement remain explicit.
+   */
+  childElevation?: number;
+}
+export interface SystemPlacement {
+  relativeTo: string;
+  side?: 'left' | 'right' | 'top' | 'bottom' | 'front' | 'back';
+  gap?: number;
+  offset?: Vec3Number11;
+}
+export interface SystemPort {
+  id: string;
+  side: 'left' | 'right' | 'top' | 'bottom' | 'front' | 'back';
+  /**
+   * Normalized position along a side; zero is its center.
+   */
+  offset?: number;
+  color?: Color;
+}
+export interface SystemConnection {
+  id: string;
+  from: SystemEndpoint;
+  to: SystemEndpoint;
+  route?: 'orthogonal' | 'straight';
+  via?: SystemWaypoint[];
+  color?: Color;
+  activeColor?: Color;
+  /**
+   * An active flow changes color without changing pipe radius.
+   */
+  activeExpr?: string;
+  /**
+   * Pipe radius in scene data units, not a camera-scaled line width.
+   */
+  radius?: number;
+  direction?: 'forward' | 'backward' | 'both' | 'none';
+  label?: string;
+}
+export interface SystemEndpoint {
+  block: string;
+  port?: string;
+  side?: 'left' | 'right' | 'top' | 'bottom' | 'front' | 'back';
+  /**
+   * Route into a containing block rather than away from its boundary.
+   */
+  inside?: boolean;
+}
+export interface SystemWaypoint {
+  position: Vec3Number11;
+  relativeTo?: string;
+  space?: 'local' | 'world';
+}
 /**
  * An incremental step that adds/removes elements and configures sliders.
  */
@@ -1714,6 +1813,10 @@ export interface Step {
    * Short caption text displayed in the step caption bar. Overrides auto-generated caption from title.
    */
   caption?: string;
+  /**
+   * Optional expression returning markdown for the step caption. Re-evaluated on navigation and slider changes. Falls back to description if evaluation fails.
+   */
+  descriptionExpr?: string;
 }
 /**
  * Directive to hide elements or sliders. Use {id: '*'} to hide all elements, {type: 'slider'} to remove all sliders, or {id: 'some_id'} to hide a specific element.
@@ -1914,7 +2017,7 @@ export interface SingleSceneFormat {
    */
   unsafeExplanation?: string;
   range?: Range3D3;
-  scale?: Vec3Number11;
+  scale?: Vec3Number12;
   camera?: Camera2;
   /**
    * Named camera presets shown as buttons.

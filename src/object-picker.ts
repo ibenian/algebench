@@ -20,7 +20,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { dataToWorld, closestOnSegmentToRay } from '/coords.js';
+import { withDataOffset, dataToWorld, closestOnSegmentToRay } from '/coords.js';
 import { makeAiAskButton } from '/labels.js';
 import { setOrbitPivot, setRotationPivotPicker } from '/camera.js';
 import type { AppState } from '/state.js';
@@ -122,8 +122,8 @@ function buildMeshIdMap(): Map<Object3D, string> {
     for (const [id, reg] of Object.entries(state.elementRegistry)) {
         if (!reg || reg.hidden || !reg.tracker) continue;
         const t = reg.tracker as PickerTracker;
-        for (const e of (t.arrowMeshes || [])) if (e && e.mesh) map.set(e.mesh, id);
-        for (const m of (t.planeMeshes || [])) if (m) map.set(m, id);
+        for (const e of (t.arrowMeshes || [])) if (e && e.mesh) map.set(e.mesh, e.mesh.userData.askObjectId??id);
+        for (const m of (t.planeMeshes || [])) if (m) map.set(m, m.userData.askObjectId??id);
     }
     return map;
 }
@@ -133,7 +133,18 @@ function pickableMeshes(): Object3D[] {
     const meshes: Object3D[] = [];
     for (const e of state.arrowMeshes) if (e && e.mesh && e.mesh.visible) meshes.push(e.mesh);
     for (const m of state.planeMeshes) if (m && m.visible) meshes.push(m);
-    return meshes;
+    // Composite-owned geometry lives below its parent rather than in the
+    // global mesh arrays. Respect both registry and scene-graph visibility.
+    for(const [id,reg] of Object.entries(state.elementRegistry)) {
+        if(isHidden(id))continue;
+        for(const mesh of (reg.tracker as PickerTracker).planeMeshes??[]) {
+            if(!mesh)continue;
+            let visible=true;
+            for(let node:Object3D|null=mesh;node;node=node.parent)if(!node.visible){visible=false;break;}
+            if(visible)meshes.push(mesh);
+        }
+    }
+    return [...new Set(meshes)];
 }
 
 function isHidden(id: string): boolean {
@@ -170,7 +181,7 @@ function worldAnchor(id: string, reg: PickerReg | undefined): Vector3 | null {
     if (ap && ap.pos) return new THREE.Vector3(...dataToWorld(ap.pos as Vec3));
     if (t.labels && t.labels.length && t.labels[0]!.dataPos) {
         // `!` ×2 — guarded by the `t.labels.length` test on the line above.
-        return new THREE.Vector3(...dataToWorld(t.labels[0]!.dataPos as Vec3));
+        return new THREE.Vector3(...withDataOffset(t.labels[0]!.coordinateOffset??[0,0,0],()=>dataToWorld(t.labels![0]!.dataPos as Vec3)));
     }
     for (const e of (t.arrowMeshes || [])) if (e && e.tipWorld) return e.tipWorld.clone();
     for (const m of (t.planeMeshes || [])) {

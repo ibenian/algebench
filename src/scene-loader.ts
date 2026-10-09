@@ -332,6 +332,7 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
         }
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? group.group() : group;
+        const beforePartEntries={...sceneState.elementRegistry};
         let result = null;
         try { result = renderElement(el, elGroup); } catch (e) {
             console.error('Error rendering step element:', el, e);
@@ -339,6 +340,14 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
         // renderElement()'s return type is the union of every renderer's result;
         // only the teardown fields in RenderResult are ever read off it here.
         if (result) renderResults.push(result as RenderResult);
+        for(const [partId,entry] of Object.entries(sceneState.elementRegistry)) {
+            if(entry===beforePartEntries[partId])continue;
+            addedElementIds.push(partId);
+            if(beforePartEntries[partId]) {
+                replacedElements??={};
+                replacedElements[partId]=beforePartEntries[partId]!;
+            }
+        }
         if (el.id) {
             addedElementIds.push(el.id);
             // Non-null: elBefore was snapshotted under the same `el.id` guard.

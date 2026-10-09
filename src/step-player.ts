@@ -1,6 +1,7 @@
 /** Generic discrete state playback. It writes a slider; views bind to its data. */
 import { state } from '/state.js';
 import { setSliderValue } from '/sliders.js';
+import { updateStepCaption } from '/overlay.js';
 import type { Scene, StepPlayback } from '/types/lesson.js';
 
 export function playbackPosition(value: number, min: number, max: number) {
@@ -32,6 +33,8 @@ export function setupStepPlayer(): void {
     const slider=()=>config?state.sceneSliders[config.slider]:undefined;
     function pause(){if(timer!==null)clearInterval(timer);timer=null;play.textContent='▷';play.setAttribute('aria-label','Play execution');}
     function render(){
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
+        if(scene?.steps?.[state.currentStepIndex]?.descriptionExpr)updateStepCaption(scene,state.currentStepIndex,true);
         const s=slider();
         if(!s||s.kind==='tensor'||!Number.isInteger(s.min)||!Number.isInteger(s.max)){pause();bar.hidden=true;host.classList.remove('has-state-player');return;}
         bar.hidden=false;

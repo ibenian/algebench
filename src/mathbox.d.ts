@@ -60,6 +60,8 @@ interface MathBoxNode {
      * or removed as a unit.
      */
     group(props?: MathBoxProps): MathBoxNode;
+    /** Transform local data coordinates before the enclosing Cartesian mapping. */
+    transform(props?: MathBoxProps): MathBoxNode;
 
     /** 1-D data source: `{ channels, width, data, live? }`. */
     array(props?: MathBoxProps): MathBoxNode;
