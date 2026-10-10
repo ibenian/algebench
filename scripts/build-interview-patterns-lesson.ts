@@ -91,7 +91,7 @@ const TIPS: Record<string, Record<string, string>> = {
     'sliding-window': { right: 'tip_right', window: 'tip_window', best: 'tip_best', 'best-compare': 'tip_cmp' },
     'fast-slow': { slow: 'tip_slow', fast: 'tip_fast' },
     'monotonic-stack': { t: 'tip_t', j: 'tip_j' },
-    'rotated-search': { lo: 'tip_lo', mid: 'tip_mid', hi: 'tip_hi', half: 'tip_half' },
+    'rotated-search': { lo: 'tip_lo', mid: 'tip_mid', hi: 'tip_hi', half: 'tip_half', compare: 'tip_cmp' },
     'merge-intervals': { m: 'tip_m' },
     'dynamic-programming': { skip: 'tip_skip', take: 'tip_take' },
     'greedy': { reach: 'tip_reach' },
@@ -364,6 +364,7 @@ ${MD_TAIL}
 });
 
 // ── Modified binary search ──
+const MID_HIT = `${tr('comparing')} == 1 and arrayAt(${inp('nums')}, ${tr('mid')}) == ${inp('target')}`;
 pattern({
     id: 'rotated-search', title: 'Halve the search (binary search)', file: 'rotated_search.py', source: ROTATED_SEARCH_SOURCE,
     input: { nums: IN.rotated.nums, target: IN.rotated.target }, trace: rotatedSearchTrace(IN.rotated.nums, IN.rotated.target),
@@ -384,10 +385,12 @@ ${MD_TAIL}
             markers: [marker('lo', tr('lo')), marker('mid', tr('mid'), PINK), marker('hi', tr('hi'))],
         }),
         label('lo', `concat('lo = ', ${tr('lo')})`, [-4.5, -2.6, 0], ['nums', tr('lo')]),
-        label('mid', unset('mid'), [-4.5, -2.6, 0], ['nums', tr('mid')]),
+        // mid is wired to its cell, nums[mid]; while line 5 compares it with target, a comparison row shows the result, and a match glows.
+        { ...label('mid', unset('mid'), [-4.5, -2.6, 0], undefined, MID_HIT), connectTo: { object: 'nums', indexExpr: tr('mid'), pinned: true } },
         label('hi', `concat('hi = ', ${tr('hi')})`, [-4.5, -2.6, 0], ['nums', tr('hi')]),
         label('half', `concat('sorted half = ', ${tr('half')} == 1 ? 'left' : (${tr('half')} == 2 ? 'right' : '—'))`, [4, -2.6, 0]),
-        label('target', `concat('target = ', ${inp('target')})`, [4, -2.6, 0]),
+        label('target', `concat('target = ', ${inp('target')})`, [4, -2.6, 0], undefined, MID_HIT),
+        label('compare', `${tr('comparing')} == 1 ? concat('nums[mid] = ', arrayAt(${inp('nums')}, ${tr('mid')}), arrayAt(${inp('nums')}, ${tr('mid')}) == ${inp('target')} ? ' = target: found' : concat(' ≠ ', ${inp('target')})) : 'compare: —'`, [4, -2.6, 0], undefined, MID_HIT),
     ],
 });
 

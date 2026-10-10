@@ -232,7 +232,7 @@ export const ROTATED_SEARCH_SOURCE = `def search_rotated(nums, target):
     return -1`;
 export function rotatedSearchTrace(nums: number[], target: number) {
     const v = { lo: 0, hi: nums.length - 1, mid: -1, half: 0, found: -1,
-        tip_lo: `${tt('lo')} = 0`, tip_hi: String.raw`${tt('hi')} = \text{len}(${tt('nums')}) - 1 = ${nums.length - 1}`, tip_mid: '', tip_half: '' };
+        tip_lo: `${tt('lo')} = 0`, tip_hi: String.raw`${tt('hi')} = \text{len}(${tt('nums')}) - 1 = ${nums.length - 1}`, tip_mid: '', tip_half: '', comparing: 0, tip_cmp: '' };
     const { trace, emit } = recorder(v);
     emit(2, `Search all of nums: lo = 0, hi = ${v.hi}.`);
     while (true) {
@@ -243,8 +243,12 @@ export function rotatedSearchTrace(nums: number[], target: number) {
         v.tip_mid = String.raw`${tt('mid')} = \lfloor (${tt('lo')} + ${tt('hi')}) / 2 \rfloor = \lfloor (${v.lo} + ${v.hi}) / 2 \rfloor = ${v.mid}`;
         emit(4, `mid = (${v.lo} + ${v.hi}) // 2 = ${v.mid}.`);
         const m = nums[v.mid]!, l = nums[v.lo]!, h = nums[v.hi]!;
+        v.comparing = 1;
+        v.tip_cmp = m === target ? String.raw`${at('nums', v.mid)} = ${m} = ${tt('target')} \;\Rightarrow\; \text{return } ${v.mid}`
+            : String.raw`${at('nums', v.mid)} = ${m} \ne ${target} \;\Rightarrow\; \text{keep searching}`;
         emit(5, `Is nums[${v.mid}] = ${m} the target ${target}?`);
         if (m === target) { v.found = v.mid; emit(6, `Found ${target} at index ${v.mid}.`, 'Done'); return trace; }
+        v.comparing = 0; v.tip_cmp = '';
         emit(7, `At least one half is sorted. Is nums[lo] = ${l} ≤ nums[mid] = ${m}?`);
         if (l <= m) {
             v.half = 1; v.tip_half = String.raw`${at('nums', v.lo)} = ${l} \le ${at('nums', v.mid)} = ${m} \;\Rightarrow\; \text{left half sorted}`;
