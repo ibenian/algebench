@@ -1,5 +1,5 @@
 /** Display-only code data. No evaluation of source text. */
-import type { CodeFile } from '/types/lesson.js';
+import type { CodeFile, CodeRef } from '/types/lesson.js';
 export type { CodeFile } from '/types/lesson.js';
 export interface FileTree { folders: Map<string, FileTree>; files: CodeFile[] }
 export function fileTree(files: CodeFile[]): FileTree {
@@ -54,4 +54,16 @@ export function stepCodeLocations(files: CodeFile[], scene: string, step: string
             return true;
         }).map(location => ({file, location}));
     });
+}
+
+/** Resolve authored source locations without accepting missing files or out-of-range lines. */
+export function resolveCodeRef(files: CodeFile[], ref?: CodeRef, evaluate?: (expression: string) => unknown) {
+    if (!ref) return null;
+    try {
+        const fileId = ref.fileExpr !== undefined ? evaluate?.(ref.fileExpr) : ref.file;
+        const line = ref.lineExpr !== undefined ? evaluate?.(ref.lineExpr) : ref.line;
+        if (typeof fileId !== 'string' || typeof line !== 'number' || !Number.isInteger(line) || line < 1) return null;
+        const file = files.find(file => file.id === fileId);
+        return file && line <= file.source.split('\n').length ? { file, line } : null;
+    } catch { return null; }
 }

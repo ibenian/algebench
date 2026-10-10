@@ -1713,6 +1713,7 @@ export interface SystemBlock {
    * Optional gap above this platform front surface for children with local positions. Child depth and local z offset are added; world and relative placement remain explicit.
    */
   childElevation?: number;
+  codeRef?: CodeRef;
 }
 export interface SystemPlacement {
   relativeTo: string;
@@ -1761,6 +1762,27 @@ export interface SystemWaypoint {
   position: Vec3Number11;
   relativeTo?: string;
   space?: 'local' | 'world';
+}
+/**
+ * Optional source location for this block.
+ */
+export interface CodeRef {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
 }
 /**
  * An incremental step that adds/removes elements and configures sliders.

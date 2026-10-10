@@ -105,7 +105,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         const title=text(spec.label,[p[0],p[1]+size[1]/2-headerHeight*.62,z+.06],Math.max(.1,size[0]-.3),headerHeight,color);
         title.layer.mesh.raycast=THREE.Mesh.prototype.raycast;
         registerCompositePart(blockId(spec.id),node.parent?blockId(node.parent):objectId,_view,[blockMesh,title.layer.mesh],[title.mirror],spec.label,
-            'Explain the '+(spec.kind??'service')+' block "'+spec.label+'" inside this system architecture, its responsibility, contained objects, and connected ports.');
+            'Explain the '+(spec.kind??'service')+' block "'+spec.label+'" inside this system architecture, its responsibility, contained objects, and connected ports.','system_dag',spec.codeRef);
         const expression=spec.textExpr??spec.valueExpr;
         if(expression||spec.text){
             if(expression)expressions.push(expression);

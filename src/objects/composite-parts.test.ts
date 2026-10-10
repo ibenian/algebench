@@ -24,3 +24,12 @@ test('nested ask targets inherit parent removal and legend visibility, while rem
  state.legendToggledOff.clear();block.hidden=true;assert.equal(child.hidden,true);
  block.hidden=false;child.hidden=true;assert.equal(parent.hidden,false);assert.equal(block.hidden,false);assert.equal(child.hidden,true);
 });
+
+test('blocks retain their own code reference without inheriting container locations',()=>{
+ state.elementRegistry={};state.legendToggledOff=new Set();
+ const ref={file:'job',line:23};
+ const parent=registerCompositePart('dag','none',view,[],[],'diagram',undefined,'system_dag',ref);
+ const child=registerCompositePart('dag::block','dag',view,[],[],'child');
+ assert.deepEqual(parent.codeRef,ref);
+ assert.equal(child.codeRef,undefined);
+});

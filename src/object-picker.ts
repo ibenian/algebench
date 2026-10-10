@@ -19,6 +19,11 @@
 // — no renderer changes, no per-mesh id stamping at creation time.
 // ============================================================
 
+import { compileExpr, evalExpr } from '/expr.js';
+import type { CompiledExpr } from '/expr.js';
+import type { CodeRef } from '/types/lesson.js';
+import { resolveCodeRef } from '/code-panel-model.js';
+import type { LessonFormat } from '/types/lesson.js';
 import { state } from '/state.js';
 import { withDataOffset, dataToWorld, closestOnSegmentToRay } from '/coords.js';
 import { makeAiAskButton } from '/labels.js';
@@ -104,6 +109,7 @@ const MAX_NEIGHBORS = 12;    // cap the "other objects in view" list in the prom
 let _raycaster: Raycaster | null = null;
 let _canvas: HTMLCanvasElement | null = null;
 let _btn: HTMLButtonElement | null = null;
+let _codeBtn: HTMLButtonElement | null = null;
 let _hideTimer: ReturnType<typeof setTimeout> | null = null;
 let _hoveredId: string | null = null;
 let _rafPending = false;
@@ -547,6 +553,45 @@ function positionBtn(id: string, rect: DOMRect): boolean {
     return true;
 }
 
+const codeRefExpressions = new WeakMap<CodeRef, Map<string, CompiledExpr>>();
+function objectCodeTarget(id: string) {
+    const ref = state.elementRegistry[id]?.codeRef;
+    return resolveCodeRef((state.lessonSpec as LessonFormat | null)?.codeFiles ?? [], ref, expression => {
+        // A compiled expression is reusable; its value is evaluated against current sliders each time.
+        if (!ref) return undefined;
+        let compiled = codeRefExpressions.get(ref);
+        if (!compiled) { compiled = new Map(); codeRefExpressions.set(ref, compiled); }
+        if (!compiled.has(expression)) compiled.set(expression, compileExpr(expression));
+        return evalExpr(compiled.get(expression)!, 0); // inserted above
+    });
+}
+function syncCodeButton(id: string) {
+    const target = objectCodeTarget(id);
+    if (!target) { if (_codeBtn) _codeBtn.style.display = 'none'; return; }
+    if (!_codeBtn) {
+        const button = document.createElement('button');
+        button.className = 'ai-ask-btn object-code-btn';
+        button.textContent = '</>';
+        Object.assign(button.style, {position:'fixed',margin:'0',zIndex:'950',width:'28px',fontSize:'11px',opacity:'1',color:'var(--text-color)',borderRadius:'5px'});
+        button.addEventListener('mouseenter', () => {
+            if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+        });
+        button.addEventListener('mouseleave', hideBtn);
+        button.addEventListener('click', () => {
+            const target = _hoveredId && objectCodeTarget(_hoveredId);
+            if (target) window.dispatchEvent(new CustomEvent('algebench:opencode', {detail:{fileId:target.file.id,line:target.line}}));
+        });
+        document.body.appendChild(button);
+        _codeBtn = button;
+    }
+    _codeBtn.style.display = 'inline-flex';
+    _codeBtn.title = 'Open ' + target.file.path + ':' + target.line;
+    _codeBtn.setAttribute('aria-label', _codeBtn.title);
+    // The AI button is created before positioning either affordance.
+    _codeBtn.style.left = (parseFloat(_btn!.style.left) + BTN_PX + 5) + 'px';
+    _codeBtn.style.top = _btn!.style.top;
+}
+
 function showBtnFor(hit: PickHit) {
     if (!_canvas) return;
     const id = hit.id;
@@ -565,6 +610,7 @@ function showBtnFor(hit: PickHit) {
     _hoveredId = id;
     btn.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
+    syncCodeButton(id);
     startTrack();
 }
 
@@ -579,6 +625,7 @@ function retrack() {
     // `!` — _btn only exists once setupObjectPicker has assigned _canvas.
     const rect = _canvas!.getBoundingClientRect();
     if (!positionBtn(_hoveredId, rect)) { hideBtn(); return; }  // object gone → let it fade out
+    syncCodeButton(_hoveredId);
     _trackRaf = requestAnimationFrame(retrack);
 }
 
@@ -591,6 +638,7 @@ function hideBtn() {
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
     const btn = _btn;
     _hideTimer = setTimeout(() => {
+        if (_codeBtn) _codeBtn.style.display = 'none';
         btn.style.opacity = '0';
         btn.style.pointerEvents = 'none';
         _hoveredId = null;
@@ -604,6 +652,7 @@ function hideBtn() {
 function hideBtnNow() {
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
     if (!_btn) return;
+    if (_codeBtn) _codeBtn.style.display = 'none';
     _btn.style.opacity = '0';
     _btn.style.pointerEvents = 'none';
     _hoveredId = null;

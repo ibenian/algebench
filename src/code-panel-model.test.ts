@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fileTree, relatedLocations, markedSegments, activeCodeLines, stepCodeLocations } from './code-panel-model.js';
+import { resolveCodeRef, fileTree, relatedLocations, markedSegments, activeCodeLines, stepCodeLocations } from './code-panel-model.js';
 import type { CodeFile } from './code-panel-model.js';
 test('file browser preserves full paths and groups folders independently of lesson steps',()=>{
  const a={id:'a',path:'brackets/main.py',source:'a'},b={id:'b',path:'brackets/helpers/main.py',source:'b'};
@@ -50,4 +51,43 @@ test('live step links include only the current execution and failure branches',(
  ]};
  const refs=(lines:number[])=>stepCodeLocations([file],'s','execute',5,()=>new Set(lines)).map(r=>r.location.line);
  assert.deepEqual(refs([1,2]),[1,2]);assert.deepEqual(refs([3]),[3]);assert.deepEqual(refs([]),[]);
+});
+
+test('block source references resolve exact files and reject invalid destinations',()=>{
+ const files:CodeFile[]=[{id:'job',path:'job.py',source:'first\nsecond'}];
+ assert.deepEqual(resolveCodeRef(files,{file:'job',line:2}),{file:files[0],line:2});
+ for(const ref of [undefined,{file:'missing',line:1},{file:'job',line:0},{file:'job',line:3},{file:'job',line:1.5}]) assert.equal(resolveCodeRef(files,ref),null);
+});
+
+test('push lesson block references target existing source lines in every scenario',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
+ let count=0;
+ function walk(value:unknown) {
+  if(!value || typeof value!=='object') return;
+  const object=value as Record<string,unknown>;
+  if(object.codeRef) {
+   const ref=object.codeRef as {file:string;line:number};
+   assert.ok(resolveCodeRef(lesson.codeFiles,ref),JSON.stringify(ref));count++;
+  }
+  Object.values(object).forEach(walk);
+ }
+ walk(lesson);
+ assert.equal(count,144);
+});
+
+test('code references mix literal and expression coordinates using fresh scene values',()=>{
+ const files:CodeFile[]=[{id:'job',path:'job.py',source:'one\ntwo\nthree'}, {id:'other',path:'other.py',source:'a\nb'}];
+ let frame=1;
+ const evaluate=(expr:string):unknown=>expr==='selectedFile' ? (frame===1?'job':'other') : frame;
+ const ref={file:'job',lineExpr:"dataTable('trace', frame, 'line')"};
+ assert.equal(resolveCodeRef(files,ref,evaluate)?.line,1);
+ frame=2;assert.equal(resolveCodeRef(files,ref,evaluate)?.line,2);
+ assert.equal(resolveCodeRef(files,{fileExpr:'selectedFile',line:1},evaluate)?.file.id,'other');
+ assert.equal(resolveCodeRef(files,{fileExpr:'selectedFile',lineExpr:'frame'},evaluate)?.line,2);
+ // Expression coordinates override corresponding literals, rather than silently falling back.
+ assert.equal(resolveCodeRef(files,{file:'missing',fileExpr:'selectedFile',line:99,lineExpr:'frame'},evaluate)?.line,2);
+ assert.equal(resolveCodeRef(files,ref),null);
+ assert.equal(resolveCodeRef(files,ref,()=>{throw new Error('missing table');}),null);
+ for(const value of [0,-1,1.5,NaN,Infinity,'2',null,undefined]) assert.equal(resolveCodeRef(files,ref,()=>value),null);
+ assert.equal(resolveCodeRef(files,{fileExpr:'file',line:1},()=>42),null);
 });

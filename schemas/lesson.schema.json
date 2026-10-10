@@ -3293,7 +3293,74 @@
           "type": "number",
           "minimum": 0,
           "description": "Optional gap above this platform front surface for children with local positions. Child depth and local z offset are added; world and relative placement remain explicit."
+        },
+        "codeRef": {
+          "$ref": "#/$defs/codeRef",
+          "description": "Optional source location for this block."
         }
+      }
+    },
+    "codeRef": {
+      "title": "CodeRef",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ID of a lesson codeFiles entry."
+        },
+        "fileExpr": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Expression returning a codeFiles ID. Overrides file when present."
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based source line to open in the Code tab."
+        },
+        "lineExpr": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Expression returning a one-based source line. Overrides line when present."
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "file"
+                  ]
+                },
+                {
+                  "required": [
+                    "fileExpr"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "line"
+                  ]
+                },
+                {
+                  "required": [
+                    "lineExpr"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
       }
     }
   }

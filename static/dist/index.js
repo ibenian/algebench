@@ -3589,6 +3589,22 @@ function stepCodeLocations(files, scene, step, snapshot, active) {
 		}));
 	});
 }
+/** Resolve authored source locations without accepting missing files or out-of-range lines. */
+function resolveCodeRef(files, ref, evaluate) {
+	if (!ref) return null;
+	try {
+		const fileId = ref.fileExpr !== void 0 ? evaluate?.(ref.fileExpr) : ref.file;
+		const line = ref.lineExpr !== void 0 ? evaluate?.(ref.lineExpr) : ref.line;
+		if (typeof fileId !== "string" || typeof line !== "number" || !Number.isInteger(line) || line < 1) return null;
+		const file = files.find((file) => file.id === fileId);
+		return file && line <= file.source.split("\n").length ? {
+			file,
+			line
+		} : null;
+	} catch {
+		return null;
+	}
+}
 //#endregion
 //#region src/step-code-links.ts
 /** Step captions link into the same authored locations used by the code browser. */
@@ -8022,8 +8038,7 @@ function setupStepPlayer() {
 }
 //#endregion
 //#region src/objects/composite-parts.ts
-/** Register owned composite parts with the existing per-object Ask AI picker. */
-function registerCompositePart(id, parentId, view, meshes, labels, label, prompt, type = "system_dag") {
+function registerCompositePart(id, parentId, view, meshes, labels, label, prompt, type = "system_dag", codeRef) {
 	let hidden = false;
 	const entry = {
 		tracker: {
@@ -8038,6 +8053,7 @@ function registerCompositePart(id, parentId, view, meshes, labels, label, prompt
 		},
 		type,
 		label,
+		codeRef,
 		prompt: prompt ?? null,
 		get hidden() {
 			return hidden || !!state.elementRegistry[parentId]?.hidden || state.legendToggledOff.has(parentId);
@@ -10164,7 +10180,7 @@ function renderSystemDAG(el, _view) {
 			z + .06
 		], Math.max(.1, size[0] - .3), headerHeight, color);
 		title.layer.mesh.raycast = THREE.Mesh.prototype.raycast;
-		registerCompositePart(blockId(spec.id), node.parent ? blockId(node.parent) : objectId, _view, [blockMesh, title.layer.mesh], [title.mirror], spec.label, "Explain the " + (spec.kind ?? "service") + " block \"" + spec.label + "\" inside this system architecture, its responsibility, contained objects, and connected ports.");
+		registerCompositePart(blockId(spec.id), node.parent ? blockId(node.parent) : objectId, _view, [blockMesh, title.layer.mesh], [title.mirror], spec.label, "Explain the " + (spec.kind ?? "service") + " block \"" + spec.label + "\" inside this system architecture, its responsibility, contained objects, and connected ports.", "system_dag", spec.codeRef);
 		const expression = spec.textExpr ?? spec.valueExpr;
 		if (expression || spec.text) {
 			if (expression) expressions.push(expression);
@@ -28507,6 +28523,7 @@ var MAX_NEIGHBORS = 12;
 var _raycaster = null;
 var _canvas = null;
 var _btn = null;
+var _codeBtn = null;
 var _hideTimer = null;
 var _hoveredId = null;
 var _rafPending = false;
@@ -28934,6 +28951,63 @@ function positionBtn(id, rect) {
 	btn.style.top = top + "px";
 	return true;
 }
+var codeRefExpressions = /* @__PURE__ */ new WeakMap();
+function objectCodeTarget(id) {
+	const ref = state.elementRegistry[id]?.codeRef;
+	return resolveCodeRef(state.lessonSpec?.codeFiles ?? [], ref, (expression) => {
+		if (!ref) return void 0;
+		let compiled = codeRefExpressions.get(ref);
+		if (!compiled) {
+			compiled = /* @__PURE__ */ new Map();
+			codeRefExpressions.set(ref, compiled);
+		}
+		if (!compiled.has(expression)) compiled.set(expression, compileExpr(expression));
+		return evalExpr(compiled.get(expression), 0);
+	});
+}
+function syncCodeButton(id) {
+	const target = objectCodeTarget(id);
+	if (!target) {
+		if (_codeBtn) _codeBtn.style.display = "none";
+		return;
+	}
+	if (!_codeBtn) {
+		const button = document.createElement("button");
+		button.className = "ai-ask-btn object-code-btn";
+		button.textContent = "</>";
+		Object.assign(button.style, {
+			position: "fixed",
+			margin: "0",
+			zIndex: "950",
+			width: "28px",
+			fontSize: "11px",
+			opacity: "1",
+			color: "var(--text-color)",
+			borderRadius: "5px"
+		});
+		button.addEventListener("mouseenter", () => {
+			if (_hideTimer) {
+				clearTimeout(_hideTimer);
+				_hideTimer = null;
+			}
+		});
+		button.addEventListener("mouseleave", hideBtn);
+		button.addEventListener("click", () => {
+			const target = _hoveredId && objectCodeTarget(_hoveredId);
+			if (target) window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
+				fileId: target.file.id,
+				line: target.line
+			} }));
+		});
+		document.body.appendChild(button);
+		_codeBtn = button;
+	}
+	_codeBtn.style.display = "inline-flex";
+	_codeBtn.title = "Open " + target.file.path + ":" + target.line;
+	_codeBtn.setAttribute("aria-label", _codeBtn.title);
+	_codeBtn.style.left = parseFloat(_btn.style.left) + BTN_PX + 5 + "px";
+	_codeBtn.style.top = _btn.style.top;
+}
 function showBtnFor(hit) {
 	if (!_canvas) return;
 	const id = hit.id;
@@ -28953,6 +29027,7 @@ function showBtnFor(hit) {
 	_hoveredId = id;
 	btn.style.opacity = "1";
 	btn.style.pointerEvents = "auto";
+	syncCodeButton(id);
 	startTrack();
 }
 function retrack() {
@@ -28963,6 +29038,7 @@ function retrack() {
 		hideBtn();
 		return;
 	}
+	syncCodeButton(_hoveredId);
 	_trackRaf = requestAnimationFrame(retrack);
 }
 function startTrack() {
@@ -28976,6 +29052,7 @@ function hideBtn() {
 	}
 	const btn = _btn;
 	_hideTimer = setTimeout(() => {
+		if (_codeBtn) _codeBtn.style.display = "none";
 		btn.style.opacity = "0";
 		btn.style.pointerEvents = "none";
 		_hoveredId = null;
@@ -28991,6 +29068,7 @@ function hideBtnNow() {
 		_hideTimer = null;
 	}
 	if (!_btn) return;
+	if (_codeBtn) _codeBtn.style.display = "none";
 	_btn.style.opacity = "0";
 	_btn.style.pointerEvents = "none";
 	_hoveredId = null;

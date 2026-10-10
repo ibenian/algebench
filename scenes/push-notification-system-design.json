@@ -371,7 +371,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -415,7 +419,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -438,7 +446,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -456,7 +468,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -484,7 +500,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -576,7 +596,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -630,7 +654,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -697,7 +725,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -764,7 +796,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -812,7 +848,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -840,7 +880,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -894,7 +938,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -942,7 +990,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -975,7 +1027,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -1027,7 +1083,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -1050,7 +1110,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -1074,7 +1138,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -1148,7 +1216,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
@@ -2428,7 +2500,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -2472,7 +2548,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -2495,7 +2575,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -2513,7 +2597,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -2541,7 +2629,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -2633,7 +2725,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -2687,7 +2783,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -2754,7 +2854,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -2821,7 +2925,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -2869,7 +2977,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -2897,7 +3009,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -2951,7 +3067,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -2999,7 +3119,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -3032,7 +3156,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -3084,7 +3212,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -3107,7 +3239,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -3131,7 +3267,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -3205,7 +3345,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
@@ -4485,7 +4629,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -4529,7 +4677,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -4552,7 +4704,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -4570,7 +4726,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -4598,7 +4758,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -4690,7 +4854,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -4744,7 +4912,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -4811,7 +4983,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -4878,7 +5054,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -4926,7 +5106,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -4954,7 +5138,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -5032,7 +5220,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -5080,7 +5272,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -5113,7 +5309,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -5165,7 +5365,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -5188,7 +5392,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -5212,7 +5420,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -5286,7 +5498,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
@@ -6631,7 +6847,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -6675,7 +6895,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -6698,7 +6922,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -6716,7 +6944,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -6744,7 +6976,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -6836,7 +7072,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -6890,7 +7130,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -6957,7 +7201,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -7024,7 +7272,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -7072,7 +7324,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -7100,7 +7356,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -7154,7 +7414,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -7202,7 +7466,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -7235,7 +7503,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -7287,7 +7559,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -7310,7 +7586,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -7334,7 +7614,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -7408,7 +7692,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
@@ -8688,7 +8976,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -8732,7 +9024,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -8755,7 +9051,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -8773,7 +9073,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -8801,7 +9105,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -8893,7 +9201,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -8947,7 +9259,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -9014,7 +9330,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -9081,7 +9401,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -9129,7 +9453,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -9157,7 +9485,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -9211,7 +9543,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -9259,7 +9595,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -9292,7 +9632,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -9344,7 +9688,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -9367,7 +9715,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -9391,7 +9743,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -9465,7 +9821,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
@@ -10745,7 +11105,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -10789,7 +11153,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -10812,7 +11180,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -10830,7 +11202,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -10858,7 +11234,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -10950,7 +11330,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -11004,7 +11388,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -11071,7 +11459,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -11138,7 +11530,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -11186,7 +11582,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -11214,7 +11614,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -11268,7 +11672,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -11316,7 +11724,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -11349,7 +11761,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -11401,7 +11817,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -11424,7 +11844,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -11448,7 +11872,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -11522,7 +11950,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
@@ -12808,7 +13240,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -12852,7 +13288,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -12875,7 +13315,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -12893,7 +13337,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -12921,7 +13369,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -13013,7 +13465,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -13067,7 +13523,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -13134,7 +13594,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -13201,7 +13665,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -13249,7 +13717,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -13277,7 +13749,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -13331,7 +13807,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -13379,7 +13859,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -13412,7 +13896,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -13464,7 +13952,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -13487,7 +13979,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -13511,7 +14007,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -13585,7 +14085,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
@@ -14877,7 +15381,11 @@
                       "side": "right",
                       "offset": -0.3
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 9
+                  }
                 },
                 {
                   "id": "database",
@@ -14921,7 +15429,11 @@
                         0.18
                       ],
                       "kind": "database",
-                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')"
+                      "valueExpr": "dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'db')",
+                      "codeRef": {
+                        "file": "database-schema",
+                        "line": 7
+                      }
                     },
                     {
                       "id": "outbox",
@@ -14944,7 +15456,11 @@
                           "side": "right",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "submit",
+                        "line": 18
+                      }
                     }
                   ],
                   "connections": [
@@ -14962,7 +15478,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "submit",
+                    "line": 10
+                  }
                 },
                 {
                   "id": "cdc",
@@ -14990,7 +15510,11 @@
                       "side": "bottom",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "outbox_relay",
+                    "line": 27
+                  }
                 },
                 {
                   "id": "kafka",
@@ -15082,7 +15606,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'source'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 47
+                      }
                     },
                     {
                       "id": "delivery",
@@ -15136,7 +15664,11 @@
                           "color": "#80b9d6",
                           "lengthExpr": "min(3, dsCount(dsModel(dataTable('settings'), dataTable('submissions'), dataTable('sources'), dataTable('targets'), dataTable('memberships'), dataTable('replays'), dataTable('receiptExclusions'), sender), frame, recipients, workers, gatewayRate, failure, dedupe, capacity, policy, 'delivery'))"
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 57
+                      }
                     }
                   ],
                   "connections": [
@@ -15203,7 +15735,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "flink",
@@ -15270,7 +15806,11 @@
                           "side": "bottom",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 53
+                      }
                     },
                     {
                       "id": "fanout",
@@ -15318,7 +15858,11 @@
                           "side": "left",
                           "offset": -0.35
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 23
+                      }
                     },
                     {
                       "id": "sink",
@@ -15346,7 +15890,11 @@
                           "side": "left",
                           "offset": 0
                         }
-                      ]
+                      ],
+                      "codeRef": {
+                        "file": "flink-job",
+                        "line": 65
+                      }
                     }
                   ],
                   "connections": [
@@ -15400,7 +15948,11 @@
                     }
                   ],
                   "childElevation": 0.22,
-                  "opacity": 0.16
+                  "opacity": 0.16,
+                  "codeRef": {
+                    "file": "flink-job",
+                    "line": 40
+                  }
                 },
                 {
                   "id": "workers",
@@ -15448,7 +16000,11 @@
                       "side": "bottom",
                       "offset": 0.7
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 68
+                  }
                 },
                 {
                   "id": "gateway",
@@ -15481,7 +16037,11 @@
                       "side": "right",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 34
+                  }
                 },
                 {
                   "id": "devices",
@@ -15533,7 +16093,11 @@
                       "side": "left",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 53
+                  }
                 },
                 {
                   "id": "ledger",
@@ -15556,7 +16120,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 21
+                  }
                 },
                 {
                   "id": "dead",
@@ -15580,7 +16148,11 @@
                       "side": "top",
                       "offset": 0
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "worker",
+                    "line": 44
+                  }
                 },
                 {
                   "id": "inbox",
@@ -15654,7 +16226,11 @@
                       "side": "right",
                       "offset": -0.35
                     }
-                  ]
+                  ],
+                  "codeRef": {
+                    "file": "database-schema",
+                    "line": 2
+                  }
                 }
               ],
               "connections": [
