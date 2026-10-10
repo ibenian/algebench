@@ -3374,6 +3374,9 @@ function registerAnimExpr(entry) {
 function unregisterAnimExpr(animState) {
 	sliderState.activeAnimExprs = sliderState.activeAnimExprs.filter((e) => e.animState !== animState);
 }
+function registerAnimUpdater(entry) {
+	sliderState.activeAnimUpdaters.push(entry);
+}
 function unregisterAnimUpdater(animState) {
 	sliderState.activeAnimUpdaters = sliderState.activeAnimUpdaters.filter((e) => e.animState !== animState);
 }
@@ -9671,6 +9674,21 @@ function createArrayPlaneText(width, height, color) {
 	};
 }
 //#endregion
+//#region src/objects/system-dag-flow.ts
+/** Arc-length progress keeps a flow cue continuous through routed pipe bends. */
+function pipeFlowPath(points) {
+	const offsets = [0];
+	for (let i = 1; i < points.length; i++) offsets.push(offsets[i - 1] + Math.hypot(...points[i].map((v, j) => v - points[i - 1][j])));
+	return {
+		length: offsets.at(-1) ?? 0,
+		offsets
+	};
+}
+function pipeFlowPhase(nowMs) {
+	if (!Number.isFinite(nowMs)) return 0;
+	return (nowMs / 1e3 % 1 + 1) % 1;
+}
+//#endregion
 //#region src/objects/system-dag-layout.ts
 var NORMALS = {
 	left: [
@@ -10291,13 +10309,42 @@ function renderSystemDAG(el, _view) {
 			shininess: 28,
 			transparent: true
 		});
-		const glow = glowMaterial(spec.activeColor ?? "#f1c96b");
-		const path = wire.points;
+		const path = wire.points, flowPath = pipeFlowPath(path);
+		const glow = new THREE.ShaderMaterial({
+			transparent: true,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+			uniforms: {
+				opacity: { value: 0 },
+				phase: { value: 0 },
+				width: { value: Math.min(.22, .6 / Math.max(flowPath.length, .001)) },
+				tint: { value: new THREE.Color(...rgb(spec.activeColor ?? "#f1c96b")) },
+				direction: { value: spec.direction === "none" ? 0 : spec.direction === "backward" ? -1 : spec.direction === "both" ? 2 : 1 }
+			},
+			vertexShader: `attribute float flowDistance; varying float routePosition;
+                void main(){routePosition=flowDistance;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+			fragmentShader: `uniform float opacity;uniform float phase;uniform float width;uniform float direction;uniform vec3 tint;
+                varying float routePosition;
+                float beam(float at){float d=abs(routePosition-at);return exp(-pow(d/width,2.0));}
+                void main(){float pulse=0.0;
+                    if(direction>0.0)pulse=beam(phase);
+                    if(direction<0.0||direction>1.0)pulse=max(pulse,beam(1.0-phase));
+                    gl_FragColor=vec4(mix(tint,vec3(1.0),pulse*.8),opacity*(.12+.65*pulse));}`
+		});
+		glow.userData.activityOpacity = 0;
 		for (let i = 1; i < path.length; i++) {
 			const halo = segment(path[i - 1], path[i], radius * 2.2, glow);
-			if (halo) halo.onBeforeRender = () => {
-				glow.opacity = .18 * rootMaterial.opacity * glow.userData.activityOpacity;
-			};
+			if (halo) {
+				const geometry = cylinder.clone(), vertices = geometry.getAttribute("position");
+				const start = flowPath.offsets[i - 1], length = flowPath.offsets[i] - start;
+				geometry.setAttribute("flowDistance", new THREE.Float32BufferAttribute(Array.from({ length: vertices.count }, (_, v) => (start + (vertices.getY(v) + .5) * length) / Math.max(flowPath.length, .001)), 1));
+				geometries.add(geometry);
+				halo.geometry = geometry;
+				halo.raycast = () => {};
+				halo.onBeforeRender = () => {
+					glow.uniforms.opacity.value = rootMaterial.opacity * glow.userData.activityOpacity;
+				};
+			}
 		}
 		for (let i = 1; i < path.length; i++) {
 			let a = path[i - 1], b = path[i];
@@ -10385,6 +10432,7 @@ function renderSystemDAG(el, _view) {
 		},
 		set stopped(value) {
 			stopped = value;
+			if (value) unregisterAnimUpdater(animState);
 			for (const child of containedStates) {
 				child.stopped = value;
 				if (value) {
@@ -10445,6 +10493,13 @@ function renderSystemDAG(el, _view) {
 	};
 	entry._rebuildFn?.();
 	if (expressions.length) registerAnimExpr(entry);
+	if (flows.some((flow) => flow.fn)) registerAnimUpdater({
+		animState,
+		updateFrame(nowMs) {
+			if (animState.stopped || animState.hiddenByRemove || !root.visible) return;
+			for (const flow of flows) if (flow.glow.userData.activityOpacity > 0) flow.glow.uniforms.phase.value = pipeFlowPhase(nowMs);
+		}
+	});
 	rootMaterial.addEventListener("dispose", () => {
 		animState.stopped = true;
 		for (const t of textLayers) t.dispose();

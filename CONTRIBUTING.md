@@ -289,3 +289,5 @@ optionally `arrayHeight` to fit all rows into a fixed height. Wrapped columns an
 up to 1,024 cells; large fitted grids require zooming to read individual values.
 
 Array depth stacks can set `"hoverReveal": true`: hover an exposed cell face or edge to reveal it. Cells nearer the camera fade to 20% opacity (faces, text, and highlight rims); the selected text stays readable. Pointer leave, dragging, and array resizing restore normal opacity. This is a visual inspection aid and does not change records or simulation state.
+
+Highlighted `system_dag` connections include a restrained moving light along the pipe route. It follows forward/backward arrow direction (both directions for `both`), stays continuous around bends, completes one traversal every second regardless of route length, and disappears with inactive highlighting. `direction: "none"` retains static illumination. The animation is a flow cue, independent of simulation ticks or real message throughput.

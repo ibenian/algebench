@@ -6,13 +6,14 @@ import { dataToWorld, dataLenToWorld, withDataOffset, currentDataOffset } from '
 import type { Vec3 } from '/coords.js';
 import { parseColor, addLabel3D } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
-import { registerAnimExpr, unregisterAnimExpr, unregisterAnimUpdater } from '/sliders.js';
+import { registerAnimExpr, registerAnimUpdater, unregisterAnimExpr, unregisterAnimUpdater } from '/sliders.js';
 import type { AnimExprEntry } from '/sliders.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
+import { pipeFlowPath, pipeFlowPhase } from '/objects/system-dag-flow.js';
 import { resolveSystemDAG, pipeArrowDimensions } from '/objects/system-dag-layout.js';
 import type { Element, Color } from '/types/lesson.js';
-import type { BufferGeometry, Material, Mesh, MeshBasicMaterial, MeshPhongMaterial } from 'three';
+import type { BufferGeometry, Material, Mesh, MeshBasicMaterial, MeshPhongMaterial, ShaderMaterial } from 'three';
 
 const PALETTE={group:'#8fa8be',service:'#80b9d6',database:'#80b9d6',broker:'#80b9d6',processor:'#b9a1dd',worker:'#e7be63',gateway:'#7ac9b7',client:'#7ac9b7',store:'#b9a1dd'};
 export function renderSystemDAG(el:Element,_view:MathBoxNode){
@@ -35,7 +36,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
     const geometries=new Set<BufferGeometry>(),materials=new Set<Material>(),textLayers:ArrayPlaneText[]=[];
     const cylinder=new THREE.CylinderGeometry(1,1,1,12),sphere=new THREE.SphereGeometry(1,12,8),cone=new THREE.ConeGeometry(1,1,12);
     geometries.add(cylinder);geometries.add(sphere);geometries.add(cone);
-    function owned(geometry:BufferGeometry,material:MeshBasicMaterial|MeshPhongMaterial,opacity=1){
+    function owned(geometry:BufferGeometry,material:MeshBasicMaterial|MeshPhongMaterial|ShaderMaterial,opacity=1){
         geometries.add(geometry);materials.add(material);
         const mesh=new THREE.Mesh(geometry,material);root.add(mesh);
         mesh.onBeforeRender=()=>{material.opacity=opacity*rootMaterial.opacity*(material.userData.activityOpacity??1);};
@@ -44,14 +45,14 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
     const rgb=(color:Color)=>parseColor(color) as [number,number,number];
     const tint=new Map<string,Color>();
     for(const n of layout.nodes.values())tint.set(n.spec.id,n.spec.color??(n.parent?tint.get(n.parent):undefined)??PALETTE[n.spec.kind??'service']);
-    function segment(a:Vec3,b:Vec3,radius:number,material:MeshBasicMaterial|MeshPhongMaterial){
+    function segment(a:Vec3,b:Vec3,radius:number,material:MeshBasicMaterial|MeshPhongMaterial|ShaderMaterial){
         const start=new THREE.Vector3(...dataToWorld(a)),end=new THREE.Vector3(...dataToWorld(b)),delta=end.clone().sub(start);
         if(delta.length()<1e-8)return;
         const mesh=owned(cylinder,material);mesh.position.copy(start.add(end).multiplyScalar(.5));
         mesh.scale.set(dataLenToWorld(radius),delta.length(),dataLenToWorld(radius));mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
         return mesh;
     }
-    function ball(p:Vec3,radius:number,material:MeshBasicMaterial|MeshPhongMaterial){const mesh=owned(sphere,material);mesh.position.set(...dataToWorld(p));mesh.scale.setScalar(dataLenToWorld(radius));return mesh;}
+    function ball(p:Vec3,radius:number,material:MeshBasicMaterial|MeshPhongMaterial|ShaderMaterial){const mesh=owned(sphere,material);mesh.position.set(...dataToWorld(p));mesh.scale.setScalar(dataLenToWorld(radius));return mesh;}
     function text(value:string,p:Vec3,width:number,height:number,color:Color){
         const layer=createArrayPlaneText(width,height,color);root.add(layer.mesh);textLayers.push(layer);
         layer.mesh.onBeforeRender=(renderer,_scene,camera)=>{layer.prepare(renderer,camera);layer.mesh.material.opacity=rootMaterial.opacity;};layer.set(value,p);
@@ -125,18 +126,40 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
                 'Explain port "'+port.id+'" on "'+spec.label+'", its boundary and the connections using it.');
         }
     }
-    const flows:{material:MeshPhongMaterial;glow:MeshBasicMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null}[]=[];
+    const flows:{material:MeshPhongMaterial;glow:ShaderMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null}[]=[];
     for(const wire of layout.wires){
         const wireStart=root.children.length;
         const spec=wire.spec,radius=spec.radius??pipeRadius,color=spec.color??'#8296a4';
         const material=new THREE.MeshPhongMaterial({color:new THREE.Color(...rgb(color)),shininess:28,transparent:true});
-        const glow=glowMaterial(spec.activeColor??'#f1c96b');
-        const path=wire.points;
+        const path=wire.points, flowPath=pipeFlowPath(path);
+        const glow=new THREE.ShaderMaterial({
+            transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+            uniforms:{opacity:{value:0},phase:{value:0},width:{value:Math.min(.22,.6/Math.max(flowPath.length,.001))},
+                tint:{value:new THREE.Color(...rgb(spec.activeColor??'#f1c96b'))},
+                direction:{value:spec.direction==='none'?0:spec.direction==='backward'?-1:spec.direction==='both'?2:1}},
+            vertexShader: `attribute float flowDistance; varying float routePosition;
+                void main(){routePosition=flowDistance;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+            fragmentShader: `uniform float opacity;uniform float phase;uniform float width;uniform float direction;uniform vec3 tint;
+                varying float routePosition;
+                float beam(float at){float d=abs(routePosition-at);return exp(-pow(d/width,2.0));}
+                void main(){float pulse=0.0;
+                    if(direction>0.0)pulse=beam(phase);
+                    if(direction<0.0||direction>1.0)pulse=max(pulse,beam(1.0-phase));
+                    gl_FragColor=vec4(mix(tint,vec3(1.0),pulse*.8),opacity*(.12+.65*pulse));}`,
+        });
+        glow.userData.activityOpacity=0;
         // Low-opacity additive shells soften the active path without changing
         // its physical pipe radius, route, or proportional arrowhead geometry.
         for(let i=1;i<path.length;i++) {
             const halo=segment(path[i-1]!,path[i]!,radius*2.2,glow);
-            if(halo)halo.onBeforeRender=()=>{glow.opacity=.18*rootMaterial.opacity*glow.userData.activityOpacity;};
+            if(halo) {
+                const geometry=cylinder.clone(),vertices=geometry.getAttribute('position');
+                const start=flowPath.offsets[i-1]!,length=flowPath.offsets[i]!-start;
+                geometry.setAttribute('flowDistance',new THREE.Float32BufferAttribute(Array.from({length:vertices.count},(_,v)=>(start+(vertices.getY(v)+.5)*length)/Math.max(flowPath.length,.001)),1));
+                geometries.add(geometry);halo.geometry=geometry;
+                halo.raycast=()=>{};
+                halo.onBeforeRender=()=>{glow.uniforms.opacity!.value=rootMaterial.opacity*glow.userData.activityOpacity;};
+            }
         }
         for(let i=1;i<path.length;i++) {
             let a=path[i-1]!,b=path[i]!;
@@ -201,7 +224,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
     }
     state.three.scene.add(root);state.planeMeshes.push(root);
     let stopped=false,hidden=false;
-    const animState={get stopped(){return stopped;},set stopped(value:boolean){stopped=value;for(const child of containedStates){child.stopped=value;if(value){unregisterAnimExpr(child);unregisterAnimUpdater(child);}}},get hiddenByRemove(){return hidden;},set hiddenByRemove(value:boolean){hidden=value;for(const child of containedStates)child.hiddenByRemove=value;}};
+    const animState={get stopped(){return stopped;},set stopped(value:boolean){stopped=value;if(value)unregisterAnimUpdater(animState);for(const child of containedStates){child.stopped=value;if(value){unregisterAnimExpr(child);unregisterAnimUpdater(child);}}},get hiddenByRemove(){return hidden;},set hiddenByRemove(value:boolean){hidden=value;for(const child of containedStates)child.hiddenByRemove=value;}};
     const entry:AnimExprEntry={animState,exprStrings:expressions,_rebuildFn:()=>{
         if(animState.stopped||animState.hiddenByRemove)return;
         for(const v of values){const value=v.fn?evalExpr(v.fn,0):v.literal,content=String(value??'');v.draw.layer.set(content,v.draw.p);v.draw.mirror.el.textContent=`${v.label}: ${content}`;v.status.label=`${v.label} status: ${content}`;}
@@ -236,6 +259,10 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         }
     }};
     entry._rebuildFn?.();if(expressions.length)registerAnimExpr(entry);
+    if(flows.some(flow=>flow.fn))registerAnimUpdater({animState,updateFrame(nowMs){
+        if(animState.stopped||animState.hiddenByRemove||!root.visible)return;
+        for(const flow of flows)if(flow.glow.userData.activityOpacity>0)flow.glow.uniforms.phase!.value=pipeFlowPhase(nowMs);
+    }});
     rootMaterial.addEventListener('dispose',()=>{animState.stopped=true;for(const t of textLayers)t.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();root.clear();});
     return {_animState:animState,_animExprEntry:entry,type:el.type};
 }
