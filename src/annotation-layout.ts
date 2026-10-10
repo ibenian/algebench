@@ -100,3 +100,14 @@ export function annotationContainerTitle(rows: string[]): 'Vars' | 'Labels' {
         return parts.length > 1 && parts.every(part => part.trim().length > 0);
     }) ? 'Vars' : 'Labels';
 }
+
+/** The tutor question behind a label row's Ask-AI button: the value as shown, how it was computed, and where the lesson is. */
+export function labelAskMessage(o: {text: string; tooltip?: string; prompt?: string | null; scene?: string; step?: number; sliders?: Record<string, number>}): string {
+    const lines = [`Explain this value shown in the scene: ${o.text}`];
+    if (o.tooltip) lines.push(`How it is computed: $${o.tooltip}$`);
+    if (o.prompt) lines.push(`About this label: ${o.prompt}`);
+    if (o.scene) lines.push(`Current scene: ${o.scene}`);
+    if (o.step !== undefined) lines.push(`Current lesson step: ${o.step + 1}`);
+    if (o.sliders && Object.keys(o.sliders).length) lines.push(`Scalar variables: ${JSON.stringify(o.sliders)}`);
+    return lines.join('\n');
+}

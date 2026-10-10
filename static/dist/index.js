@@ -779,6 +779,16 @@ function annotationContainerTitle(rows) {
 		return parts.length > 1 && parts.every((part) => part.trim().length > 0);
 	}) ? "Vars" : "Labels";
 }
+/** The tutor question behind a label row's Ask-AI button: the value as shown, how it was computed, and where the lesson is. */
+function labelAskMessage(o) {
+	const lines = [`Explain this value shown in the scene: ${o.text}`];
+	if (o.tooltip) lines.push(`How it is computed: $${o.tooltip}$`);
+	if (o.prompt) lines.push(`About this label: ${o.prompt}`);
+	if (o.scene) lines.push(`Current scene: ${o.scene}`);
+	if (o.step !== void 0) lines.push(`Current lesson step: ${o.step + 1}`);
+	if (o.sliders && Object.keys(o.sliders).length) lines.push(`Scalar variables: ${JSON.stringify(o.sliders)}`);
+	return lines.join("\n");
+}
 //#endregion
 //#region src/coords.ts
 var range = () => state.currentRange;
@@ -1556,12 +1566,14 @@ function wireRowTooltip(row, label) {
 	row.addEventListener("pointerenter", () => {
 		owner = label;
 		render$1(label.annotation?.tooltip ?? "");
-		element().classList.add("visible");
+		element().classList.toggle("visible", !!label.annotation?.tooltip);
 	});
 	row.addEventListener("pointermove", (event) => {
 		const el = element();
-		el.style.left = `${event.clientX + 16}px`;
-		el.style.top = `${event.clientY - 40}px`;
+		const overButton = event.target?.closest("button");
+		el.classList.toggle("visible", owner === label && !overButton && !!label.annotation?.tooltip);
+		el.style.left = `${event.clientX + 12}px`;
+		el.style.top = `${row.getBoundingClientRect().bottom + 6}px`;
 	});
 	row.addEventListener("pointerleave", () => {
 		if (owner === label) hide();
@@ -1569,6 +1581,7 @@ function wireRowTooltip(row, label) {
 }
 /** Called with the label layout each frame: follow value changes while open, and close when the row goes away. */
 function refreshLabelTooltip() {
+	if (callouts.size) placeCallouts();
 	if (!owner) return;
 	const tex = owner.annotation?.tooltip;
 	if (tex === void 0 || !owner.el.isConnected || owner.forceHidden || owner.visible === false) {
@@ -1576,6 +1589,60 @@ function refreshLabelTooltip() {
 		return;
 	}
 	render$1(tex);
+	tip?.classList.toggle("visible", !!tex);
+}
+var CALLOUT_MS = 2500;
+var callouts = /* @__PURE__ */ new Map();
+function calloutRender(c, tex) {
+	if (c.tex === tex) return;
+	const katex = window.katex;
+	if (katex) katex.render(tex, c.el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else c.el.textContent = tex;
+	c.tex = tex;
+}
+/** Show `label`'s formula beside its row for a few seconds, restarting the timer on each recalculation. */
+function announceLabelChange(label) {
+	let c = callouts.get(label);
+	if (!c || !c.el.isConnected) {
+		const el = document.createElement("div");
+		el.className = "graph-panel-tooltip label-row-tooltip label-change-callout";
+		el.setAttribute("role", "status");
+		document.body.append(el);
+		c = {
+			el,
+			until: 0,
+			tex: ""
+		};
+		callouts.set(label, c);
+	}
+	calloutRender(c, label.annotation?.tooltip ?? "");
+	c.until = performance.now() + CALLOUT_MS;
+}
+/** Each frame: keep callouts beside their rows (boxes move with the camera and drags), and retire expired ones. */
+function placeCallouts() {
+	const now = performance.now();
+	for (const [label, c] of callouts) {
+		const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+		const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row?.offsetParent;
+		if (gone || now > c.until || owner === label) {
+			c.el.classList.remove("visible");
+			if (gone || now > c.until + 400) {
+				c.el.remove();
+				callouts.delete(label);
+			}
+			continue;
+		}
+		calloutRender(c, label.annotation?.tooltip ?? c.tex);
+		const box = row.closest(".annotation-badge").getBoundingClientRect(), r = row.getBoundingClientRect();
+		const width = c.el.offsetWidth, roomRight = window.innerWidth - box.right - 8 >= width;
+		c.el.style.left = `${roomRight ? box.right + 8 : Math.max(8, box.left - 8 - width)}px`;
+		c.el.style.top = `${(r.top + r.bottom) / 2 - c.el.offsetHeight / 2}px`;
+		c.el.classList.add("visible");
+	}
 }
 //#endregion
 //#region src/glossary-core.ts
@@ -2398,6 +2465,21 @@ function groupAnnotations(scale) {
 					if (labels[group[rowIndex]].annotation.highlighted) row.classList.add("annotation-row-highlight");
 					wireRowHover(row, labels[group[rowIndex]]);
 					wireRowTooltip(row, labels[group[rowIndex]]);
+					const member = labels[group[rowIndex]];
+					const ask = makeAiAskButton("ai-ask-btn annotation-ask-btn", "Ask AI about this value", () => {
+						const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+						const sliders = Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value]));
+						return labelAskMessage({
+							text: member.annotation.text,
+							tooltip: member.annotation.tooltip,
+							prompt: member.annotation.prompt,
+							scene: scene?.title,
+							step: state.currentStepIndex,
+							sliders
+						});
+					});
+					ask.addEventListener("pointerdown", (event) => event.stopPropagation());
+					row.append(ask);
 					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
@@ -3919,6 +4001,7 @@ function renderStepMarker(el, _view, owner) {
 		rendered: ""
 	};
 	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
+	if (!marker) label.annotation.prompt = el.prompt ?? null;
 	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
 	if (!marker && el.connectTo?.pinned) label.wirePinned = true;
 	const entry = {
@@ -3963,6 +4046,7 @@ function renderStepMarker(el, _view, owner) {
 						value
 					};
 				}
+				const previous = annotation.text;
 				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
 				if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn, 0);
 				if (tooltipFn) try {
@@ -3970,6 +4054,7 @@ function renderStepMarker(el, _view, owner) {
 				} catch {
 					annotation.tooltip = "";
 				}
+				if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
 				if (measure.textContent !== annotation.text) {
 					measure.textContent = annotation.text;
 					annotation.scale = null;

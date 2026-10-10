@@ -1,6 +1,7 @@
 /** State-bound annotations. Projection/grouping belongs to the common label layer. */
 import { addLabel3D, colorToCSS } from '/labels.js';
 import { labelDragHandler } from '/objects/label-drag.js';
+import { announceLabelChange } from '/label-tooltip.js';
 import { annotationText } from '/annotation-layout.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr } from '/sliders.js';
@@ -44,6 +45,7 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
     label.el.style.setProperty('--marker-color', colorToCSS(el.color ?? (marker ? '#f1c65b' : '#172e50')));
     label.annotation = {kind: marker ? 'marker' : 'label', text: '', badge, measure, width: 0, height: 0, scale: null, rendered: ''};
     if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
+    if (!marker) label.annotation.prompt = el.prompt ?? null;
     if(!marker && el.connectTo && 'object' in el.connectTo)label.wireTarget={object:el.connectTo.object};
     if(!marker && el.connectTo?.pinned)label.wirePinned=true;
     const entry: AnimExprEntry = {animState, exprStrings:sources, _rebuildFn:()=>{
@@ -76,9 +78,12 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
                 if (!Number.isInteger(value) || value < 0) throw new Error('Invalid index');
                 annotation.index = {group:owner?.group ?? el.indexGroup!, name:el.indexName, value};
             }
+            const previous = annotation.text;
             annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
             if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn,0);
             if (tooltipFn) { try { annotation.tooltip = String(evalExpr(tooltipFn,0)); } catch { annotation.tooltip = ''; } }
+            // A recalculated value briefly shows how it was computed; first display does not.
+            if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
             if (measure.textContent !== annotation.text) {
                 measure.textContent = annotation.text; annotation.scale = null;
             }

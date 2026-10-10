@@ -30,8 +30,6 @@ function array(id: string, label: string, origin: number[], opts: Json & { from:
 /** Expression labels at the same position merge into one draggable "Vars" box. */
 const label = (id: string, textExpr: string, position: number[], connect?: [string, string], highlightExpr?: string) =>
     ({ id, type: 'expression_label', position, textExpr, ...(connect ? { connectTo: { object: connect[0], indexExpr: connect[1] } } : {}), ...(highlightExpr ? { highlightExpr } : {}) });
-/** LaTeX inside a single-quoted lesson string: the app keeps its contents literally, so backslashes stay single. */
-const TEX = (latex: string) => latex;
 const unset = (col: string, name = col) => `concat('${name} = ', ${tr(col)} < 0 ? 'unset' : ${tr(col)})`;
 
 // ── The problem each scene solves. It is the scene's caption on entry (step 0) and
@@ -86,6 +84,26 @@ function withProblem(id: string, markdown: string): string {
     return markdown.replace(/^(# [^\n]*\n\n)/, `$1${block}`);
 }
 
+/** Which trace column explains each label: the recorded run writes tip_<var> wherever a variable is assigned. */
+const TIPS: Record<string, Record<string, string>> = {
+    'prefix-sum': { last: 'tip_last', answer: 'tip_answer' },
+    'two-pointers': { left: 'tip_left', right: 'tip_right', total: 'tip_total', compare: 'tip_cmp' },
+    'sliding-window': { right: 'tip_right', window: 'tip_window', best: 'tip_best', 'best-compare': 'tip_cmp' },
+    'fast-slow': { slow: 'tip_slow', fast: 'tip_fast' },
+    'monotonic-stack': { t: 'tip_t', j: 'tip_j' },
+    'rotated-search': { lo: 'tip_lo', mid: 'tip_mid', hi: 'tip_hi', half: 'tip_half' },
+    'merge-intervals': { m: 'tip_m' },
+    'dynamic-programming': { skip: 'tip_skip', take: 'tip_take' },
+    'greedy': { reach: 'tip_reach' },
+    'bit-manipulation': { x: 'tip_x', result: 'tip_result' },
+    'string-matching': { k: 'tip_k' },
+    'union-find': { a: 'tip_edge', b: 'tip_edge', count: 'tip_count' },
+};
+const withTip = (sceneId: string) => (el: Json): Json => {
+    const column = el.type === 'expression_label' ? TIPS[sceneId]?.[el.id as string] : undefined;
+    return column ? { ...el, tooltipExpr: tr(column) } : el;
+};
+
 interface PatternScene {
     id: string; title: string; markdown: string; prompt: string; file: string; source: string;
     trace: Frame[]; input: Json; elements: Json[]; cameraX?: number;
@@ -106,7 +124,7 @@ function pattern(p: PatternScene) {
         steps: [{
             id: 'run', title: 'Run the algorithm', description: 'Follow the highlighted code line with the execution player.',
             sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: p.trace.length - 1, step: 1, default: 0 }],
-            add: p.elements.flatMap(withTitle),
+            add: p.elements.flatMap(withTitle).map(withTip(p.id)),
             info: [{ id: 'current-action', title: 'Current action', content: `{{${tr('message')}}}`, position: 'top-center' }],
         }],
         stepPlayback: { slider: 'frame', intervalMs: 1200 },
@@ -231,11 +249,9 @@ ${MD_TAIL}
         label('right', `concat('right = ', ${tr('right')})`, [-4, -2.6, 0], ['nums', tr('right')]),
         // total is linked to target; both, and the comparison, light up on a match.
         ...((hit: string) => [
-            { ...label('total', `concat('total = ', ${tr('hasTotal')} == 1 ? ${tr('total')} : '—')`, [-4, -2.6, 0], undefined, hit), connectTo: { object: 'target', pinned: true },
-              tooltipExpr: `${tr('hasTotal')} == 1 ? concat('${TEX(String.raw`\text{total} = \text{nums}[\text{left}] + \text{nums}[\text{right}] = `)}', arrayAt(${inp('nums')}, ${tr('left')}), ' + ', arrayAt(${inp('nums')}, ${tr('right')}), ' = ', ${tr('total')}) : '${TEX(String.raw`\text{total} = \text{nums}[\text{left}] + \text{nums}[\text{right}]`)}'` },
+            { ...label('total', `concat('total = ', ${tr('hasTotal')} == 1 ? ${tr('total')} : '—')`, [-4, -2.6, 0], undefined, hit), connectTo: { object: 'target', pinned: true } },
             label('target', `concat('target = ', ${inp('target')})`, [4, -2.6, 0], undefined, hit),
-            { ...label('compare', `${tr('hasTotal')} == 1 ? concat(${tr('total')}, ${tr('total')} < ${inp('target')} ? ' < ' : (${tr('total')} > ${inp('target')} ? ' > ' : ' = '), ${inp('target')}, ${tr('total')} < ${inp('target')} ? ': move left' : (${tr('total')} > ${inp('target')} ? ': move right' : ': found')) : 'compare: —'`, [4, -2.6, 0], undefined, hit),
-              tooltipExpr: `${tr('hasTotal')} == 1 ? (${tr('total')} < ${inp('target')} ? concat(${tr('total')}, '${TEX(String.raw` < `)}', ${inp('target')}, '${TEX(String.raw` \;\Rightarrow\; \text{left} \mathrel{+}= 1`)}') : (${tr('total')} > ${inp('target')} ? concat(${tr('total')}, '${TEX(String.raw` > `)}', ${inp('target')}, '${TEX(String.raw` \;\Rightarrow\; \text{right} \mathrel{-}= 1`)}') : concat(${tr('total')}, ' = ', ${inp('target')}, '${TEX(String.raw` \;\Rightarrow\; \text{found at } (`)}', ${tr('left')}, ', ', ${tr('right')}, ')'))) : '${TEX(String.raw`\text{compare total with target}`)}'` },
+            { ...label('compare', `${tr('hasTotal')} == 1 ? concat(${tr('total')}, ${tr('total')} < ${inp('target')} ? ' < ' : (${tr('total')} > ${inp('target')} ? ' > ' : ' = '), ${inp('target')}, ${tr('total')} < ${inp('target')} ? ': move left pointer' : (${tr('total')} > ${inp('target')} ? ': move right pointer' : ': found')) : 'compare: —'`, [4, -2.6, 0], undefined, hit) },
         ])(`${tr('hasTotal')} == 1 and ${tr('total')} == ${inp('target')}`),
     ],
 });
@@ -261,9 +277,14 @@ ${MD_TAIL}
             from: inp('nums'), highlightExpr: `idx >= ${tr('left')} and idx <= ${tr('right')}`,
             markers: [marker('left', tr('left')), marker('right', tr('right')), marker('right − k', tr('dropped'), PINK)],
         }),
-        label('window', `concat('window = ', ${tr('window')})`, [-4, -2.6, 0]),
-        label('best', `concat('best = ', ${tr('best')})`, [-4, -2.6, 0]),
-        label('k', `concat('k = ', ${inp('k')})`, [4, -2.6, 0]),
+        label('right', `concat('right = ', ${tr('right')})`, [-4, -2.6, 0], ['nums', tr('right')]),
+        // window is linked to best; on line 6 a comparison row shows max(best, window), and all three glow on a new best.
+        ...((hit: string, comparing: string) => [
+            { ...label('window', `concat('window = ', ${tr('window')})`, [-4, -2.6, 0], undefined, hit), connectTo: { object: 'best', pinned: true } },
+            label('best', `concat('best = ', ${tr('best')})`, [4, -2.6, 0], undefined, hit),
+            { ...label('best-compare', `${comparing} ? (${tr('improved')} == 1 ? concat(${tr('window')}, ' > ', ${tr('prevBest')}, ': best updated') : concat(${tr('window')}, ' ≤ ', ${tr('prevBest')}, ': best stays')) : 'compare: —'`, [4, -2.6, 0], undefined, hit) },
+        ])(`${tr('improved')} == 1`, `${tr('prevBest')} >= 0`),
+        label('k', `concat('k = ', ${inp('k')})`, [-4, -2.6, 0]),
     ],
 });
 

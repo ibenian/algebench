@@ -5676,6 +5676,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 /* Label-row KaTeX tooltips: the semantic graph's tooltip chrome at the glossary tooltip's size. */
 .graph-panel-tooltip.label-row-tooltip { font-size: 13px; padding: 6px 10px; max-width: min(520px, calc(100vw - 16px)); }
 .label-row-tooltip .katex-display { margin: 0; }
+/* An unprompted formula beside a recalculated row: the tooltip, with a soft accent edge. */
+.label-change-callout { border-color: color-mix(in srgb, #f1cc59 55%, var(--border-color)); }
 /* A label whose highlightExpr is truthy: the same gold an array uses for a selected cell. */
 .annotation-row.annotation-row-highlight {
     color: #1b1606; border-radius: 4px; padding-inline: 4px; margin-inline: -4px;
@@ -5686,12 +5688,18 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 }
 @keyframes annotation-row-light { from { box-shadow: 0 0 0 1px #fff3c4, 0 0 18px 6px #f1cc59d9, 0 0 36px 10px #f1cc5966; } }
 @media (prefers-reduced-motion: reduce) { .annotation-row.annotation-row-highlight { animation: none; } }
+/* Ask AI about a label row: the shared sparkle button, shown while hovering the row. */
+.annotation-row .annotation-ask-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
+.annotation-row:hover .annotation-ask-btn, .annotation-ask-btn:focus-visible { opacity: 1; }
 .expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
 .expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
 .expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }
 .expression-wire-toggle:hover::after { opacity: 1; }
 .expression-wire-toggle:focus-visible { outline: 1px solid #a6d5ec; outline-offset: 2px; }
 .annotation-measure-wired { padding-right: 34px; }
+/* Room for the row's Ask-AI button, plus the pin button when the label is wired. */
+.expression-label .annotation-measure { padding-right: 24px; }
+.expression-label .annotation-measure.annotation-measure-wired { padding-right: 56px; }
 .annotation-row + .annotation-row { border-top: 1px solid #171c2226; margin-top: 4px; padding-top: 4px; }
 .annotation-measure { position: absolute; visibility: hidden; pointer-events: none; top: 0; left: 0; width: max-content; }
 

@@ -24,6 +24,11 @@ test('prefix sums answer each range query',()=>{
  assert.deepEqual(last(trace).prefix,[0,3,4,8,9,14,23,25,31]);
  assert.deepEqual(trace.filter(f=>f.line===8).map(f=>f.answer),IN.prefix.queries.map(([i,j])=>IN.prefix.nums.slice(i,j+1).reduce((s,x)=>s+x,0)));
 });
+test('two pointers: total always equals the pair it was computed from, even after a pointer moves',()=>{
+ const {nums,target}=IN.twoPointers;
+ for(const f of twoPointersTrace(nums,target))if(f.hasTotal)assert.equal(f.total,nums[f.sumL as number]!+nums[f.sumR as number]!);
+ assert.ok(twoPointersTrace(nums,target).some(f=>f.hasTotal&&(f.sumL!==f.left||f.sumR!==f.right)),'the example has steps where a pointer moved after the sum');
+});
 test('two pointers find the pair and report a miss',()=>{
  const hit=last(twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target));
  assert.equal(hit.found,1);assert.equal(IN.twoPointers.nums[hit.left as number]!+IN.twoPointers.nums[hit.right as number]!,IN.twoPointers.target);
@@ -33,6 +38,24 @@ test('sliding window tracks the best fixed-size window',()=>{
  const {nums,k}=IN.slidingWindow,done=last(slidingWindowTrace(nums,k));
  const sums=nums.slice(0,nums.length-k+1).map((_,i)=>nums.slice(i,i+k).reduce((s,x)=>s+x,0));
  assert.equal(done.best,Math.max(...sums));assert.equal(done.left,sums.indexOf(Math.max(...sums)));
+});
+test('sliding window: the line-6 comparison uses best before the update',()=>{
+ const {nums,k}=IN.slidingWindow,trace=slidingWindowTrace(nums,k);
+ for(const f of trace.filter(f=>f.line===6)){
+  assert.equal(f.improved,(f.window as number)>(f.prevBest as number)?1:0);
+  assert.equal(f.best,Math.max(f.prevBest as number,f.window as number));
+ }
+ assert.ok(trace.every(f=>f.line===6||(f.prevBest===-1&&f.improved===0)));
+ assert.ok(trace.some(f=>f.line===6&&f.improved)&&trace.some(f=>f.line===6&&!f.improved),'the example shows both outcomes');
+});
+test('sliding window: the recorded update always reproduces the shown window',()=>{
+ const {nums,k}=IN.slidingWindow;
+ for(const f of slidingWindowTrace(nums,k)){
+  if((f.wOld as number)<0){if(f.line<=3)assert.equal(f.window,nums.slice(0,k).reduce((a,b)=>a+b,0));continue;}
+  const r=f.wRight as number;
+  assert.equal(f.wIn,nums[r]);assert.equal(f.wOut,nums[r-k]);
+  assert.equal(f.window,(f.wOld as number)+(f.wIn as number)-(f.wOut as number));
+ }
 });
 test('Floyd finds the duplicate',()=>{
  assert.equal(last(fastSlowTrace(IN.fastSlow.nums)).slow,1);
@@ -173,4 +196,24 @@ test('every pattern scene states its problem first: as the step-0 caption and at
   assert.equal(problem,`**Problem:** ${scene.description}`,scene.id);
   if(scene.data)assert.match(scene.markdown,/\n\*\*Example:\*\* /,`${scene.id} has a worked example`);
  }
+});
+
+test('every label tooltip reads a recorded tip column of well-formed LaTeX',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ let tips=0;
+ for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
+  for(const el of scene.steps[0].add.filter((e:{tooltipExpr?:string})=>e.tooltipExpr)){
+   const column=/dataTable\('trace', frame, '(tip_\w+)'\)/.exec(el.tooltipExpr)?.[1];
+   assert.ok(column,`${scene.id}/${el.id} reads a tip column`);
+   for(const frame of scene.data.trace){
+    const tex:string=frame[column!];
+    assert.equal(typeof tex,'string',`${scene.id}/${el.id}: ${column} exists on every step`);
+    let depth=0;for(const ch of tex){depth+=ch==='{'?1:ch==='}'?-1:0;assert.ok(depth>=0);}
+    assert.equal(depth,0,`${scene.id}/${el.id}: balanced braces in ${tex}`);
+    assert.equal(tex.split('\\lbrack').length,tex.split('\\rbrack').length,`${scene.id}/${el.id}: paired brackets in ${tex}`);
+    if(tex)tips++;
+   }
+  }
+ }
+ assert.ok(tips>200,'tooltips are present across the lesson');
 });

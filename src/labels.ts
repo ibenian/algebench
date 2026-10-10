@@ -3,7 +3,7 @@
 // AI ask-button helpers.
 // ============================================================
 
-import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition, markerLifts } from '/annotation-layout.js';
+import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition, markerLifts, labelAskMessage } from '/annotation-layout.js';
 import type { AnnotationValue } from '/annotation-layout.js';
 
 import { state } from '/state.js';
@@ -379,6 +379,8 @@ export interface Label3D {
         highlighted?: boolean;
         /** An expression label's tooltipExpr result: LaTeX shown while hovering its row. */
         tooltip?: string;
+        /** The element's author `prompt`, passed to the row's Ask-AI question. */
+        prompt?: string | null;
         startDrag?: (event:PointerEvent, members?:Label3D[])=>void;
     };
     annotationHidden?: boolean;
@@ -620,6 +622,15 @@ function groupAnnotations(scale: number): void {
                     if (labels[group[rowIndex]!]!.annotation!.highlighted) row.classList.add('annotation-row-highlight');
                     wireRowHover(row,labels[group[rowIndex]!]!);
                     wireRowTooltip(row,labels[group[rowIndex]!]!);
+                    const member = labels[group[rowIndex]!]!;
+                    const ask = makeAiAskButton('ai-ask-btn annotation-ask-btn', 'Ask AI about this value', () => {
+                        const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+                        const sliders = Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v]) => v.kind !== 'tensor').map(([k,v]) => [k, v.value as number]));
+                        return labelAskMessage({text: member.annotation!.text, tooltip: member.annotation!.tooltip, prompt: member.annotation!.prompt, scene: scene?.title, step: state.currentStepIndex, sliders});
+                    });
+                    // The row starts a drag on pointerdown; the button must not.
+                    ask.addEventListener('pointerdown', event => event.stopPropagation());
+                    row.append(ask);
                     row.dataset.labelSeq = String(labels[group[rowIndex]!]!.seq);
                     const drag = labels[group[rowIndex]!]!.annotation!.startDrag;
                     if (drag) {
