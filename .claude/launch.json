@@ -286,6 +286,20 @@
       ],
       "port": 5763,
       "autoPort": true
+    },
+    {
+      "name": "messaging-lab",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/draft/messaging-systems-lab.json",
+        "--port",
+        "5764",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5764,
+      "autoPort": true
     }
   ]
 }

@@ -32,3 +32,14 @@ def test_active_view_includes_execution_position(surface):
     })
     viewing = next(line for line in prompt.splitlines() if 'USER VIEWING:' in line)
     assert 'frame=3, execution position 4 / 25' in viewing
+
+
+def test_simulation_state_is_included_verbatim():
+    prompt = build_system_prompt({'currentScene': {}, 'runtime': {'simulationState': 'kafka: lag 3, duplicates 1'}})
+    assert 'Live simulation state' in prompt
+    assert 'kafka: lag 3, duplicates 1' in prompt
+
+
+@pytest.mark.parametrize('value', [None, '', '   ', 7, ['x']])
+def test_simulation_state_omitted_when_absent_or_invalid(value):
+    assert 'Live simulation state' not in build_system_prompt({'currentScene': {}, 'runtime': {'simulationState': value}})

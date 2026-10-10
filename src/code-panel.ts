@@ -4,7 +4,8 @@ import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { makeAiAskButton } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
-import { fileTree, markedSegments, relatedLocations, activeCodeLines } from '/code-panel-model.js';
+import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor } from '/code-panel-model.js';
+import { setCodeFocus } from '/code-focus.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
@@ -27,7 +28,24 @@ export function setupCodePanel(): void {
         return `Explain this selected code in the context of the current lesson. This source is displayed, not executed.\nFile: ${selected.path}\nLines: ${first}–${last}\nSelected text:\n${excerpt}\nCurrent scene: ${scene?.title??''}\nCurrent lesson step: ${state.currentStepIndex+1}\nScalar variables: ${JSON.stringify(Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value])))}`;
     });
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
-    actions.append(selectionLabel,ask,jump);host.append(tree,title,execution,body,actions,targets);
+    const what=document.createElement('span');what.className='code-line-actions';
+    actions.append(selectionLabel,ask,jump,what);host.append(tree,title,execution,body,actions,targets);
+    function renderLineActions() {
+        what.replaceChildren();
+        const scene=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.id;
+        if(!selected||!first)return;
+        for(const action of lineActionsFor(selected,first,last,scene,id=>!!state.sceneSliders[id])){
+            const button=document.createElement('button');button.type='button';button.textContent=action.label;
+            button.title='Sets '+Object.keys(action.set).join(', ')+' — the simulation replays deterministically with the new setting';
+            button.onclick=()=>{
+                window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+                // Evaluate every value against the current state before writing any of them.
+                const values=Object.entries(action.set).map(([id,v])=>[id,typeof v==='string'?Number(evalExpr(compileExpr(v),0)):v] as const);
+                for(const [id,value] of values)if(Number.isFinite(value))setSliderValue(id,value);
+            };
+            what.append(button);
+        }
+    }
     function resolve(location: NonNullable<CodeFile['locations']>[number]) {
         const scenes=state.lessonSpec?.scenes??[];
         const scene=scenes.findIndex(s=>s.id===location.scene);
@@ -41,6 +59,8 @@ export function setupCodePanel(): void {
         jump.disabled=!selected||!relatedLocations(selected,first,last).some(l=>resolve(l));
         jump.title=jump.disabled?'No linked lesson step for this selection':'Navigate only when you press this button';
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>row.classList.toggle('selected',Number(row.dataset.line)>=first&&Number(row.dataset.line)<=last));
+        if(selected)setCodeFocus({fileId:selected.id,first,last});
+        renderLineActions();
     }
     function go(choice: NonNullable<ReturnType<typeof resolve>>) {
         window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
@@ -76,7 +96,7 @@ export function setupCodePanel(): void {
         lastExecution=signature;
     }
     function open(file: CodeFile) {
-        selected=file;lastExecution='';first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;
+        selected=file;lastExecution='';first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
         title.textContent=file.path+' · read only';body.replaceChildren();
         if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{
@@ -108,7 +128,7 @@ export function setupCodePanel(): void {
     function refresh() {
         if(lesson!==state.lessonSpec){
             lesson=state.lessonSpec;files=(lesson as LessonFormat|null)?.codeFiles??[];tree.replaceChildren();body.replaceChildren();actions.hidden=targets.hidden=true;
-            selected=undefined;active=null;build(fileTree(files),tree);
+            selected=undefined;active=null;setCodeFocus(null);build(fileTree(files),tree);
             if(files[0])open(files[0]);else title.textContent='This lesson has no code files.';
         }
         refreshBinding();

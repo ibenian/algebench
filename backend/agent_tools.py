@@ -562,6 +562,11 @@ def build_system_prompt(context, agent_memory=None):
                 )
     if runtime.get('currentCaption'):
         parts.append(f"- Caption displayed to user: \"{runtime['currentCaption']}\"")
+    simulation_state = runtime.get('simulationState')
+    if isinstance(simulation_state, str) and simulation_state.strip():
+        # Authored by the scene's promptExpr: the exact simulation state behind the visuals.
+        parts.append("- Live simulation state (authoritative; reason from these values, do not invent others):\n"
+                     + simulation_state.strip()[:6000])
     if runtime.get('projection'):
         parts.append(f"- Projection: {runtime['projection']}")
 

@@ -12,9 +12,13 @@ import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 import { pipeFlowPath, pipeFlowPhase } from '/objects/system-dag-flow.js';
 import { resolveSystemDAG, pipeArrowDimensions } from '/objects/system-dag-layout.js';
+import { codeFocus, focusMatches } from '/code-focus.js';
+import { resolveCodeRef } from '/code-panel-model.js';
+import type { LessonFormat } from '/types/lesson.js';
 import type { Element, Color } from '/types/lesson.js';
 import type { BufferGeometry, Material, Mesh, MeshBasicMaterial, MeshPhongMaterial, ShaderMaterial } from 'three';
 
+const FOCUS_COLOR='#62e6ff';
 const PALETTE={group:'#8fa8be',service:'#80b9d6',database:'#80b9d6',broker:'#80b9d6',processor:'#b9a1dd',worker:'#e7be63',gateway:'#7ac9b7',client:'#7ac9b7',store:'#b9a1dd'};
 export function renderSystemDAG(el:Element,_view:MathBoxNode){
     if(!state.three)return null;
@@ -68,6 +72,16 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         return material;
     }
     const containedStates:{stopped:boolean;hiddenByRemove?:boolean}[]=[];
+    // Focus comes from a block's highlightExpr or from the Code tab selecting one of its source lines.
+    const focusFns=new Map<string,ReturnType<typeof compileExpr>>();
+    const codeFiles=()=>(state.lessonSpec as LessonFormat|null)?.codeFiles??[];
+    const codeRefs=(id:string)=>{
+        const spec=layout.nodes.get(id)!.spec; // nodeLighting keys come from layout.nodes
+        return [spec.codeRef,...(spec.codeLinks??[])].filter(ref=>!!ref).map(ref=>{
+            const resolved=resolveCodeRef(codeFiles(),ref,expression=>evalExpr(compileExpr(expression),0));
+            return resolved?{fileId:resolved.file.id,line:resolved.line}:null;
+        });
+    };
     for(const node of layout.nodes.values()){
         const {spec,position:p,size}=node,color=tint.get(spec.id)!;
         const w0=dataToWorld(p.map((v,i)=>v-size[i]!/2) as Vec3),w1=dataToWorld(p.map((v,i)=>v+size[i]!/2) as Vec3);
@@ -102,6 +116,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
             }
         }
         nodeLighting.set(spec.id,{fill,border,glow,ports,color});
+        if(spec.highlightExpr){focusFns.set(spec.id,compileExpr(spec.highlightExpr));expressions.push(spec.highlightExpr);}
         const headerHeight=spec.blocks?.length ? .85 : Math.min(.78,size[1]*.48);
         const title=text(spec.label,[p[0],p[1]+size[1]/2-headerHeight*.62,z+.06],Math.max(.1,size[0]-.3),headerHeight,color);
         title.layer.mesh.raycast=THREE.Mesh.prototype.raycast;
@@ -244,12 +259,19 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
             f.glow.userData.activityOpacity=active?1:0;
             if(active){lightNode(f.from);lightNode(f.to);}
         }
+        const focus=codeFocus();
         for(const [id,lighting] of nodeLighting) {
             const active=activeNodes.has(id);
-            lighting.fill.color.setRGB(...rgb(lighting.color));
-            if(active)lighting.fill.color.lerp(new THREE.Color('#ffffff'),.18);
-            lighting.border.emissiveIntensity=active?.8:.25;
-            lighting.glow.userData.activityOpacity=active?1:0;
+            const fn=focusFns.get(id);
+            let focused=focusMatches(focus?codeRefs(id):[],focus);
+            if(!focused&&fn)try{focused=!!evalExpr(fn,0);}catch{/* an unavailable binding leaves the block unfocused */}
+            const tone=focused?FOCUS_COLOR:lighting.color;
+            lighting.fill.color.setRGB(...rgb(tone));
+            if(active&&!focused)lighting.fill.color.lerp(new THREE.Color('#ffffff'),.18);
+            lighting.border.color.setRGB(...rgb(tone));lighting.border.emissive.setRGB(...rgb(tone));
+            lighting.glow.color.setRGB(...rgb(tone));
+            lighting.border.emissiveIntensity=focused?1:active?.8:.25;
+            lighting.glow.userData.activityOpacity=active||focused?1:0;
             for(const port of lighting.ports)port.emissiveIntensity=active?.65:0;
         }
         // Transparent opacity zero still submits a draw call. Hide inactive
@@ -259,10 +281,12 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         }
     }};
     entry._rebuildFn?.();if(expressions.length)registerAnimExpr(entry);
+    const onCodeFocus=()=>entry._rebuildFn?.();
+    window.addEventListener('algebench:codefocus',onCodeFocus);
     if(flows.some(flow=>flow.fn))registerAnimUpdater({animState,updateFrame(nowMs){
         if(animState.stopped||animState.hiddenByRemove||!root.visible)return;
         for(const flow of flows)if(flow.glow.userData.activityOpacity>0)flow.glow.uniforms.phase!.value=pipeFlowPhase(nowMs);
     }});
-    rootMaterial.addEventListener('dispose',()=>{animState.stopped=true;for(const t of textLayers)t.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();root.clear();});
+    rootMaterial.addEventListener('dispose',()=>{window.removeEventListener('algebench:codefocus',onCodeFocus);animState.stopped=true;for(const t of textLayers)t.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();root.clear();});
     return {_animState:animState,_animExprEntry:entry,type:el.type};
 }

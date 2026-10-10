@@ -25,7 +25,11 @@ export function setupStepPlayer(): void {
     for(const button of [previous,play,next])button.type='button';
     const track=document.createElement('input');track.type='range';track.step='1';track.setAttribute('aria-label','Execution state');
     const counter=document.createElement('output');counter.setAttribute('aria-label','Execution position');
-    bar.append(previous,play,next,track,counter);host.append(bar);
+    // Optional speed selector: multiplies the authored interval; the choice persists across scenes.
+    const speed=document.createElement('select');speed.className='state-player-speed';speed.setAttribute('aria-label','Playback speed');
+    for(const factor of [0.25,0.5,1,2,4]){const option=document.createElement('option');option.value=String(factor);option.textContent=factor+'×';speed.append(option);}
+    speed.value='1';speed.hidden=true;
+    bar.append(previous,play,next,track,counter,speed);host.append(bar);
     // Reserve the actual player height for legends, including responsive wrapping.
     // ResizeObserver runs on geometry changes, not on animation frames.
     const resizeObserver=new ResizeObserver(()=>{
@@ -35,6 +39,7 @@ export function setupStepPlayer(): void {
     let timer:ReturnType<typeof setInterval>|null=null;
     let config:StepPlayback|undefined;
     const slider=()=>config?state.sceneSliders[config.slider]:undefined;
+    const interval=()=>(config?.intervalMs??900)/Number(speed.value||1);
     function pause(){if(timer!==null)clearInterval(timer);timer=null;play.innerHTML=playIcon;play.setAttribute('aria-label','Play execution');}
     function render(){
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
@@ -55,16 +60,21 @@ export function setupStepPlayer(): void {
     previous.onclick=()=>{pause();const s=slider();if(s)move(s.value-1);};
     next.onclick=()=>{pause();const s=slider();if(s)move(s.value+1);};
     track.oninput=()=>{pause();move(Number(track.value));};
+    function start(){
+        play.innerHTML=pauseIcon;play.setAttribute('aria-label','Pause execution');
+        timer=setInterval(()=>{const current=slider();if(current)move(current.value+1);else pause();},interval());
+    }
     play.onclick=()=>{
         if(timer!==null){pause();return;}
         const s=slider();if(!s)return;
         if(s.value>=s.max)move(s.min);
-        play.innerHTML=pauseIcon;play.setAttribute('aria-label','Pause execution');
-        timer=setInterval(()=>{const current=slider();if(current)move(current.value+1);else pause();},config?.intervalMs??900);
+        start();
     };
+    speed.onchange=()=>{if(timer!==null){clearInterval(timer);timer=null;start();}};
     function refresh(){
         pause();
         config=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.stepPlayback;
+        speed.hidden=!config?.speedControl;
         render();
         // The bound parameter remains in state for expressions and deeplinks;
         // only its redundant ordinary slider row is hidden.

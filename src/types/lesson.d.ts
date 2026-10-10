@@ -856,6 +856,10 @@ export type Element = {
    */
   highlightExpr?: string;
   /**
+   * ARRAY ONLY. Per-cell color expression with idx and value, evaluated on state changes. Returns a CSS color string; an empty or invalid result falls back to highlightExpr/color. Use it to encode a logical state (e.g. ready, unacked, committed) per record.
+   */
+  colorExpr?: string;
+  /**
    * STEP_MARKER: variable name displayed in the index badge.
    */
   indexName?: string;
@@ -1332,6 +1336,10 @@ export interface Scene {
    * System prompt for the AI chat tutor in this scene. Tells the AI what/how to teach. Example: "You are a patient tutor helping a student understand Bayes' theorem..."
    */
   prompt?: string;
+  /**
+   * Live companion to 'prompt'. Expression evaluated each time the learner messages the AI; its string result is added to the tutor's context as authoritative live state (e.g. the current simulation snapshot). Unlike other *Expr fields it does not replace 'prompt': the static prompt carries teaching guidance, promptExpr carries what is true right now.
+   */
+  promptExpr?: string;
   range?: Range3D;
   scale?: Vec3Number;
   camera?: Camera;
@@ -1748,6 +1756,14 @@ export interface SystemBlock {
    */
   childElevation?: number;
   codeRef?: CodeRef;
+  /**
+   * Truthy expression that marks this block as focused (cyan rim and glow), independent of connection activity. Use it to show where a selected concept or component lives.
+   */
+  highlightExpr?: string;
+  /**
+   * Additional source locations represented by this block. Selecting any of these lines (or the codeRef line) in the Code tab focuses the block.
+   */
+  codeLinks?: CodeRef1[];
 }
 export interface SystemPlacement {
   relativeTo: string;
@@ -1801,6 +1817,24 @@ export interface SystemWaypoint {
  * Optional source location for this block.
  */
 export interface CodeRef {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
+}
+export interface CodeRef1 {
   /**
    * ID of a lesson codeFiles entry.
    */
@@ -2011,6 +2045,10 @@ export interface VirtualTime {
 export interface StepPlayback {
   slider: string;
   intervalMs?: number;
+  /**
+   * Show a playback speed selector (0.25× to 4× of intervalMs).
+   */
+  speedControl?: boolean;
 }
 export interface CodeFile {
   id: string;
@@ -2033,6 +2071,20 @@ export interface CodeFile {
     startColumn: number;
     endColumn: number;
     color?: 'gold' | 'blue' | 'green' | 'pink';
+  }[];
+  /**
+   * Buttons offered when a listed line is selected in the Code tab. Each sets lesson sliders; string values are expressions evaluated in the current scene scope (e.g. 'frame + 1'). Use for 'Crash at this line' style what-if controls.
+   */
+  lineActions?: {
+    line: number;
+    label: string;
+    /**
+     * Scene id this action applies to; omitted applies to every scene that has the sliders.
+     */
+    scene?: string;
+    set: {
+      [k: string]: number | string;
+    };
   }[];
 }
 /**

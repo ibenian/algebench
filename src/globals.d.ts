@@ -270,6 +270,8 @@ interface AlgeBenchChatRuntimeContext {
     displayedPosition: string;
   };
   stepNumber?: number;
+  /** Scene-authored live state (Scene.promptExpr), capped client-side. */
+  simulationState?: string;
   cameraPosition?: { x: number; y: number; z: number };
   cameraTarget?: { x: number; y: number; z: number };
   cameraViews?: string[];

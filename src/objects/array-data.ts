@@ -52,3 +52,8 @@ export function wrappedArrayCell(index:number,length:number,origin:number[],pitc
     const rowPitch=height===undefined?.78:height/rows;
     return {position:[origin[0]!+(index%columns)*pitch,origin[1]!-Math.floor(index/columns)*rowPitch,origin[2]!] as [number,number,number],height:rowPitch*(.68/.78)};
 }
+
+/** A colorExpr result is accepted only as a 6-digit hex color; anything else defers to highlight/base color. */
+export function cellColor(value: unknown): string | null {
+    return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : null;
+}
