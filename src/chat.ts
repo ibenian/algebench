@@ -15,6 +15,7 @@
 
 export {};
 
+import { playbackPosition } from '/step-player.js';
 import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
@@ -287,6 +288,24 @@ function buildChatContext(): AlgeBenchChatContext {
         if (Object.keys(sliders).length > 0) {
             runtime.sliders = sliders;
         }
+    }
+
+    // Explicit active execution context, using the same position mapping as the visible player.
+    const playback = (ctx.currentScene as import('/types/lesson.js').Scene | undefined)?.stepPlayback;
+    const executionSlider = playback ? runtime.sliders?.[playback.slider] : undefined;
+    if (playback && executionSlider && Number.isFinite(executionSlider.value)
+        && Number.isInteger(executionSlider.min) && Number.isInteger(executionSlider.max)
+        && executionSlider.max >= executionSlider.min) {
+        const position = playbackPosition(executionSlider.value, executionSlider.min, executionSlider.max);
+        runtime.playback = {
+            slider: playback.slider,
+            value: position.current,
+            min: executionSlider.min,
+            max: executionSlider.max,
+            position: position.ordinal,
+            total: position.total,
+            displayedPosition: `${position.ordinal} / ${position.total}`,
+        };
     }
 
     // Caption text — use raw data-markdown source to avoid KaTeX MathML artifacts

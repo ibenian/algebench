@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { closestOnSegmentToRay, dataToWorld, dataCameraToWorld, worldCameraToData, dataLenToWorld,
-         isotropicScale, isDefaultScale } from '/coords.js';
+         isotropicScale, isDefaultScale, withDataOffset, currentDataOffset, worldToData } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import { state } from '/state.js';
 
@@ -199,4 +199,17 @@ test('closestOnSegmentToRay: clamps to the segment ends', () => {
 
 test('closestOnSegmentToRay: a segment behind the origin gives its nearer end', () => {
     assert.ok(near(closestOnSegmentToRay([0, 0, 0], [0, 0, 1], [1, 0, -3], [1, 0, -8]), [1, 0, -3]));
+});
+
+test('contained coordinate frames preserve inverse conversion and restore after failures',()=>{
+ setView(UNIT_RANGE,UNIT_SCALE);
+ withDataOffset([2,3,1],()=>{
+  const world=dataToWorld([1,1,1]);
+  assert.ok(worldToData(world).every((v,i)=>Math.abs(v-1)<1e-12));
+  assert.deepEqual(currentDataOffset(),[2,3,1]);
+  assert.throws(()=>withDataOffset([7,8,9],()=>{throw new Error('render failure');}),/render failure/);
+  assert.deepEqual(currentDataOffset(),[2,3,1]);
+ });
+ assert.deepEqual(currentDataOffset(),[0,0,0]);
+ assert.deepEqual(dataToWorld([0,0,0]),[0,0,0]);
 });

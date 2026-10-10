@@ -20,7 +20,11 @@ function worldBounds(tracker:AnchorTracker) {
         const position=geometry?.getAttribute('position');
         const version=position?('version' in position?position.version:position.data.version):undefined;
         if(geometry&&version!==undefined&&boundsVersions.get(geometry)!==version){geometry.computeBoundingBox();boundsVersions.set(geometry,version);}
-        bounds.expandByObject(mesh);
+        if(mesh.userData?.arrayCellTarget && geometry?.boundingBox){
+            // Array-owned glyph children must not enlarge the array's wire target.
+            mesh.updateWorldMatrix(true,false);
+            bounds.union(geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
+        }else bounds.expandByObject(mesh);
     }
     return bounds;
 }

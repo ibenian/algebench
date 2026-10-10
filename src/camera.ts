@@ -1709,11 +1709,16 @@ export function initMathBox(): void {
     }
     updateControlsHint();
 
-    window.addEventListener('resize', () => {
-        // The lingering ball and its cues were placed for the old size.
-        dropLingeringBall();
+    let lastWidth = -1, lastHeight = -1;
+    const resizeViewport = () => {
         const w2 = container.clientWidth;
         const h2 = container.clientHeight;
+        if (w2 <= 0 || h2 <= 0 || (w2 === lastWidth && h2 === lastHeight)) return;
+        lastWidth = w2;
+        lastHeight = h2;
+        // The lingering ball and its cues were placed for the old size.
+        dropLingeringBall();
+        // initMathBox has initialized both renderer and camera before observation.
         cameraState.renderer!.setSize(w2, h2);
         if (cameraState.camera!.isOrthographicCamera) {
             const aspect2 = w2 / h2;
@@ -1724,7 +1729,12 @@ export function initMathBox(): void {
             cameraState.camera!.aspect = w2 / h2;
         }
         cameraState.camera!.updateProjectionMatrix();
-    });
+    };
+    window.addEventListener('resize', resizeViewport);
+    // Panel transitions and lesson CSS can resize the canvas without a window event.
+    // Observe the container, not the canvas; the size guard avoids renderer feedback.
+    const viewportObserver = new ResizeObserver(resizeViewport);
+    viewportObserver.observe(container);
 
     let _statusFrameTick = 0;
     function updateLoop() {

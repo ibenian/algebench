@@ -1,6 +1,7 @@
 """Agent tool declarations and system prompt builder for AlgeBench."""
 
 import json
+import math
 import re
 import os
 from google.genai import types
@@ -537,6 +538,28 @@ def build_system_prompt(context, agent_memory=None):
             else:
                 slider_parts.append(f"{k}={v}")
         parts.append(f"- Active sliders: {', '.join(slider_parts)}")
+    execution_view = None
+    playback = scene.get('stepPlayback')
+    if isinstance(playback, dict):
+        slider_id = playback.get('slider')
+        slider = (runtime.get('sliders') or {}).get(slider_id)
+        if isinstance(slider, dict):
+            value, minimum, maximum = (slider.get(k) for k in ('value', 'min', 'max'))
+            if (all(isinstance(n, (int, float)) and not isinstance(n, bool)
+                    and math.isfinite(n) for n in (value, minimum, maximum))
+                    and minimum == int(minimum) and maximum == int(maximum)
+                    and maximum >= minimum):
+                # Match step-player.ts: clamp and round the slider, then display a one-based ordinal.
+                current = max(int(minimum), min(int(maximum), math.floor(value + 0.5)))
+                ordinal, total = current - int(minimum) + 1, int(maximum - minimum) + 1
+                execution_view = f"{slider_id}={current}, execution position {ordinal} / {total}"
+                parts.append(
+                    f"- Execution playback: {slider_id}={current} [range: {int(minimum)}..{int(maximum)}]; "
+                    f"player displays {ordinal} / {total}. This is the one-based snapshot position, "
+                    "not the tick value or lesson step number. When discussing playback, distinguish "
+                    "the underlying tick/frame from the displayed position "
+                    f"(for example, tick/frame {current}, position {ordinal} of {total})."
+                )
     if runtime.get('currentCaption'):
         parts.append(f"- Caption displayed to user: \"{runtime['currentCaption']}\"")
     if runtime.get('projection'):
@@ -548,9 +571,11 @@ def build_system_prompt(context, agent_memory=None):
     # Falls back to the bare active tab for older clients.
     if runtime.get('userViewing'):
         viewing = ', '.join(runtime['userViewing'])
+        if execution_view:
+            viewing += f'; {execution_view}'
         parts.append(f"- **USER VIEWING: {viewing}** ← what the user is looking at right now; ground your reply in this.")
     elif runtime.get('activeTab'):
-        parts.append(f"- **USER VIEWING: {runtime['activeTab']} panel** ← what the user is looking at right now; ground your reply in this.")
+        parts.append(f"- **USER VIEWING: {runtime['activeTab']} panel{'; ' + execution_view if execution_view else ''}** ← what the user is looking at right now; ground your reply in this.")
 
     # Scene tree for navigation
     if context.get('sceneTree'):

@@ -37,9 +37,31 @@ test('owned marker layout follows array origin and pitch and hides out-of-range 
 });
 
 test('dynamic lengths support empty arrays and reject invalid resizing requests',()=>{
-    for(const length of [0,1,6,256])assert.equal(dynamicArrayLength(length),length);
-    for(const length of [-1,257,1.5,NaN,Infinity,'3',null,true])assert.throws(()=>dynamicArrayLength(length));
+    for(const length of [0,1,6,256,312,1024])assert.equal(dynamicArrayLength(length),length);
+    for(const length of [-1,1025,1.5,NaN,Infinity,'3',null,true])assert.throws(()=>dynamicArrayLength(length));
     assert.equal(arrayIndexPosition(0,0,[0,0,0],2),null);
     assert.equal(arrayIndexPosition(2,2,[0,0,0],2),null);
     assert.deepEqual(arrayIndexPosition(2,3,[0,0,0],2),[4,0,0]);
+});
+
+test('wrapped arrays preserve every index and fit rows into the requested height',async()=>{
+ const {wrappedArrayCell}=await import('./array-data.js');
+ const cells=Array.from({length:24},(_,i)=>wrappedArrayCell(i,24,[-2.14,-.3,.25],.61,8,.66));
+ assert.equal(new Set(cells.map(c=>JSON.stringify(c.position))).size,24);
+ assert.deepEqual(cells[8]!.position,[-2.14,-.52,.25]);
+ assert.ok(cells.every(c=>c.height>0&&c.height<.22));
+ const dense=wrappedArrayCell(255,256,[0,0,0],.6,8,.66);
+ assert.ok(dense.position[1]>-.66);
+ assert.ok(dense.height<cells[0]!.height);
+});
+
+test('array direction normalizes vectors and spaces cells without resizing geometry',()=>{
+ assert.deepEqual(arrayCellPosition(2,[1,2,3],.8,'horizontal',[0,0,4],.28),[1,2,3.56]);
+ assert.deepEqual(arrayIndexPosition(2,4,[1,2,3],.8,'horizontal',[1,0,0],.5),[2,2,3]);
+ assert.deepEqual(arrayCellPosition(2,[0,0,0],1,'horizontal',[0,1,0],.5),[0,1,0]);
+ const diagonal=arrayCellPosition(1,[0,0,0],1,'horizontal',[1,1,0],2);
+ assert.ok(Math.abs(Math.hypot(...diagonal)-2)<1e-10);
+ for(const direction of [[0,0,0],[1,2],[NaN,0,1],[Infinity,1,1]])assert.throws(()=>arrayCellPosition(0,[0,0,0],1,'horizontal',direction));
+ assert.throws(()=>arrayCellPosition(1,[0,0,0],1,'horizontal',[0,0,1],0));
+ assert.equal(arrayIndexPosition(4,4,[0,0,0],1,'horizontal',[0,0,1]),null);
 });

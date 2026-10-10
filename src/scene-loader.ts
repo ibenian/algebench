@@ -149,6 +149,7 @@ export interface SceneSpec {
     steps?: SceneStep[];
     duration?: number | null;
     data?: Record<string, unknown>;
+    tableBindings?: import('/types/lesson.js').Scene['tableBindings'];
     proof?: Proof | Proof[] | null;
 }
 /** The grid/axis renderers the empty state pulls in lazily (see
@@ -332,6 +333,7 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
         }
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? group.group() : group;
+        const beforePartEntries={...sceneState.elementRegistry};
         let result = null;
         try { result = renderElement(el, elGroup); } catch (e) {
             console.error('Error rendering step element:', el, e);
@@ -339,6 +341,14 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
         // renderElement()'s return type is the union of every renderer's result;
         // only the teardown fields in RenderResult are ever read off it here.
         if (result) renderResults.push(result as RenderResult);
+        for(const [partId,entry] of Object.entries(sceneState.elementRegistry)) {
+            if(entry===beforePartEntries[partId])continue;
+            addedElementIds.push(partId);
+            if(beforePartEntries[partId]) {
+                replacedElements??={};
+                replacedElements[partId]=beforePartEntries[partId]!;
+            }
+        }
         if (el.id) {
             addedElementIds.push(el.id);
             // Non-null: elBefore was snapshotted under the same `el.id` guard.
@@ -890,6 +900,7 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     const lessonData = (sceneState.lessonSpec && sceneState.lessonSpec.data) || {};
     const sceneData = (spec && spec.data) || {};
     sceneState.sceneData = { ...lessonData, ...sceneData };
+    state.sceneTableBindings = spec?.tableBindings ?? [];
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
     // No scene at all (an empty or failed load) also means no glossary: the
@@ -1207,6 +1218,7 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             // lesson-format scene and `dataTable()` returned 0 against it —
             // even though the scene format documents scene-level `data`.
             data: scene.data,
+            tableBindings: scene.tableBindings,
         };
         loadScene(baseSpec);
 

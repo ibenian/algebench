@@ -1,6 +1,7 @@
 /** Generic discrete state playback. It writes a slider; views bind to its data. */
 import { state } from '/state.js';
 import { setSliderValue } from '/sliders.js';
+import { updateStepCaption } from '/overlay.js';
 import type { Scene, StepPlayback } from '/types/lesson.js';
 
 export function playbackPosition(value: number, min: number, max: number) {
@@ -15,7 +16,11 @@ export function setupStepPlayer(): void {
     const bar=document.createElement('div');bar.id='state-player';bar.hidden=true;
     bar.setAttribute('role','group');bar.setAttribute('aria-label','Execution state player');
     const previous=document.createElement('button'),play=document.createElement('button'),next=document.createElement('button');
-    previous.textContent='◀';next.textContent='▶';
+    // Vector icons keep transport controls consistent across fonts and zoom levels.
+    const icon=(path:string)=>`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" style="display:block;margin:auto"><path d="${path}"/></svg>`;
+    const playIcon=icon('M7 4v16l13-8z');
+    const pauseIcon=icon('M6 4h4v16H6z M14 4h4v16h-4z');
+    previous.innerHTML=icon('M17 4v16L4 12z');next.innerHTML=playIcon;
     previous.setAttribute('aria-label','Previous execution state');next.setAttribute('aria-label','Next execution state');
     for(const button of [previous,play,next])button.type='button';
     const track=document.createElement('input');track.type='range';track.step='1';track.setAttribute('aria-label','Execution state');
@@ -30,8 +35,10 @@ export function setupStepPlayer(): void {
     let timer:ReturnType<typeof setInterval>|null=null;
     let config:StepPlayback|undefined;
     const slider=()=>config?state.sceneSliders[config.slider]:undefined;
-    function pause(){if(timer!==null)clearInterval(timer);timer=null;play.textContent='▷';play.setAttribute('aria-label','Play execution');}
+    function pause(){if(timer!==null)clearInterval(timer);timer=null;play.innerHTML=playIcon;play.setAttribute('aria-label','Play execution');}
     function render(){
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
+        if(scene?.steps?.[state.currentStepIndex]?.descriptionExpr)updateStepCaption(scene,state.currentStepIndex,true);
         const s=slider();
         if(!s||s.kind==='tensor'||!Number.isInteger(s.min)||!Number.isInteger(s.max)){pause();bar.hidden=true;host.classList.remove('has-state-player');return;}
         bar.hidden=false;
@@ -52,7 +59,7 @@ export function setupStepPlayer(): void {
         if(timer!==null){pause();return;}
         const s=slider();if(!s)return;
         if(s.value>=s.max)move(s.min);
-        play.textContent='Ⅱ';play.setAttribute('aria-label','Pause execution');
+        play.innerHTML=pauseIcon;play.setAttribute('aria-label','Pause execution');
         timer=setInterval(()=>{const current=slider();if(current)move(current.value+1);else pause();},config?.intervalMs??900);
     };
     function refresh(){

@@ -8,7 +8,7 @@ import type { AnnotationValue } from '/annotation-layout.js';
 
 import { state } from '/state.js';
 import { wireRowHover, updateLabelWire } from '/label-wire.js';
-import { dataToWorld, worldToData } from '/coords.js';
+import { dataToWorld, worldToData, currentDataOffset, withDataOffset } from '/coords.js';
 import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers, stripGlossaryMath } from '/glossary-core.js';
 
 export const AI_SPARKLE_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11"><path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
@@ -334,6 +334,7 @@ export interface Label3DOptions {
 export interface Label3D {
     /** Dynamic labels share the lifetime of this mesh even after creation snapshots. */
     ownerMesh?: object;
+    coordinateOffset?: [number,number,number];
     el: HTMLDivElement;
     dataPos: number[];
     /** Project a cell's corners to keep annotations outside its screen footprint. */
@@ -418,6 +419,7 @@ export function addLabel3D(
     container!.appendChild(el);
     const align = o.align || 'center';
     const entry: Label3D = {
+        coordinateOffset: currentDataOffset(),
         el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align,
         boxW: null, boxH: null, // cached DOM size (measured lazily)
         boxScale: null,       // labelScale the cached size was measured at
@@ -478,7 +480,7 @@ export function updateLabels(): void {
         lbl.lastDataPos = [dp[0]!, dp[1]!, dp[2]!];
         lbl.moving = lbl.moveCooldown > 0;
 
-        const world = dataToWorld(dp as [number, number, number]);
+        const world = withDataOffset(lbl.coordinateOffset??[0,0,0],()=>dataToWorld(dp as [number, number, number]));
         const v = new THREE.Vector3(world[0], world[1], world[2]);
         // World-space distance to the camera (linear; smaller = nearer). NDC z is
         // useless here — a near-planar scene crushes every label to ~the same z.
@@ -489,7 +491,7 @@ export function updateLabels(): void {
         if (lbl.cellAttachment) {
             const attachment = lbl.cellAttachment;
             const corners = attachment.corners.map(point => {
-                const world = dataToWorld(point as [number, number, number]);
+                const world = withDataOffset(lbl.coordinateOffset??[0,0,0],()=>dataToWorld(point as [number, number, number]));
                 return new THREE.Vector3(...world).project(camera);
             });
             const anchor = cellEdgeAnchor(corners.map(p => ({x:(p.x * .5 + .5) * w,y:(-p.y * .5 + .5) * h})), attachment.edge, attachment.gap);
@@ -683,7 +685,7 @@ export function setExpressionLabelPosition(label: Label3D, x: number, y: number)
         return;
     }
     if (!camera) return;
-    const anchor = dataToWorld((label.annotationWorldPosition ?? label.dataPos) as [number,number,number]);
+    const anchor = withDataOffset(label.coordinateOffset??[0,0,0],()=>dataToWorld((label.annotationWorldPosition ?? label.dataPos) as [number,number,number]));
     const depth = new THREE.Vector3(...anchor).project(camera).z;
     const world = new THREE.Vector3(x / renderer.domElement.clientWidth * 2 - 1, 1 - y / renderer.domElement.clientHeight * 2, depth).unproject(camera);
     label.annotationWorldPosition = worldToData([world.x,world.y,world.z]);

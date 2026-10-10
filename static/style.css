@@ -5688,3 +5688,24 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .annotation-overlay { filter: saturate(.82); }
 .expression-label .annotation-measure::before { content: '⠿ Labels'; display: block; font-size: .85em; border-bottom: 1px solid #171c2233; padding-bottom: 4px; margin-bottom: 4px; }
 .dragging-expression-label .annotation-titlebar { cursor: grabbing; }
+
+/* Reserve enough canvas width for readable records when both panels are open. */
+@media (min-width: 1000px) {
+  body:has(.push-array) #scene-dock-panel.open { max-width: 360px; }
+  body:has(.push-array) #explanation-panel { max-width: 320px; }
+}
+
+
+/* Tick narratives can scroll without covering the lower service rows. */
+body:has(.push-array) #step-caption.docked { max-height: 132px; }
+
+/* Keep accessible array text from being painted twice during scene fades. */
+.array-plane-accessible { opacity: 0 !important; pointer-events: none; position: absolute !important; top: 0 !important; left: 0 !important; transform: none !important; width: 1px !important; height: 1px !important; overflow: hidden; clip-path: inset(50%); }
+body:has(.push-array) #legend { display: none; }
+
+.code-execution-status { padding: 0 10px 8px; font: 11px ui-monospace, monospace; color: var(--accent-color); }
+.code-execution-status:empty { display: none; }
+
+.step-code-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 6px; font: 11px ui-monospace, monospace; }
+.step-code-links button { color: var(--accent-color); background: transparent; border: 1px solid currentColor; border-radius: 4px; padding: 2px 5px; font: inherit; cursor: pointer; }
+.step-code-links button:hover, .step-code-links button:focus-visible { background: var(--button-hover-bg, #ffffff18); }

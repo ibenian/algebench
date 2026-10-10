@@ -8,6 +8,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // `trust.ts` imports `/expr.js` for `_JS_ONLY_RE`, and `expr.ts` calls
 // `math.create(math.all)` at module scope — `math` being the CDN <script> global
@@ -68,4 +69,11 @@ test('prose keys are not scanned, however alarming they read', () => {
     // description that happens to mention `Math.floor`.
     assert.equal(scanSpecForUnsafeJs(
         { elements: [{ type: 'text', label: 'use Math.floor(x) to round down' }] }), false);
+});
+
+test('push notification lesson and Python line bindings need no native JavaScript trust',()=>{
+    const lesson=JSON.parse(readFileSync(new URL('../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
+    assert.notEqual(lesson.unsafe,true);
+    assert.equal(scanSpecForUnsafeJs(lesson),false);
+    assert.ok(lesson.codeFiles[0].activeLineExpr.includes(' ? '));
 });

@@ -80,7 +80,15 @@ export function isotropicScale(range: unknown): Vec3 {
     return widths.map((w) => w / longest) as Vec3;
 }
 
+let dataOffset: Vec3 = [0,0,0];
+export function currentDataOffset(): Vec3 { return [...dataOffset]; }
+/** Scope existing renderers and their updates to a containing object's frame. */
+export function withDataOffset<T>(offset: Vec3, run:()=>T):T {
+    const previous=dataOffset; dataOffset=offset;
+    try {return run();} finally {dataOffset=previous;}
+}
 export function dataToWorld(pos: Vec3): Vec3 {
+    pos=pos.map((v,i)=>v+dataOffset[i]!) as Vec3;
     const r = range();
     const s = scale();
     // Destructured so the emptiness guard narrows for the whole body —
@@ -104,7 +112,7 @@ export function worldToData(pos: Vec3): Vec3 {
         (pos[0] / s[0] + 1) / 2 * (rx[1] - rx[0]) + rx[0],
         (pos[1] / s[1] + 1) / 2 * (ry[1] - ry[0]) + ry[0],
         (pos[2] / s[2] + 1) / 2 * (rz[1] - rz[0]) + rz[0],
-    ];
+    ].map((v,i)=>v-dataOffset[i]!) as Vec3;
 }
 
 // Convert a camera position/target from data-space to world-space using

@@ -63,3 +63,22 @@ test('whole-object wires expose outer bounds while text-only targets expose thei
     state.elementRegistry.mesh!.hidden=true;state.elementRegistry.text!.hidden=true;
     assert.deepEqual(objectWorldCorners('mesh'),[]);assert.equal(objectLabelElement('text'),null);
 });
+
+test('array titles and cell glyph children do not inflate whole-array wire bounds',()=>{
+    let expanded=0,united=0,updated=0;
+    const cellBounds={min:new Vector(-1,-.34,-.11),max:new Vector(1,.34,.11)};
+    class Bounds {
+        min=new Vector();max=new Vector();empty=true;
+        expandByObject(){expanded++;}isEmpty(){return this.empty;}
+        union(box:typeof cellBounds){united++;this.min=box.min;this.max=box.max;this.empty=false;}
+    }
+    Object.assign(globalThis,{THREE:{Vector3:Vector,Box3:Bounds}});
+    state.legendToggledOff=new Set();
+    state.elementRegistry={array:{hidden:false,tracker:{planeMeshes:[{
+        visible:true,userData:{arrayCellTarget:{at:()=>({position:[0,0,0],corners:[]})}},geometry:{boundingBox:{clone:()=>({applyMatrix4:()=>cellBounds})},getAttribute:()=>undefined},
+        matrixWorld:{},updateWorldMatrix(){updated++;}
+    }]}}};
+    const corners=objectWorldCorners('array');
+    assert.equal(expanded,0);assert.equal(united,1);assert.equal(updated,1);
+    assert.deepEqual(corners[0],cellBounds.min);assert.deepEqual(corners[7],cellBounds.max);
+});

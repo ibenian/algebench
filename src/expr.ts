@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { createBoundTableReader } from '/data-table.js';
 import { arrayValues, arrayResult, arrayCount, arrayAt } from '/array-operations.js';
 
 /**
@@ -29,6 +30,9 @@ type MathEvalFunction = import('mathjs').EvalFunction;
 
 /** Either a compiled math.js node or the trusted-JS fallback. */
 export type CompiledExpr = MathEvalFunction | ExprFallbackFn;
+
+const boundTableReader = createBoundTableReader();
+const tableExpressions = new Map<string, CompiledExpr>();
 
 /** The evaluation frame pushed for the duration of one evalExpr call. */
 interface ExprEvalFrame {
@@ -92,16 +96,14 @@ const _MATHJS_EXTENSIONS = {
         const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
         return '\u2588'.repeat(n) + '\u2591'.repeat(Number(w) - n);
     },
-    // dataTable(table, rowIndex, column) — look up a value from the scene's "data" tables.
+    // dataTable(table) returns table rows; dataTable(table, rowIndex, column) looks up a value from the scene's "data" tables.
     // Example: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass
-    dataTable: (table: unknown, rowIndex: unknown, column: unknown): unknown => {
-        const t = exprState.sceneData && exprState.sceneData[String(table)];
-        if (!Array.isArray(t)) return 0;
-        const row = t[Math.max(0, Math.min(t.length - 1, Math.round(Number(rowIndex))))];
-        if (!row) return 0;
-        const val = (row as Record<string, unknown>)[String(column)];
-        return val != null ? val : 0;
-    },
+    dataTable: (table: unknown, rowIndex?: unknown, column?: unknown): unknown =>
+        boundTableReader(exprState.sceneData ?? {}, state.sceneTableBindings, table, rowIndex, column, expression => {
+            if(!tableExpressions.has(expression)) tableExpressions.set(expression, compileExpr(expression));
+            const frame=exprState._activeExprEvalFrame;
+            return evalExpr(tableExpressions.get(expression)!, frame?.t ?? 0, {useVirtualTime:false,extraScope:frame?.extraScope}); // inserted above
+        }),
 
     // ── SymPy jscode compatibility ──────────────────────────────────────
     // SymPy's jscode(strict=False) emits bare function names for functions

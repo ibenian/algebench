@@ -3,6 +3,7 @@
 // All modules import this object and read/write its properties.
 // ============================================================
 
+import type { CodeRef } from '/types/lesson.js';
 import type { CompiledExpr } from '/expr.js';
 import type { ResolvedCameraView } from '/camera.js';
 import type { Label3D } from '/labels.js';
@@ -73,6 +74,7 @@ interface ArrowMeshEntry {
 /** An element's entry in the id → element registry. `tracker` is
  *  src/scene-loader.ts's private SubTracker; only that module opens it. */
 interface ElementRegistryEntry {
+    codeRef?: CodeRef;
     tracker: unknown;
     hidden: boolean;
     /** The element's per-frame updater state, when it has one. hide/show flip
@@ -292,6 +294,7 @@ export interface AppState {
 
     // ----- Scene data tables (from JSON "data" field) -----
     sceneData: Record<string, unknown>;
+    sceneTableBindings: { table: string; rowsExpr: string }[];
 
     // ----- Slider drag (used within sliders.js) -----
     _sliderDrag: SliderDragState;
@@ -424,6 +427,7 @@ export const state: AppState = {
 
     // ----- Scene data tables (from JSON "data" field) -----
     sceneData: {},
+    sceneTableBindings: [],
 
     // ----- Slider drag (used within sliders.js) -----
     _sliderDrag: { active: false, startX: 0, startY: 0, startLeft: 0, startBottom: 0 },
