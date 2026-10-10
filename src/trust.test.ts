@@ -72,7 +72,7 @@ test('prose keys are not scanned, however alarming they read', () => {
 });
 
 test('push notification lesson and Python line bindings need no native JavaScript trust',()=>{
-    const lesson=JSON.parse(readFileSync(new URL('../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
+    const lesson=JSON.parse(readFileSync(new URL('../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
     assert.notEqual(lesson.unsafe,true);
     assert.equal(scanSpecForUnsafeJs(lesson),false);
     assert.ok(lesson.codeFiles[0].activeLineExpr.includes(' ? '));

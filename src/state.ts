@@ -294,6 +294,7 @@ export interface AppState {
 
     // ----- Scene data tables (from JSON "data" field) -----
     sceneData: Record<string, unknown>;
+    sceneTableBindings: { table: string; rowsExpr: string }[];
 
     // ----- Slider drag (used within sliders.js) -----
     _sliderDrag: SliderDragState;
@@ -426,6 +427,7 @@ export const state: AppState = {
 
     // ----- Scene data tables (from JSON "data" field) -----
     sceneData: {},
+    sceneTableBindings: [],
 
     // ----- Slider drag (used within sliders.js) -----
     _sliderDrag: { active: false, startX: 0, startY: 0, startLeft: 0, startBottom: 0 },

@@ -4,7 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { readDataTable } from '/data-table.js';
+import { createBoundTableReader } from '/data-table.js';
 import { arrayValues, arrayResult, arrayCount, arrayAt } from '/array-operations.js';
 
 /**
@@ -30,6 +30,9 @@ type MathEvalFunction = import('mathjs').EvalFunction;
 
 /** Either a compiled math.js node or the trusted-JS fallback. */
 export type CompiledExpr = MathEvalFunction | ExprFallbackFn;
+
+const boundTableReader = createBoundTableReader();
+const tableExpressions = new Map<string, CompiledExpr>();
 
 /** The evaluation frame pushed for the duration of one evalExpr call. */
 interface ExprEvalFrame {
@@ -96,7 +99,11 @@ const _MATHJS_EXTENSIONS = {
     // dataTable(table) returns table rows; dataTable(table, rowIndex, column) looks up a value from the scene's "data" tables.
     // Example: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass
     dataTable: (table: unknown, rowIndex?: unknown, column?: unknown): unknown =>
-        readDataTable(exprState.sceneData, table, rowIndex, column),
+        boundTableReader(exprState.sceneData ?? {}, state.sceneTableBindings, table, rowIndex, column, expression => {
+            if(!tableExpressions.has(expression)) tableExpressions.set(expression, compileExpr(expression));
+            const frame=exprState._activeExprEvalFrame;
+            return evalExpr(tableExpressions.get(expression)!, frame?.t ?? 0, {useVirtualTime:false,extraScope:frame?.extraScope}); // inserted above
+        }),
 
     // ── SymPy jscode compatibility ──────────────────────────────────────
     // SymPy's jscode(strict=False) emits bare function names for functions

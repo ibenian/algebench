@@ -60,7 +60,7 @@ test('block source references resolve exact files and reject invalid destination
 });
 
 test('push lesson block references target existing source lines in every scenario',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
  let count=0;
  function walk(value:unknown) {
   if(!value || typeof value!=='object') return;

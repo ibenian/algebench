@@ -260,6 +260,15 @@ interface AlgeBenchChatSceneTreeEntry {
 }
 
 interface AlgeBenchChatRuntimeContext {
+  playback?: {
+    slider: string;
+    value: number;
+    min: number;
+    max: number;
+    position: number;
+    total: number;
+    displayedPosition: string;
+  };
   stepNumber?: number;
   cameraPosition?: { x: number; y: number; z: number };
   cameraTarget?: { x: number; y: number; z: number };

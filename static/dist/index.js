@@ -139,6 +139,7 @@ var state = {
 	_proofPreRendered: null,
 	_proofPreRenderedAll: {},
 	sceneData: {},
+	sceneTableBindings: [],
 	_sliderDrag: {
 		active: false,
 		startX: 0,
@@ -158,6 +159,26 @@ function readDataTable(data, table, rowIndex, column) {
 	if (!row) return 0;
 	const value = row[String(column)];
 	return value != null ? value : 0;
+}
+/** Materialize a derived table before reading its rows or a cell. */
+function createBoundTableReader() {
+	const resolving = /* @__PURE__ */ new Set();
+	return function read(data, bindings, table, rowIndex, column, evaluate) {
+		const name = String(table), binding = bindings.find((binding) => binding.table === name);
+		if (binding) {
+			if (resolving.has(name)) throw new Error("Circular data table binding: " + name);
+			resolving.add(name);
+			try {
+				const result = evaluate(binding.rowsExpr);
+				const rows = result && typeof result.toArray === "function" ? result.toArray() : result;
+				if (!Array.isArray(rows) || rows.some((row) => !row || typeof row !== "object" || Array.isArray(row))) throw new Error("Table binding must return row objects: " + name);
+				data[name] = rows;
+			} finally {
+				resolving.delete(name);
+			}
+		}
+		return readDataTable(data, table, rowIndex, column);
+	};
 }
 //#endregion
 //#region src/array-operations.ts
@@ -284,6 +305,8 @@ function arrayAt(input, at) {
 }
 //#endregion
 //#region src/expr.ts
+var boundTableReader = createBoundTableReader();
+var tableExpressions = /* @__PURE__ */ new Map();
 var exprState = state;
 var _mathjs = math.create(math.all);
 var _MATHJS_EXTENSIONS = {
@@ -297,7 +320,14 @@ var _MATHJS_EXTENSIONS = {
 		const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
 		return "█".repeat(n) + "░".repeat(Number(w) - n);
 	},
-	dataTable: (table, rowIndex, column) => readDataTable(exprState.sceneData, table, rowIndex, column),
+	dataTable: (table, rowIndex, column) => boundTableReader(exprState.sceneData ?? {}, state.sceneTableBindings, table, rowIndex, column, (expression) => {
+		if (!tableExpressions.has(expression)) tableExpressions.set(expression, compileExpr(expression));
+		const frame = exprState._activeExprEvalFrame;
+		return evalExpr(tableExpressions.get(expression), frame?.t ?? 0, {
+			useVirtualTime: false,
+			extraScope: frame?.extraScope
+		});
+	}),
 	binomial: (n, k) => _mathjs.combinations(n, k),
 	erfc: (x) => 1 - _mathjs.erf(x),
 	beta: (a, b) => _mathjs.gamma(a) * _mathjs.gamma(b) / _mathjs.gamma(a + b),
@@ -7932,8 +7962,11 @@ function setupStepPlayer() {
 	bar.setAttribute("role", "group");
 	bar.setAttribute("aria-label", "Execution state player");
 	const previous = document.createElement("button"), play = document.createElement("button"), next = document.createElement("button");
-	previous.textContent = "◀";
-	next.textContent = "▶";
+	const icon = (path) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" style="display:block;margin:auto"><path d="${path}"/></svg>`;
+	const playIcon = icon("M7 4v16l13-8z");
+	const pauseIcon = icon("M6 4h4v16H6z M14 4h4v16h-4z");
+	previous.innerHTML = icon("M17 4v16L4 12z");
+	next.innerHTML = playIcon;
 	previous.setAttribute("aria-label", "Previous execution state");
 	next.setAttribute("aria-label", "Next execution state");
 	for (const button of [
@@ -7958,7 +7991,7 @@ function setupStepPlayer() {
 	function pause() {
 		if (timer !== null) clearInterval(timer);
 		timer = null;
-		play.textContent = "▷";
+		play.innerHTML = playIcon;
 		play.setAttribute("aria-label", "Play execution");
 	}
 	function render() {
@@ -8010,7 +8043,7 @@ function setupStepPlayer() {
 		const s = slider();
 		if (!s) return;
 		if (s.value >= s.max) move(s.min);
-		play.textContent = "Ⅱ";
+		play.innerHTML = pauseIcon;
 		play.setAttribute("aria-label", "Pause execution");
 		timer = setInterval(() => {
 			const current = slider();
@@ -9033,7 +9066,8 @@ function renderTensor(el, _view) {
 	const hasVLabels = !!(vLabelSrc || vLabelsStatic);
 	const hLabelScratch = new Array(cols).fill("");
 	const vLabelScratch = new Array(rows).fill("");
-	const LABEL_BAND = .9, TITLE_BAND = .7, LABEL_GLYPH = .5;
+	const LABEL_BAND = typeof hAxis?.labelBand === "number" && Number.isFinite(hAxis.labelBand) && hAxis.labelBand > 0 ? hAxis.labelBand : .9;
+	const TITLE_BAND = .7, LABEL_GLYPH = .5;
 	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
 	let vBand = 0;
 	if (axisPlane && hasVLabels) {
@@ -9282,7 +9316,7 @@ function renderTensor(el, _view) {
 			}
 			return m;
 		};
-		const hPx = axisPx(hTexts, cols, hW);
+		const hPx = Math.min(axisPx(hTexts, cols, hW), LABEL_BAND * px * .85);
 		const vPx = axisPx(vTexts, rows, vW);
 		const labelPx = Math.min(hPx, vPx);
 		if (hTexts) {
@@ -10659,11 +10693,17 @@ function arrayLength(shape, values) {
 }
 /** Dynamic arrays may be empty; reject invalid lengths instead of rounding them. */
 function dynamicArrayLength(value) {
-	if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 256) throw new Error("Array length must be an integer from 0 to 256.");
+	if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 1024) throw new Error("Array length must be an integer from 0 to 1024.");
 	return value;
 }
 /** Owned markers cannot point outside their array; the renderer hides null anchors. */
-function arrayCellPosition(index, origin, pitch, layout = "horizontal") {
+function arrayCellPosition(index, origin, pitch, layout = "horizontal", direction, spacing = pitch) {
+	if (direction) {
+		const norm = Math.hypot(...direction);
+		if (direction.length !== 3 || direction.some((v) => !Number.isFinite(v)) || !Number.isFinite(norm) || norm === 0) throw new Error("Array direction must be a finite nonzero 3D vector.");
+		if (!Number.isFinite(spacing) || spacing <= 0) throw new Error("Array spacing must be positive.");
+		return origin.map((v, axis) => v + index * spacing * direction[axis] / norm);
+	}
 	return layout === "vertical" ? [
 		origin[0],
 		origin[1] + index * .78,
@@ -10674,9 +10714,9 @@ function arrayCellPosition(index, origin, pitch, layout = "horizontal") {
 		origin[2]
 	];
 }
-function arrayIndexPosition(index, length, origin, pitch, layout = "horizontal") {
+function arrayIndexPosition(index, length, origin, pitch, layout = "horizontal", direction, spacing = pitch) {
 	if (!Number.isInteger(index) || index < 0 || index >= length) return null;
-	return arrayCellPosition(index, origin, pitch, layout);
+	return arrayCellPosition(index, origin, pitch, layout, direction, spacing);
 }
 /** Same dimensions as the rendered boxes; all corners support rotated cameras. */
 function arrayCellCorners(centre, pitch) {
@@ -10685,6 +10725,93 @@ function arrayCellCorners(centre, pitch) {
 		centre[1] + y * .34,
 		centre[2] + z * .11
 	])));
+}
+/** A wrapped array remains one-dimensional; fitting preserves all record positions. */
+function wrappedArrayCell(index, length, origin, pitch, columns, height) {
+	const rows = Math.max(1, Math.ceil(length / columns));
+	const rowPitch = height === void 0 ? .78 : height / rows;
+	return {
+		position: [
+			origin[0] + index % columns * pitch,
+			origin[1] - Math.floor(index / columns) * rowPitch,
+			origin[2]
+		],
+		height: rowPitch * (.68 / .78)
+	};
+}
+//#endregion
+//#region src/objects/array-stack-hover.ts
+function stackCellOpacities(depths, selected) {
+	if (selected === null || !Number.isInteger(selected) || selected < 0 || selected >= depths.length) return depths.map(() => 1);
+	const depth = depths[selected];
+	return depths.map((value) => value < depth - 1e-6 ? .2 : 1);
+}
+var managers = /* @__PURE__ */ new WeakMap();
+function registerStackHover(canvas, camera, entry) {
+	let manager = managers.get(canvas);
+	if (!manager) {
+		const entries = /* @__PURE__ */ new Set(), controller = new AbortController();
+		const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+		let pending = 0, last = null;
+		const clear = () => {
+			last = null;
+			if (pending) cancelAnimationFrame(pending);
+			pending = 0;
+			for (const item of entries) item.select(null);
+		};
+		canvas.addEventListener("pointermove", (event) => {
+			if (event.buttons) {
+				clear();
+				return;
+			}
+			last = {
+				x: event.clientX,
+				y: event.clientY
+			};
+			if (pending) return;
+			pending = requestAnimationFrame(() => {
+				pending = 0;
+				const view = camera();
+				if (!last || !view) {
+					clear();
+					return;
+				}
+				const rect = canvas.getBoundingClientRect();
+				pointer.set((last.x - rect.left) / rect.width * 2 - 1, 1 - (last.y - rect.top) / rect.height * 2);
+				raycaster.setFromCamera(pointer, view);
+				const visible = [...entries].filter((item) => item.visible());
+				const hit = raycaster.intersectObjects(visible.map((item) => item.mesh), false)[0];
+				for (const item of entries) item.select(hit?.object === item.mesh && hit.faceIndex != null ? Math.floor(hit.faceIndex / 12) : null);
+			});
+		}, {
+			passive: true,
+			signal: controller.signal
+		});
+		canvas.addEventListener("pointerleave", clear, {
+			passive: true,
+			signal: controller.signal
+		});
+		canvas.addEventListener("pointerdown", clear, {
+			passive: true,
+			signal: controller.signal
+		});
+		manager = {
+			entries,
+			dispose() {
+				clear();
+				controller.abort();
+				managers.delete(canvas);
+			}
+		};
+		managers.set(canvas, manager);
+	}
+	manager.entries.add(entry);
+	const owner = manager;
+	return () => {
+		entry.select(null);
+		owner.entries.delete(entry);
+		if (!owner.entries.size) owner.dispose();
+	};
 }
 //#endregion
 //#region src/objects/array-changes.ts
@@ -10741,7 +10868,9 @@ function renderArray(el, _view, decorate) {
 	if (origin.length !== 3 || origin.some((v) => !Number.isFinite(v))) throw new Error("Array origin must contain three finite coordinates.");
 	const pitch = Number(el.cellSize ?? 2);
 	if (!Number.isFinite(pitch) || pitch <= 0) throw new Error("Array cellSize must be positive.");
-	const centre = (i) => arrayCellPosition(i, origin, pitch, el.arrayLayout);
+	if (el.direction && el.arrayColumns) throw new Error("Array direction and wrapped columns are alternative layouts.");
+	const centre = (i) => el.arrayColumns ? wrappedArrayCell(i, n, origin, pitch, el.arrayColumns, el.arrayHeight).position : arrayCellPosition(i, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
+	const cellHeight = () => el.arrayColumns ? wrappedArrayCell(0, n, origin, pitch, el.arrayColumns, el.arrayHeight).height : .68;
 	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
 	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
@@ -10749,7 +10878,7 @@ function renderArray(el, _view, decorate) {
 		const c = centre(i);
 		const p = dataToWorld([
 			c[0] + source.getX(v) * pitch * .78,
-			c[1] + source.getY(v) * .68,
+			c[1] + source.getY(v) * cellHeight(),
 			c[2] + source.getZ(v) * .22
 		]);
 		positions.set(p, (i * vertices + v) * 3);
@@ -10758,19 +10887,55 @@ function renderArray(el, _view, decorate) {
 	geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 	let colorAttribute = new THREE.BufferAttribute(colors, 3);
 	geometry.setAttribute("color", colorAttribute);
+	let cellOpacity = new Float32Array(n * vertices).fill(1);
+	let opacityAttribute = new THREE.BufferAttribute(cellOpacity, 1);
+	geometry.setAttribute("cellOpacity", opacityAttribute);
+	let hovered = null;
+	let hoverOpacity = Array(n).fill(1);
 	const material = new THREE.MeshBasicMaterial({
 		vertexColors: true,
 		transparent: true,
 		opacity: 1
 	});
+	if (el.hoverReveal) {
+		material.onBeforeCompile = (shader) => {
+			shader.vertexShader = "attribute float cellOpacity; varying float stackOpacity;\n" + shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nstackOpacity = cellOpacity;");
+			shader.fragmentShader = "varying float stackOpacity;\n" + shader.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\nif (stackOpacity < 0.99) discard;");
+		};
+		material.customProgramCacheKey = () => "array-stack-hover";
+	}
 	const mesh = new THREE.Mesh(geometry, material);
 	mesh.userData.ignorePlaneOpacity = true;
 	mesh.userData.targetOpacity = 1;
+	const ghostMaterial = el.hoverReveal ? new THREE.MeshBasicMaterial({
+		vertexColors: true,
+		transparent: true,
+		depthWrite: false
+	}) : null;
+	const ghostMesh = ghostMaterial ? new THREE.Mesh(geometry, ghostMaterial) : null;
+	if (ghostMaterial && ghostMesh) {
+		ghostMaterial.onBeforeCompile = (shader) => {
+			shader.vertexShader = "attribute float cellOpacity; varying float stackOpacity;\n" + shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nstackOpacity = cellOpacity;");
+			shader.fragmentShader = "varying float stackOpacity;\n" + shader.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\nif (stackOpacity > 0.99) discard; diffuseColor.a *= stackOpacity;");
+		};
+		ghostMaterial.customProgramCacheKey = () => "array-stack-ghost";
+		ghostMesh.visible = false;
+		ghostMesh.userData.annotationTextPlane = true;
+		ghostMesh.raycast = () => {};
+		ghostMesh.onBeforeRender = () => {
+			ghostMaterial.opacity = material.opacity;
+		};
+		mesh.add(ghostMesh);
+	}
 	const cellTarget = { at(index) {
-		const position = arrayIndexPosition(index, n, origin, pitch, el.arrayLayout);
+		const position = el.arrayColumns ? Number.isInteger(index) && index >= 0 && index < n ? centre(index) : null : arrayIndexPosition(index, n, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
 		return position ? {
 			position,
-			corners: arrayCellCorners(position, pitch)
+			corners: arrayCellCorners(position, pitch).map((c) => [
+				c[0],
+				position[1] + (c[1] - position[1]) * cellHeight() / .68,
+				c[2]
+			])
 		} : null;
 	} };
 	mesh.userData.arrayCellTarget = cellTarget;
@@ -10782,14 +10947,14 @@ function renderArray(el, _view, decorate) {
 		depthWrite: false,
 		side: THREE.DoubleSide,
 		uniforms: { opacity: { value: 1 } },
-		vertexShader: `attribute float removed; varying vec2 rimUV; varying float removedCell;
-            void main(){rimUV=uv*2.0-1.0;removedCell=removed;
+		vertexShader: `attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
+            void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-		fragmentShader: `uniform float opacity; varying vec2 rimUV; varying float removedCell;
+		fragmentShader: `uniform float opacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
                 float rim=exp(-pow((edge-0.86)/0.09,2.0));
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float alpha=rim*mix(0.85,0.35,removedCell)*opacity;
+                float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
 	});
 	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
@@ -10805,8 +10970,10 @@ function renderArray(el, _view, decorate) {
 	state.planeMeshes.push(glowMesh);
 	const changes = new ArrayChangeTracker();
 	let illuminated = /* @__PURE__ */ new Set();
+	let rimCells = [];
 	function illuminate(changed, removed) {
-		const positions = [], uv = [], removedFlags = [];
+		const positions = [], uv = [], removedFlags = [], rimOpacity = [];
+		rimCells = [];
 		const corners = [
 			[-1, -1],
 			[1, -1],
@@ -10820,17 +10987,20 @@ function renderArray(el, _view, decorate) {
 			for (const [x, y] of corners) {
 				positions.push(...dataToWorld([
 					c[0] + x * pitch * .455,
-					c[1] + y * .397,
+					c[1] + y * cellHeight() * .584,
 					c[2] + .125
 				]));
 				uv.push((x + 1) / 2, (y + 1) / 2);
 				removedFlags.push(isRemoved);
+				rimCells.push(i);
+				rimOpacity.push(hoverOpacity[i] ?? 1);
 			}
 		}
 		const geometry = new THREE.BufferGeometry();
 		geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
 		geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
 		geometry.setAttribute("removed", new THREE.Float32BufferAttribute(removedFlags, 1));
+		geometry.setAttribute("cellOpacity", new THREE.Float32BufferAttribute(rimOpacity, 1));
 		glowMesh.geometry.dispose();
 		glowMesh.geometry = geometry;
 		glowMesh.visible = positions.length > 0;
@@ -10838,12 +11008,12 @@ function renderArray(el, _view, decorate) {
 	const planeText = el.axisLabels === "plane";
 	const cellTextPlanes = [];
 	const indexTextPlanes = [];
-	const addTextPlane = (width, height, color) => {
+	const addTextPlane = (width, height, color, cell) => {
 		const layer = createArrayPlaneText(width, height, color);
 		mesh.add(layer.mesh);
 		layer.mesh.onBeforeRender = (renderer, _scene, camera) => {
 			layer.prepare(renderer, camera);
-			layer.mesh.material.opacity = material.opacity;
+			layer.mesh.material.opacity = material.opacity * (cell == null ? 1 : hoverOpacity[cell] ?? 1);
 		};
 		return layer;
 	};
@@ -10865,7 +11035,7 @@ function renderArray(el, _view, decorate) {
 			label.forceHidden = true;
 			label.el.classList.add("array-plane-accessible");
 			clipArrayPlaneMirror(label.el);
-			cellTextPlanes.push(addTextPlane(pitch * .78, .68, "#12212b"));
+			cellTextPlanes.push(addTextPlane(pitch * .78, cellHeight(), "#12212b", i));
 		}
 		if (el.showIndices !== false) {
 			const indexLabel = addLabel3D(String(i), c, "#e1ecf7", { cssClass: "label-3d array-index-tag" });
@@ -10875,7 +11045,7 @@ function renderArray(el, _view, decorate) {
 				indexLabel.forceHidden = true;
 				indexLabel.el.classList.add("array-plane-accessible");
 				clipArrayPlaneMirror(indexLabel.el);
-				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7"));
+				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7", i));
 			}
 			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
 			indexLabels.push(indexLabel);
@@ -10889,7 +11059,7 @@ function renderArray(el, _view, decorate) {
 	};
 	const labels = Array.from({ length: n }, (_, i) => makeCellLabel(i));
 	let titleLabel;
-	const titleCentre = () => centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
+	const titleCentre = () => el.arrayColumns ? centre(Math.min(el.arrayColumns, n) - 1) : centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
 	const titleWidth = Math.max(1, (el.label?.length ?? 0) * .38);
 	const titlePosition = () => {
 		const at = el.labelPosition ?? titleCentre().map((value, i) => value + (el.labelOffset ?? [
@@ -10936,8 +11106,8 @@ function renderArray(el, _view, decorate) {
 	const owner = {
 		group: "array-markers:" + arrayMarkerGroup++,
 		animState,
-		position: (index) => arrayIndexPosition(index, n, origin, pitch, el.arrayLayout),
-		corners: (index) => arrayCellCorners(centre(index), pitch)
+		position: (index) => cellTarget.at(index)?.position ?? null,
+		corners: (index) => cellTarget.at(index)?.corners ?? []
 	};
 	const markers = (el.markers ?? []).map((marker) => renderStepMarker({
 		...marker,
@@ -10948,6 +11118,18 @@ function renderArray(el, _view, decorate) {
 	const previous = [];
 	function resize(next) {
 		if (next === n) return;
+		selectCell(null);
+		if (el.arrayColumns) while (labels.length) {
+			removeTextPlane(cellTextPlanes.pop());
+			removeTextPlane(indexTextPlanes.pop());
+			for (const label of [labels.pop(), indexLabels.pop()]) {
+				if (!label) continue;
+				label.el.remove();
+				const index = state.labels.indexOf(label);
+				if (index >= 0) state.labels.splice(index, 1);
+			}
+		}
+		n = next;
 		while (labels.length > next) {
 			removeTextPlane(cellTextPlanes.pop());
 			removeTextPlane(indexTextPlanes.pop());
@@ -10966,16 +11148,21 @@ function renderArray(el, _view, decorate) {
 			const c = centre(i);
 			positions.set(dataToWorld([
 				c[0] + source.getX(v) * pitch * .78,
-				c[1] + source.getY(v) * .68,
+				c[1] + source.getY(v) * cellHeight(),
 				c[2] + source.getZ(v) * .22
 			]), (i * vertices + v) * 3);
 		}
 		const replacement = new THREE.BufferGeometry();
 		replacement.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+		hoverOpacity = Array(n).fill(1);
+		cellOpacity = new Float32Array(n * vertices).fill(1);
+		opacityAttribute = new THREE.BufferAttribute(cellOpacity, 1);
+		replacement.setAttribute("cellOpacity", opacityAttribute);
 		colorAttribute = new THREE.BufferAttribute(colors, 3);
 		replacement.setAttribute("color", colorAttribute);
 		mesh.geometry.dispose();
 		mesh.geometry = replacement;
+		if (ghostMesh) ghostMesh.geometry = replacement;
 		previous.length = 0;
 		updateTitle();
 	}
@@ -11006,11 +11193,11 @@ function renderArray(el, _view, decorate) {
 				s.values
 			]));
 			const delta = changes.update(cells.map(({ cell }) => JSON.stringify([cell.kind, cell.value])), transition);
+			resize(next);
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
 				illuminate([...illuminated], delta.removed);
 			}
-			resize(next);
 			updateTitle();
 			decoration?.resize(next);
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
@@ -11059,12 +11246,55 @@ function renderArray(el, _view, decorate) {
 			if (dirty) colorAttribute.needsUpdate = true;
 		}
 	};
+	function selectCell(index) {
+		if (index !== null && (index < 0 || index >= n)) index = null;
+		if (index === null && hovered === null) return;
+		hovered = index;
+		const view = state.camera;
+		const forward = new THREE.Vector3();
+		view?.getWorldDirection(forward);
+		mesh.updateWorldMatrix(true, false);
+		const point = new THREE.Vector3();
+		const positions = mesh.geometry.getAttribute("position");
+		hoverOpacity = stackCellOpacities(Array.from({ length: n }, (_, i) => {
+			point.set(positions.getX(i * vertices), positions.getY(i * vertices), positions.getZ(i * vertices)).applyMatrix4(mesh.matrixWorld);
+			return point.dot(forward);
+		}), index);
+		if (ghostMesh) ghostMesh.visible = index !== null;
+		for (let i = 0; i < n; i++) {
+			cellOpacity.fill(hoverOpacity[i], i * vertices, (i + 1) * vertices);
+			for (const layer of [cellTextPlanes[i], indexTextPlanes[i]]) if (layer) {
+				layer.mesh.material.depthTest = i !== index;
+				layer.mesh.renderOrder = i === index ? 10 : 0;
+			}
+			if (labels[i] && !planeText) labels[i].el.style.opacity = String(hoverOpacity[i]);
+			if (indexLabels[i] && !planeText) indexLabels[i].el.style.opacity = String(hoverOpacity[i]);
+		}
+		opacityAttribute.needsUpdate = true;
+		const rims = glowMesh.geometry.getAttribute("cellOpacity");
+		if (rims) {
+			for (let v = 0; v < rimCells.length; v++) rims.setX(v, hoverOpacity[rimCells[v]] ?? 1);
+			rims.needsUpdate = true;
+		}
+	}
 	try {
 		entry._rebuildFn?.();
 	} catch (error) {
 		console.warn("array:", error);
 	}
+	const canvas = state.renderer?.domElement;
+	const disposeHover = el.hoverReveal && canvas ? registerStackHover(canvas, () => state.camera, {
+		mesh,
+		select: selectCell,
+		visible() {
+			if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+			for (let part = mesh; part; part = part.parent) if (!part.visible) return false;
+			return true;
+		}
+	}) : null;
 	material.addEventListener("dispose", () => {
+		disposeHover?.();
+		ghostMaterial?.dispose();
 		unit.dispose();
 		for (const layer of [
 			...cellTextPlanes,
@@ -20703,6 +20933,7 @@ async function loadScene(spec) {
 		...lessonData,
 		...sceneData
 	};
+	state.sceneTableBindings = spec?.tableBindings ?? [];
 	setActiveSceneFunctions(spec);
 	setActiveVirtualTimeExpr(spec, -1);
 	if (!spec) {
@@ -21005,7 +21236,8 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			elements: scene.elements || [],
 			steps: scene.steps,
 			starfield: scene.starfield,
-			data: scene.data
+			data: scene.data,
+			tableBindings: scene.tableBindings
 		});
 		for (let i = 0; i <= stepIdx; i++) if (scene.steps && scene.steps[i]) {
 			const step = scene.steps[i];
@@ -25355,6 +25587,20 @@ function buildChatContext() {
 			} : {}
 		};
 		if (Object.keys(sliders).length > 0) runtime.sliders = sliders;
+	}
+	const playback = ctx.currentScene?.stepPlayback;
+	const executionSlider = playback ? runtime.sliders?.[playback.slider] : void 0;
+	if (playback && executionSlider && Number.isFinite(executionSlider.value) && Number.isInteger(executionSlider.min) && Number.isInteger(executionSlider.max) && executionSlider.max >= executionSlider.min) {
+		const position = playbackPosition(executionSlider.value, executionSlider.min, executionSlider.max);
+		runtime.playback = {
+			slider: playback.slider,
+			value: position.current,
+			min: executionSlider.min,
+			max: executionSlider.max,
+			position: position.ordinal,
+			total: position.total,
+			displayedPosition: `${position.ordinal} / ${position.total}`
+		};
 	}
 	const captionEl = document.getElementById("step-caption");
 	if (captionEl && !captionEl.classList.contains("hidden")) runtime.currentCaption = (captionEl.dataset.markdown || captionEl.textContent).trim();

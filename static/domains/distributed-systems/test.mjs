@@ -183,17 +183,18 @@ test('generic narration explains scheduled future work, receipt delays, and dupl
 });
 
 test('lesson dashboard expressions use registered metric names in every scenario',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
  const math=create(all);
  const keys=['accepted','backlog','effectAccepted','receiptCount','duplicates','attempts','retries','rejected','writes','terminal'];
  for(const scene of lesson.scenes){
   const data=scene.data;
   const model=api.dsModel(data.settings,data.submissions,data.sources,data.targets,data.memberships,data.replays,data.receiptExclusions,1);
   const parameters=[model,16,8,2,2,0,1,24,0];
+  data.trace=api.dsTrace(model,24,...parameters.slice(2));
   for(const el of scene.steps.flatMap(step=>step.add??[]).filter(el=>['metrics','scheduling-metrics'].includes(el.id))){
    const offset=el.id==='metrics'?0:5;
    for(let idx=0;idx<5;idx++){
-    const scope={dsMetric:api.dsMetric,dsModel:api.dsModel,sender:1,dataTable:(name,row,column)=>row===undefined?data[name]:data[name][row][column],frame:16,recipients:8,workers:2,gatewayRate:2,failure:0,dedupe:1,capacity:24,policy:0,idx};
+    const scope={arrayCount:rows=>rows.length,dsMetric:api.dsMetric,dsModel:api.dsModel,sender:1,dataTable:(name,row,column)=>row===undefined?data[name]:data[name][row][column],frame:16,recipients:8,workers:2,gatewayRate:2,failure:0,dedupe:1,capacity:24,policy:0,idx};
     assert.equal(math.evaluate(el.valueExpr,scope),api.dsMetric(...parameters,keys[idx+offset]),scene.id+':'+keys[idx+offset]);
    }
   }
@@ -245,14 +246,16 @@ test('separate data tables stay editable and update the audience without seriali
 });
 
 test('real service files highlight causal transitions without placeholder operations',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
- const math=create(all);math.import({...api,dataTable:name=>tables[name]},{override:true});
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
+ const math=create(all);math.import({...api,dataTable:(name,row,column)=>row===undefined?tables[name]:tables[name][row][column]},{override:true});
  let tables;
  const files=new Map(lesson.codeFiles.map(file=>[file.id,{...file,compiled:file.activeLineExpr?math.compile(file.activeLineExpr):null}]));
  for(const file of files.values())assert.equal(file.source,readFileSync(new URL('../../../examples/push-notifications/'+file.path.split('/').at(-1),import.meta.url),'utf8'));
  const marked=(id,scenario,frame,overrides={})=>{
   const file=files.get(id);tables=lesson.scenes[scenario].data;
-  const result=file.compiled.evaluate({frame,recipients:1,workers:1,gatewayRate:1,failure:0,dedupe:1,capacity:24,policy:1,sender:1,...overrides});
+  const scope={frame,recipients:1,workers:1,gatewayRate:1,failure:0,dedupe:1,capacity:24,policy:1,sender:1,...overrides};
+  tables.trace=math.evaluate(lesson.scenes[scenario].tableBindings[0].rowsExpr,scope);
+  const result=file.compiled.evaluate(scope);
   const lines=file.source.split('\n');
   return new Set(result.toArray().filter(n=>n>0).map(n=>{assert.ok(Number.isInteger(n)&&n<=lines.length);return lines[n-1].trim();}));
  };
@@ -280,7 +283,7 @@ test('real service files highlight causal transitions without placeholder operat
 });
 
 test('every lesson step has valid source links, including all live code markers',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../../scenes/push-notification-system-design.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
  for(const file of lesson.codeFiles)for(const location of file.locations??[]){
   const scene=lesson.scenes.find(s=>s.id===location.scene);
   assert.ok(scene?.steps.some(s=>s.id===location.step));
@@ -291,6 +294,79 @@ test('every lesson step has valid source links, including all live code markers'
   for(const file of lesson.codeFiles){
    const markers=[...file.activeLineExpr?.matchAll(/\? (\d+) : 0/g)??[]].map(m=>Number(m[1]));
    for(const line of markers)assert.ok(file.locations.some(l=>l.scene===scene.id&&l.step==='execute'&&l.line===line));
+  }
+ }
+});
+
+test('explicit trace rows match all state readers and isolate snapshots',()=>{
+ const a=args(0,24,{recipients:3,failure:2});
+ const rows=api.dsTrace(...a);
+ assert.equal(rows.length,25);assert.equal(api.dsTrace(...a),rows);
+ for(let frame=0;frame<25;frame++){
+  const selected=[a[0],frame,...a.slice(2)],row=rows[frame];
+  assert.equal(row.tick,frame);assert.equal(row.message,api.dsExplain(...selected));
+  for(const store of ['db','outbox','source','delivery','stage','queue','workers','retry','ledger','dlq','deferred','effects','receipts'])assert.equal(row[store].length,count(selected,store));
+  for(const key of ['accepted','backlog','retries','duplicates','receiptCount'])assert.equal(row[key],metric(selected,key));
+ }
+ assert.equal(rows[0].db.length,0);assert.equal(rows[1].db.length,1);
+ assert.notEqual(rows[1].db,rows[2].db);
+ const changed=api.dsTrace(...args(0,24,{recipients:1,failure:2}));
+ assert.equal(changed[3].delivery.length,1);assert.equal(rows[3].delivery.length,3);
+ assert.equal(api.dsTraceCell(rows[3].delivery,0),'n1:u1');
+});
+test('saved lesson traces are the reproducible defaults for each scene',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
+ for(const scene of lesson.scenes){
+  const d=scene.data,defaults=Object.fromEntries(scene.steps.flatMap(step=>(step.sliders??[]).map(s=>[s.id,s.default])));
+  const model=api.dsModel(d.settings,d.submissions,d.sources,d.targets,d.memberships,d.replays,d.receiptExclusions,defaults.sender);
+  const trace=api.dsTrace(model,24,defaults.recipients,defaults.workers,defaults.gatewayRate,defaults.failure,defaults.dedupe,defaults.capacity,defaults.policy);
+  assert.equal(JSON.stringify(d.trace),JSON.stringify(trace),scene.id);
+  assert.equal(scene.steps.find(s=>s.id==='execute').descriptionExpr,"dataTable('trace', frame, 'message')");
+ }
+});
+
+test('all trace-backed lesson expressions evaluate with changed parameters and tick zero',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
+ const math=create(all);
+ let data;
+ math.import({...api,arrayAt:(rows,idx)=>(rows?.toArray?rows.toArray():rows)[idx],concat:(...args)=>args.map(String).join(''),arrayCount:rows=>rows?.toArray?rows.toArray().length:Array.isArray(rows)?rows.length:0,
+  dataTable:(name,row,column)=>row===undefined?data[name]:(data[name]?.[row]?.[column]??0)}, {override:true});
+ for(const scene of lesson.scenes){
+  data={...scene.data};
+  const expressions=new Set();
+  function walk(value){if(!value||typeof value!=='object')return;for(const [key,child] of Object.entries(value)){if(key.endsWith('Expr')&&typeof child==='string')expressions.add(child);else if(child&&typeof child==='object')walk(child);}}
+  walk(scene.steps);lesson.codeFiles.forEach(file=>expressions.add(file.activeLineExpr));
+  const compiled=[...expressions].filter(Boolean).map(expr=>[expr,math.compile(expr)]);
+  for(const frame of [0,3,5,12,24]){
+   const scope={sender:2,frame,recipients:3,workers:2,gatewayRate:1,failure:2,dedupe:1,capacity:8,policy:1,idx:0,value:'sample-record'};
+   data.trace=math.evaluate(scene.tableBindings[0].rowsExpr,scope);
+   for(const [expr,fn] of compiled)assert.doesNotThrow(()=>fn.evaluate(scope),scene.id+': '+expr);
+  }
+ }
+});
+
+test('Kafka arrays show all records and highlight unread occurrences including replays',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/push-notification-system-design.json',import.meta.url),'utf8'));
+ const arrays=[];
+ function walk(o){if(!o||typeof o!=='object')return;if(o.type==='array'&&['source','delivery','inside-source','inside-delivery'].includes(o.id))arrays.push(o);for(const v of Object.values(o))if(typeof v==='object')walk(v);}
+ walk(lesson);
+ assert.equal(arrays.length,32);
+ const math=create(all);
+ const trace=api.dsTrace(...args(5,24,{recipients:6}));
+ math.import({arrayCount:rows=>rows.length,dataTable:(_name,frame,column)=>trace[frame][column]},{override:true});
+ for(const array of arrays){
+  const source=array.id.endsWith('source'),store=source?'source':'delivery',position=source?'sourceConsumed':'deliveryConsumed';
+  assert.equal(array.lengthExpr,`arrayCount(dataTable('trace', frame, '${store}'))`);
+  assert.equal(array.valueExpr,`arrayAt(dataTable('trace', frame, '${store}'), idx)`);
+  const highlighted=math.compile(array.highlightExpr);
+  for(const frame of [2,3,4,5,7,12,13,24])for(let idx=0;idx<Math.min(3,trace[frame][store].length);idx++){
+   assert.equal(highlighted.evaluate({frame,idx}),idx>=trace[frame][position],`${array.id}:${frame}:${idx}`);
+  }
+  if(array.id==='delivery'){
+   // Every occurrence is retained; the replay stays unread until its own claim.
+   assert.equal(trace[12].delivery[0],trace[12].delivery[6]);
+   assert.equal(highlighted.evaluate({frame:12,idx:6}),true);
+   assert.equal(highlighted.evaluate({frame:13,idx:6}),false);
   }
  }
 });

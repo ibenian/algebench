@@ -149,6 +149,7 @@ export interface SceneSpec {
     steps?: SceneStep[];
     duration?: number | null;
     data?: Record<string, unknown>;
+    tableBindings?: import('/types/lesson.js').Scene['tableBindings'];
     proof?: Proof | Proof[] | null;
 }
 /** The grid/axis renderers the empty state pulls in lazily (see
@@ -899,6 +900,7 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     const lessonData = (sceneState.lessonSpec && sceneState.lessonSpec.data) || {};
     const sceneData = (spec && spec.data) || {};
     sceneState.sceneData = { ...lessonData, ...sceneData };
+    state.sceneTableBindings = spec?.tableBindings ?? [];
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
     // No scene at all (an empty or failed load) also means no glossary: the
@@ -1216,6 +1218,7 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             // lesson-format scene and `dataTable()` returned 0 against it —
             // even though the scene format documents scene-level `data`.
             data: scene.data,
+            tableBindings: scene.tableBindings,
         };
         loadScene(baseSpec);
 

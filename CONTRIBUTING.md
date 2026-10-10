@@ -256,7 +256,7 @@ A block's `elements` array accepts existing AlgeBench elements through the norma
 
 Connections are actual cylindrical pipes with `pipeRadius` (default 0.055 data units), proportional cone arrowheads, and round joints. Per-connection `radius`, `color`, `activeColor`, `activeExpr`, and `direction` (forward/backward/both/none) are supported. Orthogonal routing avoids unrelated leaf blocks; `route: "straight"` or `via: [{position, relativeTo?, space?}]` gives explicit routing. Waypoints are local to the connection's containing block by default. `textExpr`/`valueExpr` on blocks and `activeExpr` on wires respond to lesson sliders. Geometry remains stable while activity colors change.
 
-See `scenes/push-notification-system-design.json` for Kafka topic arrays embedded inside broker blocks, nested Flink operators, and external delivery/retry wiring.
+See `scenes/draft/push-notification-system-design.json` for Kafka topic arrays embedded inside broker blocks, nested Flink operators, and external delivery/retry wiring.
 
 ### Reusable distributed-systems simulations
 
@@ -271,3 +271,21 @@ The distributed-systems domain optionally accepts source and target identity dir
 A `system_dag` block can link to lesson source with `codeRef: {"file": "flink-job", "line": 23}`. `file` identifies a root `codeFiles` entry and `line` is one-based. Hover the block to reveal a `</>` shortcut beside its AI button; it pauses playback and opens that file and line in the Code tab. Each nested block owns its reference independently. Missing files or invalid line numbers do not expose a shortcut. This navigation does not change the simulation tick or its active code lines.
 
 Code references also accept `fileExpr` and `lineExpr`, evaluated using the current scene expression scope (including sliders and `dataTable`). For example: `codeRef: {"file": "two-pointers", "lineExpr": "dataTable('trace', frame, 'line')"}`. Expressions override their corresponding literal fields when both are provided. Invalid results or expression errors hide the shortcut; clicking re-evaluates the destination using the current tick.
+
+Scenes may materialize derived tables with `tableBindings: [{"table": "trace", "rowsExpr": "buildTrace(dataTable('input'), parameter)"}]`. The sandbox evaluates `rowsExpr` before each read of that table, using current sliders; generators should cache by their inputs. Results must be arrays of row objects. Cyclic table dependencies fail explicitly. Keep default rows in `data.trace` so the lesson JSON is inspectable; derived rows live in scene runtime data and do not overwrite the saved JSON. Playback can then bind captions to `dataTable('trace', frame, 'message')` and objects to the same selected snapshot.
+
+### Array direction and spacing
+
+Arrays can place their cells along a normalized 3D `direction` vector, for example
+`"direction": [0, 0, 1]` for a Z stack. `arraySpacing` controls the distance between
+cell centers; `cellSize` continues to control cell width. Direction overrides the
+legacy horizontal/vertical `arrayLayout`. Markers and connection anchors follow
+the same cell positions. Cell faces remain in the XY plane, so rotate the camera
+to inspect a Z stack; front views naturally occlude records behind the front cell.
+
+For a flat inspection view, use `arrayColumns` to wrap the sequence into rows and
+optionally `arrayHeight` to fit all rows into a fixed height. Wrapped columns and
+`direction` are alternative layouts and cannot be combined. Dynamic arrays support
+up to 1,024 cells; large fitted grids require zooming to read individual values.
+
+Array depth stacks can set `"hoverReveal": true`: hover an exposed cell face or edge to reveal it. Cells nearer the camera fade to 20% opacity (faces, text, and highlight rims); the selected text stays readable. Pointer leave, dragging, and array resizing restore normal opacity. This is a visual inspection aid and does not change records or simulation state.

@@ -1,6 +1,7 @@
 /** Deterministic bounded durable fan-out pipeline. Models are structured table data; no hidden scenario IDs, clocks, network calls, or lesson-specific providers. */
 (function () {
     'use strict';
+    const traceCache = new Map();
     const cache = new Map(), modelCache = new Map(), tableModelCache = new Map();
     const integer = (x, low, high, fallback) => Number.isFinite(Number(x)) ? Math.max(low, Math.min(high, Math.floor(Number(x)))) : fallback;
     function validateModel(raw) {
@@ -190,6 +191,26 @@
         if(cache.size>=256) cache.delete(cache.keys().next().value);
         cache.set(key,s);return s;
     }
+    /** Full, serializable snapshots; parameter changes select a new trace, frame only selects a row. */
+    function dsTrace(model,lastFrame,recipients,workers,rate,failure,dedupe,capacity,policy) {
+        const args=config(model,lastFrame,recipients,workers,rate,failure,dedupe,capacity,policy);
+        const key=JSON.stringify(args);
+        if(traceCache.has(key))return traceCache.get(key);
+        const rows=[];
+        for(let frame=0;frame<=args[1];frame++) {
+            const state=simulate([args[0],frame,...args.slice(2)]);
+            const flows=Object.fromEntries('lookup commit relay fanout claim accept receipt retry resume read terminal dedupe ack dead expand defer replay reject abandon admit permanent exhausted'.split(' ').map(key=>['flow_'+key,state.flows[key]??0]));
+            rows.push(JSON.parse(JSON.stringify({...state,...flows,tick:frame,message:state.explanation})));
+        }
+        if(traceCache.size>=16)traceCache.delete(traceCache.keys().next().value);
+        traceCache.set(key,rows);return rows;
+    }
+    function dsTraceCell(rows,idx) {
+        if(rows && typeof rows.toArray==='function')rows=rows.toArray();
+        if(!Array.isArray(rows))return '';
+        const i=integer(idx,0,999,0);
+        return rows.length>8 && i===7 ? '+'+(rows.length-7)+' more' : i<8 ? (rows[i]??'') : '';
+    }
     function dsCount(s,f,r,w,g,e,d,c,p,store) { const a=simulate([s,f,r,w,g,e,d,c,p])[store]; return Array.isArray(a)?a.length:0; }
     function dsCell(s,f,r,w,g,e,d,c,p,store,idx) { const a=simulate([s,f,r,w,g,e,d,c,p])[store]; const i=integer(idx,0,999,0);return !Array.isArray(a)?'':a.length>8&&i===7?`+${a.length-7} more`:i<8?(a[i]||''):''; }
     function dsMetric(s,f,r,w,g,e,d,c,p,metric) { const a=simulate([s,f,r,w,g,e,d,c,p])[metric];return typeof a==='number'?a:0; }
@@ -214,5 +235,5 @@
         if(tableModelCache.size>=128)tableModelCache.delete(tableModelCache.keys().next().value);
         tableModelCache.set(fingerprint,validated);return validated;
     }
-    window.AlgeBenchDomains.register('distributed-systems',{dsCount,dsCell,dsMetric,dsAction,dsExplain,dsFlow,dsModel});
+    window.AlgeBenchDomains.register('distributed-systems',{dsCount,dsCell,dsMetric,dsAction,dsExplain,dsFlow,dsModel,dsTrace,dsTraceCell});
 })();

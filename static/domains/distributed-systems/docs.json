@@ -100,6 +100,14 @@
     "dsModel": {
       "signature": "dsModel(settings, submissions, sources, targets, memberships, replays, receiptExclusions, sourceIndex)",
       "description": "Accepts ordinary arrays of row objects from dataTable(tableName), validates them, selects a 1-based source, and assembles a structured configuration without mutating table rows."
+    },
+    "dsTrace": {
+      "signature": "dsTrace(model, lastFrame, targets, workers, effectRate, failure, dedupe, capacity, policy)",
+      "description": "Returns ordinary row objects for ticks 0 through lastFrame. Each row contains the complete projected state, tick, message, and per-tick flows. Cached by inputs; frame navigation reads rows without rebuilding the trace."
+    },
+    "dsTraceCell": {
+      "signature": "dsTraceCell(records, idx)",
+      "description": "Read a zero-based projected record from a trace-row array using the same eight-cell bounded display as dsCell."
     }
   },
   "examples": {

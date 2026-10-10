@@ -204,9 +204,13 @@ export type Element = {
      * Colour for this axis's labels and title. Default: a muted grey-blue.
      */
     color?: string | [number, number, number];
+    /**
+     * TENSOR ONLY, plane column labels. Height reserved above the cells, in cell-pitch units; labels are centered within this band and fitted to it. Default 0.9. Use 0.4 for compact counter rows.
+     */
+    labelBand?: number;
   }[];
   /**
-   * ARRAY / STACK. Integer length from 0 to 256, evaluated on state changes. Cells, indices and owned markers update when the length changes; valueExpr supplies each cell using idx.
+   * ARRAY / STACK. Integer length from 0 to 1024, evaluated on state changes. Cells, indices and owned markers update when the length changes; valueExpr supplies each cell using idx.
    */
   lengthExpr?: string;
   /**
@@ -909,6 +913,29 @@ export type Element = {
    * SYSTEM_DAG: default physical pipe radius in scene units.
    */
   pipeRadius?: number;
+  /**
+   * ARRAY ONLY. Wrap the one-dimensional sequence into rows with this many columns; rows run downward.
+   */
+  arrayColumns?: number;
+  /**
+   * ARRAY ONLY. With arrayColumns, fit all wrapped rows into this total height. Cells and their text shrink vertically together.
+   */
+  arrayHeight?: number;
+  /**
+   * ARRAY ONLY. Nonzero direction vector for the cell sequence, normalized before use. [1,0,0] is X, [0,1,0] is Y, [0,0,1] is Z. Overrides arrayLayout; cannot be combined with arrayColumns.
+   *
+   * @minItems 3
+   * @maxItems 3
+   */
+  direction?: [number, number, number];
+  /**
+   * ARRAY ONLY. Distance between cell centers along direction; defaults to cellSize. Does not resize cell geometry.
+   */
+  arraySpacing?: number;
+  /**
+   * ARRAY ONLY. Hover a cell to keep it opaque and fade camera-facing cells in the same array to 20% opacity, including their text and highlights. Useful for depth stacks. Restores on pointer leave or drag. Default false.
+   */
+  hoverReveal?: boolean;
   [k: string]: unknown;
 };
 /**
@@ -1335,6 +1362,13 @@ export interface Scene {
    */
   duration?: number;
   stepPlayback?: StepPlayback;
+  /**
+   * Regenerate named data tables from sandboxed expressions using current scene inputs. Saved data rows remain inspectable defaults.
+   */
+  tableBindings?: {
+    table: string;
+    rowsExpr: string;
+  }[];
 }
 /**
  * Initial camera position and target for this scene.

@@ -199,6 +199,7 @@ export interface TensorCellHover {
 
 /** Per-axis metadata, as an author supplies it. `axes[k]` describes `shape[k]`. */
 interface AxisSpec {
+    labelBand?: unknown;
     labels?: unknown;
     labelExpr?: unknown;
     title?: unknown;
@@ -813,7 +814,9 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // band beyond it; to the left, a band as wide as the LONGEST row label
     // (measured, so a title sits right beside the words rather than a fixed
     // distance out) and a title band beyond that.
-    const LABEL_BAND = 0.9, TITLE_BAND = 0.7, LABEL_GLYPH = 0.5;
+    const LABEL_BAND = typeof hAxis?.labelBand === 'number' && Number.isFinite(hAxis.labelBand) && hAxis.labelBand > 0
+        ? hAxis.labelBand : 0.9;
+    const TITLE_BAND = 0.7, LABEL_GLYPH = 0.5;
     let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
     let vBand = 0;
     if (axisPlane && hasVLabels) {
@@ -1097,7 +1100,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             if (texts && wPx >= 2) for (let i = 0; i < n; i++) if (texts[i]) m = Math.min(m, fitLatexPx(texts[i]!, wPx, glyphH));
             return m;
         };
-        const hPx = axisPx(hTexts, cols, hW);
+        const hPx = Math.min(axisPx(hTexts, cols, hW), LABEL_BAND * px * 0.85);
         const vPx = axisPx(vTexts, rows, vW);
         const labelPx = Math.min(hPx, vPx);
         if (hTexts) {
