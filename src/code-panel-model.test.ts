@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveCodeRef, fileTree, relatedLocations, markedSegments, activeCodeLines, stepCodeLocations } from './code-panel-model.js';
+import { resolveCodeRef, fileTree, relatedLocations, markedSegments, activeCodeLines, stepCodeLocations, lineActionsFor } from './code-panel-model.js';
 import type { CodeFile } from './code-panel-model.js';
 test('file browser preserves full paths and groups folders independently of lesson steps',()=>{
  const a={id:'a',path:'brackets/main.py',source:'a'},b={id:'b',path:'brackets/helpers/main.py',source:'b'};
@@ -90,4 +90,27 @@ test('code references mix literal and expression coordinates using fresh scene v
  assert.equal(resolveCodeRef(files,ref,()=>{throw new Error('missing table');}),null);
  for(const value of [0,-1,1.5,NaN,Infinity,'2',null,undefined]) assert.equal(resolveCodeRef(files,ref,()=>value),null);
  assert.equal(resolveCodeRef(files,{fileExpr:'file',line:1},()=>42),null);
+});
+
+test('line actions are scoped to the selection, the scene and existing sliders', () => {
+    const file: CodeFile = { id: 'c', path: 'c.py', source: 'a\nb\nc', lineActions: [
+        { line: 2, label: 'Crash here', set: { crashPoint: 2, crashTick: 'frame + 1' } },
+        { line: 2, label: 'Other scene', scene: 'x', set: { crashPoint: 1 } },
+        { line: 3, label: 'Missing slider', set: { nope: 1 } },
+    ] };
+    const has = (id: string) => id !== 'nope';
+    assert.deepEqual(lineActionsFor(file, 2, 2, 'lab', has).map(a => a.label), ['Crash here']);
+    assert.deepEqual(lineActionsFor(file, 1, 3, 'x', has).map(a => a.label), ['Crash here', 'Other scene']);
+    assert.deepEqual(lineActionsFor(file, 1, 1, 'lab', has), []);
+});
+
+test('line actions never accept prototype keys, even if the slider lookup would', () => {
+    const file: CodeFile = { id: 'c', path: 'c.py', source: 'a', lineActions: JSON.parse(
+        '[{"line":1,"label":"proto","set":{"__proto__":1}},{"line":1,"label":"ctor","set":{"constructor":1}},{"line":1,"label":"ok","set":{"crashPoint":1}}]') };
+    const permissive = () => true;
+    assert.deepEqual(lineActionsFor(file, 1, 1, 'lab', permissive).map(a => a.label), ['ok']);
+    const sliders: Record<string, unknown> = { crashPoint: {} };
+    const own = (id: string) => Object.hasOwn(sliders, id);
+    assert.equal(own('__proto__'), false);
+    assert.equal(own('crashPoint'), true);
 });

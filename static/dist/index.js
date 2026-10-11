@@ -3638,6 +3638,22 @@ function resolveCodeRef(files, ref, evaluate) {
 		return null;
 	}
 }
+var UNSAFE_KEYS = /* @__PURE__ */ new Set([
+	"__proto__",
+	"constructor",
+	"prototype"
+]);
+/** Line actions offered for a selection: inside the range, scoped to the scene, and only when every slider exists. */
+function lineActionsFor(file, first, last, scene, hasSlider) {
+	const seen = /* @__PURE__ */ new Set();
+	return (file.lineActions ?? []).filter((action) => {
+		if (action.line < first || action.line > last || action.scene && action.scene !== scene) return false;
+		const ids = Object.keys(action.set);
+		if (ids.some((id) => UNSAFE_KEYS.has(id)) || !ids.every(hasSlider) || seen.has(action.label)) return false;
+		seen.add(action.label);
+		return true;
+	});
+}
 //#endregion
 //#region src/step-code-links.ts
 /** Step captions link into the same authored locations used by the code browser. */
@@ -7420,6 +7436,7 @@ var BOARD_MIN_H = 48;
 var BOARD_MAX_H_FRAC = .45;
 var BOARD_DOCK_MAX_H_FRAC = .4;
 var BOARD_RESIZE_DEADBAND = 4;
+var BOARD_DOCK_DEFAULT_H = 96;
 var _boardDocked = null;
 var _boardObserver = null;
 function isBoardOverlayDocked() {
@@ -7462,18 +7479,30 @@ function applyBoardOverlaySize(el, legacyWidth) {
 	el.style.height = h != null ? h + "px" : "";
 	el.classList.toggle("sized", w != null);
 }
-/** Docked geometry: the CSS `.docked` rule pins the strip; here we only clear
-*  the inline position a drag may have left and restore the saved height. */
+/** Height of a docked strip: the user's saved height, else the height it renders
+*  at when first docked (never below the default). Always a fixed number, so the
+*  strip never follows its content and step navigation cannot make it jump. */
+function dockedStripHeight(saved, rendered) {
+	if (saved != null && Number.isFinite(saved) && saved >= BOARD_MIN_H) return Math.round(saved);
+	return Math.round(Math.max(BOARD_DOCK_DEFAULT_H, Number.isFinite(rendered) ? rendered : 0));
+}
+/** Docked geometry: the CSS `.docked` rule pins the strip; here we clear the
+*  inline position a drag may have left and fix the strip's height. */
 function applyBoardDockGeometry(el) {
 	el.classList.add("docked");
 	el.classList.remove("sized");
 	el.style.left = el.style.right = el.style.top = el.style.bottom = "";
 	el.style.width = el.style.transform = el.style.transformOrigin = "";
-	let h = null;
+	let saved = null;
 	try {
-		h = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || "") || null;
+		saved = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || "") || null;
 	} catch {}
-	el.style.height = h != null && h >= BOARD_MIN_H ? h + "px" : "";
+	if (saved == null || saved < BOARD_MIN_H) el.style.height = "";
+	const h = dockedStripHeight(saved, el.offsetHeight);
+	el.style.height = h + "px";
+	if (saved !== h && el.offsetParent !== null) try {
+		localStorage.setItem(BOARD_DOCK_H_KEY, String(h));
+	} catch {}
 	el.style.setProperty("--caption-scale", String(overlayState.displayParams.captionScale || 1));
 }
 /** Recompute --caption-dock-h from whichever docked overlay is showing. */
@@ -7983,7 +8012,24 @@ function setupStepPlayer() {
 	track.setAttribute("aria-label", "Execution state");
 	const counter = document.createElement("output");
 	counter.setAttribute("aria-label", "Execution position");
-	bar.append(previous, play, next, track, counter);
+	const speed = document.createElement("select");
+	speed.className = "state-player-speed";
+	speed.setAttribute("aria-label", "Playback speed");
+	for (const factor of [
+		.25,
+		.5,
+		1,
+		2,
+		4
+	]) {
+		const option = document.createElement("option");
+		option.value = String(factor);
+		option.textContent = factor + "×";
+		speed.append(option);
+	}
+	speed.value = "1";
+	speed.hidden = true;
+	bar.append(previous, play, next, track, counter, speed);
 	host.append(bar);
 	new ResizeObserver(() => {
 		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
@@ -7991,6 +8037,7 @@ function setupStepPlayer() {
 	let timer = null;
 	let config;
 	const slider = () => config ? state.sceneSliders[config.slider] : void 0;
+	const interval = () => (config?.intervalMs ?? 900) / Number(speed.value || 1);
 	function pause() {
 		if (timer !== null) clearInterval(timer);
 		timer = null;
@@ -8038,6 +8085,15 @@ function setupStepPlayer() {
 		pause();
 		move(Number(track.value));
 	};
+	function start() {
+		play.innerHTML = pauseIcon;
+		play.setAttribute("aria-label", "Pause execution");
+		timer = setInterval(() => {
+			const current = slider();
+			if (current) move(current.value + 1);
+			else pause();
+		}, interval());
+	}
 	play.onclick = () => {
 		if (timer !== null) {
 			pause();
@@ -8046,17 +8102,19 @@ function setupStepPlayer() {
 		const s = slider();
 		if (!s) return;
 		if (s.value >= s.max) move(s.min);
-		play.innerHTML = pauseIcon;
-		play.setAttribute("aria-label", "Pause execution");
-		timer = setInterval(() => {
-			const current = slider();
-			if (current) move(current.value + 1);
-			else pause();
-		}, config?.intervalMs ?? 900);
+		start();
+	};
+	speed.onchange = () => {
+		if (timer !== null) {
+			clearInterval(timer);
+			timer = null;
+			start();
+		}
 	};
 	function refresh() {
 		pause();
 		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
+		speed.hidden = !config?.speedControl;
 		render();
 		document.querySelectorAll(".slider-range").forEach((input) => {
 			const row = input.closest(".slider-row");
@@ -10022,8 +10080,25 @@ function routeOrthogonal(a, b, an, bn, nodes, radius) {
 	]);
 }
 //#endregion
+//#region src/code-focus.ts
+var current = null;
+function codeFocus() {
+	return current;
+}
+function setCodeFocus(focus) {
+	if (JSON.stringify(focus) === JSON.stringify(current)) return;
+	current = focus;
+	if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("algebench:codefocus"));
+}
+/** True when any resolved source location falls inside the selected line range of the same file. */
+function focusMatches(refs, focus) {
+	if (!focus) return false;
+	return refs.some((ref) => !!ref && ref.fileId === focus.fileId && ref.line >= focus.first && ref.line <= focus.last);
+}
+//#endregion
 //#region src/objects/system-dag.ts
 /** Reusable system blocks and directed cylindrical pipes; no simulation rules. */
+var FOCUS_COLOR = "#62e6ff";
 var PALETTE$1 = {
 	group: "#8fa8be",
 	service: "#80b9d6",
@@ -10136,6 +10211,18 @@ function renderSystemDAG(el, _view) {
 		return material;
 	}
 	const containedStates = [];
+	const focusFns = /* @__PURE__ */ new Map();
+	const codeFiles = () => state.lessonSpec?.codeFiles ?? [];
+	const codeRefs = (id) => {
+		const spec = layout.nodes.get(id).spec;
+		return [spec.codeRef, ...spec.codeLinks ?? []].filter((ref) => !!ref).map((ref) => {
+			const resolved = resolveCodeRef(codeFiles(), ref, (expression) => evalExpr(compileExpr(expression), 0));
+			return resolved ? {
+				fileId: resolved.file.id,
+				line: resolved.line
+			} : null;
+		});
+	};
 	for (const node of layout.nodes.values()) {
 		const { spec, position: p, size } = node, color = tint.get(spec.id);
 		const w0 = dataToWorld(p.map((v, i) => v - size[i] / 2)), w1 = dataToWorld(p.map((v, i) => v + size[i] / 2));
@@ -10225,6 +10312,10 @@ function renderSystemDAG(el, _view) {
 			ports,
 			color
 		});
+		if (spec.highlightExpr) {
+			focusFns.set(spec.id, compileExpr(spec.highlightExpr));
+			expressions.push(spec.highlightExpr);
+		}
 		const headerHeight = spec.blocks?.length ? .85 : Math.min(.78, size[1] * .48);
 		const title = text(spec.label, [
 			p[0],
@@ -10480,12 +10571,22 @@ function renderSystemDAG(el, _view) {
 					lightNode(f.to);
 				}
 			}
+			const focus = codeFocus();
 			for (const [id, lighting] of nodeLighting) {
 				const active = activeNodes.has(id);
-				lighting.fill.color.setRGB(...rgb(lighting.color));
-				if (active) lighting.fill.color.lerp(new THREE.Color("#ffffff"), .18);
-				lighting.border.emissiveIntensity = active ? .8 : .25;
-				lighting.glow.userData.activityOpacity = active ? 1 : 0;
+				const fn = focusFns.get(id);
+				let focused = focusMatches(focus ? codeRefs(id) : [], focus);
+				if (!focused && fn) try {
+					focused = !!evalExpr(fn, 0);
+				} catch {}
+				const tone = focused ? FOCUS_COLOR : lighting.color;
+				lighting.fill.color.setRGB(...rgb(tone));
+				if (active && !focused) lighting.fill.color.lerp(new THREE.Color("#ffffff"), .18);
+				lighting.border.color.setRGB(...rgb(tone));
+				lighting.border.emissive.setRGB(...rgb(tone));
+				lighting.glow.color.setRGB(...rgb(tone));
+				lighting.border.emissiveIntensity = focused ? 1 : active ? .8 : .25;
+				lighting.glow.userData.activityOpacity = active || focused ? 1 : 0;
 				for (const port of lighting.ports) port.emissiveIntensity = active ? .65 : 0;
 			}
 			for (const child of root.children) if (child instanceof THREE.Mesh && !Array.isArray(child.material) && child.material.userData.activityOpacity !== void 0) child.visible = child.material.userData.activityOpacity > 0;
@@ -10493,6 +10594,8 @@ function renderSystemDAG(el, _view) {
 	};
 	entry._rebuildFn?.();
 	if (expressions.length) registerAnimExpr(entry);
+	const onCodeFocus = () => entry._rebuildFn?.();
+	window.addEventListener("algebench:codefocus", onCodeFocus);
 	if (flows.some((flow) => flow.fn)) registerAnimUpdater({
 		animState,
 		updateFrame(nowMs) {
@@ -10501,6 +10604,7 @@ function renderSystemDAG(el, _view) {
 		}
 	});
 	rootMaterial.addEventListener("dispose", () => {
+		window.removeEventListener("algebench:codefocus", onCodeFocus);
 		animState.stopped = true;
 		for (const t of textLayers) t.dispose();
 		for (const g of geometries) g.dispose();
@@ -10793,6 +10897,10 @@ function wrappedArrayCell(index, length, origin, pitch, columns, height) {
 		],
 		height: rowPitch * (.68 / .78)
 	};
+}
+/** A colorExpr result is accepted only as a 6-digit hex color; anything else defers to highlight/base color. */
+function cellColor(value) {
+	return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value) ? value : null;
 }
 //#endregion
 //#region src/objects/array-stack-hover.ts
@@ -11170,6 +11278,7 @@ function renderArray(el, _view, decorate) {
 	}, _view, owner));
 	const valueFn = el.valueExpr ? compileExpr(el.valueExpr) : null;
 	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const colorFn = el.colorExpr ? compileExpr(el.colorExpr) : null;
 	const previous = [];
 	function resize(next) {
 		if (next === n) return;
@@ -11227,6 +11336,7 @@ function renderArray(el, _view, decorate) {
 			el.lengthExpr,
 			el.valueExpr,
 			el.highlightExpr,
+			el.colorExpr,
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
 		_rebuildFn: () => {
@@ -11239,7 +11349,11 @@ function renderArray(el, _view, decorate) {
 					highlighted: highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
 						idx: i,
 						value: cell.value
-					} }) : false
+					} }) : false,
+					color: colorFn ? cellColor(evalExpr(colorFn, 0, { overrideScope: {
+						idx: i,
+						value: cell.value
+					} })) : null
 				};
 			});
 			const transition = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
@@ -11258,12 +11372,13 @@ function renderArray(el, _view, decorate) {
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
-				const { cell, highlighted } = cells[i];
+				const { cell, highlighted, color } = cells[i];
 				const lit = illuminated.has(i);
 				const key = JSON.stringify([
 					cell.kind,
 					cell.value,
 					highlighted,
+					color,
 					lit
 				]);
 				if (previous[i] === key) continue;
@@ -11288,7 +11403,7 @@ function renderArray(el, _view, decorate) {
 						c[2] + .14
 					]);
 				}
-				const rgb = parseColor(highlighted ? "#f1cc59" : el.color ?? PALETTE[cell.kind]);
+				const rgb = parseColor(color ?? (highlighted ? "#f1cc59" : el.color ?? PALETTE[cell.kind]));
 				if (lit) for (let j = 0; j < 3; j++) rgb[j] = rgb[j] + (1 - rgb[j]) * .35;
 				for (let v = 0; v < vertices; v++) {
 					const shade = normal.getZ(v) > 0 ? 1 : normal.getY(v) > 0 ? .78 : .56;
@@ -21587,8 +21702,27 @@ function setupCodePanel() {
 	const jump = document.createElement("button");
 	jump.type = "button";
 	jump.textContent = "↗ Go to step";
-	actions.append(selectionLabel, ask, jump);
+	const what = document.createElement("span");
+	what.className = "code-line-actions";
+	actions.append(selectionLabel, ask, jump, what);
 	host.append(tree, title, execution, body, actions, targets);
+	function renderLineActions() {
+		what.replaceChildren();
+		const scene = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.id;
+		if (!selected || !first) return;
+		for (const action of lineActionsFor(selected, first, last, scene, (id) => Object.hasOwn(state.sceneSliders, id))) {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.textContent = action.label;
+			button.title = "Sets " + Object.keys(action.set).join(", ") + " — the simulation replays deterministically with the new setting";
+			button.onclick = () => {
+				window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+				const values = Object.entries(action.set).map(([id, v]) => [id, typeof v === "string" ? Number(evalExpr(compileExpr(v), 0)) : v]);
+				for (const [id, value] of values) if (Number.isFinite(value)) setSliderValue(id, value);
+			};
+			what.append(button);
+		}
+	}
 	function resolve(location) {
 		const scenes = state.lessonSpec?.scenes ?? [];
 		const scene = scenes.findIndex((s) => s.id === location.scene);
@@ -21610,6 +21744,12 @@ function setupCodePanel() {
 		jump.disabled = !selected || !relatedLocations(selected, first, last).some((l) => resolve(l));
 		jump.title = jump.disabled ? "No linked lesson step for this selection" : "Navigate only when you press this button";
 		body.querySelectorAll(".code-line").forEach((row) => row.classList.toggle("selected", Number(row.dataset.line) >= first && Number(row.dataset.line) <= last));
+		if (selected) setCodeFocus({
+			fileId: selected.id,
+			first,
+			last
+		});
+		renderLineActions();
 	}
 	function go(choice) {
 		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
@@ -21665,6 +21805,7 @@ function setupCodePanel() {
 		excerpt = "";
 		actions.hidden = targets.hidden = true;
 		active = null;
+		setCodeFocus(null);
 		title.textContent = file.path + " · read only";
 		body.replaceChildren();
 		if (file.activeLineExpr) try {
@@ -21739,11 +21880,13 @@ function setupCodePanel() {
 			actions.hidden = targets.hidden = true;
 			selected = void 0;
 			active = null;
+			setCodeFocus(null);
 			build(fileTree(files), tree);
 			if (files[0]) open(files[0]);
 			else title.textContent = "This lesson has no code files.";
 		}
 		refreshBinding();
+		renderLineActions();
 	}
 	window.addEventListener("algebench:opencode", (event) => {
 		const target = event.detail;
@@ -25657,6 +25800,11 @@ function buildChatContext() {
 			displayedPosition: `${position.ordinal} / ${position.total}`
 		};
 	}
+	const promptExpr = ctx.currentScene?.promptExpr;
+	if (promptExpr) try {
+		const value = evalExpr(compileExpr(promptExpr), 0);
+		if (value !== null && value !== void 0 && value !== "") runtime.simulationState = String(value).slice(0, 6e3);
+	} catch {}
 	const captionEl = document.getElementById("step-caption");
 	if (captionEl && !captionEl.classList.contains("hidden")) runtime.currentCaption = (captionEl.dataset.markdown || captionEl.textContent).trim();
 	const activeTab = document.querySelector(".tab-content.active");

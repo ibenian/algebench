@@ -67,3 +67,18 @@ export function resolveCodeRef(files: CodeFile[], ref?: CodeRef, evaluate?: (exp
         return file && line <= file.source.split('\n').length ? { file, line } : null;
     } catch { return null; }
 }
+
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** Line actions offered for a selection: inside the range, scoped to the scene, and only when every slider exists. */
+export function lineActionsFor(file: CodeFile, first: number, last: number, scene: string | undefined, hasSlider: (id: string) => boolean) {
+    const seen = new Set<string>();
+    return (file.lineActions ?? []).filter(action => {
+        if (action.line < first || action.line > last || (action.scene && action.scene !== scene)) return false;
+        // Slider ids come from lesson data; never let a prototype key through to setSliderValue.
+        const ids = Object.keys(action.set);
+        if (ids.some(id => UNSAFE_KEYS.has(id)) || !ids.every(hasSlider) || seen.has(action.label)) return false;
+        seen.add(action.label);
+        return true;
+    });
+}

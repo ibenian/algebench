@@ -1,0 +1,31 @@
+{
+  "name": "messaging",
+  "description": "Deterministic, tick-based comparison of messaging architectures. One shared workload (keyed messages, producers, consumers with a service time, scripted crashes, outages and poison messages) is replayed against per-system adapters (Apache Kafka, RabbitMQ, Amazon SQS) that keep their real conceptual structures: partitions, offsets and group commits; exchanges, ready/unacked deliveries and prefetch; visibility timeouts and receipt handles.",
+  "limits": [
+    "Ticks are scheduler steps, not seconds. Consumers spend serviceTicks per message; no network latency or throughput units are modeled.",
+    "Cells are logical records, not physical storage: no segments, queue indexes, replication or memory layouts are drawn.",
+    "Kafka: partition = key index % partitions (clients use murmur2); eager rebalance with the RangeAssignor; retention deletes single records (brokers delete segments); the dead-letter topic is an application convention.",
+    "RabbitMQ: one quorum queue with x-delivery-limit; requeued deliveries return to the head in order; publisher confirms are not shown.",
+    "SQS: standard queue delivered in arrival order; real standard queues give best-effort ordering and can rarely duplicate without failures.",
+    "Bounded inputs: at most 60 messages, 120 frames, 6 consumers, 6 partitions."
+  ],
+  "functions": {
+    "mqTrace": { "signature": "mqTrace(system, settingsTable, overrides)", "description": "Full per-tick trace (rows 0..frames) for 'kafka', 'rabbitmq' or 'sqs'. overrides is an object of numeric options (consumers, serviceTicks, partitions, prefetch, visibilityTimeout, crashPoint, crashTick, ...). Bind with tableBindings; rows are cached by configuration." },
+    "mqState": { "signature": "mqState(life, id)", "description": "Lifecycle state of a message id in a row's life map: pending, buffered, stored, fetched, unacked, inflight, processing, processed, failed, acked, deleted, dlq, dropped, expired, rejected." },
+    "mqColor": { "signature": "mqColor(life, value, traced)", "description": "Hex color for a cell holding a message id (or a label containing one); the traced id is white. Use as an array colorExpr." },
+    "mqCode": { "signature": "mqCode(life, value, traced)", "description": "Discrete state code 0..8 (empty, stored, delivered, processing, processed, acked, dlq, lost, traced) for tensor colorMaps." },
+    "mqGrid": { "signature": "mqGrid(grid, row, col)", "description": "Cell of a 2D list such as Kafka gridIds or RabbitMQ unackedGrid." },
+    "mqGridText": { "signature": "mqGridText(ids, offsets, row, col)", "description": "Kafka partition cell text 'offset:id'." },
+    "mqList": { "signature": "mqList(list, prefix, sep)", "description": "Format a list as 'p0:3 p1:2'." },
+    "mqOp": { "signature": "mqOp(ops, name)", "description": "1 when an operation (poll, commit, ack, deleteMessage, ...) happened this tick; drives code line highlights." },
+    "mqHistory": { "signature": "mqHistory(rows, frame, id, limit)", "description": "Lifecycle events of one message up to a frame." },
+    "mqCaption": { "signature": "mqCaption(frame, traced, label1, rows1, label2, rows2, ...)", "description": "Markdown caption: the most instructive change per system at this tick." },
+    "mqTraceCaption": { "signature": "mqTraceCaption(frame, traced, label1, rows1, ...)", "description": "Markdown journey of the traced message in every system." },
+    "mqContext": { "signature": "mqContext(frame, traced, label1, rows1, ...)", "description": "Compact factual state for the AI tutor (Scene.promptExpr)." },
+    "mqConsumerColor": { "signature": "mqConsumerColor(text)", "description": "Color for a consumer status cell: down, idle, working or ready." },
+    "mqSeries": { "signature": "mqSeries(rows, field, frame)", "description": "A metric across frames, for charts." },
+    "mqId": { "signature": "mqId(n)", "description": "Message id for a slider value: mqId(3) = 'm3'." },
+    "mqCrashPoint": { "signature": "mqCrashPoint(n)", "description": "Label for crashPoint 0..4: none, after receive, after processing before ack, kill -9, graceful shutdown." },
+    "mqSystems": { "signature": "mqSystems()", "description": "Registered system ids." }
+  }
+}

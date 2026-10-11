@@ -8,7 +8,7 @@ import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
 import type { Mesh, Object3D } from 'three';
 import { renderStepMarker } from '/objects/step-marker.js';
-import { arrayCell, arrayLength, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
+import { arrayCell, arrayLength, cellColor, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
 import { registerStackHover, stackCellOpacities } from '/objects/array-stack-hover.js';
 import { ArrayChangeTracker } from '/objects/array-changes.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
@@ -180,6 +180,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const markers = (el.markers ?? []).map(marker => renderStepMarker({...marker, type:'step_marker'}, _view, owner));
     const valueFn=el.valueExpr?compileExpr(el.valueExpr):null;
     const highlightFn=el.highlightExpr?compileExpr(el.highlightExpr):null;
+    const colorFn=el.colorExpr?compileExpr(el.colorExpr):null;
     const previous: string[]=[];
     function resize(next:number) {
         if(next===n)return;
@@ -223,7 +224,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         previous.length=0;
         updateTitle();
     }
-    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
+    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
         // Hidden lesson steps must not advance the last-visible comparison baseline.
         if(animState.stopped||animState.hiddenByRemove)return;
         const next=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):n;
@@ -231,7 +232,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         const cells=Array.from({length:next},(_,i)=>{
             const cell=arrayCell(valueFn?evalExpr(valueFn,0,{overrideScope:{idx:i}}):el.values?.[i],el.itemType);
             const highlighted=highlightFn?!!evalExpr(highlightFn,0,{overrideScope:{idx:i,value:cell.value}}):false;
-            return {cell,highlighted};
+            const color=colorFn?cellColor(evalExpr(colorFn,0,{overrideScope:{idx:i,value:cell.value}})):null;
+            return {cell,highlighted,color};
         });
         const transition=JSON.stringify(Object.entries(state.sceneSliders).map(([id,s])=>[id,s.value,s.values]));
         const delta=changes.update(cells.map(({cell})=>JSON.stringify([cell.kind,cell.value])),transition);
@@ -245,9 +247,9 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;
         for(let i=0;i<n;i++){
-            const {cell,highlighted}=cells[i]!; // one successfully evaluated cell per slot
+            const {cell,highlighted,color}=cells[i]!; // one successfully evaluated cell per slot
             const lit=illuminated.has(i);
-            const key=JSON.stringify([cell.kind,cell.value,highlighted,lit]);
+            const key=JSON.stringify([cell.kind,cell.value,highlighted,color,lit]);
             if(previous[i]===key)continue;previous[i]=key;dirty=true;
             const label=labels[i]!; // one label allocated per cell
             label.el.textContent=cell.text;label.el.title=`[${i}] ${cell.kind}: ${cell.text}`;
@@ -257,7 +259,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
                 cellTextPlanes[i]!.set(cell.text,[c[0],c[1],c[2]+.14]); // makeCellLabel allocates one text plane per slot.
                 indexTextPlanes[i]?.set(String(i),[c[0],c[1]-.58,c[2]+.14]);
             }
-            const rgb=parseColor(highlighted?'#f1cc59':el.color??PALETTE[cell.kind]);
+            const rgb=parseColor(color??(highlighted?'#f1cc59':el.color??PALETTE[cell.kind]));
             if(lit)for(let j=0;j<3;j++)rgb[j]=rgb[j]!+(1-rgb[j]!)*.35;
             for(let v=0;v<vertices;v++){
                 const shade=normal.getZ(v)>0?1:normal.getY(v)>0?.78:.56;

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {arrayCell,arrayLength,dynamicArrayLength,arrayIndexPosition,arrayCellPosition,arrayCellCorners} from './array-data.js';
+import {arrayCell,arrayLength,cellColor,dynamicArrayLength,arrayIndexPosition,arrayCellPosition,arrayCellCorners} from './array-data.js';
 test('mixed arrays preserve primitive identity rather than coercing values',()=>{
  assert.equal(arrayCell(42).kind,'number');assert.equal(arrayCell('42').kind,'string');
  assert.equal(arrayCell(false).text,'false');assert.equal(arrayCell(null).text,'∅');
@@ -64,4 +64,9 @@ test('array direction normalizes vectors and spaces cells without resizing geome
  for(const direction of [[0,0,0],[1,2],[NaN,0,1],[Infinity,1,1]])assert.throws(()=>arrayCellPosition(0,[0,0,0],1,'horizontal',direction));
  assert.throws(()=>arrayCellPosition(1,[0,0,0],1,'horizontal',[0,0,1],0));
  assert.equal(arrayIndexPosition(4,4,[0,0,0],1,'horizontal',[0,0,1]),null);
+});
+
+test('cellColor accepts only six-digit hex colors', () => {
+    assert.equal(cellColor('#4fae7b'), '#4fae7b');
+    for (const v of ['', 'red', '#fff', 0, null, undefined, '#12345g']) assert.equal(cellColor(v), null);
 });

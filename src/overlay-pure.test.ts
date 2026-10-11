@@ -17,7 +17,7 @@ g.math = mathjs;
 g.window ??= globalThis;
 
 const { state } = await import('/state.js');
-const { getAllElements, resolveInfoContent } = await import('/overlay.js');
+const { getAllElements, resolveInfoContent, dockedStripHeight } = await import('/overlay.js');
 
 /** overlay.ts keeps its scene interface module-private; recover it by name. */
 type OverlayScene = Parameters<typeof getAllElements>[0];
@@ -119,4 +119,12 @@ test('resolveInfoContent leaves single-brace groups untouched', () => {
 test('resolveInfoContent passes through content with no bindings', () => {
   assert.equal(resolveInfoContent('plain text'), 'plain text');
   assert.equal(resolveInfoContent(''), '');
+});
+
+test('docked strip height is fixed: saved height wins, else first rendered height with a floor', () => {
+    assert.equal(dockedStripHeight(180, 40), 180);         // user-resized height is kept
+    assert.equal(dockedStripHeight(null, 140), 140);       // first dock freezes the rendered height
+    assert.equal(dockedStripHeight(null, 30), 96);         // tiny or hidden captions get the floor
+    assert.equal(dockedStripHeight(20, 150), 150);         // an invalid saved height is ignored
+    assert.equal(dockedStripHeight(null, NaN), 96);
 });

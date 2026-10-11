@@ -209,6 +209,10 @@
           "type": "string",
           "description": "System prompt for the AI chat tutor in this scene. Tells the AI what/how to teach. Example: \"You are a patient tutor helping a student understand Bayes' theorem...\""
         },
+        "promptExpr": {
+          "type": "string",
+          "description": "Live companion to 'prompt'. Expression evaluated each time the learner messages the AI; its string result is added to the tutor's context as authoritative live state (e.g. the current simulation snapshot). Unlike other *Expr fields it does not replace 'prompt': the static prompt carries teaching guidance, promptExpr carries what is true right now."
+        },
         "range": {
           "$ref": "#/$defs/range3D",
           "description": "Axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. Default: [[-5,5],[-5,5],[-5,5]]."
@@ -1431,6 +1435,10 @@
         "highlightExpr": {
           "type": "string",
           "description": "ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes."
+        },
+        "colorExpr": {
+          "type": "string",
+          "description": "ARRAY ONLY. Per-cell color expression with idx and value, evaluated on state changes. Returns a CSS color string; an empty or invalid result falls back to highlightExpr/color. Use it to encode a logical state (e.g. ready, unacked, committed) per record."
         },
         "indexName": {
           "type": "string",
@@ -2996,6 +3004,42 @@
             ],
             "additionalProperties": false
           }
+        },
+        "lineActions": {
+          "type": "array",
+          "description": "Buttons offered when a listed line is selected in the Code tab. Each sets lesson sliders; string values are expressions evaluated in the current scene scope (e.g. 'frame + 1'). Use for 'Crash at this line' style what-if controls.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scene": {
+                "type": "string",
+                "description": "Scene id this action applies to; omitted applies to every scene that has the sliders."
+              },
+              "set": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": [
+                    "number",
+                    "string"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "line",
+              "label",
+              "set"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -3017,6 +3061,11 @@
           "minimum": 100,
           "maximum": 10000,
           "default": 900
+        },
+        "speedControl": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a playback speed selector (0.25× to 4× of intervalMs)."
         }
       },
       "required": [
@@ -3353,6 +3402,17 @@
         "codeRef": {
           "$ref": "#/$defs/codeRef",
           "description": "Optional source location for this block."
+        },
+        "highlightExpr": {
+          "type": "string",
+          "description": "Truthy expression that marks this block as focused (cyan rim and glow), independent of connection activity. Use it to show where a selected concept or component lives."
+        },
+        "codeLinks": {
+          "type": "array",
+          "description": "Additional source locations represented by this block. Selecting any of these lines (or the codeRef line) in the Code tab focuses the block.",
+          "items": {
+            "$ref": "#/$defs/codeRef"
+          }
         }
       }
     },

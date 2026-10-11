@@ -1462,6 +1462,7 @@ const BOARD_MIN_W = 160, BOARD_MIN_H = 48;
 // Must match the CSS max-height on the overlays (45% floating, 40% docked).
 const BOARD_MAX_H_FRAC = 0.45, BOARD_DOCK_MAX_H_FRAC = 0.40;
 const BOARD_RESIZE_DEADBAND = 4; // px of horizontal travel before a drag also sets the width
+const BOARD_DOCK_DEFAULT_H = 96;  // px floor for a docked strip that has never been resized
 let _boardDocked: boolean | null = null;
 let _boardObserver: ResizeObserver | null = null;
 
@@ -1511,16 +1512,30 @@ export function applyBoardOverlaySize(el: HTMLElement, legacyWidth?: string): vo
     el.classList.toggle('sized', w != null);
 }
 
-/** Docked geometry: the CSS `.docked` rule pins the strip; here we only clear
- *  the inline position a drag may have left and restore the saved height. */
+/** Height of a docked strip: the user's saved height, else the height it renders
+ *  at when first docked (never below the default). Always a fixed number, so the
+ *  strip never follows its content and step navigation cannot make it jump. */
+export function dockedStripHeight(saved: number | null, rendered: number): number {
+    if (saved != null && Number.isFinite(saved) && saved >= BOARD_MIN_H) return Math.round(saved);
+    return Math.round(Math.max(BOARD_DOCK_DEFAULT_H, Number.isFinite(rendered) ? rendered : 0));
+}
+
+/** Docked geometry: the CSS `.docked` rule pins the strip; here we clear the
+ *  inline position a drag may have left and fix the strip's height. */
 export function applyBoardDockGeometry(el: HTMLElement): void {
     el.classList.add('docked');
     el.classList.remove('sized');
     el.style.left = el.style.right = el.style.top = el.style.bottom = '';
     el.style.width = el.style.transform = el.style.transformOrigin = '';
-    let h: number | null = null;
-    try { h = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || '') || null; } catch {}
-    el.style.height = h != null && h >= BOARD_MIN_H ? h + 'px' : '';
+    let saved: number | null = null;
+    try { saved = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || '') || null; } catch {}
+    if (saved == null || saved < BOARD_MIN_H) el.style.height = '';  // measure the natural height once
+    const h = dockedStripHeight(saved, el.offsetHeight);
+    el.style.height = h + 'px';
+    // Persist only a measured height; a hidden overlay (offsetHeight 0) must not freeze the default.
+    if (saved !== h && el.offsetParent !== null) {
+        try { localStorage.setItem(BOARD_DOCK_H_KEY, String(h)); } catch {}
+    }
     el.style.setProperty('--caption-scale', String(overlayState.displayParams.captionScale || 1));
 }
 

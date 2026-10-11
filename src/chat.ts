@@ -16,6 +16,7 @@
 export {};
 
 import { playbackPosition } from '/step-player.js';
+import { compileExpr, evalExpr } from '/expr.js';
 import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
@@ -306,6 +307,15 @@ function buildChatContext(): AlgeBenchChatContext {
             total: position.total,
             displayedPosition: `${position.ordinal} / ${position.total}`,
         };
+    }
+
+    // Live simulation state the scene chooses to expose, so the tutor reasons about what is on screen.
+    const promptExpr = (ctx.currentScene as import('/types/lesson.js').Scene | undefined)?.promptExpr;
+    if (promptExpr) {
+        try {
+            const value = evalExpr(compileExpr(promptExpr), 0);
+            if (value !== null && value !== undefined && value !== '') runtime.simulationState = String(value).slice(0, 6000);
+        } catch { /* an unavailable binding omits the state rather than failing the message */ }
     }
 
     // Caption text — use raw data-markdown source to avoid KaTeX MathML artifacts
