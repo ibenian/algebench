@@ -14,7 +14,7 @@ function group(id, label, position, height, extra = {}) {
     return { id, label, kind: 'group', position, size: [W, height, 0.12], childElevation: 0.22, opacity: 0.16, ...extra };
 }
 function producers(system, produceLine) {
-    return { id: 'producers', label: 'Producers', kind: 'client', position: [0, 8.7, 0], size: [13, 1.6, 0.18],
+    return { id: 'producers', label: 'Producers', kind: 'client', position: [0, 9.3, 0], size: [13, 1.6, 0.18],
         textExpr: `concat(${T(system, 'm_published')}, ' stored · ', ${T(system, 'm_produced')} - ${T(system, 'm_published')}, ' waiting in client buffer')`,
         ports: [{ id: 'out', side: 'bottom', offset: 0 }], ...refs(produceLine) };
 }
@@ -38,7 +38,7 @@ export const SYSTEMS = {
         dag(prefix) {
             const s = 'kafka';
             const grid = {
-                type: 'tensor', id: prefix + 'kafka-grid', shape: [6, 14], origin: [-4.5, -2.75, 0.25], cellSize: 0.76, gap: 0.04, plane: 'xy',
+                type: 'tensor', id: prefix + 'kafka-grid', shape: [6, 14], origin: [-4.5, -2.55, 0.25], cellSize: 0.76, gap: 0.04, plane: 'xy',
                 valueExpr: `mqCode(${T(s, 'life')}, mqGrid(${T(s, 'gridIds')}, row, col), ${TRACED})`,
                 textExpr: `mqGridText(${T(s, 'gridIds')}, ${T(s, 'gridOffsets')}, row, col)`, textColor: 'auto',
                 colorMap: stateColorMap(), colorDomain: [0, 8], opacity: 0.95, shader: { ignorePlaneOpacity: true },
@@ -50,17 +50,17 @@ export const SYSTEMS = {
                 type: 'system_dag', id: prefix + 'kafka', label: 'Apache Kafka', pipeRadius: 0.05,
                 blocks: [
                     producers(s, ['kafka-producer', 'producer.produce("orders"']),
-                    group('cluster', 'Apache Kafka · partitioned retained log', [0, 1.4, 0], 11.4, {
+                    group('cluster', 'Apache Kafka · partitioned retained log', [0, 1.7, 0], 12.0, {
                         textExpr: T(s, 'settings'),
                         ports: [{ id: 'in', side: 'top', offset: 0 }, { id: 'out', side: 'bottom', offset: -0.74 }, { id: 'commit', side: 'bottom', offset: 0.044 }, { id: 'dlt', side: 'bottom', offset: 0.67 }],
                         blocks: [
-                            { id: 'topic', label: 'topic orders · partition × offset', kind: 'broker', position: [0, 1.0, 0.02], size: [13, 6.9, 0.18],
+                            { id: 'topic', label: 'topic orders · partition × offset', kind: 'broker', position: [0, 0.5, 0.02], size: [13, 6.5, 0.18],
                                 ports: [{ id: 'in', side: 'top', offset: 0 }, { id: 'out', side: 'bottom', offset: -0.77 }],
                                 elements: [grid], ...refs(['kafka-producer', 'producer.produce("orders"'], ['kafka-consumer', 'consumer.consume(']) },
-                            { id: 'offsets', label: '__consumer_offsets', kind: 'store', position: [0.3, -4.0, 0.02], size: [3.8, 1.9, 0.18],
+                            { id: 'offsets', label: '__consumer_offsets', kind: 'store', position: [0.3, -4.3, 0.02], size: [3.8, 1.9, 0.18],
                                 textExpr: `concat('billing ', mqList(${T(s, 'committed')}, 'p'))`, ports: [{ id: 'in', side: 'bottom', offset: 0 }],
                                 ...refs(['kafka-consumer', 'consumer.commit(']) },
-                            { id: 'dlt', label: 'orders.DLT', kind: 'store', position: [4.55, -4.0, 0.02], size: [3.9, 1.9, 0.18],
+                            { id: 'dlt', label: 'orders.DLT', kind: 'store', position: [4.55, -4.3, 0.02], size: [3.9, 1.9, 0.18],
                                 textExpr: `concat(arrayCount(${T(s, 'dlt')}), ' dead-lettered')`, ports: [{ id: 'in', side: 'bottom', offset: 0 }],
                                 ...refs(['kafka-consumer', 'dlt.produce(']) },
                         ],
@@ -97,7 +97,7 @@ export const SYSTEMS = {
         dag(prefix) {
             const s = 'rabbitmq';
             const unacked = {
-                type: 'tensor', id: prefix + 'rabbit-unacked', shape: [6, 10], origin: [-3.2, -2.55, 0.25], cellSize: 0.5, gap: 0.04, plane: 'xy',
+                type: 'tensor', id: prefix + 'rabbit-unacked', shape: [6, 10], origin: [-3.2, -2.75, 0.25], cellSize: 0.5, gap: 0.04, plane: 'xy',
                 valueExpr: `mqCode(${T(s, 'life')}, mqGrid(${T(s, 'unackedGrid')}, row, col), ${TRACED})`,
                 textExpr: `mqGrid(${T(s, 'unackedGrid')}, row, col)`, textColor: 'auto',
                 colorMap: stateColorMap(), colorDomain: [0, 8], opacity: 0.95, shader: { ignorePlaneOpacity: true },
@@ -108,20 +108,20 @@ export const SYSTEMS = {
                 type: 'system_dag', id: prefix + 'rabbitmq', label: 'RabbitMQ', pipeRadius: 0.05,
                 blocks: [
                     producers(s, ['rabbitmq-producer', 'channel.basic_publish(']),
-                    group('broker', 'RabbitMQ · exchange → queue, push + ack', [0, 1.4, 0], 11.4, {
+                    group('broker', 'RabbitMQ · exchange → queue, push + ack', [0, 1.7, 0], 12.0, {
                         textExpr: T(s, 'settings'),
                         ports: [{ id: 'in', side: 'top', offset: 0 }, { id: 'out', side: 'bottom', offset: -0.74 }, { id: 'ack', side: 'bottom', offset: 0.044 }],
                         blocks: [
-                            { id: 'exchange', label: 'exchange orders (direct)', kind: 'gateway', position: [-2.6, 3.4, 0.02], size: [7.6, 1.7, 0.18],
+                            { id: 'exchange', label: 'exchange orders (direct)', kind: 'gateway', position: [-2.6, 3.1, 0.02], size: [7.6, 1.7, 0.18],
                                 text: 'routes by binding key', ports: [{ id: 'in', side: 'top', offset: 0.684 }, { id: 'out', side: 'bottom', offset: 0 }],
                                 ...refs(['rabbitmq-producer', 'channel.exchange_declare(']) },
-                            { id: 'dlq', label: 'billing.dlq', kind: 'store', position: [4.4, 3.4, 0.02], size: [4.0, 1.7, 0.18],
+                            { id: 'dlq', label: 'billing.dlq', kind: 'store', position: [4.4, 3.1, 0.02], size: [4.0, 1.7, 0.18],
                                 textExpr: `concat(arrayCount(${T(s, 'dlqIds')}), ' via orders.dlx')`, ports: [{ id: 'in', side: 'bottom', offset: 0 }],
                                 ...refs(['rabbitmq-consumer', '"x-dead-letter-exchange"']) },
-                            { id: 'queue', label: 'quorum queue billing', kind: 'broker', position: [0, -1.4, 0.02], size: [13, 6.0, 0.18],
+                            { id: 'queue', label: 'quorum queue billing', kind: 'broker', position: [0, -1.7, 0.02], size: [13, 6.0, 0.18],
                                 ports: [{ id: 'in', side: 'top', offset: -0.4 }, { id: 'dlx', side: 'top', offset: 0.677 }, { id: 'out', side: 'bottom', offset: -0.77 }, { id: 'ack', side: 'bottom', offset: 0.046 }],
                                 elements: [
-                                    messageArray(s, 'ready', prefix + 'rabbit-ready', [-5.7, 1.45, 0.25], { label: 'ready (FIFO)', labelPosition: [-6.2, 2.1, 0.3],
+                                    messageArray(s, 'ready', prefix + 'rabbit-ready', [-5.7, 1.0, 0.25], { label: 'ready (FIFO)', labelPosition: [-6.2, 1.6, 0.3],
                                         prompt: 'Explain the ready messages: the queue owns them and will push them to consumers with free prefetch credit.' }),
                                     unacked,
                                 ],
@@ -163,11 +163,11 @@ export const SYSTEMS = {
                 type: 'system_dag', id: prefix + 'sqs', label: 'Amazon SQS', pipeRadius: 0.05,
                 blocks: [
                     producers(s, ['sqs-producer', 'sqs.send_message(']),
-                    group('service', 'Amazon SQS · pull, hide, delete', [0, 1.4, 0], 11.4, {
+                    group('service', 'Amazon SQS · pull, hide, delete', [0, 1.7, 0], 12.0, {
                         textExpr: T(s, 'settings'),
                         ports: [{ id: 'in', side: 'top', offset: 0 }, { id: 'out', side: 'bottom', offset: -0.74 }, { id: 'del', side: 'bottom', offset: 0.044 }],
                         blocks: [
-                            { id: 'queue', label: 'standard queue billing', kind: 'broker', position: [0, 1.0, 0.02], size: [13, 6.9, 0.18],
+                            { id: 'queue', label: 'standard queue billing', kind: 'broker', position: [0, 0.7, 0.02], size: [13, 6.9, 0.18],
                                 ports: [{ id: 'in', side: 'top', offset: 0 }, { id: 'out', side: 'bottom', offset: -0.77 }, { id: 'del', side: 'bottom', offset: 0.046 }, { id: 'dlq', side: 'bottom', offset: 0.7 }],
                                 elements: [
                                     messageArray(s, 'visible', prefix + 'sqs-visible', [-5.7, 1.2, 0.25], { label: 'visible', labelPosition: [-6.2, 1.85, 0.3],
@@ -176,7 +176,7 @@ export const SYSTEMS = {
                                         prompt: 'Explain the in-flight messages: they are hidden for the visibility timeout and reappear unless deleted with the current receipt handle.' }),
                                 ],
                                 ...refs(['sqs-consumer', 'resp = sqs.receive_message('], ['sqs-producer', '"VisibilityTimeout"']) },
-                            { id: 'dlq', label: 'billing-dlq (redrive)', kind: 'store', position: [4.55, -4.0, 0.02], size: [3.9, 1.9, 0.18],
+                            { id: 'dlq', label: 'billing-dlq (redrive)', kind: 'store', position: [4.55, -4.3, 0.02], size: [3.9, 1.9, 0.18],
                                 textExpr: `concat(arrayCount(${T(s, 'dlqIds')}), ' moved')`, ports: [{ id: 'in', side: 'top', offset: 0 }],
                                 ...refs(['sqs-producer', '"RedrivePolicy"']) },
                         ],

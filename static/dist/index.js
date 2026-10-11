@@ -7430,6 +7430,7 @@ var BOARD_MIN_H = 48;
 var BOARD_MAX_H_FRAC = .45;
 var BOARD_DOCK_MAX_H_FRAC = .4;
 var BOARD_RESIZE_DEADBAND = 4;
+var BOARD_DOCK_DEFAULT_H = 96;
 var _boardDocked = null;
 var _boardObserver = null;
 function isBoardOverlayDocked() {
@@ -7472,18 +7473,30 @@ function applyBoardOverlaySize(el, legacyWidth) {
 	el.style.height = h != null ? h + "px" : "";
 	el.classList.toggle("sized", w != null);
 }
-/** Docked geometry: the CSS `.docked` rule pins the strip; here we only clear
-*  the inline position a drag may have left and restore the saved height. */
+/** Height of a docked strip: the user's saved height, else the height it renders
+*  at when first docked (never below the default). Always a fixed number, so the
+*  strip never follows its content and step navigation cannot make it jump. */
+function dockedStripHeight(saved, rendered) {
+	if (saved != null && Number.isFinite(saved) && saved >= BOARD_MIN_H) return Math.round(saved);
+	return Math.round(Math.max(BOARD_DOCK_DEFAULT_H, Number.isFinite(rendered) ? rendered : 0));
+}
+/** Docked geometry: the CSS `.docked` rule pins the strip; here we clear the
+*  inline position a drag may have left and fix the strip's height. */
 function applyBoardDockGeometry(el) {
 	el.classList.add("docked");
 	el.classList.remove("sized");
 	el.style.left = el.style.right = el.style.top = el.style.bottom = "";
 	el.style.width = el.style.transform = el.style.transformOrigin = "";
-	let h = null;
+	let saved = null;
 	try {
-		h = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || "") || null;
+		saved = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || "") || null;
 	} catch {}
-	el.style.height = h != null && h >= BOARD_MIN_H ? h + "px" : "";
+	if (saved == null || saved < BOARD_MIN_H) el.style.height = "";
+	const h = dockedStripHeight(saved, el.offsetHeight);
+	el.style.height = h + "px";
+	if (saved !== h && el.offsetParent !== null) try {
+		localStorage.setItem(BOARD_DOCK_H_KEY, String(h));
+	} catch {}
 	el.style.setProperty("--caption-scale", String(overlayState.displayParams.captionScale || 1));
 }
 /** Recompute --caption-dock-h from whichever docked overlay is showing. */
