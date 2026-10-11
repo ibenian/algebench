@@ -3638,12 +3638,18 @@ function resolveCodeRef(files, ref, evaluate) {
 		return null;
 	}
 }
+var UNSAFE_KEYS = /* @__PURE__ */ new Set([
+	"__proto__",
+	"constructor",
+	"prototype"
+]);
 /** Line actions offered for a selection: inside the range, scoped to the scene, and only when every slider exists. */
 function lineActionsFor(file, first, last, scene, hasSlider) {
 	const seen = /* @__PURE__ */ new Set();
 	return (file.lineActions ?? []).filter((action) => {
 		if (action.line < first || action.line > last || action.scene && action.scene !== scene) return false;
-		if (!Object.keys(action.set).every(hasSlider) || seen.has(action.label)) return false;
+		const ids = Object.keys(action.set);
+		if (ids.some((id) => UNSAFE_KEYS.has(id)) || !ids.every(hasSlider) || seen.has(action.label)) return false;
 		seen.add(action.label);
 		return true;
 	});
@@ -21704,7 +21710,7 @@ function setupCodePanel() {
 		what.replaceChildren();
 		const scene = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.id;
 		if (!selected || !first) return;
-		for (const action of lineActionsFor(selected, first, last, scene, (id) => !!state.sceneSliders[id])) {
+		for (const action of lineActionsFor(selected, first, last, scene, (id) => Object.hasOwn(state.sceneSliders, id))) {
 			const button = document.createElement("button");
 			button.type = "button";
 			button.textContent = action.label;
@@ -21880,6 +21886,7 @@ function setupCodePanel() {
 			else title.textContent = "This lesson has no code files.";
 		}
 		refreshBinding();
+		renderLineActions();
 	}
 	window.addEventListener("algebench:opencode", (event) => {
 		const target = event.detail;

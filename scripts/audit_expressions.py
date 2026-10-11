@@ -137,6 +137,8 @@ _NON_EXPR_KEYS = frozenset({
     'explanation', 'math', 'legendGroup', 'goal',
     # Prose fields on proof steps. Not evaluated as expressions.
     'justification',
+    # Lesson codeFiles[].source: displayed read-only in the Code tab, never compiled.
+    'source',
     # LaTeX display strings on semantic-graph nodes. Rendered via KaTeX,
     # never handed to compileExpr. Can contain math-looking values like
     # ``a = 1 + 2`` that would otherwise trip the discovery heuristic.

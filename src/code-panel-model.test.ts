@@ -103,3 +103,14 @@ test('line actions are scoped to the selection, the scene and existing sliders',
     assert.deepEqual(lineActionsFor(file, 1, 3, 'x', has).map(a => a.label), ['Crash here', 'Other scene']);
     assert.deepEqual(lineActionsFor(file, 1, 1, 'lab', has), []);
 });
+
+test('line actions never accept prototype keys, even if the slider lookup would', () => {
+    const file: CodeFile = { id: 'c', path: 'c.py', source: 'a', lineActions: JSON.parse(
+        '[{"line":1,"label":"proto","set":{"__proto__":1}},{"line":1,"label":"ctor","set":{"constructor":1}},{"line":1,"label":"ok","set":{"crashPoint":1}}]') };
+    const permissive = () => true;
+    assert.deepEqual(lineActionsFor(file, 1, 1, 'lab', permissive).map(a => a.label), ['ok']);
+    const sliders: Record<string, unknown> = { crashPoint: {} };
+    const own = (id: string) => Object.hasOwn(sliders, id);
+    assert.equal(own('__proto__'), false);
+    assert.equal(own('crashPoint'), true);
+});

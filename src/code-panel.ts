@@ -34,7 +34,7 @@ export function setupCodePanel(): void {
         what.replaceChildren();
         const scene=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.id;
         if(!selected||!first)return;
-        for(const action of lineActionsFor(selected,first,last,scene,id=>!!state.sceneSliders[id])){
+        for(const action of lineActionsFor(selected,first,last,scene,id=>Object.hasOwn(state.sceneSliders,id))){
             const button=document.createElement('button');button.type='button';button.textContent=action.label;
             button.title='Sets '+Object.keys(action.set).join(', ')+' — the simulation replays deterministically with the new setting';
             button.onclick=()=>{
@@ -132,6 +132,8 @@ export function setupCodePanel(): void {
             if(files[0])open(files[0]);else title.textContent='This lesson has no code files.';
         }
         refreshBinding();
+        // Scene and step changes add or remove sliders, so the selected line's actions must be re-evaluated.
+        renderLineActions();
     }
     window.addEventListener('algebench:opencode', event => {
         const target = (event as CustomEvent<{fileId: string; line: number}>).detail;
