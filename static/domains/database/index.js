@@ -847,7 +847,7 @@
                 const es = g.edges.filter(e => e.from === 'T' + (i + 1) && e.to === 'T' + (j + 1));
                 const byKey = {};
                 for (const e of es) (byKey[e.key] = byKey[e.key] || []).push(e.kind);
-                edgeLabels[i].push(i === j ? '·' : Object.entries(byKey).map(([k, kinds]) => kinds.join('+') + ' ' + k).join(', '));
+                edgeLabels[i].push(i === j ? '·' : Object.entries(byKey).map(([k, kinds]) => kinds.join('+') + ' ' + k).join('\n'));
                 const inCycle = es.length && cycle.includes('T' + (i + 1)) && cycle.includes('T' + (j + 1));
                 edgeCodes[i].push(i === j ? 0 : !es.length ? 1 : inCycle ? 3 : 2);
             }

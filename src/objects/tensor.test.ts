@@ -271,6 +271,20 @@ test('a cell takes the LaTeX path only when its text carries LaTeX', async () =>
     assert.equal(cellTextIsLatex('1 \\times 10^{3}'), true);
 });
 
+test('multi-line cell text shares the height and fits its widest line', async () => {
+    const { fitPlainCellPx, fitPlainCellLinesPx, CELL_LINE_PITCH } = await import('/objects/tensor.js');
+    const width = (line: string) => line.length * 10;
+    // One line is exactly the single-line fit.
+    assert.equal(fitPlainCellLinesPx(100, 50, ['abc'], (_px, l) => width(l)), fitPlainCellPx(100, 50, () => 30));
+    // Two short lines each get half the height: floor(25 * 0.62).
+    const two = fitPlainCellLinesPx(100, 50, ['ab', 'cd'], (_px, l) => width(l));
+    assert.equal(two, 15);
+    // The lines with their pitch stay inside the cell.
+    assert.ok(two * CELL_LINE_PITCH * 2 <= 50);
+    // The widest line decides the width fit: 180 px in a 90 px budget halves the size.
+    assert.equal(fitPlainCellLinesPx(100, 50, ['a', 'x'.repeat(18)], (_px, l) => width(l)), 7);
+});
+
 test('a plain cell fits its height, then shrinks only when the string is too wide', async () => {
     const { fitPlainCellPx } = await import('/objects/tensor.js');
     // A narrow string keeps the height fit, floor(hPx * 0.62), and measureAt

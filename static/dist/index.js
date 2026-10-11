@@ -8869,6 +8869,16 @@ function fitPlainCellPx(wPx, hPx, measureAt) {
 	if (!(w > maxW)) return base;
 	return Math.max(1, Math.floor(base * maxW / w));
 }
+/** Line pitch of multi-line cell text, as a multiple of the font size. */
+var CELL_LINE_PITCH = 1.2;
+/**
+* Multi-line plain cell text ("ww A\nrw B"): each line gets an equal share of
+* the cell's height and the widest line decides the width fit, so long text
+* wraps where the author put the breaks instead of shrinking to one tiny line.
+*/
+function fitPlainCellLinesPx(wPx, hPx, lines, measureAt) {
+	return fitPlainCellPx(wPx, hPx / Math.max(1, lines.length), (px) => Math.max(...lines.map((line) => measureAt(px, line))));
+}
 function renderTensor(el, _view) {
 	const dims = parseShape(el.shape);
 	if (!dims) {
@@ -9314,14 +9324,17 @@ function renderTensor(el, _view) {
 			});
 			return;
 		}
-		ctx.font = `${fitPlainCellPx(wPx, hPx, (px) => {
+		const lines = txt.split("\n");
+		const fontPx = fitPlainCellLinesPx(wPx, hPx, lines, (px, line) => {
 			ctx.font = `${px}px ${FAMILY}`;
-			return ctx.measureText(txt).width;
-		})}px ${FAMILY}`;
+			return ctx.measureText(line).width;
+		});
+		ctx.font = `${fontPx}px ${FAMILY}`;
 		ctx.fillStyle = color;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
-		ctx.fillText(txt, cx, cy);
+		const pitch = fontPx * CELL_LINE_PITCH;
+		lines.forEach((line, i) => ctx.fillText(line, cx, cy + (i - (lines.length - 1) / 2) * pitch));
 	}
 	/** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above
 	*  `maxFontPx`; returns the size used (0 when nothing was drawn). */
