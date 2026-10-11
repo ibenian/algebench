@@ -300,6 +300,20 @@
       ],
       "port": 5764,
       "autoPort": true
+    },
+    {
+      "name": "database-lab",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/draft/database-systems-lab.json",
+        "--port",
+        "5765",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5765,
+      "autoPort": true
     }
   ]
 }

@@ -101,6 +101,12 @@ test('formatTensorCell keeps the sign slot filled on non-negative values', () =>
   assert.equal(formatTensorCell(0).length, formatTensorCell(-1.25).length);
 });
 
+test('formatTensorCell shows whole numbers for an integer step', () => {
+  assert.equal(formatTensorCell(2, 1), SIGN_SLOT + '2');
+  assert.equal(formatTensorCell(0, 1), SIGN_SLOT + '0');
+  assert.equal(formatTensorCell(2.5, 0.5), SIGN_SLOT + '2.50');
+});
+
 test('formatTensorCell drops a decimal at each magnitude boundary', () => {
   assert.equal(formatTensorCell(9.999), SIGN_SLOT + '10.00');   // below 10: two decimals
   assert.equal(formatTensorCell(10), SIGN_SLOT + '10.0');

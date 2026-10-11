@@ -549,16 +549,14 @@ def build_system_prompt(context, agent_memory=None):
                     and math.isfinite(n) for n in (value, minimum, maximum))
                     and minimum == int(minimum) and maximum == int(maximum)
                     and maximum >= minimum):
-                # Match step-player.ts: clamp and round the slider, then display a one-based ordinal.
+                # Match step-player.ts: clamp and round the slider, then display its value over its maximum.
                 current = max(int(minimum), min(int(maximum), math.floor(value + 0.5)))
-                ordinal, total = current - int(minimum) + 1, int(maximum - minimum) + 1
-                execution_view = f"{slider_id}={current}, execution position {ordinal} / {total}"
+                execution_view = f"{slider_id}={current}, player shows {current} / {int(maximum)}"
                 parts.append(
                     f"- Execution playback: {slider_id}={current} [range: {int(minimum)}..{int(maximum)}]; "
-                    f"player displays {ordinal} / {total}. This is the one-based snapshot position, "
-                    "not the tick value or lesson step number. When discussing playback, distinguish "
-                    "the underlying tick/frame from the displayed position "
-                    f"(for example, tick/frame {current}, position {ordinal} of {total})."
+                    f"player displays {current} / {int(maximum)}: the {slider_id} value itself over its maximum, "
+                    "so it is the same number as the tick/frame shown in captions, not a separate one-based "
+                    "position or the lesson step number."
                 )
     if runtime.get('currentCaption'):
         parts.append(f"- Caption displayed to user: \"{runtime['currentCaption']}\"")

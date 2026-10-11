@@ -237,10 +237,12 @@ export function resetTensorSlider(id: string): boolean {
  *  and the grid stops jittering as values cross zero. */
 const SIGN_SLOT = '\u2007';
 
-export function formatTensorCell(v: number): string {
+/** `step`: the slider's step. An integer step means integer cells (a schedule,
+ *  a count, an index), which read as whole numbers rather than 1.00. */
+export function formatTensorCell(v: number, step?: number): string {
     if (!Number.isFinite(v)) return '·';
     const a = Math.abs(v);
-    const digits = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+    const digits = step !== undefined && Number.isInteger(step) && step > 0 ? 0 : a >= 100 ? 0 : a >= 10 ? 1 : 2;
     return (v < 0 ? '' : SIGN_SLOT) + v.toFixed(digits);
 }
 
@@ -253,7 +255,7 @@ function _refreshTensorCells(id: string): void {
         const i = Number(cell.dataset.cell);
         const v = s.values[i];
         if (v === undefined) continue;
-        cell.textContent = formatTensorCell(v);
+        cell.textContent = formatTensorCell(v, s.step);
         cell.classList.toggle('changed', !!s.defaults && Math.abs(v - s.defaults[i]!) > 1e-9);
     }
 }
@@ -952,7 +954,7 @@ function _buildTensorRow(id: string, s: SceneSlider & { shape: number[]; values:
             cell.className = 'tslider-cell';
             cell.dataset.sliderId = id;
             cell.dataset.cell = String(i);
-            cell.textContent = formatTensorCell(s.values[i]!);
+            cell.textContent = formatTensorCell(s.values[i]!, s.step);
             cell.title = stripLatex(tensorCellName(id, r, c));
             if (s.defaults && Math.abs(s.values[i]! - s.defaults[i]!) > 1e-9) cell.classList.add('changed');
             const open = () => { if (_tensorPop) _tensorPop.show(id, r, c, cell.getBoundingClientRect()); };

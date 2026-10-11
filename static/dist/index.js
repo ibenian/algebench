@@ -2794,10 +2794,12 @@ function resetTensorSlider(id) {
 *  non-negative readout can hold the column open where a minus sign would go
 *  and the grid stops jittering as values cross zero. */
 var SIGN_SLOT = " ";
-function formatTensorCell(v) {
+/** `step`: the slider's step. An integer step means integer cells (a schedule,
+*  a count, an index), which read as whole numbers rather than 1.00. */
+function formatTensorCell(v, step) {
 	if (!Number.isFinite(v)) return "·";
 	const a = Math.abs(v);
-	const digits = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+	const digits = step !== void 0 && Number.isInteger(step) && step > 0 ? 0 : a >= 100 ? 0 : a >= 10 ? 1 : 2;
 	return (v < 0 ? "" : SIGN_SLOT) + v.toFixed(digits);
 }
 /** Rewrite the readouts of a tensor slider's grid on the panel. */
@@ -2809,7 +2811,7 @@ function _refreshTensorCells(id) {
 		const i = Number(cell.dataset.cell);
 		const v = s.values[i];
 		if (v === void 0) continue;
-		cell.textContent = formatTensorCell(v);
+		cell.textContent = formatTensorCell(v, s.step);
 		cell.classList.toggle("changed", !!s.defaults && Math.abs(v - s.defaults[i]) > 1e-9);
 	}
 }
@@ -3326,7 +3328,7 @@ function _buildTensorRow(id, s) {
 		cell.className = "tslider-cell";
 		cell.dataset.sliderId = id;
 		cell.dataset.cell = String(i);
-		cell.textContent = formatTensorCell(s.values[i]);
+		cell.textContent = formatTensorCell(s.values[i], s.step);
 		cell.title = stripLatex(tensorCellName(id, r, c));
 		if (s.defaults && Math.abs(s.values[i] - s.defaults[i]) > 1e-9) cell.classList.add("changed");
 		const open = () => {
@@ -7976,12 +7978,14 @@ function setupAboutPopup() {
 //#endregion
 //#region src/step-player.ts
 /** Generic discrete state playback. It writes a slider; views bind to its data. */
+/** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
+*  agrees with captions and views that read the slider (Tick 0 is "0 / 36", not "1 / 37"). */
 function playbackPosition(value, min, max) {
 	const current = Math.max(min, Math.min(max, Math.round(value)));
 	return {
 		current,
-		ordinal: current - min + 1,
-		total: max - min + 1
+		total: max - min + 1,
+		display: `${current} / ${max}`
 	};
 }
 function setupStepPlayer() {
@@ -8060,8 +8064,8 @@ function setupStepPlayer() {
 		track.min = String(s.min);
 		track.max = String(s.max);
 		track.value = String(p.current);
-		track.setAttribute("aria-valuetext", `${p.ordinal} of ${p.total}`);
-		counter.textContent = `${p.ordinal} / ${p.total}`;
+		track.setAttribute("aria-valuetext", `${p.current} of ${s.max}`);
+		counter.textContent = p.display;
 		previous.disabled = p.current <= s.min;
 		next.disabled = p.current >= s.max;
 		play.disabled = p.total <= 1;
@@ -25795,9 +25799,8 @@ function buildChatContext() {
 			value: position.current,
 			min: executionSlider.min,
 			max: executionSlider.max,
-			position: position.ordinal,
 			total: position.total,
-			displayedPosition: `${position.ordinal} / ${position.total}`
+			displayedPosition: position.display
 		};
 	}
 	const promptExpr = ctx.currentScene?.promptExpr;

@@ -4,9 +4,11 @@ import { setSliderValue } from '/sliders.js';
 import { updateStepCaption } from '/overlay.js';
 import type { Scene, StepPlayback } from '/types/lesson.js';
 
+/** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
+ *  agrees with captions and views that read the slider (Tick 0 is "0 / 36", not "1 / 37"). */
 export function playbackPosition(value: number, min: number, max: number) {
     const current=Math.max(min,Math.min(max,Math.round(value)));
-    return {current,ordinal:current-min+1,total:max-min+1};
+    return {current,total:max-min+1,display:`${current} / ${max}`};
 }
 
 export function setupStepPlayer(): void {
@@ -50,8 +52,8 @@ export function setupStepPlayer(): void {
         host.classList.add('has-state-player');
         const p=playbackPosition(s.value,s.min,s.max);
         track.min=String(s.min);track.max=String(s.max);track.value=String(p.current);
-        track.setAttribute('aria-valuetext',`${p.ordinal} of ${p.total}`);
-        counter.textContent=`${p.ordinal} / ${p.total}`;
+        track.setAttribute('aria-valuetext',`${p.current} of ${s.max}`);
+        counter.textContent=p.display;
         previous.disabled=p.current<=s.min;next.disabled=p.current>=s.max;
         play.disabled=p.total<=1;
         if(p.current>=s.max)pause();

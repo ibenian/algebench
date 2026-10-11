@@ -265,8 +265,8 @@ interface AlgeBenchChatRuntimeContext {
     value: number;
     min: number;
     max: number;
-    position: number;
     total: number;
+    /** What the player shows: the slider value over its maximum, e.g. "0 / 36". */
     displayedPosition: string;
   };
   stepNumber?: number;
