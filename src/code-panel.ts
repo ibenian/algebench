@@ -136,19 +136,22 @@ export function setupCodePanel(): void {
         renderLineActions();
     }
     window.addEventListener('algebench:opencode', event => {
-        const target = (event as CustomEvent<{fileId: string; line: number}>).detail;
+        // select: false only reveals the line. Caption links point at the line that is executing now, which
+        // is already highlighted; selecting it too would leave a stale selection behind as playback moves on.
+        const target = (event as CustomEvent<{fileId: string; line: number; select?: boolean}>).detail;
         refresh();
         const file = files.find(file => file.id === target?.fileId);
         if (!file || !Number.isInteger(target.line) || target.line < 1 || target.line > file.source.split('\n').length) return;
         window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
         document.querySelector<HTMLButtonElement>('.dock-tab[data-dock-tab="code"]')?.click();
         open(file);
-        choose(target.line, target.line, file.source.split('\n')[target.line - 1]!); // bounds checked above
+        if (target.select !== false) choose(target.line, target.line, file.source.split('\n')[target.line - 1]!); // bounds checked above
         const row = body.querySelector<HTMLElement>(`[data-line="${target.line}"]`);
         if (row) {
             const rect = row.getBoundingClientRect(), viewport = body.getBoundingClientRect();
             body.scrollTop += rect.top - viewport.top - Math.max(0, (viewport.height - rect.height) / 2);
-            row.querySelector<HTMLButtonElement>('button')?.focus({preventScroll: true});
+            // Focus follows a selection; a revealed (unselected) line keeps no focus ring behind.
+            if (target.select !== false) row.querySelector<HTMLButtonElement>('button')?.focus({preventScroll: true});
         }
     });
     window.addEventListener('algebench:navchange',refresh);

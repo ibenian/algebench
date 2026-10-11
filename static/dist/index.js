@@ -3691,7 +3691,8 @@ function makeStepCodeLinks() {
 		button.addEventListener("mousedown", (event) => event.stopPropagation());
 		button.onclick = () => window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
 			fileId: file.id,
-			line: location.line
+			line: location.line,
+			select: false
 		} }));
 		links.append(button);
 	}
@@ -21900,12 +21901,12 @@ function setupCodePanel() {
 		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
 		document.querySelector(".dock-tab[data-dock-tab=\"code\"]")?.click();
 		open(file);
-		choose(target.line, target.line, file.source.split("\n")[target.line - 1]);
+		if (target.select !== false) choose(target.line, target.line, file.source.split("\n")[target.line - 1]);
 		const row = body.querySelector(`[data-line="${target.line}"]`);
 		if (row) {
 			const rect = row.getBoundingClientRect(), viewport = body.getBoundingClientRect();
 			body.scrollTop += rect.top - viewport.top - Math.max(0, (viewport.height - rect.height) / 2);
-			row.querySelector("button")?.focus({ preventScroll: true });
+			if (target.select !== false) row.querySelector("button")?.focus({ preventScroll: true });
 		}
 	});
 	window.addEventListener("algebench:navchange", refresh);

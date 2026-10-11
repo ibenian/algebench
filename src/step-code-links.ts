@@ -29,7 +29,7 @@ export function makeStepCodeLinks(): HTMLElement | null {
         button.setAttribute('aria-label', 'Open ' + file.path + ' line ' + location.line);
         button.addEventListener('mousedown', event => event.stopPropagation());
         button.onclick = () => window.dispatchEvent(new CustomEvent('algebench:opencode', {
-            detail: {fileId: file.id, line: location.line},
+            detail: {fileId: file.id, line: location.line, select: false},
         }));
         links.append(button);
     }

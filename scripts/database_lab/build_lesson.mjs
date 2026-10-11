@@ -15,17 +15,39 @@ import { GLOSSARY } from './glossary.mjs';
 
 const OUT = join(ROOT, 'scenes', 'draft', 'database-systems-lab.json');
 
-function codeFiles() {
-    const files = LAB.SCENARIOS.map((sc, i) => ({
-        id: 'sql-' + sc.id, path: `database_lab/sql/${sc.id}.sql`, language: 'sql', source: LAB.renderSql(i).source,
-        activeLineExpr: `[dbSqlLine(${i}, scenario, ${T('opref')})]`,
-    }));
+/** Every step of every transaction scene, with the scenarios its Scenario slider can reach. */
+function stepsOf(scenes) {
+    return scenes.flatMap(scene => {
+        const reach = scene.steps[0].sliders.find(s => s.id === 'scenario');
+        return reach ? scene.steps.map(step => ({ scene: scene.id, step: step.id, maxScenario: reach.max,
+            retry: scene.steps[0].sliders.some(s => s.id === 'retry') })) : [];
+    });
+}
+
+// Locations make the step caption link to code: the caption lists a location only while its line is
+// active (activeLineExpr), so listing every statement line for every step yields one link that follows
+// the tick — the statement running now — and, where retries exist, the abort and retry lines.
+function codeFiles(scenes) {
+    const steps = stepsOf(scenes);
+    const files = LAB.SCENARIOS.map((sc, i) => {
+        const { source, lines } = LAB.renderSql(i);
+        const text = source.split('\n');
+        const statements = Object.entries(lines).map(([ref, line]) => ({ line, label: `${ref.split(':')[0]} · ${text[line - 1].replace(/\s+--.*$/, '')}` }));
+        return {
+            id: 'sql-' + sc.id, path: `database_lab/sql/${sc.id}.sql`, language: 'sql', source,
+            activeLineExpr: `[dbSqlLine(${i}, scenario, ${T('opref')})]`,
+            locations: steps.filter(st => i <= st.maxScenario).flatMap(st => statements.map(x => ({ line: x.line, scene: st.scene, step: st.step, label: x.label }))),
+        };
+    });
     const retry = readExample('retry.py');
     const at = (op, needle) => `(dbOp(${T('ops')}, '${op}') ? ${lineIn(retry, needle)} : 0)`;
+    const retryLines = [['abort', 'except RETRYABLE:', 'the database aborted the transaction: catch 40001 / 40P01'],
+        ['retry', 'for attempt in range', 'rerun the whole transaction']];
     files.push({
         id: 'retry', path: 'database_lab/retry.py', language: 'python', source: retry,
         activeLineExpr: '[' + [at('read', 'SELECT v FROM'), at('write', 'UPDATE accounts'), at('commit', 'leaving the block COMMITs'),
-            at('abort', 'except RETRYABLE:'), at('retry', 'for attempt in range')].join(', ') + ']',
+            ...retryLines.map(([op, needle]) => at(op, needle))].join(', ') + ']',
+        locations: steps.filter(st => st.retry).flatMap(st => retryLines.map(([, needle, label]) => ({ line: lineIn(retry, needle), scene: st.scene, step: st.step, label }))),
     });
     return files;
 }
@@ -36,9 +58,10 @@ function build() {
         import: ['database'],
         glossaryMatchThreshold: 4,
         glossary: GLOSSARY,
-        codeFiles: codeFiles(),
+        codeFiles: null,
         scenes: SCENES.map(scene => scene()),
     };
+    lesson.codeFiles = codeFiles(lesson.scenes);
     return JSON.stringify(lesson, null, 2) + '\n';
 }
 
