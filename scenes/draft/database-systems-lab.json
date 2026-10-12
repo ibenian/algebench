@@ -9228,7 +9228,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,
@@ -9844,7 +9844,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,
@@ -9918,7 +9918,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,
@@ -9992,7 +9992,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,
@@ -10066,7 +10066,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,
@@ -10140,7 +10140,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,
@@ -10214,7 +10214,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,
@@ -10288,7 +10288,7 @@
             },
             {
               "id": "scenario",
-              "label": "Anomaly or fix to replay",
+              "label": "Scenario",
               "min": 0,
               "max": 8,
               "step": 1,

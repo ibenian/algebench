@@ -31,7 +31,23 @@ type MathEvalFunction = import('mathjs').EvalFunction;
 /** Either a compiled math.js node or the trusted-JS fallback. */
 export type CompiledExpr = MathEvalFunction | ExprFallbackFn;
 
-const boundTableReader = createBoundTableReader();
+// Bound tables are re-evaluated at most once per input epoch: the epoch advances on
+// every slider change and navigation, and with every animation frame -- a slider
+// tween moves values each frame without a change event, and bindings may read `t`.
+// The frame part is the document timeline's current time, which is fixed for the
+// whole of one frame. Without a timeline (Node tests) there is no epoch: every
+// read evaluates, as before.
+let tableInputs = 0;
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    const bump = (): void => { tableInputs++; };
+    window.addEventListener('algebench:sliderchange', bump);
+    window.addEventListener('algebench:navchange', bump);
+}
+function tableEpoch(): string | undefined {
+    const frameTime = typeof document !== 'undefined' ? document.timeline?.currentTime : undefined;
+    return frameTime == null ? undefined : tableInputs + ':' + String(frameTime);
+}
+const boundTableReader = createBoundTableReader(tableEpoch);
 const tableExpressions = new Map<string, CompiledExpr>();
 
 /** The evaluation frame pushed for the duration of one evalExpr call. */

@@ -868,7 +868,8 @@
             tick: s.t, engine: s.eng.label, scenario: s.sc.title, text, brief, opref: ctx.opref || '', actor: ctx.actor || '', ops: ctx.ops.slice(),
             lanes: s.txs.map(t => t.labels.concat(Array(MAX_OPS - t.labels.length).fill('')).slice(0, MAX_OPS)),
             laneCodes: s.txs.map(t => t.codes.concat(Array(MAX_OPS - t.codes.length).fill(0)).slice(0, MAX_OPS)),
-            laneRows: s.txs.map(t => txStatus(s, t)),
+            laneRows: s.txs.map(t => txStatus(s, t)).concat((s.missingTx || []).length ? Array.from({ length: MAX_TX - s.txs.length }, (_, i) => s.missingTx.includes(s.txs.length + i + 1) ? `T${s.txs.length + i + 1} n/a` : '') : []),
+            scheduleNote: s.missingNote || '',
             keys, verLabels, verCodes, lockRows: keys.map(k => lockText(s, k)), lockGrid: keys.map(k => lockCells(s, k)), lockCodes: keys.map(k => lockCells(s, k).map((c, i) => (c && c !== '—' ? i + 1 : 0))),
             locksHeld: s.txs.map(t => lockNames(s, t).join(' ') || '—'),
             values: keys.map(k => latestCommitted(s, k)?.v ?? 0),
@@ -884,12 +885,23 @@
         return JSON.parse(JSON.stringify(row));
     }
 
-    function orderOf(sc, order) {
-        let list = [];
+    function rawSlots(order) {
         if (order && typeof order.toArray === 'function') order = order.toArray();
-        if (Array.isArray(order)) list = order.flat(3).map(Number).filter(n => Number.isFinite(n));
-        list = list.map(n => Math.round(n)).filter(n => n >= 1 && n <= sc.tx.length).slice(0, ORDER_SLOTS * 2);
+        return Array.isArray(order) ? order.flat(3).map(Number).filter(n => Number.isFinite(n)).map(n => Math.round(n)) : [];
+    }
+    function orderOf(sc, order) {
+        const list = rawSlots(order).filter(n => n >= 1 && n <= sc.tx.length).slice(0, ORDER_SLOTS * 2);
         return list.length ? list : sc.order.slice();
+    }
+    /** Schedule slots naming a transaction this scenario does not have: [{ slot (1-based), tx }]. */
+    function missingSlots(sc, order) {
+        return rawSlots(order).map((n, i) => ({ slot: i + 1, tx: n })).filter(x => x.tx > sc.tx.length && x.tx <= MAX_TX);
+    }
+    function missingNote(sc, missing) {
+        if (!missing.length) return '';
+        const txs = [...new Set(missing.map(m => 'T' + m.tx))].join(', ');
+        const has = SCENARIOS.filter(x => x.tx.length > sc.tx.length).map(x => x.title).join(', ');
+        return `⚠️ Schedule slot${missing.length > 1 ? 's' : ''} ${missing.map(m => m.slot).join(', ')} name${missing.length > 1 ? '' : 's'} ${txs}, but **${sc.title}** has only ${sc.tx.map((_, i) => 'T' + (i + 1)).join(' and ')}: ${missing.length > 1 ? 'those slots are' : 'that slot is'} skipped.${has ? ` Three transactions: *${has}*.` : ''}`;
     }
     function scenarioOf(v) {
         if (typeof v === 'string' && SCENARIO_INDEX.has(v)) return SCENARIOS[SCENARIO_INDEX.get(v)];
@@ -898,13 +910,37 @@
         return SCENARIOS[i];
     }
 
+    // Views read the trace once per cell per frame, so a repeat call must be cheap: compare the raw
+    // arguments of the last few calls before doing any parsing or building a cache key.
+    const recent = [];
+    function sameArgs(a, b) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+        return true;
+    }
+    function argList(scenario, engineId, order, opts) {
+        if (order && typeof order.toArray === 'function') order = order.toArray();
+        const flat = Array.isArray(order) ? order.flat(3) : [order];
+        return [scenario, engineId, opts && opts.retry, opts && opts.errors, flat.length, ...flat];
+    }
     function run(scenario, engineId, order, opts) {
+        const args = argList(scenario, engineId, order, opts);
+        for (const r of recent) if (sameArgs(r.args, args)) return r.rows;
+        const rows = runUncached(scenario, engineId, order, opts);
+        recent.unshift({ args, rows });
+        if (recent.length > 8) recent.pop();
+        return rows;
+    }
+    function runUncached(scenario, engineId, order, opts) {
         const sc = scenarioOf(scenario);
         const o = Object.assign({ retry: 0, errors: 'textbook', frames: FRAMES }, opts || {});
         const ord = orderOf(sc, order);
-        const key = JSON.stringify([sc.id, engineId, ord, o]);
+        const missing = missingSlots(sc, order);
+        const key = JSON.stringify([sc.id, engineId, ord, missing, o]);
         if (traceCache.has(key)) return traceCache.get(key);
         const s = createState(sc, String(engineId), ord, { retry: o.retry ? 1 : 0, errors: o.errors });
+        s.missingNote = missingNote(sc, missing);
+        s.missingTx = [...new Set(missing.map(m => m.tx))];
         const rows = [snapshot(s, { notes: [`${sc.story} **${s.eng.label}:** ${s.eng.summary}`], ops: [], finalNote: false })];
         for (s.t = 1; s.t <= o.frames; s.t++) {
             const ctx = { notes: [], ops: [] };
@@ -960,7 +996,13 @@
 
     /** Isolation matrix: run every anomaly scenario (rows) at every level (cols) for a profile. Codes: 0 anomaly, 1 aborted, 2 waited, 3 consistent. */
     const MATRIX_SCENARIOS = ['dirty-write', 'dirty-read', 'lost-update', 'non-repeatable-read', 'read-skew', 'phantom', 'write-skew'];
+    const matrixMemo = new Map(), mechMemo = new Map();
     function matrixCell(profile, row, col) {
+        const key = clampInt(profile, 0, PROFILES.length - 1) + ':' + clampInt(row, 0, 99) + ':' + clampInt(col, 0, 99);
+        if (!matrixMemo.has(key)) matrixMemo.set(key, matrixCellUncached(profile, row, col));
+        return matrixMemo.get(key);
+    }
+    function matrixCellUncached(profile, row, col) {
         const sc = SCENARIOS[SCENARIO_INDEX.get(MATRIX_SCENARIOS[clampInt(row, 0, MATRIX_SCENARIOS.length - 1)])];
         const rows = dbLevelTrace(sc.id, profile, col, sc.order, 0);
         const last = rows[rows.length - 1];
@@ -977,6 +1019,11 @@
     /** Mechanism comparison: scenario (rows) × mechanism (cols) with retries on; text "ticks · aborts · waits". */
     const MECH_SCENARIOS = ['lost-update', 'hot-counter', 'deadlock', 'write-skew', 'read-skew'];
     function mechCell(row, col) {
+        const key = clampInt(row, 0, 99) + ':' + clampInt(col, 0, 99);
+        if (!mechMemo.has(key)) mechMemo.set(key, mechCellUncached(row, col));
+        return mechMemo.get(key);
+    }
+    function mechCellUncached(row, col) {
         const id = MECH_SCENARIOS[clampInt(row, 0, MECH_SCENARIOS.length - 1)];
         const rows = dbMechTrace(id, col, SCENARIOS[SCENARIO_INDEX.get(id)].order, 1);
         const last = rows[rows.length - 1];
@@ -995,7 +1042,7 @@
         if (!row) return '';
         const verdict = row.serialOk === 1 ? ' · ✅ serializable' : row.serialOk === 0 ? ' · ❌ not serializable' : '';
         const body = f === 0 ? '' : `**Tick ${f}** — ${row.brief}\n\n${row.invariantOk ? '✅' : '❌'} ${row.invariant}${verdict}`;
-        return [guide ? String(guide) : '', body].filter(Boolean).join('\n\n');
+        return [guide ? String(guide) : '', row.scheduleNote, body].filter(Boolean).join('\n\n');
     }
     /** Compact factual state for the AI tutor. */
     function dbContext(frame, rows, extra) {
@@ -1004,7 +1051,8 @@
         if (!row) return '';
         const history = rows.slice(1, f + 1).map(r => `t${r.tick}: ${r.text}`).join('\n');
         return [`Scenario: ${row.scenario}. Engine: ${row.engine}. Tick ${f}.${extra ? ' ' + extra : ''}`,
-            `Transactions: ${row.laneRows.join(' | ')}`,
+            `Transactions: ${row.laneRows.filter(Boolean).join(' | ')}`,
+            ...(row.scheduleNote ? [`Schedule problem: ${row.scheduleNote}`] : []),
             `Statements: ${row.lanes.map((l, i) => 'T' + (i + 1) + ': ' + l.filter(Boolean).join(', ')).join(' | ')}`,
             `Rows (versions oldest→newest): ${row.keys.map((k, i) => k + ' [' + row.verLabels[i].filter(Boolean).join(' | ') + ']').join('; ')}`,
             `Locks: ${row.keys.map((k, i) => k + ': ' + row.lockRows[i]).join('; ')}`,

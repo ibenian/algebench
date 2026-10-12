@@ -399,6 +399,18 @@ export function refreshSliderBounds(): boolean {
     return valueMoved;
 }
 
+/** A readout never reserves more than this many characters. Category sliders can name
+ *  long values ("Lost update fixed with an atomic UPDATE"); reserving their full width
+ *  pushed the readout out of the panel. Longer text is cut with an ellipsis (CSS) and
+ *  shown whole in the tooltip. */
+export const READOUT_MAX_CH = 20;
+
+/** Write a readout, with the full text as its tooltip when it is too long to show. */
+function _setReadout(span: HTMLElement, text: string): void {
+    span.textContent = text;
+    if (text.length > READOUT_MAX_CH) span.title = text; else span.removeAttribute('title');
+}
+
 /** How many monospace characters the widest readout of `s` needs. Plain
  *  readouts are bounded by the two ends of the range. A formatted one
  *  (valueExpr) is measured by evaluating the format at every reachable
@@ -475,7 +487,7 @@ export function startSliderLoop(id: string): void {
             // explicit — not a behaviour change. Same at the two call sites below.
             input.value = String(slider.value);
             const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
-            if (valSpan) valSpan.textContent = _formatSliderValue(slider);
+            if (valSpan) _setReadout(valSpan as HTMLElement, _formatSliderValue(slider));
         }
         refreshActiveExprsForSliderValueChange();
         if (slider._loopPlaying) {
@@ -751,14 +763,15 @@ export function buildSliderOverlay(): void {
 
         const valSpan = document.createElement('span');
         valSpan.className = 'slider-value';
-        valSpan.textContent = _formatSliderValue(s);
+        _setReadout(valSpan, _formatSliderValue(s));
         // Reserve the widest readout this slider can ever show. The track is
         // `flex: 1`, so without this it absorbs the readout's growth: dragging a
         // -180..180 slider past -100 adds a character, the track loses ~13px, and
         // the thumb moves out from under a stationary cursor -- which changes the
         // value, which can change the width back. The result is visible jitter.
         // `ch` is exact here because .slider-value is monospaced.
-        valSpan.style.minWidth = `${_widestReadoutCh(s)}ch`;
+        valSpan.style.minWidth = `${Math.min(_widestReadoutCh(s), READOUT_MAX_CH)}ch`;
+        valSpan.style.maxWidth = `${READOUT_MAX_CH}ch`;
         row.appendChild(valSpan);
 
         // Push new bounds into this row without rebuilding the panel: a
@@ -768,7 +781,7 @@ export function buildSliderOverlay(): void {
             input.min = String(s.min);
             input.max = String(s.max);
             if (String(s.value) !== input.value) input.value = String(s.value);
-            valSpan.textContent = _formatSliderValue(s);
+            _setReadout(valSpan, _formatSliderValue(s));
         };
 
         input.addEventListener('input', () => {
@@ -782,7 +795,7 @@ export function buildSliderOverlay(): void {
             // and expressions must recompile against the clamped values rather
             // than the ones a shrinking range has just invalidated.
             refreshSliderBounds();
-            valSpan.textContent = _formatSliderValue(s);
+            _setReadout(valSpan, _formatSliderValue(s));
             recompileActiveExprs();
             syncSliderState();
             try { window.dispatchEvent(new CustomEvent('algebench:sliderchange')); } catch (_) { /* ignore */ }
@@ -1200,7 +1213,7 @@ export function setSliderValue(id: string, value: number): boolean {
     if (input) {
         input.value = String(s.value);
         const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
-        if (valSpan) valSpan.textContent = _formatSliderValue(s);
+        if (valSpan) _setReadout(valSpan as HTMLElement, _formatSliderValue(s));
     }
     recompileActiveExprs();
     syncSliderState();
@@ -1250,7 +1263,7 @@ export function animateSlider(id: string, target: number, duration: number): Pro
             if (input) {
                 input.value = String(slider.value);
                 const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
-                if (valSpan) valSpan.textContent = _formatSliderValue(slider);
+                if (valSpan) _setReadout(valSpan as HTMLElement, _formatSliderValue(slider));
             }
             recompileActiveExprs();
             if (t < 1) {

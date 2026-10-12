@@ -191,3 +191,19 @@ test('an edited schedule changes the outcome: serial order removes the anomaly',
     assert.equal(last('lost-update', 'none', { order: [1, 1, 1, 2, 2, 2] }).anomalies.length, 0);
     assert.equal(api.dbOrderText(0, [2, 2, 0, 1, 9]), 'T2 T2 T1');
 });
+
+test('schedule slots naming a transaction the scenario lacks are skipped, and the trace says so', () => {
+    const rows = api.dbTrace('lost-update', 'none', [1, 3, 2, 1, 2, 3, 1, 2], 0);
+    const r = rows.at(-1);
+    assert.match(r.scheduleNote, /slots 2, 6 name T3/);
+    assert.equal(r.laneRows[2], 'T3 n/a');
+    assert.match(api.dbCaption(0, rows, ''), /skipped/);
+    // The skipped slots do not change what runs.
+    assert.deepEqual([...r.values], [...last('lost-update', 'none', { order: [1, 2, 1, 2, 1, 2] }).values]);
+    // A valid schedule carries no note and no padded lane.
+    const ok = last('lost-update', 'none');
+    assert.equal(ok.scheduleNote, '');
+    assert.equal(ok.laneRows.length, 2);
+    // Hot counter really has T3.
+    assert.equal(last('hot-counter', 'none', { order: [3, 3, 3] }).scheduleNote, '');
+});

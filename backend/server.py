@@ -2584,7 +2584,18 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
                 current_spec[0] = await asyncio.to_thread(_load_scene, current_spec_path[0], trusted=True)
             except Exception:
                 pass
-        return JSONResponse(current_spec[0] if current_spec[0] else {})
+        # Name the file the CLI loaded, so the page header can show it (it otherwise reads
+        # "no file"). A file under scenes/ is named by its scenes/-relative path, anything
+        # else by its file name only -- never an absolute path. Quoted: headers are ASCII.
+        headers = {}
+        if current_spec_path[0]:
+            source = Path(current_spec_path[0])
+            try:
+                shown = "scenes/" + source.resolve().relative_to(scenes_dir.resolve()).as_posix()
+            except ValueError:
+                shown = source.name
+            headers = {"X-AlgeBench-Scene-Label": quote(source.name), "X-AlgeBench-Scene-Path": quote(shown)}
+        return JSONResponse(current_spec[0] if current_spec[0] else {}, headers=headers)
 
     @fastapp.get("/shutdown")
     async def shutdown(request: Request):

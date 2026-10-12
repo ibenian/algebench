@@ -3049,6 +3049,11 @@ body.rotating-axis-z, body.rotating-axis-z * {
 .slider-value {
     min-width: 32px;
     text-align: right;
+    /* Long category values are cut with an ellipsis; the full text is the title (sliders.ts). */
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 0.78em;
     color: color-mix(in srgb, var(--accent-color) 90%, transparent);
     font-family: var(--font-mono);

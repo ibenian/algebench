@@ -160,11 +160,21 @@ function readDataTable(data, table, rowIndex, column) {
 	const value = row[String(column)];
 	return value != null ? value : 0;
 }
-/** Materialize a derived table before reading its rows or a cell. */
-function createBoundTableReader() {
+/** Materialize a derived table before reading its rows or a cell. An epoch of undefined disables reuse.
+*
+*  `epoch` names the moment the scene's inputs were last able to change. While it
+*  returns the same value, a binding is evaluated once and its rows are reused:
+*  views read a bound table once per cell per frame, and re-running the binding
+*  for each of those reads was most of a frame's cost. Without `epoch` every read
+*  evaluates, as before. */
+function createBoundTableReader(epoch) {
 	const resolving = /* @__PURE__ */ new Set();
+	const memo = /* @__PURE__ */ new Map();
 	return function read(data, bindings, table, rowIndex, column, evaluate) {
 		const name = String(table), binding = bindings.find((binding) => binding.table === name);
+		const now = epoch?.();
+		const hit = binding && now !== void 0 ? memo.get(name) : void 0;
+		if (binding && hit && hit.epoch === now && hit.rowsExpr === binding.rowsExpr && hit.data === data && Array.isArray(data[name])) return readDataTable(data, table, rowIndex, column);
 		if (binding) {
 			if (resolving.has(name)) throw new Error("Circular data table binding: " + name);
 			resolving.add(name);
@@ -173,6 +183,11 @@ function createBoundTableReader() {
 				const rows = result && typeof result.toArray === "function" ? result.toArray() : result;
 				if (!Array.isArray(rows) || rows.some((row) => !row || typeof row !== "object" || Array.isArray(row))) throw new Error("Table binding must return row objects: " + name);
 				data[name] = rows;
+				if (now !== void 0) memo.set(name, {
+					epoch: now,
+					rowsExpr: binding.rowsExpr,
+					data
+				});
 			} finally {
 				resolving.delete(name);
 			}
@@ -305,7 +320,19 @@ function arrayAt(input, at) {
 }
 //#endregion
 //#region src/expr.ts
-var boundTableReader = createBoundTableReader();
+var tableInputs = 0;
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+	const bump = () => {
+		tableInputs++;
+	};
+	window.addEventListener("algebench:sliderchange", bump);
+	window.addEventListener("algebench:navchange", bump);
+}
+function tableEpoch() {
+	const frameTime = typeof document !== "undefined" ? document.timeline?.currentTime : void 0;
+	return frameTime == null ? void 0 : tableInputs + ":" + String(frameTime);
+}
+var boundTableReader = createBoundTableReader(tableEpoch);
 var tableExpressions = /* @__PURE__ */ new Map();
 var exprState = state;
 var _mathjs = math.create(math.all);
@@ -2894,6 +2921,12 @@ function refreshSliderBounds() {
 	}
 	return valueMoved;
 }
+/** Write a readout, with the full text as its tooltip when it is too long to show. */
+function _setReadout(span, text) {
+	span.textContent = text;
+	if (text.length > 20) span.title = text;
+	else span.removeAttribute("title");
+}
 /** How many monospace characters the widest readout of `s` needs. Plain
 *  readouts are bounded by the two ends of the range. A formatted one
 *  (valueExpr) is measured by evaluating the format at every reachable
@@ -2952,7 +2985,7 @@ function startSliderLoop(id) {
 		if (input) {
 			input.value = String(slider.value);
 			const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
-			if (valSpan) valSpan.textContent = _formatSliderValue(slider);
+			if (valSpan) _setReadout(valSpan, _formatSliderValue(slider));
 		}
 		refreshActiveExprsForSliderValueChange();
 		if (slider._loopPlaying) slider._loopRaf = requestAnimationFrame(tick);
@@ -3161,21 +3194,22 @@ function buildSliderOverlay() {
 		row.appendChild(input);
 		const valSpan = document.createElement("span");
 		valSpan.className = "slider-value";
-		valSpan.textContent = _formatSliderValue(s);
-		valSpan.style.minWidth = `${_widestReadoutCh(s)}ch`;
+		_setReadout(valSpan, _formatSliderValue(s));
+		valSpan.style.minWidth = `${Math.min(_widestReadoutCh(s), 20)}ch`;
+		valSpan.style.maxWidth = `20ch`;
 		row.appendChild(valSpan);
 		s._onBoundsChange = () => {
 			input.min = String(s.min);
 			input.max = String(s.max);
 			if (String(s.value) !== input.value) input.value = String(s.value);
-			valSpan.textContent = _formatSliderValue(s);
+			_setReadout(valSpan, _formatSliderValue(s));
 		};
 		input.addEventListener("input", () => {
 			if (s._loopPlaying) stopSliderLoop(id);
 			s.value = parseFloat(input.value);
 			s._desired = s.value;
 			refreshSliderBounds();
-			valSpan.textContent = _formatSliderValue(s);
+			_setReadout(valSpan, _formatSliderValue(s));
 			recompileActiveExprs();
 			syncSliderState();
 			try {
@@ -3503,7 +3537,7 @@ function setSliderValue(id, value) {
 	if (input) {
 		input.value = String(s.value);
 		const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
-		if (valSpan) valSpan.textContent = _formatSliderValue(s);
+		if (valSpan) _setReadout(valSpan, _formatSliderValue(s));
 	}
 	recompileActiveExprs();
 	syncSliderState();
@@ -3543,7 +3577,7 @@ function animateSlider$1(id, target, duration) {
 			if (input) {
 				input.value = String(slider.value);
 				const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
-				if (valSpan) valSpan.textContent = _formatSliderValue(slider);
+				if (valSpan) _setReadout(valSpan, _formatSliderValue(slider));
 			}
 			recompileActiveExprs();
 			if (t < 1) requestAnimationFrame(tick);
@@ -3659,6 +3693,20 @@ function lineActionsFor(file, first, last, scene, hasSlider) {
 //#endregion
 //#region src/step-code-links.ts
 /** Step captions link into the same authored locations used by the code browser. */
+var compiledByLesson = /* @__PURE__ */ new WeakMap();
+function compiledActive(lesson, expression) {
+	let cache = compiledByLesson.get(lesson);
+	if (!cache) {
+		cache = /* @__PURE__ */ new Map();
+		compiledByLesson.set(lesson, cache);
+	}
+	let fn = cache.get(expression);
+	if (!fn) {
+		fn = compileExpr(expression);
+		cache.set(expression, fn);
+	}
+	return fn;
+}
 function makeStepCodeLinks() {
 	const lesson = state.lessonSpec;
 	const scene = lesson?.scenes?.[state.currentSceneIndex];
@@ -3669,7 +3717,7 @@ function makeStepCodeLinks() {
 	const refs = stepCodeLocations(lesson?.codeFiles ?? [], scene.id, step.id, snapshot, (file) => {
 		if (!step.descriptionExpr || !file.activeLineExpr) return void 0;
 		try {
-			return activeCodeLines(evalExpr(compileExpr(file.activeLineExpr), 0));
+			return activeCodeLines(evalExpr(compiledActive(lesson, file.activeLineExpr), 0));
 		} catch {
 			return /* @__PURE__ */ new Set();
 		}
@@ -22623,6 +22671,16 @@ async function loadInitialSceneFromQuery() {
 			if (res.ok) {
 				const spec = await res.json();
 				if (spec && Array.isArray(spec.scenes) && spec.scenes.length) {
+					const named = (header) => {
+						const value = res.headers.get(header);
+						try {
+							return value ? decodeURIComponent(value) : "";
+						} catch {
+							return "";
+						}
+					};
+					state.currentSceneSourceLabel = named("X-AlgeBench-Scene-Label");
+					state.currentSceneSourcePath = named("X-AlgeBench-Scene-Path");
 					await loadLesson(spec);
 					await applyRest();
 					return;

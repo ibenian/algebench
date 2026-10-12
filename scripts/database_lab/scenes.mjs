@@ -21,7 +21,7 @@ const load = (scene, id, extra = []) => [S.frame(), S.scenario(id, scene.label, 
 /** What each scene's Scenario slider offers: a prefix of the domain's scenario list (see SCENARIOS there). */
 const PICK = {
     anomalies: { label: 'Anomaly', max: 6 },
-    isolation: { label: 'Anomaly or fix to replay', max: 8 },
+    isolation: { label: 'Scenario', max: 8 },
     cc: { label: 'Workload', max: LAB.SCENARIOS.length - 1 },
 };
 
