@@ -295,6 +295,10 @@
               }
             }
           }
+        },
+        "codeRef": {
+          "$ref": "#/$defs/codeRef",
+          "description": "The code this scene executes: the file (or a per-state fileExpr) and the active line (or lineExpr). The Code panel follows that file when it changes and marks the line only there. Without it, an open file's activeLineExpr applies."
         }
       },
       "additionalProperties": false
@@ -762,6 +766,33 @@
                 "maximum": 1,
                 "description": "Default 0.18."
               }
+            },
+            "additionalProperties": false
+          }
+        },
+        "intervals": {
+          "type": "array",
+          "description": "CHART ONLY. Gantt bars: each set draws [start, end] spans as horizontal bars on lanes (y values), over the chart's x axis. Give literal 'start'/'end' arrays (static), or 'countExpr' plus per-bar 'startExpr'/'endExpr' with 'i' (bar index) and 'n' (bar count) bound, so the bars can follow lesson state. Example: {\"label\": \"merged\", \"countExpr\": \"dataTable('trace', frame, 'm')\", \"startExpr\": \"arrayAt(dataTable('trace', frame, 'mStarts'), i)\", \"endExpr\": \"arrayAt(dataTable('trace', frame, 'mEnds'), i)\", \"lane\": 0}.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string", "description": "Legend text for the set, drawn with a bar swatch." },
+              "color": { "$ref": "#/$defs/color" },
+              "opacity": { "type": "number", "minimum": 0, "maximum": 1, "description": "Bar opacity. Default 0.85." },
+              "thickness": { "type": "number", "exclusiveMinimum": 0, "description": "Bar height in lane (y) units. Default 0.6." },
+              "start": { "type": "array", "items": { "type": "number" }, "description": "Literal bar starts, one per bar." },
+              "end": { "type": "array", "items": { "type": "number" }, "description": "Literal bar ends, one per bar." },
+              "lane": {
+                "oneOf": [{ "type": "number" }, { "type": "array", "items": { "type": "number" } }],
+                "description": "The lane (y value) of every bar, or one per bar. Default 0."
+              },
+              "countExpr": { "type": "string", "description": "Expression for the number of bars (0-256). Required when spans come from expressions." },
+              "startExpr": { "type": "string", "description": "Expression for bar i's start, with 'i' and 'n' bound. Wins over 'start'." },
+              "endExpr": { "type": "string", "description": "Expression for bar i's end, with 'i' and 'n' bound. Wins over 'end'." },
+              "laneExpr": { "type": "string", "description": "Expression for bar i's lane, with 'i' and 'n' bound. Wins over 'lane'." },
+              "highlightExpr": { "type": "string", "description": "Expression, per bar with 'i' and 'n' bound; truthy draws the bar in the highlight gold." },
+              "labelExpr": { "type": "string", "description": "Expression for text drawn just above bar i, with 'i' and 'n' bound." }
             },
             "additionalProperties": false
           }
@@ -1434,7 +1465,7 @@
         },
         "highlightExpr": {
           "type": "string",
-          "description": "ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes."
+          "description": "ARRAY / STACK: boolean expression per cell with idx and value. EXPRESSION_LABEL: truthy highlights the label's row in its box, e.g. when a running total reaches its target. Evaluated on state changes."
         },
         "colorExpr": {
           "type": "string",
@@ -1455,9 +1486,13 @@
           "minLength": 1,
           "description": "STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge."
         },
+        "tooltipExpr": {
+          "type": "string",
+          "description": "EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\\text{total}'): their contents are kept literally. Evaluated on state changes."
+        },
         "connectTo": {
           "type": "object",
-          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.",
+          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it.",
           "oneOf": [
             {
               "type": "object",
@@ -1472,6 +1507,11 @@
                 "indexExpr": {
                   "type": "string",
                   "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
                 }
               },
               "additionalProperties": false
@@ -1489,6 +1529,11 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
                 }
               },
               "additionalProperties": false

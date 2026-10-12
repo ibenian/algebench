@@ -4,7 +4,7 @@ import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { makeAiAskButton } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
-import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor } from '/code-panel-model.js';
+import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
@@ -20,7 +20,8 @@ export function setupCodePanel(): void {
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
     let lesson: AlgeBenchLessonSpec | null | undefined, files: CodeFile[]=[], selected: CodeFile | undefined;
-    let first=0,last=0,excerpt='',active: CompiledExpr|null=null;
+    let first=0,last=0,excerpt='',active: CompiledExpr|null=null,followed: CodeFile | undefined;
+    const compiled=new Map<string,CompiledExpr|null>();
     const targets=document.createElement('div');targets.className='code-step-targets';targets.hidden=true;
     const ask=makeAiAskButton('ai-ask-btn','Ask AI about selected code',()=>{
         if(!selected||!first)return null;
@@ -77,11 +78,29 @@ export function setupCodePanel(): void {
         targets.replaceChildren();targets.hidden=false;
         for(const choice of choices){const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.onclick=()=>{targets.hidden=true;go(choice);};targets.append(button);}
     });
-    function refreshBinding() {
+    function evaluate(expr: string) {
+        if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
+        const fn=compiled.get(expr);
+        if(!fn)throw new Error('Invalid code expression.');
+        return evalExpr(fn,0);
+    }
+    /**
+     * A scene's codeRef names the file and line executing now: the panel follows that file when it changes
+     * (or on scene entry) and marks the line only there. Scenes without one use the open file's activeLineExpr.
+     */
+    function refreshBinding(entering=false) {
         let lines=new Set<number>();
-        if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        const ref=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.codeRef;
+        if(ref){
+            const target=resolveCodeRef(files,ref,evaluate);
+            if(target&&(entering||target.file!==followed)&&target.file!==selected){followed=target.file;open(target.file);return;}
+            followed=target?.file;
+            if(target&&target.file===selected)lines=new Set([target.line]);
+        }
+        else if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        const bound=!!ref||!!active;
         const signature=[...lines].join(', ');
-        execution.textContent=active?(signature?'Active lines: '+signature:'No active lines at this position'):'';
+        execution.textContent=bound?(signature?'Active lines: '+signature:'No active lines at this position'):'';
         let firstActive:HTMLElement|undefined;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
             const current=lines.has(Number(row.dataset.line));
@@ -128,10 +147,10 @@ export function setupCodePanel(): void {
     function refresh() {
         if(lesson!==state.lessonSpec){
             lesson=state.lessonSpec;files=(lesson as LessonFormat|null)?.codeFiles??[];tree.replaceChildren();body.replaceChildren();actions.hidden=targets.hidden=true;
-            selected=undefined;active=null;setCodeFocus(null);build(fileTree(files),tree);
+            selected=followed=undefined;active=null;compiled.clear();setCodeFocus(null);build(fileTree(files),tree);
             if(files[0])open(files[0]);else title.textContent='This lesson has no code files.';
         }
-        refreshBinding();
+        refreshBinding(true);
         // Scene and step changes add or remove sliders, so the selected line's actions must be re-evaluated.
         renderLineActions();
     }
@@ -155,6 +174,6 @@ export function setupCodePanel(): void {
         }
     });
     window.addEventListener('algebench:navchange',refresh);
-    window.addEventListener('algebench:sliderchange',refreshBinding);
+    window.addEventListener('algebench:sliderchange',()=>refreshBinding());
     refresh();
 }

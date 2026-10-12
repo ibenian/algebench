@@ -326,6 +326,61 @@ export type Element = {
     opacity?: number;
   }[];
   /**
+   * CHART ONLY. Gantt bars: each set draws [start, end] spans as horizontal bars on lanes (y values), over the chart's x axis. Give literal 'start'/'end' arrays (static), or 'countExpr' plus per-bar 'startExpr'/'endExpr' with 'i' (bar index) and 'n' (bar count) bound, so the bars can follow lesson state. Example: {"label": "merged", "countExpr": "dataTable('trace', frame, 'm')", "startExpr": "arrayAt(dataTable('trace', frame, 'mStarts'), i)", "endExpr": "arrayAt(dataTable('trace', frame, 'mEnds'), i)", "lane": 0}.
+   */
+  intervals?: {
+    id?: string;
+    /**
+     * Legend text for the set, drawn with a bar swatch.
+     */
+    label?: string;
+    color?: Color;
+    /**
+     * Bar opacity. Default 0.85.
+     */
+    opacity?: number;
+    /**
+     * Bar height in lane (y) units. Default 0.6.
+     */
+    thickness?: number;
+    /**
+     * Literal bar starts, one per bar.
+     */
+    start?: number[];
+    /**
+     * Literal bar ends, one per bar.
+     */
+    end?: number[];
+    /**
+     * The lane (y value) of every bar, or one per bar. Default 0.
+     */
+    lane?: number | number[];
+    /**
+     * Expression for the number of bars (0-256). Required when spans come from expressions.
+     */
+    countExpr?: string;
+    /**
+     * Expression for bar i's start, with 'i' and 'n' bound. Wins over 'start'.
+     */
+    startExpr?: string;
+    /**
+     * Expression for bar i's end, with 'i' and 'n' bound. Wins over 'end'.
+     */
+    endExpr?: string;
+    /**
+     * Expression for bar i's lane, with 'i' and 'n' bound. Wins over 'lane'.
+     */
+    laneExpr?: string;
+    /**
+     * Expression, per bar with 'i' and 'n' bound; truthy draws the bar in the highlight gold.
+     */
+    highlightExpr?: string;
+    /**
+     * Expression for text drawn just above bar i, with 'i' and 'n' bound.
+     */
+    labelExpr?: string;
+  }[];
+  /**
    * CHART ONLY. Draw faint grid lines at the ticks. Default true.
    */
   grid?: boolean;
@@ -852,7 +907,7 @@ export type Element = {
    */
   indexFontSize?: number;
   /**
-   * ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes.
+   * ARRAY / STACK: boolean expression per cell with idx and value. EXPRESSION_LABEL: truthy highlights the label's row in its box, e.g. when a running total reaches its target. Evaluated on state changes.
    */
   highlightExpr?: string;
   /**
@@ -872,7 +927,11 @@ export type Element = {
    */
   indexGroup?: string;
   /**
-   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.
+   * EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\text{total}'): their contents are kept literally. Evaluated on state changes.
+   */
+  tooltipExpr?: string;
+  /**
+   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it.
    */
   connectTo?:
     | {
@@ -881,6 +940,10 @@ export type Element = {
          * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
          */
         indexExpr?: string;
+        /**
+         * Show the wire without hovering. The reader can still unpin it.
+         */
+        pinned?: boolean;
       }
     | {
         /**
@@ -888,6 +951,10 @@ export type Element = {
          * @maxItems 3
          */
         positionExpr: [string, string, string];
+        /**
+         * Show the wire without hovering. The reader can still unpin it.
+         */
+        pinned?: boolean;
       };
   /**
    * ARRAY / STACK: owned index markers. The owner supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression.
@@ -1377,6 +1444,7 @@ export interface Scene {
     table: string;
     rowsExpr: string;
   }[];
+  codeRef?: CodeRef2;
 }
 /**
  * Initial camera position and target for this scene.
@@ -2049,6 +2117,27 @@ export interface StepPlayback {
    * Show a playback speed selector (0.25× to 4× of intervalMs).
    */
   speedControl?: boolean;
+}
+/**
+ * The code this scene executes: the file (or a per-state fileExpr) and the active line (or lineExpr). The Code panel follows that file when it changes and marks the line only there. Without it, an open file's activeLineExpr applies.
+ */
+export interface CodeRef2 {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
 }
 export interface CodeFile {
   id: string;

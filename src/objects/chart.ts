@@ -305,6 +305,22 @@ interface LineSpec {
     opacity?: unknown;
 }
 
+interface IntervalSpec {
+    label?: unknown;
+    color?: unknown;
+    opacity?: unknown;
+    thickness?: unknown;
+    start?: unknown;
+    end?: unknown;
+    lane?: unknown;
+    countExpr?: unknown;
+    startExpr?: unknown;
+    endExpr?: unknown;
+    laneExpr?: unknown;
+    highlightExpr?: unknown;
+    labelExpr?: unknown;
+}
+
 interface BandSpec {
     lo?: unknown;
     hi?: unknown;
@@ -345,6 +361,29 @@ export function staticTickLabel(list: readonly string[], k: number): string {
     return list[k] ?? '';
 }
 
+export interface IntervalBar { s: number; e: number; lane: number; hl: boolean; text: string }
+type Bar = IntervalBar;
+/**
+ * The bars an interval set draws. `n` is clamped to 0..max (a non-finite count
+ * draws nothing); a bar whose start, end or lane is not finite is dropped
+ * rather than drawn at 0; and a reversed span is normalised so start <= end.
+ */
+export function intervalBars(n: number, max: number, read: (i: number, n: number) => IntervalBar): IntervalBar[] {
+    const count = Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : 0;
+    const bars: IntervalBar[] = [];
+    for (let i = 0; i < count; i++) {
+        const b = read(i, count);
+        if (!Number.isFinite(b.s) || !Number.isFinite(b.e) || !Number.isFinite(b.lane)) continue;
+        bars.push({ ...b, s: Math.min(b.s, b.e), e: Math.max(b.s, b.e) });
+    }
+    return bars;
+}
+
+/** Most bars one interval set draws; a counted set reserves this many once. */
+const MAX_INTERVALS = 256;
+/** The gold an array cell uses for a highlighted slot, so a bar reads as "selected" the same way. */
+const HIGHLIGHT: Rgb3 = [0xf1 / 255, 0xcc / 255, 0x59 / 255];
+
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 const MAX_TICKS = 50;
 
@@ -357,7 +396,7 @@ const PLANE_AXES: Record<string, [number, number, number]> = {
 export function renderChart(el: Element, view: MathBoxNode) {
     const chart = el as Element & {
         size?: unknown; xDomain?: unknown; yDomain?: unknown;
-        series?: unknown; hlines?: unknown; bands?: unknown; axes?: unknown;
+        series?: unknown; hlines?: unknown; bands?: unknown; intervals?: unknown; axes?: unknown;
         textColor?: unknown; grid?: unknown;
     };
 
@@ -494,6 +533,43 @@ export function renderChart(el: Element, view: MathBoxNode) {
         if ((!Number.isFinite(b.lo) && !b.loSrc) || (!Number.isFinite(b.hi) && !b.hiSrc)) { console.warn(`chart${el.id ? ` "${el.id}"` : ''}: bands[${k}] needs lo/hi or loExpr/hiExpr; skipped.`); bands.splice(k, 1); }
     }
 
+    // ── Intervals: Gantt bars, each a [start, end] span on a lane (y). A set is
+    // literal arrays, or per-bar expressions with `i` (bar index) and `n`
+    // (bar count) bound, where `countExpr` lets the number of bars follow the
+    // lesson state -- a merge result that grows as a sweep runs, say. ──
+    type Fn = { src: string; fn: CompiledExpr } | null;
+    interface IntervalSet {
+        color: Rgb3; opacity: number; thickness: number; label: string | null;
+        starts: number[] | null; ends: number[] | null; lanes: number[] | null; lane: number;
+        countSrc: string | null; startSrc: string | null; endSrc: string | null; laneSrc: string | null; hlSrc: string | null; labelSrc: string | null;
+        countFn: Fn; startFn: Fn; endFn: Fn; laneFn: Fn; hlFn: Fn; labelFn: Fn;
+        max: number; bars: Bar[];
+        mesh: Mesh | null; attr: BufferAttribute | null; colors: BufferAttribute | null;
+    }
+    const numList = (v: unknown): number[] | null => Array.isArray(v) ? v.map(Number) : null;
+    const srcOf = (v: unknown): string | null => typeof v === 'string' ? v.trim() || null : null;
+    const intervalSets: IntervalSet[] = [];
+    (Array.isArray(chart.intervals) ? (chart.intervals as IntervalSpec[]) : []).forEach((sp, k) => {
+        const starts = numList(sp.start), ends = numList(sp.end);
+        const set: IntervalSet = {
+            color: parseColor(sp.color || el.color || '#74d0c2') as Rgb3,
+            opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 0.85,
+            thickness: Number(sp.thickness) > 0 ? Number(sp.thickness) : 0.6,
+            label: typeof sp.label === 'string' && sp.label.trim() ? sp.label.trim() : null,
+            starts, ends, lanes: numList(sp.lane), lane: Number.isFinite(Number(sp.lane)) ? Number(sp.lane) : 0,
+            countSrc: srcOf(sp.countExpr), startSrc: srcOf(sp.startExpr), endSrc: srcOf(sp.endExpr),
+            laneSrc: srcOf(sp.laneExpr), hlSrc: srcOf(sp.highlightExpr), labelSrc: srcOf(sp.labelExpr),
+            countFn: compileOpt(sp.countExpr, `intervals[${k}].countExpr`), startFn: compileOpt(sp.startExpr, `intervals[${k}].startExpr`),
+            endFn: compileOpt(sp.endExpr, `intervals[${k}].endExpr`), laneFn: compileOpt(sp.laneExpr, `intervals[${k}].laneExpr`),
+            hlFn: compileOpt(sp.highlightExpr, `intervals[${k}].highlightExpr`), labelFn: compileOpt(sp.labelExpr, `intervals[${k}].labelExpr`),
+            // Literal sets size their mesh exactly; a counted set reserves the ceiling once.
+            max: srcOf(sp.countExpr) ? MAX_INTERVALS : Math.min(MAX_INTERVALS, Math.min(starts?.length ?? 0, ends?.length ?? 0)),
+            bars: [], mesh: null, attr: null, colors: null,
+        };
+        if (!set.countSrc && !set.max) { console.warn(`chart${el.id ? ` "${el.id}"` : ''}: intervals[${k}] needs start/end arrays or a countExpr; skipped.`); return; }
+        intervalSets.push(set);
+    });
+
     // ── Axes ──
     const axes = Array.isArray(chart.axes) ? (chart.axes as AxisSpec[]) : [];
     const xAxis = axes[0], yAxis = axes[1];
@@ -578,7 +654,24 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // Declared, not compiled: a channel refused under the untrusted state
     // must still register the updater so a trust change can bring it back.
     const live = series.some(s => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc
+        || intervalSets.some(v => v.countSrc || v.startSrc || v.endSrc || v.laneSrc || v.hlSrc || v.labelSrc)
         || rightAxes.length > 0;
+    /** Evaluate one interval set's bars through the pure `intervalBars`. */
+    function sampleIntervals(v: IntervalSet, tSec: number) {
+        let n = v.max;
+        if (v.countFn) { try { n = Number(evalExpr(v.countFn.fn, tSec, {})); } catch (_e) { n = 0; } }
+        else if (v.countSrc) n = 0;
+        const scope = { i: 0, n: 0 };
+        const run = (fn: Fn): unknown => fn ? evalExpr(fn.fn, tSec, { overrideScope: scope }) : undefined;
+        v.bars = intervalBars(n, v.max, (i, count) => {
+            scope.i = i; scope.n = count;
+            const num = (fn: Fn, lit: number | undefined) => { if (!fn) return lit ?? NaN; try { return Number(run(fn)); } catch (_e) { return NaN; } };
+            let hl = false, text = '';
+            if (v.hlFn) { try { hl = !!run(v.hlFn); } catch (_e) { /* not highlighted */ } }
+            if (v.labelFn) { try { const out = run(v.labelFn); text = out === null || out === undefined ? '' : String(out); } catch (_e) { /* no label */ } }
+            return { s: num(v.startFn, v.starts?.[i]), e: num(v.endFn, v.ends?.[i]), lane: num(v.laneFn, v.lanes ? v.lanes[i] : v.lane), hl, text };
+        });
+    }
     function sample(tSec: number) {
         for (const s of series) {
             const scope = { i: 0, n: s.n, x: 0 };
@@ -612,9 +705,11 @@ export function renderChart(el: Element, view: MathBoxNode) {
             if (b.loFn) { try { const v = Number(evalExpr(b.loFn.fn, tSec, {})); if (Number.isFinite(v)) b.lo = v; } catch (_e) { /* keep */ } }
             if (b.hiFn) { try { const v = Number(evalExpr(b.hiFn.fn, tSec, {})); if (Number.isFinite(v)) b.hi = v; } catch (_e) { /* keep */ } }
         }
+        for (const v of intervalSets) sampleIntervals(v, tSec);
         if (!xFixed) {
             const xs: number[] = [];
             for (const s of series) for (const x of s.px) xs.push(x);
+            for (const v of intervalSets) for (const b of v.bars) { xs.push(b.s); xs.push(b.e); }
             // No padding on x: an index axis should start exactly at 0, and
             // niceTicks already rounds the far end up to a tick.
             xDom = autoDomain(xs, 0);
@@ -624,6 +719,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
             for (const s of series) for (const y of s.py) ys.push(y);
             for (const l of hlines) ys.push(l.y);
             for (const b of bands) { ys.push(b.lo); ys.push(b.hi); }
+            for (const v of intervalSets) for (const b of v.bars) { ys.push(b.lane - v.thickness / 2); ys.push(b.lane + v.thickness / 2); }
             yDom = autoDomain(ys);
         }
 
@@ -762,6 +858,27 @@ export function renderChart(el: Element, view: MathBoxNode) {
         for (let i = 0; i < 6; i++) { const p = P[order[i]!]!; a[i * 3] = p[0]; a[i * 3 + 1] = p[1]; a[i * 3 + 2] = p[2]; }
         attr.needsUpdate = true;
     };
+    /** Write every bar of a set as two triangles, clipped to the plot; unused slots collapse to nothing. */
+    function placeIntervals(v: IntervalSet) {
+        if (!v.attr || !v.colors) return;
+        const a = v.attr.array as Float32Array, c = v.colors.array as Float32Array;
+        a.fill(0);
+        const order = [0, 1, 2, 0, 2, 3];
+        v.bars.forEach((b, k) => {
+            const [h0] = toPlane(b.s, 0), [h1] = toPlane(b.e, 0);
+            const [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+            const clip = (x: number, hi: number) => Math.max(0, Math.min(hi, x));
+            const P = [at(clip(h0, W), clip(v0, H), lift * 1.5), at(clip(h1, W), clip(v0, H), lift * 1.5),
+                       at(clip(h1, W), clip(v1, H), lift * 1.5), at(clip(h0, W), clip(v1, H), lift * 1.5)].map(dataToWorld);
+            const rgb = b.hl ? HIGHLIGHT : v.color;
+            for (let j = 0; j < 6; j++) {
+                const p = P[order[j]!]!, o = (k * 6 + j) * 3;
+                a[o] = p[0]; a[o + 1] = p[1]; a[o + 2] = p[2];
+                c[o] = rgb[0]; c[o + 1] = rgb[1]; c[o + 2] = rgb[2];
+            }
+        });
+        v.attr.needsUpdate = true; v.colors.needsUpdate = true;
+    }
     /** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
     const placeBand = (b: Band) => {
         if (!b.attr) return;
@@ -773,6 +890,28 @@ export function renderChart(el: Element, view: MathBoxNode) {
         const q = makeQuad(b.color, b.opacity, bandOrder, true);
         b.mesh = q.mesh; b.attr = q.attr;
         placeBand(b);
+    }
+    // Bars draw above bands, in one slot of their own.
+    const barOrder = intervalSets.length ? (el.renderOrder !== undefined ? serial + 2 : chartState._planeMeshSerial++) : serial + 2;
+    for (const v of intervalSets) {
+        const pos = new Float32Array(v.max * 18), col = new Float32Array(v.max * 18);
+        const attr = new THREE.BufferAttribute(pos, 3), colors = new THREE.BufferAttribute(col, 3);
+        attr.setUsage(THREE.DynamicDrawUsage); colors.setUsage(THREE.DynamicDrawUsage);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', attr); geom.setAttribute('color', colors);
+        const mat = new THREE.MeshBasicMaterial({
+            vertexColors: true, transparent: true, side: THREE.DoubleSide, depthWrite: false,
+            opacity: ignoresPlaneOpacity ? v.opacity : chartState.displayParams.planeOpacity * v.opacity,
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.frustumCulled = false;
+        mesh.userData.targetOpacity = v.opacity;
+        mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+        mesh.renderOrder = barOrder;
+        chartState.three.scene.add(mesh);
+        chartState.planeMeshes.push(mesh);
+        v.mesh = mesh; v.attr = attr; v.colors = colors;
+        placeIntervals(v);
     }
 
     // ── The paper: a canvas over the plot plus margins for tick labels and
@@ -854,10 +993,11 @@ export function renderChart(el: Element, view: MathBoxNode) {
             const t = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
             return { ticks: t.ticks, labels: t.ticks.map(v => tickText(a.labelFn, v, t.step, tSec)) };
         });
+        const barLabelKey = intervalSets.filter(v => v.labelSrc).map(v => v.bars.map(b => `${b.text}\u0001${b.s}\u0001${b.e}\u0001${b.lane}`).join('\u0002')).join('\u0003');
         const key = JSON.stringify([xDom, yDom, xLabels, yLabels,
                                     rightAxes.map(a => a.dom),
                                     rightTicks.map(t => t && t.labels),
-                                    pointLabelKey]);
+                                    pointLabelKey, barLabelKey]);
         if (key === paperKey) return;
         paperKey = key;
 
@@ -997,11 +1137,25 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 });
             });
         }
+        // Bar labels sit centred just above their bar, on the paper behind it.
+        for (const v of intervalSets) {
+            for (const b of v.bars) {
+                if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
+                const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
+                const [, top] = toPlane(0, b.lane + v.thickness / 2);
+                if (top > H) continue;
+                const fontPx = Math.min(pxPer * 0.3, fitLatexPx(b.text, Math.max(pxPer * 0.6, (h1 - h0) * pxPer * 1.4), pxPer * 0.6));
+                drawLatex(ctx, b.text, X((h0 + h1) / 2), Y(top) - pxPer * 0.04, { fontPx, color: css(inkRgb), align: 'center', vAlign: 'bottom' });
+            }
+        }
         // Series legend, on the paper, top-right of the plot: a swatch (dot
         // or dash) beside each labelled series, drawn straight over the grid
         // with no backing. A chart whose series carry no labels gets
         // none, so a single-series chart stays as clean as before.
-        const legendRows = series.filter(sr => sr.label);
+        const legendRows: { label: string; color: Rgb3; swatch: 'points' | 'line' | 'bar' }[] = [
+            ...series.filter(sr => sr.label).map(sr => ({ label: sr.label!, color: sr.color, swatch: sr.kind })),
+            ...intervalSets.filter(v => v.label).map(v => ({ label: v.label!, color: v.color, swatch: 'bar' as const })),
+        ];
         if (legendRows.length) {
             // The same size the axis titles actually render at (they are fitted
             // to the plot width, so a small chart shrinks them below the cap),
@@ -1010,20 +1164,22 @@ export function renderChart(el: Element, view: MathBoxNode) {
             const fontPx = titleRef ? fitLatexPx(titleRef, (xTitle ? W : H) * pxPer, pxPer * 0.5) : pxPer * 0.4;
             const rowH = fontPx * 1.25, pad = fontPx * 0.3, swatchW = fontPx * 0.9, gap = fontPx * 0.25;
             let textW = 0;
-            for (const sr of legendRows) textW = Math.max(textW, measureLatex(sr.label!).w * fontPx / 100);
+            for (const sr of legendRows) textW = Math.max(textW, measureLatex(sr.label).w * fontPx / 100);
             const boxW = pad * 2 + swatchW + gap + textW;
             const bx = X(W) - pad - boxW, by = Y(H) + pad;
             legendRows.forEach((sr, k) => {
                 const cy = by + pad + rowH * (k + 0.5);
                 const sx = bx + pad;
                 ctx.fillStyle = css(sr.color); ctx.strokeStyle = css(sr.color);
-                if (sr.kind === 'points') {
+                if (sr.swatch === 'points') {
                     ctx.beginPath(); ctx.arc(sx + swatchW / 2, cy, fontPx * 0.2, 0, Math.PI * 2); ctx.fill();
+                } else if (sr.swatch === 'bar') {
+                    ctx.fillRect(sx, cy - fontPx * 0.22, swatchW, fontPx * 0.44);
                 } else {
                     ctx.lineWidth = Math.max(1.5, fontPx * 0.12);
                     ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(sx + swatchW, cy); ctx.stroke();
                 }
-                drawLatex(ctx, sr.label!, sx + swatchW + gap, cy, { fontPx, color: css(inkRgb), align: 'left', vAlign: 'middle' });
+                drawLatex(ctx, sr.label, sx + swatchW + gap, cy, { fontPx, color: css(inkRgb), align: 'left', vAlign: 'middle' });
             });
         }
         tex.needsUpdate = true;
@@ -1039,6 +1195,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
             if (ok) { const [, v] = toPlane(0, l.y); l.data.set('data', [at(0, v, lift * 2), at(W, v, lift * 2)]); }
         }
         for (const b of bands) placeBand(b);
+        for (const v of intervalSets) placeIntervals(v);
     }
 
     const animState = { stopped: false };
@@ -1051,6 +1208,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
         ...series.flatMap(s => [s.xSrc, s.ySrc, s.pointLabelSrc]),
         ...hlines.map(l => l.src),
         ...bands.flatMap(b => [b.loSrc, b.hiSrc]),
+        ...intervalSets.flatMap(v => [v.countSrc, v.startSrc, v.endSrc, v.laneSrc, v.hlSrc, v.labelSrc]),
         ...rightAxes.flatMap(a => [a.src, a.labelSrc]),
         xLabelSrc, yLabelSrc,
     ].filter((x): x is string => !!x);
@@ -1058,6 +1216,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     const fns = () => [
         ...series.flatMap(s => [s.xFn?.fn, s.yFn?.fn, s.pointLabelFn?.fn]),
         ...hlines.map(l => l.fn?.fn), ...bands.flatMap(b => [b.loFn?.fn, b.hiFn?.fn]),
+        ...intervalSets.flatMap(v => [v.countFn?.fn, v.startFn?.fn, v.endFn?.fn, v.laneFn?.fn, v.hlFn?.fn, v.labelFn?.fn]),
         ...rightAxes.flatMap(a => [a.fn?.fn, a.labelFn?.fn]),
         xLabelFn?.fn, yLabelFn?.fn,
     ].filter((x): x is CompiledExpr => !!x);
@@ -1082,6 +1241,11 @@ export function renderChart(el: Element, view: MathBoxNode) {
             bands.forEach((b, k) => {
                 if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
                 if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
+            });
+            intervalSets.forEach((v, k) => {
+                v.countFn = compileOpt(v.countSrc, `intervals[${k}].countExpr`); v.startFn = compileOpt(v.startSrc, `intervals[${k}].startExpr`);
+                v.endFn = compileOpt(v.endSrc, `intervals[${k}].endExpr`); v.laneFn = compileOpt(v.laneSrc, `intervals[${k}].laneExpr`);
+                v.hlFn = compileOpt(v.hlSrc, `intervals[${k}].highlightExpr`); v.labelFn = compileOpt(v.labelSrc, `intervals[${k}].labelExpr`);
             });
             if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, 'axes[0].labelExpr');
             if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, 'axes[1].labelExpr');

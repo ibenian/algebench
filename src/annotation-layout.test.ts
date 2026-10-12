@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { annotationGroups, annotationRows, annotationText, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition } from '/annotation-layout.js';
+import { annotationGroups, annotationRows, annotationText, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition, markerLifts, labelAskMessage } from '/annotation-layout.js';
 import type { AnnotationBox } from '/annotation-layout.js';
 const marker = (name: string, value: number, group='input', x=0): AnnotationBox => ({kind:'marker',text:'',index:{name,value,group},x,y:0,width:60,height:25});
 test('dragged badges stay within the viewport and can be moved back from an edge',()=>{
@@ -66,4 +66,22 @@ test('a freely dragged label does not shift a target box before snapping', () =>
     labels[1]!.detached = false;
     labels[1]!.x = 0;
     assert.deepEqual(annotationGroups(labels), [[0,1]]);
+});
+
+test('markers on different indexes never merge, even when their badges overlap', () => {
+    assert.deepEqual(annotationGroups([marker('left',2,'input',0),marker('right',3,'input',30)]),[[0],[1]]);
+    assert.deepEqual(annotationGroups([marker('i',2,'input',0),marker('j',2,'input',30)]),[[0,1]], 'the same index still merges');
+});
+test('overlapping marker badges climb into separate tiers, clear ones stay put', () => {
+    const box = (x: number) => ({x, y:0, width:60, height:25});
+    assert.deepEqual(markerLifts([box(0), box(200)]), [0, 0]);
+    assert.deepEqual(markerLifts([box(0), box(30)]), [0, 29]);
+    assert.deepEqual(markerLifts([box(0), box(30), box(60)]), [0, 29, 58], 'each overlapping neighbour takes the next tier');
+    assert.deepEqual(markerLifts([box(30), box(0)]), [29, 0], 'placement runs left to right regardless of input order');
+});
+
+test('a label row asks the tutor about its value, formula, author prompt and lesson position', () => {
+    const full = labelAskMessage({text:'total = 18', tooltip:'\\text{total} = 5 + 13', prompt:'The pair sum.', scene:'Two pointers', step:1, sliders:{frame:19}});
+    assert.equal(full, 'Explain this value shown in the scene: total = 18\nHow it is computed: $\\text{total} = 5 + 13$\nAbout this label: The pair sum.\nCurrent scene: Two pointers\nCurrent lesson step: 2\nScalar variables: {"frame":19}');
+    assert.equal(labelAskMessage({text:'k = 3'}), 'Explain this value shown in the scene: k = 3', 'optional parts are left out');
 });

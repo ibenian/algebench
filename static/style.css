@@ -2159,7 +2159,8 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-top: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--text-color) 7%, transparent);
 }
-#slider-dock-host:not(:has(#slider-overlay:not(.hidden))) { display: none; }
+/* Empty when no row is visible, e.g. a scene whose only slider drives the step player, which hides that row. */
+#slider-dock-host:not(:has(#slider-overlay:not(.hidden) .slider-row:not([hidden]))) { display: none; }
 #slider-overlay.docked {
     position: static;
     left: auto !important;
@@ -2999,6 +3000,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
     max-width: 340px;
 }
 #slider-overlay.hidden { display: none; }
+#slider-overlay:not(:has(.slider-row:not([hidden]))) { display: none; }
 .slider-row {
     display: flex;
     align-items: center;
@@ -5622,7 +5624,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 #state-player[hidden], .slider-row[hidden] { display: none; }
 #state-player button { border: 1px solid var(--border-color); background: transparent; color: var(--text-color); border-radius: 5px; min-width: 29px; height: 29px; cursor: pointer; }
 #state-player button:disabled { opacity: .35; cursor: default; }
-#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); }
+#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); cursor: pointer; }
+#state-player input:disabled { cursor: default; }
 #state-player output { white-space: nowrap; font: 12px ui-monospace, monospace; }
 @media (max-width: 750px) { #state-player { bottom: 58px; width: calc(100% - 50px); } }
 /* Reserve the left corner for the existing lesson-section navigation. */
@@ -5648,6 +5651,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker-cursor { display: flex; flex-direction: column; align-items: center; transform: translateY(-38px); }
 .step-marker-badge { display: block; padding: 4px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 13px/1.3 ui-monospace, monospace; white-space: nowrap; box-shadow: 0 2px 8px #0004; }
 .step-marker-pointer { display: block; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--marker-color); margin-top: 3px; }
+/* A badge lifted above a neighbour on another index reaches its own cell through a stem. */
+.step-marker-stem { display: block; width: 2px; height: var(--marker-stem, 0px); margin-top: 3px; margin-bottom: -3px; background: var(--marker-color); opacity: .85; }
 
 .array-cell-label { font: 600 var(--array-font-size, 14px)/1.25 ui-monospace, monospace; text-shadow: none; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
 .array-index-tag {
@@ -5673,12 +5678,33 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .expression-label .annotation-mode-toggle { background: #edf4ff12; border-color: #edf4ff55; }
 .annotation-badge { display: block; padding: 5px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 calc(13px * var(--label-scale, 1))/1.35 ui-monospace, monospace; white-space: pre; box-shadow: 0 2px 8px #0004; }
 .annotation-row { display: block; }
+/* Label-row KaTeX tooltips: the semantic graph's tooltip chrome at the glossary tooltip's size. */
+.graph-panel-tooltip.label-row-tooltip { font-size: 13px; padding: 6px 10px; max-width: min(520px, calc(100vw - 16px)); }
+.label-row-tooltip .katex-display { margin: 0; }
+/* An unprompted formula beside a recalculated row: the tooltip, with a soft accent edge. */
+.label-change-callout { border-color: color-mix(in srgb, #f1cc59 55%, var(--border-color)); }
+/* A label whose highlightExpr is truthy: the same gold an array uses for a selected cell. */
+.annotation-row.annotation-row-highlight {
+    color: #1b1606; border-radius: 4px; padding-inline: 4px; margin-inline: -4px;
+    /* Lit like a changed array cell: a brighter centre and a soft gold glow. */
+    background: radial-gradient(ellipse at 50% 40%, #ffe9a3 0%, #f1cc59 70%);
+    box-shadow: 0 0 0 1px #ffe28a, 0 0 10px 2px #f1cc59a6, 0 0 22px 4px #f1cc5940;
+    animation: annotation-row-light .45s ease-out;
+}
+@keyframes annotation-row-light { from { box-shadow: 0 0 0 1px #fff3c4, 0 0 18px 6px #f1cc59d9, 0 0 36px 10px #f1cc5966; } }
+@media (prefers-reduced-motion: reduce) { .annotation-row.annotation-row-highlight { animation: none; } }
+/* Ask AI about a label row: the shared sparkle button, shown while hovering the row. */
+.annotation-row .annotation-ask-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
+.annotation-row:hover .annotation-ask-btn, .annotation-ask-btn:focus-visible { opacity: 1; }
 .expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
 .expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
 .expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }
 .expression-wire-toggle:hover::after { opacity: 1; }
 .expression-wire-toggle:focus-visible { outline: 1px solid #a6d5ec; outline-offset: 2px; }
 .annotation-measure-wired { padding-right: 34px; }
+/* Room for the row's Ask-AI button, plus the pin button when the label is wired. */
+.expression-label .annotation-measure { padding-right: 24px; }
+.expression-label .annotation-measure.annotation-measure-wired { padding-right: 56px; }
 .annotation-row + .annotation-row { border-top: 1px solid #171c2226; margin-top: 4px; padding-top: 4px; }
 .annotation-measure { position: absolute; visibility: hidden; pointer-events: none; top: 0; left: 0; width: max-content; }
 

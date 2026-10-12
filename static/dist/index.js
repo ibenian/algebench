@@ -406,6 +406,7 @@ var _CORE_MATH_NAMES = [
 	"E"
 ];
 var _MATH_SCOPE = Object.fromEntries(_CORE_MATH_NAMES.map((n) => [n, Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, n) ? _EXPR_HELPERS[n] : Math[n]]));
+/** Single-quoted math.js strings keep their contents literally (LaTeX backslashes included). Exported for tests. */
 function _normalizeSingleQuotes(str) {
 	return str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, content) => JSON.stringify(content.replace(/\\'/g, "'")));
 }
@@ -787,7 +788,7 @@ function annotationGroups(items) {
 		if (a.kind !== b.kind || a.detached || b.detached || a.coordinateMode !== b.coordinateMode) continue;
 		const sameIndex = a.index && b.index && a.index.group === b.index.group && a.index.value === b.index.value;
 		const overlaps = Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.y - b.y) < (a.height + b.height) / 2;
-		if (sameIndex || overlaps) parent[root(j)] = root(i);
+		if (sameIndex || overlaps && a.kind === "label") parent[root(j)] = root(i);
 	}
 	const groups = /* @__PURE__ */ new Map();
 	items.forEach((_, i) => {
@@ -796,6 +797,30 @@ function annotationGroups(items) {
 		groups.get(r).push(i);
 	});
 	return [...groups.values()];
+}
+/**
+* Upward lift, in px, for each marker badge so badges on different indexes never
+* overlap. Badges are placed left to right; one that would collide with a placed
+* badge climbs one badge height (plus a gap) at a time until it is clear. Its
+* pointer stretches into a stem, so it still points at its own cell.
+*/
+function markerLifts(boxes, gap = 4) {
+	const lifts = boxes.map(() => 0);
+	const placed = [];
+	for (const i of boxes.map((_, i) => i).sort((a, b) => boxes[a].x - boxes[b].x || a - b)) {
+		const b = boxes[i];
+		let lift = 0;
+		const hits = () => placed.some((p) => Math.abs(p.x - b.x) < (p.width + b.width) / 2 + gap && Math.abs(p.y - (b.y - lift)) < (p.height + b.height) / 2 + gap);
+		while (hits()) lift += b.height + gap;
+		lifts[i] = lift;
+		placed.push({
+			x: b.x,
+			y: b.y - lift,
+			width: b.width,
+			height: b.height
+		});
+	}
+	return lifts;
 }
 /** Shared expression-label boxes track their members without changing their anchors. */
 function annotationGroupAnchor(items) {
@@ -815,6 +840,16 @@ function annotationContainerTitle(rows) {
 		const parts = row.split(/(?<![<>=!])=(?!=)/);
 		return parts.length > 1 && parts.every((part) => part.trim().length > 0);
 	}) ? "Vars" : "Labels";
+}
+/** The tutor question behind a label row's Ask-AI button: the value as shown, how it was computed, and where the lesson is. */
+function labelAskMessage(o) {
+	const lines = [`Explain this value shown in the scene: ${o.text}`];
+	if (o.tooltip) lines.push(`How it is computed: $${o.tooltip}$`);
+	if (o.prompt) lines.push(`About this label: ${o.prompt}`);
+	if (o.scene) lines.push(`Current scene: ${o.scene}`);
+	if (o.step !== void 0) lines.push(`Current lesson step: ${o.step + 1}`);
+	if (o.sliders && Object.keys(o.sliders).length) lines.push(`Scalar variables: ${JSON.stringify(o.sliders)}`);
+	return lines.join("\n");
 }
 //#endregion
 //#region src/coords.ts
@@ -1086,6 +1121,18 @@ function objectWorldAnchor(name) {
 	const label = tracker.labels?.[0];
 	return label ? new THREE.Vector3(...dataToWorld(label.dataPos)) : null;
 }
+/**
+* The visible box row of an expression label named by id, wherever it is drawn:
+* in its own box or merged into another label's box. Null for other objects.
+*/
+function objectLabelRow(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	const label = match[1].tracker.labels?.find((l) => l.annotation?.kind === "label");
+	if (!label) return null;
+	const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+	return row && row.offsetParent ? row : null;
+}
 //#endregion
 //#region src/label-wire-path.ts
 function wireBend(start, end, departure, approach) {
@@ -1268,6 +1315,15 @@ function projectedCellEdge(start, centre, corners, gap = 4, avoidIndex = false) 
 		y: centre.y + ray.y * (nearest + gap / length)
 	} : centre;
 }
+/**
+* A link between two rows of the same label box: a bracket that leaves one row
+* sideways, bows out past the box edge and returns to the other row. Its bow
+* grows with the distance between the rows so adjacent rows stay tight.
+*/
+function rowBracketWire(edgeX, fromY, toY, side) {
+	const bow = side * (10 + Math.min(28, Math.abs(toY - fromY) * .3));
+	return `M ${edgeX} ${fromY} C ${edgeX + bow} ${fromY}, ${edgeX + bow} ${toY}, ${edgeX} ${toY}`;
+}
 //#endregion
 //#region src/cell-attachment.ts
 /** Shared screen-space anchor for a cell's index tag and connection endpoint. */
@@ -1359,6 +1415,56 @@ function paintWire(record) {
 		if (svg) svg.style.display = "none";
 		return;
 	}
+	const targetRow = target?.object && target.index === void 0 ? objectLabelRow(target.object) : null;
+	if (targetRow && targetRow !== hovered.row) {
+		const container = document.getElementById("labels-container");
+		if (!container) return;
+		({svg, path, dot} = ensureWireSvg(record, container));
+		const rect = container.getBoundingClientRect(), from = hovered.row.getBoundingClientRect(), to = targetRow.getBoundingClientRect();
+		const fromBox = hovered.row.closest(".annotation-badge").getBoundingClientRect(), toBox = targetRow.closest(".annotation-badge").getBoundingClientRect();
+		const fromY = (from.top + from.bottom) / 2 - rect.top, toY = (to.top + to.bottom) / 2 - rect.top;
+		let d, end;
+		if (hovered.row.closest(".annotation-badge") === targetRow.closest(".annotation-badge")) {
+			const edge = fromBox.right - rect.left;
+			d = rowBracketWire(edge, fromY, toY, 1);
+			end = {
+				x: edge,
+				y: toY
+			};
+		} else {
+			const rightward = (toBox.left + toBox.right) / 2 > (fromBox.left + fromBox.right) / 2;
+			const start = {
+				x: (rightward ? fromBox.right : fromBox.left) - rect.left,
+				y: fromY
+			};
+			end = {
+				x: (rightward ? toBox.left : toBox.right) - rect.left,
+				y: toY
+			};
+			const obstacles = [fromBox, toBox].map((b) => ({
+				left: b.left - rect.left,
+				top: b.top - rect.top,
+				right: b.right - rect.left,
+				bottom: b.bottom - rect.top,
+				padding: 0
+			}));
+			d = routedLabelWire(start, end, {
+				x: rightward ? 1 : -1,
+				y: 0
+			}, {
+				x: rightward ? -1 : 1,
+				y: 0
+			}, obstacles);
+		}
+		svg.style.display = "";
+		if (d !== record.previous) {
+			path.setAttribute("d", d);
+			dot.setAttribute("cx", String(end.x));
+			dot.setAttribute("cy", String(end.y));
+			record.previous = d;
+		}
+		return;
+	}
 	const cell = target?.object && target.index !== void 0 ? objectCellAnchor(target.object, target.index) : null;
 	const world = target?.index !== void 0 ? cell ? new THREE.Vector3(...dataToWorld(cell.position)) : null : target?.position ? new THREE.Vector3(...dataToWorld(target.position)) : target?.object ? objectWorldAnchor(target.object) : null;
 	if (!world) {
@@ -1372,36 +1478,9 @@ function paintWire(record) {
 	}
 	const container = document.getElementById("labels-container");
 	if (!container) return;
-	if (!svg?.isConnected) {
-		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		svg.classList.add("label-hover-wire");
-		svg.setAttribute("aria-hidden", "true");
-		Object.assign(svg.style, {
-			position: "absolute",
-			inset: "0",
-			width: "100%",
-			height: "100%",
-			overflow: "visible",
-			pointerEvents: "none",
-			zIndex: "2147483647"
-		});
-		path = document.createElementNS(svg.namespaceURI, "path");
-		path.setAttribute("fill", "none");
-		path.setAttribute("stroke", "#a6d5ec");
-		path.setAttribute("stroke-opacity", ".65");
-		path.setAttribute("stroke-width", "1.5");
-		path.setAttribute("stroke-linecap", "round");
-		dot = document.createElementNS(svg.namespaceURI, "circle");
-		dot.setAttribute("r", "2");
-		dot.setAttribute("fill", "#bce8ff");
-		svg.append(path, dot);
-		container.append(svg);
-		previous = "";
-		routeKey = "";
-		record.svg = svg;
-		record.path = path;
-		record.dot = dot;
-	}
+	({svg, path, dot} = ensureWireSvg(record, container));
+	previous = record.previous;
+	routeKey = record.routeKey;
 	const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect(), row = hovered.row.getBoundingClientRect();
 	const screen = (p) => ({
 		x: viewport.left - rect.left + (p.x * .5 + .5) * viewport.width,
@@ -1494,6 +1573,159 @@ function paintWire(record) {
 		dot.setAttribute("cx", String(end.x));
 		dot.setAttribute("cy", String(end.y));
 		record.previous = d;
+	}
+}
+/** The record's SVG wire, created on first use and after the container was rebuilt. */
+function ensureWireSvg(record, container) {
+	if (!record.svg?.isConnected) {
+		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		svg.classList.add("label-hover-wire");
+		svg.setAttribute("aria-hidden", "true");
+		Object.assign(svg.style, {
+			position: "absolute",
+			inset: "0",
+			width: "100%",
+			height: "100%",
+			overflow: "visible",
+			pointerEvents: "none",
+			zIndex: "2147483647"
+		});
+		const path = document.createElementNS(svg.namespaceURI, "path");
+		path.setAttribute("fill", "none");
+		path.setAttribute("stroke", "#a6d5ec");
+		path.setAttribute("stroke-opacity", ".65");
+		path.setAttribute("stroke-width", "1.5");
+		path.setAttribute("stroke-linecap", "round");
+		const dot = document.createElementNS(svg.namespaceURI, "circle");
+		dot.setAttribute("r", "2");
+		dot.setAttribute("fill", "#bce8ff");
+		svg.append(path, dot);
+		container.append(svg);
+		record.svg = svg;
+		record.path = path;
+		record.dot = dot;
+		record.previous = "";
+		record.routeKey = "";
+	}
+	return {
+		svg: record.svg,
+		path: record.path,
+		dot: record.dot
+	};
+}
+//#endregion
+//#region src/label-tooltip.ts
+var tip = null;
+var owner = null;
+var shown = "";
+function element() {
+	if (!tip?.isConnected) {
+		tip = document.createElement("div");
+		tip.className = "graph-panel-tooltip label-row-tooltip";
+		tip.setAttribute("role", "tooltip");
+		document.body.append(tip);
+		shown = "";
+	}
+	return tip;
+}
+function render$1(tex) {
+	if (tex === shown) return;
+	const el = element();
+	const katex = window.katex;
+	if (katex) katex.render(tex, el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else el.textContent = tex;
+	shown = tex;
+}
+function hide() {
+	owner = null;
+	tip?.classList.remove("visible");
+}
+/** Show `label`'s tooltip while the pointer is over this row. Rows are rebuilt as values change; each new row is wired again. */
+function wireRowTooltip(row, label) {
+	if (label.annotation?.tooltip === void 0) return;
+	row.addEventListener("pointerenter", () => {
+		owner = label;
+		render$1(label.annotation?.tooltip ?? "");
+		element().classList.toggle("visible", !!label.annotation?.tooltip);
+	});
+	row.addEventListener("pointermove", (event) => {
+		const el = element();
+		const overButton = event.target?.closest("button");
+		el.classList.toggle("visible", owner === label && !overButton && !!label.annotation?.tooltip);
+		el.style.left = `${event.clientX + 12}px`;
+		el.style.top = `${row.getBoundingClientRect().bottom + 6}px`;
+	});
+	row.addEventListener("pointerleave", () => {
+		if (owner === label) hide();
+	});
+}
+/** Called with the label layout each frame: follow value changes while open, and close when the row goes away. */
+function refreshLabelTooltip() {
+	if (callouts.size) placeCallouts();
+	if (!owner) return;
+	const tex = owner.annotation?.tooltip;
+	if (tex === void 0 || !owner.el.isConnected || owner.forceHidden || owner.visible === false) {
+		hide();
+		return;
+	}
+	render$1(tex);
+	tip?.classList.toggle("visible", !!tex);
+}
+var CALLOUT_MS = 2500;
+var callouts = /* @__PURE__ */ new Map();
+function calloutRender(c, tex) {
+	if (c.tex === tex) return;
+	const katex = window.katex;
+	if (katex) katex.render(tex, c.el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else c.el.textContent = tex;
+	c.tex = tex;
+}
+/** Show `label`'s formula beside its row for a few seconds, restarting the timer on each recalculation. */
+function announceLabelChange(label) {
+	let c = callouts.get(label);
+	if (!c || !c.el.isConnected) {
+		const el = document.createElement("div");
+		el.className = "graph-panel-tooltip label-row-tooltip label-change-callout";
+		el.setAttribute("role", "status");
+		document.body.append(el);
+		c = {
+			el,
+			until: 0,
+			tex: ""
+		};
+		callouts.set(label, c);
+	}
+	calloutRender(c, label.annotation?.tooltip ?? "");
+	c.until = performance.now() + CALLOUT_MS;
+}
+/** Each frame: keep callouts beside their rows (boxes move with the camera and drags), and retire expired ones. */
+function placeCallouts() {
+	const now = performance.now();
+	for (const [label, c] of callouts) {
+		const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+		const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row?.offsetParent;
+		if (gone || now > c.until || owner === label) {
+			c.el.classList.remove("visible");
+			if (gone || now > c.until + 400) {
+				c.el.remove();
+				callouts.delete(label);
+			}
+			continue;
+		}
+		calloutRender(c, label.annotation?.tooltip ?? c.tex);
+		const box = row.closest(".annotation-badge").getBoundingClientRect(), r = row.getBoundingClientRect();
+		const width = c.el.offsetWidth, roomRight = window.innerWidth - box.right - 8 >= width;
+		c.el.style.left = `${roomRight ? box.right + 8 : Math.max(8, box.left - 8 - width)}px`;
+		c.el.style.top = `${(r.top + r.bottom) / 2 - c.el.offsetHeight / 2}px`;
+		c.el.classList.add("visible");
 	}
 }
 //#endregion
@@ -2252,13 +2484,15 @@ function updateLabels() {
 	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
 		const o = ordered[i];
-		const zi = ordered.length - i + (o.annotationCoordinateMode === "screen" ? ordered.length : 0);
+		const band = o.annotationCoordinateMode === "screen" ? 3 : o.annotation?.kind === "label" ? 2 : o.annotation ? 1 : 0;
+		const zi = ordered.length - i + band * ordered.length;
 		if (o._zi !== zi) {
 			o.el.style.zIndex = String(zi);
 			o._zi = zi;
 		}
 	}
 	updateLabelWire();
+	refreshLabelTooltip();
 }
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
 * Intrinsic measurement nodes keep collision geometry independent of merged content. */
@@ -2294,7 +2528,8 @@ function groupAnnotations(scale) {
 		b.width,
 		b.height,
 		b.text,
-		b.index
+		b.index,
+		!!labels[i].annotation.highlighted
 	]));
 	if (key === annotationLayoutKey) return;
 	annotationLayoutKey = key;
@@ -2309,19 +2544,40 @@ function groupAnnotations(scale) {
 		const members = group.map((i) => boxes[i]);
 		if (a.kind === "label") leader.annotationAnchor = annotationGroupAnchor(members);
 		const rows = annotationRows(members);
-		const signature = JSON.stringify([rows, group.map((i) => [labels[i].seq, labels[i].annotationCoordinateMode ?? "world"])]);
+		const signature = JSON.stringify([rows, group.map((i) => [
+			labels[i].seq,
+			labels[i].annotationCoordinateMode ?? "world",
+			!!labels[i].annotation.highlighted
+		])]);
 		if (signature !== a.rendered) {
 			a.badge.replaceChildren(...rows.map((text, rowIndex) => {
 				const row = document.createElement("span");
 				row.className = "annotation-row";
 				row.textContent = text;
 				if (a.kind === "label") {
+					if (labels[group[rowIndex]].annotation.highlighted) row.classList.add("annotation-row-highlight");
 					wireRowHover(row, labels[group[rowIndex]]);
+					wireRowTooltip(row, labels[group[rowIndex]]);
+					const member = labels[group[rowIndex]];
+					const ask = makeAiAskButton("ai-ask-btn annotation-ask-btn", "Ask AI about this value", () => {
+						const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+						const sliders = Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value]));
+						return labelAskMessage({
+							text: member.annotation.text,
+							tooltip: member.annotation.tooltip,
+							prompt: member.annotation.prompt,
+							scene: scene?.title,
+							step: state.currentStepIndex,
+							sliders
+						});
+					});
+					ask.addEventListener("pointerdown", (event) => event.stopPropagation());
+					row.append(ask);
 					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
 						row.classList.add("annotation-row-draggable");
-						if (!labels[group[rowIndex]].wireTarget) row.title = "Drag to move this label";
+						if (!labels[group[rowIndex]].wireTarget && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label";
 						row.addEventListener("pointerdown", drag);
 					}
 				}
@@ -2360,6 +2616,12 @@ function groupAnnotations(scale) {
 		}
 		for (const i of group.slice(1)) labels[i].annotationHidden = true;
 	}
+	const markerGroups = annotationGroups(boxes).filter((g) => boxes[g[0]].kind === "marker" && labels[g[0]].cellAttachment);
+	const lifts = markerLifts(markerGroups.map((g) => boxes[g[0]]));
+	markerGroups.forEach((g, k) => {
+		const el = labels[g[0]].el, stem = `${lifts[k]}px`;
+		if (el.style.getPropertyValue("--marker-stem") !== stem) el.style.setProperty("--marker-stem", stem);
+	});
 }
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
 function placeExpressionLabel(label, x, y, clientX, clientY) {
@@ -10810,6 +11072,8 @@ function renderStepMarker(el, _view, owner) {
 		...el.textExpr ? [el.textExpr] : [],
 		...el.visibleExpr ? [el.visibleExpr] : [],
 		...el.indexExpr ? [el.indexExpr] : [],
+		...!marker && el.highlightExpr ? [el.highlightExpr] : [],
+		...!marker && el.tooltipExpr ? [el.tooltipExpr] : [],
 		...targetPosition,
 		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
 	];
@@ -10817,6 +11081,8 @@ function renderStepMarker(el, _view, owner) {
 	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
 	const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
 	const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
+	const highlightFn = !marker && el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const tooltipFn = !marker && el.tooltipExpr ? compileExpr(el.tooltipExpr) : null;
 	const animState = owner?.animState ?? { stopped: false };
 	const label = addLabel3D("", [
 		0,
@@ -10835,10 +11101,13 @@ function renderStepMarker(el, _view, owner) {
 	cursor.append(badge);
 	if (owner) cursor.classList.add("array-marker-cursor");
 	if (marker) {
+		const stem = document.createElement("span");
+		stem.className = "step-marker-stem";
+		stem.setAttribute("aria-hidden", "true");
 		const pointer = document.createElement("span");
 		pointer.className = "step-marker-pointer";
 		pointer.setAttribute("aria-hidden", "true");
-		cursor.append(pointer);
+		cursor.append(stem, pointer);
 	}
 	label.el.replaceChildren(cursor, measure);
 	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#172e50")));
@@ -10853,7 +11122,9 @@ function renderStepMarker(el, _view, owner) {
 		rendered: ""
 	};
 	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
+	if (!marker) label.annotation.prompt = el.prompt ?? null;
 	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
+	if (!marker && el.connectTo?.pinned) label.wirePinned = true;
 	const entry = {
 		animState,
 		exprStrings: sources,
@@ -10896,7 +11167,15 @@ function renderStepMarker(el, _view, owner) {
 						value
 					};
 				}
+				const previous = annotation.text;
 				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
+				if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn, 0);
+				if (tooltipFn) try {
+					annotation.tooltip = String(evalExpr(tooltipFn, 0));
+				} catch {
+					annotation.tooltip = "";
+				}
+				if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
 				if (measure.textContent !== annotation.text) {
 					measure.textContent = annotation.text;
 					annotation.scale = null;
@@ -16062,6 +16341,33 @@ function axisLabelList(axis, hasLabelExpr) {
 function staticTickLabel(list, k) {
 	return list[k] ?? "";
 }
+/**
+* The bars an interval set draws. `n` is clamped to 0..max (a non-finite count
+* draws nothing); a bar whose start, end or lane is not finite is dropped
+* rather than drawn at 0; and a reversed span is normalised so start <= end.
+*/
+function intervalBars(n, max, read) {
+	const count = Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : 0;
+	const bars = [];
+	for (let i = 0; i < count; i++) {
+		const b = read(i, count);
+		if (!Number.isFinite(b.s) || !Number.isFinite(b.e) || !Number.isFinite(b.lane)) continue;
+		bars.push({
+			...b,
+			s: Math.min(b.s, b.e),
+			e: Math.max(b.s, b.e)
+		});
+	}
+	return bars;
+}
+/** Most bars one interval set draws; a counted set reserves this many once. */
+var MAX_INTERVALS = 256;
+/** The gold an array cell uses for a highlighted slot, so a bar reads as "selected" the same way. */
+var HIGHLIGHT = [
+	241 / 255,
+	204 / 255,
+	89 / 255
+];
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 var MAX_TICKS = 50;
 var PLANE_AXES = {
@@ -16205,6 +16511,44 @@ function renderChart(el, view) {
 			bands.splice(k, 1);
 		}
 	}
+	const numList = (v) => Array.isArray(v) ? v.map(Number) : null;
+	const srcOf = (v) => typeof v === "string" ? v.trim() || null : null;
+	const intervalSets = [];
+	(Array.isArray(chart.intervals) ? chart.intervals : []).forEach((sp, k) => {
+		const starts = numList(sp.start), ends = numList(sp.end);
+		const set = {
+			color: parseColor(sp.color || el.color || "#74d0c2"),
+			opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .85,
+			thickness: Number(sp.thickness) > 0 ? Number(sp.thickness) : .6,
+			label: typeof sp.label === "string" && sp.label.trim() ? sp.label.trim() : null,
+			starts,
+			ends,
+			lanes: numList(sp.lane),
+			lane: Number.isFinite(Number(sp.lane)) ? Number(sp.lane) : 0,
+			countSrc: srcOf(sp.countExpr),
+			startSrc: srcOf(sp.startExpr),
+			endSrc: srcOf(sp.endExpr),
+			laneSrc: srcOf(sp.laneExpr),
+			hlSrc: srcOf(sp.highlightExpr),
+			labelSrc: srcOf(sp.labelExpr),
+			countFn: compileOpt(sp.countExpr, `intervals[${k}].countExpr`),
+			startFn: compileOpt(sp.startExpr, `intervals[${k}].startExpr`),
+			endFn: compileOpt(sp.endExpr, `intervals[${k}].endExpr`),
+			laneFn: compileOpt(sp.laneExpr, `intervals[${k}].laneExpr`),
+			hlFn: compileOpt(sp.highlightExpr, `intervals[${k}].highlightExpr`),
+			labelFn: compileOpt(sp.labelExpr, `intervals[${k}].labelExpr`),
+			max: srcOf(sp.countExpr) ? MAX_INTERVALS : Math.min(MAX_INTERVALS, Math.min(starts?.length ?? 0, ends?.length ?? 0)),
+			bars: [],
+			mesh: null,
+			attr: null,
+			colors: null
+		};
+		if (!set.countSrc && !set.max) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: intervals[${k}] needs start/end arrays or a countExpr; skipped.`);
+			return;
+		}
+		intervalSets.push(set);
+	});
 	const axes = Array.isArray(chart.axes) ? chart.axes : [];
 	const xAxis = axes[0], yAxis = axes[1];
 	const xTitle = xAxis && xAxis.title ? String(xAxis.title) : null;
@@ -16255,7 +16599,49 @@ function renderChart(el, view) {
 	/** Plot-local v for a value read on right axis `a`. The mapping is affine,
 	*  so the two endpoints fix it and the interior interpolates. */
 	const toPlaneYOn = (y, a) => rightAxisPlace(y, a.dom, H);
-	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || rightAxes.length > 0;
+	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || intervalSets.some((v) => v.countSrc || v.startSrc || v.endSrc || v.laneSrc || v.hlSrc || v.labelSrc) || rightAxes.length > 0;
+	/** Evaluate one interval set's bars through the pure `intervalBars`. */
+	function sampleIntervals(v, tSec) {
+		let n = v.max;
+		if (v.countFn) try {
+			n = Number(evalExpr(v.countFn.fn, tSec, {}));
+		} catch (_e) {
+			n = 0;
+		}
+		else if (v.countSrc) n = 0;
+		const scope = {
+			i: 0,
+			n: 0
+		};
+		const run = (fn) => fn ? evalExpr(fn.fn, tSec, { overrideScope: scope }) : void 0;
+		v.bars = intervalBars(n, v.max, (i, count) => {
+			scope.i = i;
+			scope.n = count;
+			const num = (fn, lit) => {
+				if (!fn) return lit ?? NaN;
+				try {
+					return Number(run(fn));
+				} catch (_e) {
+					return NaN;
+				}
+			};
+			let hl = false, text = "";
+			if (v.hlFn) try {
+				hl = !!run(v.hlFn);
+			} catch (_e) {}
+			if (v.labelFn) try {
+				const out = run(v.labelFn);
+				text = out === null || out === void 0 ? "" : String(out);
+			} catch (_e) {}
+			return {
+				s: num(v.startFn, v.starts?.[i]),
+				e: num(v.endFn, v.ends?.[i]),
+				lane: num(v.laneFn, v.lanes ? v.lanes[i] : v.lane),
+				hl,
+				text
+			};
+		});
+	}
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -16306,9 +16692,14 @@ function renderChart(el, view) {
 				if (Number.isFinite(v)) b.hi = v;
 			} catch (_e) {}
 		}
+		for (const v of intervalSets) sampleIntervals(v, tSec);
 		if (!xFixed) {
 			const xs = [];
 			for (const s of series) for (const x of s.px) xs.push(x);
+			for (const v of intervalSets) for (const b of v.bars) {
+				xs.push(b.s);
+				xs.push(b.e);
+			}
 			xDom = autoDomain(xs, 0);
 		}
 		if (!yFixed) {
@@ -16318,6 +16709,10 @@ function renderChart(el, view) {
 			for (const b of bands) {
 				ys.push(b.lo);
 				ys.push(b.hi);
+			}
+			for (const v of intervalSets) for (const b of v.bars) {
+				ys.push(b.lane - v.thickness / 2);
+				ys.push(b.lane + v.thickness / 2);
 			}
 			yDom = autoDomain(ys);
 		}
@@ -16489,6 +16884,43 @@ function renderChart(el, view) {
 		}
 		attr.needsUpdate = true;
 	};
+	/** Write every bar of a set as two triangles, clipped to the plot; unused slots collapse to nothing. */
+	function placeIntervals(v) {
+		if (!v.attr || !v.colors) return;
+		const a = v.attr.array, c = v.colors.array;
+		a.fill(0);
+		const order = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		];
+		v.bars.forEach((b, k) => {
+			const [h0] = toPlane(b.s, 0), [h1] = toPlane(b.e, 0);
+			const [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+			const clip = (x, hi) => Math.max(0, Math.min(hi, x));
+			const P = [
+				at(clip(h0, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v1, H), lift * 1.5),
+				at(clip(h0, W), clip(v1, H), lift * 1.5)
+			].map(dataToWorld);
+			const rgb = b.hl ? HIGHLIGHT : v.color;
+			for (let j = 0; j < 6; j++) {
+				const p = P[order[j]], o = (k * 6 + j) * 3;
+				a[o] = p[0];
+				a[o + 1] = p[1];
+				a[o + 2] = p[2];
+				c[o] = rgb[0];
+				c[o + 1] = rgb[1];
+				c[o + 2] = rgb[2];
+			}
+		});
+		v.attr.needsUpdate = true;
+		v.colors.needsUpdate = true;
+	}
 	/** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
 	const placeBand = (b) => {
 		if (!b.attr) return;
@@ -16504,6 +16936,34 @@ function renderChart(el, view) {
 		b.mesh = q.mesh;
 		b.attr = q.attr;
 		placeBand(b);
+	}
+	const barOrder = intervalSets.length ? el.renderOrder !== void 0 ? serial + 2 : chartState._planeMeshSerial++ : serial + 2;
+	for (const v of intervalSets) {
+		const pos = new Float32Array(v.max * 18), col = new Float32Array(v.max * 18);
+		const attr = new THREE.BufferAttribute(pos, 3), colors = new THREE.BufferAttribute(col, 3);
+		attr.setUsage(THREE.DynamicDrawUsage);
+		colors.setUsage(THREE.DynamicDrawUsage);
+		const geom = new THREE.BufferGeometry();
+		geom.setAttribute("position", attr);
+		geom.setAttribute("color", colors);
+		const mat = new THREE.MeshBasicMaterial({
+			vertexColors: true,
+			transparent: true,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			opacity: ignoresPlaneOpacity ? v.opacity : chartState.displayParams.planeOpacity * v.opacity
+		});
+		const mesh = new THREE.Mesh(geom, mat);
+		mesh.frustumCulled = false;
+		mesh.userData.targetOpacity = v.opacity;
+		mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+		mesh.renderOrder = barOrder;
+		chartState.three.scene.add(mesh);
+		chartState.planeMeshes.push(mesh);
+		v.mesh = mesh;
+		v.attr = attr;
+		v.colors = colors;
+		placeIntervals(v);
 	}
 	const mL = yTitle ? 1.6 : 1.1;
 	const mB = xTitle ? 1.1 : .7;
@@ -16595,6 +17055,7 @@ function renderChart(el, view) {
 				labels: t.ticks.map((v) => tickText(a.labelFn, v, t.step, tSec))
 			};
 		});
+		const barLabelKey = intervalSets.filter((v) => v.labelSrc).map((v) => v.bars.map((b) => `${b.text}\u0001${b.s}\u0001${b.e}\u0001${b.lane}`).join("")).join("");
 		const key = JSON.stringify([
 			xDom,
 			yDom,
@@ -16602,7 +17063,8 @@ function renderChart(el, view) {
 			yLabels,
 			rightAxes.map((a) => a.dom),
 			rightTicks.map((t) => t && t.labels),
-			pointLabelKey
+			pointLabelKey,
+			barLabelKey
 		]);
 		if (key === paperKey) return;
 		paperKey = key;
@@ -16859,7 +17321,28 @@ function renderChart(el, view) {
 				});
 			});
 		}
-		const legendRows = series.filter((sr) => sr.label);
+		for (const v of intervalSets) for (const b of v.bars) {
+			if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
+			const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
+			const [, top] = toPlane(0, b.lane + v.thickness / 2);
+			if (top > H) continue;
+			const fontPx = Math.min(pxPer * .3, fitLatexPx(b.text, Math.max(pxPer * .6, (h1 - h0) * pxPer * 1.4), pxPer * .6));
+			drawLatex(ctx, b.text, X((h0 + h1) / 2), Y(top) - pxPer * .04, {
+				fontPx,
+				color: css(inkRgb),
+				align: "center",
+				vAlign: "bottom"
+			});
+		}
+		const legendRows = [...series.filter((sr) => sr.label).map((sr) => ({
+			label: sr.label,
+			color: sr.color,
+			swatch: sr.kind
+		})), ...intervalSets.filter((v) => v.label).map((v) => ({
+			label: v.label,
+			color: v.color,
+			swatch: "bar"
+		}))];
 		if (legendRows.length) {
 			const titleRef = xTitle || yTitle;
 			const fontPx = titleRef ? fitLatexPx(titleRef, (xTitle ? W : H) * pxPer, pxPer * .5) : pxPer * .4;
@@ -16873,11 +17356,12 @@ function renderChart(el, view) {
 				const sx = bx + pad;
 				ctx.fillStyle = css(sr.color);
 				ctx.strokeStyle = css(sr.color);
-				if (sr.kind === "points") {
+				if (sr.swatch === "points") {
 					ctx.beginPath();
 					ctx.arc(sx + swatchW / 2, cy, fontPx * .2, 0, Math.PI * 2);
 					ctx.fill();
-				} else {
+				} else if (sr.swatch === "bar") ctx.fillRect(sx, cy - fontPx * .22, swatchW, fontPx * .44);
+				else {
 					ctx.lineWidth = Math.max(1.5, fontPx * .12);
 					ctx.beginPath();
 					ctx.moveTo(sx, cy);
@@ -16911,6 +17395,7 @@ function renderChart(el, view) {
 			}
 		}
 		for (const b of bands) placeBand(b);
+		for (const v of intervalSets) placeIntervals(v);
 	}
 	const animState = { stopped: false };
 	const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === "string" ? seriesSpecs[0].label : void 0);
@@ -16927,6 +17412,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.src),
 		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
+		...intervalSets.flatMap((v) => [
+			v.countSrc,
+			v.startSrc,
+			v.endSrc,
+			v.laneSrc,
+			v.hlSrc,
+			v.labelSrc
+		]),
 		...rightAxes.flatMap((a) => [a.src, a.labelSrc]),
 		xLabelSrc,
 		yLabelSrc
@@ -16940,6 +17433,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.fn?.fn),
 		...bands.flatMap((b) => [b.loFn?.fn, b.hiFn?.fn]),
+		...intervalSets.flatMap((v) => [
+			v.countFn?.fn,
+			v.startFn?.fn,
+			v.endFn?.fn,
+			v.laneFn?.fn,
+			v.hlFn?.fn,
+			v.labelFn?.fn
+		]),
 		...rightAxes.flatMap((a) => [a.fn?.fn, a.labelFn?.fn]),
 		xLabelFn?.fn,
 		yLabelFn?.fn
@@ -16965,6 +17466,14 @@ function renderChart(el, view) {
 			bands.forEach((b, k) => {
 				if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
 				if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
+			});
+			intervalSets.forEach((v, k) => {
+				v.countFn = compileOpt(v.countSrc, `intervals[${k}].countExpr`);
+				v.startFn = compileOpt(v.startSrc, `intervals[${k}].startExpr`);
+				v.endFn = compileOpt(v.endSrc, `intervals[${k}].endExpr`);
+				v.laneFn = compileOpt(v.laneSrc, `intervals[${k}].laneExpr`);
+				v.hlFn = compileOpt(v.hlSrc, `intervals[${k}].highlightExpr`);
+				v.labelFn = compileOpt(v.labelSrc, `intervals[${k}].labelExpr`);
 			});
 			if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
 			if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
@@ -21845,7 +22354,8 @@ function setupCodePanel() {
 	actions.hidden = true;
 	const selectionLabel = document.createElement("span");
 	let lesson, files = [], selected;
-	let first = 0, last = 0, excerpt = "", active = null;
+	let first = 0, last = 0, excerpt = "", active = null, followed;
+	const compiled = /* @__PURE__ */ new Map();
 	const targets = document.createElement("div");
 	targets.className = "code-step-targets";
 	targets.hidden = true;
@@ -21932,13 +22442,38 @@ function setupCodePanel() {
 			targets.append(button);
 		}
 	});
-	function refreshBinding() {
+	function evaluate(expr) {
+		if (!compiled.has(expr)) try {
+			compiled.set(expr, compileExpr(expr));
+		} catch {
+			compiled.set(expr, null);
+		}
+		const fn = compiled.get(expr);
+		if (!fn) throw new Error("Invalid code expression.");
+		return evalExpr(fn, 0);
+	}
+	/**
+	* A scene's codeRef names the file and line executing now: the panel follows that file when it changes
+	* (or on scene entry) and marks the line only there. Scenes without one use the open file's activeLineExpr.
+	*/
+	function refreshBinding(entering = false) {
 		let lines = /* @__PURE__ */ new Set();
-		if (active) try {
+		const ref = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.codeRef;
+		if (ref) {
+			const target = resolveCodeRef(files, ref, evaluate);
+			if (target && (entering || target.file !== followed) && target.file !== selected) {
+				followed = target.file;
+				open(target.file);
+				return;
+			}
+			followed = target?.file;
+			if (target && target.file === selected) lines = /* @__PURE__ */ new Set([target.line]);
+		} else if (active) try {
 			lines = activeCodeLines(evalExpr(active, 0));
 		} catch {}
+		const bound = !!ref || !!active;
 		const signature = [...lines].join(", ");
-		execution.textContent = active ? signature ? "Active lines: " + signature : "No active lines at this position" : "";
+		execution.textContent = bound ? signature ? "Active lines: " + signature : "No active lines at this position" : "";
 		let firstActive;
 		body.querySelectorAll(".code-line").forEach((row) => {
 			const current = lines.has(Number(row.dataset.line));
@@ -22033,14 +22568,15 @@ function setupCodePanel() {
 			tree.replaceChildren();
 			body.replaceChildren();
 			actions.hidden = targets.hidden = true;
-			selected = void 0;
+			selected = followed = void 0;
 			active = null;
+			compiled.clear();
 			setCodeFocus(null);
 			build(fileTree(files), tree);
 			if (files[0]) open(files[0]);
 			else title.textContent = "This lesson has no code files.";
 		}
-		refreshBinding();
+		refreshBinding(true);
 		renderLineActions();
 	}
 	window.addEventListener("algebench:opencode", (event) => {
@@ -22060,7 +22596,7 @@ function setupCodePanel() {
 		}
 	});
 	window.addEventListener("algebench:navchange", refresh);
-	window.addEventListener("algebench:sliderchange", refreshBinding);
+	window.addEventListener("algebench:sliderchange", () => refreshBinding());
 	refresh();
 }
 //#endregion

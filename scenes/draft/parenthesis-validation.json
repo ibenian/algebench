@@ -6,7 +6,6 @@
       "path": "algorithms/validate.py",
       "language": "python",
       "source": "def validate(text):\n    closers = {')': '(', ']': '[', '}': '{'}\n    stack = []\n    for i, ch in enumerate(text):\n        if ch in '([{':\n            stack.append(i)\n        elif ch in closers:\n            if not stack:\n                return False\n            top = stack[-1]\n            if text[top] != closers[ch]:\n                return False\n            stack.pop()\n    return not stack",
-      "activeLineExpr": "dataTable('trace', frame, 'line')",
       "locations": [
         {
           "line": 3,
@@ -1457,7 +1456,6 @@
       "path": "algorithms/repair.py",
       "language": "python",
       "source": "def repair(text):\n    chars = list(text)\n    pairs = {'(': ')', '[': ']', '{': '}'}\n    openers = {')': '(', ']': '[', '}': '{'}\n    stack = []\n    i = 0\n    while i < len(chars):\n        ch = chars[i]\n        if ch in pairs:\n            stack.append(i)\n        elif ch in openers:\n            if not stack:\n                chars.insert(i, openers[ch])\n                i += 1\n            else:\n                top = stack[-1]\n                expected = pairs[chars[top]]\n                if ch != expected:\n                    chars[i] = expected\n                stack.pop()\n        i += 1\n    while stack:\n        chars.append(pairs[chars[stack.pop()]])\n    return ''.join(chars)",
-      "activeLineExpr": "dataTable('trace', frame, 'line')",
       "locations": [
         {
           "line": 6,
@@ -2937,6 +2935,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -3698,6 +3700,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -4175,6 +4181,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -4665,6 +4675,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -5032,6 +5046,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -5356,6 +5374,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -6236,6 +6258,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -6498,6 +6524,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -7494,6 +7524,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -7992,6 +8026,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "validator",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -8897,6 +8935,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "repair",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -9583,6 +9625,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "repair",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -10107,6 +10153,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "repair",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     },
     {
@@ -11036,6 +11086,10 @@
       "stepPlayback": {
         "slider": "frame",
         "intervalMs": 1200
+      },
+      "codeRef": {
+        "file": "repair",
+        "lineExpr": "dataTable('trace', frame, 'line')"
       }
     }
   ]

@@ -104,3 +104,13 @@ export function projectedCellEdge(start:Point,centre:Point,corners:Point[],gap=4
     }
     return Number.isFinite(nearest)?{x:centre.x+ray.x*(nearest+gap/length),y:centre.y+ray.y*(nearest+gap/length)}:centre;
 }
+
+/**
+ * A link between two rows of the same label box: a bracket that leaves one row
+ * sideways, bows out past the box edge and returns to the other row. Its bow
+ * grows with the distance between the rows so adjacent rows stay tight.
+ */
+export function rowBracketWire(edgeX:number,fromY:number,toY:number,side:1|-1):string {
+    const bow=side*(10+Math.min(28,Math.abs(toY-fromY)*0.3));
+    return `M ${edgeX} ${fromY} C ${edgeX+bow} ${fromY}, ${edgeX+bow} ${toY}, ${edgeX} ${toY}`;
+}
