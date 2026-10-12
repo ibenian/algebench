@@ -207,3 +207,13 @@ test('schedule slots naming a transaction the scenario lacks are skipped, and th
     // Hot counter really has T3.
     assert.equal(last('hot-counter', 'none', { order: [3, 3, 3] }).scheduleNote, '');
 });
+
+test('a schedule with every slot cleared runs round-robin, not the scenario default', () => {
+    const ran = rows => [...rows.slice(1, 7).map(r => r.opref)];
+    // Round-robin from T1: T1, T2, T1, T2, … — not the scenario's default T1 T2 T1 T1 T2 T2.
+    assert.deepEqual(ran(api.dbTrace('lost-update', 'none', Array(12).fill(0), 0)), ['T1:0', 'T2:0', 'T1:1', 'T2:1', 'T1:2', 'T2:2']);
+    assert.deepEqual(ran(api.dbTrace('lost-update', 'none', 0, 0)), ['T1:0', 'T2:0', 'T1:1', 'T1:2', 'T2:1', 'T2:2']);
+    assert.equal(api.dbOrderText(0, Array(12).fill(0)), '');
+    // No schedule at all still means the scenario's own.
+    assert.equal(api.dbOrderText(0, 0), 'T1 T2 T1 T1 T2 T2');
+});

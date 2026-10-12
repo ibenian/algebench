@@ -11,7 +11,7 @@ import type { AnimExprEntry } from '/sliders.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 import { pipeFlowPath, pipeFlowPhase } from '/objects/system-dag-flow.js';
-import { resolveSystemDAG, pipeArrowDimensions } from '/objects/system-dag-layout.js';
+import { resolveSystemDAG, pipeArrowDimensions, pipeLabelAnchor } from '/objects/system-dag-layout.js';
 import { codeFocus, focusMatches } from '/code-focus.js';
 import { resolveCodeRef } from '/code-panel-model.js';
 import type { LessonFormat } from '/types/lesson.js';
@@ -194,7 +194,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         }
         if(spec.direction!=='none'&&spec.direction!=='backward')head(path.at(-1)!,path.at(-2)!);
         if(spec.direction==='backward'||spec.direction==='both')head(path[0]!,path[1]!);
-        if(spec.label){const middle=path[Math.floor(path.length/2)]!;text(spec.label,[middle[0],middle[1]+.28,middle[2]+.06],Math.min(5,Math.max(1,spec.label.length*.28)),.42,'#becdd8');}
+        if(spec.label){const w=Math.min(5,Math.max(1,spec.label.length*.28)),at=pipeLabelAnchor(path,w,.42);text(spec.label,[at[0],at[1],at[2]+.06],w,.42,'#becdd8');}
         if(spec.activeExpr)expressions.push(spec.activeExpr);
         const coreMeshes=root.children.slice(wireStart).filter(child=>child instanceof THREE.Mesh&&child.material===material);
         registerCompositePart(objectId+'::connection:'+spec.id,wire.owner?blockId(wire.owner):objectId,_view,coreMeshes,[],spec.label??(layout.nodes.get(spec.from.block)!.spec.label+' → '+layout.nodes.get(spec.to.block)!.spec.label),

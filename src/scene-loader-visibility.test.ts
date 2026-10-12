@@ -40,7 +40,7 @@ function frames(ms: number, stepMs = 16): void {
     }
 }
 
-const { hideElementById, showElementById, removalsStillInForce, refreshVisibleExprs } = await import('/scene-loader.js');
+const { hideElementById, showElementById, removalsStillInForce, refreshVisibleExprs, SELF_VISIBLE_TYPES } = await import('/scene-loader.js');
 const { compileExpr } = await import('/expr.js');
 const { state } = await import('/state.js');
 
@@ -207,4 +207,12 @@ test('visibleExpr never re-shows an element that a step removed or the legend hi
     refreshVisibleExprs();
     assert.equal(reg.hidden, true, 'stays hidden');
     assert.equal(m.visible, false);
+});
+
+test('types that evaluate visibleExpr in their own renderer are left to it', () => {
+    // A text label hidden by its own visibleExpr, then removed by the next step, must stay removed:
+    // a second, generic evaluator would have marked it hidden and resurrected it on navigation.
+    for (const type of ['text', 'step_marker', 'expression_label', 'animated_point', 'animated_vector'])
+        assert.ok(SELF_VISIBLE_TYPES.has(type), type);
+    assert.ok(!SELF_VISIBLE_TYPES.has('system_dag'));
 });

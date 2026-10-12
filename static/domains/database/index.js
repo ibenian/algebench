@@ -946,9 +946,12 @@
         if (order && typeof order.toArray === 'function') order = order.toArray();
         return Array.isArray(order) ? order.flat(3).map(Number).filter(n => Number.isFinite(n)).map(n => Math.round(n)) : [];
     }
+    /** The schedule to run. No schedule at all means the scenario's own; a given schedule is taken as
+     *  is, so one with every slot 0 (= skip) runs everything round-robin rather than the default. */
     function orderOf(sc, order) {
-        const list = rawSlots(order).filter(n => n >= 1 && n <= sc.tx.length).slice(0, ORDER_SLOTS * 2);
-        return list.length ? list : sc.order.slice();
+        const raw = rawSlots(order);
+        if (!raw.length) return sc.order.slice();
+        return raw.filter(n => n >= 1 && n <= sc.tx.length).slice(0, ORDER_SLOTS * 2);
     }
     /** Schedule slots naming a transaction this scenario does not have: [{ slot (1-based), tx }]. */
     function missingSlots(sc, order) {

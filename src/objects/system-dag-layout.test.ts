@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSystemDAG, pipeArrowDimensions } from './system-dag-layout.js';
+import { resolveSystemDAG, pipeArrowDimensions, pipeLabelAnchor } from './system-dag-layout.js';
 import type { SystemBlock, SystemConnection } from '/types/lesson.js';
 const block=(id:string,position:SystemBlock['position']=[0,0,0],extras:Partial<SystemBlock>={}):SystemBlock=>({id,label:id,size:[4,2,.16],position,...extras});
 const wire=(from:string,to:string,extras:Partial<SystemConnection>={}):SystemConnection=>({id:`${from}-${to}`,from:{block:from},to:{block:to},...extras});
@@ -43,4 +43,16 @@ test('platform containment stacks local children above each supporting surface',
  const plain=resolveSystemDAG([block('base',undefined,{size:[8,6,.12],blocks:[block('leaf',[0,0,.02])]})]);
  assert.equal(plain.nodes.get('leaf')!.position[2],.02);
  assert.throws(()=>resolveSystemDAG([block('base',undefined,{childElevation:-1,blocks:[block('leaf')]})]),/elevation/);
+});
+
+test('a connection label sits halfway along the pipe, beside it, never at the arrowhead', () => {
+    // Straight vertical pipe (0,4)->(0,0): the old middle-vertex rule put the label at (0,0), under the arrow.
+    const vertical = pipeLabelAnchor([[0, 4, 0], [0, 0, 0]], 1, 0.42, 0.12);
+    assert.deepEqual(vertical, [0.62, 2, 0], 'halfway, stepped right by half the label width plus the gap');
+    // Horizontal pipe: above it by half the label height plus the gap.
+    const horizontal = pipeLabelAnchor([[0, 0, 0], [6, 0, 0]], 1, 0.42, 0.12);
+    assert.ok(Math.abs(horizontal[0] - 3) < 1e-9 && Math.abs(horizontal[1] - 0.33) < 1e-9);
+    // An L-shaped route: total length 4 + 2, halfway (3) lands on the first, vertical segment.
+    const bent = pipeLabelAnchor([[0, 4, 0], [0, 0, 0], [2, 0, 0]], 1, 0.42, 0.12);
+    assert.deepEqual(bent, [0.62, 1, 0]);
 });

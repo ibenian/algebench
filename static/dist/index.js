@@ -9870,6 +9870,47 @@ function simplifyPipe(points) {
 	return result;
 }
 /** Arrowheads stay proportional to pipe radius, including short terminal segments. */
+/**
+* Where a connection's label goes: halfway along the pipe's length (not its middle vertex -- on a
+* straight two-point pipe that is the end, under the arrowhead), moved to the side of the segment it
+* lands on so the pipe does not cover it: above a horizontal segment, right of a vertical one. The
+* label is centred on the anchor, so the side step clears half its `width` (or `height`) plus `gap`.
+*/
+function pipeLabelAnchor(points, width = 1, height = .42, gap = .12) {
+	if (!points.length) return [
+		0,
+		0,
+		0
+	];
+	const lengths = points.slice(1).map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1], p[2] - points[i][2]));
+	let rest = lengths.reduce((a, b) => a + b, 0) / 2;
+	for (let i = 0; i < lengths.length; i++) {
+		const a = points[i], b = points[i + 1], len = lengths[i];
+		if (rest > len && i < lengths.length - 1) {
+			rest -= len;
+			continue;
+		}
+		const t = len > 0 ? rest / len : 0, mid = [
+			a[0] + (b[0] - a[0]) * t,
+			a[1] + (b[1] - a[1]) * t,
+			a[2] + (b[2] - a[2]) * t
+		];
+		return Math.abs(b[1] - a[1]) > Math.abs(b[0] - a[0]) ? [
+			mid[0] + width / 2 + gap,
+			mid[1],
+			mid[2]
+		] : [
+			mid[0],
+			mid[1] + height / 2 + gap,
+			mid[2]
+		];
+	}
+	return [
+		points[0][0],
+		points[0][1] + height / 2 + gap,
+		points[0][2]
+	];
+}
 function pipeArrowDimensions(radius, segmentLength) {
 	const length = Math.min(radius * 7, segmentLength * .75);
 	return {
@@ -10526,12 +10567,12 @@ function renderSystemDAG(el, _view) {
 		if (spec.direction !== "none" && spec.direction !== "backward") head(path.at(-1), path.at(-2));
 		if (spec.direction === "backward" || spec.direction === "both") head(path[0], path[1]);
 		if (spec.label) {
-			const middle = path[Math.floor(path.length / 2)];
+			const w = Math.min(5, Math.max(1, spec.label.length * .28)), at = pipeLabelAnchor(path, w, .42);
 			text(spec.label, [
-				middle[0],
-				middle[1] + .28,
-				middle[2] + .06
-			], Math.min(5, Math.max(1, spec.label.length * .28)), .42, "#becdd8");
+				at[0],
+				at[1],
+				at[2] + .06
+			], w, .42, "#becdd8");
 		}
 		if (spec.activeExpr) expressions.push(spec.activeExpr);
 		const coreMeshes = root.children.slice(wireStart).filter((child) => child instanceof THREE.Mesh && child.material === material);
@@ -20817,7 +20858,13 @@ function hideElementById(id) {
 		entry.node.set("visible", false);
 	} catch (e) {}
 }
-var SELF_VISIBLE_TYPES = /* @__PURE__ */ new Set(["animated_point", "animated_vector"]);
+var SELF_VISIBLE_TYPES = /* @__PURE__ */ new Set([
+	"text",
+	"step_marker",
+	"expression_label",
+	"animated_point",
+	"animated_vector"
+]);
 /** Give any other element with an id a `visibleExpr`: it is hidden and shown whole (meshes, labels and
 *  everything it rendered inside itself) through hideElementById / showElementById, re-checked on slider
 *  changes and navigation. It only re-shows what it hid itself, so a step's `remove` or a legend toggle

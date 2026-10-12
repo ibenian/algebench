@@ -27,6 +27,26 @@ export function simplifyPipe(points:Vec3[]):Vec3[] {
     return result;
 }
 /** Arrowheads stay proportional to pipe radius, including short terminal segments. */
+/**
+ * Where a connection's label goes: halfway along the pipe's length (not its middle vertex -- on a
+ * straight two-point pipe that is the end, under the arrowhead), moved to the side of the segment it
+ * lands on so the pipe does not cover it: above a horizontal segment, right of a vertical one. The
+ * label is centred on the anchor, so the side step clears half its `width` (or `height`) plus `gap`.
+ */
+export function pipeLabelAnchor(points:readonly Vec3[],width=1,height=.42,gap=.12):Vec3 {
+    if(!points.length)return [0,0,0];
+    const lengths=points.slice(1).map((p,i)=>Math.hypot(p[0]-points[i]![0],p[1]-points[i]![1],p[2]-points[i]![2]));
+    let rest=lengths.reduce((a,b)=>a+b,0)/2;
+    for(let i=0;i<lengths.length;i++) {
+        const a=points[i]!,b=points[i+1]!,len=lengths[i]!;
+        if(rest>len&&i<lengths.length-1){rest-=len;continue;}
+        const t=len>0?rest/len:0,mid:Vec3=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+        const vertical=Math.abs(b[1]-a[1])>Math.abs(b[0]-a[0]);
+        return vertical?[mid[0]+width/2+gap,mid[1],mid[2]]:[mid[0],mid[1]+height/2+gap,mid[2]];
+    }
+    return [points[0]![0],points[0]![1]+height/2+gap,points[0]![2]];
+}
+
 export function pipeArrowDimensions(radius:number,segmentLength:number){
     const length=Math.min(radius*7,segmentLength*.75);
     return {length,radius:Math.min(radius*3,length*.44)};

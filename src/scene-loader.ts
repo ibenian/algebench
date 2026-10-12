@@ -452,8 +452,10 @@ export function hideElementById(id: string): void {
 }
 
 // ----- Generic visibleExpr -----
-// Element types that evaluate visibleExpr themselves, every frame.
-const SELF_VISIBLE_TYPES = new Set(['animated_point', 'animated_vector']);
+// Element types whose renderers evaluate visibleExpr themselves (text.ts, step-marker.ts -- which also
+// renders expression_label -- and the animated point/vector). A second evaluator would mark their registry
+// entry hidden, so a later step's `remove` skips them and a navigation refresh brings them back.
+export const SELF_VISIBLE_TYPES: ReadonlySet<string> = new Set(['text', 'step_marker', 'expression_label', 'animated_point', 'animated_vector']);
 
 /** Give any other element with an id a `visibleExpr`: it is hidden and shown whole (meshes, labels and
  *  everything it rendered inside itself) through hideElementById / showElementById, re-checked on slider
