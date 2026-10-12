@@ -1337,9 +1337,20 @@ function cellEdgeAnchor(corners, edge, gap = 0) {
 //#endregion
 //#region src/label-wire.ts
 /** Hover wires are presentation only. Target expressions are evaluated by bindings. */
+var newPart = () => ({
+	svg: null,
+	path: null,
+	dot: null,
+	previous: "",
+	routeKey: "",
+	routePath: ""
+});
+/** Every target of a label: the full list when one was given, else the single target. */
+var targetsOf = (label) => label.wireTargets ?? (label.wireTarget ? [label.wireTarget] : []);
+var reachable = (t) => t.object ? objectTargetExists(t.object, t.index) : !!t.position;
 var wires = /* @__PURE__ */ new Map();
 function wireRowHover(row, label) {
-	if (!label.wireTarget) return;
+	if (!targetsOf(label).length) return;
 	let record = wires.get(label);
 	if (record) {
 		record.row = row;
@@ -1349,12 +1360,7 @@ function wireRowHover(row, label) {
 			label,
 			row,
 			hovered: false,
-			svg: null,
-			path: null,
-			dot: null,
-			previous: "",
-			routeKey: "",
-			routePath: ""
+			parts: []
 		};
 		wires.set(label, record);
 	}
@@ -1386,7 +1392,7 @@ function wireRowHover(row, label) {
 function updateLabelWire() {
 	for (const [label, wire] of wires) {
 		if (!label.el.isConnected) {
-			wire.svg?.remove();
+			wire.parts.forEach((p) => p.svg?.remove());
 			wires.delete(label);
 			continue;
 		}
@@ -1394,19 +1400,26 @@ function updateLabelWire() {
 	}
 }
 function paintWire(record) {
-	const hovered = record;
-	let { svg, path, dot, previous, routeKey, routePath } = record;
-	const camera = state.camera, canvas = state.renderer?.domElement;
-	const target = record.label.wireTarget;
-	const available = !!target && (target.object ? objectTargetExists(target.object, target.index) : !!target.position);
+	const targets = targetsOf(record.label);
+	const available = targets.some(reachable);
 	if (record.available !== available) {
 		record.available = available;
 		if (record.button) record.button.style.display = available ? "" : "none";
 	}
-	if (!available) {
-		if (svg) svg.style.display = "none";
-		return;
-	}
+	while (record.parts.length < targets.length) record.parts.push(newPart());
+	record.parts.forEach((part, i) => {
+		const target = targets[i];
+		if (!target || !reachable(target)) {
+			if (part.svg) part.svg.style.display = "none";
+			return;
+		}
+		paintTarget(record, part, target);
+	});
+}
+function paintTarget(record, part, target) {
+	const hovered = record;
+	let { svg, path, dot, previous, routeKey, routePath } = part;
+	const camera = state.camera, canvas = state.renderer?.domElement;
 	if (!record.hovered && !record.label.wirePinned || !hovered.row.isConnected || hovered.label.forceHidden || hovered.label.visible === false || hovered.label.el.style.display === "none" || !camera || !canvas) {
 		if (svg) svg.style.display = "none";
 		return;
@@ -1419,7 +1432,7 @@ function paintWire(record) {
 	if (targetRow && targetRow !== hovered.row) {
 		const container = document.getElementById("labels-container");
 		if (!container) return;
-		({svg, path, dot} = ensureWireSvg(record, container));
+		({svg, path, dot} = ensureWireSvg(part, container));
 		const rect = container.getBoundingClientRect(), from = hovered.row.getBoundingClientRect(), to = targetRow.getBoundingClientRect();
 		const fromBox = hovered.row.closest(".annotation-badge").getBoundingClientRect(), toBox = targetRow.closest(".annotation-badge").getBoundingClientRect();
 		const fromY = (from.top + from.bottom) / 2 - rect.top, toY = (to.top + to.bottom) / 2 - rect.top;
@@ -1457,11 +1470,11 @@ function paintWire(record) {
 			}, obstacles);
 		}
 		svg.style.display = "";
-		if (d !== record.previous) {
+		if (d !== part.previous) {
 			path.setAttribute("d", d);
 			dot.setAttribute("cx", String(end.x));
 			dot.setAttribute("cy", String(end.y));
-			record.previous = d;
+			part.previous = d;
 		}
 		return;
 	}
@@ -1478,9 +1491,9 @@ function paintWire(record) {
 	}
 	const container = document.getElementById("labels-container");
 	if (!container) return;
-	({svg, path, dot} = ensureWireSvg(record, container));
-	previous = record.previous;
-	routeKey = record.routeKey;
+	({svg, path, dot} = ensureWireSvg(part, container));
+	previous = part.previous;
+	routeKey = part.routeKey;
 	const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect(), row = hovered.row.getBoundingClientRect();
 	const screen = (p) => ({
 		x: viewport.left - rect.left + (p.x * .5 + .5) * viewport.width,
@@ -1563,8 +1576,8 @@ function paintWire(record) {
 	if (key !== routeKey) {
 		routeKey = key;
 		routePath = routedLabelWire(start, end, departure, approach, obstacles);
-		record.routeKey = routeKey;
-		record.routePath = routePath;
+		part.routeKey = routeKey;
+		part.routePath = routePath;
 	}
 	const d = routePath;
 	svg.style.display = "";
@@ -1572,10 +1585,10 @@ function paintWire(record) {
 		path.setAttribute("d", d);
 		dot.setAttribute("cx", String(end.x));
 		dot.setAttribute("cy", String(end.y));
-		record.previous = d;
+		part.previous = d;
 	}
 }
-/** The record's SVG wire, created on first use and after the container was rebuilt. */
+/** A part's SVG wire, created on first use and after the container was rebuilt. */
 function ensureWireSvg(record, container) {
 	if (!record.svg?.isConnected) {
 		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -2529,7 +2542,8 @@ function groupAnnotations(scale) {
 		b.height,
 		b.text,
 		b.index,
-		!!labels[i].annotation.highlighted
+		!!labels[i].annotation.highlighted,
+		labels[i].annotation.code?.line ?? 0
 	]));
 	if (key === annotationLayoutKey) return;
 	annotationLayoutKey = key;
@@ -2547,7 +2561,8 @@ function groupAnnotations(scale) {
 		const signature = JSON.stringify([rows, group.map((i) => [
 			labels[i].seq,
 			labels[i].annotationCoordinateMode ?? "world",
-			!!labels[i].annotation.highlighted
+			!!labels[i].annotation.highlighted,
+			labels[i].annotation.code?.line ?? 0
 		])]);
 		if (signature !== a.rendered) {
 			a.badge.replaceChildren(...rows.map((text, rowIndex) => {
@@ -2572,12 +2587,31 @@ function groupAnnotations(scale) {
 						});
 					});
 					ask.addEventListener("pointerdown", (event) => event.stopPropagation());
+					const code = member.annotation.code;
+					if (code) {
+						const open = document.createElement("button");
+						open.type = "button";
+						open.className = "ai-ask-btn annotation-code-btn";
+						open.textContent = "</>";
+						open.title = `Open ${code.path}:${code.line}`;
+						open.setAttribute("aria-label", open.title);
+						open.addEventListener("pointerdown", (event) => event.stopPropagation());
+						open.addEventListener("click", (event) => {
+							event.stopPropagation();
+							const now = member.annotation.code;
+							if (now) window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
+								fileId: now.fileId,
+								line: now.line
+							} }));
+						});
+						row.append(open);
+					}
 					row.append(ask);
 					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
 						row.classList.add("annotation-row-draggable");
-						if (!labels[group[rowIndex]].wireTarget && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label";
+						if (!labels[group[rowIndex]].wireTarget && !labels[group[rowIndex]].wireTargets?.length && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label";
 						row.addEventListener("pointerdown", drag);
 					}
 				}
@@ -11059,9 +11093,18 @@ function labelDragHandler(label, animState) {
 /** State-bound annotations. Projection/grouping belongs to the common label layer. */
 function renderStepMarker(el, _view, owner) {
 	const marker = el.type === "step_marker";
-	const targetPosition = !marker && el.connectTo && "positionExpr" in el.connectTo ? el.connectTo.positionExpr : [];
-	const targetFns = targetPosition.length ? targetPosition.map((source) => compileExpr(source)) : null;
-	const targetIndex = !marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
+	const codeRef = !marker ? el.codeRef : void 0;
+	const codeFns = /* @__PURE__ */ new Map();
+	const connections = marker || !el.connectTo ? [] : Array.isArray(el.connectTo) ? el.connectTo : [el.connectTo];
+	const wires = connections.map((c) => "positionExpr" in c ? {
+		kind: "position",
+		fns: c.positionExpr.map((source) => compileExpr(source))
+	} : {
+		kind: "object",
+		object: c.object,
+		index: c.indexExpr ? compileExpr(c.indexExpr) : null
+	});
+	const targetSources = connections.flatMap((c) => "positionExpr" in c ? c.positionExpr : c.indexExpr ? [c.indexExpr] : []);
 	const position = owner ? [] : el.positionExpr ?? (el.position ?? [
 		0,
 		0,
@@ -11074,8 +11117,9 @@ function renderStepMarker(el, _view, owner) {
 		...el.indexExpr ? [el.indexExpr] : [],
 		...!marker && el.highlightExpr ? [el.highlightExpr] : [],
 		...!marker && el.tooltipExpr ? [el.tooltipExpr] : [],
-		...targetPosition,
-		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
+		...codeRef?.lineExpr ? [codeRef.lineExpr] : [],
+		...codeRef?.fileExpr ? [codeRef.fileExpr] : [],
+		...targetSources
 	];
 	const positionFns = position.map((source) => compileExpr(source));
 	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
@@ -11123,18 +11167,27 @@ function renderStepMarker(el, _view, owner) {
 	};
 	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
 	if (!marker) label.annotation.prompt = el.prompt ?? null;
-	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
-	if (!marker && el.connectTo?.pinned) label.wirePinned = true;
+	if (wires.length) {
+		label.wireTargets = wires.map((w) => w.kind === "object" ? { object: w.object } : {});
+		label.wireTarget = label.wireTargets[0];
+	}
+	if (connections.some((c) => c.pinned)) label.wirePinned = true;
 	const entry = {
 		animState,
 		exprStrings: sources,
 		_rebuildFn: () => {
 			if (animState.stopped) return;
 			try {
-				if (targetIndex) label.wireTarget.index = Number(evalExpr(targetIndex, 0));
-				if (targetFns) {
-					const target = targetFns.map((fn) => Number(evalExpr(fn, 0)));
-					label.wireTarget = target.every(Number.isFinite) ? { position: target } : {};
+				if (wires.length) {
+					label.wireTargets = wires.map((w) => {
+						if (w.kind === "object") return w.index ? {
+							object: w.object,
+							index: Number(evalExpr(w.index, 0))
+						} : { object: w.object };
+						const target = w.fns.map((fn) => Number(evalExpr(fn, 0)));
+						return target.every(Number.isFinite) ? { position: target } : {};
+					});
+					label.wireTarget = label.wireTargets[0];
 				}
 				const indexValue = indexFn ? Number(evalExpr(indexFn, 0)) : null;
 				const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map((fn) => Number(evalExpr(fn, 0)));
@@ -11174,6 +11227,17 @@ function renderStepMarker(el, _view, owner) {
 					annotation.tooltip = String(evalExpr(tooltipFn, 0));
 				} catch {
 					annotation.tooltip = "";
+				}
+				if (codeRef) {
+					const target = resolveCodeRef(state.lessonSpec?.codeFiles ?? [], codeRef, (expr) => {
+						if (!codeFns.has(expr)) codeFns.set(expr, compileExpr(expr));
+						return evalExpr(codeFns.get(expr), 0);
+					});
+					annotation.code = target ? {
+						fileId: target.file.id,
+						path: target.file.path,
+						line: target.line
+					} : null;
 				}
 				if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
 				if (measure.textContent !== annotation.text) {
@@ -17025,6 +17089,48 @@ function renderChart(el, view) {
 		paper.mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 		writeQuad(paper.attr, -mL, W + mR, -mB, H + mT, 0);
 	}
+	let ink = null;
+	if (ctx && intervalSets.some((v) => v.labelSrc)) {
+		const inkCanvas = document.createElement("canvas");
+		inkCanvas.width = canvas.width;
+		inkCanvas.height = canvas.height;
+		const inkCtx = inkCanvas.getContext("2d");
+		if (inkCtx) {
+			const inkTex = new THREE.CanvasTexture(inkCanvas);
+			inkTex.minFilter = THREE.LinearFilter;
+			inkTex.magFilter = THREE.LinearFilter;
+			inkTex.generateMipmaps = false;
+			const sheet = makeQuad([
+				1,
+				1,
+				1
+			], 1, el.renderOrder !== void 0 ? serial + 3 : chartState._planeMeshSerial++, false);
+			const sheetMat = sheet.mesh.material;
+			sheetMat.map = inkTex;
+			sheetMat.color.set(16777215);
+			sheetMat.alphaTest = .02;
+			sheetMat.addEventListener("dispose", () => inkTex.dispose());
+			sheet.mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array([
+				0,
+				0,
+				1,
+				0,
+				1,
+				1,
+				0,
+				0,
+				1,
+				1,
+				0,
+				1
+			]), 2));
+			writeQuad(sheet.attr, -mL, W + mR, -mB, H + mT, lift * 2.5);
+			ink = {
+				ctx: inkCtx,
+				tex: inkTex
+			};
+		}
+	}
 	/** Tick label text: the axis's labelExpr with `value` bound, else the value to the step's decimals. */
 	const tickText = (fn, v, step, tSec) => {
 		if (fn) try {
@@ -17321,18 +17427,24 @@ function renderChart(el, view) {
 				});
 			});
 		}
-		for (const v of intervalSets) for (const b of v.bars) {
-			if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
-			const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
-			const [, top] = toPlane(0, b.lane + v.thickness / 2);
-			if (top > H) continue;
-			const fontPx = Math.min(pxPer * .3, fitLatexPx(b.text, Math.max(pxPer * .6, (h1 - h0) * pxPer * 1.4), pxPer * .6));
-			drawLatex(ctx, b.text, X((h0 + h1) / 2), Y(top) - pxPer * .04, {
-				fontPx,
-				color: css(inkRgb),
-				align: "center",
-				vAlign: "bottom"
-			});
+		if (ink) {
+			ink.ctx.clearRect(0, 0, cw, ch);
+			for (const v of intervalSets) for (const b of v.bars) {
+				if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
+				const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
+				const [, mid] = toPlane(0, b.lane), [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+				if (mid < 0 || mid > H) continue;
+				const widthPx = (h1 - h0) * pxPer, heightPx = (v1 - v0) * pxPer;
+				const fontPx = Math.min(pxPer * .3, heightPx * .72, fitLatexPx(b.text, widthPx * .9, pxPer * .3));
+				if (fontPx < 6) continue;
+				drawLatex(ink.ctx, b.text, X((h0 + h1) / 2), Y(mid), {
+					fontPx,
+					color: "#1b1606",
+					align: "center",
+					vAlign: "middle"
+				});
+			}
+			ink.tex.needsUpdate = true;
 		}
 		const legendRows = [...series.filter((sr) => sr.label).map((sr) => ({
 			label: sr.label,

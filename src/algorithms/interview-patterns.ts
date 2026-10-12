@@ -7,8 +7,16 @@ export type Frame = Record<string, Value> & { line: number; message: string; sta
 /** Records full copies of `vars` (arrays sliced) with the active one-based source line. */
 function recorder<V extends Record<string, Value>>(vars: V) {
     const trace: (V & Frame)[] = [];
+    // ln_<var>: the line where <var> was last assigned, read off its tip changing. Labels link to it.
+    const tipText: Record<string, Value> = {}, tipLine: Record<string, number> = {};
     const emit = (line: number, message: string, status: Frame['status'] = 'Running') => {
         const copy = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, Array.isArray(v) ? v.slice() : v]));
+        for (const [k, v] of Object.entries(vars)) {
+            if (!k.startsWith('tip_')) continue;
+            if (v && v !== tipText[k]) tipLine[k] = line;
+            tipText[k] = v;
+            copy[`ln_${k.slice(4)}`] = v ? tipLine[k] ?? 0 : 0;
+        }
         trace.push({ ...copy, line, message, status, running: status === 'Running' ? 1 : 0 } as V & Frame);
     };
     return { trace, emit };
@@ -277,21 +285,45 @@ export const MERGE_INTERVALS_SOURCE = `def merge(intervals):
             merged.append([start, end])
     return merged`;
 const showInterval = ([s, e]: [number, number]) => `[${s},${e}]`;
+/**
+ * A drawing lane per interval, fixed for that interval whatever order the array is in:
+ * greedy over start order, so intervals sharing a lane never overlap.
+ */
+export function intervalLanes(input: [number, number][]): number[] {
+    const order = input.map((_, i) => i).sort((a, b) => input[a]![0] - input[b]![0] || a - b);
+    const laneEnds: number[] = [], lanes = input.map(() => 0);
+    for (const i of order) {
+        const [start, end] = input[i]!;
+        let lane = laneEnds.findIndex(e => e < start);
+        if (lane < 0) { lane = laneEnds.length; laneEnds.push(end); } else laneEnds[lane] = end;
+        lanes[i] = lane;
+    }
+    return lanes;
+}
 export function mergeIntervalsTrace(input: [number, number][]) {
-    const v = { k: -1, starts: input.map(iv => iv[0]), ends: input.map(iv => iv[1]), mStarts: [] as number[], mEnds: [] as number[], m: 0, tip_m: String.raw`\text{len}(${tt('merged')}) = 0` };
+    const laneOf = intervalLanes(input);
+    const v = { k: -1, starts: input.map(iv => iv[0]), ends: input.map(iv => iv[1]), lanes: laneOf.slice(), mStarts: [] as number[], mEnds: [] as number[], m: 0,
+        // Line 5's check, kept until the next interval: cmp = 1 overlap, 0 no overlap, -1 merged empty, -2 not checked yet.
+        // cmpStart/cmpEnd are the values compared, read before merged[-1] is extended.
+        cmp: -2, cmpStart: 0, cmpEnd: 0, cmpIdx: -1, tip_cmp: '', tip_m: String.raw`\text{len}(${tt('merged')}) = 0` };
     const { trace, emit } = recorder(v);
     const sync = (merged: [number, number][]) => { v.mStarts = merged.map(iv => iv[0]); v.mEnds = merged.map(iv => iv[1]); v.m = merged.length; };
     emit(1, 'The input intervals, in the order given. Each column is one interval.');
-    const sorted = input.slice().sort((a, b) => a[0] - b[0]);
-    v.starts = sorted.map(iv => iv[0]); v.ends = sorted.map(iv => iv[1]);
+    // Each interval keeps its lane through the sort: the lanes are permuted with it.
+    const order = input.map((_, i) => i).sort((a, b) => input[a]![0] - input[b]![0]);
+    const sorted = order.map(i => input[i]!);
+    v.starts = sorted.map(iv => iv[0]); v.ends = sorted.map(iv => iv[1]); v.lanes = order.map(i => laneOf[i]!);
     emit(2, 'Sort by start. Now any interval that overlaps the current group must come right after it.');
     const merged: [number, number][] = [];
     emit(3, 'merged starts empty.');
     sorted.forEach(([start, end], k) => {
-        v.k = k;
+        v.k = k; v.cmp = -2; v.tip_cmp = '';
         emit(4, `Next interval: [${start},${end}].`);
         const last = merged.at(-1);
         const overlaps = !!last && start <= last[1];
+        v.cmp = !last ? -1 : overlaps ? 1 : 0; v.cmpStart = start; v.cmpEnd = last?.[1] ?? 0; v.cmpIdx = merged.length - 1;
+        v.tip_cmp = !last ? String.raw`${tt('merged')} = \lbrack\rbrack \;\Rightarrow\; \text{append}`
+            : String.raw`${tt('start')} \le ${tt('merged')}\lbrack -1\rbrack\lbrack 1\rbrack \;\Rightarrow\; ${start} ${overlaps ? '\\le' : '>'} ${last[1]} \;\Rightarrow\; \text{${overlaps ? 'extend' : 'append'}}`;
         emit(5, last ? `Does it start at or before the last merged end, ${last[1]}? ${overlaps ? 'Yes.' : 'No.'}` : 'merged is empty, so there is nothing to overlap.');
         if (overlaps) {
             const before = last![1];
@@ -304,7 +336,7 @@ export function mergeIntervalsTrace(input: [number, number][]) {
             emit(8, `No overlap: start a new group, [${start},${end}].`);
         }
     });
-    v.k = -1;
+    v.k = -1; v.cmp = -2; v.tip_cmp = '';
     emit(9, `${merged.length} disjoint intervals. Sorting costs O(n log n); the sweep is O(n).`, 'Done');
     return trace;
 }

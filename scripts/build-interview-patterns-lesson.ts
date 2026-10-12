@@ -92,16 +92,33 @@ const TIPS: Record<string, Record<string, string>> = {
     'fast-slow': { slow: 'tip_slow', fast: 'tip_fast' },
     'monotonic-stack': { t: 'tip_t', j: 'tip_j' },
     'rotated-search': { lo: 'tip_lo', mid: 'tip_mid', hi: 'tip_hi', half: 'tip_half', compare: 'tip_cmp' },
-    'merge-intervals': { m: 'tip_m' },
+    'merge-intervals': { m: 'tip_m', compare: 'tip_cmp' },
     'dynamic-programming': { skip: 'tip_skip', take: 'tip_take' },
     'greedy': { reach: 'tip_reach' },
     'bit-manipulation': { x: 'tip_x', result: 'tip_result' },
     'string-matching': { k: 'tip_k' },
     'union-find': { a: 'tip_edge', b: 'tip_edge', count: 'tip_count' },
 };
+/** Fixed source lines for labels the code never assigns in the body: parameters and loop variables. */
+const LINES: Record<string, Record<string, number>> = {
+    'prefix-sum': { x: 3 },
+    'two-pointers': { target: 1 },
+    'sliding-window': { k: 1 },
+    'rotated-search': { target: 1 },
+    'merge-intervals': { k: 4 },
+    'monotonic-stack': { i: 4 },
+    'monotonic-queue': { i: 5, k: 3 },
+    'greedy': { i: 3 },
+};
+/**
+ * A label's tooltip reads its tip_<var> column, and its codeRef links to ln_<var>: the line that last
+ * assigned the value (recorded with the run), so the </> button opens the code that produced what is shown.
+ */
 const withTip = (sceneId: string) => (el: Json): Json => {
-    const column = el.type === 'expression_label' ? TIPS[sceneId]?.[el.id as string] : undefined;
-    return column ? { ...el, tooltipExpr: tr(column) } : el;
+    if (el.type !== 'expression_label') return el;
+    const column = TIPS[sceneId]?.[el.id as string], line = LINES[sceneId]?.[el.id as string];
+    if (column) return { ...el, tooltipExpr: tr(column), codeRef: { file: sceneId, lineExpr: tr(`ln_${column.slice(4)}`) } };
+    return line ? { ...el, codeRef: { file: sceneId, line } } : el;
 };
 
 interface PatternScene {
@@ -122,10 +139,10 @@ function pattern(p: PatternScene) {
         camera: { position: [x, 0, 16], target: [x, 0, 0] },
         data: { input: [p.input], trace: p.trace }, markdown: withProblem(p.id, p.markdown), prompt: p.prompt, elements: [grid],
         steps: [{
-            id: 'run', title: 'Run the algorithm', description: 'Follow the highlighted code line with the execution player.',
+            // The caption narrates the current step, as in the database lab; description is the fallback.
+            id: 'run', title: 'Run the algorithm', description: 'Follow the highlighted code line with the execution player.', descriptionExpr: tr('message'),
             sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: p.trace.length - 1, step: 1, default: 0 }],
             add: p.elements.flatMap(withTitle).map(withTip(p.id)),
-            info: [{ id: 'current-action', title: 'Current action', content: `{{${tr('message')}}}`, position: 'top-center' }],
         }],
         stepPlayback: { slider: 'frame', intervalMs: 1200 },
         codeRef: { file: p.id, lineExpr: tr('line') },
@@ -398,16 +415,18 @@ ${MD_TAIL}
 const ivs = IN.intervals.input;
 /** Gantt view of the same state: input spans on two staggered lanes, the merged result growing on lane 0. */
 const intervalChart = {
-    id: 'timeline', type: 'chart', origin: [-5, -4.5, 0], size: [11, 2.2], xDomain: [0, 24], yDomain: [-0.6, 3.6],
-    axes: [{ ticks: 5 }, { labels: [] }],
+    id: 'timeline', type: 'chart', origin: [-5, -4.5, 0], size: [11, 2.2], xDomain: [0, 24], yDomain: [-0.5, 2.5],
+    // Lanes are named on the chart's own y axis (ticks fall on 0, 1, 2), so names line up with their bars.
+    axes: [{ ticks: 5 }, { ticks: 4, labels: ['merged', 'input', 'input'] }],
     intervals: [
         {
-            label: 'input', color: '#74d0c2', countExpr: `arrayCount(${tr('starts')})`,
-            startExpr: `arrayAt(${tr('starts')}, i)`, endExpr: `arrayAt(${tr('ends')}, i)`, laneExpr: '2 + mod(i, 2)',
+            color: '#74d0c2', countExpr: `arrayCount(${tr('starts')})`,
+            startExpr: `arrayAt(${tr('starts')}, i)`, endExpr: `arrayAt(${tr('ends')}, i)`, laneExpr: `1 + arrayAt(${tr('lanes')}, i)`,
             highlightExpr: `i == ${tr('k')}`,
+            labelExpr: `concat(arrayAt(${tr('starts')}, i), '–', arrayAt(${tr('ends')}, i))`,
         },
         {
-            label: 'merged', color: '#b69bea', countExpr: tr('m'),
+            color: '#b69bea', countExpr: tr('m'),
             startExpr: `arrayAt(${tr('mStarts')}, i)`, endExpr: `arrayAt(${tr('mEnds')}, i)`, lane: 0,
             highlightExpr: `i == ${tr('m')} - 1 and (${tr('line')} == 6 or ${tr('line')} == 5)`,
             labelExpr: `concat(arrayAt(${tr('mStarts')}, i), '–', arrayAt(${tr('mEnds')}, i))`,
@@ -435,12 +454,21 @@ ${MD_TAIL}
             from: tr('starts'), showIndices: false, highlightExpr: `idx == ${tr('k')}`, markers: [marker('k', tr('k'))],
         }),
         array('ends', 'end', [-4, 2.15, 0], { from: tr('ends'), highlightExpr: `idx == ${tr('k')}` }),
-        array('merged-starts', 'merged start', [-4, 0.05, 0], { from: tr('mStarts'), color: '#b69bea', showIndices: false, markers: [marker('merged[-1]', `${tr('m')} - 1`, PINK)] }),
+        array('merged-starts', 'merged start', [-4, 0.05, 0], { from: tr('mStarts'), color: '#b69bea', showIndices: false,
+            // The group lines 5-6 compare with and extend: merged[-1], start and end together.
+            highlightExpr: `idx == ${tr('m')} - 1 and (${tr('line')} == 6 or ${tr('line')} == 5)` }),
         array('merged-ends', 'merged end', [-4, -0.8, 0], {
             from: tr('mEnds'), showIndices: true, color: '#b69bea', highlightExpr: `idx == ${tr('m')} - 1 and (${tr('line')} == 6 or ${tr('line')} == 5)`,
         }),
         label('k', unset('k'), [5, 0.6, 0], ['starts', tr('k')]),
         label('m', `concat('len(merged) = ', ${tr('m')})`, [5, 0.6, 0], ['merged-ends', `${tr('m')} - 1`]),
+        // Line 5's overlap check, glowing when the interval extends the last group, and wired to both
+        // values it compares: start[k] and the end of the group that was last when it ran.
+        { ...label('compare', `${tr('cmp')} == -2 ? 'compare: —' : (${tr('cmp')} == -1 ? 'merged is empty: append' : (${tr('cmp')} == 1 ? concat(${tr('cmpStart')}, ' ≤ ', ${tr('cmpEnd')}, ': overlap, extend') : concat(${tr('cmpStart')}, ' > ', ${tr('cmpEnd')}, ': no overlap, append')))`, [5, 0.6, 0], undefined, `${tr('cmp')} == 1`),
+          connectTo: [
+            { object: 'starts', indexExpr: `${tr('cmp')} >= -1 ? ${tr('k')} : -1`, pinned: true },
+            { object: 'merged-ends', indexExpr: `${tr('cmp')} >= 0 ? ${tr('cmpIdx')} : -1`, pinned: true },
+          ] },
     ],
 });
 

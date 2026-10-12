@@ -382,6 +382,8 @@ export interface Label3D {
         tooltip?: string;
         /** The element's author `prompt`, passed to the row's Ask-AI question. */
         prompt?: string | null;
+        /** The source line behind the value (resolved codeRef); its row offers a </> button. */
+        code?: {fileId: string; path: string; line: number} | null;
         startDrag?: (event:PointerEvent, members?:Label3D[])=>void;
     };
     annotationHidden?: boolean;
@@ -394,6 +396,8 @@ export interface Label3D {
     annotationDocked?: boolean;
     annotationCoordinateMode?: 'world' | 'screen';
     wireTarget?: {object?:string;index?:number;position?:[number,number,number]};
+    /** Every connection target when connectTo lists several; wireTarget is the first. */
+    wireTargets?: {object?:string;index?:number;position?:[number,number,number]}[];
     wirePinned?: boolean;
 }
 
@@ -605,7 +609,7 @@ function groupAnnotations(scale: number): void {
         }
         return {text:a.text, index:a.index, kind:a.kind, coordinateMode:l.annotationCoordinateMode ?? 'world', detached:!!l.annotationDragging && !l.annotationDocked, x:l.screenX!, y:l.screenY! + (l.cellAttachment?.edge === 'top' ? -(a.height + 11)/2 : a.kind === 'marker' ? -38 : 0), width:a.width, height:a.height};
     });
-    const key = JSON.stringify(boxes.map((b,i) => [labels[i]!.seq, labels[i]!.annotationOrder, b.coordinateMode, b.detached, Math.round(b.x*10), Math.round(b.y*10), b.width, b.height, b.text, b.index, !!labels[i]!.annotation!.highlighted]));
+    const key = JSON.stringify(boxes.map((b,i) => [labels[i]!.seq, labels[i]!.annotationOrder, b.coordinateMode, b.detached, Math.round(b.x*10), Math.round(b.y*10), b.width, b.height, b.text, b.index, !!labels[i]!.annotation!.highlighted, labels[i]!.annotation!.code?.line ?? 0]));
     if (key === annotationLayoutKey) return;
     annotationLayoutKey = key;
     for (const l of labelsState.labels) { l.annotationHidden = false; l.annotationAnchor = undefined; }
@@ -616,7 +620,7 @@ function groupAnnotations(scale: number): void {
         const members = group.map(i => boxes[i]!);
         if (a.kind === 'label') leader.annotationAnchor = annotationGroupAnchor(members);
         const rows = annotationRows(members);
-        const signature = JSON.stringify([rows, group.map(i => [labels[i]!.seq, labels[i]!.annotationCoordinateMode ?? 'world', !!labels[i]!.annotation!.highlighted])]);
+        const signature = JSON.stringify([rows, group.map(i => [labels[i]!.seq, labels[i]!.annotationCoordinateMode ?? 'world', !!labels[i]!.annotation!.highlighted, labels[i]!.annotation!.code?.line ?? 0])]);
         if (signature !== a.rendered) {
             a.badge.replaceChildren(...rows.map((text, rowIndex) => {
                 const row = document.createElement('span'); row.className = 'annotation-row'; row.textContent = text;
@@ -632,13 +636,28 @@ function groupAnnotations(scale: number): void {
                     });
                     // The row starts a drag on pointerdown; the button must not.
                     ask.addEventListener('pointerdown', event => event.stopPropagation());
+                    // Row buttons float right, so the first appended sits rightmost: </> goes in before
+                    // Ask AI to read after it ([text] … ✦ </> ●).
+                    const code = member.annotation!.code;
+                    if (code) {
+                        const open = document.createElement('button');
+                        open.type = 'button'; open.className = 'ai-ask-btn annotation-code-btn'; open.textContent = '</>';
+                        open.title = `Open ${code.path}:${code.line}`; open.setAttribute('aria-label', open.title);
+                        open.addEventListener('pointerdown', event => event.stopPropagation());
+                        open.addEventListener('click', event => {
+                            event.stopPropagation();
+                            const now = member.annotation!.code;   // the line may have moved since the row was built
+                            if (now) window.dispatchEvent(new CustomEvent('algebench:opencode', {detail: {fileId: now.fileId, line: now.line}}));
+                        });
+                        row.append(open);
+                    }
                     row.append(ask);
                     row.dataset.labelSeq = String(labels[group[rowIndex]!]!.seq);
                     const drag = labels[group[rowIndex]!]!.annotation!.startDrag;
                     if (drag) {
                         row.classList.add('annotation-row-draggable');
                         // A native drag tooltip would obscure the hover connection.
-                        if(!labels[group[rowIndex]!]!.wireTarget&&labels[group[rowIndex]!]!.annotation!.tooltip===undefined)row.title='Drag to move this label';
+                        if(!labels[group[rowIndex]!]!.wireTarget&&!labels[group[rowIndex]!]!.wireTargets?.length&&labels[group[rowIndex]!]!.annotation!.tooltip===undefined)row.title='Drag to move this label';
                         row.addEventListener('pointerdown',drag);
                     }
                 }

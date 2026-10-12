@@ -957,6 +957,27 @@ export function renderChart(el: Element, view: MathBoxNode) {
         paper.mesh.geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         writeQuad(paper.attr, -mL, W + mR, -mB, H + mT, 0);
     }
+    // Bar labels sit inside their bars, so they cannot be painted on the paper, which lies behind the bars.
+    // They get their own transparent sheet on the slot above the bars, created only when a set labels its bars.
+    let ink: { ctx: CanvasRenderingContext2D; tex: CanvasTexture } | null = null;
+    if (ctx && intervalSets.some(v => v.labelSrc)) {
+        const inkCanvas = document.createElement('canvas');
+        inkCanvas.width = canvas.width; inkCanvas.height = canvas.height;
+        const inkCtx = inkCanvas.getContext('2d');
+        if (inkCtx) {
+            const inkTex = new THREE.CanvasTexture(inkCanvas);
+            inkTex.minFilter = THREE.LinearFilter; inkTex.magFilter = THREE.LinearFilter; inkTex.generateMipmaps = false;
+            const inkOrder = el.renderOrder !== undefined ? serial + 3 : chartState._planeMeshSerial++;
+            const sheet = makeQuad([1, 1, 1], 1, inkOrder, false);
+            const sheetMat = sheet.mesh.material as MeshBasicMaterial;
+            sheetMat.map = inkTex; sheetMat.color.set(0xffffff); sheetMat.alphaTest = 0.02;
+            sheetMat.addEventListener('dispose', () => inkTex.dispose());
+            sheet.mesh.geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]), 2));
+            // Just above the bars (lift * 1.5), so the text is never buried in them.
+            writeQuad(sheet.attr, -mL, W + mR, -mB, H + mT, lift * 2.5);
+            ink = { ctx: inkCtx, tex: inkTex };
+        }
+    }
 
     /** Tick label text: the axis's labelExpr with `value` bound, else the value to the step's decimals. */
     const tickText = (fn: { fn: CompiledExpr } | null, v: number, step: number, tSec: number): string => {
@@ -1137,16 +1158,22 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 });
             });
         }
-        // Bar labels sit centred just above their bar, on the paper behind it.
-        for (const v of intervalSets) {
-            for (const b of v.bars) {
-                if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
-                const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
-                const [, top] = toPlane(0, b.lane + v.thickness / 2);
-                if (top > H) continue;
-                const fontPx = Math.min(pxPer * 0.3, fitLatexPx(b.text, Math.max(pxPer * 0.6, (h1 - h0) * pxPer * 1.4), pxPer * 0.6));
-                drawLatex(ctx, b.text, X((h0 + h1) / 2), Y(top) - pxPer * 0.04, { fontPx, color: css(inkRgb), align: 'center', vAlign: 'bottom' });
+        // Bar labels: centred inside each bar on the ink sheet above the bars, in dark ink for the light bar colours.
+        if (ink) {
+            ink.ctx.clearRect(0, 0, cw, ch);
+            for (const v of intervalSets) {
+                for (const b of v.bars) {
+                    if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
+                    const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
+                    const [, mid] = toPlane(0, b.lane), [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+                    if (mid < 0 || mid > H) continue;
+                    const widthPx = (h1 - h0) * pxPer, heightPx = (v1 - v0) * pxPer;
+                    const fontPx = Math.min(pxPer * 0.3, heightPx * 0.72, fitLatexPx(b.text, widthPx * 0.9, pxPer * 0.3));
+                    if (fontPx < 6) continue;   // a bar too small to hold readable text stays plain
+                    drawLatex(ink.ctx, b.text, X((h0 + h1) / 2), Y(mid), { fontPx, color: '#1b1606', align: 'center', vAlign: 'middle' });
+                }
             }
+            ink.tex.needsUpdate = true;
         }
         // Series legend, on the paper, top-right of the plot: a swatch (dot
         // or dash) beside each labelled series, drawn straight over the grid

@@ -5,7 +5,7 @@ import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../array-operations.js';
 import {
-    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,houseRobberTrace,
+    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
     PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,
@@ -80,6 +80,26 @@ test('merge intervals',()=>{
  const done=last(mergeIntervalsTrace(IN.intervals.input));
  assert.deepEqual([done.mStarts,done.mEnds],[[1,8,15],[6,12,18]]);
  const touching=last(mergeIntervalsTrace([[1,4],[4,5]]));assert.deepEqual([touching.mStarts,touching.mEnds],[[1],[5]]);
+});
+test('each interval keeps one lane through the sort, and lane-mates never overlap',()=>{
+ const input=IN.intervals.input,lanes=intervalLanes(input);
+ for(let a=0;a<input.length;a++)for(let b=a+1;b<input.length;b++)
+  if(lanes[a]===lanes[b])assert.ok(input[a]![1]<input[b]![0]||input[b]![1]<input[a]![0],`lane ${lanes[a]} holds overlapping ${input[a]} and ${input[b]}`);
+ const laneOf=new Map(input.map((iv,i)=>[iv.join(','),lanes[i]]));
+ for(const f of mergeIntervalsTrace(input)){
+  const starts=f.starts as number[],ends=f.ends as number[],fl=f.lanes as number[];
+  starts.forEach((s,i)=>assert.equal(fl[i],laneOf.get(`${s},${ends[i]}`),'an interval keeps its lane in every step'));
+ }
+});
+test('merge intervals: the overlap check compares start with the last end before extending it',()=>{
+ const trace=mergeIntervalsTrace(IN.intervals.input);
+ for(const f of trace.filter(f=>f.line===5)){
+  const k=f.k as number,start=(f.starts as number[])[k]!;
+  assert.equal(f.cmpStart,start);
+  if(f.cmp===-1)assert.equal(f.m,0);
+  else assert.equal(f.cmp,start<=(f.cmpEnd as number)?1:0);
+ }
+ assert.deepEqual([...new Set(trace.filter(f=>f.line===5).map(f=>f.cmp))].sort(),[-1,0,1],'the example shows empty, overlap and no overlap');
 });
 test('house robber',()=>{
  assert.equal((last(houseRobberTrace(IN.dp.houses)).dp as number[]).at(-1),15);
@@ -216,4 +236,27 @@ test('every label tooltip reads a recorded tip column of well-formed LaTeX',()=>
   }
  }
  assert.ok(tips>200,'tooltips are present across the lesson');
+});
+
+test('label code links resolve to a real line, the one that last assigned the value',()=>{
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ let links=0;
+ for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
+  const file=lesson.codeFiles.find((f:{id:string})=>f.id===scene.codeRef.file),lines=file.source.split('\n').length;
+  for(const el of scene.steps[0].add.filter((e:{codeRef?:unknown})=>e.codeRef)){
+   assert.equal(el.codeRef.file,file.id,`${scene.id}/${el.id} links into the scene's file`);
+   for(const frame of scene.data.trace){
+    const line=el.codeRef.lineExpr?frame[/'(ln_\w+)'/.exec(el.codeRef.lineExpr)![1]!]:el.codeRef.line;
+    assert.ok(Number.isInteger(line)&&line>=0&&line<=lines,`${scene.id}/${el.id}: line ${line}`);
+    if(line)links++;
+   }
+  }
+ }
+ assert.ok(links>300);
+ // Binary search assigns lo on lines 2, 11, 14 and hi on 2, 9, 16: the links follow whichever ran last.
+ const rs=lesson.scenes.find((s:{id:string})=>s.id==='rotated-search').data.trace;
+ const used=(key:'ln_lo'|'ln_hi')=>new Set<number>(rs.map((f:Record<string,number>)=>f[key]));
+ for(const line of used('ln_lo'))assert.ok([2,11,14].includes(line),`lo links to line ${line}, which assigns it`);
+ for(const line of used('ln_hi'))assert.ok([2,9,16].includes(line),`hi links to line ${line}, which assigns it`);
+ assert.ok(used('ln_lo').size>1,'the lo link moves to the line that reassigned it');
 });

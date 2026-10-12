@@ -792,7 +792,7 @@
               "endExpr": { "type": "string", "description": "Expression for bar i's end, with 'i' and 'n' bound. Wins over 'end'." },
               "laneExpr": { "type": "string", "description": "Expression for bar i's lane, with 'i' and 'n' bound. Wins over 'lane'." },
               "highlightExpr": { "type": "string", "description": "Expression, per bar with 'i' and 'n' bound; truthy draws the bar in the highlight gold." },
-              "labelExpr": { "type": "string", "description": "Expression for text drawn just above bar i, with 'i' and 'n' bound." }
+              "labelExpr": { "type": "string", "description": "Expression for text drawn inside bar i (centred, sized to fit; omitted when the bar is too small), with 'i' and 'n' bound. Example: \"concat(arrayAt(starts, i), '–', arrayAt(ends, i))\"." }
             },
             "additionalProperties": false
           }
@@ -1486,58 +1486,19 @@
           "minLength": 1,
           "description": "STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge."
         },
+        "codeRef": {
+          "$ref": "#/$defs/codeRef",
+          "description": "EXPRESSION_LABEL: the source line behind this value. Its row gets a </> button that opens the Code tab there. Use lineExpr to follow the line that last assigned the value."
+        },
         "tooltipExpr": {
           "type": "string",
           "description": "EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\\text{total}'): their contents are kept literally. Evaluated on state changes."
         },
         "connectTo": {
-          "type": "object",
-          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it.",
+          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire.",
           "oneOf": [
-            {
-              "type": "object",
-              "required": [
-                "object"
-              ],
-              "properties": {
-                "object": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "indexExpr": {
-                  "type": "string",
-                  "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
-                },
-                "pinned": {
-                  "type": "boolean",
-                  "default": false,
-                  "description": "Show the wire without hovering. The reader can still unpin it."
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "positionExpr"
-              ],
-              "properties": {
-                "positionExpr": {
-                  "type": "array",
-                  "minItems": 3,
-                  "maxItems": 3,
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "pinned": {
-                  "type": "boolean",
-                  "default": false,
-                  "description": "Show the wire without hovering. The reader can still unpin it."
-                }
-              },
-              "additionalProperties": false
-            }
+            { "$ref": "#/$defs/connectTarget" },
+            { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/connectTarget" } }
           ]
         },
         "markers": {
@@ -2964,6 +2925,56 @@
         "execution"
       ],
       "additionalProperties": false
+    },
+    "connectTarget": {
+      "title": "ConnectTarget",
+      "description": "One wire target for an expression label: an object (optionally one array cell), or a data-space position.",
+      "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "indexExpr": {
+                  "type": "string",
+                  "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "positionExpr"
+              ],
+              "properties": {
+                "positionExpr": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
+                }
+              },
+              "additionalProperties": false
+            }
+      ]
     },
     "codeFile": {
       "title": "CodeFile",

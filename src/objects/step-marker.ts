@@ -2,11 +2,13 @@
 import { addLabel3D, colorToCSS } from '/labels.js';
 import { labelDragHandler } from '/objects/label-drag.js';
 import { announceLabelChange } from '/label-tooltip.js';
+import { resolveCodeRef } from '/code-panel-model.js';
+import { state } from '/state.js';
 import { annotationText } from '/annotation-layout.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr } from '/sliders.js';
 import type { AnimExprEntry } from '/sliders.js';
-import type { Element } from '/types/lesson.js';
+import type { Element, LessonFormat } from '/types/lesson.js';
 
 /** An owning renderer supplies layout and owns registration/teardown. */
 export interface MarkerOwner {
@@ -17,11 +19,16 @@ export interface MarkerOwner {
 }
 export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: MarkerOwner) {
     const marker = el.type === 'step_marker';
-    const targetPosition = !marker && el.connectTo && 'positionExpr' in el.connectTo ? el.connectTo.positionExpr : [];
-    const targetFns = targetPosition.length ? targetPosition.map(source=>compileExpr(source)) : null;
-    const targetIndex = !marker && el.connectTo && 'object' in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
+    const codeRef = !marker ? el.codeRef : undefined;
+    const codeFns = new Map<string, ReturnType<typeof compileExpr>>();
+    // connectTo is one target or a list of them; each becomes its own wire.
+    const connections = marker || !el.connectTo ? [] : Array.isArray(el.connectTo) ? el.connectTo : [el.connectTo];
+    const wires = connections.map(c => 'positionExpr' in c
+        ? {kind:'position' as const, fns:c.positionExpr.map(source=>compileExpr(source))}
+        : {kind:'object' as const, object:c.object, index:c.indexExpr ? compileExpr(c.indexExpr) : null});
+    const targetSources = connections.flatMap(c => 'positionExpr' in c ? c.positionExpr : c.indexExpr ? [c.indexExpr] : []);
     const position = owner ? [] : el.positionExpr ?? (el.position ?? [0,0,0]).map(String);
-    const sources = [...position, ...(el.textExpr ? [el.textExpr] : []), ...(el.visibleExpr ? [el.visibleExpr] : []), ...(el.indexExpr ? [el.indexExpr] : []), ...(!marker && el.highlightExpr ? [el.highlightExpr] : []), ...(!marker && el.tooltipExpr ? [el.tooltipExpr] : []), ...targetPosition, ...(!marker && el.connectTo && 'object' in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : [])];
+    const sources = [...position, ...(el.textExpr ? [el.textExpr] : []), ...(el.visibleExpr ? [el.visibleExpr] : []), ...(el.indexExpr ? [el.indexExpr] : []), ...(!marker && el.highlightExpr ? [el.highlightExpr] : []), ...(!marker && el.tooltipExpr ? [el.tooltipExpr] : []), ...(codeRef?.lineExpr ? [codeRef.lineExpr] : []), ...(codeRef?.fileExpr ? [codeRef.fileExpr] : []), ...targetSources];
     const positionFns = position.map(source => compileExpr(source));
     const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
     const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
@@ -46,15 +53,21 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
     label.annotation = {kind: marker ? 'marker' : 'label', text: '', badge, measure, width: 0, height: 0, scale: null, rendered: ''};
     if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
     if (!marker) label.annotation.prompt = el.prompt ?? null;
-    if(!marker && el.connectTo && 'object' in el.connectTo)label.wireTarget={object:el.connectTo.object};
-    if(!marker && el.connectTo?.pinned)label.wirePinned=true;
+    if(wires.length){
+        label.wireTargets=wires.map(w=>w.kind==='object'?{object:w.object}:{});
+        label.wireTarget=label.wireTargets[0];
+    }
+    if(connections.some(c=>c.pinned))label.wirePinned=true;
     const entry: AnimExprEntry = {animState, exprStrings:sources, _rebuildFn:()=>{
         if (animState.stopped) return;
         try {
-            if(targetIndex)label.wireTarget!.index=Number(evalExpr(targetIndex,0));
-            if(targetFns){
-                const target=targetFns.map(fn=>Number(evalExpr(fn,0)));
-                label.wireTarget = target.every(Number.isFinite) ? {position:target as [number,number,number]} : {};
+            if(wires.length){
+                label.wireTargets=wires.map(w=>{
+                    if(w.kind==='object')return w.index?{object:w.object,index:Number(evalExpr(w.index,0))}:{object:w.object};
+                    const target=w.fns.map(fn=>Number(evalExpr(fn,0)));
+                    return target.every(Number.isFinite)?{position:target as [number,number,number]}:{};
+                });
+                label.wireTarget=label.wireTargets[0];
             }
             const indexValue = indexFn ? Number(evalExpr(indexFn,0)) : null;
             const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map(fn => Number(evalExpr(fn,0)));
@@ -82,6 +95,13 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
             annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
             if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn,0);
             if (tooltipFn) { try { annotation.tooltip = String(evalExpr(tooltipFn,0)); } catch { annotation.tooltip = ''; } }
+            if (codeRef) {
+                const target = resolveCodeRef((state.lessonSpec as LessonFormat | null)?.codeFiles ?? [], codeRef, expr => {
+                    if (!codeFns.has(expr)) codeFns.set(expr, compileExpr(expr));
+                    return evalExpr(codeFns.get(expr)!, 0);
+                });
+                annotation.code = target ? {fileId: target.file.id, path: target.file.path, line: target.line} : null;
+            }
             // A recalculated value briefly shows how it was computed; first display does not.
             if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
             if (measure.textContent !== annotation.text) {

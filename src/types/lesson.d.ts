@@ -376,7 +376,7 @@ export type Element = {
      */
     highlightExpr?: string;
     /**
-     * Expression for text drawn just above bar i, with 'i' and 'n' bound.
+     * Expression for text drawn inside bar i (centred, sized to fit; omitted when the bar is too small), with 'i' and 'n' bound. Example: "concat(arrayAt(starts, i), '–', arrayAt(ends, i))".
      */
     labelExpr?: string;
   }[];
@@ -926,36 +926,15 @@ export type Element = {
    * STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge.
    */
   indexGroup?: string;
+  codeRef?: CodeRef;
   /**
    * EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\text{total}'): their contents are kept literally. Evaluated on state changes.
    */
   tooltipExpr?: string;
   /**
-   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it.
+   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire.
    */
-  connectTo?:
-    | {
-        object: string;
-        /**
-         * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
-         */
-        indexExpr?: string;
-        /**
-         * Show the wire without hovering. The reader can still unpin it.
-         */
-        pinned?: boolean;
-      }
-    | {
-        /**
-         * @minItems 3
-         * @maxItems 3
-         */
-        positionExpr: [string, string, string];
-        /**
-         * Show the wire without hovering. The reader can still unpin it.
-         */
-        pinned?: boolean;
-      };
+  connectTo?: ConnectTarget | [ConnectTarget, ...ConnectTarget[]];
   /**
    * ARRAY / STACK: owned index markers. The owner supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression.
    */
@@ -1104,6 +1083,32 @@ export type Vec3Number9 = [number, number, number];
  * @maxItems 3
  */
 export type Vec3Number10 = [number, number, number];
+/**
+ * One wire target for an expression label: an object (optionally one array cell), or a data-space position.
+ */
+export type ConnectTarget =
+  | {
+      object: string;
+      /**
+       * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
+       */
+      indexExpr?: string;
+      /**
+       * Show the wire without hovering. The reader can still unpin it.
+       */
+      pinned?: boolean;
+    }
+  | {
+      /**
+       * @minItems 3
+       * @maxItems 3
+       */
+      positionExpr: [string, string, string];
+      /**
+       * Show the wire without hovering. The reader can still unpin it.
+       */
+      pinned?: boolean;
+    };
 /**
  * 3D vector as [x,y,z] numeric array.
  *
@@ -1444,7 +1449,7 @@ export interface Scene {
     table: string;
     rowsExpr: string;
   }[];
-  codeRef?: CodeRef2;
+  codeRef?: CodeRef3;
 }
 /**
  * Initial camera position and target for this scene.
@@ -1771,6 +1776,27 @@ export interface AlgorithmSnapshot {
     operands: string[];
   };
 }
+/**
+ * EXPRESSION_LABEL: the source line behind this value. Its row gets a </> button that opens the Code tab there. Use lineExpr to follow the line that last assigned the value.
+ */
+export interface CodeRef {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
+}
 export interface ArrayMarker {
   /**
    * Uses the same marker component as a standalone step_marker.
@@ -1823,7 +1849,7 @@ export interface SystemBlock {
    * Optional gap above this platform front surface for children with local positions. Child depth and local z offset are added; world and relative placement remain explicit.
    */
   childElevation?: number;
-  codeRef?: CodeRef;
+  codeRef?: CodeRef1;
   /**
    * Truthy expression that marks this block as focused (cyan rim and glow), independent of connection activity. Use it to show where a selected concept or component lives.
    */
@@ -1831,7 +1857,7 @@ export interface SystemBlock {
   /**
    * Additional source locations represented by this block. Selecting any of these lines (or the codeRef line) in the Code tab focuses the block.
    */
-  codeLinks?: CodeRef1[];
+  codeLinks?: CodeRef2[];
 }
 export interface SystemPlacement {
   relativeTo: string;
@@ -1884,7 +1910,7 @@ export interface SystemWaypoint {
 /**
  * Optional source location for this block.
  */
-export interface CodeRef {
+export interface CodeRef1 {
   /**
    * ID of a lesson codeFiles entry.
    */
@@ -1902,7 +1928,7 @@ export interface CodeRef {
    */
   lineExpr?: string;
 }
-export interface CodeRef1 {
+export interface CodeRef2 {
   /**
    * ID of a lesson codeFiles entry.
    */
@@ -2121,7 +2147,7 @@ export interface StepPlayback {
 /**
  * The code this scene executes: the file (or a per-state fileExpr) and the active line (or lineExpr). The Code panel follows that file when it changes and marks the line only there. Without it, an open file's activeLineExpr applies.
  */
-export interface CodeRef2 {
+export interface CodeRef3 {
   /**
    * ID of a lesson codeFiles entry.
    */

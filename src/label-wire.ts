@@ -6,18 +6,24 @@ import { routedLabelWire, projectedCellEdge, wholeObjectWireAttachment, rowBrack
 import type { WireObstacle } from '/label-wire-path.js';
 import type { Label3D } from '/labels.js';
 
+type WireTarget = NonNullable<Label3D['wireTarget']>;
+/** One drawn connection: a label row may connect to several targets, each with its own path and route cache. */
+interface WirePart { svg:SVGSVGElement|null;path:SVGPathElement|null;dot:SVGCircleElement|null;previous:string;routeKey:string;routePath:string }
 interface WireRecord {
     label:Label3D;row:HTMLElement;hovered:boolean;
     button?:HTMLButtonElement;available?:boolean;
-    svg:SVGSVGElement|null;path:SVGPathElement|null;dot:SVGCircleElement|null;
-    previous:string;routeKey:string;routePath:string;
+    parts:WirePart[];
 }
+const newPart=():WirePart=>({svg:null,path:null,dot:null,previous:'',routeKey:'',routePath:''});
+/** Every target of a label: the full list when one was given, else the single target. */
+const targetsOf=(label:Label3D):WireTarget[]=>label.wireTargets??(label.wireTarget?[label.wireTarget]:[]);
+const reachable=(t:WireTarget)=>t.object?objectTargetExists(t.object,t.index):!!t.position;
 const wires=new Map<Label3D,WireRecord>();
 export function wireRowHover(row:HTMLElement,label:Label3D):void {
-    if(!label.wireTarget)return;
+    if(!targetsOf(label).length)return;
     let record=wires.get(label);
     if(record){record.row=row;record.hovered=false;}
-    else {record={label,row,hovered:false,svg:null,path:null,dot:null,previous:'',routeKey:'',routePath:''};wires.set(label,record);}
+    else {record={label,row,hovered:false,parts:[]};wires.set(label,record);}
     const wire=record;
     row.addEventListener('pointerenter',()=>{wire.hovered=true;});
     row.addEventListener('pointerleave',()=>{if(wire.row===row)wire.hovered=false;});
@@ -33,21 +39,28 @@ export function wireRowHover(row:HTMLElement,label:Label3D):void {
 }
 export function updateLabelWire():void {
     for(const [label,wire] of wires){
-        if(!label.el.isConnected){wire.svg?.remove();wires.delete(label);continue;}
+        if(!label.el.isConnected){wire.parts.forEach(p=>p.svg?.remove());wires.delete(label);continue;}
         paintWire(wire);
     }
 }
 function paintWire(record:WireRecord):void {
-    const hovered=record;
-    let {svg,path,dot,previous,routeKey,routePath}=record;
-    const camera=state.camera, canvas=state.renderer?.domElement;
-    const target=record.label.wireTarget;
-    const available=!!target&&(target.object?objectTargetExists(target.object,target.index):!!target.position);
+    const targets=targetsOf(record.label);
+    const available=targets.some(reachable);
     if(record.available!==available){
         record.available=available;
         if(record.button)record.button.style.display=available?'':'none';
     }
-    if(!available){if(svg)svg.style.display='none';return;}
+    while(record.parts.length<targets.length)record.parts.push(newPart());
+    record.parts.forEach((part,i)=>{
+        const target=targets[i];
+        if(!target||!reachable(target)){if(part.svg)part.svg.style.display='none';return;}
+        paintTarget(record,part,target);
+    });
+}
+function paintTarget(record:WireRecord,part:WirePart,target:WireTarget):void {
+    const hovered=record;
+    let {svg,path,dot,previous,routeKey,routePath}=part;
+    const camera=state.camera, canvas=state.renderer?.domElement;
     if((!record.hovered&&!record.label.wirePinned)||!hovered.row.isConnected || hovered.label.forceHidden || hovered.label.visible===false || hovered.label.el.style.display==='none' || !camera || !canvas) {
         if(svg)svg.style.display='none';
         return;
@@ -60,7 +73,7 @@ function paintWire(record:WireRecord):void {
     if(targetRow&&targetRow!==hovered.row){
         const container=document.getElementById('labels-container');
         if(!container)return;
-        ({svg,path,dot}=ensureWireSvg(record,container));
+        ({svg,path,dot}=ensureWireSvg(part,container));
         const rect=container.getBoundingClientRect(),from=hovered.row.getBoundingClientRect(),to=targetRow.getBoundingClientRect();
         const fromBox=hovered.row.closest('.annotation-badge')!.getBoundingClientRect(),toBox=targetRow.closest('.annotation-badge')!.getBoundingClientRect();
         const fromY=(from.top+from.bottom)/2-rect.top,toY=(to.top+to.bottom)/2-rect.top;
@@ -76,7 +89,7 @@ function paintWire(record:WireRecord):void {
             d=routedLabelWire(start,end,{x:rightward?1:-1,y:0},{x:rightward?-1:1,y:0},obstacles);
         }
         svg!.style.display='';
-        if(d!==record.previous){path!.setAttribute('d',d);dot!.setAttribute('cx',String(end.x));dot!.setAttribute('cy',String(end.y));record.previous=d;}
+        if(d!==part.previous){path!.setAttribute('d',d);dot!.setAttribute('cx',String(end.x));dot!.setAttribute('cy',String(end.y));part.previous=d;}
         return;
     }
     const cell=target?.object&&target.index!==undefined?objectCellAnchor(target.object,target.index):null;
@@ -86,7 +99,7 @@ function paintWire(record:WireRecord):void {
     if(projected.z < -1 || projected.z>=1){if(svg)svg.style.display='none';return;}
     const container=document.getElementById('labels-container');
     if(!container)return;
-    ({svg,path,dot}=ensureWireSvg(record,container));previous=record.previous;routeKey=record.routeKey;
+    ({svg,path,dot}=ensureWireSvg(part,container));previous=part.previous;routeKey=part.routeKey;
     const rect=container.getBoundingClientRect(),viewport=canvas.getBoundingClientRect(),row=hovered.row.getBoundingClientRect();
     const screen=(p:{x:number;y:number})=>({x:viewport.left-rect.left+(p.x*.5+.5)*viewport.width,y:viewport.top-rect.top+(-p.y*.5+.5)*viewport.height});
     const centre=screen(projected);
@@ -122,13 +135,13 @@ function paintWire(record:WireRecord):void {
     // fallback curve to cut through the cells between their value labels.
     if(hasOutline)obstacles.push({left:Math.min(...corners!.map(p=>p.x)),right:Math.max(...corners!.map(p=>p.x)),top:Math.min(...corners!.map(p=>p.y)),bottom:Math.max(...corners!.map(p=>p.y)),padding:0});
     const key=JSON.stringify([start,end,departure,approach,obstacles]);
-    if(key!==routeKey){routeKey=key;routePath=routedLabelWire(start,end,departure,approach,obstacles);record.routeKey=routeKey;record.routePath=routePath;}
+    if(key!==routeKey){routeKey=key;routePath=routedLabelWire(start,end,departure,approach,obstacles);part.routeKey=routeKey;part.routePath=routePath;}
     const d=routePath;
     svg.style.display='';
-    if(d!==previous){path!.setAttribute('d',d);dot!.setAttribute('cx',String(end.x));dot!.setAttribute('cy',String(end.y));record.previous=d;}
+    if(d!==previous){path!.setAttribute('d',d);dot!.setAttribute('cx',String(end.x));dot!.setAttribute('cy',String(end.y));part.previous=d;}
 }
-/** The record's SVG wire, created on first use and after the container was rebuilt. */
-function ensureWireSvg(record:WireRecord,container:HTMLElement):{svg:SVGSVGElement;path:SVGPathElement;dot:SVGCircleElement} {
+/** A part's SVG wire, created on first use and after the container was rebuilt. */
+function ensureWireSvg(record:WirePart,container:HTMLElement):{svg:SVGSVGElement;path:SVGPathElement;dot:SVGCircleElement} {
     if(!record.svg?.isConnected){
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
         svg.classList.add('label-hover-wire');svg.setAttribute('aria-hidden','true');
