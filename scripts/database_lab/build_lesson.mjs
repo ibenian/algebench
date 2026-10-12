@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { ROOT, LAB, T, readExample, lineIn } from './util.mjs';
 import { SCENES } from './scenes.mjs';
 import { GLOSSARY } from './glossary.mjs';
+import { ALGORITHMS, algorithmCodeFile } from './algorithms.mjs';
 
 const OUT = join(ROOT, 'scenes', 'draft', 'database-systems-lab.json');
 
@@ -49,6 +50,7 @@ function codeFiles(scenes) {
             ...retryLines.map(([op, needle]) => at(op, needle))].join(', ') + ']',
         locations: steps.filter(st => st.retry).flatMap(st => retryLines.map(([, needle, label]) => ({ line: lineIn(retry, needle), scene: st.scene, step: st.step, label }))),
     });
+    files.push(...Object.keys(ALGORITHMS).map(algorithmCodeFile));
     return files;
 }
 

@@ -2,6 +2,7 @@
 // trace table (`db`); sliders are the simulation inputs, and steps set them.
 import { DB, LAB, SCENARIO, slider } from './util.mjs';
 import { board, matrix } from './board.mjs';
+import { algorithmDag } from './algorithms.mjs';
 
 const { FRAMES, ORDER_SLOTS } = LAB.limits;
 
@@ -26,8 +27,9 @@ const PICK = {
 };
 
 // ── Shared transaction scene builder ─────────────────────────────────────────
-function txScene({ id, title, description, markdown, prompt, trace, sliders, steps, extras = [], views = [], range, camera }) {
-    const allViews = [{ name: 'Board', position: [1, -9, 44], target: [1, -9, 0] }, ...views];
+function txScene({ id, title, description, markdown, prompt, trace, sliders, steps, extras = [], views = [], range, camera, everything }) {
+    // `everything`: a view that becomes the opening camera, listed first.
+    const allViews = [...(everything ? [everything] : []), { name: 'Board', position: [1, -9, 44], target: [1, -9, 0] }, ...views];
     return {
         id, title, description, markdown, prompt,
         promptExpr: `dbContext(frame, dataTable('db'), concat('Schedule: ', dbOrderText(scenario, order), '.'))`,
@@ -43,7 +45,11 @@ function txScene({ id, title, description, markdown, prompt, trace, sliders, ste
             id: step.id, title: step.title, description: step.guide,
             descriptionExpr: `dbCaption(frame, dataTable('db'), dataTable('guides', ${i}, 'text'))`,
             prompt: step.prompt ?? step.guide,
-            ...(i === 0 ? { sliders, add: [...board(), ...extras] } : step.sliders ? { sliders: step.sliders } : {}),
+            ...(i === 0 ? { sliders, add: [...board(), ...extras, ...(step.add ?? [])] } : {
+                ...(step.sliders ? { sliders: step.sliders } : {}),
+                ...(step.add ? { add: step.add } : {}),
+            }),
+            ...(step.remove ? { remove: step.remove.map(id => ({ id })) } : {}),
         })),
     };
 }
@@ -130,7 +136,7 @@ const isoSteps = [
     { id: 'dirty', title: 'Read Committed: wait for the writer', scenario: 'dirty-read', level: 1, profile: 0,
         guide: 'With locking Read Committed, T2\'s read **waits** for T1\'s exclusive lock and then sees the committed value.',
         prompt: 'Contrast the locking way (reader waits) with the MVCC way (reader sees the last committed version without waiting). Switch Database to PostgreSQL to show the MVCC behaviour.' },
-    { id: 'phantom', title: 'Repeatable Read lets phantoms in', scenario: 'phantom', level: 2, profile: 0,
+    { id: 'rr-phantom', title: 'Repeatable Read lets phantoms in', scenario: 'phantom', level: 2, profile: 0,
         guide: 'Row locks protect existing rows, not **new** ones. Raise the level to Serializable: the insert waits on a predicate lock.',
         prompt: 'Explain predicate (range / next-key) locks and why Repeatable Read under locking still admits phantoms. Then show that a snapshot (level Snapshot) hides the phantom without any lock.' },
     { id: 'pg-write-skew', title: 'PostgreSQL: snapshot ≠ serializable', scenario: 'write-skew', level: 2, profile: 1,
@@ -198,6 +204,46 @@ const ccSteps = [
 ];
 
 // Right of the storage block (which ends at x = 22), leaving room for the matrix row labels.
+// ── Scene 7 · Inside the algorithms ──────────────────────────────────────────
+const MD_ALGORITHMS = `### Inside the algorithms
+
+The board shows *what* happens; the flowchart beside it shows *how the algorithm decides*. Every tick, the statement that runs walks a path through the flowchart: the blocks it visits glow, the pipes between them light, and each block says what happened there ("T2 wants X(A); conflicts with S:T1"). Blocks it did not visit show what they are for.
+
+Each step starts with one algorithm; move **Concurrency control** to switch the flowchart (and the simulation) to another, and change the **Workload** and **Schedule** freely. Open the **Code** tab for each algorithm's pseudocode: the lines of every visited block are highlighted, and clicking a block opens its line.
+
+| Algorithm | The decision that matters |
+|---|---|
+| **Two-phase locking** | *Compatible with held locks?* — if not, wait; and every wait asks *is there a cycle?* |
+| **Optimistic (OCC)** | Nothing is decided until commit: *did anything I read change since I started?* |
+| **MVCC** | Reads pick a version and never wait; writes ask *did someone commit this row after my snapshot?* SSI adds *would my commit close a dependency cycle?* |
+| **Single writer** | *Is the write lock free?* and *is my snapshot still current?* |
+
+> These are teaching sketches of the algorithms. Real engines add many refinements (lock upgrades and intention locks, predicate locks at index granularity, SIREAD locks, group commit, …).`;
+
+// All four flowcharts share one place; each shows only while the slider selects its algorithm.
+const FAMILY_OF_MECHANISM = { lock: 'mechanism == 0', occ: 'mechanism == 1', mvcc: 'mechanism == 2 or mechanism == 3', single: 'mechanism == 4' };
+// Below the board, aligned with it: the flowchart's left edge is the Sessions block's (x = -17), it spans
+// the board's width (see SPAN in algorithms.mjs), and its top row sits under the metrics strip (y = -16.6).
+const ALGO_ORIGIN = [-17, -21.5, 0];
+const ALGO_DAGS = Object.entries(FAMILY_OF_MECHANISM).map(([family, visibleExpr]) => ({ ...algorithmDag(family, ALGO_ORIGIN), visibleExpr }));
+const algoSteps = [
+    { id: 'inside-2pl', title: 'Two-phase locking', scenario: 'deadlock', mech: 0, retry: 1,
+        guide: 'Each statement requests a lock. Follow **T1** and **T2** to the *Deadlock cycle?* check at tick 6: the answer is yes, so one becomes the victim.',
+        prompt: 'Walk through the two-phase locking flowchart tick by tick: lock request, compatibility, grant or wait, and the deadlock check on every wait. At the deadlock tick, ask the learner to predict which transaction is the victim and why the algorithm must abort one.' },
+    { id: 'inside-occ', title: 'Optimistic validation', scenario: 'hot-counter', mech: 1, retry: 1,
+        guide: 'Reads and writes never wait: writes go to a **private buffer**. At commit, *Changed since?* decides — the first committer wins, the others are thrown away and retried.',
+        prompt: 'Explain the OCC read, validate and write phases from the flowchart. Point out how much work is wasted on the hot counter, and ask when OCC is the right choice.' },
+    { id: 'inside-si', title: 'MVCC · first-updater-wins', scenario: 'lost-update', mech: 2, retry: 1,
+        guide: 'Reads take the *visible version* and never wait. The second writer passes the row lock but fails *Newer commit?* — first-updater-wins aborts it.',
+        prompt: 'Use the MVCC flowchart to contrast the read path (version selection, no waiting) with the write path (row lock, first-updater-wins). Ask the learner why the check compares commit time with the snapshot rather than with the read.' },
+    { id: 'inside-ssi', title: 'MVCC · the SSI commit check', scenario: 'write-skew', mech: 3, retry: 0,
+        guide: 'Write skew passes every write check. Under **SSI** the commit asks *Cycle?* — T2 would close one, so it aborts. Switch to snapshot isolation to see it commit.',
+        prompt: 'Explain why write skew passes the first-updater-wins check (different rows) and how the SSI commit check catches it. Have the learner switch the mechanism between snapshot isolation and SSI and compare the commit paths.' },
+    { id: 'inside-single', title: 'Single writer', scenario: 'lost-update', mech: 4, retry: 1,
+        guide: 'Only one writer at a time. T2 finds the write lock free but its **snapshot stale** — T1 committed since — so it must restart before it may write.',
+        prompt: 'Walk through the single-writer flowchart. Explain why a stale snapshot must not become the writer, and contrast this whole-database lock with row locks.' },
+].map(st => ({ ...st, sliders: [...load(PICK.cc, st.scenario), S.mechanism(st.mech), S.retry(st.retry)] }));
+
 const MATRIX_ORIGIN = [32, -6, 0];
 const LEVEL_LABELS = ['RU', 'RC', 'RR', 'Snap', 'SER'];
 const MECH_LABELS = ['2PL', 'OCC', 'SI', 'SSI', '1-writer'];
@@ -239,5 +285,19 @@ export const SCENES = [
             prompt: 'Explain this computed comparison: each cell ran the scenario (row) under the mechanism (column) with retries. Relate ticks, aborts and waits to the mechanism, and explain any ✗.' })],
         views: [{ name: 'Mechanism matrix', position: [37, -1, 26], target: [37, -1, 0] }, { name: 'Everything', position: [14, -7, 68], target: [14, -7, 0] }],
         range: [[-22, 48], [-17, 13], [-6, 6]],
+    }),
+    () => txScene({
+        id: 'algorithms', title: 'Inside the Algorithms',
+        description: 'Each concurrency-control algorithm as a flowchart: the path every statement takes lights up as the schedule runs.',
+        markdown: MD_ALGORITHMS,
+        prompt: 'You are a database-internals mentor. The learner sees one concurrency-control algorithm as a flowchart beside the transaction board. Ground every explanation in the highlighted path and the block texts for the current tick. Ask the learner to predict which branch the next statement will take before revealing it. Connect each decision to the pseudocode in the Code tab, and say clearly that these are teaching sketches of the algorithms, not product source code.',
+        trace: 'dbMechTrace(scenario, mechanism, order, retry)',
+        sliders: [...load(PICK.cc, 'deadlock'), S.mechanism(0), S.retry(1)],
+        steps: algoSteps,
+        extras: ALGO_DAGS,
+        // Distances calibrated by eye in the app (named views): board + flowchart ≈ 52 units tall.
+        views: [{ name: 'Algorithm', position: [2.5, ALGO_ORIGIN[1] - 9, 32], target: [2.5, ALGO_ORIGIN[1] - 9, 0] }],
+        everything: { name: 'Board + algorithm', position: [2.5, -14, 52], target: [2.5, -14, 0] },
+        range: [[-22, 24], [-44, 13], [-6, 6]],
     }),
 ];

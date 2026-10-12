@@ -15,7 +15,8 @@ import { dataCameraToWorld, isDefaultScale, isotropicScale } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import { clearLabels } from '/labels.js';
 import { scanSpecForUnsafeJs, showTrustDialog, updateJsTrustPill } from '/trust.js';
-import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from '/expr.js';
+import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr, compileExpr, evalExpr } from '/expr.js';
+import type { CompiledExpr } from '/expr.js';
 import { clearGlossary, hideGlossaryTip, loadGlossary } from '/glossary.js';
 import { setGlossaryThreshold } from '/glossary-core.js';
 import { clearWorldStarfield, clearWorldSkybox, configureWorldStarfield } from '/objects/skybox.js';
@@ -89,6 +90,9 @@ interface RenderResult {
 interface ElementRegistryEntry {
     tracker: SubTracker;
     hidden: boolean;
+    /** Generic `visibleExpr` (see watchVisibleExpr); `hiddenByExpr` marks a hide it made itself. */
+    visibleFn?: CompiledExpr;
+    hiddenByExpr?: boolean;
     animState?: { stopped: boolean; hiddenByRemove?: boolean } | null;
     type?: string;
     prompt?: string | null;
@@ -357,6 +361,7 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
                 tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el),
                 animState: (result as RenderResult | null)?._animState ?? null,
             };
+            watchVisibleExpr(el);
         }
     }
 
@@ -444,6 +449,39 @@ export function hideElementById(id: string): void {
     for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
     for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
     for (const entry of (t.pointNodes || [])) { try { entry.node!.set('visible', false); } catch(e) {} }
+}
+
+// ----- Generic visibleExpr -----
+// Element types that evaluate visibleExpr themselves, every frame.
+const SELF_VISIBLE_TYPES = new Set(['animated_point', 'animated_vector']);
+
+/** Give any other element with an id a `visibleExpr`: it is hidden and shown whole (meshes, labels and
+ *  everything it rendered inside itself) through hideElementById / showElementById, re-checked on slider
+ *  changes and navigation. It only re-shows what it hid itself, so a step's `remove` or a legend toggle
+ *  is never undone by it. */
+function watchVisibleExpr(el: Element): void {
+    const expr = (el as { visibleExpr?: unknown }).visibleExpr;
+    if (!el.id || typeof expr !== 'string' || !expr.trim() || SELF_VISIBLE_TYPES.has(String(el.type))) return;
+    const reg = sceneState.elementRegistry[el.id];
+    if (!reg) return;
+    try { reg.visibleFn = compileExpr(expr); } catch (e) { console.warn('visibleExpr compile error:', el.id, e); return; }
+    refreshVisibleExpr(el.id);
+}
+function refreshVisibleExpr(id: string): void {
+    const reg = sceneState.elementRegistry[id];
+    if (!reg?.visibleFn) return;
+    let visible = true;
+    try { visible = !!evalExpr(reg.visibleFn, 0); } catch { /* an unavailable input leaves the element shown */ }
+    if (!visible && !reg.hidden) { hideElementById(id); reg.hiddenByExpr = true; }
+    else if (visible && reg.hidden && reg.hiddenByExpr) { reg.hiddenByExpr = false; showElementById(id); }
+}
+export function refreshVisibleExprs(): void {
+    for (const id of Object.keys(sceneState.elementRegistry)) refreshVisibleExpr(id);
+}
+// Guarded: the Node tests import this module against a stub window with no event API.
+if (typeof window.addEventListener === 'function') {
+    window.addEventListener('algebench:sliderchange', refreshVisibleExprs);
+    window.addEventListener('algebench:navchange', refreshVisibleExprs);
 }
 
 export function showElementById(id: string): void {
@@ -982,6 +1020,7 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
             if (el.id) {
                 const subTracker = buildSubTracker(elGroup, elBefore!);
                 sceneState.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: dn };
+                watchVisibleExpr(el);
             }
         } catch (e) {
             console.error('Error rendering element:', el, e);

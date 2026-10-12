@@ -20742,6 +20742,7 @@ function renderStepAdd(elements, sliderDefs) {
 				label: elementDisplayName(el),
 				animState: result?._animState ?? null
 			};
+			watchVisibleExpr(el);
 		}
 	}
 	const tracker = buildSubTracker(group, before);
@@ -20815,6 +20816,46 @@ function hideElementById(id) {
 	for (const entry of t.pointNodes || []) try {
 		entry.node.set("visible", false);
 	} catch (e) {}
+}
+var SELF_VISIBLE_TYPES = /* @__PURE__ */ new Set(["animated_point", "animated_vector"]);
+/** Give any other element with an id a `visibleExpr`: it is hidden and shown whole (meshes, labels and
+*  everything it rendered inside itself) through hideElementById / showElementById, re-checked on slider
+*  changes and navigation. It only re-shows what it hid itself, so a step's `remove` or a legend toggle
+*  is never undone by it. */
+function watchVisibleExpr(el) {
+	const expr = el.visibleExpr;
+	if (!el.id || typeof expr !== "string" || !expr.trim() || SELF_VISIBLE_TYPES.has(String(el.type))) return;
+	const reg = sceneState.elementRegistry[el.id];
+	if (!reg) return;
+	try {
+		reg.visibleFn = compileExpr(expr);
+	} catch (e) {
+		console.warn("visibleExpr compile error:", el.id, e);
+		return;
+	}
+	refreshVisibleExpr(el.id);
+}
+function refreshVisibleExpr(id) {
+	const reg = sceneState.elementRegistry[id];
+	if (!reg?.visibleFn) return;
+	let visible = true;
+	try {
+		visible = !!evalExpr(reg.visibleFn, 0);
+	} catch {}
+	if (!visible && !reg.hidden) {
+		hideElementById(id);
+		reg.hiddenByExpr = true;
+	} else if (visible && reg.hidden && reg.hiddenByExpr) {
+		reg.hiddenByExpr = false;
+		showElementById(id);
+	}
+}
+function refreshVisibleExprs() {
+	for (const id of Object.keys(sceneState.elementRegistry)) refreshVisibleExpr(id);
+}
+if (typeof window.addEventListener === "function") {
+	window.addEventListener("algebench:sliderchange", refreshVisibleExprs);
+	window.addEventListener("algebench:navchange", refreshVisibleExprs);
 }
 function showElementById(id) {
 	const reg = sceneState.elementRegistry[id];
@@ -21287,6 +21328,7 @@ async function loadScene(spec) {
 					prompt: el.prompt || null,
 					label: dn
 				};
+				watchVisibleExpr(el);
 			}
 		} catch (e) {
 			console.error("Error rendering element:", el, e);

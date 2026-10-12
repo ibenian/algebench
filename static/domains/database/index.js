@@ -296,6 +296,14 @@
         return held;
     }
 
+    // Algorithm trail: the flowchart nodes this tick's statement passed through, in order,
+    // with a one-line detail each. The "Inside the Algorithms" flowcharts light this path.
+    function trail(ctx, node, detail) {
+        if (!ctx.path) { ctx.path = []; ctx.info = {}; }
+        ctx.path.push(node);
+        if (detail !== undefined) ctx.info[node] = String(detail);
+    }
+
     // Events ---------------------------------------------------------------------
     function note(ctx, text) { if (text && !ctx.notes.includes(text)) ctx.notes.push(text); }
     function anomaly(s, ctx, kind, tx, text) {
@@ -307,6 +315,8 @@
         ctx.anomaly = true;
         note(ctx, `⚠️ **${ANOMALY_LABEL[kind]}** — ${text}`);
     }
+    const ABORT_SHORT = { deadlock: 'deadlock victim', fuw: 'newer commit (first-updater-wins)', ssi: 'dependency cycle (SSI)', occ: 'validation failed',
+        conflict: 'write conflict', busy: 'stale snapshot (BUSY_SNAPSHOT)' };
     const ANOMALY_SHORT = { 'dirty-write': 'd-write', 'dirty-read': 'd-read', 'lost-update': 'lost', 'non-repeatable-read': 'NRR', 'read-skew': 'skew', phantom: 'phantom', 'write-skew': 'w-skew' };
     const ANOMALY_LABEL = { 'dirty-read': 'Dirty read', 'lost-update': 'Lost update', 'non-repeatable-read': 'Non-repeatable read', 'read-skew': 'Read skew',
         phantom: 'Phantom read', 'write-skew': 'Write skew', 'dirty-write': 'Dirty write', deadlock: 'Deadlock' };
@@ -315,6 +325,9 @@
         if (tx.status !== 'idle') return;
         tx.status = 'active'; tx.snap = s.ts; tx.start = s.ts;
         ctx.ops.push(tx.id + ':begin');
+        const f = s.eng.family;
+        if ((f === 'mvcc' && s.eng.snapshot === 'tx') || f === 'single') trail(ctx, 'snapshot', `${tx.id} sees commits ≤ ${s.ts}`);
+        else if (f === 'occ') trail(ctx, 'start', `${tx.id} starts after commit ${s.ts}`);
         if (s.eng.family === 'mvcc' && s.eng.snapshot === 'tx' || s.eng.family === 'single') note(ctx, `${tx.id} begins and takes its snapshot (it will see the ${s.ts} commit${s.ts === 1 ? '' : 's'} made so far).`);
     }
 
@@ -324,7 +337,9 @@
         tx.status = 'waiting'; tx.wait = { holders, what };
         tx.codes[tx.pc] = 3;
         note(ctx, `${tx.id} needs ${what} but ${holders.join(', ')} holds a conflicting lock — **${tx.id} waits**.`);
+        trail(ctx, 'wait', `${tx.id} waits for ${holders.join(', ')}`);
         const cycle = findWaitCycle(s, tx);
+        trail(ctx, 'deadlock?', cycle ? `cycle ${cycle.join('→')}→${cycle[0]}` : 'no cycle');
         if (cycle) {
             s.m.deadlocks++;
             note(ctx, `**Deadlock:** ${cycle.join(' → ')} → ${cycle[0]} all wait for each other. The lock manager breaks the cycle by aborting ${tx.id}.`);
@@ -353,22 +368,32 @@
         if (e.family === 'none' || e.family === 'occ') return 'ok';
         if (e.family === 'single') {
             if (mode !== 'X') return 'ok';
+            if (s.writer === tx.id) { trail(ctx, 'writer?', `${tx.id} already holds it`); return 'ok'; }
+            trail(ctx, 'writer?', s.writer ? `held by ${s.writer}` : 'free');
             if (s.writer && s.writer !== tx.id) return wait(s, ctx, tx, [s.writer], 'the database write lock');
-            if (s.writer !== tx.id && tx.snap < s.ts) return abort(s, ctx, tx, s.errors.busy, `${tx.id}'s snapshot predates a commit, so it may not become the writer: its reads could be stale.`);
-            if (s.writer !== tx.id) note(ctx, `${tx.id} takes the single **write lock**; other writers must wait.`);
+            trail(ctx, 'stale?', tx.snap < s.ts ? `snap@${tx.snap} < latest commit ${s.ts}` : `snap@${tx.snap} is current`);
+            if (tx.snap < s.ts) return abort(s, ctx, tx, s.errors.busy, `${tx.id}'s snapshot predates a commit, so it may not become the writer: its reads could be stale.`);
+            note(ctx, `${tx.id} takes the single **write lock**; other writers must wait.`);
+            trail(ctx, 'take-writer', `${tx.id} is the writer`);
             s.writer = tx.id;
             return 'ok';
         }
         const holders = conflicts(s, tx, key, mode);
+        const heldBy = () => { const l = s.locks[key]; return [l.X ? 'X:' + l.X : '', ...[...l.S].map(h => 'S:' + h)].filter(Boolean).join(' ') || 'free'; };
+        trail(ctx, 'lock-req', `${tx.id} → ${mode}(${key})`);
+        trail(ctx, 'compat?', holders.length ? `conflicts with ${heldBy()}` : `compatible (${heldBy()})`);
         if (holders.length) {
             if (e.family === 'mvcc' && e.wait === false) return abort(s, ctx, tx, s.errors.conflict, `${key} has an uncommitted write by ${holders[0]}: this engine aborts instead of waiting.`);
             return wait(s, ctx, tx, holders, `${mode === 'X' ? 'an exclusive (X)' : 'a shared (S)'} lock on ${key} ${purpose}`);
         }
-        if (e.family === 'lock' && mode === 'S' && e.readLock === 'short') return 'ok';
+        if (e.family === 'lock' && mode === 'S' && e.readLock === 'short') { trail(ctx, 'grant', `short S(${key}), released after the read`); return 'ok'; }
         grant(s, tx, key, mode);
+        trail(ctx, 'grant', `${mode}(${key}) held by ${tx.id} until commit`);
         if (e.family === 'mvcc' && mode === 'X' && e.fuw) {
             const lc = latestCommitted(s, key);
-            if (lc && lc.ts > tx.snap && lc.writer !== tx.id) return abort(s, ctx, tx, s.errors.fuw, `${key} was changed by ${lc.writer}, which committed after ${tx.id}'s snapshot (first-updater-wins).`);
+            const newer = lc && lc.ts > tx.snap && lc.writer !== tx.id;
+            trail(ctx, 'fuw?', newer ? `${lc.writer} committed ${key} at ${lc.ts} > snap@${tx.snap}` : `no commit to ${key} after snap@${tx.snap}`);
+            if (newer) return abort(s, ctx, tx, s.errors.fuw, `${key} was changed by ${lc.writer}, which committed after ${tx.id}'s snapshot (first-updater-wins).`);
         }
         return 'ok';
     }
@@ -379,6 +404,11 @@
         tx.reads.push({ key, vid: v ? v.id : 0, value, ts: v && committed(v) ? v.ts : -1, writer: v ? v.writer : '', state: v ? v.state : 'missing', own: !!(v && v.writer === tx.id), tick: s.t });
         tx.vars[key] = value;
         tx.labels[tx.pc] = (op.lock ? 'R⁺ ' : 'R ') + key + '=' + value;
+        const from = v ? `${value} by ${v.writer}${v.state === 'pending' ? ' (uncommitted)' : ''}` : 'missing';
+        const f = s.eng.family;
+        if (f === 'occ') trail(ctx, 'read-set', `${key} = ${from}; read set += ${key}@${v && committed(v) ? v.ts : '?'}`);
+        else if ((f === 'mvcc' && !(op.lock && !s.eng.fuw)) || f === 'single') trail(ctx, 'visible', `${key}: newest version ≤ snap@${snapFor(s, tx)} → ${from}`);
+        else trail(ctx, 'read-row', `${key} = ${from}`);
         if (v && v.writer !== tx.id && v.state === 'pending') {
             tx.sawDirty.push({ key, writer: v.writer, value });
             anomaly(s, ctx, 'dirty-read', tx, `${tx.id} read ${key} = ${value}, written by ${v.writer}, which has **not committed**.`);
@@ -428,6 +458,10 @@
         tx.scans.push({ tag: op.tag, seen, sum, snap: snapFor(s, tx), tick: s.t });
         tx.vars[op.tag] = sum;
         tx.labels[tx.pc] = 'Σ ' + sum;
+        const f = e.family, seenText = `${Object.keys(seen).join(',') || 'no rows'} → ${sum}`;
+        if (f === 'occ') trail(ctx, 'read-set', `scan '${op.tag}': ${seenText}`);
+        else if (f === 'mvcc' || f === 'single') trail(ctx, 'visible', `scan '${op.tag}' at snap@${snapFor(s, tx)}: ${seenText}`);
+        else trail(ctx, 'read-row', `scan '${op.tag}': ${seenText}`);
         note(ctx, `${tx.id} sums rows with tag '${op.tag}': **${sum}** (${Object.keys(seen).join(', ') || 'no rows'}).`);
         if (prev) {
             const a = Object.keys(prev.seen).sort().join(), b = Object.keys(seen).sort().join();
@@ -466,6 +500,9 @@
         if (other && e.family === 'none') anomaly(s, ctx, 'dirty-write', tx, `${tx.id} overwrote ${key} while ${other.writer}'s write to it is still **uncommitted**: if ${other.writer} rolls back, which value should ${key} return to?`);
         if (mine) mine.v = value;
         else addKey(s, key, { v: value, writer: tx.id, state: e.family === 'occ' ? 'private' : 'pending', ts: -1 });
+        if (e.family === 'occ') trail(ctx, 'buffer', `write set: ${key} = ${value} (private)`);
+        else if (e.family === 'mvcc') trail(ctx, 'add-version', `${key}: new uncommitted version ${value}`);
+        else trail(ctx, 'write-row', `${key} = ${value} (uncommitted)`);
         const base = tx.reads.filter(r => r.key === key && !r.own).pop();
         tx.writes.set(key, { value, rmw: op.kind === 'write' && op.expr.includes(key), readTs: base ? base.ts : null, readVid: base ? base.vid : 0 });
         if (e.family === 'occ') note(ctx, `OCC buffers the write privately; nobody else can see it and nothing is locked.`);
@@ -475,6 +512,8 @@
         const e = s.eng;
         if (e.family === 'lock' && e.predicate) {
             const holders = predConflicts(s, tx, op.tag);
+            trail(ctx, 'lock-req', `${tx.id} → insert into '${op.tag}'`);
+            trail(ctx, 'compat?', holders.length ? `predicate lock held by ${holders.join(',')}` : 'no predicate lock covers it');
             if (holders.length) return wait(s, ctx, tx, holders, `to insert a '${op.tag}' row (a predicate lock covers it)`);
         }
         if (e.family === 'single') { const r = acquireRow(s, ctx, tx, op.key, 'X', 'to insert'); if (r !== 'ok') return r; }
@@ -505,6 +544,10 @@
     function execCommit(s, ctx, tx) {
         const e = s.eng;
         if (e.family === 'occ') {
+            trail(ctx, 'validate', `read set: ${[...new Set(tx.reads.filter(r => !r.own).map(r => r.key))].concat(tx.scans.map(x => "'" + x.tag + "'")).join(', ') || 'empty'} vs commits after ${tx.start}`);
+            const stale = tx.reads.filter(r => !r.own).map(r => [r.key, latestCommitted(s, r.key)]).find(([, lc]) => lc && lc.ts > tx.start && lc.writer !== tx.id)
+                || tx.scans.flatMap(x => s.keys.filter(k => tagOf(s, k) === x.tag)).map(k => [k, latestCommitted(s, k)]).find(([, lc]) => lc && lc.ts > tx.start && lc.writer !== tx.id);
+            trail(ctx, 'changed?', stale ? `${stale[0]} changed by ${stale[1].writer} at ${stale[1].ts}` : 'nothing changed');
             for (const r of tx.reads) {
                 if (r.own) continue;
                 const lc = latestCommitted(s, r.key);
@@ -515,11 +558,13 @@
                 if (lc && lc.ts > tx.start && lc.writer !== tx.id) return abort(s, ctx, tx, s.errors.occ, `a '${sc.tag}' row (${k}) changed after ${tx.id} started, so its SUM is stale.`);
             }
             note(ctx, `${tx.id} **validates**: nothing it read changed since it started, so its buffered writes are installed atomically.`);
+            trail(ctx, 'install', `${[...tx.writes.keys()].join(', ') || 'no writes'} installed at ${s.ts + 1}`);
         }
         const ts = ++s.ts;
         finishVersions(s, tx, 'committed', ts);
         if (e.ssi) {
             const cycle = conflictCycle(s, tx.id);
+            trail(ctx, 'cycle?', cycle ? `cycle ${cycle.join('→')}→${cycle[0]}` : 'no dependency cycle');
             if (cycle) {
                 for (const key of s.keys) for (const v of s.store[key]) if (v.writer === tx.id && v.ts === ts) { v.state = 'pending'; v.ts = -1; }
                 s.ts--;
@@ -532,7 +577,10 @@
             const lost = s.store[key].find(v => committed(v) && v.writer !== tx.id && v.ts > w.readTs && v.ts < ts);
             if (lost) anomaly(s, ctx, 'lost-update', tx, `${tx.id} computed ${key} from a value read before ${lost.writer} committed ${key} = ${lost.v}, so it **erases** that update.`);
         }
+        const held = lockNames(s, tx);
         release(s, tx);
+        if (e.family === 'mvcc') trail(ctx, 'commit-ts', `commit ${ts}: ${[...tx.writes.keys()].join(', ') || 'no'} versions visible to new snapshots`);
+        else if (e.family !== 'occ') trail(ctx, 'release', held.length ? `released ${held.join(' ')}` : 'nothing to release');
         tx.status = 'committed'; tx.finishedAt = s.t; tx.codes[tx.pc] = 5;
         s.m.commits++;
         ctx.ops.push(tx.id + ':commit');
@@ -555,6 +603,7 @@
         finishVersions(s, tx, 'aborted');
         release(s, tx);
         tx.status = 'aborted'; tx.abortReason = reason; tx.finishedAt = s.t; tx.codes[tx.pc] = 6;
+        trail(ctx, 'rollback', `${tx.id}: ${reason}`);
         s.m.rollbacks++;
         ctx.ops.push(tx.id + ':rollback');
         dirtyFallout(s, ctx, tx);
@@ -564,6 +613,9 @@
         finishVersions(s, tx, 'aborted');
         release(s, tx);
         tx.status = 'aborted'; tx.ccAborted = true; tx.abortReason = error; tx.finishedAt = s.t; tx.wait = null;
+        // Flowchart blocks are small: name the reason; the caption keeps the product's full error.
+        const kind = Object.keys(s.errors).find(k => s.errors[k] === error);
+        trail(ctx, 'abort', `${tx.id}: ${ABORT_SHORT[kind] || error}`);
         tx.codes[Math.min(tx.pc, tx.ops.length - 1)] = 6;
         s.m.aborts++;
         ctx.ops.push(tx.id + ':abort');
@@ -590,6 +642,7 @@
         Object.assign(tx, fresh);
         s.m.retries++;
         ctx.ops.push(tx.id + ':retry');
+        trail(ctx, 'retry', `${tx.id} attempt ${tx.attempt}`);
         note(ctx, `${tx.id} restarts (attempt ${tx.attempt}) with a fresh snapshot and no locks.`);
     }
 
@@ -747,12 +800,14 @@
         return null;
     }
     function step(s, ctx, tx) {
-        beginIfNeeded(s, ctx, tx);
         const op = tx.ops[tx.pc];
+        trail(ctx, 'stmt', `${tx.id}: ${opLabel(op)}`);
+        beginIfNeeded(s, ctx, tx);
         ctx.opref = tx.id + ':' + tx.pc;
         ctx.ops.push(tx.id + ':' + op.kind);
         ctx.actor = tx.id;
         tx.codes[tx.pc] = 4;
+        if (op.kind === 'commit') trail(ctx, 'commit', `${tx.id} commits`);
         let r;
         switch (op.kind) {
             case 'read': r = execRead(s, ctx, tx, op); break;
@@ -778,6 +833,7 @@
         for (const w of waiters) {
             if (stillBlocked(s, w)) continue;
             note(ctx, `${w.id}'s lock is now free, so it **resumes**.`);
+            trail(ctx, 'wake', `${w.id} resumes`);
             step(s, ctx, w);
             return;
         }
@@ -870,6 +926,7 @@
             laneCodes: s.txs.map(t => t.codes.concat(Array(MAX_OPS - t.codes.length).fill(0)).slice(0, MAX_OPS)),
             laneRows: s.txs.map(t => txStatus(s, t)).concat((s.missingTx || []).length ? Array.from({ length: MAX_TX - s.txs.length }, (_, i) => s.missingTx.includes(s.txs.length + i + 1) ? `T${s.txs.length + i + 1} n/a` : '') : []),
             scheduleNote: s.missingNote || '',
+            path: ctx.path || [], pathInfo: ctx.info || {},
             keys, verLabels, verCodes, lockRows: keys.map(k => lockText(s, k)), lockGrid: keys.map(k => lockCells(s, k)), lockCodes: keys.map(k => lockCells(s, k).map((c, i) => (c && c !== '—' ? i + 1 : 0))),
             locksHeld: s.txs.map(t => lockNames(s, t).join(' ') || '—'),
             values: keys.map(k => latestCommitted(s, k)?.v ?? 0),
@@ -1067,11 +1124,28 @@
         if (scenarioOf(current).id !== scenarioOf(sid).id || !opref) return 0;
         return renderSql(SCENARIO_INDEX.get(scenarioOf(sid).id)).lines[String(opref)] || 0;
     }
+    // Flowchart helpers. A node argument may name several trail nodes separated by '|'
+    // ("read-row|write-row"), for a block that stands for either.
+    const nodesOf = n => String(n).split('|');
+    /** 1 when the algorithm passed through `node` this tick. */
+    function dbHit(path, node) { const p = listOf(path); return nodesOf(node).some(n => p.includes(n)) ? 1 : 0; }
+    /** 1 when the algorithm went from `a` straight to `b` this tick. */
+    function dbHop(path, a, b) {
+        const p = listOf(path), from = nodesOf(a), to = nodesOf(b);
+        for (let i = 0; i + 1 < p.length; i++) if (from.includes(p[i]) && to.includes(p[i + 1])) return 1;
+        return 0;
+    }
+    /** What happened at `node` this tick, or `fallback` when it was not visited. */
+    function dbInfo(info, node, fallback) {
+        const map = info && typeof info === 'object' && !Array.isArray(info) ? info : {};
+        const hit = nodesOf(node).map(n => map[n]).filter(v => v != null && v !== '');
+        return hit.length ? hit.join('; ') : fallback == null ? '' : String(fallback);
+    }
     function dbOp(ops, name) { return listOf(ops).some(o => String(o).endsWith(':' + name) || o === name) ? 1 : 0; }
 
     const api = { dbTrace, dbLevelTrace, dbMechTrace, dbEngine, dbErrors, dbMechanism, dbLevel, dbProfile, dbProfileNote, dbScenario, dbScenarioId, dbStory, dbTxCount,
         dbOrder, dbOrderText, dbCell, dbText, dbAt, dbCount, dbLaneColor, dbMatrix, dbMatrixText, dbMatrixRow, dbMechMatrix, dbMechMatrixText, dbMechMatrixRow,
-        dbCaption, dbContext, dbSqlLine, dbOp };
+        dbCaption, dbContext, dbSqlLine, dbOp, dbHit, dbHop, dbInfo };
     if (typeof window !== 'undefined' && window.AlgeBenchDomains) window.AlgeBenchDomains.register('database', api);
     if (typeof globalThis !== 'undefined') globalThis.__databaseLab = { SCENARIOS, ENGINES, PROFILES, MECHANISMS, LEVELS, renderSql, run, serialRun,
         COLORS: { lane: LANE_COLORS, version: VERSION_COLORS, edge: EDGE_COLORS }, limits: { MAX_TX, MAX_OPS, MAX_KEYS, VERSION_SLOTS, ORDER_SLOTS, FRAMES } };
