@@ -160,11 +160,21 @@ function readDataTable(data, table, rowIndex, column) {
 	const value = row[String(column)];
 	return value != null ? value : 0;
 }
-/** Materialize a derived table before reading its rows or a cell. */
-function createBoundTableReader() {
+/** Materialize a derived table before reading its rows or a cell. An epoch of undefined disables reuse.
+*
+*  `epoch` names the moment the scene's inputs were last able to change. While it
+*  returns the same value, a binding is evaluated once and its rows are reused:
+*  views read a bound table once per cell per frame, and re-running the binding
+*  for each of those reads was most of a frame's cost. Without `epoch` every read
+*  evaluates, as before. */
+function createBoundTableReader(epoch) {
 	const resolving = /* @__PURE__ */ new Set();
+	const memo = /* @__PURE__ */ new Map();
 	return function read(data, bindings, table, rowIndex, column, evaluate) {
 		const name = String(table), binding = bindings.find((binding) => binding.table === name);
+		const now = epoch?.();
+		const hit = binding && now !== void 0 ? memo.get(name) : void 0;
+		if (binding && hit && hit.epoch === now && hit.rowsExpr === binding.rowsExpr && hit.data === data && Array.isArray(data[name])) return readDataTable(data, table, rowIndex, column);
 		if (binding) {
 			if (resolving.has(name)) throw new Error("Circular data table binding: " + name);
 			resolving.add(name);
@@ -173,6 +183,11 @@ function createBoundTableReader() {
 				const rows = result && typeof result.toArray === "function" ? result.toArray() : result;
 				if (!Array.isArray(rows) || rows.some((row) => !row || typeof row !== "object" || Array.isArray(row))) throw new Error("Table binding must return row objects: " + name);
 				data[name] = rows;
+				if (now !== void 0) memo.set(name, {
+					epoch: now,
+					rowsExpr: binding.rowsExpr,
+					data
+				});
 			} finally {
 				resolving.delete(name);
 			}
@@ -305,7 +320,19 @@ function arrayAt(input, at) {
 }
 //#endregion
 //#region src/expr.ts
-var boundTableReader = createBoundTableReader();
+var tableInputs = 0;
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+	const bump = () => {
+		tableInputs++;
+	};
+	window.addEventListener("algebench:sliderchange", bump);
+	window.addEventListener("algebench:navchange", bump);
+}
+function tableEpoch() {
+	const frameTime = typeof document !== "undefined" ? document.timeline?.currentTime : void 0;
+	return frameTime == null ? void 0 : tableInputs + ":" + String(frameTime);
+}
+var boundTableReader = createBoundTableReader(tableEpoch);
 var tableExpressions = /* @__PURE__ */ new Map();
 var exprState = state;
 var _mathjs = math.create(math.all);
@@ -2794,10 +2821,12 @@ function resetTensorSlider(id) {
 *  non-negative readout can hold the column open where a minus sign would go
 *  and the grid stops jittering as values cross zero. */
 var SIGN_SLOT = " ";
-function formatTensorCell(v) {
+/** `step`: the slider's step. An integer step means integer cells (a schedule,
+*  a count, an index), which read as whole numbers rather than 1.00. */
+function formatTensorCell(v, step) {
 	if (!Number.isFinite(v)) return "·";
 	const a = Math.abs(v);
-	const digits = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+	const digits = step !== void 0 && Number.isInteger(step) && step > 0 ? 0 : a >= 100 ? 0 : a >= 10 ? 1 : 2;
 	return (v < 0 ? "" : SIGN_SLOT) + v.toFixed(digits);
 }
 /** Rewrite the readouts of a tensor slider's grid on the panel. */
@@ -2809,7 +2838,7 @@ function _refreshTensorCells(id) {
 		const i = Number(cell.dataset.cell);
 		const v = s.values[i];
 		if (v === void 0) continue;
-		cell.textContent = formatTensorCell(v);
+		cell.textContent = formatTensorCell(v, s.step);
 		cell.classList.toggle("changed", !!s.defaults && Math.abs(v - s.defaults[i]) > 1e-9);
 	}
 }
@@ -2892,6 +2921,12 @@ function refreshSliderBounds() {
 	}
 	return valueMoved;
 }
+/** Write a readout, with the full text as its tooltip when it is too long to show. */
+function _setReadout(span, text) {
+	span.textContent = text;
+	if (text.length > 20) span.title = text;
+	else span.removeAttribute("title");
+}
 /** How many monospace characters the widest readout of `s` needs. Plain
 *  readouts are bounded by the two ends of the range. A formatted one
 *  (valueExpr) is measured by evaluating the format at every reachable
@@ -2950,7 +2985,7 @@ function startSliderLoop(id) {
 		if (input) {
 			input.value = String(slider.value);
 			const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
-			if (valSpan) valSpan.textContent = _formatSliderValue(slider);
+			if (valSpan) _setReadout(valSpan, _formatSliderValue(slider));
 		}
 		refreshActiveExprsForSliderValueChange();
 		if (slider._loopPlaying) slider._loopRaf = requestAnimationFrame(tick);
@@ -3159,21 +3194,22 @@ function buildSliderOverlay() {
 		row.appendChild(input);
 		const valSpan = document.createElement("span");
 		valSpan.className = "slider-value";
-		valSpan.textContent = _formatSliderValue(s);
-		valSpan.style.minWidth = `${_widestReadoutCh(s)}ch`;
+		_setReadout(valSpan, _formatSliderValue(s));
+		valSpan.style.minWidth = `${Math.min(_widestReadoutCh(s), 20)}ch`;
+		valSpan.style.maxWidth = `20ch`;
 		row.appendChild(valSpan);
 		s._onBoundsChange = () => {
 			input.min = String(s.min);
 			input.max = String(s.max);
 			if (String(s.value) !== input.value) input.value = String(s.value);
-			valSpan.textContent = _formatSliderValue(s);
+			_setReadout(valSpan, _formatSliderValue(s));
 		};
 		input.addEventListener("input", () => {
 			if (s._loopPlaying) stopSliderLoop(id);
 			s.value = parseFloat(input.value);
 			s._desired = s.value;
 			refreshSliderBounds();
-			valSpan.textContent = _formatSliderValue(s);
+			_setReadout(valSpan, _formatSliderValue(s));
 			recompileActiveExprs();
 			syncSliderState();
 			try {
@@ -3326,7 +3362,7 @@ function _buildTensorRow(id, s) {
 		cell.className = "tslider-cell";
 		cell.dataset.sliderId = id;
 		cell.dataset.cell = String(i);
-		cell.textContent = formatTensorCell(s.values[i]);
+		cell.textContent = formatTensorCell(s.values[i], s.step);
 		cell.title = stripLatex(tensorCellName(id, r, c));
 		if (s.defaults && Math.abs(s.values[i] - s.defaults[i]) > 1e-9) cell.classList.add("changed");
 		const open = () => {
@@ -3501,7 +3537,7 @@ function setSliderValue(id, value) {
 	if (input) {
 		input.value = String(s.value);
 		const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
-		if (valSpan) valSpan.textContent = _formatSliderValue(s);
+		if (valSpan) _setReadout(valSpan, _formatSliderValue(s));
 	}
 	recompileActiveExprs();
 	syncSliderState();
@@ -3541,7 +3577,7 @@ function animateSlider$1(id, target, duration) {
 			if (input) {
 				input.value = String(slider.value);
 				const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
-				if (valSpan) valSpan.textContent = _formatSliderValue(slider);
+				if (valSpan) _setReadout(valSpan, _formatSliderValue(slider));
 			}
 			recompileActiveExprs();
 			if (t < 1) requestAnimationFrame(tick);
@@ -3657,6 +3693,20 @@ function lineActionsFor(file, first, last, scene, hasSlider) {
 //#endregion
 //#region src/step-code-links.ts
 /** Step captions link into the same authored locations used by the code browser. */
+var compiledByLesson = /* @__PURE__ */ new WeakMap();
+function compiledActive(lesson, expression) {
+	let cache = compiledByLesson.get(lesson);
+	if (!cache) {
+		cache = /* @__PURE__ */ new Map();
+		compiledByLesson.set(lesson, cache);
+	}
+	let fn = cache.get(expression);
+	if (!fn) {
+		fn = compileExpr(expression);
+		cache.set(expression, fn);
+	}
+	return fn;
+}
 function makeStepCodeLinks() {
 	const lesson = state.lessonSpec;
 	const scene = lesson?.scenes?.[state.currentSceneIndex];
@@ -3667,7 +3717,7 @@ function makeStepCodeLinks() {
 	const refs = stepCodeLocations(lesson?.codeFiles ?? [], scene.id, step.id, snapshot, (file) => {
 		if (!step.descriptionExpr || !file.activeLineExpr) return void 0;
 		try {
-			return activeCodeLines(evalExpr(compileExpr(file.activeLineExpr), 0));
+			return activeCodeLines(evalExpr(compiledActive(lesson, file.activeLineExpr), 0));
 		} catch {
 			return /* @__PURE__ */ new Set();
 		}
@@ -3689,7 +3739,8 @@ function makeStepCodeLinks() {
 		button.addEventListener("mousedown", (event) => event.stopPropagation());
 		button.onclick = () => window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
 			fileId: file.id,
-			line: location.line
+			line: location.line,
+			select: false
 		} }));
 		links.append(button);
 	}
@@ -7976,12 +8027,14 @@ function setupAboutPopup() {
 //#endregion
 //#region src/step-player.ts
 /** Generic discrete state playback. It writes a slider; views bind to its data. */
+/** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
+*  agrees with captions and views that read the slider (Tick 0 is "0 / 36", not "1 / 37"). */
 function playbackPosition(value, min, max) {
 	const current = Math.max(min, Math.min(max, Math.round(value)));
 	return {
 		current,
-		ordinal: current - min + 1,
-		total: max - min + 1
+		total: max - min + 1,
+		display: `${current} / ${max}`
 	};
 }
 function setupStepPlayer() {
@@ -8060,8 +8113,8 @@ function setupStepPlayer() {
 		track.min = String(s.min);
 		track.max = String(s.max);
 		track.value = String(p.current);
-		track.setAttribute("aria-valuetext", `${p.ordinal} of ${p.total}`);
-		counter.textContent = `${p.ordinal} / ${p.total}`;
+		track.setAttribute("aria-valuetext", `${p.current} of ${s.max}`);
+		counter.textContent = p.display;
 		previous.disabled = p.current <= s.min;
 		next.disabled = p.current >= s.max;
 		play.disabled = p.total <= 1;
@@ -8864,6 +8917,16 @@ function fitPlainCellPx(wPx, hPx, measureAt) {
 	if (!(w > maxW)) return base;
 	return Math.max(1, Math.floor(base * maxW / w));
 }
+/** Line pitch of multi-line cell text, as a multiple of the font size. */
+var CELL_LINE_PITCH = 1.2;
+/**
+* Multi-line plain cell text ("ww A\nrw B"): each line gets an equal share of
+* the cell's height and the widest line decides the width fit, so long text
+* wraps where the author put the breaks instead of shrinking to one tiny line.
+*/
+function fitPlainCellLinesPx(wPx, hPx, lines, measureAt) {
+	return fitPlainCellPx(wPx, hPx / Math.max(1, lines.length), (px) => Math.max(...lines.map((line) => measureAt(px, line))));
+}
 function renderTensor(el, _view) {
 	const dims = parseShape(el.shape);
 	if (!dims) {
@@ -9309,14 +9372,17 @@ function renderTensor(el, _view) {
 			});
 			return;
 		}
-		ctx.font = `${fitPlainCellPx(wPx, hPx, (px) => {
+		const lines = txt.split("\n");
+		const fontPx = fitPlainCellLinesPx(wPx, hPx, lines, (px, line) => {
 			ctx.font = `${px}px ${FAMILY}`;
-			return ctx.measureText(txt).width;
-		})}px ${FAMILY}`;
+			return ctx.measureText(line).width;
+		});
+		ctx.font = `${fontPx}px ${FAMILY}`;
 		ctx.fillStyle = color;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
-		ctx.fillText(txt, cx, cy);
+		const pitch = fontPx * CELL_LINE_PITCH;
+		lines.forEach((line, i) => ctx.fillText(line, cx, cy + (i - (lines.length - 1) / 2) * pitch));
 	}
 	/** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above
 	*  `maxFontPx`; returns the size used (0 when nothing was drawn). */
@@ -9804,6 +9870,47 @@ function simplifyPipe(points) {
 	return result;
 }
 /** Arrowheads stay proportional to pipe radius, including short terminal segments. */
+/**
+* Where a connection's label goes: halfway along the pipe's length (not its middle vertex -- on a
+* straight two-point pipe that is the end, under the arrowhead), moved to the side of the segment it
+* lands on so the pipe does not cover it: above a horizontal segment, right of a vertical one. The
+* label is centred on the anchor, so the side step clears half its `width` (or `height`) plus `gap`.
+*/
+function pipeLabelAnchor(points, width = 1, height = .42, gap = .12) {
+	if (!points.length) return [
+		0,
+		0,
+		0
+	];
+	const lengths = points.slice(1).map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1], p[2] - points[i][2]));
+	let rest = lengths.reduce((a, b) => a + b, 0) / 2;
+	for (let i = 0; i < lengths.length; i++) {
+		const a = points[i], b = points[i + 1], len = lengths[i];
+		if (rest > len && i < lengths.length - 1) {
+			rest -= len;
+			continue;
+		}
+		const t = len > 0 ? rest / len : 0, mid = [
+			a[0] + (b[0] - a[0]) * t,
+			a[1] + (b[1] - a[1]) * t,
+			a[2] + (b[2] - a[2]) * t
+		];
+		return Math.abs(b[1] - a[1]) > Math.abs(b[0] - a[0]) ? [
+			mid[0] + width / 2 + gap,
+			mid[1],
+			mid[2]
+		] : [
+			mid[0],
+			mid[1] + height / 2 + gap,
+			mid[2]
+		];
+	}
+	return [
+		points[0][0],
+		points[0][1] + height / 2 + gap,
+		points[0][2]
+	];
+}
 function pipeArrowDimensions(radius, segmentLength) {
 	const length = Math.min(radius * 7, segmentLength * .75);
 	return {
@@ -10460,12 +10567,12 @@ function renderSystemDAG(el, _view) {
 		if (spec.direction !== "none" && spec.direction !== "backward") head(path.at(-1), path.at(-2));
 		if (spec.direction === "backward" || spec.direction === "both") head(path[0], path[1]);
 		if (spec.label) {
-			const middle = path[Math.floor(path.length / 2)];
+			const w = Math.min(5, Math.max(1, spec.label.length * .28)), at = pipeLabelAnchor(path, w, .42);
 			text(spec.label, [
-				middle[0],
-				middle[1] + .28,
-				middle[2] + .06
-			], Math.min(5, Math.max(1, spec.label.length * .28)), .42, "#becdd8");
+				at[0],
+				at[1],
+				at[2] + .06
+			], w, .42, "#becdd8");
 		}
 		if (spec.activeExpr) expressions.push(spec.activeExpr);
 		const coreMeshes = root.children.slice(wireStart).filter((child) => child instanceof THREE.Mesh && child.material === material);
@@ -20676,6 +20783,7 @@ function renderStepAdd(elements, sliderDefs) {
 				label: elementDisplayName(el),
 				animState: result?._animState ?? null
 			};
+			watchVisibleExpr(el);
 		}
 	}
 	const tracker = buildSubTracker(group, before);
@@ -20749,6 +20857,52 @@ function hideElementById(id) {
 	for (const entry of t.pointNodes || []) try {
 		entry.node.set("visible", false);
 	} catch (e) {}
+}
+var SELF_VISIBLE_TYPES = /* @__PURE__ */ new Set([
+	"text",
+	"step_marker",
+	"expression_label",
+	"animated_point",
+	"animated_vector"
+]);
+/** Give any other element with an id a `visibleExpr`: it is hidden and shown whole (meshes, labels and
+*  everything it rendered inside itself) through hideElementById / showElementById, re-checked on slider
+*  changes and navigation. It only re-shows what it hid itself, so a step's `remove` or a legend toggle
+*  is never undone by it. */
+function watchVisibleExpr(el) {
+	const expr = el.visibleExpr;
+	if (!el.id || typeof expr !== "string" || !expr.trim() || SELF_VISIBLE_TYPES.has(String(el.type))) return;
+	const reg = sceneState.elementRegistry[el.id];
+	if (!reg) return;
+	try {
+		reg.visibleFn = compileExpr(expr);
+	} catch (e) {
+		console.warn("visibleExpr compile error:", el.id, e);
+		return;
+	}
+	refreshVisibleExpr(el.id);
+}
+function refreshVisibleExpr(id) {
+	const reg = sceneState.elementRegistry[id];
+	if (!reg?.visibleFn) return;
+	let visible = true;
+	try {
+		visible = !!evalExpr(reg.visibleFn, 0);
+	} catch {}
+	if (!visible && !reg.hidden) {
+		hideElementById(id);
+		reg.hiddenByExpr = true;
+	} else if (visible && reg.hidden && reg.hiddenByExpr) {
+		reg.hiddenByExpr = false;
+		showElementById(id);
+	}
+}
+function refreshVisibleExprs() {
+	for (const id of Object.keys(sceneState.elementRegistry)) refreshVisibleExpr(id);
+}
+if (typeof window.addEventListener === "function") {
+	window.addEventListener("algebench:sliderchange", refreshVisibleExprs);
+	window.addEventListener("algebench:navchange", refreshVisibleExprs);
 }
 function showElementById(id) {
 	const reg = sceneState.elementRegistry[id];
@@ -21221,6 +21375,7 @@ async function loadScene(spec) {
 					prompt: el.prompt || null,
 					label: dn
 				};
+				watchVisibleExpr(el);
 			}
 		} catch (e) {
 			console.error("Error rendering element:", el, e);
@@ -21896,12 +22051,12 @@ function setupCodePanel() {
 		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
 		document.querySelector(".dock-tab[data-dock-tab=\"code\"]")?.click();
 		open(file);
-		choose(target.line, target.line, file.source.split("\n")[target.line - 1]);
+		if (target.select !== false) choose(target.line, target.line, file.source.split("\n")[target.line - 1]);
 		const row = body.querySelector(`[data-line="${target.line}"]`);
 		if (row) {
 			const rect = row.getBoundingClientRect(), viewport = body.getBoundingClientRect();
 			body.scrollTop += rect.top - viewport.top - Math.max(0, (viewport.height - rect.height) / 2);
-			row.querySelector("button")?.focus({ preventScroll: true });
+			if (target.select !== false) row.querySelector("button")?.focus({ preventScroll: true });
 		}
 	});
 	window.addEventListener("algebench:navchange", refresh);
@@ -22605,6 +22760,16 @@ async function loadInitialSceneFromQuery() {
 			if (res.ok) {
 				const spec = await res.json();
 				if (spec && Array.isArray(spec.scenes) && spec.scenes.length) {
+					const named = (header) => {
+						const value = res.headers.get(header);
+						try {
+							return value ? decodeURIComponent(value) : "";
+						} catch {
+							return "";
+						}
+					};
+					state.currentSceneSourceLabel = named("X-AlgeBench-Scene-Label");
+					state.currentSceneSourcePath = named("X-AlgeBench-Scene-Path");
 					await loadLesson(spec);
 					await applyRest();
 					return;
@@ -25795,9 +25960,8 @@ function buildChatContext() {
 			value: position.current,
 			min: executionSlider.min,
 			max: executionSlider.max,
-			position: position.ordinal,
 			total: position.total,
-			displayedPosition: `${position.ordinal} / ${position.total}`
+			displayedPosition: position.display
 		};
 	}
 	const promptExpr = ctx.currentScene?.promptExpr;

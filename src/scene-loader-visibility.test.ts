@@ -40,7 +40,8 @@ function frames(ms: number, stepMs = 16): void {
     }
 }
 
-const { hideElementById, showElementById, removalsStillInForce } = await import('/scene-loader.js');
+const { hideElementById, showElementById, removalsStillInForce, refreshVisibleExprs, SELF_VISIBLE_TYPES } = await import('/scene-loader.js');
+const { compileExpr } = await import('/expr.js');
 const { state } = await import('/state.js');
 
 // ----- fixtures -----
@@ -176,4 +177,42 @@ test('only trackers before the one being undone count', () => {
     const s3 = { removedIds: ['b'] };
     const later = { removedIds: ['c'] };
     assert.deepEqual([...removalsStillInForce([s1, {}, s3, later], s3)], ['a']);
+});
+
+// ----- generic visibleExpr -----
+
+test('visibleExpr hides an element when false and shows it again when true', () => {
+    const m = mesh(0.9);
+    register('dag', [m]);
+    const reg = state.elementRegistry['dag'] as { visibleFn?: unknown; hidden: boolean; hiddenByExpr?: boolean };
+    reg.visibleFn = compileExpr('0');
+    refreshVisibleExprs();
+    assert.equal(reg.hidden, true);
+    assert.equal(reg.hiddenByExpr, true);
+    assert.equal(m.visible, false);
+    frames(250);
+
+    reg.visibleFn = compileExpr('1');
+    refreshVisibleExprs();
+    assert.equal(reg.hidden, false);
+    assert.equal(m.visible, true);
+});
+
+test('visibleExpr never re-shows an element that a step removed or the legend hid', () => {
+    const m = mesh(0.9);
+    register('dag', [m]);
+    const reg = state.elementRegistry['dag'] as { visibleFn?: unknown; hidden: boolean };
+    hideElementById('dag');                    // removed by a step, not by the expression
+    reg.visibleFn = compileExpr('1');
+    refreshVisibleExprs();
+    assert.equal(reg.hidden, true, 'stays hidden');
+    assert.equal(m.visible, false);
+});
+
+test('types that evaluate visibleExpr in their own renderer are left to it', () => {
+    // A text label hidden by its own visibleExpr, then removed by the next step, must stay removed:
+    // a second, generic evaluator would have marked it hidden and resurrected it on navigation.
+    for (const type of ['text', 'step_marker', 'expression_label', 'animated_point', 'animated_vector'])
+        assert.ok(SELF_VISIBLE_TYPES.has(type), type);
+    assert.ok(!SELF_VISIBLE_TYPES.has('system_dag'));
 });

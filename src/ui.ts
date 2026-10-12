@@ -211,6 +211,13 @@ export async function loadInitialSceneFromQuery(): Promise<void> {
             if (res.ok) {
                 const spec = await res.json() as LessonSpec | null;
                 if (spec && Array.isArray(spec.scenes) && spec.scenes.length) {
+                    // The lesson the server was launched with: name its file in the header.
+                    const named = (header: string): string => {
+                        const value = res.headers.get(header);
+                        try { return value ? decodeURIComponent(value) : ''; } catch { return ''; }
+                    };
+                    state.currentSceneSourceLabel = named('X-AlgeBench-Scene-Label');
+                    state.currentSceneSourcePath = named('X-AlgeBench-Scene-Path');
                     await loadLesson(spec);
                     await applyRest();   // apply panel/aa/etc. on the default scene too
                     return;

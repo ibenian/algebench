@@ -433,6 +433,19 @@ export function fitPlainCellPx(wPx: number, hPx: number, measureAt: (fontPx: num
     return Math.max(1, Math.floor(base * maxW / w));
 }
 
+/** Line pitch of multi-line cell text, as a multiple of the font size. */
+export const CELL_LINE_PITCH = 1.2;
+
+/**
+ * Multi-line plain cell text ("ww A\nrw B"): each line gets an equal share of
+ * the cell's height and the widest line decides the width fit, so long text
+ * wraps where the author put the breaks instead of shrinking to one tiny line.
+ */
+export function fitPlainCellLinesPx(wPx: number, hPx: number, lines: readonly string[], measureAt: (fontPx: number, line: string) => number): number {
+    const n = Math.max(1, lines.length);
+    return fitPlainCellPx(wPx, hPx / n, px => Math.max(...lines.map(line => measureAt(px, line))));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function renderTensor(el: Element, _view: MathBoxNode) {
@@ -1023,17 +1036,19 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             drawLatex(ctx, txt, cx, cy, { fontPx: fitLatexPx(txt, wPx, hPx), color });
             return;
         }
-        // One measureText, at the height-fitted size, against KaTeX's full
-        // layout pass.
-        const fontPx = fitPlainCellPx(wPx, hPx, (px) => {
+        // One measureText per line, at the height-fitted size, against KaTeX's
+        // full layout pass. A '\n' in the text starts a new line.
+        const lines = txt.split('\n');
+        const fontPx = fitPlainCellLinesPx(wPx, hPx, lines, (px, line) => {
             ctx.font = `${px}px ${FAMILY}`;
-            return ctx.measureText(txt).width;
+            return ctx.measureText(line).width;
         });
         ctx.font = `${fontPx}px ${FAMILY}`;
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(txt, cx, cy);
+        const pitch = fontPx * CELL_LINE_PITCH;
+        lines.forEach((line, i) => ctx.fillText(line, cx, cy + (i - (lines.length - 1) / 2) * pitch));
     }
 
     /** Draw `txt` at the largest size that fits `wPx` x `hPx`, never above

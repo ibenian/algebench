@@ -27,6 +27,18 @@ test('bound tables materialize current rows while ordinary input tables stay unc
  assert.deepEqual(data.trace,[{value:5}]);assert.deepEqual(data.input,[{count:2}]);
  assert.deepEqual(read(data,bindings,'input',undefined,undefined,()=>{throw Error('should not run')}),[{count:2}]);
 });
+test('with an epoch, a binding is evaluated once per epoch and reused for every read in it',()=>{
+ let epoch=0,calls=0,count=1;const read=createBoundTableReader(()=>epoch),data:Record<string,unknown>={};
+ const bindings=[{table:'trace',rowsExpr:'buildTrace()'}],evaluate=()=>{calls++;return [{value:count},{value:count+1}];};
+ for(let i=0;i<50;i++)read(data,bindings,'trace',i%2,'value',evaluate);
+ assert.equal(calls,1);
+ count=7;assert.equal(read(data,bindings,'trace',0,'value',evaluate),1,'same epoch: rows reused');
+ epoch++;assert.equal(read(data,bindings,'trace',0,'value',evaluate),7,'new epoch: re-evaluated');
+ assert.equal(calls,2);
+ // A different binding expression or a different data object never reuses stale rows.
+ assert.equal(read(data,[{table:'trace',rowsExpr:'other()'}],'trace',0,'value',()=>[{value:42}]),42);
+ assert.equal(read({},bindings,'trace',0,'value',()=>[{value:9}]),9);
+});
 test('bound tables reject cycles and malformed results, then recover on the next read',()=>{
  const read=createBoundTableReader(),data={},bindings=[{table:'trace',rowsExpr:'trace'}];
  assert.throws(()=>read(data,bindings,'trace',0,'value',()=>read(data,bindings,'trace',0,'value',()=>[])),/Circular/);

@@ -1,0 +1,23 @@
+// Hoverable term definitions for the database lab.
+export const GLOSSARY = {
+    'Transaction': { aliases: ['transactions'], markdown: 'A group of statements the database treats as one unit: either all of its effects become visible (COMMIT) or none do (ROLLBACK or abort).' },
+    'Schedule': { markdown: 'The order in which statements from concurrent transactions reach the database. A schedule is *serializable* if its outcome equals some one-at-a-time order of the same transactions.' },
+    'Serializable': { aliases: ['serializability'], markdown: 'The strongest isolation guarantee: the result is the same as if the committed transactions had run one after another in some order.' },
+    'Isolation level': { aliases: ['isolation levels'], markdown: 'A promise about which concurrency anomalies a transaction can observe. Names are standardized by ANSI SQL, but products implement them differently.' },
+    'Snapshot isolation': { aliases: ['snapshot'], markdown: 'Each transaction reads from a consistent snapshot taken when it starts; a write to a row changed by a concurrent committed transaction aborts (first-updater-wins). Prevents most anomalies but allows write skew.' },
+    'SSI': { markdown: 'Serializable Snapshot Isolation: snapshot isolation plus tracking of read/write dependencies. A transaction that would close a dependency cycle aborts. PostgreSQL uses it for SERIALIZABLE.' },
+    'MVCC': { markdown: 'Multi-version concurrency control: writers create new row versions instead of overwriting, so readers can see an older consistent version without waiting. Old versions are cleaned up later (VACUUM, purge).' },
+    'Two-phase locking': { aliases: ['2PL'], markdown: 'Acquire locks while running, release none until commit (strict 2PL). Guarantees serializability (with predicate locks for phantoms) at the cost of blocking and deadlocks.' },
+    'Predicate lock': { aliases: ['predicate locks', 'next-key lock', 'next-key locks', 'gap lock'], markdown: 'A lock on the set of rows matching a condition, including rows that do not exist yet. Real engines approximate it with index-range locks (InnoDB next-key/gap locks).' },
+    'Deadlock': { aliases: ['deadlocks'], markdown: 'Transactions waiting for each other\'s locks in a cycle. The database detects the cycle and aborts one victim, which the application must retry.' },
+    'OCC': { aliases: ['optimistic concurrency control', 'optimistic'], markdown: 'Run without locks, buffer writes, and validate at commit that nothing read has changed; abort on conflict. Cheap when conflicts are rare, wasteful on hot rows.' },
+    'First-updater-wins': { markdown: 'The snapshot-isolation rule that a transaction may not write a row that a concurrent transaction already changed and committed after its snapshot. The later writer aborts.' },
+    'Lost update': { markdown: 'Two read-modify-write cycles on the same row overlap, and the later commit overwrites the earlier one\'s change.' },
+    'Dirty write': { markdown: 'Overwriting a value that another transaction wrote but has not committed. Forbidden at every isolation level, including Read Uncommitted, usually by holding write locks until commit.' },
+    'Dirty read': { markdown: 'Reading data written by a transaction that has not committed (and may roll back).' },
+    'Write skew': { markdown: 'Two transactions read overlapping data, then write disjoint rows based on what they read. Each is valid alone; together they violate an invariant. Allowed by snapshot isolation.' },
+    'Phantom': { aliases: ['phantoms', 'phantom read'], markdown: 'A row that appears in (or vanishes from) the result of a repeated query because another transaction inserted or deleted a matching row.' },
+    'Read skew': { markdown: 'Reading related rows from two different database states, so derived values (like a total) are inconsistent even though every read was of committed data.' },
+    'Conflict graph': { aliases: ['precedence graph'], markdown: 'Nodes are committed transactions; an edge T1 → T2 means T1 must come before T2 in any equivalent serial order (ww, wr or rw conflict on some row). A cycle means the schedule is not serializable.' },
+    'SELECT … FOR UPDATE': { aliases: ['FOR UPDATE', 'locking read'], markdown: 'A read that takes an exclusive row lock, so a later write in the same transaction cannot be lost to a concurrent writer.' },
+};

@@ -303,9 +303,8 @@ function buildChatContext(): AlgeBenchChatContext {
             value: position.current,
             min: executionSlider.min,
             max: executionSlider.max,
-            position: position.ordinal,
             total: position.total,
-            displayedPosition: `${position.ordinal} / ${position.total}`,
+            displayedPosition: position.display,
         };
     }
 
