@@ -1761,6 +1761,10 @@ export interface SystemBlock {
    */
   highlightExpr?: string;
   /**
+   * Expression giving the block's color (a CSS color string), re-evaluated on state changes. Use it for a component's state: e.g. grey while a node is down, amber while it is cut off. Focus (highlightExpr or a Code tab selection) still wins. An empty or invalid result falls back to color.
+   */
+  colorExpr?: string;
+  /**
    * Additional source locations represented by this block. Selecting any of these lines (or the codeRef line) in the Code tab focuses the block.
    */
   codeLinks?: CodeRef1[];
@@ -1792,6 +1796,10 @@ export interface SystemConnection {
    * An active flow changes color without changing pipe radius.
    */
   activeExpr?: string;
+  /**
+   * Expression giving the pipe's resting color (a CSS color string), re-evaluated on state changes; activeColor still wins while the flow is active. Use it for a link's state: e.g. red while a network partition cuts it, grey while an endpoint is down. An empty or invalid result falls back to color.
+   */
+  colorExpr?: string;
   /**
    * Pipe radius in scene data units, not a camera-scaled line width.
    */

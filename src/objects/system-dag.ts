@@ -65,7 +65,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
     }
     const values:{status:ReturnType<typeof registerCompositePart>;draw:ReturnType<typeof text>;fn:ReturnType<typeof compileExpr>|null;literal:string;label:string}[]=[];
     const expressions:string[]=[];
-    const nodeLighting=new Map<string,{fill:MeshBasicMaterial;border:MeshPhongMaterial;glow:MeshBasicMaterial;ports:MeshPhongMaterial[];color:Color}>();
+    const nodeLighting=new Map<string,{fill:MeshBasicMaterial;border:MeshPhongMaterial;glow:MeshBasicMaterial;ports:MeshPhongMaterial[];color:Color;colorFn:ReturnType<typeof compileExpr>|null}>();
     function glowMaterial(color:Color) {
         const material=new THREE.MeshBasicMaterial({color:new THREE.Color(...rgb(color)),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
         material.userData.activityOpacity=0;
@@ -115,7 +115,8 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
                 footprint.raycast=()=>{};
             }
         }
-        nodeLighting.set(spec.id,{fill,border,glow,ports,color});
+        nodeLighting.set(spec.id,{fill,border,glow,ports,color,colorFn:spec.colorExpr?compileExpr(spec.colorExpr):null});
+        if(spec.colorExpr)expressions.push(spec.colorExpr);
         if(spec.highlightExpr){focusFns.set(spec.id,compileExpr(spec.highlightExpr));expressions.push(spec.highlightExpr);}
         const headerHeight=spec.blocks?.length ? .85 : Math.min(.78,size[1]*.48);
         const title=text(spec.label,[p[0],p[1]+size[1]/2-headerHeight*.62,z+.06],Math.max(.1,size[0]-.3),headerHeight,color);
@@ -141,7 +142,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
                 'Explain port "'+port.id+'" on "'+spec.label+'", its boundary and the connections using it.');
         }
     }
-    const flows:{material:MeshPhongMaterial;glow:ShaderMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null}[]=[];
+    const flows:{material:MeshPhongMaterial;glow:ShaderMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null;colorFn:ReturnType<typeof compileExpr>|null}[]=[];
     for(const wire of layout.wires){
         const wireStart=root.children.length;
         const spec=wire.spec,radius=spec.radius??pipeRadius,color=spec.color??'#8296a4';
@@ -196,10 +197,11 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         if(spec.direction==='backward'||spec.direction==='both')head(path[0]!,path[1]!);
         if(spec.label){const w=Math.min(5,Math.max(1,spec.label.length*.28)),at=pipeLabelAnchor(path,w,.42);text(spec.label,[at[0],at[1],at[2]+.06],w,.42,'#becdd8');}
         if(spec.activeExpr)expressions.push(spec.activeExpr);
+        if(spec.colorExpr)expressions.push(spec.colorExpr);
         const coreMeshes=root.children.slice(wireStart).filter(child=>child instanceof THREE.Mesh&&child.material===material);
         registerCompositePart(objectId+'::connection:'+spec.id,wire.owner?blockId(wire.owner):objectId,_view,coreMeshes,[],spec.label??(layout.nodes.get(spec.from.block)!.spec.label+' → '+layout.nodes.get(spec.to.block)!.spec.label),
             'Explain this directed connection from "'+layout.nodes.get(spec.from.block)!.spec.label+'" port '+(spec.from.port??spec.from.side??'automatic')+' to "'+layout.nodes.get(spec.to.block)!.spec.label+'" port '+(spec.to.port??spec.to.side??'automatic')+'. Explain its direction and what active highlighting means.', 'animated_vector');
-        flows.push({material,glow,from:spec.from.block,to:spec.to.block,color,activeColor:spec.activeColor??'#f1c96b',fn:spec.activeExpr?compileExpr(spec.activeExpr):null});
+        flows.push({material,glow,from:spec.from.block,to:spec.to.block,color,activeColor:spec.activeColor??'#f1c96b',fn:spec.activeExpr?compileExpr(spec.activeExpr):null,colorFn:spec.colorExpr?compileExpr(spec.colorExpr):null});
     }
     // Reuse the full element dispatcher. Geometry, labels and deferred updates
     // share the block's local frame; existing step trackers own their lifecycle.
@@ -243,6 +245,11 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
     const entry:AnimExprEntry={animState,exprStrings:expressions,_rebuildFn:()=>{
         if(animState.stopped||animState.hiddenByRemove)return;
         for(const v of values){const value=v.fn?evalExpr(v.fn,0):v.literal,content=String(value??'');v.draw.layer.set(content,v.draw.p);v.draw.mirror.el.textContent=`${v.label}: ${content}`;v.status.label=`${v.label} status: ${content}`;}
+        // colorExpr: a state color for a block or pipe; anything unusable keeps the authored color.
+        function stateColor(fn:ReturnType<typeof compileExpr>|null,fallback:Color):Color{
+            if(!fn)return fallback;
+            try{const value=evalExpr(fn,0);return typeof value==='string'&&value&&parseColor(value)?value:fallback;}catch{return fallback;}
+        }
         const activeNodes=new Set<string>();
         function lightNode(id:string){
             while(!activeNodes.has(id)) {
@@ -253,7 +260,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         }
         for(const f of flows) {
             const active=!!(f.fn&&evalExpr(f.fn,0));
-            f.material.color.setRGB(...rgb(active?f.activeColor:f.color));
+            f.material.color.setRGB(...rgb(active?f.activeColor:stateColor(f.colorFn,f.color)));
             f.material.emissive.setRGB(...rgb(f.activeColor));
             f.material.emissiveIntensity=active?.65:0;
             f.glow.userData.activityOpacity=active?1:0;
@@ -265,7 +272,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
             const fn=focusFns.get(id);
             let focused=focusMatches(focus?codeRefs(id):[],focus);
             if(!focused&&fn)try{focused=!!evalExpr(fn,0);}catch{/* an unavailable binding leaves the block unfocused */}
-            const tone=focused?FOCUS_COLOR:lighting.color;
+            const tone=focused?FOCUS_COLOR:stateColor(lighting.colorFn,lighting.color);
             lighting.fill.color.setRGB(...rgb(tone));
             if(active&&!focused)lighting.fill.color.lerp(new THREE.Color('#ffffff'),.18);
             lighting.border.color.setRGB(...rgb(tone));lighting.border.emissive.setRGB(...rgb(tone));

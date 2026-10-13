@@ -314,6 +314,20 @@
       ],
       "port": 5765,
       "autoPort": true
+    },
+    {
+      "name": "distdb-lab",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/draft/distributed-databases-lab.json",
+        "--port",
+        "5766",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5766,
+      "autoPort": true
     }
   ]
 }

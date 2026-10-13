@@ -3275,6 +3275,10 @@
           "type": "string",
           "description": "An active flow changes color without changing pipe radius."
         },
+        "colorExpr": {
+          "type": "string",
+          "description": "Expression giving the pipe's resting color (a CSS color string), re-evaluated on state changes; activeColor still wins while the flow is active. Use it for a link's state: e.g. red while a network partition cuts it, grey while an endpoint is down. An empty or invalid result falls back to color."
+        },
         "radius": {
           "type": "number",
           "exclusiveMinimum": 0,
@@ -3406,6 +3410,10 @@
         "highlightExpr": {
           "type": "string",
           "description": "Truthy expression that marks this block as focused (cyan rim and glow), independent of connection activity. Use it to show where a selected concept or component lives."
+        },
+        "colorExpr": {
+          "type": "string",
+          "description": "Expression giving the block's color (a CSS color string), re-evaluated on state changes. Use it for a component's state: e.g. grey while a node is down, amber while it is cut off. Focus (highlightExpr or a Code tab selection) still wins. An empty or invalid result falls back to color."
         },
         "codeLinks": {
           "type": "array",

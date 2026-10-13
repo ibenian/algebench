@@ -10417,8 +10417,10 @@ function renderSystemDAG(el, _view) {
 			border,
 			glow,
 			ports,
-			color
+			color,
+			colorFn: spec.colorExpr ? compileExpr(spec.colorExpr) : null
 		});
+		if (spec.colorExpr) expressions.push(spec.colorExpr);
 		if (spec.highlightExpr) {
 			focusFns.set(spec.id, compileExpr(spec.highlightExpr));
 			expressions.push(spec.highlightExpr);
@@ -10575,6 +10577,7 @@ function renderSystemDAG(el, _view) {
 			], w, .42, "#becdd8");
 		}
 		if (spec.activeExpr) expressions.push(spec.activeExpr);
+		if (spec.colorExpr) expressions.push(spec.colorExpr);
 		const coreMeshes = root.children.slice(wireStart).filter((child) => child instanceof THREE.Mesh && child.material === material);
 		registerCompositePart(objectId + "::connection:" + spec.id, wire.owner ? blockId(wire.owner) : objectId, _view, coreMeshes, [], spec.label ?? layout.nodes.get(spec.from.block).spec.label + " → " + layout.nodes.get(spec.to.block).spec.label, "Explain this directed connection from \"" + layout.nodes.get(spec.from.block).spec.label + "\" port " + (spec.from.port ?? spec.from.side ?? "automatic") + " to \"" + layout.nodes.get(spec.to.block).spec.label + "\" port " + (spec.to.port ?? spec.to.side ?? "automatic") + ". Explain its direction and what active highlighting means.", "animated_vector");
 		flows.push({
@@ -10584,7 +10587,8 @@ function renderSystemDAG(el, _view) {
 			to: spec.to.block,
 			color,
 			activeColor: spec.activeColor ?? "#f1c96b",
-			fn: spec.activeExpr ? compileExpr(spec.activeExpr) : null
+			fn: spec.activeExpr ? compileExpr(spec.activeExpr) : null,
+			colorFn: spec.colorExpr ? compileExpr(spec.colorExpr) : null
 		});
 	}
 	const enclosing = currentDataOffset();
@@ -10658,6 +10662,15 @@ function renderSystemDAG(el, _view) {
 				v.draw.mirror.el.textContent = `${v.label}: ${content}`;
 				v.status.label = `${v.label} status: ${content}`;
 			}
+			function stateColor(fn, fallback) {
+				if (!fn) return fallback;
+				try {
+					const value = evalExpr(fn, 0);
+					return typeof value === "string" && value && parseColor(value) ? value : fallback;
+				} catch {
+					return fallback;
+				}
+			}
 			const activeNodes = /* @__PURE__ */ new Set();
 			function lightNode(id) {
 				while (!activeNodes.has(id)) {
@@ -10669,7 +10682,7 @@ function renderSystemDAG(el, _view) {
 			}
 			for (const f of flows) {
 				const active = !!(f.fn && evalExpr(f.fn, 0));
-				f.material.color.setRGB(...rgb(active ? f.activeColor : f.color));
+				f.material.color.setRGB(...rgb(active ? f.activeColor : stateColor(f.colorFn, f.color)));
 				f.material.emissive.setRGB(...rgb(f.activeColor));
 				f.material.emissiveIntensity = active ? .65 : 0;
 				f.glow.userData.activityOpacity = active ? 1 : 0;
@@ -10686,7 +10699,7 @@ function renderSystemDAG(el, _view) {
 				if (!focused && fn) try {
 					focused = !!evalExpr(fn, 0);
 				} catch {}
-				const tone = focused ? FOCUS_COLOR : lighting.color;
+				const tone = focused ? FOCUS_COLOR : stateColor(lighting.colorFn, lighting.color);
 				lighting.fill.color.setRGB(...rgb(tone));
 				if (active && !focused) lighting.fill.color.lerp(new THREE.Color("#ffffff"), .18);
 				lighting.border.color.setRGB(...rgb(tone));

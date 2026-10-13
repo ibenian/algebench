@@ -1,0 +1,3490 @@
+{
+  "title": "Distributed Databases Laboratory",
+  "import": [
+    "distdb"
+  ],
+  "glossaryMatchThreshold": 4,
+  "glossary": {
+    "Replica": {
+      "aliases": [
+        "replicas",
+        "replication"
+      ],
+      "markdown": "A copy of the data kept on another node, updated by applying the same changes. Replicas give read capacity, fault tolerance and locality — and a new question: how far behind may a copy be?"
+    },
+    "Primary": {
+      "aliases": [
+        "leader",
+        "single-leader"
+      ],
+      "markdown": "In single-leader replication, the one node that accepts writes, orders them in a log and ships the log to the replicas."
+    },
+    "Replication lag": {
+      "aliases": [
+        "lag"
+      ],
+      "markdown": "How far a replica's applied log trails the primary's. Reads from a lagging replica return older values."
+    },
+    "Failover": {
+      "markdown": "Promoting a replica to primary when the primary is unreachable. Writes acknowledged by the old primary but never replicated are lost. Safe election is the subject of lesson 3."
+    },
+    "Split brain": {
+      "markdown": "Two nodes both acting as primary — typically an isolated old primary still accepting writes after another was promoted. One side's writes are discarded when they meet."
+    },
+    "Lease": {
+      "aliases": [
+        "fencing"
+      ],
+      "markdown": "Time-bounded permission to act as primary. A primary that cannot renew it (cannot reach a majority) stops serving before anyone else may be promoted."
+    },
+    "Semi-sync": {
+      "aliases": [
+        "semi-synchronous",
+        "synchronous replication",
+        "asynchronous replication"
+      ],
+      "markdown": "Acknowledge a write once the primary and at least one replica have it (async: the primary only; sync: every replica)."
+    },
+    "Linearizable": {
+      "aliases": [
+        "linearizability",
+        "strong consistency"
+      ],
+      "markdown": "Every operation appears to take effect at one instant between its start and end, as if there were a single copy: once a write is acknowledged, every later read returns it or something newer."
+    },
+    "Eventual consistency": {
+      "aliases": [
+        "eventually consistent"
+      ],
+      "markdown": "If writes stop, all replicas eventually hold the same value. Says nothing about what reads return in the meantime."
+    },
+    "Read-your-writes": {
+      "aliases": [
+        "RYW"
+      ],
+      "markdown": "A session guarantee: a client always sees its own completed writes."
+    },
+    "Monotonic reads": {
+      "markdown": "A session guarantee: once a client has seen a version, it never later sees an older one."
+    },
+    "Causal consistency": {
+      "aliases": [
+        "causal"
+      ],
+      "markdown": "If a client has seen an operation, it also sees everything that operation depended on (its causal past), across clients and keys."
+    },
+    "Quorum": {
+      "aliases": [
+        "quorums",
+        "read quorum",
+        "write quorum"
+      ],
+      "markdown": "The number of replicas that must answer: W for a write, R for a read, out of N. With R + W > N every read quorum overlaps every write quorum."
+    },
+    "Sloppy quorum": {
+      "markdown": "When real replicas are unreachable, accept the write on other nodes (holding a hint) to stay available. Read and write quorums then may not overlap."
+    },
+    "Hinted handoff": {
+      "aliases": [
+        "hint",
+        "hints"
+      ],
+      "markdown": "A node holds a write meant for an unreachable replica and delivers it when the replica returns."
+    },
+    "Read repair": {
+      "markdown": "When the replies to a read disagree, the coordinator writes the newest version back to the stale replicas — before answering (blocking) or after (async). Only repairs keys that are read."
+    },
+    "Anti-entropy": {
+      "markdown": "A background process that compares replicas and copies missing data, usually with Merkle trees so only differing ranges are transferred (Cassandra nodetool repair)."
+    },
+    "Merkle tree": {
+      "aliases": [
+        "Merkle trees"
+      ],
+      "markdown": "A tree of hashes: leaves hash data ranges, parents hash their children. Two replicas compare roots and descend only where hashes differ."
+    },
+    "Tombstone": {
+      "aliases": [
+        "tombstones"
+      ],
+      "markdown": "A marker recording a delete, so the delete can replicate. Purged after gc-grace; a replica that missed the delete and is not repaired before that resurrects the data."
+    },
+    "Last write wins": {
+      "aliases": [
+        "LWW",
+        "last-write-wins"
+      ],
+      "markdown": "Resolve conflicting versions by keeping the one with the highest timestamp. Simple, but discards concurrent writes and trusts clocks."
+    },
+    "Siblings": {
+      "aliases": [
+        "version vectors",
+        "version vector"
+      ],
+      "markdown": "Concurrent versions of a key kept side by side because neither saw the other (detected with version vectors). The application merges them on the next write."
+    },
+    "Network partition": {
+      "aliases": [
+        "partition"
+      ],
+      "markdown": "Some nodes cannot exchange messages with others; messages are lost, not merely slow."
+    },
+    "CAP theorem": {
+      "aliases": [
+        "CAP"
+      ],
+      "markdown": "During a network partition, a system cannot both stay linearizable and have every non-failing node answer every request. It says nothing about normal operation."
+    },
+    "PACELC": {
+      "markdown": "If Partition: choose Availability or Consistency; Else: choose Latency or Consistency. The everyday trade-off is the \"else\" branch."
+    },
+    "Partition key": {
+      "aliases": [
+        "shard key",
+        "sharding",
+        "shard",
+        "shards"
+      ],
+      "markdown": "The attribute that decides which partition (shard) stores a record. Queries that filter on it go to one shard; others scatter to all."
+    },
+    "Hot partition": {
+      "aliases": [
+        "hot shard",
+        "hotspot",
+        "hot key"
+      ],
+      "markdown": "A partition receiving a disproportionate share of traffic — from a skewed key, a time-ordered key or one very popular item."
+    },
+    "Consistent hashing": {
+      "markdown": "Nodes and keys are hashed onto a ring; a key belongs to the next node clockwise. Adding a node moves only about 1/(N+1) of the keys."
+    },
+    "Virtual node": {
+      "aliases": [
+        "virtual nodes",
+        "vnodes",
+        "tokens"
+      ],
+      "markdown": "Each server owns many points (tokens) on the hash ring, so its share is the sum of many small arcs — much more even than one arc."
+    },
+    "Hash slot": {
+      "aliases": [
+        "hash slots"
+      ],
+      "markdown": "Redis Cluster maps every key to one of 16384 slots (CRC16 mod 16384); slots, not keys, are assigned to masters and moved explicitly."
+    },
+    "Scatter-gather": {
+      "markdown": "A query the router cannot send to one shard is sent to all and the results combined: latency of the slowest shard, load on every shard."
+    }
+  },
+  "codeFiles": [
+    {
+      "id": "postgres-conf",
+      "path": "distdb_lab/postgres/postgresql.conf",
+      "language": "ini",
+      "source": "# Primary: postgresql.conf (streaming replication)\nwal_level = replica\nmax_wal_senders = 10\n\n# Asynchronous by default: COMMIT returns once the WAL is flushed locally.\nsynchronous_commit = on\nsynchronous_standby_names = ''                      # async: no standby waited for\n\n# Semi-synchronous: wait for ANY one of the listed standbys to flush the WAL.\n# synchronous_standby_names = 'ANY 1 (replica_b, replica_c)'\n\n# Synchronous to all: wait for both (a down standby stalls every commit).\n# synchronous_standby_names = 'FIRST 2 (replica_b, replica_c)'\n\n# Strongest per-commit option: the standby has also applied (visible to its readers).\n# synchronous_commit = remote_apply\n\n# Standby: postgresql.conf\n# primary_conninfo = 'host=primary user=replicator'\n# hot_standby = on                                  # serve read-only queries while replaying\n"
+    },
+    {
+      "id": "postgres-client",
+      "path": "distdb_lab/postgres/client.py",
+      "language": "python",
+      "source": "import psycopg\n\nprimary = psycopg.connect(\"host=primary dbname=app\")\nreplica = psycopg.connect(\"host=replica-c dbname=app\")\n\n\ndef write(key, value):\n    with primary.transaction():\n        primary.execute(\"UPDATE kv SET v = %s WHERE k = %s\", (value, key))\n        lsn = primary.execute(\"SELECT pg_current_wal_lsn()\").fetchone()[0]\n    return lsn  # COMMIT has returned: acknowledged\n\n\ndef read(key):\n    # Hot standby: may lag behind the primary (replication lag).\n    return replica.execute(\"SELECT v FROM kv WHERE k = %s\", (key,)).fetchone()[0]\n\n\ndef read_your_writes(key, my_lsn):\n    # Session token: wait until the standby has replayed my last write, else go to the primary.\n    replayed = replica.execute(\"SELECT pg_last_wal_replay_lsn() >= %s\", (my_lsn,)).fetchone()[0]\n    conn = replica if replayed else primary\n    return conn.execute(\"SELECT v FROM kv WHERE k = %s\", (key,)).fetchone()[0]\n",
+      "activeLineExpr": "[ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leader', 'put', 9), ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leader', 'get', 16)]"
+    },
+    {
+      "id": "mongodb-client",
+      "path": "distdb_lab/mongodb/client.py",
+      "language": "python",
+      "source": "from pymongo import MongoClient, ReadPreference\nfrom pymongo.read_concern import ReadConcern\nfrom pymongo.write_concern import WriteConcern\n\nclient = MongoClient(\"mongodb://n1,n2,n3/?replicaSet=rs0\")\ndb = client.app\n\n# Defaults since 5.0: acknowledged by a majority of the replica set, read from the primary.\nkv = db.get_collection(\"kv\", write_concern=WriteConcern(w=\"majority\"))\n\n\ndef write(key, value):\n    kv.update_one({\"_id\": key}, {\"$set\": {\"v\": value}}, upsert=True)\n\n\ndef read(key):\n    return kv.find_one({\"_id\": key})[\"v\"]\n\n\n# Fast, possibly stale: any secondary, whatever it has applied.\nnearby = db.get_collection(\"kv\", read_preference=ReadPreference.SECONDARY_PREFERRED,\n                           read_concern=ReadConcern(\"local\"))\n\n\ndef read_nearby(key):\n    return nearby.find_one({\"_id\": key})[\"v\"]\n\n\ndef causal(key, value):\n    # A causally consistent session: reads wait until the secondary has seen my operations.\n    with client.start_session(causal_consistency=True) as s:\n        kv.update_one({\"_id\": key}, {\"$set\": {\"v\": value}}, session=s)\n        return nearby.find_one({\"_id\": key}, session=s)[\"v\"]\n",
+      "activeLineExpr": "[ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leader', 'put', 13), ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leader', 'get', 17)]"
+    },
+    {
+      "id": "cassandra-client",
+      "path": "distdb_lab/cassandra/client.py",
+      "language": "python",
+      "source": "from cassandra.cluster import Cluster\nfrom cassandra.query import SimpleStatement\nfrom cassandra import ConsistencyLevel\n\nsession = Cluster([\"n1\", \"n2\", \"n3\"]).connect()\nsession.execute(\"\"\"\n    CREATE KEYSPACE IF NOT EXISTS app\n    WITH replication = {'class': 'NetworkTopologyStrategy', 'dc1': 3}\n\"\"\")  # N = 3 replicas of every partition\nsession.set_keyspace(\"app\")\n\nW = ConsistencyLevel.QUORUM  # wait for 2 of 3 replica acks\nR = ConsistencyLevel.QUORUM  # wait for 2 of 3 replica replies (ONE = 1, ALL = 3)\n\n\ndef write(key, value):\n    stmt = SimpleStatement(\"UPDATE kv SET v = %s WHERE k = %s\", consistency_level=W)\n    session.execute(stmt, (value, key))  # cell timestamp decides conflicts: last write wins\n\n\ndef read(key):\n    stmt = SimpleStatement(\"SELECT v FROM kv WHERE k = %s\", consistency_level=R)\n    return session.execute(stmt, (key,)).one().v  # mismatching replicas are read-repaired\n\n\ndef delete(key):\n    # Writes a tombstone; it is purged after gc_grace_seconds (run repair more often than that).\n    session.execute(SimpleStatement(\"DELETE FROM kv WHERE k = %s\", consistency_level=W), (key,))\n",
+      "activeLineExpr": "[ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leaderless', 'put', 18), ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leaderless', 'get', 23), ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leaderless', 'del', 28)]"
+    },
+    {
+      "id": "dynamodb-client",
+      "path": "distdb_lab/dynamodb/client.py",
+      "language": "python",
+      "source": "import boto3\n\ntable = boto3.resource(\"dynamodb\").Table(\"kv\")  # partitioned by hash of the partition key \"k\"\n\n\ndef write(key, value):\n    table.put_item(Item={\"k\": key, \"v\": value})\n\n\ndef read(key):\n    # Default: eventually consistent (half the read cost; may miss a write from the last moment).\n    return table.get_item(Key={\"k\": key})[\"Item\"][\"v\"]\n\n\ndef read_strong(key):\n    # Strongly consistent: reflects every acknowledged write; base table only, not GSIs.\n    return table.get_item(Key={\"k\": key}, ConsistentRead=True)[\"Item\"][\"v\"]\n\n\ndef write_if_unchanged(key, value, version):\n    # Optimistic concurrency: the write fails if someone else changed the item meanwhile.\n    table.put_item(Item={\"k\": key, \"v\": value, \"ver\": version + 1},\n                   ConditionExpression=\"ver = :seen\", ExpressionAttributeValues={\":seen\": version})\n",
+      "activeLineExpr": "[ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leader', 'put', 7), ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leader', 'get', 12)]"
+    },
+    {
+      "id": "redis-cluster",
+      "path": "distdb_lab/redis/cluster.py",
+      "language": "python",
+      "source": "from redis.cluster import RedisCluster\n\nr = RedisCluster(host=\"n1\", port=6379)  # 16384 hash slots spread over the masters\n\n# Slot = CRC16(key) mod 16384; the client routes each command to the slot's master.\nprint(r.cluster_keyslot(\"user:42\"))\n\n# Hash tags: only the part in {...} is hashed, so these keys share a slot (multi-key ops work).\nr.set(\"{user:42}:profile\", \"...\")\nr.set(\"{user:42}:cart\", \"...\")\n\n\ndef write(key, value):\n    r.set(key, value)  # acknowledged by the master; replicated to its replica asynchronously\n\n\ndef write_and_wait(key, value):\n    r.set(key, value)\n    # Block until 1 replica acknowledges. Narrows, but does not close, the window for losing\n    # an acknowledged write on failover: Redis Cluster is not strongly consistent.\n    return r.execute_command(\"WAIT\", 1, 100, target_nodes=r.get_node_from_key(key))\n",
+      "activeLineExpr": "[ddCodeLine(dataTable('dd', frame, 'ops'), dataTable('dd', frame, 'topology'), 'leader', 'put', 14)]"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "replication",
+      "title": "Replication",
+      "description": "Primary–replica replication with async, semi-sync, majority and sync acknowledgements; lag, failover, split brain and multi-primary conflicts.",
+      "markdown": "### Replication: copies that follow a log\n\nA **replica** is a copy of the data that applies the same changes in the same order. In **single-leader** (primary–replica) replication, one node — the **primary** — accepts every write, appends it to a log, and ships the log to the replicas, which replay it.\n\nThe one decision that shapes everything: **when does the primary tell the client \"done\"?**\n\n| Acknowledge after… | Write latency | If the primary dies right after the ack |\n|---|---|---|\n| **async** — its own log only | lowest | the write may exist nowhere else → **lost** after failover |\n| **semi-sync** — 1 replica has it | + one round trip | another copy exists → survives one failure |\n| **majority** | + round trip to the median replica | survives any minority failure |\n| **sync** — all replicas | the slowest replica's round trip | nothing lost, but **one slow or dead replica stalls every write** |\n\n**Replication lag** is how far a replica's log trails the primary's; readers of that replica see the past.\n\n**Failover**: a monitor notices the primary is unreachable for a timeout and **promotes** the most up-to-date replica. Writes the old primary acknowledged but never shipped are gone. If the old primary is merely cut off rather than dead, it may keep accepting writes: **split brain**. A **lease** (fencing) makes a primary that cannot reach a majority stop serving before anyone else is promoted. *How to elect safely is lesson 3.*\n\n**The board.** *Clients* (top) shows every operation over time. *Network* lists messages in flight. Each node block holds its copy of every key: **green** = newest, **orange** = behind. Links light while messages travel and turn **red** when a partition cuts them.\n\n**Multi-primary** (last step) lets two nodes accept writes for the same key and replicate both ways — now two writes can conflict and something must decide which survives.",
+      "prompt": "You are a distributed-systems mentor preparing the learner for senior system-design interviews. Ground every claim in the live board (log positions, lag, lost writes, epochs). Ask the learner to predict before revealing. Be precise that failover here is a simplified external monitor; safe leader election is lesson 3.",
+      "promptExpr": "ddContext(frame, dataTable('dd'), concat('Settings: ', 'ack=', ack, ' ', 'replDelay=', replDelay, ' ', 'failover=', failover, ' ', 'lease=', lease))",
+      "range": [
+        [
+          -23.5,
+          19.5
+        ],
+        [
+          -11.5,
+          16.8
+        ],
+        [
+          -6,
+          6
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          2.6500000000000004,
+          32.805
+        ],
+        "target": [
+          0,
+          2.6500000000000004,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Board",
+          "position": [
+            0,
+            2.6500000000000004,
+            32.805
+          ],
+          "target": [
+            0,
+            2.6500000000000004,
+            0
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "frame",
+        "intervalMs": 900,
+        "speedControl": true
+      },
+      "data": {
+        "guides": [
+          {
+            "id": "repl-lag",
+            "text": "C1 writes x through primary N1; C3 reads x from replica N3, which applies the log 3 ticks late. **Predict what C3's first read returns.**"
+          },
+          {
+            "id": "repl-lag-zero",
+            "text": "Same workload with **Replica delay = 0**. Move it back up and watch the stale reads return."
+          },
+          {
+            "id": "repl-failover-predict",
+            "text": "Async replication. N1 crashes at tick 7, a few writes after its last shipment. **How many acknowledged writes survive?** Then play."
+          },
+          {
+            "id": "repl-semi",
+            "text": "Same crash, **Replication acks = semi-sync**: each write waits for one replica. Nothing acknowledged is lost — at the price of a round trip per write (see p99)."
+          },
+          {
+            "id": "repl-sync-stall",
+            "text": "**Sync to all replicas.** N3 crashes at tick 5: every following write waits for an ack that never comes and **times out**, though N1 and N2 are fine. Switch to semi-sync."
+          },
+          {
+            "id": "repl-split-brain",
+            "text": "A partition isolates primary N1 with client C1. The majority side promotes N2. Without a lease, **both** accept writes. When the partition heals, N1's writes are thrown away."
+          },
+          {
+            "id": "repl-multi",
+            "text": "N1 and N2 both accept writes and replicate to each other across a 3-tick WAN. C1 and C2 update x a tick apart; **last write wins** by timestamp — and N1's clock is ahead."
+          }
+        ]
+      },
+      "tableBindings": [
+        {
+          "table": "dd",
+          "rowsExpr": "ddTrace(scenario, {ack: ack, replDelay: replDelay, failover: failover, lease: lease})"
+        }
+      ],
+      "elements": [],
+      "steps": [
+        {
+          "id": "repl-lag",
+          "title": "Replication lag",
+          "description": "C1 writes x through primary N1; C3 reads x from replica N3, which applies the log 3 ticks late. **Predict what C3's first read returns.**",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 0, 'text'))",
+          "prompt": "Ask the learner to predict what C3 reads at tick 4, after C1 wrote x=1 and x=2. Then walk through replication lag on the board: the log entries in flight, N3 behind (orange), and the reads labelled stale. Point out that the replicas converge once writes stop.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "ack",
+              "label": "Replication acks",
+              "min": -1,
+              "max": 3,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'ack', ack)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            },
+            {
+              "id": "failover",
+              "label": "Failover timeout",
+              "min": -1,
+              "max": 8,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'failover', failover)"
+            },
+            {
+              "id": "lease",
+              "label": "Primary lease (fencing)",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'lease', lease)"
+            }
+          ],
+          "add": [
+            {
+              "type": "system_dag",
+              "id": "cluster",
+              "label": "Cluster",
+              "pipeRadius": 0.07,
+              "origin": [
+                0,
+                0,
+                0
+              ],
+              "blocks": [
+                {
+                  "id": "clients",
+                  "label": "Clients · each talks to one node (→)",
+                  "kind": "client",
+                  "position": [
+                    0,
+                    11.4,
+                    0
+                  ],
+                  "size": [
+                    31,
+                    6.4,
+                    0.18
+                  ],
+                  "ports": [
+                    {
+                      "id": "req",
+                      "side": "bottom",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "tensor",
+                      "id": "timeline",
+                      "shape": [
+                        3,
+                        41
+                      ],
+                      "origin": [
+                        -12.7,
+                        -2.85,
+                        0.25
+                      ],
+                      "cellSize": 0.6634146341463415,
+                      "gap": 0.05,
+                      "plane": "xy",
+                      "valueExpr": "col <= frame ? ddCell(dataTable('dd', frame, 'tl'), row, col) : 0",
+                      "textExpr": "col <= frame ? ddText(dataTable('dd', frame, 'tlText'), row, col) : ''",
+                      "textColor": "auto",
+                      "colorMap": {
+                        "stops": [
+                          {
+                            "t": 0,
+                            "color": "#1c2631"
+                          },
+                          {
+                            "t": 0.125,
+                            "color": "#4f8fc0"
+                          },
+                          {
+                            "t": 0.25,
+                            "color": "#7a8ea8"
+                          },
+                          {
+                            "t": 0.375,
+                            "color": "#3f9a6c"
+                          },
+                          {
+                            "t": 0.5,
+                            "color": "#7fd1a0"
+                          },
+                          {
+                            "t": 0.625,
+                            "color": "#c561b5"
+                          },
+                          {
+                            "t": 0.75,
+                            "color": "#b5524f"
+                          },
+                          {
+                            "t": 0.875,
+                            "color": "#ff7a45"
+                          },
+                          {
+                            "t": 1,
+                            "color": "#d9a441"
+                          }
+                        ]
+                      },
+                      "colorDomain": [
+                        0,
+                        8
+                      ],
+                      "opacity": 0.95,
+                      "shader": {
+                        "ignorePlaneOpacity": true
+                      },
+                      "axes": [
+                        {
+                          "labelExpr": "ddAt(dataTable('dd', frame, 'clientNames'), row)",
+                          "color": "#b8cee0"
+                        },
+                        {
+                          "labelExpr": "idx % 5 == 0 ? concat('t', idx) : ''",
+                          "color": "#7f93a8"
+                        }
+                      ],
+                      "axisLabels": "plane",
+                      "label": "Operation history (time →)",
+                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started."
+                    },
+                    {
+                      "type": "array",
+                      "id": "client-status",
+                      "itemType": "string",
+                      "origin": [
+                        -11.6,
+                        1.45,
+                        0.25
+                      ],
+                      "cellSize": 7.6,
+                      "fontSize": 10,
+                      "showIndices": false,
+                      "arrayColumns": 4,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
+                      "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs."
+                    }
+                  ]
+                },
+                {
+                  "id": "net",
+                  "label": "Network · messages in flight",
+                  "kind": "gateway",
+                  "position": [
+                    0,
+                    4.4,
+                    0
+                  ],
+                  "size": [
+                    31,
+                    3.6,
+                    0.18
+                  ],
+                  "textExpr": "concat(dataTable('dd', frame, 'msgCount'), ' in flight')",
+                  "ports": [
+                    {
+                      "id": "req",
+                      "side": "top",
+                      "offset": 0
+                    },
+                    {
+                      "id": "n0",
+                      "side": "bottom",
+                      "offset": -0.43870967741935485
+                    },
+                    {
+                      "id": "n1",
+                      "side": "bottom",
+                      "offset": 0
+                    },
+                    {
+                      "id": "n2",
+                      "side": "bottom",
+                      "offset": 0.43870967741935485
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "messages",
+                      "itemType": "string",
+                      "origin": [
+                        -11.4,
+                        -0.35,
+                        0.25
+                      ],
+                      "cellSize": 7.6,
+                      "fontSize": 10,
+                      "showIndices": false,
+                      "arrayColumns": 4,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'msgText')), 8)",
+                      "valueExpr": "ddAt(dataTable('dd', frame, 'msgText'), idx)",
+                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped."
+                    }
+                  ]
+                },
+                {
+                  "id": "n0",
+                  "label": "N1",
+                  "kind": "database",
+                  "position": [
+                    -6.8,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 0)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 0)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node0-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (0 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 0, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 0, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n1",
+                  "label": "N2",
+                  "kind": "database",
+                  "position": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 1)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 1)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node1-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (1 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 1, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 1, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n2",
+                  "label": "N3",
+                  "kind": "database",
+                  "position": [
+                    6.8,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 2)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 2)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node2-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (2 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 2, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 2, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                }
+              ],
+              "connections": [
+                {
+                  "id": "req",
+                  "from": {
+                    "block": "clients",
+                    "port": "req"
+                  },
+                  "to": {
+                    "block": "net",
+                    "port": "req"
+                  },
+                  "activeExpr": "ddCount(dataTable('dd', frame, 'ops')) > 0",
+                  "direction": "both",
+                  "activeColor": "#9ad7ff"
+                },
+                {
+                  "id": "link0",
+                  "from": {
+                    "block": "net",
+                    "port": "n0"
+                  },
+                  "to": {
+                    "block": "n0",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 0) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 0)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link1",
+                  "from": {
+                    "block": "net",
+                    "port": "n1"
+                  },
+                  "to": {
+                    "block": "n1",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 1) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 1)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link2",
+                  "from": {
+                    "block": "net",
+                    "port": "n2"
+                  },
+                  "to": {
+                    "block": "n2",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 2) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 2)",
+                  "direction": "both"
+                }
+              ]
+            },
+            {
+              "id": "metrics",
+              "type": "tensor",
+              "shape": [
+                1,
+                6
+              ],
+              "origin": [
+                -15.5,
+                -7.6,
+                0
+              ],
+              "cellSize": 2.6,
+              "gap": 0.06,
+              "plane": "xy",
+              "valueExpr": "col == 0 ? dataTable('dd', frame, 'm_availability') : col == 1 ? dataTable('dd', frame, 'm_p99') : col == 2 ? dataTable('dd', frame, 'm_stale') : col == 3 ? dataTable('dd', frame, 'm_lost') : col == 4 ? dataTable('dd', frame, 'm_unavailable') : dataTable('dd', frame, 'm_msgs')",
+              "textExpr": "value",
+              "textColor": "#edf4ff",
+              "colorMap": {
+                "stops": [
+                  {
+                    "t": 0,
+                    "color": "#22384d"
+                  },
+                  {
+                    "t": 1,
+                    "color": "#22384d"
+                  }
+                ]
+              },
+              "colorDomain": [
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {},
+                {
+                  "labels": [
+                    "Available %",
+                    "p99 latency",
+                    "Stale reads",
+                    "Lost writes",
+                    "Failed ops",
+                    "Messages"
+                  ],
+                  "color": "#b8cee0",
+                  "labelBand": 0.4
+                }
+              ],
+              "axisLabels": "plane",
+              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make."
+            }
+          ]
+        },
+        {
+          "id": "repl-lag-zero",
+          "title": "No lag, no stale reads",
+          "description": "Same workload with **Replica delay = 0**. Move it back up and watch the stale reads return.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 1, 'text'))",
+          "prompt": "Contrast the run with no replica delay. Emphasise that lag is a normal property of asynchronous replication, not a fault: it depends on load, network and replay speed.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "ack",
+              "label": "Replication acks",
+              "min": -1,
+              "max": 3,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'ack', ack)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": 0,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            },
+            {
+              "id": "failover",
+              "label": "Failover timeout",
+              "min": -1,
+              "max": 8,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'failover', failover)"
+            },
+            {
+              "id": "lease",
+              "label": "Primary lease (fencing)",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'lease', lease)"
+            }
+          ]
+        },
+        {
+          "id": "repl-failover-predict",
+          "title": "Predict the failover",
+          "description": "Async replication. N1 crashes at tick 7, a few writes after its last shipment. **How many acknowledged writes survive?** Then play.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 2, 'text'))",
+          "prompt": "Have the learner predict how many of C1's four acknowledged writes survive the crash of primary N1 under async replication. Then show the failover: the monitor promotes N2, the most up-to-date replica, and the old primary discards the entries the new one never had. Stress: these writes were acknowledged.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 1,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "ack",
+              "label": "Replication acks",
+              "min": -1,
+              "max": 3,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'ack', ack)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            },
+            {
+              "id": "failover",
+              "label": "Failover timeout",
+              "min": -1,
+              "max": 8,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'failover', failover)"
+            },
+            {
+              "id": "lease",
+              "label": "Primary lease (fencing)",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'lease', lease)"
+            }
+          ]
+        },
+        {
+          "id": "repl-semi",
+          "title": "Semi-sync: one copy elsewhere",
+          "description": "Same crash, **Replication acks = semi-sync**: each write waits for one replica. Nothing acknowledged is lost — at the price of a round trip per write (see p99).",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 3, 'text'))",
+          "prompt": "Compare async and semi-sync on the same crash: lost writes versus latency. Mention PostgreSQL synchronous_standby_names = ANY 1 and MySQL lossless semi-sync (AFTER_SYNC). Ask: what if the one replica that acknowledged also dies?",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 1,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "ack",
+              "label": "Replication acks",
+              "min": -1,
+              "max": 3,
+              "step": 1,
+              "default": 1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'ack', ack)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            },
+            {
+              "id": "failover",
+              "label": "Failover timeout",
+              "min": -1,
+              "max": 8,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'failover', failover)"
+            },
+            {
+              "id": "lease",
+              "label": "Primary lease (fencing)",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'lease', lease)"
+            }
+          ]
+        },
+        {
+          "id": "repl-sync-stall",
+          "title": "Sync: one dead replica stalls everything",
+          "description": "**Sync to all replicas.** N3 crashes at tick 5: every following write waits for an ack that never comes and **times out**, though N1 and N2 are fine. Switch to semi-sync.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 4, 'text'))",
+          "prompt": "Explain why requiring every replica to acknowledge turns any single replica failure into a write outage, and why production systems use a quorum (ANY 1, majority) instead. Note the timed-out writes are still on the primary — a timeout does not mean the write did not happen.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 2,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "ack",
+              "label": "Replication acks",
+              "min": -1,
+              "max": 3,
+              "step": 1,
+              "default": 3,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'ack', ack)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            },
+            {
+              "id": "failover",
+              "label": "Failover timeout",
+              "min": -1,
+              "max": 8,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'failover', failover)"
+            },
+            {
+              "id": "lease",
+              "label": "Primary lease (fencing)",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'lease', lease)"
+            }
+          ]
+        },
+        {
+          "id": "repl-split-brain",
+          "title": "Split brain",
+          "description": "A partition isolates primary N1 with client C1. The majority side promotes N2. Without a lease, **both** accept writes. When the partition heals, N1's writes are thrown away.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 5, 'text'))",
+          "prompt": "Walk through the split brain: two primaries in different epochs, both acknowledging writes, and the heal where the old primary steps down and discards its divergent log. Then switch Primary lease on and replay: N1 stops serving before N2 is promoted, so C1 gets rejections instead of silently lost writes.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 3,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "ack",
+              "label": "Replication acks",
+              "min": -1,
+              "max": 3,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'ack', ack)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            },
+            {
+              "id": "failover",
+              "label": "Failover timeout",
+              "min": -1,
+              "max": 8,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'failover', failover)"
+            },
+            {
+              "id": "lease",
+              "label": "Primary lease (fencing)",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": 0,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'lease', lease)"
+            }
+          ]
+        },
+        {
+          "id": "repl-multi",
+          "title": "Multi-primary: conflicting writes",
+          "description": "N1 and N2 both accept writes and replicate to each other across a 3-tick WAN. C1 and C2 update x a tick apart; **last write wins** by timestamp — and N1's clock is ahead.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 6, 'text'))",
+          "prompt": "Explain multi-primary replication: low local write latency in both regions, but concurrent writes to the same key conflict. Show that last-write-wins by timestamp discarded the later write because of clock skew. Ask what else could resolve it (application merge, CRDTs, routing each key to one home region).",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 4,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "ack",
+              "label": "Replication acks",
+              "min": -1,
+              "max": 3,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'ack', ack)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            },
+            {
+              "id": "failover",
+              "label": "Failover timeout",
+              "min": -1,
+              "max": 8,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'failover', failover)"
+            },
+            {
+              "id": "lease",
+              "label": "Primary lease (fencing)",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'lease', lease)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "consistency",
+      "title": "Consistency Models",
+      "description": "Read-your-writes, monotonic reads, causal and linearizable reads over lagging replicas, each checked against the real history.",
+      "markdown": "### Consistency models: what may a read return?\n\nWith replicas that lag, two clients can see different values at the same moment. A **consistency model** is a promise about **which values a read is allowed to return** — stated purely in terms of what clients observe, not how it is implemented.\n\n| Model | Promise | A violation looks like |\n|---|---|---|\n| **Eventual** | if writes stop, replicas converge | (anything goes meanwhile) |\n| **Read-your-writes** | you see your own writes | \"I saved my name and the page shows the old one\" |\n| **Monotonic reads** | you never go back in time | a refresh shows an older score than the last one |\n| **Causal** | if you saw an effect, you see its cause | a reply visible before the post it answers |\n| **Linearizable** | every read sees the latest acknowledged write, as if there were one copy | C2 sees the new price, C3 *afterwards* sees the old one |\n\nThe first three are **session guarantees**: about one client's view. **Causal** covers chains between clients. **Linearizable** is about real time across everyone, and is the only one that needs coordination on every read.\n\n**Guarantees vs. mechanisms.** Move **Read guarantee** to switch the *mechanism*: any replica · a session token (the log position of my last write) · a version token per key · a causal token (the highest position I have seen) · always read the primary. A replica holding a token waits until it has caught up — the latency each guarantee costs shows in *p99*.\n\n**The checker.** Nothing on the board trusts the mechanism. A history checker labels every read with the **weakest guarantee it breaks**, and searches for a single order of all operations that respects real time (linearizability). The **guarantee matrix** (right) runs every scenario under every mechanism.\n\n> *Isolation* (lesson 1) orders **transactions**; *consistency models* order **operations on copies**. A system can have one without the other; *strict serializability* is both.",
+      "prompt": "You are a distributed-systems mentor. Define each consistency model by what clients observe, then the mechanism that provides it. Use the history checker labels and the guarantee matrix as ground truth. Keep isolation (transactions) and consistency (replicas) distinct.",
+      "promptExpr": "ddContext(frame, dataTable('dd'), concat('Settings: ', 'read=', read, ' ', 'replDelay=', replDelay))",
+      "range": [
+        [
+          -23.5,
+          45.5
+        ],
+        [
+          -13.3,
+          16.8
+        ],
+        [
+          -6,
+          6
+        ]
+      ],
+      "camera": {
+        "position": [
+          13,
+          1.75,
+          56.05500000000001
+        ],
+        "target": [
+          13,
+          1.75,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Everything",
+          "position": [
+            13,
+            1.75,
+            56.05500000000001
+          ],
+          "target": [
+            13,
+            1.75,
+            0
+          ]
+        },
+        {
+          "name": "Board",
+          "position": [
+            0,
+            1.75,
+            35.23500000000001
+          ],
+          "target": [
+            0,
+            1.75,
+            0
+          ]
+        },
+        {
+          "name": "Guarantee matrix",
+          "position": [
+            31,
+            -2,
+            30
+          ],
+          "target": [
+            31,
+            -2,
+            0
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "frame",
+        "intervalMs": 900,
+        "speedControl": true
+      },
+      "data": {
+        "guides": [
+          {
+            "id": "cons-ryw",
+            "text": "C1 saves profile v=2, then reloads — each reload lands on a different replica. **Predict which reload shows v=1.**"
+          },
+          {
+            "id": "cons-mr",
+            "text": "C2 refreshes repeatedly; one refresh hits the lagging N3 and the score **goes back in time**. Try *read-your-writes*: it does not help — C2 wrote nothing."
+          },
+          {
+            "id": "cons-causal",
+            "text": "C3 reads C2's reply, then opens the post it answers — from a replica that has neither yet. Even with **monotonic reads** (per key) the reply is visible and the post is not."
+          },
+          {
+            "id": "cons-linear",
+            "text": "C1's price change is acknowledged. Then C2 (near N2) sees the new price and C3 (near N3) **afterwards** sees the old one — with every session guarantee satisfied."
+          },
+          {
+            "id": "cons-matrix",
+            "text": "Each cell ran one scenario under one mechanism. ✗ names the weakest guarantee that broke; ✓ shows the p99 latency paid. Which is the cheapest mechanism for each product feature?"
+          }
+        ]
+      },
+      "tableBindings": [
+        {
+          "table": "dd",
+          "rowsExpr": "ddTrace(scenario, {read: read, replDelay: replDelay})"
+        }
+      ],
+      "elements": [],
+      "steps": [
+        {
+          "id": "cons-ryw",
+          "title": "Read-your-writes",
+          "description": "C1 saves profile v=2, then reloads — each reload lands on a different replica. **Predict which reload shows v=1.**",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 0, 'text'))",
+          "prompt": "Ask the learner to predict which of C1's reads return the old profile. Point to the read labelled \"breaks read-your-writes\" and the replica it came from. Then switch Read guarantee to read-your-writes and show the replica waiting for the session token (higher latency, no violation).",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 5,
+              "max": 8,
+              "step": 1,
+              "default": 5,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "read",
+              "label": "Read guarantee",
+              "min": -1,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'read', read)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            }
+          ],
+          "add": [
+            {
+              "type": "system_dag",
+              "id": "cluster",
+              "label": "Cluster",
+              "pipeRadius": 0.07,
+              "origin": [
+                0,
+                0,
+                0
+              ],
+              "blocks": [
+                {
+                  "id": "clients",
+                  "label": "Clients · each talks to one node (→)",
+                  "kind": "client",
+                  "position": [
+                    0,
+                    11.4,
+                    0
+                  ],
+                  "size": [
+                    31,
+                    6.4,
+                    0.18
+                  ],
+                  "ports": [
+                    {
+                      "id": "req",
+                      "side": "bottom",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "tensor",
+                      "id": "timeline",
+                      "shape": [
+                        3,
+                        41
+                      ],
+                      "origin": [
+                        -12.7,
+                        -2.85,
+                        0.25
+                      ],
+                      "cellSize": 0.6634146341463415,
+                      "gap": 0.05,
+                      "plane": "xy",
+                      "valueExpr": "col <= frame ? ddCell(dataTable('dd', frame, 'tl'), row, col) : 0",
+                      "textExpr": "col <= frame ? ddText(dataTable('dd', frame, 'tlText'), row, col) : ''",
+                      "textColor": "auto",
+                      "colorMap": {
+                        "stops": [
+                          {
+                            "t": 0,
+                            "color": "#1c2631"
+                          },
+                          {
+                            "t": 0.125,
+                            "color": "#4f8fc0"
+                          },
+                          {
+                            "t": 0.25,
+                            "color": "#7a8ea8"
+                          },
+                          {
+                            "t": 0.375,
+                            "color": "#3f9a6c"
+                          },
+                          {
+                            "t": 0.5,
+                            "color": "#7fd1a0"
+                          },
+                          {
+                            "t": 0.625,
+                            "color": "#c561b5"
+                          },
+                          {
+                            "t": 0.75,
+                            "color": "#b5524f"
+                          },
+                          {
+                            "t": 0.875,
+                            "color": "#ff7a45"
+                          },
+                          {
+                            "t": 1,
+                            "color": "#d9a441"
+                          }
+                        ]
+                      },
+                      "colorDomain": [
+                        0,
+                        8
+                      ],
+                      "opacity": 0.95,
+                      "shader": {
+                        "ignorePlaneOpacity": true
+                      },
+                      "axes": [
+                        {
+                          "labelExpr": "ddAt(dataTable('dd', frame, 'clientNames'), row)",
+                          "color": "#b8cee0"
+                        },
+                        {
+                          "labelExpr": "idx % 5 == 0 ? concat('t', idx) : ''",
+                          "color": "#7f93a8"
+                        }
+                      ],
+                      "axisLabels": "plane",
+                      "label": "Operation history (time →)",
+                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started."
+                    },
+                    {
+                      "type": "array",
+                      "id": "client-status",
+                      "itemType": "string",
+                      "origin": [
+                        -11.6,
+                        1.45,
+                        0.25
+                      ],
+                      "cellSize": 7.6,
+                      "fontSize": 10,
+                      "showIndices": false,
+                      "arrayColumns": 4,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
+                      "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs."
+                    }
+                  ]
+                },
+                {
+                  "id": "net",
+                  "label": "Network · messages in flight",
+                  "kind": "gateway",
+                  "position": [
+                    0,
+                    4.4,
+                    0
+                  ],
+                  "size": [
+                    31,
+                    3.6,
+                    0.18
+                  ],
+                  "textExpr": "concat(dataTable('dd', frame, 'msgCount'), ' in flight')",
+                  "ports": [
+                    {
+                      "id": "req",
+                      "side": "top",
+                      "offset": 0
+                    },
+                    {
+                      "id": "n0",
+                      "side": "bottom",
+                      "offset": -0.43870967741935485
+                    },
+                    {
+                      "id": "n1",
+                      "side": "bottom",
+                      "offset": 0
+                    },
+                    {
+                      "id": "n2",
+                      "side": "bottom",
+                      "offset": 0.43870967741935485
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "messages",
+                      "itemType": "string",
+                      "origin": [
+                        -11.4,
+                        -0.35,
+                        0.25
+                      ],
+                      "cellSize": 7.6,
+                      "fontSize": 10,
+                      "showIndices": false,
+                      "arrayColumns": 4,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'msgText')), 8)",
+                      "valueExpr": "ddAt(dataTable('dd', frame, 'msgText'), idx)",
+                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped."
+                    }
+                  ]
+                },
+                {
+                  "id": "n0",
+                  "label": "N1",
+                  "kind": "database",
+                  "position": [
+                    -6.8,
+                    -1.9000000000000004,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    5.800000000000001,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 0)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 0)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node0-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 1.8,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 2) * (0 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 0, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 0, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n1",
+                  "label": "N2",
+                  "kind": "database",
+                  "position": [
+                    0,
+                    -1.9000000000000004,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    5.800000000000001,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 1)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 1)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node1-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 1.8,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 2) * (1 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 1, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 1, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n2",
+                  "label": "N3",
+                  "kind": "database",
+                  "position": [
+                    6.8,
+                    -1.9000000000000004,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    5.800000000000001,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 2)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 2)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node2-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 1.8,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 2) * (2 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 2, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 2, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                }
+              ],
+              "connections": [
+                {
+                  "id": "req",
+                  "from": {
+                    "block": "clients",
+                    "port": "req"
+                  },
+                  "to": {
+                    "block": "net",
+                    "port": "req"
+                  },
+                  "activeExpr": "ddCount(dataTable('dd', frame, 'ops')) > 0",
+                  "direction": "both",
+                  "activeColor": "#9ad7ff"
+                },
+                {
+                  "id": "link0",
+                  "from": {
+                    "block": "net",
+                    "port": "n0"
+                  },
+                  "to": {
+                    "block": "n0",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 0) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 0)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link1",
+                  "from": {
+                    "block": "net",
+                    "port": "n1"
+                  },
+                  "to": {
+                    "block": "n1",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 1) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 1)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link2",
+                  "from": {
+                    "block": "net",
+                    "port": "n2"
+                  },
+                  "to": {
+                    "block": "n2",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 2) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 2)",
+                  "direction": "both"
+                }
+              ]
+            },
+            {
+              "id": "metrics",
+              "type": "tensor",
+              "shape": [
+                1,
+                5
+              ],
+              "origin": [
+                -15.5,
+                -9.4,
+                0
+              ],
+              "cellSize": 2.6,
+              "gap": 0.06,
+              "plane": "xy",
+              "valueExpr": "col == 0 ? dataTable('dd', frame, 'm_p99') : col == 1 ? dataTable('dd', frame, 'm_p50') : col == 2 ? dataTable('dd', frame, 'm_stale') : col == 3 ? dataTable('dd', frame, 'm_ok') : dataTable('dd', frame, 'm_msgs')",
+              "textExpr": "value",
+              "textColor": "#edf4ff",
+              "colorMap": {
+                "stops": [
+                  {
+                    "t": 0,
+                    "color": "#22384d"
+                  },
+                  {
+                    "t": 1,
+                    "color": "#22384d"
+                  }
+                ]
+              },
+              "colorDomain": [
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {},
+                {
+                  "labels": [
+                    "p99 latency",
+                    "p50 latency",
+                    "Stale reads",
+                    "Reads ok",
+                    "Messages"
+                  ],
+                  "color": "#b8cee0",
+                  "labelBand": 0.4
+                }
+              ],
+              "axisLabels": "plane",
+              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make."
+            },
+            {
+              "type": "tensor",
+              "id": "guarantee-matrix",
+              "shape": [
+                4,
+                5
+              ],
+              "origin": [
+                24,
+                -4,
+                0
+              ],
+              "cellSize": 2.8,
+              "gap": 0.08,
+              "plane": "xy",
+              "valueExpr": "ddGuarantee(row, col)",
+              "textExpr": "ddGuaranteeText(row, col)",
+              "textColor": "auto",
+              "colorMap": {
+                "stops": [
+                  {
+                    "t": 0,
+                    "color": "#c5413f"
+                  },
+                  {
+                    "t": 0.2,
+                    "color": "#c561b5"
+                  },
+                  {
+                    "t": 0.4,
+                    "color": "#d98b4a"
+                  },
+                  {
+                    "t": 0.6,
+                    "color": "#d9a441"
+                  },
+                  {
+                    "t": 0.8,
+                    "color": "#3f9a6c"
+                  },
+                  {
+                    "t": 1,
+                    "color": "#1c2631"
+                  }
+                ]
+              },
+              "colorDomain": [
+                0,
+                5
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {
+                  "labelExpr": "ddGuaranteeRow(row)",
+                  "color": "#b8cee0"
+                },
+                {
+                  "labels": [
+                    "eventual",
+                    "RYW",
+                    "mono.",
+                    "causal",
+                    "primary"
+                  ],
+                  "color": "#b8cee0"
+                }
+              ],
+              "axisLabels": "plane",
+              "label": "Guarantee matrix (computed): scenario × read mechanism",
+              "prompt": "Explain this computed matrix: each cell ran the scenario (row) with the read mechanism (column). ✗ names the weakest guarantee the history checker found broken; ✓ shows the 99th-percentile latency that mechanism cost."
+            }
+          ]
+        },
+        {
+          "id": "cons-mr",
+          "title": "Monotonic reads",
+          "description": "C2 refreshes repeatedly; one refresh hits the lagging N3 and the score **goes back in time**. Try *read-your-writes*: it does not help — C2 wrote nothing.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 1, 'text'))",
+          "prompt": "Explain monotonic reads with the history: C2 saw s=1 and then s=0. Show that a read-your-writes token does not fix it (C2 has no writes), but a version token per key or sticky routing does. Distinguish the two session guarantees precisely.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 5,
+              "max": 8,
+              "step": 1,
+              "default": 6,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "read",
+              "label": "Read guarantee",
+              "min": -1,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'read', read)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            }
+          ]
+        },
+        {
+          "id": "cons-causal",
+          "title": "Causal consistency",
+          "description": "C3 reads C2's reply, then opens the post it answers — from a replica that has neither yet. Even with **monotonic reads** (per key) the reply is visible and the post is not.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 2, 'text'))",
+          "prompt": "Explain why the reply and the post are different keys, so monotonic reads per key cannot help. Switch to the causal token: C3 carries the log position of everything it has seen, so N3 waits until it has the post. Mention MongoDB causally consistent sessions (afterClusterTime).",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 5,
+              "max": 8,
+              "step": 1,
+              "default": 7,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "read",
+              "label": "Read guarantee",
+              "min": -1,
+              "max": 4,
+              "step": 1,
+              "default": 2,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'read', read)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            }
+          ]
+        },
+        {
+          "id": "cons-linear",
+          "title": "Linearizability",
+          "description": "C1's price change is acknowledged. Then C2 (near N2) sees the new price and C3 (near N3) **afterwards** sees the old one — with every session guarantee satisfied.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 3, 'text'))",
+          "prompt": "Explain why this history satisfies causal consistency yet is not linearizable: C2 and C3 never interacted, so no causal chain forces C3 to see the write; but in real time the write finished first. Switch to \"read the primary\" and show the cost: every read crosses to N1.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 5,
+              "max": 8,
+              "step": 1,
+              "default": 8,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "read",
+              "label": "Read guarantee",
+              "min": -1,
+              "max": 4,
+              "step": 1,
+              "default": 3,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'read', read)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            }
+          ]
+        },
+        {
+          "id": "cons-matrix",
+          "title": "Read the guarantee matrix",
+          "description": "Each cell ran one scenario under one mechanism. ✗ names the weakest guarantee that broke; ✓ shows the p99 latency paid. Which is the cheapest mechanism for each product feature?",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 4, 'text'))",
+          "prompt": "Drill: for a profile page, a news feed, a comment thread and a stock price, have the learner pick the weakest guarantee that is still correct, justify it from the matrix, and name the latency cost.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 5,
+              "max": 8,
+              "step": 1,
+              "default": 6,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "read",
+              "label": "Read guarantee",
+              "min": -1,
+              "max": 4,
+              "step": 1,
+              "default": 4,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'read', read)"
+            },
+            {
+              "id": "replDelay",
+              "label": "Replica delay (ticks)",
+              "min": -1,
+              "max": 10,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'replDelay', replDelay)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "quorums",
+      "title": "Quorum Reads and Writes",
+      "description": "N, R and W in a leaderless store: overlap, availability, latency, and four ways R + W > N still is not linearizable.",
+      "markdown": "### Quorums: tune consistency per request\n\n**Leaderless** replication (Dynamo, Cassandra, Riak): any node can **coordinate** a request. Each key has **N** replicas. A write succeeds once **W** replicas acknowledge; a read asks **R** replicas and returns the newest version among their replies.\n\nIf **R + W > N**, every read quorum overlaps every write quorum in at least one replica — so a read *should* meet the latest write. Fewer nodes to wait for means lower latency and higher availability: R = W = 1 is fast and survives N − 1 failures, but reads can be stale.\n\n**Try it:** set N, R, W and kill replicas. A request that cannot reach enough replicas is **rejected** immediately; one whose replies are too slow **times out**. The **quorum matrix** (right) runs the selected scenario for every R × W at this N.\n\n**Why R + W > N is not enough for linearizability** — four runnable counterexamples:\n\n1. **A read during a slow write.** The write has reached 1 of 3 replicas. Reader A's quorum includes it (new value); reader B, *after A finished*, picks two replicas without it (old value). Fixed by **blocking read repair**: A writes the newest value back before answering.\n2. **A failed write stays.** The client is told the write failed (too few acks before the timeout), but one replica stored it. Later readers disagree about whether it happened — nothing rolls it back.\n3. **Sloppy quorum.** When the real replicas are unreachable, fallback nodes accept the write (holding a *hint*). The write and read quorums no longer overlap.\n4. **Last write wins with clock skew.** Conflicts are settled by timestamp; a node with a fast clock makes an *earlier* write win, silently discarding a later acknowledged one.\n\n> Cassandra: consistency level per statement (ONE / QUORUM / ALL / LOCAL_QUORUM); linearizable compare-and-set needs lightweight transactions (Paxos, lesson 3). DynamoDB does not expose N, R, W at all — only eventually or strongly consistent reads.",
+      "prompt": "You are a distributed-systems mentor. Use the live board and the computed quorum matrix. Be precise: R + W > N gives overlapping quorums, not linearizability; explain each counterexample from the actual messages and replies. Relate settings to Cassandra consistency levels without overstating the model.",
+      "promptExpr": "ddContext(frame, dataTable('dd'), concat('Settings: ', 'N=', N, ' ', 'R=', R, ' ', 'W=', W, ' ', 'down=', down, ' ', 'readRepair=', readRepair, ' ', 'sloppy=', sloppy))",
+      "range": [
+        [
+          -25,
+          43
+        ],
+        [
+          -11.5,
+          16.8
+        ],
+        [
+          -6,
+          6
+        ]
+      ],
+      "camera": {
+        "position": [
+          11,
+          2.6500000000000004,
+          56
+        ],
+        "target": [
+          11,
+          2.6500000000000004,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Everything",
+          "position": [
+            11,
+            2.6500000000000004,
+            56
+          ],
+          "target": [
+            11,
+            2.6500000000000004,
+            0
+          ]
+        },
+        {
+          "name": "Board",
+          "position": [
+            0,
+            2.6500000000000004,
+            32.805
+          ],
+          "target": [
+            0,
+            2.6500000000000004,
+            0
+          ]
+        },
+        {
+          "name": "Quorum matrix",
+          "position": [
+            28,
+            -1,
+            30
+          ],
+          "target": [
+            28,
+            -1,
+            0
+          ]
+        }
+      ],
+      "stepPlayback": {
+        "slider": "frame",
+        "intervalMs": 900,
+        "speedControl": true
+      },
+      "data": {
+        "guides": [
+          {
+            "id": "q-overlap",
+            "text": "N = 3, W = 2, R = 2. C1 writes via N1; C2 reads via N3 — its two replicas always include one that took the write."
+          },
+          {
+            "id": "q-fast-stale",
+            "text": "**R = W = 1**: one ack, one reply. Latency drops — and C2 reads from N3 before the write reaches it. **Predict** which reads are stale, then play."
+          },
+          {
+            "id": "q-failures",
+            "text": "One replica down: W = 2 still succeeds. Raise **Replicas down** to 2 — now every request is rejected. Try W = 1 with R = 3, and R = 1 with W = 3."
+          },
+          {
+            "id": "q-matrix",
+            "text": "Every R × W cell ran this scenario. Change **N** and **Replicas down** and watch the safe (R + W > N) corner, the stale corner and the unavailable edge move."
+          },
+          {
+            "id": "q-concurrent",
+            "text": "R + W > N, yet reader A sees x=1 and reader B, **after A finished**, sees x=0. Switch **Read repair** to *blocking*."
+          },
+          {
+            "id": "q-failed-sloppy",
+            "text": "C1 is told its write **failed**, yet C2 reads it — and then C3 does not. Switch Scenario to **Sloppy quorum**: fallbacks N4, N5 accept the write and C2 cannot see it."
+          },
+          {
+            "id": "q-lww",
+            "text": "N1's clock runs 6 ticks fast. C2's write of x=2 comes **after** C1's x=1 was acknowledged, but carries an older timestamp — so x=1 wins everywhere."
+          }
+        ]
+      },
+      "tableBindings": [
+        {
+          "table": "dd",
+          "rowsExpr": "ddTrace(scenario, {N: N, R: R, W: W, down: down, readRepair: readRepair, sloppy: sloppy})"
+        }
+      ],
+      "elements": [],
+      "steps": [
+        {
+          "id": "q-overlap",
+          "title": "Overlapping quorums",
+          "description": "N = 3, W = 2, R = 2. C1 writes via N1; C2 reads via N3 — its two replicas always include one that took the write.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 0, 'text'))",
+          "prompt": "Explain the overlap argument for R + W > N using the board: which two replicas acknowledged the write, which two answered the read, and the replica they share.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 9,
+              "max": 13,
+              "step": 1,
+              "default": 9,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "N",
+              "label": "N · replicas of the key",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 3,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'N', N)"
+            },
+            {
+              "id": "R",
+              "label": "R · read quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 2,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'R', R)"
+            },
+            {
+              "id": "W",
+              "label": "W · write quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 2,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'W', W)"
+            },
+            {
+              "id": "down",
+              "label": "Replicas down",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "readRepair",
+              "label": "Read repair",
+              "min": -1,
+              "max": 2,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'readRepair', readRepair)"
+            },
+            {
+              "id": "sloppy",
+              "label": "Sloppy quorum",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'sloppy', sloppy)"
+            }
+          ],
+          "add": [
+            {
+              "type": "system_dag",
+              "id": "cluster",
+              "label": "Cluster",
+              "pipeRadius": 0.07,
+              "origin": [
+                0,
+                0,
+                0
+              ],
+              "blocks": [
+                {
+                  "id": "clients",
+                  "label": "Clients · each talks to one node (→)",
+                  "kind": "client",
+                  "position": [
+                    0,
+                    11.4,
+                    0
+                  ],
+                  "size": [
+                    34,
+                    6.4,
+                    0.18
+                  ],
+                  "ports": [
+                    {
+                      "id": "req",
+                      "side": "bottom",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "tensor",
+                      "id": "timeline",
+                      "shape": [
+                        3,
+                        41
+                      ],
+                      "origin": [
+                        -14.2,
+                        -2.85,
+                        0.25
+                      ],
+                      "cellSize": 0.7365853658536585,
+                      "gap": 0.05,
+                      "plane": "xy",
+                      "valueExpr": "col <= frame ? ddCell(dataTable('dd', frame, 'tl'), row, col) : 0",
+                      "textExpr": "col <= frame ? ddText(dataTable('dd', frame, 'tlText'), row, col) : ''",
+                      "textColor": "auto",
+                      "colorMap": {
+                        "stops": [
+                          {
+                            "t": 0,
+                            "color": "#1c2631"
+                          },
+                          {
+                            "t": 0.125,
+                            "color": "#4f8fc0"
+                          },
+                          {
+                            "t": 0.25,
+                            "color": "#7a8ea8"
+                          },
+                          {
+                            "t": 0.375,
+                            "color": "#3f9a6c"
+                          },
+                          {
+                            "t": 0.5,
+                            "color": "#7fd1a0"
+                          },
+                          {
+                            "t": 0.625,
+                            "color": "#c561b5"
+                          },
+                          {
+                            "t": 0.75,
+                            "color": "#b5524f"
+                          },
+                          {
+                            "t": 0.875,
+                            "color": "#ff7a45"
+                          },
+                          {
+                            "t": 1,
+                            "color": "#d9a441"
+                          }
+                        ]
+                      },
+                      "colorDomain": [
+                        0,
+                        8
+                      ],
+                      "opacity": 0.95,
+                      "shader": {
+                        "ignorePlaneOpacity": true
+                      },
+                      "axes": [
+                        {
+                          "labelExpr": "ddAt(dataTable('dd', frame, 'clientNames'), row)",
+                          "color": "#b8cee0"
+                        },
+                        {
+                          "labelExpr": "idx % 5 == 0 ? concat('t', idx) : ''",
+                          "color": "#7f93a8"
+                        }
+                      ],
+                      "axisLabels": "plane",
+                      "label": "Operation history (time →)",
+                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started."
+                    },
+                    {
+                      "type": "array",
+                      "id": "client-status",
+                      "itemType": "string",
+                      "origin": [
+                        -11.6,
+                        1.45,
+                        0.25
+                      ],
+                      "cellSize": 7.6,
+                      "fontSize": 10,
+                      "showIndices": false,
+                      "arrayColumns": 4,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
+                      "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs."
+                    }
+                  ]
+                },
+                {
+                  "id": "net",
+                  "label": "Network · messages in flight",
+                  "kind": "gateway",
+                  "position": [
+                    0,
+                    4.4,
+                    0
+                  ],
+                  "size": [
+                    34,
+                    3.6,
+                    0.18
+                  ],
+                  "textExpr": "concat(dataTable('dd', frame, 'msgCount'), ' in flight')",
+                  "ports": [
+                    {
+                      "id": "req",
+                      "side": "top",
+                      "offset": 0
+                    },
+                    {
+                      "id": "n0",
+                      "side": "bottom",
+                      "offset": -0.7999999999999999
+                    },
+                    {
+                      "id": "n1",
+                      "side": "bottom",
+                      "offset": -0.39999999999999997
+                    },
+                    {
+                      "id": "n2",
+                      "side": "bottom",
+                      "offset": 0
+                    },
+                    {
+                      "id": "n3",
+                      "side": "bottom",
+                      "offset": 0.39999999999999997
+                    },
+                    {
+                      "id": "n4",
+                      "side": "bottom",
+                      "offset": 0.7999999999999999
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "messages",
+                      "itemType": "string",
+                      "origin": [
+                        -11.4,
+                        -0.35,
+                        0.25
+                      ],
+                      "cellSize": 7.6,
+                      "fontSize": 10,
+                      "showIndices": false,
+                      "arrayColumns": 4,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'msgText')), 8)",
+                      "valueExpr": "ddAt(dataTable('dd', frame, 'msgText'), idx)",
+                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped."
+                    }
+                  ]
+                },
+                {
+                  "id": "n0",
+                  "label": "N1",
+                  "kind": "database",
+                  "position": [
+                    -13.6,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 0)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 0)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node0-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (0 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 0, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 0, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n1",
+                  "label": "N2",
+                  "kind": "database",
+                  "position": [
+                    -6.8,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 1)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 1)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node1-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (1 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 1, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 1, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n2",
+                  "label": "N3",
+                  "kind": "database",
+                  "position": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 2)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 2)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node2-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (2 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 2, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 2, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n3",
+                  "label": "N4",
+                  "kind": "database",
+                  "position": [
+                    6.8,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 3)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 3)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node3-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (3 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 3, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 3, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                },
+                {
+                  "id": "n4",
+                  "label": "N5",
+                  "kind": "database",
+                  "position": [
+                    13.6,
+                    -1,
+                    0
+                  ],
+                  "size": [
+                    6.1,
+                    4,
+                    0.18
+                  ],
+                  "textExpr": "ddAt(dataTable('dd', frame, 'nodeText'), 4)",
+                  "colorExpr": "ddNodeColor(dataTable('dd', frame, 'nodeCodes'), 4)",
+                  "ports": [
+                    {
+                      "id": "net",
+                      "side": "top",
+                      "offset": 0
+                    }
+                  ],
+                  "elements": [
+                    {
+                      "type": "array",
+                      "id": "node4-keys",
+                      "itemType": "string",
+                      "origin": [
+                        4.440892098500626e-16,
+                        -0.75,
+                        0.25
+                      ],
+                      "cellSize": 5.4,
+                      "fontSize": 11,
+                      "showIndices": false,
+                      "arrayColumns": 1,
+                      "arrayHeight": 0.9,
+                      "axisLabels": "plane",
+                      "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (4 < dataTable('dd', frame, 'nodeCount'))",
+                      "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 4, idx))",
+                      "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 4, idx)",
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                    }
+                  ]
+                }
+              ],
+              "connections": [
+                {
+                  "id": "req",
+                  "from": {
+                    "block": "clients",
+                    "port": "req"
+                  },
+                  "to": {
+                    "block": "net",
+                    "port": "req"
+                  },
+                  "activeExpr": "ddCount(dataTable('dd', frame, 'ops')) > 0",
+                  "direction": "both",
+                  "activeColor": "#9ad7ff"
+                },
+                {
+                  "id": "link0",
+                  "from": {
+                    "block": "net",
+                    "port": "n0"
+                  },
+                  "to": {
+                    "block": "n0",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 0) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 0)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link1",
+                  "from": {
+                    "block": "net",
+                    "port": "n1"
+                  },
+                  "to": {
+                    "block": "n1",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 1) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 1)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link2",
+                  "from": {
+                    "block": "net",
+                    "port": "n2"
+                  },
+                  "to": {
+                    "block": "n2",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 2) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 2)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link3",
+                  "from": {
+                    "block": "net",
+                    "port": "n3"
+                  },
+                  "to": {
+                    "block": "n3",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 3) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 3)",
+                  "direction": "both"
+                },
+                {
+                  "id": "link4",
+                  "from": {
+                    "block": "net",
+                    "port": "n4"
+                  },
+                  "to": {
+                    "block": "n4",
+                    "port": "net"
+                  },
+                  "activeExpr": "ddLink(dataTable('dd', frame, 'linkCodes'), 4) == 1",
+                  "colorExpr": "ddLinkColor2(dataTable('dd', frame, 'linkCodes'), 4)",
+                  "direction": "both"
+                }
+              ]
+            },
+            {
+              "id": "metrics",
+              "type": "tensor",
+              "shape": [
+                1,
+                6
+              ],
+              "origin": [
+                -17,
+                -7.6,
+                0
+              ],
+              "cellSize": 2.6,
+              "gap": 0.06,
+              "plane": "xy",
+              "valueExpr": "col == 0 ? dataTable('dd', frame, 'm_availability') : col == 1 ? dataTable('dd', frame, 'm_p99') : col == 2 ? dataTable('dd', frame, 'm_stale') : col == 3 ? dataTable('dd', frame, 'm_lost') : col == 4 ? dataTable('dd', frame, 'm_unavailable') : dataTable('dd', frame, 'm_hints')",
+              "textExpr": "value",
+              "textColor": "#edf4ff",
+              "colorMap": {
+                "stops": [
+                  {
+                    "t": 0,
+                    "color": "#22384d"
+                  },
+                  {
+                    "t": 1,
+                    "color": "#22384d"
+                  }
+                ]
+              },
+              "colorDomain": [
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {},
+                {
+                  "labels": [
+                    "Available %",
+                    "p99 latency",
+                    "Stale reads",
+                    "Lost writes",
+                    "Failed ops",
+                    "Hints replayed"
+                  ],
+                  "color": "#b8cee0",
+                  "labelBand": 0.4
+                }
+              ],
+              "axisLabels": "plane",
+              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make."
+            },
+            {
+              "type": "tensor",
+              "id": "quorum-matrix",
+              "shape": [
+                5,
+                5
+              ],
+              "origin": [
+                22,
+                -6.5,
+                0
+              ],
+              "cellSize": 2.6,
+              "gap": 0.08,
+              "plane": "xy",
+              "valueExpr": "ddQuorum(scenario, ddEff(scenario, 'N', N), down, ddEff(scenario, 'readRepair', readRepair), row, col)",
+              "textExpr": "ddQuorumText(scenario, ddEff(scenario, 'N', N), down, ddEff(scenario, 'readRepair', readRepair), row, col)",
+              "textColor": "auto",
+              "colorMap": {
+                "stops": [
+                  {
+                    "t": 0,
+                    "color": "#c5413f"
+                  },
+                  {
+                    "t": 0.2,
+                    "color": "#c561b5"
+                  },
+                  {
+                    "t": 0.4,
+                    "color": "#d98b4a"
+                  },
+                  {
+                    "t": 0.6,
+                    "color": "#d9a441"
+                  },
+                  {
+                    "t": 0.8,
+                    "color": "#3f9a6c"
+                  },
+                  {
+                    "t": 1,
+                    "color": "#1c2631"
+                  }
+                ]
+              },
+              "colorDomain": [
+                0,
+                5
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {
+                  "labelExpr": "concat('R = ', row + 1)",
+                  "color": "#b8cee0"
+                },
+                {
+                  "labelExpr": "concat('W = ', idx + 1)",
+                  "color": "#b8cee0"
+                }
+              ],
+              "axisLabels": "plane",
+              "label": "Quorum matrix (computed) · this scenario, N, failures",
+              "prompt": "Explain this computed matrix: each cell ran the selected scenario with that read quorum R (row) and write quorum W (column) at the current N and number of failed replicas. Magenta = some read was stale, orange = some requests failed, green = all fresh (with the p99 latency), blank = R or W larger than N."
+            }
+          ]
+        },
+        {
+          "id": "q-fast-stale",
+          "title": "Fast but stale",
+          "description": "**R = W = 1**: one ack, one reply. Latency drops — and C2 reads from N3 before the write reaches it. **Predict** which reads are stale, then play.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 1, 'text'))",
+          "prompt": "Ask the learner to predict which of C2's reads are stale with R = W = 1. Then relate the result to R + W ≤ N and to Cassandra consistency level ONE.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 9,
+              "max": 13,
+              "step": 1,
+              "default": 9,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "N",
+              "label": "N · replicas of the key",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 3,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'N', N)"
+            },
+            {
+              "id": "R",
+              "label": "R · read quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'R', R)"
+            },
+            {
+              "id": "W",
+              "label": "W · write quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'W', W)"
+            },
+            {
+              "id": "down",
+              "label": "Replicas down",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "readRepair",
+              "label": "Read repair",
+              "min": -1,
+              "max": 2,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'readRepair', readRepair)"
+            },
+            {
+              "id": "sloppy",
+              "label": "Sloppy quorum",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'sloppy', sloppy)"
+            }
+          ]
+        },
+        {
+          "id": "q-failures",
+          "title": "Failures and availability",
+          "description": "One replica down: W = 2 still succeeds. Raise **Replicas down** to 2 — now every request is rejected. Try W = 1 with R = 3, and R = 1 with W = 3.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 2, 'text'))",
+          "prompt": "Explain the availability side of the trade-off: a request needs W (or R) live replicas. Have the learner find settings that keep writes available with two replicas down, and say what they give up.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 9,
+              "max": 13,
+              "step": 1,
+              "default": 9,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "N",
+              "label": "N · replicas of the key",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 3,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'N', N)"
+            },
+            {
+              "id": "R",
+              "label": "R · read quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 2,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'R', R)"
+            },
+            {
+              "id": "W",
+              "label": "W · write quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 2,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'W', W)"
+            },
+            {
+              "id": "down",
+              "label": "Replicas down",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "readRepair",
+              "label": "Read repair",
+              "min": -1,
+              "max": 2,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'readRepair', readRepair)"
+            },
+            {
+              "id": "sloppy",
+              "label": "Sloppy quorum",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'sloppy', sloppy)"
+            }
+          ]
+        },
+        {
+          "id": "q-matrix",
+          "title": "The quorum matrix",
+          "description": "Every R × W cell ran this scenario. Change **N** and **Replicas down** and watch the safe (R + W > N) corner, the stale corner and the unavailable edge move.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 3, 'text'))",
+          "prompt": "Walk through the computed matrix: cells with R + W ≤ N read stale, cells needing more live replicas than exist fail, and the latency cost grows with R and W. Ask the learner to pick R and W for a read-heavy, a write-heavy and a must-not-lose workload.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 9,
+              "max": 13,
+              "step": 1,
+              "default": 9,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "N",
+              "label": "N · replicas of the key",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": 3,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'N', N)"
+            },
+            {
+              "id": "R",
+              "label": "R · read quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'R', R)"
+            },
+            {
+              "id": "W",
+              "label": "W · write quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'W', W)"
+            },
+            {
+              "id": "down",
+              "label": "Replicas down",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "readRepair",
+              "label": "Read repair",
+              "min": -1,
+              "max": 2,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'readRepair', readRepair)"
+            },
+            {
+              "id": "sloppy",
+              "label": "Sloppy quorum",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'sloppy', sloppy)"
+            }
+          ]
+        },
+        {
+          "id": "q-concurrent",
+          "title": "Counterexample 1 · read during a write",
+          "description": "R + W > N, yet reader A sees x=1 and reader B, **after A finished**, sees x=0. Switch **Read repair** to *blocking*.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 4, 'text'))",
+          "prompt": "Explain why this history is not linearizable even though every quorum overlaps: the write is still in flight, A's quorum includes the one replica that has it and B's does not. Blocking read repair makes A copy the newest value to a second replica before answering, so B's quorum must meet it.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 9,
+              "max": 13,
+              "step": 1,
+              "default": 10,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "N",
+              "label": "N · replicas of the key",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'N', N)"
+            },
+            {
+              "id": "R",
+              "label": "R · read quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'R', R)"
+            },
+            {
+              "id": "W",
+              "label": "W · write quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'W', W)"
+            },
+            {
+              "id": "down",
+              "label": "Replicas down",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "readRepair",
+              "label": "Read repair",
+              "min": -1,
+              "max": 2,
+              "step": 1,
+              "default": 0,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'readRepair', readRepair)"
+            },
+            {
+              "id": "sloppy",
+              "label": "Sloppy quorum",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'sloppy', sloppy)"
+            }
+          ]
+        },
+        {
+          "id": "q-failed-sloppy",
+          "title": "Counterexamples 2 and 3",
+          "description": "C1 is told its write **failed**, yet C2 reads it — and then C3 does not. Switch Scenario to **Sloppy quorum**: fallbacks N4, N5 accept the write and C2 cannot see it.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 5, 'text'))",
+          "prompt": "Explain both: a failed write is not rolled back (the client must treat a timeout as unknown, not as \"did not happen\"), and a sloppy quorum trades the overlap guarantee for availability during a partition, repaired later by hinted handoff.",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 9,
+              "max": 13,
+              "step": 1,
+              "default": 11,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "N",
+              "label": "N · replicas of the key",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'N', N)"
+            },
+            {
+              "id": "R",
+              "label": "R · read quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'R', R)"
+            },
+            {
+              "id": "W",
+              "label": "W · write quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'W', W)"
+            },
+            {
+              "id": "down",
+              "label": "Replicas down",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "readRepair",
+              "label": "Read repair",
+              "min": -1,
+              "max": 2,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'readRepair', readRepair)"
+            },
+            {
+              "id": "sloppy",
+              "label": "Sloppy quorum",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'sloppy', sloppy)"
+            }
+          ]
+        },
+        {
+          "id": "q-lww",
+          "title": "Counterexample 4 · clock skew",
+          "description": "N1's clock runs 6 ticks fast. C2's write of x=2 comes **after** C1's x=1 was acknowledged, but carries an older timestamp — so x=1 wins everywhere.",
+          "descriptionExpr": "ddCaption(frame, dataTable('dd'), dataTable('guides', 6, 'text'))",
+          "prompt": "Explain last-write-wins: replicas keep the version with the highest timestamp, which needs synchronized clocks. A skewed clock silently discards a later acknowledged write. Mention that Cassandra uses client or coordinator timestamps; the alternative is to keep siblings (next scenes) or use consensus (lesson 3).",
+          "sliders": [
+            {
+              "id": "frame",
+              "label": "Tick",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "scenario",
+              "label": "Scenario",
+              "min": 9,
+              "max": 13,
+              "step": 1,
+              "default": 13,
+              "reset": true,
+              "valueExpr": "ddScenario(scenario)"
+            },
+            {
+              "id": "N",
+              "label": "N · replicas of the key",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'N', N)"
+            },
+            {
+              "id": "R",
+              "label": "R · read quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'R', R)"
+            },
+            {
+              "id": "W",
+              "label": "W · write quorum",
+              "min": -1,
+              "max": 5,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'W', W)"
+            },
+            {
+              "id": "down",
+              "label": "Replicas down",
+              "min": 0,
+              "max": 4,
+              "step": 1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "readRepair",
+              "label": "Read repair",
+              "min": -1,
+              "max": 2,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'readRepair', readRepair)"
+            },
+            {
+              "id": "sloppy",
+              "label": "Sloppy quorum",
+              "min": -1,
+              "max": 1,
+              "step": 1,
+              "default": -1,
+              "reset": true,
+              "valueExpr": "ddSetting(scenario, 'sloppy', sloppy)"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
