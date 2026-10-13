@@ -1,4 +1,4 @@
-import { C as PREV_ICON, D as USER_ICON, E as UNDOCK_ICON, S as PLAY_ICON, T as TRASH_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as SHARE_VIEW_ICON, x as PLAN_ICON, y as NEXT_ICON } from "./theme.js";
+import { C as PREV_ICON, D as USER_ICON, E as UNDOCK_ICON, S as PLAY_ICON, T as TRASH_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, d as CODE_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as SHARE_VIEW_ICON, x as PLAN_ICON, y as NEXT_ICON } from "./theme.js";
 import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -1324,6 +1324,11 @@ function rowBracketWire(edgeX, fromY, toY, side) {
 	const bow = side * (10 + Math.min(28, Math.abs(toY - fromY) * .3));
 	return `M ${edgeX} ${fromY} C ${edgeX + bow} ${fromY}, ${edgeX + bow} ${toY}, ${edgeX} ${toY}`;
 }
+/** A vertical S-curve between two cell edges, leaving and arriving straight up or down. */
+function cellLinkPath(start, end) {
+	const bend = Math.max(8, Math.abs(end.y - start.y) * .45) * (end.y < start.y ? -1 : 1);
+	return `M ${start.x} ${start.y} C ${start.x} ${start.y + bend}, ${end.x} ${end.y - bend}, ${end.x} ${end.y}`;
+}
 //#endregion
 //#region src/cell-attachment.ts
 /** Shared screen-space anchor for a cell's index tag and connection endpoint. */
@@ -1739,6 +1744,91 @@ function placeCallouts() {
 		c.el.style.left = `${roomRight ? box.right + 8 : Math.max(8, box.left - 8 - width)}px`;
 		c.el.style.top = `${(r.top + r.bottom) / 2 - c.el.offsetHeight / 2}px`;
 		c.el.classList.add("visible");
+	}
+}
+//#endregion
+//#region src/cell-links.ts
+/**
+* Array cell links: a curve from each cell of one array to the cell of another object it names,
+* e.g. a deque of indices to the values in `nums`. The owning array evaluates the pairs on state
+* changes (setCellLinks); this module only projects and paints them, each frame, beside label wires.
+*/
+var sets = /* @__PURE__ */ new Map();
+/** Replace the links drawn from array `from`: each pair is [source cell, target cell in `to`]. */
+function setCellLinks(from, to, pairs, color) {
+	const set = sets.get(from);
+	if (set) {
+		set.to = to;
+		set.pairs = pairs;
+		set.color = color;
+	} else sets.set(from, {
+		to,
+		pairs,
+		color,
+		svg: null,
+		drawn: ""
+	});
+}
+/** Paint every link set; a set whose array left the scene is removed with its SVG. */
+function paintCellLinks() {
+	const camera = state.camera, canvas = state.renderer?.domElement, container = document.getElementById("labels-container");
+	for (const [from, set] of sets) {
+		if (!state.elementRegistry?.[from]) {
+			set.svg?.remove();
+			sets.delete(from);
+			continue;
+		}
+		if (!camera || !canvas || !container) continue;
+		const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect();
+		const screen = (p) => {
+			const v = new THREE.Vector3(...dataToWorld(p)).project(camera);
+			return {
+				x: viewport.left - rect.left + (v.x * .5 + .5) * viewport.width,
+				y: viewport.top - rect.top + (-v.y * .5 + .5) * viewport.height,
+				z: v.z
+			};
+		};
+		const paths = [];
+		for (const [i, j] of set.pairs) {
+			const a = objectCellAnchor(from, i), b = objectCellAnchor(set.to, j);
+			if (!a || !b) continue;
+			const ac = a.corners.map(screen), bc = b.corners.map(screen);
+			if ([...ac, ...bc].some((p) => p.z < -1 || p.z > 1)) continue;
+			const targetAbove = Math.min(...bc.map((p) => p.y)) < Math.min(...ac.map((p) => p.y));
+			const start = cellEdgeAnchor(ac, targetAbove ? "top" : "bottom", 2);
+			const end = cellEdgeAnchor(bc, targetAbove ? "bottom" : "top", targetAbove ? 14 : 2);
+			paths.push(cellLinkPath(start, end));
+		}
+		const drawn = JSON.stringify([paths, set.color]);
+		if (!set.svg?.isConnected) {
+			const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			svg.classList.add("cell-link-layer");
+			svg.setAttribute("aria-hidden", "true");
+			Object.assign(svg.style, {
+				position: "absolute",
+				inset: "0",
+				width: "100%",
+				height: "100%",
+				overflow: "visible",
+				pointerEvents: "none",
+				zIndex: "5"
+			});
+			container.append(svg);
+			set.svg = svg;
+			set.drawn = "";
+		}
+		if (drawn === set.drawn) continue;
+		set.drawn = drawn;
+		set.svg.replaceChildren(...paths.map((d) => {
+			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			path.setAttribute("d", d);
+			path.setAttribute("fill", "none");
+			path.setAttribute("stroke", set.color);
+			path.setAttribute("stroke-opacity", ".6");
+			path.setAttribute("stroke-width", "1.4");
+			path.setAttribute("stroke-linecap", "round");
+			return path;
+		}));
 	}
 }
 //#endregion
@@ -2505,6 +2595,7 @@ function updateLabels() {
 		}
 	}
 	updateLabelWire();
+	paintCellLinks();
 	refreshLabelTooltip();
 }
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
@@ -2592,7 +2683,7 @@ function groupAnnotations(scale) {
 						const open = document.createElement("button");
 						open.type = "button";
 						open.className = "ai-ask-btn annotation-code-btn";
-						open.textContent = "</>";
+						open.innerHTML = CODE_ICON;
 						open.title = `Open ${code.path}:${code.line}`;
 						open.setAttribute("aria-label", open.title);
 						open.addEventListener("pointerdown", (event) => event.stopPropagation());
@@ -6997,6 +7088,7 @@ function buildLegend(elements) {
 	const grouped = /* @__PURE__ */ new Map();
 	for (const el of elements) {
 		if (el.type === "axis" || el.type === "grid") continue;
+		if (el.labelSide === "left") continue;
 		const groupLabel = el.legendGroup || el.label;
 		if (!groupLabel || !el.color) continue;
 		const key = `${groupLabel}__${colorToCSS(el.color)}`;
@@ -9964,7 +10056,11 @@ function planeTextTextureSize(width, height, density = 128) {
 	const scale = Math.min(Math.max(128, density), 2048 / width, 2048 / height, Math.sqrt(1048576 / (width * height)));
 	return [Math.max(1, Math.floor(width * scale)), Math.max(1, Math.floor(height * scale))];
 }
-function createArrayPlaneText(width, height, color) {
+/**
+* `tag` paints the index-tag badge the screen mode draws in CSS (.array-index-tag): a dark plate with a
+* light outline and rounded lower corners, hung from the cell above, so world and screen tags match.
+*/
+function createArrayPlaneText(width, height, color, opts = {}) {
 	const canvas = document.createElement("canvas");
 	[canvas.width, canvas.height] = planeTextTextureSize(width, height);
 	const ctx = canvas.getContext("2d");
@@ -10009,7 +10105,30 @@ function createArrayPlaneText(width, height, color) {
 	function repaint() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		const text = previousText ?? "";
-		const px = fitPlainCellPx(canvas.width, canvas.height * 1.25, (size) => {
+		if (opts.tag) {
+			const w = canvas.width, h = canvas.height, line = Math.max(1, h * .06), r = Math.min(h * .35, w * .3);
+			ctx.beginPath();
+			ctx.moveTo(line / 2, 0);
+			ctx.lineTo(w - line / 2, 0);
+			ctx.lineTo(w - line / 2, h - r);
+			ctx.quadraticCurveTo(w - line / 2, h - line / 2, w - r, h - line / 2);
+			ctx.lineTo(r, h - line / 2);
+			ctx.quadraticCurveTo(line / 2, h - line / 2, line / 2, h - r);
+			ctx.closePath();
+			ctx.fillStyle = "rgba(24, 48, 75, .9)";
+			ctx.fill();
+			ctx.beginPath();
+			ctx.moveTo(line / 2, 0);
+			ctx.lineTo(line / 2, h - r);
+			ctx.quadraticCurveTo(line / 2, h - line / 2, r, h - line / 2);
+			ctx.lineTo(w - r, h - line / 2);
+			ctx.quadraticCurveTo(w - line / 2, h - line / 2, w - line / 2, h - r);
+			ctx.lineTo(w - line / 2, 0);
+			ctx.strokeStyle = "rgba(157, 189, 227, .45)";
+			ctx.lineWidth = line;
+			ctx.stroke();
+		}
+		const px = fitPlainCellPx(canvas.width * (opts.tag ? .72 : 1), canvas.height * (opts.tag ? .95 : 1.25), (size) => {
 			ctx.font = `600 ${size}px ui-monospace, monospace`;
 			return ctx.measureText(text).width;
 		});
@@ -11621,8 +11740,8 @@ function renderArray(el, _view, decorate) {
 	const planeText = el.axisLabels === "plane";
 	const cellTextPlanes = [];
 	const indexTextPlanes = [];
-	const addTextPlane = (width, height, color, cell) => {
-		const layer = createArrayPlaneText(width, height, color);
+	const addTextPlane = (width, height, color, cell, tag = false) => {
+		const layer = createArrayPlaneText(width, height, color, { tag });
 		mesh.add(layer.mesh);
 		layer.mesh.onBeforeRender = (renderer, _scene, camera) => {
 			layer.prepare(renderer, camera);
@@ -11658,7 +11777,7 @@ function renderArray(el, _view, decorate) {
 				indexLabel.forceHidden = true;
 				indexLabel.el.classList.add("array-plane-accessible");
 				clipArrayPlaneMirror(indexLabel.el);
-				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7", i));
+				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7", i, true));
 			}
 			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
 			indexLabels.push(indexLabel);
@@ -11674,7 +11793,16 @@ function renderArray(el, _view, decorate) {
 	let titleLabel;
 	const titleCentre = () => el.arrayColumns ? centre(Math.min(el.arrayColumns, n) - 1) : centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
 	const titleWidth = Math.max(1, (el.label?.length ?? 0) * .38);
+	const leftTitle = el.labelSide === "left" && el.arrayLayout !== "vertical";
 	const titlePosition = () => {
+		if (leftTitle && !el.labelPosition) {
+			const c = centre(0), gap = pitch * .39 + .22;
+			return [
+				c[0] - gap - (planeText ? titleWidth / 2 : 0),
+				c[1],
+				c[2] + .14
+			];
+		}
 		const at = el.labelPosition ?? titleCentre().map((value, i) => value + (el.labelOffset ?? [
 			0,
 			.88,
@@ -11686,11 +11814,11 @@ function renderArray(el, _view, decorate) {
 			Number(at[2]) + .14
 		];
 	};
-	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.color ?? "#b5c1cf") : null;
+	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.labelSide === "left" ? "#b5c1cf" : el.color ?? "#b5c1cf") : null;
 	const emptyPlane = planeText ? addTextPlane(.7, .68, "#8793a6") : null;
 	if (el.label) {
 		titleLabel = addLabel3D("", titlePosition(), "#b5c1cf", {
-			align: el.align,
+			align: leftTitle ? "right" : el.align,
 			cssClass: `label-3d ${el.cssClass ?? ""}`
 		});
 		if (planeText) {
@@ -11780,6 +11908,7 @@ function renderArray(el, _view, decorate) {
 		previous.length = 0;
 		updateTitle();
 	}
+	const linkFn = el.linkTo && el.id ? compileExpr(el.linkTo.indexExpr) : null;
 	const entry = {
 		animState,
 		exprStrings: [
@@ -11787,6 +11916,7 @@ function renderArray(el, _view, decorate) {
 			el.valueExpr,
 			el.highlightExpr,
 			el.colorExpr,
+			el.linkTo?.indexExpr,
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
 		_rebuildFn: () => {
@@ -11819,6 +11949,19 @@ function renderArray(el, _view, decorate) {
 			}
 			updateTitle();
 			decoration?.resize(next);
+			if (linkFn) {
+				const pairs = [];
+				cells.forEach(({ cell }, i) => {
+					try {
+						const j = Number(evalExpr(linkFn, 0, { overrideScope: {
+							idx: i,
+							value: cell.value
+						} }));
+						if (Number.isInteger(j) && j >= 0) pairs.push([i, j]);
+					} catch {}
+				});
+				setCellLinks(el.id, el.linkTo.object, pairs, el.linkTo.color ? colorToCSS(el.linkTo.color) : "#9dbde3");
+			}
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
@@ -11849,7 +11992,7 @@ function renderArray(el, _view, decorate) {
 					]);
 					indexTextPlanes[i]?.set(String(i), [
 						c[0],
-						c[1] - .58,
+						c[1] - .34 - .175,
 						c[2] + .14
 					]);
 				}

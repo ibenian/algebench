@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {labelWirePath,projectedCellEdge,routedLabelWire,wholeObjectWireAttachment,rowBracketWire} from './label-wire-path.js';
+import {labelWirePath,projectedCellEdge,routedLabelWire,wholeObjectWireAttachment,rowBracketWire,cellLinkPath} from './label-wire-path.js';
 test('whole-object wires meet the facing edge without doubling back through the object',()=>{
     const corners=[{x:100,y:80},{x:400,y:80},{x:400,y:120},{x:100,y:120}];
     const right=wholeObjectWireAttachment({x:500,y:100},{x:250,y:100},corners);
@@ -104,4 +104,10 @@ test('a row-to-row bracket leaves and returns at the box edge, bowing outward mo
     assert.ok(bow(near) > 0 && bow(far) > bow(near), 'bows outward, further for distant rows');
     assert.ok(bow(rowBracketWire(100, 0, 1000, 1)) <= 38, 'the bow is capped');
     assert.ok(bow(rowBracketWire(100, 10, 30, -1)) < 0, 'side -1 bows left');
+});
+
+test('a cell link leaves and arrives vertically, bending toward the target', () => {
+    assert.equal(cellLinkPath({x:10,y:100},{x:50,y:20}), 'M 10 100 C 10 64, 50 56, 50 20');
+    assert.match(cellLinkPath({x:10,y:20},{x:50,y:100}), /^M 10 20 C 10 56, 50 64, 50 100$/);
+    assert.match(cellLinkPath({x:0,y:0},{x:40,y:2}), /C 0 8, 40 -6, 40 2$/, 'a short link still bends at least 8px');
 });

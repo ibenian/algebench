@@ -573,6 +573,23 @@
           "type": "string",
           "description": "TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0-1), same scope and default as 'widthExpr'. Width and height are independent, so \"heightExpr\": \"value\" alone turns a row of cells into a bar chart sitting on its lattice."
         },
+        "linkTo": {
+          "type": "object",
+          "description": "ARRAY / STACK (needs an id). Draw a link from each cell to the cell of another object it names, e.g. a deque of indices to the values they index. indexExpr is evaluated per cell with 'idx' and 'value' bound; a cell whose index is not a valid cell draws no link. Links follow state changes and vanish with either object.",
+          "properties": {
+            "object": { "type": "string", "minLength": 1, "description": "Id of the array or stack the cells point into." },
+            "indexExpr": { "type": "string", "minLength": 1, "description": "Target cell index for this cell, e.g. 'value' when the cell holds an index." },
+            "color": { "$ref": "#/$defs/color" }
+          },
+          "required": ["object", "indexExpr"],
+          "additionalProperties": false
+        },
+        "labelSide": {
+          "type": "string",
+          "enum": ["top", "left"],
+          "default": "top",
+          "description": "ARRAY / STACK (horizontal). Where the array's own label sits. 'top' (default) centres it above the cells; 'left' places it just left of cell 0, right-aligned, so it names the row, stays put as the array grows, and lines up with the labels of rows stacked above or below. With axisLabels 'plane' it is drawn on the array's face."
+        },
         "axisLabels": {
           "type": "string",
           "enum": [

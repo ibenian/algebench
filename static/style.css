@@ -5691,13 +5691,23 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
     box-shadow: 0 0 0 1px #ffe28a, 0 0 10px 2px #f1cc59a6, 0 0 22px 4px #f1cc5940;
     animation: annotation-row-light .45s ease-out;
 }
+/* On a lit (gold) row the shared translucent button chrome disappears; give its buttons a dark plate. */
+.annotation-row-highlight .annotation-ask-btn,
+.annotation-row-highlight .annotation-code-btn {
+    background: rgba(24, 48, 75, .88); color: #f6e7b0; border-color: rgba(27, 22, 6, .55);
+}
+.annotation-row-highlight .annotation-ask-btn:hover,
+.annotation-row-highlight .annotation-code-btn:hover { background: rgba(24, 48, 75, 1); color: #fff6d6; }
+.annotation-row-highlight .expression-wire-toggle { color: #1b1606; }
 @keyframes annotation-row-light { from { box-shadow: 0 0 0 1px #fff3c4, 0 0 18px 6px #f1cc59d9, 0 0 36px 10px #f1cc5966; } }
 @media (prefers-reduced-motion: reduce) { .annotation-row.annotation-row-highlight { animation: none; } }
 /* Ask AI about a label row: the shared sparkle button, shown while hovering the row. */
 .annotation-row .annotation-ask-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
 .annotation-row:hover .annotation-ask-btn, .annotation-ask-btn:focus-visible,
 .annotation-row:hover .annotation-code-btn, .annotation-code-btn:focus-visible { opacity: 1; }
-.annotation-row .annotation-code-btn { float: right; margin: 1px 0 0 6px; top: 0; pointer-events: auto; width: auto; min-width: 16px; padding: 0 3px; border-radius: 4px; font: 600 9px/14px ui-monospace, monospace; }
+/* Same round box as the row's Ask-AI button, with the shared code icon at the sparkle's size. */
+.annotation-row .annotation-code-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
+.annotation-row .annotation-code-btn svg { width: 11px; height: 11px; pointer-events: none; }
 .expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
 .expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
 .expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }

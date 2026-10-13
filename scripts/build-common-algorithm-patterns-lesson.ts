@@ -1,17 +1,23 @@
-// Builds scenes/draft/interview-patterns.json from the display-only sources and
-// execution traces in src/algorithms/interview-patterns.ts. Prints JSON to stdout;
-// scripts/build_interview_patterns_lesson.py formats and writes it.
+// Builds scenes/draft/common-algorithm-patterns.json from the display-only sources and
+// execution traces in src/algorithms/common-algorithm-patterns.ts. Prints JSON to stdout;
+// scripts/build_common_algorithm_patterns_lesson.py formats and writes it.
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
     mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
-} from '../src/algorithms/interview-patterns.js';
-import type { Frame } from '../src/algorithms/interview-patterns.js';
-import { INTERVIEW_INPUTS as IN } from '../src/algorithms/interview-pattern-inputs.js';
+} from '../src/algorithms/common-algorithm-patterns.js';
+import type { Frame } from '../src/algorithms/common-algorithm-patterns.js';
+import { PATTERN_INPUTS as IN } from '../src/algorithms/common-algorithm-pattern-inputs.js';
 
 type Json = Record<string, unknown>;
+/**
+ * How every array draws its cell text, index tags and title: 'screen' labels face the camera; 'plane'
+ * draws them on the array's face, so they tilt, scale and occlude with it. One switch for the lesson:
+ * plane by default; ARRAY_TEXT=screen ./run.sh scripts/build_common_algorithm_patterns_lesson.py builds the other.
+ */
+const ARRAY_TEXT: 'screen' | 'plane' = (process.env.ARRAY_TEXT === 'screen' ? 'screen' : 'plane');
 const tr = (col: string) => `dataTable('trace', frame, '${col}')`;
 const inp = (col: string) => `dataTable('input', 0, '${col}')`;
 const GOLD = '#f1c65b', TEAL = '#77bfae', BLUE = '#9dbde3', PINK = '#e67db0';
@@ -23,7 +29,8 @@ const marker = (indexName: string, indexExpr: string, color = GOLD, visibleExpr?
 function array(id: string, label: string, origin: number[], opts: Json & { from: string }) {
     const { from, ...rest } = opts;
     return {
-        id, _title: label, type: 'array', itemType: 'number', origin, cellSize: 1.35, fontSize: 16, indexFontSize: 10,
+        // The array draws its own row title just left of cell 0, so titles stay attached to their rows and consistent.
+        id, type: 'array', itemType: 'number', origin, cellSize: 1.35, fontSize: 16, indexFontSize: 10, label, labelSide: 'left', axisLabels: ARRAY_TEXT,
         lengthExpr: `arrayCount(${from})`, valueExpr: `arrayAt(${from}, idx)`, ...rest,
     };
 }
@@ -97,6 +104,7 @@ const TIPS: Record<string, Record<string, string>> = {
     'greedy': { reach: 'tip_reach' },
     'bit-manipulation': { x: 'tip_x', result: 'tip_result' },
     'string-matching': { k: 'tip_k' },
+    'monotonic-queue': { x: 'tip_x' },
     'union-find': { a: 'tip_edge', b: 'tip_edge', count: 'tip_count' },
 };
 /** Fixed source lines for labels the code never assigns in the body: parameters and loop variables. */
@@ -126,12 +134,6 @@ interface PatternScene {
     trace: Frame[]; input: Json; elements: Json[]; cameraX?: number;
 }
 const scenes: Json[] = [], codeFiles: Json[] = [];
-/** Array titles sit at a fixed spot left of the row; built-in titles follow a dynamic array's centre into the markers. */
-function withTitle(el: Json): Json[] {
-    if (!('_title' in el)) return [el];
-    const { _title, ...array } = el, [x, y] = array.origin as number[];
-    return [{ id: `${array.id}-title`, type: 'text', text: _title, position: [x! - (array.cellSize as number) / 2 - 0.3 - 0.16 * String(_title).length, y!, 0], color: '#b5c1cf' }, array];
-}
 function pattern(p: PatternScene) {
     const x = p.cameraX ?? 0;
     scenes.push({
@@ -142,7 +144,7 @@ function pattern(p: PatternScene) {
             // The caption narrates the current step, as in the database lab; description is the fallback.
             id: 'run', title: 'Run the algorithm', description: 'Follow the highlighted code line with the execution player.', descriptionExpr: tr('message'),
             sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: p.trace.length - 1, step: 1, default: 0 }],
-            add: p.elements.flatMap(withTitle).map(withTip(p.id)),
+            add: p.elements.map(withTip(p.id)),
         }],
         stepPlayback: { slider: 'frame', intervalMs: 1200 },
         codeRef: { file: p.id, lineExpr: tr('line') },
@@ -166,7 +168,7 @@ const MD_TAIL = 'Use the execution player to step through, or open **Code** to s
 scenes.push({
     id: 'overview', title: 'Which pattern fits?', description: 'Recognize which pattern a problem is asking for.', range: RANGE,
     camera: { position: [1.5, 0, 15], target: [1.5, 0, 0] }, elements: [grid,
-        { id: 'title', type: 'text', text: 'Interview algorithm patterns', position: [1.5, 0.6, 0], color: GOLD },
+        { id: 'title', type: 'text', text: 'Common algorithm patterns', position: [1.5, 0.6, 0], color: GOLD },
         { id: 'subtitle', type: 'text', text: 'Spot the signal, pick the plan', position: [1.5, -0.6, 0], color: BLUE }],
     markdown: `# Which pattern fits?
 
@@ -435,7 +437,7 @@ const intervalChart = {
 };
 pattern({
     id: 'merge-intervals', title: 'Merge overlapping ranges (intervals)', file: 'merge_intervals.py', source: MERGE_INTERVALS_SOURCE,
-    input: { intervals: ivs.map(([s, e]) => `[${s},${e}]`) }, trace: mergeIntervalsTrace(ivs),
+    input: { intervals: ivs.map(([s, e]) => `[${s},${e}]`) }, trace: mergeIntervalsTrace(ivs), cameraX: -1,
     markdown: `# Merge overlapping ranges (intervals)
 
 **Signal:** meetings, bookings, ranges, or anything with a start and an end.
@@ -527,10 +529,21 @@ ${MD_TAIL}
             from: inp('nums'), highlightExpr: `idx >= ${tr('left')} and idx <= ${tr('i')}`,
             markers: [marker('i', tr('i')), marker('dq[0]', tr('front'), PINK)],
         }),
-        array('deque', 'deque', [-4.5, -0.2, 0], { from: tr('dq'), color: BLUE, showIndices: false }),
+        // Each deque cell holds an index into nums: link it to the value it names.
+        array('deque', 'deque', [-4.5, -0.2, 0], { from: tr('dq'), color: BLUE, showIndices: false, linkTo: { object: 'nums', indexExpr: 'value' } }),
         array('out', 'out', [-4.5, -2.4, 0], { from: tr('out'), color: '#b69bea' }),
-        label('i', unset('i'), [5, -3.9, 0], ['nums', tr('i')]),
+        // Vars, wired to the cell they name; and each condition as a row that glows on its line and wires to what it reads.
+        { ...label('i', unset('i'), [5, -3.9, 0]), connectTo: { object: 'nums', indexExpr: tr('i'), pinned: true } },
+        { ...label('x', `concat('x = ', ${tr('i')} < 0 ? 'unset' : ${tr('x')})`, [5, -3.9, 0]), connectTo: { object: 'nums', indexExpr: tr('i'), pinned: true } },
         label('k', `concat('k = ', ${inp('k')})`, [5, -3.9, 0]),
+        { ...label('cond-w', tr('cond_w'), [4.5, -1.3, 0], undefined, `${tr('line')} == 6`), codeRef: { file: 'monotonic-queue', line: 6 },
+          connectTo: [
+            { object: 'nums', indexExpr: `${tr('line')} == 6 ? ${tr('back')} : -1`, pinned: true },
+            { object: 'nums', indexExpr: `${tr('line')} == 6 and ${tr('back')} >= 0 ? ${tr('i')} : -1`, pinned: true },
+          ] },
+        { ...label('cond-e', tr('cond_e'), [4.5, -1.3, 0], undefined, `${tr('line')} == 9`), codeRef: { file: 'monotonic-queue', line: 9 },
+          connectTo: { object: 'deque', indexExpr: `${tr('line')} == 9 ? 0 : -1`, pinned: true } },
+        { ...label('cond-f', tr('cond_f'), [4.5, -1.3, 0], undefined, `${tr('line')} == 11`), codeRef: { file: 'monotonic-queue', line: 11 } },
     ],
 });
 
@@ -579,8 +592,11 @@ ${MD_TAIL}
     prompt: 'Explain XOR cancellation bit by bit. Ask the learner to predict the result bits before each step.',
     elements: [
         array('nums', 'nums', [-4.5, 2.5, 0], { from: inp('nums'), highlightExpr: `idx == ${tr('k')}`, markers: [marker('k', tr('k'))] }),
-        array('x-bits', 'x bits', [-2, 0.3, 0], { from: tr('xBits'), showIndices: false, highlightExpr: 'value == 1' }),
-        array('result-bits', 'result bits', [-2, -1.2, 0], { from: tr('rBits'), color: '#b69bea', showIndices: false }),
+        // A worked XOR: result before, then x, then result; on line 4 the bits x flipped glow in the result row.
+        array('before-bits', 'result before', [-2, 0.9, 0], { from: tr('bBits'), color: '#b69bea', showIndices: false }),
+        array('x-bits', 'x', [-2, -0.05, 0], { from: tr('xBits'), showIndices: false, highlightExpr: 'value == 1' }),
+        array('result-bits', 'result', [-2, -1.0, 0], { from: tr('rBits'), color: '#b69bea', showIndices: false,
+            highlightExpr: `${tr('line')} == 4 and arrayAt(${tr('xBits')}, idx) == 1` }),
         label('x', `concat('x = ', ${tr('k')} < 0 ? 'unset' : ${tr('x')})`, [4, -0.4, 0], ['nums', tr('k')]),
         label('result', `concat('result = ', ${tr('result')})`, [4, -0.4, 0]),
     ],
@@ -616,6 +632,20 @@ ${MD_TAIL}
         array('hits', 'hits', [-5.6, -3.0, 0], { from: tr('hits'), cellSize: 0.8, fontSize: 13, color: TEAL, showIndices: false }),
         label('k', `concat('k = ', ${tr('k')})`, [4.5, -0.4, 0], ['pattern', tr('k')]),
         label('phase', `concat('phase = ', ${tr('phase')} == 1 ? 'build lps' : 'search')`, [4.5, -0.4, 0]),
+        // Each while/if condition as a row with its last evaluation; the row for the line running now glows,
+        // wires to the cells it compares, and links to its line. Build rows show in phase 1, search rows in phase 2.
+        ...([
+            ['bw', 4, 1], ['bi', 6, 1], ['sw', 14, 2], ['si', 16, 2], ['sm', 18, 2],
+        ] as const).map(([row, line, phase]) => ({
+            ...label(`cond-${row}`, tr(`cond_${row}`), [4.5, -2.3, 0], undefined, `${tr('line')} == ${line}`),
+            visibleExpr: `${tr('phase')} == ${phase}`,
+            codeRef: { file: 'string-matching', line },
+            connectTo: [
+                { object: 'text', indexExpr: `${tr('line')} == ${line} ? ${tr('cmpT')} : -1`, pinned: true },
+                { object: 'pattern', indexExpr: `${tr('line')} == ${line} ? ${tr('cmpA')} : -1`, pinned: true },
+                { object: 'pattern', indexExpr: `${tr('line')} == ${line} ? ${tr('cmpB')} : -1`, pinned: true },
+            ],
+        })),
     ],
 });
 
@@ -774,4 +804,4 @@ const ORDER = ['overview',
     'recursion', 'backtracking', 'dynamic-programming'];                                                              // searching over choices                                                // searching over choices
 scenes.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
 codeFiles.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
-process.stdout.write(JSON.stringify({ title: 'Algorithm patterns for interviews', codeFiles, scenes }));
+process.stdout.write(JSON.stringify({ title: 'Common algorithm patterns', codeFiles, scenes }));

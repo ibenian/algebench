@@ -9,6 +9,8 @@ import type { AnnotationValue } from '/annotation-layout.js';
 import { state } from '/state.js';
 import { wireRowHover, updateLabelWire } from '/label-wire.js';
 import { wireRowTooltip, refreshLabelTooltip } from '/label-tooltip.js';
+import { CODE_ICON } from '/icons.js';
+import { paintCellLinks } from '/cell-links.js';
 import { dataToWorld, worldToData, currentDataOffset, withDataOffset } from '/coords.js';
 import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers, stripGlossaryMath } from '/glossary-core.js';
 
@@ -594,6 +596,7 @@ export function updateLabels(): void {
         if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
     }
     updateLabelWire();
+    paintCellLinks();
     refreshLabelTooltip();
 }
 
@@ -641,7 +644,8 @@ function groupAnnotations(scale: number): void {
                     const code = member.annotation!.code;
                     if (code) {
                         const open = document.createElement('button');
-                        open.type = 'button'; open.className = 'ai-ask-btn annotation-code-btn'; open.textContent = '</>';
+                        // The shared code icon in the Ask-AI button's round chrome, so the pair reads as one set.
+                        open.type = 'button'; open.className = 'ai-ask-btn annotation-code-btn'; open.innerHTML = CODE_ICON;
                         open.title = `Open ${code.path}:${code.line}`; open.setAttribute('aria-label', open.title);
                         open.addEventListener('pointerdown', event => event.stopPropagation());
                         open.addEventListener('click', event => {

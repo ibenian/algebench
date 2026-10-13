@@ -9,9 +9,9 @@ import {
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
     PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,
-} from './interview-patterns.js';
-import type {Frame} from './interview-patterns.js';
-import {INTERVIEW_INPUTS as IN} from './interview-pattern-inputs.js';
+} from './common-algorithm-patterns.js';
+import type {Frame} from './common-algorithm-patterns.js';
+import {PATTERN_INPUTS as IN} from './common-algorithm-pattern-inputs.js';
 
 // expr.ts reads the browser's math.js global at import time.
 const g=globalThis as unknown as {math:typeof mathjs;window:typeof globalThis};
@@ -111,6 +111,17 @@ test('monotonic queue gives every window maximum and keeps the deque decreasing'
  for(const f of trace){const vals=(f.dq as number[]).map(i=>nums[i]!);assert.ok(vals.every((x,i)=>i===0||vals[i-1]!>x));}
  assert.equal(trace[0]!.front,-1);
 });
+test('monotonic queue shows every condition evaluation, with the cells line 6 reads',()=>{
+ const {nums,k}=IN.monoQueue,trace=monotonicQueueTrace(nums,k);
+ const rows={6:'cond_w',9:'cond_e',11:'cond_f'} as Record<number,string>;
+ for(const f of trace){
+  const row=rows[f.line];
+  if(row)assert.match((f as Record<string,unknown>)[row] as string,/→ (True|False)$/);
+  if(f.line===6&&(f.back as number)>=0)assert.equal((f.cond_w as string).endsWith('True'),nums[f.back as number]!<=(f.x as number));
+  if(f.line!==6)assert.equal(f.back,-1);
+ }
+ assert.equal(trace.filter(f=>f.line===11).length,nums.length,'the full-window check runs once per index, false ones included');
+});
 test('greedy jump game',()=>{
  assert.equal(last(greedyTrace(IN.greedy.nums)).ok,0);
  assert.equal(last(greedyTrace([2,3,1,1,4])).ok,1);
@@ -119,6 +130,27 @@ test('XOR leaves the single number, and bits match the values',()=>{
  const trace=bitsTrace(IN.bits.nums);
  assert.equal(last(trace).result,4);
  for(const f of trace)assert.equal(parseInt((f.rBits as number[]).join(''),2),f.result);
+});
+test('bits: on each XOR step, result = before XOR x, bit by bit',()=>{
+ for(const f of bitsTrace(IN.bits.nums)){
+  const b=f.bBits as number[],x=f.xBits as number[],r=f.rBits as number[];
+  if(f.line===4)assert.deepEqual(r,b.map((bit,i)=>bit^x[i]!));
+  else assert.deepEqual(r,b,'before equals result outside the XOR step');
+ }
+});
+test('KMP shows every while/if evaluation, false ones included, with the cells it compared',()=>{
+ const {text,pattern}=IN.kmp,P=[...pattern],Tx=[...text],trace=kmpTrace(text,pattern);
+ const rows={4:'cond_bw',6:'cond_bi',14:'cond_sw',16:'cond_si',18:'cond_sm'} as Record<number,string>;
+ for(const f of trace){
+  const row=rows[f.line];
+  if(row)assert.match(f[row] as string,/→ (True|False)$/,`line ${f.line} shows its result`);
+  if(f.line===6||f.line===16){
+   const left=f.line===6?P[f.cmpA as number]:Tx[f.cmpT as number];
+   assert.equal((f[row!] as string).endsWith('True'),left===P[f.cmpB as number]);
+  } else if(!row)assert.ok(f.cmpT===-1&&f.cmpA===-1&&f.cmpB===-1,`no cells compared on line ${f.line}`);
+ }
+ for(const line of [4,14,18])assert.ok(trace.some(f=>f.line===line&&(f[rows[line]!] as string).endsWith('False')),`line ${line} records a False evaluation`);
+ assert.deepEqual(last(trace).hits,[0,9,12]);
 });
 test('union-find counts components',()=>{
  const done=last(unionFindTrace(IN.unionFind.n,IN.unionFind.edges));
@@ -147,7 +179,7 @@ test('every trace frame has the same keys and ends Done',()=>{
 });
 
 test('draft lesson is in sync with the traces and every bound expression evaluates',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  const expected:Record<string,[string,Frame[]]>={
   'prefix-sum':[PREFIX_SOURCE,prefixSumTrace(IN.prefix.nums,IN.prefix.queries)],
   'two-pointers':[TWO_POINTERS_SOURCE,twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target)],
@@ -197,7 +229,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
 });
 
 test('no lesson expression reads as native JavaScript, so the lesson never asks for trust',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  const flagged:string[]=[];
  const walk=(v:unknown,key:string)=>{
   if(typeof v==='string'){if((key.endsWith('Expr')||key==='content')&&_JS_ONLY_RE.test(v))flagged.push(`${key}: ${v}`);}
@@ -209,7 +241,7 @@ test('no lesson expression reads as native JavaScript, so the lesson never asks 
 });
 
 test('every pattern scene states its problem first: as the step-0 caption and at the top of its doc',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  for(const scene of lesson.scenes.slice(1)){
   const [heading,,problem]=scene.markdown.split('\n');
   assert.equal(heading,`# ${scene.title}`,scene.id);
@@ -219,7 +251,7 @@ test('every pattern scene states its problem first: as the step-0 caption and at
 });
 
 test('every label tooltip reads a recorded tip column of well-formed LaTeX',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  let tips=0;
  for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
   for(const el of scene.steps[0].add.filter((e:{tooltipExpr?:string})=>e.tooltipExpr)){
@@ -239,7 +271,7 @@ test('every label tooltip reads a recorded tip column of well-formed LaTeX',()=>
 });
 
 test('label code links resolve to a real line, the one that last assigned the value',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/interview-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  let links=0;
  for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
   const file=lesson.codeFiles.find((f:{id:string})=>f.id===scene.codeRef.file),lines=file.source.split('\n').length;

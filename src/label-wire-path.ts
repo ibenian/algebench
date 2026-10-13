@@ -114,3 +114,9 @@ export function rowBracketWire(edgeX:number,fromY:number,toY:number,side:1|-1):s
     const bow=side*(10+Math.min(28,Math.abs(toY-fromY)*0.3));
     return `M ${edgeX} ${fromY} C ${edgeX+bow} ${fromY}, ${edgeX+bow} ${toY}, ${edgeX} ${toY}`;
 }
+
+/** A vertical S-curve between two cell edges, leaving and arriving straight up or down. */
+export function cellLinkPath(start:{x:number;y:number},end:{x:number;y:number}):string {
+    const bend=Math.max(8,Math.abs(end.y-start.y)*.45)*(end.y<start.y?-1:1);
+    return `M ${start.x} ${start.y} C ${start.x} ${start.y+bend}, ${end.x} ${end.y-bend}, ${end.x} ${end.y}`;
+}

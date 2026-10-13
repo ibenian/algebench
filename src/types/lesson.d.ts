@@ -234,6 +234,24 @@ export type Element = {
    */
   heightExpr?: string;
   /**
+   * ARRAY / STACK (needs an id). Draw a link from each cell to the cell of another object it names, e.g. a deque of indices to the values they index. indexExpr is evaluated per cell with 'idx' and 'value' bound; a cell whose index is not a valid cell draws no link. Links follow state changes and vanish with either object.
+   */
+  linkTo?: {
+    /**
+     * Id of the array or stack the cells point into.
+     */
+    object: string;
+    /**
+     * Target cell index for this cell, e.g. 'value' when the cell holds an index.
+     */
+    indexExpr: string;
+    color?: Color;
+  };
+  /**
+   * ARRAY / STACK (horizontal). Where the array's own label sits. 'top' (default) centres it above the cells; 'left' places it just left of cell 0, right-aligned, so it names the row, stays put as the array grows, and lines up with the labels of rows stacked above or below. With axisLabels 'plane' it is drawn on the array's face.
+   */
+  labelSide?: 'top' | 'left';
+  /**
    * ARRAY and TENSOR. On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
    */
   axisLabels?: 'screen' | 'plane';

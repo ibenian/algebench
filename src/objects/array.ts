@@ -1,7 +1,7 @@
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
-import { addLabel3D, parseColor } from '/labels.js';
+import { addLabel3D, parseColor, colorToCSS } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr } from '/sliders.js';
 import type { AnimExprEntry } from '/sliders.js';
@@ -11,6 +11,7 @@ import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, cellColor, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
 import { registerStackHover, stackCellOpacities } from '/objects/array-stack-hover.js';
 import { ArrayChangeTracker } from '/objects/array-changes.js';
+import { setCellLinks } from '/cell-links.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 
@@ -122,8 +123,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const planeText=el.axisLabels==='plane';
     const cellTextPlanes:ArrayPlaneText[]=[];
     const indexTextPlanes:ArrayPlaneText[]=[];
-    const addTextPlane=(width:number,height:number,color:NonNullable<Element['color']>,cell?:number)=>{
-        const layer=createArrayPlaneText(width,height,color);
+    const addTextPlane=(width:number,height:number,color:NonNullable<Element['color']>,cell?:number,tag=false)=>{
+        const layer=createArrayPlaneText(width,height,color,{tag});
         // Parent ownership handles hide/show and dynamically added cell lifetimes.
         mesh.add(layer.mesh);
         layer.mesh.onBeforeRender=(renderer,_scene,camera)=>{layer.prepare(renderer,camera);layer.mesh.material.opacity=material.opacity*(cell == null ? 1 : hoverOpacity[cell] ?? 1);};
@@ -144,7 +145,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             const indexLabel = addLabel3D(String(i),c,'#e1ecf7',{cssClass:'label-3d array-index-tag'});
             if(el.indexFontSize!=null)indexLabel.el.style.setProperty('--array-index-font-size',`${el.indexFontSize}px`);
             indexLabel.ownerMesh=mesh;
-            if(planeText){indexLabel.forceHidden=true;indexLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(indexLabel.el);indexTextPlanes.push(addTextPlane(.7,.35,'#e1ecf7',i));}
+            if(planeText){indexLabel.forceHidden=true;indexLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(indexLabel.el);indexTextPlanes.push(addTextPlane(.7,.35,'#e1ecf7',i,true));}
             indexLabel.el.setAttribute('aria-label',`Index ${i}`);
             indexLabels.push(indexLabel);
             indexLabel.cellAttachment = {corners:arrayCellCorners(c,pitch),edge:'bottom',gap:0};
@@ -155,14 +156,22 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     let titleLabel: ReturnType<typeof addLabel3D>|undefined;
     const titleCentre=()=>el.arrayColumns?centre(Math.min(el.arrayColumns,n)-1):centre(Math.max(0,n-1)/(el.arrayLayout==='vertical'?1:2));
     const titleWidth=Math.max(1,(el.label?.length??0)*.38);
+    // labelSide 'left': the title belongs to the row it names, just left of cell 0 and right-aligned,
+    // so it stays put as the array grows and lines up with sibling rows of any title length.
+    const leftTitle=el.labelSide==='left'&&el.arrayLayout!=='vertical';
     const titlePosition=():[number,number,number]=>{
+        if(leftTitle&&!el.labelPosition){
+            const c=centre(0),gap=pitch*.39+.22;
+            return [c[0]-gap-(planeText?titleWidth/2:0),c[1],c[2]+.14];
+        }
         const at=el.labelPosition??titleCentre().map((value,i)=>value+(el.labelOffset??[0,.88,0])[i]!);
         return [Number(at[0])+(planeText&&el.align==='left'?titleWidth/2:planeText&&el.align==='right'?-titleWidth/2:0),Number(at[1]),Number(at[2])+.14];
     };
-    const titlePlane=planeText&&el.label?addTextPlane(titleWidth,.95,el.color??'#b5c1cf'):null;
+    // Row titles share one neutral ink so stacked rows read as a set; a top title keeps the array's colour.
+    const titlePlane=planeText&&el.label?addTextPlane(titleWidth,.95,el.labelSide==='left'?'#b5c1cf':el.color??'#b5c1cf'):null;
     const emptyPlane=planeText?addTextPlane(.7,.68,'#8793a6'):null;
     if(el.label){
-        titleLabel = addLabel3D('',titlePosition(),'#b5c1cf',{align:el.align,cssClass:`label-3d ${el.cssClass??''}`});
+        titleLabel = addLabel3D('',titlePosition(),'#b5c1cf',{align:leftTitle?'right':el.align,cssClass:`label-3d ${el.cssClass??''}`});
         if(planeText){titleLabel.forceHidden=true;titleLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(titleLabel.el);}
         titleLabel.el.textContent=el.label; titleLabel.snapToProjection=true;titleLabel.ownerMesh=mesh;
     }
@@ -224,7 +233,9 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         previous.length=0;
         updateTitle();
     }
-    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
+    // linkTo: each cell links to the cell of another object it names (indexExpr with idx and value bound).
+    const linkFn=el.linkTo&&el.id?compileExpr(el.linkTo.indexExpr):null;
+    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,el.linkTo?.indexExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
         // Hidden lesson steps must not advance the last-visible comparison baseline.
         if(animState.stopped||animState.hiddenByRemove)return;
         const next=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):n;
@@ -244,6 +255,13 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         }
         updateTitle();
         decoration?.resize(next);
+        if(linkFn){
+            const pairs:[number,number][]=[];
+            cells.forEach(({cell},i)=>{
+                try{const j=Number(evalExpr(linkFn,0,{overrideScope:{idx:i,value:cell.value}}));if(Number.isInteger(j)&&j>=0)pairs.push([i,j]);}catch{/* no link for this cell */}
+            });
+            setCellLinks(el.id!,el.linkTo!.object,pairs,el.linkTo!.color?colorToCSS(el.linkTo!.color):'#9dbde3');
+        }
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;
         for(let i=0;i<n;i++){
@@ -257,7 +275,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             if(planeText){
                 const c=centre(i);
                 cellTextPlanes[i]!.set(cell.text,[c[0],c[1],c[2]+.14]); // makeCellLabel allocates one text plane per slot.
-                indexTextPlanes[i]?.set(String(i),[c[0],c[1]-.58,c[2]+.14]);
+                indexTextPlanes[i]?.set(String(i),[c[0],c[1]-.34-.175,c[2]+.14]);
             }
             const rgb=parseColor(color??(highlighted?'#f1cc59':el.color??PALETTE[cell.kind]));
             if(lit)for(let j=0;j<3;j++)rgb[j]=rgb[j]!+(1-rgb[j]!)*.35;
