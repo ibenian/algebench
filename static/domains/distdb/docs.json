@@ -1,0 +1,27 @@
+{
+  "name": "distdb",
+  "description": "Deterministic, tick-based model of a small replicated, partitioned key-value store for teaching distributed databases. Single-leader replication (async, semi-sync, majority or sync acknowledgements, replication lag, failover by an external monitor, primary lease, split brain) and leaderless quorums (N/R/W, strict or sloppy, hinted handoff, read repair, Merkle anti-entropy, tombstones, last-write-wins or sibling versions). Messages travel with latency and are dropped by crashes and network partitions. A history checker labels every read (read-your-writes, monotonic reads, causal, real-time staleness) and checks linearizability. Also: key placement (range, hash, consistent hashing with virtual nodes) and a capacity model.",
+  "limits": [
+    "At most 5 nodes, 4 clients, 8 keys and 40 ticks; one tick is one network hop (latency 1 within a region, the WAN setting across regions).",
+    "The failure detector is perfect for reachability decisions; failover is an external monitor on the majority side, not a consensus election (lesson 3).",
+    "Leaderless reads ask the R closest replicas (the coordinator first), or every replica when async read repair is on; replicas of every key are the first N nodes.",
+    "Conflict detection with version vectors is used as a black box; LWW compares (timestamp, node) where timestamp = tick + the node's clock skew.",
+    "Product profiles are named configurations of this engine that reproduce documented visible behaviour for these workloads, not product internals."
+  ],
+  "functions": {
+    "ddTrace": { "signature": "ddTrace(scenario, overrides)", "description": "Per-tick trace rows (0..40) for a scenario index or id. overrides: {ack, replDelay, failover, lease, read, N, R, W, down, readRepair, sloppy, policy, wan, hints, ae, gcGrace, resolve, profile}; a negative value keeps the scenario's own setting. Bind with tableBindings." },
+    "ddCaption": { "signature": "ddCaption(frame, rows, guide)", "description": "Markdown caption: guidance, what happened at this tick, the linearizability verdict and the last read's label." },
+    "ddContext": { "signature": "ddContext(frame, rows, extra)", "description": "Compact factual state for the AI tutor: nodes and their copies, clients, messages in flight, read labels, history check, metrics and history." },
+    "ddSetting": { "signature": "ddSetting(scenario, key, value)", "description": "Slider readout; a negative value shows 'auto · <the scenario's own setting>'." },
+    "ddEff": { "signature": "ddEff(scenario, key, value)", "description": "Effective numeric setting: the value, or the scenario's own when negative." },
+    "ddGuarantee": { "signature": "ddGuarantee(row, col)", "description": "Consistency scenario (row) × read mechanism (col) outcome code: 1 a guarantee broke, 2 unavailable, 4 fine." },
+    "ddQuorum": { "signature": "ddQuorum(scenario, N, down, readRepair, row, col)", "description": "Quorum matrix code for R = row+1, W = col+1: 0 lost write, 1 stale read, 2 failed requests, 4 fine, 5 not applicable." },
+    "ddProfileCell": { "signature": "ddProfileCell(row, col)", "description": "Product profile (row) × comparison workload (col) outcome code." },
+    "ddPair": { "signature": "ddPair(pairCodes, nodeCount, a, b)", "description": "1 while a message between nodes a and b is in flight or arrives this tick." },
+    "ddPairDir": { "signature": "ddPairDir(pairDirs, nodeCount, a, b)", "description": "'forward' when this tick's traffic goes a → b, 'backward', 'both' or 'none' (for a system_dag connection's directionExpr)." },
+    "ddPairColor": { "signature": "ddPairColor(pairCodes, nodeCount, a, b)", "description": "Resting colour of the a–b link: idle, cut by a partition (red) or an endpoint down." },
+    "ddShardLoad": { "signature": "ddShardLoad(strategy, shards, count, celebrity, i)", "description": "Write load on shard i under a partitioning strategy." },
+    "ddRingMoved": { "signature": "ddRingMoved(nodes, vnodes, change)", "description": "Keys (of 48) that change owner under consistent hashing when the node count changes by change (−1, 0, +1)." },
+    "ddCapAt": { "signature": "ddCapAt(option, rate, writePct, extra, crashAt, t, field)", "description": "Capacity model field at tick t (latR, latW, utilR, utilW, availR, availW, arrivals)." }
+  }
+}

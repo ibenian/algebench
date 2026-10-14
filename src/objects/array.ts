@@ -230,7 +230,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         const next=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):n;
         // Evaluate the whole next state before advancing the comparison baseline.
         const cells=Array.from({length:next},(_,i)=>{
-            const cell=arrayCell(valueFn?evalExpr(valueFn,0,{overrideScope:{idx:i}}):el.values?.[i],el.itemType);
+            const cell=arrayCell(valueFn?evalExpr(valueFn,0,{overrideScope:{idx:i}}):el.values?.[i],el.itemType,el.stringQuotes!==false);
             const highlighted=highlightFn?!!evalExpr(highlightFn,0,{overrideScope:{idx:i,value:cell.value}}):false;
             const color=colorFn?cellColor(evalExpr(colorFn,0,{overrideScope:{idx:i,value:cell.value}})):null;
             return {cell,highlighted,color};

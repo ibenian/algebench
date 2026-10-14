@@ -2,12 +2,12 @@
 import type { Element } from '/types/lesson.js';
 export type ArrayItemType = NonNullable<Element['itemType']>;
 export type ArrayValue = number | string | boolean | null;
-export function arrayCell(value: unknown, type: ArrayItemType = 'mixed'): {value:ArrayValue; kind:Exclude<ArrayItemType,'mixed'>; text:string} {
+export function arrayCell(value: unknown, type: ArrayItemType = 'mixed', quotes = true): {value:ArrayValue; kind:Exclude<ArrayItemType,'mixed'>; text:string} {
     const kind=type==='mixed' ? value===null?'empty':typeof value==='string'?'string':typeof value==='boolean'?'boolean':'number' : type;
     if(kind==='empty'&&value===null)return {value,kind,text:'∅'};
     if(kind==='number'&&typeof value==='number'&&Number.isFinite(value))return {value,kind,text:String(value)};
     if(kind==='boolean'&&typeof value==='boolean')return {value,kind,text:String(value)};
-    if(kind==='string'&&typeof value==='string')return {value,kind,text:JSON.stringify(value)};
+    if(kind==='string'&&typeof value==='string')return {value,kind,text:quotes?JSON.stringify(value):value};
     if(kind==='character'&&typeof value==='string'&&[...value].length===1)return {value,kind,text:({' ':'␠','\n':'↵','\t':'⇥'} as Record<string,string>)[value]??value};
     throw new Error(`Array cell does not match ${kind}`);
 }

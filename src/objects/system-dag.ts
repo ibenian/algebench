@@ -142,7 +142,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
                 'Explain port "'+port.id+'" on "'+spec.label+'", its boundary and the connections using it.');
         }
     }
-    const flows:{material:MeshPhongMaterial;glow:ShaderMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null;colorFn:ReturnType<typeof compileExpr>|null}[]=[];
+    const flows:{material:MeshPhongMaterial;glow:ShaderMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null;colorFn:ReturnType<typeof compileExpr>|null;dirFn:ReturnType<typeof compileExpr>|null;baseDir:number}[]=[];
     for(const wire of layout.wires){
         const wireStart=root.children.length;
         const spec=wire.spec,radius=spec.radius??pipeRadius,color=spec.color??'#8296a4';
@@ -198,10 +198,12 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         if(spec.label){const w=Math.min(5,Math.max(1,spec.label.length*.28)),at=pipeLabelAnchor(path,w,.42);text(spec.label,[at[0],at[1],at[2]+.06],w,.42,'#becdd8');}
         if(spec.activeExpr)expressions.push(spec.activeExpr);
         if(spec.colorExpr)expressions.push(spec.colorExpr);
+        if(spec.directionExpr)expressions.push(spec.directionExpr);
         const coreMeshes=root.children.slice(wireStart).filter(child=>child instanceof THREE.Mesh&&child.material===material);
         registerCompositePart(objectId+'::connection:'+spec.id,wire.owner?blockId(wire.owner):objectId,_view,coreMeshes,[],spec.label??(layout.nodes.get(spec.from.block)!.spec.label+' → '+layout.nodes.get(spec.to.block)!.spec.label),
             'Explain this directed connection from "'+layout.nodes.get(spec.from.block)!.spec.label+'" port '+(spec.from.port??spec.from.side??'automatic')+' to "'+layout.nodes.get(spec.to.block)!.spec.label+'" port '+(spec.to.port??spec.to.side??'automatic')+'. Explain its direction and what active highlighting means.', 'animated_vector');
-        flows.push({material,glow,from:spec.from.block,to:spec.to.block,color,activeColor:spec.activeColor??'#f1c96b',fn:spec.activeExpr?compileExpr(spec.activeExpr):null,colorFn:spec.colorExpr?compileExpr(spec.colorExpr):null});
+        flows.push({material,glow,from:spec.from.block,to:spec.to.block,color,activeColor:spec.activeColor??'#f1c96b',fn:spec.activeExpr?compileExpr(spec.activeExpr):null,colorFn:spec.colorExpr?compileExpr(spec.colorExpr):null,
+            dirFn:spec.directionExpr?compileExpr(spec.directionExpr):null,baseDir:glow.uniforms.direction!.value as number});
     }
     // Reuse the full element dispatcher. Geometry, labels and deferred updates
     // share the block's local frame; existing step trackers own their lifecycle.
@@ -250,6 +252,10 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
             if(!fn)return fallback;
             try{const value=evalExpr(fn,0);return typeof value==='string'&&value&&parseColor(value)?value:fallback;}catch{return fallback;}
         }
+        // directionExpr: which way the active pulse travels (shader codes: 1 forward, -1 backward, 2 both, 0 none).
+        function pulseDirection(fn:ReturnType<typeof compileExpr>,fallback:number):number{
+            try{const value=evalExpr(fn,0);return ({forward:1,backward:-1,both:2,none:0} as Record<string,number>)[String(value)]??fallback;}catch{return fallback;}
+        }
         const activeNodes=new Set<string>();
         function lightNode(id:string){
             while(!activeNodes.has(id)) {
@@ -264,6 +270,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
             f.material.emissive.setRGB(...rgb(f.activeColor));
             f.material.emissiveIntensity=active?.65:0;
             f.glow.userData.activityOpacity=active?1:0;
+            if(f.dirFn)f.glow.uniforms.direction!.value=pulseDirection(f.dirFn,f.baseDir);
             if(active){lightNode(f.from);lightNode(f.to);}
         }
         const focus=codeFocus();

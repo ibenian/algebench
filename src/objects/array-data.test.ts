@@ -23,6 +23,8 @@ test('declared types reject mismatches and unsupported nested/object values',()=
  assert.throws(()=>arrayCell('42','number'));assert.throws(()=>arrayCell(0,'boolean'));
  for(const value of [undefined,NaN,Infinity,{},[]])assert.throws(()=>arrayCell(value));
  assert.equal(arrayCell('<script>','string').text,'"<script>"');
+// stringQuotes: false draws labels and status text without the data-structure quotes.
+assert.equal(arrayCell('C1 · idle','string',false).text,'C1 · idle');
 });
 test('array size is one-dimensional, bounded, and consistent with literal values',()=>{
  assert.equal(arrayLength(undefined,[1,2]),2);assert.equal(arrayLength([4],undefined),4);

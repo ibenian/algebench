@@ -836,6 +836,10 @@ export type Element = {
    */
   itemType?: 'number' | 'character' | 'string' | 'boolean' | 'empty' | 'mixed';
   /**
+   * ARRAY. Draw string cells in double quotes (the default, as for a data structure holding strings). Set false when the cells are labels or status text rather than string values.
+   */
+  stringQuotes?: boolean;
+  /**
    * ARRAY / STACK. Show small index tags attached to cells. Defaults to true for arrays and false for stacks.
    */
   showIndices?: boolean;
@@ -1796,6 +1800,10 @@ export interface SystemConnection {
    * An active flow changes color without changing pipe radius.
    */
   activeExpr?: string;
+  /**
+   * Expression giving which way the flow pulse travels while the pipe is active: 'forward' (from -> to), 'backward', 'both' or 'none'. Re-evaluated on state changes; overrides `direction` for the animation only. Arrowheads follow `direction`, so pair it with direction 'none' for a link whose traffic changes direction. An invalid result keeps `direction`.
+   */
+  directionExpr?: string;
   /**
    * Expression giving the pipe's resting color (a CSS color string), re-evaluated on state changes; activeColor still wins while the flow is active. Use it for a link's state: e.g. red while a network partition cuts it, grey while an endpoint is down. An empty or invalid result falls back to color.
    */

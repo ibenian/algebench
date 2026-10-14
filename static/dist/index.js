@@ -10578,6 +10578,7 @@ function renderSystemDAG(el, _view) {
 		}
 		if (spec.activeExpr) expressions.push(spec.activeExpr);
 		if (spec.colorExpr) expressions.push(spec.colorExpr);
+		if (spec.directionExpr) expressions.push(spec.directionExpr);
 		const coreMeshes = root.children.slice(wireStart).filter((child) => child instanceof THREE.Mesh && child.material === material);
 		registerCompositePart(objectId + "::connection:" + spec.id, wire.owner ? blockId(wire.owner) : objectId, _view, coreMeshes, [], spec.label ?? layout.nodes.get(spec.from.block).spec.label + " → " + layout.nodes.get(spec.to.block).spec.label, "Explain this directed connection from \"" + layout.nodes.get(spec.from.block).spec.label + "\" port " + (spec.from.port ?? spec.from.side ?? "automatic") + " to \"" + layout.nodes.get(spec.to.block).spec.label + "\" port " + (spec.to.port ?? spec.to.side ?? "automatic") + ". Explain its direction and what active highlighting means.", "animated_vector");
 		flows.push({
@@ -10588,7 +10589,9 @@ function renderSystemDAG(el, _view) {
 			color,
 			activeColor: spec.activeColor ?? "#f1c96b",
 			fn: spec.activeExpr ? compileExpr(spec.activeExpr) : null,
-			colorFn: spec.colorExpr ? compileExpr(spec.colorExpr) : null
+			colorFn: spec.colorExpr ? compileExpr(spec.colorExpr) : null,
+			dirFn: spec.directionExpr ? compileExpr(spec.directionExpr) : null,
+			baseDir: glow.uniforms.direction.value
 		});
 	}
 	const enclosing = currentDataOffset();
@@ -10671,6 +10674,19 @@ function renderSystemDAG(el, _view) {
 					return fallback;
 				}
 			}
+			function pulseDirection(fn, fallback) {
+				try {
+					const value = evalExpr(fn, 0);
+					return {
+						forward: 1,
+						backward: -1,
+						both: 2,
+						none: 0
+					}[String(value)] ?? fallback;
+				} catch {
+					return fallback;
+				}
+			}
 			const activeNodes = /* @__PURE__ */ new Set();
 			function lightNode(id) {
 				while (!activeNodes.has(id)) {
@@ -10686,6 +10702,7 @@ function renderSystemDAG(el, _view) {
 				f.material.emissive.setRGB(...rgb(f.activeColor));
 				f.material.emissiveIntensity = active ? .65 : 0;
 				f.glow.userData.activityOpacity = active ? 1 : 0;
+				if (f.dirFn) f.glow.uniforms.direction.value = pulseDirection(f.dirFn, f.baseDir);
 				if (active) {
 					lightNode(f.from);
 					lightNode(f.to);
@@ -10931,7 +10948,7 @@ function renderStepMarker(el, _view, owner) {
 }
 //#endregion
 //#region src/objects/array-data.ts
-function arrayCell(value, type = "mixed") {
+function arrayCell(value, type = "mixed", quotes = true) {
 	const kind = type === "mixed" ? value === null ? "empty" : typeof value === "string" ? "string" : typeof value === "boolean" ? "boolean" : "number" : type;
 	if (kind === "empty" && value === null) return {
 		value,
@@ -10951,7 +10968,7 @@ function arrayCell(value, type = "mixed") {
 	if (kind === "string" && typeof value === "string") return {
 		value,
 		kind,
-		text: JSON.stringify(value)
+		text: quotes ? JSON.stringify(value) : value
 	};
 	if (kind === "character" && typeof value === "string" && [...value].length === 1) return {
 		value,
@@ -11463,7 +11480,7 @@ function renderArray(el, _view, decorate) {
 			if (animState.stopped || animState.hiddenByRemove) return;
 			const next = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : n;
 			const cells = Array.from({ length: next }, (_, i) => {
-				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType);
+				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType, el.stringQuotes !== false);
 				return {
 					cell,
 					highlighted: highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {

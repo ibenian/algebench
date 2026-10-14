@@ -39,10 +39,10 @@ function clusterScene({ id, title, description, markdown, prompt, scene, knobs, 
     const overrides = '{' + ids.filter(k => OVERRIDE_KEYS.includes(k)).map(k => `${k}: ${k}`).join(', ') + '}';
     const rowsExpr = trace ?? `ddTrace(scenario, ${overrides})`;
     const g = geometry(nodes, keys);
-    const top = 14.8, bottom = g.bottom - 6.5;
+    const top = 14.8, bottom = g.bottom - 5.2;
     const cy = (top + bottom) / 2, h = top - bottom;
     const board = { name: 'Board', position: [0, cy, Math.max(30, h * 1.35)], target: [0, cy, 0] };
-    const allViews = extraRange ? [{ name: 'Everything', position: [extraRange / 2, cy, Math.max(56, h * 1.55 + extraRange * 0.6)], target: [extraRange / 2, cy, 0] }, board, ...extraViews] : [board, ...extraViews];
+    const allViews = extraRange ? [{ name: 'Everything', position: [extraRange / 2, cy, Math.max(h * 1.55, (g.width + extraRange + 10) * 0.8)], target: [extraRange / 2, cy, 0] }, board, ...extraViews] : [board, ...extraViews];
     const sliderSet = step => [SL.frame(), ...(scene ? [SL.scenario(scene, SCENARIO[step.scenario])] : []),
         ...ids.map(k => SL[k](step.set && step.set[k] !== undefined ? step.set[k] : undefined))];
     return {
@@ -201,7 +201,7 @@ const QUORUM_MATRIX = matrix({
     prompt: 'Explain this computed matrix: each cell ran the selected scenario with that read quorum R (row) and write quorum W (column) at the current N and number of failed replicas. Magenta = some read was stale, orange = some requests failed, green = all fresh (with the p99 latency), blank = R or W larger than N.',
 });
 const GUARANTEE_MATRIX = matrix({
-    id: 'guarantee-matrix', origin: [24, -4, 0], rows: 4, cols: 5, cellSize: 2.8,
+    id: 'guarantee-matrix', origin: [28, -4, 0], rows: 4, cols: 5, cellSize: 2.8,
     valueExpr: 'ddGuarantee(row, col)', textExpr: 'ddGuaranteeText(row, col)', rowLabelExpr: 'ddGuaranteeRow(row)',
     colLabels: ['eventual', 'RYW', 'mono.', 'causal', 'primary'],
     label: 'Guarantee matrix (computed): scenario × read mechanism',
@@ -223,8 +223,8 @@ export const SCENES = [
         prompt: 'You are a distributed-systems mentor. Define each consistency model by what clients observe, then the mechanism that provides it. Use the history checker labels and the guarantee matrix as ground truth. Keep isolation (transactions) and consistency (replicas) distinct.',
         scene: 'consistency', knobs: ['read', 'replDelay'], steps: consistencySteps, nodes: 3, keys: 2, clients: 3,
         metrics: [['p99 latency', 'm_p99'], ['p50 latency', 'm_p50'], ['Stale reads', 'm_stale'], ['Reads ok', 'm_ok'], ['Messages', 'm_msgs']],
-        extras: [GUARANTEE_MATRIX], extraRange: 26,
-        extraViews: [{ name: 'Guarantee matrix', position: [31, -2, 30], target: [31, -2, 0] }],
+        extras: [GUARANTEE_MATRIX], extraRange: 30,
+        extraViews: [{ name: 'Guarantee matrix', position: [35, -2, 30], target: [35, -2, 0] }],
     }),
     () => clusterScene({
         id: 'quorums', title: 'Quorum Reads and Writes',

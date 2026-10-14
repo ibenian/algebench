@@ -13,9 +13,16 @@ export function geometry(nodes, keys) {
     const rowH = keys > 4 ? 0.62 : 0.9;
     // The status line sits at the block's centre (system_dag draws it there for blocks with contents);
     // the key cells fill the lower half below it.
-    const nodeH = 2 * (1.1 + keys * rowH);
+    const nodeH = 2 * (1.55 + keys * rowH);
     const nodeTop = 1.0;
-    return { width, rowH, nodeH, nodeTop, nodeY: nodeTop - nodeH / 2, bottom: nodeTop - nodeH, x: i => (i - (nodes - 1) / 2) * PITCH, left: -width / 2, right: width / 2 };
+    // Node-to-node pipes run in lanes under the node row, one lane per pair, nearest pairs highest.
+    const pairs = [];
+    for (let a = 0; a < nodes; a++) for (let b = a + 1; b < nodes; b++) pairs.push([a, b]);
+    const lanes = pairs.slice().sort((p, q) => (p[1] - p[0]) - (q[1] - q[0]) || p[0] - q[0]);
+    const nodeBottom = nodeTop - nodeH, laneGap = 0.42, laneTop = nodeBottom - 0.75;
+    const laneY = ([a, b]) => laneTop - lanes.findIndex(p => p[0] === a && p[1] === b) * laneGap;
+    const bottom = laneTop - Math.max(0, lanes.length - 1) * laneGap - 0.3;
+    return { width, rowH, nodeH, nodeTop, nodeY: nodeTop - nodeH / 2, nodeBottom, bottom, pairs, laneY, x: i => (i - (nodes - 1) / 2) * PITCH, left: -width / 2, right: width / 2 };
 }
 
 function timeline(prefix, clients, width) {
@@ -33,7 +40,7 @@ function timeline(prefix, clients, width) {
 }
 function clientStatus(prefix, clients) {
     return {
-        type: 'array', id: prefix + 'client-status', itemType: 'string', origin: [-11.6, 1.45, 0.25], cellSize: 7.6, fontSize: 10, showIndices: false,
+        type: 'array', id: prefix + 'client-status', itemType: 'string', stringQuotes: false, origin: [-11.6, 1.45, 0.25], cellSize: 7.6, fontSize: 10, showIndices: false,
         arrayColumns: 4, axisLabels: 'plane',
         lengthExpr: `min(ddCount(${T('clientText')}), ${clients})`, valueExpr: `ddAt(${T('clientText')}, idx)`,
         prompt: 'Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs.',
@@ -41,15 +48,16 @@ function clientStatus(prefix, clients) {
 }
 function messages(prefix) {
     return {
-        type: 'array', id: prefix + 'messages', itemType: 'string', origin: [-11.4, -0.35, 0.25], cellSize: 7.6, fontSize: 10, showIndices: false,
+        type: 'array', id: prefix + 'messages', itemType: 'string', stringQuotes: false, origin: [-11.4, -0.35, 0.25], cellSize: 7.6, fontSize: 10, showIndices: false,
         arrayColumns: 4, axisLabels: 'plane',
         lengthExpr: `min(ddCount(${T('msgText')}), ${MSG_SLOTS})`, valueExpr: `ddAt(${T('msgText')}, idx)`,
         prompt: 'Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped.',
     };
 }
 function replicaCells(prefix, i, keys, g) {
+    const rowH = g.rowH;
     return {
-        type: 'array', id: `${prefix}node${i}-keys`, itemType: 'string', origin: [-NODE_W / 2 + 0.35 + 2.7, -0.75, 0.25], cellSize: 5.4, fontSize: keys > 4 ? 9 : 11, showIndices: false,
+        type: 'array', id: `${prefix}node${i}-keys`, itemType: 'string', stringQuotes: false, origin: [-NODE_W / 2 + 0.35 + 2.7, -0.55 - rowH / 2 - 0.35, 0.25], cellSize: 5.4, fontSize: keys > 4 ? 9 : 11, showIndices: false,
         arrayColumns: 1, arrayHeight: keys * g.rowH, axisLabels: 'plane',
         lengthExpr: `min(ddCount(${T('keys')}), ${keys}) * (${i} < ${T('nodeCount')})`,
         valueExpr: `concat(ddAt(${T('keys')}, idx), ' = ', ddText(${T('verGrid')}, ${i}, idx))`,
@@ -58,13 +66,23 @@ function replicaCells(prefix, i, keys, g) {
     };
 }
 
+/** Normalized bottom-edge offset on node i of its port towards peer j (peers spread over the middle 70%). */
+function peerOffset(i, j, nodes) {
+    const peers = Array.from({ length: nodes }, (_, k) => k).filter(k => k !== i);
+    return peers.length === 1 ? 0 : -0.7 + 1.4 * peers.indexOf(j) / (peers.length - 1);
+}
+function peerPorts(i, nodes) {
+    return Array.from({ length: nodes }, (_, j) => j).filter(j => j !== i).map(j => ({ id: 'peer' + j, side: 'bottom', offset: peerOffset(i, j, nodes) }));
+}
+
 /** The cluster board: [system_dag, metrics strip]. */
 export function clusterBoard({ prefix = '', nodes = 3, keys = 1, clients = 3, metrics = DEFAULT_METRICS, codeRefs = {} }) {
     const g = geometry(nodes, keys);
     const nodeBlocks = Array.from({ length: nodes }, (_, i) => ({
         id: 'n' + i, label: `N${i + 1}`, kind: 'database', position: [g.x(i), g.nodeY, 0], size: [NODE_W, g.nodeH, 0.18],
         textExpr: `ddAt(${T('nodeText')}, ${i})`, colorExpr: `ddNodeColor(${T('nodeCodes')}, ${i})`,
-        ports: [{ id: 'net', side: 'top', offset: 0 }],
+        // One bottom port per peer, ordered left to right by the peer's position.
+        ports: [{ id: 'net', side: 'top', offset: 0 }, ...peerPorts(i, nodes)],
         elements: [replicaCells(prefix, i, keys, g)],
         ...(codeRefs.node ? { codeRef: codeRefs.node } : {}),
     }));
@@ -82,12 +100,24 @@ export function clusterBoard({ prefix = '', nodes = 3, keys = 1, clients = 3, me
         ],
         connections: [
             wire('req', ['clients', 'req'], ['net', 'req'], { activeExpr: `ddCount(${T('ops')}) > 0`, direction: 'both', activeColor: '#9ad7ff' }),
+            // Network ↔ node: client requests reaching their coordinator node.
             ...nodeBlocks.map((b, i) => wire('link' + i, ['net', 'n' + i], [b.id, 'net'], {
-                activeExpr: `ddLink(${T('linkCodes')}, ${i}) == 1`, colorExpr: `ddLinkColor2(${T('linkCodes')}, ${i})`, direction: 'both',
+                activeExpr: `ddAt(${T('clientLinks')}, ${i}) == 1`, colorExpr: `ddLinkColor2(${T('linkCodes')}, ${i})`, direction: 'both', activeColor: '#9ad7ff',
             })),
+            // Node ↔ node: lit while a message travels between the two; red while a partition cuts them.
+            ...g.pairs.map(([a, b]) => {
+                const y = g.laneY([a, b]);
+                const xa = g.x(a) + peerOffset(a, b, nodes) * NODE_W / 2, xb = g.x(b) + peerOffset(b, a, nodes) * NODE_W / 2;
+                return wire(`p${a}${b}`, ['n' + a, 'peer' + b], ['n' + b, 'peer' + a], {
+                    via: [{ position: [xa, y, 0.15] }, { position: [xb, y, 0.15] }], radius: 0.05,
+                    activeExpr: `ddPair(${T('pairCodes')}, ${T('nodeCount')}, ${a}, ${b})`, colorExpr: `ddPairColor(${T('pairCodes')}, ${T('nodeCount')}, ${a}, ${b})`,
+                    // No fixed arrowheads: the pulse shows which way this tick's messages travel.
+                    direction: 'none', directionExpr: `ddPairDir(${T('pairDirs')}, ${T('nodeCount')}, ${a}, ${b})`, activeColor: '#f1c96b',
+                });
+            }),
         ],
     };
-    return [dag, metricsStrip(prefix, metrics, [g.left, g.bottom - 4.6, 0])];
+    return [dag, metricsStrip(prefix, metrics, [g.left, g.bottom - 3.6, 0])];
 }
 
 export const DEFAULT_METRICS = [['Available %', 'm_availability'], ['p99 latency', 'm_p99'], ['Stale reads', 'm_stale'], ['Lost writes', 'm_lost'], ['Failed ops', 'm_unavailable'], ['Messages', 'm_msgs']];
@@ -224,7 +254,7 @@ export function ringBoard(origin = [0, 0, 0]) {
         prompt: 'Compare how many of the 48 keys change owner under consistent hashing versus hash-mod-N for the same change of node count, and explain why the numbers differ so much.',
     };
     const pref = {
-        type: 'array', id: 'ring-pref', itemType: 'string', origin: [ox + 15.2, oy - 8.5, 0], cellSize: 8.6, fontSize: 12, showIndices: false, axisLabels: 'plane',
+        type: 'array', id: 'ring-pref', itemType: 'string', stringQuotes: false, origin: [ox + 15.2, oy - 8.5, 0], cellSize: 8.6, fontSize: 12, showIndices: false, axisLabels: 'plane',
         lengthExpr: '1', valueExpr: `concat('key ', prefKey, ' → ', ddPreference(nodes, vnodes, change, prefKey, rf))`,
         label: 'Preference list (RF distinct nodes clockwise)', labelPosition: 'top',
         prompt: 'Explain the preference list: the replicas of a key are the first RF distinct physical nodes found walking clockwise from the key (skipping further virtual nodes of a server already chosen). This is where the N replicas of the quorum scene live.',

@@ -470,6 +470,8 @@
             const p = primaryFor(s, op.coord);
             if (p < 0) return finish(s, op, 'rejected', op.type === 'r' ? 'no primary reachable' : 'no primary reachable — writes are unavailable');
             op.target = p;
+            // Single leader: whatever node the client talks to, writes (and primary reads) are served by the primary.
+            if (p !== op.coord) event(s, `${NODE_NAMES[op.coord]} is a replica, so it forwards the ${op.type === 'r' ? 'read' : 'write'} to the primary ${NODE_NAMES[p]}.`);
             send(s, op.coord, p, op.type === 'r' ? 'read' : 'write', { op: op.idx });
             return;
         }
@@ -1021,6 +1023,18 @@
         const msgText = inflight.slice(0, MSG_SLOTS).map(m => `${NODE_NAMES[m.from]}→${NODE_NAMES[m.to]} ${msgLabel(s, m)} · t${m.arrive}`);
         // Links: each node's connection to the network. 0 idle · 1 traffic this tick · 2 cut · 3 node down.
         const linkCodes = s.nodes.map(nd => (!nd.up ? 3 : cutActive(s, s.t) && cfg.cut.side.includes(nd.i) ? 2 : s.flow.some(f => f.from === nd.i || f.to === nd.i) || inflight.some(m => m.sent === s.t && (m.from === nd.i || m.to === nd.i)) ? 1 : 0));
+        // Node pairs (a < b, in order 01 02 … 12 …): 0 idle · 1 a message between them is in flight or arrived this tick ·
+        // 2 cut by the partition · 3 an endpoint is down.
+        // pairDirs: which way that traffic goes — 1 a → b, -1 b → a, 2 both ways, 0 none.
+        const pairCodes = [], pairDirs = [];
+        for (let a = 0; a < s.nodes.length; a++) for (let b = a + 1; b < s.nodes.length; b++) {
+            const msgs = inflight.concat(s.flow);
+            const ab = msgs.some(m => m.from === a && m.to === b), ba = msgs.some(m => m.from === b && m.to === a);
+            pairCodes.push(!s.nodes[a].up || !s.nodes[b].up ? 3 : !linked(s, a, b) ? 2 : ab || ba ? 1 : 0);
+            pairDirs.push(ab && ba ? 2 : ab ? 1 : ba ? -1 : 0);
+        }
+        // Client ↔ node: a request reached or was answered by this node (its coordinator) this tick.
+        const clientLinks = s.nodes.map(nd => (s.ops.some(o => o.coord === nd.i && (o.start === s.t || o.end === s.t)) ? 1 : 0));
         const clientText = s.clients.map(c => {
             const op = c.busy;
             const coord = op ? op.coord : coordinatorFor(s, c);
@@ -1048,7 +1062,7 @@
             text: notes.join(' ') || (s.t === 0 ? '' : 'Nothing happens this tick.'), events: notes,
             nodeNames: s.nodes.map(nd => nd.name), nodeCount: s.nodes.length, clientNames: s.clients.map(c => `C${c.c} → ${NODE_NAMES[c.home]}`), nodeText: status.map(x => x.text), nodeCodes: status.map(x => x.code),
             keys, verGrid, verCodes,
-            msgText, msgCount: inflight.length, linkCodes,
+            msgText, msgCount: inflight.length, linkCodes, pairCodes, pairDirs, clientLinks,
             clientText, ackRows,
             tl, tlText,
             labels: reads.map(l => `C${l.c} read ${l.k} (op ${l.op + 1}): ${LABEL_TEXT[l.label]}`),
@@ -1339,10 +1353,28 @@
     /** A node's version text for key `col`, or its status for col = -1. */
     function ddLink(codes, i) { return Number(listOf(codes)[clampInt(i, 0, 99)]) || 0; }
     const LINK_COLORS = ['#8296a4', '#f1c96b', '#c5413f', '#3a4048'];
-    const NODE_COLORS = ['#80b9d6', '#7ac9b7', '#5b5f66', '#d98b4a', '#b9a1dd', '#6f8aa0'];
+    // Node status: replica · primary (gold, so the one node that takes writes stands out) · down · cut off / stepped down · recovering · fallback.
+    const NODE_COLORS = ['#80b9d6', '#e7be63', '#5b5f66', '#d98b4a', '#b9a1dd', '#6f8aa0'];
     function ddLinkColor(codes, i) { return LINK_COLORS[ddLink(codes, i)]; }
     function ddNodeColor(codes, i) { const l = listOf(codes); return clampInt(i, 0, 99) >= l.length ? '#2a3038' : NODE_COLORS[ddLink(codes, i)] || NODE_COLORS[0]; }
-    function ddLinkColor2(codes, i) { const l = listOf(codes); return clampInt(i, 0, 99) >= l.length ? '#2a3038' : LINK_COLORS[ddLink(codes, i)]; }
+    /** Resting colour of a node's network link: only its state (cut, down); traffic lights it through activeExpr. */
+    function ddLinkColor2(codes, i) { const l = listOf(codes); const c = ddLink(codes, i); return clampInt(i, 0, 99) >= l.length ? '#2a3038' : LINK_COLORS[c === 1 ? 0 : c]; }
+    /** Code of the link between nodes a and b (see pairCodes), −1 when either is not in this scenario. */
+    function pairCode(codes, nodes, a, b) {
+        const n = clampInt(nodes, 0, MAX_NODES), i = clampInt(Math.min(a, b), 0, 9), j = clampInt(Math.max(a, b), 0, 9);
+        if (j >= n || i === j) return -1;
+        let k = 0;
+        for (let x = 0; x < n; x++) for (let y = x + 1; y < n; y++) { if (x === i && y === j) return Number(listOf(codes)[k]) || 0; k++; }
+        return -1;
+    }
+    function ddPair(codes, nodes, a, b) { return pairCode(codes, nodes, a, b) === 1 ? 1 : 0; }
+    /** Pulse direction for the pipe drawn from node a to node b: 'forward' when traffic goes a → b. */
+    function ddPairDir(dirs, nodes, a, b) {
+        const d = pairCode(dirs, nodes, a, b);
+        const fwd = a < b ? d : -d;
+        return d === 2 ? 'both' : fwd === 1 ? 'forward' : fwd === -1 ? 'backward' : 'none';
+    }
+    function ddPairColor(codes, nodes, a, b) { const c = pairCode(codes, nodes, a, b); return c < 0 ? '#20262d' : LINK_COLORS[c]; }
     /** Slider readout: a negative value means the scenario's own setting, shown as "auto (…)". */
     function ddSetting(scenario, key, value) {
         const sc = scenarioOf(scenario), cfg = configOf(sc, {}), v = Number(value);
@@ -1548,7 +1580,7 @@
         ddStrategy, ddShardLoad, ddShardStored, ddShardMax, ddShardImbalance, ddShardsTouched, ddQuery,
         ddTokenX, ddTokenY, ddKeyX, ddKeyY, ddKeyOn, ddRingMoved, ddRingMovedMod, ddRingKeys, ddRingShare, ddRingLoad, ddRingSd, ddRingNodes, ddPreference, ddInPreference,
         ddCapacity, ddCapOption, ddCapAt, ddCapCaption, ddShardCaption, ddRingCaption, ddCaption, ddContext, ddOp, ddLinkColor2, ddSetting,
-        ddCapNodeText, ddCapNodeCode, ddRecShard, ddRecText, ddKeyMoved, ddVerColor, ddEff, ddCodeLine };
+        ddCapNodeText, ddCapNodeCode, ddRecShard, ddRecText, ddKeyMoved, ddVerColor, ddEff, ddCodeLine, ddPair, ddPairColor, ddPairDir };
     if (typeof window !== 'undefined' && window.AlgeBenchDomains) window.AlgeBenchDomains.register('distdb', api);
     if (typeof globalThis !== 'undefined') globalThis.__distdbLab = { SCENARIOS, PROFILES, CAP_POLICIES, ACK_MODES, READ_MODES, REPAIR_MODES, STRATEGIES, QUERIES, CAP_OPTIONS, COMPARE_SCENARIOS, CONSISTENCY_ROWS,
         run, configOf, shardStats, ringStats, capacityTrace, analyse, LINK_COLORS, NODE_COLORS, limits: { MAX_NODES, MAX_CLIENTS, MAX_KEYS, FRAMES, MSG_SLOTS, RING_KEYS } };
