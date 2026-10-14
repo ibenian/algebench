@@ -500,18 +500,18 @@
                       "itemType": "string",
                       "stringQuotes": false,
                       "origin": [
-                        -11.6,
+                        -9.8,
                         1.45,
                         0.25
                       ],
-                      "cellSize": 7.6,
+                      "cellSize": 9.799999999999999,
                       "fontSize": 10,
                       "showIndices": false,
-                      "arrayColumns": 4,
+                      "arrayColumns": 3,
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
-                      "prompt": "Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs."
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client)."
                     }
                   ]
                 },
@@ -1379,7 +1379,7 @@
       "id": "consistency",
       "title": "Consistency Models",
       "description": "Read-your-writes, monotonic reads, causal and linearizable reads over lagging replicas, each checked against the real history.",
-      "markdown": "### Consistency models: what may a read return?\n\nWith replicas that lag, two clients can see different values at the same moment. A **consistency model** is a promise about **which values a read is allowed to return** — stated purely in terms of what clients observe, not how it is implemented.\n\n| Model | Promise | A violation looks like |\n|---|---|---|\n| **Eventual** | if writes stop, replicas converge | (anything goes meanwhile) |\n| **Read-your-writes** | you see your own writes | \"I saved my name and the page shows the old one\" |\n| **Monotonic reads** | you never go back in time | a refresh shows an older score than the last one |\n| **Causal** | if you saw an effect, you see its cause | a reply visible before the post it answers |\n| **Linearizable** | every read sees the latest acknowledged write, as if there were one copy | C2 sees the new price, C3 *afterwards* sees the old one |\n\nThe first three are **session guarantees**: about one client's view. **Causal** covers chains between clients. **Linearizable** is about real time across everyone, and is the only one that needs coordination on every read.\n\n**Guarantees vs. mechanisms.** Move **Read guarantee** to switch the *mechanism*: any replica · a session token (the log position of my last write) · a version token per key · a causal token (the highest position I have seen) · always read the primary. A replica holding a token waits until it has caught up — the latency each guarantee costs shows in *p99*.\n\n**The checker.** Nothing on the board trusts the mechanism. A history checker labels every read with the **weakest guarantee it breaks**, and searches for a single order of all operations that respects real time (linearizability). The **guarantee matrix** (right) runs every scenario under every mechanism.\n\n> *Isolation* (lesson 1) orders **transactions**; *consistency models* order **operations on copies**. A system can have one without the other; *strict serializability* is both.",
+      "markdown": "### Consistency models: what may a read return?\n\nWith replicas that lag, two clients can see different values at the same moment. A **consistency model** is a promise about **which values a read is allowed to return** — stated purely in terms of what clients observe, not how it is implemented.\n\n| Model | Promise | A violation looks like |\n|---|---|---|\n| **Eventual** | if writes stop, replicas converge | (anything goes meanwhile) |\n| **Read-your-writes** | you see your own writes | \"I saved my name and the page shows the old one\" |\n| **Monotonic reads** | you never go back in time | a refresh shows an older score than the last one |\n| **Causal** | if you saw an effect, you see its cause | a reply visible before the post it answers |\n| **Linearizable** | every read sees the latest acknowledged write, as if there were one copy | C2 sees the new price, C3 *afterwards* sees the old one |\n\nThe first three are **session guarantees**: about one client's view. **Causal** covers chains between clients. **Linearizable** is about real time across everyone, and is the only one that needs coordination on every read.\n\n**Guarantees vs. mechanisms.** Move **Read guarantee** to switch the *mechanism*: any replica · a session token (the log position of my last write) · a version token per key · a causal token (the highest position I have seen) · always read the primary. A replica holding a token waits until it has caught up — the latency each guarantee costs shows in *p99*.\n\n**Reading the tokens.** Every value on a node shows the log position that wrote it: `post = 1 @1` was the primary's 1st log entry, and `@0` is the initial value. A client's status line shows the token it carries (`token log ≥ @2`, or per key `s ≥ @1`); its read message says `needs @2`, and while the chosen replica is behind the client shows `waits: N3 has @1, needs @2`.\n\n**The checker.** Nothing on the board trusts the mechanism. A history checker labels every read with the **weakest guarantee it breaks**, and searches for a single order of all operations that respects real time (linearizability). The **guarantee matrix** (right) runs every scenario under every mechanism.\n\n> *Isolation* (lesson 1) orders **transactions**; *consistency models* order **operations on copies**. A system can have one without the other; *strict serializability* is both.",
       "prompt": "You are a distributed-systems mentor. Define each consistency model by what clients observe, then the mechanism that provides it. Use the history checker labels and the guarantee matrix as ground truth. Keep isolation (transactions) and consistency (replicas) distinct.",
       "promptExpr": "ddContext(frame, dataTable('dd'), concat('Settings: ', 'read=', read, ' ', 'replDelay=', replDelay))",
       "range": [
@@ -1481,7 +1481,7 @@
       "tableBindings": [
         {
           "table": "dd",
-          "rowsExpr": "ddTrace(scenario, {read: read, replDelay: replDelay})"
+          "rowsExpr": "ddTrace(scenario, {read: read, replDelay: replDelay, positions: 1})"
         }
       ],
       "elements": [],
@@ -1653,18 +1653,18 @@
                       "itemType": "string",
                       "stringQuotes": false,
                       "origin": [
-                        -11.6,
+                        -9.8,
                         1.45,
                         0.25
                       ],
-                      "cellSize": 7.6,
+                      "cellSize": 9.799999999999999,
                       "fontSize": 10,
                       "showIndices": false,
-                      "arrayColumns": 4,
+                      "arrayColumns": 3,
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
-                      "prompt": "Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs."
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client)."
                     }
                   ]
                 },
@@ -2710,18 +2710,18 @@
                       "itemType": "string",
                       "stringQuotes": false,
                       "origin": [
-                        -11.6,
+                        -10.8,
                         1.45,
                         0.25
                       ],
-                      "cellSize": 7.6,
+                      "cellSize": 10.799999999999999,
                       "fontSize": 10,
                       "showIndices": false,
-                      "arrayColumns": 4,
+                      "arrayColumns": 3,
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
-                      "prompt": "Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs."
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client)."
                     }
                   ]
                 },

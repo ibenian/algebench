@@ -293,6 +293,8 @@
         if (num('cutAt') !== undefined && cfg.cut) cfg.cut = Object.assign({}, cfg.cut, { at: clampInt(o.cutAt, 0, FRAMES) || 999 });
         if (num('healAt') !== undefined && cfg.cut) cfg.cut = Object.assign({}, cfg.cut, { heal: clampInt(o.healAt, 0, FRAMES) || 999 });
         if (num('timeout') !== undefined) cfg.timeout = clampInt(o.timeout, 1, 30);
+        // positions: 1 shows each value's log position on the board (the consistency scene), whatever the read mode.
+        if (num('positions') !== undefined) cfg.positions = clampInt(o.positions, 0, 1);
         cfg.N = Math.min(cfg.N, cfg.nodes);
         cfg.acks = Math.min(ackCount(cfg), cfg.nodes - 1);
         return cfg;
@@ -487,6 +489,18 @@
         send(s, op.coord, target, 'read', { op: op.idx });
     }
     function appliedSeq(nd) { return nd.log.length; }
+    /** The session token a client carries under the current read mode, as text ('' when the mode uses none).
+     *  read-your-writes: log position of my last write · monotonic: per key, the newest version I have seen ·
+     *  causal: the highest log position I have written or seen. */
+    const usesTokens = cfg => cfg.topology === 'leader' && ['ryw', 'monotonic', 'causal'].includes(cfg.read);
+    function sessionToken(s, c) {
+        if (!usesTokens(s.cfg)) return '';
+        const mode = s.cfg.read;
+        if (mode === 'ryw') return `log ≥ @${c.lastWriteSeq}`;
+        if (mode === 'causal') return `log ≥ @${Math.max(c.lastWriteSeq, c.seenSeq)}`;
+        if (mode === 'monotonic') { const seen = Object.entries(c.maxSeen).map(([k, v]) => `${k} ≥ @${v}`); return seen.length ? seen.join(', ') : 'none yet'; }
+        return '';
+    }
     function rebuildStore(s, nd) {
         const store = {};
         for (const k of s.sc.keys) store[k] = [s.writes.get('w0' + k)];
@@ -996,6 +1010,8 @@
                 const set = nd.store[k] || [];
                 const hint = nd.hints.filter(h => h.ver.k === k);
                 let text = verText(set);
+                // Log positions are shown where they explain something: wherever tokens are used, or when the scene asks.
+                if (cfg.topology === 'leader' && (cfg.positions || usesTokens(cfg)) && set.length === 1) text += ` @${set[0].seq || 0}`;
                 if (hint.length) text = (text ? text + ' ' : '') + '⟨' + hint.map(h => (h.ver.del ? '†' : showVal(h.ver.v)) + '→' + NODE_NAMES[h.target]).join(' ') + '⟩';
                 row.push(text);
                 codes.push(!nd.up ? 6 : !set.length && !hint.length ? 0 : set.length > 1 ? 3 : set.length && set[0].del ? 4 : !set.length ? 5 : setKey(set) === newest[k] ? 1 : 2);
@@ -1039,12 +1055,14 @@
             const op = c.busy;
             const coord = op ? op.coord : coordinatorFor(s, c);
             const where = coord >= 0 ? NODE_NAMES[coord] : 'no node';
-            if (!op) return `C${c.c} · idle · via ${where}`;
+            const token = sessionToken(s, c);
+            const tok = token ? ` · token ${token}` : '';
+            if (!op) return `C${c.c} · idle · via ${where}${tok}`;
             const what = op.type === 'r' ? `read ${op.k}` : op.type === 'd' ? `delete ${op.k}` : `write ${op.k}=${showVal(op.v)}`;
             const progress = cfg.topology === 'leader'
-                ? (op.type === 'r' ? (op.waiting ? `waits for ${NODE_NAMES[op.waitAt]} to reach position ${op.token}` : `at ${NODE_NAMES[op.target] ?? where}`) : op.seq ? `${op.acks}/${op.need} replica acks` : `to primary`)
+                ? (op.type === 'r' ? (op.waiting ? `waits: ${NODE_NAMES[op.waitAt]} has @${appliedSeq(s.nodes[op.waitAt])}, needs @${op.token}` : `at ${NODE_NAMES[op.target] ?? where}`) : op.seq ? `${op.acks}/${op.need} replica acks` : `to primary`)
                 : (op.type === 'r' ? `${op.replies.length}/${op.need} replies${op.repairing ? ', repairing' : ''}` : `${op.acks}/${op.need} acks`);
-            return `C${c.c} · ${what} · ${progress}`;
+            return `C${c.c} · ${what} · ${progress}${tok}`;
         });
         const ackRows = s.clients.map(c => { const op = c.busy; return op ? [op.type === 'r' ? op.replies.length : op.acks, op.need || (op.type === 'r' ? 1 : cfg.acks)] : [0, 0]; });
         // Metrics.
@@ -1087,7 +1105,7 @@
             case 'put': return `put ${ver.k}=${showVal(ver.v)}${b.hintFor >= 0 ? ' (hint)' : ''}`;
             case 'hint': return `hint ${ver.k}=${showVal(ver.v)}`;
             case 'repair': return `repair ${ver.k}=${ver.del ? '†' : showVal(ver.v)}`;
-            case 'get': case 'read': return `read ${s.ops[b.op].k}`;
+            case 'get': case 'read': { const op = s.ops[b.op]; return `read ${op.k}${op.token ? ' · needs @' + op.token : ''}`; }
             case 'getreply': case 'reply': return 'reply';
             case 'write': return `write ${s.ops[b.op].k}=${showVal(s.ops[b.op].v)}`;
             default: return m.kind;

@@ -38,12 +38,14 @@ function timeline(prefix, clients, width) {
         prompt: 'Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started.',
     };
 }
-function clientStatus(prefix, clients) {
+function clientStatus(prefix, clients, width) {
+    // One cell per client across the block: status lines carry the session token, so they need the room.
+    const cell = (width - 1.6) / clients;
     return {
-        type: 'array', id: prefix + 'client-status', itemType: 'string', stringQuotes: false, origin: [-11.6, 1.45, 0.25], cellSize: 7.6, fontSize: 10, showIndices: false,
-        arrayColumns: 4, axisLabels: 'plane',
+        type: 'array', id: prefix + 'client-status', itemType: 'string', stringQuotes: false, origin: [-width / 2 + 0.8 + cell / 2, 1.45, 0.25], cellSize: cell, fontSize: 10, showIndices: false,
+        arrayColumns: clients, axisLabels: 'plane',
         lengthExpr: `min(ddCount(${T('clientText')}), ${clients})`, valueExpr: `ddAt(${T('clientText')}, idx)`,
-        prompt: 'Explain what each client is doing right now: which operation, through which node, and how many acknowledgements or replies it has versus how many it needs.',
+        prompt: 'Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client).',
     };
 }
 function messages(prefix) {
@@ -90,7 +92,7 @@ export function clusterBoard({ prefix = '', nodes = 3, keys = 1, clients = 3, me
         type: 'system_dag', id: prefix + 'cluster', label: 'Cluster', pipeRadius: 0.07, origin: [0, 0, 0],
         blocks: [
             { id: 'clients', label: 'Clients · each talks to one node (→)', kind: 'client', position: [0, 11.4, 0], size: [g.width, 6.4, 0.18],
-                ports: [{ id: 'req', side: 'bottom', offset: 0 }], elements: [timeline(prefix, clients, g.width), clientStatus(prefix, clients)],
+                ports: [{ id: 'req', side: 'bottom', offset: 0 }], elements: [timeline(prefix, clients, g.width), clientStatus(prefix, clients, g.width)],
                 ...(codeRefs.client ? { codeRef: codeRefs.client } : {}) },
             { id: 'net', label: 'Network · messages in flight', kind: 'gateway', position: [0, 4.4, 0], size: [g.width, 3.6, 0.18],
                 textExpr: `concat(${T('msgCount')}, ' in flight')`,

@@ -34,9 +34,10 @@ const OVERRIDE_KEYS = ['ack', 'replDelay', 'failover', 'lease', 'read', 'N', 'R'
 
 // ── Shared cluster scene builder ─────────────────────────────────────────────
 /** knobs: slider ids the scene exposes; each step's `set` gives values (missing → −1, the scenario's own). */
-function clusterScene({ id, title, description, markdown, prompt, scene, knobs, steps, nodes, keys, clients, metrics, extras = [], extraViews = [], extraRange = 0, trace }) {
+function clusterScene({ id, title, description, markdown, prompt, scene, knobs, steps, nodes, keys, clients, metrics, extras = [], extraViews = [], extraRange = 0, trace, fixed = {} }) {
     const ids = knobs.slice();
-    const overrides = '{' + ids.filter(k => OVERRIDE_KEYS.includes(k)).map(k => `${k}: ${k}`).join(', ') + '}';
+    // fixed: constant overrides for the whole scene (e.g. positions: 1).
+    const overrides = '{' + [...ids.filter(k => OVERRIDE_KEYS.includes(k)).map(k => `${k}: ${k}`), ...Object.entries(fixed).map(([k, v]) => `${k}: ${v}`)].join(', ') + '}';
     const rowsExpr = trace ?? `ddTrace(scenario, ${overrides})`;
     const g = geometry(nodes, keys);
     const top = 14.8, bottom = g.bottom - 5.2;
@@ -127,6 +128,8 @@ With replicas that lag, two clients can see different values at the same moment.
 The first three are **session guarantees**: about one client's view. **Causal** covers chains between clients. **Linearizable** is about real time across everyone, and is the only one that needs coordination on every read.
 
 **Guarantees vs. mechanisms.** Move **Read guarantee** to switch the *mechanism*: any replica · a session token (the log position of my last write) · a version token per key · a causal token (the highest position I have seen) · always read the primary. A replica holding a token waits until it has caught up — the latency each guarantee costs shows in *p99*.
+
+**Reading the tokens.** Every value on a node shows the log position that wrote it: \`post = 1 @1\` was the primary's 1st log entry, and \`@0\` is the initial value. A client's status line shows the token it carries (\`token log ≥ @2\`, or per key \`s ≥ @1\`); its read message says \`needs @2\`, and while the chosen replica is behind the client shows \`waits: N3 has @1, needs @2\`.
 
 **The checker.** Nothing on the board trusts the mechanism. A history checker labels every read with the **weakest guarantee it breaks**, and searches for a single order of all operations that respects real time (linearizability). The **guarantee matrix** (right) runs every scenario under every mechanism.
 
@@ -221,7 +224,7 @@ export const SCENES = [
         description: 'Read-your-writes, monotonic reads, causal and linearizable reads over lagging replicas, each checked against the real history.',
         markdown: MD_CONSISTENCY,
         prompt: 'You are a distributed-systems mentor. Define each consistency model by what clients observe, then the mechanism that provides it. Use the history checker labels and the guarantee matrix as ground truth. Keep isolation (transactions) and consistency (replicas) distinct.',
-        scene: 'consistency', knobs: ['read', 'replDelay'], steps: consistencySteps, nodes: 3, keys: 2, clients: 3,
+        scene: 'consistency', knobs: ['read', 'replDelay'], fixed: { positions: 1 }, steps: consistencySteps, nodes: 3, keys: 2, clients: 3,
         metrics: [['p99 latency', 'm_p99'], ['p50 latency', 'm_p50'], ['Stale reads', 'm_stale'], ['Reads ok', 'm_ok'], ['Messages', 'm_msgs']],
         extras: [GUARANTEE_MATRIX], extraRange: 30,
         extraViews: [{ name: 'Guarantee matrix', position: [35, -2, 30], target: [35, -2, 0] }],
