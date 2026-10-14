@@ -409,7 +409,7 @@ def get_app_version() -> str:
     return m.group(1) if m else "dev"
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
+GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3.8-flash')
 
 
 def _env_bool(name: str, default: bool) -> bool:

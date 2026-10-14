@@ -3,7 +3,7 @@ from backend.gemini_sampling import gemini_temperature, hit_output_limit, is_gem
 
 
 def test_gemini3_uses_the_default_temperature():
-    for model in ('gemini-3-flash-preview', 'gemini/gemini-3-pro', 'models/gemini-3.1-flash'):
+    for model in ('gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini/gemini-3-pro', 'models/gemini-3.1-flash'):
         assert is_gemini3(model)
         assert gemini_temperature(model, 0.7) is None
     for model in ('gemini-2.5-flash', 'gemini/gemini-2.5-pro', 'openai/gpt-4o', '', None):
