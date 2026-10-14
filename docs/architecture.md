@@ -101,7 +101,7 @@ A single-file Python HTTP server built on `http.server.BaseHTTPRequestHandler`. 
 | Variable | Default | Description |
 |---|---|---|
 | `GEMINI_API_KEY` | env | Required for AI chat |
-| `GEMINI_MODEL` | `gemini-3-flash-preview` | Model for chat |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Model for chat |
 | `DEFAULT_PORT` | `8785` | HTTP listen port |
 
 ---
