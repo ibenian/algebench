@@ -50,7 +50,7 @@ function clientStatus(prefix, clients, width) {
 }
 function messages(prefix) {
     return {
-        type: 'array', id: prefix + 'messages', itemType: 'string', stringQuotes: false, origin: [-11.4, -0.35, 0.25], cellSize: 7.6, fontSize: 10, showIndices: false,
+        type: 'array', id: prefix + 'messages', itemType: 'string', stringQuotes: false, origin: [-11.4, -0.75, 0.25], cellSize: 7.6, fontSize: 10, showIndices: false,
         arrayColumns: 4, axisLabels: 'plane',
         lengthExpr: `min(ddCount(${T('msgText')}), ${MSG_SLOTS})`, valueExpr: `ddAt(${T('msgText')}, idx)`,
         prompt: 'Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped.',
@@ -94,7 +94,7 @@ export function clusterBoard({ prefix = '', nodes = 3, keys = 1, clients = 3, me
             { id: 'clients', label: 'Clients · each talks to one node (→)', kind: 'client', position: [0, 11.4, 0], size: [g.width, 6.4, 0.18],
                 ports: [{ id: 'req', side: 'bottom', offset: 0 }], elements: [timeline(prefix, clients, g.width), clientStatus(prefix, clients, g.width)],
                 ...(codeRefs.client ? { codeRef: codeRefs.client } : {}) },
-            { id: 'net', label: 'Network · messages in flight', kind: 'gateway', position: [0, 4.4, 0], size: [g.width, 3.6, 0.18],
+            { id: 'net', label: 'Network · messages in flight', kind: 'gateway', position: [0, 4.5, 0], size: [g.width, 4.2, 0.18],
                 textExpr: `concat(${T('msgCount')}, ' in flight')`,
                 ports: [{ id: 'req', side: 'top', offset: 0 }, ...nodeBlocks.map((b, i) => ({ id: 'n' + i, side: 'bottom', offset: g.x(i) / (g.width / 2) }))],
                 elements: [messages(prefix)] },

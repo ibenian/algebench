@@ -135,20 +135,21 @@ The first three are **session guarantees**: about one client's view. **Causal** 
 
 > *Isolation* (lesson 1) orders **transactions**; *consistency models* order **operations on copies**. A system can have one without the other; *strict serializability* is both.`;
 
+// Each step opens on the guarantee it is named after; its guide says which weaker setting shows the anomaly it prevents.
 const consistencySteps = [
-    { id: 'cons-ryw', title: 'Read-your-writes', scenario: 'ryw', set: { read: 0 },
-        guide: 'C1 saves profile v=2, then reloads — each reload lands on a different replica. **Predict which reload shows v=1.**',
-        prompt: 'Ask the learner to predict which of C1\'s reads return the old profile. Point to the read labelled "breaks read-your-writes" and the replica it came from. Then switch Read guarantee to read-your-writes and show the replica waiting for the session token (higher latency, no violation).' },
-    { id: 'cons-mr', title: 'Monotonic reads', scenario: 'monotonic', set: { read: 0 },
-        guide: 'C2 refreshes repeatedly; one refresh hits the lagging N3 and the score **goes back in time**. Try *read-your-writes*: it does not help — C2 wrote nothing.',
-        prompt: 'Explain monotonic reads with the history: C2 saw s=1 and then s=0. Show that a read-your-writes token does not fix it (C2 has no writes), but a version token per key or sticky routing does. Distinguish the two session guarantees precisely.' },
-    { id: 'cons-causal', title: 'Causal consistency', scenario: 'causal', set: { read: 2 },
-        guide: 'C3 reads C2\'s reply, then opens the post it answers — from a replica that has neither yet. Even with **monotonic reads** (per key) the reply is visible and the post is not.',
-        prompt: 'Explain why the reply and the post are different keys, so monotonic reads per key cannot help. Switch to the causal token: C3 carries the log position of everything it has seen, so N3 waits until it has the post. Mention MongoDB causally consistent sessions (afterClusterTime).' },
-    { id: 'cons-linear', title: 'Linearizability', scenario: 'linearizable', set: { read: 3 },
-        guide: 'C1\'s price change is acknowledged. Then C2 (near N2) sees the new price and C3 (near N3) **afterwards** sees the old one — with every session guarantee satisfied.',
-        prompt: 'Explain why this history satisfies causal consistency yet is not linearizable: C2 and C3 never interacted, so no causal chain forces C3 to see the write; but in real time the write finished first. Switch to "read the primary" and show the cost: every read crosses to N1.' },
-    { id: 'cons-matrix', title: 'Read the guarantee matrix', scenario: 'monotonic', set: { read: 4 },
+    { id: 'cons-ryw', title: 'Read-your-writes', scenario: 'ryw', set: { read: 1 },
+        guide: 'C1 saves profile v=2, then reloads; each reload lands on a different replica. **Read-your-writes**: C1 carries the log position of its write, and a replica that is behind **waits** before answering. **Predict** how long the slow reload waits, then play. Switch Read guarantee to *eventual* to see the reload that shows v=1.',
+        prompt: 'The read guarantee is read-your-writes. Ask the learner to predict which reload waits and for how long, then show C1\'s token (log ≥ @1), the replica that is behind, and the wait in the client status. Then have them switch to eventual and find the read labelled "breaks read-your-writes".' },
+    { id: 'cons-mr', title: 'Monotonic reads', scenario: 'monotonic', set: { read: 2 },
+        guide: 'C2 refreshes repeatedly while the lagging N3 is one of its replicas. **Monotonic reads**: C2 remembers the newest version of s it has seen (s ≥ @n), so N3 waits rather than send it back in time. Switch to *eventual* to see the score go back; *read-your-writes* does not help, because C2 wrote nothing.',
+        prompt: 'The read guarantee is monotonic reads (a version token per key). Show C2\'s token growing as it reads, and N3 holding a read until it catches up. Then have the learner try eventual (s goes from 1 back to 0) and read-your-writes (still broken: C2 has no writes), and explain the difference between the two session guarantees.' },
+    { id: 'cons-causal', title: 'Causal consistency', scenario: 'causal', set: { read: 3 },
+        guide: 'C3 reads C2\'s reply, then opens the post it answers. **Causal**: C3 carries the highest log position it has seen (log ≥ @2, the reply), so N3 waits until it has everything up to the reply, including the post. Switch to *monotonic reads*: they are per key, so the reply is visible and the post is not.',
+        prompt: 'The read guarantee is causal (a causal token). Show that the reply is entry @2 and the post @1, and that N3 waits until it has applied @2. Then have the learner switch to monotonic reads and explain why a per-key token cannot catch this: the post and the reply are different keys. Mention MongoDB causally consistent sessions (afterClusterTime).' },
+    { id: 'cons-linear', title: 'Linearizability', scenario: 'linearizable', set: { read: 4 },
+        guide: 'C1\'s price change is acknowledged; then C2 and C3 read the price. **Linearizable**: every read goes to the primary, so once the write is acknowledged everyone sees it, at the cost of a trip to N1. Switch to *causal*: C3, reading nearby after C2, sees the old price, though no session guarantee is broken.',
+        prompt: 'The read guarantee is linearizable (read the primary). Show every read crossing to N1 and the latency it costs. Then have the learner switch to causal and explain why that history satisfies causal consistency yet is not linearizable: C2 and C3 never interacted, so no causal chain forces C3 to see the write, but in real time the write had finished.' },
+    { id: 'cons-matrix', title: 'Read the guarantee matrix', scenario: 'monotonic', set: { read: 0 },
         guide: 'Each cell ran one scenario under one mechanism. ✗ names the weakest guarantee that broke; ✓ shows the p99 latency paid. Which is the cheapest mechanism for each product feature?',
         prompt: 'Drill: for a profile page, a news feed, a comment thread and a stock price, have the learner pick the weakest guarantee that is still correct, justify it from the matrix, and name the latency cost.' },
 ];
@@ -221,7 +222,7 @@ export const SCENES = [
     }),
     () => clusterScene({
         id: 'consistency', title: 'Consistency Models',
-        description: 'Read-your-writes, monotonic reads, causal and linearizable reads over lagging replicas, each checked against the real history.',
+        description: 'Read-your-writes, monotonic reads, causal and linearizable reads over lagging replicas, each checked against the real history. Each step opens with its own guarantee switched on; move Read guarantee one level down to see the anomaly it prevents.',
         markdown: MD_CONSISTENCY,
         prompt: 'You are a distributed-systems mentor. Define each consistency model by what clients observe, then the mechanism that provides it. Use the history checker labels and the guarantee matrix as ground truth. Keep isolation (transactions) and consistency (replicas) distinct.',
         scene: 'consistency', knobs: ['read', 'replDelay'], fixed: { positions: 1 }, steps: consistencySteps, nodes: 3, keys: 2, clients: 3,
