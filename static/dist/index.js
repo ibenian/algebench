@@ -11115,6 +11115,12 @@ function registerStackHover(canvas, camera, entry) {
 }
 //#endregion
 //#region src/objects/array-changes.ts
+/** Brightness of the changed-cell rim at a moment: a slow, subtle swell between `low` and 1 (the
+*  same 1.2 s ease-in-out rhythm as the chat speaker button), so a highlight reads as alive without flashing. */
+function glowBreath(nowMs, periodMs = 1200, low = .65) {
+	const phase = (nowMs % periodMs + periodMs) % periodMs / periodMs;
+	return low + (1 - low) * (.5 - .5 * Math.cos(2 * Math.PI * phase));
+}
 var ArrayChangeTracker = class {
 	constructor() {
 		this.previous = null;
@@ -11246,20 +11252,26 @@ function renderArray(el, _view, decorate) {
 		transparent: true,
 		depthWrite: false,
 		side: THREE.DoubleSide,
-		uniforms: { opacity: { value: 1 } },
-		vertexShader: `attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
-            void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
+		uniforms: {
+			opacity: { value: 1 },
+			breath: { value: 1 }
+		},
+		vertexShader: `attribute float removed; attribute float cellOpacity; attribute vec2 halfSize; attribute vec2 edgeSize;
+            varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
+            void main(){local=(uv*2.0-1.0)*halfSize;box=edgeSize;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-		fragmentShader: `uniform float opacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
-            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
-                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+		fragmentShader: `uniform float opacity; uniform float breath; varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
+            void main(){float r=min(0.3,0.5*min(box.x,box.y));
+                vec2 q=abs(local)-box+r;float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;
+                float glow=d<0.0?exp(-pow(d/0.12,2.0)):exp(-d/0.2);
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
+                float alpha=glow*mix(0.8,0.35,removedCell)*opacity*stackOpacity*breath;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
 	});
 	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
 	glowMesh.onBeforeRender = () => {
 		glowMaterial.uniforms.opacity.value = glowMaterial.opacity;
+		glowMaterial.uniforms.breath.value = glowBreath(performance.now());
 	};
 	glowMesh.visible = false;
 	glowMesh.userData.ignorePlaneOpacity = true;
@@ -11272,7 +11284,7 @@ function renderArray(el, _view, decorate) {
 	let illuminated = /* @__PURE__ */ new Set();
 	let rimCells = [];
 	function illuminate(changed, removed) {
-		const positions = [], uv = [], removedFlags = [], rimOpacity = [];
+		const positions = [], uv = [], removedFlags = [], rimOpacity = [], halves = [], edges = [];
 		rimCells = [];
 		const corners = [
 			[-1, -1],
@@ -11284,16 +11296,19 @@ function renderArray(el, _view, decorate) {
 		];
 		for (const [indices, isRemoved] of [[changed, 0], [removed, 1]]) for (const i of indices) {
 			const c = centre(i);
+			const ex = pitch * .39, ey = cellHeight() * .5, halo = .9, hx = ex + halo, hy = ey + halo;
 			for (const [x, y] of corners) {
 				positions.push(...dataToWorld([
-					c[0] + x * pitch * .455,
-					c[1] + y * cellHeight() * .584,
+					c[0] + x * hx,
+					c[1] + y * hy,
 					c[2] + .125
 				]));
 				uv.push((x + 1) / 2, (y + 1) / 2);
 				removedFlags.push(isRemoved);
 				rimCells.push(i);
 				rimOpacity.push(hoverOpacity[i] ?? 1);
+				halves.push(hx, hy);
+				edges.push(ex, ey);
 			}
 		}
 		const geometry = new THREE.BufferGeometry();
@@ -11301,6 +11316,8 @@ function renderArray(el, _view, decorate) {
 		geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
 		geometry.setAttribute("removed", new THREE.Float32BufferAttribute(removedFlags, 1));
 		geometry.setAttribute("cellOpacity", new THREE.Float32BufferAttribute(rimOpacity, 1));
+		geometry.setAttribute("halfSize", new THREE.Float32BufferAttribute(halves, 2));
+		geometry.setAttribute("edgeSize", new THREE.Float32BufferAttribute(edges, 2));
 		glowMesh.geometry.dispose();
 		glowMesh.geometry = geometry;
 		glowMesh.visible = positions.length > 0;

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {ArrayChangeTracker} from './array-changes.js';
+import {ArrayChangeTracker, glowBreath} from './array-changes.js';
 const k=(values:unknown[])=>values.map(v=>JSON.stringify([typeof v,v]));
 test('initial display never illuminates every cell, and duplicate rebuilds do nothing',()=>{
  const tracker=new ArrayChangeTracker();
@@ -31,4 +31,12 @@ test('shifts and primitive type changes are detected without numeric coercion',(
  const tracker=new ArrayChangeTracker();tracker.update(k([10,20,30]),'0');
  assert.deepEqual(tracker.update(k([20,30]),'1'),{changed:[0,1],added:[],removed:[2]});
  assert.deepEqual(tracker.update(k(['20',30]),'1'),{changed:[0],added:[],removed:[]});
+});
+
+test('changed-cell rim breathes between its low level and full brightness on a 1.2 s cycle', () => {
+    assert.equal(glowBreath(0), 0.65);
+    assert.ok(Math.abs(glowBreath(600) - 1) < 1e-9);
+    assert.ok(Math.abs(glowBreath(1200) - 0.65) < 1e-9);
+    assert.ok(Math.abs(glowBreath(300) - glowBreath(900)) < 1e-9, 'symmetric swell');
+    for (let t = 0; t < 2400; t += 37) { const b = glowBreath(t); assert.ok(b >= 0.65 - 1e-9 && b <= 1 + 1e-9); }
 });

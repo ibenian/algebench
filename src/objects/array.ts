@@ -10,7 +10,7 @@ import type { Mesh, Object3D } from 'three';
 import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, cellColor, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
 import { registerStackHover, stackCellOpacities } from '/objects/array-stack-hover.js';
-import { ArrayChangeTracker } from '/objects/array-changes.js';
+import { ArrayChangeTracker, glowBreath } from '/objects/array-changes.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 
@@ -80,19 +80,25 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     // A world-space soft rim follows the cells without screen overlays or frame evaluation.
     const glowMaterial=new THREE.ShaderMaterial({
         transparent:true,depthWrite:false,side:THREE.DoubleSide,
-        uniforms:{opacity:{value:1}},
-        vertexShader:`attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
-            void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
+        uniforms:{opacity:{value:1},breath:{value:1}},
+        // A soft light around the cell: distance to a rounded rectangle (the cell's edge), measured in data
+        // units so corners stay round on wide cells and the glow keeps one width whatever the cell size;
+        // brightest at the edge, a quick fade inside (text stays clear) and an exponential halo outside.
+        vertexShader:`attribute float removed; attribute float cellOpacity; attribute vec2 halfSize; attribute vec2 edgeSize;
+            varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
+            void main(){local=(uv*2.0-1.0)*halfSize;box=edgeSize;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-        fragmentShader:`uniform float opacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
-            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
-                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+        fragmentShader:`uniform float opacity; uniform float breath; varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
+            void main(){float r=min(0.3,0.5*min(box.x,box.y));
+                vec2 q=abs(local)-box+r;float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;
+                float glow=d<0.0?exp(-pow(d/0.12,2.0)):exp(-d/0.2);
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
+                float alpha=glow*mix(0.8,0.35,removedCell)*opacity*stackOpacity*breath;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`,
     });
     const glowMesh=new THREE.Mesh(new THREE.BufferGeometry(),glowMaterial);
-    glowMesh.onBeforeRender=()=>{glowMaterial.uniforms.opacity!.value=glowMaterial.opacity;};
+    // The rim breathes (a subtle swell, like the speaker button) for as long as it is shown.
+    glowMesh.onBeforeRender=()=>{glowMaterial.uniforms.opacity!.value=glowMaterial.opacity;glowMaterial.uniforms.breath!.value=glowBreath(performance.now());};
     glowMesh.visible=false;glowMesh.userData.ignorePlaneOpacity=true;glowMesh.userData.targetOpacity=1;
     // Decorative rims must not alter wire anchors or capture object picking.
     glowMesh.userData.annotationTextPlane=true;glowMesh.raycast=()=>{};
@@ -101,14 +107,17 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     let illuminated=new Set<number>();
     let rimCells: number[] = [];
     function illuminate(changed:number[],removed:number[]){
-        const positions:number[]=[],uv:number[]=[],removedFlags:number[]=[],rimOpacity:number[]=[];
+        const positions:number[]=[],uv:number[]=[],removedFlags:number[]=[],rimOpacity:number[]=[],halves:number[]=[],edges:number[]=[];
         rimCells = [];
         const corners=[[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
         for(const [indices,isRemoved] of [[changed,0],[removed,1]] as const)for(const i of indices){
             const c=centre(i);
+            // The cell's edge (half extents), and a larger quad so the halo has room to fade outside it.
+            const ex=pitch*.39,ey=cellHeight()*.5,halo=.9,hx=ex+halo,hy=ey+halo;
             for(const [x,y] of corners){
-                positions.push(...dataToWorld([c[0]+x!*pitch*.455,c[1]+y!*cellHeight()*.584,c[2]+.125]));
+                positions.push(...dataToWorld([c[0]+x!*hx,c[1]+y!*hy,c[2]+.125]));
                 uv.push((x!+1)/2,(y!+1)/2);removedFlags.push(isRemoved);rimCells.push(i);rimOpacity.push(hoverOpacity[i] ?? 1);
+                halves.push(hx,hy);edges.push(ex,ey);
             }
         }
         const geometry=new THREE.BufferGeometry();
@@ -116,6 +125,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
         geometry.setAttribute('removed',new THREE.Float32BufferAttribute(removedFlags,1));
         geometry.setAttribute('cellOpacity',new THREE.Float32BufferAttribute(rimOpacity,1));
+        geometry.setAttribute('halfSize',new THREE.Float32BufferAttribute(halves,2));
+        geometry.setAttribute('edgeSize',new THREE.Float32BufferAttribute(edges,2));
         glowMesh.geometry.dispose();glowMesh.geometry=geometry;
         glowMesh.visible=positions.length>0;
     }

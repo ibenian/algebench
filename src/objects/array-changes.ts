@@ -1,3 +1,10 @@
+/** Brightness of the changed-cell rim at a moment: a slow, subtle swell between `low` and 1 (the
+ *  same 1.2 s ease-in-out rhythm as the chat speaker button), so a highlight reads as alive without flashing. */
+export function glowBreath(nowMs: number, periodMs = 1200, low = 0.65): number {
+    const phase = (((nowMs % periodMs) + periodMs) % periodMs) / periodMs;
+    return low + (1 - low) * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase));
+}
+
 /** Compare visible slot values, preserving the last successful state across resizes. */
 export interface ArrayChanges { changed: number[]; added: number[]; removed: number[]; }
 export class ArrayChangeTracker {
