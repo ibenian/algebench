@@ -1,4 +1,5 @@
 import { setupStepPlayer } from '/step-player.js';
+import { setupFocusCamera } from '/focus-camera.js';
 import { setupCodePanel } from '/code-panel.js';
 // ============================================================
 // main.js — Application entry point (DOMContentLoaded).
@@ -75,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupProofPanel();
     setupSceneDock();
     setupCodePanel();
+    setupFocusCamera();   // before the player, whose toggle shows the remembered setting
     setupStepPlayer();
     setupCaptionDrag();
     setupSceneDescDrag();

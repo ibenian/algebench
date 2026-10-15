@@ -2310,7 +2310,24 @@ export function resolveEffectiveStepCamera(scene: CameraScene | null | undefined
 }
 
 export function animateCamera(view: string, duration?: number): void {
-    duration = (duration == null) ? 800 : duration;
+    const targetView = cameraState.CAMERA_VIEWS[view];
+    if (!targetView || !cameraState.camera || !cameraState.controls) return;
+    document.querySelectorAll<HTMLElement>('.cam-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = findCamButton(view);
+    if (activeBtn) activeBtn.classList.add('active');
+    animateCameraPose(new THREE.Vector3(...targetView.position), new THREE.Vector3(...targetView.target),
+        duration == null ? 800 : duration, normalizeUpVector(targetView.up));
+}
+
+/** Bumped by every pose animation; a running one stops when a newer one starts, so moves never fight. */
+let poseAnimation = 0;
+
+/**
+ * Animate the camera to a position and orbit target (world coordinates), with an ease-in-out
+ * curve. `up` defaults to the current up vector. Used by the named views and by camera focus
+ * mode; a newer call takes over smoothly from wherever the previous one had got to.
+ */
+export function animateCameraPose(endPos: Vector3, endTarget: Vector3, duration: number = 800, up?: Vector3): void {
     // Camera buttons, step changes, chat and deeplinks move the view off a
     // lingering ball; one left up would be grabbed at a stale pivot.
     dropLingeringBall();
@@ -2328,15 +2345,13 @@ export function animateCamera(view: string, duration?: number): void {
     haltSmoothedZoom();
     haltSmoothedPan();
     dragPivot = null;
-    const targetView = cameraState.CAMERA_VIEWS[view];
-    if (!targetView || !cameraState.camera || !cameraState.controls) return;
+    if (!cameraState.camera || !cameraState.controls) return;
 
+    endPos = endPos.clone();
     const startPos    = cameraState.camera.position.clone();
-    const endPos      = new THREE.Vector3(...targetView.position);
     const startTarget = cameraState.controls.target.clone();
-    const endTarget   = new THREE.Vector3(...targetView.target);
     const startUp     = cameraState.camera.up.clone();
-    let endUp         = normalizeUpVector(targetView.up);
+    let endUp         = (up ?? cameraState.camera.up).clone();
 
     // Nudge pole-aligned destinations off the OrbitControls singularity.
     const offset = endPos.clone().sub(endTarget);
@@ -2357,27 +2372,22 @@ export function animateCamera(view: string, duration?: number): void {
     }
 
     const startTime = performance.now();
-
-    document.querySelectorAll<HTMLElement>('.cam-btn').forEach(b => b.classList.remove('active'));
-    const activeBtn = findCamButton(view);
-    if (activeBtn) activeBtn.classList.add('active');
-
+    const generation = ++poseAnimation;
     cameraState.cameraAnimating = true;
 
-    if (duration === 0) {
+    if (duration <= 0) {
         cameraState.camera.position.copy(endPos);
         cameraState.controls.target.copy(endTarget);
         cameraState.camera.up.copy(endUp);
         cameraState.camera.lookAt(cameraState.controls.target);
+        cameraState.controls.update();
         cameraState.cameraAnimating = false;
         return;
     }
 
     function step(now: number): void {
-        const elapsed = now - startTime;
-        // Non-null: `duration` was defaulted at the top of animateCamera; the
-        // narrowing does not reach this hoisted declaration.
-        let t = Math.min(elapsed / duration!, 1);
+        if (generation !== poseAnimation) return;   // a newer move took over
+        let t = Math.min((now - startTime) / duration, 1);
         t = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
 
         cameraState.camera!.position.lerpVectors(startPos, endPos, t);

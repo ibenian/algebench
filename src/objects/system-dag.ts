@@ -14,6 +14,8 @@ import { pipeFlowPath, pipeFlowPhase } from '/objects/system-dag-flow.js';
 import { resolveSystemDAG, pipeArrowDimensions, pipeLabelAnchor } from '/objects/system-dag-layout.js';
 import { codeFocus, focusMatches } from '/code-focus.js';
 import { resolveCodeRef } from '/code-panel-model.js';
+import { registerFocusSource } from '/focus-camera.js';
+import { boxOfPoints, type Box } from '/focus-frame.js';
 import type { LessonFormat } from '/types/lesson.js';
 import type { Element, Color } from '/types/lesson.js';
 import type { BufferGeometry, Material, Mesh, MeshBasicMaterial, MeshPhongMaterial, ShaderMaterial } from 'three';
@@ -142,7 +144,7 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
                 'Explain port "'+port.id+'" on "'+spec.label+'", its boundary and the connections using it.');
         }
     }
-    const flows:{material:MeshPhongMaterial;glow:ShaderMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null;colorFn:ReturnType<typeof compileExpr>|null;dirFn:ReturnType<typeof compileExpr>|null;baseDir:number}[]=[];
+    const flows:{material:MeshPhongMaterial;glow:ShaderMaterial;from:string;to:string;color:Color;activeColor:Color;fn:ReturnType<typeof compileExpr>|null;colorFn:ReturnType<typeof compileExpr>|null;dirFn:ReturnType<typeof compileExpr>|null;baseDir:number;path:Vec3[]}[]=[];
     for(const wire of layout.wires){
         const wireStart=root.children.length;
         const spec=wire.spec,radius=spec.radius??pipeRadius,color=spec.color??'#8296a4';
@@ -203,7 +205,9 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         registerCompositePart(objectId+'::connection:'+spec.id,wire.owner?blockId(wire.owner):objectId,_view,coreMeshes,[],spec.label??(layout.nodes.get(spec.from.block)!.spec.label+' → '+layout.nodes.get(spec.to.block)!.spec.label),
             'Explain this directed connection from "'+layout.nodes.get(spec.from.block)!.spec.label+'" port '+(spec.from.port??spec.from.side??'automatic')+' to "'+layout.nodes.get(spec.to.block)!.spec.label+'" port '+(spec.to.port??spec.to.side??'automatic')+'. Explain its direction and what active highlighting means.', 'animated_vector');
         flows.push({material,glow,from:spec.from.block,to:spec.to.block,color,activeColor:spec.activeColor??'#f1c96b',fn:spec.activeExpr?compileExpr(spec.activeExpr):null,colorFn:spec.colorExpr?compileExpr(spec.colorExpr):null,
-            dirFn:spec.directionExpr?compileExpr(spec.directionExpr):null,baseDir:glow.uniforms.direction!.value as number});
+            dirFn:spec.directionExpr?compileExpr(spec.directionExpr):null,baseDir:glow.uniforms.direction!.value as number,
+            // World-space route, for camera focus mode (placed now, while any enclosing offset applies).
+            path:path.map(p=>dataToWorld(p))});
     }
     // Reuse the full element dispatcher. Geometry, labels and deferred updates
     // share the block's local frame; existing step trackers own their lifecycle.
@@ -264,8 +268,10 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
                 if(!parent)break;id=parent;
             }
         }
+        const litPaths:Vec3[]=[];
         for(const f of flows) {
             const active=!!(f.fn&&evalExpr(f.fn,0));
+            if(active)litPaths.push(...f.path);
             f.material.color.setRGB(...rgb(active?f.activeColor:stateColor(f.colorFn,f.color)));
             f.material.emissive.setRGB(...rgb(f.activeColor));
             f.material.emissiveIntensity=active?.65:0;
@@ -293,7 +299,12 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         for(const child of root.children)if(child instanceof THREE.Mesh&&!Array.isArray(child.material)&&child.material.userData.activityOpacity!==undefined){
             child.visible=child.material.userData.activityOpacity>0;
         }
+        litBox=boxOfPoints(litPaths,dataLenToWorld(pipeRadius*4));   // world units: pad by a few pipe radii, not a world-unit constant
     }};
+    let litBox:Box|null=null;
+    // Camera focus mode: the pipes lit right now (their routes, not the blocks they join, so a lit
+    // pipe into a wide block does not pull the camera out to the whole block).
+    const unregisterFocus=registerFocusSource(()=>animState.stopped||animState.hiddenByRemove||!root.visible?null:litBox);
     entry._rebuildFn?.();if(expressions.length)registerAnimExpr(entry);
     const onCodeFocus=()=>entry._rebuildFn?.();
     window.addEventListener('algebench:codefocus',onCodeFocus);
@@ -301,6 +312,6 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         if(animState.stopped||animState.hiddenByRemove||!root.visible)return;
         for(const flow of flows)if(flow.glow.userData.activityOpacity>0)flow.glow.uniforms.phase!.value=pipeFlowPhase(nowMs);
     }});
-    rootMaterial.addEventListener('dispose',()=>{window.removeEventListener('algebench:codefocus',onCodeFocus);animState.stopped=true;for(const t of textLayers)t.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();root.clear();});
+    rootMaterial.addEventListener('dispose',()=>{unregisterFocus();window.removeEventListener('algebench:codefocus',onCodeFocus);animState.stopped=true;for(const t of textLayers)t.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();root.clear();});
     return {_animState:animState,_animExprEntry:entry,type:el.type};
 }

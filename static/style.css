@@ -5632,6 +5632,9 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 #state-player[hidden], .slider-row[hidden] { display: none; }
 #state-player button { border: 1px solid var(--border-color); background: transparent; color: var(--text-color); border-radius: 5px; min-width: 29px; height: 29px; cursor: pointer; }
 #state-player button:disabled { opacity: .35; cursor: default; }
+/* Camera focus toggle: quiet when off, accent-tinted when following changes. */
+#state-player .state-player-focus { opacity: .7; }
+#state-player .state-player-focus[aria-pressed="true"] { opacity: 1; color: var(--accent-color); border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); background: color-mix(in srgb, var(--accent-color) 14%, transparent); }
 #state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); }
 #state-player output { white-space: nowrap; font: 12px ui-monospace, monospace; }
 @media (max-width: 750px) { #state-player { bottom: 58px; width: calc(100% - 50px); } }

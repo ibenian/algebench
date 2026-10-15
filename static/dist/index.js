@@ -6084,7 +6084,21 @@ function resolveEffectiveStepCamera(scene, stepIdx) {
 	return effective;
 }
 function animateCamera$1(view, duration) {
-	duration = duration == null ? 800 : duration;
+	const targetView = cameraState.CAMERA_VIEWS[view];
+	if (!targetView || !cameraState.camera || !cameraState.controls) return;
+	document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
+	const activeBtn = findCamButton(view);
+	if (activeBtn) activeBtn.classList.add("active");
+	animateCameraPose(new THREE.Vector3(...targetView.position), new THREE.Vector3(...targetView.target), duration == null ? 800 : duration, normalizeUpVector(targetView.up));
+}
+/** Bumped by every pose animation; a running one stops when a newer one starts, so moves never fight. */
+var poseAnimation = 0;
+/**
+* Animate the camera to a position and orbit target (world coordinates), with an ease-in-out
+* curve. `up` defaults to the current up vector. Used by the named views and by camera focus
+* mode; a newer call takes over smoothly from wherever the previous one had got to.
+*/
+function animateCameraPose(endPos, endTarget, duration = 800, up) {
 	dropLingeringBall();
 	deactivateFollowCam();
 	deactivateExprCamera();
@@ -6097,14 +6111,12 @@ function animateCamera$1(view, duration) {
 	haltSmoothedZoom();
 	haltSmoothedPan();
 	dragPivot = null;
-	const targetView = cameraState.CAMERA_VIEWS[view];
-	if (!targetView || !cameraState.camera || !cameraState.controls) return;
+	if (!cameraState.camera || !cameraState.controls) return;
+	endPos = endPos.clone();
 	const startPos = cameraState.camera.position.clone();
-	const endPos = new THREE.Vector3(...targetView.position);
 	const startTarget = cameraState.controls.target.clone();
-	const endTarget = new THREE.Vector3(...targetView.target);
 	const startUp = cameraState.camera.up.clone();
-	let endUp = normalizeUpVector(targetView.up);
+	let endUp = (up ?? cameraState.camera.up).clone();
 	const offset = endPos.clone().sub(endTarget);
 	if (offset.clone().sub(endUp.clone().multiplyScalar(offset.dot(endUp))).length() < VIEW_EPSILON) {
 		const helper = Math.abs(endUp.dot(new THREE.Vector3(0, 0, 1))) < .9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
@@ -6118,21 +6130,20 @@ function animateCamera$1(view, duration) {
 		endUp = helper.clone().sub(viewDir.clone().multiplyScalar(helper.dot(viewDir))).normalize();
 	}
 	const startTime = performance.now();
-	document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
-	const activeBtn = findCamButton(view);
-	if (activeBtn) activeBtn.classList.add("active");
+	const generation = ++poseAnimation;
 	cameraState.cameraAnimating = true;
-	if (duration === 0) {
+	if (duration <= 0) {
 		cameraState.camera.position.copy(endPos);
 		cameraState.controls.target.copy(endTarget);
 		cameraState.camera.up.copy(endUp);
 		cameraState.camera.lookAt(cameraState.controls.target);
+		cameraState.controls.update();
 		cameraState.cameraAnimating = false;
 		return;
 	}
 	function step(now) {
-		const elapsed = now - startTime;
-		let t = Math.min(elapsed / duration, 1);
+		if (generation !== poseAnimation) return;
+		let t = Math.min((now - startTime) / duration, 1);
 		t = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 		cameraState.camera.position.lerpVectors(startPos, endPos, t);
 		cameraState.controls.target.lerpVectors(startTarget, endTarget, t);
@@ -8025,6 +8036,235 @@ function setupAboutPopup() {
 	});
 }
 //#endregion
+//#region src/focus-frame.ts
+var dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+var sub = (a, b) => [
+	a[0] - b[0],
+	a[1] - b[1],
+	a[2] - b[2]
+];
+/** The smallest box containing every given box; null when there are none. */
+function unionBoxes(boxes) {
+	let out = null;
+	for (const b of boxes) {
+		if (!b) continue;
+		out = out ? {
+			min: [
+				0,
+				1,
+				2
+			].map((i) => Math.min(out.min[i], b.min[i])),
+			max: [
+				0,
+				1,
+				2
+			].map((i) => Math.max(out.max[i], b.max[i]))
+		} : {
+			min: [...b.min],
+			max: [...b.max]
+		};
+	}
+	return out;
+}
+/** The box around a set of points, padded by `pad` on every side; null for no points. */
+function boxOfPoints(points, pad = 0) {
+	if (!points.length) return null;
+	const min = [
+		Infinity,
+		Infinity,
+		Infinity
+	], max = [
+		-Infinity,
+		-Infinity,
+		-Infinity
+	];
+	for (const p of points) for (let i = 0; i < 3; i++) {
+		min[i] = Math.min(min[i], p[i] - pad);
+		max[i] = Math.max(max[i], p[i] + pad);
+	}
+	return {
+		min,
+		max
+	};
+}
+function corners(box) {
+	const out = [];
+	for (const x of [box.min[0], box.max[0]]) for (const y of [box.min[1], box.max[1]]) for (const z of [box.min[2], box.max[2]]) out.push([
+		x,
+		y,
+		z
+	]);
+	return out;
+}
+/**
+* Where to look and how far away, keeping the current viewing direction: the box centre, at the distance
+* that fits the box (plus margin) in a perspective view with vertical field of view `fovY` (radians).
+*/
+function fitBox(box, basis, fovY, aspect, opts) {
+	const center = [
+		0,
+		1,
+		2
+	].map((i) => (box.min[i] + box.max[i]) / 2);
+	let hw = 0, hh = 0, hd = 0;
+	for (const c of corners(box)) {
+		const r = sub(c, center);
+		hw = Math.max(hw, Math.abs(dot(r, basis.right)));
+		hh = Math.max(hh, Math.abs(dot(r, basis.up)));
+		hd = Math.max(hd, Math.abs(dot(r, basis.forward)));
+	}
+	const half = Math.max(hh, hw / Math.max(aspect, 1e-6), opts.minHalfHeight) * (1 + opts.margin);
+	return {
+		center,
+		distance: Math.min(opts.maxDistance, half / Math.tan(fovY / 2) + hd)
+	};
+}
+/**
+* Hysteresis, so the camera stays put unless it has a reason to move: it refocuses when part of the box
+* falls outside the central `inner` share of the current view, or when the fitted distance differs from
+* the current one by more than the factor `zoom` either way (the changes became small on screen, or too big).
+*/
+function needsRefocus(target, distance, next, box, basis, fovY, aspect, inner = .85, zoom = 1.25) {
+	const t = Math.tan(fovY / 2);
+	for (const c of corners(box)) {
+		const r = sub(c, target);
+		const vh = Math.max(1e-6, distance + dot(r, basis.forward)) * t * inner;
+		if (Math.abs(dot(r, basis.up)) > vh || Math.abs(dot(r, basis.right)) > vh * aspect) return true;
+	}
+	return next.distance < distance / zoom || next.distance > distance * zoom;
+}
+//#endregion
+//#region src/focus-camera.ts
+/**
+* Camera focus mode: while on, the camera follows the change highlights — after each playback step it
+* eases (pan + zoom, same viewing angle) to the area that holds everything that just changed.
+*
+* Renderers report their own highlights through registerFocusSource (world-space boxes of what they
+* light up now: changed array cells, active pipes). The controller is deliberately calm: it waits for
+* the step to render, holds still when nothing changed or the changes are already well in view, never
+* zooms in past a minimum or out past the step's starting view, and lets a new step retarget a move in
+* flight. Dragging or scrolling the view yourself turns it off, so it never fights you.
+*/
+var sources = /* @__PURE__ */ new Set();
+var STORAGE_KEY = "algebench.focusCamera";
+var MOVE_MS = 650;
+var REDUCED_MS = 200;
+var camera$1 = () => state.camera;
+var controls$1 = () => state.controls;
+var enabled = false;
+/** Distance from the camera to its target when the step started (or focus was turned on): the furthest focus backs off. */
+var baseline = 0;
+/** Report the world-space box of what a renderer highlights right now (null for nothing). Returns an unregister function. */
+function registerFocusSource(source) {
+	sources.add(source);
+	return () => {
+		sources.delete(source);
+	};
+}
+function focusCameraEnabled() {
+	return enabled;
+}
+function setFocusCamera(on) {
+	if (enabled === on) return;
+	enabled = on;
+	try {
+		localStorage.setItem(STORAGE_KEY, on ? "1" : "0");
+	} catch {}
+	window.dispatchEvent(new CustomEvent("algebench:focuscamera", { detail: { enabled: on } }));
+	if (on) {
+		captureBaseline();
+		schedule();
+	}
+}
+function captureBaseline() {
+	const cam = camera$1(), ctl = controls$1();
+	if (cam && ctl) baseline = cam.position.distanceTo(ctl.target);
+}
+var pending = null;
+/** After a step: wait for scrubbing to settle and for renderers to update, then look. */
+function schedule() {
+	if (!enabled) return;
+	if (pending !== null) clearTimeout(pending);
+	pending = setTimeout(() => {
+		pending = null;
+		requestAnimationFrame(() => requestAnimationFrame(refocus));
+	}, 120);
+}
+function refocus() {
+	const cam = camera$1(), ctl = controls$1();
+	if (!enabled || !cam || !ctl || cam.isOrthographicCamera) return;
+	const box = unionBoxes([...sources].map((source) => {
+		try {
+			return source();
+		} catch {
+			return null;
+		}
+	}));
+	if (!box) return;
+	const forward = cam.getWorldDirection(ctl.target.clone()).normalize();
+	const up = cam.up.clone().sub(forward.clone().multiplyScalar(cam.up.dot(forward))).normalize();
+	const right = forward.clone().cross(up).normalize();
+	const basis = {
+		forward: forward.toArray(),
+		up: up.toArray(),
+		right: right.toArray()
+	};
+	const fovY = (cam.fov ?? 45) * Math.PI / 180, aspect = cam.aspect ?? 1.6;
+	if (!baseline) captureBaseline();
+	const frame = fitBox(box, basis, fovY, aspect, {
+		margin: .35,
+		minHalfHeight: baseline * Math.tan(fovY / 2) * .1,
+		maxDistance: baseline * 1.1
+	});
+	if (!needsRefocus(ctl.target.toArray(), cam.position.distanceTo(ctl.target), frame, box, basis, fovY, aspect)) return;
+	const center = ctl.target.clone().fromArray(frame.center);
+	const position = center.clone().sub(forward.clone().multiplyScalar(frame.distance));
+	const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+	document.querySelectorAll(".cam-btn.active").forEach((b) => b.classList.remove("active"));
+	animateCameraPose(position, center, reduced ? REDUCED_MS : MOVE_MS);
+}
+/** A drag or scroll on the 3D view is the user taking the camera: focus mode steps aside. */
+function watchUserCamera() {
+	const isView = (e) => e.target instanceof HTMLCanvasElement;
+	let down = null;
+	document.addEventListener("wheel", (e) => {
+		if (enabled && isView(e)) setFocusCamera(false);
+	}, {
+		passive: true,
+		capture: true
+	});
+	document.addEventListener("pointerdown", (e) => {
+		down = isView(e) ? {
+			x: e.clientX,
+			y: e.clientY
+		} : null;
+	}, { capture: true });
+	document.addEventListener("pointermove", (e) => {
+		if (!enabled || !down || !e.buttons) return;
+		if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) {
+			down = null;
+			setFocusCamera(false);
+		}
+	}, { capture: true });
+	document.addEventListener("pointerup", () => {
+		down = null;
+	}, { capture: true });
+}
+function setupFocusCamera() {
+	try {
+		enabled = localStorage.getItem(STORAGE_KEY) === "1";
+	} catch {
+		enabled = false;
+	}
+	window.addEventListener("algebench:sliderchange", schedule);
+	window.addEventListener("algebench:navchange", () => {
+		setTimeout(() => {
+			captureBaseline();
+		}, 900);
+	});
+	watchUserCamera();
+}
+//#endregion
 //#region src/step-player.ts
 /** Generic discrete state playback. It writes a slider; views bind to its data. */
 /** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
@@ -8082,7 +8322,20 @@ function setupStepPlayer() {
 	}
 	speed.value = "1";
 	speed.hidden = true;
-	bar.append(previous, play, next, track, counter, speed);
+	const focus = document.createElement("button");
+	focus.type = "button";
+	focus.className = "state-player-focus";
+	focus.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="display:block;margin:auto"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`;
+	const showFocus = () => {
+		const on = focusCameraEnabled();
+		focus.setAttribute("aria-pressed", String(on));
+		focus.title = on ? "Following changes — the camera zooms to what each step changes. Click (or move the view) to stop." : "Follow changes: zoom the camera to what each step changes";
+		focus.setAttribute("aria-label", focus.title);
+	};
+	focus.onclick = () => setFocusCamera(!focusCameraEnabled());
+	window.addEventListener("algebench:focuscamera", showFocus);
+	showFocus();
+	bar.append(previous, play, next, track, counter, speed, focus);
 	host.append(bar);
 	new ResizeObserver(() => {
 		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
@@ -10591,7 +10844,8 @@ function renderSystemDAG(el, _view) {
 			fn: spec.activeExpr ? compileExpr(spec.activeExpr) : null,
 			colorFn: spec.colorExpr ? compileExpr(spec.colorExpr) : null,
 			dirFn: spec.directionExpr ? compileExpr(spec.directionExpr) : null,
-			baseDir: glow.uniforms.direction.value
+			baseDir: glow.uniforms.direction.value,
+			path: path.map((p) => dataToWorld(p))
 		});
 	}
 	const enclosing = currentDataOffset();
@@ -10696,8 +10950,10 @@ function renderSystemDAG(el, _view) {
 					id = parent;
 				}
 			}
+			const litPaths = [];
 			for (const f of flows) {
 				const active = !!(f.fn && evalExpr(f.fn, 0));
+				if (active) litPaths.push(...f.path);
 				f.material.color.setRGB(...rgb(active ? f.activeColor : stateColor(f.colorFn, f.color)));
 				f.material.emissive.setRGB(...rgb(f.activeColor));
 				f.material.emissiveIntensity = active ? .65 : 0;
@@ -10727,8 +10983,11 @@ function renderSystemDAG(el, _view) {
 				for (const port of lighting.ports) port.emissiveIntensity = active ? .65 : 0;
 			}
 			for (const child of root.children) if (child instanceof THREE.Mesh && !Array.isArray(child.material) && child.material.userData.activityOpacity !== void 0) child.visible = child.material.userData.activityOpacity > 0;
+			litBox = boxOfPoints(litPaths, dataLenToWorld(pipeRadius * 4));
 		}
 	};
+	let litBox = null;
+	const unregisterFocus = registerFocusSource(() => animState.stopped || animState.hiddenByRemove || !root.visible ? null : litBox);
 	entry._rebuildFn?.();
 	if (expressions.length) registerAnimExpr(entry);
 	const onCodeFocus = () => entry._rebuildFn?.();
@@ -10741,6 +11000,7 @@ function renderSystemDAG(el, _view) {
 		}
 	});
 	rootMaterial.addEventListener("dispose", () => {
+		unregisterFocus();
 		window.removeEventListener("algebench:codefocus", onCodeFocus);
 		animState.stopped = true;
 		for (const t of textLayers) t.dispose();
@@ -11321,7 +11581,18 @@ function renderArray(el, _view, decorate) {
 		glowMesh.geometry.dispose();
 		glowMesh.geometry = geometry;
 		glowMesh.visible = positions.length > 0;
+		const lit = [];
+		for (const i of changed) {
+			const c = centre(i);
+			for (const [x, y] of [[-1, -1], [1, 1]]) lit.push(dataToWorld([
+				c[0] + x * pitch * .39,
+				c[1] + y * cellHeight() * .5,
+				c[2]
+			]));
+		}
+		focusBox = boxOfPoints(lit);
 	}
+	let focusBox = null, focusTransition = "";
 	const planeText = el.axisLabels === "plane";
 	const cellTextPlanes = [];
 	const indexTextPlanes = [];
@@ -11520,6 +11791,7 @@ function renderArray(el, _view, decorate) {
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
 				illuminate([...illuminated], delta.removed);
+				focusTransition = transition;
 			}
 			updateTitle();
 			decoration?.resize(next);
@@ -11616,7 +11888,18 @@ function renderArray(el, _view, decorate) {
 			return true;
 		}
 	}) : null;
+	const unregisterFocus = registerFocusSource(() => {
+		if (el.focus === false || animState.stopped || animState.hiddenByRemove || !glowMesh.visible || !focusBox) return null;
+		for (let part = mesh; part; part = part.parent) if (!part.visible) return null;
+		const now = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
+			id,
+			s.value,
+			s.values
+		]));
+		return focusTransition === now ? focusBox : null;
+	});
 	material.addEventListener("dispose", () => {
+		unregisterFocus();
 		disposeHover?.();
 		ghostMaterial?.dispose();
 		unit.dispose();
@@ -30067,6 +30350,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupProofPanel();
 	setupSceneDock();
 	setupCodePanel();
+	setupFocusCamera();
 	setupStepPlayer();
 	setupCaptionDrag();
 	setupSceneDescDrag();

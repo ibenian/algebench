@@ -2,6 +2,7 @@
 import { state } from '/state.js';
 import { setSliderValue } from '/sliders.js';
 import { updateStepCaption } from '/overlay.js';
+import { focusCameraEnabled, setFocusCamera } from '/focus-camera.js';
 import type { Scene, StepPlayback } from '/types/lesson.js';
 
 /** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
@@ -31,7 +32,15 @@ export function setupStepPlayer(): void {
     const speed=document.createElement('select');speed.className='state-player-speed';speed.setAttribute('aria-label','Playback speed');
     for(const factor of [0.25,0.5,1,2,4]){const option=document.createElement('option');option.value=String(factor);option.textContent=factor+'×';speed.append(option);}
     speed.value='1';speed.hidden=true;
-    bar.append(previous,play,next,track,counter,speed);host.append(bar);
+    // Camera focus mode: the camera follows what each step changes (focus-camera.ts).
+    const focus=document.createElement('button');focus.type='button';focus.className='state-player-focus';
+    focus.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="display:block;margin:auto"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`;
+    const showFocus=()=>{const on=focusCameraEnabled();focus.setAttribute('aria-pressed',String(on));
+        focus.title=on?'Following changes — the camera zooms to what each step changes. Click (or move the view) to stop.':'Follow changes: zoom the camera to what each step changes';
+        focus.setAttribute('aria-label',focus.title);};
+    focus.onclick=()=>setFocusCamera(!focusCameraEnabled());
+    window.addEventListener('algebench:focuscamera',showFocus);showFocus();
+    bar.append(previous,play,next,track,counter,speed,focus);host.append(bar);
     // Reserve the actual player height for legends, including responsive wrapping.
     // ResizeObserver runs on geometry changes, not on animation frames.
     const resizeObserver=new ResizeObserver(()=>{

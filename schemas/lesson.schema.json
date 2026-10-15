@@ -1412,6 +1412,11 @@
           "default": true,
           "description": "ARRAY. Draw string cells in double quotes (the default, as for a data structure holding strings). Set false when the cells are labels or status text rather than string values."
         },
+        "focus": {
+          "type": "boolean",
+          "default": true,
+          "description": "ARRAY. Whether camera focus mode (the target toggle in the step player) follows this array's change highlights. Set false for arrays whose cells change on almost every step without being the point — e.g. status lines — so focus zooms onto what matters."
+        },
         "showIndices": {
           "type": "boolean",
           "default": true,

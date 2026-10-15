@@ -11,6 +11,8 @@ import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, cellColor, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
 import { registerStackHover, stackCellOpacities } from '/objects/array-stack-hover.js';
 import { ArrayChangeTracker, glowBreath } from '/objects/array-changes.js';
+import { registerFocusSource } from '/focus-camera.js';
+import { boxOfPoints, type Box, type Vec3 } from '/focus-frame.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 
@@ -129,7 +131,13 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         geometry.setAttribute('edgeSize',new THREE.Float32BufferAttribute(edges,2));
         glowMesh.geometry.dispose();glowMesh.geometry=geometry;
         glowMesh.visible=positions.length>0;
+        // Camera focus mode: the changed cells' world box, computed here because an array inside a
+        // system_dag block is only placed correctly while its rebuild runs (inside the block's offset).
+        const lit:Vec3[]=[];
+        for(const i of changed){const c=centre(i);for(const [x,y] of [[-1,-1],[1,1]])lit.push(dataToWorld([c[0]+x!*pitch*.39,c[1]+y!*cellHeight()*.5,c[2]]));}
+        focusBox=boxOfPoints(lit);
     }
+    let focusBox:Box|null=null,focusTransition='';
     const planeText=el.axisLabels==='plane';
     const cellTextPlanes:ArrayPlaneText[]=[];
     const indexTextPlanes:ArrayPlaneText[]=[];
@@ -252,6 +260,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         if(delta){
             illuminated=new Set([...delta.changed,...delta.added]);
             illuminate([...illuminated],delta.removed);
+            focusTransition=transition;
         }
         updateTitle();
         decoration?.resize(next);
@@ -318,8 +327,16 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             return true;
         },
     }) : null;
+    // Camera focus mode follows only what changed in the latest update; an older glow still on screen is not news.
+    const unregisterFocus = registerFocusSource(() => {
+        if (el.focus === false || animState.stopped || animState.hiddenByRemove || !glowMesh.visible || !focusBox) return null;
+        for (let part: Object3D | null = mesh; part; part=part.parent) if (!part.visible) return null;
+        const now = JSON.stringify(Object.entries(state.sceneSliders).map(([id,s])=>[id,s.value,s.values]));
+        return focusTransition === now ? focusBox : null;
+    });
     // Shader/lifecycle resources follow the same registry as tensor boxes.
     material.addEventListener('dispose',()=>{
+        unregisterFocus();
         disposeHover?.();
         ghostMaterial?.dispose();
         unit.dispose();

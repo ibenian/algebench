@@ -840,6 +840,10 @@ export type Element = {
    */
   stringQuotes?: boolean;
   /**
+   * ARRAY. Whether camera focus mode (the target toggle in the step player) follows this array's change highlights. Set false for arrays whose cells change on almost every step without being the point — e.g. status lines — so focus zooms onto what matters.
+   */
+  focus?: boolean;
+  /**
    * ARRAY / STACK. Show small index tags attached to cells. Defaults to true for arrays and false for stacks.
    */
   showIndices?: boolean;
