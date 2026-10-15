@@ -24,20 +24,21 @@ export function setupStepPlayer(): void {
     const playIcon=icon('M7 4v16l13-8z');
     const pauseIcon=icon('M6 4h4v16H6z M14 4h4v16h-4z');
     previous.innerHTML=icon('M17 4v16L4 12z');next.innerHTML=playIcon;
-    previous.setAttribute('aria-label','Previous execution state');next.setAttribute('aria-label','Next execution state');
+    // Every control carries a tooltip (title) alongside its accessible name.
+    const label=(node:HTMLElement,text:string)=>{node.setAttribute('aria-label',text);node.title=text;};
+    label(previous,'Previous step');label(next,'Next step');
     for(const button of [previous,play,next])button.type='button';
-    const track=document.createElement('input');track.type='range';track.step='1';track.setAttribute('aria-label','Execution state');
-    const counter=document.createElement('output');counter.setAttribute('aria-label','Execution position');
+    const track=document.createElement('input');track.type='range';track.step='1';label(track,'Drag to move through the steps');
+    const counter=document.createElement('output');label(counter,'Current step / last step');
     // Optional speed selector: multiplies the authored interval; the choice persists across scenes.
-    const speed=document.createElement('select');speed.className='state-player-speed';speed.setAttribute('aria-label','Playback speed');
+    const speed=document.createElement('select');speed.className='state-player-speed';label(speed,'Playback speed');
     for(const factor of [0.25,0.5,1,2,4]){const option=document.createElement('option');option.value=String(factor);option.textContent=factor+'×';speed.append(option);}
     speed.value='1';speed.hidden=true;
     // Camera focus mode: the camera follows what each step changes (focus-camera.ts).
     const focus=document.createElement('button');focus.type='button';focus.className='state-player-focus';
     focus.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="display:block;margin:auto"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`;
     const showFocus=()=>{const on=focusCameraEnabled();focus.setAttribute('aria-pressed',String(on));
-        focus.title=on?'Following changes — the camera zooms to what each step changes. Click (or move the view) to stop.':'Follow changes: zoom the camera to what each step changes';
-        focus.setAttribute('aria-label',focus.title);};
+        label(focus,on?'Following changes — the camera zooms to what each step changes. Click (or move the view) to stop.':'Follow changes: zoom the camera to what each step changes');};
     focus.onclick=()=>setFocusCamera(!focusCameraEnabled());
     window.addEventListener('algebench:focuscamera',showFocus);showFocus();
     bar.append(previous,play,next,track,counter,speed,focus);host.append(bar);
@@ -51,7 +52,7 @@ export function setupStepPlayer(): void {
     let config:StepPlayback|undefined;
     const slider=()=>config?state.sceneSliders[config.slider]:undefined;
     const interval=()=>(config?.intervalMs??900)/Number(speed.value||1);
-    function pause(){if(timer!==null)clearInterval(timer);timer=null;play.innerHTML=playIcon;play.setAttribute('aria-label','Play execution');}
+    function pause(){if(timer!==null)clearInterval(timer);timer=null;play.innerHTML=playIcon;label(play,'Play');}
     function render(){
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
         if(scene?.steps?.[state.currentStepIndex]?.descriptionExpr)updateStepCaption(scene,state.currentStepIndex,true);
@@ -72,7 +73,7 @@ export function setupStepPlayer(): void {
     next.onclick=()=>{pause();const s=slider();if(s)move(s.value+1);};
     track.oninput=()=>{pause();move(Number(track.value));};
     function start(){
-        play.innerHTML=pauseIcon;play.setAttribute('aria-label','Pause execution');
+        play.innerHTML=pauseIcon;label(play,'Pause');
         timer=setInterval(()=>{const current=slider();if(current)move(current.value+1);else pause();},interval());
     }
     play.onclick=()=>{

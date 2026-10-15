@@ -302,9 +302,9 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
         litBox=boxOfPoints(litPaths,dataLenToWorld(pipeRadius*4));   // world units: pad by a few pipe radii, not a world-unit constant
     }};
     let litBox:Box|null=null;
-    // Camera focus mode: the pipes lit right now (their routes, not the blocks they join, so a lit
-    // pipe into a wide block does not pull the camera out to the whole block).
-    const unregisterFocus=registerFocusSource(()=>animState.stopped||animState.hiddenByRemove||!root.visible?null:litBox);
+    // highlightStateChanges: camera focus mode follows the pipes lit right now (their routes, not the
+    // blocks they join, so a lit pipe into a wide block does not pull the camera out to the whole block).
+    const unregisterFocus=registerFocusSource(()=>el.highlightStateChanges!==true||animState.stopped||animState.hiddenByRemove||!root.visible?null:litBox);
     entry._rebuildFn?.();if(expressions.length)registerAnimExpr(entry);
     const onCodeFocus=()=>entry._rebuildFn?.();
     window.addEventListener('algebench:codefocus',onCodeFocus);

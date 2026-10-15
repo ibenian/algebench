@@ -5648,7 +5648,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
     bottom: calc(var(--state-player-base-bottom) + var(--caption-dock-h, 0px));
     padding: 6px 10px;
 }
-#state-player button { height: 32px; }
+/* Every transport button (previous, play, next, focus) is the same fixed square: the row never squeezes one. */
+#state-player button { flex: 0 0 auto; width: 32px; height: 32px; padding: 0; }
 #mathbox-wrapper.has-state-player #legend {
     bottom: calc(var(--caption-dock-h, 0px) + var(--state-player-base-bottom) + var(--state-player-h, 49px) + 12px);
 }

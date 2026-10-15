@@ -46,6 +46,9 @@ import { compileExpr, evalExpr, explainCompileDegrade } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { dataToWorld, worldToData } from '/coords.js';
 import type { Vec3 } from '/coords.js';
+import { changeGlowMaterial, changeGlowGeometry, updateGlowUniforms, type GlowQuad } from '/objects/change-glow.js';
+import { registerFocusSource, sliderStateKey } from '/focus-camera.js';
+import { boxOfPoints, type Box } from '/focus-frame.js';
 import type { Element, Shader } from '/types/lesson.js';
 import type { BufferAttribute, CanvasTexture, Mesh, Object3D, Scene } from 'three';
 
@@ -788,6 +791,54 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     tensorState.three.scene.add(mesh);
     tensorState.planeMeshes.push(mesh);
 
+    // highlightStateChanges: a soft, breathing light around cells whose value or text just changed (the same
+    // light as array cells), which camera focus mode also follows. Opt-in: many tensors change wholesale when
+    // a slider moves (a recomputed matrix), and lighting all of it would say nothing.
+    const changeGlow = el.highlightStateChanges === true ? (() => {
+        const material = changeGlowMaterial();
+        const glow = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        glow.onBeforeRender = () => updateGlowUniforms(material);
+        glow.visible = false; glow.renderOrder = serial;
+        glow.userData.ignorePlaneOpacity = true; glow.userData.targetOpacity = 1;
+        glow.userData.annotationTextPlane = true; glow.raycast = () => {};
+        tensorState.three!.scene.add(glow); tensorState.planeMeshes.push(glow);
+        return { glow, lit: false, prev: null as string[] | null, box: null as Box | null, at: '' };
+    })() : null;
+    /** After a frame's paint: compare every cell's value and text with the last frame and light what changed. */
+    function trackCellChanges() {
+        if (!changeGlow) return;
+        const keys = Array.from({ length: drawn }, (_, i) => `${cellValue[i]}\u0001${cellTexts[i] ?? ''}`);
+        const prev = changeGlow.prev;
+        changeGlow.prev = keys;
+        if (!prev) return;   // the first frame is a baseline, not a change
+        const changed = keys.flatMap((k, i) => (k !== prev[i] ? [i] : []));
+        if (!changed.length) {
+            // A new step that left this tensor unchanged: the light shows only this step's changes (as on
+            // arrays), so what glows and what camera focus follows always agree.
+            if (changeGlow.lit && changeGlow.at !== sliderStateKey()) changeGlow.lit = false;
+            return;
+        }
+        const [hA, vA] = PLANE_AXES[plane] || PLANE_AXES['xy']!;
+        const quads: GlowQuad[] = changed.map(cell => {
+            const r = Math.floor(cell / cols), c = cell % cols, w = cellW[cell]! * cellSize, h = cellH[cell]! * cellSize;
+            const centre = layout.corner(r, c, 0.5, 0.5, w, h, cellD[cell]! * cellSize + 0.12);
+            return { ex: w / 2, ey: h / 2, at: (x: number, y: number) => {
+                const p = [...centre] as Vec3; p[hA!] = p[hA!]! + x; p[vA!] = p[vA!]! + y; return dataToWorld(p);
+            } };
+        });
+        changeGlow.glow.geometry.dispose();
+        changeGlow.glow.geometry = changeGlowGeometry(quads);
+        changeGlow.lit = true;
+        // World box now, while any enclosing system_dag offset applies to this frame's update.
+        changeGlow.box = boxOfPoints(quads.flatMap(q => [q.at(-q.ex, -q.ey), q.at(q.ex, q.ey)]));
+        changeGlow.at = sliderStateKey();
+    }
+    const unregisterFocus = changeGlow ? registerFocusSource(() => {
+        if (!changeGlow.lit || !changeGlow.glow.visible || changeGlow.at !== sliderStateKey()) return null;
+        return changeGlow.box;
+    }) : null;
+    if (unregisterFocus) mat.addEventListener('dispose', unregisterFocus);
+
     // ── Axes, read once. `axes[k]` describes `shape[k]`; the last dimension
     // runs horizontally and the one before it vertically, matching the layout.
     // Two ways to draw them: `axisLabels: "plane"` (default) draws them on the
@@ -1338,6 +1389,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             // The text quad follows the cell mesh's visibility whatever set it,
             // so it can never be left showing over a hidden lattice.
             if (textLayer) textLayer.mesh.visible = mesh.visible;
+            if (changeGlow) changeGlow.glow.visible = mesh.visible && changeGlow.lit;
             if (!mesh.visible) return;
             const tSec = (nowMs - startTime) / 1000;
             if (valueFn || bindId || hasSizeExpr || hasDepthExpr) {
@@ -1358,6 +1410,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 try { paintText(tSec); } catch (_err) { /* keep the last frame's text */ }
             }
             if (dynamicLabels.length) paintLabels(tSec);
+            trackCellChanges();
         },
     });
 

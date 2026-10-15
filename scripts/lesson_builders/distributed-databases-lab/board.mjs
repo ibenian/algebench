@@ -42,8 +42,7 @@ function clientStatus(prefix, clients, width) {
     // One cell per client across the block: status lines carry the session token, so they need the room.
     const cell = (width - 1.6) / clients;
     return {
-        // Status lines change on most ticks; camera focus mode follows the messages, copies and links instead.
-        type: 'array', id: prefix + 'client-status', itemType: 'string', stringQuotes: false, focus: false, origin: [-width / 2 + 0.8 + cell / 2, 1.45, 0.25], cellSize: cell, fontSize: 10, showIndices: false,
+        type: 'array', id: prefix + 'client-status', itemType: 'string', stringQuotes: false, origin: [-width / 2 + 0.8 + cell / 2, 1.45, 0.25], cellSize: cell, fontSize: 10, showIndices: false,
         arrayColumns: clients, axisLabels: 'plane',
         lengthExpr: `min(ddCount(${T('clientText')}), ${clients})`, valueExpr: `ddAt(${T('clientText')}, idx)`,
         prompt: 'Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client).',

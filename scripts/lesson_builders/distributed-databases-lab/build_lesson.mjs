@@ -36,6 +36,14 @@ function codeFiles() {
     });
 }
 
+/** This lab lights every state change: arrays, tensors and system_dag links (contained elements included). */
+function highlightAllStateChanges(node) {
+    if (Array.isArray(node)) { node.forEach(highlightAllStateChanges); return; }
+    if (!node || typeof node !== 'object') return;
+    if (['array', 'tensor', 'system_dag'].includes(node.type) && node.highlightStateChanges === undefined) node.highlightStateChanges = true;
+    for (const value of Object.values(node)) highlightAllStateChanges(value);
+}
+
 function build() {
     const lesson = {
         title: 'Distributed Databases Laboratory',
@@ -45,6 +53,7 @@ function build() {
         codeFiles: codeFiles(),
         scenes: SCENES.map(scene => scene()),
     };
+    highlightAllStateChanges(lesson.scenes);
     return JSON.stringify(lesson, null, 2) + '\n';
 }
 

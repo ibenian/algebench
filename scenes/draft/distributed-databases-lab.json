@@ -492,14 +492,14 @@
                       ],
                       "axisLabels": "plane",
                       "label": "Operation history (time →)",
-                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started."
+                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started.",
+                      "highlightStateChanges": true
                     },
                     {
                       "type": "array",
                       "id": "client-status",
                       "itemType": "string",
                       "stringQuotes": false,
-                      "focus": false,
                       "origin": [
                         -9.8,
                         1.45,
@@ -512,7 +512,8 @@
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
-                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client)."
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client).",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -571,7 +572,8 @@
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'msgText')), 8)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'msgText'), idx)",
-                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped."
+                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -628,7 +630,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (0 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 0, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 0, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -685,7 +688,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (1 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 1, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 1, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -742,7 +746,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (2 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 2, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 2, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 }
@@ -906,7 +911,8 @@
                   "directionExpr": "ddPairDir(dataTable('dd', frame, 'pairDirs'), dataTable('dd', frame, 'nodeCount'), 1, 2)",
                   "activeColor": "#f1c96b"
                 }
-              ]
+              ],
+              "highlightStateChanges": true
             },
             {
               "id": "metrics",
@@ -962,7 +968,8 @@
                 }
               ],
               "axisLabels": "plane",
-              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make."
+              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make.",
+              "highlightStateChanges": true
             }
           ]
         },
@@ -1646,14 +1653,14 @@
                       ],
                       "axisLabels": "plane",
                       "label": "Operation history (time →)",
-                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started."
+                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started.",
+                      "highlightStateChanges": true
                     },
                     {
                       "type": "array",
                       "id": "client-status",
                       "itemType": "string",
                       "stringQuotes": false,
-                      "focus": false,
                       "origin": [
                         -9.8,
                         1.45,
@@ -1666,7 +1673,8 @@
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
-                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client)."
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client).",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -1725,7 +1733,8 @@
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'msgText')), 8)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'msgText'), idx)",
-                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped."
+                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -1782,7 +1791,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 2) * (0 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 0, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 0, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -1839,7 +1849,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 2) * (1 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 1, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 1, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -1896,7 +1907,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 2) * (2 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 2, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 2, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 }
@@ -2060,7 +2072,8 @@
                   "directionExpr": "ddPairDir(dataTable('dd', frame, 'pairDirs'), dataTable('dd', frame, 'nodeCount'), 1, 2)",
                   "activeColor": "#f1c96b"
                 }
-              ]
+              ],
+              "highlightStateChanges": true
             },
             {
               "id": "metrics",
@@ -2115,7 +2128,8 @@
                 }
               ],
               "axisLabels": "plane",
-              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make."
+              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make.",
+              "highlightStateChanges": true
             },
             {
               "type": "tensor",
@@ -2189,7 +2203,8 @@
               ],
               "axisLabels": "plane",
               "label": "Guarantee matrix (computed): scenario × read mechanism",
-              "prompt": "Explain this computed matrix: each cell ran the scenario (row) with the read mechanism (column). ✗ names the weakest guarantee the history checker found broken; ✓ shows the 99th-percentile latency that mechanism cost."
+              "prompt": "Explain this computed matrix: each cell ran the scenario (row) with the read mechanism (column). ✗ names the weakest guarantee the history checker found broken; ✓ shows the 99th-percentile latency that mechanism cost.",
+              "highlightStateChanges": true
             }
           ]
         },
@@ -2704,14 +2719,14 @@
                       ],
                       "axisLabels": "plane",
                       "label": "Operation history (time →)",
-                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started."
+                      "prompt": "Explain this operation history: each row is a client, each column a tick. Blue = write in flight, grey-blue = read in flight, green = acknowledged write, light green = fresh read, magenta = a read that broke a consistency guarantee, red = rejected or timed out, orange = an acknowledged write that was later lost, amber = siblings. Relate each read to the writes that finished before it started.",
+                      "highlightStateChanges": true
                     },
                     {
                       "type": "array",
                       "id": "client-status",
                       "itemType": "string",
                       "stringQuotes": false,
-                      "focus": false,
                       "origin": [
                         -10.8,
                         1.45,
@@ -2724,7 +2739,8 @@
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'clientText')), 3)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'clientText'), idx)",
-                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client)."
+                      "prompt": "Explain what each client is doing right now: which operation, through which node, how many acknowledgements or replies it has versus how many it needs, and the session token it carries (the log position a replica must have applied before it may answer this client).",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -2793,7 +2809,8 @@
                       "axisLabels": "plane",
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'msgText')), 8)",
                       "valueExpr": "ddAt(dataTable('dd', frame, 'msgText'), idx)",
-                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped."
+                      "prompt": "Explain the messages in flight: sender → receiver, what each carries (log entries, a put, a read, a reply, a hint, a repair) and the tick it arrives. Messages across a partition or to a crashed node are dropped.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -2860,7 +2877,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (0 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 0, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 0, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -2927,7 +2945,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (1 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 1, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 1, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -2994,7 +3013,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (2 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 2, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 2, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -3061,7 +3081,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (3 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 3, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 3, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 },
@@ -3128,7 +3149,8 @@
                       "lengthExpr": "min(ddCount(dataTable('dd', frame, 'keys')), 1) * (4 < dataTable('dd', frame, 'nodeCount'))",
                       "valueExpr": "concat(ddAt(dataTable('dd', frame, 'keys'), idx), ' = ', ddText(dataTable('dd', frame, 'verGrid'), 4, idx))",
                       "colorExpr": "ddVerColor(dataTable('dd', frame, 'verCodes'), 4, idx)",
-                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down."
+                      "prompt": "Explain this node's copy of each key: green = it holds the newest version, orange = it is behind, amber = it holds siblings (two concurrent versions), purple = a tombstone (deleted), ⟨…⟩ = a hinted write it holds for another node, dark = the node is down.",
+                      "highlightStateChanges": true
                     }
                   ]
                 }
@@ -3553,7 +3575,8 @@
                   "directionExpr": "ddPairDir(dataTable('dd', frame, 'pairDirs'), dataTable('dd', frame, 'nodeCount'), 3, 4)",
                   "activeColor": "#f1c96b"
                 }
-              ]
+              ],
+              "highlightStateChanges": true
             },
             {
               "id": "metrics",
@@ -3609,7 +3632,8 @@
                 }
               ],
               "axisLabels": "plane",
-              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make."
+              "prompt": "Explain these counters for the run so far: the share of operations that succeeded, the slowest latency, reads that broke a consistency guarantee, acknowledged writes that were later lost, operations rejected or timed out, and messages sent. Relate them to the trade-off the current settings make.",
+              "highlightStateChanges": true
             },
             {
               "type": "tensor",
@@ -3677,7 +3701,8 @@
               ],
               "axisLabels": "plane",
               "label": "Quorum matrix (computed) · this scenario, N, failures",
-              "prompt": "Explain this computed matrix: each cell ran the selected scenario with that read quorum R (row) and write quorum W (column) at the current N and number of failed replicas. Magenta = some read was stale, orange = some requests failed, green = all fresh (with the p99 latency), blank = R or W larger than N."
+              "prompt": "Explain this computed matrix: each cell ran the selected scenario with that read quorum R (row) and write quorum W (column) at the current N and number of failed replicas. Magenta = some read was stale, orange = some requests failed, green = all fresh (with the p99 latency), blank = R or W larger than N.",
+              "highlightStateChanges": true
             }
           ]
         },

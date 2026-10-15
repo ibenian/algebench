@@ -844,6 +844,10 @@ export type Element = {
    */
   focus?: boolean;
   /**
+   * ARRAY / TENSOR / SYSTEM_DAG. Light up what changed when the scene's state changes (a slider or playback step), and let camera focus mode follow it. ARRAY (default true): a soft, breathing light around cells whose value changed. TENSOR (default false): the same light around cells whose value or text changed — opt in, since many tensors change wholesale when a slider moves. SYSTEM_DAG (default false): camera focus mode follows the pipes lit by activeExpr.
+   */
+  highlightStateChanges?: boolean;
+  /**
    * ARRAY / STACK. Show small index tags attached to cells. Defaults to true for arrays and false for stacks.
    */
   showIndices?: boolean;

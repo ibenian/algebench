@@ -8164,6 +8164,16 @@ function registerFocusSource(source) {
 function focusCameraEnabled() {
 	return enabled;
 }
+/** Identity of the current slider state. A renderer records it when its highlights change, and reports them
+*  to focus only while it still matches, so a glow left over from an earlier step is not treated as news. */
+function sliderStateKey() {
+	const sliders = state.sceneSliders ?? {};
+	return JSON.stringify(Object.entries(sliders).map(([id, s]) => [
+		id,
+		s.value,
+		s.values
+	]));
+}
 function setFocusCamera(on) {
 	if (enabled === on) return;
 	enabled = on;
@@ -8193,14 +8203,14 @@ function schedule() {
 function refocus() {
 	const cam = camera$1(), ctl = controls$1();
 	if (!enabled || !cam || !ctl || cam.isOrthographicCamera) return;
-	const box = unionBoxes([...sources].map((source) => {
+	const changed = unionBoxes([...sources].map((source) => {
 		try {
 			return source();
 		} catch {
 			return null;
 		}
 	}));
-	if (!box) return;
+	if (!changed) return;
 	const forward = cam.getWorldDirection(ctl.target.clone()).normalize();
 	const up = cam.up.clone().sub(forward.clone().multiplyScalar(cam.up.dot(forward))).normalize();
 	const right = forward.clone().cross(up).normalize();
@@ -8211,6 +8221,7 @@ function refocus() {
 	};
 	const fovY = (cam.fov ?? 45) * Math.PI / 180, aspect = cam.aspect ?? 1.6;
 	if (!baseline) captureBaseline();
+	const box = changed;
 	const frame = fitBox(box, basis, fovY, aspect, {
 		margin: .35,
 		minHalfHeight: baseline * Math.tan(fovY / 2) * .1,
@@ -8292,8 +8303,12 @@ function setupStepPlayer() {
 	const pauseIcon = icon("M6 4h4v16H6z M14 4h4v16h-4z");
 	previous.innerHTML = icon("M17 4v16L4 12z");
 	next.innerHTML = playIcon;
-	previous.setAttribute("aria-label", "Previous execution state");
-	next.setAttribute("aria-label", "Next execution state");
+	const label = (node, text) => {
+		node.setAttribute("aria-label", text);
+		node.title = text;
+	};
+	label(previous, "Previous step");
+	label(next, "Next step");
 	for (const button of [
 		previous,
 		play,
@@ -8302,12 +8317,12 @@ function setupStepPlayer() {
 	const track = document.createElement("input");
 	track.type = "range";
 	track.step = "1";
-	track.setAttribute("aria-label", "Execution state");
+	label(track, "Drag to move through the steps");
 	const counter = document.createElement("output");
-	counter.setAttribute("aria-label", "Execution position");
+	label(counter, "Current step / last step");
 	const speed = document.createElement("select");
 	speed.className = "state-player-speed";
-	speed.setAttribute("aria-label", "Playback speed");
+	label(speed, "Playback speed");
 	for (const factor of [
 		.25,
 		.5,
@@ -8329,8 +8344,7 @@ function setupStepPlayer() {
 	const showFocus = () => {
 		const on = focusCameraEnabled();
 		focus.setAttribute("aria-pressed", String(on));
-		focus.title = on ? "Following changes — the camera zooms to what each step changes. Click (or move the view) to stop." : "Follow changes: zoom the camera to what each step changes";
-		focus.setAttribute("aria-label", focus.title);
+		label(focus, on ? "Following changes — the camera zooms to what each step changes. Click (or move the view) to stop." : "Follow changes: zoom the camera to what each step changes");
 	};
 	focus.onclick = () => setFocusCamera(!focusCameraEnabled());
 	window.addEventListener("algebench:focuscamera", showFocus);
@@ -8348,7 +8362,7 @@ function setupStepPlayer() {
 		if (timer !== null) clearInterval(timer);
 		timer = null;
 		play.innerHTML = playIcon;
-		play.setAttribute("aria-label", "Play execution");
+		label(play, "Play");
 	}
 	function render() {
 		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
@@ -8393,7 +8407,7 @@ function setupStepPlayer() {
 	};
 	function start() {
 		play.innerHTML = pauseIcon;
-		play.setAttribute("aria-label", "Pause execution");
+		label(play, "Pause");
 		timer = setInterval(() => {
 			const current = slider();
 			if (current) move(current.value + 1);
@@ -8866,6 +8880,111 @@ function normalizeColorValue(raw, domain) {
 	if (hi === lo) return 0;
 	const u = (v - lo) / (hi - lo);
 	return u < 0 ? 0 : u > 1 ? 1 : u;
+}
+//#endregion
+//#region src/objects/array-changes.ts
+/** Brightness of the changed-cell rim at a moment: a subtle swell between `low` and 1 on a 1 s
+*  ease-in-out cycle (close to the chat speaker button's rhythm), so a highlight reads as alive without flashing. */
+function glowBreath(nowMs, periodMs = 1e3, low = .65) {
+	const phase = (nowMs % periodMs + periodMs) % periodMs / periodMs;
+	return low + (1 - low) * (.5 - .5 * Math.cos(2 * Math.PI * phase));
+}
+var ArrayChangeTracker = class {
+	constructor() {
+		this.previous = null;
+		this.transition = "";
+	}
+	update(keys, transition) {
+		if (this.previous === null) {
+			this.previous = keys.slice();
+			this.transition = transition;
+			return {
+				changed: [],
+				added: [],
+				removed: []
+			};
+		}
+		const before = this.previous;
+		if (this.transition === transition && before.length === keys.length && before.every((key, i) => key === keys[i])) return null;
+		const changes = {
+			changed: [],
+			added: [],
+			removed: []
+		};
+		for (let i = 0; i < keys.length; i++) if (i >= before.length) changes.added.push(i);
+		else if (before[i] !== keys[i]) changes.changed.push(i);
+		for (let i = keys.length; i < before.length; i++) changes.removed.push(i);
+		this.previous = keys.slice();
+		this.transition = transition;
+		return changes;
+	}
+};
+//#endregion
+//#region src/objects/change-glow.ts
+/** How far the halo reaches past the cell edge, in data units. */
+var GLOW_HALO = .9;
+/**
+* A soft light around the cell: distance to a rounded rectangle (the cell's edge), measured in data units
+* so corners stay round on wide cells and the glow keeps one width whatever the cell size; brightest at the
+* edge, a quick fade inside (text stays clear) and an exponential halo outside. `breath` makes it swell.
+*/
+function changeGlowMaterial() {
+	return new THREE.ShaderMaterial({
+		transparent: true,
+		depthWrite: false,
+		side: THREE.DoubleSide,
+		uniforms: {
+			opacity: { value: 1 },
+			breath: { value: 1 }
+		},
+		vertexShader: `attribute float removed; attribute float cellOpacity; attribute vec2 halfSize; attribute vec2 edgeSize;
+            varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
+            void main(){local=(uv*2.0-1.0)*halfSize;box=edgeSize;removedCell=removed;stackOpacity=cellOpacity;
+                gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+		fragmentShader: `uniform float opacity; uniform float breath; varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
+            void main(){float r=min(0.3,0.5*min(box.x,box.y));
+                vec2 q=abs(local)-box+r;float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;
+                float glow=d<0.0?exp(-pow(d/0.12,2.0)):exp(-d/0.2);
+                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
+                float alpha=glow*mix(0.8,0.35,removedCell)*opacity*stackOpacity*breath;
+                if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
+	});
+}
+/** Two triangles per quad, each spanning the cell plus its halo. */
+function changeGlowGeometry(quads) {
+	const positions = [], uv = [], removed = [], opacity = [], halves = [], edges = [];
+	const corners = [
+		[-1, -1],
+		[1, -1],
+		[1, 1],
+		[-1, -1],
+		[1, 1],
+		[-1, 1]
+	];
+	for (const q of quads) {
+		const hx = q.ex + GLOW_HALO, hy = q.ey + GLOW_HALO;
+		for (const [x, y] of corners) {
+			positions.push(...q.at(x * hx, y * hy));
+			uv.push((x + 1) / 2, (y + 1) / 2);
+			removed.push(q.removed ? 1 : 0);
+			opacity.push(q.opacity ?? 1);
+			halves.push(hx, hy);
+			edges.push(q.ex, q.ey);
+		}
+	}
+	const geometry = new THREE.BufferGeometry();
+	geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+	geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+	geometry.setAttribute("removed", new THREE.Float32BufferAttribute(removed, 1));
+	geometry.setAttribute("cellOpacity", new THREE.Float32BufferAttribute(opacity, 1));
+	geometry.setAttribute("halfSize", new THREE.Float32BufferAttribute(halves, 2));
+	geometry.setAttribute("edgeSize", new THREE.Float32BufferAttribute(edges, 2));
+	return geometry;
+}
+/** Called from the glow mesh's onBeforeRender: element opacity in, and the breathing swell. */
+function updateGlowUniforms(material) {
+	material.uniforms.opacity.value = material.opacity;
+	material.uniforms.breath.value = glowBreath(performance.now());
 }
 //#endregion
 //#region src/objects/tensor.ts
@@ -9421,6 +9540,64 @@ function renderTensor(el, _view) {
 	mesh.renderOrder = serial;
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
+	const changeGlow = el.highlightStateChanges === true ? (() => {
+		const material = changeGlowMaterial();
+		const glow = new THREE.Mesh(new THREE.BufferGeometry(), material);
+		glow.onBeforeRender = () => updateGlowUniforms(material);
+		glow.visible = false;
+		glow.renderOrder = serial;
+		glow.userData.ignorePlaneOpacity = true;
+		glow.userData.targetOpacity = 1;
+		glow.userData.annotationTextPlane = true;
+		glow.raycast = () => {};
+		tensorState.three.scene.add(glow);
+		tensorState.planeMeshes.push(glow);
+		return {
+			glow,
+			lit: false,
+			prev: null,
+			box: null,
+			at: ""
+		};
+	})() : null;
+	/** After a frame's paint: compare every cell's value and text with the last frame and light what changed. */
+	function trackCellChanges() {
+		if (!changeGlow) return;
+		const keys = Array.from({ length: drawn }, (_, i) => `${cellValue[i]}\u0001${cellTexts[i] ?? ""}`);
+		const prev = changeGlow.prev;
+		changeGlow.prev = keys;
+		if (!prev) return;
+		const changed = keys.flatMap((k, i) => k !== prev[i] ? [i] : []);
+		if (!changed.length) {
+			if (changeGlow.lit && changeGlow.at !== sliderStateKey()) changeGlow.lit = false;
+			return;
+		}
+		const [hA, vA] = PLANE_AXES$2[plane] || PLANE_AXES$2["xy"];
+		const quads = changed.map((cell) => {
+			const r = Math.floor(cell / cols), c = cell % cols, w = cellW[cell] * cellSize, h = cellH[cell] * cellSize;
+			const centre = layout.corner(r, c, .5, .5, w, h, cellD[cell] * cellSize + .12);
+			return {
+				ex: w / 2,
+				ey: h / 2,
+				at: (x, y) => {
+					const p = [...centre];
+					p[hA] = p[hA] + x;
+					p[vA] = p[vA] + y;
+					return dataToWorld(p);
+				}
+			};
+		});
+		changeGlow.glow.geometry.dispose();
+		changeGlow.glow.geometry = changeGlowGeometry(quads);
+		changeGlow.lit = true;
+		changeGlow.box = boxOfPoints(quads.flatMap((q) => [q.at(-q.ex, -q.ey), q.at(q.ex, q.ey)]));
+		changeGlow.at = sliderStateKey();
+	}
+	const unregisterFocus = changeGlow ? registerFocusSource(() => {
+		if (!changeGlow.lit || !changeGlow.glow.visible || changeGlow.at !== sliderStateKey()) return null;
+		return changeGlow.box;
+	}) : null;
+	if (unregisterFocus) mat.addEventListener("dispose", unregisterFocus);
 	const axes = Array.isArray(el.axes) ? el.axes : [];
 	const axisPlane = el.axisLabels !== "screen";
 	const hAxisIdx = dims.length - 1;
@@ -9881,6 +10058,7 @@ function renderTensor(el, _view) {
 		animState,
 		updateFrame(nowMs) {
 			if (textLayer) textLayer.mesh.visible = mesh.visible;
+			if (changeGlow) changeGlow.glow.visible = mesh.visible && changeGlow.lit;
 			if (!mesh.visible) return;
 			const tSec = (nowMs - startTime) / 1e3;
 			if (valueFn || bindId || hasSizeExpr || hasDepthExpr) try {
@@ -9896,6 +10074,7 @@ function renderTensor(el, _view) {
 				paintText(tSec);
 			} catch (_err) {}
 			if (dynamicLabels.length) paintLabels(tSec);
+			trackCellChanges();
 		}
 	});
 	return {
@@ -10987,7 +11166,7 @@ function renderSystemDAG(el, _view) {
 		}
 	};
 	let litBox = null;
-	const unregisterFocus = registerFocusSource(() => animState.stopped || animState.hiddenByRemove || !root.visible ? null : litBox);
+	const unregisterFocus = registerFocusSource(() => el.highlightStateChanges !== true || animState.stopped || animState.hiddenByRemove || !root.visible ? null : litBox);
 	entry._rebuildFn?.();
 	if (expressions.length) registerAnimExpr(entry);
 	const onCodeFocus = () => entry._rebuildFn?.();
@@ -11374,44 +11553,6 @@ function registerStackHover(canvas, camera, entry) {
 	};
 }
 //#endregion
-//#region src/objects/array-changes.ts
-/** Brightness of the changed-cell rim at a moment: a subtle swell between `low` and 1 on a 1 s
-*  ease-in-out cycle (close to the chat speaker button's rhythm), so a highlight reads as alive without flashing. */
-function glowBreath(nowMs, periodMs = 1e3, low = .65) {
-	const phase = (nowMs % periodMs + periodMs) % periodMs / periodMs;
-	return low + (1 - low) * (.5 - .5 * Math.cos(2 * Math.PI * phase));
-}
-var ArrayChangeTracker = class {
-	constructor() {
-		this.previous = null;
-		this.transition = "";
-	}
-	update(keys, transition) {
-		if (this.previous === null) {
-			this.previous = keys.slice();
-			this.transition = transition;
-			return {
-				changed: [],
-				added: [],
-				removed: []
-			};
-		}
-		const before = this.previous;
-		if (this.transition === transition && before.length === keys.length && before.every((key, i) => key === keys[i])) return null;
-		const changes = {
-			changed: [],
-			added: [],
-			removed: []
-		};
-		for (let i = 0; i < keys.length; i++) if (i >= before.length) changes.added.push(i);
-		else if (before[i] !== keys[i]) changes.changed.push(i);
-		for (let i = keys.length; i < before.length; i++) changes.removed.push(i);
-		this.previous = keys.slice();
-		this.transition = transition;
-		return changes;
-	}
-};
-//#endregion
 //#region src/objects/array.ts
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 var arrayMarkerGroup = 0;
@@ -11508,31 +11649,9 @@ function renderArray(el, _view, decorate) {
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
 	const decoration = decorate?.(n, origin, pitch, mesh);
-	const glowMaterial = new THREE.ShaderMaterial({
-		transparent: true,
-		depthWrite: false,
-		side: THREE.DoubleSide,
-		uniforms: {
-			opacity: { value: 1 },
-			breath: { value: 1 }
-		},
-		vertexShader: `attribute float removed; attribute float cellOpacity; attribute vec2 halfSize; attribute vec2 edgeSize;
-            varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
-            void main(){local=(uv*2.0-1.0)*halfSize;box=edgeSize;removedCell=removed;stackOpacity=cellOpacity;
-                gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-		fragmentShader: `uniform float opacity; uniform float breath; varying float stackOpacity; varying vec2 local; varying vec2 box; varying float removedCell;
-            void main(){float r=min(0.3,0.5*min(box.x,box.y));
-                vec2 q=abs(local)-box+r;float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-r;
-                float glow=d<0.0?exp(-pow(d/0.12,2.0)):exp(-d/0.2);
-                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float alpha=glow*mix(0.8,0.35,removedCell)*opacity*stackOpacity*breath;
-                if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
-	});
+	const glowMaterial = changeGlowMaterial();
 	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
-	glowMesh.onBeforeRender = () => {
-		glowMaterial.uniforms.opacity.value = glowMaterial.opacity;
-		glowMaterial.uniforms.breath.value = glowBreath(performance.now());
-	};
+	glowMesh.onBeforeRender = () => updateGlowUniforms(glowMaterial);
 	glowMesh.visible = false;
 	glowMesh.userData.ignorePlaneOpacity = true;
 	glowMesh.userData.targetOpacity = 1;
@@ -11544,43 +11663,30 @@ function renderArray(el, _view, decorate) {
 	let illuminated = /* @__PURE__ */ new Set();
 	let rimCells = [];
 	function illuminate(changed, removed) {
-		const positions = [], uv = [], removedFlags = [], rimOpacity = [], halves = [], edges = [];
-		rimCells = [];
-		const corners = [
-			[-1, -1],
-			[1, -1],
-			[1, 1],
-			[-1, -1],
-			[1, 1],
-			[-1, 1]
-		];
-		for (const [indices, isRemoved] of [[changed, 0], [removed, 1]]) for (const i of indices) {
-			const c = centre(i);
-			const ex = pitch * .39, ey = cellHeight() * .5, halo = .9, hx = ex + halo, hy = ey + halo;
-			for (const [x, y] of corners) {
-				positions.push(...dataToWorld([
-					c[0] + x * hx,
-					c[1] + y * hy,
-					c[2] + .125
-				]));
-				uv.push((x + 1) / 2, (y + 1) / 2);
-				removedFlags.push(isRemoved);
-				rimCells.push(i);
-				rimOpacity.push(hoverOpacity[i] ?? 1);
-				halves.push(hx, hy);
-				edges.push(ex, ey);
-			}
+		if (el.highlightStateChanges === false) {
+			changed = [];
+			removed = [];
 		}
-		const geometry = new THREE.BufferGeometry();
-		geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-		geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-		geometry.setAttribute("removed", new THREE.Float32BufferAttribute(removedFlags, 1));
-		geometry.setAttribute("cellOpacity", new THREE.Float32BufferAttribute(rimOpacity, 1));
-		geometry.setAttribute("halfSize", new THREE.Float32BufferAttribute(halves, 2));
-		geometry.setAttribute("edgeSize", new THREE.Float32BufferAttribute(edges, 2));
+		rimCells = [];
+		const quads = [];
+		for (const [indices, isRemoved] of [[changed, false], [removed, true]]) for (const i of indices) {
+			const c = centre(i);
+			quads.push({
+				at: (x, y) => dataToWorld([
+					c[0] + x,
+					c[1] + y,
+					c[2] + .125
+				]),
+				ex: pitch * .39,
+				ey: cellHeight() * .5,
+				removed: isRemoved,
+				opacity: hoverOpacity[i] ?? 1
+			});
+			for (let v = 0; v < 6; v++) rimCells.push(i);
+		}
 		glowMesh.geometry.dispose();
-		glowMesh.geometry = geometry;
-		glowMesh.visible = positions.length > 0;
+		glowMesh.geometry = changeGlowGeometry(quads);
+		glowMesh.visible = quads.length > 0;
 		const lit = [];
 		for (const i of changed) {
 			const c = centre(i);
@@ -11791,7 +11897,7 @@ function renderArray(el, _view, decorate) {
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
 				illuminate([...illuminated], delta.removed);
-				focusTransition = transition;
+				focusTransition = sliderStateKey();
 			}
 			updateTitle();
 			decoration?.resize(next);
@@ -11891,12 +11997,7 @@ function renderArray(el, _view, decorate) {
 	const unregisterFocus = registerFocusSource(() => {
 		if (el.focus === false || animState.stopped || animState.hiddenByRemove || !glowMesh.visible || !focusBox) return null;
 		for (let part = mesh; part; part = part.parent) if (!part.visible) return null;
-		const now = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
-			id,
-			s.value,
-			s.values
-		]));
-		return focusTransition === now ? focusBox : null;
+		return focusTransition === sliderStateKey() ? focusBox : null;
 	});
 	material.addEventListener("dispose", () => {
 		unregisterFocus();

@@ -34,6 +34,13 @@ export function registerFocusSource(source: FocusSource): () => void {
 
 export function focusCameraEnabled(): boolean { return enabled; }
 
+/** Identity of the current slider state. A renderer records it when its highlights change, and reports them
+ *  to focus only while it still matches, so a glow left over from an earlier step is not treated as news. */
+export function sliderStateKey(): string {
+    const sliders = (state as unknown as { sceneSliders?: Record<string, { value?: unknown; values?: unknown }> }).sceneSliders ?? {};
+    return JSON.stringify(Object.entries(sliders).map(([id, s]) => [id, s.value, s.values]));
+}
+
 export function setFocusCamera(on: boolean): void {
     if (enabled === on) return;
     enabled = on;
@@ -58,14 +65,15 @@ function schedule(): void {
 function refocus(): void {
     const cam = camera(), ctl = controls();
     if (!enabled || !cam || !ctl || cam.isOrthographicCamera) return;
-    const box = unionBoxes([...sources].map(source => { try { return source(); } catch { return null; } }));
-    if (!box) return;   // nothing changed this step: hold still
+    const changed = unionBoxes([...sources].map(source => { try { return source(); } catch { return null; } }));
+    if (!changed) return;   // nothing changed this step: hold still
     const forward = cam.getWorldDirection(ctl.target.clone()).normalize();
     const up = cam.up.clone().sub(forward.clone().multiplyScalar(cam.up.dot(forward))).normalize();
     const right = forward.clone().cross(up).normalize();
     const basis = { forward: forward.toArray() as Vec3, up: up.toArray() as Vec3, right: right.toArray() as Vec3 };
     const fovY = ((cam.fov ?? 45) * Math.PI) / 180, aspect = cam.aspect ?? 1.6;
     if (!baseline) captureBaseline();
+    const box = changed;
     const frame = fitBox(box, basis, fovY, aspect, {
         margin: 0.35,
         // Keep at least a tenth of the step's starting view height around the changes.
