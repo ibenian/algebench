@@ -10303,6 +10303,48 @@ function simplifyPipe(points) {
 }
 /** Arrowheads stay proportional to pipe radius, including short terminal segments. */
 /**
+* The outline of a block face with rounded corners, as a closed loop of [x, y] points (first point not
+* repeated), counter-clockwise from the bottom edge. `radius` is clamped to half the shorter side; zero
+* gives the four plain corners. Each corner arc is `perCorner` segments.
+*/
+function roundedRectOutline(cx, cy, w, h, radius, perCorner = 6) {
+	const r = Math.max(0, Math.min(radius, w / 2, h / 2));
+	if (r <= 1e-9) return [
+		[cx - w / 2, cy - h / 2],
+		[cx + w / 2, cy - h / 2],
+		[cx + w / 2, cy + h / 2],
+		[cx - w / 2, cy + h / 2]
+	];
+	const out = [];
+	const corners = [
+		[
+			cx + w / 2 - r,
+			cy - h / 2 + r,
+			-Math.PI / 2
+		],
+		[
+			cx + w / 2 - r,
+			cy + h / 2 - r,
+			0
+		],
+		[
+			cx - w / 2 + r,
+			cy + h / 2 - r,
+			Math.PI / 2
+		],
+		[
+			cx - w / 2 + r,
+			cy - h / 2 + r,
+			Math.PI
+		]
+	];
+	for (const [x, y, start] of corners) for (let k = 0; k <= perCorner; k++) {
+		const a = start + Math.PI / 2 * (k / perCorner);
+		out.push([x + r * Math.cos(a), y + r * Math.sin(a)]);
+	}
+	return out;
+}
+/**
 * Where a connection's label goes: halfway along the pipe's length (not its middle vertex -- on a
 * straight two-point pipe that is the end, under the arrowhead), moved to the side of the segment it
 * lands on so the pipe does not cover it: above a horizontal segment, right of a vertical one. The
@@ -10764,37 +10806,37 @@ function renderSystemDAG(el, _view) {
 	};
 	for (const node of layout.nodes.values()) {
 		const { spec, position: p, size } = node, color = tint.get(spec.id);
-		const w0 = dataToWorld(p.map((v, i) => v - size[i] / 2)), w1 = dataToWorld(p.map((v, i) => v + size[i] / 2));
-		const geometry = new THREE.BoxGeometry(...w0.map((v, i) => w1[i] - v));
-		geometry.translate(...dataToWorld(p));
+		const cornerRadius = Math.max(0, Math.min(Number(spec.cornerRadius ?? el.cornerRadius ?? 0) || 0, size[0] / 2, size[1] / 2));
+		let geometry;
+		if (cornerRadius > 0) {
+			const shape = new THREE.Shape(roundedRectOutline(p[0], p[1], size[0], size[1], cornerRadius, 8).map(([x, y]) => new THREE.Vector2(x, y)));
+			geometry = new THREE.ExtrudeGeometry(shape, {
+				depth: size[2],
+				bevelEnabled: false
+			});
+			const pos = geometry.getAttribute("position");
+			for (let v = 0; v < pos.count; v++) {
+				const w = dataToWorld([
+					pos.getX(v),
+					pos.getY(v),
+					pos.getZ(v) + p[2] - size[2] / 2
+				]);
+				pos.setXYZ(v, w[0], w[1], w[2]);
+			}
+			geometry.computeBoundingSphere();
+		} else {
+			const w0 = dataToWorld(p.map((v, i) => v - size[i] / 2)), w1 = dataToWorld(p.map((v, i) => v + size[i] / 2));
+			geometry = new THREE.BoxGeometry(...w0.map((v, i) => w1[i] - v));
+			geometry.translate(...dataToWorld(p));
+		}
 		const fill = new THREE.MeshBasicMaterial({
 			color: new THREE.Color(...rgb(color)),
 			transparent: true,
 			depthWrite: false
 		});
 		const blockMesh = owned(geometry, fill, spec.opacity ?? (spec.blocks?.length ? .1 : .24));
-		const z = p[2] + size[2] / 2 + .025, corners = [
-			[
-				p[0] - size[0] / 2,
-				p[1] - size[1] / 2,
-				z
-			],
-			[
-				p[0] + size[0] / 2,
-				p[1] - size[1] / 2,
-				z
-			],
-			[
-				p[0] + size[0] / 2,
-				p[1] + size[1] / 2,
-				z
-			],
-			[
-				p[0] - size[0] / 2,
-				p[1] + size[1] / 2,
-				z
-			]
-		];
+		const z = p[2] + size[2] / 2 + .025;
+		const outline = roundedRectOutline(p[0], p[1], size[0], size[1], cornerRadius, 6);
 		const border = new THREE.MeshPhongMaterial({
 			color: new THREE.Color(...rgb(color)),
 			emissive: new THREE.Color(...rgb(color)),
@@ -10805,27 +10847,28 @@ function renderSystemDAG(el, _view) {
 		});
 		const glow = glowMaterial(color), ports = [];
 		const rimRadius = spec.blocks?.length ? .018 : .014;
-		for (let i = 0; i < 4; i++) {
-			segment(corners[i], corners[(i + 1) % 4], rimRadius, border);
-			const halo = segment(corners[i], corners[(i + 1) % 4], rimRadius * 3, glow);
+		const at = (i, depth) => {
+			const q = outline[i % outline.length];
+			return [
+				q[0],
+				q[1],
+				depth
+			];
+		};
+		for (let i = 0; i < outline.length; i++) {
+			segment(at(i, z), at(i + 1, z), rimRadius, border);
+			const halo = segment(at(i, z), at(i + 1, z), rimRadius * 3, glow);
 			if (halo) halo.onBeforeRender = () => {
 				glow.opacity = .18 * rootMaterial.opacity * glow.userData.activityOpacity;
 			};
 		}
+		if (cornerRadius > 0) for (let i = 0; i < outline.length; i++) ball(at(i, z), rimRadius, border);
 		const backZ = p[2] - size[2] / 2;
-		for (let i = 0; i < 4; i++) {
-			const back = [
-				corners[i][0],
-				corners[i][1],
-				backZ
-			];
-			const next = [
-				corners[(i + 1) % 4][0],
-				corners[(i + 1) % 4][1],
-				backZ
-			];
-			segment(back, corners[i], rimRadius * .7, border);
-			segment(back, next, rimRadius * .7, border);
+		for (let i = 0; i < outline.length; i++) segment(at(i, backZ), at(i + 1, backZ), rimRadius * .7, border);
+		const per = outline.length / 4;
+		for (let k = 0; k < 4; k++) {
+			const i = Math.round(k * per + (per - 1) / 2);
+			segment(at(i, backZ), at(i, z), rimRadius * .7, border);
 		}
 		if (node.parent) {
 			const parent = layout.nodes.get(node.parent);

@@ -1551,6 +1551,11 @@
           "default": 0.055,
           "description": "SYSTEM_DAG: default physical pipe radius in scene units."
         },
+        "cornerRadius": {
+          "type": "number",
+          "minimum": 0,
+          "description": "SYSTEM_DAG: default corner radius for every block, in scene units (a block's own `cornerRadius` overrides it). 0 or absent gives square corners."
+        },
         "arrayColumns": {
           "type": "integer",
           "minimum": 1,
@@ -3432,6 +3437,11 @@
         "colorExpr": {
           "type": "string",
           "description": "Expression giving the block's color (a CSS color string), re-evaluated on state changes. Use it for a component's state: e.g. grey while a node is down, amber while it is cut off. Focus (highlightExpr or a Code tab selection) still wins. An empty or invalid result falls back to color."
+        },
+        "cornerRadius": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Rounded corners for this block, in scene units: the face, its rim and glow follow the rounded outline. Clamped to half the shorter side. Overrides the diagram's `cornerRadius`; 0 gives square corners."
         },
         "codeLinks": {
           "type": "array",

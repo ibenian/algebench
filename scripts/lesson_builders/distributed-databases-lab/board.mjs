@@ -89,7 +89,7 @@ export function clusterBoard({ prefix = '', nodes = 3, keys = 1, clients = 3, me
         ...(codeRefs.node ? { codeRef: codeRefs.node } : {}),
     }));
     const dag = {
-        type: 'system_dag', id: prefix + 'cluster', label: 'Cluster', pipeRadius: 0.07, origin: [0, 0, 0],
+        type: 'system_dag', id: prefix + 'cluster', label: 'Cluster', pipeRadius: 0.07, cornerRadius: 0.6, origin: [0, 0, 0],
         blocks: [
             { id: 'clients', label: 'Clients · each talks to one node (→)', kind: 'client', position: [0, 11.4, 0], size: [g.width, 6.4, 0.18],
                 ports: [{ id: 'req', side: 'bottom', offset: 0 }], elements: [timeline(prefix, clients, g.width), clientStatus(prefix, clients, g.width)],

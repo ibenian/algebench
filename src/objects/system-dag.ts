@@ -11,7 +11,7 @@ import type { AnimExprEntry } from '/sliders.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 import { pipeFlowPath, pipeFlowPhase } from '/objects/system-dag-flow.js';
-import { resolveSystemDAG, pipeArrowDimensions, pipeLabelAnchor } from '/objects/system-dag-layout.js';
+import { resolveSystemDAG, pipeArrowDimensions, pipeLabelAnchor, roundedRectOutline } from '/objects/system-dag-layout.js';
 import { codeFocus, focusMatches } from '/code-focus.js';
 import { resolveCodeRef } from '/code-panel-model.js';
 import { registerFocusSource } from '/focus-camera.js';
@@ -86,27 +86,41 @@ export function renderSystemDAG(el:Element,_view:MathBoxNode){
     };
     for(const node of layout.nodes.values()){
         const {spec,position:p,size}=node,color=tint.get(spec.id)!;
-        const w0=dataToWorld(p.map((v,i)=>v-size[i]!/2) as Vec3),w1=dataToWorld(p.map((v,i)=>v+size[i]!/2) as Vec3);
-        const geometry=new THREE.BoxGeometry(...w0.map((v,i)=>w1[i]!-v) as Vec3);geometry.translate(...dataToWorld(p));
+        // cornerRadius (data units) on the block, else the diagram's default: rounds the face and its rim.
+        const cornerRadius=Math.max(0,Math.min(Number(spec.cornerRadius??el.cornerRadius??0)||0,size[0]/2,size[1]/2));
+        let geometry:BufferGeometry;
+        if(cornerRadius>0){
+            // Extrude the rounded outline in data units, then map every vertex to world space.
+            const shape=new THREE.Shape(roundedRectOutline(p[0],p[1],size[0],size[1],cornerRadius,8).map(([x,y])=>new THREE.Vector2(x,y)));
+            geometry=new THREE.ExtrudeGeometry(shape,{depth:size[2],bevelEnabled:false});
+            const pos=geometry.getAttribute('position');
+            for(let v=0;v<pos.count;v++){const w=dataToWorld([pos.getX(v),pos.getY(v),pos.getZ(v)+p[2]-size[2]/2]);pos.setXYZ(v,w[0],w[1],w[2]);}
+            geometry.computeBoundingSphere();
+        }else{
+            const w0=dataToWorld(p.map((v,i)=>v-size[i]!/2) as Vec3),w1=dataToWorld(p.map((v,i)=>v+size[i]!/2) as Vec3);
+            geometry=new THREE.BoxGeometry(...w0.map((v,i)=>w1[i]!-v) as Vec3);geometry.translate(...dataToWorld(p));
+        }
         const fill=new THREE.MeshBasicMaterial({color:new THREE.Color(...rgb(color)),transparent:true,depthWrite:false});
         const blockMesh=owned(geometry,fill,spec.opacity??(spec.blocks?.length ? .10 : .24));
-        const z=p[2]+size[2]/2+.025,corners:[Vec3,Vec3,Vec3,Vec3]=[[p[0]-size[0]/2,p[1]-size[1]/2,z],[p[0]+size[0]/2,p[1]-size[1]/2,z],[p[0]+size[0]/2,p[1]+size[1]/2,z],[p[0]-size[0]/2,p[1]+size[1]/2,z]];
+        const z=p[2]+size[2]/2+.025;
+        // The rim follows the face outline: four edges, or edges joined by quarter-arcs when rounded.
+        const outline=roundedRectOutline(p[0],p[1],size[0],size[1],cornerRadius,6);
         const border=new THREE.MeshPhongMaterial({color:new THREE.Color(...rgb(color)),emissive:new THREE.Color(...rgb(color)),emissiveIntensity:.25,shininess:28,transparent:true,depthWrite:false});
         const glow=glowMaterial(color),ports:MeshPhongMaterial[]=[];
         const rimRadius=spec.blocks?.length ? .018 : .014;
-        for(let i=0;i<4;i++) {
-            segment(corners[i]!,corners[(i+1)%4]!,rimRadius,border);
-            const halo=segment(corners[i]!,corners[(i+1)%4]!,rimRadius*3,glow);
+        const at=(i:number,depth:number):Vec3=>{const q=outline[i%outline.length]!;return [q[0],q[1],depth];};
+        for(let i=0;i<outline.length;i++) {
+            segment(at(i,z),at(i+1,z),rimRadius,border);
+            const halo=segment(at(i,z),at(i+1,z),rimRadius*3,glow);
             if(halo)halo.onBeforeRender=()=>{glow.opacity=.18*rootMaterial.opacity*glow.userData.activityOpacity;};
         }
-        // Slim side edges make the real block depth legible when orbiting.
+        if(cornerRadius>0)for(let i=0;i<outline.length;i++)ball(at(i,z),rimRadius,border);   // smooth the joints of the arcs
+        // Slim side edges make the real block depth legible when orbiting: the back outline, and a post at
+        // each corner (on a rounded block, at the middle of its arc).
         const backZ=p[2]-size[2]/2;
-        for(let i=0;i<4;i++){
-            const back=[corners[i]![0],corners[i]![1],backZ] as Vec3;
-            const next=[corners[(i+1)%4]![0],corners[(i+1)%4]![1],backZ] as Vec3;
-            segment(back,corners[i]!,rimRadius*.7,border);
-            segment(back,next,rimRadius*.7,border);
-        }
+        for(let i=0;i<outline.length;i++)segment(at(i,backZ),at(i+1,backZ),rimRadius*.7,border);
+        const per=outline.length/4;
+        for(let k=0;k<4;k++){const i=Math.round(k*per+(per-1)/2);segment(at(i,backZ),at(i,z),rimRadius*.7,border);}
         if(node.parent){
             const parent=layout.nodes.get(node.parent)!;
             if(parent.spec.childElevation!==undefined){

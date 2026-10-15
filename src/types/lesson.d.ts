@@ -930,6 +930,10 @@ export type Element = {
    */
   pipeRadius?: number;
   /**
+   * SYSTEM_DAG: default corner radius for every block, in scene units (a block's own `cornerRadius` overrides it). 0 or absent gives square corners.
+   */
+  cornerRadius?: number;
+  /**
    * ARRAY ONLY. Wrap the one-dimensional sequence into rows with this many columns; rows run downward.
    */
   arrayColumns?: number;
@@ -1776,6 +1780,10 @@ export interface SystemBlock {
    * Expression giving the block's color (a CSS color string), re-evaluated on state changes. Use it for a component's state: e.g. grey while a node is down, amber while it is cut off. Focus (highlightExpr or a Code tab selection) still wins. An empty or invalid result falls back to color.
    */
   colorExpr?: string;
+  /**
+   * Rounded corners for this block, in scene units: the face, its rim and glow follow the rounded outline. Clamped to half the shorter side. Overrides the diagram's `cornerRadius`; 0 gives square corners.
+   */
+  cornerRadius?: number;
   /**
    * Additional source locations represented by this block. Selecting any of these lines (or the codeRef line) in the Code tab focuses the block.
    */

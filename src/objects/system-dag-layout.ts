@@ -28,6 +28,24 @@ export function simplifyPipe(points:Vec3[]):Vec3[] {
 }
 /** Arrowheads stay proportional to pipe radius, including short terminal segments. */
 /**
+ * The outline of a block face with rounded corners, as a closed loop of [x, y] points (first point not
+ * repeated), counter-clockwise from the bottom edge. `radius` is clamped to half the shorter side; zero
+ * gives the four plain corners. Each corner arc is `perCorner` segments.
+ */
+export function roundedRectOutline(cx:number,cy:number,w:number,h:number,radius:number,perCorner=6):[number,number][] {
+    const r=Math.max(0,Math.min(radius,w/2,h/2));
+    if(r<=1e-9)return [[cx-w/2,cy-h/2],[cx+w/2,cy-h/2],[cx+w/2,cy+h/2],[cx-w/2,cy+h/2]];
+    const out:[number,number][]=[];
+    // Corner centres, each with the angle its quarter-arc starts at (counter-clockwise).
+    const corners:[number,number,number][]=[[cx+w/2-r,cy-h/2+r,-Math.PI/2],[cx+w/2-r,cy+h/2-r,0],[cx-w/2+r,cy+h/2-r,Math.PI/2],[cx-w/2+r,cy-h/2+r,Math.PI]];
+    for(const [x,y,start] of corners)for(let k=0;k<=perCorner;k++){
+        const a=start+(Math.PI/2)*(k/perCorner);
+        out.push([x+r*Math.cos(a),y+r*Math.sin(a)]);
+    }
+    return out;
+}
+
+/**
  * Where a connection's label goes: halfway along the pipe's length (not its middle vertex -- on a
  * straight two-point pipe that is the end, under the arrowhead), moved to the side of the segment it
  * lands on so the pipe does not cover it: above a horizontal segment, right of a vertical one. The

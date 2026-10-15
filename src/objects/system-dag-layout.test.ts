@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSystemDAG, pipeArrowDimensions, pipeLabelAnchor } from './system-dag-layout.js';
+import { resolveSystemDAG, pipeArrowDimensions, pipeLabelAnchor, roundedRectOutline } from './system-dag-layout.js';
 import type { SystemBlock, SystemConnection } from '/types/lesson.js';
 const block=(id:string,position:SystemBlock['position']=[0,0,0],extras:Partial<SystemBlock>={}):SystemBlock=>({id,label:id,size:[4,2,.16],position,...extras});
 const wire=(from:string,to:string,extras:Partial<SystemConnection>={}):SystemConnection=>({id:`${from}-${to}`,from:{block:from},to:{block:to},...extras});
@@ -55,4 +55,15 @@ test('a connection label sits halfway along the pipe, beside it, never at the ar
     // An L-shaped route: total length 4 + 2, halfway (3) lands on the first, vertical segment.
     const bent = pipeLabelAnchor([[0, 4, 0], [0, 0, 0], [2, 0, 0]], 1, 0.42, 0.12);
     assert.deepEqual(bent, [0.62, 1, 0]);
+});
+
+test('rounded block outline: plain corners at radius 0, arcs that stay on the block edges otherwise', () => {
+    assert.deepEqual(roundedRectOutline(0, 0, 4, 2, 0), [[-2, -1], [2, -1], [2, 1], [-2, 1]]);
+    const loop = roundedRectOutline(0, 0, 4, 2, 0.5, 4);
+    assert.equal(loop.length, 4 * 5);
+    for (const [x, y] of loop) assert.ok(Math.abs(x) <= 2 + 1e-9 && Math.abs(y) <= 1 + 1e-9, 'inside the block');
+    // Each arc starts and ends on a straight edge: the bottom edge runs between the first corner pair.
+    assert.ok(Math.abs(loop[0]![1] + 1) < 1e-9 && Math.abs(loop[0]![0] - 1.5) < 1e-9);
+    // The radius is clamped to half the shorter side, so a huge radius gives a stadium, not a mess.
+    for (const [, y] of roundedRectOutline(0, 0, 4, 2, 10, 4)) assert.ok(Math.abs(y) <= 1 + 1e-9);
 });
