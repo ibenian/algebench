@@ -17,7 +17,8 @@ import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 
 let arrayMarkerGroup = 0;
 /** Shared presentation lookup for a cell, without references to other controls. */
-export interface ArrayCellTarget { at(index:number):{position:[number,number,number];corners:number[][]}|null; }
+/** `vertical`: cells run up or down (a stack, a vertical layout), so links leave a cell's side, not its top. */
+export interface ArrayCellTarget { vertical:boolean; at(index:number):{position:[number,number,number];corners:number[][]}|null; }
 const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
 export interface ArrayDecoration { resize(length:number):void; }
 export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:number,origin:number[],pitch:number,owner:Mesh)=>ArrayDecoration) {
@@ -71,7 +72,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         ghostMesh.onBeforeRender=()=>{ghostMaterial.opacity=material.opacity;};
         mesh.add(ghostMesh);
     }
-    const cellTarget:ArrayCellTarget={at(index){
+    const step=centre(1).map((v,i)=>v-centre(0)[i]!);
+    const cellTarget:ArrayCellTarget={vertical:Math.abs(step[1]!)>Math.abs(step[0]!),at(index){
         const position=el.arrayColumns?(Number.isInteger(index)&&index>=0&&index<n?centre(index):null):arrayIndexPosition(index,n,origin,pitch,el.arrayLayout,el.direction,el.arraySpacing);
         return position?{position,corners:arrayCellCorners(position,pitch).map(c=>[c[0]!,position[1]+(c[1]!-position[1])*cellHeight()/.68,c[2]!])}:null;
     }};

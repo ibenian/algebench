@@ -42,13 +42,13 @@ function namedObject(name:string) {
 export function objectTargetExists(name:string,index?:number):boolean {
     return index===undefined?!!namedObject(name):!!objectCellAnchor(name,index);
 }
-export function objectCellAnchor(name:string,index:number):{position:Vec3;corners:number[][]}|null {
+export function objectCellAnchor(name:string,index:number):{position:Vec3;corners:number[][];vertical:boolean}|null {
     const match=namedObject(name);
     if(!match)return null;
     const tracker=match[1].tracker as AnchorTracker;
     for(const mesh of tracker.planeMeshes??[]) {
         const cells=mesh.userData.arrayCellTarget as ArrayCellTarget|undefined;
-        if(mesh.visible&&cells)return cells.at(index);
+        if(mesh.visible&&cells){const at=cells.at(index);return at&&{...at,vertical:cells.vertical};}
     }
     return null;
 }

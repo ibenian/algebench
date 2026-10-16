@@ -40,11 +40,13 @@ export function paintCellLinks(): void {
             const ac = a.corners.map(screen), bc = b.corners.map(screen);
             if ([...ac, ...bc].some(p => p.z < -1 || p.z > 1)) continue;
             if (i > last) { last = i; toggleAt = { x: Math.max(...ac.map(p => p.x)) + 6, y: ac.reduce((sum, p) => sum + p.y, 0) / ac.length }; }
-            const targetAbove = Math.min(...bc.map(p => p.y)) < Math.min(...ac.map(p => p.y));
-            // Leave the near edge of the source cell; land on the target's near edge, clear of its index tag.
-            const start = cellEdgeAnchor(ac, targetAbove ? 'top' : 'bottom', 2);
-            const end = cellEdgeAnchor(bc, targetAbove ? 'bottom' : 'top', targetAbove ? 14 : 2);
-            paths.push(cellLinkPath(start, end));
+            const mid = (c: {x: number; y: number}[]) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
+            const am = mid(ac), bm = mid(bc);
+            // Each end leaves along its own array's axis: a row's top or bottom edge, a stacked cell's side,
+            // so a stack's link never runs up through the cells above it. A row's end clears its index tag.
+            const start = a.vertical ? cellEdgeAnchor(ac, bm.x < am.x ? 'left' : 'right', 2) : cellEdgeAnchor(ac, bm.y < am.y ? 'top' : 'bottom', 2);
+            const end = b.vertical ? cellEdgeAnchor(bc, am.x < bm.x ? 'left' : 'right', 2) : cellEdgeAnchor(bc, am.y < bm.y ? 'top' : 'bottom', am.y > bm.y ? 14 : 2);
+            paths.push(cellLinkPath(start, end, a.vertical ? 'h' : 'v', b.vertical ? 'h' : 'v'));
         }
         paintToggle(set, container, toggleAt);
         const shown = set.pinned || set.hovered;

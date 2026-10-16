@@ -7,4 +7,5 @@ test('cell connection and index anchors use the projected bottom center even aft
     assert.deepEqual(cellEdgeAnchor(corners, 'bottom'), {x: 37.5, y: 55});
     assert.deepEqual(cellEdgeAnchor(corners.map(p => ({x:p.x * 2, y:p.y * 2})), 'bottom'), {x:75, y:110});
     assert.deepEqual(cellEdgeAnchor(corners, 'top', 8), {x:37.5, y:12});
+    assert.deepEqual(cellEdgeAnchor(corners, 'left', 2), {x:Math.min(...corners.map(p => p.x)) - 2, y:(Math.min(...corners.map(p => p.y)) + Math.max(...corners.map(p => p.y))) / 2});
 });

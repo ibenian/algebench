@@ -110,4 +110,5 @@ test('a cell link leaves and arrives vertically, bending toward the target', () 
     assert.equal(cellLinkPath({x:10,y:100},{x:50,y:20}), 'M 10 100 C 10 64, 50 56, 50 20');
     assert.match(cellLinkPath({x:10,y:20},{x:50,y:100}), /^M 10 20 C 10 56, 50 64, 50 100$/);
     assert.match(cellLinkPath({x:0,y:0},{x:40,y:2}), /C 0 8, 40 -6, 40 2$/, 'a short link still bends at least 8px');
+    assert.equal(cellLinkPath({x:100,y:100},{x:20,y:20},'h','v'), 'M 100 100 C 64 100, 20 56, 20 20', 'a stacked cell leaves sideways, toward the target');
 });

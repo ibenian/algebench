@@ -116,7 +116,14 @@ export function rowBracketWire(edgeX:number,fromY:number,toY:number,side:1|-1):s
 }
 
 /** A vertical S-curve between two cell edges, leaving and arriving straight up or down. */
-export function cellLinkPath(start:{x:number;y:number},end:{x:number;y:number}):string {
-    const bend=Math.max(8,Math.abs(end.y-start.y)*.45)*(end.y<start.y?-1:1);
-    return `M ${start.x} ${start.y} C ${start.x} ${start.y+bend}, ${end.x} ${end.y-bend}, ${end.x} ${end.y}`;
+/**
+ * A cell-to-cell link: each end leaves its cell along the cell's own axis, vertically ('v', off a top or
+ * bottom edge of a horizontal row) or horizontally ('h', off the side of a stacked cell).
+ */
+export function cellLinkPath(start:{x:number;y:number},end:{x:number;y:number},startAxis:'v'|'h'='v',endAxis:'v'|'h'='v'):string {
+    const pull=(axis:'v'|'h',from:{x:number;y:number},to:{x:number;y:number})=>{
+        const d=axis==='v'?to.y-from.y:to.x-from.x, bend=Math.max(8,Math.abs(d)*.45)*(d<0?-1:1);
+        return axis==='v'?`${from.x} ${from.y+bend}`:`${from.x+bend} ${from.y}`;
+    };
+    return `M ${start.x} ${start.y} C ${pull(startAxis,start,end)}, ${pull(endAxis,end,start)}, ${end.x} ${end.y}`;
 }

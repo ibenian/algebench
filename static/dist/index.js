@@ -1082,7 +1082,13 @@ function objectCellAnchor(name, index) {
 	const tracker = match[1].tracker;
 	for (const mesh of tracker.planeMeshes ?? []) {
 		const cells = mesh.userData.arrayCellTarget;
-		if (mesh.visible && cells) return cells.at(index);
+		if (mesh.visible && cells) {
+			const at = cells.at(index);
+			return at && {
+				...at,
+				vertical: cells.vertical
+			};
+		}
 	}
 	return null;
 }
@@ -1326,15 +1332,26 @@ function rowBracketWire(edgeX, fromY, toY, side) {
 	return `M ${edgeX} ${fromY} C ${edgeX + bow} ${fromY}, ${edgeX + bow} ${toY}, ${edgeX} ${toY}`;
 }
 /** A vertical S-curve between two cell edges, leaving and arriving straight up or down. */
-function cellLinkPath(start, end) {
-	const bend = Math.max(8, Math.abs(end.y - start.y) * .45) * (end.y < start.y ? -1 : 1);
-	return `M ${start.x} ${start.y} C ${start.x} ${start.y + bend}, ${end.x} ${end.y - bend}, ${end.x} ${end.y}`;
+/**
+* A cell-to-cell link: each end leaves its cell along the cell's own axis, vertically ('v', off a top or
+* bottom edge of a horizontal row) or horizontally ('h', off the side of a stacked cell).
+*/
+function cellLinkPath(start, end, startAxis = "v", endAxis = "v") {
+	const pull = (axis, from, to) => {
+		const d = axis === "v" ? to.y - from.y : to.x - from.x, bend = Math.max(8, Math.abs(d) * .45) * (d < 0 ? -1 : 1);
+		return axis === "v" ? `${from.x} ${from.y + bend}` : `${from.x + bend} ${from.y}`;
+	};
+	return `M ${start.x} ${start.y} C ${pull(startAxis, start, end)}, ${pull(endAxis, end, start)}, ${end.x} ${end.y}`;
 }
 //#endregion
 //#region src/cell-attachment.ts
 /** Shared screen-space anchor for a cell's index tag and connection endpoint. */
 function cellEdgeAnchor(corners, edge, gap = 0) {
 	const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+	if (edge === "left" || edge === "right") return {
+		x: edge === "left" ? Math.min(...xs) - gap : Math.max(...xs) + gap,
+		y: (Math.min(...ys) + Math.max(...ys)) / 2
+	};
 	return {
 		x: (Math.min(...xs) + Math.max(...xs)) / 2,
 		y: edge === "top" ? Math.min(...ys) - gap : Math.max(...ys) + gap
@@ -1809,10 +1826,14 @@ function paintCellLinks() {
 					y: ac.reduce((sum, p) => sum + p.y, 0) / ac.length
 				};
 			}
-			const targetAbove = Math.min(...bc.map((p) => p.y)) < Math.min(...ac.map((p) => p.y));
-			const start = cellEdgeAnchor(ac, targetAbove ? "top" : "bottom", 2);
-			const end = cellEdgeAnchor(bc, targetAbove ? "bottom" : "top", targetAbove ? 14 : 2);
-			paths.push(cellLinkPath(start, end));
+			const mid = (c) => ({
+				x: c.reduce((s, p) => s + p.x, 0) / c.length,
+				y: c.reduce((s, p) => s + p.y, 0) / c.length
+			});
+			const am = mid(ac), bm = mid(bc);
+			const start = a.vertical ? cellEdgeAnchor(ac, bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
+			const end = b.vertical ? cellEdgeAnchor(bc, am.x < bm.x ? "left" : "right", 2) : cellEdgeAnchor(bc, am.y < bm.y ? "top" : "bottom", am.y > bm.y ? 14 : 2);
+			paths.push(cellLinkPath(start, end, a.vertical ? "h" : "v", b.vertical ? "h" : "v"));
 		}
 		paintToggle(set, container, toggleAt);
 		const shown = set.pinned || set.hovered;
@@ -11729,17 +11750,21 @@ function renderArray(el, _view, decorate) {
 		};
 		mesh.add(ghostMesh);
 	}
-	const cellTarget = { at(index) {
-		const position = el.arrayColumns ? Number.isInteger(index) && index >= 0 && index < n ? centre(index) : null : arrayIndexPosition(index, n, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
-		return position ? {
-			position,
-			corners: arrayCellCorners(position, pitch).map((c) => [
-				c[0],
-				position[1] + (c[1] - position[1]) * cellHeight() / .68,
-				c[2]
-			])
-		} : null;
-	} };
+	const step = centre(1).map((v, i) => v - centre(0)[i]);
+	const cellTarget = {
+		vertical: Math.abs(step[1]) > Math.abs(step[0]),
+		at(index) {
+			const position = el.arrayColumns ? Number.isInteger(index) && index >= 0 && index < n ? centre(index) : null : arrayIndexPosition(index, n, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
+			return position ? {
+				position,
+				corners: arrayCellCorners(position, pitch).map((c) => [
+					c[0],
+					position[1] + (c[1] - position[1]) * cellHeight() / .68,
+					c[2]
+				])
+			} : null;
+		}
+	};
 	mesh.userData.arrayCellTarget = cellTarget;
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
