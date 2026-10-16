@@ -375,6 +375,7 @@ ${MD_TAIL}
         {
             id: 'stack', type: 'stack', itemType: 'number', origin: [6.3, -3.4, 0], cellSize: 1.1, fontSize: 15, showIndices: false,
             lengthExpr: tr('n'), valueExpr: `arrayAt(${tr('stack')}, idx)`, color: BLUE, label: 'stack (days)', containerColor: TEAL,
+            linkTo: { object: 'temps', indexExpr: 'value' },
         },
         label('i', unset('i'), [-4.5, -3.6, 0], ['temps', tr('i')]),
         label('t', `concat('t = ', ${tr('i')} < 0 ? 'unset' : ${tr('t')})`, [-4.5, -3.6, 0], ['temps', tr('i')]),

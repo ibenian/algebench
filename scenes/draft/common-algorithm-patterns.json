@@ -6326,7 +6326,8 @@
               "valueExpr": "arrayAt(dataTable('trace', frame, 'stack'), idx)",
               "color": "#9dbde3",
               "label": "stack (days)",
-              "containerColor": "#77bfae"
+              "containerColor": "#77bfae",
+              "linkTo": {"object": "temps", "indexExpr": "value"}
             },
             {
               "id": "i",

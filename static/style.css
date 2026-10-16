@@ -5713,6 +5713,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }
 .expression-wire-toggle:hover::after { opacity: 1; }
 .expression-wire-toggle:focus-visible { outline: 1px solid #a6d5ec; outline-offset: 2px; }
+/* An array's cell-link toggle floats beside its last linked cell instead of sitting in a label row. */
+.cell-link-toggle { position: absolute; left: 0; top: 0; float: none; margin: 0; z-index: 6; pointer-events: auto; color: #9dbde3; }
 .annotation-measure-wired { padding-right: 34px; }
 /* Room for the row's Ask-AI button, plus the pin button when the label is wired. */
 .expression-label .annotation-measure { padding-right: 48px; }
