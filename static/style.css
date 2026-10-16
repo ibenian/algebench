@@ -3679,6 +3679,22 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-color: color-mix(in srgb, var(--accent-color) 40%, transparent);
     color: var(--text-color);
 }
+/* More prompts: a small chip opening a menu of common prompts above the row. */
+.preset-more { position: relative; display: flex; }
+.preset-more-btn { padding: 4px 11px; font-size: 14px; line-height: 1; letter-spacing: 1px; }
+.preset-more-menu {
+    position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 30;
+    display: flex; flex-direction: column; min-width: 220px; padding: 4px;
+    background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 10px;
+    box-shadow: 0 8px 24px #0006;
+}
+.preset-more-menu[hidden] { display: none; }
+.preset-more-menu.preset-more-menu-right { left: auto; right: 0; }
+.preset-more-item {
+    text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none;
+    color: var(--text-color); font: 12px var(--font-body); cursor: pointer; white-space: nowrap;
+}
+.preset-more-item:hover, .preset-more-item:focus-visible { background: color-mix(in srgb, var(--accent-color) 14%, transparent); outline: none; }
 /* Chat Input Area */
 #chat-input-area {
     display: flex;
@@ -5622,12 +5638,13 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 /* Variables (code_intel): hover lights every occurrence and the rows naming it; a changed value flashes on the executing line. */
 .code-sym { border-radius: 3px; transition: background-color .6s ease-out, box-shadow .6s ease-out; }
 /* A faint tint, padded by a spread shadow of the same tint so the code text never moves or changes colour. */
-.code-sym.code-sym-hover { background: #f1cc5924; box-shadow: 0 0 0 3px #f1cc5924; transition: none; }
-.code-sym.code-sym-flash { background: #f1cc5999; box-shadow: 0 0 0 3px #f1cc5999, 0 0 10px 4px #f1cc5966; transition: none; }
+/* Tints come from the theme accent, so they read on light and dark panels alike. */
+.code-sym.code-sym-hover { --sym-tint: color-mix(in srgb, var(--accent-color) 22%, transparent); background: var(--sym-tint); box-shadow: 0 0 0 3px var(--sym-tint); transition: none; }
+.code-sym.code-sym-flash { --sym-flash: color-mix(in srgb, var(--accent-color) 45%, transparent); background: var(--sym-flash); box-shadow: 0 0 0 3px var(--sym-flash), 0 0 10px 4px color-mix(in srgb, var(--accent-color) 30%, transparent); transition: none; }
 /* Marker badges let the 3D view through, except rows naming a code variable, which take hover. */
 .step-marker .annotation-row[data-symbols] { pointer-events: auto; }
 /* An array or stack title naming the hovered variable: the same faint tint, text colour unchanged. */
-.array-title-symbol-hover { background: #f1cc5933; border-radius: 3px; box-shadow: 0 0 0 3px #f1cc5933; }
+.array-title-symbol-hover { --sym-tint: color-mix(in srgb, var(--accent-color) 26%, transparent); background: var(--sym-tint); border-radius: 3px; box-shadow: 0 0 0 3px var(--sym-tint); }
 /* Padded sideways only (margin cancels padding, so nothing moves); the row's own height is enough. */
 .annotation-row.annotation-row-symbol-hover { background: #ffffff30; border-radius: 3px; margin-inline: -4px; padding-inline: 4px; }
 

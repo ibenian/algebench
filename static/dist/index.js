@@ -10300,8 +10300,11 @@ function createArrayPlaneText(width, height, color, opts = {}) {
 			ctx.arcTo(x, y + h, x, y, r);
 			ctx.arcTo(x, y, x + w, y, r);
 			ctx.closePath();
-			ctx.fillStyle = "rgba(241, 204, 89, .2)";
+			const accent = getComputedStyle(document.body).getPropertyValue("--accent-color").trim() || "#f1cc59";
+			ctx.fillStyle = accent;
+			ctx.globalAlpha = .28;
 			ctx.fill();
+			ctx.globalAlpha = 1;
 		}
 		ctx.fillStyle = cssColor;
 		ctx.textAlign = "center";
@@ -26301,6 +26304,59 @@ function setupShareButton() {
 	});
 }
 //#endregion
+//#region src/speech-text.ts
+/**
+* Text for speech. Chat replies are markdown with LaTeX; read aloud verbatim, the voice pronounces the markup
+* ("asterisk asterisk", "dollar"), so speech gets the words only. The model also sometimes writes a tool call
+* into its reply as a processing-instruction tag (`<?set_preset_prompts prompts=[...] ?>`) instead of calling
+* the tool: the chat bubble hides it as HTML, but speech would read it, so it is removed (and can be honoured).
+*/
+var INLINE_TOOL = /<\?\s*([a-z_]+)\b([\s\S]*?)\?>/gi;
+/** Pull `<?name key=json ...?>` tags out of a reply. Arguments that are not valid JSON are dropped. */
+function extractInlineToolCalls(text) {
+	const calls = [];
+	return {
+		text: text.replace(INLINE_TOOL, (_, name, body) => {
+			const args = {};
+			for (const m of body.matchAll(/([a-z_]+)\s*=\s*(\[[\s\S]*?\](?=\s*(?:[a-z_]+\s*=|$))|"(?:[^"\\]|\\.)*"|[^\s]+)/gi)) try {
+				args[m[1]] = JSON.parse(m[2]);
+			} catch {}
+			calls.push({
+				name,
+				args
+			});
+			return "";
+		}).replace(/[ \t]+\n/g, "\n").trim(),
+		calls
+	};
+}
+/** Plain words for a markdown + LaTeX reply. */
+function speechText(text) {
+	return extractInlineToolCalls(text).text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\)/g, (_, a, b, c) => speechMath(a ?? b ?? c)).replace(/`([^`]+)`/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/(^|\W)[*_]([^*_\n]+)[*_](?=\W|$)/g, "$1$2").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*>\s?/gm, "").replace(/[📍🤖👤]/gu, "").replace(/([^.!?:;,\s])[ \t]*\n+\s*/g, "$1. ").replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim();
+}
+var MATH_WORDS = {
+	le: "≤",
+	leq: "≤",
+	ge: "≥",
+	geq: "≥",
+	ne: "≠",
+	neq: "≠",
+	times: "×",
+	cdot: "·",
+	to: "→",
+	rightarrow: "→",
+	approx: "≈",
+	infty: "infinity",
+	pm: "±",
+	ldots: "…",
+	dots: "…",
+	cdots: "…"
+};
+/** Inline math as readable symbols: `74 > 73`, `\text{total} = 18` → `total = 18`. */
+function speechMath(tex) {
+	return tex.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^}]*)\}/g, "$1").replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1 over $2").replace(/\\([a-zA-Z]+)/g, (_, w) => MATH_WORDS[w] ?? w).replace(/[{}]/g, "").trim();
+}
+//#endregion
 //#region src/lesson-placement.ts
 /** Thrown when an op cannot be applied. Callers discard and clear history. */
 var PlacementError = class extends Error {};
@@ -26993,33 +27049,126 @@ if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) =>
 	const surface = _classifyFocusTarget(e.target);
 	if (surface) _lastFocusedSurface = surface;
 }, true);
+/**
+* Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
+* shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
+*/
+var COMMON_PROMPTS = [
+	{
+		label: "Walk me through this view",
+		prompt: "Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate."
+	},
+	{
+		label: "Walk me through key points",
+		prompt: "Walk me through the key points of this scene, one at a time, as a short list."
+	},
+	{
+		label: "Guide me",
+		prompt: "Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on."
+	},
+	{
+		label: "Ask me about the current step",
+		prompt: "Ask me one question about the current step to check my understanding. Wait for my answer before explaining."
+	},
+	{
+		label: "Ask me about the current scene",
+		prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."
+	},
+	{
+		label: "Quiz mode",
+		prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."
+	},
+	{
+		label: "Surprise me!",
+		prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."
+	}
+];
+/** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
+function usePrompt(text, e) {
+	if (e.metaKey || e.ctrlKey) {
+		const input = document.getElementById("chat-input");
+		if (input) {
+			input.value = text;
+			input.focus();
+			input.dispatchEvent(new Event("input"));
+		}
+	} else sendChatMessage$1(text);
+}
 function setPresetPrompts$1(prompts) {
 	_presetPrompts = prompts || [];
 	const container = document.getElementById("preset-prompts");
 	if (!container) return;
 	container.innerHTML = "";
-	if (!_presetPrompts.length) {
-		container.classList.add("hidden");
-		return;
-	}
 	container.classList.remove("hidden");
 	for (const text of _presetPrompts) {
 		const btn = document.createElement("button");
 		btn.className = "preset-prompt-btn";
 		btn.textContent = text;
 		btn.title = text + "\n\nClick to send · ⌘/Ctrl-click to edit";
-		btn.addEventListener("click", (e) => {
-			if (e.metaKey || e.ctrlKey) {
-				const input = document.getElementById("chat-input");
-				if (input) {
-					input.value = text;
-					input.focus();
-					input.dispatchEvent(new Event("input"));
-				}
-			} else sendChatMessage$1(text);
-		});
+		btn.addEventListener("click", (e) => usePrompt(text, e));
 		container.appendChild(btn);
 	}
+	container.appendChild(morePromptsMenu());
+}
+/** A small chip that opens a menu of COMMON_PROMPTS above it. */
+function morePromptsMenu() {
+	const wrap = document.createElement("div");
+	wrap.className = "preset-more";
+	const toggle = document.createElement("button");
+	toggle.type = "button";
+	toggle.className = "preset-prompt-btn preset-more-btn";
+	toggle.textContent = "⋯";
+	toggle.title = "More prompts";
+	toggle.setAttribute("aria-label", "More prompts");
+	toggle.setAttribute("aria-haspopup", "menu");
+	toggle.setAttribute("aria-expanded", "false");
+	const menu = document.createElement("div");
+	menu.className = "preset-more-menu";
+	menu.setAttribute("role", "menu");
+	menu.hidden = true;
+	const close = () => {
+		menu.hidden = true;
+		toggle.setAttribute("aria-expanded", "false");
+		document.removeEventListener("pointerdown", outside, true);
+		document.removeEventListener("keydown", escape, true);
+	};
+	const outside = (e) => {
+		if (!wrap.contains(e.target)) close();
+	};
+	const escape = (e) => {
+		if (e.key === "Escape") {
+			close();
+			toggle.focus();
+		}
+	};
+	for (const { label, prompt } of COMMON_PROMPTS) {
+		const item = document.createElement("button");
+		item.type = "button";
+		item.className = "preset-more-item";
+		item.setAttribute("role", "menuitem");
+		item.textContent = label;
+		item.title = prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
+		item.addEventListener("click", (e) => {
+			close();
+			usePrompt(prompt, e);
+		});
+		menu.appendChild(item);
+	}
+	toggle.addEventListener("click", () => {
+		if (!menu.hidden) {
+			close();
+			return;
+		}
+		menu.hidden = false;
+		menu.classList.remove("preset-more-menu-right");
+		if (menu.getBoundingClientRect().right > document.documentElement.clientWidth - 8) menu.classList.add("preset-more-menu-right");
+		toggle.setAttribute("aria-expanded", "true");
+		document.addEventListener("pointerdown", outside, true);
+		document.addEventListener("keydown", escape, true);
+		menu.querySelector("button")?.focus();
+	});
+	wrap.append(toggle, menu);
+	return wrap;
 }
 /** Until this time (ms), the Chat-tab welcome is skipped — see suppressChatWelcome. */
 var _welcomeSuppressedUntil = 0;
@@ -27551,7 +27700,9 @@ async function _sendTurn(text, { silent, noTools }) {
 			messagesEl.scrollTop = messagesEl.scrollHeight;
 		}
 		let assistantMsg = null;
-		if (data.response) assistantMsg = addChatMessage("assistant", data.response);
+		const reply = extractInlineToolCalls(data.response ?? "");
+		for (const call of reply.calls) if (call.name === "set_preset_prompts" && Array.isArray(call.args.prompts)) setPresetPrompts$1(call.args.prompts.filter((p) => typeof p === "string"));
+		if (reply.text) assistantMsg = addChatMessage("assistant", reply.text);
 		const builderTurns = [];
 		if (data.toolCalls && data.toolCalls.length > 0) {
 			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
@@ -27671,7 +27822,7 @@ async function _sendTurn(text, { silent, noTools }) {
 		}
 		chatHistory.push({
 			role: "assistant",
-			text: data.response
+			text: reply.text
 		});
 		for (const said of builderTurns) chatHistory.push({
 			role: "assistant",
@@ -28123,7 +28274,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 };
 async function speakText(text, { explicit = false } = {}) {
 	if (selectedTtsMode === "silent" && !explicit) return;
-	const clean = stripGlossaryMarkers(text).replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
+	const clean = speechText(stripGlossaryMarkers(text));
 	if (!clean) return;
 	const myId = ++ttsRequestId;
 	ttsPausedByUser = false;

@@ -77,7 +77,9 @@ export function createArrayPlaneText(width: number, height: number, color: NonNu
             const w=Math.min(canvas.width,ctx!.measureText(text).width+px*.8),h=Math.min(canvas.height,px*1.35),r=px*.2;
             const x=(canvas.width-w)/2,y=(canvas.height-h)/2;
             ctx!.beginPath();ctx!.moveTo(x+r,y);ctx!.arcTo(x+w,y,x+w,y+h,r);ctx!.arcTo(x+w,y+h,x,y+h,r);ctx!.arcTo(x,y+h,x,y,r);ctx!.arcTo(x,y,x+w,y,r);ctx!.closePath();
-            ctx!.fillStyle='rgba(241, 204, 89, .2)';ctx!.fill();
+            // The theme accent, like the Code panel's tint, so the highlight reads in light and dark themes.
+            const accent=getComputedStyle(document.body).getPropertyValue('--accent-color').trim()||'#f1cc59';
+            ctx!.fillStyle=accent;ctx!.globalAlpha=.28;ctx!.fill();ctx!.globalAlpha=1;
         }
         ctx!.fillStyle=cssColor;ctx!.textAlign='center';ctx!.textBaseline='middle';
         ctx!.fillText(text,canvas.width/2,canvas.height/2);texture.needsUpdate=true;
