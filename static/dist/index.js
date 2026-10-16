@@ -11285,6 +11285,31 @@ function renderStepMarker(el, _view, owner) {
 		label.wireTarget = label.wireTargets[0];
 	}
 	if (connections.some((c) => c.pinned)) label.wirePinned = true;
+	let slide = 0;
+	const slideTo = (target) => {
+		const from = label.cellAttachment?.corners;
+		cancelAnimationFrame(slide);
+		if (!from || from.length !== target.length) {
+			label.cellAttachment = {
+				corners: target,
+				edge: "top",
+				gap: 8
+			};
+			return;
+		}
+		if (from.every((p, i) => p.every((v, k) => v === target[i][k]))) return;
+		const start = performance.now(), duration = 260;
+		const step = (now) => {
+			const t = Math.min(1, (now - start) / duration), e = 1 - (1 - t) ** 3;
+			label.cellAttachment = {
+				corners: from.map((p, i) => p.map((v, k) => v + (target[i][k] - v) * e)),
+				edge: "top",
+				gap: 8
+			};
+			if (t < 1 && !animState.stopped) slide = requestAnimationFrame(step);
+		};
+		slide = requestAnimationFrame(step);
+	};
 	const entry = {
 		animState,
 		exprStrings: sources,
@@ -11315,11 +11340,7 @@ function renderStepMarker(el, _view, owner) {
 					label.annotationOrder = void 0;
 				}
 				label.dataPos = point;
-				if (owner) label.cellAttachment = {
-					corners: owner.corners(indexValue),
-					edge: "top",
-					gap: 8
-				};
+				if (owner) slideTo(owner.corners(indexValue));
 				label.forceHidden = visibleFn ? !evalExpr(visibleFn, 0) : false;
 				const text = textFn ? annotationText(evalExpr(textFn, 0)) : el.text ?? "";
 				const annotation = label.annotation;
