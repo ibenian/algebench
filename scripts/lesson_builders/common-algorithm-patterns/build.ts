@@ -366,7 +366,9 @@ ${MD_TAIL}
     elements: [
         array('temps', 'temps', [-5, 2.2, 0], {
             from: inp('temps'), highlightExpr: `idx == ${tr('i')}`,
-            markers: [marker('i', tr('i')), marker('j', tr('j'), PINK), marker('stack[-1]', tr('top'), BLUE)],
+            // temps[stack[-1]] is what the while condition compares with t: the top day's temperature.
+            markers: [marker('i', tr('i')), marker('j', tr('j'), PINK), marker('stack[-1]', tr('top'), BLUE),
+                { ...marker('temps[stack[-1]]', tr('top'), BLUE), valueExpr: `arrayAt(${inp('temps')}, ${tr('top')})` }],
         }),
         array('answer', 'answer', [-5, -0.8, 0], {
             from: tr('answer'), color: '#b69bea', highlightExpr: `idx == ${tr('j')} and ${tr('line')} == 7`,
@@ -375,7 +377,7 @@ ${MD_TAIL}
         {
             id: 'stack', type: 'stack', itemType: 'number', origin: [6.3, -3.4, 0], cellSize: 1.1, fontSize: 15, showIndices: false,
             lengthExpr: tr('n'), valueExpr: `arrayAt(${tr('stack')}, idx)`, color: BLUE, label: 'stack (days)', containerColor: TEAL,
-            linkTo: { object: 'temps', indexExpr: 'value' },
+            connectTo: [{ object: 'temps', indexExpr: 'value', pinned: true }, { object: 'answer', indexExpr: 'value', color: '#b69bea' }],
         },
         label('i', unset('i'), [-4.5, -3.6, 0], ['temps', tr('i')]),
         label('t', `concat('t = ', ${tr('i')} < 0 ? 'unset' : ${tr('t')})`, [-4.5, -3.6, 0], ['temps', tr('i')]),
@@ -531,7 +533,7 @@ ${MD_TAIL}
             markers: [marker('i', tr('i')), marker('dq[0]', tr('front'), PINK)],
         }),
         // Each deque cell holds an index into nums: link it to the value it names.
-        array('deque', 'deque', [-4.5, -0.2, 0], { from: tr('dq'), color: BLUE, showIndices: false, linkTo: { object: 'nums', indexExpr: 'value' } }),
+        array('deque', 'deque', [-4.5, -0.2, 0], { from: tr('dq'), color: BLUE, showIndices: false, connectTo: { object: 'nums', indexExpr: 'value', pinned: true } }),
         array('out', 'out', [-4.5, -2.4, 0], { from: tr('out'), color: '#b69bea' }),
         // Vars, wired to the cell they name; and each condition as a row that glows on its line and wires to what it reads.
         { ...label('i', unset('i'), [5, -3.9, 0]), connectTo: { object: 'nums', indexExpr: tr('i'), pinned: true } },

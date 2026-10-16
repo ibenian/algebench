@@ -6292,7 +6292,8 @@
               "markers": [
                 {"type": "step_marker", "indexName": "i", "indexExpr": "dataTable('trace', frame, 'i')", "color": "#f1c65b"},
                 {"type": "step_marker", "indexName": "j", "indexExpr": "dataTable('trace', frame, 'j')", "color": "#e67db0"},
-                {"type": "step_marker", "indexName": "stack[-1]", "indexExpr": "dataTable('trace', frame, 'top')", "color": "#9dbde3"}
+                {"type": "step_marker", "indexName": "stack[-1]", "indexExpr": "dataTable('trace', frame, 'top')", "color": "#9dbde3"},
+                {"type": "step_marker", "indexName": "temps[stack[-1]]", "indexExpr": "dataTable('trace', frame, 'top')", "color": "#9dbde3", "valueExpr": "arrayAt(dataTable('input', 0, 'temps'), dataTable('trace', frame, 'top'))"}
               ]
             },
             {
@@ -6327,7 +6328,10 @@
               "color": "#9dbde3",
               "label": "stack (days)",
               "containerColor": "#77bfae",
-              "linkTo": {"object": "temps", "indexExpr": "value"}
+              "connectTo": [
+                {"object": "temps", "indexExpr": "value", "pinned": true},
+                {"object": "answer", "indexExpr": "value", "color": "#b69bea"}
+              ]
             },
             {
               "id": "i",
@@ -7531,7 +7535,7 @@
               "valueExpr": "arrayAt(dataTable('trace', frame, 'dq'), idx)",
               "color": "#9dbde3",
               "showIndices": false,
-              "linkTo": {"object": "nums", "indexExpr": "value"}
+              "connectTo": {"object": "nums", "indexExpr": "value", "pinned": true}
             },
             {
               "id": "out",

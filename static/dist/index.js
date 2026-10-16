@@ -757,7 +757,11 @@ function annotationRows(items) {
 			rows.push(item.text);
 			continue;
 		}
-		const { group, name, value } = item.index;
+		const { group, name, value, shown } = item.index;
+		if (shown !== void 0) {
+			rows.push(`${name} = ${shown}`);
+			continue;
+		}
 		const key = JSON.stringify([group, value]);
 		const existing = indexes.get(key);
 		if (existing) {
@@ -1767,27 +1771,23 @@ function placeCallouts() {
 //#endregion
 //#region src/cell-links.ts
 /**
-* Array cell links: a curve from each cell of one array to the cell of another object it names,
-* e.g. a deque of indices to the values in `nums`. The owning array evaluates the pairs on state
-* changes (setCellLinks); this module only projects and paints them, each frame, beside label wires.
-* Like a label's wire, each set has a pin toggle (beside the source array's last linked cell): pinned
-* links always show; unpinned ones show only while the toggle is hovered.
+* Array cell links (an array's connectTo): a curve from each cell to the cell of another object it names,
+* e.g. a deque of indices to the values in `nums`. An array may connect to several objects; each target is
+* one link group with its own colour. The owning array evaluates the pairs on state changes (setCellLinks);
+* this module only projects and paints them, each frame, beside label wires. Like a label's wire, each array
+* has one pin toggle (beside its last linked cell) for all its groups: pinned links always show; unpinned
+* ones show only while the toggle is hovered.
 */
 var sets = /* @__PURE__ */ new Map();
-/** Replace the links drawn from array `from`: each pair is [source cell, target cell in `to`]. */
-function setCellLinks(from, to, pairs, color) {
+/** Replace the links drawn from array `from`. `pinned` sets the toggle's first state only; the reader owns it after. */
+function setCellLinks(from, groups, pinned) {
 	const set = sets.get(from);
-	if (set) {
-		set.to = to;
-		set.pairs = pairs;
-		set.color = color;
-	} else sets.set(from, {
-		to,
-		pairs,
-		color,
+	if (set) set.groups = groups;
+	else sets.set(from, {
+		groups,
 		svg: null,
 		drawn: "",
-		pinned: true,
+		pinned,
 		hovered: false,
 		toggle: null
 	});
@@ -1814,8 +1814,8 @@ function paintCellLinks() {
 		};
 		const paths = [];
 		let toggleAt = null, last = -1;
-		for (const [i, j] of set.pairs) {
-			const a = objectCellAnchor(from, i), b = objectCellAnchor(set.to, j);
+		for (const group of set.groups) for (const [i, j] of group.pairs) {
+			const a = objectCellAnchor(from, i), b = objectCellAnchor(group.to, j);
 			if (!a || !b) continue;
 			const ac = a.corners.map(screen), bc = b.corners.map(screen);
 			if ([...ac, ...bc].some((p) => p.z < -1 || p.z > 1)) continue;
@@ -1833,11 +1833,14 @@ function paintCellLinks() {
 			const am = mid(ac), bm = mid(bc);
 			const start = a.vertical ? cellEdgeAnchor(ac, bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
 			const end = b.vertical ? cellEdgeAnchor(bc, am.x < bm.x ? "left" : "right", 2) : cellEdgeAnchor(bc, am.y < bm.y ? "top" : "bottom", am.y > bm.y ? 14 : 2);
-			paths.push(cellLinkPath(start, end, a.vertical ? "h" : "v", b.vertical ? "h" : "v"));
+			paths.push({
+				d: cellLinkPath(start, end, a.vertical ? "h" : "v", b.vertical ? "h" : "v"),
+				color: group.color
+			});
 		}
 		paintToggle(set, container, toggleAt);
 		const shown = set.pinned || set.hovered;
-		const drawn = JSON.stringify([shown ? paths : [], set.color]);
+		const drawn = JSON.stringify(shown ? paths : []);
 		if (!set.svg?.isConnected) {
 			const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 			svg.classList.add("cell-link-layer");
@@ -1857,11 +1860,11 @@ function paintCellLinks() {
 		}
 		if (drawn === set.drawn) continue;
 		set.drawn = drawn;
-		set.svg.replaceChildren(...(shown ? paths : []).map((d) => {
+		set.svg.replaceChildren(...(shown ? paths : []).map(({ d, color }) => {
 			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 			path.setAttribute("d", d);
 			path.setAttribute("fill", "none");
-			path.setAttribute("stroke", set.color);
+			path.setAttribute("stroke", color);
 			path.setAttribute("stroke-opacity", ".6");
 			path.setAttribute("stroke-width", "1.4");
 			path.setAttribute("stroke-linecap", "round");
@@ -11304,6 +11307,7 @@ function renderStepMarker(el, _view, owner) {
 		...el.textExpr ? [el.textExpr] : [],
 		...el.visibleExpr ? [el.visibleExpr] : [],
 		...el.indexExpr ? [el.indexExpr] : [],
+		...marker && el.valueExpr ? [el.valueExpr] : [],
 		...!marker && el.highlightExpr ? [el.highlightExpr] : [],
 		...!marker && el.tooltipExpr ? [el.tooltipExpr] : [],
 		...codeRef?.lineExpr ? [codeRef.lineExpr] : [],
@@ -11314,6 +11318,7 @@ function renderStepMarker(el, _view, owner) {
 	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
 	const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
 	const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
+	const shownFn = marker && el.valueExpr ? compileExpr(el.valueExpr) : null;
 	const highlightFn = !marker && el.highlightExpr ? compileExpr(el.highlightExpr) : null;
 	const tooltipFn = !marker && el.tooltipExpr ? compileExpr(el.tooltipExpr) : null;
 	const animState = owner?.animState ?? { stopped: false };
@@ -11429,9 +11434,10 @@ function renderStepMarker(el, _view, owner) {
 						name: el.indexName,
 						value
 					};
+					if (shownFn) annotation.index.shown = annotationText(evalExpr(shownFn, 0));
 				}
 				const previous = annotation.text;
-				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
+				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.shown ?? annotation.index.value}` : text;
 				if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn, 0);
 				if (tooltipFn) try {
 					annotation.tooltip = String(evalExpr(tooltipFn, 0));
@@ -12003,7 +12009,11 @@ function renderArray(el, _view, decorate) {
 		previous.length = 0;
 		updateTitle();
 	}
-	const linkFn = el.linkTo && el.id ? compileExpr(el.linkTo.indexExpr) : null;
+	const connections = !el.id || !el.connectTo ? [] : (Array.isArray(el.connectTo) ? el.connectTo : [el.connectTo]).flatMap((c) => "object" in c && c.indexExpr ? [{
+		...c,
+		indexExpr: c.indexExpr,
+		fn: compileExpr(c.indexExpr)
+	}] : []);
 	const entry = {
 		animState,
 		exprStrings: [
@@ -12011,7 +12021,7 @@ function renderArray(el, _view, decorate) {
 			el.valueExpr,
 			el.highlightExpr,
 			el.colorExpr,
-			el.linkTo?.indexExpr,
+			...connections.map((c) => c.indexExpr),
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
 		_rebuildFn: () => {
@@ -12044,19 +12054,23 @@ function renderArray(el, _view, decorate) {
 			}
 			updateTitle();
 			decoration?.resize(next);
-			if (linkFn) {
+			if (connections.length) setCellLinks(el.id, connections.map((c) => {
 				const pairs = [];
 				cells.forEach(({ cell }, i) => {
 					try {
-						const j = Number(evalExpr(linkFn, 0, { overrideScope: {
+						const j = Number(evalExpr(c.fn, 0, { overrideScope: {
 							idx: i,
 							value: cell.value
 						} }));
 						if (Number.isInteger(j) && j >= 0) pairs.push([i, j]);
 					} catch {}
 				});
-				setCellLinks(el.id, el.linkTo.object, pairs, el.linkTo.color ? colorToCSS(el.linkTo.color) : "#9dbde3");
-			}
+				return {
+					to: c.object,
+					pairs,
+					color: c.color ? colorToCSS(c.color) : "#9dbde3"
+				};
+			}), connections.some((c) => c.pinned));
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {

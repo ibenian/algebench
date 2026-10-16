@@ -573,17 +573,6 @@
           "type": "string",
           "description": "TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0-1), same scope and default as 'widthExpr'. Width and height are independent, so \"heightExpr\": \"value\" alone turns a row of cells into a bar chart sitting on its lattice."
         },
-        "linkTo": {
-          "type": "object",
-          "description": "ARRAY / STACK (needs an id). Draw a link from each cell to the cell of another object it names, e.g. a deque of indices to the values they index. indexExpr is evaluated per cell with 'idx' and 'value' bound; a cell whose index is not a valid cell draws no link. Links follow state changes and vanish with either object.",
-          "properties": {
-            "object": { "type": "string", "minLength": 1, "description": "Id of the array or stack the cells point into." },
-            "indexExpr": { "type": "string", "minLength": 1, "description": "Target cell index for this cell, e.g. 'value' when the cell holds an index." },
-            "color": { "$ref": "#/$defs/color" }
-          },
-          "required": ["object", "indexExpr"],
-          "additionalProperties": false
-        },
         "labelSide": {
           "type": "string",
           "enum": ["top", "left"],
@@ -1512,7 +1501,7 @@
           "description": "EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\\text{total}'): their contents are kept literally. Evaluated on state changes."
         },
         "connectTo": {
-          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire.",
+          "description": "EXPRESSION_LABEL: show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire. ARRAY / STACK (needs an id): link each cell to the cell of another array it names, e.g. a deque of indices to the values they index. Each target needs object and indexExpr, evaluated per cell with 'idx' and 'value' bound; a cell whose index is not a valid cell draws no link. A list links the cells to several arrays, each in its own colour. One toggle pins all of an array's links; `pinned` on any target shows them from the start.",
           "oneOf": [
             { "$ref": "#/$defs/connectTarget" },
             { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/connectTarget" } }
@@ -2945,7 +2934,7 @@
     },
     "connectTarget": {
       "title": "ConnectTarget",
-      "description": "One wire target for an expression label: an object (optionally one array cell), or a data-space position.",
+      "description": "One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr).",
       "oneOf": [
             {
               "type": "object",
@@ -2965,6 +2954,10 @@
                   "type": "boolean",
                   "default": false,
                   "description": "Show the wire without hovering. The reader can still unpin it."
+                },
+                "color": {
+                  "$ref": "#/$defs/color",
+                  "description": "ARRAY / STACK cell links only: this target's link colour (default light blue)."
                 }
               },
               "additionalProperties": false
@@ -3169,6 +3162,11 @@
           "type": "string",
           "minLength": 1,
           "description": "STEP_MARKER: expression yielding a nonnegative integer index."
+        },
+        "valueExpr": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional: what the badge shows after 'indexName =' instead of the index, e.g. the value at that cell (\"temps[stack[-1]] = 74\"). The index still places the marker; a value marker gets its own row rather than merging names with markers on the same cell."
         },
         "color": {
           "$ref": "#/$defs/color",

@@ -1,9 +1,10 @@
 /**
- * Array cell links: a curve from each cell of one array to the cell of another object it names,
- * e.g. a deque of indices to the values in `nums`. The owning array evaluates the pairs on state
- * changes (setCellLinks); this module only projects and paints them, each frame, beside label wires.
- * Like a label's wire, each set has a pin toggle (beside the source array's last linked cell): pinned
- * links always show; unpinned ones show only while the toggle is hovered.
+ * Array cell links (an array's connectTo): a curve from each cell to the cell of another object it names,
+ * e.g. a deque of indices to the values in `nums`. An array may connect to several objects; each target is
+ * one link group with its own colour. The owning array evaluates the pairs on state changes (setCellLinks);
+ * this module only projects and paints them, each frame, beside label wires. Like a label's wire, each array
+ * has one pin toggle (beside its last linked cell) for all its groups: pinned links always show; unpinned
+ * ones show only while the toggle is hovered.
  */
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
@@ -11,14 +12,16 @@ import { objectCellAnchor } from '/object-anchor.js';
 import { cellEdgeAnchor } from '/cell-attachment.js';
 import { cellLinkPath } from '/label-wire-path.js';
 
-interface LinkSet { to: string; pairs: [number, number][]; color: string; svg: SVGSVGElement | null; drawn: string; pinned: boolean; hovered: boolean; toggle: HTMLButtonElement | null }
+/** One link group: every pair is [source cell, target cell in `to`]. */
+export interface CellLinkGroup { to: string; pairs: [number, number][]; color: string }
+interface LinkSet { groups: CellLinkGroup[]; svg: SVGSVGElement | null; drawn: string; pinned: boolean; hovered: boolean; toggle: HTMLButtonElement | null }
 const sets = new Map<string, LinkSet>();
 
-/** Replace the links drawn from array `from`: each pair is [source cell, target cell in `to`]. */
-export function setCellLinks(from: string, to: string, pairs: [number, number][], color: string): void {
+/** Replace the links drawn from array `from`. `pinned` sets the toggle's first state only; the reader owns it after. */
+export function setCellLinks(from: string, groups: CellLinkGroup[], pinned: boolean): void {
     const set = sets.get(from);
-    if (set) { set.to = to; set.pairs = pairs; set.color = color; }
-    else sets.set(from, { to, pairs, color, svg: null, drawn: '', pinned: true, hovered: false, toggle: null });
+    if (set) set.groups = groups;
+    else sets.set(from, { groups, svg: null, drawn: '', pinned, hovered: false, toggle: null });
 }
 
 /** Paint every link set; a set whose array left the scene is removed with its SVG. */
@@ -32,10 +35,10 @@ export function paintCellLinks(): void {
             const v = new THREE.Vector3(...dataToWorld(p as [number, number, number])).project(camera);
             return { x: viewport.left - rect.left + (v.x * .5 + .5) * viewport.width, y: viewport.top - rect.top + (-v.y * .5 + .5) * viewport.height, z: v.z };
         };
-        const paths: string[] = [];
+        const paths: {d: string; color: string}[] = [];
         let toggleAt: {x: number; y: number} | null = null, last = -1;
-        for (const [i, j] of set.pairs) {
-            const a = objectCellAnchor(from, i), b = objectCellAnchor(set.to, j);
+        for (const group of set.groups) for (const [i, j] of group.pairs) {
+            const a = objectCellAnchor(from, i), b = objectCellAnchor(group.to, j);
             if (!a || !b) continue;   // hidden array or out-of-range cell: no link
             const ac = a.corners.map(screen), bc = b.corners.map(screen);
             if ([...ac, ...bc].some(p => p.z < -1 || p.z > 1)) continue;
@@ -46,11 +49,11 @@ export function paintCellLinks(): void {
             // so a stack's link never runs up through the cells above it. A row's end clears its index tag.
             const start = a.vertical ? cellEdgeAnchor(ac, bm.x < am.x ? 'left' : 'right', 2) : cellEdgeAnchor(ac, bm.y < am.y ? 'top' : 'bottom', 2);
             const end = b.vertical ? cellEdgeAnchor(bc, am.x < bm.x ? 'left' : 'right', 2) : cellEdgeAnchor(bc, am.y < bm.y ? 'top' : 'bottom', am.y > bm.y ? 14 : 2);
-            paths.push(cellLinkPath(start, end, a.vertical ? 'h' : 'v', b.vertical ? 'h' : 'v'));
+            paths.push({ d: cellLinkPath(start, end, a.vertical ? 'h' : 'v', b.vertical ? 'h' : 'v'), color: group.color });
         }
         paintToggle(set, container, toggleAt);
         const shown = set.pinned || set.hovered;
-        const drawn = JSON.stringify([shown ? paths : [], set.color]);
+        const drawn = JSON.stringify(shown ? paths : []);
         if (!set.svg?.isConnected) {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.classList.add('cell-link-layer'); svg.setAttribute('aria-hidden', 'true');
@@ -59,9 +62,9 @@ export function paintCellLinks(): void {
         }
         if (drawn === set.drawn) continue;
         set.drawn = drawn;
-        set.svg!.replaceChildren(...(shown ? paths : []).map(d => {
+        set.svg!.replaceChildren(...(shown ? paths : []).map(({d, color}) => {
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', set.color);
+            path.setAttribute('d', d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', color);
             path.setAttribute('stroke-opacity', '.6'); path.setAttribute('stroke-width', '1.4'); path.setAttribute('stroke-linecap', 'round');
             return path;
         }));

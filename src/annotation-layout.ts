@@ -7,7 +7,8 @@ export function annotationDragPosition(x:number,y:number,width:number,height:num
 }
 export interface AnnotationValue {
     text: string;
-    index?: { group: string; name: string; value: number };
+    /** `shown`: the marker's own value text (valueExpr), displayed in place of the index on its own row. */
+    index?: { group: string; name: string; value: number; shown?: string };
 }
 export interface AnnotationBox extends AnnotationValue {
     x: number; y: number; width: number; height: number;
@@ -28,7 +29,9 @@ export function annotationRows(items: AnnotationValue[]): string[] {
     const indexes = new Map<string, { row: number; names: string[]; value: number }>();
     for (const item of items) {
         if (!item.index) { rows.push(item.text); continue; }
-        const {group, name, value} = item.index;
+        const {group, name, value, shown} = item.index;
+        // A marker that shows a value never merges its name into the index row: it is a different quantity.
+        if (shown !== undefined) { rows.push(`${name} = ${shown}`); continue; }
         const key = JSON.stringify([group, value]);
         const existing = indexes.get(key);
         if (existing) {

@@ -235,9 +235,10 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         previous.length=0;
         updateTitle();
     }
-    // linkTo: each cell links to the cell of another object it names (indexExpr with idx and value bound).
-    const linkFn=el.linkTo&&el.id?compileExpr(el.linkTo.indexExpr):null;
-    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,el.linkTo?.indexExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
+    // connectTo: each cell links to the cell of another object it names (indexExpr with idx and value bound),
+    // one link group per target. Only cell targets apply to an array; the schema rejects the others.
+    const connections=!el.id||!el.connectTo?[]:(Array.isArray(el.connectTo)?el.connectTo:[el.connectTo]).flatMap(c=>'object' in c&&c.indexExpr?[{...c,indexExpr:c.indexExpr,fn:compileExpr(c.indexExpr)}]:[]);
+    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,...connections.map(c=>c.indexExpr),...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
         // Hidden lesson steps must not advance the last-visible comparison baseline.
         if(animState.stopped||animState.hiddenByRemove)return;
         const next=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):n;
@@ -257,12 +258,14 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         }
         updateTitle();
         decoration?.resize(next);
-        if(linkFn){
-            const pairs:[number,number][]=[];
-            cells.forEach(({cell},i)=>{
-                try{const j=Number(evalExpr(linkFn,0,{overrideScope:{idx:i,value:cell.value}}));if(Number.isInteger(j)&&j>=0)pairs.push([i,j]);}catch{/* no link for this cell */}
-            });
-            setCellLinks(el.id!,el.linkTo!.object,pairs,el.linkTo!.color?colorToCSS(el.linkTo!.color):'#9dbde3');
+        if(connections.length){
+            setCellLinks(el.id!,connections.map(c=>{
+                const pairs:[number,number][]=[];
+                cells.forEach(({cell},i)=>{
+                    try{const j=Number(evalExpr(c.fn,0,{overrideScope:{idx:i,value:cell.value}}));if(Number.isInteger(j)&&j>=0)pairs.push([i,j]);}catch{/* no link for this cell */}
+                });
+                return {to:c.object,pairs,color:c.color?colorToCSS(c.color):'#9dbde3'};
+            }),connections.some(c=>c.pinned));
         }
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;

@@ -234,20 +234,6 @@ export type Element = {
    */
   heightExpr?: string;
   /**
-   * ARRAY / STACK (needs an id). Draw a link from each cell to the cell of another object it names, e.g. a deque of indices to the values they index. indexExpr is evaluated per cell with 'idx' and 'value' bound; a cell whose index is not a valid cell draws no link. Links follow state changes and vanish with either object.
-   */
-  linkTo?: {
-    /**
-     * Id of the array or stack the cells point into.
-     */
-    object: string;
-    /**
-     * Target cell index for this cell, e.g. 'value' when the cell holds an index.
-     */
-    indexExpr: string;
-    color?: Color;
-  };
-  /**
    * ARRAY / STACK (horizontal). Where the array's own label sits. 'top' (default) centres it above the cells; 'left' places it just left of cell 0, right-aligned, so it names the row, stays put as the array grows, and lines up with the labels of rows stacked above or below. With axisLabels 'plane' it is drawn on the array's face.
    */
   labelSide?: 'top' | 'left';
@@ -950,7 +936,7 @@ export type Element = {
    */
   tooltipExpr?: string;
   /**
-   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire.
+   * EXPRESSION_LABEL: show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire. ARRAY / STACK (needs an id): link each cell to the cell of another array it names, e.g. a deque of indices to the values they index. Each target needs object and indexExpr, evaluated per cell with 'idx' and 'value' bound; a cell whose index is not a valid cell draws no link. A list links the cells to several arrays, each in its own colour. One toggle pins all of an array's links; `pinned` on any target shows them from the start.
    */
   connectTo?: ConnectTarget | [ConnectTarget, ...ConnectTarget[]];
   /**
@@ -1102,7 +1088,7 @@ export type Vec3Number9 = [number, number, number];
  */
 export type Vec3Number10 = [number, number, number];
 /**
- * One wire target for an expression label: an object (optionally one array cell), or a data-space position.
+ * One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr).
  */
 export type ConnectTarget =
   | {
@@ -1115,6 +1101,10 @@ export type ConnectTarget =
        * Show the wire without hovering. The reader can still unpin it.
        */
       pinned?: boolean;
+      /**
+       * ARRAY / STACK cell links only: this target's link colour (default light blue).
+       */
+      color?: Color;
     }
   | {
       /**
@@ -1828,6 +1818,10 @@ export interface ArrayMarker {
    * STEP_MARKER: expression yielding a nonnegative integer index.
    */
   indexExpr: string;
+  /**
+   * Optional: what the badge shows after 'indexName =' instead of the index, e.g. the value at that cell ("temps[stack[-1]] = 74"). The index still places the marker; a value marker gets its own row rather than merging names with markers on the same cell.
+   */
+  valueExpr?: string;
   /**
    * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */

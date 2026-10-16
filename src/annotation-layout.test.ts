@@ -86,3 +86,8 @@ test('a label row asks about what it shows: its text, formula and author note, w
     assert.equal(labelAskMessage({text:'k = 3'}), 'Explain: k = 3', 'optional parts are left out');
     assert.doesNotMatch(full, /Scalar variables|Current scene|lesson step/);
 });
+
+test('a value marker shows its value on its own row, never merged into the index row', () => {
+    const at = (name: string, shown?: string) => ({text:'', index:{group:'temps', name, value:2, ...(shown !== undefined ? {shown} : {})}});
+    assert.deepEqual(annotationRows([at('stack[-1]'), at('temps[stack[-1]]', '75'), at('j')]), ['stack[-1] = j = 2', 'temps[stack[-1]] = 75']);
+});

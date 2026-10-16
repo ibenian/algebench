@@ -28,11 +28,13 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
         : {kind:'object' as const, object:c.object, index:c.indexExpr ? compileExpr(c.indexExpr) : null});
     const targetSources = connections.flatMap(c => 'positionExpr' in c ? c.positionExpr : c.indexExpr ? [c.indexExpr] : []);
     const position = owner ? [] : el.positionExpr ?? (el.position ?? [0,0,0]).map(String);
-    const sources = [...position, ...(el.textExpr ? [el.textExpr] : []), ...(el.visibleExpr ? [el.visibleExpr] : []), ...(el.indexExpr ? [el.indexExpr] : []), ...(!marker && el.highlightExpr ? [el.highlightExpr] : []), ...(!marker && el.tooltipExpr ? [el.tooltipExpr] : []), ...(codeRef?.lineExpr ? [codeRef.lineExpr] : []), ...(codeRef?.fileExpr ? [codeRef.fileExpr] : []), ...targetSources];
+    const sources = [...position, ...(el.textExpr ? [el.textExpr] : []), ...(el.visibleExpr ? [el.visibleExpr] : []), ...(el.indexExpr ? [el.indexExpr] : []), ...(marker && el.valueExpr ? [el.valueExpr] : []), ...(!marker && el.highlightExpr ? [el.highlightExpr] : []), ...(!marker && el.tooltipExpr ? [el.tooltipExpr] : []), ...(codeRef?.lineExpr ? [codeRef.lineExpr] : []), ...(codeRef?.fileExpr ? [codeRef.fileExpr] : []), ...targetSources];
     const positionFns = position.map(source => compileExpr(source));
     const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
     const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
     const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
+    // An index marker's valueExpr: what the badge reads after `name =`, e.g. the value at that cell. The index still places it.
+    const shownFn = marker && el.valueExpr ? compileExpr(el.valueExpr) : null;
     const highlightFn = !marker && el.highlightExpr ? compileExpr(el.highlightExpr) : null;
     const tooltipFn = !marker && el.tooltipExpr ? compileExpr(el.tooltipExpr) : null;
     const animState = owner?.animState ?? {stopped:false};
@@ -107,9 +109,10 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
                 const value = indexValue!; // Evaluated above when indexFn is present.
                 if (!Number.isInteger(value) || value < 0) throw new Error('Invalid index');
                 annotation.index = {group:owner?.group ?? el.indexGroup!, name:el.indexName, value};
+                if (shownFn) annotation.index.shown = annotationText(evalExpr(shownFn,0));
             }
             const previous = annotation.text;
-            annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
+            annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.shown ?? annotation.index.value}` : text;
             if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn,0);
             if (tooltipFn) { try { annotation.tooltip = String(evalExpr(tooltipFn,0)); } catch { annotation.tooltip = ''; } }
             if (codeRef) {
