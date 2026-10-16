@@ -1,25 +1,27 @@
 """Regenerate scenes/draft/common-algorithm-patterns.json from its TypeScript generator.
 
-The traces live in src/algorithms/common-algorithm-patterns.ts; the generator prints the
+The traces live in algorithms.ts beside this file; the generator prints the
 lesson JSON and this wrapper writes it in the repo's compact-leaves format.
 
-Usage: ./run.sh scripts/build_common_algorithm_patterns_lesson.py
+Usage: ./run.sh scripts/lesson_builders/common-algorithm-patterns/build.py
 """
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
-from _json_format import dumps_compact_leaves
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "scripts"))
+from _json_format import dumps_compact_leaves  # noqa: E402  (the shared formatter lives in scripts/)
 
-ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "scenes" / "draft" / "common-algorithm-patterns.json"
 
 
 def main():
     raw = subprocess.run(
         ["node", "--experimental-strip-types", "--no-warnings", "--import", "./scripts/register-test-resolver.mjs",
-         "scripts/build-common-algorithm-patterns-lesson.ts"],
+         "scripts/lesson_builders/common-algorithm-patterns/build.ts"],
         cwd=ROOT, check=True, capture_output=True, text=True,
     ).stdout
     lesson = json.loads(raw)

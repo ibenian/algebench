@@ -101,13 +101,14 @@ export function annotationContainerTitle(rows: string[]): 'Vars' | 'Labels' {
     }) ? 'Vars' : 'Labels';
 }
 
-/** The tutor question behind a label row's Ask-AI button: the value as shown, how it was computed, and where the lesson is. */
-export function labelAskMessage(o: {text: string; tooltip?: string; prompt?: string | null; scene?: string; step?: number; sliders?: Record<string, number>}): string {
-    const lines = [`Explain this value shown in the scene: ${o.text}`];
-    if (o.tooltip) lines.push(`How it is computed: $${o.tooltip}$`);
-    if (o.prompt) lines.push(`About this label: ${o.prompt}`);
-    if (o.scene) lines.push(`Current scene: ${o.scene}`);
-    if (o.step !== undefined) lines.push(`Current lesson step: ${o.step + 1}`);
-    if (o.sliders && Object.keys(o.sliders).length) lines.push(`Scalar variables: ${JSON.stringify(o.sliders)}`);
+/**
+ * The question a label row's Ask-AI button posts as the learner's message: the row as shown, how it was
+ * computed, and the author's note. The scene, step and slider values reach the tutor with every message
+ * already, so repeating them here would only clutter the question the learner sees.
+ */
+export function labelAskMessage(o: {text: string; tooltip?: string; prompt?: string | null}): string {
+    const lines = [`Explain: ${o.text}`];
+    if (o.tooltip) lines.push(`Computed as $${o.tooltip}$`);
+    if (o.prompt) lines.push(o.prompt);
     return lines.join('\n');
 }

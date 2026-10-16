@@ -632,11 +632,8 @@ function groupAnnotations(scale: number): void {
                     wireRowHover(row,labels[group[rowIndex]!]!);
                     wireRowTooltip(row,labels[group[rowIndex]!]!);
                     const member = labels[group[rowIndex]!]!;
-                    const ask = makeAiAskButton('ai-ask-btn annotation-ask-btn', 'Ask AI about this value', () => {
-                        const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
-                        const sliders = Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v]) => v.kind !== 'tensor').map(([k,v]) => [k, v.value as number]));
-                        return labelAskMessage({text: member.annotation!.text, tooltip: member.annotation!.tooltip, prompt: member.annotation!.prompt, scene: scene?.title, step: state.currentStepIndex, sliders});
-                    });
+                    const ask = makeAiAskButton('ai-ask-btn annotation-ask-btn', 'Ask AI about this', () =>
+                        labelAskMessage({text: member.annotation!.text, tooltip: member.annotation!.tooltip, prompt: member.annotation!.prompt}));
                     // The row starts a drag on pointerdown; the button must not.
                     ask.addEventListener('pointerdown', event => event.stopPropagation());
                     // Row buttons float right, so the first appended sits rightmost: </> goes in before

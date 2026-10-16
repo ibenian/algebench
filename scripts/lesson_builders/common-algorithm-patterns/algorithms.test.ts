@@ -3,15 +3,15 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
-import {arrayAt,arrayCount} from '../array-operations.js';
+import {arrayAt,arrayCount} from '../../../src/array-operations.js';
 import {
     prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
     PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,
-} from './common-algorithm-patterns.js';
-import type {Frame} from './common-algorithm-patterns.js';
-import {PATTERN_INPUTS as IN} from './common-algorithm-pattern-inputs.js';
+} from './algorithms.js';
+import type {Frame} from './algorithms.js';
+import {PATTERN_INPUTS as IN} from './inputs.js';
 
 // expr.ts reads the browser's math.js global at import time.
 const g=globalThis as unknown as {math:typeof mathjs;window:typeof globalThis};
@@ -179,7 +179,7 @@ test('every trace frame has the same keys and ends Done',()=>{
 });
 
 test('draft lesson is in sync with the traces and every bound expression evaluates',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  const expected:Record<string,[string,Frame[]]>={
   'prefix-sum':[PREFIX_SOURCE,prefixSumTrace(IN.prefix.nums,IN.prefix.queries)],
   'two-pointers':[TWO_POINTERS_SOURCE,twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target)],
@@ -229,7 +229,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
 });
 
 test('no lesson expression reads as native JavaScript, so the lesson never asks for trust',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  const flagged:string[]=[];
  const walk=(v:unknown,key:string)=>{
   if(typeof v==='string'){if((key.endsWith('Expr')||key==='content')&&_JS_ONLY_RE.test(v))flagged.push(`${key}: ${v}`);}
@@ -241,7 +241,7 @@ test('no lesson expression reads as native JavaScript, so the lesson never asks 
 });
 
 test('every pattern scene states its problem first: as the step-0 caption and at the top of its doc',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  for(const scene of lesson.scenes.slice(1)){
   const [heading,,problem]=scene.markdown.split('\n');
   assert.equal(heading,`# ${scene.title}`,scene.id);
@@ -251,7 +251,7 @@ test('every pattern scene states its problem first: as the step-0 caption and at
 });
 
 test('every label tooltip reads a recorded tip column of well-formed LaTeX',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  let tips=0;
  for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
   for(const el of scene.steps[0].add.filter((e:{tooltipExpr?:string})=>e.tooltipExpr)){
@@ -271,7 +271,7 @@ test('every label tooltip reads a recorded tip column of well-formed LaTeX',()=>
 });
 
 test('label code links resolve to a real line, the one that last assigned the value',()=>{
- const lesson=JSON.parse(readFileSync(new URL('../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
+ const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  let links=0;
  for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
   const file=lesson.codeFiles.find((f:{id:string})=>f.id===scene.codeRef.file),lines=file.source.split('\n').length;

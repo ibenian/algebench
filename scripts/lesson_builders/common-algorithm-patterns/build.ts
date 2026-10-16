@@ -1,21 +1,21 @@
 // Builds scenes/draft/common-algorithm-patterns.json from the display-only sources and
-// execution traces in src/algorithms/common-algorithm-patterns.ts. Prints JSON to stdout;
-// scripts/build_common_algorithm_patterns_lesson.py formats and writes it.
+// execution traces in algorithms.ts (beside this file). Prints JSON to stdout;
+// build.py (beside this file) formats and writes it.
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
     mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
-} from '../src/algorithms/common-algorithm-patterns.js';
-import type { Frame } from '../src/algorithms/common-algorithm-patterns.js';
-import { PATTERN_INPUTS as IN } from '../src/algorithms/common-algorithm-pattern-inputs.js';
+} from './algorithms.js';
+import type { Frame } from './algorithms.js';
+import { PATTERN_INPUTS as IN } from './inputs.js';
 
 type Json = Record<string, unknown>;
 /**
  * How every array draws its cell text, index tags and title: 'screen' labels face the camera; 'plane'
  * draws them on the array's face, so they tilt, scale and occlude with it. One switch for the lesson:
- * plane by default; ARRAY_TEXT=screen ./run.sh scripts/build_common_algorithm_patterns_lesson.py builds the other.
+ * plane by default; ARRAY_TEXT=screen ./run.sh scripts/lesson_builders/common-algorithm-patterns/build.py builds the other.
  */
 const ARRAY_TEXT: 'screen' | 'plane' = (process.env.ARRAY_TEXT === 'screen' ? 'screen' : 'plane');
 const tr = (col: string) => `dataTable('trace', frame, '${col}')`;

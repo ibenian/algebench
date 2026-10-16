@@ -1,4 +1,4 @@
-/** Example inputs for the common-algorithm-patterns draft, shared by its generator and its tests. */
+/** Example inputs for the common-algorithm-patterns lesson, shared by its generator and its tests. */
 export const PATTERN_INPUTS = {
     prefix: { nums: [3, 1, 4, 1, 5, 9, 2, 6], queries: [[2, 5], [0, 3]] as [number, number][] },
     twoPointers: { nums: [2, 3, 5, 7, 8, 11, 13, 17], target: 18 },

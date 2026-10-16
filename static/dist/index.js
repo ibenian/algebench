@@ -841,14 +841,15 @@ function annotationContainerTitle(rows) {
 		return parts.length > 1 && parts.every((part) => part.trim().length > 0);
 	}) ? "Vars" : "Labels";
 }
-/** The tutor question behind a label row's Ask-AI button: the value as shown, how it was computed, and where the lesson is. */
+/**
+* The question a label row's Ask-AI button posts as the learner's message: the row as shown, how it was
+* computed, and the author's note. The scene, step and slider values reach the tutor with every message
+* already, so repeating them here would only clutter the question the learner sees.
+*/
 function labelAskMessage(o) {
-	const lines = [`Explain this value shown in the scene: ${o.text}`];
-	if (o.tooltip) lines.push(`How it is computed: $${o.tooltip}$`);
-	if (o.prompt) lines.push(`About this label: ${o.prompt}`);
-	if (o.scene) lines.push(`Current scene: ${o.scene}`);
-	if (o.step !== void 0) lines.push(`Current lesson step: ${o.step + 1}`);
-	if (o.sliders && Object.keys(o.sliders).length) lines.push(`Scalar variables: ${JSON.stringify(o.sliders)}`);
+	const lines = [`Explain: ${o.text}`];
+	if (o.tooltip) lines.push(`Computed as $${o.tooltip}$`);
+	if (o.prompt) lines.push(o.prompt);
 	return lines.join("\n");
 }
 //#endregion
@@ -2665,18 +2666,11 @@ function groupAnnotations(scale) {
 					wireRowHover(row, labels[group[rowIndex]]);
 					wireRowTooltip(row, labels[group[rowIndex]]);
 					const member = labels[group[rowIndex]];
-					const ask = makeAiAskButton("ai-ask-btn annotation-ask-btn", "Ask AI about this value", () => {
-						const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
-						const sliders = Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value]));
-						return labelAskMessage({
-							text: member.annotation.text,
-							tooltip: member.annotation.tooltip,
-							prompt: member.annotation.prompt,
-							scene: scene?.title,
-							step: state.currentStepIndex,
-							sliders
-						});
-					});
+					const ask = makeAiAskButton("ai-ask-btn annotation-ask-btn", "Ask AI about this", () => labelAskMessage({
+						text: member.annotation.text,
+						tooltip: member.annotation.tooltip,
+						prompt: member.annotation.prompt
+					}));
 					ask.addEventListener("pointerdown", (event) => event.stopPropagation());
 					const code = member.annotation.code;
 					if (code) {

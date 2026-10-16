@@ -80,8 +80,9 @@ test('overlapping marker badges climb into separate tiers, clear ones stay put',
     assert.deepEqual(markerLifts([box(30), box(0)]), [29, 0], 'placement runs left to right regardless of input order');
 });
 
-test('a label row asks the tutor about its value, formula, author prompt and lesson position', () => {
-    const full = labelAskMessage({text:'total = 18', tooltip:'\\text{total} = 5 + 13', prompt:'The pair sum.', scene:'Two pointers', step:1, sliders:{frame:19}});
-    assert.equal(full, 'Explain this value shown in the scene: total = 18\nHow it is computed: $\\text{total} = 5 + 13$\nAbout this label: The pair sum.\nCurrent scene: Two pointers\nCurrent lesson step: 2\nScalar variables: {"frame":19}');
-    assert.equal(labelAskMessage({text:'k = 3'}), 'Explain this value shown in the scene: k = 3', 'optional parts are left out');
+test('a label row asks about what it shows: its text, formula and author note, without plumbing', () => {
+    const full = labelAskMessage({text:'total = 18', tooltip:'\\text{total} = 5 + 13', prompt:'The pair sum.'});
+    assert.equal(full, 'Explain: total = 18\nComputed as $\\text{total} = 5 + 13$\nThe pair sum.');
+    assert.equal(labelAskMessage({text:'k = 3'}), 'Explain: k = 3', 'optional parts are left out');
+    assert.doesNotMatch(full, /Scalar variables|Current scene|lesson step/);
 });
