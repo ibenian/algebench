@@ -1,4 +1,4 @@
-import { C as PREV_ICON, D as USER_ICON, E as UNDOCK_ICON, S as PLAY_ICON, T as TRASH_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as SHARE_VIEW_ICON, x as PLAN_ICON, y as NEXT_ICON } from "./theme.js";
+import { C as PREV_ICON, D as USER_ICON, E as UNDOCK_ICON, S as PLAY_ICON, T as TRASH_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, d as CODE_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as SHARE_VIEW_ICON, x as PLAN_ICON, y as NEXT_ICON } from "./theme.js";
 import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -406,6 +406,7 @@ var _CORE_MATH_NAMES = [
 	"E"
 ];
 var _MATH_SCOPE = Object.fromEntries(_CORE_MATH_NAMES.map((n) => [n, Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, n) ? _EXPR_HELPERS[n] : Math[n]]));
+/** Single-quoted math.js strings keep their contents literally (LaTeX backslashes included). Exported for tests. */
 function _normalizeSingleQuotes(str) {
 	return str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, content) => JSON.stringify(content.replace(/\\'/g, "'")));
 }
@@ -756,7 +757,11 @@ function annotationRows(items) {
 			rows.push(item.text);
 			continue;
 		}
-		const { group, name, value } = item.index;
+		const { group, name, value, shown } = item.index;
+		if (shown !== void 0) {
+			rows.push(`${name} = ${shown}`);
+			continue;
+		}
 		const key = JSON.stringify([group, value]);
 		const existing = indexes.get(key);
 		if (existing) {
@@ -787,7 +792,7 @@ function annotationGroups(items) {
 		if (a.kind !== b.kind || a.detached || b.detached || a.coordinateMode !== b.coordinateMode) continue;
 		const sameIndex = a.index && b.index && a.index.group === b.index.group && a.index.value === b.index.value;
 		const overlaps = Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.y - b.y) < (a.height + b.height) / 2;
-		if (sameIndex || overlaps) parent[root(j)] = root(i);
+		if (sameIndex || overlaps && a.kind === "label") parent[root(j)] = root(i);
 	}
 	const groups = /* @__PURE__ */ new Map();
 	items.forEach((_, i) => {
@@ -796,6 +801,30 @@ function annotationGroups(items) {
 		groups.get(r).push(i);
 	});
 	return [...groups.values()];
+}
+/**
+* Upward lift, in px, for each marker badge so badges on different indexes never
+* overlap. Badges are placed left to right; one that would collide with a placed
+* badge climbs one badge height (plus a gap) at a time until it is clear. Its
+* pointer stretches into a stem, so it still points at its own cell.
+*/
+function markerLifts(boxes, gap = 4) {
+	const lifts = boxes.map(() => 0);
+	const placed = [];
+	for (const i of boxes.map((_, i) => i).sort((a, b) => boxes[a].x - boxes[b].x || a - b)) {
+		const b = boxes[i];
+		let lift = 0;
+		const hits = () => placed.some((p) => Math.abs(p.x - b.x) < (p.width + b.width) / 2 + gap && Math.abs(p.y - (b.y - lift)) < (p.height + b.height) / 2 + gap);
+		while (hits()) lift += b.height + gap;
+		lifts[i] = lift;
+		placed.push({
+			x: b.x,
+			y: b.y - lift,
+			width: b.width,
+			height: b.height
+		});
+	}
+	return lifts;
 }
 /** Shared expression-label boxes track their members without changing their anchors. */
 function annotationGroupAnchor(items) {
@@ -815,6 +844,89 @@ function annotationContainerTitle(rows) {
 		const parts = row.split(/(?<![<>=!])=(?!=)/);
 		return parts.length > 1 && parts.every((part) => part.trim().length > 0);
 	}) ? "Vars" : "Labels";
+}
+/**
+* The question a label row's Ask-AI button posts as the learner's message: the row as shown, how it was
+* computed, and the author's note. The scene, step and slider values reach the tutor with every message
+* already, so repeating them here would only clutter the question the learner sees.
+*/
+function labelAskMessage(o) {
+	const lines = [`Explain: ${o.text}`];
+	if (o.tooltip) lines.push(`Computed as $${o.tooltip}$`);
+	if (o.prompt) lines.push(o.prompt);
+	return lines.join("\n");
+}
+//#endregion
+//#region src/code-symbols.ts
+var analyses = /* @__PURE__ */ new Map();
+/** The analyzer language for a file, or null when there is none for it. */
+function codeLanguage(file) {
+	const language = file.language?.toLowerCase();
+	return language === "python" || !language && /\.py$/i.test(file.path) ? "python" : null;
+}
+/** The file's analysis, fetched once per distinct source; null when unavailable (no analyzer, offline, error). */
+function analyzeCode(file) {
+	const language = codeLanguage(file);
+	if (!language) return Promise.resolve(null);
+	const cacheKey = language + "\0" + file.source;
+	let pending = analyses.get(cacheKey);
+	if (!pending) {
+		pending = fetch("/api/code/analyze", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				language,
+				source: file.source
+			})
+		}).then((res) => res.ok ? res.json() : null).catch(() => null);
+		analyses.set(cacheKey, pending);
+	}
+	return pending;
+}
+var symbolKey = (text) => text.replace(/\s+/g, "");
+var EXPRESSION = /^[A-Za-z_][\w.]*(\[[^\]]*\]|\.[A-Za-z_]\w*)*\]*$/;
+/**
+* The symbols a label or marker row names: everything left of its last ` = `. A marker row can merge names
+* (`i = j = 3`), so there may be several. Rows that are not `name = value` (conditions) name none.
+*/
+function rowSymbolKeys(text) {
+	const parts = text.split(" = ");
+	return parts.length < 2 ? [] : parts.slice(0, -1).filter((name) => !/\w\s+\w/.test(name)).map(symbolKey).filter((key) => EXPRESSION.test(key));
+}
+/** The references on one line, outermost first, so nested expressions wrap inside their parents. */
+function lineReferences(references, line) {
+	return references.filter((r) => r.line === line && r.endLine === line).sort((a, b) => a.col - b.col || b.endCol - b.col - (a.endCol - a.col));
+}
+var hovered = [];
+/** Set (or clear, with an empty list) the symbols being pointed at. */
+function setSymbolHover(keys) {
+	if (keys.length === hovered.length && keys.every((k, i) => k === hovered[i])) return;
+	hovered = keys;
+	window.dispatchEvent(new CustomEvent("algebench:symbolhover", { detail: { keys } }));
+}
+var hoveredSymbols = () => hovered;
+/** Briefly light these symbols where they are executing (keys or bare variable names). */
+function flashSymbols(keys) {
+	if (keys.length) window.dispatchEvent(new CustomEvent("algebench:symbolflash", { detail: { keys } }));
+}
+/** Make a label/marker row take part in symbol hover: pointing at it lights its symbols in the code, and the
+* code's hover lights it. Rows are rebuilt as values change, so a new row picks up the current hover. */
+function bindSymbolRow(row, text) {
+	const keys = rowSymbolKeys(text);
+	if (!keys.length) return;
+	listenForRows();
+	row.dataset.symbols = keys.join("\n");
+	row.classList.toggle("annotation-row-symbol-hover", keys.some((k) => hovered.includes(k)));
+	row.addEventListener("pointerenter", () => setSymbolHover(keys));
+	row.addEventListener("pointerleave", () => setSymbolHover([]));
+}
+var listening = false;
+function listenForRows() {
+	if (listening) return;
+	listening = true;
+	window.addEventListener("algebench:symbolhover", () => {
+		document.querySelectorAll(".annotation-row[data-symbols]").forEach((row) => row.classList.toggle("annotation-row-symbol-hover", row.dataset.symbols.split("\n").some((k) => hovered.includes(k))));
+	});
 }
 //#endregion
 //#region src/coords.ts
@@ -1046,7 +1158,13 @@ function objectCellAnchor(name, index) {
 	const tracker = match[1].tracker;
 	for (const mesh of tracker.planeMeshes ?? []) {
 		const cells = mesh.userData.arrayCellTarget;
-		if (mesh.visible && cells) return cells.at(index);
+		if (mesh.visible && cells) {
+			const at = cells.at(index);
+			return at && {
+				...at,
+				vertical: cells.vertical
+			};
+		}
 	}
 	return null;
 }
@@ -1085,6 +1203,18 @@ function objectWorldAnchor(name) {
 	}
 	const label = tracker.labels?.[0];
 	return label ? new THREE.Vector3(...dataToWorld(label.dataPos)) : null;
+}
+/**
+* The visible box row of an expression label named by id, wherever it is drawn:
+* in its own box or merged into another label's box. Null for other objects.
+*/
+function objectLabelRow(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	const label = match[1].tracker.labels?.find((l) => l.annotation?.kind === "label");
+	if (!label) return null;
+	const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+	return row && row.offsetParent ? row : null;
 }
 //#endregion
 //#region src/label-wire-path.ts
@@ -1268,11 +1398,36 @@ function projectedCellEdge(start, centre, corners, gap = 4, avoidIndex = false) 
 		y: centre.y + ray.y * (nearest + gap / length)
 	} : centre;
 }
+/**
+* A link between two rows of the same label box: a bracket that leaves one row
+* sideways, bows out past the box edge and returns to the other row. Its bow
+* grows with the distance between the rows so adjacent rows stay tight.
+*/
+function rowBracketWire(edgeX, fromY, toY, side) {
+	const bow = side * (10 + Math.min(28, Math.abs(toY - fromY) * .3));
+	return `M ${edgeX} ${fromY} C ${edgeX + bow} ${fromY}, ${edgeX + bow} ${toY}, ${edgeX} ${toY}`;
+}
+/** A vertical S-curve between two cell edges, leaving and arriving straight up or down. */
+/**
+* A cell-to-cell link: each end leaves its cell along the cell's own axis, vertically ('v', off a top or
+* bottom edge of a horizontal row) or horizontally ('h', off the side of a stacked cell).
+*/
+function cellLinkPath(start, end, startAxis = "v", endAxis = "v") {
+	const pull = (axis, from, to) => {
+		const d = axis === "v" ? to.y - from.y : to.x - from.x, bend = Math.max(8, Math.abs(d) * .45) * (d < 0 ? -1 : 1);
+		return axis === "v" ? `${from.x} ${from.y + bend}` : `${from.x + bend} ${from.y}`;
+	};
+	return `M ${start.x} ${start.y} C ${pull(startAxis, start, end)}, ${pull(endAxis, end, start)}, ${end.x} ${end.y}`;
+}
 //#endregion
 //#region src/cell-attachment.ts
 /** Shared screen-space anchor for a cell's index tag and connection endpoint. */
 function cellEdgeAnchor(corners, edge, gap = 0) {
 	const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+	if (edge === "left" || edge === "right") return {
+		x: edge === "left" ? Math.min(...xs) - gap : Math.max(...xs) + gap,
+		y: (Math.min(...ys) + Math.max(...ys)) / 2
+	};
 	return {
 		x: (Math.min(...xs) + Math.max(...xs)) / 2,
 		y: edge === "top" ? Math.min(...ys) - gap : Math.max(...ys) + gap
@@ -1281,9 +1436,20 @@ function cellEdgeAnchor(corners, edge, gap = 0) {
 //#endregion
 //#region src/label-wire.ts
 /** Hover wires are presentation only. Target expressions are evaluated by bindings. */
+var newPart = () => ({
+	svg: null,
+	path: null,
+	dot: null,
+	previous: "",
+	routeKey: "",
+	routePath: ""
+});
+/** Every target of a label: the full list when one was given, else the single target. */
+var targetsOf = (label) => label.wireTargets ?? (label.wireTarget ? [label.wireTarget] : []);
+var reachable = (t) => t.object ? objectTargetExists(t.object, t.index) : !!t.position;
 var wires = /* @__PURE__ */ new Map();
 function wireRowHover(row, label) {
-	if (!label.wireTarget) return;
+	if (!targetsOf(label).length) return;
 	let record = wires.get(label);
 	if (record) {
 		record.row = row;
@@ -1293,12 +1459,7 @@ function wireRowHover(row, label) {
 			label,
 			row,
 			hovered: false,
-			svg: null,
-			path: null,
-			dot: null,
-			previous: "",
-			routeKey: "",
-			routePath: ""
+			parts: []
 		};
 		wires.set(label, record);
 	}
@@ -1330,7 +1491,7 @@ function wireRowHover(row, label) {
 function updateLabelWire() {
 	for (const [label, wire] of wires) {
 		if (!label.el.isConnected) {
-			wire.svg?.remove();
+			wire.parts.forEach((p) => p.svg?.remove());
 			wires.delete(label);
 			continue;
 		}
@@ -1338,25 +1499,82 @@ function updateLabelWire() {
 	}
 }
 function paintWire(record) {
-	const hovered = record;
-	let { svg, path, dot, previous, routeKey, routePath } = record;
-	const camera = state.camera, canvas = state.renderer?.domElement;
-	const target = record.label.wireTarget;
-	const available = !!target && (target.object ? objectTargetExists(target.object, target.index) : !!target.position);
+	const targets = targetsOf(record.label);
+	const available = targets.some(reachable);
 	if (record.available !== available) {
 		record.available = available;
 		if (record.button) record.button.style.display = available ? "" : "none";
 	}
-	if (!available) {
-		if (svg) svg.style.display = "none";
-		return;
-	}
+	while (record.parts.length < targets.length) record.parts.push(newPart());
+	record.parts.forEach((part, i) => {
+		const target = targets[i];
+		if (!target || !reachable(target)) {
+			if (part.svg) part.svg.style.display = "none";
+			return;
+		}
+		paintTarget(record, part, target);
+	});
+}
+function paintTarget(record, part, target) {
+	const hovered = record;
+	let { svg, path, dot, previous, routeKey, routePath } = part;
+	const camera = state.camera, canvas = state.renderer?.domElement;
 	if (!record.hovered && !record.label.wirePinned || !hovered.row.isConnected || hovered.label.forceHidden || hovered.label.visible === false || hovered.label.el.style.display === "none" || !camera || !canvas) {
 		if (svg) svg.style.display = "none";
 		return;
 	}
 	if (hovered.label.annotationDragging) {
 		if (svg) svg.style.display = "none";
+		return;
+	}
+	const targetRow = target?.object && target.index === void 0 ? objectLabelRow(target.object) : null;
+	if (targetRow && targetRow !== hovered.row) {
+		const container = document.getElementById("labels-container");
+		if (!container) return;
+		({svg, path, dot} = ensureWireSvg(part, container));
+		const rect = container.getBoundingClientRect(), from = hovered.row.getBoundingClientRect(), to = targetRow.getBoundingClientRect();
+		const fromBox = hovered.row.closest(".annotation-badge").getBoundingClientRect(), toBox = targetRow.closest(".annotation-badge").getBoundingClientRect();
+		const fromY = (from.top + from.bottom) / 2 - rect.top, toY = (to.top + to.bottom) / 2 - rect.top;
+		let d, end;
+		if (hovered.row.closest(".annotation-badge") === targetRow.closest(".annotation-badge")) {
+			const edge = fromBox.right - rect.left;
+			d = rowBracketWire(edge, fromY, toY, 1);
+			end = {
+				x: edge,
+				y: toY
+			};
+		} else {
+			const rightward = (toBox.left + toBox.right) / 2 > (fromBox.left + fromBox.right) / 2;
+			const start = {
+				x: (rightward ? fromBox.right : fromBox.left) - rect.left,
+				y: fromY
+			};
+			end = {
+				x: (rightward ? toBox.left : toBox.right) - rect.left,
+				y: toY
+			};
+			const obstacles = [fromBox, toBox].map((b) => ({
+				left: b.left - rect.left,
+				top: b.top - rect.top,
+				right: b.right - rect.left,
+				bottom: b.bottom - rect.top,
+				padding: 0
+			}));
+			d = routedLabelWire(start, end, {
+				x: rightward ? 1 : -1,
+				y: 0
+			}, {
+				x: rightward ? -1 : 1,
+				y: 0
+			}, obstacles);
+		}
+		svg.style.display = "";
+		if (d !== part.previous) {
+			path.setAttribute("d", d);
+			dot.setAttribute("cx", String(end.x));
+			dot.setAttribute("cy", String(end.y));
+			part.previous = d;
+		}
 		return;
 	}
 	const cell = target?.object && target.index !== void 0 ? objectCellAnchor(target.object, target.index) : null;
@@ -1372,36 +1590,9 @@ function paintWire(record) {
 	}
 	const container = document.getElementById("labels-container");
 	if (!container) return;
-	if (!svg?.isConnected) {
-		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		svg.classList.add("label-hover-wire");
-		svg.setAttribute("aria-hidden", "true");
-		Object.assign(svg.style, {
-			position: "absolute",
-			inset: "0",
-			width: "100%",
-			height: "100%",
-			overflow: "visible",
-			pointerEvents: "none",
-			zIndex: "2147483647"
-		});
-		path = document.createElementNS(svg.namespaceURI, "path");
-		path.setAttribute("fill", "none");
-		path.setAttribute("stroke", "#a6d5ec");
-		path.setAttribute("stroke-opacity", ".65");
-		path.setAttribute("stroke-width", "1.5");
-		path.setAttribute("stroke-linecap", "round");
-		dot = document.createElementNS(svg.namespaceURI, "circle");
-		dot.setAttribute("r", "2");
-		dot.setAttribute("fill", "#bce8ff");
-		svg.append(path, dot);
-		container.append(svg);
-		previous = "";
-		routeKey = "";
-		record.svg = svg;
-		record.path = path;
-		record.dot = dot;
-	}
+	({svg, path, dot} = ensureWireSvg(part, container));
+	previous = part.previous;
+	routeKey = part.routeKey;
 	const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect(), row = hovered.row.getBoundingClientRect();
 	const screen = (p) => ({
 		x: viewport.left - rect.left + (p.x * .5 + .5) * viewport.width,
@@ -1484,8 +1675,8 @@ function paintWire(record) {
 	if (key !== routeKey) {
 		routeKey = key;
 		routePath = routedLabelWire(start, end, departure, approach, obstacles);
-		record.routeKey = routeKey;
-		record.routePath = routePath;
+		part.routeKey = routeKey;
+		part.routePath = routePath;
 	}
 	const d = routePath;
 	svg.style.display = "";
@@ -1493,8 +1684,304 @@ function paintWire(record) {
 		path.setAttribute("d", d);
 		dot.setAttribute("cx", String(end.x));
 		dot.setAttribute("cy", String(end.y));
-		record.previous = d;
+		part.previous = d;
 	}
+}
+/** A part's SVG wire, created on first use and after the container was rebuilt. */
+function ensureWireSvg(record, container) {
+	if (!record.svg?.isConnected) {
+		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		svg.classList.add("label-hover-wire");
+		svg.setAttribute("aria-hidden", "true");
+		Object.assign(svg.style, {
+			position: "absolute",
+			inset: "0",
+			width: "100%",
+			height: "100%",
+			overflow: "visible",
+			pointerEvents: "none",
+			zIndex: "2147483647"
+		});
+		const path = document.createElementNS(svg.namespaceURI, "path");
+		path.setAttribute("fill", "none");
+		path.setAttribute("stroke", "#a6d5ec");
+		path.setAttribute("stroke-opacity", ".65");
+		path.setAttribute("stroke-width", "1.5");
+		path.setAttribute("stroke-linecap", "round");
+		const dot = document.createElementNS(svg.namespaceURI, "circle");
+		dot.setAttribute("r", "2");
+		dot.setAttribute("fill", "#bce8ff");
+		svg.append(path, dot);
+		container.append(svg);
+		record.svg = svg;
+		record.path = path;
+		record.dot = dot;
+		record.previous = "";
+		record.routeKey = "";
+	}
+	return {
+		svg: record.svg,
+		path: record.path,
+		dot: record.dot
+	};
+}
+//#endregion
+//#region src/label-tooltip.ts
+var tip = null;
+var owner = null;
+var shown = "";
+function element() {
+	if (!tip?.isConnected) {
+		tip = document.createElement("div");
+		tip.className = "graph-panel-tooltip label-row-tooltip";
+		tip.setAttribute("role", "tooltip");
+		document.body.append(tip);
+		shown = "";
+	}
+	return tip;
+}
+function render$1(tex) {
+	if (tex === shown) return;
+	const el = element();
+	const katex = window.katex;
+	if (katex) katex.render(tex, el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else el.textContent = tex;
+	shown = tex;
+}
+function hide() {
+	owner = null;
+	tip?.classList.remove("visible");
+}
+/** Show `label`'s tooltip while the pointer is over this row. Rows are rebuilt as values change; each new row is wired again. */
+function wireRowTooltip(row, label) {
+	if (label.annotation?.tooltip === void 0) return;
+	row.addEventListener("pointerenter", () => {
+		owner = label;
+		render$1(label.annotation?.tooltip ?? "");
+		element().classList.toggle("visible", !!label.annotation?.tooltip);
+	});
+	row.addEventListener("pointermove", (event) => {
+		const el = element();
+		const overButton = event.target?.closest("button");
+		el.classList.toggle("visible", owner === label && !overButton && !!label.annotation?.tooltip);
+		el.style.left = `${event.clientX + 12}px`;
+		el.style.top = `${row.getBoundingClientRect().bottom + 6}px`;
+	});
+	row.addEventListener("pointerleave", () => {
+		if (owner === label) hide();
+	});
+}
+/** Called with the label layout each frame: follow value changes while open, and close when the row goes away. */
+function refreshLabelTooltip() {
+	if (callouts.size) placeCallouts();
+	if (!owner) return;
+	const tex = owner.annotation?.tooltip;
+	if (tex === void 0 || !owner.el.isConnected || owner.forceHidden || owner.visible === false) {
+		hide();
+		return;
+	}
+	render$1(tex);
+	tip?.classList.toggle("visible", !!tex);
+}
+var CALLOUT_MS = 2500;
+var callouts = /* @__PURE__ */ new Map();
+function calloutRender(c, tex) {
+	if (c.tex === tex) return;
+	const katex = window.katex;
+	if (katex) katex.render(tex, c.el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else c.el.textContent = tex;
+	c.tex = tex;
+}
+/** Show `label`'s formula beside its row for a few seconds, restarting the timer on each recalculation. */
+function announceLabelChange(label) {
+	let c = callouts.get(label);
+	if (!c || !c.el.isConnected) {
+		const el = document.createElement("div");
+		el.className = "graph-panel-tooltip label-row-tooltip label-change-callout";
+		el.setAttribute("role", "status");
+		document.body.append(el);
+		c = {
+			el,
+			until: 0,
+			tex: ""
+		};
+		callouts.set(label, c);
+	}
+	calloutRender(c, label.annotation?.tooltip ?? "");
+	c.until = performance.now() + CALLOUT_MS;
+}
+/** Each frame: keep callouts beside their rows (boxes move with the camera and drags), and retire expired ones. */
+function placeCallouts() {
+	const now = performance.now();
+	for (const [label, c] of callouts) {
+		const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+		const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row?.offsetParent;
+		if (gone || now > c.until || owner === label) {
+			c.el.classList.remove("visible");
+			if (gone || now > c.until + 400) {
+				c.el.remove();
+				callouts.delete(label);
+			}
+			continue;
+		}
+		calloutRender(c, label.annotation?.tooltip ?? c.tex);
+		const box = row.closest(".annotation-badge").getBoundingClientRect(), r = row.getBoundingClientRect();
+		const width = c.el.offsetWidth, roomRight = window.innerWidth - box.right - 8 >= width;
+		c.el.style.left = `${roomRight ? box.right + 8 : Math.max(8, box.left - 8 - width)}px`;
+		c.el.style.top = `${(r.top + r.bottom) / 2 - c.el.offsetHeight / 2}px`;
+		c.el.classList.add("visible");
+	}
+}
+//#endregion
+//#region src/cell-links.ts
+/**
+* Array cell links (an array's connectTo): a curve from each cell to the cell of another object it names,
+* e.g. a deque of indices to the values in `nums`. An array may connect to several objects; each target is
+* one link group with its own colour. The owning array evaluates the pairs on state changes (setCellLinks);
+* this module only projects and paints them, each frame, beside label wires. Like a label's wire, each array
+* has one pin toggle (beside its last linked cell) for all its groups: pinned links always show; unpinned
+* ones show only while the toggle is hovered.
+*/
+var sets = /* @__PURE__ */ new Map();
+/** Replace the links drawn from array `from`. `pinned` sets the toggle's first state only; the reader owns it after. */
+function setCellLinks(from, groups, pinned) {
+	const set = sets.get(from);
+	if (set) set.groups = groups;
+	else sets.set(from, {
+		groups,
+		svg: null,
+		drawn: "",
+		pinned,
+		hovered: false,
+		toggle: null
+	});
+}
+/** Paint every link set; a set whose array left the scene is removed with its SVG. */
+function paintCellLinks() {
+	const camera = state.camera, canvas = state.renderer?.domElement, container = document.getElementById("labels-container");
+	for (const [from, set] of sets) {
+		if (!state.elementRegistry?.[from]) {
+			set.svg?.remove();
+			set.toggle?.remove();
+			sets.delete(from);
+			continue;
+		}
+		if (!camera || !canvas || !container) continue;
+		const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect();
+		const screen = (p) => {
+			const v = new THREE.Vector3(...dataToWorld(p)).project(camera);
+			return {
+				x: viewport.left - rect.left + (v.x * .5 + .5) * viewport.width,
+				y: viewport.top - rect.top + (-v.y * .5 + .5) * viewport.height,
+				z: v.z
+			};
+		};
+		const paths = [];
+		let toggleAt = null, last = -1;
+		for (const group of set.groups) for (const [i, j] of group.pairs) {
+			const a = objectCellAnchor(from, i), b = objectCellAnchor(group.to, j);
+			if (!a || !b) continue;
+			const ac = a.corners.map(screen), bc = b.corners.map(screen);
+			if ([...ac, ...bc].some((p) => p.z < -1 || p.z > 1)) continue;
+			if (i > last) {
+				last = i;
+				toggleAt = {
+					x: Math.max(...ac.map((p) => p.x)) + 6,
+					y: ac.reduce((sum, p) => sum + p.y, 0) / ac.length
+				};
+			}
+			const mid = (c) => ({
+				x: c.reduce((s, p) => s + p.x, 0) / c.length,
+				y: c.reduce((s, p) => s + p.y, 0) / c.length
+			});
+			const am = mid(ac), bm = mid(bc);
+			const start = a.vertical ? cellEdgeAnchor(ac, bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
+			const end = b.vertical ? cellEdgeAnchor(bc, am.x < bm.x ? "left" : "right", 2) : cellEdgeAnchor(bc, am.y < bm.y ? "top" : "bottom", am.y > bm.y ? 14 : 2);
+			paths.push({
+				d: cellLinkPath(start, end, a.vertical ? "h" : "v", b.vertical ? "h" : "v"),
+				color: group.color
+			});
+		}
+		paintToggle(set, container, toggleAt);
+		const shown = set.pinned || set.hovered;
+		const drawn = JSON.stringify(shown ? paths : []);
+		if (!set.svg?.isConnected) {
+			const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			svg.classList.add("cell-link-layer");
+			svg.setAttribute("aria-hidden", "true");
+			Object.assign(svg.style, {
+				position: "absolute",
+				inset: "0",
+				width: "100%",
+				height: "100%",
+				overflow: "visible",
+				pointerEvents: "none",
+				zIndex: "5"
+			});
+			container.append(svg);
+			set.svg = svg;
+			set.drawn = "";
+		}
+		if (drawn === set.drawn) continue;
+		set.drawn = drawn;
+		set.svg.replaceChildren(...(shown ? paths : []).map(({ d, color }) => {
+			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			path.setAttribute("d", d);
+			path.setAttribute("fill", "none");
+			path.setAttribute("stroke", color);
+			path.setAttribute("stroke-opacity", ".6");
+			path.setAttribute("stroke-width", "1.4");
+			path.setAttribute("stroke-linecap", "round");
+			return path;
+		}));
+	}
+}
+/** The set's pin toggle, built on first paint and kept beside the source array's last linked cell. */
+function paintToggle(set, container, at) {
+	if (!set.toggle?.isConnected) {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "expression-wire-toggle cell-link-toggle";
+		const label = () => {
+			button.setAttribute("aria-pressed", String(set.pinned));
+			button.setAttribute("aria-label", set.pinned ? "Unpin cell links" : "Pin cell links");
+			button.title = set.pinned ? "Links pinned · click to show them only on hover" : "Hover to show links · click to pin";
+		};
+		button.addEventListener("pointerdown", (event) => event.stopPropagation());
+		button.addEventListener("click", (event) => {
+			event.stopPropagation();
+			set.pinned = !set.pinned;
+			label();
+		});
+		button.addEventListener("pointerenter", () => {
+			set.hovered = true;
+		});
+		button.addEventListener("pointerleave", () => {
+			set.hovered = false;
+		});
+		label();
+		container.append(button);
+		set.toggle = button;
+	}
+	const button = set.toggle;
+	if (!at) {
+		if (button.style.display !== "none") button.style.display = "none";
+		return;
+	}
+	const style = `${Math.round(at.x)}px,${Math.round(at.y - 8)}px`;
+	if (button.dataset.at !== style) {
+		button.dataset.at = style;
+		button.style.transform = `translate(${style})`;
+	}
+	if (button.style.display === "none") button.style.display = "";
 }
 //#endregion
 //#region src/glossary-core.ts
@@ -2252,13 +2739,16 @@ function updateLabels() {
 	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
 		const o = ordered[i];
-		const zi = ordered.length - i + (o.annotationCoordinateMode === "screen" ? ordered.length : 0);
+		const band = o.annotationCoordinateMode === "screen" ? 4 : o.annotation?.kind === "label" ? 3 : o.annotation ? o.markerLifted ? 1 : 2 : 0;
+		const zi = ordered.length - i + band * ordered.length;
 		if (o._zi !== zi) {
 			o.el.style.zIndex = String(zi);
 			o._zi = zi;
 		}
 	}
 	updateLabelWire();
+	paintCellLinks();
+	refreshLabelTooltip();
 }
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
 * Intrinsic measurement nodes keep collision geometry independent of merged content. */
@@ -2294,7 +2784,9 @@ function groupAnnotations(scale) {
 		b.width,
 		b.height,
 		b.text,
-		b.index
+		b.index,
+		!!labels[i].annotation.highlighted,
+		labels[i].annotation.code?.line ?? 0
 	]));
 	if (key === annotationLayoutKey) return;
 	annotationLayoutKey = key;
@@ -2309,19 +2801,54 @@ function groupAnnotations(scale) {
 		const members = group.map((i) => boxes[i]);
 		if (a.kind === "label") leader.annotationAnchor = annotationGroupAnchor(members);
 		const rows = annotationRows(members);
-		const signature = JSON.stringify([rows, group.map((i) => [labels[i].seq, labels[i].annotationCoordinateMode ?? "world"])]);
+		const signature = JSON.stringify([rows, group.map((i) => [
+			labels[i].seq,
+			labels[i].annotationCoordinateMode ?? "world",
+			!!labels[i].annotation.highlighted,
+			labels[i].annotation.code?.line ?? 0
+		])]);
 		if (signature !== a.rendered) {
 			a.badge.replaceChildren(...rows.map((text, rowIndex) => {
 				const row = document.createElement("span");
 				row.className = "annotation-row";
 				row.textContent = text;
+				bindSymbolRow(row, text);
 				if (a.kind === "label") {
+					if (labels[group[rowIndex]].annotation.highlighted) row.classList.add("annotation-row-highlight");
 					wireRowHover(row, labels[group[rowIndex]]);
+					wireRowTooltip(row, labels[group[rowIndex]]);
+					const member = labels[group[rowIndex]];
+					const ask = makeAiAskButton("ai-ask-btn annotation-ask-btn", "Ask AI about this", () => labelAskMessage({
+						text: member.annotation.text,
+						tooltip: member.annotation.tooltip,
+						prompt: member.annotation.prompt
+					}));
+					ask.addEventListener("pointerdown", (event) => event.stopPropagation());
+					const code = member.annotation.code;
+					if (code) {
+						const open = document.createElement("button");
+						open.type = "button";
+						open.className = "ai-ask-btn annotation-code-btn";
+						open.innerHTML = CODE_ICON;
+						open.title = `Open ${code.path}:${code.line}`;
+						open.setAttribute("aria-label", open.title);
+						open.addEventListener("pointerdown", (event) => event.stopPropagation());
+						open.addEventListener("click", (event) => {
+							event.stopPropagation();
+							const now = member.annotation.code;
+							if (now) window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
+								fileId: now.fileId,
+								line: now.line
+							} }));
+						});
+						row.append(open);
+					}
+					row.append(ask);
 					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
 						row.classList.add("annotation-row-draggable");
-						if (!labels[group[rowIndex]].wireTarget) row.title = "Drag to move this label";
+						if (!labels[group[rowIndex]].wireTarget && !labels[group[rowIndex]].wireTargets?.length && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label";
 						row.addEventListener("pointerdown", drag);
 					}
 				}
@@ -2360,6 +2887,22 @@ function groupAnnotations(scale) {
 		}
 		for (const i of group.slice(1)) labels[i].annotationHidden = true;
 	}
+	const markerGroups = annotationGroups(boxes).filter((g) => boxes[g[0]].kind === "marker" && labels[g[0]].cellAttachment);
+	const lifts = markerLifts(markerGroups.map((g) => {
+		const leader = labels[g[0]], box = boxes[g[0]], badge = leader.annotation.badge;
+		const width = Math.max(box.width, badge.offsetWidth), height = Math.max(box.height, badge.offsetHeight);
+		return {
+			x: box.x,
+			y: leader.screenY - (height + 11) / 2,
+			width,
+			height
+		};
+	}));
+	markerGroups.forEach((g, k) => {
+		labels[g[0]].markerLifted = lifts[k] > 0;
+		const el = labels[g[0]].el, stem = `${lifts[k]}px`;
+		if (el.style.getPropertyValue("--marker-stem") !== stem) el.style.setProperty("--marker-stem", stem);
+	});
 }
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
 function placeExpressionLabel(label, x, y, clientX, clientY) {
@@ -6701,6 +7244,7 @@ function buildLegend(elements) {
 	const grouped = /* @__PURE__ */ new Map();
 	for (const el of elements) {
 		if (el.type === "axis" || el.type === "grid") continue;
+		if (el.labelSide === "left") continue;
 		const groupLabel = el.legendGroup || el.label;
 		if (!groupLabel || !el.color) continue;
 		const key = `${groupLabel}__${colorToCSS(el.color)}`;
@@ -9668,7 +10212,11 @@ function planeTextTextureSize(width, height, density = 128) {
 	const scale = Math.min(Math.max(128, density), 2048 / width, 2048 / height, Math.sqrt(1048576 / (width * height)));
 	return [Math.max(1, Math.floor(width * scale)), Math.max(1, Math.floor(height * scale))];
 }
-function createArrayPlaneText(width, height, color) {
+/**
+* `tag` paints the index-tag badge the screen mode draws in CSS (.array-index-tag): a dark plate with a
+* light outline and rounded lower corners, hung from the cell above, so world and screen tags match.
+*/
+function createArrayPlaneText(width, height, color, opts = {}) {
 	const canvas = document.createElement("canvas");
 	[canvas.width, canvas.height] = planeTextTextureSize(width, height);
 	const ctx = canvas.getContext("2d");
@@ -9709,15 +10257,55 @@ function createArrayPlaneText(width, height, color) {
 	let previousPosition;
 	let disposed = false;
 	let resolutionDensity = 128;
+	let highlighted = false;
 	const projected = new THREE.Vector3(), bufferSize = new THREE.Vector2();
 	function repaint() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		const text = previousText ?? "";
-		const px = fitPlainCellPx(canvas.width, canvas.height * 1.25, (size) => {
+		if (opts.tag) {
+			const w = canvas.width, h = canvas.height, line = Math.max(1, h * .06), r = Math.min(h * .35, w * .3);
+			ctx.beginPath();
+			ctx.moveTo(line / 2, 0);
+			ctx.lineTo(w - line / 2, 0);
+			ctx.lineTo(w - line / 2, h - r);
+			ctx.quadraticCurveTo(w - line / 2, h - line / 2, w - r, h - line / 2);
+			ctx.lineTo(r, h - line / 2);
+			ctx.quadraticCurveTo(line / 2, h - line / 2, line / 2, h - r);
+			ctx.closePath();
+			ctx.fillStyle = "rgba(24, 48, 75, .9)";
+			ctx.fill();
+			ctx.beginPath();
+			ctx.moveTo(line / 2, 0);
+			ctx.lineTo(line / 2, h - r);
+			ctx.quadraticCurveTo(line / 2, h - line / 2, r, h - line / 2);
+			ctx.lineTo(w - r, h - line / 2);
+			ctx.quadraticCurveTo(w - line / 2, h - line / 2, w - line / 2, h - r);
+			ctx.lineTo(w - line / 2, 0);
+			ctx.strokeStyle = "rgba(157, 189, 227, .45)";
+			ctx.lineWidth = line;
+			ctx.stroke();
+		}
+		const px = fitPlainCellPx(canvas.width * (opts.tag ? .72 : 1), canvas.height * (opts.tag ? .95 : 1.25), (size) => {
 			ctx.font = `600 ${size}px ui-monospace, monospace`;
 			return ctx.measureText(text).width;
 		});
 		ctx.font = `600 ${px}px ui-monospace, monospace`;
+		if (highlighted && text) {
+			const w = Math.min(canvas.width, ctx.measureText(text).width + px * .8), h = Math.min(canvas.height, px * 1.35), r = px * .2;
+			const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+			ctx.beginPath();
+			ctx.moveTo(x + r, y);
+			ctx.arcTo(x + w, y, x + w, y + h, r);
+			ctx.arcTo(x + w, y + h, x, y + h, r);
+			ctx.arcTo(x, y + h, x, y, r);
+			ctx.arcTo(x, y, x + w, y, r);
+			ctx.closePath();
+			const accent = getComputedStyle(document.body).getPropertyValue("--accent-color").trim() || "#f1cc59";
+			ctx.fillStyle = accent;
+			ctx.globalAlpha = .28;
+			ctx.fill();
+			ctx.globalAlpha = 1;
+		}
 		ctx.fillStyle = cssColor;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
@@ -9760,6 +10348,12 @@ function createArrayPlaneText(width, height, color) {
 	return {
 		mesh,
 		prepare,
+		setHighlight(on) {
+			if (on !== highlighted) {
+				highlighted = on;
+				repaint();
+			}
+		},
 		set(text, position) {
 			if (text !== previousText) {
 				previousText = text;
@@ -10797,9 +11391,18 @@ function labelDragHandler(label, animState) {
 /** State-bound annotations. Projection/grouping belongs to the common label layer. */
 function renderStepMarker(el, _view, owner) {
 	const marker = el.type === "step_marker";
-	const targetPosition = !marker && el.connectTo && "positionExpr" in el.connectTo ? el.connectTo.positionExpr : [];
-	const targetFns = targetPosition.length ? targetPosition.map((source) => compileExpr(source)) : null;
-	const targetIndex = !marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
+	const codeRef = !marker ? el.codeRef : void 0;
+	const codeFns = /* @__PURE__ */ new Map();
+	const connections = marker || !el.connectTo ? [] : Array.isArray(el.connectTo) ? el.connectTo : [el.connectTo];
+	const wires = connections.map((c) => "positionExpr" in c ? {
+		kind: "position",
+		fns: c.positionExpr.map((source) => compileExpr(source))
+	} : {
+		kind: "object",
+		object: c.object,
+		index: c.indexExpr ? compileExpr(c.indexExpr) : null
+	});
+	const targetSources = connections.flatMap((c) => "positionExpr" in c ? c.positionExpr : c.indexExpr ? [c.indexExpr] : []);
 	const position = owner ? [] : el.positionExpr ?? (el.position ?? [
 		0,
 		0,
@@ -10810,13 +11413,20 @@ function renderStepMarker(el, _view, owner) {
 		...el.textExpr ? [el.textExpr] : [],
 		...el.visibleExpr ? [el.visibleExpr] : [],
 		...el.indexExpr ? [el.indexExpr] : [],
-		...targetPosition,
-		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
+		...marker && el.valueExpr ? [el.valueExpr] : [],
+		...!marker && el.highlightExpr ? [el.highlightExpr] : [],
+		...!marker && el.tooltipExpr ? [el.tooltipExpr] : [],
+		...codeRef?.lineExpr ? [codeRef.lineExpr] : [],
+		...codeRef?.fileExpr ? [codeRef.fileExpr] : [],
+		...targetSources
 	];
 	const positionFns = position.map((source) => compileExpr(source));
 	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
 	const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
 	const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
+	const shownFn = marker && el.valueExpr ? compileExpr(el.valueExpr) : null;
+	const highlightFn = !marker && el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const tooltipFn = !marker && el.tooltipExpr ? compileExpr(el.tooltipExpr) : null;
 	const animState = owner?.animState ?? { stopped: false };
 	const label = addLabel3D("", [
 		0,
@@ -10835,10 +11445,13 @@ function renderStepMarker(el, _view, owner) {
 	cursor.append(badge);
 	if (owner) cursor.classList.add("array-marker-cursor");
 	if (marker) {
+		const stem = document.createElement("span");
+		stem.className = "step-marker-stem";
+		stem.setAttribute("aria-hidden", "true");
 		const pointer = document.createElement("span");
 		pointer.className = "step-marker-pointer";
 		pointer.setAttribute("aria-hidden", "true");
-		cursor.append(pointer);
+		cursor.append(stem, pointer);
 	}
 	label.el.replaceChildren(cursor, measure);
 	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#172e50")));
@@ -10853,17 +11466,53 @@ function renderStepMarker(el, _view, owner) {
 		rendered: ""
 	};
 	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
-	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
+	if (!marker) label.annotation.prompt = el.prompt ?? null;
+	if (wires.length) {
+		label.wireTargets = wires.map((w) => w.kind === "object" ? { object: w.object } : {});
+		label.wireTarget = label.wireTargets[0];
+	}
+	if (connections.some((c) => c.pinned)) label.wirePinned = true;
+	let slide = 0;
+	const slideTo = (target) => {
+		const from = label.cellAttachment?.corners;
+		cancelAnimationFrame(slide);
+		if (!from || from.length !== target.length) {
+			label.cellAttachment = {
+				corners: target,
+				edge: "top",
+				gap: 8
+			};
+			return;
+		}
+		if (from.every((p, i) => p.every((v, k) => v === target[i][k]))) return;
+		const start = performance.now(), duration = 260;
+		const step = (now) => {
+			const t = Math.min(1, (now - start) / duration), e = 1 - (1 - t) ** 3;
+			label.cellAttachment = {
+				corners: from.map((p, i) => p.map((v, k) => v + (target[i][k] - v) * e)),
+				edge: "top",
+				gap: 8
+			};
+			if (t < 1 && !animState.stopped) slide = requestAnimationFrame(step);
+		};
+		slide = requestAnimationFrame(step);
+	};
 	const entry = {
 		animState,
 		exprStrings: sources,
 		_rebuildFn: () => {
 			if (animState.stopped) return;
 			try {
-				if (targetIndex) label.wireTarget.index = Number(evalExpr(targetIndex, 0));
-				if (targetFns) {
-					const target = targetFns.map((fn) => Number(evalExpr(fn, 0)));
-					label.wireTarget = target.every(Number.isFinite) ? { position: target } : {};
+				if (wires.length) {
+					label.wireTargets = wires.map((w) => {
+						if (w.kind === "object") return w.index ? {
+							object: w.object,
+							index: Number(evalExpr(w.index, 0))
+						} : { object: w.object };
+						const target = w.fns.map((fn) => Number(evalExpr(fn, 0)));
+						return target.every(Number.isFinite) ? { position: target } : {};
+					});
+					label.wireTarget = label.wireTargets[0];
 				}
 				const indexValue = indexFn ? Number(evalExpr(indexFn, 0)) : null;
 				const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map((fn) => Number(evalExpr(fn, 0)));
@@ -10878,11 +11527,7 @@ function renderStepMarker(el, _view, owner) {
 					label.annotationOrder = void 0;
 				}
 				label.dataPos = point;
-				if (owner) label.cellAttachment = {
-					corners: owner.corners(indexValue),
-					edge: "top",
-					gap: 8
-				};
+				if (owner) slideTo(owner.corners(indexValue));
 				label.forceHidden = visibleFn ? !evalExpr(visibleFn, 0) : false;
 				const text = textFn ? annotationText(evalExpr(textFn, 0)) : el.text ?? "";
 				const annotation = label.annotation;
@@ -10895,8 +11540,29 @@ function renderStepMarker(el, _view, owner) {
 						name: el.indexName,
 						value
 					};
+					if (shownFn) annotation.index.shown = annotationText(evalExpr(shownFn, 0));
 				}
-				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
+				const previous = annotation.text;
+				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.shown ?? annotation.index.value}` : text;
+				if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn, 0);
+				if (tooltipFn) try {
+					annotation.tooltip = String(evalExpr(tooltipFn, 0));
+				} catch {
+					annotation.tooltip = "";
+				}
+				if (codeRef) {
+					const target = resolveCodeRef(state.lessonSpec?.codeFiles ?? [], codeRef, (expr) => {
+						if (!codeFns.has(expr)) codeFns.set(expr, compileExpr(expr));
+						return evalExpr(codeFns.get(expr), 0);
+					});
+					annotation.code = target ? {
+						fileId: target.file.id,
+						path: target.file.path,
+						line: target.line
+					} : null;
+				}
+				if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
+				if (previous && previous !== annotation.text) flashSymbols(rowSymbolKeys(annotation.text));
 				if (measure.textContent !== annotation.text) {
 					measure.textContent = annotation.text;
 					annotation.scale = null;
@@ -11197,17 +11863,21 @@ function renderArray(el, _view, decorate) {
 		};
 		mesh.add(ghostMesh);
 	}
-	const cellTarget = { at(index) {
-		const position = el.arrayColumns ? Number.isInteger(index) && index >= 0 && index < n ? centre(index) : null : arrayIndexPosition(index, n, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
-		return position ? {
-			position,
-			corners: arrayCellCorners(position, pitch).map((c) => [
-				c[0],
-				position[1] + (c[1] - position[1]) * cellHeight() / .68,
-				c[2]
-			])
-		} : null;
-	} };
+	const step = centre(1).map((v, i) => v - centre(0)[i]);
+	const cellTarget = {
+		vertical: Math.abs(step[1]) > Math.abs(step[0]),
+		at(index) {
+			const position = el.arrayColumns ? Number.isInteger(index) && index >= 0 && index < n ? centre(index) : null : arrayIndexPosition(index, n, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
+			return position ? {
+				position,
+				corners: arrayCellCorners(position, pitch).map((c) => [
+					c[0],
+					position[1] + (c[1] - position[1]) * cellHeight() / .68,
+					c[2]
+				])
+			} : null;
+		}
+	};
 	mesh.userData.arrayCellTarget = cellTarget;
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
@@ -11278,8 +11948,8 @@ function renderArray(el, _view, decorate) {
 	const planeText = el.axisLabels === "plane";
 	const cellTextPlanes = [];
 	const indexTextPlanes = [];
-	const addTextPlane = (width, height, color, cell) => {
-		const layer = createArrayPlaneText(width, height, color);
+	const addTextPlane = (width, height, color, cell, tag = false) => {
+		const layer = createArrayPlaneText(width, height, color, { tag });
 		mesh.add(layer.mesh);
 		layer.mesh.onBeforeRender = (renderer, _scene, camera) => {
 			layer.prepare(renderer, camera);
@@ -11315,7 +11985,7 @@ function renderArray(el, _view, decorate) {
 				indexLabel.forceHidden = true;
 				indexLabel.el.classList.add("array-plane-accessible");
 				clipArrayPlaneMirror(indexLabel.el);
-				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7", i));
+				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7", i, true));
 			}
 			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
 			indexLabels.push(indexLabel);
@@ -11331,7 +12001,16 @@ function renderArray(el, _view, decorate) {
 	let titleLabel;
 	const titleCentre = () => el.arrayColumns ? centre(Math.min(el.arrayColumns, n) - 1) : centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
 	const titleWidth = Math.max(1, (el.label?.length ?? 0) * .38);
+	const leftTitle = el.labelSide === "left" && el.arrayLayout !== "vertical";
 	const titlePosition = () => {
+		if (leftTitle && !el.labelPosition) {
+			const c = centre(0), gap = pitch * .39 + .22;
+			return [
+				c[0] - gap - (planeText ? titleWidth / 2 : 0),
+				c[1],
+				c[2] + .14
+			];
+		}
 		const at = el.labelPosition ?? titleCentre().map((value, i) => value + (el.labelOffset ?? [
 			0,
 			.88,
@@ -11343,11 +12022,11 @@ function renderArray(el, _view, decorate) {
 			Number(at[2]) + .14
 		];
 	};
-	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.color ?? "#b5c1cf") : null;
+	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.labelSide === "left" ? "#b5c1cf" : el.color ?? "#b5c1cf") : null;
 	const emptyPlane = planeText ? addTextPlane(.7, .68, "#8793a6") : null;
 	if (el.label) {
 		titleLabel = addLabel3D("", titlePosition(), "#b5c1cf", {
-			align: el.align,
+			align: leftTitle ? "right" : el.align,
 			cssClass: `label-3d ${el.cssClass ?? ""}`
 		});
 		if (planeText) {
@@ -11359,7 +12038,9 @@ function renderArray(el, _view, decorate) {
 		titleLabel.snapToProjection = true;
 		titleLabel.ownerMesh = mesh;
 	}
+	let titleHit = null;
 	const updateTitle = () => {
+		placeTitleHit();
 		if (titleLabel) titleLabel.dataPos = titlePosition();
 		if (titlePlane) titlePlane.set(el.label, titlePosition());
 		if (emptyPlane) {
@@ -11437,6 +12118,11 @@ function renderArray(el, _view, decorate) {
 		previous.length = 0;
 		updateTitle();
 	}
+	const connections = !el.id || !el.connectTo ? [] : (Array.isArray(el.connectTo) ? el.connectTo : [el.connectTo]).flatMap((c) => "object" in c && c.indexExpr ? [{
+		...c,
+		indexExpr: c.indexExpr,
+		fn: compileExpr(c.indexExpr)
+	}] : []);
 	const entry = {
 		animState,
 		exprStrings: [
@@ -11444,6 +12130,7 @@ function renderArray(el, _view, decorate) {
 			el.valueExpr,
 			el.highlightExpr,
 			el.colorExpr,
+			...connections.map((c) => c.indexExpr),
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
 		_rebuildFn: () => {
@@ -11473,9 +12160,27 @@ function renderArray(el, _view, decorate) {
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
 				illuminate([...illuminated], delta.removed);
+				if (illuminated.size || delta.removed.length) flashSymbols([el.id, el.label].filter((v) => !!v));
 			}
 			updateTitle();
 			decoration?.resize(next);
+			if (connections.length) setCellLinks(el.id, connections.map((c) => {
+				const pairs = [];
+				cells.forEach(({ cell }, i) => {
+					try {
+						const j = Number(evalExpr(c.fn, 0, { overrideScope: {
+							idx: i,
+							value: cell.value
+						} }));
+						if (Number.isInteger(j) && j >= 0) pairs.push([i, j]);
+					} catch {}
+				});
+				return {
+					to: c.object,
+					pairs,
+					color: c.color ? colorToCSS(c.color) : "#9dbde3"
+				};
+			}), connections.some((c) => c.pinned));
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
@@ -11506,7 +12211,7 @@ function renderArray(el, _view, decorate) {
 					]);
 					indexTextPlanes[i]?.set(String(i), [
 						c[0],
-						c[1] - .58,
+						c[1] - .34 - .175,
 						c[2] + .14
 					]);
 				}
@@ -11569,8 +12274,84 @@ function renderArray(el, _view, decorate) {
 			return true;
 		}
 	}) : null;
+	let symbolLit = false;
+	const symbol = el.id;
+	const pointing = {
+		cells: false,
+		title: false
+	};
+	const point = (part, now) => {
+		const was = pointing.cells || pointing.title;
+		pointing[part] = now;
+		const is = pointing.cells || pointing.title;
+		if (!symbol || is === was) return;
+		if (is) setSymbolHover([symbol]);
+		else if (hoveredSymbols().length === 1 && hoveredSymbols()[0] === symbol) setSymbolHover([]);
+	};
+	const shown = () => {
+		if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+		for (let part = mesh; part; part = part.parent) if (!part.visible) return false;
+		return true;
+	};
+	const disposeSymbolHover = symbol && canvas ? registerStackHover(canvas, () => state.camera, {
+		mesh,
+		visible: shown,
+		select: (index) => point("cells", index !== null)
+	}) : null;
+	titleHit = symbol && canvas && titlePlane ? new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({
+		visible: false,
+		side: THREE.DoubleSide
+	})) : null;
+	function placeTitleHit() {
+		if (!titleHit) return;
+		const [x, y, z] = titlePosition(), w = titleWidth / 2, h = .95 / 2;
+		const corners = [
+			[x - w, y - h],
+			[x + w, y - h],
+			[x + w, y + h],
+			[x - w, y + h]
+		].map(([cx, cy]) => dataToWorld([
+			cx,
+			cy,
+			z
+		]));
+		const positions = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		].flatMap((i) => corners[i]);
+		titleHit.geometry.dispose();
+		titleHit.geometry = new THREE.BufferGeometry();
+		titleHit.geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+	}
+	placeTitleHit();
+	const disposeTitleHover = titleHit && canvas ? registerStackHover(canvas, () => state.camera, {
+		mesh: titleHit,
+		visible: shown,
+		select: (index) => point("title", index !== null)
+	}) : null;
+	if (symbol && titleLabel && !planeText) {
+		titleLabel.el.style.pointerEvents = "auto";
+		titleLabel.el.addEventListener("pointerenter", () => point("title", true));
+		titleLabel.el.addEventListener("pointerleave", () => point("title", false));
+	}
+	const onSymbolHover = () => {
+		const lit = !!symbol && hoveredSymbols().includes(symbol);
+		if (lit === symbolLit || animState.stopped) return;
+		symbolLit = lit;
+		titlePlane?.setHighlight(lit);
+		titleLabel?.el.classList.toggle("array-title-symbol-hover", lit);
+	};
+	if (symbol) window.addEventListener("algebench:symbolhover", onSymbolHover);
 	material.addEventListener("dispose", () => {
 		disposeHover?.();
+		disposeSymbolHover?.();
+		disposeTitleHover?.();
+		titleHit?.geometry.dispose();
+		window.removeEventListener("algebench:symbolhover", onSymbolHover);
 		ghostMaterial?.dispose();
 		unit.dispose();
 		for (const layer of [
@@ -11644,6 +12425,22 @@ function renderStack(el, view) {
 		], "#b5c1cf");
 		title.ownerMesh = owner;
 		title.snapToProjection = true;
+		if (el.id) {
+			const symbol = el.id;
+			title.el.style.pointerEvents = "auto";
+			title.el.addEventListener("pointerenter", () => setSymbolHover([symbol]));
+			title.el.addEventListener("pointerleave", () => {
+				if (hoveredSymbols().length === 1 && hoveredSymbols()[0] === symbol) setSymbolHover([]);
+			});
+			const light = () => {
+				if (!title.el.isConnected) {
+					window.removeEventListener("algebench:symbolhover", light);
+					return;
+				}
+				title.el.classList.toggle("array-title-symbol-hover", hoveredSymbols().includes(symbol));
+			};
+			window.addEventListener("algebench:symbolhover", light);
+		}
 		const empty = addLabel3D(el.emptyText ?? "empty", origin, "#8ca9a0", { cssClass: "label-3d array-cell-label" });
 		empty.ownerMesh = owner;
 		empty.snapToProjection = true;
@@ -16062,6 +16859,33 @@ function axisLabelList(axis, hasLabelExpr) {
 function staticTickLabel(list, k) {
 	return list[k] ?? "";
 }
+/**
+* The bars an interval set draws. `n` is clamped to 0..max (a non-finite count
+* draws nothing); a bar whose start, end or lane is not finite is dropped
+* rather than drawn at 0; and a reversed span is normalised so start <= end.
+*/
+function intervalBars(n, max, read) {
+	const count = Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : 0;
+	const bars = [];
+	for (let i = 0; i < count; i++) {
+		const b = read(i, count);
+		if (!Number.isFinite(b.s) || !Number.isFinite(b.e) || !Number.isFinite(b.lane)) continue;
+		bars.push({
+			...b,
+			s: Math.min(b.s, b.e),
+			e: Math.max(b.s, b.e)
+		});
+	}
+	return bars;
+}
+/** Most bars one interval set draws; a counted set reserves this many once. */
+var MAX_INTERVALS = 256;
+/** The gold an array cell uses for a highlighted slot, so a bar reads as "selected" the same way. */
+var HIGHLIGHT = [
+	241 / 255,
+	204 / 255,
+	89 / 255
+];
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 var MAX_TICKS = 50;
 var PLANE_AXES = {
@@ -16205,6 +17029,44 @@ function renderChart(el, view) {
 			bands.splice(k, 1);
 		}
 	}
+	const numList = (v) => Array.isArray(v) ? v.map(Number) : null;
+	const srcOf = (v) => typeof v === "string" ? v.trim() || null : null;
+	const intervalSets = [];
+	(Array.isArray(chart.intervals) ? chart.intervals : []).forEach((sp, k) => {
+		const starts = numList(sp.start), ends = numList(sp.end);
+		const set = {
+			color: parseColor(sp.color || el.color || "#74d0c2"),
+			opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .85,
+			thickness: Number(sp.thickness) > 0 ? Number(sp.thickness) : .6,
+			label: typeof sp.label === "string" && sp.label.trim() ? sp.label.trim() : null,
+			starts,
+			ends,
+			lanes: numList(sp.lane),
+			lane: Number.isFinite(Number(sp.lane)) ? Number(sp.lane) : 0,
+			countSrc: srcOf(sp.countExpr),
+			startSrc: srcOf(sp.startExpr),
+			endSrc: srcOf(sp.endExpr),
+			laneSrc: srcOf(sp.laneExpr),
+			hlSrc: srcOf(sp.highlightExpr),
+			labelSrc: srcOf(sp.labelExpr),
+			countFn: compileOpt(sp.countExpr, `intervals[${k}].countExpr`),
+			startFn: compileOpt(sp.startExpr, `intervals[${k}].startExpr`),
+			endFn: compileOpt(sp.endExpr, `intervals[${k}].endExpr`),
+			laneFn: compileOpt(sp.laneExpr, `intervals[${k}].laneExpr`),
+			hlFn: compileOpt(sp.highlightExpr, `intervals[${k}].highlightExpr`),
+			labelFn: compileOpt(sp.labelExpr, `intervals[${k}].labelExpr`),
+			max: srcOf(sp.countExpr) ? MAX_INTERVALS : Math.min(MAX_INTERVALS, Math.min(starts?.length ?? 0, ends?.length ?? 0)),
+			bars: [],
+			mesh: null,
+			attr: null,
+			colors: null
+		};
+		if (!set.countSrc && !set.max) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: intervals[${k}] needs start/end arrays or a countExpr; skipped.`);
+			return;
+		}
+		intervalSets.push(set);
+	});
 	const axes = Array.isArray(chart.axes) ? chart.axes : [];
 	const xAxis = axes[0], yAxis = axes[1];
 	const xTitle = xAxis && xAxis.title ? String(xAxis.title) : null;
@@ -16255,7 +17117,49 @@ function renderChart(el, view) {
 	/** Plot-local v for a value read on right axis `a`. The mapping is affine,
 	*  so the two endpoints fix it and the interior interpolates. */
 	const toPlaneYOn = (y, a) => rightAxisPlace(y, a.dom, H);
-	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || rightAxes.length > 0;
+	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || intervalSets.some((v) => v.countSrc || v.startSrc || v.endSrc || v.laneSrc || v.hlSrc || v.labelSrc) || rightAxes.length > 0;
+	/** Evaluate one interval set's bars through the pure `intervalBars`. */
+	function sampleIntervals(v, tSec) {
+		let n = v.max;
+		if (v.countFn) try {
+			n = Number(evalExpr(v.countFn.fn, tSec, {}));
+		} catch (_e) {
+			n = 0;
+		}
+		else if (v.countSrc) n = 0;
+		const scope = {
+			i: 0,
+			n: 0
+		};
+		const run = (fn) => fn ? evalExpr(fn.fn, tSec, { overrideScope: scope }) : void 0;
+		v.bars = intervalBars(n, v.max, (i, count) => {
+			scope.i = i;
+			scope.n = count;
+			const num = (fn, lit) => {
+				if (!fn) return lit ?? NaN;
+				try {
+					return Number(run(fn));
+				} catch (_e) {
+					return NaN;
+				}
+			};
+			let hl = false, text = "";
+			if (v.hlFn) try {
+				hl = !!run(v.hlFn);
+			} catch (_e) {}
+			if (v.labelFn) try {
+				const out = run(v.labelFn);
+				text = out === null || out === void 0 ? "" : String(out);
+			} catch (_e) {}
+			return {
+				s: num(v.startFn, v.starts?.[i]),
+				e: num(v.endFn, v.ends?.[i]),
+				lane: num(v.laneFn, v.lanes ? v.lanes[i] : v.lane),
+				hl,
+				text
+			};
+		});
+	}
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -16306,9 +17210,14 @@ function renderChart(el, view) {
 				if (Number.isFinite(v)) b.hi = v;
 			} catch (_e) {}
 		}
+		for (const v of intervalSets) sampleIntervals(v, tSec);
 		if (!xFixed) {
 			const xs = [];
 			for (const s of series) for (const x of s.px) xs.push(x);
+			for (const v of intervalSets) for (const b of v.bars) {
+				xs.push(b.s);
+				xs.push(b.e);
+			}
 			xDom = autoDomain(xs, 0);
 		}
 		if (!yFixed) {
@@ -16318,6 +17227,10 @@ function renderChart(el, view) {
 			for (const b of bands) {
 				ys.push(b.lo);
 				ys.push(b.hi);
+			}
+			for (const v of intervalSets) for (const b of v.bars) {
+				ys.push(b.lane - v.thickness / 2);
+				ys.push(b.lane + v.thickness / 2);
 			}
 			yDom = autoDomain(ys);
 		}
@@ -16489,6 +17402,43 @@ function renderChart(el, view) {
 		}
 		attr.needsUpdate = true;
 	};
+	/** Write every bar of a set as two triangles, clipped to the plot; unused slots collapse to nothing. */
+	function placeIntervals(v) {
+		if (!v.attr || !v.colors) return;
+		const a = v.attr.array, c = v.colors.array;
+		a.fill(0);
+		const order = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		];
+		v.bars.forEach((b, k) => {
+			const [h0] = toPlane(b.s, 0), [h1] = toPlane(b.e, 0);
+			const [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+			const clip = (x, hi) => Math.max(0, Math.min(hi, x));
+			const P = [
+				at(clip(h0, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v1, H), lift * 1.5),
+				at(clip(h0, W), clip(v1, H), lift * 1.5)
+			].map(dataToWorld);
+			const rgb = b.hl ? HIGHLIGHT : v.color;
+			for (let j = 0; j < 6; j++) {
+				const p = P[order[j]], o = (k * 6 + j) * 3;
+				a[o] = p[0];
+				a[o + 1] = p[1];
+				a[o + 2] = p[2];
+				c[o] = rgb[0];
+				c[o + 1] = rgb[1];
+				c[o + 2] = rgb[2];
+			}
+		});
+		v.attr.needsUpdate = true;
+		v.colors.needsUpdate = true;
+	}
 	/** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
 	const placeBand = (b) => {
 		if (!b.attr) return;
@@ -16504,6 +17454,34 @@ function renderChart(el, view) {
 		b.mesh = q.mesh;
 		b.attr = q.attr;
 		placeBand(b);
+	}
+	const barOrder = intervalSets.length ? el.renderOrder !== void 0 ? serial + 2 : chartState._planeMeshSerial++ : serial + 2;
+	for (const v of intervalSets) {
+		const pos = new Float32Array(v.max * 18), col = new Float32Array(v.max * 18);
+		const attr = new THREE.BufferAttribute(pos, 3), colors = new THREE.BufferAttribute(col, 3);
+		attr.setUsage(THREE.DynamicDrawUsage);
+		colors.setUsage(THREE.DynamicDrawUsage);
+		const geom = new THREE.BufferGeometry();
+		geom.setAttribute("position", attr);
+		geom.setAttribute("color", colors);
+		const mat = new THREE.MeshBasicMaterial({
+			vertexColors: true,
+			transparent: true,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			opacity: ignoresPlaneOpacity ? v.opacity : chartState.displayParams.planeOpacity * v.opacity
+		});
+		const mesh = new THREE.Mesh(geom, mat);
+		mesh.frustumCulled = false;
+		mesh.userData.targetOpacity = v.opacity;
+		mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+		mesh.renderOrder = barOrder;
+		chartState.three.scene.add(mesh);
+		chartState.planeMeshes.push(mesh);
+		v.mesh = mesh;
+		v.attr = attr;
+		v.colors = colors;
+		placeIntervals(v);
 	}
 	const mL = yTitle ? 1.6 : 1.1;
 	const mB = xTitle ? 1.1 : .7;
@@ -16565,6 +17543,48 @@ function renderChart(el, view) {
 		paper.mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 		writeQuad(paper.attr, -mL, W + mR, -mB, H + mT, 0);
 	}
+	let ink = null;
+	if (ctx && intervalSets.some((v) => v.labelSrc)) {
+		const inkCanvas = document.createElement("canvas");
+		inkCanvas.width = canvas.width;
+		inkCanvas.height = canvas.height;
+		const inkCtx = inkCanvas.getContext("2d");
+		if (inkCtx) {
+			const inkTex = new THREE.CanvasTexture(inkCanvas);
+			inkTex.minFilter = THREE.LinearFilter;
+			inkTex.magFilter = THREE.LinearFilter;
+			inkTex.generateMipmaps = false;
+			const sheet = makeQuad([
+				1,
+				1,
+				1
+			], 1, el.renderOrder !== void 0 ? serial + 3 : chartState._planeMeshSerial++, false);
+			const sheetMat = sheet.mesh.material;
+			sheetMat.map = inkTex;
+			sheetMat.color.set(16777215);
+			sheetMat.alphaTest = .02;
+			sheetMat.addEventListener("dispose", () => inkTex.dispose());
+			sheet.mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array([
+				0,
+				0,
+				1,
+				0,
+				1,
+				1,
+				0,
+				0,
+				1,
+				1,
+				0,
+				1
+			]), 2));
+			writeQuad(sheet.attr, -mL, W + mR, -mB, H + mT, lift * 2.5);
+			ink = {
+				ctx: inkCtx,
+				tex: inkTex
+			};
+		}
+	}
 	/** Tick label text: the axis's labelExpr with `value` bound, else the value to the step's decimals. */
 	const tickText = (fn, v, step, tSec) => {
 		if (fn) try {
@@ -16595,6 +17615,7 @@ function renderChart(el, view) {
 				labels: t.ticks.map((v) => tickText(a.labelFn, v, t.step, tSec))
 			};
 		});
+		const barLabelKey = intervalSets.filter((v) => v.labelSrc).map((v) => v.bars.map((b) => `${b.text}\u0001${b.s}\u0001${b.e}\u0001${b.lane}`).join("")).join("");
 		const key = JSON.stringify([
 			xDom,
 			yDom,
@@ -16602,7 +17623,8 @@ function renderChart(el, view) {
 			yLabels,
 			rightAxes.map((a) => a.dom),
 			rightTicks.map((t) => t && t.labels),
-			pointLabelKey
+			pointLabelKey,
+			barLabelKey
 		]);
 		if (key === paperKey) return;
 		paperKey = key;
@@ -16859,7 +17881,34 @@ function renderChart(el, view) {
 				});
 			});
 		}
-		const legendRows = series.filter((sr) => sr.label);
+		if (ink) {
+			ink.ctx.clearRect(0, 0, cw, ch);
+			for (const v of intervalSets) for (const b of v.bars) {
+				if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
+				const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
+				const [, mid] = toPlane(0, b.lane), [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+				if (mid < 0 || mid > H) continue;
+				const widthPx = (h1 - h0) * pxPer, heightPx = (v1 - v0) * pxPer;
+				const fontPx = Math.min(pxPer * .3, heightPx * .72, fitLatexPx(b.text, widthPx * .9, pxPer * .3));
+				if (fontPx < 6) continue;
+				drawLatex(ink.ctx, b.text, X((h0 + h1) / 2), Y(mid), {
+					fontPx,
+					color: "#1b1606",
+					align: "center",
+					vAlign: "middle"
+				});
+			}
+			ink.tex.needsUpdate = true;
+		}
+		const legendRows = [...series.filter((sr) => sr.label).map((sr) => ({
+			label: sr.label,
+			color: sr.color,
+			swatch: sr.kind
+		})), ...intervalSets.filter((v) => v.label).map((v) => ({
+			label: v.label,
+			color: v.color,
+			swatch: "bar"
+		}))];
 		if (legendRows.length) {
 			const titleRef = xTitle || yTitle;
 			const fontPx = titleRef ? fitLatexPx(titleRef, (xTitle ? W : H) * pxPer, pxPer * .5) : pxPer * .4;
@@ -16873,11 +17922,12 @@ function renderChart(el, view) {
 				const sx = bx + pad;
 				ctx.fillStyle = css(sr.color);
 				ctx.strokeStyle = css(sr.color);
-				if (sr.kind === "points") {
+				if (sr.swatch === "points") {
 					ctx.beginPath();
 					ctx.arc(sx + swatchW / 2, cy, fontPx * .2, 0, Math.PI * 2);
 					ctx.fill();
-				} else {
+				} else if (sr.swatch === "bar") ctx.fillRect(sx, cy - fontPx * .22, swatchW, fontPx * .44);
+				else {
 					ctx.lineWidth = Math.max(1.5, fontPx * .12);
 					ctx.beginPath();
 					ctx.moveTo(sx, cy);
@@ -16911,6 +17961,7 @@ function renderChart(el, view) {
 			}
 		}
 		for (const b of bands) placeBand(b);
+		for (const v of intervalSets) placeIntervals(v);
 	}
 	const animState = { stopped: false };
 	const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === "string" ? seriesSpecs[0].label : void 0);
@@ -16927,6 +17978,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.src),
 		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
+		...intervalSets.flatMap((v) => [
+			v.countSrc,
+			v.startSrc,
+			v.endSrc,
+			v.laneSrc,
+			v.hlSrc,
+			v.labelSrc
+		]),
 		...rightAxes.flatMap((a) => [a.src, a.labelSrc]),
 		xLabelSrc,
 		yLabelSrc
@@ -16940,6 +17999,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.fn?.fn),
 		...bands.flatMap((b) => [b.loFn?.fn, b.hiFn?.fn]),
+		...intervalSets.flatMap((v) => [
+			v.countFn?.fn,
+			v.startFn?.fn,
+			v.endFn?.fn,
+			v.laneFn?.fn,
+			v.hlFn?.fn,
+			v.labelFn?.fn
+		]),
 		...rightAxes.flatMap((a) => [a.fn?.fn, a.labelFn?.fn]),
 		xLabelFn?.fn,
 		yLabelFn?.fn
@@ -16965,6 +18032,14 @@ function renderChart(el, view) {
 			bands.forEach((b, k) => {
 				if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
 				if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
+			});
+			intervalSets.forEach((v, k) => {
+				v.countFn = compileOpt(v.countSrc, `intervals[${k}].countExpr`);
+				v.startFn = compileOpt(v.startSrc, `intervals[${k}].startExpr`);
+				v.endFn = compileOpt(v.endSrc, `intervals[${k}].endExpr`);
+				v.laneFn = compileOpt(v.laneSrc, `intervals[${k}].laneExpr`);
+				v.hlFn = compileOpt(v.hlSrc, `intervals[${k}].highlightExpr`);
+				v.labelFn = compileOpt(v.labelSrc, `intervals[${k}].labelExpr`);
 			});
 			if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
 			if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
@@ -21845,7 +22920,8 @@ function setupCodePanel() {
 	actions.hidden = true;
 	const selectionLabel = document.createElement("span");
 	let lesson, files = [], selected;
-	let first = 0, last = 0, excerpt = "", active = null;
+	let first = 0, last = 0, excerpt = "", active = null, followed;
+	const compiled = /* @__PURE__ */ new Map();
 	const targets = document.createElement("div");
 	targets.className = "code-step-targets";
 	targets.hidden = true;
@@ -21932,13 +23008,38 @@ function setupCodePanel() {
 			targets.append(button);
 		}
 	});
-	function refreshBinding() {
+	function evaluate(expr) {
+		if (!compiled.has(expr)) try {
+			compiled.set(expr, compileExpr(expr));
+		} catch {
+			compiled.set(expr, null);
+		}
+		const fn = compiled.get(expr);
+		if (!fn) throw new Error("Invalid code expression.");
+		return evalExpr(fn, 0);
+	}
+	/**
+	* A scene's codeRef names the file and line executing now: the panel follows that file when it changes
+	* (or on scene entry) and marks the line only there. Scenes without one use the open file's activeLineExpr.
+	*/
+	function refreshBinding(entering = false) {
 		let lines = /* @__PURE__ */ new Set();
-		if (active) try {
+		const ref = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.codeRef;
+		if (ref) {
+			const target = resolveCodeRef(files, ref, evaluate);
+			if (target && (entering || target.file !== followed) && target.file !== selected) {
+				followed = target.file;
+				open(target.file);
+				return;
+			}
+			followed = target?.file;
+			if (target && target.file === selected) lines = /* @__PURE__ */ new Set([target.line]);
+		} else if (active) try {
 			lines = activeCodeLines(evalExpr(active, 0));
 		} catch {}
+		const bound = !!ref || !!active;
 		const signature = [...lines].join(", ");
-		execution.textContent = active ? signature ? "Active lines: " + signature : "No active lines at this position" : "";
+		execution.textContent = bound ? signature ? "Active lines: " + signature : "No active lines at this position" : "";
 		let firstActive;
 		body.querySelectorAll(".code-line").forEach((row) => {
 			const current = lines.has(Number(row.dataset.line));
@@ -21989,7 +23090,64 @@ function setupCodePanel() {
 		});
 		tree.querySelectorAll("[data-file]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.file === file.id)));
 		refreshBinding();
+		analyzeCode(file).then((analysis) => {
+			if (analysis && selected === file) markSymbols(analysis.references);
+		});
 	}
+	/** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
+	function markSymbols(references) {
+		body.querySelectorAll(".code-line code").forEach((code) => {
+			for (const ref of lineReferences(references, Number(code.dataset.line))) wrapRange(code, ref);
+		});
+		paintSymbolHover();
+	}
+	function wrapRange(code, ref) {
+		const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+		const pieces = [];
+		let offset = 0;
+		for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+			const start = offset, end = offset + node.data.length;
+			offset = end;
+			const from = Math.max(ref.col, start), to = Math.min(ref.endCol, end);
+			if (from < to) pieces.push({
+				node,
+				from: from - start,
+				to: to - start
+			});
+		}
+		for (const { node, from, to } of pieces) {
+			const target = node.splitText(from);
+			target.splitText(to - from);
+			const span = document.createElement("span");
+			span.className = "code-sym";
+			span.dataset.key = ref.key;
+			span.dataset.root = ref.root;
+			span.dataset.kind = ref.kind;
+			target.replaceWith(span);
+			span.append(target);
+		}
+	}
+	function paintSymbolHover() {
+		const keys = hoveredSymbols();
+		body.querySelectorAll(".code-sym").forEach((span) => span.classList.toggle("code-sym-hover", keys.includes(span.dataset.key)));
+	}
+	body.addEventListener("pointerover", (event) => {
+		const span = event.target.closest(".code-sym");
+		setSymbolHover(span ? [span.dataset.key] : []);
+	});
+	body.addEventListener("pointerleave", () => setSymbolHover([]));
+	window.addEventListener("algebench:symbolhover", paintSymbolHover);
+	window.addEventListener("algebench:symbolflash", (event) => {
+		const keys = event.detail.keys;
+		requestAnimationFrame(() => {
+			body.querySelectorAll(".code-line.execution-line .code-sym").forEach((span) => {
+				if (!keys.includes(span.dataset.key) && !(keys.includes(span.dataset.root) && span.dataset.kind === "subscript")) return;
+				span.classList.add("code-sym-flash");
+				clearTimeout(Number(span.dataset.flash));
+				span.dataset.flash = String(setTimeout(() => span.classList.remove("code-sym-flash"), 900));
+			});
+		});
+	});
 	body.addEventListener("mouseup", (event) => {
 		const selection = window.getSelection();
 		const nodeElement = (n) => n instanceof Element ? n : n?.parentElement;
@@ -22033,14 +23191,15 @@ function setupCodePanel() {
 			tree.replaceChildren();
 			body.replaceChildren();
 			actions.hidden = targets.hidden = true;
-			selected = void 0;
+			selected = followed = void 0;
 			active = null;
+			compiled.clear();
 			setCodeFocus(null);
 			build(fileTree(files), tree);
 			if (files[0]) open(files[0]);
 			else title.textContent = "This lesson has no code files.";
 		}
-		refreshBinding();
+		refreshBinding(true);
 		renderLineActions();
 	}
 	window.addEventListener("algebench:opencode", (event) => {
@@ -22060,7 +23219,7 @@ function setupCodePanel() {
 		}
 	});
 	window.addEventListener("algebench:navchange", refresh);
-	window.addEventListener("algebench:sliderchange", refreshBinding);
+	window.addEventListener("algebench:sliderchange", () => refreshBinding());
 	refresh();
 }
 //#endregion
@@ -25145,6 +26304,59 @@ function setupShareButton() {
 	});
 }
 //#endregion
+//#region src/speech-text.ts
+/**
+* Text for speech. Chat replies are markdown with LaTeX; read aloud verbatim, the voice pronounces the markup
+* ("asterisk asterisk", "dollar"), so speech gets the words only. The model also sometimes writes a tool call
+* into its reply as a processing-instruction tag (`<?set_preset_prompts prompts=[...] ?>`) instead of calling
+* the tool: the chat bubble hides it as HTML, but speech would read it, so it is removed (and can be honoured).
+*/
+var INLINE_TOOL = /<\?\s*([a-z_]+)\b([\s\S]*?)\?>/gi;
+/** Pull `<?name key=json ...?>` tags out of a reply. Arguments that are not valid JSON are dropped. */
+function extractInlineToolCalls(text) {
+	const calls = [];
+	return {
+		text: text.replace(INLINE_TOOL, (_, name, body) => {
+			const args = {};
+			for (const m of body.matchAll(/([a-z_]+)\s*=\s*(\[[\s\S]*?\](?=\s*(?:[a-z_]+\s*=|$))|"(?:[^"\\]|\\.)*"|[^\s]+)/gi)) try {
+				args[m[1]] = JSON.parse(m[2]);
+			} catch {}
+			calls.push({
+				name,
+				args
+			});
+			return "";
+		}).replace(/[ \t]+\n/g, "\n").trim(),
+		calls
+	};
+}
+/** Plain words for a markdown + LaTeX reply. */
+function speechText(text) {
+	return extractInlineToolCalls(text).text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\)/g, (_, a, b, c) => speechMath(a ?? b ?? c)).replace(/`([^`]+)`/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/(^|\W)[*_]([^*_\n]+)[*_](?=\W|$)/g, "$1$2").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*>\s?/gm, "").replace(/[📍🤖👤]/gu, "").replace(/([^.!?:;,\s])[ \t]*\n+\s*/g, "$1. ").replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim();
+}
+var MATH_WORDS = {
+	le: "≤",
+	leq: "≤",
+	ge: "≥",
+	geq: "≥",
+	ne: "≠",
+	neq: "≠",
+	times: "×",
+	cdot: "·",
+	to: "→",
+	rightarrow: "→",
+	approx: "≈",
+	infty: "infinity",
+	pm: "±",
+	ldots: "…",
+	dots: "…",
+	cdots: "…"
+};
+/** Inline math as readable symbols: `74 > 73`, `\text{total} = 18` → `total = 18`. */
+function speechMath(tex) {
+	return tex.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^}]*)\}/g, "$1").replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1 over $2").replace(/\\([a-zA-Z]+)/g, (_, w) => MATH_WORDS[w] ?? w).replace(/[{}]/g, "").trim();
+}
+//#endregion
 //#region src/lesson-placement.ts
 /** Thrown when an op cannot be applied. Callers discard and clear history. */
 var PlacementError = class extends Error {};
@@ -25837,33 +27049,126 @@ if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) =>
 	const surface = _classifyFocusTarget(e.target);
 	if (surface) _lastFocusedSurface = surface;
 }, true);
+/**
+* Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
+* shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
+*/
+var COMMON_PROMPTS = [
+	{
+		label: "Walk me through this view",
+		prompt: "Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate."
+	},
+	{
+		label: "Walk me through key points",
+		prompt: "Walk me through the key points of this scene, one at a time, as a short list."
+	},
+	{
+		label: "Guide me",
+		prompt: "Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on."
+	},
+	{
+		label: "Ask me about the current step",
+		prompt: "Ask me one question about the current step to check my understanding. Wait for my answer before explaining."
+	},
+	{
+		label: "Ask me about the current scene",
+		prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."
+	},
+	{
+		label: "Quiz mode",
+		prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."
+	},
+	{
+		label: "Surprise me!",
+		prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."
+	}
+];
+/** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
+function usePrompt(text, e) {
+	if (e.metaKey || e.ctrlKey) {
+		const input = document.getElementById("chat-input");
+		if (input) {
+			input.value = text;
+			input.focus();
+			input.dispatchEvent(new Event("input"));
+		}
+	} else sendChatMessage$1(text);
+}
 function setPresetPrompts$1(prompts) {
 	_presetPrompts = prompts || [];
 	const container = document.getElementById("preset-prompts");
 	if (!container) return;
 	container.innerHTML = "";
-	if (!_presetPrompts.length) {
-		container.classList.add("hidden");
-		return;
-	}
 	container.classList.remove("hidden");
 	for (const text of _presetPrompts) {
 		const btn = document.createElement("button");
 		btn.className = "preset-prompt-btn";
 		btn.textContent = text;
 		btn.title = text + "\n\nClick to send · ⌘/Ctrl-click to edit";
-		btn.addEventListener("click", (e) => {
-			if (e.metaKey || e.ctrlKey) {
-				const input = document.getElementById("chat-input");
-				if (input) {
-					input.value = text;
-					input.focus();
-					input.dispatchEvent(new Event("input"));
-				}
-			} else sendChatMessage$1(text);
-		});
+		btn.addEventListener("click", (e) => usePrompt(text, e));
 		container.appendChild(btn);
 	}
+	container.appendChild(morePromptsMenu());
+}
+/** A small chip that opens a menu of COMMON_PROMPTS above it. */
+function morePromptsMenu() {
+	const wrap = document.createElement("div");
+	wrap.className = "preset-more";
+	const toggle = document.createElement("button");
+	toggle.type = "button";
+	toggle.className = "preset-prompt-btn preset-more-btn";
+	toggle.textContent = "⋯";
+	toggle.title = "More prompts";
+	toggle.setAttribute("aria-label", "More prompts");
+	toggle.setAttribute("aria-haspopup", "menu");
+	toggle.setAttribute("aria-expanded", "false");
+	const menu = document.createElement("div");
+	menu.className = "preset-more-menu";
+	menu.setAttribute("role", "menu");
+	menu.hidden = true;
+	const close = () => {
+		menu.hidden = true;
+		toggle.setAttribute("aria-expanded", "false");
+		document.removeEventListener("pointerdown", outside, true);
+		document.removeEventListener("keydown", escape, true);
+	};
+	const outside = (e) => {
+		if (!wrap.contains(e.target)) close();
+	};
+	const escape = (e) => {
+		if (e.key === "Escape") {
+			close();
+			toggle.focus();
+		}
+	};
+	for (const { label, prompt } of COMMON_PROMPTS) {
+		const item = document.createElement("button");
+		item.type = "button";
+		item.className = "preset-more-item";
+		item.setAttribute("role", "menuitem");
+		item.textContent = label;
+		item.title = prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
+		item.addEventListener("click", (e) => {
+			close();
+			usePrompt(prompt, e);
+		});
+		menu.appendChild(item);
+	}
+	toggle.addEventListener("click", () => {
+		if (!menu.hidden) {
+			close();
+			return;
+		}
+		menu.hidden = false;
+		menu.classList.remove("preset-more-menu-right");
+		if (menu.getBoundingClientRect().right > document.documentElement.clientWidth - 8) menu.classList.add("preset-more-menu-right");
+		toggle.setAttribute("aria-expanded", "true");
+		document.addEventListener("pointerdown", outside, true);
+		document.addEventListener("keydown", escape, true);
+		menu.querySelector("button")?.focus();
+	});
+	wrap.append(toggle, menu);
+	return wrap;
 }
 /** Until this time (ms), the Chat-tab welcome is skipped — see suppressChatWelcome. */
 var _welcomeSuppressedUntil = 0;
@@ -26395,7 +27700,9 @@ async function _sendTurn(text, { silent, noTools }) {
 			messagesEl.scrollTop = messagesEl.scrollHeight;
 		}
 		let assistantMsg = null;
-		if (data.response) assistantMsg = addChatMessage("assistant", data.response);
+		const reply = extractInlineToolCalls(data.response ?? "");
+		for (const call of reply.calls) if (call.name === "set_preset_prompts" && Array.isArray(call.args.prompts)) setPresetPrompts$1(call.args.prompts.filter((p) => typeof p === "string"));
+		if (reply.text) assistantMsg = addChatMessage("assistant", reply.text);
 		const builderTurns = [];
 		if (data.toolCalls && data.toolCalls.length > 0) {
 			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
@@ -26515,7 +27822,7 @@ async function _sendTurn(text, { silent, noTools }) {
 		}
 		chatHistory.push({
 			role: "assistant",
-			text: data.response
+			text: reply.text
 		});
 		for (const said of builderTurns) chatHistory.push({
 			role: "assistant",
@@ -26967,7 +28274,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 };
 async function speakText(text, { explicit = false } = {}) {
 	if (selectedTtsMode === "silent" && !explicit) return;
-	const clean = stripGlossaryMarkers(text).replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
+	const clean = speechText(stripGlossaryMarkers(text));
 	if (!clean) return;
 	const myId = ++ttsRequestId;
 	ttsPausedByUser = false;

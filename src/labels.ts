@@ -3,11 +3,15 @@
 // AI ask-button helpers.
 // ============================================================
 
-import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition } from '/annotation-layout.js';
+import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition, markerLifts, labelAskMessage } from '/annotation-layout.js';
+import { bindSymbolRow } from '/code-symbols.js';
 import type { AnnotationValue } from '/annotation-layout.js';
 
 import { state } from '/state.js';
 import { wireRowHover, updateLabelWire } from '/label-wire.js';
+import { wireRowTooltip, refreshLabelTooltip } from '/label-tooltip.js';
+import { CODE_ICON } from '/icons.js';
+import { paintCellLinks } from '/cell-links.js';
 import { dataToWorld, worldToData, currentDataOffset, withDataOffset } from '/coords.js';
 import { extractActiveGlossaryTerms, restoreGlossaryTerms, stripGlossaryMarkers, stripGlossaryMath } from '/glossary-core.js';
 
@@ -375,6 +379,14 @@ export interface Label3D {
     annotation?: AnnotationValue & {
         kind: 'marker' | 'label'; badge: HTMLElement; measure: HTMLElement;
         width: number; height: number; scale: number | null; rendered: string;
+        /** An expression label's highlightExpr result; its row is drawn highlighted. */
+        highlighted?: boolean;
+        /** An expression label's tooltipExpr result: LaTeX shown while hovering its row. */
+        tooltip?: string;
+        /** The element's author `prompt`, passed to the row's Ask-AI question. */
+        prompt?: string | null;
+        /** The source line behind the value (resolved codeRef); its row offers a </> button. */
+        code?: {fileId: string; path: string; line: number} | null;
         startDrag?: (event:PointerEvent, members?:Label3D[])=>void;
     };
     annotationHidden?: boolean;
@@ -387,7 +399,11 @@ export interface Label3D {
     annotationDocked?: boolean;
     annotationCoordinateMode?: 'world' | 'screen';
     wireTarget?: {object?:string;index?:number;position?:[number,number,number]};
+    /** Every connection target when connectTo lists several; wireTarget is the first. */
+    wireTargets?: {object?:string;index?:number;position?:[number,number,number]}[];
     wirePinned?: boolean;
+    /** Set by marker stacking: this badge was lifted over a neighbour's, so it paints beneath unlifted ones. */
+    markerLifted?: boolean;
 }
 
 // state.js is still untyped JavaScript, so describe the slice this module uses
@@ -574,12 +590,18 @@ export function updateLabels(): void {
     const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
     for (let i = 0; i < ordered.length; i++) {
         const o = ordered[i]!;
-        // Screen overlays have their own paint band above every world label,
-        // including array index tags. Preserve depth order within each band.
-        const zi = ordered.length - i + (o.annotationCoordinateMode === 'screen' ? ordered.length : 0);
+        // Paint bands, bottom to top: plain world labels (array index tags, titles),
+        // lifted index markers, other index markers, expression-label boxes (Vars/Labels),
+        // then screen overlays. A lifted marker's stem runs down past the badge it cleared,
+        // so it goes beneath that badge rather than across its text. Nothing in the scene
+        // may cover a Vars box, however near the camera it is; depth order decides within a band.
+        const band = o.annotationCoordinateMode === 'screen' ? 4 : o.annotation?.kind === 'label' ? 3 : o.annotation ? (o.markerLifted ? 1 : 2) : 0;
+        const zi = ordered.length - i + band * ordered.length;
         if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
     }
     updateLabelWire();
+    paintCellLinks();
+    refreshLabelTooltip();
 }
 
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
@@ -594,7 +616,7 @@ function groupAnnotations(scale: number): void {
         }
         return {text:a.text, index:a.index, kind:a.kind, coordinateMode:l.annotationCoordinateMode ?? 'world', detached:!!l.annotationDragging && !l.annotationDocked, x:l.screenX!, y:l.screenY! + (l.cellAttachment?.edge === 'top' ? -(a.height + 11)/2 : a.kind === 'marker' ? -38 : 0), width:a.width, height:a.height};
     });
-    const key = JSON.stringify(boxes.map((b,i) => [labels[i]!.seq, labels[i]!.annotationOrder, b.coordinateMode, b.detached, Math.round(b.x*10), Math.round(b.y*10), b.width, b.height, b.text, b.index]));
+    const key = JSON.stringify(boxes.map((b,i) => [labels[i]!.seq, labels[i]!.annotationOrder, b.coordinateMode, b.detached, Math.round(b.x*10), Math.round(b.y*10), b.width, b.height, b.text, b.index, !!labels[i]!.annotation!.highlighted, labels[i]!.annotation!.code?.line ?? 0]));
     if (key === annotationLayoutKey) return;
     annotationLayoutKey = key;
     for (const l of labelsState.labels) { l.annotationHidden = false; l.annotationAnchor = undefined; }
@@ -605,18 +627,43 @@ function groupAnnotations(scale: number): void {
         const members = group.map(i => boxes[i]!);
         if (a.kind === 'label') leader.annotationAnchor = annotationGroupAnchor(members);
         const rows = annotationRows(members);
-        const signature = JSON.stringify([rows, group.map(i => [labels[i]!.seq, labels[i]!.annotationCoordinateMode ?? 'world'])]);
+        const signature = JSON.stringify([rows, group.map(i => [labels[i]!.seq, labels[i]!.annotationCoordinateMode ?? 'world', !!labels[i]!.annotation!.highlighted, labels[i]!.annotation!.code?.line ?? 0])]);
         if (signature !== a.rendered) {
             a.badge.replaceChildren(...rows.map((text, rowIndex) => {
                 const row = document.createElement('span'); row.className = 'annotation-row'; row.textContent = text;
+                bindSymbolRow(row, text);
                 if (a.kind === 'label') {
+                    if (labels[group[rowIndex]!]!.annotation!.highlighted) row.classList.add('annotation-row-highlight');
                     wireRowHover(row,labels[group[rowIndex]!]!);
+                    wireRowTooltip(row,labels[group[rowIndex]!]!);
+                    const member = labels[group[rowIndex]!]!;
+                    const ask = makeAiAskButton('ai-ask-btn annotation-ask-btn', 'Ask AI about this', () =>
+                        labelAskMessage({text: member.annotation!.text, tooltip: member.annotation!.tooltip, prompt: member.annotation!.prompt}));
+                    // The row starts a drag on pointerdown; the button must not.
+                    ask.addEventListener('pointerdown', event => event.stopPropagation());
+                    // Row buttons float right, so the first appended sits rightmost: </> goes in before
+                    // Ask AI to read after it ([text] … ✦ </> ●).
+                    const code = member.annotation!.code;
+                    if (code) {
+                        const open = document.createElement('button');
+                        // The shared code icon in the Ask-AI button's round chrome, so the pair reads as one set.
+                        open.type = 'button'; open.className = 'ai-ask-btn annotation-code-btn'; open.innerHTML = CODE_ICON;
+                        open.title = `Open ${code.path}:${code.line}`; open.setAttribute('aria-label', open.title);
+                        open.addEventListener('pointerdown', event => event.stopPropagation());
+                        open.addEventListener('click', event => {
+                            event.stopPropagation();
+                            const now = member.annotation!.code;   // the line may have moved since the row was built
+                            if (now) window.dispatchEvent(new CustomEvent('algebench:opencode', {detail: {fileId: now.fileId, line: now.line}}));
+                        });
+                        row.append(open);
+                    }
+                    row.append(ask);
                     row.dataset.labelSeq = String(labels[group[rowIndex]!]!.seq);
                     const drag = labels[group[rowIndex]!]!.annotation!.startDrag;
                     if (drag) {
                         row.classList.add('annotation-row-draggable');
                         // A native drag tooltip would obscure the hover connection.
-                        if(!labels[group[rowIndex]!]!.wireTarget)row.title='Drag to move this label';
+                        if(!labels[group[rowIndex]!]!.wireTarget&&!labels[group[rowIndex]!]!.wireTargets?.length&&labels[group[rowIndex]!]!.annotation!.tooltip===undefined)row.title='Drag to move this label';
                         row.addEventListener('pointerdown',drag);
                     }
                 }
@@ -647,6 +694,22 @@ function groupAnnotations(scale: number): void {
         }
         for (const i of group.slice(1)) labels[i]!.annotationHidden = true;
     }
+    // Array markers on different indexes stack instead of merging: a lifted badge
+    // keeps its pointer on its cell through a taller stem (the badge is anchored
+    // at the cell's top edge, so the extra height raises only the badge).
+    const markerGroups = annotationGroups(boxes).filter(g => boxes[g[0]!]!.kind === 'marker' && labels[g[0]!]!.cellAttachment);
+    // A merged badge (several rows, e.g. stack[-1] and temps[stack[-1]]) is taller and wider than its leader's
+    // own measure, so collisions use the rendered badge; it hangs above the cell edge, centred on its anchor.
+    const lifts = markerLifts(markerGroups.map(g => {
+        const leader = labels[g[0]!]!, box = boxes[g[0]!]!, badge = leader.annotation!.badge;
+        const width = Math.max(box.width, badge.offsetWidth), height = Math.max(box.height, badge.offsetHeight);
+        return {x:box.x, y:leader.screenY! - (height + 11)/2, width, height};
+    }));
+    markerGroups.forEach((g, k) => {
+        labels[g[0]!]!.markerLifted = lifts[k]! > 0;
+        const el = labels[g[0]!]!.el, stem = `${lifts[k]}px`;
+        if (el.style.getPropertyValue('--marker-stem') !== stem) el.style.setProperty('--marker-stem', stem);
+    });
 }
 
 /** Common presentation layer owns snapping and row order; renderers stay independent. */

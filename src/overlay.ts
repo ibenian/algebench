@@ -351,6 +351,8 @@ export function buildLegend(elements: Element[] | null | undefined): void {
     // Non-null: every caller passes an array; a null one threw in the JS.
     for (const el of elements!) {
         if (el.type === 'axis' || el.type === 'grid') continue;
+        // An array titled beside its row already names itself in place; a legend entry would repeat it.
+        if (el.labelSide === 'left') continue;
         // legendGroup lets an element join a legend group without rendering its own label text.
         // The group key matches the label+color of the primary element.
         const groupLabel = el.legendGroup || el.label;

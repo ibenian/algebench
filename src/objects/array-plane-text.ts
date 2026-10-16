@@ -18,6 +18,8 @@ export function clipArrayPlaneMirror(element: HTMLElement): void {
 export interface ArrayPlaneText {
     mesh: Mesh<BufferGeometry, MeshBasicMaterial>;
     set(text: string, position: [number, number, number]): void;
+    /** A faint rounded tint behind the text (code-symbol hover), leaving the text colour as is. */
+    setHighlight(on: boolean): void;
     prepare(renderer: WebGLRenderer, camera: Camera): void;
     dispose(): void;
 }
@@ -28,7 +30,11 @@ export function planeTextTextureSize(width:number,height:number,density=128):[nu
     return [Math.max(1,Math.floor(width*scale)),Math.max(1,Math.floor(height*scale))];
 }
 
-export function createArrayPlaneText(width: number, height: number, color: NonNullable<Element['color']>): ArrayPlaneText {
+/**
+ * `tag` paints the index-tag badge the screen mode draws in CSS (.array-index-tag): a dark plate with a
+ * light outline and rounded lower corners, hung from the cell above, so world and screen tags match.
+ */
+export function createArrayPlaneText(width: number, height: number, color: NonNullable<Element['color']>, opts: {tag?: boolean} = {}): ArrayPlaneText {
     const canvas=document.createElement('canvas');
     [canvas.width,canvas.height]=planeTextTextureSize(width,height);
     const ctx=canvas.getContext('2d');
@@ -49,12 +55,33 @@ export function createArrayPlaneText(width: number, height: number, color: NonNu
     let previousPosition: string|undefined;
     let disposed=false;
     let resolutionDensity=128;
+    let highlighted=false;
     const projected=new THREE.Vector3(),bufferSize=new THREE.Vector2();
     function repaint(){
         ctx!.clearRect(0,0,canvas.width,canvas.height);
         const text=previousText??'';
-        const px=fitPlainCellPx(canvas.width,canvas.height*1.25,size=>{ctx!.font=`600 ${size}px ui-monospace, monospace`;return ctx!.measureText(text).width;});
-        ctx!.font=`600 ${px}px ui-monospace, monospace`;ctx!.fillStyle=cssColor;ctx!.textAlign='center';ctx!.textBaseline='middle';
+        if(opts.tag){
+            const w=canvas.width,h=canvas.height,line=Math.max(1,h*.06),r=Math.min(h*.35,w*.3);
+            ctx!.beginPath();
+            ctx!.moveTo(line/2,0);ctx!.lineTo(w-line/2,0);ctx!.lineTo(w-line/2,h-r);ctx!.quadraticCurveTo(w-line/2,h-line/2,w-r,h-line/2);
+            ctx!.lineTo(r,h-line/2);ctx!.quadraticCurveTo(line/2,h-line/2,line/2,h-r);ctx!.closePath();
+            ctx!.fillStyle='rgba(24, 48, 75, .9)';ctx!.fill();
+            // The top edge meets the cell, so like the CSS badge it has no border there.
+            ctx!.beginPath();ctx!.moveTo(line/2,0);ctx!.lineTo(line/2,h-r);ctx!.quadraticCurveTo(line/2,h-line/2,r,h-line/2);
+            ctx!.lineTo(w-r,h-line/2);ctx!.quadraticCurveTo(w-line/2,h-line/2,w-line/2,h-r);ctx!.lineTo(w-line/2,0);
+            ctx!.strokeStyle='rgba(157, 189, 227, .45)';ctx!.lineWidth=line;ctx!.stroke();
+        }
+        const px=fitPlainCellPx(canvas.width*(opts.tag?.72:1),canvas.height*(opts.tag?.95:1.25),size=>{ctx!.font=`600 ${size}px ui-monospace, monospace`;return ctx!.measureText(text).width;});
+        ctx!.font=`600 ${px}px ui-monospace, monospace`;
+        if(highlighted&&text){
+            const w=Math.min(canvas.width,ctx!.measureText(text).width+px*.8),h=Math.min(canvas.height,px*1.35),r=px*.2;
+            const x=(canvas.width-w)/2,y=(canvas.height-h)/2;
+            ctx!.beginPath();ctx!.moveTo(x+r,y);ctx!.arcTo(x+w,y,x+w,y+h,r);ctx!.arcTo(x+w,y+h,x,y+h,r);ctx!.arcTo(x,y+h,x,y,r);ctx!.arcTo(x,y,x+w,y,r);ctx!.closePath();
+            // The theme accent, like the Code panel's tint, so the highlight reads in light and dark themes.
+            const accent=getComputedStyle(document.body).getPropertyValue('--accent-color').trim()||'#f1cc59';
+            ctx!.fillStyle=accent;ctx!.globalAlpha=.28;ctx!.fill();ctx!.globalAlpha=1;
+        }
+        ctx!.fillStyle=cssColor;ctx!.textAlign='center';ctx!.textBaseline='middle';
         ctx!.fillText(text,canvas.width/2,canvas.height/2);texture.needsUpdate=true;
     }
     function prepare(renderer:WebGLRenderer,camera:Camera){
@@ -80,7 +107,7 @@ export function createArrayPlaneText(width: number, height: number, color: NonNu
     }
     mesh.onBeforeRender=(renderer,_scene,camera)=>prepare(renderer,camera);
     material.addEventListener('dispose',()=>texture.dispose());
-    return {mesh,prepare,set(text,position){
+    return {mesh,prepare,setHighlight(on){if(on!==highlighted){highlighted=on;repaint();}},set(text,position){
         if(text!==previousText){
             previousText=text;repaint();
         }

@@ -104,3 +104,26 @@ export function projectedCellEdge(start:Point,centre:Point,corners:Point[],gap=4
     }
     return Number.isFinite(nearest)?{x:centre.x+ray.x*(nearest+gap/length),y:centre.y+ray.y*(nearest+gap/length)}:centre;
 }
+
+/**
+ * A link between two rows of the same label box: a bracket that leaves one row
+ * sideways, bows out past the box edge and returns to the other row. Its bow
+ * grows with the distance between the rows so adjacent rows stay tight.
+ */
+export function rowBracketWire(edgeX:number,fromY:number,toY:number,side:1|-1):string {
+    const bow=side*(10+Math.min(28,Math.abs(toY-fromY)*0.3));
+    return `M ${edgeX} ${fromY} C ${edgeX+bow} ${fromY}, ${edgeX+bow} ${toY}, ${edgeX} ${toY}`;
+}
+
+/** A vertical S-curve between two cell edges, leaving and arriving straight up or down. */
+/**
+ * A cell-to-cell link: each end leaves its cell along the cell's own axis, vertically ('v', off a top or
+ * bottom edge of a horizontal row) or horizontally ('h', off the side of a stacked cell).
+ */
+export function cellLinkPath(start:{x:number;y:number},end:{x:number;y:number},startAxis:'v'|'h'='v',endAxis:'v'|'h'='v'):string {
+    const pull=(axis:'v'|'h',from:{x:number;y:number},to:{x:number;y:number})=>{
+        const d=axis==='v'?to.y-from.y:to.x-from.x, bend=Math.max(8,Math.abs(d)*.45)*(d<0?-1:1);
+        return axis==='v'?`${from.x} ${from.y+bend}`:`${from.x+bend} ${from.y}`;
+    };
+    return `M ${start.x} ${start.y} C ${pull(startAxis,start,end)}, ${pull(endAxis,end,start)}, ${end.x} ${end.y}`;
+}

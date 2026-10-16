@@ -295,6 +295,10 @@
               }
             }
           }
+        },
+        "codeRef": {
+          "$ref": "#/$defs/codeRef",
+          "description": "The code this scene executes: the file (or a per-state fileExpr) and the active line (or lineExpr). The Code panel follows that file when it changes and marks the line only there. Without it, an open file's activeLineExpr applies."
         }
       },
       "additionalProperties": false
@@ -569,6 +573,12 @@
           "type": "string",
           "description": "TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0-1), same scope and default as 'widthExpr'. Width and height are independent, so \"heightExpr\": \"value\" alone turns a row of cells into a bar chart sitting on its lattice."
         },
+        "labelSide": {
+          "type": "string",
+          "enum": ["top", "left"],
+          "default": "top",
+          "description": "ARRAY / STACK (horizontal). Where the array's own label sits. 'top' (default) centres it above the cells; 'left' places it just left of cell 0, right-aligned, so it names the row, stays put as the array grows, and lines up with the labels of rows stacked above or below. With axisLabels 'plane' it is drawn on the array's face."
+        },
         "axisLabels": {
           "type": "string",
           "enum": [
@@ -762,6 +772,33 @@
                 "maximum": 1,
                 "description": "Default 0.18."
               }
+            },
+            "additionalProperties": false
+          }
+        },
+        "intervals": {
+          "type": "array",
+          "description": "CHART ONLY. Gantt bars: each set draws [start, end] spans as horizontal bars on lanes (y values), over the chart's x axis. Give literal 'start'/'end' arrays (static), or 'countExpr' plus per-bar 'startExpr'/'endExpr' with 'i' (bar index) and 'n' (bar count) bound, so the bars can follow lesson state. Example: {\"label\": \"merged\", \"countExpr\": \"dataTable('trace', frame, 'm')\", \"startExpr\": \"arrayAt(dataTable('trace', frame, 'mStarts'), i)\", \"endExpr\": \"arrayAt(dataTable('trace', frame, 'mEnds'), i)\", \"lane\": 0}.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string", "description": "Legend text for the set, drawn with a bar swatch." },
+              "color": { "$ref": "#/$defs/color" },
+              "opacity": { "type": "number", "minimum": 0, "maximum": 1, "description": "Bar opacity. Default 0.85." },
+              "thickness": { "type": "number", "exclusiveMinimum": 0, "description": "Bar height in lane (y) units. Default 0.6." },
+              "start": { "type": "array", "items": { "type": "number" }, "description": "Literal bar starts, one per bar." },
+              "end": { "type": "array", "items": { "type": "number" }, "description": "Literal bar ends, one per bar." },
+              "lane": {
+                "oneOf": [{ "type": "number" }, { "type": "array", "items": { "type": "number" } }],
+                "description": "The lane (y value) of every bar, or one per bar. Default 0."
+              },
+              "countExpr": { "type": "string", "description": "Expression for the number of bars (0-256). Required when spans come from expressions." },
+              "startExpr": { "type": "string", "description": "Expression for bar i's start, with 'i' and 'n' bound. Wins over 'start'." },
+              "endExpr": { "type": "string", "description": "Expression for bar i's end, with 'i' and 'n' bound. Wins over 'end'." },
+              "laneExpr": { "type": "string", "description": "Expression for bar i's lane, with 'i' and 'n' bound. Wins over 'lane'." },
+              "highlightExpr": { "type": "string", "description": "Expression, per bar with 'i' and 'n' bound; truthy draws the bar in the highlight gold." },
+              "labelExpr": { "type": "string", "description": "Expression for text drawn inside bar i (centred, sized to fit; omitted when the bar is too small), with 'i' and 'n' bound. Example: \"concat(arrayAt(starts, i), '–', arrayAt(ends, i))\"." }
             },
             "additionalProperties": false
           }
@@ -1434,7 +1471,7 @@
         },
         "highlightExpr": {
           "type": "string",
-          "description": "ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes."
+          "description": "ARRAY / STACK: boolean expression per cell with idx and value. EXPRESSION_LABEL: truthy highlights the label's row in its box, e.g. when a running total reaches its target. Evaluated on state changes."
         },
         "colorExpr": {
           "type": "string",
@@ -1455,44 +1492,19 @@
           "minLength": 1,
           "description": "STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge."
         },
+        "codeRef": {
+          "$ref": "#/$defs/codeRef",
+          "description": "EXPRESSION_LABEL: the source line behind this value. Its row gets a </> button that opens the Code tab there. Use lineExpr to follow the line that last assigned the value."
+        },
+        "tooltipExpr": {
+          "type": "string",
+          "description": "EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\\text{total}'): their contents are kept literally. Evaluated on state changes."
+        },
         "connectTo": {
-          "type": "object",
-          "description": "EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.",
+          "description": "EXPRESSION_LABEL: show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire. ARRAY / STACK (needs an id): link each cell to the cell of another array it names, e.g. a deque of indices to the values they index. Each target needs object and indexExpr, evaluated per cell with 'idx' and 'value' bound; a cell whose index is not a valid cell draws no link. A list links the cells to several arrays, each in its own colour. One toggle pins all of an array's links; `pinned` on any target shows them from the start.",
           "oneOf": [
-            {
-              "type": "object",
-              "required": [
-                "object"
-              ],
-              "properties": {
-                "object": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "indexExpr": {
-                  "type": "string",
-                  "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "required": [
-                "positionExpr"
-              ],
-              "properties": {
-                "positionExpr": {
-                  "type": "array",
-                  "minItems": 3,
-                  "maxItems": 3,
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "additionalProperties": false
-            }
+            { "$ref": "#/$defs/connectTarget" },
+            { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/connectTarget" } }
           ]
         },
         "markers": {
@@ -2920,6 +2932,60 @@
       ],
       "additionalProperties": false
     },
+    "connectTarget": {
+      "title": "ConnectTarget",
+      "description": "One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr).",
+      "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "object"
+              ],
+              "properties": {
+                "object": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "indexExpr": {
+                  "type": "string",
+                  "description": "For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value."
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
+                },
+                "color": {
+                  "$ref": "#/$defs/color",
+                  "description": "ARRAY / STACK cell links only: this target's link colour (default light blue)."
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "positionExpr"
+              ],
+              "properties": {
+                "positionExpr": {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the wire without hovering. The reader can still unpin it."
+                }
+              },
+              "additionalProperties": false
+            }
+      ]
+    },
     "codeFile": {
       "title": "CodeFile",
       "type": "object",
@@ -3096,6 +3162,11 @@
           "type": "string",
           "minLength": 1,
           "description": "STEP_MARKER: expression yielding a nonnegative integer index."
+        },
+        "valueExpr": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional: what the badge shows after 'indexName =' instead of the index, e.g. the value at that cell (\"temps[stack[-1]] = 74\"). The index still places the marker; a value marker gets its own row rather than merging names with markers on the same cell."
         },
         "color": {
           "$ref": "#/$defs/color",

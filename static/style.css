@@ -2159,7 +2159,8 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-top: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--text-color) 7%, transparent);
 }
-#slider-dock-host:not(:has(#slider-overlay:not(.hidden))) { display: none; }
+/* Empty when no row is visible, e.g. a scene whose only slider drives the step player, which hides that row. */
+#slider-dock-host:not(:has(#slider-overlay:not(.hidden) .slider-row:not([hidden]))) { display: none; }
 #slider-overlay.docked {
     position: static;
     left: auto !important;
@@ -2999,6 +3000,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
     max-width: 340px;
 }
 #slider-overlay.hidden { display: none; }
+#slider-overlay:not(:has(.slider-row:not([hidden]))) { display: none; }
 .slider-row {
     display: flex;
     align-items: center;
@@ -3677,6 +3679,22 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-color: color-mix(in srgb, var(--accent-color) 40%, transparent);
     color: var(--text-color);
 }
+/* More prompts: a small chip opening a menu of common prompts above the row. */
+.preset-more { position: relative; display: flex; }
+.preset-more-btn { padding: 4px 11px; font-size: 14px; line-height: 1; letter-spacing: 1px; }
+.preset-more-menu {
+    position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 30;
+    display: flex; flex-direction: column; min-width: 220px; padding: 4px;
+    background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 10px;
+    box-shadow: 0 8px 24px #0006;
+}
+.preset-more-menu[hidden] { display: none; }
+.preset-more-menu.preset-more-menu-right { left: auto; right: 0; }
+.preset-more-item {
+    text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none;
+    color: var(--text-color); font: 12px var(--font-body); cursor: pointer; white-space: nowrap;
+}
+.preset-more-item:hover, .preset-more-item:focus-visible { background: color-mix(in srgb, var(--accent-color) 14%, transparent); outline: none; }
 /* Chat Input Area */
 #chat-input-area {
     display: flex;
@@ -5617,12 +5635,25 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-mark-blue { background: #438fc944; }
 .code-mark-green { background: #36a77944; }
 .code-mark-pink { background: #d268a444; }
+/* Variables (code_intel): hover lights every occurrence and the rows naming it; a changed value flashes on the executing line. */
+.code-sym { border-radius: 3px; transition: background-color .6s ease-out, box-shadow .6s ease-out; }
+/* A faint tint, padded by a spread shadow of the same tint so the code text never moves or changes colour. */
+/* Tints come from the theme accent, so they read on light and dark panels alike. */
+.code-sym.code-sym-hover { --sym-tint: color-mix(in srgb, var(--accent-color) 22%, transparent); background: var(--sym-tint); box-shadow: 0 0 0 3px var(--sym-tint); transition: none; }
+.code-sym.code-sym-flash { --sym-flash: color-mix(in srgb, var(--accent-color) 45%, transparent); background: var(--sym-flash); box-shadow: 0 0 0 3px var(--sym-flash), 0 0 10px 4px color-mix(in srgb, var(--accent-color) 30%, transparent); transition: none; }
+/* Marker badges let the 3D view through, except rows naming a code variable, which take hover. */
+.step-marker .annotation-row[data-symbols] { pointer-events: auto; }
+/* An array or stack title naming the hovered variable: the same faint tint, text colour unchanged. */
+.array-title-symbol-hover { --sym-tint: color-mix(in srgb, var(--accent-color) 26%, transparent); background: var(--sym-tint); border-radius: 3px; box-shadow: 0 0 0 3px var(--sym-tint); }
+/* Padded sideways only (margin cancels padding, so nothing moves); the row's own height is enough. */
+.annotation-row.annotation-row-symbol-hover { background: #ffffff30; border-radius: 3px; margin-inline: -4px; padding-inline: 4px; }
 
 #state-player { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; width: min(460px, calc(100% - 200px)); padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); }
 #state-player[hidden], .slider-row[hidden] { display: none; }
 #state-player button { border: 1px solid var(--border-color); background: transparent; color: var(--text-color); border-radius: 5px; min-width: 29px; height: 29px; cursor: pointer; }
 #state-player button:disabled { opacity: .35; cursor: default; }
-#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); }
+#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); cursor: pointer; }
+#state-player input:disabled { cursor: default; }
 #state-player output { white-space: nowrap; font: 12px ui-monospace, monospace; }
 @media (max-width: 750px) { #state-player { bottom: 58px; width: calc(100% - 50px); } }
 /* Reserve the left corner for the existing lesson-section navigation. */
@@ -5648,6 +5679,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker-cursor { display: flex; flex-direction: column; align-items: center; transform: translateY(-38px); }
 .step-marker-badge { display: block; padding: 4px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 13px/1.3 ui-monospace, monospace; white-space: nowrap; box-shadow: 0 2px 8px #0004; }
 .step-marker-pointer { display: block; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--marker-color); margin-top: 3px; }
+/* A badge lifted above a neighbour on another index reaches its own cell through a stem. */
+.step-marker-stem { display: block; width: 2px; height: var(--marker-stem, 0px); margin-top: 3px; margin-bottom: -3px; background: var(--marker-color); opacity: .85; }
 
 .array-cell-label { font: 600 var(--array-font-size, 14px)/1.25 ui-monospace, monospace; text-shadow: none; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
 .array-index-tag {
@@ -5673,12 +5706,47 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .expression-label .annotation-mode-toggle { background: #edf4ff12; border-color: #edf4ff55; }
 .annotation-badge { display: block; padding: 5px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 calc(13px * var(--label-scale, 1))/1.35 ui-monospace, monospace; white-space: pre; box-shadow: 0 2px 8px #0004; }
 .annotation-row { display: block; }
+/* Label-row KaTeX tooltips: the semantic graph's tooltip chrome at the glossary tooltip's size. */
+.graph-panel-tooltip.label-row-tooltip { font-size: 13px; padding: 6px 10px; max-width: min(520px, calc(100vw - 16px)); }
+.label-row-tooltip .katex-display { margin: 0; }
+/* An unprompted formula beside a recalculated row: the tooltip, with a soft accent edge. */
+.label-change-callout { border-color: color-mix(in srgb, #f1cc59 55%, var(--border-color)); }
+/* A label whose highlightExpr is truthy: the same gold an array uses for a selected cell. */
+.annotation-row.annotation-row-highlight {
+    color: #1b1606; border-radius: 4px; padding-inline: 4px; margin-inline: -4px;
+    /* Lit like a changed array cell: a brighter centre and a soft gold glow. */
+    background: radial-gradient(ellipse at 50% 40%, #ffe9a3 0%, #f1cc59 70%);
+    box-shadow: 0 0 0 1px #ffe28a, 0 0 10px 2px #f1cc59a6, 0 0 22px 4px #f1cc5940;
+    animation: annotation-row-light .45s ease-out;
+}
+/* On a lit (gold) row the shared translucent button chrome disappears; give its buttons a dark plate. */
+.annotation-row-highlight .annotation-ask-btn,
+.annotation-row-highlight .annotation-code-btn {
+    background: rgba(24, 48, 75, .88); color: #f6e7b0; border-color: rgba(27, 22, 6, .55);
+}
+.annotation-row-highlight .annotation-ask-btn:hover,
+.annotation-row-highlight .annotation-code-btn:hover { background: rgba(24, 48, 75, 1); color: #fff6d6; }
+.annotation-row-highlight .expression-wire-toggle { color: #1b1606; }
+@keyframes annotation-row-light { from { box-shadow: 0 0 0 1px #fff3c4, 0 0 18px 6px #f1cc59d9, 0 0 36px 10px #f1cc5966; } }
+@media (prefers-reduced-motion: reduce) { .annotation-row.annotation-row-highlight { animation: none; } }
+/* Ask AI about a label row: the shared sparkle button, shown while hovering the row. */
+.annotation-row .annotation-ask-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
+.annotation-row:hover .annotation-ask-btn, .annotation-ask-btn:focus-visible,
+.annotation-row:hover .annotation-code-btn, .annotation-code-btn:focus-visible { opacity: 1; }
+/* Same round box as the row's Ask-AI button, with the shared code icon at the sparkle's size. */
+.annotation-row .annotation-code-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
+.annotation-row .annotation-code-btn svg { width: 11px; height: 11px; pointer-events: none; }
 .expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
 .expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
 .expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }
 .expression-wire-toggle:hover::after { opacity: 1; }
 .expression-wire-toggle:focus-visible { outline: 1px solid #a6d5ec; outline-offset: 2px; }
+/* An array's cell-link toggle floats beside its last linked cell instead of sitting in a label row. */
+.cell-link-toggle { position: absolute; left: 0; top: 0; float: none; margin: 0; z-index: 6; pointer-events: auto; color: #9dbde3; }
 .annotation-measure-wired { padding-right: 34px; }
+/* Room for the row's Ask-AI button, plus the pin button when the label is wired. */
+.expression-label .annotation-measure { padding-right: 48px; }
+.expression-label .annotation-measure.annotation-measure-wired { padding-right: 80px; }
 .annotation-row + .annotation-row { border-top: 1px solid #171c2226; margin-top: 4px; padding-top: 4px; }
 .annotation-measure { position: absolute; visibility: hidden; pointer-events: none; top: 0; left: 0; width: max-content; }
 

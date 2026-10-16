@@ -4,8 +4,10 @@ import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { makeAiAskButton } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
-import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor } from '/code-panel-model.js';
+import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
+import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols } from '/code-symbols.js';
+import type { CodeReference } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
@@ -20,7 +22,8 @@ export function setupCodePanel(): void {
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
     let lesson: AlgeBenchLessonSpec | null | undefined, files: CodeFile[]=[], selected: CodeFile | undefined;
-    let first=0,last=0,excerpt='',active: CompiledExpr|null=null;
+    let first=0,last=0,excerpt='',active: CompiledExpr|null=null,followed: CodeFile | undefined;
+    const compiled=new Map<string,CompiledExpr|null>();
     const targets=document.createElement('div');targets.className='code-step-targets';targets.hidden=true;
     const ask=makeAiAskButton('ai-ask-btn','Ask AI about selected code',()=>{
         if(!selected||!first)return null;
@@ -77,11 +80,29 @@ export function setupCodePanel(): void {
         targets.replaceChildren();targets.hidden=false;
         for(const choice of choices){const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.onclick=()=>{targets.hidden=true;go(choice);};targets.append(button);}
     });
-    function refreshBinding() {
+    function evaluate(expr: string) {
+        if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
+        const fn=compiled.get(expr);
+        if(!fn)throw new Error('Invalid code expression.');
+        return evalExpr(fn,0);
+    }
+    /**
+     * A scene's codeRef names the file and line executing now: the panel follows that file when it changes
+     * (or on scene entry) and marks the line only there. Scenes without one use the open file's activeLineExpr.
+     */
+    function refreshBinding(entering=false) {
         let lines=new Set<number>();
-        if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        const ref=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.codeRef;
+        if(ref){
+            const target=resolveCodeRef(files,ref,evaluate);
+            if(target&&(entering||target.file!==followed)&&target.file!==selected){followed=target.file;open(target.file);return;}
+            followed=target?.file;
+            if(target&&target.file===selected)lines=new Set([target.line]);
+        }
+        else if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        const bound=!!ref||!!active;
         const signature=[...lines].join(', ');
-        execution.textContent=active?(signature?'Active lines: '+signature:'No active lines at this position'):'';
+        execution.textContent=bound?(signature?'Active lines: '+signature:'No active lines at this position'):'';
         let firstActive:HTMLElement|undefined;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
             const current=lines.has(Number(row.dataset.line));
@@ -109,7 +130,56 @@ export function setupCodePanel(): void {
         });
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
         refreshBinding();
+        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file)markSymbols(analysis.references);});
     }
+    /** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
+    function markSymbols(references: CodeReference[]) {
+        body.querySelectorAll<HTMLElement>('.code-line code').forEach(code=>{
+            for(const ref of lineReferences(references,Number(code.dataset.line)))wrapRange(code,ref);
+        });
+        paintSymbolHover();
+    }
+    function wrapRange(code: HTMLElement, ref: CodeReference) {
+        const walker=document.createTreeWalker(code,NodeFilter.SHOW_TEXT);
+        const pieces:{node:Text;from:number;to:number}[]=[];
+        let offset=0;
+        for(let node=walker.nextNode() as Text|null;node;node=walker.nextNode() as Text|null){
+            const start=offset,end=offset+node.data.length;offset=end;
+            const from=Math.max(ref.col,start),to=Math.min(ref.endCol,end);
+            if(from<to)pieces.push({node,from:from-start,to:to-start});
+        }
+        for(const {node,from,to} of pieces){
+            const target=node.splitText(from);target.splitText(to-from);
+            const span=document.createElement('span');span.className='code-sym';
+            span.dataset.key=ref.key;span.dataset.root=ref.root;span.dataset.kind=ref.kind;
+            target.replaceWith(span);span.append(target);
+        }
+    }
+    function paintSymbolHover() {
+        const keys=hoveredSymbols();
+        body.querySelectorAll<HTMLElement>('.code-sym').forEach(span=>span.classList.toggle('code-sym-hover',keys.includes(span.dataset.key!)));
+    }
+    // Pointing at a variable lights every occurrence of it here and every row in the view that names it.
+    body.addEventListener('pointerover',event=>{
+        const span=(event.target as HTMLElement).closest<HTMLElement>('.code-sym');
+        setSymbolHover(span?[span.dataset.key!]:[]);
+    });
+    body.addEventListener('pointerleave',()=>setSymbolHover([]));
+    window.addEventListener('algebench:symbolhover',paintSymbolHover);
+    // A value that changed lights its variable where it is executing, after this step's line is marked.
+    window.addEventListener('algebench:symbolflash',event=>{
+        const keys=(event as CustomEvent<{keys:string[]}>).detail.keys;
+        requestAnimationFrame(()=>{
+            body.querySelectorAll<HTMLElement>('.code-line.execution-line .code-sym').forEach(span=>{
+                // An exact match, or an element of the changed variable (answer[j]); not a method call (stack.pop).
+                if(!keys.includes(span.dataset.key!)&&!(keys.includes(span.dataset.root!)&&span.dataset.kind==='subscript'))return;
+                // A timer, not an animation, ends the flash: the light holds a moment, then fades by transition.
+                span.classList.add('code-sym-flash');
+                clearTimeout(Number(span.dataset.flash));
+                span.dataset.flash=String(setTimeout(()=>span.classList.remove('code-sym-flash'),900));
+            });
+        });
+    });
     body.addEventListener('mouseup',event=>{
         const selection=window.getSelection();
         const nodeElement=(n:Node|null)=>n instanceof Element?n:n?.parentElement;
@@ -128,10 +198,10 @@ export function setupCodePanel(): void {
     function refresh() {
         if(lesson!==state.lessonSpec){
             lesson=state.lessonSpec;files=(lesson as LessonFormat|null)?.codeFiles??[];tree.replaceChildren();body.replaceChildren();actions.hidden=targets.hidden=true;
-            selected=undefined;active=null;setCodeFocus(null);build(fileTree(files),tree);
+            selected=followed=undefined;active=null;compiled.clear();setCodeFocus(null);build(fileTree(files),tree);
             if(files[0])open(files[0]);else title.textContent='This lesson has no code files.';
         }
-        refreshBinding();
+        refreshBinding(true);
         // Scene and step changes add or remove sliders, so the selected line's actions must be re-evaluated.
         renderLineActions();
     }
@@ -155,6 +225,6 @@ export function setupCodePanel(): void {
         }
     });
     window.addEventListener('algebench:navchange',refresh);
-    window.addEventListener('algebench:sliderchange',refreshBinding);
+    window.addEventListener('algebench:sliderchange',()=>refreshBinding());
     refresh();
 }

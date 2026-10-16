@@ -1,7 +1,8 @@
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 import { state } from '/state.js';
+import { flashSymbols, setSymbolHover, hoveredSymbols } from '/code-symbols.js';
 import { dataToWorld } from '/coords.js';
-import { addLabel3D, parseColor } from '/labels.js';
+import { addLabel3D, parseColor, colorToCSS } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr } from '/sliders.js';
 import type { AnimExprEntry } from '/sliders.js';
@@ -11,12 +12,14 @@ import { renderStepMarker } from '/objects/step-marker.js';
 import { arrayCell, arrayLength, cellColor, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
 import { registerStackHover, stackCellOpacities } from '/objects/array-stack-hover.js';
 import { ArrayChangeTracker } from '/objects/array-changes.js';
+import { setCellLinks } from '/cell-links.js';
 import { createArrayPlaneText, clipArrayPlaneMirror } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 
 let arrayMarkerGroup = 0;
 /** Shared presentation lookup for a cell, without references to other controls. */
-export interface ArrayCellTarget { at(index:number):{position:[number,number,number];corners:number[][]}|null; }
+/** `vertical`: cells run up or down (a stack, a vertical layout), so links leave a cell's side, not its top. */
+export interface ArrayCellTarget { vertical:boolean; at(index:number):{position:[number,number,number];corners:number[][]}|null; }
 const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
 export interface ArrayDecoration { resize(length:number):void; }
 export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:number,origin:number[],pitch:number,owner:Mesh)=>ArrayDecoration) {
@@ -70,7 +73,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         ghostMesh.onBeforeRender=()=>{ghostMaterial.opacity=material.opacity;};
         mesh.add(ghostMesh);
     }
-    const cellTarget:ArrayCellTarget={at(index){
+    const step=centre(1).map((v,i)=>v-centre(0)[i]!);
+    const cellTarget:ArrayCellTarget={vertical:Math.abs(step[1]!)>Math.abs(step[0]!),at(index){
         const position=el.arrayColumns?(Number.isInteger(index)&&index>=0&&index<n?centre(index):null):arrayIndexPosition(index,n,origin,pitch,el.arrayLayout,el.direction,el.arraySpacing);
         return position?{position,corners:arrayCellCorners(position,pitch).map(c=>[c[0]!,position[1]+(c[1]!-position[1])*cellHeight()/.68,c[2]!])}:null;
     }};
@@ -122,8 +126,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const planeText=el.axisLabels==='plane';
     const cellTextPlanes:ArrayPlaneText[]=[];
     const indexTextPlanes:ArrayPlaneText[]=[];
-    const addTextPlane=(width:number,height:number,color:NonNullable<Element['color']>,cell?:number)=>{
-        const layer=createArrayPlaneText(width,height,color);
+    const addTextPlane=(width:number,height:number,color:NonNullable<Element['color']>,cell?:number,tag=false)=>{
+        const layer=createArrayPlaneText(width,height,color,{tag});
         // Parent ownership handles hide/show and dynamically added cell lifetimes.
         mesh.add(layer.mesh);
         layer.mesh.onBeforeRender=(renderer,_scene,camera)=>{layer.prepare(renderer,camera);layer.mesh.material.opacity=material.opacity*(cell == null ? 1 : hoverOpacity[cell] ?? 1);};
@@ -144,7 +148,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             const indexLabel = addLabel3D(String(i),c,'#e1ecf7',{cssClass:'label-3d array-index-tag'});
             if(el.indexFontSize!=null)indexLabel.el.style.setProperty('--array-index-font-size',`${el.indexFontSize}px`);
             indexLabel.ownerMesh=mesh;
-            if(planeText){indexLabel.forceHidden=true;indexLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(indexLabel.el);indexTextPlanes.push(addTextPlane(.7,.35,'#e1ecf7',i));}
+            if(planeText){indexLabel.forceHidden=true;indexLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(indexLabel.el);indexTextPlanes.push(addTextPlane(.7,.35,'#e1ecf7',i,true));}
             indexLabel.el.setAttribute('aria-label',`Index ${i}`);
             indexLabels.push(indexLabel);
             indexLabel.cellAttachment = {corners:arrayCellCorners(c,pitch),edge:'bottom',gap:0};
@@ -155,18 +159,29 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     let titleLabel: ReturnType<typeof addLabel3D>|undefined;
     const titleCentre=()=>el.arrayColumns?centre(Math.min(el.arrayColumns,n)-1):centre(Math.max(0,n-1)/(el.arrayLayout==='vertical'?1:2));
     const titleWidth=Math.max(1,(el.label?.length??0)*.38);
+    // labelSide 'left': the title belongs to the row it names, just left of cell 0 and right-aligned,
+    // so it stays put as the array grows and lines up with sibling rows of any title length.
+    const leftTitle=el.labelSide==='left'&&el.arrayLayout!=='vertical';
     const titlePosition=():[number,number,number]=>{
+        if(leftTitle&&!el.labelPosition){
+            const c=centre(0),gap=pitch*.39+.22;
+            return [c[0]-gap-(planeText?titleWidth/2:0),c[1],c[2]+.14];
+        }
         const at=el.labelPosition??titleCentre().map((value,i)=>value+(el.labelOffset??[0,.88,0])[i]!);
         return [Number(at[0])+(planeText&&el.align==='left'?titleWidth/2:planeText&&el.align==='right'?-titleWidth/2:0),Number(at[1]),Number(at[2])+.14];
     };
-    const titlePlane=planeText&&el.label?addTextPlane(titleWidth,.95,el.color??'#b5c1cf'):null;
+    // Row titles share one neutral ink so stacked rows read as a set; a top title keeps the array's colour.
+    const titlePlane=planeText&&el.label?addTextPlane(titleWidth,.95,el.labelSide==='left'?'#b5c1cf':el.color??'#b5c1cf'):null;
     const emptyPlane=planeText?addTextPlane(.7,.68,'#8793a6'):null;
     if(el.label){
-        titleLabel = addLabel3D('',titlePosition(),'#b5c1cf',{align:el.align,cssClass:`label-3d ${el.cssClass??''}`});
+        titleLabel = addLabel3D('',titlePosition(),'#b5c1cf',{align:leftTitle?'right':el.align,cssClass:`label-3d ${el.cssClass??''}`});
         if(planeText){titleLabel.forceHidden=true;titleLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(titleLabel.el);}
         titleLabel.el.textContent=el.label; titleLabel.snapToProjection=true;titleLabel.ownerMesh=mesh;
     }
+    // The title's pointer target (code symbols, below); placed with the title.
+    let titleHit: Mesh | null = null;
     const updateTitle=()=>{
+        placeTitleHit();
         if(titleLabel)titleLabel.dataPos=titlePosition();
         if(titlePlane)titlePlane.set(el.label!,titlePosition()); // allocated only for a non-empty array label.
         if(emptyPlane){emptyPlane.mesh.visible=n===0;emptyPlane.set('∅',[origin[0]!,origin[1]!,origin[2]!+.14]);}
@@ -224,7 +239,10 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         previous.length=0;
         updateTitle();
     }
-    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
+    // connectTo: each cell links to the cell of another object it names (indexExpr with idx and value bound),
+    // one link group per target. Only cell targets apply to an array; the schema rejects the others.
+    const connections=!el.id||!el.connectTo?[]:(Array.isArray(el.connectTo)?el.connectTo:[el.connectTo]).flatMap(c=>'object' in c&&c.indexExpr?[{...c,indexExpr:c.indexExpr,fn:compileExpr(c.indexExpr)}]:[]);
+    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,...connections.map(c=>c.indexExpr),...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
         // Hidden lesson steps must not advance the last-visible comparison baseline.
         if(animState.stopped||animState.hiddenByRemove)return;
         const next=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):n;
@@ -241,9 +259,20 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         if(delta){
             illuminated=new Set([...delta.changed,...delta.added]);
             illuminate([...illuminated],delta.removed);
+            // Changed cells light the array's variable where it is executing (by id, or by its title).
+            if(illuminated.size||delta.removed.length)flashSymbols([el.id,el.label].filter((v):v is string=>!!v));
         }
         updateTitle();
         decoration?.resize(next);
+        if(connections.length){
+            setCellLinks(el.id!,connections.map(c=>{
+                const pairs:[number,number][]=[];
+                cells.forEach(({cell},i)=>{
+                    try{const j=Number(evalExpr(c.fn,0,{overrideScope:{idx:i,value:cell.value}}));if(Number.isInteger(j)&&j>=0)pairs.push([i,j]);}catch{/* no link for this cell */}
+                });
+                return {to:c.object,pairs,color:c.color?colorToCSS(c.color):'#9dbde3'};
+            }),connections.some(c=>c.pinned));
+        }
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;
         for(let i=0;i<n;i++){
@@ -257,7 +286,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             if(planeText){
                 const c=centre(i);
                 cellTextPlanes[i]!.set(cell.text,[c[0],c[1],c[2]+.14]); // makeCellLabel allocates one text plane per slot.
-                indexTextPlanes[i]?.set(String(i),[c[0],c[1]-.58,c[2]+.14]);
+                indexTextPlanes[i]?.set(String(i),[c[0],c[1]-.34-.175,c[2]+.14]);
             }
             const rgb=parseColor(color??(highlighted?'#f1cc59':el.color??PALETTE[cell.kind]));
             if(lit)for(let j=0;j<3;j++)rgb[j]=rgb[j]!+(1-rgb[j]!)*.35;
@@ -307,9 +336,57 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             return true;
         },
     }) : null;
+    // Code symbols: the array is the variable named by its id. Pointing at its cells or its title lights that
+    // variable in the Code panel; pointing at the variable there (or at the array) lights the array's title.
+    let symbolLit=false;
+    const symbol=el.id;
+    const pointing={cells:false,title:false};
+    const point=(part:keyof typeof pointing,now:boolean)=>{
+        const was=pointing.cells||pointing.title;
+        pointing[part]=now;
+        const is=pointing.cells||pointing.title;
+        if(!symbol||is===was)return;
+        // Clear only a hover this array set, never one coming from the code or another object.
+        if(is)setSymbolHover([symbol]);else if(hoveredSymbols().length===1&&hoveredSymbols()[0]===symbol)setSymbolHover([]);
+    };
+    const shown=()=>{
+        if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+        for (let part: Object3D | null = mesh; part; part=part.parent) if (!part.visible) return false;
+        return true;
+    };
+    const disposeSymbolHover = symbol && canvas ? registerStackHover(canvas, () => state.camera, {mesh, visible:shown, select:index=>point('cells',index!==null)}) : null;
+    // A plane title is drawn as text and never picked, so an invisible quad over it takes the pointer.
+    // It stays out of the scene: the hover raycast reads its geometry directly, nothing else sees it.
+    titleHit=symbol&&canvas&&titlePlane?new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide})):null;
+    function placeTitleHit(){
+        if(!titleHit)return;
+        const [x,y,z]=titlePosition(),w=titleWidth/2,h=.95/2;
+        const corners=[[x-w,y-h],[x+w,y-h],[x+w,y+h],[x-w,y+h]].map(([cx,cy])=>dataToWorld([cx!,cy!,z]));
+        const positions=[0,1,2,0,2,3].flatMap(i=>corners[i]!);
+        titleHit.geometry.dispose();titleHit.geometry=new THREE.BufferGeometry();
+        titleHit.geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    }
+    placeTitleHit();
+    const disposeTitleHover = titleHit && canvas ? registerStackHover(canvas, () => state.camera, {mesh:titleHit, visible:shown, select:index=>point('title',index!==null)}) : null;
+    // A screen title is an HTML label: it takes the pointer itself.
+    if(symbol&&titleLabel&&!planeText){
+        titleLabel.el.style.pointerEvents='auto';
+        titleLabel.el.addEventListener('pointerenter',()=>point('title',true));
+        titleLabel.el.addEventListener('pointerleave',()=>point('title',false));
+    }
+    const onSymbolHover=()=>{
+        const lit=!!symbol&&hoveredSymbols().includes(symbol);
+        if(lit===symbolLit||animState.stopped)return;
+        symbolLit=lit;
+        titlePlane?.setHighlight(lit);
+        titleLabel?.el.classList.toggle('array-title-symbol-hover',lit);
+    };
+    if(symbol)window.addEventListener('algebench:symbolhover',onSymbolHover);
     // Shader/lifecycle resources follow the same registry as tensor boxes.
     material.addEventListener('dispose',()=>{
         disposeHover?.();
+        disposeSymbolHover?.();disposeTitleHover?.();titleHit?.geometry.dispose();
+        window.removeEventListener('algebench:symbolhover',onSymbolHover);
         ghostMaterial?.dispose();
         unit.dispose();
         for(const layer of [...cellTextPlanes,...indexTextPlanes,titlePlane,emptyPlane])layer?.dispose();
