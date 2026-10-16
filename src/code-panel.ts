@@ -6,6 +6,8 @@ import { makeAiAskButton } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
 import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
+import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols } from '/code-symbols.js';
+import type { CodeReference } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
@@ -128,7 +130,56 @@ export function setupCodePanel(): void {
         });
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
         refreshBinding();
+        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file)markSymbols(analysis.references);});
     }
+    /** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
+    function markSymbols(references: CodeReference[]) {
+        body.querySelectorAll<HTMLElement>('.code-line code').forEach(code=>{
+            for(const ref of lineReferences(references,Number(code.dataset.line)))wrapRange(code,ref);
+        });
+        paintSymbolHover();
+    }
+    function wrapRange(code: HTMLElement, ref: CodeReference) {
+        const walker=document.createTreeWalker(code,NodeFilter.SHOW_TEXT);
+        const pieces:{node:Text;from:number;to:number}[]=[];
+        let offset=0;
+        for(let node=walker.nextNode() as Text|null;node;node=walker.nextNode() as Text|null){
+            const start=offset,end=offset+node.data.length;offset=end;
+            const from=Math.max(ref.col,start),to=Math.min(ref.endCol,end);
+            if(from<to)pieces.push({node,from:from-start,to:to-start});
+        }
+        for(const {node,from,to} of pieces){
+            const target=node.splitText(from);target.splitText(to-from);
+            const span=document.createElement('span');span.className='code-sym';
+            span.dataset.key=ref.key;span.dataset.root=ref.root;span.dataset.kind=ref.kind;
+            target.replaceWith(span);span.append(target);
+        }
+    }
+    function paintSymbolHover() {
+        const keys=hoveredSymbols();
+        body.querySelectorAll<HTMLElement>('.code-sym').forEach(span=>span.classList.toggle('code-sym-hover',keys.includes(span.dataset.key!)));
+    }
+    // Pointing at a variable lights every occurrence of it here and every row in the view that names it.
+    body.addEventListener('pointerover',event=>{
+        const span=(event.target as HTMLElement).closest<HTMLElement>('.code-sym');
+        setSymbolHover(span?[span.dataset.key!]:[]);
+    });
+    body.addEventListener('pointerleave',()=>setSymbolHover([]));
+    window.addEventListener('algebench:symbolhover',paintSymbolHover);
+    // A value that changed lights its variable where it is executing, after this step's line is marked.
+    window.addEventListener('algebench:symbolflash',event=>{
+        const keys=(event as CustomEvent<{keys:string[]}>).detail.keys;
+        requestAnimationFrame(()=>{
+            body.querySelectorAll<HTMLElement>('.code-line.execution-line .code-sym').forEach(span=>{
+                // An exact match, or an element of the changed variable (answer[j]); not a method call (stack.pop).
+                if(!keys.includes(span.dataset.key!)&&!(keys.includes(span.dataset.root!)&&span.dataset.kind==='subscript'))return;
+                // A timer, not an animation, ends the flash: the light holds a moment, then fades by transition.
+                span.classList.add('code-sym-flash');
+                clearTimeout(Number(span.dataset.flash));
+                span.dataset.flash=String(setTimeout(()=>span.classList.remove('code-sym-flash'),900));
+            });
+        });
+    });
     body.addEventListener('mouseup',event=>{
         const selection=window.getSelection();
         const nodeElement=(n:Node|null)=>n instanceof Element?n:n?.parentElement;

@@ -1,5 +1,6 @@
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 import { state } from '/state.js';
+import { flashSymbols, setSymbolHover, hoveredSymbols } from '/code-symbols.js';
 import { dataToWorld } from '/coords.js';
 import { addLabel3D, parseColor, colorToCSS } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
@@ -177,7 +178,10 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         if(planeText){titleLabel.forceHidden=true;titleLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(titleLabel.el);}
         titleLabel.el.textContent=el.label; titleLabel.snapToProjection=true;titleLabel.ownerMesh=mesh;
     }
+    // The title's pointer target (code symbols, below); placed with the title.
+    let titleHit: Mesh | null = null;
     const updateTitle=()=>{
+        placeTitleHit();
         if(titleLabel)titleLabel.dataPos=titlePosition();
         if(titlePlane)titlePlane.set(el.label!,titlePosition()); // allocated only for a non-empty array label.
         if(emptyPlane){emptyPlane.mesh.visible=n===0;emptyPlane.set('∅',[origin[0]!,origin[1]!,origin[2]!+.14]);}
@@ -255,6 +259,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         if(delta){
             illuminated=new Set([...delta.changed,...delta.added]);
             illuminate([...illuminated],delta.removed);
+            // Changed cells light the array's variable where it is executing (by id, or by its title).
+            if(illuminated.size||delta.removed.length)flashSymbols([el.id,el.label].filter((v):v is string=>!!v));
         }
         updateTitle();
         decoration?.resize(next);
@@ -330,9 +336,57 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             return true;
         },
     }) : null;
+    // Code symbols: the array is the variable named by its id. Pointing at its cells or its title lights that
+    // variable in the Code panel; pointing at the variable there (or at the array) lights the array's title.
+    let symbolLit=false;
+    const symbol=el.id;
+    const pointing={cells:false,title:false};
+    const point=(part:keyof typeof pointing,now:boolean)=>{
+        const was=pointing.cells||pointing.title;
+        pointing[part]=now;
+        const is=pointing.cells||pointing.title;
+        if(!symbol||is===was)return;
+        // Clear only a hover this array set, never one coming from the code or another object.
+        if(is)setSymbolHover([symbol]);else if(hoveredSymbols().length===1&&hoveredSymbols()[0]===symbol)setSymbolHover([]);
+    };
+    const shown=()=>{
+        if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+        for (let part: Object3D | null = mesh; part; part=part.parent) if (!part.visible) return false;
+        return true;
+    };
+    const disposeSymbolHover = symbol && canvas ? registerStackHover(canvas, () => state.camera, {mesh, visible:shown, select:index=>point('cells',index!==null)}) : null;
+    // A plane title is drawn as text and never picked, so an invisible quad over it takes the pointer.
+    // It stays out of the scene: the hover raycast reads its geometry directly, nothing else sees it.
+    titleHit=symbol&&canvas&&titlePlane?new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide})):null;
+    function placeTitleHit(){
+        if(!titleHit)return;
+        const [x,y,z]=titlePosition(),w=titleWidth/2,h=.95/2;
+        const corners=[[x-w,y-h],[x+w,y-h],[x+w,y+h],[x-w,y+h]].map(([cx,cy])=>dataToWorld([cx!,cy!,z]));
+        const positions=[0,1,2,0,2,3].flatMap(i=>corners[i]!);
+        titleHit.geometry.dispose();titleHit.geometry=new THREE.BufferGeometry();
+        titleHit.geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    }
+    placeTitleHit();
+    const disposeTitleHover = titleHit && canvas ? registerStackHover(canvas, () => state.camera, {mesh:titleHit, visible:shown, select:index=>point('title',index!==null)}) : null;
+    // A screen title is an HTML label: it takes the pointer itself.
+    if(symbol&&titleLabel&&!planeText){
+        titleLabel.el.style.pointerEvents='auto';
+        titleLabel.el.addEventListener('pointerenter',()=>point('title',true));
+        titleLabel.el.addEventListener('pointerleave',()=>point('title',false));
+    }
+    const onSymbolHover=()=>{
+        const lit=!!symbol&&hoveredSymbols().includes(symbol);
+        if(lit===symbolLit||animState.stopped)return;
+        symbolLit=lit;
+        titlePlane?.setHighlight(lit);
+        titleLabel?.el.classList.toggle('array-title-symbol-hover',lit);
+    };
+    if(symbol)window.addEventListener('algebench:symbolhover',onSymbolHover);
     // Shader/lifecycle resources follow the same registry as tensor boxes.
     material.addEventListener('dispose',()=>{
         disposeHover?.();
+        disposeSymbolHover?.();disposeTitleHover?.();titleHit?.geometry.dispose();
+        window.removeEventListener('algebench:symbolhover',onSymbolHover);
         ghostMaterial?.dispose();
         unit.dispose();
         for(const layer of [...cellTextPlanes,...indexTextPlanes,titlePlane,emptyPlane])layer?.dispose();

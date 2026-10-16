@@ -857,6 +857,78 @@ function labelAskMessage(o) {
 	return lines.join("\n");
 }
 //#endregion
+//#region src/code-symbols.ts
+var analyses = /* @__PURE__ */ new Map();
+/** The analyzer language for a file, or null when there is none for it. */
+function codeLanguage(file) {
+	const language = file.language?.toLowerCase();
+	return language === "python" || !language && /\.py$/i.test(file.path) ? "python" : null;
+}
+/** The file's analysis, fetched once per distinct source; null when unavailable (no analyzer, offline, error). */
+function analyzeCode(file) {
+	const language = codeLanguage(file);
+	if (!language) return Promise.resolve(null);
+	const cacheKey = language + "\0" + file.source;
+	let pending = analyses.get(cacheKey);
+	if (!pending) {
+		pending = fetch("/api/code/analyze", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				language,
+				source: file.source
+			})
+		}).then((res) => res.ok ? res.json() : null).catch(() => null);
+		analyses.set(cacheKey, pending);
+	}
+	return pending;
+}
+var symbolKey = (text) => text.replace(/\s+/g, "");
+var EXPRESSION = /^[A-Za-z_][\w.]*(\[[^\]]*\]|\.[A-Za-z_]\w*)*\]*$/;
+/**
+* The symbols a label or marker row names: everything left of its last ` = `. A marker row can merge names
+* (`i = j = 3`), so there may be several. Rows that are not `name = value` (conditions) name none.
+*/
+function rowSymbolKeys(text) {
+	const parts = text.split(" = ");
+	return parts.length < 2 ? [] : parts.slice(0, -1).filter((name) => !/\w\s+\w/.test(name)).map(symbolKey).filter((key) => EXPRESSION.test(key));
+}
+/** The references on one line, outermost first, so nested expressions wrap inside their parents. */
+function lineReferences(references, line) {
+	return references.filter((r) => r.line === line && r.endLine === line).sort((a, b) => a.col - b.col || b.endCol - b.col - (a.endCol - a.col));
+}
+var hovered = [];
+/** Set (or clear, with an empty list) the symbols being pointed at. */
+function setSymbolHover(keys) {
+	if (keys.length === hovered.length && keys.every((k, i) => k === hovered[i])) return;
+	hovered = keys;
+	window.dispatchEvent(new CustomEvent("algebench:symbolhover", { detail: { keys } }));
+}
+var hoveredSymbols = () => hovered;
+/** Briefly light these symbols where they are executing (keys or bare variable names). */
+function flashSymbols(keys) {
+	if (keys.length) window.dispatchEvent(new CustomEvent("algebench:symbolflash", { detail: { keys } }));
+}
+/** Make a label/marker row take part in symbol hover: pointing at it lights its symbols in the code, and the
+* code's hover lights it. Rows are rebuilt as values change, so a new row picks up the current hover. */
+function bindSymbolRow(row, text) {
+	const keys = rowSymbolKeys(text);
+	if (!keys.length) return;
+	listenForRows();
+	row.dataset.symbols = keys.join("\n");
+	row.classList.toggle("annotation-row-symbol-hover", keys.some((k) => hovered.includes(k)));
+	row.addEventListener("pointerenter", () => setSymbolHover(keys));
+	row.addEventListener("pointerleave", () => setSymbolHover([]));
+}
+var listening = false;
+function listenForRows() {
+	if (listening) return;
+	listening = true;
+	window.addEventListener("algebench:symbolhover", () => {
+		document.querySelectorAll(".annotation-row[data-symbols]").forEach((row) => row.classList.toggle("annotation-row-symbol-hover", row.dataset.symbols.split("\n").some((k) => hovered.includes(k))));
+	});
+}
+//#endregion
 //#region src/coords.ts
 var range = () => state.currentRange;
 var scale = () => state.currentScale;
@@ -2667,7 +2739,7 @@ function updateLabels() {
 	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
 		const o = ordered[i];
-		const band = o.annotationCoordinateMode === "screen" ? 3 : o.annotation?.kind === "label" ? 2 : o.annotation ? 1 : 0;
+		const band = o.annotationCoordinateMode === "screen" ? 4 : o.annotation?.kind === "label" ? 3 : o.annotation ? o.markerLifted ? 1 : 2 : 0;
 		const zi = ordered.length - i + band * ordered.length;
 		if (o._zi !== zi) {
 			o.el.style.zIndex = String(zi);
@@ -2740,6 +2812,7 @@ function groupAnnotations(scale) {
 				const row = document.createElement("span");
 				row.className = "annotation-row";
 				row.textContent = text;
+				bindSymbolRow(row, text);
 				if (a.kind === "label") {
 					if (labels[group[rowIndex]].annotation.highlighted) row.classList.add("annotation-row-highlight");
 					wireRowHover(row, labels[group[rowIndex]]);
@@ -2815,8 +2888,18 @@ function groupAnnotations(scale) {
 		for (const i of group.slice(1)) labels[i].annotationHidden = true;
 	}
 	const markerGroups = annotationGroups(boxes).filter((g) => boxes[g[0]].kind === "marker" && labels[g[0]].cellAttachment);
-	const lifts = markerLifts(markerGroups.map((g) => boxes[g[0]]));
+	const lifts = markerLifts(markerGroups.map((g) => {
+		const leader = labels[g[0]], box = boxes[g[0]], badge = leader.annotation.badge;
+		const width = Math.max(box.width, badge.offsetWidth), height = Math.max(box.height, badge.offsetHeight);
+		return {
+			x: box.x,
+			y: leader.screenY - (height + 11) / 2,
+			width,
+			height
+		};
+	}));
 	markerGroups.forEach((g, k) => {
+		labels[g[0]].markerLifted = lifts[k] > 0;
 		const el = labels[g[0]].el, stem = `${lifts[k]}px`;
 		if (el.style.getPropertyValue("--marker-stem") !== stem) el.style.setProperty("--marker-stem", stem);
 	});
@@ -10174,6 +10257,7 @@ function createArrayPlaneText(width, height, color, opts = {}) {
 	let previousPosition;
 	let disposed = false;
 	let resolutionDensity = 128;
+	let highlighted = false;
 	const projected = new THREE.Vector3(), bufferSize = new THREE.Vector2();
 	function repaint() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -10206,6 +10290,19 @@ function createArrayPlaneText(width, height, color, opts = {}) {
 			return ctx.measureText(text).width;
 		});
 		ctx.font = `600 ${px}px ui-monospace, monospace`;
+		if (highlighted && text) {
+			const w = Math.min(canvas.width, ctx.measureText(text).width + px * .8), h = Math.min(canvas.height, px * 1.35), r = px * .2;
+			const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+			ctx.beginPath();
+			ctx.moveTo(x + r, y);
+			ctx.arcTo(x + w, y, x + w, y + h, r);
+			ctx.arcTo(x + w, y + h, x, y + h, r);
+			ctx.arcTo(x, y + h, x, y, r);
+			ctx.arcTo(x, y, x + w, y, r);
+			ctx.closePath();
+			ctx.fillStyle = "rgba(241, 204, 89, .2)";
+			ctx.fill();
+		}
 		ctx.fillStyle = cssColor;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
@@ -10248,6 +10345,12 @@ function createArrayPlaneText(width, height, color, opts = {}) {
 	return {
 		mesh,
 		prepare,
+		setHighlight(on) {
+			if (on !== highlighted) {
+				highlighted = on;
+				repaint();
+			}
+		},
 		set(text, position) {
 			if (text !== previousText) {
 				previousText = text;
@@ -11456,6 +11559,7 @@ function renderStepMarker(el, _view, owner) {
 					} : null;
 				}
 				if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
+				if (previous && previous !== annotation.text) flashSymbols(rowSymbolKeys(annotation.text));
 				if (measure.textContent !== annotation.text) {
 					measure.textContent = annotation.text;
 					annotation.scale = null;
@@ -11931,7 +12035,9 @@ function renderArray(el, _view, decorate) {
 		titleLabel.snapToProjection = true;
 		titleLabel.ownerMesh = mesh;
 	}
+	let titleHit = null;
 	const updateTitle = () => {
+		placeTitleHit();
 		if (titleLabel) titleLabel.dataPos = titlePosition();
 		if (titlePlane) titlePlane.set(el.label, titlePosition());
 		if (emptyPlane) {
@@ -12051,6 +12157,7 @@ function renderArray(el, _view, decorate) {
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
 				illuminate([...illuminated], delta.removed);
+				if (illuminated.size || delta.removed.length) flashSymbols([el.id, el.label].filter((v) => !!v));
 			}
 			updateTitle();
 			decoration?.resize(next);
@@ -12164,8 +12271,84 @@ function renderArray(el, _view, decorate) {
 			return true;
 		}
 	}) : null;
+	let symbolLit = false;
+	const symbol = el.id;
+	const pointing = {
+		cells: false,
+		title: false
+	};
+	const point = (part, now) => {
+		const was = pointing.cells || pointing.title;
+		pointing[part] = now;
+		const is = pointing.cells || pointing.title;
+		if (!symbol || is === was) return;
+		if (is) setSymbolHover([symbol]);
+		else if (hoveredSymbols().length === 1 && hoveredSymbols()[0] === symbol) setSymbolHover([]);
+	};
+	const shown = () => {
+		if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+		for (let part = mesh; part; part = part.parent) if (!part.visible) return false;
+		return true;
+	};
+	const disposeSymbolHover = symbol && canvas ? registerStackHover(canvas, () => state.camera, {
+		mesh,
+		visible: shown,
+		select: (index) => point("cells", index !== null)
+	}) : null;
+	titleHit = symbol && canvas && titlePlane ? new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({
+		visible: false,
+		side: THREE.DoubleSide
+	})) : null;
+	function placeTitleHit() {
+		if (!titleHit) return;
+		const [x, y, z] = titlePosition(), w = titleWidth / 2, h = .95 / 2;
+		const corners = [
+			[x - w, y - h],
+			[x + w, y - h],
+			[x + w, y + h],
+			[x - w, y + h]
+		].map(([cx, cy]) => dataToWorld([
+			cx,
+			cy,
+			z
+		]));
+		const positions = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		].flatMap((i) => corners[i]);
+		titleHit.geometry.dispose();
+		titleHit.geometry = new THREE.BufferGeometry();
+		titleHit.geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+	}
+	placeTitleHit();
+	const disposeTitleHover = titleHit && canvas ? registerStackHover(canvas, () => state.camera, {
+		mesh: titleHit,
+		visible: shown,
+		select: (index) => point("title", index !== null)
+	}) : null;
+	if (symbol && titleLabel && !planeText) {
+		titleLabel.el.style.pointerEvents = "auto";
+		titleLabel.el.addEventListener("pointerenter", () => point("title", true));
+		titleLabel.el.addEventListener("pointerleave", () => point("title", false));
+	}
+	const onSymbolHover = () => {
+		const lit = !!symbol && hoveredSymbols().includes(symbol);
+		if (lit === symbolLit || animState.stopped) return;
+		symbolLit = lit;
+		titlePlane?.setHighlight(lit);
+		titleLabel?.el.classList.toggle("array-title-symbol-hover", lit);
+	};
+	if (symbol) window.addEventListener("algebench:symbolhover", onSymbolHover);
 	material.addEventListener("dispose", () => {
 		disposeHover?.();
+		disposeSymbolHover?.();
+		disposeTitleHover?.();
+		titleHit?.geometry.dispose();
+		window.removeEventListener("algebench:symbolhover", onSymbolHover);
 		ghostMaterial?.dispose();
 		unit.dispose();
 		for (const layer of [
@@ -12239,6 +12422,22 @@ function renderStack(el, view) {
 		], "#b5c1cf");
 		title.ownerMesh = owner;
 		title.snapToProjection = true;
+		if (el.id) {
+			const symbol = el.id;
+			title.el.style.pointerEvents = "auto";
+			title.el.addEventListener("pointerenter", () => setSymbolHover([symbol]));
+			title.el.addEventListener("pointerleave", () => {
+				if (hoveredSymbols().length === 1 && hoveredSymbols()[0] === symbol) setSymbolHover([]);
+			});
+			const light = () => {
+				if (!title.el.isConnected) {
+					window.removeEventListener("algebench:symbolhover", light);
+					return;
+				}
+				title.el.classList.toggle("array-title-symbol-hover", hoveredSymbols().includes(symbol));
+			};
+			window.addEventListener("algebench:symbolhover", light);
+		}
 		const empty = addLabel3D(el.emptyText ?? "empty", origin, "#8ca9a0", { cssClass: "label-3d array-cell-label" });
 		empty.ownerMesh = owner;
 		empty.snapToProjection = true;
@@ -22888,7 +23087,64 @@ function setupCodePanel() {
 		});
 		tree.querySelectorAll("[data-file]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.file === file.id)));
 		refreshBinding();
+		analyzeCode(file).then((analysis) => {
+			if (analysis && selected === file) markSymbols(analysis.references);
+		});
 	}
+	/** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
+	function markSymbols(references) {
+		body.querySelectorAll(".code-line code").forEach((code) => {
+			for (const ref of lineReferences(references, Number(code.dataset.line))) wrapRange(code, ref);
+		});
+		paintSymbolHover();
+	}
+	function wrapRange(code, ref) {
+		const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+		const pieces = [];
+		let offset = 0;
+		for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+			const start = offset, end = offset + node.data.length;
+			offset = end;
+			const from = Math.max(ref.col, start), to = Math.min(ref.endCol, end);
+			if (from < to) pieces.push({
+				node,
+				from: from - start,
+				to: to - start
+			});
+		}
+		for (const { node, from, to } of pieces) {
+			const target = node.splitText(from);
+			target.splitText(to - from);
+			const span = document.createElement("span");
+			span.className = "code-sym";
+			span.dataset.key = ref.key;
+			span.dataset.root = ref.root;
+			span.dataset.kind = ref.kind;
+			target.replaceWith(span);
+			span.append(target);
+		}
+	}
+	function paintSymbolHover() {
+		const keys = hoveredSymbols();
+		body.querySelectorAll(".code-sym").forEach((span) => span.classList.toggle("code-sym-hover", keys.includes(span.dataset.key)));
+	}
+	body.addEventListener("pointerover", (event) => {
+		const span = event.target.closest(".code-sym");
+		setSymbolHover(span ? [span.dataset.key] : []);
+	});
+	body.addEventListener("pointerleave", () => setSymbolHover([]));
+	window.addEventListener("algebench:symbolhover", paintSymbolHover);
+	window.addEventListener("algebench:symbolflash", (event) => {
+		const keys = event.detail.keys;
+		requestAnimationFrame(() => {
+			body.querySelectorAll(".code-line.execution-line .code-sym").forEach((span) => {
+				if (!keys.includes(span.dataset.key) && !(keys.includes(span.dataset.root) && span.dataset.kind === "subscript")) return;
+				span.classList.add("code-sym-flash");
+				clearTimeout(Number(span.dataset.flash));
+				span.dataset.flash = String(setTimeout(() => span.classList.remove("code-sym-flash"), 900));
+			});
+		});
+	});
 	body.addEventListener("mouseup", (event) => {
 		const selection = window.getSelection();
 		const nodeElement = (n) => n instanceof Element ? n : n?.parentElement;

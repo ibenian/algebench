@@ -5619,6 +5619,17 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-mark-blue { background: #438fc944; }
 .code-mark-green { background: #36a77944; }
 .code-mark-pink { background: #d268a444; }
+/* Variables (code_intel): hover lights every occurrence and the rows naming it; a changed value flashes on the executing line. */
+.code-sym { border-radius: 3px; transition: background-color .6s ease-out, box-shadow .6s ease-out; }
+/* A faint tint, padded by a spread shadow of the same tint so the code text never moves or changes colour. */
+.code-sym.code-sym-hover { background: #f1cc5924; box-shadow: 0 0 0 3px #f1cc5924; transition: none; }
+.code-sym.code-sym-flash { background: #f1cc5999; box-shadow: 0 0 0 3px #f1cc5999, 0 0 10px 4px #f1cc5966; transition: none; }
+/* Marker badges let the 3D view through, except rows naming a code variable, which take hover. */
+.step-marker .annotation-row[data-symbols] { pointer-events: auto; }
+/* An array or stack title naming the hovered variable: the same faint tint, text colour unchanged. */
+.array-title-symbol-hover { background: #f1cc5933; border-radius: 3px; box-shadow: 0 0 0 3px #f1cc5933; }
+/* Padded sideways only (margin cancels padding, so nothing moves); the row's own height is enough. */
+.annotation-row.annotation-row-symbol-hover { background: #ffffff30; border-radius: 3px; margin-inline: -4px; padding-inline: 4px; }
 
 #state-player { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; width: min(460px, calc(100% - 200px)); padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); }
 #state-player[hidden], .slider-row[hidden] { display: none; }

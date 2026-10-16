@@ -4,6 +4,7 @@
 // ============================================================
 
 import { annotationGroups, annotationRows, annotationGroupAnchor, annotationInsertionIndex, annotationContainerTitle, annotationDragPosition, markerLifts, labelAskMessage } from '/annotation-layout.js';
+import { bindSymbolRow } from '/code-symbols.js';
 import type { AnnotationValue } from '/annotation-layout.js';
 
 import { state } from '/state.js';
@@ -401,6 +402,8 @@ export interface Label3D {
     /** Every connection target when connectTo lists several; wireTarget is the first. */
     wireTargets?: {object?:string;index?:number;position?:[number,number,number]}[];
     wirePinned?: boolean;
+    /** Set by marker stacking: this badge was lifted over a neighbour's, so it paints beneath unlifted ones. */
+    markerLifted?: boolean;
 }
 
 // state.js is still untyped JavaScript, so describe the slice this module uses
@@ -588,10 +591,11 @@ export function updateLabels(): void {
     for (let i = 0; i < ordered.length; i++) {
         const o = ordered[i]!;
         // Paint bands, bottom to top: plain world labels (array index tags, titles),
-        // index markers, expression-label boxes (Vars/Labels), then screen
-        // overlays. Nothing in the scene may cover a Vars box, however near the
-        // camera it is; depth order still decides within each band.
-        const band = o.annotationCoordinateMode === 'screen' ? 3 : o.annotation?.kind === 'label' ? 2 : o.annotation ? 1 : 0;
+        // lifted index markers, other index markers, expression-label boxes (Vars/Labels),
+        // then screen overlays. A lifted marker's stem runs down past the badge it cleared,
+        // so it goes beneath that badge rather than across its text. Nothing in the scene
+        // may cover a Vars box, however near the camera it is; depth order decides within a band.
+        const band = o.annotationCoordinateMode === 'screen' ? 4 : o.annotation?.kind === 'label' ? 3 : o.annotation ? (o.markerLifted ? 1 : 2) : 0;
         const zi = ordered.length - i + band * ordered.length;
         if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
     }
@@ -627,6 +631,7 @@ function groupAnnotations(scale: number): void {
         if (signature !== a.rendered) {
             a.badge.replaceChildren(...rows.map((text, rowIndex) => {
                 const row = document.createElement('span'); row.className = 'annotation-row'; row.textContent = text;
+                bindSymbolRow(row, text);
                 if (a.kind === 'label') {
                     if (labels[group[rowIndex]!]!.annotation!.highlighted) row.classList.add('annotation-row-highlight');
                     wireRowHover(row,labels[group[rowIndex]!]!);
@@ -693,8 +698,15 @@ function groupAnnotations(scale: number): void {
     // keeps its pointer on its cell through a taller stem (the badge is anchored
     // at the cell's top edge, so the extra height raises only the badge).
     const markerGroups = annotationGroups(boxes).filter(g => boxes[g[0]!]!.kind === 'marker' && labels[g[0]!]!.cellAttachment);
-    const lifts = markerLifts(markerGroups.map(g => boxes[g[0]!]!));
+    // A merged badge (several rows, e.g. stack[-1] and temps[stack[-1]]) is taller and wider than its leader's
+    // own measure, so collisions use the rendered badge; it hangs above the cell edge, centred on its anchor.
+    const lifts = markerLifts(markerGroups.map(g => {
+        const leader = labels[g[0]!]!, box = boxes[g[0]!]!, badge = leader.annotation!.badge;
+        const width = Math.max(box.width, badge.offsetWidth), height = Math.max(box.height, badge.offsetHeight);
+        return {x:box.x, y:leader.screenY! - (height + 11)/2, width, height};
+    }));
     markerGroups.forEach((g, k) => {
+        labels[g[0]!]!.markerLifted = lifts[k]! > 0;
         const el = labels[g[0]!]!.el, stem = `${lifts[k]}px`;
         if (el.style.getPropertyValue('--marker-stem') !== stem) el.style.setProperty('--marker-stem', stem);
     });

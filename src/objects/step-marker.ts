@@ -5,6 +5,7 @@ import { announceLabelChange } from '/label-tooltip.js';
 import { resolveCodeRef } from '/code-panel-model.js';
 import { state } from '/state.js';
 import { annotationText } from '/annotation-layout.js';
+import { flashSymbols, rowSymbolKeys } from '/code-symbols.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr } from '/sliders.js';
 import type { AnimExprEntry } from '/sliders.js';
@@ -124,6 +125,8 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
             }
             // A recalculated value briefly shows how it was computed; first display does not.
             if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
+            // A recalculated value lights its variable on the executing line in the Code panel.
+            if (previous && previous !== annotation.text) flashSymbols(rowSymbolKeys(annotation.text));
             if (measure.textContent !== annotation.text) {
                 measure.textContent = annotation.text; annotation.scale = null;
             }
