@@ -82,7 +82,7 @@ frozenlist==1.8.0
     #   aiosignal
 fsspec==2026.4.0
     # via huggingface-hub
-gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@596597faa3d41e21c0486399566036609cc163b0#subdirectory=python
+gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@917bbe31ebffc14ab8fac171816af1a2e543428b#subdirectory=python
     # via -r requirements.txt
 genai-prices==0.0.66
     # via pydantic-ai-slim
