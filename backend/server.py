@@ -2729,7 +2729,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
 
             async def generate_rt():
                 gen_at_start = _tts_kill_gen[0]
-                inner = api.astream_realtime_pcm(
+                inner = api.astream_tts_pcm(
                     text=tts_text,
                     voice_name=req.voice,
                     character_name=req.character,
