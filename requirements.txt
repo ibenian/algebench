@@ -29,7 +29,16 @@ uvicorn[standard]>=0.32.0
 jsonschema>=4.23.0
 sympy>=1.13.0
 antlr4-python3-runtime==4.11.1
-pydantic-ai-slim[google]>=1.56.0
+# SECURITY: 1.107.6 clears seven of the eight advisories open against 1.107.0 —
+# including GHSA-h4xc-3qfq-jf93 (high: a website the developer visits can trigger
+# agent runs and server-side tool execution on the `Agent.to_web()` / `clai web`
+# endpoint). The eighth, GHSA-v36g-jcw9-x7cw (medium, resource use converting
+# nested HTML in web_fetch), is fixed in 1.107.7, published 2026-09-30 and so
+# inside the 30-day cooldown until 2026-10-30; raise the floor then.
+#   The `<2` ceiling keeps this a patch bump. 2.x is the other way to clear all
+# eight, but it is a major release and this is a security relock — the migration
+# should be assessed on its own, not taken as a side effect of one.
+pydantic-ai-slim[google]>=1.107.6,<2
 # DSPy 3.x. The `<3.0` ceiling stranded us on 2.6.27 — the last 2.6.x, released
 # 2h27m before the fix for its broken structured-outputs path landed upstream
 # (`create_model(__config__=<class>)` against pydantic 2.13; stanfordnlp/dspy#8256).
@@ -40,8 +49,17 @@ pydantic-ai-slim[google]>=1.56.0
 # default. Net install is still substantially smaller than under 2.6.
 dspy[optuna]>=3.2,<4.0
 # SECURITY: litellm 1.82.7 / 1.82.8 were compromised (Mar 2025 supply chain attack).
-# Floor of 1.82.9 guarantees a fresh resolve can never land on the malicious versions.
-litellm>=1.82.9
+# A floor here guarantees a fresh resolve can never land on the malicious versions.
+# Raised to 1.89.7 for GHSA-3cv6-jpf6-8222 (authenticated SSRF and provider-credential
+# exfiltration via unvalidated request-body routing parameters), the first fix on the
+# 1.89.x line.
+#   The `<1.90` ceiling is about dependency surface, not correctness: from 1.90 litellm
+#   depends on boto3, which drags botocore, s3transfer, jmespath, python-dateutil, six
+#   and pydantic-settings into the lock — the entire AWS SDK, for an SSRF fix, in a
+#   project that calls no AWS service. Lifting the ceiling is fine, but it is a
+#   seven-package decision that deserves its own PR rather than riding along with a
+#   security bump.
+litellm>=1.89.7,<1.90
 # BUILD: litellm[proxy] (pulled by dspy) allows orjson>=3.9.7, but a fresh resolve
 # can backtrack to orjson 3.10.x, whose bundled PyO3 0.23 cannot build on Python
 # 3.14 (CI) — no cp314 wheel, source build fails. Floor at 3.11.9, which ships a
