@@ -82,7 +82,7 @@ frozenlist==1.8.0
     #   aiosignal
 fsspec==2026.4.0
     # via huggingface-hub
-gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@596597faa3d41e21c0486399566036609cc163b0#subdirectory=python
+gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@073a458d4f4b2084c7c3eeb5d08f0dea03e9dc4f#subdirectory=python
     # via -r requirements.txt
 genai-prices==0.0.66
     # via pydantic-ai-slim
@@ -92,7 +92,7 @@ google-api-core==2.31.0
     # via
     #   google-cloud-core
     #   google-cloud-storage
-google-auth==2.55.0
+google-auth==2.58.0
     # via
     #   google-api-core
     #   google-cloud-core
@@ -106,7 +106,7 @@ google-crc32c==1.8.0
     # via
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==2.9.0
+google-genai==2.25.0
     # via
     #   -r requirements.txt
     #   gemini-live-tools

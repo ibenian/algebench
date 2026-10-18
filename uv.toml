@@ -67,3 +67,32 @@
 required-version = ">=0.11.15"
 
 exclude-newer = "30 days"
+
+# PER-PACKAGE COOLDOWN: google-genai
+#
+# `gemini-live-tools` 0.2.0 requires `google-genai>=2.25.0`, and 2.25.0 was
+# published 2026-09-22 — inside the 30-day window. Under the blanket cooldown
+# the resolution is not merely held back, it is UNSATISFIABLE, so every
+# `uv pip compile` fails outright, including the one
+# scripts/dependency_audit_report.py runs to build its report. The audit job
+# fails with "No solution found" rather than any advisory.
+#
+# This narrows the cooldown for that one package; it does not switch it off.
+# 25 days still clears the hours-to-days window in which compromised packages
+# are typically found and yanked, which is what the blanket setting is for.
+# Nothing else in the lock is affected — google-auth 2.58.0, pulled in by the
+# same upgrade, cleared the full 30 days on its own.
+#
+# A DURATION, not a date, for the reason given for `exclude-newer` above: an
+# absolute timestamp nobody edits silently tightens as it ages, eventually
+# holding back the security fixes this policy exists to let through. A date
+# here would also freeze google-genai at 2.25.0 permanently.
+#
+# TEMPORARY. From 2026-10-22 17:23 UTC, 2.25.0 is older than 30 days and the
+# blanket cooldown resolves it unaided. Delete this block then — check with:
+#
+#     uv pip compile requirements.txt -o /dev/null --universal \
+#         --python-version 3.12 --no-header
+#
+# If that succeeds with this block removed, it has served its purpose.
+exclude-newer-package = { google-genai = "25 days" }
