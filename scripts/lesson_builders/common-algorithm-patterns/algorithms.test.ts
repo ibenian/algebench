@@ -179,12 +179,12 @@ test('tree traversals visit every node once, in the textbook orders',()=>{
 test('islands: counts the groups and labels every land cell with its group',()=>{
  const grid=IN.islands.grid,cols=grid[0]!.length,trace=islandsTrace(grid),f=last(trace);
  assert.equal(f.count,5);
- // Every land cell is sunk exactly once, into an island whose cells are all joined; water never is.
+ // Every land cell is visited exactly once, into an island whose cells are all joined; water never is.
  const land=grid.flat().map((x,i)=>x===1?i:-1).filter(i=>i>=0),isl=f.island as number[];
  assert.ok(land.every(i=>isl[i]!>0)&&grid.flat().every((x,i)=>x===1||isl[i]===0));
  for(const i of land){const p=(f.from as number[])[i]!;if(p>=0){assert.equal(isl[p],isl[i]);assert.equal(Math.abs(Math.floor(p/cols)-Math.floor(i/cols))+Math.abs(p%cols-i%cols),1,'reached from a neighbour');}}
  assert.equal(new Set(land.map(i=>isl[i])).size,5);
- assert.ok((f.grid as number[]).every(x=>x===0),'sink overwrites all land');
+ assert.ok((f.grid as number[]).every(x=>x===0),'dfs marks all land visited by overwriting it');
  // A 1×1 island and an all-water grid.
  assert.equal(last(islandsTrace([[1]])).count,1);assert.equal(last(islandsTrace([[0,0],[0,0]])).count,0);
 });

@@ -1195,23 +1195,23 @@ ${MD_TAIL}
 
 **Signal:** a 2D grid: islands, flood fill, regions, shortest moves.
 
-Treat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS from it. Here: scan every cell, and when one is still land, count a new island and **sink** it: overwrite it with "0" and sink every land neighbour, recursively. Overwriting is the visited mark, so no cell is counted twice. Check bounds before you look at a neighbour.
+Treat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS from it. Here: scan every cell, and when one is still land, count a new island and run a **depth-first search** from it: visit every land neighbour, recursively, marking each cell visited by overwriting it with "0" (a flood fill). Overwriting is the visited mark, so no cell is counted twice. Check bounds before you look at a neighbour.
 
-Each island gets its own colour as it sinks, and each sunk cell points back at the cell that reached it, so the flood fill shows as a tree; pink cells are still on the recursion stack. Every cell is scanned once and sunk at most once: O(rows × cols).
+Each island gets its own colour as the search visits it, and each visited cell points back at the cell that reached it, so the search shows as a tree; pink cells are still on the recursion stack. Every cell is scanned once and visited at most once: O(rows × cols).
 
 ${MD_TAIL}
 
 **Practice:** Number of Islands (200), Flood Fill (733), Max Area of Island (695), Surrounded Regions (130), Rotting Oranges (994, BFS).`,
-        prompt: 'Explain the grid as a graph, sinking as the visited mark, and why each cell is handled once. Ask the learner to predict which cells the next sink reaches before the player reveals it.',
+        prompt: 'Explain the grid as a graph, overwriting as the visited mark, and why each cell is handled once. Ask the learner to predict which cells the next dfs call reaches before the player reveals it.',
         elements: [
             // The grid as a graph: one node per cell, laid out in rows and columns, showing the value the code holds.
             {
                 id: 'grid', type: 'graph', label: 'grid', lengthExpr: String(rows * cols), valueExpr: cell('grid'),
                 positionExpr: [`${x0} + mod(idx, ${cols}) * ${size}`, `${y0} - floor(idx / ${cols}) * ${size}`, '0'],
                 nodeShape: 'rect', nodeWidth: 0.9, nodeHeight: 0.9, nodeCornerRadius: 0.12, valueLabel: 'inside', showIndices: false,
-                // Gold where sink() is, pink on its recursion stack, an island's colour once sunk, sand for land, dark water.
+                // Gold where dfs() is, pink on its recursion stack, an island's colour once visited, sand for land, dark water.
                 colorExpr: `idx == ${tr('cur')} ? '${GOLD}' : (${cell('stack')} == 1 ? '${PINK}' : (${islandColor}(${cell('grid')} == 1 ? '#c8b98a' : '#2c4256')))`,
-                // A sunk cell points back at the cell whose sink() reached it.
+                // A visited cell points back at the cell whose dfs() reached it.
                 connectTo: { indexExpr: cell('from'), pinned: true, arrow: true, bendExpr: '0', color: '#e8e6da' },
                 markers: [marker('scan', tr('scan'), BLUE, `${tr('scan')} >= 0 and ${tr('cur')} < 0`)],
             },
