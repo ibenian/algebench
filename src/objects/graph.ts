@@ -10,7 +10,9 @@ import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 import { addLabel3D, parseColor } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
-import { registerAnimExpr } from '/sliders.js';
+import { registerAnimExpr, setSliderValue } from '/sliders.js';
+import { pickBox, isClick } from '/objects/node-click.js';
+import type { ScreenBox } from '/objects/node-click.js';
 import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
 import { renderStepMarker } from '/objects/step-marker.js';
@@ -20,6 +22,8 @@ import { compileLinkTargets, evaluateLinkTargets } from '/objects/link-targets.j
 import type { ArrayCellTarget } from '/objects/array.js';
 import { identityTracker } from '/objects/cell-identity.js';
 import { createCellGlide } from '/objects/cell-glide.js';
+import { createArrayPlaneText } from '/objects/array-plane-text.js';
+import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 import { layoutTree } from '/objects/tree-layout.js';
 import type { TreeLayoutKind } from '/objects/tree-layout.js';
 
@@ -117,6 +121,24 @@ export function renderGraph(el: Element, view: MathBoxNode) {
 
     // Value and index labels, one per node, created as nodes appear and kept while they exist.
     const valueLabels: ReturnType<typeof addLabel3D>[] = [], indexLabels: ReturnType<typeof addLabel3D>[] = [];
+    // axisLabels 'plane': a node's text is painted on its face (as an array's cell text is), sized to the node and
+    // scaled with the view, so it always fits; screen labels keep a fixed font size and can spill past small nodes.
+    const planeText = el.axisLabels === 'plane' && valueAt === 'inside';
+    const planes: ArrayPlaneText[] = [];
+    // One font size for every node: each plane fits the graph's longest text (monospace, so the most characters).
+    let longest = '';
+    const planeFor = (i: number) => {
+        let layer = planes[i];
+        if (!layer) {
+            const {sx, sy} = axes();
+            layer = createArrayPlaneText(w * .88, h * (sx / sy) * .72, '#e6edf5', {fitTo: () => longest});
+            mesh.add(layer.mesh);
+            const plane = layer;
+            plane.mesh.onBeforeRender = (renderer, _scene, camera) => { plane.prepare(renderer, camera); plane.mesh.material.opacity = material.opacity; };
+            planes[i] = layer;
+        }
+        return layer;
+    };
     const labelFor = (list: typeof valueLabels, i: number, cls: string) => {
         let label = list[i];
         if (!label) {
@@ -141,7 +163,7 @@ export function renderGraph(el: Element, view: MathBoxNode) {
         const values = Array.from({length: count}, (_, i) => valueFn ? evalExpr(valueFn, 0, {overrideScope: {idx: i}}) : el.values?.[i]);
         const scoped = (fn: ReturnType<typeof compileExpr> | null, i: number) => fn ? Number(evalExpr(fn, 0, {overrideScope: {idx: i, value: values[i]}})) : NaN;
         const laid = tree ? layoutTree(tree.type as TreeLayoutKind, count, i => parentFn ? scoped(parentFn, i) : -1,
-            {origin: tree.origin, spacing: tree.spacing, levelGap: tree.levelGap, width: tree.width}, sideFn ? i => scoped(sideFn, i) : undefined) : null;
+            {origin: tree.origin, spacing: tree.spacing, levelGap: tree.levelGap, width: tree.width, orientation: tree.orientation}, sideFn ? i => scoped(sideFn, i) : undefined) : null;
         const next = Array.from({length: count}, (_, i) => {
             const value = values[i];
             const [x, y, z] = laid ? laid[i]! : positionFns.map(fn => Number(evalExpr(fn, 0, {overrideScope: {idx: i, value}})));
@@ -173,6 +195,11 @@ export function renderGraph(el: Element, view: MathBoxNode) {
     // markers and links belong to the node's place, so they stay put.
     const paint = () => {
         const next = nodes;
+        if (planeText) {
+            const texts = next.map(n => typeof n.value === 'string' ? n.value : String(n.value ?? ''));
+            const widest = texts.reduce((a, b) => ([...b].length > [...a].length ? b : a), '');
+            if (widest !== longest) { longest = widest; for (const layer of planes) layer.refit(); }
+        }
         // One triangle fan per node, shaped in world space with a single scale (see axes()).
         const positions: number[] = [], colors: number[] = [];
         const {sx, sy, ux, uy} = axes();
@@ -219,6 +246,11 @@ export function renderGraph(el: Element, view: MathBoxNode) {
                 if (label.el.textContent !== t) label.el.textContent = t;
                 label.el.style.display = '';
             });
+            else if (planeText) {
+                const [x, y, z] = drawnAt(i), layer = planeFor(i);
+                layer.mesh.visible = true;
+                layer.set(text, [x, y, z + depth / 2 + .02]);
+            }
             else if (valueAt !== 'none') {   // no label at all when values are not shown
                 const value = labelFor(valueLabels, i, `graph-node-value graph-node-value-${valueAt}`), [x, y, z] = drawnAt(i);
                 value.dataPos = valueAt === 'inside' ? [x, y, z] : [x + span.hw + .25, y, z];
@@ -232,16 +264,79 @@ export function renderGraph(el: Element, view: MathBoxNode) {
         });
         // Nodes (and cells) that went away keep their labels for reuse, hidden.
         for (const list of [valueLabels, indexLabels]) list.forEach((label, i) => { label.el.style.display = i < next.length ? '' : 'none'; });
+        planes.forEach((layer, i) => { layer.mesh.visible = i < next.length; });
         for (const [key, label] of cellLabels) {
             const [i, c] = key.split(':').map(Number);
             if (!(next[i!]?.cells && c! < next[i!]!.cells!.length)) label.el.style.display = 'none';
         }
     };
+    // onClick: clicking a node runs its actions (node-click.ts), e.g. set a slider so the learner selects by clicking.
+    function wireClicks(): (() => void) | null {
+        const canvas = state.renderer?.domElement;
+        const actions = (el.onClick ?? []).map(a => ({...a, valueFn: a.valueExpr ? compileExpr(a.valueExpr) : null, stepFn: a.stepExpr ? compileExpr(a.stepExpr) : null, sceneFn: a.sceneExpr ? compileExpr(a.sceneExpr) : null}));
+        if (!canvas || !actions.length) return null;
+        const shown = () => {
+            if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+            for (let part: {visible: boolean; parent: unknown} | null = mesh; part; part = part.parent as typeof part) if (!part.visible) return false;
+            return true;
+        };
+        const nodeAt = (clientX: number, clientY: number): number | null => {
+            const camera = state.camera;
+            if (!camera || !shown()) return null;
+            const rect = canvas.getBoundingClientRect(), boxes: ScreenBox[] = [];
+            nodes.forEach((_, i) => {
+                const corners = cellTarget.at(i)?.corners;
+                if (!corners) return;
+                const pts = corners.map(c => new THREE.Vector3(...dataToWorld(c as [number, number, number])).project(camera));
+                if (pts.some(p => p.z < -1 || p.z > 1)) return;
+                const xs = pts.map(p => (p.x * .5 + .5) * rect.width), ys = pts.map(p => (-p.y * .5 + .5) * rect.height);
+                boxes.push({index: i, minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys), depth: Math.min(...pts.map(p => p.z))});
+            });
+            return pickBox(boxes, clientX - rect.left, clientY - rect.top);
+        };
+        const run = (i: number) => {
+            const scope = {overrideScope: {idx: i, value: nodes[i]?.value}};
+            for (const a of actions) {
+                try {
+                    if (a.action === 'setSlider' && a.slider && a.valueFn) setSliderValue(a.slider, Number(evalExpr(a.valueFn, 0, scope)));
+                    else if (a.action === 'goToScene') {
+                        // A scene of this lesson, by id; an empty or unknown id does nothing.
+                        const id = a.scene ?? (a.sceneFn ? String(evalExpr(a.sceneFn, 0, scope)) : '');
+                        const at = (state.lessonSpec?.scenes ?? []).findIndex(sc => (sc as {id?: string}).id === id);
+                        if (id && at >= 0) navigateTo(at, 0);
+                    }
+                    else if (a.action === 'goToStep') {
+                        const id = a.step ?? (a.stepFn ? String(evalExpr(a.stepFn, 0, scope)) : '');
+                        const steps = (state.lessonSpec?.scenes?.[state.currentSceneIndex] as {steps?: {id?: string}[]} | undefined)?.steps ?? [];
+                        const at = steps.findIndex(step => step.id === id);
+                        if (at >= 0) navigateTo(state.currentSceneIndex, at);
+                    }
+                } catch (error) { console.warn('graph onClick:', error); }
+            }
+        };
+        const controller = new AbortController();
+        let down: {x: number; y: number} | null = null, pointing = false;
+        canvas.addEventListener('pointerdown', e => { down = e.button === 0 ? {x: e.clientX, y: e.clientY} : null; }, {signal: controller.signal});
+        canvas.addEventListener('pointerup', e => {
+            const pressed = down; down = null;
+            if (e.button !== 0 || !isClick(pressed, {x: e.clientX, y: e.clientY})) return;
+            const i = nodeAt(e.clientX, e.clientY);
+            if (i !== null) run(i);
+        }, {signal: controller.signal});
+        // A pointer cursor over a clickable node; only this graph's own cursor is ever cleared.
+        canvas.addEventListener('pointermove', e => {
+            const over = !e.buttons && nodeAt(e.clientX, e.clientY) !== null;
+            if (over !== pointing) { pointing = over; canvas.style.cursor = over ? 'pointer' : ''; }
+        }, {signal: controller.signal, passive: true});
+        return () => { controller.abort(); if (pointing) canvas.style.cursor = ''; };
+    }
     const entry: AnimExprEntry = {animState, exprStrings: [el.lengthExpr, el.valueExpr, el.idExpr, el.treeLayout?.parentExpr, el.treeLayout?.sideExpr, ...(el.positionExpr ?? []).map(String), el.colorExpr, el.highlightExpr, el.nodeCellsExpr, el.cellHighlightExpr,
         ...links.flatMap(l => l.sources), ...markers.flatMap(m => m._animExprEntry.exprStrings ?? [])].filter((v): v is string => !!v),
         _rebuildFn: () => { if (!animState.stopped && !animState.hiddenByRemove) rebuild(); }};
     try { rebuild(); } catch (error) { console.warn('graph:', error); }
-    material.addEventListener('dispose', () => { animState.stopped = true; glide?.dispose(); });
+    material.addEventListener('dispose', () => { animState.stopped = true; glide?.dispose(); for (const layer of planes) layer.dispose(); });
     registerAnimExpr(entry);
+    const disposeClicks = wireClicks();
+    material.addEventListener('dispose', () => disposeClicks?.());
     return {_animState: animState, _animExprEntry: entry, type: el.type};
 }

@@ -3,7 +3,7 @@
  * use it; a graph does through `treeLayout` (graph.ts), and a heap through the 'complete' kind.
  *
  * - tidy:      any tree. Leaves evenly spaced in depth-first order, each parent centred over its children,
- *              one row per depth.
+ *              one row per depth (or, with orientation 'horizontal', one column per depth, growing rightwards).
  * - binary:    a binary tree whose sides matter (`sideOf`: 0 left, 1 right). Nodes left to right in inorder,
  *              the picture of a binary search tree: every left subtree sits left of its parent.
  * - complete:  heap slots (parents ignored): level d holds slots 2^d − 1 .. 2^(d+1) − 2, spread evenly
@@ -24,6 +24,9 @@ export interface TreeLayoutOptions {
     levelGap?: number;
     /** complete: the width each level spreads across. */
     width?: number;
+    /** tidy, binary: 'horizontal' grows the tree left to right (root on the left, one column per depth, leaves
+     *  down the rows) instead of top to bottom; spacing is then between rows and levelGap between columns. */
+    orientation?: 'vertical' | 'horizontal';
 }
 type Vec3 = [number, number, number];
 
@@ -51,6 +54,9 @@ export function layoutTree(kind: TreeLayoutKind, n: number, parentOf: (i: number
     sideOf?: (i: number) => number): Vec3[] {
     const [ox = 0, oy = 0, oz = 0] = (options.origin ?? [0, 0, 0]).map(Number);
     const spacing = Number(options.spacing ?? 1.2), gap = Number(options.levelGap ?? 1.3);
+    // Leaf position along the spread, depth down the levels: top to bottom, or turned to run left to right.
+    const spot = (along: number, depth: number): Vec3 => options.orientation === 'horizontal'
+        ? [ox + depth * gap, oy - along * spacing, oz] : [ox + along * spacing, oy - depth * gap, oz];
     if (n <= 0) return [];
     if (kind === 'complete') {
         const width = Number(options.width ?? 6);
@@ -86,7 +92,7 @@ export function layoutTree(kind: TreeLayoutKind, n: number, parentOf: (i: number
         const visit = (i: number) => { const [l, r] = sides(i); if (l !== undefined) visit(l); x[i] = order++; if (r !== undefined) visit(r); };
         roots.forEach(visit);
         const mid = (order - 1) / 2;
-        return Array.from({length: n}, (_, i) => [ox + (x[i]! - mid) * spacing, oy - depth[i]! * gap, oz]);
+        return Array.from({length: n}, (_, i) => spot(x[i]! - mid, depth[i]!));
     }
     // Tidy (and radial, from the same leaf order): leaves 0, 1, 2… depth-first; a parent centred over the
     // span of its children.
@@ -108,5 +114,5 @@ export function layoutTree(kind: TreeLayoutKind, n: number, parentOf: (i: number
         });
     }
     const mid = (leaves - 1) / 2;
-    return Array.from({length: n}, (_, i) => [ox + (x[i]! - mid) * spacing, oy - depth[i]! * gap, oz]);
+    return Array.from({length: n}, (_, i) => spot(x[i]! - mid, depth[i]!));
 }

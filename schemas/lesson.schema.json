@@ -591,7 +591,7 @@
             "screen",
             "plane"
           ],
-          "description": "ARRAY and TENSOR. On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j')."
+          "description": "ARRAY, GRAPH and TENSOR. On a graph, 'plane' paints each node's inside value on the node's face, sized to the node and scaled with the view, so it always fits (screen labels keep a fixed font size and can spill past small nodes). On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j')."
         },
         "anchor": {
           "type": "string",
@@ -1460,6 +1460,24 @@
         "nodeWidth": {"type": "number", "exclusiveMinimum": 0, "default": 1, "description": "GRAPH: width of a 'rect' node, in data units."},
         "nodeHeight": {"type": "number", "exclusiveMinimum": 0, "default": 0.7, "description": "GRAPH: height of a 'rect' node, in data units."},
         "nodeCornerRadius": {"type": "number", "minimum": 0, "default": 0.12, "description": "GRAPH: corner rounding of a 'rect' node; half the smaller side gives a circle."},
+        "onClick": {
+          "type": "array",
+          "description": "GRAPH: actions run, in order, when the learner clicks a node (a drag that orbits the view is not a click); idx and value are the clicked node's. Use it to let the learner select by clicking, e.g. set a slider to the node's index.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "action": {"type": "string", "enum": ["setSlider", "goToStep", "goToScene"], "description": "setSlider: set `slider` to `valueExpr`. goToStep: go to the current scene's step with id `step` (or `stepExpr`). goToScene: open the lesson's scene with id `scene` (or `sceneExpr`); an empty or unknown id does nothing."},
+              "slider": {"type": "string", "description": "setSlider: the slider id."},
+              "valueExpr": {"type": "string", "description": "setSlider: the value, with idx and value bound."},
+              "step": {"type": "string", "description": "goToStep: a step id of the current scene."},
+              "stepExpr": {"type": "string", "description": "goToStep: an expression giving the step id, with idx and value bound."},
+              "scene": {"type": "string", "description": "goToScene: a scene id of this lesson."},
+              "sceneExpr": {"type": "string", "description": "goToScene: an expression giving the scene id, with idx and value bound."}
+            },
+            "required": ["action"],
+            "additionalProperties": false
+          }
+        },
         "treeLayout": {
           "type": "object",
           "description": "GRAPH: lay the nodes out as a tree (or forest) from each node's parent, instead of positionExpr. Re-laid as nodes appear, so a growing tree stays tidy. Edges are still connectTo (usually indexExpr = the same parent expression).",
@@ -1470,7 +1488,8 @@
             "origin": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3, "description": "Root position (radial: the centre; indented: the first row). Default [0, 0, 0]."},
             "spacing": {"type": "number", "exclusiveMinimum": 0, "default": 1.2, "description": "Distance between neighbouring leaves (tidy, binary) or one indent (indented)."},
             "levelGap": {"type": "number", "exclusiveMinimum": 0, "default": 1.3, "description": "Distance between depths (radial: between rings; indented: between rows)."},
-            "width": {"type": "number", "exclusiveMinimum": 0, "default": 6, "description": "complete: the width each level spreads across."}
+            "width": {"type": "number", "exclusiveMinimum": 0, "default": 6, "description": "complete: the width each level spreads across."},
+            "orientation": {"type": "string", "enum": ["vertical", "horizontal"], "default": "vertical", "description": "tidy, binary: 'horizontal' grows the tree left to right (root on the left, one column per depth, leaves down the rows); spacing is then between rows and levelGap between columns."}
           },
           "required": ["type"],
           "additionalProperties": false

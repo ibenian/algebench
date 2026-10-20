@@ -61,3 +61,9 @@ test('a forest lays its trees side by side', () => {
     assert.ok(p[2]![0] > p[0]![0] && p[3]![0] > p[1]![0], 'the second tree is to the right of the first');
     assert.equal(p[0]![1], p[2]![1], 'both roots on the top row');
 });
+
+test('horizontal turns a tidy tree to grow left to right: one column per depth, leaves down the rows', () => {
+    const p = layoutTree('tidy', 6, of(parents), {spacing: 1, levelGap: 2, orientation: 'horizontal'}).map(round);
+    assert.deepEqual(p.map(q => q[0]), [0, 2, 2, 4, 4, 4], 'x is the depth');
+    assert.deepEqual(p.map(q => q[1]), [-0.25, 0.5, -1, 1, 0, -1], 'y runs down the leaves: the first leaf on top');
+});

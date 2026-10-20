@@ -10785,9 +10785,10 @@ function createArrayPlaneText(width, height, color, opts = {}) {
 			ctx.lineWidth = line;
 			ctx.stroke();
 		}
+		const sizing = opts.fitTo?.() || text;
 		const px = fitPlainCellPx(canvas.width * (opts.tag ? .72 : 1), canvas.height * (opts.tag ? .95 : 1.25), (size) => {
 			ctx.font = `600 ${size}px ui-monospace, monospace`;
-			return ctx.measureText(text).width;
+			return ctx.measureText(sizing).width;
 		});
 		ctx.font = `600 ${px}px ui-monospace, monospace`;
 		if (highlighted && text) {
@@ -10848,6 +10849,9 @@ function createArrayPlaneText(width, height, color, opts = {}) {
 	return {
 		mesh,
 		prepare,
+		refit() {
+			if (previousText !== void 0) repaint();
+		},
 		setHighlight(on) {
 			if (on !== highlighted) {
 				highlighted = on;
@@ -13279,6 +13283,20 @@ function renderStack(el, view) {
 	});
 }
 //#endregion
+//#region src/objects/node-click.ts
+/** The node under a screen point: the nearest (smallest depth) whose box contains it, or null. */
+function pickBox(boxes, x, y) {
+	let best = null;
+	for (const b of boxes) {
+		if (x < b.minX || x > b.maxX || y < b.minY || y > b.maxY) continue;
+		if (!best || b.depth < best.depth) best = b;
+	}
+	return best ? best.index : null;
+}
+function isClick(down, up) {
+	return !!down && Math.hypot(up.x - down.x, up.y - down.y) <= 6;
+}
+//#endregion
 //#region src/objects/tree-layout.ts
 /** Children (in index order), roots, and depths, for n nodes given each one's parent. Cycles become roots. */
 function treeShape(n, parentOf) {
@@ -13315,6 +13333,15 @@ function layoutTree(kind, n, parentOf, options = {}, sideOf) {
 		0
 	]).map(Number);
 	const spacing = Number(options.spacing ?? 1.2), gap = Number(options.levelGap ?? 1.3);
+	const spot = (along, depth) => options.orientation === "horizontal" ? [
+		ox + depth * gap,
+		oy - along * spacing,
+		oz
+	] : [
+		ox + along * spacing,
+		oy - depth * gap,
+		oz
+	];
 	if (n <= 0) return [];
 	if (kind === "complete") {
 		const width = Number(options.width ?? 6);
@@ -13364,11 +13391,7 @@ function layoutTree(kind, n, parentOf, options = {}, sideOf) {
 		};
 		roots.forEach(visit);
 		const mid = (order - 1) / 2;
-		return Array.from({ length: n }, (_, i) => [
-			ox + (x[i] - mid) * spacing,
-			oy - depth[i] * gap,
-			oz
-		]);
+		return Array.from({ length: n }, (_, i) => spot(x[i] - mid, depth[i]));
 	}
 	let leaves = 0;
 	const place = (i) => {
@@ -13393,11 +13416,7 @@ function layoutTree(kind, n, parentOf, options = {}, sideOf) {
 		];
 	});
 	const mid = (leaves - 1) / 2;
-	return Array.from({ length: n }, (_, i) => [
-		ox + (x[i] - mid) * spacing,
-		oy - depth[i] * gap,
-		oz
-	]);
+	return Array.from({ length: n }, (_, i) => spot(x[i] - mid, depth[i]));
 }
 //#endregion
 //#region src/objects/graph.ts
@@ -13600,6 +13619,24 @@ function renderGraph(el, view) {
 		type: "step_marker"
 	}, view, owner));
 	const valueLabels = [], indexLabels = [];
+	const planeText = el.axisLabels === "plane" && valueAt === "inside";
+	const planes = [];
+	let longest = "";
+	const planeFor = (i) => {
+		let layer = planes[i];
+		if (!layer) {
+			const { sx, sy } = axes();
+			layer = createArrayPlaneText(w * .88, h * (sx / sy) * .72, "#e6edf5", { fitTo: () => longest });
+			mesh.add(layer.mesh);
+			const plane = layer;
+			plane.mesh.onBeforeRender = (renderer, _scene, camera) => {
+				plane.prepare(renderer, camera);
+				plane.mesh.material.opacity = material.opacity;
+			};
+			planes[i] = layer;
+		}
+		return layer;
+	};
 	const labelFor = (list, i, cls) => {
 		let label = list[i];
 		if (!label) {
@@ -13640,7 +13677,8 @@ function renderGraph(el, view) {
 			origin: tree.origin,
 			spacing: tree.spacing,
 			levelGap: tree.levelGap,
-			width: tree.width
+			width: tree.width,
+			orientation: tree.orientation
 		}, sideFn ? (i) => scoped(sideFn, i) : void 0) : null;
 		const next = Array.from({ length: count }, (_, i) => {
 			const value = values[i];
@@ -13711,6 +13749,13 @@ function renderGraph(el, view) {
 	};
 	const paint = () => {
 		const next = nodes;
+		if (planeText) {
+			const widest = next.map((n) => typeof n.value === "string" ? n.value : String(n.value ?? "")).reduce((a, b) => [...b].length > [...a].length ? b : a, "");
+			if (widest !== longest) {
+				longest = widest;
+				for (const layer of planes) layer.refit();
+			}
+		}
 		const positions = [], colors = [];
 		const { sx, sy, ux, uy } = axes();
 		span = {
@@ -13796,7 +13841,15 @@ function renderGraph(el, view) {
 				if (label.el.textContent !== t) label.el.textContent = t;
 				label.el.style.display = "";
 			});
-			else if (valueAt !== "none") {
+			else if (planeText) {
+				const [x, y, z] = drawnAt(i), layer = planeFor(i);
+				layer.mesh.visible = true;
+				layer.set(text, [
+					x,
+					y,
+					z + depth / 2 + .02
+				]);
+			} else if (valueAt !== "none") {
 				const value = labelFor(valueLabels, i, `graph-node-value graph-node-value-${valueAt}`), [x, y, z] = drawnAt(i);
 				value.dataPos = valueAt === "inside" ? [
 					x,
@@ -13822,11 +13875,102 @@ function renderGraph(el, view) {
 		for (const list of [valueLabels, indexLabels]) list.forEach((label, i) => {
 			label.el.style.display = i < next.length ? "" : "none";
 		});
+		planes.forEach((layer, i) => {
+			layer.mesh.visible = i < next.length;
+		});
 		for (const [key, label] of cellLabels) {
 			const [i, c] = key.split(":").map(Number);
 			if (!(next[i]?.cells && c < next[i].cells.length)) label.el.style.display = "none";
 		}
 	};
+	function wireClicks() {
+		const canvas = state.renderer?.domElement;
+		const actions = (el.onClick ?? []).map((a) => ({
+			...a,
+			valueFn: a.valueExpr ? compileExpr(a.valueExpr) : null,
+			stepFn: a.stepExpr ? compileExpr(a.stepExpr) : null,
+			sceneFn: a.sceneExpr ? compileExpr(a.sceneExpr) : null
+		}));
+		if (!canvas || !actions.length) return null;
+		const shown = () => {
+			if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+			for (let part = mesh; part; part = part.parent) if (!part.visible) return false;
+			return true;
+		};
+		const nodeAt = (clientX, clientY) => {
+			const camera = state.camera;
+			if (!camera || !shown()) return null;
+			const rect = canvas.getBoundingClientRect(), boxes = [];
+			nodes.forEach((_, i) => {
+				const corners = cellTarget.at(i)?.corners;
+				if (!corners) return;
+				const pts = corners.map((c) => new THREE.Vector3(...dataToWorld(c)).project(camera));
+				if (pts.some((p) => p.z < -1 || p.z > 1)) return;
+				const xs = pts.map((p) => (p.x * .5 + .5) * rect.width), ys = pts.map((p) => (-p.y * .5 + .5) * rect.height);
+				boxes.push({
+					index: i,
+					minX: Math.min(...xs),
+					maxX: Math.max(...xs),
+					minY: Math.min(...ys),
+					maxY: Math.max(...ys),
+					depth: Math.min(...pts.map((p) => p.z))
+				});
+			});
+			return pickBox(boxes, clientX - rect.left, clientY - rect.top);
+		};
+		const run = (i) => {
+			const scope = { overrideScope: {
+				idx: i,
+				value: nodes[i]?.value
+			} };
+			for (const a of actions) try {
+				if (a.action === "setSlider" && a.slider && a.valueFn) setSliderValue(a.slider, Number(evalExpr(a.valueFn, 0, scope)));
+				else if (a.action === "goToScene") {
+					const id = a.scene ?? (a.sceneFn ? String(evalExpr(a.sceneFn, 0, scope)) : "");
+					const at = (state.lessonSpec?.scenes ?? []).findIndex((sc) => sc.id === id);
+					if (id && at >= 0) navigateTo(at, 0);
+				} else if (a.action === "goToStep") {
+					const id = a.step ?? (a.stepFn ? String(evalExpr(a.stepFn, 0, scope)) : "");
+					const at = ((state.lessonSpec?.scenes?.[state.currentSceneIndex])?.steps ?? []).findIndex((step) => step.id === id);
+					if (at >= 0) navigateTo(state.currentSceneIndex, at);
+				}
+			} catch (error) {
+				console.warn("graph onClick:", error);
+			}
+		};
+		const controller = new AbortController();
+		let down = null, pointing = false;
+		canvas.addEventListener("pointerdown", (e) => {
+			down = e.button === 0 ? {
+				x: e.clientX,
+				y: e.clientY
+			} : null;
+		}, { signal: controller.signal });
+		canvas.addEventListener("pointerup", (e) => {
+			const pressed = down;
+			down = null;
+			if (e.button !== 0 || !isClick(pressed, {
+				x: e.clientX,
+				y: e.clientY
+			})) return;
+			const i = nodeAt(e.clientX, e.clientY);
+			if (i !== null) run(i);
+		}, { signal: controller.signal });
+		canvas.addEventListener("pointermove", (e) => {
+			const over = !e.buttons && nodeAt(e.clientX, e.clientY) !== null;
+			if (over !== pointing) {
+				pointing = over;
+				canvas.style.cursor = over ? "pointer" : "";
+			}
+		}, {
+			signal: controller.signal,
+			passive: true
+		});
+		return () => {
+			controller.abort();
+			if (pointing) canvas.style.cursor = "";
+		};
+	}
 	const entry = {
 		animState,
 		exprStrings: [
@@ -13855,8 +13999,11 @@ function renderGraph(el, view) {
 	material.addEventListener("dispose", () => {
 		animState.stopped = true;
 		glide?.dispose();
+		for (const layer of planes) layer.dispose();
 	});
 	registerAnimExpr(entry);
+	const disposeClicks = wireClicks();
+	material.addEventListener("dispose", () => disposeClicks?.());
 	return {
 		_animState: animState,
 		_animExprEntry: entry,

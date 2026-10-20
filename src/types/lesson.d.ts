@@ -240,7 +240,7 @@ export type Element = {
    */
   labelSide?: 'top' | 'left';
   /**
-   * ARRAY and TENSOR. On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
+   * ARRAY, GRAPH and TENSOR. On a graph, 'plane' paints each node's inside value on the node's face, sized to the node and scaled with the view, so it always fits (screen labels keep a fixed font size and can spill past small nodes). On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
    */
   axisLabels?: 'screen' | 'plane';
   /**
@@ -921,6 +921,39 @@ export type Element = {
    */
   nodeCornerRadius?: number;
   /**
+   * GRAPH: actions run, in order, when the learner clicks a node (a drag that orbits the view is not a click); idx and value are the clicked node's. Use it to let the learner select by clicking, e.g. set a slider to the node's index.
+   */
+  onClick?: {
+    /**
+     * setSlider: set `slider` to `valueExpr`. goToStep: go to the current scene's step with id `step` (or `stepExpr`). goToScene: open the lesson's scene with id `scene` (or `sceneExpr`); an empty or unknown id does nothing.
+     */
+    action: 'setSlider' | 'goToStep' | 'goToScene';
+    /**
+     * setSlider: the slider id.
+     */
+    slider?: string;
+    /**
+     * setSlider: the value, with idx and value bound.
+     */
+    valueExpr?: string;
+    /**
+     * goToStep: a step id of the current scene.
+     */
+    step?: string;
+    /**
+     * goToStep: an expression giving the step id, with idx and value bound.
+     */
+    stepExpr?: string;
+    /**
+     * goToScene: a scene id of this lesson.
+     */
+    scene?: string;
+    /**
+     * goToScene: an expression giving the scene id, with idx and value bound.
+     */
+    sceneExpr?: string;
+  }[];
+  /**
    * GRAPH: lay the nodes out as a tree (or forest) from each node's parent, instead of positionExpr. Re-laid as nodes appear, so a growing tree stays tidy. Edges are still connectTo (usually indexExpr = the same parent expression).
    */
   treeLayout?: {
@@ -955,6 +988,10 @@ export type Element = {
      * complete: the width each level spreads across.
      */
     width?: number;
+    /**
+     * tidy, binary: 'horizontal' grows the tree left to right (root on the left, one column per depth, leaves down the rows); spacing is then between rows and levelGap between columns.
+     */
+    orientation?: 'vertical' | 'horizontal';
   };
   /**
    * GRAPH: thickness of a node, in data units: 0.22 matches an array cell's depth; 0 draws flat discs and blocks.

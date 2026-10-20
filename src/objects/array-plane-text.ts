@@ -20,6 +20,8 @@ export interface ArrayPlaneText {
     set(text: string, position: [number, number, number]): void;
     /** A faint rounded tint behind the text (code-symbol hover), leaving the text colour as is. */
     setHighlight(on: boolean): void;
+    /** Repaint now: the text to fit (opts.fitTo) may have changed though this plane's own text did not. */
+    refit(): void;
     prepare(renderer: WebGLRenderer, camera: Camera): void;
     dispose(): void;
 }
@@ -34,7 +36,7 @@ export function planeTextTextureSize(width:number,height:number,density=128):[nu
  * `tag` paints the index-tag badge the screen mode draws in CSS (.array-index-tag): a dark plate with a
  * light outline and rounded lower corners, hung from the cell above, so world and screen tags match.
  */
-export function createArrayPlaneText(width: number, height: number, color: NonNullable<Element['color']>, opts: {tag?: boolean} = {}): ArrayPlaneText {
+export function createArrayPlaneText(width: number, height: number, color: NonNullable<Element['color']>, opts: {tag?: boolean; fitTo?: () => string} = {}): ArrayPlaneText {
     const canvas=document.createElement('canvas');
     [canvas.width,canvas.height]=planeTextTextureSize(width,height);
     const ctx=canvas.getContext('2d');
@@ -71,7 +73,9 @@ export function createArrayPlaneText(width: number, height: number, color: NonNu
             ctx!.lineTo(w-r,h-line/2);ctx!.quadraticCurveTo(w-line/2,h-line/2,w-line/2,h-r);ctx!.lineTo(w-line/2,0);
             ctx!.strokeStyle='rgba(157, 189, 227, .45)';ctx!.lineWidth=line;ctx!.stroke();
         }
-        const px=fitPlainCellPx(canvas.width*(opts.tag?.72:1),canvas.height*(opts.tag?.95:1.25),size=>{ctx!.font=`600 ${size}px ui-monospace, monospace`;return ctx!.measureText(text).width;});
+        // fitTo: size the font for another text (a set's longest), so planes that share it share one font size.
+        const sizing=opts.fitTo?.()||text;
+        const px=fitPlainCellPx(canvas.width*(opts.tag?.72:1),canvas.height*(opts.tag?.95:1.25),size=>{ctx!.font=`600 ${size}px ui-monospace, monospace`;return ctx!.measureText(sizing).width;});
         ctx!.font=`600 ${px}px ui-monospace, monospace`;
         if(highlighted&&text){
             const w=Math.min(canvas.width,ctx!.measureText(text).width+px*.8),h=Math.min(canvas.height,px*1.35),r=px*.2;
@@ -107,7 +111,7 @@ export function createArrayPlaneText(width: number, height: number, color: NonNu
     }
     mesh.onBeforeRender=(renderer,_scene,camera)=>prepare(renderer,camera);
     material.addEventListener('dispose',()=>texture.dispose());
-    return {mesh,prepare,setHighlight(on){if(on!==highlighted){highlighted=on;repaint();}},set(text,position){
+    return {mesh,prepare,refit(){if(previousText!==undefined)repaint();},setHighlight(on){if(on!==highlighted){highlighted=on;repaint();}},set(text,position){
         if(text!==previousText){
             previousText=text;repaint();
         }
