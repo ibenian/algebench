@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -79,7 +79,8 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
         example: `${IN.linkedList.values.join(' → ')} → None becomes ${[...IN.linkedList.values].reverse().join(' → ')} → None.` },
     'tree-traversal': { problem: 'Visit every node of a binary tree in a chosen order: preorder, inorder, postorder or level by level.',
         example: (() => { const t = IN.tree; const o = (k: 'preorder' | 'inorder' | 'level') => list(end(treeTraversalTrace(k, t.values, t.parents, t.sides)).out); return `preorder ${o('preorder')}, inorder ${o('inorder')}, level order ${o('level')}.`; })() },
-    'matrix-traversal': { problem: 'In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.' },
+    'matrix-traversal': { problem: 'In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.',
+        example: `${IN.islands.grid.map(r => r.join('')).join(' / ')} → ${end(islandsTrace(IN.islands.grid)).count}.` },
     'topological-sort': { problem: 'Courses have prerequisites. Find an order in which to take every course, or report that none exists.' },
     'shortest-path': { problem: 'A network has directed edges with travel times. How long does a signal from one node take to reach every node?' },
     'union-find': { problem: 'Given n nodes and a list of undirected edges, count the connected components.',
@@ -1177,16 +1178,49 @@ ${MD_TAIL}
     const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
     Object.assign(first, { title: ORDERS[0].title, description: `${ORDERS[0].title}: ${ORDERS[0].what}.` });
 })();
-placeholder('matrix-traversal', 'Explore a grid (matrix traversal)', `# Explore a grid (matrix traversal)
+// ── Explore a grid (number of islands) ──
+(() => {
+    const { grid } = IN.islands;
+    const rows = grid.length, cols = grid[0]!.length;
+    const trace = islandsTrace(grid);
+    const count = end(trace).count as number;
+    const ISLAND = ['#77bfae', '#b69bea', '#e6a96b', '#8fc06b', '#7fb3e6', '#e67db0'];
+    const cell = (col: string) => `arrayAt(${tr(col)}, idx)`;
+    const islandColor = Array.from({ length: count }, (_, k) => `${cell('island')} == ${k + 1} ? '${ISLAND[k % ISLAND.length]}' : `).join('');
+    const x0 = -4.2, y0 = 2.7, size = 1.05;
+    pattern({
+        id: 'matrix-traversal', title: 'Explore a grid (matrix traversal)', file: 'num_islands.py', source: ISLANDS_SOURCE,
+        input: { grid }, trace,
+        markdown: `# Explore a grid (matrix traversal)
 
 **Signal:** a 2D grid: islands, flood fill, regions, shortest moves.
 
-Treat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS. Check bounds before moving and mark cells as visited (often by overwriting them). O(rows × cols).
+Treat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS from it. Here: scan every cell, and when one is still land, count a new island and **sink** it: overwrite it with "0" and sink every land neighbour, recursively. Overwriting is the visited mark, so no cell is counted twice. Check bounds before you look at a neighbour.
 
-${SOON} *(Needs a 2D grid object with per-cell state.)*
+Each island gets its own colour as it sinks, and each sunk cell points back at the cell that reached it, so the flood fill shows as a tree; pink cells are still on the recursion stack. Every cell is scanned once and sunk at most once: O(rows × cols).
 
-**Practice:** Flood Fill (733), Number of Islands (200), Surrounded Regions (130).`,
-    'Explain the grid-as-graph view and neighbour iteration. This scene has no visualization yet.');
+${MD_TAIL}
+
+**Practice:** Number of Islands (200), Flood Fill (733), Max Area of Island (695), Surrounded Regions (130), Rotting Oranges (994, BFS).`,
+        prompt: 'Explain the grid as a graph, sinking as the visited mark, and why each cell is handled once. Ask the learner to predict which cells the next sink reaches before the player reveals it.',
+        elements: [
+            // The grid as a graph: one node per cell, laid out in rows and columns, showing the value the code holds.
+            {
+                id: 'grid', type: 'graph', label: 'grid', lengthExpr: String(rows * cols), valueExpr: cell('grid'),
+                positionExpr: [`${x0} + mod(idx, ${cols}) * ${size}`, `${y0} - floor(idx / ${cols}) * ${size}`, '0'],
+                nodeShape: 'rect', nodeWidth: 0.9, nodeHeight: 0.9, nodeCornerRadius: 0.12, valueLabel: 'inside', showIndices: false,
+                // Gold where sink() is, pink on its recursion stack, an island's colour once sunk, sand for land, dark water.
+                colorExpr: `idx == ${tr('cur')} ? '${GOLD}' : (${cell('stack')} == 1 ? '${PINK}' : (${islandColor}(${cell('grid')} == 1 ? '#c8b98a' : '#2c4256')))`,
+                // A sunk cell points back at the cell whose sink() reached it.
+                connectTo: { indexExpr: cell('from'), pinned: true, arrow: true, bendExpr: '0', color: '#e8e6da' },
+                markers: [marker('scan', tr('scan'), BLUE, `${tr('scan')} >= 0 and ${tr('cur')} < 0`)],
+            },
+            label('count', `concat('count = ', ${tr('count')})`, [4.4, 1.6, 0]),
+            { ...label('rc', `${tr('r')} < 0 ? '(r, c): —' : concat('(r, c) = (', ${tr('r')}, ', ', ${tr('c')}, ')')`, [4.4, 1.6, 0],
+                ['grid', `${tr('r')} < 0 ? -1 : ${tr('r')} * ${cols} + ${tr('c')}`]) },
+        ],
+    });
+})();
 placeholder('backtracking', 'Try, undo, retry (backtracking)', `# Try, undo, retry (backtracking)
 
 **Signal:** generate all permutations, subsets or combinations, or place pieces under constraints.

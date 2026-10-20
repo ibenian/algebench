@@ -796,6 +796,71 @@ export function treeTraversalTrace(order: TreeOrder, values: number[], parents: 
     return trace;
 }
 
+export const ISLANDS_SOURCE = `def num_islands(grid):
+    rows, cols = len(grid), len(grid[0])
+    count = 0
+
+    def sink(r, c):
+        if r < 0 or r >= rows or c < 0 or c >= cols:
+            return
+        if grid[r][c] != "1":
+            return
+        grid[r][c] = "0"
+        sink(r + 1, c)
+        sink(r - 1, c)
+        sink(r, c + 1)
+        sink(r, c - 1)
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == "1":
+                count += 1
+                sink(r, c)
+    return count`;
+/**
+ * Number of islands by flood fill: scan every cell; a "1" starts a new island, and sink() overwrites it and
+ * every land cell joined to it with "0", recursing down, up, right, left. Cells are row-major indexes. Per
+ * frame: grid (1/0 per cell, as the code holds it), island (which island sank each cell, 0 none), from (the
+ * cell whose sink() reached it, −1 none), stack (cells whose sink() is running, 0/1 per cell), cur (the cell
+ * sink() is at, −1 none), scan (the outer loop's cell), r and c (the cell the code looks at), count.
+ */
+export function islandsTrace(input: number[][]) {
+    const rows = input.length, cols = input[0]!.length, n = rows * cols;
+    const grid = input.flat(), island = Array<number>(n).fill(0), from = Array<number>(n).fill(-1), stack: number[] = [];
+    const v = { grid: grid.slice(), island: island.slice(), from: from.slice(), stack: Array<number>(n).fill(0), cur: -1, scan: -1, r: -1, c: -1, count: 0 };
+    const { trace, emit } = recorder(v);
+    const sync = () => { v.grid = grid.slice(); v.island = island.slice(); v.from = from.slice(); v.stack = Array.from({ length: n }, (_, i) => stack.includes(i) ? 1 : 0); };
+    const at = (r: number, c: number) => r * cols + c;
+    emit(2, `A ${rows} × ${cols} grid: 1 is land, 0 is water. Islands are land joined up, down, left or right.`);
+    emit(3, 'count = 0.');
+    const sink = (r: number, c: number, parent: number) => {
+        const i = at(r, c);
+        stack.push(i); from[i] = parent; island[i] = v.count; grid[i] = 0;
+        v.cur = i; v.r = r; v.c = c; sync();
+        emit(9, `sink(${r}, ${c}): land, so overwrite it with "0": it is now part of island ${v.count} and will not be counted again.`);
+        for (const [dr, dc, line] of [[1, 0, 10], [-1, 0, 11], [0, 1, 12], [0, -1, 13]] as const) {
+            const nr = r + dr, nc = c + dc;
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols || grid[at(nr, nc)] !== 1) continue;
+            v.cur = i; v.r = r; v.c = c; sync();
+            emit(line, `(${nr}, ${nc}) next to it is land too: sink it.`);
+            sink(nr, nc, i);
+        }
+        stack.pop(); v.cur = stack.at(-1) ?? -1; sync();
+    };
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const i = at(r, c);
+        v.scan = i; v.r = r; v.c = c; v.cur = -1; sync();
+        if (grid[i] !== 1) { emit(16, `grid[${r}][${c}] is "0": ${island[i] ? `already sunk with island ${island[i]}` : 'water'}, skip.`); continue; }
+        v.count++;
+        emit(17, `grid[${r}][${c}] is "1": land nothing has reached yet, a new island. count = ${v.count}.`);
+        emit(18, `Sink the whole island from (${r}, ${c}).`);
+        sink(r, c, -1);
+    }
+    v.scan = -1; v.cur = -1; v.r = v.c = -1; sync();
+    emit(19, `Done: ${v.count} islands. Each cell is scanned once and sunk at most once: O(rows × cols).`, 'Done');
+    return trace;
+}
+
 export const MONOTONIC_QUEUE_SOURCE = `from collections import deque
 
 def max_sliding_window(nums, k):

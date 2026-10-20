@@ -5,10 +5,10 @@ import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../../../src/array-operations.js';
 import {
-    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,
+    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
-    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,
+    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,
 } from './algorithms.js';
 import type {Frame} from './algorithms.js';
 import {PATTERN_INPUTS as IN} from './inputs.js';
@@ -176,6 +176,18 @@ test('tree traversals visit every node once, in the textbook orders',()=>{
   if((f.cur as number)>=0&&f.status==='Running')assert.equal(st.at(-1),f.cur,`${o}: the node the code is at tops the stack`);
  }
 });
+test('islands: counts the groups and labels every land cell with its group',()=>{
+ const grid=IN.islands.grid,cols=grid[0]!.length,trace=islandsTrace(grid),f=last(trace);
+ assert.equal(f.count,5);
+ // Every land cell is sunk exactly once, into an island whose cells are all joined; water never is.
+ const land=grid.flat().map((x,i)=>x===1?i:-1).filter(i=>i>=0),isl=f.island as number[];
+ assert.ok(land.every(i=>isl[i]!>0)&&grid.flat().every((x,i)=>x===1||isl[i]===0));
+ for(const i of land){const p=(f.from as number[])[i]!;if(p>=0){assert.equal(isl[p],isl[i]);assert.equal(Math.abs(Math.floor(p/cols)-Math.floor(i/cols))+Math.abs(p%cols-i%cols),1,'reached from a neighbour');}}
+ assert.equal(new Set(land.map(i=>isl[i])).size,5);
+ assert.ok((f.grid as number[]).every(x=>x===0),'sink overwrites all land');
+ // A 1×1 island and an all-water grid.
+ assert.equal(last(islandsTrace([[1]])).count,1);assert.equal(last(islandsTrace([[0,0],[0,0]])).count,0);
+});
 test('monotonic queue gives every window maximum and keeps the deque decreasing',()=>{
  const {nums,k}=IN.monoQueue,trace=monotonicQueueTrace(nums,k);
  assert.deepEqual(last(trace).out,nums.slice(0,nums.length-k+1).map((_,i)=>Math.max(...nums.slice(i,i+k))));
@@ -240,7 +252,7 @@ test('KMP finds every occurrence, including overlaps, and builds lps',()=>{
 test('every trace frame has the same keys and ends Done',()=>{
  for(const trace of [prefixSumTrace(IN.prefix.nums,IN.prefix.queries),twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target),
   slidingWindowTrace(IN.slidingWindow.nums,IN.slidingWindow.k),fastSlowTrace(IN.fastSlow.nums),monotonicStackTrace(IN.monotonic.temps),
-  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),
+  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),
   monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k),greedyTrace(IN.greedy.nums),bitsTrace(IN.bits.nums),
   unionFindTrace(IN.unionFind.n,IN.unionFind.edges),kmpTrace(IN.kmp.text,IN.kmp.pattern)]){
   const keys=Object.keys(trace[0]!).sort();
@@ -266,6 +278,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
   'trie':[TRIE_SOURCE,trieTrace(IN.trie.words,IN.trie.queries).trace],
   'linked-list-reversal':[LINKED_LIST_SOURCE,linkedListTrace(IN.linkedList.values)],
   'tree-traversal':[TREE_TRAVERSAL_SOURCE,treeTraversalTrace('preorder',IN.tree.values,IN.tree.parents,IN.tree.sides)],
+  'matrix-traversal':[ISLANDS_SOURCE,islandsTrace(IN.islands.grid)],
   'monotonic-queue':[MONOTONIC_QUEUE_SOURCE,monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k)],
   'greedy':[GREEDY_SOURCE,greedyTrace(IN.greedy.nums)],
   'bit-manipulation':[BITS_SOURCE,bitsTrace(IN.bits.nums)],
