@@ -69,3 +69,31 @@ test('stepping quickly sends once, after the learner stops; a single step after 
         assert.deepEqual(h.sent, ['s:0', 's:1', 's:2', 's:3'], 'after a pause, the next step is narrated within 100 ms');
     } finally { mock.timers.reset(); }
 });
+
+test('busy holds until the state on screen is narrated and its speech has had time to start', async () => {
+    mock.timers.enable({apis: ['setTimeout', 'Date']});
+    try {
+        const h = harness();
+        assert.equal(h.narrator.busy, false, 'off: never busy');
+        h.narrator.set(true);
+        assert.equal(h.narrator.busy, true, 'the request is in flight');
+        h.finish(); await Promise.resolve(); await Promise.resolve();
+        assert.equal(h.narrator.busy, true, 'answered, but speech has not started yet');
+        mock.timers.tick(800);
+        assert.equal(h.narrator.busy, false, 'answered and past the speech start window');
+        h.setKey('s:1'); h.narrator.stateChanged();
+        assert.equal(h.narrator.busy, true, 'a new state is not narrated yet');
+        mock.timers.tick(100);
+        h.finish(); await Promise.resolve(); await Promise.resolve();
+        mock.timers.tick(800);
+        assert.equal(h.narrator.busy, false);
+        // A failed request releases playback rather than holding it forever.
+        (globalThis as any).window.sendChatMessage = () => Promise.reject(new Error('offline'));
+        mock.timers.tick(5000);
+        h.setKey('s:2'); h.narrator.stateChanged();
+        assert.equal(h.narrator.busy, true);
+        mock.timers.tick(100);
+        await Promise.resolve(); await Promise.resolve();
+        assert.equal(h.narrator.busy, false, 'failed narration does not block');
+    } finally { mock.timers.reset(); }
+});

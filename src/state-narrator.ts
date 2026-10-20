@@ -16,9 +16,17 @@ function prompt(where: string): string {
         + "narration; otherwise say only what is new. Do not restate the general idea, do not elaborate, and do not ask a question.";
 }
 // A new scene or step needs longer than a new state to finish rendering its labels: a floor on its wait.
-const NEW_VIEW_MS = 1200, RETRY_MS = 700, AFTER_TURN_MS = 100;
+// A reply's speech starts shortly after the reply itself: `busy` holds for SPEECH_START_MS past it.
+const NEW_VIEW_MS = 1200, RETRY_MS = 700, AFTER_TURN_MS = 100, SPEECH_START_MS = 800;
 
-export interface Narrator { readonly on: boolean; set(on: boolean): void; stateChanged(): void }
+export interface Narrator {
+    readonly on: boolean;
+    /** True until the state on screen has been narrated (answered, or given up on after an error), and briefly
+     *  after, while its speech starts. Playback waits on this, and on the speech itself, before moving on. */
+    readonly busy: boolean;
+    set(on: boolean): void;
+    stateChanged(): void;
+}
 
 /**
  * `stateKey` names the state shown as `view:position` (view = scene and step), or null when there is nothing to
@@ -26,6 +34,8 @@ export interface Narrator { readonly on: boolean; set(on: boolean): void; stateC
  */
 export function createNarrator(stateKey: () => string | null, describe: () => string): Narrator {
     let on = false, sentKey: string | null = null, inFlight = false;
+    // doneKey: the last state whose narration finished (answered or failed); answeredAt: when it did.
+    let doneKey: string | null = null, answeredAt = 0;
     const stopSpeech = () => window.algebenchStopTTS?.();
     const settle = createSettler(() => send());
     function send(): void {
@@ -35,15 +45,21 @@ export function createNarrator(stateKey: () => string | null, describe: () => st
         void window.sendChatMessage(prompt(describe()), {silent: true}).then(sent => {
             inFlight = false;
             if (!sent) { sentKey = null; if (on) settle.after(RETRY_MS); return; }   // another turn was in flight
+            doneKey = key; answeredAt = Date.now();
             if (on && stateKey() !== sentKey) settle.after(AFTER_TURN_MS);           // the state moved while we waited
-        }, () => { inFlight = false; sentKey = null; });
+        }, () => { inFlight = false; sentKey = null; doneKey = key; answeredAt = 0; });  // failed: don't hold playback
     }
     return {
         get on() { return on; },
+        get busy() {
+            const key = stateKey();
+            if (!on || key === null) return false;
+            return inFlight || key !== doneKey || Date.now() - answeredAt < SPEECH_START_MS;
+        },
         set(next: boolean) {
             on = next;
             settle.cancel();
-            sentKey = null;
+            sentKey = null; doneKey = null;
             if (on) send(); else stopSpeech();
         },
         stateChanged() {

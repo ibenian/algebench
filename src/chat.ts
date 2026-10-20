@@ -260,6 +260,17 @@ function shouldSkipWelcome(): boolean {
     return chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
 }
 
+/** How long the Chat tab waits before greeting, so anything the learner starts first wins. */
+const WELCOME_DELAY_MS = 1000;
+/** Nothing else has started since the Chat tab opened: still on it, the box empty, no speech, no narration. */
+function welcomeStillWanted(): boolean {
+    if (!document.getElementById('tab-chat')?.classList.contains('active')) return false;
+    const input = document.getElementById('chat-input') as HTMLInputElement | HTMLTextAreaElement | null;
+    if (input?.value.trim()) return false;
+    if (window.algebenchTTSActive?.()) return false;
+    return !window.algebenchNarrating?.();
+}
+
 // ----- Context Snapshot -----
 function buildChatContext(): AlgeBenchChatContext {
     const ctx: AlgeBenchChatContext = {};
@@ -493,13 +504,11 @@ function switchPanelTab(tabName: string): void {
         const input = document.getElementById('chat-input');
         if (input) setTimeout(() => input.focus(), 50);
         if (chatAvailable && !welcomeInFlight && !shouldSkipWelcome()) {
-            // Delay so any concurrently-triggered user message can arrive first.
-            // Re-check at execution time — if the user already sent something, skip.
+            // Wait a moment, then greet only if nothing else has started: a message, a reply, speech, narration,
+            // typing in the box, or leaving the Chat tab (welcomeStillWanted).
             setTimeout(() => {
-                if (!welcomeInFlight && !shouldSkipWelcome()) {
-                    sendWelcomeMessage();
-                }
-            }, 800);
+                if (!welcomeInFlight && !shouldSkipWelcome() && welcomeStillWanted()) sendWelcomeMessage();
+            }, WELCOME_DELAY_MS);
         }
     }
 }

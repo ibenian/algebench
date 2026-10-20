@@ -8969,12 +8969,14 @@ function prompt(where) {
 var NEW_VIEW_MS = 1200;
 var RETRY_MS = 700;
 var AFTER_TURN_MS = 100;
+var SPEECH_START_MS = 800;
 /**
 * `stateKey` names the state shown as `view:position` (view = scene and step), or null when there is nothing to
 * narrate; `describe` says the same for the tutor ("scene …, step …, state 3 of 25").
 */
 function createNarrator(stateKey, describe) {
 	let on = false, sentKey = null, inFlight = false;
+	let doneKey = null, answeredAt = 0;
 	const stopSpeech = () => window.algebenchStopTTS?.();
 	const settle = createSettler(() => send());
 	function send() {
@@ -8989,20 +8991,30 @@ function createNarrator(stateKey, describe) {
 				if (on) settle.after(RETRY_MS);
 				return;
 			}
+			doneKey = key;
+			answeredAt = Date.now();
 			if (on && stateKey() !== sentKey) settle.after(AFTER_TURN_MS);
 		}, () => {
 			inFlight = false;
 			sentKey = null;
+			doneKey = key;
+			answeredAt = 0;
 		});
 	}
 	return {
 		get on() {
 			return on;
 		},
+		get busy() {
+			const key = stateKey();
+			if (!on || key === null) return false;
+			return inFlight || key !== doneKey || Date.now() - answeredAt < SPEECH_START_MS;
+		},
 		set(next) {
 			on = next;
 			settle.cancel();
 			sentKey = null;
+			doneKey = null;
 			if (on) send();
 			else stopSpeech();
 		},
@@ -9105,10 +9117,11 @@ function setupStepPlayer() {
 		narrator.set(!narrator.on);
 		paintNarrate();
 	};
+	window.algebenchNarrating = () => narrator.on;
 	paintNarrate();
 	const interval = () => (config?.intervalMs ?? 900) / Number(speed.value || 1);
 	function pause() {
-		if (timer !== null) clearInterval(timer);
+		if (timer !== null) clearTimeout(timer);
 		timer = null;
 		play.innerHTML = playIcon;
 		play.setAttribute("aria-label", "Play execution");
@@ -9156,15 +9169,27 @@ function setupStepPlayer() {
 		pause();
 		move(Number(track.value));
 	};
+	const narrationPending = () => narrator.on && (narrator.busy || !!window.algebenchTTSActive?.());
+	const WAIT_MS = 150;
+	function advance() {
+		timer = null;
+		if (narrationPending()) {
+			timer = setTimeout(advance, WAIT_MS);
+			return;
+		}
+		const current = slider();
+		if (!current) {
+			pause();
+			return;
+		}
+		move(current.value + 1);
+		if (play.getAttribute("aria-label") === "Pause execution" && slider() && slider().value < slider().max) timer = setTimeout(advance, interval());
+	}
 	function start() {
 		play.innerHTML = pauseIcon;
 		play.setAttribute("aria-label", "Pause execution");
 		play.dataset.tip = "Pause";
-		timer = setInterval(() => {
-			const current = slider();
-			if (current) move(current.value + 1);
-			else pause();
-		}, interval());
+		timer = setTimeout(advance, interval());
 	}
 	play.onclick = () => {
 		if (timer !== null) {
@@ -9178,7 +9203,7 @@ function setupStepPlayer() {
 	};
 	speed.onchange = () => {
 		if (timer !== null) {
-			clearInterval(timer);
+			clearTimeout(timer);
 			timer = null;
 			start();
 		}
@@ -28692,6 +28717,15 @@ function suppressChatWelcome(ms = 5e3) {
 function shouldSkipWelcome() {
 	return chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
 }
+/** How long the Chat tab waits before greeting, so anything the learner starts first wins. */
+var WELCOME_DELAY_MS = 1e3;
+/** Nothing else has started since the Chat tab opened: still on it, the box empty, no speech, no narration. */
+function welcomeStillWanted() {
+	if (!document.getElementById("tab-chat")?.classList.contains("active")) return false;
+	if (document.getElementById("chat-input")?.value.trim()) return false;
+	if (window.algebenchTTSActive?.()) return false;
+	return !window.algebenchNarrating?.();
+}
 function buildChatContext() {
 	const ctx = {};
 	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.title) ctx.lessonTitle = lessonSpec.title;
@@ -28832,8 +28866,8 @@ function switchPanelTab$1(tabName) {
 		const input = document.getElementById("chat-input");
 		if (input) setTimeout(() => input.focus(), 50);
 		if (chatAvailable$1 && !welcomeInFlight && !shouldSkipWelcome()) setTimeout(() => {
-			if (!welcomeInFlight && !shouldSkipWelcome()) sendWelcomeMessage();
-		}, 800);
+			if (!welcomeInFlight && !shouldSkipWelcome() && welcomeStillWanted()) sendWelcomeMessage();
+		}, WELCOME_DELAY_MS);
 	}
 }
 function setupChat() {

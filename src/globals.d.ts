@@ -463,6 +463,8 @@ interface Window {
   algebenchResumeTTS: () => void;
   algebenchStopTTS: () => void;
   algebenchTTSActive?: () => boolean;
+  /** Whether state narration (step player) is on. */
+  algebenchNarrating?: () => boolean;
   algebenchSpeakText: (text: string, onEnd?: () => void) => void;
   /** Full Gemini transcript of the last turn — a debugging handle. */
   geminiChatHistory?: { systemPrompt?: string; contents: unknown[] };

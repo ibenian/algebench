@@ -49,7 +49,7 @@ export function setupStepPlayer(): void {
         host.style.setProperty('--state-player-h',`${bar.offsetHeight}px`);
     });
     resizeObserver.observe(bar);
-    let timer:ReturnType<typeof setInterval>|null=null;
+    let timer:ReturnType<typeof setTimeout>|null=null;
     let config:StepPlayback|undefined;
     const slider=()=>config?state.sceneSliders[config.slider]:undefined;
     const narrator=createNarrator(()=>{
@@ -62,9 +62,11 @@ export function setupStepPlayer(): void {
         return `scene "${scene?.title??''}"${step?.title?`, step "${step.title}"`:''}${s?`, execution state ${playbackPosition(s.value,s.min,s.max).display}`:''}`;
     });
     narrate.onclick=()=>{narrator.set(!narrator.on);paintNarrate();};
+    // Narration speaks for itself: the Chat tab's welcome stays quiet while it is on.
+    window.algebenchNarrating=()=>narrator.on;
     paintNarrate();
     const interval=()=>(config?.intervalMs??900)/Number(speed.value||1);
-    function pause(){if(timer!==null)clearInterval(timer);timer=null;play.innerHTML=playIcon;play.setAttribute('aria-label','Play execution');play.dataset.tip='Play';}
+    function pause(){if(timer!==null)clearTimeout(timer);timer=null;play.innerHTML=playIcon;play.setAttribute('aria-label','Play execution');play.dataset.tip='Play';}
     function render(){
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
         if(scene?.steps?.[state.currentStepIndex]?.descriptionExpr)updateStepCaption(scene,state.currentStepIndex,true);
@@ -85,9 +87,21 @@ export function setupStepPlayer(): void {
     previous.onclick=()=>{pause();const s=slider();if(s)move(s.value-1);};
     next.onclick=()=>{pause();const s=slider();if(s)move(s.value+1);};
     track.oninput=()=>{pause();move(Number(track.value));};
+    // While narrating, play waits for the tutor: after the usual interval, a state is held until its narration
+    // has been answered and spoken (rechecked every WAIT_MS), and the next move follows as soon as it has.
+    const narrationPending=()=>narrator.on&&(narrator.busy||!!window.algebenchTTSActive?.());
+    const WAIT_MS=150;
+    function advance(){
+        timer=null;
+        if(narrationPending()){timer=setTimeout(advance,WAIT_MS);return;}
+        const current=slider();
+        if(!current){pause();return;}
+        move(current.value+1);
+        if(play.getAttribute('aria-label')==='Pause execution'&&slider()&&slider()!.value<slider()!.max)timer=setTimeout(advance,interval());
+    }
     function start(){
         play.innerHTML=pauseIcon;play.setAttribute('aria-label','Pause execution');play.dataset.tip='Pause';
-        timer=setInterval(()=>{const current=slider();if(current)move(current.value+1);else pause();},interval());
+        timer=setTimeout(advance,interval());
     }
     play.onclick=()=>{
         if(timer!==null){pause();return;}
@@ -95,7 +109,7 @@ export function setupStepPlayer(): void {
         if(s.value>=s.max)move(s.min);
         start();
     };
-    speed.onchange=()=>{if(timer!==null){clearInterval(timer);timer=null;start();}};
+    speed.onchange=()=>{if(timer!==null){clearTimeout(timer);timer=null;start();}};
     function refresh(){
         pause();
         config=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.stepPlayback;
