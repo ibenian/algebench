@@ -560,6 +560,14 @@ def build_system_prompt(context, agent_memory=None):
                 )
     if runtime.get('currentCaption'):
         parts.append(f"- Caption displayed to user: \"{runtime['currentCaption']}\"")
+    screen_values = runtime.get('screenValues')
+    if isinstance(screen_values, list) and screen_values:
+        # Exactly what the labels, markers and condition rows show now: reading them beats re-deriving the
+        # current row of a data table, which is easy to get off by one.
+        rows = [str(v)[:200] for v in screen_values[:60] if isinstance(v, (str, int, float))]
+        if rows:
+            parts.append("- Values shown on screen now (authoritative for the current state; a condition row shows "
+                         "its most recent evaluation): " + " | ".join(rows))
     simulation_state = runtime.get('simulationState')
     if isinstance(simulation_state, str) and simulation_state.strip():
         # Authored by the scene's promptExpr: the exact simulation state behind the visuals.

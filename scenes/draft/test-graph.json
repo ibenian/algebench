@@ -1,0 +1,1953 @@
+{
+  "title": "Graph object · test scenes",
+  "scenes": [
+    {
+      "id": "ring",
+      "title": "Directed ring (arc edges)",
+      "description": "Directed ring",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Directed ring\n\nSix **point** nodes placed by `positionExpr` alone: `2.4·cos(2π·idx/n)`, `2.4·sin(2π·idx/n)`. Each node points at the next (`indexExpr: \"mod(idx + 1, n)\"`), and `arcCenterExpr: [\"0\",\"0\",\"0\"]` draws every edge as an arc of the ring's own circle.\n\nMove **k**: node k glows (`highlightExpr`), the index marker **k** follows it, and the edge leaving k lights up (`highlightExpr` on the link).",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "Nodes n", "min": 3, "max": 10, "step": 1, "default": 6},
+            {"id": "k", "label": "Highlighted node k", "min": 0, "max": 9, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "ring",
+              "type": "graph",
+              "label": "ring",
+              "lengthExpr": "n",
+              "valueExpr": "idx * 10",
+              "positionExpr": ["2.4 * cos(2 * pi * idx / n)", "2.4 * sin(2 * pi * idx / n)", "0"],
+              "nodeShape": "point",
+              "nodeSize": 0.5,
+              "highlightExpr": "idx == k",
+              "connectTo": {
+                "indexExpr": "mod(idx + 1, n)",
+                "pinned": true,
+                "arrow": true,
+                "color": "#7f93aa",
+                "arcCenterExpr": ["0", "0", "0"],
+                "highlightExpr": "idx == k",
+                "colorExpr": "idx == k ? '#f1c65b' : ''"
+              },
+              "markers": [
+                {"indexName": "k", "indexExpr": "k", "color": "#f1c65b"}
+              ]
+            }
+          ],
+          "info": [
+            {"id": "ring-props", "title": "Graph properties", "position": "top-left", "content": "**ring**\n\n| property | value |\n| --- | --- |\n| shape | `point` |\n| layout | `positionExpr` |\n| x | `2.4 * cos(2 * pi * idx / n)` |\n| y | `2.4 * sin(2 * pi * idx / n)` |\n| nodes | {{n}} |\n| edges → self | `mod(idx + 1, n) · arrow, arcs, lit` |\n| markers | `k` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tree",
+      "title": "Binary tree (rect nodes, list targets)",
+      "description": "Binary tree",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0.6, 12],
+        "target": [0, 0.6, 0]
+      },
+      "markdown": "# Binary tree\n\nSeven **rect** nodes (`nodeWidth` 1, `nodeHeight` 0.7, `nodeCornerRadius` 0.15), the value written **inside**. Positions come from the heap index: level `floor(log2(idx + 1))`, spread across its row.\n\nEach node links to **both** children with one list: `indexExpr: \"[2*idx + 1, 2*idx + 2]\"`. Children past the last node simply draw nothing. Edges are straight (`bendExpr: \"0\"`).\n\nMove **target**: the path from the root to it lights up, nodes and edges alike.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "target", "label": "Target node", "min": 0, "max": 6, "step": 1, "default": 5}
+          ],
+          "add": [
+            {
+              "id": "tree",
+              "type": "graph",
+              "label": "tree",
+              "itemType": "number",
+              "values": [8, 12, 10, 20, 15, 18, 25],
+              "positionExpr": ["(idx + 1 - 2^floor(log2(idx + 1)) + 0.5) * (8 / 2^floor(log2(idx + 1))) - 4", "2.6 - 1.6 * floor(log2(idx + 1))", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 1,
+              "nodeHeight": 0.7,
+              "nodeCornerRadius": 0.15,
+              "highlightExpr": "floor(log2(target + 1)) >= floor(log2(idx + 1)) and floor((target + 1) / 2^(floor(log2(target + 1)) - floor(log2(idx + 1)))) == idx + 1",
+              "connectTo": {"indexExpr": "[2 * idx + 1, 2 * idx + 2]", "pinned": true, "arrow": true, "color": "#7f93aa", "bendExpr": "0", "highlightExpr": "floor(log2(target + 1)) >= floor(log2(to + 1)) and floor((target + 1) / 2^(floor(log2(target + 1)) - floor(log2(to + 1)))) == to + 1", "colorExpr": "''"},
+              "markers": [
+                {"indexName": "target", "indexExpr": "target", "color": "#e67db0"}
+              ]
+            }
+          ],
+          "info": [
+            {"id": "tree-props", "title": "Graph properties", "position": "top-left", "content": "**tree**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `positionExpr` |\n| x | `(idx + 1 - 2^floor(log2(idx + 1))…` |\n| y | `2.6 - 1.6 * floor(log2(idx + 1))` |\n| nodes | 7 |\n| edges → self | `[2 * idx + 1, 2 * idx + 2] · arrow, straight, lit` |\n| markers | `target` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "adjacency",
+      "title": "Adjacency list (circle nodes, self-loop, two-way edges)",
+      "description": "Adjacency list",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Adjacency list\n\nFive **circle** nodes: `rect` with `nodeCornerRadius` half the side. Edges come from a data table, `dataTable('adj', idx, 'to')`, a list per node.\n\n- 0 ⇄ 1 points both ways: the two edges bow apart (`edgeBend` 0.18), never on top of each other.\n- 3 → 3 is a **self-loop**, drawn as a loop over the node.\n- **Edge bend** changes how much every edge bows (0 is straight).",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "adj": [
+          {
+            "to": [1, 2]
+          },
+          {
+            "to": [0, 3]
+          },
+          {
+            "to": [3]
+          },
+          {
+            "to": [3, 4]
+          },
+          {
+            "to": [0]
+          }
+        ],
+        "pos": [
+          {"x": -2.5, "y": 1.5},
+          {"x": 0, "y": 2.6},
+          {"x": -0.8, "y": -0.6},
+          {"x": 2.2, "y": 0.4},
+          {"x": 0.8, "y": -2.6}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "bend", "label": "Edge bend", "min": 0, "max": 0.5, "step": 0.02, "default": 0.18}
+          ],
+          "add": [
+            {
+              "id": "adj",
+              "type": "graph",
+              "label": "adjacency",
+              "lengthExpr": "5",
+              "valueExpr": "concat('v', idx)",
+              "positionExpr": ["dataTable('pos', idx, 'x')", "dataTable('pos', idx, 'y')", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 0.9,
+              "nodeHeight": 0.9,
+              "nodeCornerRadius": 0.45,
+              "edgeBend": 0.18,
+              "colorExpr": "idx == 3 ? '#77bfae' : ''",
+              "connectTo": {"indexExpr": "dataTable('adj', idx, 'to')", "pinned": true, "arrow": true, "color": "#9dbde3", "bendExpr": "bend"}
+            }
+          ],
+          "info": [
+            {"id": "adjacency-props", "title": "Graph properties", "position": "top-left", "content": "**adjacency**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `positionExpr` |\n| x | `dataTable('pos', idx, 'x')` |\n| y | `dataTable('pos', idx, 'y')` |\n| nodes | 5 |\n| edges → self | `dataTable('adj', idx, 'to') · arrow` |\n| edgeBend | `0.18` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "graph-to-graph",
+      "title": "Graph to graph (and to an array)",
+      "description": "Graph to graph",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Graph to graph\n\nTwo separate graphs. **left** is a column of keys; each key links **into the other graph** with `connectTo: {object: \"right\", indexExpr: …}`. **right** is a small ring with its own internal edges (no `object`: same graph).\n\nThe **slots** array links up into **left** with an array `connectTo` whose target is a graph: links reach nodes exactly as they reach cells.\n\nMove **shift**: every key's target in **right** rotates, and the links follow.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "shift", "label": "Shift", "min": 0, "max": 4, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "left",
+              "type": "graph",
+              "label": "left",
+              "lengthExpr": "4",
+              "valueExpr": "concat('k', idx)",
+              "positionExpr": ["-4.5", "2.2 - 1.4 * idx", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 1,
+              "nodeHeight": 0.6,
+              "nodeCornerRadius": 0.12,
+              "connectTo": {"object": "right", "indexExpr": "mod(idx + shift, 5)", "pinned": true, "arrow": true, "color": "#b69bea", "bendExpr": "0.08"}
+            },
+            {
+              "id": "right",
+              "type": "graph",
+              "label": "right",
+              "lengthExpr": "5",
+              "valueExpr": "idx",
+              "positionExpr": ["2.6 + 1.7 * cos(2 * pi * idx / 5 + pi / 2)", "0.2 + 1.7 * sin(2 * pi * idx / 5 + pi / 2)", "0"],
+              "nodeShape": "point",
+              "nodeSize": 0.5,
+              "valueLabel": "none",
+              "connectTo": {
+                "indexExpr": "mod(idx + 1, 5)",
+                "pinned": true,
+                "arrow": true,
+                "color": "#7f93aa",
+                "arcCenterExpr": ["2.6", "0.2", "0"]
+              }
+            },
+            {
+              "id": "slots",
+              "type": "array",
+              "label": "slots",
+              "labelSide": "left",
+              "itemType": "number",
+              "values": [0, 2, 3],
+              "origin": [-3.2, -3.8, 0],
+              "cellSize": 1.2,
+              "showIndices": true,
+              "connectTo": {"object": "left", "indexExpr": "value", "pinned": true, "arrow": true, "color": "#f1c65b"}
+            }
+          ],
+          "info": [
+            {"id": "graph-to-graph-props", "title": "Graph properties", "position": "top-left", "content": "**left**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `positionExpr` |\n| x | `-4.5` |\n| y | `2.2 - 1.4 * idx` |\n| nodes | 4 |\n| edges → right | `mod(idx + shift, 5) · arrow` |\n\n**right**\n\n| property | value |\n| --- | --- |\n| shape | `point` |\n| layout | `positionExpr` |\n| x | `2.6 + 1.7 * cos(2 * pi * idx / 5 …` |\n| y | `0.2 + 1.7 * sin(2 * pi * idx / 5 …` |\n| nodes | 5 |\n| edges → self | `mod(idx + 1, 5) · arrow, arcs` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sweep",
+      "title": "Sweep (expression colours, walking marker)",
+      "description": "Sweep",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 12],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Sweep\n\nA 4 × 3 grid of points, each linked right and down (a list of two targets, `-1` where there is none). Move **step**: nodes the sweep has reached turn teal, the current one gold, the edges into reached nodes light up, and the **at** marker glides from node to node.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "step", "label": "Step", "min": 0, "max": 11, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "grid-graph",
+              "type": "graph",
+              "label": "grid",
+              "lengthExpr": "12",
+              "valueExpr": "idx",
+              "positionExpr": ["-3 + 2 * mod(idx, 4)", "2 - 2 * floor(idx / 4)", "0"],
+              "nodeShape": "point",
+              "nodeSize": 0.55,
+              "valueLabel": "none",
+              "colorExpr": "idx == step ? '#f1c65b' : (idx < step ? '#77bfae' : '')",
+              "connectTo": {"indexExpr": "[mod(idx, 4) < 3 ? idx + 1 : -1, idx + 4 < 12 ? idx + 4 : -1]", "pinned": true, "arrow": true, "color": "#7f93aa", "bendExpr": "0", "highlightExpr": "to <= step", "colorExpr": "to <= step ? '#77bfae' : ''"},
+              "markers": [
+                {"indexName": "at", "indexExpr": "step", "color": "#f1c65b"}
+              ]
+            }
+          ],
+          "info": [
+            {"id": "sweep-props", "title": "Graph properties", "position": "top-left", "content": "**grid**\n\n| property | value |\n| --- | --- |\n| shape | `point` |\n| layout | `positionExpr` |\n| x | `-3 + 2 * mod(idx, 4)` |\n| y | `2 - 2 * floor(idx / 4)` |\n| nodes | 12 |\n| edges → self | `[mod(idx, 4) < 3 ? idx + 1 : -1, … · arrow, straight, lit` |\n| markers | `at` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dag",
+      "title": "DAG (layers, topological order)",
+      "description": "Directed acyclic graph",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 12],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Directed acyclic graph\n\nA build pipeline as a **DAG**: every edge points to a later layer, so there is no way back. Nodes are blocks named by their task; positions come from each node's **layer** (its longest path from the start).\n\nMove **done**: tasks are finished in topological order. A task can only run once every edge into it is lit; finished tasks turn teal, the next one gold.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "dag": [
+          {
+            "name": "fetch",
+            "x": -5.0,
+            "y": 0.0,
+            "to": [1],
+            "order": 0
+          },
+          {
+            "name": "parse",
+            "x": -2.5,
+            "y": 0.0,
+            "to": [2, 3],
+            "order": 1
+          },
+          {
+            "name": "lint",
+            "x": 0.0,
+            "y": 0.9,
+            "to": [4],
+            "order": 2
+          },
+          {
+            "name": "types",
+            "x": 0.0,
+            "y": -0.9,
+            "to": [4, 5],
+            "order": 3
+          },
+          {
+            "name": "build",
+            "x": 2.5,
+            "y": 0.9,
+            "to": [6],
+            "order": 4
+          },
+          {
+            "name": "test",
+            "x": 2.5,
+            "y": -0.9,
+            "to": [6],
+            "order": 5
+          },
+          {"name": "ship", "x": 5.0, "y": 0.0, "to": [], "order": 6}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "done", "label": "Tasks done", "min": 0, "max": 7, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "dag",
+              "type": "graph",
+              "label": "pipeline",
+              "lengthExpr": "7",
+              "valueExpr": "dataTable('dag', idx, 'name')",
+              "positionExpr": ["dataTable('dag', idx, 'x')", "dataTable('dag', idx, 'y')", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 1.4,
+              "nodeHeight": 0.6,
+              "nodeCornerRadius": 0.12,
+              "showIndices": false,
+              "colorExpr": "dataTable('dag', idx, 'order') < done ? '#77bfae' : (dataTable('dag', idx, 'order') == done ? '#f1c65b' : '')",
+              "connectTo": {"indexExpr": "dataTable('dag', idx, 'to')", "pinned": true, "arrow": true, "color": "#7f93aa", "bendExpr": "0", "highlightExpr": "dataTable('dag', idx, 'order') < done"}
+            }
+          ],
+          "info": [
+            {"id": "dag-props", "title": "Graph properties", "position": "top-left", "content": "**pipeline**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `positionExpr` |\n| x | `dataTable('dag', idx, 'x')` |\n| y | `dataTable('dag', idx, 'y')` |\n| nodes | 7 |\n| edges → self | `dataTable('dag', idx, 'to') · arrow, straight, lit` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cyclic",
+      "title": "Cyclic graph (shared node, self-loop)",
+      "description": "Cyclic graph",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Cyclic graph\n\nA directed graph with **cycles**: 0 → 1 → 2 → 3 → 0 and 2 → 4 → 5 → 6 → 2 share node 2, and node 7 points at itself. Edges bow apart (`edgeBend` 0.15) so the shared node stays readable.\n\nMove **cycle**: 1 lights the left loop, 2 the right one; their nodes and edges glow. 0 shows the bare graph.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "cyc": [
+          {
+            "x": -3.6,
+            "y": 1.6,
+            "to": [1],
+            "a": 1,
+            "b": 0
+          },
+          {
+            "x": -1.2,
+            "y": 2.6,
+            "to": [2],
+            "a": 1,
+            "b": 0
+          },
+          {
+            "x": -0.6,
+            "y": 0.2,
+            "to": [3, 4],
+            "a": 1,
+            "b": 1
+          },
+          {
+            "x": -2.6,
+            "y": -1.2,
+            "to": [0],
+            "a": 1,
+            "b": 0
+          },
+          {
+            "x": 1.8,
+            "y": 1.4,
+            "to": [5],
+            "a": 0,
+            "b": 1
+          },
+          {
+            "x": 3.4,
+            "y": -0.4,
+            "to": [6, 7],
+            "a": 0,
+            "b": 1
+          },
+          {
+            "x": 1.4,
+            "y": -2.2,
+            "to": [2],
+            "a": 0,
+            "b": 1
+          },
+          {
+            "x": 4.6,
+            "y": 2.4,
+            "to": [7],
+            "a": 0,
+            "b": 0
+          }
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "cycle", "label": "Cycle", "min": 0, "max": 2, "step": 1, "default": 1}
+          ],
+          "add": [
+            {
+              "id": "cyc",
+              "type": "graph",
+              "label": "cyclic",
+              "lengthExpr": "8",
+              "valueExpr": "idx",
+              "positionExpr": ["dataTable('cyc', idx, 'x')", "dataTable('cyc', idx, 'y')", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "edgeBend": 0.15,
+              "highlightExpr": "(cycle == 1 and dataTable('cyc', idx, 'a') == 1) or (cycle == 2 and dataTable('cyc', idx, 'b') == 1)",
+              "connectTo": {"indexExpr": "dataTable('cyc', idx, 'to')", "pinned": true, "arrow": true, "color": "#9dbde3", "highlightExpr": "(cycle == 1 and dataTable('cyc', idx, 'a') == 1 and dataTable('cyc', to, 'a') == 1) or (cycle == 2 and dataTable('cyc', idx, 'b') == 1 and dataTable('cyc', to, 'b') == 1)", "colorExpr": "cycle == 1 and dataTable('cyc', idx, 'a') == 1 and dataTable('cyc', to, 'a') == 1 ? '#f1c65b' : (cycle == 2 and dataTable('cyc', idx, 'b') == 1 and dataTable('cyc', to, 'b') == 1 ? '#e67db0' : '')"}
+            }
+          ],
+          "info": [
+            {"id": "cyclic-props", "title": "Graph properties", "position": "top-left", "content": "**cyclic**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `positionExpr` |\n| x | `dataTable('cyc', idx, 'x')` |\n| y | `dataTable('cyc', idx, 'y')` |\n| nodes | 8 |\n| edges → self | `dataTable('cyc', idx, 'to') · arrow, lit` |\n| edgeBend | `0.15` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trees",
+      "title": "Trees (n-ary, BST search, radial)",
+      "description": "Trees",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0.6, 15],
+        "target": [0, 0.6, 0]
+      },
+      "markdown": "# Trees\n\nThree trees, three looks, one object type:\n\n- **n-ary** (top): a folder tree of named blocks, parents centred over their children.\n- **BST** (bottom left): circle nodes with their key inside. Move **key**: the search path from the root lights up, and the **at** marker sits where the search ends.\n- **radial** (bottom right): points spreading out from the centre by depth.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "nary": [
+          {
+            "x": -0.36,
+            "y": 0.0,
+            "to": [1, 2, 3],
+            "name": "/"
+          },
+          {
+            "x": -2.9,
+            "y": -1.5,
+            "to": [4, 5],
+            "name": "src"
+          },
+          {
+            "x": -0.73,
+            "y": -1.5,
+            "to": [6],
+            "name": "docs"
+          },
+          {
+            "x": 2.17,
+            "y": -1.5,
+            "to": [7, 8, 9],
+            "name": "tests"
+          },
+          {"x": -3.62, "y": -3.0, "to": [], "name": "app"},
+          {"x": -2.17, "y": -3.0, "to": [], "name": "util"},
+          {
+            "x": -0.73,
+            "y": -3.0,
+            "to": [10],
+            "name": "guide"
+          },
+          {"x": 0.72, "y": -3.0, "to": [], "name": "a"},
+          {"x": 2.17, "y": -3.0, "to": [], "name": "b"},
+          {"x": 3.62, "y": -3.0, "to": [], "name": "c"},
+          {"x": -0.73, "y": -4.5, "to": [], "name": "img"}
+        ],
+        "bst": [
+          {
+            "x": 0.14,
+            "y": 0.0,
+            "to": [1, 2],
+            "key": 50,
+            "p0": 1,
+            "p1": 1,
+            "p2": 1,
+            "p3": 1,
+            "p4": 1,
+            "p5": 1,
+            "p6": 1,
+            "p7": 1,
+            "p8": 1,
+            "p9": 1,
+            "end0": 0,
+            "end1": 1,
+            "end2": 2,
+            "end3": 3,
+            "end4": 4,
+            "end5": 5,
+            "end6": 6,
+            "end7": 7,
+            "end8": 8,
+            "end9": 9
+          },
+          {
+            "x": -1.38,
+            "y": -1.3,
+            "to": [3, 4],
+            "key": 30,
+            "p0": 0,
+            "p1": 1,
+            "p2": 0,
+            "p3": 1,
+            "p4": 1,
+            "p5": 0,
+            "p6": 0,
+            "p7": 1,
+            "p8": 1,
+            "p9": 0
+          },
+          {
+            "x": 1.65,
+            "y": -1.3,
+            "to": [5, 6],
+            "key": 70,
+            "p0": 0,
+            "p1": 0,
+            "p2": 1,
+            "p3": 0,
+            "p4": 0,
+            "p5": 1,
+            "p6": 1,
+            "p7": 0,
+            "p8": 0,
+            "p9": 1
+          },
+          {"x": -2.2, "y": -2.6, "to": [], "key": 20, "p0": 0, "p1": 0, "p2": 0, "p3": 1, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p8": 0, "p9": 0},
+          {
+            "x": -0.55,
+            "y": -2.6,
+            "to": [7, 8],
+            "key": 40,
+            "p0": 0,
+            "p1": 0,
+            "p2": 0,
+            "p3": 0,
+            "p4": 1,
+            "p5": 0,
+            "p6": 0,
+            "p7": 1,
+            "p8": 1,
+            "p9": 0
+          },
+          {
+            "x": 1.1,
+            "y": -2.6,
+            "to": [9],
+            "key": 60,
+            "p0": 0,
+            "p1": 0,
+            "p2": 0,
+            "p3": 0,
+            "p4": 0,
+            "p5": 1,
+            "p6": 0,
+            "p7": 0,
+            "p8": 0,
+            "p9": 1
+          },
+          {"x": 2.2, "y": -2.6, "to": [], "key": 80, "p0": 0, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 1, "p7": 0, "p8": 0, "p9": 0},
+          {"x": -1.1, "y": -3.9, "to": [], "key": 35, "p0": 0, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 1, "p8": 0, "p9": 0},
+          {"x": 0.0, "y": -3.9, "to": [], "key": 45, "p0": 0, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p8": 1, "p9": 0},
+          {"x": 1.1, "y": -3.9, "to": [], "key": 65, "p0": 0, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p8": 0, "p9": 1}
+        ],
+        "radial": [
+          {
+            "x": -0.0,
+            "y": 0.0,
+            "to": [1, 2, 3, 4]
+          },
+          {
+            "x": 1.53,
+            "y": 0.74,
+            "to": [5, 6]
+          },
+          {
+            "x": -0.38,
+            "y": 1.66,
+            "to": [7]
+          },
+          {
+            "x": -1.53,
+            "y": -0.74,
+            "to": [8, 9, 10]
+          },
+          {
+            "x": 1.06,
+            "y": -1.33,
+            "to": [11]
+          },
+          {"x": 3.4, "y": 0.0, "to": []},
+          {"x": 2.12, "y": 2.66, "to": []},
+          {"x": -0.76, "y": 3.31, "to": []},
+          {"x": -3.06, "y": 1.48, "to": []},
+          {"x": -3.06, "y": -1.48, "to": []},
+          {"x": -0.76, "y": -3.31, "to": []},
+          {"x": 2.12, "y": -2.66, "to": []}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "key", "label": "Search key", "min": 0, "max": 9, "step": 1, "default": 7}
+          ],
+          "add": [
+            {
+              "id": "nary",
+              "type": "graph",
+              "label": "files",
+              "lengthExpr": "11",
+              "valueExpr": "dataTable('nary', idx, 'name')",
+              "positionExpr": ["dataTable('nary', idx, 'x')", "dataTable('nary', idx, 'y') * 0.75 + 4.2", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 1.1,
+              "nodeHeight": 0.45,
+              "nodeCornerRadius": 0.08,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('nary', idx, 'to')", "pinned": true, "arrow": false, "color": "#7f93aa", "bendExpr": "0"}
+            },
+            {
+              "id": "bst",
+              "type": "graph",
+              "label": "BST",
+              "lengthExpr": "10",
+              "valueExpr": "dataTable('bst', idx, 'key')",
+              "positionExpr": ["dataTable('bst', idx, 'x') * 0.8 - 3.2", "dataTable('bst', idx, 'y') * 0.75 - 0.9", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 0.62,
+              "nodeHeight": 0.62,
+              "nodeCornerRadius": 0.31,
+              "showIndices": false,
+              "highlightExpr": "dataTable('bst', idx, concat('p', key)) == 1",
+              "connectTo": {"indexExpr": "dataTable('bst', idx, 'to')", "pinned": true, "arrow": true, "color": "#7f93aa", "bendExpr": "0", "highlightExpr": "dataTable('bst', idx, concat('p', key)) == 1 and dataTable('bst', to, concat('p', key)) == 1"},
+              "markers": [
+                {"indexName": "at", "indexExpr": "dataTable('bst', 0, concat('end', key))", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "radial",
+              "type": "graph",
+              "label": "radial",
+              "lengthExpr": "12",
+              "valueExpr": "idx",
+              "positionExpr": ["dataTable('radial', idx, 'x') * 0.62 + 3.6", "dataTable('radial', idx, 'y') * 0.62 - 2.0", "0"],
+              "nodeShape": "point",
+              "nodeSize": 0.35,
+              "valueLabel": "none",
+              "showIndices": false,
+              "colorExpr": "idx == 0 ? '#f1c65b' : ''",
+              "connectTo": {"indexExpr": "dataTable('radial', idx, 'to')", "pinned": true, "arrow": false, "color": "#77bfae", "bendExpr": "0"}
+            }
+          ],
+          "info": [
+            {"id": "trees-props", "title": "Graph properties", "position": "top-left", "content": "**files**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `positionExpr` |\n| x | `dataTable('nary', idx, 'x')` |\n| y | `dataTable('nary', idx, 'y') * 0.7…` |\n| nodes | 11 |\n| edges → self | `dataTable('nary', idx, 'to') · straight` |\n\n**BST**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `positionExpr` |\n| x | `dataTable('bst', idx, 'x') * 0.8 …` |\n| y | `dataTable('bst', idx, 'y') * 0.75…` |\n| nodes | 10 |\n| edges → self | `dataTable('bst', idx, 'to') · arrow, straight, lit` |\n| markers | `at` |\n\n**radial**\n\n| property | value |\n| --- | --- |\n| shape | `point` |\n| layout | `positionExpr` |\n| x | `dataTable('radial', idx, 'x') * 0…` |\n| y | `dataTable('radial', idx, 'y') * 0…` |\n| nodes | 12 |\n| edges → self | `dataTable('radial', idx, 'to') · straight` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "btree",
+      "title": "B-tree (cell-row nodes, ports, splits)",
+      "description": "B-tree",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0.8, 8.5],
+        "target": [0, 0.8, 0]
+      },
+      "markdown": "# B-tree\n\nA **B-tree of order 3** (at most two keys per node), built by inserting 10, 20, 5, 6, 12, 30, 7, 17, 3, 25.\n\nEach node is a **row of key cells** (`nodeCellsExpr`), as wide as its keys. A node with k keys has k + 1 **ports**, under and between its keys, and child i starts at port i (`fromPortExpr: \"slot\"`), exactly between the keys that bound it.\n\nPlay **frame**: the key being inserted is gold. A node that overflows to three keys turns pink; it then **splits**, pushing its middle key up, and splits can climb to a new root. The tree grows at the top, so every leaf stays at the same depth.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "frames": [
+          {"n": 1, "key": -1, "message": "An empty B-tree of order 3: each node holds at most two keys."},
+          {"n": 1, "key": 10, "message": "Insert 10 into its leaf."},
+          {"n": 1, "key": 20, "message": "Insert 20 into its leaf."},
+          {"n": 1, "key": 5, "message": "Insert 5 into its leaf. It now holds three keys: too many."},
+          {"n": 3, "key": 5, "message": "Split: 10 moves up, the halves become siblings."},
+          {"n": 3, "key": 6, "message": "Insert 6 into its leaf."},
+          {"n": 3, "key": 12, "message": "Insert 12 into its leaf."},
+          {"n": 3, "key": 30, "message": "Insert 30 into its leaf. It now holds three keys: too many."},
+          {"n": 4, "key": 30, "message": "Split: 20 moves up, the halves become siblings."},
+          {"n": 4, "key": 7, "message": "Insert 7 into its leaf. It now holds three keys: too many."},
+          {"n": 5, "key": 7, "message": "Split: 6 moves up, the halves become siblings. The parent now holds three keys: split again."},
+          {"n": 7, "key": 7, "message": "Split: 10 moves up, the halves become siblings."},
+          {"n": 7, "key": 17, "message": "Insert 17 into its leaf."},
+          {"n": 7, "key": 3, "message": "Insert 3 into its leaf."},
+          {"n": 7, "key": 25, "message": "Insert 25 into its leaf."},
+          {"n": 7, "key": -1, "message": "Done: every leaf is at the same depth, and each node holds one or two keys."}
+        ],
+        "bt0": [
+          {"keys": [], "children": [], "x": 0.0, "y": 2.6, "over": 0}
+        ],
+        "bt1": [
+          {
+            "keys": [10],
+            "children": [],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          }
+        ],
+        "bt2": [
+          {
+            "keys": [10, 20],
+            "children": [],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          }
+        ],
+        "bt3": [
+          {
+            "keys": [5, 10, 20],
+            "children": [],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 1
+          }
+        ],
+        "bt4": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [5],
+            "children": [],
+            "x": -0.6,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [20],
+            "children": [],
+            "x": 0.6,
+            "y": 1.0,
+            "over": 0
+          }
+        ],
+        "bt5": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [5, 6],
+            "children": [],
+            "x": -0.775,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [20],
+            "children": [],
+            "x": 0.775,
+            "y": 1.0,
+            "over": 0
+          }
+        ],
+        "bt6": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [5, 6],
+            "children": [],
+            "x": -0.95,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [12, 20],
+            "children": [],
+            "x": 0.95,
+            "y": 1.0,
+            "over": 0
+          }
+        ],
+        "bt7": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [5, 6],
+            "children": [],
+            "x": -1.125,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [12, 20, 30],
+            "children": [],
+            "x": 1.125,
+            "y": 1.0,
+            "over": 1
+          }
+        ],
+        "bt8": [
+          {
+            "keys": [10, 20],
+            "children": [1, 2, 3],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [5, 6],
+            "children": [],
+            "x": -1.375,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [12],
+            "children": [],
+            "x": 0.175,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [30],
+            "children": [],
+            "x": 1.375,
+            "y": 1.0,
+            "over": 0
+          }
+        ],
+        "bt9": [
+          {
+            "keys": [10, 20],
+            "children": [1, 2, 3],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [5, 6, 7],
+            "children": [],
+            "x": -1.55,
+            "y": 1.0,
+            "over": 1
+          },
+          {
+            "keys": [12],
+            "children": [],
+            "x": 0.35,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [30],
+            "children": [],
+            "x": 1.55,
+            "y": 1.0,
+            "over": 0
+          }
+        ],
+        "bt10": [
+          {
+            "keys": [6, 10, 20],
+            "children": [1, 2, 3, 4],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 1
+          },
+          {
+            "keys": [5],
+            "children": [],
+            "x": -1.8,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [7],
+            "children": [],
+            "x": -0.6,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [12],
+            "children": [],
+            "x": 0.6,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [30],
+            "children": [],
+            "x": 1.8,
+            "y": 1.0,
+            "over": 0
+          }
+        ],
+        "bt11": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": 0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [6],
+            "children": [3, 4],
+            "x": -1.2,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [20],
+            "children": [5, 6],
+            "x": 1.2,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [5],
+            "children": [],
+            "x": -1.8,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [7],
+            "children": [],
+            "x": -0.6,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [12],
+            "children": [],
+            "x": 0.6,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [30],
+            "children": [],
+            "x": 1.8,
+            "y": -0.6,
+            "over": 0
+          }
+        ],
+        "bt12": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": -0.087,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [6],
+            "children": [3, 4],
+            "x": -1.55,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [20],
+            "children": [5, 6],
+            "x": 1.375,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [5],
+            "children": [],
+            "x": -2.15,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [7],
+            "children": [],
+            "x": -0.95,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [12, 17],
+            "children": [],
+            "x": 0.6,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [30],
+            "children": [],
+            "x": 2.15,
+            "y": -0.6,
+            "over": 0
+          }
+        ],
+        "bt13": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": -0.0,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [6],
+            "children": [3, 4],
+            "x": -1.55,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [20],
+            "children": [5, 6],
+            "x": 1.55,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [3, 5],
+            "children": [],
+            "x": -2.325,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [7],
+            "children": [],
+            "x": -0.775,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [12, 17],
+            "children": [],
+            "x": 0.775,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [30],
+            "children": [],
+            "x": 2.325,
+            "y": -0.6,
+            "over": 0
+          }
+        ],
+        "bt14": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": -0.088,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [6],
+            "children": [3, 4],
+            "x": -1.725,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [20],
+            "children": [5, 6],
+            "x": 1.55,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [3, 5],
+            "children": [],
+            "x": -2.5,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [7],
+            "children": [],
+            "x": -0.95,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [12, 17],
+            "children": [],
+            "x": 0.6,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [25, 30],
+            "children": [],
+            "x": 2.5,
+            "y": -0.6,
+            "over": 0
+          }
+        ],
+        "bt15": [
+          {
+            "keys": [10],
+            "children": [1, 2],
+            "x": -0.088,
+            "y": 2.6,
+            "over": 0
+          },
+          {
+            "keys": [6],
+            "children": [3, 4],
+            "x": -1.725,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [20],
+            "children": [5, 6],
+            "x": 1.55,
+            "y": 1.0,
+            "over": 0
+          },
+          {
+            "keys": [3, 5],
+            "children": [],
+            "x": -2.5,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [7],
+            "children": [],
+            "x": -0.95,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [12, 17],
+            "children": [],
+            "x": 0.6,
+            "y": -0.6,
+            "over": 0
+          },
+          {
+            "keys": [25, 30],
+            "children": [],
+            "x": 2.5,
+            "y": -0.6,
+            "over": 0
+          }
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "frame", "label": "Frame", "min": 0, "max": 15, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "btree",
+              "type": "graph",
+              "label": "B-tree",
+              "lengthExpr": "dataTable('frames', frame, 'n')",
+              "valueExpr": "idx",
+              "positionExpr": ["dataTable(concat('bt', frame), idx, 'x')", "dataTable(concat('bt', frame), idx, 'y')", "0"],
+              "nodeShape": "rect",
+              "nodeHeight": 0.6,
+              "nodeCornerRadius": 0.1,
+              "nodeCellsExpr": "dataTable(concat('bt', frame), idx, 'keys')",
+              "nodeCellWidth": 0.7,
+              "showIndices": false,
+              "colorExpr": "dataTable(concat('bt', frame), idx, 'over') == 1 ? '#e67db0' : ''",
+              "cellHighlightExpr": "value == dataTable('frames', frame, 'key')",
+              "connectTo": {"indexExpr": "dataTable(concat('bt', frame), idx, 'children')", "fromPortExpr": "slot", "pinned": true, "arrow": true, "color": "#7f93aa"}
+            }
+          ],
+          "descriptionExpr": "dataTable('frames', frame, 'message')",
+          "info": [
+            {"id": "btree-props", "title": "Graph properties", "position": "top-left", "content": "**B-tree**\n\n| property | value |\n| --- | --- |\n| shape | `rect (cells)` |\n| layout | `positionExpr` |\n| x | `dataTable(concat('bt', frame), id…` |\n| y | `dataTable(concat('bt', frame), id…` |\n| nodes | {{dataTable('frames', frame, 'n')}} |\n| edges → self | `dataTable(concat('bt', frame), id… · arrow, ports` |"}
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1300}
+    },
+    {
+      "id": "layout-tidy",
+      "title": "Tidy tree (n-ary)",
+      "description": "Tidy tree",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Tidy tree\n\n`treeLayout: {type: \"tidy\", parentExpr}` lays any tree out from each node's parent: **leaves evenly spaced** in depth-first order, **each parent centred over its children**, one row per depth. No `positionExpr`.\n\nThe edges are the same parent relation, drawn by `connectTo` (`indexExpr` = the parent).\n\nMove **n** to add or remove nodes: the layout runs on the nodes that exist, so a new leaf pushes its siblings apart and recentres their parents, and removing it pulls them back. Every tree scene below has the same slider.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "t": [
+          {"v": "A", "p": -1},
+          {"v": "B", "p": 0},
+          {"v": "C", "p": 0},
+          {"v": "D", "p": 0},
+          {"v": "E", "p": 1},
+          {"v": "F", "p": 1},
+          {"v": "G", "p": 2},
+          {"v": "H", "p": 3},
+          {"v": "I", "p": 3},
+          {"v": "J", "p": 3},
+          {"v": "K", "p": 7},
+          {"v": "L", "p": 7}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "Nodes n", "min": 1, "max": 12, "step": 1, "default": 12}
+          ],
+          "add": [
+            {
+              "id": "layout-tidy",
+              "type": "graph",
+              "label": "Tidy tree",
+              "lengthExpr": "n",
+              "valueExpr": "dataTable('t', idx, 'v')",
+              "treeLayout": {
+                "type": "tidy",
+                "origin": [0, 3, 0],
+                "spacing": 1.1,
+                "levelGap": 1.6,
+                "parentExpr": "dataTable('t', idx, 'p')"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('t', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa"}
+            }
+          ],
+          "info": [
+            {"id": "layout-tidy-props", "title": "Graph properties", "position": "top-left", "content": "**Tidy tree**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `treeLayout · tidy` |\n| parentExpr | `dataTable('t', idx, 'p')` |\n| origin | `[0, 3, 0]` |\n| spacing | `1.1` |\n| levelGap | `1.6` |\n| nodes | {{n}} |\n| edges → self | `dataTable('t', idx, 'p') · straight` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layout-binary",
+      "title": "Binary search tree (inorder layout)",
+      "description": "Binary search tree",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Binary search tree\n\n`type: \"binary\"` with `sideExpr` (0 left, 1 right): nodes go **left to right in inorder**, so every left subtree sits left of its parent and reading the tree left to right gives the keys **sorted**: 10, 20, 30 … 85.\n\nBuilt by inserting 50, 30, 70, 20, 40, 60, 80, 35, 45, 65, 85, 10. A lone right child (65 under 60) still hangs to the right.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "t": [
+          {"v": 50, "p": -1, "s": 0},
+          {"v": 30, "p": 0, "s": 0},
+          {"v": 70, "p": 0, "s": 1},
+          {"v": 20, "p": 1, "s": 0},
+          {"v": 40, "p": 1, "s": 1},
+          {"v": 60, "p": 2, "s": 0},
+          {"v": 80, "p": 2, "s": 1},
+          {"v": 35, "p": 4, "s": 0},
+          {"v": 45, "p": 4, "s": 1},
+          {"v": 65, "p": 5, "s": 1},
+          {"v": 85, "p": 6, "s": 1},
+          {"v": 10, "p": 3, "s": 0}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "Nodes n", "min": 1, "max": 12, "step": 1, "default": 12}
+          ],
+          "add": [
+            {
+              "id": "layout-binary",
+              "type": "graph",
+              "label": "Binary search tree",
+              "lengthExpr": "n",
+              "valueExpr": "dataTable('t', idx, 'v')",
+              "treeLayout": {
+                "type": "binary",
+                "origin": [0, 3, 0],
+                "spacing": 0.95,
+                "levelGap": 1.6,
+                "parentExpr": "dataTable('t', idx, 'p')",
+                "sideExpr": "dataTable('t', idx, 's')"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('t', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa"}
+            }
+          ],
+          "info": [
+            {"id": "layout-binary-props", "title": "Graph properties", "position": "top-left", "content": "**Binary search tree**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `treeLayout · binary` |\n| parentExpr | `dataTable('t', idx, 'p')` |\n| sideExpr | `dataTable('t', idx, 's')` |\n| origin | `[0, 3, 0]` |\n| spacing | `0.95` |\n| levelGap | `1.6` |\n| nodes | {{n}} |\n| edges → self | `dataTable('t', idx, 'p') · straight` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layout-complete",
+      "title": "Complete tree (heap slots)",
+      "description": "Complete tree",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Complete tree\n\n`type: \"complete\"` ignores parents: slot i sits where a heap keeps it, level ⌊log₂(i + 1)⌋ spread evenly across `width`. It is what the `heap` element uses for its tree. Move **n** to fill the tree level by level.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "t": [
+          {"v": 3, "p": -1},
+          {"v": 7, "p": 0},
+          {"v": 9, "p": 0},
+          {"v": 12, "p": 1},
+          {"v": 8, "p": 1},
+          {"v": 10, "p": 2},
+          {"v": 14, "p": 2},
+          {"v": 20, "p": 3},
+          {"v": 15, "p": 3},
+          {"v": 11, "p": 4},
+          {"v": 9, "p": 4},
+          {"v": 16, "p": 5},
+          {"v": 13, "p": 5},
+          {"v": 18, "p": 6},
+          {"v": 21, "p": 6}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "Nodes n", "min": 1, "max": 15, "step": 1, "default": 15}
+          ],
+          "add": [
+            {
+              "id": "layout-complete",
+              "type": "graph",
+              "label": "Complete tree",
+              "lengthExpr": "n",
+              "valueExpr": "dataTable('t', idx, 'v')",
+              "treeLayout": {
+                "type": "complete",
+                "origin": [0, 3, 0],
+                "width": 11,
+                "levelGap": 1.6,
+                "parentExpr": "dataTable('t', idx, 'p')"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('t', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa"}
+            }
+          ],
+          "info": [
+            {"id": "layout-complete-props", "title": "Graph properties", "position": "top-left", "content": "**Complete tree**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `treeLayout · complete` |\n| parentExpr | `dataTable('t', idx, 'p')` |\n| origin | `[0, 3, 0]` |\n| levelGap | `1.6` |\n| width | `11` |\n| nodes | {{n}} |\n| edges → self | `dataTable('t', idx, 'p') · straight` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layout-radial",
+      "title": "Radial tree",
+      "description": "Radial tree",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Radial tree\n\n`type: \"radial\"`: the root at the centre (`origin`), each depth on its own ring `levelGap` further out, leaves spread evenly round the circle. Good for wide, shallow trees that would run off the side as rows.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "t": [
+          {"v": "A", "p": -1},
+          {"v": "B", "p": 0},
+          {"v": "C", "p": 0},
+          {"v": "D", "p": 0},
+          {"v": "E", "p": 1},
+          {"v": "F", "p": 1},
+          {"v": "G", "p": 2},
+          {"v": "H", "p": 3},
+          {"v": "I", "p": 3},
+          {"v": "J", "p": 3},
+          {"v": "K", "p": 7},
+          {"v": "L", "p": 7}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "Nodes n", "min": 1, "max": 12, "step": 1, "default": 12}
+          ],
+          "add": [
+            {
+              "id": "layout-radial",
+              "type": "graph",
+              "label": "Radial tree",
+              "lengthExpr": "n",
+              "valueExpr": "dataTable('t', idx, 'v')",
+              "treeLayout": {
+                "type": "radial",
+                "origin": [0, 0, 0],
+                "levelGap": 1.7,
+                "parentExpr": "dataTable('t', idx, 'p')"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('t', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa"}
+            }
+          ],
+          "info": [
+            {"id": "layout-radial-props", "title": "Graph properties", "position": "top-left", "content": "**Radial tree**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `treeLayout · radial` |\n| parentExpr | `dataTable('t', idx, 'p')` |\n| origin | `[0, 0, 0]` |\n| levelGap | `1.7` |\n| nodes | {{n}} |\n| edges → self | `dataTable('t', idx, 'p') · straight` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layout-indented",
+      "title": "Indented tree (outline, a forest)",
+      "description": "Indented tree",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Indented tree\n\n`type: \"indented\"`: an outline, one row per node in **preorder**, indented by depth: a file tree. `src` and `tests` are both roots (parent −1), so this is a **forest**: their outlines follow one another.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "t": [
+          {"v": "src", "p": -1},
+          {"v": "objects", "p": 0},
+          {"v": "graph.ts", "p": 1},
+          {"v": "array.ts", "p": 1},
+          {"v": "heap.ts", "p": 1},
+          {"v": "labels.ts", "p": 0},
+          {"v": "tests", "p": -1},
+          {"v": "graph.test.ts", "p": 6},
+          {"v": "heap.test.ts", "p": 6}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "Nodes n", "min": 1, "max": 9, "step": 1, "default": 9}
+          ],
+          "add": [
+            {
+              "id": "layout-indented",
+              "type": "graph",
+              "label": "Indented tree",
+              "lengthExpr": "n",
+              "valueExpr": "dataTable('t', idx, 'v')",
+              "treeLayout": {
+                "type": "indented",
+                "origin": [-3, 3.5, 0],
+                "spacing": 1.3,
+                "levelGap": 0.9,
+                "parentExpr": "dataTable('t', idx, 'p')"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 2.2,
+              "nodeHeight": 0.6,
+              "nodeCornerRadius": 0.12,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('t', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa"}
+            }
+          ],
+          "info": [
+            {"id": "layout-indented-props", "title": "Graph properties", "position": "top-left", "content": "**Indented tree**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `treeLayout · indented` |\n| parentExpr | `dataTable('t', idx, 'p')` |\n| origin | `[-3, 3.5, 0]` |\n| spacing | `1.3` |\n| levelGap | `0.9` |\n| nodes | {{n}} |\n| edges → self | `dataTable('t', idx, 'p') · straight` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layout-forest",
+      "title": "Forest (union-find parents)",
+      "description": "Forest",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Forest\n\nUnion-find stores a **parent array** where a root is its own parent. `parentExpr: \"p == idx ? -1 : p\"` turns those into roots, and `type: \"tidy\"` lays the **three trees side by side**, each tidy on its own. The node shows its index; the edge goes to its parent.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "t": [
+          {"v": 0, "p": -1},
+          {"v": 1, "p": 0},
+          {"v": 2, "p": 1},
+          {"v": 3, "p": -1},
+          {"v": 4, "p": 3},
+          {"v": 5, "p": -1},
+          {"v": 6, "p": 5},
+          {"v": 7, "p": 6},
+          {"v": 8, "p": 3}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "Nodes n", "min": 1, "max": 9, "step": 1, "default": 9}
+          ],
+          "add": [
+            {
+              "id": "layout-forest",
+              "type": "graph",
+              "label": "Forest",
+              "lengthExpr": "n",
+              "valueExpr": "dataTable('t', idx, 'v')",
+              "treeLayout": {
+                "type": "tidy",
+                "origin": [0, 2.5, 0],
+                "spacing": 1.2,
+                "levelGap": 1.6,
+                "parentExpr": "dataTable('t', idx, 'p')"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('t', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa"}
+            }
+          ],
+          "info": [
+            {"id": "layout-forest-props", "title": "Graph properties", "position": "top-left", "content": "**Forest**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `treeLayout · tidy` |\n| parentExpr | `dataTable('t', idx, 'p')` |\n| origin | `[0, 2.5, 0]` |\n| spacing | `1.2` |\n| levelGap | `1.6` |\n| nodes | {{n}} |\n| edges → self | `dataTable('t', idx, 'p') · straight` |"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layout-trie",
+      "title": "Trie (words added and removed)",
+      "description": "Trie",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Trie\n\nA trie built from **car, cat, cart, care, dog, do, dot, cab**: a `tidy` tree whose nodes are letters. Nodes are numbered as they are created, so the first k words own the first nodes, and **words** adds or removes whole words: their new nodes appear or vanish, and the tree re-lays itself.\n\nTeal nodes end a word among those inserted (\"do\" ends inside \"dog\").",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "t": [
+          {"v": "", "p": -1, "end": 0},
+          {"v": "c", "p": 0, "end": 0},
+          {"v": "a", "p": 1, "end": 0},
+          {"v": "r", "p": 2, "end": 1},
+          {"v": "t", "p": 2, "end": 2},
+          {"v": "t", "p": 3, "end": 3},
+          {"v": "e", "p": 3, "end": 4},
+          {"v": "d", "p": 0, "end": 0},
+          {"v": "o", "p": 7, "end": 6},
+          {"v": "g", "p": 8, "end": 5},
+          {"v": "t", "p": 8, "end": 7},
+          {"v": "b", "p": 2, "end": 8}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "words", "label": "Words inserted", "min": 0, "max": 8, "step": 1, "default": 8}
+          ],
+          "add": [
+            {
+              "id": "layout-trie",
+              "type": "graph",
+              "label": "Trie",
+              "lengthExpr": "words == 0 ? 1 : arrayAt([4, 5, 6, 7, 10, 10, 11, 12], words - 1)",
+              "valueExpr": "dataTable('t', idx, 'v')",
+              "treeLayout": {
+                "type": "tidy",
+                "origin": [0, 3.4, 0],
+                "spacing": 1.0,
+                "levelGap": 1.4,
+                "parentExpr": "dataTable('t', idx, 'p')"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "showIndices": false,
+              "connectTo": {"indexExpr": "dataTable('t', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa"},
+              "colorExpr": "dataTable('t', idx, 'end') > 0 and dataTable('t', idx, 'end') <= words ? '#77bfae' : ''"
+            }
+          ],
+          "info": [
+            {"id": "layout-trie-props", "title": "Graph properties", "position": "top-left", "content": "**Trie**\n\n| property | value |\n| --- | --- |\n| shape | `rect` |\n| layout | `treeLayout · tidy` |\n| parentExpr | `dataTable('t', idx, 'p')` |\n| origin | `[0, 3.4, 0]` |\n| spacing | `1.0` |\n| levelGap | `1.4` |\n| nodes | {{words == 0 ? 1 : arrayAt([4, 5, 6, 7, 10, 10, 11, 12], words - 1)}} |\n| edges → self | `dataTable('t', idx, 'p') · straight` |"}
+          ]
+        }
+      ]
+    }
+  ]
+}

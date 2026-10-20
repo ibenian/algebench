@@ -2,6 +2,7 @@
 import { state } from '/state.js';
 import { setSliderValue } from '/sliders.js';
 import { updateStepCaption } from '/overlay.js';
+import { createNarrator } from '/state-narrator.js';
 import type { Scene, StepPlayback } from '/types/lesson.js';
 
 /** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
@@ -24,6 +25,8 @@ export function setupStepPlayer(): void {
     const pauseIcon=icon('M6 4h4v16H6z M14 4h4v16h-4z');
     previous.innerHTML=icon('M17 4v16L4 12z');next.innerHTML=playIcon;
     previous.setAttribute('aria-label','Previous execution state');next.setAttribute('aria-label','Next execution state');
+    // Player buttons show a styled tip above them (data-tip), quicker and more visible than a native title.
+    previous.dataset.tip='Previous state';next.dataset.tip='Next state';
     for(const button of [previous,play,next])button.type='button';
     const track=document.createElement('input');track.type='range';track.step='1';track.setAttribute('aria-label','Execution state');
     const counter=document.createElement('output');counter.setAttribute('aria-label','Execution position');
@@ -31,7 +34,15 @@ export function setupStepPlayer(): void {
     const speed=document.createElement('select');speed.className='state-player-speed';speed.setAttribute('aria-label','Playback speed');
     for(const factor of [0.25,0.5,1,2,4]){const option=document.createElement('option');option.value=String(factor);option.textContent=factor+'×';speed.append(option);}
     speed.value='1';speed.hidden=true;
-    bar.append(previous,play,next,track,counter,speed);host.append(bar);
+    // Narration: the tutor explains each state in one short sentence as the learner moves (state-narrator.ts).
+    const narrate=document.createElement('button');narrate.type='button';narrate.className='state-player-narrate';
+    narrate.innerHTML=icon('M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z');
+    const paintNarrate=()=>{
+        narrate.setAttribute('aria-pressed',String(narrator.on));
+        narrate.setAttribute('aria-label',narrator.on?'Stop narrating each state':'Narrate each state');
+        narrate.dataset.tip=narrator.on?'Narrating each state · click to stop':'Narrate each state: the tutor explains it in one sentence as you move';
+    };
+    bar.append(previous,play,next,track,counter,speed,narrate);host.append(bar);
     // Reserve the actual player height for legends, including responsive wrapping.
     // ResizeObserver runs on geometry changes, not on animation frames.
     const resizeObserver=new ResizeObserver(()=>{
@@ -41,8 +52,19 @@ export function setupStepPlayer(): void {
     let timer:ReturnType<typeof setInterval>|null=null;
     let config:StepPlayback|undefined;
     const slider=()=>config?state.sceneSliders[config.slider]:undefined;
+    const narrator=createNarrator(()=>{
+        const s=slider();
+        return s&&!bar.hidden?`${state.currentSceneIndex}/${state.currentStepIndex}:${playbackPosition(s.value,s.min,s.max).current}`:null;
+    },()=>{
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
+        const step=scene?.steps?.[state.currentStepIndex];
+        const s=slider();
+        return `scene "${scene?.title??''}"${step?.title?`, step "${step.title}"`:''}${s?`, execution state ${playbackPosition(s.value,s.min,s.max).display}`:''}`;
+    });
+    narrate.onclick=()=>{narrator.set(!narrator.on);paintNarrate();};
+    paintNarrate();
     const interval=()=>(config?.intervalMs??900)/Number(speed.value||1);
-    function pause(){if(timer!==null)clearInterval(timer);timer=null;play.innerHTML=playIcon;play.setAttribute('aria-label','Play execution');}
+    function pause(){if(timer!==null)clearInterval(timer);timer=null;play.innerHTML=playIcon;play.setAttribute('aria-label','Play execution');play.dataset.tip='Play';}
     function render(){
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
         if(scene?.steps?.[state.currentStepIndex]?.descriptionExpr)updateStepCaption(scene,state.currentStepIndex,true);
@@ -57,13 +79,14 @@ export function setupStepPlayer(): void {
         previous.disabled=p.current<=s.min;next.disabled=p.current>=s.max;
         play.disabled=p.total<=1;
         if(p.current>=s.max)pause();
+        narrator.stateChanged();
     }
     function move(value:number){if(config)setSliderValue(config.slider,value);render();}
     previous.onclick=()=>{pause();const s=slider();if(s)move(s.value-1);};
     next.onclick=()=>{pause();const s=slider();if(s)move(s.value+1);};
     track.oninput=()=>{pause();move(Number(track.value));};
     function start(){
-        play.innerHTML=pauseIcon;play.setAttribute('aria-label','Pause execution');
+        play.innerHTML=pauseIcon;play.setAttribute('aria-label','Pause execution');play.dataset.tip='Pause';
         timer=setInterval(()=>{const current=slider();if(current)move(current.value+1);else pause();},interval());
     }
     play.onclick=()=>{

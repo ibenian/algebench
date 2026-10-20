@@ -64,11 +64,12 @@ test('draft traces match the algorithm and every bound display expression evalua
  math.import({arrayAt,arrayCount,concat:(...v:unknown[])=>v.join('')},{override:true});
  for(const scene of lesson.scenes){
   const repairing=scene.steps[0].id==='repair';
+  assert.equal(scene.codeRef.file,repairing?'repair':'validator');
   assert.deepEqual(scene.data.trace,(repairing?repairTrace:bracketTrace)(scene.data.input[0].chars.join('')));
   if(repairing)assert.equal(lesson.codeFiles[1].source,REPAIR_SOURCE);
   for(let frame=0;frame<scene.data.trace.length;frame++){
    const scope:Record<string,unknown>={frame,dataTable:(table:string,row:number,column:string)=>scene.data[table][row][column]};
-   assert.equal(math.evaluate(lesson.codeFiles[0].activeLineExpr,scope),scene.data.trace[frame].line);
+   assert.equal(math.evaluate(scene.codeRef.lineExpr,scope),scene.data.trace[frame].line);
    for(const element of scene.steps[0].add){
     for(const key of ['textExpr','visibleExpr'])if(element[key])assert.doesNotThrow(()=>math.evaluate(element[key],scope));
     if(element.type==='array'||element.type==='stack'){

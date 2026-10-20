@@ -41,3 +41,14 @@ def test_simulation_state_is_included_verbatim():
 @pytest.mark.parametrize('value', [None, '', '   ', 7, ['x']])
 def test_simulation_state_omitted_when_absent_or_invalid(value):
     assert 'Live simulation state' not in build_system_prompt({'currentScene': {}, 'runtime': {'simulationState': value}})
+
+
+def test_screen_values_are_listed_as_shown():
+    prompt = build_system_prompt({'currentScene': {}, 'runtime': {'screenValues': ['i = 5', 'x = 3', 'if i ≥ k - 1 → 4 ≥ 2 → True']}})
+    line = next(l for l in prompt.splitlines() if 'Values shown on screen now' in l)
+    assert 'i = 5 | x = 3 | if i ≥ k - 1 → 4 ≥ 2 → True' in line
+
+
+@pytest.mark.parametrize('value', [None, [], 'i = 5', [None, {'a': 1}]])
+def test_screen_values_omitted_when_absent_or_invalid(value):
+    assert 'Values shown on screen now' not in build_system_prompt({'currentScene': {}, 'runtime': {'screenValues': value}})

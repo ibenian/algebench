@@ -2,6 +2,7 @@
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 import { addLabel3D } from '/labels.js';
+import { setSymbolHover, hoveredSymbols } from '/code-symbols.js';
 import { renderArray } from '/objects/array.js';
 import { stackBounds } from '/objects/stack-layout.js';
 import type { Element } from '/types/lesson.js';
@@ -28,6 +29,20 @@ export function renderStack(el:Element,view:MathBoxNode) {
         const back=makeMesh(.12),base=makeMesh(.4),outline=makeMesh(.7);
         const title=addLabel3D(el.label??'stack',[origin[0]!,origin[1]!-1.5,origin[2]!],'#b5c1cf');
         title.ownerMesh=owner;title.snapToProjection=true;
+        // The title names the stack's variable: pointing at it lights that variable in the Code panel.
+        if(el.id){
+            const symbol=el.id;
+            title.el.style.pointerEvents='auto';
+            title.el.addEventListener('pointerenter',()=>setSymbolHover([symbol]));
+            title.el.addEventListener('pointerleave',()=>{if(hoveredSymbols().length===1&&hoveredSymbols()[0]===symbol)setSymbolHover([]);});
+            // Pointing at the variable (in the code, or at the stack) lights the title.
+            // The listener lives as long as the title: it removes itself once the stack's labels are gone.
+            const light=()=>{
+                if(!title.el.isConnected){window.removeEventListener('algebench:symbolhover',light);return;}
+                title.el.classList.toggle('array-title-symbol-hover',hoveredSymbols().includes(symbol));
+            };
+            window.addEventListener('algebench:symbolhover',light);
+        }
         const empty=addLabel3D(el.emptyText??'empty',origin,'#8ca9a0',{cssClass:'label-3d array-cell-label'});
         empty.ownerMesh=owner;empty.snapToProjection=true;empty.el.setAttribute('aria-label','Empty stack');
         let previous=-1;

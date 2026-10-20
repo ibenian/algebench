@@ -272,6 +272,8 @@ interface AlgeBenchChatRuntimeContext {
   stepNumber?: number;
   /** Scene-authored live state (Scene.promptExpr), capped client-side. */
   simulationState?: string;
+  /** The label, marker and condition rows on screen now, exactly as shown. */
+  screenValues?: string[];
   cameraPosition?: { x: number; y: number; z: number };
   cameraTarget?: { x: number; y: number; z: number };
   cameraViews?: string[];
