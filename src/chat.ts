@@ -15,6 +15,7 @@
 
 export {};
 
+import { menuPlacement } from '/menu-placement.js';
 import { playbackPosition } from '/step-player.js';
 import { speechText, extractInlineToolCalls } from '/speech-text.js';
 import { visibleAnnotationTexts } from '/labels.js';
@@ -225,9 +226,14 @@ function morePromptsMenu(): HTMLElement {
     toggle.addEventListener('click', () => {
         if (!menu.hidden) { close(); return; }
         menu.hidden = false;
-        // Open toward the side with room: the chip often ends a row near the panel's right edge.
-        menu.classList.remove('preset-more-menu-right');
-        if (menu.getBoundingClientRect().right > document.documentElement.clientWidth - 8) menu.classList.add('preset-more-menu-right');
+        // Keep the menu inside the panel that clips it (the chat tab hides overflow), not just the window:
+        // the chip often ends a row near either edge, and the panel can be narrower than the menu.
+        menu.style.left = '0px'; menu.style.maxWidth = '';
+        const bounds = (wrap.closest('.tab-content') ?? document.documentElement).getBoundingClientRect();
+        const anchor = wrap.getBoundingClientRect().left;
+        const {offset, maxWidth} = menuPlacement(anchor, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
+        menu.style.maxWidth = `${maxWidth}px`;
+        menu.style.left = `${offset}px`;
         toggle.setAttribute('aria-expanded', 'true');
         document.addEventListener('pointerdown', outside, true);
         document.addEventListener('keydown', escape, true);

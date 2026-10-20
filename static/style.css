@@ -3689,11 +3689,12 @@ body.rotating-axis-z, body.rotating-axis-z * {
     box-shadow: 0 8px 24px #0006;
 }
 .preset-more-menu[hidden] { display: none; }
-.preset-more-menu.preset-more-menu-right { left: auto; right: 0; }
 .preset-more-item {
     text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none;
     color: var(--text-color); font: 12px var(--font-body); cursor: pointer; white-space: nowrap;
 }
+/* Narrowed to fit a narrow panel (chat.ts sets max-width): items wrap instead of being cut off. */
+.preset-more-menu[style*="max-width"] .preset-more-item { white-space: normal; }
 .preset-more-item:hover, .preset-more-item:focus-visible { background: color-mix(in srgb, var(--accent-color) 14%, transparent); outline: none; }
 /* Chat Input Area */
 #chat-input-area {

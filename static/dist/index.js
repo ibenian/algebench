@@ -27782,6 +27782,22 @@ function setupShareButton() {
 	});
 }
 //#endregion
+//#region src/menu-placement.ts
+/**
+* Horizontal placement for a popup menu anchored to a button inside a clipping panel: where its left edge goes,
+* relative to the anchor, so the menu stays inside the panel's bounds (less a margin). It starts aligned with
+* the anchor's left edge, shifts left only as far as it must, and never past the panel's left edge; a menu
+* wider than the room is narrowed to fit (the caller lets its items wrap).
+*/
+function menuPlacement(anchorLeft, menuWidth, boundsLeft, boundsRight, margin = 8) {
+	const room = Math.max(0, boundsRight - boundsLeft - 2 * margin);
+	const width = Math.min(menuWidth, room);
+	return {
+		offset: Math.max(boundsLeft + margin, Math.min(anchorLeft, boundsRight - margin - width)) - anchorLeft,
+		maxWidth: room
+	};
+}
+//#endregion
 //#region src/speech-text.ts
 /**
 * Text for speech. Chat replies are markdown with LaTeX; read aloud verbatim, the voice pronounces the markup
@@ -28647,8 +28663,13 @@ function morePromptsMenu() {
 			return;
 		}
 		menu.hidden = false;
-		menu.classList.remove("preset-more-menu-right");
-		if (menu.getBoundingClientRect().right > document.documentElement.clientWidth - 8) menu.classList.add("preset-more-menu-right");
+		menu.style.left = "0px";
+		menu.style.maxWidth = "";
+		const bounds = (wrap.closest(".tab-content") ?? document.documentElement).getBoundingClientRect();
+		const anchor = wrap.getBoundingClientRect().left;
+		const { offset, maxWidth } = menuPlacement(anchor, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
+		menu.style.maxWidth = `${maxWidth}px`;
+		menu.style.left = `${offset}px`;
 		toggle.setAttribute("aria-expanded", "true");
 		document.addEventListener("pointerdown", outside, true);
 		document.addEventListener("keydown", escape, true);
