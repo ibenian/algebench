@@ -1117,8 +1117,10 @@ ${MD_TAIL}
         const c = (col: string) => `dataTable('${table}', frame, '${col}')`;
         const val = (i: string) => `arrayAt(${inp('values')}, ${i})`;
         const waiting = (i: string) => `arrayAt(${c('waiting')}, ${i}) == 1`;
-        const pending = { ...array(bfs ? 'queue' : 'stack', bfs ? 'queue' : 'call stack', [-6.2, -2.3, 0], { from: c(bfs ? 'queue' : 'stack'), color: bfs ? BLUE : PINK }),
-            valueExpr: val(`arrayAt(${c(bfs ? 'queue' : 'stack')}, idx)`), labelSide: 'top' };
+        // Rows titled on the left, like the lesson's other arrays; cells a little smaller so nine values fit.
+        const small = { cellSize: 1.0, fontSize: 14 };
+        const pending = { ...array(bfs ? 'queue' : 'stack', bfs ? 'queue' : 'call stack', [-2.4, -2.4, 0], { from: c(bfs ? 'queue' : 'stack'), color: bfs ? BLUE : PINK, ...small }),
+            valueExpr: val(`arrayAt(${c(bfs ? 'queue' : 'stack')}, idx)`) };
         return [
             // The tree: gold where the code is, pink on the call stack (or blue waiting in the queue), teal once visited.
             {
@@ -1133,8 +1135,8 @@ ${MD_TAIL}
                 markers: [{ ...marker('node', c('cur'), GOLD, `${c('cur')} >= 0`), valueExpr: val(c('cur')) }],
             },
             pending,
-            { ...array('out', 'out', [-6.2, -4.3, 0], { from: c('out'), color: '#b69bea' }), labelSide: 'top' },
-            { ...label('node', `${c('cur')} < 0 ? 'node: None' : concat('node.val = ', ${val(c('cur'))})`, [4.6, -2.3, 0], ['tree', c('cur')]) },
+            array('out', 'out', [-2.4, -3.9, 0], { from: c('out'), color: '#b69bea', ...small }),
+            { ...label('node', `${c('cur')} < 0 ? 'node: None' : concat('node.val = ', ${val(c('cur'))})`, [4.8, -2.4, 0], ['tree', c('cur')]) },
         ];
     };
     const table = values.map((_, i) => ({ p: parents[i], s: sides[i] }));
