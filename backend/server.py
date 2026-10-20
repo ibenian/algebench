@@ -446,6 +446,7 @@ style_css_path  = static_dir / "style.css"
 # ---------------------------------------------------------------------------
 from backend.util import sanitize_path, limiter_from_env, rate_limit_dependency  # noqa: E402
 from backend.proof_api import build_proof_router, build_proof_pages_router  # noqa: E402
+from backend.code_highlight import build_code_highlight_router  # noqa: E402
 
 # Per-IP rate limits for billable (Gemini-backed) endpoints. Override via env
 # as "count/seconds", e.g. ALGEBENCH_RATELIMIT_CHAT="10/60". Limits protect the
@@ -1938,6 +1939,9 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
                 ),
             }
         )
+
+    # Code panel syntax colouring (Pygments tokens as column ranges) — see backend/code_highlight.py.
+    fastapp.include_router(build_code_highlight_router())
 
     # /prove page + /proofs file serving (and the DEBUG-only Derive-tab prefill)
     # — see backend/proof_api/pages.py.

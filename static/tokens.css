@@ -88,6 +88,17 @@
      as a deliberate chalkboard against the paper chrome. camera.js reads this. */
   --canvas-bg: #0d1310;
 
+  /* Code panel syntax colours (static/style.css .code-tok-*), muted to sit with the chalk palette. */
+  --code-keyword: #d9a441;
+  --code-constant: #d48f6a;
+  --code-builtin: #8fb8c9;
+  --code-function: #a9c47f;
+  --code-decorator: #c49bd8;
+  --code-string: #9fc79a;
+  --code-number: #d48f6a;
+  --code-comment: #7d887f;
+  --code-operator: #b7b3a3;
+
   /* Elevation — print, not glow */
   --shadow-sm: 0 2px 0 rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
@@ -138,6 +149,17 @@ html[data-theme="light"] {
   --shadow-sm: 0 2px 0 rgba(37, 48, 41, 0.10);
   --shadow-lg: 0 12px 32px rgba(37, 48, 41, 0.16);
   --canvas-bg: #26302a;
+
+  /* Code panel syntax colours, darkened to read on paper. */
+  --code-keyword: #8a5d10;
+  --code-constant: #a4532c;
+  --code-builtin: #2f6a83;
+  --code-function: #4d6d1f;
+  --code-decorator: #6d4fa8;
+  --code-string: #3d7a3a;
+  --code-number: #a4532c;
+  --code-comment: #7c857e;
+  --code-operator: #59625b;
 }
 
 /* ── EXPERIMENTAL palette variants ────────────────────────────────────────

@@ -7,6 +7,7 @@ import { navigateTo } from '/scene-loader.js';
 import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
+import { highlightCode, lineTokens, paintTokens } from '/code-highlight.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
 export function setupCodePanel(): void {
@@ -106,6 +107,11 @@ export function setupCodePanel(): void {
             const code=document.createElement('code');code.dataset.line=String(i+1);
             for(const segment of markedSegments(text,(file.marks??[]).filter(m=>m.line===i+1))){const span=document.createElement('span');span.textContent=segment.text;if(segment.color)span.className=`code-mark-${segment.color}`;code.append(span);}
             row.append(number,code);body.append(row);
+        });
+        // Syntax colours arrive from the server; the file may have been switched meanwhile.
+        void highlightCode(file).then(tokens=>{
+            if(selected!==file||!tokens.length)return;
+            body.querySelectorAll<HTMLElement>('.code-line code').forEach(code=>paintTokens(code,lineTokens(tokens,Number(code.dataset.line))));
         });
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
         refreshBinding();
