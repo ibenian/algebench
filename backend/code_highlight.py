@@ -21,7 +21,6 @@ no tokens and an explanation, and the panel shows the source uncoloured.
 from __future__ import annotations
 
 import asyncio
-from functools import lru_cache
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -59,9 +58,12 @@ def _utf16(text: str) -> int:
     return len(text.encode("utf-16-le")) // 2
 
 
-@lru_cache(maxsize=64)
 def highlight(language: str, source: str) -> dict:
-    """``{"tokens": [...], "error": str | None}`` for ``source`` in ``language``."""
+    """``{"tokens": [...], "error": str | None}`` for ``source`` in ``language``.
+
+    Not cached: a result can be large (one dict per token), so a server cache keyed by source would let
+    varied requests pin a lot of memory. The panel caches each file's tokens in the browser instead.
+    """
     if len(source) > MAX_SOURCE_CHARS:
         return {"tokens": [], "error": "source too large to highlight"}
     try:
