@@ -1084,7 +1084,7 @@
           "color": "#9dbde3"
         }
       ],
-      "markdown": "# Which pattern fits?\n\nMost interview problems are variations on a small set of patterns. The skill is recognizing the **signal** in the problem statement and reaching for the matching plan.\n\n| Signal in the problem | Pattern | Typical cost |\n| --- | --- | --- |\n| Many range-sum queries on a fixed array | Running totals (prefix sum) | O(n) build, O(1) per query |\n| Sorted array, find a pair or triple | Squeeze from both ends (two pointers) | O(n) |\n| Best contiguous subarray or substring | Slide a window (sliding window) | O(n) |\n| Largest sum of a contiguous subarray, any length | Keep the best running sum (Kadane) | O(n), O(1) space |\n| Sorted data with a twist (rotated, 2D) | Halve the search (binary search) | O(log n) |\n| Intervals, meetings, ranges | Merge overlapping ranges (intervals) | O(n log n) |\n| Choices where the locally best step is always safe | Take the best step now (greedy) | Often O(n) or O(n log n) |\n| Pairs cancelling, parity, bitmask subsets | Flip bits (bit manipulation) | O(n), O(1) space |\n| Find a pattern inside a long text | Find a word fast (KMP string matching) | O(n + m) |\n| Prefix lookups over many words | Build trie | O(word length) |\n| \"Next greater / smaller element\" | Next bigger value (monotonic stack) | O(n) |\n| Max or min of every window | Max of every window (monotonic queue) | O(n) |\n| k largest, k smallest, k most frequent | Keep the best k (heap) | O(n log k) |\n| Cycle, or \"find the duplicate\" in O(1) space | Tortoise and hare (fast & slow pointers) | O(n), O(1) space |\n| Reverse or reorder linked-list nodes | Flip the links (linked list reversal) | O(n), O(1) space |\n| Visit every tree node in a set order | Walk a tree (traversal orders) | O(n) |\n| Explore every path or component | Go deep first (DFS) | O(V + E) |\n| Shortest path in steps, level by level | Go wide first (BFS) | O(V + E) |\n| Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |\n| Prerequisites, build order | Order by dependencies (topological sort) | O(V + E) |\n| Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |\n| Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |\n| A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |\n| All permutations, subsets, placements | Try, undo, retry (backtracking) | Exponential, pruned |\n| Optimal value from overlapping subproblems | Reuse answers (dynamic programming) | Subproblems × work each |\n| Two sequences to align, or a grid walked right and down | Fill a table (2D dynamic programming) | O(m·n) |\n\nEach following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.",
+      "markdown": "# Which pattern fits?\n\nMost interview problems are variations on a small set of patterns. The skill is recognizing the **signal** in the problem statement and reaching for the matching plan.\n\n| Signal in the problem | Pattern | Typical cost |\n| --- | --- | --- |\n| Many range-sum queries on a fixed array | Running totals (prefix sum) | O(n) build, O(1) per query |\n| Sorted array, find a pair or triple | Squeeze from both ends (two pointers) | O(n) |\n| Best contiguous subarray or substring | Slide a window (sliding window) | O(n) |\n| Largest sum of a contiguous subarray, any length | Keep the best running sum (Kadane) | O(n), O(1) space |\n| Sorted data with a twist (rotated, 2D) | Halve the search (binary search) | O(log n) |\n| Intervals, meetings, ranges | Merge overlapping ranges (intervals) | O(n log n) |\n| Choices where the locally best step is always safe | Take the best step now (greedy) | Often O(n) or O(n log n) |\n| Pairs cancelling, parity, bitmask subsets | Flip bits (bit manipulation) | O(n), O(1) space |\n| Find a pattern inside a long text | Find a word fast (KMP string matching) | O(n + m) |\n| Prefix lookups over many words | Build trie | O(word length) |\n| \"Next greater / smaller element\" | Next bigger value (monotonic stack) | O(n) |\n| Max or min of every window | Max of every window (monotonic queue) | O(n) |\n| k largest, k smallest, k most frequent | Keep the best k (heap) | O(n log k) |\n| Cycle, or \"find the duplicate\" in O(1) space | Tortoise and hare (fast & slow pointers) | O(n), O(1) space |\n| Reverse or reorder linked-list nodes | Flip the links (linked list reversal) | O(n), O(1) space |\n| Visit every tree node in a set order | Walk a tree (traversal orders) | O(n) |\n| Explore every path, depth first (DFS) | Walk a tree (traversal orders) | O(V + E) |\n| Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |\n| Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |\n| Prerequisites, build order | Order by dependencies (topological sort) | O(V + E) |\n| Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |\n| Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |\n| A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |\n| All permutations, subsets, placements | Try, undo, retry (backtracking) | Exponential, pruned |\n| Optimal value from overlapping subproblems | Reuse answers (dynamic programming) | Subproblems × work each |\n| Two sequences to align, or a grid walked right and down | Fill a table (2D dynamic programming) | O(m·n) |\n\nEach following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.",
       "prompt": "Help the learner recognize which pattern fits a problem. Ask them to name the signal (sorted input, contiguous range, cycle, next-greater, overlapping subproblems) before naming a pattern. Encourage predicting the pattern before revealing it."
     },
     {
@@ -13597,78 +13597,6 @@
       ],
       "stepPlayback": {"slider": "frame", "intervalMs": 1200},
       "codeRef": {"file": "tree-traversal", "lineExpr": "dataTable('trace', frame, 'line')"}
-    },
-    {
-      "id": "dfs",
-      "title": "Go deep first (DFS)",
-      "description": "List every root-to-leaf path in a binary tree.",
-      "range": [
-        [-7, 10],
-        [-5, 5],
-        [-2, 2]
-      ],
-      "camera": {
-        "position": [1.5, 0, 15],
-        "target": [1.5, 0, 0]
-      },
-      "markdown": "# Go deep first (DFS)\n\n**Problem:** List every root-to-leaf path in a binary tree.\n\n**Signal:** explore every path, find connected components, detect cycles, or order dependencies.\n\nFollow one branch as far as it goes before backing up, using recursion or an explicit stack. Mark nodes as visited so cycles do not loop forever. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph object.)*\n\n**Practice:** Clone Graph (133), Path Sum II (113), Course Schedule II (210).",
-      "prompt": "Explain recursion vs an explicit stack, and the visited set. This scene has no visualization yet.",
-      "elements": [
-        {
-          "id": "grid",
-          "type": "grid",
-          "plane": "xy",
-          "range": [
-            [-7, 10],
-            [-5, 5]
-          ],
-          "divisions": [17, 10],
-          "opacity": 0.09
-        },
-        {
-          "id": "placeholder",
-          "type": "text",
-          "text": "Visualization coming soon",
-          "position": [1.5, 0, 0],
-          "color": "#9dbde3"
-        }
-      ]
-    },
-    {
-      "id": "bfs",
-      "title": "Go wide first (BFS)",
-      "description": "Return a binary tree's values level by level, top to bottom.",
-      "range": [
-        [-7, 10],
-        [-5, 5],
-        [-2, 2]
-      ],
-      "camera": {
-        "position": [1.5, 0, 15],
-        "target": [1.5, 0, 0]
-      },
-      "markdown": "# Go wide first (BFS)\n\n**Problem:** Return a binary tree's values level by level, top to bottom.\n\n**Signal:** shortest path in an unweighted graph, or anything \"level by level\".\n\nStart from the source, push it on a **queue**, and repeatedly pop the front and push its unvisited neighbours. Nodes come out in order of distance, so the first time you reach a node is along a shortest path. O(V + E).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a graph or tree object and a queue.)*\n\n**Practice:** Binary Tree Level Order Traversal (102), Rotting Oranges (994), Word Ladder (127).",
-      "prompt": "Explain why a queue gives shortest paths in unweighted graphs. This scene has no visualization yet.",
-      "elements": [
-        {
-          "id": "grid",
-          "type": "grid",
-          "plane": "xy",
-          "range": [
-            [-7, 10],
-            [-5, 5]
-          ],
-          "divisions": [17, 10],
-          "opacity": 0.09
-        },
-        {
-          "id": "placeholder",
-          "type": "text",
-          "text": "Visualization coming soon",
-          "position": [1.5, 0, 0],
-          "color": "#9dbde3"
-        }
-      ]
     },
     {
       "id": "matrix-traversal",

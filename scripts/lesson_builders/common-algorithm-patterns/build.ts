@@ -79,8 +79,6 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
         example: `${IN.linkedList.values.join(' → ')} → None becomes ${[...IN.linkedList.values].reverse().join(' → ')} → None.` },
     'tree-traversal': { problem: 'Visit every node of a binary tree in a chosen order: preorder, inorder, postorder or level by level.',
         example: (() => { const t = IN.tree; const o = (k: 'preorder' | 'inorder' | 'level') => list(end(treeTraversalTrace(k, t.values, t.parents, t.sides)).out); return `preorder ${o('preorder')}, inorder ${o('inorder')}, level order ${o('level')}.`; })() },
-    'dfs': { problem: 'List every root-to-leaf path in a binary tree.' },
-    'bfs': { problem: "Return a binary tree's values level by level, top to bottom." },
     'matrix-traversal': { problem: 'In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.' },
     'topological-sort': { problem: 'Courses have prerequisites. Find an order in which to take every course, or report that none exists.' },
     'shortest-path': { problem: 'A network has directed edges with travel times. How long does a signal from one node take to reach every node?' },
@@ -204,8 +202,8 @@ Most interview problems are variations on a small set of patterns. The skill is 
 | Cycle, or "find the duplicate" in O(1) space | Tortoise and hare (fast & slow pointers) | O(n), O(1) space |
 | Reverse or reorder linked-list nodes | Flip the links (linked list reversal) | O(n), O(1) space |
 | Visit every tree node in a set order | Walk a tree (traversal orders) | O(n) |
-| Explore every path or component | Go deep first (DFS) | O(V + E) |
-| Shortest path in steps, level by level | Go wide first (BFS) | O(V + E) |
+| Explore every path, depth first (DFS) | Walk a tree (traversal orders) | O(V + E) |
+| Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |
 | Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |
 | Prerequisites, build order | Order by dependencies (topological sort) | O(V + E) |
 | Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |
@@ -1179,26 +1177,6 @@ ${MD_TAIL}
     const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
     Object.assign(first, { title: ORDERS[0].title, description: `${ORDERS[0].title}: ${ORDERS[0].what}.` });
 })();
-placeholder('dfs', 'Go deep first (DFS)', `# Go deep first (DFS)
-
-**Signal:** explore every path, find connected components, detect cycles, or order dependencies.
-
-Follow one branch as far as it goes before backing up, using recursion or an explicit stack. Mark nodes as visited so cycles do not loop forever. O(V + E).
-
-${SOON} *(Needs a graph object.)*
-
-**Practice:** Clone Graph (133), Path Sum II (113), Course Schedule II (210).`,
-    'Explain recursion vs an explicit stack, and the visited set. This scene has no visualization yet.');
-placeholder('bfs', 'Go wide first (BFS)', `# Go wide first (BFS)
-
-**Signal:** shortest path in an unweighted graph, or anything "level by level".
-
-Start from the source, push it on a **queue**, and repeatedly pop the front and push its unvisited neighbours. Nodes come out in order of distance, so the first time you reach a node is along a shortest path. O(V + E).
-
-${SOON} *(Needs a graph or tree object and a queue.)*
-
-**Practice:** Binary Tree Level Order Traversal (102), Rotting Oranges (994), Word Ladder (127).`,
-    'Explain why a queue gives shortest paths in unweighted graphs. This scene has no visualization yet.');
 placeholder('matrix-traversal', 'Explore a grid (matrix traversal)', `# Explore a grid (matrix traversal)
 
 **Signal:** a 2D grid: islands, flood fill, regions, shortest moves.
@@ -1309,7 +1287,7 @@ const ORDER = ['overview',
     'string-matching', 'trie',                                                                                        // strings
     'monotonic-stack', 'monotonic-queue', 'top-k',                                                                    // stack, queue, heap
     'fast-slow', 'linked-list-reversal',                                                                              // linked structures
-    'tree-traversal', 'dfs', 'bfs', 'matrix-traversal', 'topological-sort', 'shortest-path', 'union-find',            // trees and graphs
+    'tree-traversal', 'matrix-traversal', 'topological-sort', 'shortest-path', 'union-find',            // trees and graphs
     'recursion', 'backtracking', 'dynamic-programming', 'dp-2d'];                                                              // searching over choices                                                // searching over choices
 scenes.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
 codeFiles.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
