@@ -245,7 +245,9 @@ pydantic-core==2.46.4
 pydantic-graph==1.107.6
     # via pydantic-ai-slim
 pygments==2.20.0
-    # via rich
+    # via
+    #   -r requirements.txt
+    #   rich
 python-dotenv==1.2.2
     # via
     #   litellm

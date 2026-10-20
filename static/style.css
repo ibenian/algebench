@@ -5617,6 +5617,16 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-mark-blue { background: #438fc944; }
 .code-mark-green { background: #36a77944; }
 .code-mark-pink { background: #d268a444; }
+/* Syntax colours (src/code-highlight.ts): one class per token kind, coloured by theme (static/tokens.css). */
+.code-tok-keyword { color: var(--code-keyword); }
+.code-tok-constant { color: var(--code-constant); }
+.code-tok-builtin { color: var(--code-builtin); }
+.code-tok-function, .code-tok-class { color: var(--code-function); }
+.code-tok-decorator { color: var(--code-decorator); }
+.code-tok-string { color: var(--code-string); }
+.code-tok-number { color: var(--code-number); }
+.code-tok-comment { color: var(--code-comment); font-style: italic; }
+.code-tok-operator { color: var(--code-operator); }
 
 #state-player { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; width: min(460px, calc(100% - 200px)); padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); }
 #state-player[hidden], .slider-row[hidden] { display: none; }

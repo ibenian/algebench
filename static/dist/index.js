@@ -8239,7 +8239,7 @@ function registerCompositePart(id, parentId, view, meshes, labels, label, prompt
 var SUPERSAMPLE = 2;
 var FAMILY = "system-ui, sans-serif";
 var CACHE_MAX = 512;
-var cache = /* @__PURE__ */ new Map();
+var cache$1 = /* @__PURE__ */ new Map();
 /** Layout-only cache: measuring a label must not cost a canvas. */
 var metrics = /* @__PURE__ */ new Map();
 var listeners = /* @__PURE__ */ new Set();
@@ -8265,7 +8265,7 @@ function watchFonts() {
 	fontsHooked = true;
 	document.fonts.ready.then(() => {
 		fontsHooked = false;
-		cache.clear();
+		cache$1.clear();
 		metrics.clear();
 		for (const cb of Array.from(listeners)) try {
 			cb();
@@ -8285,11 +8285,11 @@ function onLatexFontsReady(cb) {
 	};
 }
 function remember(key, r) {
-	if (cache.size >= CACHE_MAX) {
-		const oldest = cache.keys().next().value;
-		if (oldest !== void 0) cache.delete(oldest);
+	if (cache$1.size >= CACHE_MAX) {
+		const oldest = cache$1.keys().next().value;
+		if (oldest !== void 0) cache$1.delete(oldest);
 	}
-	cache.set(key, r);
+	cache$1.set(key, r);
 	return r;
 }
 /**
@@ -8300,7 +8300,7 @@ function remember(key, r) {
 function rasterLatex(src, fontPx, color) {
 	const size = Math.max(1, Math.round(fontPx));
 	const key = `${size}${color}${src}`;
-	const hit = cache.get(key);
+	const hit = cache$1.get(key);
 	if (hit) return hit;
 	if (!hasDom() || !src) return remember(key, {
 		canvas: null,
@@ -21824,6 +21824,66 @@ function setupSceneDock() {
 	});
 }
 //#endregion
+//#region src/code-highlight.ts
+var cache = /* @__PURE__ */ new Map();
+/** The file's coloured ranges, fetched once per language and source; none when unavailable (offline, unknown language). */
+function highlightCode(file) {
+	const language = file.language?.trim().toLowerCase();
+	if (!language) return Promise.resolve([]);
+	const key = `${language}\n${file.source}`;
+	let pending = cache.get(key);
+	if (!pending) {
+		pending = fetch("/api/code/highlight", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				language,
+				source: file.source
+			})
+		}).then((res) => res.ok ? res.json() : null).then((body) => Array.isArray(body?.tokens) ? body.tokens : []).catch(() => []);
+		cache.set(key, pending);
+	}
+	return pending;
+}
+/** One line's ranges, in order. */
+function lineTokens(tokens, line) {
+	return tokens.filter((t) => t.line === line && t.endCol > t.col).sort((a, b) => a.col - b.col);
+}
+/**
+* Wrap columns [from, to) of an element's text in elements made by `make`, splitting text nodes at the edges.
+* A range crossing existing spans gets one wrapper per text node it covers, so the existing structure stays.
+*/
+function wrapColumns(root, from, to, make) {
+	const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+	const pieces = [];
+	let offset = 0;
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		const start = offset, end = offset + node.data.length;
+		offset = end;
+		const a = Math.max(from, start), b = Math.min(to, end);
+		if (a < b) pieces.push({
+			node,
+			a: a - start,
+			b: b - start
+		});
+	}
+	for (const { node, a, b } of pieces) {
+		const target = node.splitText(a);
+		target.splitText(b - a);
+		const wrapper = make();
+		target.replaceWith(wrapper);
+		wrapper.append(target);
+	}
+}
+/** Colour one rendered line (`code` holds its text) with that line's ranges. */
+function paintTokens(code, tokens) {
+	for (const t of tokens) wrapColumns(code, t.col, t.endCol, () => {
+		const span = code.ownerDocument.createElement("span");
+		span.className = `code-tok code-tok-${t.kind}`;
+		return span;
+	});
+}
+//#endregion
 //#region src/code-panel.ts
 function setupCodePanel() {
 	const host = document.getElementById("dock-tab-code");
@@ -21986,6 +22046,10 @@ function setupCodePanel() {
 			}
 			row.append(number, code);
 			body.append(row);
+		});
+		highlightCode(file).then((tokens) => {
+			if (selected !== file || !tokens.length) return;
+			body.querySelectorAll(".code-line code").forEach((code) => paintTokens(code, lineTokens(tokens, Number(code.dataset.line))));
 		});
 		tree.querySelectorAll("[data-file]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.file === file.id)));
 		refreshBinding();

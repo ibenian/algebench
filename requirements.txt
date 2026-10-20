@@ -69,3 +69,5 @@ orjson>=3.11.9
 # Optional at runtime — with no ALGEBENCH_PROOFS_BUCKET the app uses the
 # filesystem LocalProofStore and never imports this.
 google-cloud-storage>=2.18.0
+# Syntax colouring for the Code panel (backend/code_highlight.py); already locked via rich.
+pygments>=2.19
