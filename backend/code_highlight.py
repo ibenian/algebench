@@ -21,6 +21,7 @@ no tokens and an explanation, and the panel shows the source uncoloured.
 from __future__ import annotations
 
 import asyncio
+import re
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -54,8 +55,20 @@ def _kind(ttype) -> str | None:
     return None
 
 
-def _utf16(text: str) -> int:
-    return len(text.encode("utf-16-le")) // 2
+_ASTRAL = re.compile("[\U00010000-\U0010FFFF]")
+
+
+def _utf16_columns(text: str) -> list[int] | None:
+    """UTF-16 offset of every character boundary in ``text``, or None when they equal the character offsets
+    (no character outside the Basic Multilingual Plane, the common case). Computed once per line, so
+    converting each token's columns is a lookup, not a re-encode of the line so far."""
+    if not _ASTRAL.search(text):
+        return None
+    out, at = [0], 0
+    for ch in text:
+        at += 2 if ord(ch) > 0xFFFF else 1
+        out.append(at)
+    return out
 
 
 def highlight(language: str, source: str) -> dict:
@@ -77,6 +90,7 @@ def highlight(language: str, source: str) -> dict:
         starts.append(at)
         at += len(text) + 1
     tokens = []
+    columns: dict[int, list[int] | None] = {}   # per line, computed on its first token
     line = 0
     for index, ttype, value in lexer.get_tokens_unprocessed(source):
         kind = _kind(ttype)
@@ -91,8 +105,11 @@ def highlight(language: str, source: str) -> dict:
             line_start, line_end = starts[row], starts[row] + len(lines[row])
             stop = min(end, line_end)
             if stop > pos:
-                text = lines[row]
-                col, end_col = _utf16(text[:pos - line_start]), _utf16(text[:stop - line_start])
+                if row not in columns:
+                    columns[row] = _utf16_columns(lines[row])
+                units = columns[row]
+                a, b = pos - line_start, stop - line_start
+                col, end_col = (a, b) if units is None else (units[a], units[b])
                 last = tokens[-1] if tokens else None
                 # Pygments splits some tokens (a string's quotes and body): touching pieces of a kind become one.
                 if last and last["line"] == row + 1 and last["kind"] == kind and last["endCol"] == col:

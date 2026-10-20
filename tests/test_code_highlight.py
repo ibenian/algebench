@@ -72,3 +72,16 @@ def test_endpoint():
     assert res.status_code == 200
     assert res.json()["tokens"] == [{"line": 1, "kind": "operator", "col": 2, "endCol": 3}, {"line": 1, "kind": "number", "col": 4, "endCol": 5}]
     assert client.post("/api/code/highlight", json={"language": "python", "source": "x" * 200_001}).status_code == 413
+
+
+def test_a_long_line_of_many_tokens_stays_fast():
+    # One 199,999-character line alternating 1 and +: ~200k tokens. The column conversion is linear, so this takes about as long as lexing (seconds, not minutes).
+    import time
+    source = "1+" * 99_999 + "1"
+    started = time.perf_counter()
+    tokens = highlight("python", source)["tokens"]
+    assert len(tokens) == 199_999 and tokens[-1]["endCol"] == len(source)
+    assert time.perf_counter() - started < 5, "highlighting a long line must not be quadratic"
+    astral = "😀" + "1+" * 49_999 + "1"
+    last = highlight("python", astral)["tokens"][-1]
+    assert last["endCol"] == len(astral.encode("utf-16-le")) // 2
