@@ -289,7 +289,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
  raw.import({arrayAt,arrayCount,concat:(...v:unknown[])=>v.join('')},{override:true});
  // Evaluate as the app does: single-quoted strings keep their contents literally.
  const math={evaluate:(expr:string,scope:Record<string,unknown>)=>raw.evaluate(_normalizeSingleQuotes(expr),scope)};
- const animated=lesson.scenes.filter((s:{data?:unknown})=>s.data);
+ const animated=lesson.scenes.filter((s:{data?:{trace?:unknown}})=>s.data?.trace);
  assert.deepEqual(animated.map((s:{id:string})=>s.id).sort(),Object.keys(expected).sort());
  for(const scene of animated){
   const [source,trace]=expected[scene.id]!,file=lesson.codeFiles.find((f:{id:string})=>f.id===scene.id);
@@ -343,7 +343,7 @@ test('every pattern scene states its problem first: as the step-0 caption and at
 test('every label tooltip reads a recorded tip column of well-formed LaTeX',()=>{
  const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  let tips=0;
- for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
+ for(const scene of lesson.scenes.filter((s:{data?:{trace?:unknown}})=>s.data?.trace)){
   for(const el of scene.steps[0].add.filter((e:{tooltipExpr?:string})=>e.tooltipExpr)){
    const column=/dataTable\('trace', frame, '(tip_\w+)'\)/.exec(el.tooltipExpr)?.[1];
    assert.ok(column,`${scene.id}/${el.id} reads a tip column`);
@@ -364,7 +364,7 @@ test('label code links resolve to a real line, the one that last assigned the va
  const lineMath=create(all!);
  const lesson=JSON.parse(readFileSync(new URL('../../../scenes/draft/common-algorithm-patterns.json',import.meta.url),'utf8'));
  let links=0;
- for(const scene of lesson.scenes.filter((s:{data?:unknown})=>s.data)){
+ for(const scene of lesson.scenes.filter((s:{data?:{trace?:unknown}})=>s.data?.trace)){
   const file=lesson.codeFiles.find((f:{id:string})=>f.id===scene.codeRef.file),lines=file.source.split('\n').length;
   for(const el of scene.steps[0].add.filter((e:{codeRef?:unknown})=>e.codeRef)){
    assert.equal(el.codeRef.file,file.id,`${scene.id}/${el.id} links into the scene's file`);

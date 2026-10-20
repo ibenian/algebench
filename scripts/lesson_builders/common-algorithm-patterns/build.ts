@@ -175,7 +175,104 @@ function placeholder(id: string, title: string, markdown: string, prompt: string
 
 const MD_TAIL = 'Use the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.';
 
-// ── Overview ──
+// ── Overview: a decision tree from what the problem gives you, through the signal, to the pattern ──
+// Each category has signals (the question to ask of the problem) and, under each, the pattern it leads to,
+// with interview problems that show that signal. Pattern names are the scenes' short names.
+const DECISIONS: { category: string; signals: { signal: string; pattern: string; scene: string; problems: string[] }[] }[] = [
+    { category: 'Sorted array', signals: [
+        { signal: 'pair or triple?', pattern: 'Two pointers', scene: 'two-pointers', problems: ['Two Sum II (167)', '3Sum (15)'] },
+        { signal: 'find a value fast?', pattern: 'Binary search', scene: 'rotated-search', problems: ['Search in Rotated Sorted Array (33)', 'Find Peak Element (162)'] } ] },
+    { category: 'Ranges in an array', signals: [
+        { signal: 'many range sums?', pattern: 'Prefix sum', scene: 'prefix-sum', problems: ['Range Sum Query (303)', 'Subarray Sum Equals K (560)'] },
+        { signal: 'window of size k?', pattern: 'Sliding window', scene: 'sliding-window', problems: ['Max Sum of k Consecutive', 'Longest Substring Without Repeating (3)'] },
+        { signal: 'best sum, any length?', pattern: 'Kadane', scene: 'kadane', problems: ['Maximum Subarray (53)'] },
+        { signal: 'max of each window?', pattern: 'Monotonic queue', scene: 'monotonic-queue', problems: ['Sliding Window Maximum (239)'] } ] },
+    { category: 'Order & selection', signals: [
+        { signal: 'next greater?', pattern: 'Monotonic stack', scene: 'monotonic-stack', problems: ['Daily Temperatures (739)', 'Next Greater Element (496)'] },
+        { signal: 'k largest?', pattern: 'Heap', scene: 'top-k', problems: ['Kth Largest Element (215)', 'Top K Frequent Elements (347)'] },
+        { signal: 'overlapping ranges?', pattern: 'Merge intervals', scene: 'merge-intervals', problems: ['Merge Intervals (56)', 'Meeting Rooms II (253)'] },
+        { signal: 'local best is safe?', pattern: 'Greedy', scene: 'greedy', problems: ['Jump Game (55)'] },
+        { signal: 'pairs cancel?', pattern: 'Bit tricks', scene: 'bit-manipulation', problems: ['Single Number (136)'] } ] },
+    { category: 'Strings', signals: [
+        { signal: 'pattern in text?', pattern: 'KMP', scene: 'string-matching', problems: ['First Occurrence in a String (28)'] },
+        { signal: 'shared prefixes?', pattern: 'Trie', scene: 'trie', problems: ['Implement Trie (208)', 'Word Search II (212)'] } ] },
+    { category: 'Linked list', signals: [
+        { signal: 'cycle or duplicate?', pattern: 'Fast & slow', scene: 'fast-slow', problems: ['Find the Duplicate Number (287)', 'Linked List Cycle II (142)'] },
+        { signal: 'reverse or reorder?', pattern: 'Reverse links', scene: 'linked-list-reversal', problems: ['Reverse Linked List (206)', 'Reorder List (143)'] } ] },
+    { category: 'Trees & graphs', signals: [
+        { signal: 'visit in an order?', pattern: 'Tree traversal', scene: 'tree-traversal', problems: ['Binary Tree Level Order (102)', 'Kth Smallest in a BST (230)'] },
+        { signal: 'grid of cells?', pattern: 'Grid DFS / BFS', scene: 'matrix-traversal', problems: ['Number of Islands (200)', 'Rotting Oranges (994)'] },
+        { signal: 'join as edges come?', pattern: 'Union-find', scene: 'union-find', problems: ['Redundant Connection (684)'] },
+        { signal: 'dependencies?', pattern: 'Topological sort', scene: 'topological-sort', problems: ['Course Schedule (207)'] },
+        { signal: 'cheapest path?', pattern: 'Dijkstra', scene: 'shortest-path', problems: ['Network Delay Time (743)'] } ] },
+    { category: 'Choices', signals: [
+        { signal: 'reuse sub-answers?', pattern: 'Dynamic prog.', scene: 'dynamic-programming', problems: ['House Robber (198)', 'Coin Change (322)'] },
+        { signal: 'two sequences?', pattern: '2D DP', scene: 'dp-2d', problems: ['Longest Common Subsequence (1143)', 'Edit Distance (72)'] },
+        { signal: 'all combinations?', pattern: 'Backtracking', scene: 'backtracking', problems: ['Subsets (78)', 'N-Queens (51)'] },
+        { signal: 'smaller copies?', pattern: 'Recursion', scene: 'recursion', problems: ['Pow(x, n) (50)'] } ] },
+];
+/** The overview's steps: the categories round the root question, then one decision tree per category. */
+function overviewSteps(): { steps: Json[]; data: Record<string, unknown[]> } {
+    const data: Record<string, unknown[]> = {};
+    const node = (t: string, col: string) => `dataTable('${t}', idx, '${col}')`;
+    const prob = (t: string, col: string) => `dataTable('${t}', problem, '${col}')`;
+    // A tree graph over table t: on[k] marks the lit path for the problem the slider picks.
+    const tree = (t: string, pt: string, layout: Json, size: { w: number; h: number }): Json => ({
+        id: 'decisions', type: 'graph', label: '', lengthExpr: `${data[t]!.length}`, valueExpr: node(t, 'text'),
+        treeLayout: { type: 'tidy', parentExpr: node(t, 'p'), ...layout },
+        nodeShape: 'rect', nodeWidth: size.w, nodeHeight: size.h, nodeCornerRadius: 0.16, valueLabel: 'inside', showIndices: false,
+        axisLabels: 'plane',   // text painted on each box, sized to it, so it fits at any zoom
+        // Deep fills so the white node text reads: the lit path gold (its pattern green), questions blue, patterns violet.
+        colorExpr: `arrayAt(${prob(pt, 'on')}, idx) == 1 ? (${node(t, 'kind')} == 2 ? '#2f7d66' : '#9a7420') : (${node(t, 'kind')} == 2 ? '#56468a' : (${node(t, 'kind')} == 1 ? '#335374' : '#4a5560'))`,
+        connectTo: { indexExpr: node(t, 'p'), pinned: true, bendExpr: '0', color: '#7f93aa',
+            colorExpr: `arrayAt(${prob(pt, 'on')}, idx) == 1 ? '${GOLD}' : ''`, highlightExpr: `arrayAt(${prob(pt, 'on')}, idx) == 1` },
+    });
+    // reset: each step's slider snapshots the one it replaces, so going back restores that step's problem list.
+    const slider = (pt: string) => ({ id: 'problem', label: 'Problem', min: 0, max: data[pt]!.length - 1, step: 1, default: 0, valueExpr: prob(pt, 'name'), reset: true });
+    // Step 1: the root question and the categories round it; a problem lights its category.
+    const all = DECISIONS.flatMap((d, k) => d.signals.flatMap(sg => sg.problems.map(name => ({ name, k, sg }))));
+    // pick: a category's first problem on this step's slider, which lists every category's problems in order.
+    const firstOf = DECISIONS.map((_, k) => all.findIndex(a => a.k === k));
+    data.dt_root = [{ text: 'What are you given?', p: -1, kind: 0, pick: -1 }, ...DECISIONS.map((d, k) => ({ text: d.category, p: 0, kind: 1, pick: firstOf[k] }))];
+    data.dp_root = all.map(({ name, k, sg }) => ({ name, on: data.dt_root!.map((_, i) => (i === 0 || i === k + 1 ? 1 : 0)),
+        why: `${name}: ${DECISIONS[k]!.category.toLowerCase()} → ${sg.signal} → ${sg.pattern}. Its step shows the whole branch.` }));
+    const steps: Json[] = [{
+        id: 'categories', title: 'What are you given?', description: 'Start from what the problem gives you.',
+        descriptionExpr: prob('dp_root', 'why'),
+        camera: { position: [0, 0, 14], target: [0, 0, 0] },
+        // The slider is replaced too, so coming back from a branch never keeps that branch's problem names.
+        remove: [{ id: '*' }, { type: 'slider' }], sliders: [slider('dp_root')],
+        add: [{ ...tree('dt_root', 'dp_root', {}, { w: 2.5, h: 0.75 }), treeLayout: { type: 'radial', parentExpr: node('dt_root', 'p'), origin: [0, 0, 0], levelGap: 3.9 }, nodeWidth: 3.0,
+            // Click a category to select its first problem (the root keeps the current one).
+            onClick: [{ action: 'setSlider', slider: 'problem', valueExpr: `${node('dt_root', 'pick')} < 0 ? problem : ${node('dt_root', 'pick')}` }] }],
+    }];
+    // One step per category: category → signals → patterns, and its problems on the slider.
+    DECISIONS.forEach((d, k) => {
+        const t = `dt_${k}`, pt = `dp_${k}`;
+        // pick: the first problem (slider value) that shows a node's signal; clicking the node selects it.
+        const first = d.signals.map((_, j) => d.signals.slice(0, j).reduce((n, sg) => n + sg.problems.length, 0));
+        // scene: a pattern node's scene, which clicking it opens.
+        data[t] = [{ text: d.category, p: -1, kind: 0, pick: -1, scene: '' },
+            ...d.signals.flatMap((sg, j) => [{ text: sg.signal, p: 0, kind: 1, pick: first[j], scene: '' }, { text: sg.pattern, p: 1 + 2 * j, kind: 2, pick: -1, scene: sg.scene }])];
+        data[pt] = d.signals.flatMap((sg, j) => sg.problems.map(name => ({ name,
+            on: data[t]!.map((_, i) => (i === 0 || i === 1 + 2 * j || i === 2 + 2 * j ? 1 : 0)),
+            why: `${name}: ${d.category.toLowerCase()}, and the problem asks "${sg.signal}" → ${sg.pattern}.` })));
+        steps.push({
+            id: `branch-${k}`, title: d.category, description: `${d.category}: which signal does the problem show?`,
+            descriptionExpr: prob(pt, 'why'),
+            camera: { position: [0, 0.6, 13], target: [0, 0.6, 0] },
+            remove: [{ id: '*' }, { type: 'slider' }], sliders: [slider(pt)],
+            // Left to right: the category, a column of signals, a column of the patterns they lead to.
+            add: [{ ...tree(t, pt, { origin: [-3.4, 0.6, 0], spacing: 1.15, levelGap: 3.1, orientation: 'horizontal' }, { w: 2.8, h: 0.8 }),
+                // Click a signal to pick the first problem that shows it; click a pattern to open its scene.
+                onClick: [{ action: 'setSlider', slider: 'problem', valueExpr: `${node(t, 'pick')} < 0 ? problem : ${node(t, 'pick')}` },
+                    { action: 'goToScene', sceneExpr: node(t, 'scene') }] }],
+        });
+    });
+    return { steps, data };
+}
+const overview = overviewSteps();
+
 scenes.push({
     id: 'overview', title: 'Which pattern fits?', description: 'Recognize which pattern a problem is asking for.', range: RANGE,
     camera: { position: [1.5, 0, 15], target: [1.5, 0, 0] }, elements: [grid,
@@ -214,8 +311,11 @@ Most interview problems are variations on a small set of patterns. The skill is 
 | Optimal value from overlapping subproblems | Reuse answers (dynamic programming) | Subproblems × work each |
 | Two sequences to align, or a grid walked right and down | Fill a table (2D dynamic programming) | O(m·n) |
 
+The steps here walk the same map as a **decision tree**: start from what the problem gives you, ask which signal it shows, and follow it to the pattern. Move **Problem** to see real interview problems take their path, or click a node: a category or a signal picks a problem that shows it, and a pattern opens its scene.
+
 Each following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.`,
     prompt: 'Help the learner recognize which pattern fits a problem. Ask them to name the signal (sorted input, contiguous range, cycle, next-greater, overlapping subproblems) before naming a pattern. Encourage predicting the pattern before revealing it.',
+    data: overview.data, steps: overview.steps,
 });
 
 // ── Prefix sum ──
