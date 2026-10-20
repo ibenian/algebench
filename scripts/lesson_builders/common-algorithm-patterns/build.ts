@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -77,7 +77,8 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
         example: `nums = ${list(IN.fastSlow.nums)} → ${end(fastSlowTrace(IN.fastSlow.nums)).slow}.` },
     'linked-list-reversal': { problem: 'Reverse a singly linked list in place and return its new head.',
         example: `${IN.linkedList.values.join(' → ')} → None becomes ${[...IN.linkedList.values].reverse().join(' → ')} → None.` },
-    'tree-traversal': { problem: 'Visit every node of a binary tree in a chosen order: preorder, inorder or postorder.' },
+    'tree-traversal': { problem: 'Visit every node of a binary tree in a chosen order: preorder, inorder, postorder or level by level.',
+        example: (() => { const t = IN.tree; const o = (k: 'preorder' | 'inorder' | 'level') => list(end(treeTraversalTrace(k, t.values, t.parents, t.sides)).out); return `preorder ${o('preorder')}, inorder ${o('inorder')}, level order ${o('level')}.`; })() },
     'dfs': { problem: 'List every root-to-leaf path in a binary tree.' },
     'bfs': { problem: "Return a binary tree's values level by level, top to bottom." },
     'matrix-traversal': { problem: 'In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.' },
@@ -1101,18 +1102,83 @@ ${MD_TAIL}
         ],
     });
 })();
-placeholder('tree-traversal', 'Walk a tree (traversal orders)', `# Walk a tree (traversal orders)
+// ── Tree traversal: one step per order, each playing its own run ──
+(() => {
+    const { values, parents, sides } = IN.tree;
+    const nd = (c: string) => `dataTable('treeNodes', idx, '${c}')`;
+    const ORDERS = [
+        { order: 'preorder', title: 'Preorder (DFS)', table: 'trace', what: 'node, then left, then right' },
+        { order: 'inorder', title: 'Inorder (DFS)', table: 'tt_inorder', what: 'left, then node, then right: a search tree in sorted order' },
+        { order: 'postorder', title: 'Postorder (DFS)', table: 'tt_postorder', what: 'left, then right, then node: children before their parent' },
+        { order: 'level', title: 'Level order (BFS)', table: 'tt_level', what: 'a queue, level by level, top to bottom' },
+    ] as const;
+    const runs = ORDERS.map(o => treeTraversalTrace(o.order, values, parents, sides));
+    // The same picture for every order, reading its own table.
+    const elements = (table: string, bfs: boolean): Json[] => {
+        const c = (col: string) => `dataTable('${table}', frame, '${col}')`;
+        const val = (i: string) => `arrayAt(${inp('values')}, ${i})`;
+        const waiting = (i: string) => `arrayAt(${c('waiting')}, ${i}) == 1`;
+        const pending = { ...array(bfs ? 'queue' : 'stack', bfs ? 'queue' : 'call stack', [-6.2, -2.3, 0], { from: c(bfs ? 'queue' : 'stack'), color: bfs ? BLUE : PINK }),
+            valueExpr: val(`arrayAt(${c(bfs ? 'queue' : 'stack')}, idx)`), labelSide: 'top' };
+        return [
+            // The tree: gold where the code is, pink on the call stack (or blue waiting in the queue), teal once visited.
+            {
+                id: 'tree', type: 'graph', label: 'tree', lengthExpr: String(values.length), valueExpr: val('idx'),
+                treeLayout: { type: 'binary', parentExpr: nd('p'), sideExpr: nd('s'), origin: [1.0, 3.7, 0], spacing: 0.9, levelGap: 1.3 },
+                nodeShape: 'rect', nodeWidth: 0.8, nodeHeight: 0.8, nodeCornerRadius: 0.4, valueLabel: 'inside', showIndices: false,
+                colorExpr: `idx == ${c('cur')} ? '${GOLD}' : (${waiting('idx')} ? '${bfs ? BLUE : PINK}' : (arrayAt(${c('visited')}, idx) == 1 ? '${TEAL}' : ''))`,
+                // Each node's edge to its parent; on a DFS the call stack's path from the root is lit.
+                connectTo: { indexExpr: nd('p'), pinned: true, bendExpr: '0', color: '#7f93aa',
+                    ...(bfs ? {} : { colorExpr: `${waiting('idx')} and ${waiting(nd('p'))} ? '${PINK}' : ''`, highlightExpr: `${waiting('idx')} and ${waiting(nd('p'))}` }) },
+                // The marker names the node by its value, as the code does (node.val), not by its position.
+                markers: [{ ...marker('node', c('cur'), GOLD, `${c('cur')} >= 0`), valueExpr: val(c('cur')) }],
+            },
+            pending,
+            { ...array('out', 'out', [-6.2, -4.3, 0], { from: c('out'), color: '#b69bea' }), labelSide: 'top' },
+            { ...label('node', `${c('cur')} < 0 ? 'node: None' : concat('node.val = ', ${val(c('cur'))})`, [4.6, -2.3, 0], ['tree', c('cur')]) },
+        ];
+    };
+    const table = values.map((_, i) => ({ p: parents[i], s: sides[i] }));
+    const steps = ORDERS.slice(1).map((o, k) => {
+        const run = runs[k + 1]!;
+        return {
+            id: o.order, title: o.title, description: `${o.title}: ${o.what}.`, descriptionExpr: `dataTable('${o.table}', frame, 'message')`,
+            remove: [{ id: '*' }, { type: 'slider' }],
+            sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: run.length - 1, step: 1, default: 0 }],
+            codeRef: { file: 'tree-traversal', lineExpr: `dataTable('${o.table}', frame, 'line')` },
+            add: elements(o.table, o.order === 'level'),
+        };
+    });
+    pattern({
+        id: 'tree-traversal', title: 'Walk a tree (traversal orders)', file: 'tree_traversal.py', source: TREE_TRAVERSAL_SOURCE,
+        input: { values }, trace: runs[0]!,
+        more: {
+            data: { treeNodes: table, ...Object.fromEntries(ORDERS.slice(1).map((o, k) => [o.table, runs[k + 1]])) },
+            steps,
+            locations: ORDERS.slice(1).flatMap((o, k) => runs[k + 1]!.map((f, snapshot) => ({ line: f.line, scene: 'tree-traversal', step: o.order, snapshot, label: `${o.title} · ${f.message}` }))),
+        },
+        markdown: `# Walk a tree (traversal orders)
 
 **Signal:** process every node of a tree in a specific order.
 
-- **Preorder** (node, left, right): copy or serialize a tree, print root-to-leaf paths.
-- **Inorder** (left, node, right): visits a binary search tree in sorted order.
-- **Postorder** (left, right, node): compute something from both children first, such as height or the maximum path sum.
+Each step plays one order on the same search tree:
 
-${SOON} *(Needs a binary-tree object.)*
+- **Preorder** (node, left, right), depth first: copy or serialize a tree, print root-to-leaf paths.
+- **Inorder** (left, node, right), depth first: visits a binary search tree in **sorted** order.
+- **Postorder** (left, right, node), depth first: compute something from both children first, such as height or the maximum path sum.
+- **Level order**, breadth first: a queue hands out nodes level by level; shortest paths in steps, or a tree's rows.
 
-**Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder).`,
-    'Explain the three orders and what each is good for. This scene has no visualization yet.');
+The depth-first orders differ only in **where** \`out.append\` sits between the two recursive calls; the call stack (pink) is always the path from the root to the current node. Level order swaps the stack for a queue (blue). Every node is visited once: O(n).
+
+${MD_TAIL}
+
+**Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder), Binary Tree Level Order Traversal (102, BFS), Binary Tree Right Side View (199).`,
+        prompt: 'Explain the three depth-first orders as the position of the visit between the recursive calls, and level order as a queue. Ask the learner to predict the next visited node before the player reveals it.',
+        elements: elements('trace', false),
+    });
+    const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
+    Object.assign(first, { title: ORDERS[0].title, description: `${ORDERS[0].title}: ${ORDERS[0].what}.` });
+})();
 placeholder('dfs', 'Go deep first (DFS)', `# Go deep first (DFS)
 
 **Signal:** explore every path, find connected components, detect cycles, or order dependencies.

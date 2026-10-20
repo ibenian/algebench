@@ -704,6 +704,98 @@ export function linkedListTrace(values: number[]) {
     return trace;
 }
 
+export const TREE_TRAVERSAL_SOURCE = `from collections import deque
+
+def preorder(node, out):
+    if node is None:
+        return
+    out.append(node.val)
+    preorder(node.left, out)
+    preorder(node.right, out)
+
+def inorder(node, out):
+    if node is None:
+        return
+    inorder(node.left, out)
+    out.append(node.val)
+    inorder(node.right, out)
+
+def postorder(node, out):
+    if node is None:
+        return
+    postorder(node.left, out)
+    postorder(node.right, out)
+    out.append(node.val)
+
+def level_order(root):
+    out, queue = [], deque([root])
+    while queue:
+        node = queue.popleft()
+        out.append(node.val)
+        for child in (node.left, node.right):
+            if child:
+                queue.append(child)
+    return out`;
+export type TreeOrder = 'preorder' | 'inorder' | 'postorder' | 'level';
+/**
+ * One traversal of a binary tree (node i: values[i], parent parents[i], side sides[i]). Per frame: cur, the
+ * node the code is at (−1 none); stack, the recursion's nodes from the root call down (DFS) or queue, the nodes
+ * waiting (BFS), both as node indexes; waiting, 0/1 per node on either; visited, 0/1 per node; out, the values
+ * appended so far.
+ */
+export function treeTraversalTrace(order: TreeOrder, values: number[], parents: number[], sides: number[]) {
+    const n = values.length;
+    const child = (i: number, side: number) => parents.findIndex((p, c) => p === i && sides[c] === side);
+    const visited = Array<number>(n).fill(0), out: number[] = [], stack: number[] = [], queue: number[] = [];
+    const v = { cur: -1, stack: [] as number[], queue: [] as number[], waiting: Array<number>(n).fill(0), visited: visited.slice(), out: [] as number[] };
+    const { trace, emit } = recorder(v);
+    const sync = () => {
+        v.stack = stack.slice(); v.queue = queue.slice(); v.visited = visited.slice(); v.out = out.slice();
+        v.waiting = Array.from({ length: n }, (_, i) => stack.includes(i) || queue.includes(i) ? 1 : 0);
+    };
+    const root = parents.indexOf(-1);
+    const L = { preorder: { check: 4, visit: 6, left: 7, right: 8 }, inorder: { check: 11, visit: 14, left: 13, right: 15 },
+        postorder: { check: 18, visit: 22, left: 20, right: 21 } } as const;
+    const visit = (i: number, line: number, why: string) => { visited[i] = 1; out.push(values[i]!); sync(); emit(line, `Visit ${values[i]}${why}: out = [${out.join(', ')}].`); };
+    if (order === 'level') {
+        queue.push(root); sync();
+        emit(25, `Start the queue with the root, ${values[root]}.`);
+        while (queue.length) {
+            emit(26, `The queue holds ${queue.map(i => values[i]).join(', ')}: keep going.`);
+            const i = queue.shift()!; v.cur = i; sync();
+            emit(27, `Take ${values[i]} from the front: the oldest node waiting, so levels come out in order.`);
+            visit(i, 28, '');
+            for (const side of [0, 1]) {
+                const c = child(i, side);
+                if (c < 0) continue;
+                queue.push(c); sync();
+                emit(31, `Queue its ${side ? 'right' : 'left'} child, ${values[c]}, behind the nodes already waiting.`);
+            }
+        }
+        v.cur = -1; sync();
+        emit(32, `Done: [${out.join(', ')}], level by level. Each node is queued and visited once: O(n).`, 'Done');
+        return trace;
+    }
+    const lines = L[order];
+    const walk = (i: number) => {
+        stack.push(i); v.cur = i; sync();
+        emit(lines.check, `${order}(${values[i]}): not None, so ${order === 'preorder' ? 'visit it, then go left, then right' : order === 'inorder' ? 'go left first' : 'go left, then right, and visit it last'}.`);
+        if (order === 'preorder') visit(i, lines.visit, ', on the way down');
+        const left = child(i, 0);
+        if (left >= 0) { v.cur = i; sync(); emit(lines.left, `Go left to ${values[left]}.`); walk(left); }
+        v.cur = i; sync();
+        if (order === 'inorder') visit(i, lines.visit, ', after everything on its left');
+        const right = child(i, 1);
+        if (right >= 0) { v.cur = i; sync(); emit(lines.right, `Go right to ${values[right]}.`); walk(right); }
+        v.cur = i; sync();
+        if (order === 'postorder') visit(i, lines.visit, ', after both children');
+        stack.pop(); v.cur = stack.at(-1) ?? -1; sync();
+    };
+    walk(root);
+    emit(lines.check, `Done: [${out.join(', ')}]. Each node is entered once: O(n) time, O(height) stack.`, 'Done');
+    return trace;
+}
+
 export const MONOTONIC_QUEUE_SOURCE = `from collections import deque
 
 def max_sliding_window(nums, k):

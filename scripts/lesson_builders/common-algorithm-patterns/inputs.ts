@@ -13,6 +13,8 @@ export const PATTERN_INPUTS = {
     topK: { nums: [7, 4, 9, 1, 8, 3, 6, 5], k: 3 },
     trie: { words: ['car', 'cat', 'cart', 'care', 'dog', 'do'], queries: ['ca', 'cab', 'do'] },
     linkedList: { values: [1, 2, 3, 4, 5] },
+    // A binary search tree: node i holds values[i]; parents[i] is its parent (-1: root), sides[i] 0 left / 1 right.
+    tree: { values: [8, 4, 12, 2, 6, 10, 14, 1, 3], parents: [-1, 0, 0, 1, 1, 2, 2, 3, 3], sides: [0, 0, 1, 0, 1, 0, 1, 0, 1] },
     monoQueue: { nums: [1, 3, -1, -3, 5, 3, 6, 7], k: 3 },
     greedy: { nums: [3, 2, 1, 0, 4] },
     bits: { nums: [4, 1, 2, 1, 2] },
