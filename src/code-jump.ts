@@ -39,18 +39,18 @@ export function callBow(depth: number, span: number, max = 28): number {
     return Math.min(max, 4 + span / 8 + Math.min(depth, 3) * 2);
 }
 
-/** Vertical offset of a waiting call's ends within their lines, so arrows from and to the same lines stack. */
-export function callStagger(depth: number): number {
-    return Math.min(depth, 4) * 2.5 - 4;
+/**
+ * How far an arrow's ends reach past their lines' centres, from its bow: an arrow that bows further also reaches
+ * further at both ends, so arrows sharing a line nest like brackets instead of crossing, whatever their lengths.
+ */
+export function endReach(bow: number): number {
+    return Math.max(-8, Math.min(8, bow - 16));
 }
 
-/**
- * SVG path for a waiting call's arrow, from its call site to the entry line: bowing by its depth, with both ends
- * nudged by its stagger, so nested calls read as indented, stacked brackets rather than one thick line.
- */
+/** SVG path for a waiting call's arrow, from its call site to the entry line, nested by its bow. */
 export function callArrowPath(x: number, y1: number, y2: number, depth: number): string {
-    const dy = callStagger(depth);
-    return arc(x, y1 + dy, y2 + dy, callBow(depth, Math.abs(y2 - y1)));
+    const bow = callBow(depth, Math.abs(y2 - y1)), out = endReach(bow) * Math.sign(y1 - y2);
+    return arc(x, y1 + out, y2 - out, bow);
 }
 
 /** Bow left by `reach`, then run straight into x for the last LEAD px, so the arrowhead points level at the number. */

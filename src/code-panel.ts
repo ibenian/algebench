@@ -26,7 +26,7 @@ export function setupCodePanel(): void {
     const tree=document.createElement('div');tree.className='code-file-tree';tree.setAttribute('aria-label','Code files');
     const title=document.createElement('div');title.className='code-file-title';
     const execution=document.createElement('div');execution.className='code-execution-status';execution.setAttribute('role','status');
-    let lastExecution='',lastLines=new Set<number>();
+    let lastExecution='',lastLines=new Set<number>(),lastPlace='';
     const body=document.createElement('div');body.className='code-source';body.setAttribute('aria-label','Source code');
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
@@ -170,8 +170,10 @@ export function setupCodePanel(): void {
             if(row.top<viewport.top||row.bottom>viewport.bottom)body.scrollTop+=row.top-viewport.top;
         }
         lastExecution=signature;
-        drawArrows(lineJump(lastLines,lines),calls,entry);
-        lastLines=lines;
+        // Only a move within one run is a jump: going to another step or scene starts afresh.
+        const place=`${state.currentSceneIndex}/${state.currentStepIndex}`;
+        drawArrows(place===lastPlace?lineJump(lastLines,lines):null,calls,entry);
+        lastLines=lines;lastPlace=place;
     }
     /**
      * The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,

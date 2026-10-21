@@ -24706,17 +24706,17 @@ function waitingCalls(value, lineCount) {
 function callBow(depth, span, max = 28) {
 	return Math.min(max, 4 + span / 8 + Math.min(depth, 3) * 2);
 }
-/** Vertical offset of a waiting call's ends within their lines, so arrows from and to the same lines stack. */
-function callStagger(depth) {
-	return Math.min(depth, 4) * 2.5 - 4;
-}
 /**
-* SVG path for a waiting call's arrow, from its call site to the entry line: bowing by its depth, with both ends
-* nudged by its stagger, so nested calls read as indented, stacked brackets rather than one thick line.
+* How far an arrow's ends reach past their lines' centres, from its bow: an arrow that bows further also reaches
+* further at both ends, so arrows sharing a line nest like brackets instead of crossing, whatever their lengths.
 */
+function endReach(bow) {
+	return Math.max(-8, Math.min(8, bow - 16));
+}
+/** SVG path for a waiting call's arrow, from its call site to the entry line, nested by its bow. */
 function callArrowPath(x, y1, y2, depth) {
-	const dy = callStagger(depth);
-	return arc(x, y1 + dy, y2 + dy, callBow(depth, Math.abs(y2 - y1)));
+	const bow = callBow(depth, Math.abs(y2 - y1)), out = endReach(bow) * Math.sign(y1 - y2);
+	return arc(x, y1 + out, y2 - out, bow);
 }
 /** Bow left by `reach`, then run straight into x for the last LEAD px, so the arrowhead points level at the number. */
 function arc(x, y1, y2, reach) {
@@ -24763,7 +24763,7 @@ function setupCodePanel() {
 	const execution = document.createElement("div");
 	execution.className = "code-execution-status";
 	execution.setAttribute("role", "status");
-	let lastExecution = "", lastLines = /* @__PURE__ */ new Set();
+	let lastExecution = "", lastLines = /* @__PURE__ */ new Set(), lastPlace = "";
 	const body = document.createElement("div");
 	body.className = "code-source";
 	body.setAttribute("aria-label", "Source code");
@@ -25000,8 +25000,10 @@ function setupCodePanel() {
 			if (row.top < viewport.top || row.bottom > viewport.bottom) body.scrollTop += row.top - viewport.top;
 		}
 		lastExecution = signature;
-		drawArrows(lineJump(lastLines, lines), calls, entry);
+		const place = `${state.currentSceneIndex}/${state.currentStepIndex}`;
+		drawArrows(place === lastPlace ? lineJump(lastLines, lines) : null, calls, entry);
 		lastLines = lines;
+		lastPlace = place;
 	}
 	/**
 	* The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,
