@@ -5,10 +5,10 @@ import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../../../src/array-operations.js';
 import {
-    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,
+    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,topoTrace,topoDfsTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
-    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,RECURSION_SOURCE,SUBSETS_SOURCE,
+    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,RECURSION_SOURCE,SUBSETS_SOURCE,TOPO_SOURCE,
 } from './algorithms.js';
 import type {Frame} from './algorithms.js';
 import {PATTERN_INPUTS as IN} from './inputs.js';
@@ -220,6 +220,31 @@ test('backtracking records every subset once, and the path is undone after each 
  parents.forEach((p,k)=>{if(p<0)return;const a=JSON.parse(texts[p]!),b=JSON.parse(texts[k]!);assert.deepEqual(b.slice(0,-1),a);assert.ok(a.length===0||b.at(-1)>a.at(-1));});
  assert.equal(subsetsTrace([]).trace.at(-1)!.out,1,'the empty list has one subset');
 });
+test('topological sort orders every course after its prerequisites, and a cycle returns nothing',()=>{
+ const pre:[number,number][]=[[1,0],[2,0],[3,1],[3,2],[4,2],[5,3],[5,4]];
+ const {trace,graph}=topoTrace(6,pre),f=last(trace),order=f.order as number[];
+ assert.equal(order.length,6);assert.equal(f.result,JSON.stringify(order).replace(/,/g,', '));
+ for(const [c,p] of pre)assert.ok(order.indexOf(p)<order.indexOf(c),`${p} before ${c}`);
+ assert.deepEqual(f.indeg,[0,0,0,0,0,0]);assert.deepEqual(f.queue,[]);
+ assert.deepEqual(f.seen,graph.map(g=>g.length),'every edge relaxed once');
+ // A course in the queue has nothing left to wait for.
+ for(const fr of trace)for(const q of fr.queue as number[])assert.equal((fr.indeg as number[])[q],0);
+ const cyc=last(topoTrace(3,[[1,0],[2,1],[1,2]]).trace);
+ assert.equal(cyc.result,'[]');assert.deepEqual(cyc.order,[0],'1 and 2 wait on each other');
+});
+test('topological sort by DFS reverses the post-order, with no in-degrees, and finds a cycle on the path',()=>{
+ const pre:[number,number][]=[[1,0],[2,0],[3,1],[3,2],[4,2],[5,3],[5,4]];
+ const {trace}=topoDfsTrace(6,pre),f=last(trace),order=JSON.parse(f.result as string) as number[];
+ assert.equal(order.length,6);
+ for(const [c,p] of pre)assert.ok(order.indexOf(p)<order.indexOf(c),`${p} before ${c}`);
+ assert.deepEqual([...(f.order as number[])].reverse(),order);assert.deepEqual(f.state,[2,2,2,2,2,2]);
+ assert.deepEqual(f.calls,[],'every dfs call returned');
+ // A course is appended only after everything that depends on it.
+ for(const [c,p] of pre)assert.ok((f.order as number[]).indexOf(c)<(f.order as number[]).indexOf(p));
+ // The waiting calls match the courses on the path (state 1), one each.
+ for(const fr of trace)assert.ok((fr.calls as number[]).length>=(fr.state as number[]).filter(x=>x===1).length);
+ assert.equal(last(topoDfsTrace(3,[[1,0],[2,1],[1,2]]).trace).result,'[]');
+});
 test('monotonic queue gives every window maximum and keeps the deque decreasing',()=>{
  const {nums,k}=IN.monoQueue,trace=monotonicQueueTrace(nums,k);
  assert.deepEqual(last(trace).out,nums.slice(0,nums.length-k+1).map((_,i)=>Math.max(...nums.slice(i,i+k))));
@@ -284,7 +309,7 @@ test('KMP finds every occurrence, including overlaps, and builds lps',()=>{
 test('every trace frame has the same keys and ends Done',()=>{
  for(const trace of [prefixSumTrace(IN.prefix.nums,IN.prefix.queries),twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target),
   slidingWindowTrace(IN.slidingWindow.nums,IN.slidingWindow.k),fastSlowTrace(IN.fastSlow.nums),monotonicStackTrace(IN.monotonic.temps),
-  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),powerTrace(IN.recursion.x,IN.recursion.n).trace,fibTrace(IN.recursion.fib).trace,subsetsTrace(IN.subsets.nums).trace,
+  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),powerTrace(IN.recursion.x,IN.recursion.n).trace,fibTrace(IN.recursion.fib).trace,subsetsTrace(IN.subsets.nums).trace,topoTrace(IN.topo.n,IN.topo.prerequisites).trace,topoDfsTrace(IN.topo.n,IN.topo.prerequisites).trace,
   monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k),greedyTrace(IN.greedy.nums),bitsTrace(IN.bits.nums),
   unionFindTrace(IN.unionFind.n,IN.unionFind.edges),kmpTrace(IN.kmp.text,IN.kmp.pattern)]){
   const keys=Object.keys(trace[0]!).sort();
@@ -313,6 +338,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
   'matrix-traversal':[ISLANDS_SOURCE,islandsTrace(IN.islands.grid)],
   'recursion':[RECURSION_SOURCE,powerTrace(IN.recursion.x,IN.recursion.n).trace],
   'backtracking':[SUBSETS_SOURCE,subsetsTrace(IN.subsets.nums).trace],
+  'topological-sort':[TOPO_SOURCE,topoTrace(IN.topo.n,IN.topo.prerequisites).trace],
   'monotonic-queue':[MONOTONIC_QUEUE_SOURCE,monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k)],
   'greedy':[GREEDY_SOURCE,greedyTrace(IN.greedy.nums)],
   'bit-manipulation':[BITS_SOURCE,bitsTrace(IN.bits.nums)],

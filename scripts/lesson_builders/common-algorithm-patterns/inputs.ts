@@ -13,6 +13,8 @@ export const PATTERN_INPUTS = {
     topK: { nums: [7, 4, 9, 1, 8, 3, 6, 5], k: 3 },
     trie: { words: ['car', 'cat', 'cart', 'care', 'dog', 'do'], queries: ['ca', 'cab', 'do'] },
     linkedList: { values: [1, 2, 3, 4, 5] },
+    // Course Schedule II: [course, prerequisite] pairs; an edge runs from the prerequisite to the course.
+    topo: { n: 6, prerequisites: [[1, 0], [2, 0], [3, 1], [3, 2], [4, 2], [5, 3], [5, 4]] as [number, number][] },
     recursion: { x: 2, n: 13, fib: 4 },
     subsets: { nums: [1, 2, 3] },
     islands: { grid: [
