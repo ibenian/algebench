@@ -8984,7 +8984,10 @@ function createNarrator(stateKey, describe) {
 		if (!on || inFlight || key === null || key === sentKey) return;
 		inFlight = true;
 		sentKey = key;
-		window.sendChatMessage(prompt(describe()), { silent: true }).then((sent) => {
+		window.sendChatMessage(prompt(describe()), {
+			silent: true,
+			noTools: true
+		}).then((sent) => {
 			inFlight = false;
 			if (!sent) {
 				sentKey = null;
@@ -9208,8 +9211,11 @@ function setupStepPlayer() {
 			start();
 		}
 	};
+	let shownAt = "";
 	function refresh() {
-		pause();
+		const at = `${state.currentSceneIndex}/${state.currentStepIndex}`;
+		if (at !== shownAt || timer === null) pause();
+		shownAt = at;
 		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
 		speed.hidden = !config?.speedControl;
 		render();
@@ -26797,6 +26803,7 @@ function setupJsonViewer() {
 			buildLineOffsets(text);
 			_pathLineMap = pathLineMap;
 			if (treePanel) _renderJsonTree(treePanel, json);
+			resetTreeSearch();
 		} else {
 			content.textContent = "// No scene loaded";
 			buildLineOffsets("// No scene loaded");
@@ -26901,9 +26908,17 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 		} else if (summaryBar) summaryBar.classList.add("hidden");
 		overlay.classList.remove("hidden");
 	});
-	closeBtn.addEventListener("click", () => overlay.classList.add("hidden"));
+	const closeViewer = () => {
+		overlay.classList.add("hidden");
+		content.textContent = "";
+		buildLineOffsets("");
+		_pathLineMap = {};
+		treePanel?.replaceChildren();
+		resetTreeSearch();
+	};
+	closeBtn.addEventListener("click", closeViewer);
 	overlay.addEventListener("click", (e) => {
-		if (e.target === overlay) overlay.classList.add("hidden");
+		if (e.target === overlay) closeViewer();
 	});
 	copyBtn.addEventListener("click", () => {
 		navigator.clipboard.writeText(content.textContent).then(() => {
@@ -26914,7 +26929,7 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 		});
 	});
 	document.addEventListener("keydown", (e) => {
-		if (e.key === "Escape" && !overlay.classList.contains("hidden")) overlay.classList.add("hidden");
+		if (e.key === "Escape" && !overlay.classList.contains("hidden")) closeViewer();
 	});
 	const keyInput = document.getElementById("json-search-key");
 	const valInput = document.getElementById("json-search-val");
@@ -26925,33 +26940,54 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 	if (!keyInput || !valInput) return;
 	let _matchItems = [];
 	let _matchIndex = -1;
+	let _searchIndex = null;
+	let _marked = [];
+	function resetTreeSearch() {
+		_searchIndex = null;
+		_marked = [];
+		_matchItems = [];
+		_matchIndex = -1;
+		treePanel?.classList.remove("jt-searching");
+	}
+	function searchIndex() {
+		if (!_searchIndex) _searchIndex = [...treePanel.querySelectorAll(".jt-item")].map((el) => {
+			const row = el.querySelector(":scope > .jt-row");
+			return {
+				el,
+				key: row?.querySelector(".jt-key")?.textContent?.toLowerCase() ?? "",
+				val: row?.querySelector(".jt-val")?.textContent?.toLowerCase() ?? ""
+			};
+		});
+		return _searchIndex;
+	}
 	function applyTreeSearch() {
 		if (!treePanel) return;
 		const focused = document.activeElement;
 		const keyTerm = keyInput.value.trim().toLowerCase();
 		const valTerm = valInput.value.trim().toLowerCase();
-		const items = [...treePanel.querySelectorAll(".jt-item")];
-		items.forEach((el) => el.classList.remove("jt-dim", "jt-match"));
+		for (const el of _marked) el.classList.remove("jt-match", "jt-path");
+		_marked = [];
 		[keyInput, valInput].forEach((inp) => inp.classList.remove("jsb-has-results", "jsb-no-results"));
 		if (keyCount) keyCount.textContent = "";
 		if (valCount) valCount.textContent = "";
 		_matchItems = [];
 		_matchIndex = -1;
-		if (!keyTerm && !valTerm) return;
-		items.forEach((el) => {
-			const keyEl = el.querySelector(":scope > .jt-row .jt-key");
-			const valEl = el.querySelector(":scope > .jt-row .jt-val");
-			const keyText = keyEl ? keyEl.textContent.toLowerCase() : "";
-			const valText = valEl ? valEl.textContent.toLowerCase() : "";
-			const keyOk = !keyTerm || keyText.includes(keyTerm);
-			const valOk = !valTerm || valText.includes(valTerm);
-			if (keyOk && valOk) el.classList.add("jt-match");
-			else el.classList.add("jt-dim");
-		});
-		treePanel.querySelectorAll(".jt-item.jt-match").forEach((matchEl) => {
+		if (!keyTerm && !valTerm) {
+			treePanel.classList.remove("jt-searching");
+			return;
+		}
+		treePanel.classList.add("jt-searching");
+		_matchItems = searchIndex().filter((item) => (!keyTerm || item.key.includes(keyTerm)) && (!valTerm || item.val.includes(valTerm))).map((item) => item.el);
+		for (const matchEl of _matchItems) {
+			matchEl.classList.add("jt-match");
+			_marked.push(matchEl);
 			let ancestor = matchEl.parentElement;
 			while (ancestor && ancestor !== treePanel) {
-				if (ancestor.classList.contains("jt-item")) ancestor.classList.remove("jt-dim");
+				if (ancestor.classList.contains("jt-item")) {
+					if (ancestor.classList.contains("jt-path") || ancestor.classList.contains("jt-match")) break;
+					ancestor.classList.add("jt-path");
+					_marked.push(ancestor);
+				}
 				if (ancestor.classList.contains("jt-children") && ancestor.classList.contains("jt-collapsed")) {
 					ancestor.classList.remove("jt-collapsed");
 					const row = ancestor.previousElementSibling;
@@ -26962,8 +26998,7 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 				}
 				ancestor = ancestor.parentElement;
 			}
-		});
-		_matchItems = [...treePanel.querySelectorAll(".jt-item.jt-match")];
+		}
 		const n = _matchItems.length;
 		if (keyTerm) {
 			keyInput.classList.toggle("jsb-has-results", n > 0);
@@ -26993,12 +27028,31 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 		if (valCount) valCount.textContent = label;
 		if (keyCount) keyCount.textContent = label;
 	}
-	keyInput.addEventListener("input", applyTreeSearch);
-	valInput.addEventListener("input", applyTreeSearch);
+	let searchTimer = null;
+	const scheduleSearch = () => {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			searchTimer = null;
+			applyTreeSearch();
+		}, 150);
+	};
+	const flushSearch = () => {
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+			searchTimer = null;
+			applyTreeSearch();
+		}
+	};
+	keyInput.addEventListener("input", scheduleSearch);
+	valInput.addEventListener("input", scheduleSearch);
 	[keyInput, valInput].forEach((inp) => {
 		inp.addEventListener("keydown", (e) => {
 			if (e.key === "Enter") {
 				e.preventDefault();
+				if (searchTimer) {
+					flushSearch();
+					return;
+				}
 				navigateMatch(e.shiftKey ? -1 : 1);
 			}
 		});

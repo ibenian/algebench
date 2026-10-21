@@ -110,8 +110,13 @@ export function setupStepPlayer(): void {
         start();
     };
     speed.onchange=()=>{if(timer!==null){clearTimeout(timer);timer=null;start();}};
+    // A navigation event that lands where we already are (a re-render, the tutor naming the current step) must not
+    // stop playback; only a real scene or step change does.
+    let shownAt='';
     function refresh(){
-        pause();
+        const at=`${state.currentSceneIndex}/${state.currentStepIndex}`;
+        if(at!==shownAt||timer===null)pause();
+        shownAt=at;
         config=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.stepPlayback;
         speed.hidden=!config?.speedControl;
         render();

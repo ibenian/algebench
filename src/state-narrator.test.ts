@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { createNarrator } from '/state-narrator.js';
 
 function harness() {
-    const sent: string[] = []; const prompts: string[] = []; let stops = 0; let key: string | null = 's:0';
+    const sent: string[] = []; const prompts: string[] = []; const options: {silent?: boolean; noTools?: boolean}[] = []; let stops = 0; let key: string | null = 's:0';
     let resolveTurn: ((ok: boolean) => void) | null = null;
     (globalThis as any).window = {
-        sendChatMessage: (text: string) => { sent.push(key!); prompts.push(text); return new Promise<boolean>(r => { resolveTurn = r; }); },
+        sendChatMessage: (text: string, opts?: {silent?: boolean; noTools?: boolean}) => { sent.push(key!); prompts.push(text); options.push(opts ?? {}); return new Promise<boolean>(r => { resolveTurn = r; }); },
         algebenchStopTTS: () => { stops++; },
     };
     const narrator = createNarrator(() => key, () => `state ${key}`);
-    return { narrator, sent, prompts, stops: () => stops, setKey: (k: string | null) => { key = k; }, finish: (ok = true) => resolveTurn?.(ok) };
+    return { narrator, sent, prompts, options, stops: () => stops, setKey: (k: string | null) => { key = k; }, finish: (ok = true) => resolveTurn?.(ok) };
 }
 
 test('turning on narrates at once; changes settle, stop speech, and never overlap a turn', async () => {
@@ -19,6 +19,7 @@ test('turning on narrates at once; changes settle, stop speech, and never overla
         const h = harness();
         h.narrator.set(true);
         assert.deepEqual(h.sent, ['s:0'], 'sent immediately');
+        assert.deepEqual(h.options[0], {silent: true, noTools: true}, 'silent, and no tools: narrating never moves the lesson');
         h.setKey('s:1'); h.narrator.stateChanged(); h.setKey('s:2'); h.narrator.stateChanged();
         assert.equal(h.stops(), 2, 'speech for the old state stops on each change');
         mock.timers.tick(600);

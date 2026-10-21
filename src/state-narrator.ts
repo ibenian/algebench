@@ -42,7 +42,9 @@ export function createNarrator(stateKey: () => string | null, describe: () => st
         const key = stateKey();
         if (!on || inFlight || key === null || key === sentKey) return;
         inFlight = true; sentKey = key;
-        void window.sendChatMessage(prompt(describe()), {silent: true}).then(sent => {
+        // No tools: a narration is one sentence; a tool call (navigate_to, set_sliders) would move the lesson
+        // under the learner and stop playback.
+        void window.sendChatMessage(prompt(describe()), {silent: true, noTools: true}).then(sent => {
             inFlight = false;
             if (!sent) { sentKey = null; if (on) settle.after(RETRY_MS); return; }   // another turn was in flight
             doneKey = key; answeredAt = Date.now();
