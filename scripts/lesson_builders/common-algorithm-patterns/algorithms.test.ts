@@ -194,6 +194,9 @@ test('recursion: fast power halves n each call; naive fib branches and repeats w
  assert.deepEqual(p.parents,[-1,0,1,2,3],'a chain: each call makes one smaller call');
  assert.equal((f.text as string[])[0],'power(2, 13) = 8192');
  assert.ok((f.done as number[]).every(d=>d===1));
+ // The deepest moment: four recursive calls wait on line 4 (the first call came from outside the code).
+ assert.equal(Math.max(...p.trace.map(fr=>(fr.calls as number[]).length)),4);
+ assert.ok(p.trace.every(fr=>(fr.calls as number[]).every(l=>l===4)));assert.deepEqual(f.calls,[]);
  const q=fibTrace(4),g=last(q.trace),texts=g.text as string[];
  assert.equal(texts[0],'fib(4) = 3');
  assert.equal(q.parents.length,9,'fib(4) makes 9 calls');
@@ -209,6 +212,9 @@ test('backtracking records every subset once, and the path is undone after each 
  assert.equal(f.out,8);assert.equal(parents.length,8,'one call per subset');
  assert.deepEqual([...texts].sort(),['[1, 2, 3]','[1, 2]','[1, 3]','[1]','[2, 3]','[2]','[3]','[]']);
  assert.deepEqual(f.path,[],'every choice was undone');
+ // Each frame's waiting calls: the first made from line 11, every deeper one from line 8, one per waiting call.
+ for(const fr of trace){const c=fr.calls as number[],w=(fr.stack as number[]).reduce((a,b)=>a+b,0);assert.equal(c.length,w);c.forEach((l,k)=>assert.equal(l,k===0?11:8));}
+ assert.deepEqual(f.calls,[],'every call has returned');
  assert.deepEqual(f.outText,texts,'out holds each call\'s subset, in call order');
  // Each child's path is its parent's path plus one larger number.
  parents.forEach((p,k)=>{if(p<0)return;const a=JSON.parse(texts[p]!),b=JSON.parse(texts[k]!);assert.deepEqual(b.slice(0,-1),a);assert.ok(a.length===0||b.at(-1)>a.at(-1));});

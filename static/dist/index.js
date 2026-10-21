@@ -3466,6 +3466,20 @@ function makeAiAskButton(className, title, getMessage) {
 function makeSilentAiAskButton(className, title, getMessage) {
 	return _makeAiAskButton(className, title, getMessage, true);
 }
+/** Send a prompt to the tutor as the learner's message, or with ⌘/Ctrl held put it in the input to edit first. */
+function sendAiPrompt(message, e) {
+	openChatPanel();
+	if (e.metaKey || e.ctrlKey) {
+		const input = document.getElementById("chat-input");
+		if (input) {
+			input.value = message;
+			input.focus();
+			input.dispatchEvent(new Event("input"));
+		}
+		return;
+	}
+	if (typeof sendChatMessage === "function" && !_chatBusy()) sendChatMessage(message);
+}
 /** True while a chat turn is in flight (chat.ts owns the state). */
 function _chatBusy() {
 	return typeof window.algebenchChatBusy === "function" && window.algebenchChatBusy();
@@ -24558,7 +24572,179 @@ function paintTokens(code, tokens) {
 	});
 }
 //#endregion
+//#region src/code-prompts.ts
+var CODE_PROMPTS = [
+	{
+		label: "Analyze code structure",
+		prompt: "Analyze the structure of this code: its functions and how they call each other, its loops and branches, and the data structures it keeps. Say where the selected lines fit in."
+	},
+	{
+		label: "What's this line for?",
+		prompt: "What is the selected code for? Say what goes wrong, or what is missing, if it were removed."
+	},
+	{
+		label: "Analyze call stack",
+		prompt: "Analyze the call stack at the current step: each call still waiting to return, outermost first, with its arguments and what it is waiting for, and the call that is running now."
+	},
+	{
+		label: "I don't understand this line",
+		prompt: "I don't understand the selected code. Explain it in plain words, one piece at a time, using the values on screen right now."
+	},
+	{
+		label: "How many times does this line run?",
+		prompt: "How many times does the selected code run for this input? Then say how that count grows with the input size, and why."
+	},
+	{
+		label: "Its share of the complexity",
+		prompt: "How does the selected code contribute to the program's runtime and space complexity? Say whether it dominates or not, and why."
+	},
+	{
+		label: "Total runtime / space complexity",
+		prompt: "What is the total runtime and space complexity of this code? Derive both from the loops and the recursion, and count the call stack and the output in the space."
+	},
+	{
+		label: "Complexity of this function only",
+		prompt: "What are the runtime and space complexity of only the function that contains the selected code, not counting its callers?"
+	}
+];
+/** The `def` enclosing a line (1-based): the nearest one above it, indented less than the line, or null. */
+function enclosingFunction(source, line) {
+	const lines = source.split("\n");
+	const indent = (text) => text.length - text.trimStart().length;
+	let limit = lines[line - 1] !== void 0 && lines[line - 1].trim() ? indent(lines[line - 1]) : Infinity;
+	for (let i = line - 1; i >= 0; i--) {
+		const text = lines[i];
+		if (!text.trim()) continue;
+		const def = /^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(/.exec(text);
+		if (def && (i === line - 1 || indent(text) < limit)) return {
+			name: def[1],
+			line: i + 1
+		};
+		limit = Math.min(limit, indent(text));
+		if (limit === 0 && !def) return null;
+	}
+	return null;
+}
+/** The message for one prompt: the request, then the code and the state it is about. */
+function codePromptMessage(prompt, c) {
+	const fn = enclosingFunction(c.source, c.first);
+	const numbered = c.source.split("\n").map((text, i) => `${String(i + 1).padStart(3)}  ${text}`).join("\n");
+	return [
+		prompt.prompt,
+		"",
+		`File: ${c.path} (shown, not executed)`,
+		`Selected: ${c.first === c.last ? `line ${c.first}` : `lines ${c.first}–${c.last}`}${fn ? `, inside ${fn.name}() (line ${fn.line})` : ""}`,
+		`Selected text:\n${c.excerpt}`,
+		`Executing now: ${c.executing.length ? `line ${c.executing.join(", ")}` : "no line marked"}`,
+		`Calls waiting to return (call-site lines, outermost first): ${c.waitingCalls.length ? c.waitingCalls.join(", ") : "none"}`,
+		`Scene: ${c.scene}, step ${c.step}`,
+		`Scalar variables: ${JSON.stringify(c.values)}`,
+		`Full source:\n${numbered}`
+	].join("\n");
+}
+//#endregion
+//#region src/menu-placement.ts
+/**
+* Horizontal placement for a popup menu anchored to a button inside a clipping panel: where its left edge goes,
+* relative to the anchor, so the menu stays inside the panel's bounds (less a margin). It starts aligned with
+* the anchor's left edge, shifts left only as far as it must, and never past the panel's left edge; a menu
+* wider than the room is narrowed to fit (the caller lets its items wrap).
+*/
+function menuPlacement(anchorLeft, menuWidth, boundsLeft, boundsRight, margin = 8) {
+	const room = Math.max(0, boundsRight - boundsLeft - 2 * margin);
+	const width = Math.min(menuWidth, room);
+	return {
+		offset: Math.max(boundsLeft + margin, Math.min(anchorLeft, boundsRight - margin - width)) - anchorLeft,
+		maxWidth: room
+	};
+}
+//#endregion
+//#region src/code-jump.ts
+/**
+* The executing line's move, drawn in the code panel's gutter: when one marked line gives way to another in the
+* same file, an arrow arcs beside the line numbers from the old line to the new one, and both numbers light up
+* for a moment. Several marked lines, or none, on either side is not a move.
+*
+* A call into a function is different: its arrow, from the call site to the function's entry line, stays until
+* the call returns. A recursive call nests inside its caller, so each waiting call's arrow bows a little
+* further out than the one it was made from, and the gutter shows the call stack's depth.
+*/
+/** The move from one set of marked lines to the next: one line to a different one, or null. */
+function lineJump(previous, next) {
+	if (previous.size !== 1 || next.size !== 1) return null;
+	const [from] = previous, [to] = next;
+	return from === to ? null : {
+		from,
+		to
+	};
+}
+/**
+* SVG path for the arrow from y1 down (or up) to y2, both ending at x: a curve that bows left in proportion to
+* its length (up to `bow` px), so adjacent lines get a small hook and arrows nest instead of crossing.
+*/
+function jumpArrowPath(x, y1, y2, bow = 28) {
+	return arc(x, y1, y2, callBow(0, Math.abs(y2 - y1), bow));
+}
+/** The call-site lines of the calls still waiting to return, outermost first, from a callsExpr value. */
+function waitingCalls(value, lineCount) {
+	const matrix = value;
+	const raw = matrix && typeof matrix.toArray === "function" ? matrix.toArray() : value;
+	if (!Array.isArray(raw)) return [];
+	return raw.filter((line) => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lineCount);
+}
+/**
+* Bow of an arrow spanning `span` px: mostly its length, so a short arrow stays inside a longer one instead of
+* crossing it, plus a little per call depth to part arrows that share both lines. Capped at `max`.
+*/
+function callBow(depth, span, max = 28) {
+	return Math.min(max, 4 + span / 8 + Math.min(depth, 3) * 2);
+}
+/** Vertical offset of a waiting call's ends within their lines, so arrows from and to the same lines stack. */
+function callStagger(depth) {
+	return Math.min(depth, 4) * 2.5 - 4;
+}
+/**
+* SVG path for a waiting call's arrow, from its call site to the entry line: bowing by its depth, with both ends
+* nudged by its stagger, so nested calls read as indented, stacked brackets rather than one thick line.
+*/
+function callArrowPath(x, y1, y2, depth) {
+	const dy = callStagger(depth);
+	return arc(x, y1 + dy, y2 + dy, callBow(depth, Math.abs(y2 - y1)));
+}
+/** Bow left by `reach`, then run straight into x for the last LEAD px, so the arrowhead points level at the number. */
+function arc(x, y1, y2, reach) {
+	const tip = x - LEAD;
+	return `M ${x} ${y1} C ${x - reach} ${y1}, ${tip - reach} ${y2}, ${tip} ${y2} L ${x} ${y2}`;
+}
+var LEAD = 7;
+/** Every distinct move between lines in a run's sequence of executing lines, in order of first appearance. */
+function lineTransitions(sequence) {
+	const seen = /* @__PURE__ */ new Set(), out = [];
+	for (let i = 1; i < sequence.length; i++) {
+		const from = sequence[i - 1], to = sequence[i], key = `${from}>${to}`;
+		if (from !== to && !seen.has(key)) {
+			seen.add(key);
+			out.push({
+				from,
+				to
+			});
+		}
+	}
+	return out;
+}
+/** The moves into and out of one line. */
+function movesAt(moves, line) {
+	return {
+		incoming: moves.filter((m) => m.to === line),
+		outgoing: moves.filter((m) => m.from === line)
+	};
+}
+/** How long the arrow and the lit numbers hold before fading (ms). */
+var JUMP_HOLD_MS = 1e3;
+//#endregion
 //#region src/code-panel.ts
+/** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
+var GUTTER_X = 37;
 function setupCodePanel() {
 	const host = document.getElementById("dock-tab-code");
 	if (!host) return;
@@ -24570,7 +24756,7 @@ function setupCodePanel() {
 	const execution = document.createElement("div");
 	execution.className = "code-execution-status";
 	execution.setAttribute("role", "status");
-	let lastExecution = "";
+	let lastExecution = "", lastLines = /* @__PURE__ */ new Set();
 	const body = document.createElement("div");
 	body.className = "code-source";
 	body.setAttribute("aria-label", "Source code");
@@ -24594,8 +24780,89 @@ function setupCodePanel() {
 	jump.textContent = "↗ Go to step";
 	const what = document.createElement("span");
 	what.className = "code-line-actions";
-	actions.append(selectionLabel, ask, jump, what);
+	actions.append(selectionLabel, ask, jump, what, codePromptsMenu());
 	host.append(tree, title, execution, body, actions, targets);
+	/** "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. */
+	function codePromptsMenu() {
+		const wrap = document.createElement("span");
+		wrap.className = "preset-more code-prompts";
+		const toggle = document.createElement("button");
+		toggle.type = "button";
+		toggle.className = "code-prompts-btn";
+		toggle.textContent = "⋯";
+		toggle.title = "Ask AI to analyze this code";
+		toggle.setAttribute("aria-label", "More AI prompts about this code");
+		toggle.setAttribute("aria-haspopup", "menu");
+		toggle.setAttribute("aria-expanded", "false");
+		const menu = document.createElement("div");
+		menu.className = "preset-more-menu";
+		menu.setAttribute("role", "menu");
+		menu.hidden = true;
+		const close = () => {
+			menu.hidden = true;
+			toggle.setAttribute("aria-expanded", "false");
+			document.removeEventListener("pointerdown", outside, true);
+			document.removeEventListener("keydown", escape, true);
+		};
+		const outside = (e) => {
+			if (!wrap.contains(e.target)) close();
+		};
+		const escape = (e) => {
+			if (e.key === "Escape") {
+				close();
+				toggle.focus();
+			}
+		};
+		for (const prompt of CODE_PROMPTS) {
+			const item = document.createElement("button");
+			item.type = "button";
+			item.className = "preset-more-item";
+			item.setAttribute("role", "menuitem");
+			item.textContent = prompt.label;
+			item.title = prompt.prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
+			item.addEventListener("click", (e) => {
+				close();
+				const message = codeMessage(prompt);
+				if (message) sendAiPrompt(message, e);
+			});
+			menu.append(item);
+		}
+		toggle.addEventListener("click", () => {
+			if (!menu.hidden) {
+				close();
+				return;
+			}
+			menu.hidden = false;
+			menu.style.left = "0px";
+			menu.style.maxWidth = "";
+			const bounds = (wrap.closest(".tab-content, #dock-tab-code") ?? document.documentElement).getBoundingClientRect();
+			const { offset, maxWidth } = menuPlacement(wrap.getBoundingClientRect().left, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
+			menu.style.maxWidth = `${maxWidth}px`;
+			menu.style.left = `${offset}px`;
+			toggle.setAttribute("aria-expanded", "true");
+			document.addEventListener("pointerdown", outside, true);
+			document.addEventListener("keydown", escape, true);
+			menu.querySelector("button")?.focus();
+		});
+		wrap.append(toggle, menu);
+		return wrap;
+	}
+	function codeMessage(prompt) {
+		if (!selected || !first) return null;
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		return codePromptMessage(prompt, {
+			path: selected.path,
+			source: selected.source,
+			first,
+			last,
+			excerpt,
+			executing: [...lastLines],
+			waitingCalls: shownCalls,
+			scene: scene?.title ?? "",
+			step: state.currentStepIndex + 1,
+			values: Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value]))
+		});
+	}
 	function renderLineActions() {
 		what.replaceChildren();
 		const scene = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.id;
@@ -24685,6 +24952,7 @@ function setupCodePanel() {
 		let lines = /* @__PURE__ */ new Set();
 		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
 		const ref = scene?.steps?.[state.currentStepIndex]?.codeRef ?? scene?.codeRef;
+		let calls = [], entry;
 		if (ref) {
 			const target = resolveCodeRef(files, ref, evaluate);
 			if (target && (entering || target.file !== followed) && target.file !== selected) {
@@ -24693,7 +24961,16 @@ function setupCodePanel() {
 				return;
 			}
 			followed = target?.file;
-			if (target && target.file === selected) lines = /* @__PURE__ */ new Set([target.line]);
+			if (target && target.file === selected) {
+				lines = /* @__PURE__ */ new Set([target.line]);
+				runMoves(scene, ref);
+				if (ref.callsExpr && ref.callEntryLine) {
+					entry = ref.callEntryLine;
+					try {
+						calls = waitingCalls(evaluate(ref.callsExpr), target.file.source.split("\n").length);
+					} catch {}
+				}
+			}
 		} else if (active) try {
 			lines = activeCodeLines(evalExpr(active, 0));
 		} catch {}
@@ -24713,10 +24990,152 @@ function setupCodePanel() {
 			if (row.top < viewport.top || row.bottom > viewport.bottom) body.scrollTop += row.top - viewport.top;
 		}
 		lastExecution = signature;
+		drawArrows(lineJump(lastLines, lines), calls, entry);
+		lastLines = lines;
+	}
+	/**
+	* The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,
+	* and a move of the executing line gets one that fades after a moment, with both line numbers lit.
+	*/
+	/**
+	* Every move between lines in the step's whole run, for the hover arrows: the slider the codeRef's line follows
+	* is replayed over its range (with the slider overridden, not moved). Cached per scene, step and codeRef.
+	*/
+	let moves = [], movesKey = "";
+	function runMoves(scene, ref) {
+		const key = `${state.currentSceneIndex}/${state.currentStepIndex}/${ref.lineExpr ?? ref.line}`;
+		if (key === movesKey) return;
+		movesKey = key;
+		moves = [];
+		if (!ref.lineExpr) return;
+		const steps = scene.steps ?? [];
+		const slider = [...steps[state.currentStepIndex]?.sliders ?? [], ...steps.flatMap((step) => step.sliders ?? [])].find((s) => s.id && new RegExp(`\\b${s.id}\\b`).test(ref.lineExpr));
+		if (!slider?.id || slider.min === void 0 || slider.max === void 0) return;
+		let fn;
+		try {
+			fn = compileExpr(ref.lineExpr);
+		} catch {
+			return;
+		}
+		const step = slider.step && slider.step > 0 ? slider.step : 1, sequence = [];
+		for (let v = slider.min, i = 0; v <= slider.max && i < 5e3; v += step, i++) try {
+			const line = evalExpr(fn, 0, { overrideScope: { [slider.id]: v } });
+			if (typeof line === "number") sequence.push(line);
+		} catch {}
+		moves = lineTransitions(sequence);
+	}
+	/**
+	* Hovering a line shows every move into it (teal) and out of it (gold) across the run. Hovering a call's name
+	* instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
+	* name lights every call to it, with an incoming arrow from each.
+	*/
+	function drawHover(target) {
+		body.querySelectorAll(".code-link-lit").forEach((n) => n.classList.remove("code-link-lit"));
+		if (!arrows) return;
+		arrows.querySelectorAll(".code-arrow-in, .code-arrow-out").forEach((p) => p.remove());
+		const row = target?.closest(".code-line");
+		if (!target || !row) return;
+		const line = Number(row.dataset.line), call = target.closest(".code-call"), fn = target.closest(".code-fn");
+		const rowY = (l) => {
+			const r = body.querySelector(`.code-line[data-line="${l}"]`);
+			return r ? r.offsetTop + r.offsetHeight / 2 : null;
+		};
+		let incoming = [], outgoing = [];
+		if (call) {
+			const def = Number(call.dataset.def);
+			call.classList.add("code-link-lit");
+			body.querySelector(`.code-fn[data-def="${def}"]`)?.classList.add("code-link-lit");
+			if (def !== line) outgoing = [{
+				from: line,
+				to: def
+			}];
+		} else if (fn) {
+			const def = Number(fn.dataset.def);
+			fn.classList.add("code-link-lit");
+			body.querySelectorAll(`.code-call[data-def="${def}"]`).forEach((c) => {
+				c.classList.add("code-link-lit");
+				const from = Number(c.closest(".code-line").dataset.line);
+				if (from !== def && !incoming.some((m) => m.from === from)) incoming.push({
+					from,
+					to: def
+				});
+			});
+		} else ({incoming, outgoing} = movesAt(moves, line));
+		for (const [list, kind] of [[incoming, "in"], [outgoing, "out"]]) for (const m of list) {
+			const y1 = rowY(m.from), y2 = rowY(m.to);
+			if (y1 === null || y2 === null) continue;
+			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			path.setAttribute("class", `code-arrow-${kind}`);
+			path.setAttribute("d", jumpArrowPath(GUTTER_X, y1, y2));
+			path.setAttribute("marker-end", `url(#code-arrow-${kind})`);
+			arrows.append(path);
+		}
+	}
+	body.addEventListener("pointerover", (event) => drawHover(event.target));
+	body.addEventListener("pointerleave", () => drawHover(null));
+	let arrows = null, fade = 0, shownCalls = [], shownEntry;
+	new ResizeObserver(() => {
+		if (body.clientHeight > 0) drawArrows(null, shownCalls, shownEntry);
+	}).observe(body);
+	function drawArrows(jump, calls, entry) {
+		const called = calls.length > shownCalls.length;
+		shownCalls = calls;
+		shownEntry = entry;
+		if (body.clientHeight === 0) return;
+		const rowY = (line) => {
+			const row = body.querySelector(`.code-line[data-line="${line}"]`);
+			return row ? row.offsetTop + row.offsetHeight / 2 : null;
+		};
+		if (!arrows || !arrows.isConnected) {
+			arrows = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			arrows.classList.add("code-arrows");
+			arrows.setAttribute("aria-hidden", "true");
+			arrows.innerHTML = "<defs><marker id=\"code-arrow-jump\" viewBox=\"0 0 6 6\" refX=\"5\" refY=\"3\" markerWidth=\"6\" markerHeight=\"6\" markerUnits=\"userSpaceOnUse\" orient=\"auto\"><path d=\"M0,0 L6,3 L0,6 z\"/></marker>" + [
+				"call",
+				"in",
+				"out"
+			].map((k) => `<marker id="code-arrow-${k}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker>`).join("") + "</defs>";
+			body.prepend(arrows);
+		}
+		arrows.style.height = `${body.scrollHeight}px`;
+		const x = GUTTER_X, svg = "http://www.w3.org/2000/svg";
+		arrows.querySelectorAll(".code-arrow-call").forEach((p) => p.remove());
+		body.querySelectorAll(".code-line-number.calling").forEach((n) => n.classList.remove("calling"));
+		const to = entry === void 0 ? null : rowY(entry);
+		calls.forEach((line, depth) => {
+			const from = rowY(line);
+			if (from === null || to === null) return;
+			const path = document.createElementNS(svg, "path");
+			path.setAttribute("class", "code-arrow-call");
+			path.setAttribute("d", callArrowPath(x, from, to, depth));
+			path.setAttribute("marker-end", "url(#code-arrow-call)");
+			arrows.append(path);
+			body.querySelector(`.code-line[data-line="${line}"] .code-line-number`)?.classList.add("calling");
+		});
+		if (!jump || called) return;
+		const y1 = rowY(jump.from), y2 = rowY(jump.to);
+		if (y1 === null || y2 === null) return;
+		arrows.querySelectorAll(".code-arrow-jump").forEach((p) => p.remove());
+		body.querySelectorAll(".code-line-number.jump-lit").forEach((n) => n.classList.remove("jump-lit"));
+		const path = document.createElementNS(svg, "path");
+		path.setAttribute("class", "code-arrow-jump");
+		path.setAttribute("d", jumpArrowPath(x, y1, y2));
+		path.setAttribute("marker-end", "url(#code-arrow-jump)");
+		path.setAttribute("pathLength", "1");
+		arrows.append(path);
+		const numbers = [jump.from, jump.to].map((l) => body.querySelector(`.code-line[data-line="${l}"] .code-line-number`)).filter((n) => !!n);
+		numbers.forEach((n) => n.classList.add("jump-lit"));
+		clearTimeout(fade);
+		fade = window.setTimeout(() => {
+			path.classList.add("fading");
+			numbers.forEach((n) => n.classList.remove("jump-lit"));
+			setTimeout(() => path.remove(), 400);
+		}, JUMP_HOLD_MS);
 	}
 	function open(file) {
 		selected = file;
 		lastExecution = "";
+		lastLines = /* @__PURE__ */ new Set();
 		first = last = 0;
 		excerpt = "";
 		actions.hidden = targets.hidden = true;
@@ -24755,7 +25174,10 @@ function setupCodePanel() {
 		tree.querySelectorAll("[data-file]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.file === file.id)));
 		refreshBinding();
 		analyzeCode(file).then((analysis) => {
-			if (analysis && selected === file) markSymbols(analysis.references);
+			if (analysis && selected === file) {
+				markSymbols(analysis.references);
+				markCalls(analysis.functions ?? [], analysis.calls ?? []);
+			}
 		});
 	}
 	/** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
@@ -24764,6 +25186,20 @@ function setupCodePanel() {
 			for (const ref of lineReferences(references, Number(code.dataset.line))) wrapRange(code, ref);
 		});
 		paintSymbolHover();
+	}
+	/** Wrap each def's name and each call to it, so pointing at either links the two (see drawHover). */
+	function markCalls(functions, calls) {
+		const wrap = (f, cls, def) => {
+			const code = body.querySelector(`.code-line[data-line="${f.line}"] code`);
+			if (code) wrapColumns(code, f.col, f.endCol, () => {
+				const span = document.createElement("span");
+				span.className = cls;
+				span.dataset.def = String(def);
+				return span;
+			});
+		};
+		for (const f of functions) wrap(f, "code-fn", f.line);
+		for (const c of calls) wrap(c, "code-call", c.defLine);
 	}
 	/** One variable reference: a `code-sym` span over its columns (wrapColumns splits whatever spans are there). */
 	function wrapRange(code, ref) {
@@ -28012,22 +28448,6 @@ function setupShareButton() {
 			}, 3e3);
 		} else flashToast("Couldn’t copy automatically — the shareable link is in your address bar");
 	});
-}
-//#endregion
-//#region src/menu-placement.ts
-/**
-* Horizontal placement for a popup menu anchored to a button inside a clipping panel: where its left edge goes,
-* relative to the anchor, so the menu stays inside the panel's bounds (less a margin). It starts aligned with
-* the anchor's left edge, shifts left only as far as it must, and never past the panel's left edge; a menu
-* wider than the room is narrowed to fit (the caller lets its items wrap).
-*/
-function menuPlacement(anchorLeft, menuWidth, boundsLeft, boundsRight, margin = 8) {
-	const room = Math.max(0, boundsRight - boundsLeft - 2 * margin);
-	const width = Math.min(menuWidth, room);
-	return {
-		offset: Math.max(boundsLeft + margin, Math.min(anchorLeft, boundsRight - margin - width)) - anchorLeft,
-		maxWidth: room
-	};
 }
 //#endregion
 //#region src/speech-text.ts

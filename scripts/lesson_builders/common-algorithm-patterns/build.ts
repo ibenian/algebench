@@ -143,6 +143,8 @@ const withTip = (sceneId: string) => (el: Json): Json => {
 interface PatternScene {
     id: string; title: string; markdown: string; prompt: string; file: string; source: string;
     trace: Frame[]; input: Json; elements: Json[]; cameraX?: number;
+    /** For a recursive function: the line a call lands on; the trace's `calls` column lists waiting call sites. */
+    callEntryLine?: number;
     /** Steps after the run, each playing its own data table (`data`) with its own code locations. */
     more?: { steps: Json[]; data: Record<string, unknown[]>; locations: Json[] };
 }
@@ -160,7 +162,7 @@ function pattern(p: PatternScene) {
             add: p.elements.map(withTip(p.id)),
         }, ...(p.more?.steps ?? [])],
         stepPlayback: { slider: 'frame', intervalMs: 1200 },
-        codeRef: { file: p.id, lineExpr: tr('line') },
+        codeRef: { file: p.id, lineExpr: tr('line'), ...(p.callEntryLine ? { callsExpr: tr('calls'), callEntryLine: p.callEntryLine } : {}) },
     });
     codeFiles.push({
         id: p.id, path: `patterns/${p.file}`, language: 'python', source: p.source,
@@ -1333,6 +1335,7 @@ ${MD_TAIL}
     const on = (col: string, i: string) => `arrayAt(${tr(col)}, ${i}) == 1`;
     pattern({
         id: 'backtracking', title: 'Try, undo, retry (backtracking)', file: 'subsets.py', source: SUBSETS_SOURCE,
+        callEntryLine: 4,
         input: { nums }, trace, more: { data: { subsetCalls: parents.map(p => ({ p })) }, steps: [], locations: [] },
         markdown: `# Try, undo, retry (backtracking)
 
@@ -1479,6 +1482,7 @@ ${SOON} *(Needs a weighted graph object and a heap view.)*
     const callsTable = (parents: number[]) => parents.map(p => ({ p }));
     pattern({
         id: 'recursion', title: 'Solve smaller copies (recursion)', file: 'recursion.py', source: RECURSION_SOURCE,
+        callEntryLine: 1,
         input: { x, n, fib }, trace: pow.trace,
         more: {
             data: { callsPow: callsTable(pow.parents), callsFib: callsTable(fb.parents), rec_fib: fb.trace },
@@ -1487,7 +1491,7 @@ ${SOON} *(Needs a weighted graph object and a heap view.)*
                 descriptionExpr: `dataTable('rec_fib', frame, 'message')`,
                 remove: [{ id: '*' }, { type: 'slider' }],
                 sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: fb.trace.length - 1, step: 1, default: 0 }],
-                codeRef: { file: 'recursion', lineExpr: `dataTable('rec_fib', frame, 'line')` },
+                codeRef: { file: 'recursion', lineExpr: `dataTable('rec_fib', frame, 'line')`, callsExpr: `dataTable('rec_fib', frame, 'calls')`, callEntryLine: 9 },
                 add: elements('rec_fib', 'callsFib', 2.35, false),
             }],
             locations: fb.trace.map((f, snapshot) => ({ line: f.line, scene: 'recursion', step: 'fib', snapshot, label: `Fibonacci · ${f.message}` })),

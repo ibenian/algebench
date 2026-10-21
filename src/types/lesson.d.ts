@@ -2031,6 +2031,14 @@ export interface CodeRef {
    * Expression returning a one-based source line. Overrides line when present.
    */
   lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
 }
 export interface ArrayMarker {
   /**
@@ -2166,6 +2174,14 @@ export interface CodeRef1 {
    * Expression returning a one-based source line. Overrides line when present.
    */
   lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
 }
 export interface CodeRef2 {
   /**
@@ -2184,6 +2200,14 @@ export interface CodeRef2 {
    * Expression returning a one-based source line. Overrides line when present.
    */
   lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
 }
 /**
  * An incremental step that adds/removes elements and configures sliders.
@@ -2397,6 +2421,14 @@ export interface CodeRef3 {
    * Expression returning a one-based source line. Overrides line when present.
    */
   lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
 }
 /**
  * General discrete state player bound to an existing integer slider. No algorithm knowledge.
@@ -2429,6 +2461,14 @@ export interface CodeRef4 {
    * Expression returning a one-based source line. Overrides line when present.
    */
   lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
 }
 export interface CodeFile {
   id: string;

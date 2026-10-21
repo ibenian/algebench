@@ -2,17 +2,23 @@ import { setSliderValue } from '/sliders.js';
 import { state } from '/state.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
-import { makeAiAskButton } from '/labels.js';
+import { makeAiAskButton, sendAiPrompt } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
 import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
 import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey } from '/code-symbols.js';
 import { labelsForSymbol } from '/labels.js';
 import { showCodeSymbolTooltip } from '/label-tooltip.js';
-import type { CodeReference } from '/code-symbols.js';
+import type { CodeReference, CodeFunction, CodeCall } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import { highlightCode, lineTokens, paintTokens, wrapColumns } from '/code-highlight.js';
+import { CODE_PROMPTS, codePromptMessage } from '/code-prompts.js';
+import { menuPlacement } from '/menu-placement.js';
+import { lineJump, jumpArrowPath, waitingCalls, callArrowPath, JUMP_HOLD_MS, lineTransitions, movesAt } from '/code-jump.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
+
+/** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
+const GUTTER_X=37;
 
 export function setupCodePanel(): void {
     const host=document.getElementById('dock-tab-code');
@@ -20,7 +26,7 @@ export function setupCodePanel(): void {
     const tree=document.createElement('div');tree.className='code-file-tree';tree.setAttribute('aria-label','Code files');
     const title=document.createElement('div');title.className='code-file-title';
     const execution=document.createElement('div');execution.className='code-execution-status';execution.setAttribute('role','status');
-    let lastExecution='';
+    let lastExecution='',lastLines=new Set<number>();
     const body=document.createElement('div');body.className='code-source';body.setAttribute('aria-label','Source code');
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
@@ -35,7 +41,43 @@ export function setupCodePanel(): void {
     });
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
     const what=document.createElement('span');what.className='code-line-actions';
-    actions.append(selectionLabel,ask,jump,what);host.append(tree,title,execution,body,actions,targets);
+    actions.append(selectionLabel,ask,jump,what,codePromptsMenu());host.append(tree,title,execution,body,actions,targets);
+    /** "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. */
+    function codePromptsMenu() {
+        const wrap=document.createElement('span');wrap.className='preset-more code-prompts';
+        const toggle=document.createElement('button');toggle.type='button';toggle.className='code-prompts-btn';toggle.textContent='⋯';
+        toggle.title='Ask AI to analyze this code';toggle.setAttribute('aria-label','More AI prompts about this code');
+        toggle.setAttribute('aria-haspopup','menu');toggle.setAttribute('aria-expanded','false');
+        const menu=document.createElement('div');menu.className='preset-more-menu';menu.setAttribute('role','menu');menu.hidden=true;
+        const close=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape,true);};
+        const outside=(e:Event)=>{if(!wrap.contains(e.target as Node))close();};
+        const escape=(e:KeyboardEvent)=>{if(e.key==='Escape'){close();toggle.focus();}};
+        for(const prompt of CODE_PROMPTS){
+            const item=document.createElement('button');item.type='button';item.className='preset-more-item';item.setAttribute('role','menuitem');
+            item.textContent=prompt.label;item.title=prompt.prompt+'\n\nClick to send · ⌘/Ctrl-click to edit';
+            item.addEventListener('click',e=>{close();const message=codeMessage(prompt);if(message)sendAiPrompt(message,e);});
+            menu.append(item);
+        }
+        toggle.addEventListener('click',()=>{
+            if(!menu.hidden){close();return;}
+            menu.hidden=false;menu.style.left='0px';menu.style.maxWidth='';
+            const bounds=(wrap.closest('.tab-content, #dock-tab-code')??document.documentElement).getBoundingClientRect();
+            const {offset,maxWidth}=menuPlacement(wrap.getBoundingClientRect().left,menu.getBoundingClientRect().width,Math.max(0,bounds.left),Math.min(bounds.right,document.documentElement.clientWidth));
+            menu.style.maxWidth=`${maxWidth}px`;menu.style.left=`${offset}px`;
+            toggle.setAttribute('aria-expanded','true');
+            document.addEventListener('pointerdown',outside,true);document.addEventListener('keydown',escape,true);
+            menu.querySelector<HTMLButtonElement>('button')?.focus();
+        });
+        wrap.append(toggle,menu);
+        return wrap;
+    }
+    function codeMessage(prompt: typeof CODE_PROMPTS[number]) {
+        if(!selected||!first)return null;
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex];
+        return codePromptMessage(prompt,{path:selected.path,source:selected.source,first,last,excerpt,executing:[...lastLines],waitingCalls:shownCalls,
+            scene:scene?.title??'',step:state.currentStepIndex+1,
+            values:Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value]))});
+    }
     function renderLineActions() {
         what.replaceChildren();
         const scene=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.id;
@@ -98,11 +140,16 @@ export function setupCodePanel(): void {
         // A step may override the scene's codeRef (a step playing its own data table).
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
         const ref=scene?.steps?.[state.currentStepIndex]?.codeRef??scene?.codeRef;
+        let calls:number[]=[],entry:number|undefined;
         if(ref){
             const target=resolveCodeRef(files,ref,evaluate);
             if(target&&(entering||target.file!==followed)&&target.file!==selected){followed=target.file;open(target.file);return;}
             followed=target?.file;
-            if(target&&target.file===selected)lines=new Set([target.line]);
+            if(target&&target.file===selected){
+                lines=new Set([target.line]);
+                runMoves(scene!,ref);
+                if(ref.callsExpr&&ref.callEntryLine){entry=ref.callEntryLine;try{calls=waitingCalls(evaluate(ref.callsExpr),target.file.source.split('\n').length);}catch{/* no stack at this position */}}
+            }
         }
         else if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
         const bound=!!ref||!!active;
@@ -120,9 +167,108 @@ export function setupCodePanel(): void {
             if(row.top<viewport.top||row.bottom>viewport.bottom)body.scrollTop+=row.top-viewport.top;
         }
         lastExecution=signature;
+        drawArrows(lineJump(lastLines,lines),calls,entry);
+        lastLines=lines;
+    }
+    /**
+     * The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,
+     * and a move of the executing line gets one that fades after a moment, with both line numbers lit.
+     */
+    /**
+     * Every move between lines in the step's whole run, for the hover arrows: the slider the codeRef's line follows
+     * is replayed over its range (with the slider overridden, not moved). Cached per scene, step and codeRef.
+     */
+    let moves:{from:number;to:number}[]=[],movesKey='';
+    function runMoves(scene: Scene, ref: NonNullable<Scene['codeRef']>) {
+        const key=`${state.currentSceneIndex}/${state.currentStepIndex}/${ref.lineExpr??ref.line}`;
+        if(key===movesKey)return;
+        movesKey=key;moves=[];
+        if(!ref.lineExpr)return;
+        // The current step's own sliders first: a later step may reuse the id over a different range.
+        const steps=scene.steps??[],own=steps[state.currentStepIndex];
+        const sliders=[...(own?.sliders??[]),...steps.flatMap(step=>step.sliders??[])] as {id?:string;min?:number;max?:number;step?:number}[];
+        const slider=sliders.find(s=>s.id&&new RegExp(`\\b${s.id}\\b`).test(ref.lineExpr!));
+        if(!slider?.id||slider.min===undefined||slider.max===undefined)return;
+        let fn:CompiledExpr;try{fn=compileExpr(ref.lineExpr);}catch{return;}
+        const step=slider.step&&slider.step>0?slider.step:1,sequence:number[]=[];
+        for(let v=slider.min,i=0;v<=slider.max&&i<5000;v+=step,i++){
+            try{const line=evalExpr(fn,0,{overrideScope:{[slider.id]:v}});if(typeof line==='number')sequence.push(line);}catch{/* a position the expression cannot read */}
+        }
+        moves=lineTransitions(sequence);
+    }
+    /**
+     * Hovering a line shows every move into it (teal) and out of it (gold) across the run. Hovering a call's name
+     * instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
+     * name lights every call to it, with an incoming arrow from each.
+     */
+    function drawHover(target:HTMLElement|null) {
+        body.querySelectorAll('.code-link-lit').forEach(n=>n.classList.remove('code-link-lit'));
+        if(!arrows)return;
+        arrows.querySelectorAll('.code-arrow-in, .code-arrow-out').forEach(p=>p.remove());
+        const row=target?.closest<HTMLElement>('.code-line');
+        if(!target||!row)return;
+        const line=Number(row.dataset.line),call=target.closest<HTMLElement>('.code-call'),fn=target.closest<HTMLElement>('.code-fn');
+        const rowY=(l:number)=>{const r=body.querySelector<HTMLElement>(`.code-line[data-line="${l}"]`);return r?r.offsetTop+r.offsetHeight/2:null;};
+        let incoming:{from:number;to:number}[]=[],outgoing:{from:number;to:number}[]=[];
+        if(call){
+            const def=Number(call.dataset.def);
+            call.classList.add('code-link-lit');body.querySelector(`.code-fn[data-def="${def}"]`)?.classList.add('code-link-lit');
+            if(def!==line)outgoing=[{from:line,to:def}];
+        } else if(fn){
+            const def=Number(fn.dataset.def);fn.classList.add('code-link-lit');
+            body.querySelectorAll<HTMLElement>(`.code-call[data-def="${def}"]`).forEach(c=>{
+                c.classList.add('code-link-lit');
+                const from=Number(c.closest<HTMLElement>('.code-line')!.dataset.line);
+                if(from!==def&&!incoming.some(m=>m.from===from))incoming.push({from,to:def});
+            });
+        } else ({incoming,outgoing}=movesAt(moves,line));
+        for(const [list,kind] of [[incoming,'in'],[outgoing,'out']] as const)for(const m of list){
+            const y1=rowY(m.from),y2=rowY(m.to);if(y1===null||y2===null)continue;
+            const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('class',`code-arrow-${kind}`);
+            path.setAttribute('d',jumpArrowPath(GUTTER_X,y1,y2));path.setAttribute('marker-end',`url(#code-arrow-${kind})`);arrows.append(path);
+        }
+    }
+    body.addEventListener('pointerover',event=>drawHover(event.target as HTMLElement));
+    body.addEventListener('pointerleave',()=>drawHover(null));
+    let arrows: SVGSVGElement|null=null,fade=0,shownCalls:number[]=[],shownEntry:number|undefined;
+    // Rows have no position while the Code tab is hidden: lay the waiting calls' arrows out again once it shows.
+    new ResizeObserver(()=>{if(body.clientHeight>0)drawArrows(null,shownCalls,shownEntry);}).observe(body);
+    function drawArrows(jump:{from:number;to:number}|null, calls:number[], entry:number|undefined) {
+        const called=calls.length>shownCalls.length;
+        shownCalls=calls;shownEntry=entry;
+        if(body.clientHeight===0)return;
+        const rowY=(line:number)=>{const row=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"]`);return row?row.offsetTop+row.offsetHeight/2:null;};
+        if(!arrows||!arrows.isConnected){
+            arrows=document.createElementNS('http://www.w3.org/2000/svg','svg');arrows.classList.add('code-arrows');arrows.setAttribute('aria-hidden','true');
+            arrows.innerHTML='<defs><marker id="code-arrow-jump" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker>'
+                +['call','in','out'].map(k=>`<marker id="code-arrow-${k}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker>`).join('')+'</defs>';
+            body.prepend(arrows);
+        }
+        arrows.style.height=`${body.scrollHeight}px`;
+        const x=GUTTER_X,svg='http://www.w3.org/2000/svg';
+        arrows.querySelectorAll('.code-arrow-call').forEach(p=>p.remove());
+        body.querySelectorAll('.code-line-number.calling').forEach(n=>n.classList.remove('calling'));
+        const to=entry===undefined?null:rowY(entry);
+        calls.forEach((line,depth)=>{
+            const from=rowY(line);if(from===null||to===null)return;
+            const path=document.createElementNS(svg,'path');path.setAttribute('class','code-arrow-call');path.setAttribute('d',callArrowPath(x,from,to,depth));path.setAttribute('marker-end','url(#code-arrow-call)');
+            arrows!.append(path);
+            body.querySelector(`.code-line[data-line="${line}"] .code-line-number`)?.classList.add('calling');
+        });
+        // A move that makes a call is drawn by that call's own arrow.
+        if(!jump||called)return;
+        const y1=rowY(jump.from),y2=rowY(jump.to);if(y1===null||y2===null)return;
+        arrows.querySelectorAll('.code-arrow-jump').forEach(p=>p.remove());
+        body.querySelectorAll('.code-line-number.jump-lit').forEach(n=>n.classList.remove('jump-lit'));
+        const path=document.createElementNS(svg,'path');path.setAttribute('class','code-arrow-jump');path.setAttribute('d',jumpArrowPath(x,y1,y2));path.setAttribute('marker-end','url(#code-arrow-jump)');path.setAttribute('pathLength','1');
+        arrows.append(path);
+        const numbers=[jump.from,jump.to].map(l=>body.querySelector(`.code-line[data-line="${l}"] .code-line-number`)).filter((n):n is Element=>!!n);
+        numbers.forEach(n=>n.classList.add('jump-lit'));
+        clearTimeout(fade);
+        fade=window.setTimeout(()=>{path.classList.add('fading');numbers.forEach(n=>n.classList.remove('jump-lit'));setTimeout(()=>path.remove(),400);},JUMP_HOLD_MS);
     }
     function open(file: CodeFile) {
-        selected=file;lastExecution='';first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
+        selected=file;lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
         title.textContent=file.path+' · read only';body.replaceChildren();
         if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{
@@ -140,7 +286,7 @@ export function setupCodePanel(): void {
         });
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
         refreshBinding();
-        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file)markSymbols(analysis.references);});
+        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file){markSymbols(analysis.references);markCalls(analysis.functions??[],analysis.calls??[]);}});
     }
     /** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
     function markSymbols(references: CodeReference[]) {
@@ -148,6 +294,15 @@ export function setupCodePanel(): void {
             for(const ref of lineReferences(references,Number(code.dataset.line)))wrapRange(code,ref);
         });
         paintSymbolHover();
+    }
+    /** Wrap each def's name and each call to it, so pointing at either links the two (see drawHover). */
+    function markCalls(functions: CodeFunction[], calls: CodeCall[]) {
+        const wrap=(f:CodeFunction,cls:string,def:number)=>{
+            const code=body.querySelector<HTMLElement>(`.code-line[data-line="${f.line}"] code`);
+            if(code)wrapColumns(code,f.col,f.endCol,()=>{const span=document.createElement('span');span.className=cls;span.dataset.def=String(def);return span;});
+        };
+        for(const f of functions)wrap(f,'code-fn',f.line);
+        for(const c of calls)wrap(c,'code-call',c.defLine);
     }
     /** One variable reference: a `code-sym` span over its columns (wrapColumns splits whatever spans are there). */
     function wrapRange(code: HTMLElement, ref: CodeReference) {

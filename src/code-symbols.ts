@@ -13,7 +13,10 @@ export interface CodeReference {
     key: string; root: string; kind: 'name' | 'subscript' | 'attribute'; store: boolean;
     line: number; col: number; endLine: number; endCol: number;
 }
-export interface CodeAnalysis { variables: string[]; references: CodeReference[]; error: string | null }
+/** A function the file defines (the name's span on its def line), or a call to one by name and the def it reaches. */
+export interface CodeFunction { name: string; line: number; col: number; endCol: number }
+export interface CodeCall extends CodeFunction { defLine: number }
+export interface CodeAnalysis { variables: string[]; references: CodeReference[]; functions?: CodeFunction[]; calls?: CodeCall[]; error: string | null }
 
 const analyses = new Map<string, Promise<CodeAnalysis | null>>();
 

@@ -878,16 +878,18 @@ def fib(n):
  * call's caller, so a view can lay the tree out and show the calls made so far. Per frame: count, calls made;
  * cur, the call the code is in (−1 none); stack and done, 0/1 per call (waiting on a recursive call, returned);
  * text, each call as written, with its result once it returns; result, the value just returned (−1 none);
+ * calls, the call-site lines of the calls still waiting, outermost first;
  * n, the argument of the call the code is in (−1 outside any call); half, that call's half (fast power: the
  * smaller copy's answer, −1 until it returns).
  */
 function callTree() {
-    const parents: number[] = [], text: string[] = [], stack: number[] = [], done: number[] = [], ns: number[] = [], halves: number[] = [];
-    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], result: -1, n: -1, half: -1 };
+    const parents: number[] = [], text: string[] = [], stack: number[] = [], done: number[] = [], ns: number[] = [], halves: number[] = [], sites: number[] = [];
+    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], result: -1, n: -1, half: -1, calls: [] as number[] };
     const { trace, emit } = recorder(v);
-    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.stack = parents.map((_, i) => stack.includes(i) ? 1 : 0); };
-    const enter = (label: string, parent: number, n: number) => {
-        const id = parents.length; parents.push(parent); text.push(label); done.push(0); ns.push(n); halves.push(-1);
+    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.stack = parents.map((_, i) => stack.includes(i) ? 1 : 0); v.calls = stack.map(i => sites[i]!).filter(l => l > 0); };
+    // site: the source line that made the call (−1 for the first call, made from outside the code shown).
+    const enter = (label: string, parent: number, n: number, site = -1) => {
+        const id = parents.length; parents.push(parent); text.push(label); done.push(0); ns.push(n); halves.push(-1); sites.push(site);
         stack.push(id); v.cur = id; v.n = n; v.half = -1; sync(); return id;
     };
     const leave = (id: number, value: number) => {
@@ -902,7 +904,7 @@ function callTree() {
 export function powerTrace(x: number, n: number) {
     const t = callTree();
     const call = (k: number, parent: number): number => {
-        const id = t.enter(`power(${x}, ${k})`, parent, k);
+        const id = t.enter(`power(${x}, ${k})`, parent, k, parent < 0 ? -1 : 4);
         t.emit(2, `power(${x}, ${k}): is n 0?`);
         if (k === 0) { t.leave(id, 1); t.emit(3, `Base case: ${x}⁰ = 1, no smaller copy needed.`); return 1; }
         t.emit(4, `Trust the smaller copy: power(${x}, ${k} // 2 = ${Math.floor(k / 2)}) gives half the answer.`);
@@ -924,7 +926,7 @@ export function powerTrace(x: number, n: number) {
 export function fibTrace(n: number) {
     const t = callTree();
     const call = (k: number, parent: number): number => {
-        const id = t.enter(`fib(${k})`, parent, k);
+        const id = t.enter(`fib(${k})`, parent, k, parent < 0 ? -1 : 12);
         t.emit(10, `fib(${k}): is n below 2?`);
         if (k < 2) { t.leave(id, k); t.emit(11, `Base case: fib(${k}) = ${k}.`); return k; }
         t.emit(12, `fib(${k}) needs two smaller copies: fib(${k - 1}) first.`);
@@ -959,16 +961,17 @@ export const SUBSETS_SOURCE = `def subsets(nums):
  * Subsets by backtracking: each backtrack(start) call records the current path, then for each later index
  * chooses nums[i] (append), explores (recurse) and un-chooses it (pop). Calls are numbered as made; parents gives
  * each call's caller. Per frame: count, calls made; cur, the call the code is in; stack and done, 0/1 per call;
- * text, each call's recorded path; path and pathText, the path now (as numbers, and as written); start and i, the call's start and loop index (−1 none);
+ * text, each call's recorded path; calls, the call-site lines of the calls not yet returned (11 for the first, 8 for
+ * recursive ones); path and pathText, the path now (as numbers, and as written); start and i, the call's start and loop index (−1 none);
  * out, how many subsets are recorded; outText, those subsets in order.
  */
 export function subsetsTrace(nums: number[]) {
     const parents: number[] = [], text: string[] = [], done: number[] = [], stack: number[] = [], path: number[] = [];
     const starts: number[] = [];
-    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], path: [] as number[], start: -1, i: -1, out: 0, outText: [] as string[], pathText: '[]' };
+    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], path: [] as number[], start: -1, i: -1, out: 0, outText: [] as string[], pathText: '[]', calls: [] as number[] };
     const { trace, emit } = recorder(v);
     const show = (p: number[]) => `[${p.join(', ')}]`;
-    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.path = path.slice(); v.pathText = show(path); v.stack = parents.map((_, k) => stack.includes(k) ? 1 : 0); };
+    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.path = path.slice(); v.pathText = show(path); v.calls = stack.map(k => parents[k]! < 0 ? 11 : 8); v.stack = parents.map((_, k) => stack.includes(k) ? 1 : 0); };
     emit(2, `Start with no subsets and an empty path. nums = ${show(nums)}.`);
     const backtrack = (start: number, parent: number) => {
         const id = parents.length; parents.push(parent); text.push(show(path)); done.push(0); starts.push(start);

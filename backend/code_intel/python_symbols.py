@@ -12,6 +12,10 @@ A *reference* is one place in the source that mentions a variable: the bare name
 
 Each reference carries ``key``: its source text with whitespace removed, the
 string a label or marker that shows the same expression will match exactly.
+*Functions* are the file's own ``def``s, with the span of the name on the ``def`` line; *calls* are the places
+the file calls one of them by name (``backtrack(i + 1)``), each with the line of the ``def`` it reaches, so the
+panel can link a call to its function.
+
 Positions are 1-based lines and 0-based *character* columns (``ast`` reports
 UTF-8 byte offsets; they are converted so the client can index JS strings).
 """
@@ -56,7 +60,7 @@ def _char_col(line: str, byte_col: int) -> int:
 
 
 def analyze_python(source: str) -> dict:
-    """``{"variables": [...], "references": [...], "error": str | None}`` for ``source``.
+    """``{"variables", "references", "functions", "calls", "error"}`` for ``source``.
 
     A file that does not parse returns no references and the syntax error, so the
     panel still shows the source, just without links. Not cached on the server: a
@@ -64,11 +68,11 @@ def analyze_python(source: str) -> dict:
     memory; the panel caches each file's analysis in the browser.
     """
     if len(source) > MAX_SOURCE_CHARS:
-        return {"variables": [], "references": [], "error": "source too large to analyze"}
+        return {"variables": [], "references": [], "functions": [], "calls": [], "error": "source too large to analyze"}
     try:
         tree = ast.parse(source)
     except SyntaxError as e:
-        return {"variables": [], "references": [], "error": f"line {e.lineno}: {e.msg}"}
+        return {"variables": [], "references": [], "functions": [], "calls": [], "error": f"line {e.lineno}: {e.msg}"}
     variables = _bound_names(tree)
     lines = source.split("\n")
     references = []
@@ -100,4 +104,31 @@ def analyze_python(source: str) -> dict:
             references.append({"key": node.arg, "root": node.arg, "kind": "name", "store": True,
                                "line": node.lineno, "col": col, "endLine": node.lineno, "endCol": col + len(node.arg)})
     references.sort(key=lambda r: (r["line"], r["col"], -(r["endCol"] - r["col"])))
-    return {"variables": sorted(variables), "references": references, "error": None}
+    functions, calls = _functions_and_calls(tree, lines)
+    return {"variables": sorted(variables), "references": references, "functions": functions, "calls": calls, "error": None}
+
+
+def _functions_and_calls(tree: ast.AST, lines: list[str]) -> tuple[list[dict], list[dict]]:
+    """The file's ``def``s (name spans) and the calls to them by plain name, in source order.
+
+    A name defined twice links to its first ``def``; calls to anything else (builtins, methods) are not reported.
+    """
+    functions: list[dict] = []
+    first: dict[str, int] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            line = lines[node.lineno - 1]
+            col = line.find(node.name, _char_col(line, node.col_offset))
+            if col < 0:
+                continue
+            functions.append({"name": node.name, "line": node.lineno, "col": col, "endCol": col + len(node.name)})
+            first[node.name] = min(first.get(node.name, node.lineno), node.lineno)
+    calls = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in first:
+            col = _char_col(lines[node.func.lineno - 1], node.func.col_offset)
+            calls.append({"name": node.func.id, "line": node.func.lineno, "col": col, "endCol": col + len(node.func.id),
+                          "defLine": first[node.func.id]})
+    functions.sort(key=lambda f: (f["line"], f["col"]))
+    calls.sort(key=lambda c: (c["line"], c["col"]))
+    return functions, calls

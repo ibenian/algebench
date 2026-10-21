@@ -58,3 +58,27 @@ def test_endpoint_dispatches_by_language():
     ok = client.post("/api/code/analyze", json={"language": "python", "source": SOURCE})
     assert ok.status_code == 200 and "temps[stack[-1]]" in {r["key"] for r in ok.json()["references"]}
     assert client.post("/api/code/analyze", json={"language": "cobol", "source": "x"}).status_code == 400
+
+
+RECURSIVE = """def subsets(nums):
+    out, path = [], []
+
+    def backtrack(start):
+        out.append(path[:])
+        for i in range(start, len(nums)):
+            backtrack(i + 1)
+
+    backtrack(0)
+    return out"""
+
+
+def test_calls_link_to_the_def_they_reach_and_builtins_do_not():
+    result = analyze_python(RECURSIVE)
+    lines = RECURSIVE.split("\n")
+    assert [(f["name"], f["line"]) for f in result["functions"]] == [("subsets", 1), ("backtrack", 4)]
+    back = result["functions"][1]
+    assert lines[3][back["col"]:back["endCol"]] == "backtrack"
+    assert [(c["line"], c["defLine"]) for c in result["calls"]] == [(7, 4), (9, 4)], "range and len are not linked"
+    call = result["calls"][1]
+    assert lines[8][call["col"]:call["endCol"]] == "backtrack"
+    assert not any(r["root"] == "backtrack" for r in result["references"]), "a function is not a variable"
