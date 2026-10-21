@@ -943,6 +943,56 @@ export function fibTrace(n: number) {
     return { trace: t.trace, parents: t.parents };
 }
 
+export const SUBSETS_SOURCE = `def subsets(nums):
+    out, path = [], []
+
+    def backtrack(start):
+        out.append(path[:])
+        for i in range(start, len(nums)):
+            path.append(nums[i])
+            backtrack(i + 1)
+            path.pop()
+
+    backtrack(0)
+    return out`;
+/**
+ * Subsets by backtracking: each backtrack(start) call records the current path, then for each later index
+ * chooses nums[i] (append), explores (recurse) and un-chooses it (pop). Calls are numbered as made; parents gives
+ * each call's caller. Per frame: count, calls made; cur, the call the code is in; stack and done, 0/1 per call;
+ * text, each call's recorded path; path, the path now; start and i, the call's start and loop index (−1 none);
+ * out, how many subsets are recorded; outText, those subsets in order.
+ */
+export function subsetsTrace(nums: number[]) {
+    const parents: number[] = [], text: string[] = [], done: number[] = [], stack: number[] = [], path: number[] = [];
+    const starts: number[] = [];
+    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], path: [] as number[], start: -1, i: -1, out: 0, outText: [] as string[] };
+    const { trace, emit } = recorder(v);
+    const show = (p: number[]) => `[${p.join(', ')}]`;
+    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.path = path.slice(); v.stack = parents.map((_, k) => stack.includes(k) ? 1 : 0); };
+    emit(2, `Start with no subsets and an empty path. nums = ${show(nums)}.`);
+    const backtrack = (start: number, parent: number) => {
+        const id = parents.length; parents.push(parent); text.push(show(path)); done.push(0); starts.push(start);
+        stack.push(id); v.cur = id; v.start = start; v.i = -1; sync();
+        emit(5, `backtrack(${start}): record the path ${show(path)} as a subset.`);
+        v.out++; v.outText = [...v.outText, show(path)]; done[id] = 1; sync();
+        emit(5, `out has ${v.out} subset${v.out === 1 ? '' : 's'}.`);
+        for (let i = start; i < nums.length; i++) {
+            v.cur = id; v.start = start; v.i = i; sync();
+            emit(6, `Try index ${i}: nums[${i}] = ${nums[i]}.`);
+            path.push(nums[i]!); sync();
+            emit(7, `Choose ${nums[i]}: path = ${show(path)}.`);
+            emit(8, `Explore: subsets that start with ${show(path)}, using only later numbers (start = ${i + 1}).`);
+            backtrack(i + 1, id);
+            v.cur = id; v.start = start; v.i = i; path.pop(); sync();
+            emit(9, `Un-choose ${nums[i]}: path = ${show(path)}, ready to try the next number in its place.`);
+        }
+        stack.pop(); v.cur = stack.at(-1) ?? -1; v.start = v.cur >= 0 ? starts[v.cur]! : -1; v.i = -1; sync();
+    };
+    backtrack(0, -1);
+    emit(12, `Done: ${v.out} subsets, one per call: every subset of ${nums.length} numbers (2^${nums.length} = ${2 ** nums.length}).`, 'Done');
+    return { trace, parents };
+}
+
 export const MONOTONIC_QUEUE_SOURCE = `from collections import deque
 
 def max_sliding_window(nums, k):

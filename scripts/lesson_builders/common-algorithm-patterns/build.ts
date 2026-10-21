@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -87,7 +87,8 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
         example: `n = ${IN.unionFind.n}, edges = ${IN.unionFind.edges.map(e => `${e[0]}–${e[1]}`).join(', ')} → ${end(unionFindTrace(IN.unionFind.n, IN.unionFind.edges)).count}.` },
     'recursion': { problem: 'Compute x to the power n using O(log n) multiplications.',
         example: `power(${IN.recursion.x}, ${IN.recursion.n}) = ${IN.recursion.x ** IN.recursion.n}, in ${powerTrace(IN.recursion.x, IN.recursion.n).parents.length} calls.` },
-    'backtracking': { problem: 'Generate every permutation of a list of distinct numbers.' },
+    'backtracking': { problem: 'Return every subset of a list of distinct numbers.',
+        example: `subsets(${JSON.stringify(IN.subsets.nums)}) → ${2 ** IN.subsets.nums.length} subsets, from [] to ${JSON.stringify(IN.subsets.nums)}.` },
     'dynamic-programming': { problem: 'Houses in a row each hold some money, and you cannot rob two neighbours. What is the most you can rob?',
         example: `houses = ${list(IN.dp.houses)} → ${(end(houseRobberTrace(IN.dp.houses)).dp as number[]).at(-1)}.` },
 };
@@ -1324,16 +1325,55 @@ ${MD_TAIL}
         ],
     });
 })();
-placeholder('backtracking', 'Try, undo, retry (backtracking)', `# Try, undo, retry (backtracking)
+// ── Backtracking: subsets, one call per subset ──
+(() => {
+    const { nums } = IN.subsets;
+    const { trace, parents } = subsetsTrace(nums);
+    const parent = `dataTable('subsetCalls', idx, 'p')`;
+    const on = (col: string, i: string) => `arrayAt(${tr(col)}, ${i}) == 1`;
+    pattern({
+        id: 'backtracking', title: 'Try, undo, retry (backtracking)', file: 'subsets.py', source: SUBSETS_SOURCE,
+        input: { nums }, trace, more: { data: { subsetCalls: parents.map(p => ({ p })) }, steps: [], locations: [] },
+        markdown: `# Try, undo, retry (backtracking)
 
-**Signal:** generate all permutations, subsets or combinations, or place pieces under constraints.
+**Signal:** generate all permutations, subsets or combinations, or place pieces under constraints (N-Queens, Sudoku, word search).
 
-Build a candidate one choice at a time. After exploring a choice, **undo it** and try the next. Prune any branch that already breaks a constraint. The search is exponential in the worst case; pruning is what makes it practical.
+Build a candidate one choice at a time, with one shared \`path\`:
 
-${SOON} *(Needs a recursion-tree view.)*
+1. **Choose:** append a number to \`path\`.
+2. **Explore:** recurse to extend it, using only later numbers.
+3. **Un-choose:** pop it, so \`path\` is back as it was and the next number can take its place.
 
-**Practice:** Permutations (46), Subsets (78), N-Queens (51).`,
-    'Explain choose / explore / un-choose and pruning. This scene has no visualization yet.');
+For subsets every call's \`path\` is an answer, so each call records it first. The calls form a **decision tree**: each node is one call, labelled with the path it recorded, under the call that chose its last number. Gold is where the code is, pink calls are waiting on a deeper choice, and teal calls have recorded their subset. ${nums.length} numbers give 2^${nums.length} = ${parents.length} calls, one per subset.
+
+Other problems add **pruning**: skip a choice, or a whole branch, that already breaks a constraint. The worst case stays exponential; pruning is what makes it practical.
+
+${MD_TAIL}
+
+**Practice:** Subsets (78), Permutations (46), Combination Sum (39), Word Search (79), N-Queens (51).`,
+        prompt: 'Explain choose / explore / un-choose and why path must be undone. Ask the learner to predict the next subset recorded, and what path looks like after each pop, before the player reveals it.',
+        elements: [
+            {
+                id: 'calls', type: 'graph', label: 'backtrack calls', lengthExpr: tr('count'), valueExpr: `arrayAt(${tr('text')}, idx)`,
+                treeLayout: { type: 'tidy', parentExpr: parent, origin: [0.4, 3.4, 0], spacing: 2.45, levelGap: 1.3 },
+                nodeShape: 'rect', nodeWidth: 2.2, nodeHeight: 0.72, nodeCornerRadius: 0.16, valueLabel: 'inside', showIndices: false, axisLabels: 'plane',
+                colorExpr: `idx == ${tr('cur')} ? '#9a7420' : (${on('stack', 'idx')} ? '#8a3f68' : (${on('done', 'idx')} ? '#2f7d66' : '#4a5560'))`,
+                connectTo: { indexExpr: parent, pinned: true, bendExpr: '0', color: '#7f93aa',
+                    colorExpr: `${on('stack', 'idx')} and ${on('stack', parent)} ? '${PINK}' : ''`, highlightExpr: `${on('stack', 'idx')} and ${on('stack', parent)}` },
+            },
+            array('nums', 'nums', [-3.2, -2.0, 0], { from: inp('nums'), labelSide: 'left',
+                markers: [marker('start', tr('start'), TEAL, `${tr('start')} >= 0 and ${tr('start')} < ${nums.length}`), marker('i', tr('i'), PINK, `${tr('i')} >= 0`)] }),
+            // The one shared path: grows on choose, shrinks on un-choose.
+            array('path', 'path', [-3.2, -3.7, 0], { from: tr('path'), labelSide: 'left', highlightExpr: `idx == count(${tr('path')}) - 1 and (${tr('line')} == 7 or ${tr('line')} == 8)` }),
+            // out: every subset recorded so far, the newest lit as line 5 appends it.
+            array('out', 'out', [-3.2, -5.5, 0], { from: tr('outText'), itemType: 'text', cellSize: 2.1, arrayColumns: 4, arrayHeight: 2.5, arrayCellHeight: 0.8, showIndices: false, color: '#b69bea', labelSide: 'left', highlightExpr: `idx == ${tr('out')} - 1 and ${tr('line')} == 5` }),
+            { ...label('start', `${tr('start')} < 0 ? 'start: —' : concat('start = ', ${tr('start')})`, [4.6, -3.6, 0], ['calls', `${tr('cur')}`]), codeRef: { file: 'backtracking', line: 4 } },
+            { ...label('i', `${tr('i')} < 0 ? 'i: —' : concat('i = ', ${tr('i')})`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: { file: 'backtracking', line: 6 } },
+            { ...label('numsi', `${tr('i')} < 0 ? 'nums[i]: —' : concat('nums[i] = ', arrayAt(${inp('nums')}, ${tr('i')}))`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: { file: 'backtracking', line: 7 } },
+            { ...label('outlen', `concat('len(out) = ', ${tr('out')})`, [4.6, -3.6, 0]), codeRef: { file: 'backtracking', line: 5 } },
+        ],
+    });
+})();
 
 // ── Trie ──
 (() => {

@@ -14,6 +14,7 @@ export const PATTERN_INPUTS = {
     trie: { words: ['car', 'cat', 'cart', 'care', 'dog', 'do'], queries: ['ca', 'cab', 'do'] },
     linkedList: { values: [1, 2, 3, 4, 5] },
     recursion: { x: 2, n: 13, fib: 4 },
+    subsets: { nums: [1, 2, 3] },
     islands: { grid: [
         [1, 1, 0, 0, 0, 1],
         [1, 1, 0, 1, 0, 1],

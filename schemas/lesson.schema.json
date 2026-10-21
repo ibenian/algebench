@@ -1443,11 +1443,12 @@
             "number",
             "character",
             "string",
+            "text",
             "boolean",
             "empty",
             "mixed"
           ],
-          "description": "ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion.",
+          "description": "ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion. 'string' shows a string quoted, as code would print it; 'text' shows it as is, for a cell that displays a value the string describes (a list such as [1, 2]).",
           "default": "mixed"
         },
         "showIndices": {
@@ -1630,6 +1631,11 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "description": "ARRAY ONLY. With arrayColumns, fit all wrapped rows into this total height. Cells and their text shrink vertically together."
+        },
+        "arrayCellHeight": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "ARRAY ONLY. With arrayColumns, each cell's height in data units (default: scaled with the row pitch). The rest of each row's pitch, from arrayHeight, is space between rows. Example: arrayHeight 2.6 over two rows with arrayCellHeight 0.68 keeps normal cells and opens a 0.62 gap."
         },
         "direction": {
           "type": "array",

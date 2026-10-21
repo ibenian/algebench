@@ -12116,6 +12116,11 @@ function arrayCell(value, type = "mixed") {
 		kind,
 		text: JSON.stringify(value)
 	};
+	if (kind === "text" && typeof value === "string") return {
+		value,
+		kind,
+		text: value
+	};
 	if (kind === "character" && typeof value === "string" && [...value].length === 1) return {
 		value,
 		kind,
@@ -12169,7 +12174,7 @@ function arrayCellCorners(centre, pitch) {
 	])));
 }
 /** A wrapped array remains one-dimensional; fitting preserves all record positions. */
-function wrappedArrayCell(index, length, origin, pitch, columns, height) {
+function wrappedArrayCell(index, length, origin, pitch, columns, height, cellHeight) {
 	const rows = Math.max(1, Math.ceil(length / columns));
 	const rowPitch = height === void 0 ? .78 : height / rows;
 	return {
@@ -12178,7 +12183,7 @@ function wrappedArrayCell(index, length, origin, pitch, columns, height) {
 			origin[1] - Math.floor(index / columns) * rowPitch,
 			origin[2]
 		],
-		height: rowPitch * (.68 / .78)
+		height: cellHeight === void 0 ? rowPitch * (.68 / .78) : Math.min(cellHeight, rowPitch)
 	};
 }
 /** A colorExpr result is accepted only as a 6-digit hex color; anything else defers to highlight/base color. */
@@ -12502,6 +12507,7 @@ var PALETTE = {
 	number: "#75bfe9",
 	character: "#74d0c2",
 	string: "#b69bea",
+	text: "#b69bea",
 	boolean: "#efa768",
 	empty: "#8793a6"
 };
@@ -12518,8 +12524,8 @@ function renderArray(el, _view, decorate) {
 	const pitch = Number(el.cellSize ?? 2);
 	if (!Number.isFinite(pitch) || pitch <= 0) throw new Error("Array cellSize must be positive.");
 	if (el.direction && el.arrayColumns) throw new Error("Array direction and wrapped columns are alternative layouts.");
-	const centre = (i) => el.arrayColumns ? wrappedArrayCell(i, n, origin, pitch, el.arrayColumns, el.arrayHeight).position : arrayCellPosition(i, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
-	const cellHeight = () => el.arrayColumns ? wrappedArrayCell(0, n, origin, pitch, el.arrayColumns, el.arrayHeight).height : .68;
+	const centre = (i) => el.arrayColumns ? wrappedArrayCell(i, n, origin, pitch, el.arrayColumns, el.arrayHeight, el.arrayCellHeight).position : arrayCellPosition(i, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
+	const cellHeight = () => el.arrayColumns ? wrappedArrayCell(0, n, origin, pitch, el.arrayColumns, el.arrayHeight, el.arrayCellHeight).height : .68;
 	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
 	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);

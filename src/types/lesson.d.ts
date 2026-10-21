@@ -893,9 +893,9 @@ export type Element = {
    */
   depthSlider?: string;
   /**
-   * ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion.
+   * ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion. 'string' shows a string quoted, as code would print it; 'text' shows it as is, for a cell that displays a value the string describes (a list such as [1, 2]).
    */
-  itemType?: 'number' | 'character' | 'string' | 'boolean' | 'empty' | 'mixed';
+  itemType?: 'number' | 'character' | 'string' | 'text' | 'boolean' | 'empty' | 'mixed';
   /**
    * ARRAY / STACK / GRAPH. Show small index tags attached to cells (a graph: to nodes). Defaults to true for arrays and graphs and false for stacks.
    */
@@ -1133,6 +1133,10 @@ export type Element = {
    * ARRAY ONLY. With arrayColumns, fit all wrapped rows into this total height. Cells and their text shrink vertically together.
    */
   arrayHeight?: number;
+  /**
+   * ARRAY ONLY. With arrayColumns, each cell's height in data units (default: scaled with the row pitch). The rest of each row's pitch, from arrayHeight, is space between rows. Example: arrayHeight 2.6 over two rows with arrayCellHeight 0.68 keeps normal cells and opens a 0.62 gap.
+   */
+  arrayCellHeight?: number;
   /**
    * ARRAY ONLY. Nonzero direction vector for the cell sequence, normalized before use. [1,0,0] is X, [0,1,0] is Y, [0,0,1] is Z. Overrides arrayLayout; cannot be combined with arrayColumns.
    *

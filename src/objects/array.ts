@@ -25,7 +25,7 @@ let arrayMarkerGroup = 0;
 /** `graph`: the cells are free-standing nodes (a graph), so links run node to node; `round` nodes are discs. */
 /** `ports`: where links may start on a cell (a graph node: under each gap of its cell row). */
 export interface ArrayCellTarget { vertical:boolean; graph?:boolean; round?:boolean; at(index:number):{position:[number,number,number];corners:number[][]}|null; ports?(index:number):number[][]; }
-const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
+const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',text:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
 export interface ArrayDecoration { resize(length:number):void; }
 export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:number,origin:number[],pitch:number,owner:Mesh)=>ArrayDecoration) {
     if(!state.three)return null;
@@ -37,8 +37,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     if(!Number.isFinite(pitch)||pitch<=0)throw new Error('Array cellSize must be positive.');
     if(el.direction&&el.arrayColumns)throw new Error('Array direction and wrapped columns are alternative layouts.');
     // Direction controls center positions independently of cell geometry.
-    const centre=(i:number):[number,number,number]=>el.arrayColumns?wrappedArrayCell(i,n,origin,pitch,el.arrayColumns,el.arrayHeight).position:arrayCellPosition(i,origin,pitch,el.arrayLayout,el.direction,el.arraySpacing);
-    const cellHeight=()=>el.arrayColumns?wrappedArrayCell(0,n,origin,pitch,el.arrayColumns,el.arrayHeight).height:.68;
+    const centre=(i:number):[number,number,number]=>el.arrayColumns?wrappedArrayCell(i,n,origin,pitch,el.arrayColumns,el.arrayHeight,el.arrayCellHeight).position:arrayCellPosition(i,origin,pitch,el.arrayLayout,el.direction,el.arraySpacing);
+    const cellHeight=()=>el.arrayColumns?wrappedArrayCell(0,n,origin,pitch,el.arrayColumns,el.arrayHeight,el.arrayCellHeight).height:.68;
     const unit=new THREE.BoxGeometry(1,1,1).toNonIndexed();
     const source=unit.getAttribute('position'),normal=unit.getAttribute('normal'),vertices=source.count;
     let positions=new Float32Array(n*vertices*3),colors=new Float32Array(n*vertices*3);

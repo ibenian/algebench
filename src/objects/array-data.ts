@@ -8,6 +8,7 @@ export function arrayCell(value: unknown, type: ArrayItemType = 'mixed'): {value
     if(kind==='number'&&typeof value==='number'&&Number.isFinite(value))return {value,kind,text:String(value)};
     if(kind==='boolean'&&typeof value==='boolean')return {value,kind,text:String(value)};
     if(kind==='string'&&typeof value==='string')return {value,kind,text:JSON.stringify(value)};
+    if(kind==='text'&&typeof value==='string')return {value,kind,text:value};
     if(kind==='character'&&typeof value==='string'&&[...value].length===1)return {value,kind,text:({' ':'␠','\n':'↵','\t':'⇥'} as Record<string,string>)[value]??value};
     throw new Error(`Array cell does not match ${kind}`);
 }
@@ -47,10 +48,12 @@ export function arrayCellCorners(centre:number[], pitch:number):number[][] {
 }
 
 /** A wrapped array remains one-dimensional; fitting preserves all record positions. */
-export function wrappedArrayCell(index:number,length:number,origin:number[],pitch:number,columns:number,height?:number) {
+export function wrappedArrayCell(index:number,length:number,origin:number[],pitch:number,columns:number,height?:number,cellHeight?:number) {
     const rows=Math.max(1,Math.ceil(length/columns));
     const rowPitch=height===undefined?.78:height/rows;
-    return {position:[origin[0]!+(index%columns)*pitch,origin[1]!-Math.floor(index/columns)*rowPitch,origin[2]!] as [number,number,number],height:rowPitch*(.68/.78)};
+    // A fixed cellHeight (capped at the row pitch) leaves the rest of each row as space between rows.
+    return {position:[origin[0]!+(index%columns)*pitch,origin[1]!-Math.floor(index/columns)*rowPitch,origin[2]!] as [number,number,number],
+        height:cellHeight===undefined?rowPitch*(.68/.78):Math.min(cellHeight,rowPitch)};
 }
 
 /** A colorExpr result is accepted only as a 6-digit hex color; anything else defers to highlight/base color. */
