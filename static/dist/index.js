@@ -3466,8 +3466,11 @@ function makeAiAskButton(className, title, getMessage) {
 function makeSilentAiAskButton(className, title, getMessage) {
 	return _makeAiAskButton(className, title, getMessage, true);
 }
-/** Send a prompt to the tutor as the learner's message, or with ⌘/Ctrl held put it in the input to edit first. */
-function sendAiPrompt(message, e) {
+/**
+* Send a prompt to the tutor, or with ⌘/Ctrl held put it in the input to edit first. Silent prompts are not
+* posted as the learner's message: only the reply shows (for long, context-laden requests).
+*/
+function sendAiPrompt(message, e, opts = {}) {
 	openChatPanel();
 	if (e.metaKey || e.ctrlKey) {
 		const input = document.getElementById("chat-input");
@@ -3478,7 +3481,7 @@ function sendAiPrompt(message, e) {
 		}
 		return;
 	}
-	if (typeof sendChatMessage === "function" && !_chatBusy()) sendChatMessage(message);
+	if (typeof sendChatMessage === "function" && !_chatBusy()) sendChatMessage(message, { silent: opts.silent });
 }
 /** True while a chat turn is in flight (chat.ts owns the state). */
 function _chatBusy() {
@@ -24595,12 +24598,16 @@ var CODE_PROMPTS = [
 		prompt: "How many times does the selected code run for this input? Then say how that count grows with the input size, and why."
 	},
 	{
-		label: "Its share of the complexity",
-		prompt: "How does the selected code contribute to the program's runtime and space complexity? Say whether it dominates or not, and why."
+		label: "This line's share of the complexity",
+		prompt: "How much does the selected line add to the program's runtime and space complexity? Count how often it runs and what each run costs, then say whether it dominates the total or not, and why."
 	},
 	{
 		label: "Total runtime / space complexity",
 		prompt: "What is the total runtime and space complexity of this code? Derive both from the loops and the recursion, and count the call stack and the output in the space."
+	},
+	{
+		label: "Which lines determine the complexity?",
+		prompt: "Which lines determine the runtime and space complexity of this code? Name each one by line number, say what it contributes (a loop bound, a recursive call, a growing structure, the call stack), and which one dominates."
 	},
 	{
 		label: "Complexity of this function only",
@@ -24782,7 +24789,10 @@ function setupCodePanel() {
 	what.className = "code-line-actions";
 	actions.append(selectionLabel, ask, jump, what, codePromptsMenu());
 	host.append(tree, title, execution, body, actions, targets);
-	/** "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. */
+	/**
+	* "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
+	* silently: the request carries the whole file and state, so only the tutor's reply shows in the chat.
+	*/
 	function codePromptsMenu() {
 		const wrap = document.createElement("span");
 		wrap.className = "preset-more code-prompts";
@@ -24823,7 +24833,7 @@ function setupCodePanel() {
 			item.addEventListener("click", (e) => {
 				close();
 				const message = codeMessage(prompt);
-				if (message) sendAiPrompt(message, e);
+				if (message) sendAiPrompt(message, e, { silent: true });
 			});
 			menu.append(item);
 		}

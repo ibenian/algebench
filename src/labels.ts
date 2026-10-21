@@ -1063,15 +1063,18 @@ export function makeSilentAiAskButton(
     return _makeAiAskButton(className, title, getMessage, true);
 }
 
-/** Send a prompt to the tutor as the learner's message, or with ⌘/Ctrl held put it in the input to edit first. */
-export function sendAiPrompt(message: string, e: MouseEvent): void {
+/**
+ * Send a prompt to the tutor, or with ⌘/Ctrl held put it in the input to edit first. Silent prompts are not
+ * posted as the learner's message: only the reply shows (for long, context-laden requests).
+ */
+export function sendAiPrompt(message: string, e: MouseEvent, opts: { silent?: boolean } = {}): void {
     openChatPanel();
     if (e.metaKey || e.ctrlKey) {
         const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
         if (input) { input.value = message; input.focus(); input.dispatchEvent(new Event('input')); }
         return;
     }
-    if (typeof sendChatMessage === 'function' && !_chatBusy()) void sendChatMessage(message);
+    if (typeof sendChatMessage === 'function' && !_chatBusy()) void sendChatMessage(message, { silent: opts.silent });
 }
 
 /** True while a chat turn is in flight (chat.ts owns the state). */

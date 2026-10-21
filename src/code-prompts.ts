@@ -11,8 +11,9 @@ export const CODE_PROMPTS: CodePrompt[] = [
     {label: 'Analyze call stack', prompt: 'Analyze the call stack at the current step: each call still waiting to return, outermost first, with its arguments and what it is waiting for, and the call that is running now.'},
     {label: "I don't understand this line", prompt: "I don't understand the selected code. Explain it in plain words, one piece at a time, using the values on screen right now."},
     {label: 'How many times does this line run?', prompt: 'How many times does the selected code run for this input? Then say how that count grows with the input size, and why.'},
-    {label: 'Its share of the complexity', prompt: "How does the selected code contribute to the program's runtime and space complexity? Say whether it dominates or not, and why."},
+    {label: "This line's share of the complexity", prompt: "How much does the selected line add to the program's runtime and space complexity? Count how often it runs and what each run costs, then say whether it dominates the total or not, and why."},
     {label: 'Total runtime / space complexity', prompt: 'What is the total runtime and space complexity of this code? Derive both from the loops and the recursion, and count the call stack and the output in the space.'},
+    {label: 'Which lines determine the complexity?', prompt: 'Which lines determine the runtime and space complexity of this code? Name each one by line number, say what it contributes (a loop bound, a recursive call, a growing structure, the call stack), and which one dominates.'},
     {label: 'Complexity of this function only', prompt: 'What are the runtime and space complexity of only the function that contains the selected code, not counting its callers?'},
 ];
 

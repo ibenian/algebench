@@ -42,7 +42,10 @@ export function setupCodePanel(): void {
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
     const what=document.createElement('span');what.className='code-line-actions';
     actions.append(selectionLabel,ask,jump,what,codePromptsMenu());host.append(tree,title,execution,body,actions,targets);
-    /** "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. */
+    /**
+     * "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
+     * silently: the request carries the whole file and state, so only the tutor's reply shows in the chat.
+     */
     function codePromptsMenu() {
         const wrap=document.createElement('span');wrap.className='preset-more code-prompts';
         const toggle=document.createElement('button');toggle.type='button';toggle.className='code-prompts-btn';toggle.textContent='⋯';
@@ -55,7 +58,7 @@ export function setupCodePanel(): void {
         for(const prompt of CODE_PROMPTS){
             const item=document.createElement('button');item.type='button';item.className='preset-more-item';item.setAttribute('role','menuitem');
             item.textContent=prompt.label;item.title=prompt.prompt+'\n\nClick to send · ⌘/Ctrl-click to edit';
-            item.addEventListener('click',e=>{close();const message=codeMessage(prompt);if(message)sendAiPrompt(message,e);});
+            item.addEventListener('click',e=>{close();const message=codeMessage(prompt);if(message)sendAiPrompt(message,e,{silent:true});});
             menu.append(item);
         }
         toggle.addEventListener('click',()=>{
