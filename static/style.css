@@ -570,7 +570,8 @@ html, body {
 .jsb-clear:hover { color: rgba(220, 100, 100, 0.85); }
 
 /* Tree key-search filter states */
-.jt-item.jt-dim > .jt-row { opacity: 0.18; }
+/* While searching, every row dims except matches and the ancestors that lead to them (json-browser.ts). */
+.jt-searching .jt-item:not(.jt-match):not(.jt-path) > .jt-row { opacity: 0.18; }
 .jt-item.jt-match > .jt-row { background: rgba(80, 200, 120, 0.14); }
 .jt-item.jt-match > .jt-row .jt-key { color: rgba(120, 240, 160, 0.95); }
 
