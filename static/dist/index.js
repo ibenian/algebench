@@ -28790,6 +28790,10 @@ var COMMON_PROMPTS = [
 		prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."
 	},
 	{
+		label: "Rephrase from first principles",
+		prompt: "Take what you just explained and say it again from first principles, in the plainest words you can: what is really going on underneath, stripped of jargon, notation and caveats. Rough and loose is fine as long as the core idea lands. Don't add anything new; keep it short."
+	},
+	{
 		label: "Walk me through this view",
 		prompt: "Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate."
 	},

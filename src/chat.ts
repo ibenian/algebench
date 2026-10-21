@@ -147,6 +147,8 @@ if (typeof window !== 'undefined') {
 const COMMON_PROMPTS: {label: string; prompt: string}[] = [
     {label: "1-sentence gist", prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."},
     {label: 'Gist as bullets', prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."},
+    // Pedagogy over precision: a rough restatement that lands beats an exact one that doesn't.
+    {label: 'Rephrase from first principles', prompt: "Take what you just explained and say it again from first principles, in the plainest words you can: what is really going on underneath, stripped of jargon, notation and caveats. Rough and loose is fine as long as the core idea lands. Don't add anything new; keep it short."},
     {label: 'Walk me through this view', prompt: 'Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate.'},
     {label: 'Walk me through key points', prompt: 'Walk me through the key points of this scene, one at a time, as a short list.'},
     {label: 'Guide me', prompt: 'Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on.'},

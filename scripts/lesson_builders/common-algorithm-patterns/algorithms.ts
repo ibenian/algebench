@@ -959,16 +959,16 @@ export const SUBSETS_SOURCE = `def subsets(nums):
  * Subsets by backtracking: each backtrack(start) call records the current path, then for each later index
  * chooses nums[i] (append), explores (recurse) and un-chooses it (pop). Calls are numbered as made; parents gives
  * each call's caller. Per frame: count, calls made; cur, the call the code is in; stack and done, 0/1 per call;
- * text, each call's recorded path; path, the path now; start and i, the call's start and loop index (−1 none);
+ * text, each call's recorded path; path and pathText, the path now (as numbers, and as written); start and i, the call's start and loop index (−1 none);
  * out, how many subsets are recorded; outText, those subsets in order.
  */
 export function subsetsTrace(nums: number[]) {
     const parents: number[] = [], text: string[] = [], done: number[] = [], stack: number[] = [], path: number[] = [];
     const starts: number[] = [];
-    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], path: [] as number[], start: -1, i: -1, out: 0, outText: [] as string[] };
+    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], path: [] as number[], start: -1, i: -1, out: 0, outText: [] as string[], pathText: '[]' };
     const { trace, emit } = recorder(v);
     const show = (p: number[]) => `[${p.join(', ')}]`;
-    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.path = path.slice(); v.stack = parents.map((_, k) => stack.includes(k) ? 1 : 0); };
+    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.path = path.slice(); v.pathText = show(path); v.stack = parents.map((_, k) => stack.includes(k) ? 1 : 0); };
     emit(2, `Start with no subsets and an empty path. nums = ${show(nums)}.`);
     const backtrack = (start: number, parent: number) => {
         const id = parents.length; parents.push(parent); text.push(show(path)); done.push(0); starts.push(start);

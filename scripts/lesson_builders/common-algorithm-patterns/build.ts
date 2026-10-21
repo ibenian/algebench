@@ -1370,6 +1370,7 @@ ${MD_TAIL}
             { ...label('start', `${tr('start')} < 0 ? 'start: —' : concat('start = ', ${tr('start')})`, [4.6, -3.6, 0], ['calls', `${tr('cur')}`]), codeRef: { file: 'backtracking', line: 4 } },
             { ...label('i', `${tr('i')} < 0 ? 'i: —' : concat('i = ', ${tr('i')})`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: { file: 'backtracking', line: 6 } },
             { ...label('numsi', `${tr('i')} < 0 ? 'nums[i]: —' : concat('nums[i] = ', arrayAt(${inp('nums')}, ${tr('i')}))`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: { file: 'backtracking', line: 7 } },
+            { ...label('pathv', `concat('path = ', ${tr('pathText')})`, [4.6, -3.6, 0]), codeRef: { file: 'backtracking', lineExpr: `${tr('line')} == 9 ? 9 : 7` } },
             { ...label('outlen', `concat('len(out) = ', ${tr('out')})`, [4.6, -3.6, 0]), codeRef: { file: 'backtracking', line: 5 } },
         ],
     });
