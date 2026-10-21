@@ -13,6 +13,7 @@ export const PATTERN_INPUTS = {
     topK: { nums: [7, 4, 9, 1, 8, 3, 6, 5], k: 3 },
     trie: { words: ['car', 'cat', 'cart', 'care', 'dog', 'do'], queries: ['ca', 'cab', 'do'] },
     linkedList: { values: [1, 2, 3, 4, 5] },
+    recursion: { x: 2, n: 13, fib: 4 },
     islands: { grid: [
         [1, 1, 0, 0, 0, 1],
         [1, 1, 0, 1, 0, 1],

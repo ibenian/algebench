@@ -5,10 +5,10 @@ import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../../../src/array-operations.js';
 import {
-    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,
+    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
-    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,
+    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,RECURSION_SOURCE,
 } from './algorithms.js';
 import type {Frame} from './algorithms.js';
 import {PATTERN_INPUTS as IN} from './inputs.js';
@@ -188,6 +188,22 @@ test('islands: counts the groups and labels every land cell with its group',()=>
  // A 1×1 island and an all-water grid.
  assert.equal(last(islandsTrace([[1]])).count,1);assert.equal(last(islandsTrace([[0,0],[0,0]])).count,0);
 });
+test('recursion: fast power halves n each call; naive fib branches and repeats work',()=>{
+ const p=powerTrace(2,13),f=last(p.trace);
+ assert.equal(p.parents.length,5,'13, 6, 3, 1, 0');
+ assert.deepEqual(p.parents,[-1,0,1,2,3],'a chain: each call makes one smaller call');
+ assert.equal((f.text as string[])[0],'power(2, 13) = 8192');
+ assert.ok((f.done as number[]).every(d=>d===1));
+ const q=fibTrace(4),g=last(q.trace),texts=g.text as string[];
+ assert.equal(texts[0],'fib(4) = 3');
+ assert.equal(q.parents.length,9,'fib(4) makes 9 calls');
+ assert.equal(texts.filter(t=>t.startsWith('fib(2)')).length,2,'fib(2) is solved twice');
+ // While running, the waiting calls are a path from the first call.
+ for(const run of [p,q])for(const fr of run.trace){
+  const on=(fr.stack as number[]).flatMap((x,i)=>x?[i]:[]);
+  on.forEach((i,k)=>assert.equal(k===0?-1:on[k-1],run.parents[i]));
+ }
+});
 test('monotonic queue gives every window maximum and keeps the deque decreasing',()=>{
  const {nums,k}=IN.monoQueue,trace=monotonicQueueTrace(nums,k);
  assert.deepEqual(last(trace).out,nums.slice(0,nums.length-k+1).map((_,i)=>Math.max(...nums.slice(i,i+k))));
@@ -252,7 +268,7 @@ test('KMP finds every occurrence, including overlaps, and builds lps',()=>{
 test('every trace frame has the same keys and ends Done',()=>{
  for(const trace of [prefixSumTrace(IN.prefix.nums,IN.prefix.queries),twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target),
   slidingWindowTrace(IN.slidingWindow.nums,IN.slidingWindow.k),fastSlowTrace(IN.fastSlow.nums),monotonicStackTrace(IN.monotonic.temps),
-  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),
+  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),powerTrace(IN.recursion.x,IN.recursion.n).trace,fibTrace(IN.recursion.fib).trace,
   monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k),greedyTrace(IN.greedy.nums),bitsTrace(IN.bits.nums),
   unionFindTrace(IN.unionFind.n,IN.unionFind.edges),kmpTrace(IN.kmp.text,IN.kmp.pattern)]){
   const keys=Object.keys(trace[0]!).sort();
@@ -279,6 +295,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
   'linked-list-reversal':[LINKED_LIST_SOURCE,linkedListTrace(IN.linkedList.values)],
   'tree-traversal':[TREE_TRAVERSAL_SOURCE,treeTraversalTrace('preorder',IN.tree.values,IN.tree.parents,IN.tree.sides)],
   'matrix-traversal':[ISLANDS_SOURCE,islandsTrace(IN.islands.grid)],
+  'recursion':[RECURSION_SOURCE,powerTrace(IN.recursion.x,IN.recursion.n).trace],
   'monotonic-queue':[MONOTONIC_QUEUE_SOURCE,monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k)],
   'greedy':[GREEDY_SOURCE,greedyTrace(IN.greedy.nums)],
   'bit-manipulation':[BITS_SOURCE,bitsTrace(IN.bits.nums)],

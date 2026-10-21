@@ -861,6 +861,88 @@ export function islandsTrace(input: number[][]) {
     return trace;
 }
 
+export const RECURSION_SOURCE = `def power(x, n):
+    if n == 0:
+        return 1
+    half = power(x, n // 2)
+    if n % 2 == 0:
+        return half * half
+    return half * half * x
+
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)`;
+/**
+ * A recursion as its call tree: calls are numbered as they are made (0 the first), and `parents` gives each
+ * call's caller, so a view can lay the tree out and show the calls made so far. Per frame: count, calls made;
+ * cur, the call the code is in (−1 none); stack and done, 0/1 per call (waiting on a recursive call, returned);
+ * text, each call as written, with its result once it returns; result, the value just returned (−1 none);
+ * n, the argument of the call the code is in (−1 outside any call); half, that call's half (fast power: the
+ * smaller copy's answer, −1 until it returns).
+ */
+function callTree() {
+    const parents: number[] = [], text: string[] = [], stack: number[] = [], done: number[] = [], ns: number[] = [], halves: number[] = [];
+    const v = { count: 0, cur: -1, stack: [] as number[], done: [] as number[], text: [] as string[], result: -1, n: -1, half: -1 };
+    const { trace, emit } = recorder(v);
+    const sync = () => { v.count = parents.length; v.text = text.slice(); v.done = done.slice(); v.stack = parents.map((_, i) => stack.includes(i) ? 1 : 0); };
+    const enter = (label: string, parent: number, n: number) => {
+        const id = parents.length; parents.push(parent); text.push(label); done.push(0); ns.push(n); halves.push(-1);
+        stack.push(id); v.cur = id; v.n = n; v.half = -1; sync(); return id;
+    };
+    const leave = (id: number, value: number) => {
+        text[id] = `${text[id]} = ${value}`; done[id] = 1; stack.pop(); v.result = value; sync();
+    };
+    const back = (id: number) => { v.cur = id; v.n = id >= 0 ? ns[id]! : -1; v.half = id >= 0 ? halves[id]! : -1; v.result = -1; sync(); };
+    const setHalf = (id: number, value: number) => { halves[id] = value; v.half = value; };
+    return { trace, emit, parents, enter, leave, back, setHalf };
+}
+
+/** Fast power: power(x, n) solves one smaller copy, power(x, n // 2), so the calls form a chain about log n long. */
+export function powerTrace(x: number, n: number) {
+    const t = callTree();
+    const call = (k: number, parent: number): number => {
+        const id = t.enter(`power(${x}, ${k})`, parent, k);
+        t.emit(2, `power(${x}, ${k}): is n 0?`);
+        if (k === 0) { t.leave(id, 1); t.emit(3, `Base case: ${x}⁰ = 1, no smaller copy needed.`); return 1; }
+        t.emit(4, `Trust the smaller copy: power(${x}, ${k} // 2 = ${Math.floor(k / 2)}) gives half the answer.`);
+        const half = call(Math.floor(k / 2), id);
+        t.back(id); t.setHalf(id, half);
+        const even = k % 2 === 0, value = even ? half * half : half * half * x;
+        t.emit(5, `Back in power(${x}, ${k}) with half = ${half}. Is ${k} even? ${even ? 'Yes' : 'No'}.`);
+        t.leave(id, value);
+        t.emit(even ? 6 : 7, even ? `${half} × ${half} = ${value}.` : `${k} is odd: ${half} × ${half} × ${x} = ${value}.`);
+        return value;
+    };
+    const value = call(n, -1);
+    t.back(-1);
+    t.emit(7, `power(${x}, ${n}) = ${value}, from ${t.parents.length} calls: each halves n, so O(log n) multiplications instead of ${n}.`, 'Done');
+    return { trace: t.trace, parents: t.parents };
+}
+
+/** Fibonacci, naively: fib(n) solves two smaller copies, so the calls branch and the same fib(k) is solved again. */
+export function fibTrace(n: number) {
+    const t = callTree();
+    const call = (k: number, parent: number): number => {
+        const id = t.enter(`fib(${k})`, parent, k);
+        t.emit(10, `fib(${k}): is n below 2?`);
+        if (k < 2) { t.leave(id, k); t.emit(11, `Base case: fib(${k}) = ${k}.`); return k; }
+        t.emit(12, `fib(${k}) needs two smaller copies: fib(${k - 1}) first.`);
+        const a = call(k - 1, id);
+        t.back(id);
+        t.emit(12, `fib(${k - 1}) = ${a}. Now fib(${k - 2}).`);
+        const b = call(k - 2, id);
+        t.back(id);
+        t.leave(id, a + b);
+        t.emit(12, `fib(${k}) = ${a} + ${b} = ${a + b}.`);
+        return a + b;
+    };
+    const value = call(n, -1);
+    t.back(-1);
+    t.emit(12, `fib(${n}) = ${value}, from ${t.parents.length} calls: the same smaller copies are solved more than once, and the count grows exponentially. Remembering answers (memoization) turns this into dynamic programming.`, 'Done');
+    return { trace: t.trace, parents: t.parents };
+}
+
 export const MONOTONIC_QUEUE_SOURCE = `from collections import deque
 
 def max_sliding_window(nums, k):

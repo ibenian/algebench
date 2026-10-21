@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -85,7 +85,8 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
     'shortest-path': { problem: 'A network has directed edges with travel times. How long does a signal from one node take to reach every node?' },
     'union-find': { problem: 'Given n nodes and a list of undirected edges, count the connected components.',
         example: `n = ${IN.unionFind.n}, edges = ${IN.unionFind.edges.map(e => `${e[0]}–${e[1]}`).join(', ')} → ${end(unionFindTrace(IN.unionFind.n, IN.unionFind.edges)).count}.` },
-    'recursion': { problem: 'Compute x to the power n using O(log n) multiplications.' },
+    'recursion': { problem: 'Compute x to the power n using O(log n) multiplications.',
+        example: `power(${IN.recursion.x}, ${IN.recursion.n}) = ${IN.recursion.x ** IN.recursion.n}, in ${powerTrace(IN.recursion.x, IN.recursion.n).parents.length} calls.` },
     'backtracking': { problem: 'Generate every permutation of a list of distinct numbers.' },
     'dynamic-programming': { problem: 'Houses in a row each hold some money, and you cannot rob two neighbours. What is the most you can rob?',
         example: `houses = ${list(IN.dp.houses)} → ${(end(houseRobberTrace(IN.dp.houses)).dp as number[]).at(-1)}.` },
@@ -1406,16 +1407,70 @@ ${SOON} *(Needs a weighted graph object and a heap view.)*
 
 **Practice:** Network Delay Time (743), Path with Minimum Effort (1631), Cheapest Flights Within K Stops (787).`,
     'Explain why the closest unsettled node is final with non-negative weights. This scene has no visualization yet.');
-placeholder('recursion', 'Solve smaller copies (recursion)', `# Solve smaller copies (recursion)
+// ── Recursion: the call tree, growing as calls are made ──
+(() => {
+    const { x, n, fib } = IN.recursion;
+    const pow = powerTrace(x, n), fb = fibTrace(fib);
+    // The call tree over one run's table: gold where the code is, pink waiting on a smaller copy, teal returned.
+    const elements = (table: string, calls: string, spacing: number, withX: boolean): Json[] => {
+        const c = (col: string) => `dataTable('${table}', frame, '${col}')`;
+        const on = (col: string, i: string) => `arrayAt(${c(col)}, ${i}) == 1`;
+        const parent = `dataTable('${calls}', idx, 'p')`;
+        return [
+            {
+                id: 'calls', type: 'graph', label: 'calls', lengthExpr: c('count'), valueExpr: `arrayAt(${c('text')}, idx)`,
+                treeLayout: { type: 'tidy', parentExpr: parent, origin: [0, 3.4, 0], spacing, levelGap: 1.3 },
+                nodeShape: 'rect', nodeWidth: 2.2, nodeHeight: 0.72, nodeCornerRadius: 0.16, valueLabel: 'inside', showIndices: false, axisLabels: 'plane',
+                colorExpr: `idx == ${c('cur')} ? '#9a7420' : (${on('stack', 'idx')} ? '#8a3f68' : (${on('done', 'idx')} ? '#2f7d66' : '#4a5560'))`,
+                // Each call's edge to its caller; the waiting calls' path from the first call is lit.
+                connectTo: { indexExpr: parent, pinned: true, bendExpr: '0', color: '#7f93aa',
+                    colorExpr: `${on('stack', 'idx')} and ${on('stack', parent)} ? '${PINK}' : ''`, highlightExpr: `${on('stack', 'idx')} and ${on('stack', parent)}` },
+            },
+            // The current call's arguments, wired to its node; x never changes, n halves (or drops by one or two).
+            ...(withX ? [{ ...label('x', `concat('x = ', ${inp('x')})`, [4.6, -3.6, 0], ['calls', `${c('cur')}`]), codeRef: { file: 'recursion', line: 1 } }] : []),
+            { ...label('n', `${c('n')} < 0 ? 'n: —' : concat('n = ', ${c('n')})`, [4.6, -3.6, 0], ['calls', `${c('cur')}`]), codeRef: { file: 'recursion', line: withX ? 1 : 9 } },
+            // Fast power's half: the smaller copy's answer, set on line 4 once that call returns.
+            ...(withX ? [{ ...label('half', `${c('half')} < 0 ? 'half: —' : concat('half = ', ${c('half')})`, [4.6, -3.6, 0]), codeRef: { file: 'recursion', line: 4 } }] : []),
+            label('returned', `${c('result')} < 0 ? 'returned: —' : concat('returned ', ${c('result')})`, [4.6, -3.6, 0]),
+            label('depth', `concat('waiting calls: ', sum(${c('stack')}))`, [4.6, -3.6, 0]),
+        ];
+    };
+    const callsTable = (parents: number[]) => parents.map(p => ({ p }));
+    pattern({
+        id: 'recursion', title: 'Solve smaller copies (recursion)', file: 'recursion.py', source: RECURSION_SOURCE,
+        input: { x, n, fib }, trace: pow.trace,
+        more: {
+            data: { callsPow: callsTable(pow.parents), callsFib: callsTable(fb.parents), rec_fib: fb.trace },
+            steps: [{
+                id: 'fib', title: 'Two smaller copies (Fibonacci)', description: 'Naive Fibonacci: two smaller copies per call, so the call tree branches and repeats work.',
+                descriptionExpr: `dataTable('rec_fib', frame, 'message')`,
+                remove: [{ id: '*' }, { type: 'slider' }],
+                sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: fb.trace.length - 1, step: 1, default: 0 }],
+                codeRef: { file: 'recursion', lineExpr: `dataTable('rec_fib', frame, 'line')` },
+                add: elements('rec_fib', 'callsFib', 2.35, false),
+            }],
+            locations: fb.trace.map((f, snapshot) => ({ line: f.line, scene: 'recursion', step: 'fib', snapshot, label: `Fibonacci · ${f.message}` })),
+        },
+        markdown: `# Solve smaller copies (recursion)
 
 **Signal:** the problem contains smaller copies of itself: trees, nested structures, divide and conquer (merge sort, fast power).
 
-Write the **base case** first, then assume the recursive call already solves the smaller problem and combine its answer. Each call gets its own frame on the call stack, so recursion depth costs memory. Memoizing repeated calls turns it into dynamic programming.
+Write the **base case** first, then **trust** the recursive call to solve the smaller copy, and combine its answer. Each call gets its own frame on the call stack until it returns, so depth costs memory.
 
-${SOON} *(Needs a recursion-tree view alongside the call stack.)*
+The scene draws every call as a node of the **call tree**, under the call that made it. Gold is where the code is now, pink calls are waiting for a smaller copy to return, and teal calls have returned, showing their result.
 
-**Practice:** Pow(x, n) (50), Merge Two Sorted Lists (21), Sort an Array (912, merge sort).`,
-    'Explain base case, trusting the recursive call, and the call stack. This scene has no visualization yet.');
+- **Fast power** (this step): \`power(x, n)\` needs one smaller copy, \`power(x, n // 2)\`, so the calls form a chain only about log₂ n long: ${pow.parents.length} calls for n = ${n}, instead of ${n} multiplications.
+- **Fibonacci** (next step): \`fib(n)\` needs **two** smaller copies, so the tree branches, and the same copy is solved again and again: fib(${fib}) already makes ${fb.parents.length} calls, and the count grows exponentially. Remembering each answer (memoization) is exactly dynamic programming.
+
+${MD_TAIL}
+
+**Practice:** Pow(x, n) (50), Merge Two Sorted Lists (21), Sort an Array (912, merge sort), Fibonacci Number (509), Climbing Stairs (70).`,
+        prompt: 'Explain base case, trusting the recursive call, and the call stack. Ask the learner to predict what each call returns before the player reveals it, and why naive Fibonacci repeats work.',
+        elements: elements('trace', 'callsPow', 2.35, true),
+    });
+    const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
+    Object.assign(first, { title: 'One smaller copy (fast power)', description: 'Fast power: one smaller copy per call, so the calls form a short chain.' });
+})();
 
 // Simplest first: arrays, strings, stack/queue/heap, linked structures, trees and graphs, then search over choices.
 const ORDER = ['overview',
