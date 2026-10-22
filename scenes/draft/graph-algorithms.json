@@ -1,0 +1,1380 @@
+{
+  "title": "Graph algorithms",
+  "codeFiles": [
+    {
+      "id": "representations",
+      "path": "graphs/build_graph.py",
+      "language": "python",
+      "source": "def build(n, edges):\n    adj = [[] for _ in range(n)]\n    matrix = [[0] * n for _ in range(n)]\n    for u, v in edges:\n        adj[u].append(v)\n        adj[v].append(u)\n        matrix[u][v] = matrix[v][u] = 1\n    return adj, matrix",
+      "locations": [
+        {"line": 2, "scene": "representations", "step": "run", "snapshot": 0, "label": "Store a graph (adjacency list, matrix, edge list) · 5 nodes: one empty neighbour list per node."},
+        {"line": 3, "scene": "representations", "step": "run", "snapshot": 1, "label": "Store a graph (adjacency list, matrix, edge list) · An 5 × 5 matrix of zeros: one cell per possible edge, 25 cells whatever the graph."},
+        {"line": 4, "scene": "representations", "step": "run", "snapshot": 2, "label": "Store a graph (adjacency list, matrix, edge list) · Edge 0: (0, 1)."},
+        {"line": 5, "scene": "representations", "step": "run", "snapshot": 3, "label": "Store a graph (adjacency list, matrix, edge list) · 1 is a neighbour of 0: adj[0] = [1]."},
+        {"line": 6, "scene": "representations", "step": "run", "snapshot": 4, "label": "Store a graph (adjacency list, matrix, edge list) · Undirected, so 0 is a neighbour of 1 too: adj[1] = [0]. Each edge is stored twice."},
+        {"line": 7, "scene": "representations", "step": "run", "snapshot": 5, "label": "Store a graph (adjacency list, matrix, edge list) · matrix[0][1] = matrix[1][0] = 1: the matrix is symmetric for an undirected graph."},
+        {"line": 4, "scene": "representations", "step": "run", "snapshot": 6, "label": "Store a graph (adjacency list, matrix, edge list) · Edge 1: (0, 2)."},
+        {"line": 5, "scene": "representations", "step": "run", "snapshot": 7, "label": "Store a graph (adjacency list, matrix, edge list) · 2 is a neighbour of 0: adj[0] = [1, 2]."},
+        {"line": 6, "scene": "representations", "step": "run", "snapshot": 8, "label": "Store a graph (adjacency list, matrix, edge list) · Undirected, so 0 is a neighbour of 2 too: adj[2] = [0]. Each edge is stored twice."},
+        {"line": 7, "scene": "representations", "step": "run", "snapshot": 9, "label": "Store a graph (adjacency list, matrix, edge list) · matrix[0][2] = matrix[2][0] = 1: the matrix is symmetric for an undirected graph."},
+        {"line": 4, "scene": "representations", "step": "run", "snapshot": 10, "label": "Store a graph (adjacency list, matrix, edge list) · Edge 2: (1, 2)."},
+        {"line": 5, "scene": "representations", "step": "run", "snapshot": 11, "label": "Store a graph (adjacency list, matrix, edge list) · 2 is a neighbour of 1: adj[1] = [0, 2]."},
+        {"line": 6, "scene": "representations", "step": "run", "snapshot": 12, "label": "Store a graph (adjacency list, matrix, edge list) · Undirected, so 1 is a neighbour of 2 too: adj[2] = [0, 1]. Each edge is stored twice."},
+        {"line": 7, "scene": "representations", "step": "run", "snapshot": 13, "label": "Store a graph (adjacency list, matrix, edge list) · matrix[1][2] = matrix[2][1] = 1: the matrix is symmetric for an undirected graph."},
+        {"line": 4, "scene": "representations", "step": "run", "snapshot": 14, "label": "Store a graph (adjacency list, matrix, edge list) · Edge 3: (1, 3)."},
+        {"line": 5, "scene": "representations", "step": "run", "snapshot": 15, "label": "Store a graph (adjacency list, matrix, edge list) · 3 is a neighbour of 1: adj[1] = [0, 2, 3]."},
+        {"line": 6, "scene": "representations", "step": "run", "snapshot": 16, "label": "Store a graph (adjacency list, matrix, edge list) · Undirected, so 1 is a neighbour of 3 too: adj[3] = [1]. Each edge is stored twice."},
+        {"line": 7, "scene": "representations", "step": "run", "snapshot": 17, "label": "Store a graph (adjacency list, matrix, edge list) · matrix[1][3] = matrix[3][1] = 1: the matrix is symmetric for an undirected graph."},
+        {"line": 4, "scene": "representations", "step": "run", "snapshot": 18, "label": "Store a graph (adjacency list, matrix, edge list) · Edge 4: (2, 4)."},
+        {"line": 5, "scene": "representations", "step": "run", "snapshot": 19, "label": "Store a graph (adjacency list, matrix, edge list) · 4 is a neighbour of 2: adj[2] = [0, 1, 4]."},
+        {"line": 6, "scene": "representations", "step": "run", "snapshot": 20, "label": "Store a graph (adjacency list, matrix, edge list) · Undirected, so 2 is a neighbour of 4 too: adj[4] = [2]. Each edge is stored twice."},
+        {"line": 7, "scene": "representations", "step": "run", "snapshot": 21, "label": "Store a graph (adjacency list, matrix, edge list) · matrix[2][4] = matrix[4][2] = 1: the matrix is symmetric for an undirected graph."},
+        {"line": 4, "scene": "representations", "step": "run", "snapshot": 22, "label": "Store a graph (adjacency list, matrix, edge list) · Edge 5: (3, 4)."},
+        {"line": 5, "scene": "representations", "step": "run", "snapshot": 23, "label": "Store a graph (adjacency list, matrix, edge list) · 4 is a neighbour of 3: adj[3] = [1, 4]."},
+        {"line": 6, "scene": "representations", "step": "run", "snapshot": 24, "label": "Store a graph (adjacency list, matrix, edge list) · Undirected, so 3 is a neighbour of 4 too: adj[4] = [2, 3]. Each edge is stored twice."},
+        {"line": 7, "scene": "representations", "step": "run", "snapshot": 25, "label": "Store a graph (adjacency list, matrix, edge list) · matrix[3][4] = matrix[4][3] = 1: the matrix is symmetric for an undirected graph."},
+        {"line": 8, "scene": "representations", "step": "run", "snapshot": 26, "label": "Store a graph (adjacency list, matrix, edge list) · Done. The list holds 2E = 12 entries for 6 edges; the matrix always holds V² = 25 cells."}
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "id": "index",
+      "title": "Graph algorithms: where to start",
+      "description": "Every graph algorithm in this lesson, in learning order.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "data": {
+        "index": [
+          {"id": "representations", "name": "1. Representations", "tier": 0, "x": -4.6, "y": 4.1},
+          {"id": "degrees", "name": "2. Count degrees", "tier": 0, "x": -4.6, "y": 2.7499999999999996},
+          {"id": "bfs", "name": "3. BFS", "tier": 0, "x": -4.6, "y": 1.3999999999999995},
+          {"id": "dfs", "name": "4. DFS", "tier": 0, "x": -4.6, "y": 0.049999999999998934},
+          {"id": "grid-graphs", "name": "5. Grid graphs", "tier": 0, "x": -4.6, "y": -1.3000000000000007},
+          {"id": "cycle-detection", "name": "6. Cycle detection", "tier": 0, "x": -4.6, "y": -2.6500000000000004},
+          {"id": "bipartite", "name": "7. Bipartite check", "tier": 1, "x": -4.6, "y": -4.000000000000002},
+          {"id": "topological-sort", "name": "8. Topo sort (Kahn / DFS)", "tier": 0, "x": 1.5, "y": 4.1},
+          {"id": "union-find", "name": "9. Union-find", "tier": 0, "x": 1.5, "y": 2.7499999999999996},
+          {"id": "mst", "name": "10. Kruskal / Prim", "tier": 1, "x": 1.5, "y": 1.3999999999999995},
+          {"id": "dijkstra", "name": "11. Dijkstra", "tier": 1, "x": 1.5, "y": 0.049999999999998934},
+          {"id": "zero-one-bfs", "name": "12. 0-1 BFS", "tier": 1, "x": 1.5, "y": -1.3000000000000007},
+          {"id": "a-star", "name": "13. A*", "tier": 2, "x": 1.5, "y": -2.6500000000000004},
+          {"id": "bellman-ford", "name": "14. Bellman-Ford", "tier": 1, "x": 1.5, "y": -4.000000000000002},
+          {"id": "floyd-warshall", "name": "15. Floyd-Warshall", "tier": 2, "x": 7.6, "y": 4.1},
+          {"id": "bridges", "name": "16. Bridges", "tier": 2, "x": 7.6, "y": 2.7499999999999996},
+          {"id": "scc", "name": "17. Kosaraju / Tarjan", "tier": 2, "x": 7.6, "y": 1.3999999999999995},
+          {"id": "euler-path", "name": "18. Euler path (Hierholzer)", "tier": 2, "x": 7.6, "y": 0.049999999999998934},
+          {"id": "max-flow", "name": "19. Max flow (Edmonds-Karp)", "tier": 2, "x": 7.6, "y": -1.3000000000000007}
+        ]
+      },
+      "markdown": "# Graph algorithms\n\nGraphs show up in interviews as networks, dependencies, grids, maps and social connections, often in disguise. Most problems need only a handful of algorithms; the rest are worth recognizing.\n\nThe map lists them **in learning order**: each one builds on those before it, so read down the columns. Colour shows how often interviews ask for it: **gold** core (expect these), **blue** common, **grey** advanced (worth recognizing). Click one to open it.\n\n| # | Algorithm | Tier | Builds on | Signal | Cost |\n| --- | --- | --- | --- | --- | --- |\n| 1 | Store a graph (adjacency list, matrix, edge list) | Core | — | Any graph problem: the first decision is how to hold the edges. | Build: O(V + E) for a list, O(V²) for a matrix. |\n| 2 | Count degrees (in, out, and peeling) | Core | Representations | A node defined by how many edges touch it (\"trusted by everyone\", \"the centre\"), sources and sinks, or peeling a graph layer by layer. | O(V + E) to count; peeling is O(V + E) too. |\n| 3 | Level by level (breadth-first search) | Core | Representations | Shortest path in steps on an unweighted graph, \"minimum moves\", nearest X, or anything level by level. | O(V + E) time, O(V) space for the queue and the visited set. |\n| 4 | Go deep first (depth-first search) | Core | Representations | Explore everything reachable, count components, find any path, or anything that backtracks. | O(V + E) time, O(V) space for the visited set and the recursion stack. |\n| 5 | A grid is a graph (islands, flood fill) | Core | BFS, DFS | A 2D grid of cells with moves up, down, left and right. | O(rows × cols) time and space. |\n| 6 | Is there a cycle? | Core | DFS, Count degrees | Can every task finish, is the graph a tree, deadlock, or a \"redundant\" edge. | O(V + E). |\n| 7 | Two teams (bipartite check) | Common | BFS, DFS | Split into two groups with every edge between groups, two-colouring, \"possible bipartition\". | O(V + E). |\n| 8 | Order by dependencies (topological sort) | Core | Count degrees, BFS, DFS, Cycle detection | Prerequisites, build order, task scheduling: \"in what order can everything run?\" | O(V + E). |\n| 9 | Group as edges arrive (union-find) | Core | Representations | Connectivity that grows edge by edge, counting groups, \"are these two connected?\", merging accounts. | About O(α(n)) per operation: effectively constant. |\n| 10 | Connect everything cheaply (minimum spanning tree) | Common | Union-find | Connect all points or cities at the lowest total cost. | Kruskal O(E log E); Prim O(E log V). |\n| 11 | Cheapest route (Dijkstra) | Common | BFS | Shortest or cheapest path when edges have non-negative weights. | O((V + E) log V) with a binary heap. |\n| 12 | Weights of 0 or 1 (0-1 BFS) | Common | Dijkstra | Shortest path where every edge costs 0 or 1: free moves and paid moves. | O(V + E). |\n| 13 | Guided search (A*) | Advanced | Dijkstra | Shortest path with a good estimate of the remaining distance, such as grid pathfinding. | Same worst case as Dijkstra; usually much faster. |\n| 14 | Negative edges (Bellman-Ford) | Common | Dijkstra | Weights can be negative, at most k edges, or \"detect a negative cycle\". | O(V · E). |\n| 15 | Every pair at once (Floyd-Warshall) | Advanced | Bellman-Ford | Shortest distances between every pair of nodes, on a small graph. | O(V³) time, O(V²) space. |\n| 16 | Critical edges (bridges and articulation points) | Advanced | DFS | Edges or nodes whose removal disconnects the graph: \"critical connections\". | O(V + E). |\n| 17 | Mutual reachability (strongly connected components) | Advanced | DFS, Bridges | Groups where every node reaches every other in a directed graph; condensing a graph into a DAG. | O(V + E). |\n| 18 | Use every edge once (Hierholzer) | Advanced | Count degrees, DFS | Use every edge exactly once: itineraries, domino chains, \"valid arrangement of pairs\". | O(E). |\n| 19 | Push as much as fits (max flow, matching) | Advanced | BFS | Capacities on edges, assignments, bipartite matching. | Edmonds-Karp O(V · E²). |\n\nEach scene starts with the signal to look for and the idea; visualizations are being added one by one.",
+      "prompt": "Help the learner choose where to start among these graph algorithms, and how to recognize which one a problem needs.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "map",
+          "title": "The map",
+          "description": "Click an algorithm to open it.",
+          "add": [
+            {
+              "id": "algorithms",
+              "type": "graph",
+              "label": "graph algorithms",
+              "lengthExpr": "19",
+              "valueExpr": "dataTable('index', idx, 'name')",
+              "itemType": "string",
+              "positionExpr": ["dataTable('index', idx, 'x')", "dataTable('index', idx, 'y')", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 5.4,
+              "nodeHeight": 1.05,
+              "nodeCornerRadius": 0.25,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "axisLabels": "plane",
+              "colorExpr": "dataTable('index', idx, 'tier') == 0 ? '#f1c65b' : (dataTable('index', idx, 'tier') == 1 ? '#9dbde3' : '#7f93aa')",
+              "onClick": [
+                {"action": "goToScene", "sceneExpr": "dataTable('index', idx, 'id')"}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "representations",
+      "title": "Store a graph (adjacency list, matrix, edge list)",
+      "description": "5 nodes: one empty neighbour list per node.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "data": {
+        "trace": [
+          {
+            "k": -1,
+            "u": -1,
+            "v": -1,
+            "adj0": [],
+            "adj1": [],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 0,
+            "line": 2,
+            "message": "5 nodes: one empty neighbour list per node."
+          },
+          {
+            "k": -1,
+            "u": -1,
+            "v": -1,
+            "adj0": [],
+            "adj1": [],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 3,
+            "message": "An 5 × 5 matrix of zeros: one cell per possible edge, 25 cells whatever the graph."
+          },
+          {
+            "k": 0,
+            "u": 0,
+            "v": 1,
+            "adj0": [],
+            "adj1": [],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 4,
+            "message": "Edge 0: (0, 1)."
+          },
+          {
+            "k": 0,
+            "u": 0,
+            "v": 1,
+            "adj0": [1],
+            "adj1": [],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 5,
+            "message": "1 is a neighbour of 0: adj[0] = [1]."
+          },
+          {
+            "k": 0,
+            "u": 0,
+            "v": 1,
+            "adj0": [1],
+            "adj1": [0],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 6,
+            "message": "Undirected, so 0 is a neighbour of 1 too: adj[1] = [0]. Each edge is stored twice."
+          },
+          {
+            "k": 0,
+            "u": 0,
+            "v": 1,
+            "adj0": [1],
+            "adj1": [0],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [1, 5],
+            "hasMatrix": 1,
+            "line": 7,
+            "message": "matrix[0][1] = matrix[1][0] = 1: the matrix is symmetric for an undirected graph."
+          },
+          {
+            "k": 1,
+            "u": 0,
+            "v": 2,
+            "adj0": [1],
+            "adj1": [0],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 4,
+            "message": "Edge 1: (0, 2)."
+          },
+          {
+            "k": 1,
+            "u": 0,
+            "v": 2,
+            "adj0": [1, 2],
+            "adj1": [0],
+            "adj2": [],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 5,
+            "message": "2 is a neighbour of 0: adj[0] = [1, 2]."
+          },
+          {
+            "k": 1,
+            "u": 0,
+            "v": 2,
+            "adj0": [1, 2],
+            "adj1": [0],
+            "adj2": [0],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 6,
+            "message": "Undirected, so 0 is a neighbour of 2 too: adj[2] = [0]. Each edge is stored twice."
+          },
+          {
+            "k": 1,
+            "u": 0,
+            "v": 2,
+            "adj0": [1, 2],
+            "adj1": [0],
+            "adj2": [0],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [2, 10],
+            "hasMatrix": 1,
+            "line": 7,
+            "message": "matrix[0][2] = matrix[2][0] = 1: the matrix is symmetric for an undirected graph."
+          },
+          {
+            "k": 2,
+            "u": 1,
+            "v": 2,
+            "adj0": [1, 2],
+            "adj1": [0],
+            "adj2": [0],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 4,
+            "message": "Edge 2: (1, 2)."
+          },
+          {
+            "k": 2,
+            "u": 1,
+            "v": 2,
+            "adj0": [1, 2],
+            "adj1": [0, 2],
+            "adj2": [0],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 5,
+            "message": "2 is a neighbour of 1: adj[1] = [0, 2]."
+          },
+          {
+            "k": 2,
+            "u": 1,
+            "v": 2,
+            "adj0": [1, 2],
+            "adj1": [0, 2],
+            "adj2": [0, 1],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 6,
+            "message": "Undirected, so 1 is a neighbour of 2 too: adj[2] = [0, 1]. Each edge is stored twice."
+          },
+          {
+            "k": 2,
+            "u": 1,
+            "v": 2,
+            "adj0": [1, 2],
+            "adj1": [0, 2],
+            "adj2": [0, 1],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [7, 11],
+            "hasMatrix": 1,
+            "line": 7,
+            "message": "matrix[1][2] = matrix[2][1] = 1: the matrix is symmetric for an undirected graph."
+          },
+          {
+            "k": 3,
+            "u": 1,
+            "v": 3,
+            "adj0": [1, 2],
+            "adj1": [0, 2],
+            "adj2": [0, 1],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 4,
+            "message": "Edge 3: (1, 3)."
+          },
+          {
+            "k": 3,
+            "u": 1,
+            "v": 3,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1],
+            "adj3": [],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 5,
+            "message": "3 is a neighbour of 1: adj[1] = [0, 2, 3]."
+          },
+          {
+            "k": 3,
+            "u": 1,
+            "v": 3,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1],
+            "adj3": [1],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 6,
+            "message": "Undirected, so 1 is a neighbour of 3 too: adj[3] = [1]. Each edge is stored twice."
+          },
+          {
+            "k": 3,
+            "u": 1,
+            "v": 3,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1],
+            "adj3": [1],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [8, 16],
+            "hasMatrix": 1,
+            "line": 7,
+            "message": "matrix[1][3] = matrix[3][1] = 1: the matrix is symmetric for an undirected graph."
+          },
+          {
+            "k": 4,
+            "u": 2,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1],
+            "adj3": [1],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 4,
+            "message": "Edge 4: (2, 4)."
+          },
+          {
+            "k": 4,
+            "u": 2,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1],
+            "adj4": [],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 5,
+            "message": "4 is a neighbour of 2: adj[2] = [0, 1, 4]."
+          },
+          {
+            "k": 4,
+            "u": 2,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1],
+            "adj4": [2],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 6,
+            "message": "Undirected, so 2 is a neighbour of 4 too: adj[4] = [2]. Each edge is stored twice."
+          },
+          {
+            "k": 4,
+            "u": 2,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1],
+            "adj4": [2],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+            "lit": [14, 22],
+            "hasMatrix": 1,
+            "line": 7,
+            "message": "matrix[2][4] = matrix[4][2] = 1: the matrix is symmetric for an undirected graph."
+          },
+          {
+            "k": 5,
+            "u": 3,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1],
+            "adj4": [2],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 4,
+            "message": "Edge 5: (3, 4)."
+          },
+          {
+            "k": 5,
+            "u": 3,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1, 4],
+            "adj4": [2],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 5,
+            "message": "4 is a neighbour of 3: adj[3] = [1, 4]."
+          },
+          {
+            "k": 5,
+            "u": 3,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1, 4],
+            "adj4": [2, 3],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 6,
+            "message": "Undirected, so 3 is a neighbour of 4 too: adj[4] = [2, 3]. Each edge is stored twice."
+          },
+          {
+            "k": 5,
+            "u": 3,
+            "v": 4,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1, 4],
+            "adj4": [2, 3],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0],
+            "lit": [19, 23],
+            "hasMatrix": 1,
+            "line": 7,
+            "message": "matrix[3][4] = matrix[4][3] = 1: the matrix is symmetric for an undirected graph."
+          },
+          {
+            "k": -1,
+            "u": -1,
+            "v": -1,
+            "adj0": [1, 2],
+            "adj1": [0, 2, 3],
+            "adj2": [0, 1, 4],
+            "adj3": [1, 4],
+            "adj4": [2, 3],
+            "m": [0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0],
+            "lit": [],
+            "hasMatrix": 1,
+            "line": 8,
+            "message": "Done. The list holds 2E = 12 entries for 6 edges; the matrix always holds V² = 25 cells."
+          }
+        ],
+        "nodes": [
+          {"x": -4.4, "y": 3.9},
+          {"x": -6.207, "y": 2.587},
+          {"x": -5.517, "y": 0.463},
+          {"x": -3.283, "y": 0.463},
+          {"x": -2.593, "y": 2.587}
+        ]
+      },
+      "markdown": "# Store a graph (adjacency list, matrix, edge list)\n\n**Step 1** of 19 · **Tier:** Core (expect these)\n\n**Signal:** any graph problem: the first decision is how to hold the edges.\n\nProblems usually hand you an **edge list**: pairs `(u, v)`, one per connection. It is easy to store but slow to ask \"who are `u`'s neighbours?\", so step one is almost always to build one of these:\n\n- **Adjacency list** (`adj[u]` = the neighbours of `u`): space O(V + E), and listing a node's neighbours costs exactly as many steps as it has. The default for interviews, since most graphs are sparse.\n- **Adjacency matrix** (`matrix[u][v]` = 1 for an edge): \"is there an edge?\" in O(1), but O(V²) space and O(V) to list neighbours, however few there are. Fine for small, dense graphs.\n\nThe run builds both from the edge list, one edge at a time. The graph is **undirected**, so each edge goes into two lists (`adj[u]` and `adj[v]`) and two matrix cells, which is why the matrix is symmetric. For a directed graph, drop the second line: store `u → v` only.\n\n| | Edge list | Adjacency list | Adjacency matrix |\n| --- | --- | --- | --- |\n| Space | O(E) | O(V + E) | O(V²) |\n| Neighbours of u | O(E) | O(deg u) | O(V) |\n| Is (u, v) an edge? | O(E) | O(deg u) | O(1) |\n| Best for | scanning or sorting edges | traversals (BFS, DFS) | dense graphs, quick edge checks |\n\nUse the execution player to step through, or open **Code** to follow the active line.\n\n**Practice:** Find if Path Exists in Graph, Clone Graph, Find the Town Judge.",
+      "prompt": "Explain why problems give an edge list but algorithms want an adjacency list, and when a matrix wins. Ask the learner to predict which lists and cells change before each edge is added.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Run it",
+          "description": "Step through the run.",
+          "descriptionExpr": "dataTable('trace', frame, 'message')",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 26, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "graph",
+              "type": "graph",
+              "label": "graph",
+              "lengthExpr": "5",
+              "valueExpr": "idx",
+              "positionExpr": ["dataTable('nodes', idx, 'x')", "dataTable('nodes', idx, 'y')", "0"],
+              "nodeShape": "rect",
+              "nodeWidth": 0.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.4,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "colorExpr": "idx == dataTable('trace', frame, 'u') or idx == dataTable('trace', frame, 'v') ? '#f1c65b' : ''",
+              "connectTo": {"indexExpr": "dataTable('trace', frame, concat('adj', idx))", "pinned": true, "bendExpr": "0", "color": "#7f93aa", "colorExpr": "(idx == dataTable('trace', frame, 'u') and to == dataTable('trace', frame, 'v')) or (idx == dataTable('trace', frame, 'v') and to == dataTable('trace', frame, 'u')) ? '#f1c65b' : ''", "highlightExpr": "(idx == dataTable('trace', frame, 'u') and to == dataTable('trace', frame, 'v')) or (idx == dataTable('trace', frame, 'v') and to == dataTable('trace', frame, 'u'))"}
+            },
+            {
+              "id": "edges",
+              "type": "array",
+              "label": "edges",
+              "labelSide": "left",
+              "itemType": "text",
+              "values": ["(0, 1)", "(0, 2)", "(1, 2)", "(1, 3)", "(2, 4)", "(3, 4)"],
+              "origin": [-5.2, -3.0, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "highlightExpr": "idx == dataTable('trace', frame, 'k')",
+              "markers": [
+                {"type": "step_marker", "indexName": "k", "indexExpr": "dataTable('trace', frame, 'k')", "visibleExpr": "dataTable('trace', frame, 'k') >= 0", "color": "#f1c65b"}
+              ]
+            },
+            {
+              "id": "adj-0",
+              "type": "array",
+              "label": "adj[0]",
+              "labelSide": "left",
+              "origin": [1.9, 3.7, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 9,
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'adj0'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'adj0'), idx)",
+              "highlightExpr": "idx == arrayCount(dataTable('trace', frame, 'adj0')) - 1 and ((0 == dataTable('trace', frame, 'u') and dataTable('trace', frame, 'line') == 5) or (0 == dataTable('trace', frame, 'v') and dataTable('trace', frame, 'line') == 6))"
+            },
+            {
+              "id": "adj-1",
+              "type": "array",
+              "label": "adj[1]",
+              "labelSide": "left",
+              "origin": [1.9, 2.6500000000000004, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 9,
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'adj1'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'adj1'), idx)",
+              "highlightExpr": "idx == arrayCount(dataTable('trace', frame, 'adj1')) - 1 and ((1 == dataTable('trace', frame, 'u') and dataTable('trace', frame, 'line') == 5) or (1 == dataTable('trace', frame, 'v') and dataTable('trace', frame, 'line') == 6))"
+            },
+            {
+              "id": "adj-2",
+              "type": "array",
+              "label": "adj[2]",
+              "labelSide": "left",
+              "origin": [1.9, 1.6, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 9,
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'adj2'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'adj2'), idx)",
+              "highlightExpr": "idx == arrayCount(dataTable('trace', frame, 'adj2')) - 1 and ((2 == dataTable('trace', frame, 'u') and dataTable('trace', frame, 'line') == 5) or (2 == dataTable('trace', frame, 'v') and dataTable('trace', frame, 'line') == 6))"
+            },
+            {
+              "id": "adj-3",
+              "type": "array",
+              "label": "adj[3]",
+              "labelSide": "left",
+              "origin": [1.9, 0.5499999999999998, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 9,
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'adj3'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'adj3'), idx)",
+              "highlightExpr": "idx == arrayCount(dataTable('trace', frame, 'adj3')) - 1 and ((3 == dataTable('trace', frame, 'u') and dataTable('trace', frame, 'line') == 5) or (3 == dataTable('trace', frame, 'v') and dataTable('trace', frame, 'line') == 6))"
+            },
+            {
+              "id": "adj-4",
+              "type": "array",
+              "label": "adj[4]",
+              "labelSide": "left",
+              "origin": [1.9, -0.5, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 9,
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'adj4'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'adj4'), idx)",
+              "highlightExpr": "idx == arrayCount(dataTable('trace', frame, 'adj4')) - 1 and ((4 == dataTable('trace', frame, 'u') and dataTable('trace', frame, 'line') == 5) or (4 == dataTable('trace', frame, 'v') and dataTable('trace', frame, 'line') == 6))"
+            },
+            {
+              "id": "matrix",
+              "type": "tensor",
+              "label": "matrix",
+              "shape": [5, 5],
+              "origin": [6.6, 0.4, 0],
+              "cellSize": 0.9,
+              "shader": {"ignorePlaneOpacity": true},
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'm'), row * 5 + col) == 0 ? 0 : (keyIndex(dataTable('trace', frame, 'lit'), row * 5 + col) >= 0 ? 2 : 1)",
+              "visibleExpr": "dataTable('trace', frame, 'hasMatrix') == 1",
+              "textExpr": "arrayAt(dataTable('trace', frame, 'm'), row * 5 + col)",
+              "colorMap": {
+                "stops": [
+                  {"t": 0, "color": "#2a3644"},
+                  {"t": 0.5, "color": "#9dbde3"},
+                  {"t": 1, "color": "#f1c65b"}
+                ]
+              },
+              "colorDomain": [0, 2],
+              "axes": [
+                {
+                  "labels": ["0", "1", "2", "3", "4"],
+                  "title": "u"
+                },
+                {
+                  "labels": ["0", "1", "2", "3", "4"],
+                  "title": "v"
+                }
+              ]
+            },
+            {
+              "id": "u",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'u') < 0 ? 'u: —' : concat('u = ', dataTable('trace', frame, 'u'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'u')"},
+              "codeRef": {"file": "representations", "line": 4}
+            },
+            {
+              "id": "v",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'v') < 0 ? 'v: —' : concat('v = ', dataTable('trace', frame, 'v'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'v')"},
+              "codeRef": {"file": "representations", "line": 4}
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200},
+      "codeRef": {"file": "representations", "lineExpr": "dataTable('trace', frame, 'line')"}
+    },
+    {
+      "id": "degrees",
+      "title": "Count degrees (in, out, and peeling)",
+      "description": "Signal: a node defined by how many edges touch it (\"trusted by everyone\", \"the centre\"), sources and sinks, or peeling a graph layer by layer.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Count degrees (in, out, and peeling)\n\n**Step 2** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** a node defined by how many edges touch it (\"trusted by everyone\", \"the centre\"), sources and sinks, or peeling a graph layer by layer.\n\nOne pass over the edges counts each node's **in-degree** and **out-degree**, with no traversal. Sometimes the counts are the answer: the town judge has in-degree n − 1 and out-degree 0; nodes nothing points at (in-degree 0) are the ones every search must start from. Degrees also prove shape: they sum to 2E, a tree has V − 1 edges, and an Euler path needs balanced degrees. **Peeling** repeatedly removes the nodes whose degree hits a threshold: leaves (degree 1) layer by layer find a tree's centre, and nodes with in-degree 0 give Kahn's topological sort.\n\n**Cost:** O(V + E) to count; peeling is O(V + E) too.\n\n*Visualization coming soon.*\n\n**Practice:** Find the Town Judge, Find Center of Star Graph, Minimum Number of Vertices to Reach All Nodes, Maximal Network Rank, Minimum Height Trees.",
+      "prompt": "Explain Count degrees: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "bfs",
+      "title": "Level by level (breadth-first search)",
+      "description": "Signal: shortest path in steps on an unweighted graph, \"minimum moves\", nearest X, or anything level by level.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Level by level (breadth-first search)\n\n**Step 3** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** shortest path in steps on an unweighted graph, \"minimum moves\", nearest X, or anything level by level.\n\nA queue visits nodes in order of distance from the start: all nodes one step away, then two, and so on. Mark a node visited when it is **enqueued**, not when it is dequeued, or it is queued twice. The first time BFS reaches a node is along a shortest path. **Multi-source BFS** starts with every source in the queue (rotting oranges, distance to the nearest gate).\n\n**Cost:** O(V + E) time, O(V) space for the queue and the visited set.\n\n*Visualization coming soon.*\n\n**Practice:** Word Ladder, Rotting Oranges, Shortest Path in Binary Matrix, Open the Lock.",
+      "prompt": "Explain BFS: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "dfs",
+      "title": "Go deep first (depth-first search)",
+      "description": "Signal: explore everything reachable, count components, find any path, or anything that backtracks.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Go deep first (depth-first search)\n\n**Step 4** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** explore everything reachable, count components, find any path, or anything that backtracks.\n\nFollow one path as far as it goes, then back up and try the next branch, with recursion or an explicit stack. Mark nodes visited so cycles do not loop forever. DFS is the engine under cycle detection, topological sort, components, bridges and strongly connected components.\n\n**Cost:** O(V + E) time, O(V) space for the visited set and the recursion stack.\n\n*Visualization coming soon.*\n\n**Practice:** Number of Connected Components, Clone Graph, All Paths From Source to Target, Keys and Rooms.",
+      "prompt": "Explain DFS: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "grid-graphs",
+      "title": "A grid is a graph (islands, flood fill)",
+      "description": "Signal: a 2D grid of cells with moves up, down, left and right.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# A grid is a graph (islands, flood fill)\n\n**Step 5** of 19 · **Tier:** Core (expect these) · **Builds on:** BFS, DFS\n\n**Signal:** a 2D grid of cells with moves up, down, left and right.\n\nEach cell is a node and each allowed move an edge, so BFS and DFS work unchanged; no adjacency list is needed, just the four direction offsets and a bounds check. Mark cells visited in place or in a set. Counting islands is counting connected components.\n\n**Cost:** O(rows × cols) time and space.\n\n*Visualization coming soon.*\n\n**Practice:** Number of Islands, Max Area of Island, Flood Fill, Pacific Atlantic Water Flow, Surrounded Regions.",
+      "prompt": "Explain Grid graphs: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "cycle-detection",
+      "title": "Is there a cycle?",
+      "description": "Signal: can every task finish, is the graph a tree, deadlock, or a \"redundant\" edge.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Is there a cycle?\n\n**Step 6** of 19 · **Tier:** Core (expect these) · **Builds on:** DFS, Count degrees\n\n**Signal:** can every task finish, is the graph a tree, deadlock, or a \"redundant\" edge.\n\n**Directed:** DFS with three colours: white (new), grey (on the current path), black (done); reaching a grey node is a cycle. **Undirected:** DFS that ignores the edge back to its parent, or union-find: an edge whose ends are already connected closes a cycle. A graph is a tree exactly when it is connected and has V − 1 edges.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Course Schedule, Graph Valid Tree, Redundant Connection, Find Eventual Safe States.",
+      "prompt": "Explain Cycle detection: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "bipartite",
+      "title": "Two teams (bipartite check)",
+      "description": "Signal: split into two groups with every edge between groups, two-colouring, \"possible bipartition\".",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Two teams (bipartite check)\n\n**Step 7** of 19 · **Tier:** Common (often asked) · **Builds on:** BFS, DFS\n\n**Signal:** split into two groups with every edge between groups, two-colouring, \"possible bipartition\".\n\nColour the start node, then colour each neighbour the opposite colour with BFS or DFS. A neighbour that already has the same colour is an odd cycle: not bipartite. Run it from every uncoloured node, since the graph may be disconnected.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Is Graph Bipartite?, Possible Bipartition.",
+      "prompt": "Explain Bipartite check: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "topological-sort",
+      "title": "Order by dependencies (topological sort)",
+      "description": "Signal: prerequisites, build order, task scheduling: \"in what order can everything run?\"",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Order by dependencies (topological sort)\n\n**Step 8** of 19 · **Tier:** Core (expect these) · **Builds on:** Count degrees, BFS, DFS, Cycle detection\n\n**Signal:** prerequisites, build order, task scheduling: \"in what order can everything run?\"\n\n**Kahn's algorithm** counts in-degrees and repeatedly takes a node that waits on nothing. **DFS** appends a node after everything that depends on it and reverses the list. Both detect a cycle: Kahn by leftover nodes, DFS by meeting a node still on its path. The common algorithm patterns lesson plays both step by step.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.",
+      "prompt": "Explain Topo sort (Kahn / DFS): when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "union-find",
+      "title": "Group as edges arrive (union-find)",
+      "description": "Signal: connectivity that grows edge by edge, counting groups, \"are these two connected?\", merging accounts.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Group as edges arrive (union-find)\n\n**Step 9** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** connectivity that grows edge by edge, counting groups, \"are these two connected?\", merging accounts.\n\nEach node points to a parent; following parents reaches the group's root. **Union** links one root under another; **find** returns the root. With path compression and union by rank both are almost O(1). It answers connectivity questions without traversing the graph again after each edge.\n\n**Cost:** About O(α(n)) per operation: effectively constant.\n\n*Visualization coming soon.*\n\n**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components.",
+      "prompt": "Explain Union-find: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "mst",
+      "title": "Connect everything cheaply (minimum spanning tree)",
+      "description": "Signal: connect all points or cities at the lowest total cost.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Connect everything cheaply (minimum spanning tree)\n\n**Step 10** of 19 · **Tier:** Common (often asked) · **Builds on:** Union-find\n\n**Signal:** connect all points or cities at the lowest total cost.\n\n**Kruskal** sorts edges by weight and adds each one that does not close a cycle (union-find tells). **Prim** grows one tree from a start node, always adding the cheapest edge that leaves it (a min-heap). Both are greedy and both are correct because the cheapest edge across any cut is safe.\n\n**Cost:** Kruskal O(E log E); Prim O(E log V).\n\n*Visualization coming soon.*\n\n**Practice:** Min Cost to Connect All Points, Connecting Cities With Minimum Cost.",
+      "prompt": "Explain Kruskal / Prim: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "dijkstra",
+      "title": "Cheapest route (Dijkstra)",
+      "description": "Signal: shortest or cheapest path when edges have non-negative weights.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Cheapest route (Dijkstra)\n\n**Step 11** of 19 · **Tier:** Common (often asked) · **Builds on:** BFS\n\n**Signal:** shortest or cheapest path when edges have non-negative weights.\n\nA **min-heap** of (distance, node) always pops the closest unsettled node, which is then final; relaxing its edges may improve its neighbours. It is BFS with a priority queue instead of a plain queue. Skip stale heap entries whose distance is worse than the one recorded. Negative edges break it.\n\n**Cost:** O((V + E) log V) with a binary heap.\n\n*Visualization coming soon.*\n\n**Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops, Swim in Rising Water.",
+      "prompt": "Explain Dijkstra: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "zero-one-bfs",
+      "title": "Weights of 0 or 1 (0-1 BFS)",
+      "description": "Signal: shortest path where every edge costs 0 or 1: free moves and paid moves.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Weights of 0 or 1 (0-1 BFS)\n\n**Step 12** of 19 · **Tier:** Common (often asked) · **Builds on:** Dijkstra\n\n**Signal:** shortest path where every edge costs 0 or 1: free moves and paid moves.\n\nA deque replaces the heap: push a node reached by a 0-edge to the **front** and one reached by a 1-edge to the **back**. The deque stays sorted by distance, so it is Dijkstra without the log factor.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Minimum Cost to Make at Least One Valid Path, Minimum Obstacle Removal.",
+      "prompt": "Explain 0-1 BFS: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "a-star",
+      "title": "Guided search (A*)",
+      "description": "Signal: shortest path with a good estimate of the remaining distance, such as grid pathfinding.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Guided search (A*)\n\n**Step 13** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** Dijkstra\n\n**Signal:** shortest path with a good estimate of the remaining distance, such as grid pathfinding.\n\nDijkstra ordered by distance so far **plus** a heuristic estimate of the distance left. With an admissible heuristic (never overestimating, like Manhattan distance on a grid) the first time the goal is popped is optimal, and far fewer nodes are explored.\n\n**Cost:** Same worst case as Dijkstra; usually much faster.\n\n*Visualization coming soon.*\n\n**Practice:** Shortest Path in a Grid with Obstacles Elimination, Sliding Puzzle.",
+      "prompt": "Explain A*: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "bellman-ford",
+      "title": "Negative edges (Bellman-Ford)",
+      "description": "Signal: weights can be negative, at most k edges, or \"detect a negative cycle\".",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Negative edges (Bellman-Ford)\n\n**Step 14** of 19 · **Tier:** Common (often asked) · **Builds on:** Dijkstra\n\n**Signal:** weights can be negative, at most k edges, or \"detect a negative cycle\".\n\nRelax every edge V − 1 times; after round i, every shortest path that uses at most i edges is found. If a round V still improves something, there is a negative cycle. Limiting the rounds to k (relaxing from a copy of the last round's distances) gives \"cheapest with at most k stops\".\n\n**Cost:** O(V · E).\n\n*Visualization coming soon.*\n\n**Practice:** Cheapest Flights Within K Stops, Network Delay Time.",
+      "prompt": "Explain Bellman-Ford: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "floyd-warshall",
+      "title": "Every pair at once (Floyd-Warshall)",
+      "description": "Signal: shortest distances between every pair of nodes, on a small graph.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Every pair at once (Floyd-Warshall)\n\n**Step 15** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** Bellman-Ford\n\n**Signal:** shortest distances between every pair of nodes, on a small graph.\n\nDynamic programming over intermediate nodes: for each k, allow paths through node k and update dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j]). Three nested loops, k outermost.\n\n**Cost:** O(V³) time, O(V²) space.\n\n*Visualization coming soon.*\n\n**Practice:** Find the City With the Smallest Number of Neighbors at a Threshold Distance, Course Schedule IV.",
+      "prompt": "Explain Floyd-Warshall: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "bridges",
+      "title": "Critical edges (bridges and articulation points)",
+      "description": "Signal: edges or nodes whose removal disconnects the graph: \"critical connections\".",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Critical edges (bridges and articulation points)\n\n**Step 16** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** DFS\n\n**Signal:** edges or nodes whose removal disconnects the graph: \"critical connections\".\n\nOne DFS records each node's discovery time and **low-link**, the earliest time reachable from its subtree with one back edge. Edge (u, v) is a bridge when low[v] > disc[u]: nothing below v climbs back above u.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Critical Connections in a Network.",
+      "prompt": "Explain Bridges: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "scc",
+      "title": "Mutual reachability (strongly connected components)",
+      "description": "Signal: groups where every node reaches every other in a directed graph; condensing a graph into a DAG.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Mutual reachability (strongly connected components)\n\n**Step 17** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** DFS, Bridges\n\n**Signal:** groups where every node reaches every other in a directed graph; condensing a graph into a DAG.\n\n**Kosaraju:** DFS for finish order, reverse the edges, then DFS in reverse finish order; each search is one component. **Tarjan:** one DFS with discovery times and low-links; a node whose low-link equals its own time roots a component.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Critical Connections in a Network (related), Count the Number of Complete Components.",
+      "prompt": "Explain Kosaraju / Tarjan: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "euler-path",
+      "title": "Use every edge once (Hierholzer)",
+      "description": "Signal: use every edge exactly once: itineraries, domino chains, \"valid arrangement of pairs\".",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Use every edge once (Hierholzer)\n\n**Step 18** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** Count degrees, DFS\n\n**Signal:** use every edge exactly once: itineraries, domino chains, \"valid arrangement of pairs\".\n\nA path exists when at most one node has out-degree − in-degree = 1 (the start) and one has −1 (the end). **Hierholzer:** walk unused edges until stuck, append the stuck node, then back up; reverse at the end.\n\n**Cost:** O(E).\n\n*Visualization coming soon.*\n\n**Practice:** Reconstruct Itinerary, Valid Arrangement of Pairs.",
+      "prompt": "Explain Euler path (Hierholzer): when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    },
+    {
+      "id": "max-flow",
+      "title": "Push as much as fits (max flow, matching)",
+      "description": "Signal: capacities on edges, assignments, bipartite matching.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [1.5, 0, 15],
+        "target": [1.5, 0, 0]
+      },
+      "markdown": "# Push as much as fits (max flow, matching)\n\n**Step 19** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** BFS\n\n**Signal:** capacities on edges, assignments, bipartite matching.\n\nRepeatedly find a path from source to sink with spare capacity in the **residual graph** (BFS: Edmonds-Karp) and push flow along it. Max flow equals min cut. Bipartite matching is max flow with unit capacities. Rare in interviews; worth recognizing.\n\n**Cost:** Edmonds-Karp O(V · E²).\n\n*Visualization coming soon.*\n\n**Practice:** Maximum Students Taking Exam (matching).",
+      "prompt": "Explain Max flow (Edmonds-Karp): when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        },
+        {
+          "id": "placeholder",
+          "type": "text",
+          "text": "Visualization coming soon",
+          "position": [1.5, 0, 0],
+          "color": "#9dbde3"
+        }
+      ]
+    }
+  ]
+}
