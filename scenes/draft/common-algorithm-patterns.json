@@ -1431,223 +1431,239 @@
           "color": "#9dbde3"
         }
       ],
-      "markdown": "# Which pattern fits?\n\nMost interview problems are variations on a small set of patterns. The skill is recognizing the **signal** in the problem statement and reaching for the matching plan.\n\n| Signal in the problem | Pattern | Typical cost |\n| --- | --- | --- |\n| Many range-sum queries on a fixed array | Running totals (prefix sum) | O(n) build, O(1) per query |\n| Unsorted data: \"have I seen this, or its partner, before?\" | Remember what you've seen (hash map) | O(n), O(n) space |\n| Sorted array, find a pair or triple | Squeeze from both ends (two pointers) | O(n) |\n| Best contiguous subarray or substring | Slide a window (sliding window) | O(n) |\n| Largest sum of a contiguous subarray, any length | Keep the best running sum (Kadane) | O(n), O(1) space |\n| Sorted data with a twist (rotated, 2D) | Halve the search (binary search) | O(log n) |\n| Intervals, meetings, ranges | Merge overlapping ranges (intervals) | O(n log n) |\n| Choices where the locally best step is always safe | Take the best step now (greedy) | Often O(n) or O(n log n) |\n| Pairs cancelling, parity, bitmask subsets | Flip bits (bit manipulation) | O(n), O(1) space |\n| Find a pattern inside a long text | Find a word fast (KMP string matching) | O(n + m) |\n| Prefix lookups over many words | Build trie | O(word length) |\n| \"Next greater / smaller element\" | Next bigger value (monotonic stack) | O(n) |\n| Max or min of every window | Max of every window (monotonic queue) | O(n) |\n| k largest, k smallest, k most frequent | Keep the best k (heap) | O(n log k) |\n| Cycle, or \"find the duplicate\" in O(1) space | Tortoise and hare (fast & slow pointers) | O(n), O(1) space |\n| Reverse or reorder linked-list nodes | Flip the links (linked list reversal) | O(n), O(1) space |\n| Visit every tree node in a set order | Walk a tree (traversal orders) | O(n) |\n| Explore every path, depth first (DFS) | Walk a tree (traversal orders) | O(V + E) |\n| Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |\n| Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |\n| Prerequisites, build order | Order by dependencies (topological sort) | O(V + E) |\n| Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |\n| Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |\n| A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |\n| All permutations, subsets, placements | Try, undo, retry (backtracking) | Exponential, pruned |\n| Optimal value from overlapping subproblems | Reuse answers (dynamic programming) | Subproblems × work each |\n| Two sequences to align, or a grid walked right and down | Fill a table (2D dynamic programming) | O(m·n) |\n\nThe steps here walk the same map as a **decision tree**: start from what the problem gives you, ask which signal it shows, and follow it to the pattern. Move **Problem** to see real interview problems take their path, or click a node: a category or a signal picks a problem that shows it, and a pattern opens its scene.\n\nEach following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.",
+      "markdown": "# Which pattern fits?\n\nMost interview problems are variations on a small set of patterns. The skill is recognizing the **signal** in the problem statement and reaching for the matching plan.\n\n| Signal in the problem | Pattern | Typical cost |\n| --- | --- | --- |\n| Many range-sum queries on a fixed array | Running totals (prefix sum) | O(n) build, O(1) per query |\n| Unsorted data: \"have I seen this, or its partner, before?\" | Remember what you've seen (hash map) | O(n), O(n) space |\n| Sorted array, find a pair or triple | Squeeze from both ends (two pointers) | O(n) |\n| Best contiguous subarray or substring | Slide a window (sliding window) | O(n) |\n| Largest sum of a contiguous subarray, any length | Keep the best running sum (Kadane) | O(n), O(1) space |\n| Sorted data with a twist (rotated, 2D) | Halve the search (binary search) | O(log n) |\n| Intervals, meetings, ranges | Merge overlapping ranges (intervals) | O(n log n) |\n| Choices where the locally best step is always safe | Take the best step now (greedy) | Often O(n) or O(n log n) |\n| Pairs cancelling, parity, bitmask subsets | Flip bits (bit manipulation) | O(n), O(1) space |\n| Find a pattern inside a long text | Find a word fast (KMP string matching) | O(n + m) |\n| Prefix lookups over many words | Build trie | O(word length) |\n| \"Next greater / smaller element\" | Next bigger value (monotonic stack) | O(n) |\n| Max or min of every window | Max of every window (monotonic queue) | O(n) |\n| k largest, k smallest, k most frequent | Keep the best k (heap) | O(n log k) |\n| Cycle, or \"find the duplicate\" in O(1) space | Tortoise and hare (fast & slow pointers) | O(n), O(1) space |\n| Reverse or reorder linked-list nodes | Flip the links (linked list reversal) | O(n), O(1) space |\n| Visit every tree node in a set order | Walk a tree (traversal orders) | O(n) |\n| Explore every path, depth first (DFS) | Walk a tree (traversal orders) | O(V + E) |\n| Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |\n| Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |\n| Prerequisites, build order, or \"is there a cycle?\" | Order by dependencies (topological sort) | O(V + E) |\n| Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |\n| Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |\n| A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |\n| All permutations, subsets, placements | Try, undo, retry (backtracking) | Exponential, pruned |\n| Optimal value from overlapping subproblems | Reuse answers (dynamic programming) | Subproblems × work each |\n| Two sequences to align, or a grid walked right and down | Fill a table (2D dynamic programming) | O(m·n) |\n\nThe steps here walk the same map as a **decision tree**: start from what the problem gives you, ask which signal it shows, and follow it to the pattern. Move **Problem** to see real interview problems take their path, or click a node: a category or a signal picks a problem that shows it, and a pattern opens its scene.\n\nEach following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.",
       "prompt": "Help the learner recognize which pattern fits a problem. Ask them to name the signal (sorted input, contiguous range, cycle, next-greater, overlapping subproblems) before naming a pattern. Encourage predicting the pattern before revealing it.",
       "data": {
         "dt_root": [
           {"text": "What are you given?", "p": -1, "kind": 0, "pick": -1},
           {"text": "Sorted array", "p": 0, "kind": 1, "pick": 0},
-          {"text": "Ranges in an array", "p": 0, "kind": 1, "pick": 4},
-          {"text": "Order & selection", "p": 0, "kind": 1, "pick": 12},
-          {"text": "Strings", "p": 0, "kind": 1, "pick": 20},
-          {"text": "Linked list", "p": 0, "kind": 1, "pick": 23},
-          {"text": "Trees & graphs", "p": 0, "kind": 1, "pick": 27},
-          {"text": "Choices", "p": 0, "kind": 1, "pick": 34}
+          {"text": "Unsorted array", "p": 0, "kind": 1, "pick": 4},
+          {"text": "Ranges in an array", "p": 0, "kind": 1, "pick": 8},
+          {"text": "Order & selection", "p": 0, "kind": 1, "pick": 15},
+          {"text": "Strings", "p": 0, "kind": 1, "pick": 23},
+          {"text": "Linked list", "p": 0, "kind": 1, "pick": 26},
+          {"text": "Trees & graphs", "p": 0, "kind": 1, "pick": 30},
+          {"text": "Choices", "p": 0, "kind": 1, "pick": 37}
         ],
         "dp_root": [
           {
             "name": "Two Sum II",
-            "on": [1, 1, 0, 0, 0, 0, 0, 0],
+            "on": [1, 1, 0, 0, 0, 0, 0, 0, 0],
             "why": "Two Sum II: sorted array → pair or triple? → Two pointers. Its step shows the whole branch."
           },
           {
             "name": "3Sum",
-            "on": [1, 1, 0, 0, 0, 0, 0, 0],
+            "on": [1, 1, 0, 0, 0, 0, 0, 0, 0],
             "why": "3Sum: sorted array → pair or triple? → Two pointers. Its step shows the whole branch."
           },
           {
             "name": "Search in Rotated Sorted Array",
-            "on": [1, 1, 0, 0, 0, 0, 0, 0],
+            "on": [1, 1, 0, 0, 0, 0, 0, 0, 0],
             "why": "Search in Rotated Sorted Array: sorted array → find a value fast? → Binary search. Its step shows the whole branch."
           },
           {
             "name": "Find Peak Element",
-            "on": [1, 1, 0, 0, 0, 0, 0, 0],
+            "on": [1, 1, 0, 0, 0, 0, 0, 0, 0],
             "why": "Find Peak Element: sorted array → find a value fast? → Binary search. Its step shows the whole branch."
           },
           {
+            "name": "Two Sum",
+            "on": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "why": "Two Sum: unsorted array → seen it before? → Hash map. Its step shows the whole branch."
+          },
+          {
+            "name": "Contains Duplicate",
+            "on": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "why": "Contains Duplicate: unsorted array → seen it before? → Hash map. Its step shows the whole branch."
+          },
+          {
+            "name": "Group Anagrams",
+            "on": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "why": "Group Anagrams: unsorted array → count or group? → Hash map. Its step shows the whole branch."
+          },
+          {
+            "name": "Longest Consecutive Sequence",
+            "on": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "why": "Longest Consecutive Sequence: unsorted array → count or group? → Hash map. Its step shows the whole branch."
+          },
+          {
             "name": "Range Sum Query",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "on": [1, 0, 0, 1, 0, 0, 0, 0, 0],
             "why": "Range Sum Query: ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
           },
           {
             "name": "Product of Array Except Self",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "on": [1, 0, 0, 1, 0, 0, 0, 0, 0],
             "why": "Product of Array Except Self: ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
           },
           {
-            "name": "Two Sum",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Two Sum: ranges in an array → seen it before? → Hash map. Its step shows the whole branch."
-          },
-          {
             "name": "Subarray Sum Equals K",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Subarray Sum Equals K: ranges in an array → seen it before? → Hash map. Its step shows the whole branch."
+            "on": [1, 0, 0, 1, 0, 0, 0, 0, 0],
+            "why": "Subarray Sum Equals K: ranges in an array → sum equals k? → Hash map. Its step shows the whole branch."
           },
           {
             "name": "Max Sum of k Consecutive",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "on": [1, 0, 0, 1, 0, 0, 0, 0, 0],
             "why": "Max Sum of k Consecutive: ranges in an array → window of size k? → Sliding window. Its step shows the whole branch."
           },
           {
             "name": "Longest Substring Without Repeating",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "on": [1, 0, 0, 1, 0, 0, 0, 0, 0],
             "why": "Longest Substring Without Repeating: ranges in an array → window of size k? → Sliding window. Its step shows the whole branch."
           },
           {
             "name": "Maximum Subarray",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "on": [1, 0, 0, 1, 0, 0, 0, 0, 0],
             "why": "Maximum Subarray: ranges in an array → best sum, any length? → Kadane. Its step shows the whole branch."
           },
           {
             "name": "Sliding Window Maximum",
-            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "on": [1, 0, 0, 1, 0, 0, 0, 0, 0],
             "why": "Sliding Window Maximum: ranges in an array → max of each window? → Monotonic queue. Its step shows the whole branch."
           },
           {
             "name": "Daily Temperatures",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Daily Temperatures: order & selection → next greater? → Monotonic stack. Its step shows the whole branch."
           },
           {
             "name": "Next Greater Element",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Next Greater Element: order & selection → next greater? → Monotonic stack. Its step shows the whole branch."
           },
           {
             "name": "Kth Largest Element",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Kth Largest Element: order & selection → k largest? → Heap. Its step shows the whole branch."
           },
           {
             "name": "Top K Frequent Elements",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Top K Frequent Elements: order & selection → k largest? → Heap. Its step shows the whole branch."
           },
           {
             "name": "Merge Intervals",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Merge Intervals: order & selection → overlapping ranges? → Merge intervals. Its step shows the whole branch."
           },
           {
             "name": "Meeting Rooms II",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Meeting Rooms II: order & selection → overlapping ranges? → Merge intervals. Its step shows the whole branch."
           },
           {
             "name": "Jump Game",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Jump Game: order & selection → local best is safe? → Greedy. Its step shows the whole branch."
           },
           {
             "name": "Single Number",
-            "on": [1, 0, 0, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 1, 0, 0, 0, 0],
             "why": "Single Number: order & selection → pairs cancel? → Bit tricks. Its step shows the whole branch."
           },
           {
             "name": "First Occurrence in a String",
-            "on": [1, 0, 0, 0, 1, 0, 0, 0],
+            "on": [1, 0, 0, 0, 0, 1, 0, 0, 0],
             "why": "First Occurrence in a String: strings → pattern in text? → KMP. Its step shows the whole branch."
           },
           {
             "name": "Implement Trie",
-            "on": [1, 0, 0, 0, 1, 0, 0, 0],
+            "on": [1, 0, 0, 0, 0, 1, 0, 0, 0],
             "why": "Implement Trie: strings → shared prefixes? → Trie. Its step shows the whole branch."
           },
           {
             "name": "Word Search II",
-            "on": [1, 0, 0, 0, 1, 0, 0, 0],
+            "on": [1, 0, 0, 0, 0, 1, 0, 0, 0],
             "why": "Word Search II: strings → shared prefixes? → Trie. Its step shows the whole branch."
           },
           {
             "name": "Find the Duplicate Number",
-            "on": [1, 0, 0, 0, 0, 1, 0, 0],
+            "on": [1, 0, 0, 0, 0, 0, 1, 0, 0],
             "why": "Find the Duplicate Number: linked list → cycle or duplicate? → Fast & slow. Its step shows the whole branch."
           },
           {
             "name": "Linked List Cycle II",
-            "on": [1, 0, 0, 0, 0, 1, 0, 0],
+            "on": [1, 0, 0, 0, 0, 0, 1, 0, 0],
             "why": "Linked List Cycle II: linked list → cycle or duplicate? → Fast & slow. Its step shows the whole branch."
           },
           {
             "name": "Reverse Linked List",
-            "on": [1, 0, 0, 0, 0, 1, 0, 0],
+            "on": [1, 0, 0, 0, 0, 0, 1, 0, 0],
             "why": "Reverse Linked List: linked list → reverse or reorder? → Reverse links. Its step shows the whole branch."
           },
           {
             "name": "Reorder List",
-            "on": [1, 0, 0, 0, 0, 1, 0, 0],
+            "on": [1, 0, 0, 0, 0, 0, 1, 0, 0],
             "why": "Reorder List: linked list → reverse or reorder? → Reverse links. Its step shows the whole branch."
           },
           {
             "name": "Binary Tree Level Order",
-            "on": [1, 0, 0, 0, 0, 0, 1, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 0],
             "why": "Binary Tree Level Order: trees & graphs → visit in an order? → Tree traversal. Its step shows the whole branch."
           },
           {
             "name": "Kth Smallest in a BST",
-            "on": [1, 0, 0, 0, 0, 0, 1, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 0],
             "why": "Kth Smallest in a BST: trees & graphs → visit in an order? → Tree traversal. Its step shows the whole branch."
           },
           {
             "name": "Number of Islands",
-            "on": [1, 0, 0, 0, 0, 0, 1, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 0],
             "why": "Number of Islands: trees & graphs → grid of cells? → Grid DFS / BFS. Its step shows the whole branch."
           },
           {
             "name": "Rotting Oranges",
-            "on": [1, 0, 0, 0, 0, 0, 1, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 0],
             "why": "Rotting Oranges: trees & graphs → grid of cells? → Grid DFS / BFS. Its step shows the whole branch."
           },
           {
             "name": "Redundant Connection",
-            "on": [1, 0, 0, 0, 0, 0, 1, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 0],
             "why": "Redundant Connection: trees & graphs → join as edges come? → Union-find. Its step shows the whole branch."
           },
           {
             "name": "Course Schedule",
-            "on": [1, 0, 0, 0, 0, 0, 1, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 0],
             "why": "Course Schedule: trees & graphs → dependencies? → Topological sort. Its step shows the whole branch."
           },
           {
             "name": "Network Delay Time",
-            "on": [1, 0, 0, 0, 0, 0, 1, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 0],
             "why": "Network Delay Time: trees & graphs → cheapest path? → Dijkstra. Its step shows the whole branch."
           },
           {
             "name": "House Robber",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 1],
             "why": "House Robber: choices → reuse sub-answers? → Dynamic prog.. Its step shows the whole branch."
           },
           {
             "name": "Coin Change",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 1],
             "why": "Coin Change: choices → reuse sub-answers? → Dynamic prog.. Its step shows the whole branch."
           },
           {
             "name": "Longest Common Subsequence",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 1],
             "why": "Longest Common Subsequence: choices → two sequences? → 2D DP. Its step shows the whole branch."
           },
           {
             "name": "Edit Distance",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 1],
             "why": "Edit Distance: choices → two sequences? → 2D DP. Its step shows the whole branch."
           },
           {
             "name": "Subsets",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 1],
             "why": "Subsets: choices → all combinations? → Backtracking. Its step shows the whole branch."
           },
           {
             "name": "N-Queens",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 1],
             "why": "N-Queens: choices → all combinations? → Backtracking. Its step shows the whole branch."
           },
           {
             "name": "Pow(x, n)",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 1],
             "why": "Pow(x, n): choices → smaller copies? → Recursion. Its step shows the whole branch."
           }
         ],
@@ -1681,19 +1697,48 @@
           }
         ],
         "dt_1": [
+          {"text": "Unsorted array", "p": -1, "kind": 0, "pick": -1, "scene": ""},
+          {"text": "seen it before?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
+          {"text": "Hash map", "p": 1, "kind": 2, "pick": -1, "scene": "hash-map"},
+          {"text": "count or group?", "p": 0, "kind": 1, "pick": 2, "scene": ""},
+          {"text": "Hash map", "p": 3, "kind": 2, "pick": -1, "scene": "hash-map"}
+        ],
+        "dp_1": [
+          {
+            "name": "Two Sum",
+            "on": [1, 1, 1, 0, 0],
+            "why": "Two Sum: unsorted array, and the problem asks \"seen it before?\" → Hash map."
+          },
+          {
+            "name": "Contains Duplicate",
+            "on": [1, 1, 1, 0, 0],
+            "why": "Contains Duplicate: unsorted array, and the problem asks \"seen it before?\" → Hash map."
+          },
+          {
+            "name": "Group Anagrams",
+            "on": [1, 0, 0, 1, 1],
+            "why": "Group Anagrams: unsorted array, and the problem asks \"count or group?\" → Hash map."
+          },
+          {
+            "name": "Longest Consecutive Sequence",
+            "on": [1, 0, 0, 1, 1],
+            "why": "Longest Consecutive Sequence: unsorted array, and the problem asks \"count or group?\" → Hash map."
+          }
+        ],
+        "dt_2": [
           {"text": "Ranges in an array", "p": -1, "kind": 0, "pick": -1, "scene": ""},
           {"text": "many range sums?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
           {"text": "Prefix sum", "p": 1, "kind": 2, "pick": -1, "scene": "prefix-sum"},
-          {"text": "seen it before?", "p": 0, "kind": 1, "pick": 2, "scene": ""},
+          {"text": "sum equals k?", "p": 0, "kind": 1, "pick": 2, "scene": ""},
           {"text": "Hash map", "p": 3, "kind": 2, "pick": -1, "scene": "hash-map"},
-          {"text": "window of size k?", "p": 0, "kind": 1, "pick": 4, "scene": ""},
+          {"text": "window of size k?", "p": 0, "kind": 1, "pick": 3, "scene": ""},
           {"text": "Sliding window", "p": 5, "kind": 2, "pick": -1, "scene": "sliding-window"},
-          {"text": "best sum, any length?", "p": 0, "kind": 1, "pick": 6, "scene": ""},
+          {"text": "best sum, any length?", "p": 0, "kind": 1, "pick": 5, "scene": ""},
           {"text": "Kadane", "p": 7, "kind": 2, "pick": -1, "scene": "kadane"},
-          {"text": "max of each window?", "p": 0, "kind": 1, "pick": 7, "scene": ""},
+          {"text": "max of each window?", "p": 0, "kind": 1, "pick": 6, "scene": ""},
           {"text": "Monotonic queue", "p": 9, "kind": 2, "pick": -1, "scene": "monotonic-queue"}
         ],
-        "dp_1": [
+        "dp_2": [
           {
             "name": "Range Sum Query",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1705,14 +1750,9 @@
             "why": "Product of Array Except Self: ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
           },
           {
-            "name": "Two Sum",
-            "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Two Sum: ranges in an array, and the problem asks \"seen it before?\" → Hash map."
-          },
-          {
             "name": "Subarray Sum Equals K",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Subarray Sum Equals K: ranges in an array, and the problem asks \"seen it before?\" → Hash map."
+            "why": "Subarray Sum Equals K: ranges in an array, and the problem asks \"sum equals k?\" → Hash map."
           },
           {
             "name": "Max Sum of k Consecutive",
@@ -1735,7 +1775,7 @@
             "why": "Sliding Window Maximum: ranges in an array, and the problem asks \"max of each window?\" → Monotonic queue."
           }
         ],
-        "dt_2": [
+        "dt_3": [
           {"text": "Order & selection", "p": -1, "kind": 0, "pick": -1, "scene": ""},
           {"text": "next greater?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
           {"text": "Monotonic stack", "p": 1, "kind": 2, "pick": -1, "scene": "monotonic-stack"},
@@ -1748,7 +1788,7 @@
           {"text": "pairs cancel?", "p": 0, "kind": 1, "pick": 7, "scene": ""},
           {"text": "Bit tricks", "p": 9, "kind": 2, "pick": -1, "scene": "bit-manipulation"}
         ],
-        "dp_2": [
+        "dp_3": [
           {
             "name": "Daily Temperatures",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1790,14 +1830,14 @@
             "why": "Single Number: order & selection, and the problem asks \"pairs cancel?\" → Bit tricks."
           }
         ],
-        "dt_3": [
+        "dt_4": [
           {"text": "Strings", "p": -1, "kind": 0, "pick": -1, "scene": ""},
           {"text": "pattern in text?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
           {"text": "KMP", "p": 1, "kind": 2, "pick": -1, "scene": "string-matching"},
           {"text": "shared prefixes?", "p": 0, "kind": 1, "pick": 1, "scene": ""},
           {"text": "Trie", "p": 3, "kind": 2, "pick": -1, "scene": "trie"}
         ],
-        "dp_3": [
+        "dp_4": [
           {
             "name": "First Occurrence in a String",
             "on": [1, 1, 1, 0, 0],
@@ -1814,14 +1854,14 @@
             "why": "Word Search II: strings, and the problem asks \"shared prefixes?\" → Trie."
           }
         ],
-        "dt_4": [
+        "dt_5": [
           {"text": "Linked list", "p": -1, "kind": 0, "pick": -1, "scene": ""},
           {"text": "cycle or duplicate?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
           {"text": "Fast & slow", "p": 1, "kind": 2, "pick": -1, "scene": "fast-slow"},
           {"text": "reverse or reorder?", "p": 0, "kind": 1, "pick": 2, "scene": ""},
           {"text": "Reverse links", "p": 3, "kind": 2, "pick": -1, "scene": "linked-list-reversal"}
         ],
-        "dp_4": [
+        "dp_5": [
           {
             "name": "Find the Duplicate Number",
             "on": [1, 1, 1, 0, 0],
@@ -1843,7 +1883,7 @@
             "why": "Reorder List: linked list, and the problem asks \"reverse or reorder?\" → Reverse links."
           }
         ],
-        "dt_5": [
+        "dt_6": [
           {"text": "Trees & graphs", "p": -1, "kind": 0, "pick": -1, "scene": ""},
           {"text": "visit in an order?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
           {"text": "Tree traversal", "p": 1, "kind": 2, "pick": -1, "scene": "tree-traversal"},
@@ -1856,7 +1896,7 @@
           {"text": "cheapest path?", "p": 0, "kind": 1, "pick": 6, "scene": ""},
           {"text": "Dijkstra", "p": 9, "kind": 2, "pick": -1, "scene": "shortest-path"}
         ],
-        "dp_5": [
+        "dp_6": [
           {
             "name": "Binary Tree Level Order",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1893,7 +1933,7 @@
             "why": "Network Delay Time: trees & graphs, and the problem asks \"cheapest path?\" → Dijkstra."
           }
         ],
-        "dt_6": [
+        "dt_7": [
           {"text": "Choices", "p": -1, "kind": 0, "pick": -1, "scene": ""},
           {"text": "reuse sub-answers?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
           {"text": "Dynamic prog.", "p": 1, "kind": 2, "pick": -1, "scene": "dynamic-programming"},
@@ -1904,7 +1944,7 @@
           {"text": "smaller copies?", "p": 0, "kind": 1, "pick": 6, "scene": ""},
           {"text": "Recursion", "p": 7, "kind": 2, "pick": -1, "scene": "recursion"}
         ],
-        "dp_6": [
+        "dp_7": [
           {
             "name": "House Robber",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0],
@@ -1957,14 +1997,14 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 40, "step": 1, "default": 0, "valueExpr": "dataTable('dp_root', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 43, "step": 1, "default": 0, "valueExpr": "dataTable('dp_root', problem, 'name')", "reset": true}
           ],
           "add": [
             {
               "id": "decisions",
               "type": "graph",
               "label": "",
-              "lengthExpr": "8",
+              "lengthExpr": "9",
               "valueExpr": "dataTable('dt_root', idx, 'text')",
               "treeLayout": {
                 "type": "radial",
@@ -2036,8 +2076,8 @@
         },
         {
           "id": "branch-1",
-          "title": "Ranges in an array",
-          "description": "Ranges in an array: which signal does the problem show?",
+          "title": "Unsorted array",
+          "description": "Unsorted array: which signal does the problem show?",
           "descriptionExpr": "dataTable('dp_1', problem, 'why')",
           "camera": {
             "position": [0, 0.6, 13],
@@ -2048,14 +2088,14 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 7, "step": 1, "default": 0, "valueExpr": "dataTable('dp_1', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "dataTable('dp_1', problem, 'name')", "reset": true}
           ],
           "add": [
             {
               "id": "decisions",
               "type": "graph",
               "label": "",
-              "lengthExpr": "11",
+              "lengthExpr": "5",
               "valueExpr": "dataTable('dt_1', idx, 'text')",
               "treeLayout": {
                 "type": "tidy",
@@ -2083,8 +2123,8 @@
         },
         {
           "id": "branch-2",
-          "title": "Order & selection",
-          "description": "Order & selection: which signal does the problem show?",
+          "title": "Ranges in an array",
+          "description": "Ranges in an array: which signal does the problem show?",
           "descriptionExpr": "dataTable('dp_2', problem, 'why')",
           "camera": {
             "position": [0, 0.6, 13],
@@ -2095,7 +2135,7 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 7, "step": 1, "default": 0, "valueExpr": "dataTable('dp_2', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 6, "step": 1, "default": 0, "valueExpr": "dataTable('dp_2', problem, 'name')", "reset": true}
           ],
           "add": [
             {
@@ -2130,8 +2170,8 @@
         },
         {
           "id": "branch-3",
-          "title": "Strings",
-          "description": "Strings: which signal does the problem show?",
+          "title": "Order & selection",
+          "description": "Order & selection: which signal does the problem show?",
           "descriptionExpr": "dataTable('dp_3', problem, 'why')",
           "camera": {
             "position": [0, 0.6, 13],
@@ -2142,14 +2182,14 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "dataTable('dp_3', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 7, "step": 1, "default": 0, "valueExpr": "dataTable('dp_3', problem, 'name')", "reset": true}
           ],
           "add": [
             {
               "id": "decisions",
               "type": "graph",
               "label": "",
-              "lengthExpr": "5",
+              "lengthExpr": "11",
               "valueExpr": "dataTable('dt_3', idx, 'text')",
               "treeLayout": {
                 "type": "tidy",
@@ -2177,8 +2217,8 @@
         },
         {
           "id": "branch-4",
-          "title": "Linked list",
-          "description": "Linked list: which signal does the problem show?",
+          "title": "Strings",
+          "description": "Strings: which signal does the problem show?",
           "descriptionExpr": "dataTable('dp_4', problem, 'why')",
           "camera": {
             "position": [0, 0.6, 13],
@@ -2189,7 +2229,7 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "dataTable('dp_4', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "dataTable('dp_4', problem, 'name')", "reset": true}
           ],
           "add": [
             {
@@ -2224,8 +2264,8 @@
         },
         {
           "id": "branch-5",
-          "title": "Trees & graphs",
-          "description": "Trees & graphs: which signal does the problem show?",
+          "title": "Linked list",
+          "description": "Linked list: which signal does the problem show?",
           "descriptionExpr": "dataTable('dp_5', problem, 'why')",
           "camera": {
             "position": [0, 0.6, 13],
@@ -2236,14 +2276,14 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 6, "step": 1, "default": 0, "valueExpr": "dataTable('dp_5', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "dataTable('dp_5', problem, 'name')", "reset": true}
           ],
           "add": [
             {
               "id": "decisions",
               "type": "graph",
               "label": "",
-              "lengthExpr": "11",
+              "lengthExpr": "5",
               "valueExpr": "dataTable('dt_5', idx, 'text')",
               "treeLayout": {
                 "type": "tidy",
@@ -2271,8 +2311,8 @@
         },
         {
           "id": "branch-6",
-          "title": "Choices",
-          "description": "Choices: which signal does the problem show?",
+          "title": "Trees & graphs",
+          "description": "Trees & graphs: which signal does the problem show?",
           "descriptionExpr": "dataTable('dp_6', problem, 'why')",
           "camera": {
             "position": [0, 0.6, 13],
@@ -2290,7 +2330,7 @@
               "id": "decisions",
               "type": "graph",
               "label": "",
-              "lengthExpr": "9",
+              "lengthExpr": "11",
               "valueExpr": "dataTable('dt_6', idx, 'text')",
               "treeLayout": {
                 "type": "tidy",
@@ -2312,6 +2352,53 @@
               "onClick": [
                 {"action": "setSlider", "slider": "problem", "valueExpr": "dataTable('dt_6', idx, 'pick') < 0 ? problem : dataTable('dt_6', idx, 'pick')"},
                 {"action": "goToScene", "sceneExpr": "dataTable('dt_6', idx, 'scene')"}
+              ]
+            }
+          ]
+        },
+        {
+          "id": "branch-7",
+          "title": "Choices",
+          "description": "Choices: which signal does the problem show?",
+          "descriptionExpr": "dataTable('dp_7', problem, 'why')",
+          "camera": {
+            "position": [0, 0.6, 13],
+            "target": [0, 0.6, 0]
+          },
+          "remove": [
+            {"id": "*"},
+            {"type": "slider"}
+          ],
+          "sliders": [
+            {"id": "problem", "label": "Problem", "min": 0, "max": 6, "step": 1, "default": 0, "valueExpr": "dataTable('dp_7', problem, 'name')", "reset": true}
+          ],
+          "add": [
+            {
+              "id": "decisions",
+              "type": "graph",
+              "label": "",
+              "lengthExpr": "9",
+              "valueExpr": "dataTable('dt_7', idx, 'text')",
+              "treeLayout": {
+                "type": "tidy",
+                "parentExpr": "dataTable('dt_7', idx, 'p')",
+                "origin": [-3.4, 0.6, 0],
+                "spacing": 1.15,
+                "levelGap": 3.1,
+                "orientation": "horizontal"
+              },
+              "nodeShape": "rect",
+              "nodeWidth": 2.8,
+              "nodeHeight": 0.8,
+              "nodeCornerRadius": 0.16,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "axisLabels": "plane",
+              "colorExpr": "arrayAt(dataTable('dp_7', problem, 'on'), idx) == 1 ? (dataTable('dt_7', idx, 'kind') == 2 ? '#2f7d66' : '#9a7420') : (dataTable('dt_7', idx, 'kind') == 2 ? '#56468a' : (dataTable('dt_7', idx, 'kind') == 1 ? '#335374' : '#4a5560'))",
+              "connectTo": {"indexExpr": "dataTable('dt_7', idx, 'p')", "pinned": true, "bendExpr": "0", "color": "#7f93aa", "colorExpr": "arrayAt(dataTable('dp_7', problem, 'on'), idx) == 1 ? '#f1c65b' : ''", "highlightExpr": "arrayAt(dataTable('dp_7', problem, 'on'), idx) == 1"},
+              "onClick": [
+                {"action": "setSlider", "slider": "problem", "valueExpr": "dataTable('dt_7', idx, 'pick') < 0 ? problem : dataTable('dt_7', idx, 'pick')"},
+                {"action": "goToScene", "sceneExpr": "dataTable('dt_7', idx, 'scene')"}
               ]
             }
           ]

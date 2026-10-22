@@ -189,9 +189,13 @@ const DECISIONS: { category: string; signals: { signal: string; pattern: string;
     { category: 'Sorted array', signals: [
         { signal: 'pair or triple?', pattern: 'Two pointers', scene: 'two-pointers', problems: ['Two Sum II', '3Sum'] },
         { signal: 'find a value fast?', pattern: 'Binary search', scene: 'rotated-search', problems: ['Search in Rotated Sorted Array', 'Find Peak Element'] } ] },
+    // Two signals, one tool: a dict answers "seen it?" and "how many / which group?" in O(1).
+    { category: 'Unsorted array', signals: [
+        { signal: 'seen it before?', pattern: 'Hash map', scene: 'hash-map', problems: ['Two Sum', 'Contains Duplicate'] },
+        { signal: 'count or group?', pattern: 'Hash map', scene: 'hash-map', problems: ['Group Anagrams', 'Longest Consecutive Sequence'] } ] },
     { category: 'Ranges in an array', signals: [
         { signal: 'many range sums?', pattern: 'Prefix sum', scene: 'prefix-sum', problems: ['Range Sum Query', 'Product of Array Except Self'] },
-        { signal: 'seen it before?', pattern: 'Hash map', scene: 'hash-map', problems: ['Two Sum', 'Subarray Sum Equals K'] },
+        { signal: 'sum equals k?', pattern: 'Hash map', scene: 'hash-map', problems: ['Subarray Sum Equals K'] },
         { signal: 'window of size k?', pattern: 'Sliding window', scene: 'sliding-window', problems: ['Max Sum of k Consecutive', 'Longest Substring Without Repeating'] },
         { signal: 'best sum, any length?', pattern: 'Kadane', scene: 'kadane', problems: ['Maximum Subarray'] },
         { signal: 'max of each window?', pattern: 'Monotonic queue', scene: 'monotonic-queue', problems: ['Sliding Window Maximum'] } ] },
@@ -312,7 +316,7 @@ Most interview problems are variations on a small set of patterns. The skill is 
 | Explore every path, depth first (DFS) | Walk a tree (traversal orders) | O(V + E) |
 | Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |
 | Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |
-| Prerequisites, build order | Order by dependencies (topological sort) | O(V + E) |
+| Prerequisites, build order, or "is there a cycle?" | Order by dependencies (topological sort) | O(V + E) |
 | Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |
 | Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |
 | A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |
