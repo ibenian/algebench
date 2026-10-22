@@ -6531,7 +6531,8 @@ function initMathBox() {
 		],
 		controls: { klass: CONTROL_CLASS },
 		camera: { fov: 75 },
-		renderer: { antialias: true }
+		renderer: { antialias: true },
+		size: { devicePixelRatio: false }
 	});
 	cameraState.three = cameraState.mathbox.three;
 	cameraState.camera = cameraState.three.camera;

@@ -1678,6 +1678,10 @@ export function initMathBox(): void {
         controls: { klass: CONTROL_CLASS },
         camera: { fov: 75 },
         renderer: { antialias: true },
+        // The renderer's pixel ratio (setPixelRatio below) is the one device-pixel scale. Left on, MathBox's own
+        // size plugin multiplies by devicePixelRatio again on every resize, so the canvas drew 4× its CSS size
+        // on a 2× display (12 MP a frame) and the frame rate fell to about 40.
+        size: { devicePixelRatio: false },
     });
 
     cameraState.three    = cameraState.mathbox.three as CameraState['three'];
