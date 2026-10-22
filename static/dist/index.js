@@ -2083,10 +2083,25 @@ function paintCellLinks() {
 		const paths = [];
 		let centre = null;
 		let linked = false;
+		const outline = (name) => objectWorldCorners(name).map((v) => {
+			const q = v.clone().project(camera);
+			return {
+				x: viewport.left - rect.left + (q.x * .5 + .5) * viewport.width,
+				y: viewport.top - rect.top + (-q.y * .5 + .5) * viewport.height,
+				z: q.z
+			};
+		});
 		for (const group of set.groups) group.pairs.forEach(([i, j], p) => {
-			const a = objectCellAnchor(from, i), b = objectCellAnchor(group.to, j);
+			const a = objectCellAnchor(from, i);
+			const wholeCorners = group.whole ? outline(group.to) : null;
+			const b = group.whole ? wholeCorners.length ? {
+				corners: [],
+				vertical: false,
+				graph: false,
+				round: false
+			} : null : objectCellAnchor(group.to, j);
 			if (!a || !b) return;
-			const ac = a.corners.map(screen), bc = b.corners.map(screen);
+			const ac = a.corners.map(screen), bc = wholeCorners ?? b.corners.map(screen);
 			if ([...ac, ...bc].some((q) => q.z < -1 || q.z > 1)) return;
 			linked = true;
 			const mid = (c) => ({
@@ -2100,7 +2115,13 @@ function paintCellLinks() {
 				return f.length ? f : c;
 			};
 			let curve, end;
-			if (a.graph || b.graph) {
+			if (group.whole) {
+				const start = a.vertical ? cellEdgeAnchor(front(a, ac), bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
+				const xs = bc.map((q) => q.x), ys = bc.map((q) => q.y);
+				const across = Math.max(Math.min(...xs) - start.x, start.x - Math.max(...xs), 0) > Math.max(Math.min(...ys) - start.y, start.y - Math.max(...ys), 0);
+				end = across ? cellEdgeAnchor(bc, start.x < bm.x ? "left" : "right", 4) : cellEdgeAnchor(bc, start.y < bm.y ? "top" : "bottom", 4);
+				curve = cellLinkCurve(start, end, a.vertical ? "h" : "v", across ? "h" : "v");
+			} else if (a.graph || b.graph) {
 				const box = (c, m, round) => ({
 					centre: m,
 					round,
@@ -12618,19 +12639,25 @@ function createCellGlide(opts) {
 * owners of cells (arrays, stacks) and nodes (graphs), so links mean the same everywhere: each entry's indexExpr
 * runs per cell with `idx` and `value` bound and may name one index or a list; colorExpr / highlightExpr style
 * each link, with `to` bound as well. A graph entry may omit `object`: the link stays in the same graph.
+* objectExpr names the target per cell instead (a list of references to dicts, say: concat('person', idx)); without
+* indexExpr such a link points at the whole object rather than one of its cells.
 */
 /** Compile the entries that link cells; `self` is the owner's id, used where an entry names no object. */
 function compileLinkTargets(connectTo, self, allowSelf) {
 	if (!self || !connectTo) return [];
 	return (Array.isArray(connectTo) ? connectTo : [connectTo]).flatMap((c) => {
-		if (!("indexExpr" in c) || !c.indexExpr || "positionExpr" in c) return [];
-		const object = "object" in c ? c.object : allowSelf ? self : null;
-		if (!object) return [];
+		if ("positionExpr" in c) return [];
+		const objectExpr = "objectExpr" in c ? c.objectExpr : void 0;
+		if (!objectExpr && (!("indexExpr" in c) || !c.indexExpr)) return [];
+		const object = objectExpr ? "" : "object" in c ? c.object : allowSelf ? self : null;
+		if (object === null || object === void 0) return [];
+		const indexExpr = "indexExpr" in c ? c.indexExpr : void 0;
 		const color = "colorExpr" in c ? c.colorExpr : void 0, lit = "highlightExpr" in c ? c.highlightExpr : void 0;
 		const bend = "bendExpr" in c ? c.bendExpr : void 0, arc = "arcCenterExpr" in c ? c.arcCenterExpr : void 0, port = "fromPortExpr" in c ? c.fromPortExpr : void 0;
 		return [{
 			object,
-			index: compileExpr(c.indexExpr),
+			objectFn: objectExpr ? compileExpr(objectExpr) : void 0,
+			index: indexExpr ? compileExpr(indexExpr) : null,
 			base: c.color ? colorToCSS(c.color) : "#9dbde3",
 			color: color ? compileExpr(color) : void 0,
 			lit: lit ? compileExpr(lit) : void 0,
@@ -12640,7 +12667,8 @@ function compileLinkTargets(connectTo, self, allowSelf) {
 			arrow: !!c.arrow,
 			pinned: !!c.pinned,
 			sources: [
-				c.indexExpr,
+				objectExpr,
+				indexExpr,
 				color,
 				lit,
 				bend,
@@ -12654,23 +12682,50 @@ var indices = (result) => {
 	const plain = result !== null && typeof result === "object" && "valueOf" in result ? result.valueOf() : result;
 	return (Array.isArray(plain) ? plain.flat(Infinity) : [plain]).map(Number).map((j) => Number.isInteger(j) && j >= 0 ? j : -1);
 };
-/** Evaluate every entry for these cell values: one link group per entry, styled per link when it asks. */
+/**
+* Evaluate every entry for these cell values: one link group per entry and target object, styled per link when it
+* asks. An entry with objectExpr makes a group per object its cells name; one without indexExpr links each cell to
+* the whole object (a pair [cell, 0] in a group marked `whole`).
+*/
 function evaluateLinkTargets(targets, values, extra = {}) {
-	return targets.map((t) => {
-		const pairs = [], styles = [];
+	return targets.flatMap((t) => {
+		const groups = /* @__PURE__ */ new Map();
+		const group = (object) => {
+			let g = groups.get(object);
+			if (!g) groups.set(object, g = {
+				pairs: [],
+				styles: []
+			});
+			return g;
+		};
+		if (!t.objectFn) group(t.object);
 		values.forEach((value, i) => {
+			let object = t.object;
+			if (t.objectFn) {
+				try {
+					object = String(evalExpr(t.objectFn, 0, { overrideScope: {
+						idx: i,
+						value
+					} }) ?? "");
+				} catch {
+					object = "";
+				}
+				if (!object || object === "0") return;
+			}
 			let targetsOf = [];
-			try {
+			if (!t.index) targetsOf = [0];
+			else try {
 				targetsOf = indices(evalExpr(t.index, 0, { overrideScope: {
 					idx: i,
 					value
 				} }));
 			} catch {}
+			const g = group(object);
 			targetsOf.forEach((j, slot) => {
 				if (j < 0) return;
-				pairs.push([i, j]);
+				g.pairs.push([i, j]);
 				if (!t.color && !t.lit && !t.bend && !t.arc && !t.port) {
-					styles.push(null);
+					g.styles.push(null);
 					return;
 				}
 				const scope = { overrideScope: {
@@ -12699,17 +12754,18 @@ function evaluateLinkTargets(targets, values, extra = {}) {
 					const q = t.port ? Number(evalExpr(t.port, 0, scope)) : NaN;
 					if (Number.isInteger(q) && q >= 0) style.port = q;
 				} catch {}
-				styles.push(style);
+				g.styles.push(style);
 			});
 		});
-		return {
-			to: t.object,
-			pairs,
+		return [...groups].map(([to, g]) => ({
+			to,
+			pairs: g.pairs,
 			color: t.base,
 			...t.arrow ? { arrow: true } : {},
-			...styles.some(Boolean) ? { styles } : {},
+			...!t.index ? { whole: true } : {},
+			...g.styles.some(Boolean) ? { styles: g.styles } : {},
 			...extra
-		};
+		}));
 	});
 }
 //#endregion

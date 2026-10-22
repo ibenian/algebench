@@ -8,7 +8,7 @@
  */
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
-import { objectCellAnchor } from '/object-anchor.js';
+import { objectCellAnchor, objectWorldCorners } from '/object-anchor.js';
 import { cellEdgeAnchor } from '/cell-attachment.js';
 import { cellLinkCurve, cellArcCurve, arrowHeadPath, graphEdgeCurve, graphArcCurve } from '/label-wire-path.js';
 
@@ -16,6 +16,8 @@ import { cellLinkCurve, cellArcCurve, arrowHeadPath, graphEdgeCurve, graphArcCur
 /** One link group: every pair is [source cell, target cell in `to`]; `arrow` marks the target end. */
 export interface CellLinkGroup {
     to: string; pairs: [number, number][]; color: string; arrow?: boolean;
+    /** The links point at the whole of `to` (its outline), not at its cells: each pair's target index is ignored. */
+    whole?: boolean;
     /** Per pair, from colorExpr / highlightExpr: its own colour, and whether it is lit (thicker, glowing). */
     styles?: ({color?: string; lit?: boolean; bend?: number; arcCentre?: number[]; port?: number} | null)[];
     /** Graph edges: how much they bow, as a fraction of their length. */
@@ -45,10 +47,17 @@ export function paintCellLinks(): void {
         const paths: {d: string; color: string; head?: string; lit?: boolean}[] = [];
         let centre: {x: number; y: number} | null = null;   // a graph's centre, for which side its edges bow to
         let linked = false;
+        // A whole object's outline, projected: its world bounds' corners.
+        const outline = (name: string) => objectWorldCorners(name).map(v => {
+            const q = v.clone().project(camera);
+            return { x: viewport.left - rect.left + (q.x * .5 + .5) * viewport.width, y: viewport.top - rect.top + (-q.y * .5 + .5) * viewport.height, z: q.z };
+        });
         for (const group of set.groups) group.pairs.forEach(([i, j], p) => {
-            const a = objectCellAnchor(from, i), b = objectCellAnchor(group.to, j);
+            const a = objectCellAnchor(from, i);
+            const wholeCorners = group.whole ? outline(group.to) : null;
+            const b = group.whole ? (wholeCorners!.length ? {corners: [] as number[][], vertical: false, graph: false, round: false} : null) : objectCellAnchor(group.to, j);
             if (!a || !b) return;   // hidden array or out-of-range cell: no link
-            const ac = a.corners.map(screen), bc = b.corners.map(screen);
+            const ac = a.corners.map(screen), bc = wholeCorners ?? b.corners.map(screen);
             if ([...ac, ...bc].some(q => q.z < -1 || q.z > 1)) return;
             linked = true;
             const mid = (c: {x: number; y: number}[]) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
@@ -62,7 +71,14 @@ export function paintCellLinks(): void {
                 return f.length ? f : c;
             };
             let curve: {d: string; arrive: {x: number; y: number}}, end: {x: number; y: number};
-            if (a.graph || b.graph) {
+            if (group.whole) {
+                // To a whole object: leave the cell along its array's axis, arrive at the outline's facing side.
+                const start = a.vertical ? cellEdgeAnchor(front(a, ac), bm.x < am.x ? 'left' : 'right', 2) : cellEdgeAnchor(ac, bm.y < am.y ? 'top' : 'bottom', 2);
+                const xs = bc.map(q => q.x), ys = bc.map(q => q.y);
+                const across = Math.max(Math.min(...xs) - start.x, start.x - Math.max(...xs), 0) > Math.max(Math.min(...ys) - start.y, start.y - Math.max(...ys), 0);
+                end = across ? cellEdgeAnchor(bc, start.x < bm.x ? 'left' : 'right', 4) : cellEdgeAnchor(bc, start.y < bm.y ? 'top' : 'bottom', 4);
+                curve = cellLinkCurve(start, end, a.vertical ? 'h' : 'v', across ? 'h' : 'v');
+            } else if (a.graph || b.graph) {
                 // Graph nodes stand free: an edge runs from node edge to node edge, bowing away from the graph's centre.
                 const box = (c: {x: number; y: number}[], m: {x: number; y: number}, round?: boolean) => ({ centre: m, round,
                     hw: (Math.max(...c.map(q => q.x)) - Math.min(...c.map(q => q.x))) / 2, hh: (Math.max(...c.map(q => q.y)) - Math.min(...c.map(q => q.y))) / 2 });

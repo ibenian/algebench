@@ -3018,7 +3018,7 @@
     },
     "connectTarget": {
       "title": "ConnectTarget",
-      "description": "One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr); for a graph, also a node of the same graph (indexExpr alone).",
+      "description": "One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr); for a graph, also a node of the same graph (indexExpr alone). For an array or stack, objectExpr instead names the target object per cell (a list of references to dicts), and without indexExpr points at the whole object.",
       "oneOf": [
             {
               "type": "object",
@@ -3070,6 +3070,46 @@
                 "highlightExpr": {
                   "type": "string",
                   "description": "ARRAY / STACK / GRAPH links only: per-link boolean; a highlighted link is drawn thicker and lit."
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "description": "ARRAY / STACK: a link to an object named per cell, e.g. a list whose cells are references to dict elements (\"concat('person', idx)\"). Without indexExpr the link points at the whole object (its outline); with it, at that cell of it. An empty name links nothing for that cell.",
+              "required": [
+                "objectExpr"
+              ],
+              "properties": {
+                "objectExpr": {
+                  "type": "string",
+                  "description": "Target object id for each cell, with 'idx' and 'value' bound. Cells naming the same object share its link group."
+                },
+                "indexExpr": {
+                  "type": "string",
+                  "description": "Optional: the target cell, as for `object` targets. Omit it to point at the whole object."
+                },
+                "pinned": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show the links without hovering. The reader can still unpin them."
+                },
+                "color": {
+                  "$ref": "#/$defs/color",
+                  "description": "Link colour (default light blue)."
+                },
+                "arrow": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Draw an arrowhead at the target end."
+                },
+                "colorExpr": {
+                  "type": "string",
+                  "description": "Per-link colour, with 'idx', 'value' and 'to' bound; an empty result keeps `color`."
+                },
+                "highlightExpr": {
+                  "type": "string",
+                  "description": "Per-link boolean; a highlighted link is drawn thicker and lit."
                 }
               },
               "additionalProperties": false

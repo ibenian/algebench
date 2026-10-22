@@ -249,6 +249,120 @@
           ]
         }
       ]
+    },
+    {
+      "id": "list-of-dicts",
+      "title": "List of dicts (references to whole objects)",
+      "description": "List of dicts",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# List of dicts\n\n`people = [{...}, {...}, {...}]` holds **references**: each cell names the dict it points to, and the dict is an object of its own. The list's links use **objectExpr** to pick the target per cell (here the cell's value, the dict's id) and leave out indexExpr, so each arrow points at the **whole dict**.\n\n- **alias**: `people[2] = people[0]`. Two cells now refer to the same dict: two arrows into it, and nothing points at Cy any more.\n- **who**: lights one reference.\n- **ages**: a link *with* indexExpr points into a dict instead: `keyIndex(dataTable(value, 'key'), 'age')` finds the entry for `'age'` in the dict the cell names.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "p0": [
+          {"key": "name", "value": "Ana"},
+          {"key": "age", "value": 31}
+        ],
+        "p1": [
+          {"key": "name", "value": "Bo"},
+          {"key": "age", "value": 27}
+        ],
+        "p2": [
+          {"key": "name", "value": "Cy"},
+          {"key": "age", "value": 40}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "alias", "label": "alias people[2] = people[0]", "min": 0, "max": 1, "step": 1, "default": 0},
+            {"id": "who", "label": "who", "min": 0, "max": 2, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "people",
+              "type": "array",
+              "label": "people",
+              "labelSide": "left",
+              "itemType": "string",
+              "origin": [-2.6, 3.2, 0],
+              "cellSize": 1.4,
+              "lengthExpr": "3",
+              "valueExpr": "idx == 2 and alias == 1 ? 'p0' : concat('p', idx)",
+              "axisLabels": "plane",
+              "highlightExpr": "idx == who",
+              "connectTo": {"objectExpr": "value", "arrow": true, "pinned": true, "color": "#8aa0b8", "highlightExpr": "idx == who"}
+            },
+            {
+              "id": "p0",
+              "type": "dict",
+              "label": "p0",
+              "arrayLayout": "vertical",
+              "origin": [-3.6, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p0', idx, 'key')",
+              "valueExpr": "dataTable('p0', idx, 'value')",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "p1",
+              "type": "dict",
+              "label": "p1",
+              "arrayLayout": "vertical",
+              "origin": [0.19999999999999973, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p1', idx, 'key')",
+              "valueExpr": "dataTable('p1', idx, 'value')",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "p2",
+              "type": "dict",
+              "label": "p2",
+              "arrayLayout": "vertical",
+              "origin": [3.9999999999999996, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p2', idx, 'key')",
+              "valueExpr": "dataTable('p2', idx, 'value')",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "ages",
+              "type": "array",
+              "label": "ages",
+              "labelSide": "left",
+              "itemType": "string",
+              "origin": [-2.6, -3.4, 0],
+              "cellSize": 1.4,
+              "values": ["p0", "p1", "p2"],
+              "axisLabels": "plane",
+              "connectTo": {"objectExpr": "value", "indexExpr": "keyIndex(dataTable(value, 'key'), 'age')", "arrow": true, "pinned": true, "color": "#c792ea"}
+            }
+          ]
+        }
+      ]
     }
   ]
 }

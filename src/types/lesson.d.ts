@@ -1259,7 +1259,7 @@ export type Vec3Number9 = [number, number, number];
  */
 export type Vec3Number10 = [number, number, number];
 /**
- * One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr); for a graph, also a node of the same graph (indexExpr alone).
+ * One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr); for a graph, also a node of the same graph (indexExpr alone). For an array or stack, objectExpr instead names the target object per cell (a list of references to dicts), and without indexExpr points at the whole object.
  */
 export type ConnectTarget =
   | {
@@ -1301,6 +1301,36 @@ export type ConnectTarget =
       arcCenterExpr?: [string, string, string];
       /**
        * ARRAY / STACK / GRAPH links only: per-link boolean; a highlighted link is drawn thicker and lit.
+       */
+      highlightExpr?: string;
+    }
+  | {
+      /**
+       * Target object id for each cell, with 'idx' and 'value' bound. Cells naming the same object share its link group.
+       */
+      objectExpr: string;
+      /**
+       * Optional: the target cell, as for `object` targets. Omit it to point at the whole object.
+       */
+      indexExpr?: string;
+      /**
+       * Show the links without hovering. The reader can still unpin them.
+       */
+      pinned?: boolean;
+      /**
+       * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+       */
+      color?: string | [number, number, number];
+      /**
+       * Draw an arrowhead at the target end.
+       */
+      arrow?: boolean;
+      /**
+       * Per-link colour, with 'idx', 'value' and 'to' bound; an empty result keeps `color`.
+       */
+      colorExpr?: string;
+      /**
+       * Per-link boolean; a highlighted link is drawn thicker and lit.
        */
       highlightExpr?: string;
     }
@@ -1451,7 +1481,7 @@ export interface GlossaryEntry {
   prompt?: string;
 }
 /**
- * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions.
+ * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions, or a whole column as a list via dataTable('tableName', 'column').
  */
 export interface DataTable {
   [k: string]:
@@ -2594,7 +2624,7 @@ export interface Camera2 {
   up?: Vec3Number3;
 }
 /**
- * Data tables accessible via dataTable() in expressions.
+ * Data tables accessible via dataTable() in expressions: dataTable('t', row, 'col') for one value, dataTable('t', 'col') for a column as a list.
  */
 export interface DataTable2 {
   [k: string]:
