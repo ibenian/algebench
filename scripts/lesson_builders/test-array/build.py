@@ -63,10 +63,10 @@ stock = {'apple': 3, 'kiwi': 1, 'fig': 2, 'plum': 5}
 shelf_of = {'apple': 0, 'kiwi': 2, 'fig': 2, 'plum': 1}
 basket = ['fig', 'apple', 'fig', 'plum', 'kiwi']
 spots = [((0, 1), 'apple'), ((1, 0), 'plum'), ((2, 2), 'kiwi')]
-KEYS = "dataTable('stockKeys', 0, 'keys')"
+KEYS = "dataTable('stock', 'key')"   # the stock table's key column, as a list
 scenes.append(scene('dict-links', 'Dictionary links (to, from and between entries)', """# Dictionary links
 
-A dict entry is a cell, so everything that links cells links entries. **keyIndex(keys, key)** gives the position of a key (or −1), so a link, marker or label can name *the entry for a key*:
+A dict entry is a cell, so everything that links cells links entries. **keyIndex(keys, key)** gives the position of a key (or −1); `dataTable('stock', 'key')` reads the table's key column as that list, so a link, marker or label can name *the entry for a key*:
 
 - **basket → stock**: each basket cell links to the stock entry whose key is its fruit: `keyIndex(keys, value)`.
 - **stock → shelves**: each entry links out to the shelf it sits on.
@@ -80,7 +80,7 @@ Move **pick** to choose a fruit.""", [
      'connectTo': {'object': 'stock', 'indexExpr': f'keyIndex({KEYS}, value)', 'arrow': True, 'pinned': True, 'color': '#8aa0b8',
                    'highlightExpr': f"keyIndex({KEYS}, value) == pick"}},
     {'id': 'stock', 'type': 'dict', 'label': 'stock', 'arrayLayout': 'vertical', 'origin': [4.4, 1.6, 0], 'lengthExpr': str(len(fruits)),
-     'keyExpr': f'arrayAt({KEYS}, idx)', 'valueExpr': "dataTable('stock', idx, 'count')", 'axisLabels': 'plane',
+     'keyExpr': "dataTable('stock', idx, 'key')", 'valueExpr': "dataTable('stock', idx, 'count')", 'axisLabels': 'plane',
      'highlightExpr': 'idx == pick',
      'markers': [{'type': 'step_marker', 'indexName': 'pick', 'indexExpr': 'pick', 'color': '#f1cc59'}],
      'connectTo': {'object': 'shelves', 'indexExpr': "dataTable('stock', idx, 'shelf')", 'arrow': True, 'pinned': True, 'color': '#c792ea',
@@ -94,15 +94,15 @@ Move **pick** to choose a fruit.""", [
                    'highlightExpr': f"keyIndex({KEYS}, value) == pick"}},
     # pick, the key being looked at, in the same box (labels at one position merge), wired to its entry.
     {'id': 'pick-var', 'type': 'expression_label', 'position': [1.2, -1.6, 0],
-     'textExpr': "concat('pick = ', dataTable('stock', pick, 'key'))",
+     'textExpr': "concat('pick = ', dataTable('stock', pick, 'shown'))",
      'connectTo': {'object': 'stock', 'indexExpr': 'pick'}},
     {'id': 'pick-label', 'type': 'expression_label', 'position': [1.2, -1.6, 0],
      # The label's text comes from the data: an expression holding "['" would read as JavaScript to the trust scan.
      'textExpr': "dataTable('stock', pick, 'label')",
-     'connectTo': {'object': 'stock', 'indexExpr': f"keyIndex({KEYS}, arrayAt({KEYS}, pick))"}},
+     'connectTo': {'object': 'stock', 'indexExpr': f"keyIndex({KEYS}, dataTable('stock', pick, 'key'))"}},
 ], sliders=[slider('pick', 'pick (fruit)', 0, len(fruits) - 1, 1)], data={
-    'stockKeys': [{'keys': fruits}],
-    'stock': [{'count': stock[f], 'shelf': shelf_of[f], 'key': f"'{f}'", 'label': f"stock['{f}'] = {stock[f]}"} for f in fruits],
+    # Each entry's key lives in its row; 'shown' is the key as Python prints it, for the pick row (math.js cannot add quotes).
+    'stock': [{'key': f, 'count': stock[f], 'shelf': shelf_of[f], 'shown': f"'{f}'", 'label': f"stock['{f}'] = {stock[f]}"} for f in fruits],
     'spots': [{'k': list(k), 'v': v} for k, v in spots],
 }))
 

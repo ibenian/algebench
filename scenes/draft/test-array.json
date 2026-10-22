@@ -134,7 +134,7 @@
         "position": [0, 0, 13],
         "target": [0, 0, 0]
       },
-      "markdown": "# Dictionary links\n\nA dict entry is a cell, so everything that links cells links entries. **keyIndex(keys, key)** gives the position of a key (or −1), so a link, marker or label can name *the entry for a key*:\n\n- **basket → stock**: each basket cell links to the stock entry whose key is its fruit: `keyIndex(keys, value)`.\n- **stock → shelves**: each entry links out to the shelf it sits on.\n- **spots → stock**: a dict with tuple keys links to another dict, by the fruit each spot holds.\n- **pick** and **stock[pick]**: rows wired to the entry for the picked key, and a marker on it that names the key.\n\nMove **pick** to choose a fruit.",
+      "markdown": "# Dictionary links\n\nA dict entry is a cell, so everything that links cells links entries. **keyIndex(keys, key)** gives the position of a key (or −1); `dataTable('stock', 'key')` reads the table's key column as that list, so a link, marker or label can name *the entry for a key*:\n\n- **basket → stock**: each basket cell links to the stock entry whose key is its fruit: `keyIndex(keys, value)`.\n- **stock → shelves**: each entry links out to the shelf it sits on.\n- **spots → stock**: a dict with tuple keys links to another dict, by the fruit each spot holds.\n- **pick** and **stock[pick]**: rows wired to the entry for the picked key, and a marker on it that names the key.\n\nMove **pick** to choose a fruit.",
       "elements": [
         {
           "id": "grid",
@@ -149,16 +149,11 @@
         }
       ],
       "data": {
-        "stockKeys": [
-          {
-            "keys": ["apple", "kiwi", "fig", "plum"]
-          }
-        ],
         "stock": [
-          {"count": 3, "shelf": 0, "key": "'apple'", "label": "stock['apple'] = 3"},
-          {"count": 1, "shelf": 2, "key": "'kiwi'", "label": "stock['kiwi'] = 1"},
-          {"count": 2, "shelf": 2, "key": "'fig'", "label": "stock['fig'] = 2"},
-          {"count": 5, "shelf": 1, "key": "'plum'", "label": "stock['plum'] = 5"}
+          {"key": "apple", "count": 3, "shelf": 0, "shown": "'apple'", "label": "stock['apple'] = 3"},
+          {"key": "kiwi", "count": 1, "shelf": 2, "shown": "'kiwi'", "label": "stock['kiwi'] = 1"},
+          {"key": "fig", "count": 2, "shelf": 2, "shown": "'fig'", "label": "stock['fig'] = 2"},
+          {"key": "plum", "count": 5, "shelf": 1, "shown": "'plum'", "label": "stock['plum'] = 5"}
         ],
         "spots": [
           {
@@ -194,8 +189,8 @@
               "cellSize": 1.4,
               "values": ["fig", "apple", "fig", "plum", "kiwi"],
               "axisLabels": "plane",
-              "highlightExpr": "keyIndex(dataTable('stockKeys', 0, 'keys'), value) == pick",
-              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stockKeys', 0, 'keys'), value)", "arrow": true, "pinned": true, "color": "#8aa0b8", "highlightExpr": "keyIndex(dataTable('stockKeys', 0, 'keys'), value) == pick"}
+              "highlightExpr": "keyIndex(dataTable('stock', 'key'), value) == pick",
+              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stock', 'key'), value)", "arrow": true, "pinned": true, "color": "#8aa0b8", "highlightExpr": "keyIndex(dataTable('stock', 'key'), value) == pick"}
             },
             {
               "id": "stock",
@@ -204,7 +199,7 @@
               "arrayLayout": "vertical",
               "origin": [4.4, 1.6, 0],
               "lengthExpr": "4",
-              "keyExpr": "arrayAt(dataTable('stockKeys', 0, 'keys'), idx)",
+              "keyExpr": "dataTable('stock', idx, 'key')",
               "valueExpr": "dataTable('stock', idx, 'count')",
               "axisLabels": "plane",
               "highlightExpr": "idx == pick",
@@ -235,13 +230,13 @@
               "keyExpr": "dataTable('spots', idx, 'k')",
               "valueExpr": "dataTable('spots', idx, 'v')",
               "axisLabels": "plane",
-              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stockKeys', 0, 'keys'), value)", "arrow": true, "pinned": true, "color": "#74d0c2", "highlightExpr": "keyIndex(dataTable('stockKeys', 0, 'keys'), value) == pick"}
+              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stock', 'key'), value)", "arrow": true, "pinned": true, "color": "#74d0c2", "highlightExpr": "keyIndex(dataTable('stock', 'key'), value) == pick"}
             },
             {
               "id": "pick-var",
               "type": "expression_label",
               "position": [1.2, -1.6, 0],
-              "textExpr": "concat('pick = ', dataTable('stock', pick, 'key'))",
+              "textExpr": "concat('pick = ', dataTable('stock', pick, 'shown'))",
               "connectTo": {"object": "stock", "indexExpr": "pick"}
             },
             {
@@ -249,7 +244,7 @@
               "type": "expression_label",
               "position": [1.2, -1.6, 0],
               "textExpr": "dataTable('stock', pick, 'label')",
-              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stockKeys', 0, 'keys'), arrayAt(dataTable('stockKeys', 0, 'keys'), pick))"}
+              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stock', 'key'), dataTable('stock', pick, 'key'))"}
             }
           ]
         }

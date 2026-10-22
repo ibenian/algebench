@@ -151,10 +151,16 @@ var state = {
 //#endregion
 //#region src/data-table.ts
 /** Read scene table rows or a cell without changing the underlying data. */
+/** dataTable(table) → its rows; dataTable(table, 'column') → that column, one value per row (0 where missing);
+*  dataTable(table, row, 'column') → one cell, the row clamped and rounded. */
 function readDataTable(data, table, rowIndex, column) {
 	const rows = data?.[String(table)];
 	if (!Array.isArray(rows)) return 0;
 	if (rowIndex === void 0 && column === void 0) return rows;
+	if (column === void 0 && typeof rowIndex === "string") return rows.map((row) => {
+		const v = row?.[rowIndex];
+		return v != null ? v : 0;
+	});
 	const row = rows[Math.max(0, Math.min(rows.length - 1, Math.round(Number(rowIndex))))];
 	if (!row) return 0;
 	const value = row[String(column)];

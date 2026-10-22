@@ -1,8 +1,11 @@
 /** Read scene table rows or a cell without changing the underlying data. */
+/** dataTable(table) → its rows; dataTable(table, 'column') → that column, one value per row (0 where missing);
+ *  dataTable(table, row, 'column') → one cell, the row clamped and rounded. */
 export function readDataTable(data:Record<string,unknown>|null,table:unknown,rowIndex?:unknown,column?:unknown):unknown {
     const rows=data?.[String(table)];
     if(!Array.isArray(rows))return 0;
     if(rowIndex===undefined&&column===undefined)return rows;
+    if(column===undefined&&typeof rowIndex==='string')return rows.map(row=>{const v=(row as Record<string,unknown>)?.[rowIndex];return v!=null?v:0;});
     const row=rows[Math.max(0,Math.min(rows.length-1,Math.round(Number(rowIndex))))];
     if(!row)return 0;
     const value=(row as Record<string,unknown>)[String(column)];

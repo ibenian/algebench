@@ -115,8 +115,10 @@ const _MATHJS_EXTENSIONS = {
         const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
         return '\u2588'.repeat(n) + '\u2591'.repeat(Number(w) - n);
     },
-    // dataTable(table) returns table rows; dataTable(table, rowIndex, column) looks up a value from the scene's "data" tables.
-    // Example: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass
+    // dataTable(table) returns table rows; dataTable(table, column) one column as a list; dataTable(table, rowIndex,
+    // column) one value from the scene's "data" tables.
+    // Examples: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass;
+    //           keyIndex(dataTable('stock', 'key'), value) → the stock entry whose key is value.
     dataTable: (table: unknown, rowIndex?: unknown, column?: unknown): unknown =>
         boundTableReader(exprState.sceneData ?? {}, state.sceneTableBindings, table, rowIndex, column, expression => {
             if(!tableExpressions.has(expression)) tableExpressions.set(expression, compileExpr(expression));

@@ -18,6 +18,13 @@ test('cell reads retain clamping, rounding, false/zero values and missing-cell b
  assert.equal(readDataTable(null,'rows',0,'count'),0);
 });
 
+test('a column read returns that column, one value per row, so a list can be taken from the table itself',()=>{
+ const data={stock:[{key:'apple',count:3},{key:'kiwi',count:1},{count:2}]};
+ assert.deepEqual(readDataTable(data,'stock','key'),['apple','kiwi',0],'a missing cell reads 0, as a cell read does');
+ assert.deepEqual(readDataTable(data,'stock','count'),[3,1,2]);
+ assert.equal(readDataTable(data,'absent','key'),0);
+});
+
 test('bound tables materialize current rows while ordinary input tables stay unchanged',()=>{
  const read=createBoundTableReader(),data:Record<string,unknown>={input:[{count:2}],trace:[{value:0}]};
  const bindings=[{table:'trace',rowsExpr:'buildTrace(input)'}];let count=2;

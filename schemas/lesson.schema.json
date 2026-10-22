@@ -53,7 +53,7 @@
         },
         "data": {
           "$ref": "#/$defs/dataTable",
-          "description": "Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions."
+          "description": "Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions, or a whole column as a list via dataTable('tableName', 'column')."
         },
         "proof": {
           "$ref": "#/$defs/proofOrProofArray",
@@ -155,7 +155,7 @@
         },
         "data": {
           "$ref": "#/$defs/dataTable",
-          "description": "Data tables accessible via dataTable() in expressions."
+          "description": "Data tables accessible via dataTable() in expressions: dataTable('t', row, 'col') for one value, dataTable('t', 'col') for a column as a list."
         },
         "starfield": {
           "$ref": "#/$defs/starfield",
