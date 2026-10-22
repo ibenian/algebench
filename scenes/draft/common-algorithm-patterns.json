@@ -1398,34 +1398,34 @@
         ],
         "dp_root": [
           {
-            "name": "Two Sum II (167)",
+            "name": "Two Sum II",
             "on": [1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Two Sum II (167): sorted array → pair or triple? → Two pointers. Its step shows the whole branch."
+            "why": "Two Sum II: sorted array → pair or triple? → Two pointers. Its step shows the whole branch."
           },
           {
-            "name": "3Sum (15)",
+            "name": "3Sum",
             "on": [1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "3Sum (15): sorted array → pair or triple? → Two pointers. Its step shows the whole branch."
+            "why": "3Sum: sorted array → pair or triple? → Two pointers. Its step shows the whole branch."
           },
           {
-            "name": "Search in Rotated Sorted Array (33)",
+            "name": "Search in Rotated Sorted Array",
             "on": [1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Search in Rotated Sorted Array (33): sorted array → find a value fast? → Binary search. Its step shows the whole branch."
+            "why": "Search in Rotated Sorted Array: sorted array → find a value fast? → Binary search. Its step shows the whole branch."
           },
           {
-            "name": "Find Peak Element (162)",
+            "name": "Find Peak Element",
             "on": [1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Find Peak Element (162): sorted array → find a value fast? → Binary search. Its step shows the whole branch."
+            "why": "Find Peak Element: sorted array → find a value fast? → Binary search. Its step shows the whole branch."
           },
           {
-            "name": "Range Sum Query (303)",
+            "name": "Range Sum Query",
             "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Range Sum Query (303): ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
+            "why": "Range Sum Query: ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
           },
           {
-            "name": "Subarray Sum Equals K (560)",
+            "name": "Subarray Sum Equals K",
             "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Subarray Sum Equals K (560): ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
+            "why": "Subarray Sum Equals K: ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
           },
           {
             "name": "Max Sum of k Consecutive",
@@ -1433,164 +1433,164 @@
             "why": "Max Sum of k Consecutive: ranges in an array → window of size k? → Sliding window. Its step shows the whole branch."
           },
           {
-            "name": "Longest Substring Without Repeating (3)",
+            "name": "Longest Substring Without Repeating",
             "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Longest Substring Without Repeating (3): ranges in an array → window of size k? → Sliding window. Its step shows the whole branch."
+            "why": "Longest Substring Without Repeating: ranges in an array → window of size k? → Sliding window. Its step shows the whole branch."
           },
           {
-            "name": "Maximum Subarray (53)",
+            "name": "Maximum Subarray",
             "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Maximum Subarray (53): ranges in an array → best sum, any length? → Kadane. Its step shows the whole branch."
+            "why": "Maximum Subarray: ranges in an array → best sum, any length? → Kadane. Its step shows the whole branch."
           },
           {
-            "name": "Sliding Window Maximum (239)",
+            "name": "Sliding Window Maximum",
             "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Sliding Window Maximum (239): ranges in an array → max of each window? → Monotonic queue. Its step shows the whole branch."
+            "why": "Sliding Window Maximum: ranges in an array → max of each window? → Monotonic queue. Its step shows the whole branch."
           },
           {
-            "name": "Daily Temperatures (739)",
+            "name": "Daily Temperatures",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Daily Temperatures (739): order & selection → next greater? → Monotonic stack. Its step shows the whole branch."
+            "why": "Daily Temperatures: order & selection → next greater? → Monotonic stack. Its step shows the whole branch."
           },
           {
-            "name": "Next Greater Element (496)",
+            "name": "Next Greater Element",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Next Greater Element (496): order & selection → next greater? → Monotonic stack. Its step shows the whole branch."
+            "why": "Next Greater Element: order & selection → next greater? → Monotonic stack. Its step shows the whole branch."
           },
           {
-            "name": "Kth Largest Element (215)",
+            "name": "Kth Largest Element",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Kth Largest Element (215): order & selection → k largest? → Heap. Its step shows the whole branch."
+            "why": "Kth Largest Element: order & selection → k largest? → Heap. Its step shows the whole branch."
           },
           {
-            "name": "Top K Frequent Elements (347)",
+            "name": "Top K Frequent Elements",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Top K Frequent Elements (347): order & selection → k largest? → Heap. Its step shows the whole branch."
+            "why": "Top K Frequent Elements: order & selection → k largest? → Heap. Its step shows the whole branch."
           },
           {
-            "name": "Merge Intervals (56)",
+            "name": "Merge Intervals",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Merge Intervals (56): order & selection → overlapping ranges? → Merge intervals. Its step shows the whole branch."
+            "why": "Merge Intervals: order & selection → overlapping ranges? → Merge intervals. Its step shows the whole branch."
           },
           {
-            "name": "Meeting Rooms II (253)",
+            "name": "Meeting Rooms II",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Meeting Rooms II (253): order & selection → overlapping ranges? → Merge intervals. Its step shows the whole branch."
+            "why": "Meeting Rooms II: order & selection → overlapping ranges? → Merge intervals. Its step shows the whole branch."
           },
           {
-            "name": "Jump Game (55)",
+            "name": "Jump Game",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Jump Game (55): order & selection → local best is safe? → Greedy. Its step shows the whole branch."
+            "why": "Jump Game: order & selection → local best is safe? → Greedy. Its step shows the whole branch."
           },
           {
-            "name": "Single Number (136)",
+            "name": "Single Number",
             "on": [1, 0, 0, 1, 0, 0, 0, 0],
-            "why": "Single Number (136): order & selection → pairs cancel? → Bit tricks. Its step shows the whole branch."
+            "why": "Single Number: order & selection → pairs cancel? → Bit tricks. Its step shows the whole branch."
           },
           {
-            "name": "First Occurrence in a String (28)",
+            "name": "First Occurrence in a String",
             "on": [1, 0, 0, 0, 1, 0, 0, 0],
-            "why": "First Occurrence in a String (28): strings → pattern in text? → KMP. Its step shows the whole branch."
+            "why": "First Occurrence in a String: strings → pattern in text? → KMP. Its step shows the whole branch."
           },
           {
-            "name": "Implement Trie (208)",
+            "name": "Implement Trie",
             "on": [1, 0, 0, 0, 1, 0, 0, 0],
-            "why": "Implement Trie (208): strings → shared prefixes? → Trie. Its step shows the whole branch."
+            "why": "Implement Trie: strings → shared prefixes? → Trie. Its step shows the whole branch."
           },
           {
-            "name": "Word Search II (212)",
+            "name": "Word Search II",
             "on": [1, 0, 0, 0, 1, 0, 0, 0],
-            "why": "Word Search II (212): strings → shared prefixes? → Trie. Its step shows the whole branch."
+            "why": "Word Search II: strings → shared prefixes? → Trie. Its step shows the whole branch."
           },
           {
-            "name": "Find the Duplicate Number (287)",
+            "name": "Find the Duplicate Number",
             "on": [1, 0, 0, 0, 0, 1, 0, 0],
-            "why": "Find the Duplicate Number (287): linked list → cycle or duplicate? → Fast & slow. Its step shows the whole branch."
+            "why": "Find the Duplicate Number: linked list → cycle or duplicate? → Fast & slow. Its step shows the whole branch."
           },
           {
-            "name": "Linked List Cycle II (142)",
+            "name": "Linked List Cycle II",
             "on": [1, 0, 0, 0, 0, 1, 0, 0],
-            "why": "Linked List Cycle II (142): linked list → cycle or duplicate? → Fast & slow. Its step shows the whole branch."
+            "why": "Linked List Cycle II: linked list → cycle or duplicate? → Fast & slow. Its step shows the whole branch."
           },
           {
-            "name": "Reverse Linked List (206)",
+            "name": "Reverse Linked List",
             "on": [1, 0, 0, 0, 0, 1, 0, 0],
-            "why": "Reverse Linked List (206): linked list → reverse or reorder? → Reverse links. Its step shows the whole branch."
+            "why": "Reverse Linked List: linked list → reverse or reorder? → Reverse links. Its step shows the whole branch."
           },
           {
-            "name": "Reorder List (143)",
+            "name": "Reorder List",
             "on": [1, 0, 0, 0, 0, 1, 0, 0],
-            "why": "Reorder List (143): linked list → reverse or reorder? → Reverse links. Its step shows the whole branch."
+            "why": "Reorder List: linked list → reverse or reorder? → Reverse links. Its step shows the whole branch."
           },
           {
-            "name": "Binary Tree Level Order (102)",
+            "name": "Binary Tree Level Order",
             "on": [1, 0, 0, 0, 0, 0, 1, 0],
-            "why": "Binary Tree Level Order (102): trees & graphs → visit in an order? → Tree traversal. Its step shows the whole branch."
+            "why": "Binary Tree Level Order: trees & graphs → visit in an order? → Tree traversal. Its step shows the whole branch."
           },
           {
-            "name": "Kth Smallest in a BST (230)",
+            "name": "Kth Smallest in a BST",
             "on": [1, 0, 0, 0, 0, 0, 1, 0],
-            "why": "Kth Smallest in a BST (230): trees & graphs → visit in an order? → Tree traversal. Its step shows the whole branch."
+            "why": "Kth Smallest in a BST: trees & graphs → visit in an order? → Tree traversal. Its step shows the whole branch."
           },
           {
-            "name": "Number of Islands (200)",
+            "name": "Number of Islands",
             "on": [1, 0, 0, 0, 0, 0, 1, 0],
-            "why": "Number of Islands (200): trees & graphs → grid of cells? → Grid DFS / BFS. Its step shows the whole branch."
+            "why": "Number of Islands: trees & graphs → grid of cells? → Grid DFS / BFS. Its step shows the whole branch."
           },
           {
-            "name": "Rotting Oranges (994)",
+            "name": "Rotting Oranges",
             "on": [1, 0, 0, 0, 0, 0, 1, 0],
-            "why": "Rotting Oranges (994): trees & graphs → grid of cells? → Grid DFS / BFS. Its step shows the whole branch."
+            "why": "Rotting Oranges: trees & graphs → grid of cells? → Grid DFS / BFS. Its step shows the whole branch."
           },
           {
-            "name": "Redundant Connection (684)",
+            "name": "Redundant Connection",
             "on": [1, 0, 0, 0, 0, 0, 1, 0],
-            "why": "Redundant Connection (684): trees & graphs → join as edges come? → Union-find. Its step shows the whole branch."
+            "why": "Redundant Connection: trees & graphs → join as edges come? → Union-find. Its step shows the whole branch."
           },
           {
-            "name": "Course Schedule (207)",
+            "name": "Course Schedule",
             "on": [1, 0, 0, 0, 0, 0, 1, 0],
-            "why": "Course Schedule (207): trees & graphs → dependencies? → Topological sort. Its step shows the whole branch."
+            "why": "Course Schedule: trees & graphs → dependencies? → Topological sort. Its step shows the whole branch."
           },
           {
-            "name": "Network Delay Time (743)",
+            "name": "Network Delay Time",
             "on": [1, 0, 0, 0, 0, 0, 1, 0],
-            "why": "Network Delay Time (743): trees & graphs → cheapest path? → Dijkstra. Its step shows the whole branch."
+            "why": "Network Delay Time: trees & graphs → cheapest path? → Dijkstra. Its step shows the whole branch."
           },
           {
-            "name": "House Robber (198)",
+            "name": "House Robber",
             "on": [1, 0, 0, 0, 0, 0, 0, 1],
-            "why": "House Robber (198): choices → reuse sub-answers? → Dynamic prog.. Its step shows the whole branch."
+            "why": "House Robber: choices → reuse sub-answers? → Dynamic prog.. Its step shows the whole branch."
           },
           {
-            "name": "Coin Change (322)",
+            "name": "Coin Change",
             "on": [1, 0, 0, 0, 0, 0, 0, 1],
-            "why": "Coin Change (322): choices → reuse sub-answers? → Dynamic prog.. Its step shows the whole branch."
+            "why": "Coin Change: choices → reuse sub-answers? → Dynamic prog.. Its step shows the whole branch."
           },
           {
-            "name": "Longest Common Subsequence (1143)",
+            "name": "Longest Common Subsequence",
             "on": [1, 0, 0, 0, 0, 0, 0, 1],
-            "why": "Longest Common Subsequence (1143): choices → two sequences? → 2D DP. Its step shows the whole branch."
+            "why": "Longest Common Subsequence: choices → two sequences? → 2D DP. Its step shows the whole branch."
           },
           {
-            "name": "Edit Distance (72)",
+            "name": "Edit Distance",
             "on": [1, 0, 0, 0, 0, 0, 0, 1],
-            "why": "Edit Distance (72): choices → two sequences? → 2D DP. Its step shows the whole branch."
+            "why": "Edit Distance: choices → two sequences? → 2D DP. Its step shows the whole branch."
           },
           {
-            "name": "Subsets (78)",
+            "name": "Subsets",
             "on": [1, 0, 0, 0, 0, 0, 0, 1],
-            "why": "Subsets (78): choices → all combinations? → Backtracking. Its step shows the whole branch."
+            "why": "Subsets: choices → all combinations? → Backtracking. Its step shows the whole branch."
           },
           {
-            "name": "N-Queens (51)",
+            "name": "N-Queens",
             "on": [1, 0, 0, 0, 0, 0, 0, 1],
-            "why": "N-Queens (51): choices → all combinations? → Backtracking. Its step shows the whole branch."
+            "why": "N-Queens: choices → all combinations? → Backtracking. Its step shows the whole branch."
           },
           {
-            "name": "Pow(x, n) (50)",
+            "name": "Pow(x, n)",
             "on": [1, 0, 0, 0, 0, 0, 0, 1],
-            "why": "Pow(x, n) (50): choices → smaller copies? → Recursion. Its step shows the whole branch."
+            "why": "Pow(x, n): choices → smaller copies? → Recursion. Its step shows the whole branch."
           }
         ],
         "dt_0": [
@@ -1602,24 +1602,24 @@
         ],
         "dp_0": [
           {
-            "name": "Two Sum II (167)",
+            "name": "Two Sum II",
             "on": [1, 1, 1, 0, 0],
-            "why": "Two Sum II (167): sorted array, and the problem asks \"pair or triple?\" → Two pointers."
+            "why": "Two Sum II: sorted array, and the problem asks \"pair or triple?\" → Two pointers."
           },
           {
-            "name": "3Sum (15)",
+            "name": "3Sum",
             "on": [1, 1, 1, 0, 0],
-            "why": "3Sum (15): sorted array, and the problem asks \"pair or triple?\" → Two pointers."
+            "why": "3Sum: sorted array, and the problem asks \"pair or triple?\" → Two pointers."
           },
           {
-            "name": "Search in Rotated Sorted Array (33)",
+            "name": "Search in Rotated Sorted Array",
             "on": [1, 0, 0, 1, 1],
-            "why": "Search in Rotated Sorted Array (33): sorted array, and the problem asks \"find a value fast?\" → Binary search."
+            "why": "Search in Rotated Sorted Array: sorted array, and the problem asks \"find a value fast?\" → Binary search."
           },
           {
-            "name": "Find Peak Element (162)",
+            "name": "Find Peak Element",
             "on": [1, 0, 0, 1, 1],
-            "why": "Find Peak Element (162): sorted array, and the problem asks \"find a value fast?\" → Binary search."
+            "why": "Find Peak Element: sorted array, and the problem asks \"find a value fast?\" → Binary search."
           }
         ],
         "dt_1": [
@@ -1635,14 +1635,14 @@
         ],
         "dp_1": [
           {
-            "name": "Range Sum Query (303)",
+            "name": "Range Sum Query",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Range Sum Query (303): ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
+            "why": "Range Sum Query: ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
           },
           {
-            "name": "Subarray Sum Equals K (560)",
+            "name": "Subarray Sum Equals K",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Subarray Sum Equals K (560): ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
+            "why": "Subarray Sum Equals K: ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
           },
           {
             "name": "Max Sum of k Consecutive",
@@ -1650,19 +1650,19 @@
             "why": "Max Sum of k Consecutive: ranges in an array, and the problem asks \"window of size k?\" → Sliding window."
           },
           {
-            "name": "Longest Substring Without Repeating (3)",
+            "name": "Longest Substring Without Repeating",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0],
-            "why": "Longest Substring Without Repeating (3): ranges in an array, and the problem asks \"window of size k?\" → Sliding window."
+            "why": "Longest Substring Without Repeating: ranges in an array, and the problem asks \"window of size k?\" → Sliding window."
           },
           {
-            "name": "Maximum Subarray (53)",
+            "name": "Maximum Subarray",
             "on": [1, 0, 0, 0, 0, 1, 1, 0, 0],
-            "why": "Maximum Subarray (53): ranges in an array, and the problem asks \"best sum, any length?\" → Kadane."
+            "why": "Maximum Subarray: ranges in an array, and the problem asks \"best sum, any length?\" → Kadane."
           },
           {
-            "name": "Sliding Window Maximum (239)",
+            "name": "Sliding Window Maximum",
             "on": [1, 0, 0, 0, 0, 0, 0, 1, 1],
-            "why": "Sliding Window Maximum (239): ranges in an array, and the problem asks \"max of each window?\" → Monotonic queue."
+            "why": "Sliding Window Maximum: ranges in an array, and the problem asks \"max of each window?\" → Monotonic queue."
           }
         ],
         "dt_2": [
@@ -1680,44 +1680,44 @@
         ],
         "dp_2": [
           {
-            "name": "Daily Temperatures (739)",
+            "name": "Daily Temperatures",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            "why": "Daily Temperatures (739): order & selection, and the problem asks \"next greater?\" → Monotonic stack."
+            "why": "Daily Temperatures: order & selection, and the problem asks \"next greater?\" → Monotonic stack."
           },
           {
-            "name": "Next Greater Element (496)",
+            "name": "Next Greater Element",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            "why": "Next Greater Element (496): order & selection, and the problem asks \"next greater?\" → Monotonic stack."
+            "why": "Next Greater Element: order & selection, and the problem asks \"next greater?\" → Monotonic stack."
           },
           {
-            "name": "Kth Largest Element (215)",
+            "name": "Kth Largest Element",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Kth Largest Element (215): order & selection, and the problem asks \"k largest?\" → Heap."
+            "why": "Kth Largest Element: order & selection, and the problem asks \"k largest?\" → Heap."
           },
           {
-            "name": "Top K Frequent Elements (347)",
+            "name": "Top K Frequent Elements",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Top K Frequent Elements (347): order & selection, and the problem asks \"k largest?\" → Heap."
+            "why": "Top K Frequent Elements: order & selection, and the problem asks \"k largest?\" → Heap."
           },
           {
-            "name": "Merge Intervals (56)",
+            "name": "Merge Intervals",
             "on": [1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
-            "why": "Merge Intervals (56): order & selection, and the problem asks \"overlapping ranges?\" → Merge intervals."
+            "why": "Merge Intervals: order & selection, and the problem asks \"overlapping ranges?\" → Merge intervals."
           },
           {
-            "name": "Meeting Rooms II (253)",
+            "name": "Meeting Rooms II",
             "on": [1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
-            "why": "Meeting Rooms II (253): order & selection, and the problem asks \"overlapping ranges?\" → Merge intervals."
+            "why": "Meeting Rooms II: order & selection, and the problem asks \"overlapping ranges?\" → Merge intervals."
           },
           {
-            "name": "Jump Game (55)",
+            "name": "Jump Game",
             "on": [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-            "why": "Jump Game (55): order & selection, and the problem asks \"local best is safe?\" → Greedy."
+            "why": "Jump Game: order & selection, and the problem asks \"local best is safe?\" → Greedy."
           },
           {
-            "name": "Single Number (136)",
+            "name": "Single Number",
             "on": [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-            "why": "Single Number (136): order & selection, and the problem asks \"pairs cancel?\" → Bit tricks."
+            "why": "Single Number: order & selection, and the problem asks \"pairs cancel?\" → Bit tricks."
           }
         ],
         "dt_3": [
@@ -1729,19 +1729,19 @@
         ],
         "dp_3": [
           {
-            "name": "First Occurrence in a String (28)",
+            "name": "First Occurrence in a String",
             "on": [1, 1, 1, 0, 0],
-            "why": "First Occurrence in a String (28): strings, and the problem asks \"pattern in text?\" → KMP."
+            "why": "First Occurrence in a String: strings, and the problem asks \"pattern in text?\" → KMP."
           },
           {
-            "name": "Implement Trie (208)",
+            "name": "Implement Trie",
             "on": [1, 0, 0, 1, 1],
-            "why": "Implement Trie (208): strings, and the problem asks \"shared prefixes?\" → Trie."
+            "why": "Implement Trie: strings, and the problem asks \"shared prefixes?\" → Trie."
           },
           {
-            "name": "Word Search II (212)",
+            "name": "Word Search II",
             "on": [1, 0, 0, 1, 1],
-            "why": "Word Search II (212): strings, and the problem asks \"shared prefixes?\" → Trie."
+            "why": "Word Search II: strings, and the problem asks \"shared prefixes?\" → Trie."
           }
         ],
         "dt_4": [
@@ -1753,24 +1753,24 @@
         ],
         "dp_4": [
           {
-            "name": "Find the Duplicate Number (287)",
+            "name": "Find the Duplicate Number",
             "on": [1, 1, 1, 0, 0],
-            "why": "Find the Duplicate Number (287): linked list, and the problem asks \"cycle or duplicate?\" → Fast & slow."
+            "why": "Find the Duplicate Number: linked list, and the problem asks \"cycle or duplicate?\" → Fast & slow."
           },
           {
-            "name": "Linked List Cycle II (142)",
+            "name": "Linked List Cycle II",
             "on": [1, 1, 1, 0, 0],
-            "why": "Linked List Cycle II (142): linked list, and the problem asks \"cycle or duplicate?\" → Fast & slow."
+            "why": "Linked List Cycle II: linked list, and the problem asks \"cycle or duplicate?\" → Fast & slow."
           },
           {
-            "name": "Reverse Linked List (206)",
+            "name": "Reverse Linked List",
             "on": [1, 0, 0, 1, 1],
-            "why": "Reverse Linked List (206): linked list, and the problem asks \"reverse or reorder?\" → Reverse links."
+            "why": "Reverse Linked List: linked list, and the problem asks \"reverse or reorder?\" → Reverse links."
           },
           {
-            "name": "Reorder List (143)",
+            "name": "Reorder List",
             "on": [1, 0, 0, 1, 1],
-            "why": "Reorder List (143): linked list, and the problem asks \"reverse or reorder?\" → Reverse links."
+            "why": "Reorder List: linked list, and the problem asks \"reverse or reorder?\" → Reverse links."
           }
         ],
         "dt_5": [
@@ -1788,39 +1788,39 @@
         ],
         "dp_5": [
           {
-            "name": "Binary Tree Level Order (102)",
+            "name": "Binary Tree Level Order",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            "why": "Binary Tree Level Order (102): trees & graphs, and the problem asks \"visit in an order?\" → Tree traversal."
+            "why": "Binary Tree Level Order: trees & graphs, and the problem asks \"visit in an order?\" → Tree traversal."
           },
           {
-            "name": "Kth Smallest in a BST (230)",
+            "name": "Kth Smallest in a BST",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            "why": "Kth Smallest in a BST (230): trees & graphs, and the problem asks \"visit in an order?\" → Tree traversal."
+            "why": "Kth Smallest in a BST: trees & graphs, and the problem asks \"visit in an order?\" → Tree traversal."
           },
           {
-            "name": "Number of Islands (200)",
+            "name": "Number of Islands",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Number of Islands (200): trees & graphs, and the problem asks \"grid of cells?\" → Grid DFS / BFS."
+            "why": "Number of Islands: trees & graphs, and the problem asks \"grid of cells?\" → Grid DFS / BFS."
           },
           {
-            "name": "Rotting Oranges (994)",
+            "name": "Rotting Oranges",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Rotting Oranges (994): trees & graphs, and the problem asks \"grid of cells?\" → Grid DFS / BFS."
+            "why": "Rotting Oranges: trees & graphs, and the problem asks \"grid of cells?\" → Grid DFS / BFS."
           },
           {
-            "name": "Redundant Connection (684)",
+            "name": "Redundant Connection",
             "on": [1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
-            "why": "Redundant Connection (684): trees & graphs, and the problem asks \"join as edges come?\" → Union-find."
+            "why": "Redundant Connection: trees & graphs, and the problem asks \"join as edges come?\" → Union-find."
           },
           {
-            "name": "Course Schedule (207)",
+            "name": "Course Schedule",
             "on": [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-            "why": "Course Schedule (207): trees & graphs, and the problem asks \"dependencies?\" → Topological sort."
+            "why": "Course Schedule: trees & graphs, and the problem asks \"dependencies?\" → Topological sort."
           },
           {
-            "name": "Network Delay Time (743)",
+            "name": "Network Delay Time",
             "on": [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-            "why": "Network Delay Time (743): trees & graphs, and the problem asks \"cheapest path?\" → Dijkstra."
+            "why": "Network Delay Time: trees & graphs, and the problem asks \"cheapest path?\" → Dijkstra."
           }
         ],
         "dt_6": [
@@ -1836,39 +1836,39 @@
         ],
         "dp_6": [
           {
-            "name": "House Robber (198)",
+            "name": "House Robber",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "House Robber (198): choices, and the problem asks \"reuse sub-answers?\" → Dynamic prog.."
+            "why": "House Robber: choices, and the problem asks \"reuse sub-answers?\" → Dynamic prog.."
           },
           {
-            "name": "Coin Change (322)",
+            "name": "Coin Change",
             "on": [1, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Coin Change (322): choices, and the problem asks \"reuse sub-answers?\" → Dynamic prog.."
+            "why": "Coin Change: choices, and the problem asks \"reuse sub-answers?\" → Dynamic prog.."
           },
           {
-            "name": "Longest Common Subsequence (1143)",
+            "name": "Longest Common Subsequence",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0],
-            "why": "Longest Common Subsequence (1143): choices, and the problem asks \"two sequences?\" → 2D DP."
+            "why": "Longest Common Subsequence: choices, and the problem asks \"two sequences?\" → 2D DP."
           },
           {
-            "name": "Edit Distance (72)",
+            "name": "Edit Distance",
             "on": [1, 0, 0, 1, 1, 0, 0, 0, 0],
-            "why": "Edit Distance (72): choices, and the problem asks \"two sequences?\" → 2D DP."
+            "why": "Edit Distance: choices, and the problem asks \"two sequences?\" → 2D DP."
           },
           {
-            "name": "Subsets (78)",
+            "name": "Subsets",
             "on": [1, 0, 0, 0, 0, 1, 1, 0, 0],
-            "why": "Subsets (78): choices, and the problem asks \"all combinations?\" → Backtracking."
+            "why": "Subsets: choices, and the problem asks \"all combinations?\" → Backtracking."
           },
           {
-            "name": "N-Queens (51)",
+            "name": "N-Queens",
             "on": [1, 0, 0, 0, 0, 1, 1, 0, 0],
-            "why": "N-Queens (51): choices, and the problem asks \"all combinations?\" → Backtracking."
+            "why": "N-Queens: choices, and the problem asks \"all combinations?\" → Backtracking."
           },
           {
-            "name": "Pow(x, n) (50)",
+            "name": "Pow(x, n)",
             "on": [1, 0, 0, 0, 0, 0, 0, 1, 1],
-            "why": "Pow(x, n) (50): choices, and the problem asks \"smaller copies?\" → Recursion."
+            "why": "Pow(x, n): choices, and the problem asks \"smaller copies?\" → Recursion."
           }
         ]
       },
@@ -2688,7 +2688,7 @@
           }
         ]
       },
-      "markdown": "# Running totals (prefix sum)\n\n**Problem:** Given an array, answer many queries of the form \"what is the sum of nums[i..j]?\"\n\n**Example:** nums = [3, 1, 4, 1, 5, 9, 2, 6]: sum(2..5) = 19, sum(0..3) = 9.\n\n**Signal:** many \"sum of nums[i..j]\" queries on an array that does not change.\n\nBuild `prefix` once, where `prefix[m]` is the sum of the first `m` numbers. Each prefix cell sits on the boundary *before* position m, so it covers everything to its left. Then\n\n$$\\text{sum}(i..j) = \\text{prefix}[j+1] - \\text{prefix}[i]$$\n\nbecause the larger prefix includes the range and the smaller one removes everything before it. Building costs O(n); every query after that costs O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Range Sum Query (303), Contiguous Array (525), Subarray Sum Equals K (560).",
+      "markdown": "# Running totals (prefix sum)\n\n**Problem:** Given an array, answer many queries of the form \"what is the sum of nums[i..j]?\"\n\n**Example:** nums = [3, 1, 4, 1, 5, 9, 2, 6]: sum(2..5) = 19, sum(0..3) = 9.\n\n**Signal:** many \"sum of nums[i..j]\" queries on an array that does not change.\n\nBuild `prefix` once, where `prefix[m]` is the sum of the first `m` numbers. Each prefix cell sits on the boundary *before* position m, so it covers everything to its left. Then\n\n$$\\text{sum}(i..j) = \\text{prefix}[j+1] - \\text{prefix}[i]$$\n\nbecause the larger prefix includes the range and the smaller one removes everything before it. Building costs O(n); every query after that costs O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Range Sum Query, Contiguous Array, Subarray Sum Equals K.",
       "prompt": "Explain why prefix[j+1] - prefix[i] isolates the range. Stress the off-by-one: prefix has n+1 entries and prefix[0] = 0. Ask the learner to predict a query answer before the player reveals it. Displayed Python is not executing in the browser.",
       "elements": [
         {
@@ -2827,7 +2827,7 @@
           {"left": 2, "right": 6, "total": 18, "hasTotal": 1, "sumL": 2, "sumR": 6, "found": 1, "tip_left": "\\text{left} = 1 + 1 = 2", "tip_right": "\\text{right} = 7 - 1 = 6", "tip_total": "\\text{total} = \\text{nums}\\lbrack 2\\rbrack + \\text{nums}\\lbrack 6\\rbrack = 5 + 13 = 18", "tip_cmp": "18 = 18 \\;\\Rightarrow\\; \\text{found at } (2, 6)", "ln_left": 8, "ln_right": 10, "ln_total": 4, "ln_cmp": 4, "line": 6, "message": "Found it: indices 2 and 6.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Squeeze from both ends (two pointers)\n\n**Problem:** Given a sorted array and a target, find two numbers that add up to the target, and return their indices.\n\n**Example:** nums = [2, 3, 5, 7, 8, 11, 13, 17], target = 18 → indices 2 and 6 (5 + 13).\n\n**Signal:** a **sorted** array and a question about a pair (or triple) of elements.\n\nPut `left` at the smallest value and `right` at the largest. Compare their sum with the target:\n\n- **Too small:** `nums[right]` is the largest value still available, so `nums[left]` cannot reach the target with anything. Discard it: `left += 1`.\n- **Too big:** `nums[left]` is the smallest value still available, so `nums[right]` overshoots with everything. Discard it: `right -= 1`.\n\nEach step rules out one element for good, so the scan is O(n) with O(1) space, compared with O(n²) for checking every pair. Target here: **18**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Two Sum II (167), 3Sum (15), Container With Most Water (11).",
+      "markdown": "# Squeeze from both ends (two pointers)\n\n**Problem:** Given a sorted array and a target, find two numbers that add up to the target, and return their indices.\n\n**Example:** nums = [2, 3, 5, 7, 8, 11, 13, 17], target = 18 → indices 2 and 6 (5 + 13).\n\n**Signal:** a **sorted** array and a question about a pair (or triple) of elements.\n\nPut `left` at the smallest value and `right` at the largest. Compare their sum with the target:\n\n- **Too small:** `nums[right]` is the largest value still available, so `nums[left]` cannot reach the target with anything. Discard it: `left += 1`.\n- **Too big:** `nums[left]` is the smallest value still available, so `nums[right]` overshoots with everything. Discard it: `right -= 1`.\n\nEach step rules out one element for good, so the scan is O(n) with O(1) space, compared with O(n²) for checking every pair. Target here: **18**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Two Sum II, 3Sum, Container With Most Water.",
       "prompt": "Explain why moving a pointer never skips a valid pair: the discarded element cannot be part of any solution. Ask the learner to predict which pointer moves before each step.",
       "elements": [
         {
@@ -2963,7 +2963,7 @@
           {"left": 4, "right": 6, "dropped": -1, "window": 9, "best": 11, "bestLeft": 4, "prevBest": -1, "improved": 0, "wOld": 11, "wIn": 1, "wOut": 3, "wRight": 7, "tip_window": "\\text{window} = 11 + \\text{nums}\\lbrack 7\\rbrack - \\text{nums}\\lbrack 4\\rbrack = 11 + 1 - 3 = 9", "tip_best": "\\text{best} = \\max(11, 9) = 11", "tip_cmp": "", "tip_right": "\\text{right} = 7 \\quad \\text{(next of range(3, 8))}", "ln_window": 5, "ln_best": 6, "ln_cmp": 0, "ln_right": 4, "line": 7, "message": "The best window is nums[4..6], with sum 11.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Slide a window (sliding window)\n\n**Problem:** Find the largest sum of any k consecutive numbers in an array.\n\n**Example:** nums = [2, 1, 5, 1, 3, 2, 6, 1], k = 3 → 11, from nums[4..6].\n\n**Signal:** the best (largest, smallest, longest) **contiguous** subarray or substring.\n\nNeighbouring windows share all but two elements. Instead of re-summing each window of size k = 3, slide it one step: add the element that enters on the right, subtract the one that leaves on the left. That turns O(n·k) into O(n).\n\nThis scene uses a fixed-size window. Variable-size windows (longest substring without repeats, minimum window substring) grow `right` every step and shrink `left` while a constraint is broken. The invariant is the same: the window state is updated incrementally, never recomputed.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Maximum Average Subarray I (643), Longest Substring Without Repeating Characters (3), Minimum Window Substring (76).",
+      "markdown": "# Slide a window (sliding window)\n\n**Problem:** Find the largest sum of any k consecutive numbers in an array.\n\n**Example:** nums = [2, 1, 5, 1, 3, 2, 6, 1], k = 3 → 11, from nums[4..6].\n\n**Signal:** the best (largest, smallest, longest) **contiguous** subarray or substring.\n\nNeighbouring windows share all but two elements. Instead of re-summing each window of size k = 3, slide it one step: add the element that enters on the right, subtract the one that leaves on the left. That turns O(n·k) into O(n).\n\nThis scene uses a fixed-size window. Variable-size windows (longest substring without repeats, minimum window substring) grow `right` every step and shrink `left` while a constraint is broken. The invariant is the same: the window state is updated incrementally, never recomputed.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Maximum Average Subarray I, Longest Substring Without Repeating Characters, Minimum Window Substring.",
       "prompt": "Explain the incremental update and why it is O(1). Contrast fixed and variable windows. Ask the learner to predict the next window sum before the player shows it.",
       "elements": [
         {
@@ -3106,7 +3106,7 @@
           {"i": 8, "cur": 5, "best": 6, "start": 3, "bs": 3, "be": 6, "restart": 0, "extend": 5, "tip_cur": "\\text{cur} = \\max(\\text{nums}\\lbrack 8\\rbrack,\\; \\text{cur} + \\text{nums}\\lbrack 8\\rbrack) = \\max(4,\\; 1 + 4) = 5", "tip_best": "\\text{best} = \\max(\\text{best},\\; \\text{cur}) = \\max(5,\\; 6) = 6", "ln_cur": 4, "ln_best": 5, "line": 6, "message": "Answer: 6, the sum of nums[3..6]. One pass, keeping only the last dp value: O(n) time, O(1) space.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Keep the best running sum (Kadane)\n\n**Problem:** Find the largest sum of any contiguous subarray (of any length) in an array of positive and negative numbers.\n\n**Example:** nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4] → 6, from nums[3..6].\n\n**Signal:** the largest (or smallest) sum of a contiguous subarray, of any length; or the best profit from one buy and one sell.\n\nLet `cur` be the best sum of a subarray that *ends at* i. It either extends the best run ending at i − 1 or starts fresh at nums[i]:\n\n$$\\text{cur}_i = \\max(\\text{nums}[i],; \\text{cur}_{i-1} + \\text{nums}[i])$$\n\nStarting fresh wins exactly when the run so far is negative: it only drags the sum down. The answer is the largest `cur` seen. Each value needs only the one before it, so a single pass with two variables suffices: O(n) time, O(1) space, instead of O(n²) for every start and end.\n\nUnlike a sliding window, the length is free, so the window resets instead of sliding.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Maximum Subarray (53), Maximum Product Subarray (152), Best Time to Buy and Sell Stock (121), Maximum Sum Circular Subarray (918).",
+      "markdown": "# Keep the best running sum (Kadane)\n\n**Problem:** Find the largest sum of any contiguous subarray (of any length) in an array of positive and negative numbers.\n\n**Example:** nums = [-2, 1, -3, 4, -1, 2, 1, -5, 4] → 6, from nums[3..6].\n\n**Signal:** the largest (or smallest) sum of a contiguous subarray, of any length; or the best profit from one buy and one sell.\n\nLet `cur` be the best sum of a subarray that *ends at* i. It either extends the best run ending at i − 1 or starts fresh at nums[i]:\n\n$$\\text{cur}_i = \\max(\\text{nums}[i],; \\text{cur}_{i-1} + \\text{nums}[i])$$\n\nStarting fresh wins exactly when the run so far is negative: it only drags the sum down. The answer is the largest `cur` seen. Each value needs only the one before it, so a single pass with two variables suffices: O(n) time, O(1) space, instead of O(n²) for every start and end.\n\nUnlike a sliding window, the length is free, so the window resets instead of sliding.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Maximum Subarray, Maximum Product Subarray, Best Time to Buy and Sell Stock, Maximum Sum Circular Subarray.",
       "prompt": "Explain why a negative running sum should be dropped. Ask the learner to predict, at each index, whether the run extends or starts fresh, and whether best changes, before the player reveals it.",
       "elements": [
         {
@@ -3231,7 +3231,7 @@
           {"lo": 8, "hi": 9, "mid": 8, "half": 0, "found": 8, "tip_lo": "\\text{lo} = \\text{mid} + 1 = 7 + 1 = 8", "tip_hi": "\\text{hi} = \\text{len}(\\text{nums}) - 1 = 9", "tip_mid": "\\text{mid} = \\lfloor (\\text{lo} + \\text{hi}) / 2 \\rfloor = \\lfloor (8 + 9) / 2 \\rfloor = 8", "tip_half": "", "comparing": 1, "tip_cmp": "\\text{nums}\\lbrack 8\\rbrack = 15 = \\text{target} \\;\\Rightarrow\\; \\text{return } 8", "ln_lo": 11, "ln_hi": 2, "ln_mid": 4, "ln_half": 0, "ln_cmp": 5, "line": 6, "message": "Found 15 at index 8.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Halve the search (binary search)\n\n**Problem:** A sorted array was rotated at an unknown point. Find the index of a target value in O(log n) time.\n\n**Example:** nums = [22, 27, 31, 2, 5, 8, 11, 13, 15, 18], target = 15 → index 8.\n\n**Signal:** data that is sorted *with a twist* (rotated, sorted rows and columns, or a monotone yes/no condition) and an O(log n) expectation.\n\nA rotated sorted array is two sorted runs. Cut it at `mid` and **at least one half is fully sorted**: if `nums[lo] ≤ nums[mid]` the left half is, otherwise the right half is. A sorted half lets you check in O(1) whether the target lies inside it, so you still discard half the candidates each step. Highlighted cells are the candidates still in play. Target here: **15**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Search in Rotated Sorted Array (33), Find Minimum in Rotated Sorted Array (153), Search a 2D Matrix II (240).",
+      "markdown": "# Halve the search (binary search)\n\n**Problem:** A sorted array was rotated at an unknown point. Find the index of a target value in O(log n) time.\n\n**Example:** nums = [22, 27, 31, 2, 5, 8, 11, 13, 15, 18], target = 15 → index 8.\n\n**Signal:** data that is sorted *with a twist* (rotated, sorted rows and columns, or a monotone yes/no condition) and an O(log n) expectation.\n\nA rotated sorted array is two sorted runs. Cut it at `mid` and **at least one half is fully sorted**: if `nums[lo] ≤ nums[mid]` the left half is, otherwise the right half is. A sorted half lets you check in O(1) whether the target lies inside it, so you still discard half the candidates each step. Highlighted cells are the candidates still in play. Target here: **15**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Search in Rotated Sorted Array, Find Minimum in Rotated Sorted Array, Search a 2D Matrix II.",
       "prompt": "Explain why one half is always sorted and how that keeps O(log n). Ask the learner to predict which half survives before each step.",
       "elements": [
         {
@@ -3756,7 +3756,7 @@
           }
         ]
       },
-      "markdown": "# Merge overlapping ranges (intervals)\n\n**Problem:** Given a list of [start, end] intervals, merge every group that overlaps and return the result.\n\n**Example:** [8,10] [1,3] [2,6] [15,18] [9,12] → [1,6] [8,12] [15,18].\n\n**Signal:** meetings, bookings, ranges, or anything with a start and an end.\n\nSort by start time. After sorting, an interval can only overlap the group immediately before it, so a single sweep suffices: if the next interval starts at or before the last merged end, extend that end; otherwise start a new group. The chart below draws the same state as bars: input intervals on the upper lanes, and the merged groups growing on the bottom lane as the sweep runs.\n\nSorting dominates: O(n log n) time.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Merge Intervals (56), Insert Interval (57), Non-overlapping Intervals (435).",
+      "markdown": "# Merge overlapping ranges (intervals)\n\n**Problem:** Given a list of [start, end] intervals, merge every group that overlaps and return the result.\n\n**Example:** [8,10] [1,3] [2,6] [15,18] [9,12] → [1,6] [8,12] [15,18].\n\n**Signal:** meetings, bookings, ranges, or anything with a start and an end.\n\nSort by start time. After sorting, an interval can only overlap the group immediately before it, so a single sweep suffices: if the next interval starts at or before the last merged end, extend that end; otherwise start a new group. The chart below draws the same state as bars: input intervals on the upper lanes, and the merged groups growing on the bottom lane as the sweep runs.\n\nSorting dominates: O(n log n) time.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Merge Intervals, Insert Interval, Non-overlapping Intervals.",
       "prompt": "Explain why sorting by start means only the last merged interval can overlap the next one. Ask the learner to predict whether the next interval extends the last group or starts a new one.",
       "elements": [
         {
@@ -3942,7 +3942,7 @@
           {"i": 4, "jump": 4, "reach": 3, "ok": 0, "tip_reach": "\\text{reach} = \\max(\\text{reach}, i + \\text{jump}) = \\max(3, 3 + 0) = 3", "ln_reach": 6, "line": 5, "message": "Yes: index 4 cannot be reached, so neither can the end.", "status": "Done", "running": 0}
         ]
       },
-      "markdown": "# Take the best step now (greedy)\n\n**Problem:** Each value is the longest jump allowed from that index. Starting at index 0, can you reach the last index?\n\n**Example:** nums = [3, 2, 1, 0, 4] → False: every path gets stuck on the 0.\n\n**Signal:** a sequence of choices where the locally best choice never hurts later ones, often \"can you reach…\", \"minimum number of…\", or scheduling.\n\nJump game: each value is the longest jump allowed from that index. Instead of exploring every path, keep one number, **reach**: the farthest index any path found so far can get to. Walking left to right, every index up to reach is reachable (gold), and each one may push reach farther. If the walk ever steps past reach, the rest is cut off.\n\nA greedy solution needs an argument for why the local choice is safe; here, any index within reach is as good as any other for extending it. O(n) time, O(1) space.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Jump Game (55), Jump Game II (45), Gas Station (134), Non-overlapping Intervals (435).",
+      "markdown": "# Take the best step now (greedy)\n\n**Problem:** Each value is the longest jump allowed from that index. Starting at index 0, can you reach the last index?\n\n**Example:** nums = [3, 2, 1, 0, 4] → False: every path gets stuck on the 0.\n\n**Signal:** a sequence of choices where the locally best choice never hurts later ones, often \"can you reach…\", \"minimum number of…\", or scheduling.\n\nJump game: each value is the longest jump allowed from that index. Instead of exploring every path, keep one number, **reach**: the farthest index any path found so far can get to. Walking left to right, every index up to reach is reachable (gold), and each one may push reach farther. If the walk ever steps past reach, the rest is cut off.\n\nA greedy solution needs an argument for why the local choice is safe; here, any index within reach is as good as any other for extending it. O(n) time, O(1) space.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Jump Game, Jump Game II, Gas Station, Non-overlapping Intervals.",
       "prompt": "Explain why tracking only the farthest reach is enough, and why greedy needs a safety argument. Ask the learner to predict whether the walk will get stuck before it does.",
       "elements": [
         {
@@ -4229,7 +4229,7 @@
           }
         ]
       },
-      "markdown": "# Flip bits (bit manipulation)\n\n**Problem:** Every number appears exactly twice except one. Find it, using O(1) extra space.\n\n**Example:** nums = [4, 1, 2, 1, 2] → 4.\n\n**Signal:** \"appears once / twice\", parity, subsets as bitmasks, powers of two, or an O(1)-space requirement on integers.\n\nXOR has two facts that do all the work: `a ^ a = 0` and `a ^ 0 = a`, and it does not care about order. XOR every number together and each pair cancels, leaving the number that appears once. Watch the result's bits: each step flips exactly the bits where x has a 1 (gold).\n\nOther everyday tricks: `x & (x − 1)` clears the lowest set bit, `x & −x` isolates it, and the bits of a counter from 0 to 2ⁿ − 1 enumerate every subset.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Single Number (136), Number of 1 Bits (191), Counting Bits (338), Missing Number (268), Subsets (78, as bitmasks).",
+      "markdown": "# Flip bits (bit manipulation)\n\n**Problem:** Every number appears exactly twice except one. Find it, using O(1) extra space.\n\n**Example:** nums = [4, 1, 2, 1, 2] → 4.\n\n**Signal:** \"appears once / twice\", parity, subsets as bitmasks, powers of two, or an O(1)-space requirement on integers.\n\nXOR has two facts that do all the work: `a ^ a = 0` and `a ^ 0 = a`, and it does not care about order. XOR every number together and each pair cancels, leaving the number that appears once. Watch the result's bits: each step flips exactly the bits where x has a 1 (gold).\n\nOther everyday tricks: `x & (x − 1)` clears the lowest set bit, `x & −x` isolates it, and the bits of a counter from 0 to 2ⁿ − 1 enumerate every subset.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Single Number, Number of 1 Bits, Counting Bits, Missing Number, Subsets (as bitmasks).",
       "prompt": "Explain XOR cancellation bit by bit. Ask the learner to predict the result bits before each step.",
       "elements": [
         {
@@ -7031,7 +7031,7 @@
           }
         ]
       },
-      "markdown": "# Find a word fast (KMP string matching)\n\n**Problem:** Find every index where a pattern occurs in a text, overlaps included.\n\n**Example:** text = \"aabaacaadaabaaba\", p = \"aaba\" → [0, 9, 12].\n\n**Signal:** find every occurrence of a pattern in a text, repeated-substring questions, or \"longest prefix that is also a suffix\".\n\nThe naive search restarts one character later after every mismatch: O(n·m). KMP first precomputes, for every prefix of the pattern, the length of its longest proper **border** (a prefix that is also a suffix): the `lps` table. On a mismatch it keeps that border as already matched instead of starting over, so the text pointer **never moves backwards**. Total cost O(n + m).\n\nPhase 1 builds `lps` from the pattern itself; phase 2 scans the text. Gold text cells are the stretch currently matched by the pattern's prefix.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Find the Index of the First Occurrence in a String (28), Repeated Substring Pattern (459), Shortest Palindrome (214).",
+      "markdown": "# Find a word fast (KMP string matching)\n\n**Problem:** Find every index where a pattern occurs in a text, overlaps included.\n\n**Example:** text = \"aabaacaadaabaaba\", p = \"aaba\" → [0, 9, 12].\n\n**Signal:** find every occurrence of a pattern in a text, repeated-substring questions, or \"longest prefix that is also a suffix\".\n\nThe naive search restarts one character later after every mismatch: O(n·m). KMP first precomputes, for every prefix of the pattern, the length of its longest proper **border** (a prefix that is also a suffix): the `lps` table. On a mismatch it keeps that border as already matched instead of starting over, so the text pointer **never moves backwards**. Total cost O(n + m).\n\nPhase 1 builds `lps` from the pattern itself; phase 2 scans the text. Gold text cells are the stretch currently matched by the pattern's prefix.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Find the Index of the First Occurrence in a String, Repeated Substring Pattern, Shortest Palindrome.",
       "prompt": "Explain borders and the lps table, and why the text pointer never moves back. Ask the learner to predict k after each fallback.",
       "elements": [
         {
@@ -8691,7 +8691,7 @@
           {"ch": "g", "parent": 8}
         ]
       },
-      "markdown": "# Build trie\n\n**Problem:** Build a trie from a list of words, then check which prefixes it contains.\n\n**Example:** words = \"car\", \"cat\", \"cart\", \"care\", \"dog\", \"do\": starts_with(\"ca\") → True, starts_with(\"cab\") → False, starts_with(\"do\") → True.\n\n**Signal:** autocomplete, \"starts with\", word search over many words, or longest common prefix.\n\nA **trie** stores words letter by letter down a tree: each node maps a letter to a child, so a path from the root spells a prefix, and words that share a prefix share that path. A node also records whether a word **ends** there (teal): \"do\" ends inside \"dog\".\n\nInserting walks the word from the root, creating the nodes that are missing; `starts_with` walks the prefix and fails at the first missing letter. Both cost O(length of the word), however many words are stored. Here 6 words need 9 letter nodes instead of 19 letters.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Implement Trie (208), Design Add and Search Words Data Structure (211), Word Search II (212), Longest Common Prefix (14), Replace Words (648).",
+      "markdown": "# Build trie\n\n**Problem:** Build a trie from a list of words, then check which prefixes it contains.\n\n**Example:** words = \"car\", \"cat\", \"cart\", \"care\", \"dog\", \"do\": starts_with(\"ca\") → True, starts_with(\"cab\") → False, starts_with(\"do\") → True.\n\n**Signal:** autocomplete, \"starts with\", word search over many words, or longest common prefix.\n\nA **trie** stores words letter by letter down a tree: each node maps a letter to a child, so a path from the root spells a prefix, and words that share a prefix share that path. A node also records whether a word **ends** there (teal): \"do\" ends inside \"dog\".\n\nInserting walks the word from the root, creating the nodes that are missing; `starts_with` walks the prefix and fails at the first missing letter. Both cost O(length of the word), however many words are stored. Here 6 words need 9 letter nodes instead of 19 letters.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Implement Trie, Design Add and Search Words Data Structure, Word Search II, Longest Common Prefix, Replace Words.",
       "prompt": "Explain shared prefixes and the end-of-word marker. Ask the learner to predict which nodes an insert creates, and where a starts_with walk fails, before the player reveals it.",
       "elements": [
         {
@@ -9627,7 +9627,7 @@
           }
         ]
       },
-      "markdown": "# Next bigger value (monotonic stack)\n\n**Problem:** Given daily temperatures, find for each day how many days you must wait for a warmer one (0 if never).\n\n**Example:** temps = [73, 74, 75, 71, 69, 72, 76, 73] → [1, 1, 4, 2, 1, 1, 0, 0].\n\n**Signal:** \"next greater element\", \"next smaller element\", or \"how far until…\".\n\nThe stack holds the **indices** of days that have not yet seen a warmer day. Their temperatures never increase from bottom to top, so a new day only needs to compare with the top. While today is warmer than the top day, pop it: today is its answer. Then push today.\n\nEvery index is pushed once and popped at most once, so the whole scan is O(n), even though there is a loop inside a loop.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Next Greater Element I (496), Daily Temperatures (739), Largest Rectangle in Histogram (84).",
+      "markdown": "# Next bigger value (monotonic stack)\n\n**Problem:** Given daily temperatures, find for each day how many days you must wait for a warmer one (0 if never).\n\n**Example:** temps = [73, 74, 75, 71, 69, 72, 76, 73] → [1, 1, 4, 2, 1, 1, 0, 0].\n\n**Signal:** \"next greater element\", \"next smaller element\", or \"how far until…\".\n\nThe stack holds the **indices** of days that have not yet seen a warmer day. Their temperatures never increase from bottom to top, so a new day only needs to compare with the top. While today is warmer than the top day, pop it: today is its answer. Then push today.\n\nEvery index is pushed once and popped at most once, so the whole scan is O(n), even though there is a loop inside a loop.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Next Greater Element I, Daily Temperatures, Largest Rectangle in Histogram.",
       "prompt": "Explain the stack invariant (temperatures non-increasing bottom to top) and the amortized O(n) argument. Ask the learner to predict how many days the next temperature will pop.",
       "elements": [
         {
@@ -10853,7 +10853,7 @@
           }
         ]
       },
-      "markdown": "# Max of every window (monotonic queue)\n\n**Problem:** Return the maximum of every window of k consecutive numbers.\n\n**Example:** nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3 → [3, 3, 5, 5, 6, 7].\n\n**Signal:** the maximum (or minimum) of every window of size k, or \"the best value within the last k steps\".\n\nKeep a **deque of indices** whose values decrease from front to back. A new value first evicts every smaller value from the back: those can never be a maximum while the new one is in the window. The front is then the window maximum, once indices that slid out of the window are dropped from the front.\n\nEach index enters and leaves the deque at most once, so all windows cost O(n) instead of O(n·k). It is the monotonic stack's idea with an exit at both ends. Window size here: **3**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Sliding Window Maximum (239), Shortest Subarray with Sum at Least K (862), Constrained Subsequence Sum (1425).",
+      "markdown": "# Max of every window (monotonic queue)\n\n**Problem:** Return the maximum of every window of k consecutive numbers.\n\n**Example:** nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3 → [3, 3, 5, 5, 6, 7].\n\n**Signal:** the maximum (or minimum) of every window of size k, or \"the best value within the last k steps\".\n\nKeep a **deque of indices** whose values decrease from front to back. A new value first evicts every smaller value from the back: those can never be a maximum while the new one is in the window. The front is then the window maximum, once indices that slid out of the window are dropped from the front.\n\nEach index enters and leaves the deque at most once, so all windows cost O(n) instead of O(n·k). It is the monotonic stack's idea with an exit at both ends. Window size here: **3**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Sliding Window Maximum, Shortest Subarray with Sum at Least K, Constrained Subsequence Sum.",
       "prompt": "Explain why smaller values behind a new value can be discarded, and why the front is the maximum. Ask the learner to predict which indices the next value evicts.",
       "elements": [
         {
@@ -11981,7 +11981,7 @@
           }
         ]
       },
-      "markdown": "# Keep the best k (heap)\n\n**Problem:** Find the k-th largest element of an unsorted array.\n\n**Example:** nums = [7, 4, 9, 1, 8, 3, 6, 5], k = 3 → 7.\n\n**Signal:** the k largest, k smallest, or k most frequent items; or \"the best so far\" from a stream.\n\nKeep a **min-heap of size k**. Push each value; when the heap grows past k, pop its smallest. What stays is the k largest seen so far, and the root, the smallest of them, is the k-th largest. A min-heap (not a max-heap) because the value to evict is always the smallest of the keepers, and the heap keeps it on top.\n\nA heap is a complete binary tree stored in an array: slot i's children are 2i + 1 and 2i + 2, its parent is ⌊(i − 1) / 2⌋, and every parent is ≤ its children. `heappush` appends at the end and **sifts up** (swap with the parent while smaller); `heappop` moves the last value to the root and **sifts down** (swap with the smaller child while larger). Each sift walks one root-to-leaf path: O(log k). All n values: O(n log k), which beats sorting when k is small. Here k = **3**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Kth Largest Element in an Array (215), Top K Frequent Elements (347), K Closest Points to Origin (973), Find K Pairs with Smallest Sums (373), Merge k Sorted Lists (23).",
+      "markdown": "# Keep the best k (heap)\n\n**Problem:** Find the k-th largest element of an unsorted array.\n\n**Example:** nums = [7, 4, 9, 1, 8, 3, 6, 5], k = 3 → 7.\n\n**Signal:** the k largest, k smallest, or k most frequent items; or \"the best so far\" from a stream.\n\nKeep a **min-heap of size k**. Push each value; when the heap grows past k, pop its smallest. What stays is the k largest seen so far, and the root, the smallest of them, is the k-th largest. A min-heap (not a max-heap) because the value to evict is always the smallest of the keepers, and the heap keeps it on top.\n\nA heap is a complete binary tree stored in an array: slot i's children are 2i + 1 and 2i + 2, its parent is ⌊(i − 1) / 2⌋, and every parent is ≤ its children. `heappush` appends at the end and **sifts up** (swap with the parent while smaller); `heappop` moves the last value to the root and **sifts down** (swap with the smaller child while larger). Each sift walks one root-to-leaf path: O(log k). All n values: O(n log k), which beats sorting when k is small. Here k = **3**.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Kth Largest Element in an Array, Top K Frequent Elements, K Closest Points to Origin, Find K Pairs with Smallest Sums, Merge k Sorted Lists.",
       "prompt": "Explain why a min-heap of size k keeps the k largest, and how sift-up and sift-down restore the heap rule along one path. Ask the learner to predict each swap, and which value heappop drops, before the player reveals it.",
       "elements": [
         {
@@ -12189,7 +12189,7 @@
           {"x": 3.15, "y": 2.599, "a": 0, "b": 1, "loop": 1}
         ]
       },
-      "markdown": "# Tortoise and hare (fast & slow pointers)\n\n**Problem:** An array holds n + 1 values from 1 to n, so one value repeats. Find it without changing the array and with O(1) extra space.\n\n**Example:** nums = [2, 6, 4, 1, 3, 1, 5] → 1.\n\n**Signal:** a cycle in a linked structure, or \"find the duplicate\" with O(1) extra space.\n\nHere `nums` holds 7 values from 1 to 6, so one value repeats. Read each cell as a pointer: index i points to index `nums[i]` (the arcs). Following pointers from index 0 must eventually loop, and the loop's entrance is the value two indices point to: the duplicate.\n\n**Phase 1:** `slow` moves one hop, `fast` moves two. Inside the cycle fast gains one step per move, so they must meet.\n\n**Phase 2:** restart `slow` from the beginning and move both one hop at a time. The distance from the start to the entrance equals the distance from the meeting point to the entrance (mod the cycle length), so they meet exactly at the entrance. The next step, **Why phase 2 finds the entrance**, proves it: with $A$ the path to the entrance, $B$ the entrance to the first meeting and $C$ the loop length, $2t - t = kC$ and $t = A + B + mC$ give $A equiv -B pmod C$.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Linked List Cycle (141), Happy Number (202), Find the Duplicate Number (287).",
+      "markdown": "# Tortoise and hare (fast & slow pointers)\n\n**Problem:** An array holds n + 1 values from 1 to n, so one value repeats. Find it without changing the array and with O(1) extra space.\n\n**Example:** nums = [2, 6, 4, 1, 3, 1, 5] → 1.\n\n**Signal:** a cycle in a linked structure, or \"find the duplicate\" with O(1) extra space.\n\nHere `nums` holds 7 values from 1 to 6, so one value repeats. Read each cell as a pointer: index i points to index `nums[i]` (the arcs). Following pointers from index 0 must eventually loop, and the loop's entrance is the value two indices point to: the duplicate.\n\n**Phase 1:** `slow` moves one hop, `fast` moves two. Inside the cycle fast gains one step per move, so they must meet.\n\n**Phase 2:** restart `slow` from the beginning and move both one hop at a time. The distance from the start to the entrance equals the distance from the meeting point to the entrance (mod the cycle length), so they meet exactly at the entrance. The next step, **Why phase 2 finds the entrance**, proves it: with $A$ the path to the entrance, $B$ the entrance to the first meeting and $C$ the loop length, $2t - t = kC$ and $t = A + B + mC$ give $A equiv -B pmod C$.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Linked List Cycle, Happy Number, Find the Duplicate Number.",
       "prompt": "Explain why fast catches slow inside the cycle and why phase 2 lands on the entrance. Use the arcs as a linked list. Ask the learner to predict where each pointer lands after the next hop.",
       "elements": [
         {
@@ -12885,7 +12885,7 @@
           }
         ]
       },
-      "markdown": "# Flip the links (linked list reversal)\n\n**Problem:** Reverse a singly linked list in place and return its new head.\n\n**Example:** 1 → 2 → 3 → 4 → 5 → None becomes 5 → 4 → 3 → 2 → 1 → None.\n\n**Signal:** reverse a list or a sublist, swap pairs, or reorder nodes, with O(1) extra space.\n\nWalk the list with three pointers, `prev`, `curr` and `nxt`. Save `curr.next` in `nxt` **first**, point `curr.next` back at `prev`, then advance both. Without the save, flipping the pointer would lose the rest of the list. Each node is rewired once: O(n) time, O(1) space.\n\nAt every step the pointers hold two lists: the reversed part, walked from `prev`, and what is left, walked from `curr`. Each flip moves one node from the second to the first.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Reverse Linked List (206), Reverse Linked List II (92), Swap Nodes in Pairs (24), Reverse Nodes in k-Group (25), Palindrome Linked List (234).",
+      "markdown": "# Flip the links (linked list reversal)\n\n**Problem:** Reverse a singly linked list in place and return its new head.\n\n**Example:** 1 → 2 → 3 → 4 → 5 → None becomes 5 → 4 → 3 → 2 → 1 → None.\n\n**Signal:** reverse a list or a sublist, swap pairs, or reorder nodes, with O(1) extra space.\n\nWalk the list with three pointers, `prev`, `curr` and `nxt`. Save `curr.next` in `nxt` **first**, point `curr.next` back at `prev`, then advance both. Without the save, flipping the pointer would lose the rest of the list. Each node is rewired once: O(n) time, O(1) space.\n\nAt every step the pointers hold two lists: the reversed part, walked from `prev`, and what is left, walked from `curr`. Each flip moves one node from the second to the first.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Reverse Linked List, Reverse Linked List II, Swap Nodes in Pairs, Reverse Nodes in k-Group, Palindrome Linked List.",
       "prompt": "Explain the prev/curr/nxt dance and why saving nxt first matters. Ask the learner to predict where each arrow points after the flip before the player reveals it.",
       "elements": [
         {
@@ -14428,7 +14428,7 @@
           }
         ]
       },
-      "markdown": "# Walk a tree (traversal orders)\n\n**Problem:** Visit every node of a binary tree in a chosen order: preorder, inorder, postorder or level by level.\n\n**Example:** preorder [8, 4, 2, 1, 3, 6, 12, 10, 14], inorder [1, 2, 3, 4, 6, 8, 10, 12, 14], level order [8, 4, 12, 2, 6, 10, 14, 1, 3].\n\n**Signal:** process every node of a tree in a specific order.\n\nEach step plays one order on the same search tree:\n\n- **Preorder** (node, left, right), depth first: copy or serialize a tree, print root-to-leaf paths.\n- **Inorder** (left, node, right), depth first: visits a binary search tree in **sorted** order.\n- **Postorder** (left, right, node), depth first: compute something from both children first, such as height or the maximum path sum.\n- **Level order**, breadth first: a queue hands out nodes level by level; shortest paths in steps, or a tree's rows.\n\nThe depth-first orders differ only in **where** `out.append` sits between the two recursive calls; the call stack (pink) is always the path from the root to the current node. Level order swaps the stack for a queue (blue). Every node is visited once: O(n).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder), Binary Tree Level Order Traversal (102, BFS), Binary Tree Right Side View (199).",
+      "markdown": "# Walk a tree (traversal orders)\n\n**Problem:** Visit every node of a binary tree in a chosen order: preorder, inorder, postorder or level by level.\n\n**Example:** preorder [8, 4, 2, 1, 3, 6, 12, 10, 14], inorder [1, 2, 3, 4, 6, 8, 10, 12, 14], level order [8, 4, 12, 2, 6, 10, 14, 1, 3].\n\n**Signal:** process every node of a tree in a specific order.\n\nEach step plays one order on the same search tree:\n\n- **Preorder** (node, left, right), depth first: copy or serialize a tree, print root-to-leaf paths.\n- **Inorder** (left, node, right), depth first: visits a binary search tree in **sorted** order.\n- **Postorder** (left, right, node), depth first: compute something from both children first, such as height or the maximum path sum.\n- **Level order**, breadth first: a queue hands out nodes level by level; shortest paths in steps, or a tree's rows.\n\nThe depth-first orders differ only in **where** `out.append` sits between the two recursive calls; the call stack (pink) is always the path from the root to the current node. Level order swaps the stack for a queue (blue). Every node is visited once: O(n).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Binary Tree Paths (preorder), Kth Smallest Element in a BST (inorder), Binary Tree Maximum Path Sum (postorder), Binary Tree Level Order Traversal (BFS), Binary Tree Right Side View.",
       "prompt": "Explain the three depth-first orders as the position of the visit between the recursive calls, and level order as a queue. Ask the learner to predict the next visited node before the player reveals it.",
       "elements": [
         {
@@ -15732,7 +15732,7 @@
           }
         ]
       },
-      "markdown": "# Explore a grid (matrix traversal)\n\n**Problem:** In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.\n\n**Example:** 110001 / 110101 / 000110 / 100000 / 110111 → 5.\n\n**Signal:** a 2D grid: islands, flood fill, regions, shortest moves.\n\nTreat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS from it. Here: scan every cell, and when one is still land, count a new island and run a **depth-first search** from it: visit every land neighbour, recursively, marking each cell visited by overwriting it with \"0\" (a flood fill). Overwriting is the visited mark, so no cell is counted twice. Check bounds before you look at a neighbour.\n\nEach island gets its own colour as the search visits it, and each visited cell points back at the cell that reached it, so the search shows as a tree; pink cells are still on the recursion stack. Every cell is scanned once and visited at most once: O(rows × cols).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Number of Islands (200), Flood Fill (733), Max Area of Island (695), Surrounded Regions (130), Rotting Oranges (994, BFS).",
+      "markdown": "# Explore a grid (matrix traversal)\n\n**Problem:** In a grid of land (1) and water (0), count the islands: groups of land cells joined up, down, left or right.\n\n**Example:** 110001 / 110101 / 000110 / 100000 / 110111 → 5.\n\n**Signal:** a 2D grid: islands, flood fill, regions, shortest moves.\n\nTreat each cell as a node whose neighbours are the cells up, down, left and right, then run DFS or BFS from it. Here: scan every cell, and when one is still land, count a new island and run a **depth-first search** from it: visit every land neighbour, recursively, marking each cell visited by overwriting it with \"0\" (a flood fill). Overwriting is the visited mark, so no cell is counted twice. Check bounds before you look at a neighbour.\n\nEach island gets its own colour as the search visits it, and each visited cell points back at the cell that reached it, so the search shows as a tree; pink cells are still on the recursion stack. Every cell is scanned once and visited at most once: O(rows × cols).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Number of Islands, Flood Fill, Max Area of Island, Surrounded Regions, Rotting Oranges (BFS).",
       "prompt": "Explain the grid as a graph, overwriting as the visited mark, and why each cell is handled once. Ask the learner to predict which cells the next dfs call reaches before the player reveals it.",
       "elements": [
         {
@@ -17648,8 +17648,8 @@
           }
         ]
       },
-      "markdown": "# Order by dependencies (topological sort)\n\n**Problem:** Courses have prerequisites. Find an order in which to take every course, or report that none exists.\n\n**Example:** 6 courses with prerequisites [[1, 0], [2, 0], [3, 1], [3, 2], [4, 2], [5, 3], [5, 4]] → [0, 1, 2, 3, 4, 5].\n\n**Signal:** prerequisites, build order, course schedules: \"what order satisfies every dependency?\", or \"is there a cycle?\".\n\nDraw each prerequisite as an edge **pre → course**. A course's **in-degree** counts the courses it still waits on. Kahn's algorithm:\n\n1. Count every in-degree.\n2. Queue every course that waits on nothing.\n3. Take a course from the queue and append it to the order. Each edge out of it is one wait fewer for its neighbour; a neighbour whose count reaches **0** joins the queue.\n\nGold is the course just taken, pink courses are queued, teal ones are in the order, and dimmed edges have been used. If the queue empties before every course is ordered, the rest wait on each other in a **cycle**, and there is no valid order. Each node and edge is handled once: O(V + E).\n\n**Without in-degrees** (next step): a depth-first search. `dfs(node)` first finishes every course that depends on `node`, then appends `node`, so each course lands in `order` **after** everything that needs it; reversing `order` puts every prerequisite first. A course is pink while it is on the current path and teal once done. Reaching a pink course again means the path loops back on itself: a cycle. Also O(V + E).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Course Schedule (207), Course Schedule II (210), Alien Dictionary (269), Parallel Courses (1136), Minimum Height Trees (310).",
-      "prompt": "Explain in-degrees and why a course can be taken once its count reaches zero. Ask the learner to predict which courses join the queue after each one is taken, and why leftover courses mean a cycle.",
+      "markdown": "# Order by dependencies (topological sort)\n\n**Problem:** Courses have prerequisites. Find an order in which to take every course, or report that none exists.\n\n**Example:** 6 courses with prerequisites [[1, 0], [2, 0], [3, 1], [3, 2], [4, 2], [5, 3], [5, 4]] → [0, 1, 2, 3, 4, 5].\n\n**Signal:** prerequisites, build order, course schedules: \"what order satisfies every dependency?\", or \"is there a cycle?\".\n\nDraw each prerequisite as an edge **pre → course**. A valid order puts every course after all its prerequisites. There are two classic ways to find one; each step of this scene plays one of them.\n\n## 1. Count in-degrees (Kahn's algorithm)\n\nA course's **in-degree** counts the courses it still waits on.\n\n1. Count every in-degree.\n2. Queue every course that waits on nothing.\n3. Take a course from the queue and append it to the order. Each edge out of it is one wait fewer for its neighbour; a neighbour whose count reaches **0** joins the queue.\n\nGold is the course just taken, pink courses are queued, teal ones are in the order, and dimmed edges have been used. **Cycle:** the queue empties before every course is ordered; the rest wait on each other.\n\n## 2. Without in-degrees (DFS)\n\n`dfs(node)` first finishes every course that depends on `node`, then appends `node`, so each course lands in `order` **after** everything that needs it. Reversing `order` puts every prerequisite first.\n\nA course is pink while it is on the current path, teal once done, and gold where the search is. **Cycle:** the search reaches a pink course again: the path loops back on itself.\n\n## Which one?\n\n| | Kahn (in-degrees) | DFS (post-order) |\n|---|---|---|\n| Builds the order | front to back, as courses free up | back to front, then reversed |\n| Extra state | an in-degree per course, a queue | a state per course, the call stack |\n| Detects a cycle | courses left over | a course met again on the path |\n| Good for | layers (\"what can run now?\"), parallel schedules | recursion-friendly code, finding the cycle itself |\n\nBoth handle each course and each edge once: **O(V + E)** time, O(V) extra space.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Course Schedule, Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.",
+      "prompt": "Explain both approaches: in-degrees (a course is free once its count reaches zero) and DFS post-order (a course is appended after everything that depends on it, then the list is reversed). Ask the learner to predict the next course ordered, and how each approach notices a cycle.",
       "elements": [
         {
           "id": "grid",
@@ -17891,7 +17891,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Cheapest route (Dijkstra)\n\n**Problem:** A network has directed edges with travel times. How long does a signal from one node take to reach every node?\n\n**Signal:** shortest or cheapest path when edges have non-negative weights: network delay, cheapest flights, minimum effort.\n\nDijkstra keeps a **min-heap** of (distance, node). It repeatedly takes the closest unsettled node, which is final, and relaxes its edges. It is BFS with a priority queue in place of a plain queue. O((V + E) log V).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a weighted graph object and a heap view.)*\n\n**Practice:** Network Delay Time (743), Path with Minimum Effort (1631), Cheapest Flights Within K Stops (787).",
+      "markdown": "# Cheapest route (Dijkstra)\n\n**Problem:** A network has directed edges with travel times. How long does a signal from one node take to reach every node?\n\n**Signal:** shortest or cheapest path when edges have non-negative weights: network delay, cheapest flights, minimum effort.\n\nDijkstra keeps a **min-heap** of (distance, node). It repeatedly takes the closest unsettled node, which is final, and relaxes its edges. It is BFS with a priority queue in place of a plain queue. O((V + E) log V).\n\nThis pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder. *(Needs a weighted graph object and a heap view.)*\n\n**Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops.",
       "prompt": "Explain why the closest unsettled node is final with non-negative weights. This scene has no visualization yet.",
       "elements": [
         {
@@ -20355,7 +20355,7 @@
           {"x": 5.475, "y": -1.6, "path": 0, "union": 0, "to": [], "comp": "#e67db0", "cur": -1}
         ]
       },
-      "markdown": "# Group connected items (union-find)\n\n**Problem:** Given n nodes and a list of undirected edges, count the connected components.\n\n**Example:** n = 6, edges = 0–1, 1–2, 3–4, 2–0, 4–5 → 2.\n\n**Signal:** \"are these connected?\", counting groups or islands as edges arrive, detecting a cycle in an undirected graph, or Kruskal's minimum spanning tree.\n\nEach node points to a **parent**; a node that points to itself is a **root** (gold) and names its group. `find` climbs parent pointers to the root. Joining an edge's two groups is one assignment: point one root at the other. If both ends already share a root, the edge adds nothing, which is exactly how a redundant edge or cycle is detected.\n\nThe parent array *is* the forest: each column is a node, its value is the node it points to. The next step, **See the forest**, draws it: each node's arrow goes to its parent, roots have none, and every node wears its component's colour, as in the graph beside it. While `find` climbs, the edges it has walked light up pink; a union's new edge flashes gold, and the next state redraws the two trees as one. This version climbs without shortcuts; adding **path compression** (point every visited node straight at the root) and **union by rank** makes each operation nearly O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\nThe **See the forest** step shows the run twice: the input graph on the left, its edges arriving one by one and each component in its own colour, and the forest on the right.\n\n**Practice:** Number of Provinces (547), Redundant Connection (684), Accounts Merge (721), Number of Connected Components in an Undirected Graph (323).",
+      "markdown": "# Group connected items (union-find)\n\n**Problem:** Given n nodes and a list of undirected edges, count the connected components.\n\n**Example:** n = 6, edges = 0–1, 1–2, 3–4, 2–0, 4–5 → 2.\n\n**Signal:** \"are these connected?\", counting groups or islands as edges arrive, detecting a cycle in an undirected graph, or Kruskal's minimum spanning tree.\n\nEach node points to a **parent**; a node that points to itself is a **root** (gold) and names its group. `find` climbs parent pointers to the root. Joining an edge's two groups is one assignment: point one root at the other. If both ends already share a root, the edge adds nothing, which is exactly how a redundant edge or cycle is detected.\n\nThe parent array *is* the forest: each column is a node, its value is the node it points to. The next step, **See the forest**, draws it: each node's arrow goes to its parent, roots have none, and every node wears its component's colour, as in the graph beside it. While `find` climbs, the edges it has walked light up pink; a union's new edge flashes gold, and the next state redraws the two trees as one. This version climbs without shortcuts; adding **path compression** (point every visited node straight at the root) and **union by rank** makes each operation nearly O(1).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\nThe **See the forest** step shows the run twice: the input graph on the left, its edges arriving one by one and each component in its own colour, and the forest on the right.\n\n**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components in an Undirected Graph.",
       "prompt": "Explain the parent array as a forest, find as climbing to the root, and union as linking roots. Ask the learner to predict each find result before the climb.",
       "elements": [
         {
@@ -21305,7 +21305,7 @@
           }
         ]
       },
-      "markdown": "# Solve smaller copies (recursion)\n\n**Problem:** Compute x to the power n using O(log n) multiplications.\n\n**Example:** power(2, 13) = 8192, in 5 calls.\n\n**Signal:** the problem contains smaller copies of itself: trees, nested structures, divide and conquer (merge sort, fast power).\n\nWrite the **base case** first, then **trust** the recursive call to solve the smaller copy, and combine its answer. Each call gets its own frame on the call stack until it returns, so depth costs memory.\n\nThe scene draws every call as a node of the **call tree**, under the call that made it. Gold is where the code is now, pink calls are waiting for a smaller copy to return, and teal calls have returned, showing their result.\n\n- **Fast power** (this step): `power(x, n)` needs one smaller copy, `power(x, n // 2)`, so the calls form a chain only about log₂ n long: 5 calls for n = 13, instead of 13 multiplications.\n- **Fibonacci** (next step): `fib(n)` needs **two** smaller copies, so the tree branches, and the same copy is solved again and again: fib(4) already makes 9 calls, and the count grows exponentially. Remembering each answer (memoization) is exactly dynamic programming.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Pow(x, n) (50), Merge Two Sorted Lists (21), Sort an Array (912, merge sort), Fibonacci Number (509), Climbing Stairs (70).",
+      "markdown": "# Solve smaller copies (recursion)\n\n**Problem:** Compute x to the power n using O(log n) multiplications.\n\n**Example:** power(2, 13) = 8192, in 5 calls.\n\n**Signal:** the problem contains smaller copies of itself: trees, nested structures, divide and conquer (merge sort, fast power).\n\nWrite the **base case** first, then **trust** the recursive call to solve the smaller copy, and combine its answer. Each call gets its own frame on the call stack until it returns, so depth costs memory.\n\nThe scene draws every call as a node of the **call tree**, under the call that made it. Gold is where the code is now, pink calls are waiting for a smaller copy to return, and teal calls have returned, showing their result.\n\n- **Fast power** (this step): `power(x, n)` needs one smaller copy, `power(x, n // 2)`, so the calls form a chain only about log₂ n long: 5 calls for n = 13, instead of 13 multiplications.\n- **Fibonacci** (next step): `fib(n)` needs **two** smaller copies, so the tree branches, and the same copy is solved again and again: fib(4) already makes 9 calls, and the count grows exponentially. Remembering each answer (memoization) is exactly dynamic programming.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Pow(x, n), Merge Two Sorted Lists, Sort an Array (merge sort), Fibonacci Number, Climbing Stairs.",
       "prompt": "Explain base case, trusting the recursive call, and the call stack. Ask the learner to predict what each call returns before the player reveals it, and why naive Fibonacci repeats work.",
       "elements": [
         {
@@ -22296,7 +22296,7 @@
           {"p": 0}
         ]
       },
-      "markdown": "# Try, undo, retry (backtracking)\n\n**Problem:** Return every subset of a list of distinct numbers.\n\n**Example:** subsets([1,2,3]) → 8 subsets, from [] to [1,2,3].\n\n**Signal:** generate all permutations, subsets or combinations, or place pieces under constraints (N-Queens, Sudoku, word search).\n\nBuild a candidate one choice at a time, with one shared `path`:\n\n1. **Choose:** append a number to `path`.\n2. **Explore:** recurse to extend it, using only later numbers.\n3. **Un-choose:** pop it, so `path` is back as it was and the next number can take its place.\n\nFor subsets every call's `path` is an answer, so each call records it first. The calls form a **decision tree**: each node is one call, labelled with the path it recorded, under the call that chose its last number. Gold is where the code is, pink calls are waiting on a deeper choice, and teal calls have recorded their subset. 3 numbers give 2^3 = 8 calls, one per subset.\n\nOther problems add **pruning**: skip a choice, or a whole branch, that already breaks a constraint. The worst case stays exponential; pruning is what makes it practical.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Subsets (78), Permutations (46), Combination Sum (39), Word Search (79), N-Queens (51).",
+      "markdown": "# Try, undo, retry (backtracking)\n\n**Problem:** Return every subset of a list of distinct numbers.\n\n**Example:** subsets([1,2,3]) → 8 subsets, from [] to [1,2,3].\n\n**Signal:** generate all permutations, subsets or combinations, or place pieces under constraints (N-Queens, Sudoku, word search).\n\nBuild a candidate one choice at a time, with one shared `path`:\n\n1. **Choose:** append a number to `path`.\n2. **Explore:** recurse to extend it, using only later numbers.\n3. **Un-choose:** pop it, so `path` is back as it was and the next number can take its place.\n\nFor subsets every call's `path` is an answer, so each call records it first. The calls form a **decision tree**: each node is one call, labelled with the path it recorded, under the call that chose its last number. Gold is where the code is, pink calls are waiting on a deeper choice, and teal calls have recorded their subset. 3 numbers give 2^3 = 8 calls, one per subset.\n\nOther problems add **pruning**: skip a choice, or a whole branch, that already breaks a constraint. The worst case stays exponential; pruning is what makes it practical.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Subsets, Permutations, Combination Sum, Word Search, N-Queens.",
       "prompt": "Explain choose / explore / un-choose and why path must be undone. Ask the learner to predict the next subset recorded, and what path looks like after each pop, before the player reveals it.",
       "elements": [
         {
@@ -22877,7 +22877,7 @@
           }
         ]
       },
-      "markdown": "# Reuse answers (dynamic programming)\n\n**Problem:** Houses in a row each hold some money, and you cannot rob two neighbours. What is the most you can rob?\n\n**Example:** houses = [2, 7, 9, 3, 1, 4] → 15.\n\n**Signal:** \"maximum / minimum / number of ways\", where a choice now affects which choices remain, and the same subproblems recur.\n\nHouse robber: you cannot rob two adjacent houses. Let `dp[i]` be the most you can steal from the first `i` houses. For house `i − 1` there are only two options:\n\n$$dp[i] = \\max(\\underbrace{dp[i-1]}_{\\text{skip}},\\; \\underbrace{dp[i-2] + \\text{houses}[i-1]}_{\\text{take}})$$\n\nLike a prefix sum, `dp[i]` sits on the boundary after the first i houses. Each cell is computed once from cells already filled, giving O(n) time instead of the 2ⁿ subsets a brute force would try.\n\nThe same recipe (define the state, write the recurrence, fill in order) drives the classic families: Fibonacci-style, 0/1 knapsack, longest common subsequence, longest increasing subsequence, subset sum.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Climbing Stairs (70), House Robber (198), Coin Change (322), Longest Common Subsequence (1143), Longest Increasing Subsequence (300), Partition Equal Subset Sum (416).",
+      "markdown": "# Reuse answers (dynamic programming)\n\n**Problem:** Houses in a row each hold some money, and you cannot rob two neighbours. What is the most you can rob?\n\n**Example:** houses = [2, 7, 9, 3, 1, 4] → 15.\n\n**Signal:** \"maximum / minimum / number of ways\", where a choice now affects which choices remain, and the same subproblems recur.\n\nHouse robber: you cannot rob two adjacent houses. Let `dp[i]` be the most you can steal from the first `i` houses. For house `i − 1` there are only two options:\n\n$$dp[i] = \\max(\\underbrace{dp[i-1]}_{\\text{skip}},\\; \\underbrace{dp[i-2] + \\text{houses}[i-1]}_{\\text{take}})$$\n\nLike a prefix sum, `dp[i]` sits on the boundary after the first i houses. Each cell is computed once from cells already filled, giving O(n) time instead of the 2ⁿ subsets a brute force would try.\n\nThe same recipe (define the state, write the recurrence, fill in order) drives the classic families: Fibonacci-style, 0/1 knapsack, longest common subsequence, longest increasing subsequence, subset sum.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Climbing Stairs, House Robber, Coin Change, Longest Common Subsequence, Longest Increasing Subsequence, Partition Equal Subset Sum.",
       "prompt": "Explain state, recurrence, and fill order. Ask the learner to predict dp[i] from the two cells before it before the player reveals it. Note dp only needs the last two values, so space can drop to O(1).",
       "elements": [
         {
@@ -23991,7 +23991,7 @@
           }
         ]
       },
-      "markdown": "# Fill a table (2D dynamic programming)\n\n**Problem:** Given two strings, find the length of their longest common subsequence: letters in the same order, not necessarily adjacent.\n\n**Example:** a = \"abcbd\", b = \"bdcb\" → 3.\n\n**Signal:** two sequences to align or compare (common subsequence, edit distance), or a grid walked right and down. The state needs two indices.\n\nLongest common subsequence: let `dp[i][j]` be the LCS length of the first i letters of b and the first j of a. Compare the last letters of the two prefixes:\n\n$$dp[i][j] = \\begin{cases} dp[i-1][j-1] + 1 & b[i-1] = a[j-1] \\\\ \\max(dp[i-1][j],; dp[i][j-1]) & \\text{otherwise} \\end{cases}$$\n\nA match extends the best answer without both letters; otherwise one of the two letters is not used, so drop either and keep the better. Row 0 and column 0 are empty prefixes, 0. Every cell reads only cells above and to the left, so filling row by row works: O(m·n) time and space (O(n) if you keep two rows).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Longest Common Subsequence (1143), Edit Distance (72), Unique Paths (62), Minimum Path Sum (64), Longest Palindromic Subsequence (516).",
+      "markdown": "# Fill a table (2D dynamic programming)\n\n**Problem:** Given two strings, find the length of their longest common subsequence: letters in the same order, not necessarily adjacent.\n\n**Example:** a = \"abcbd\", b = \"bdcb\" → 3.\n\n**Signal:** two sequences to align or compare (common subsequence, edit distance), or a grid walked right and down. The state needs two indices.\n\nLongest common subsequence: let `dp[i][j]` be the LCS length of the first i letters of b and the first j of a. Compare the last letters of the two prefixes:\n\n$$dp[i][j] = \\begin{cases} dp[i-1][j-1] + 1 & b[i-1] = a[j-1] \\\\ \\max(dp[i-1][j],; dp[i][j-1]) & \\text{otherwise} \\end{cases}$$\n\nA match extends the best answer without both letters; otherwise one of the two letters is not used, so drop either and keep the better. Row 0 and column 0 are empty prefixes, 0. Every cell reads only cells above and to the left, so filling row by row works: O(m·n) time and space (O(n) if you keep two rows).\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Longest Common Subsequence, Edit Distance, Unique Paths, Minimum Path Sum, Longest Palindromic Subsequence.",
       "prompt": "Explain the 2D state and why each cell depends only on cells above and to the left. Ask the learner to predict each cell (match: diagonal + 1; else the max of above and left) before the player reveals it.",
       "elements": [
         {

@@ -185,36 +185,36 @@ const MD_TAIL = 'Use the execution player to step through, or open **Code** to s
 // with interview problems that show that signal. Pattern names are the scenes' short names.
 const DECISIONS: { category: string; signals: { signal: string; pattern: string; scene: string; problems: string[] }[] }[] = [
     { category: 'Sorted array', signals: [
-        { signal: 'pair or triple?', pattern: 'Two pointers', scene: 'two-pointers', problems: ['Two Sum II (167)', '3Sum (15)'] },
-        { signal: 'find a value fast?', pattern: 'Binary search', scene: 'rotated-search', problems: ['Search in Rotated Sorted Array (33)', 'Find Peak Element (162)'] } ] },
+        { signal: 'pair or triple?', pattern: 'Two pointers', scene: 'two-pointers', problems: ['Two Sum II', '3Sum'] },
+        { signal: 'find a value fast?', pattern: 'Binary search', scene: 'rotated-search', problems: ['Search in Rotated Sorted Array', 'Find Peak Element'] } ] },
     { category: 'Ranges in an array', signals: [
-        { signal: 'many range sums?', pattern: 'Prefix sum', scene: 'prefix-sum', problems: ['Range Sum Query (303)', 'Subarray Sum Equals K (560)'] },
-        { signal: 'window of size k?', pattern: 'Sliding window', scene: 'sliding-window', problems: ['Max Sum of k Consecutive', 'Longest Substring Without Repeating (3)'] },
-        { signal: 'best sum, any length?', pattern: 'Kadane', scene: 'kadane', problems: ['Maximum Subarray (53)'] },
-        { signal: 'max of each window?', pattern: 'Monotonic queue', scene: 'monotonic-queue', problems: ['Sliding Window Maximum (239)'] } ] },
+        { signal: 'many range sums?', pattern: 'Prefix sum', scene: 'prefix-sum', problems: ['Range Sum Query', 'Subarray Sum Equals K'] },
+        { signal: 'window of size k?', pattern: 'Sliding window', scene: 'sliding-window', problems: ['Max Sum of k Consecutive', 'Longest Substring Without Repeating'] },
+        { signal: 'best sum, any length?', pattern: 'Kadane', scene: 'kadane', problems: ['Maximum Subarray'] },
+        { signal: 'max of each window?', pattern: 'Monotonic queue', scene: 'monotonic-queue', problems: ['Sliding Window Maximum'] } ] },
     { category: 'Order & selection', signals: [
-        { signal: 'next greater?', pattern: 'Monotonic stack', scene: 'monotonic-stack', problems: ['Daily Temperatures (739)', 'Next Greater Element (496)'] },
-        { signal: 'k largest?', pattern: 'Heap', scene: 'top-k', problems: ['Kth Largest Element (215)', 'Top K Frequent Elements (347)'] },
-        { signal: 'overlapping ranges?', pattern: 'Merge intervals', scene: 'merge-intervals', problems: ['Merge Intervals (56)', 'Meeting Rooms II (253)'] },
-        { signal: 'local best is safe?', pattern: 'Greedy', scene: 'greedy', problems: ['Jump Game (55)'] },
-        { signal: 'pairs cancel?', pattern: 'Bit tricks', scene: 'bit-manipulation', problems: ['Single Number (136)'] } ] },
+        { signal: 'next greater?', pattern: 'Monotonic stack', scene: 'monotonic-stack', problems: ['Daily Temperatures', 'Next Greater Element'] },
+        { signal: 'k largest?', pattern: 'Heap', scene: 'top-k', problems: ['Kth Largest Element', 'Top K Frequent Elements'] },
+        { signal: 'overlapping ranges?', pattern: 'Merge intervals', scene: 'merge-intervals', problems: ['Merge Intervals', 'Meeting Rooms II'] },
+        { signal: 'local best is safe?', pattern: 'Greedy', scene: 'greedy', problems: ['Jump Game'] },
+        { signal: 'pairs cancel?', pattern: 'Bit tricks', scene: 'bit-manipulation', problems: ['Single Number'] } ] },
     { category: 'Strings', signals: [
-        { signal: 'pattern in text?', pattern: 'KMP', scene: 'string-matching', problems: ['First Occurrence in a String (28)'] },
-        { signal: 'shared prefixes?', pattern: 'Trie', scene: 'trie', problems: ['Implement Trie (208)', 'Word Search II (212)'] } ] },
+        { signal: 'pattern in text?', pattern: 'KMP', scene: 'string-matching', problems: ['First Occurrence in a String'] },
+        { signal: 'shared prefixes?', pattern: 'Trie', scene: 'trie', problems: ['Implement Trie', 'Word Search II'] } ] },
     { category: 'Linked list', signals: [
-        { signal: 'cycle or duplicate?', pattern: 'Fast & slow', scene: 'fast-slow', problems: ['Find the Duplicate Number (287)', 'Linked List Cycle II (142)'] },
-        { signal: 'reverse or reorder?', pattern: 'Reverse links', scene: 'linked-list-reversal', problems: ['Reverse Linked List (206)', 'Reorder List (143)'] } ] },
+        { signal: 'cycle or duplicate?', pattern: 'Fast & slow', scene: 'fast-slow', problems: ['Find the Duplicate Number', 'Linked List Cycle II'] },
+        { signal: 'reverse or reorder?', pattern: 'Reverse links', scene: 'linked-list-reversal', problems: ['Reverse Linked List', 'Reorder List'] } ] },
     { category: 'Trees & graphs', signals: [
-        { signal: 'visit in an order?', pattern: 'Tree traversal', scene: 'tree-traversal', problems: ['Binary Tree Level Order (102)', 'Kth Smallest in a BST (230)'] },
-        { signal: 'grid of cells?', pattern: 'Grid DFS / BFS', scene: 'matrix-traversal', problems: ['Number of Islands (200)', 'Rotting Oranges (994)'] },
-        { signal: 'join as edges come?', pattern: 'Union-find', scene: 'union-find', problems: ['Redundant Connection (684)'] },
-        { signal: 'dependencies?', pattern: 'Topological sort', scene: 'topological-sort', problems: ['Course Schedule (207)'] },
-        { signal: 'cheapest path?', pattern: 'Dijkstra', scene: 'shortest-path', problems: ['Network Delay Time (743)'] } ] },
+        { signal: 'visit in an order?', pattern: 'Tree traversal', scene: 'tree-traversal', problems: ['Binary Tree Level Order', 'Kth Smallest in a BST'] },
+        { signal: 'grid of cells?', pattern: 'Grid DFS / BFS', scene: 'matrix-traversal', problems: ['Number of Islands', 'Rotting Oranges'] },
+        { signal: 'join as edges come?', pattern: 'Union-find', scene: 'union-find', problems: ['Redundant Connection'] },
+        { signal: 'dependencies?', pattern: 'Topological sort', scene: 'topological-sort', problems: ['Course Schedule'] },
+        { signal: 'cheapest path?', pattern: 'Dijkstra', scene: 'shortest-path', problems: ['Network Delay Time'] } ] },
     { category: 'Choices', signals: [
-        { signal: 'reuse sub-answers?', pattern: 'Dynamic prog.', scene: 'dynamic-programming', problems: ['House Robber (198)', 'Coin Change (322)'] },
-        { signal: 'two sequences?', pattern: '2D DP', scene: 'dp-2d', problems: ['Longest Common Subsequence (1143)', 'Edit Distance (72)'] },
-        { signal: 'all combinations?', pattern: 'Backtracking', scene: 'backtracking', problems: ['Subsets (78)', 'N-Queens (51)'] },
-        { signal: 'smaller copies?', pattern: 'Recursion', scene: 'recursion', problems: ['Pow(x, n) (50)'] } ] },
+        { signal: 'reuse sub-answers?', pattern: 'Dynamic prog.', scene: 'dynamic-programming', problems: ['House Robber', 'Coin Change'] },
+        { signal: 'two sequences?', pattern: '2D DP', scene: 'dp-2d', problems: ['Longest Common Subsequence', 'Edit Distance'] },
+        { signal: 'all combinations?', pattern: 'Backtracking', scene: 'backtracking', problems: ['Subsets', 'N-Queens'] },
+        { signal: 'smaller copies?', pattern: 'Recursion', scene: 'recursion', problems: ['Pow(x, n)'] } ] },
 ];
 /** The overview's steps: the categories round the root question, then one decision tree per category. */
 function overviewSteps(): { steps: Json[]; data: Record<string, unknown[]> } {
@@ -339,7 +339,7 @@ because the larger prefix includes the range and the smaller one removes everyth
 
 ${MD_TAIL}
 
-**Practice:** Range Sum Query (303), Contiguous Array (525), Subarray Sum Equals K (560).`,
+**Practice:** Range Sum Query, Contiguous Array, Subarray Sum Equals K.`,
     prompt: 'Explain why prefix[j+1] - prefix[i] isolates the range. Stress the off-by-one: prefix has n+1 entries and prefix[0] = 0. Ask the learner to predict a query answer before the player reveals it. Displayed Python is not executing in the browser.',
     elements: [
         array('nums', 'nums', [-5, 1.8, 0], {
@@ -375,7 +375,7 @@ Each step rules out one element for good, so the scan is O(n) with O(1) space, c
 
 ${MD_TAIL}
 
-**Practice:** Two Sum II (167), 3Sum (15), Container With Most Water (11).`,
+**Practice:** Two Sum II, 3Sum, Container With Most Water.`,
     prompt: 'Explain why moving a pointer never skips a valid pair: the discarded element cannot be part of any solution. Ask the learner to predict which pointer moves before each step.',
     elements: [
         array('nums', 'nums', [-4.5, 1.2, 0], {
@@ -407,7 +407,7 @@ This scene uses a fixed-size window. Variable-size windows (longest substring wi
 
 ${MD_TAIL}
 
-**Practice:** Maximum Average Subarray I (643), Longest Substring Without Repeating Characters (3), Minimum Window Substring (76).`,
+**Practice:** Maximum Average Subarray I, Longest Substring Without Repeating Characters, Minimum Window Substring.`,
     prompt: 'Explain the incremental update and why it is O(1). Contrast fixed and variable windows. Ask the learner to predict the next window sum before the player shows it.',
     elements: [
         array('nums', 'nums', [-4.5, 1.2, 0], {
@@ -444,7 +444,7 @@ Unlike a sliding window, the length is free, so the window resets instead of sli
 
 ${MD_TAIL}
 
-**Practice:** Maximum Subarray (53), Maximum Product Subarray (152), Best Time to Buy and Sell Stock (121), Maximum Sum Circular Subarray (918).`,
+**Practice:** Maximum Subarray, Maximum Product Subarray, Best Time to Buy and Sell Stock, Maximum Sum Circular Subarray.`,
     prompt: 'Explain why a negative running sum should be dropped. Ask the learner to predict, at each index, whether the run extends or starts fresh, and whether best changes, before the player reveals it.',
     elements: [
         // Gold: the run cur covers (start..i). Teal: the best run found so far.
@@ -586,7 +586,7 @@ Here \`nums\` holds ${fsNums.length} values from 1 to ${fsNums.length - 1}, so o
 
 ${MD_TAIL}
 
-**Practice:** Linked List Cycle (141), Happy Number (202), Find the Duplicate Number (287).`,
+**Practice:** Linked List Cycle, Happy Number, Find the Duplicate Number.`,
     prompt: 'Explain why fast catches slow inside the cycle and why phase 2 lands on the entrance. Use the arcs as a linked list. Ask the learner to predict where each pointer lands after the next hop.',
     elements: [
         array('nums', 'nums', fsOrigin, {
@@ -615,7 +615,7 @@ Every index is pushed once and popped at most once, so the whole scan is O(n), e
 
 ${MD_TAIL}
 
-**Practice:** Next Greater Element I (496), Daily Temperatures (739), Largest Rectangle in Histogram (84).`,
+**Practice:** Next Greater Element I, Daily Temperatures, Largest Rectangle in Histogram.`,
     prompt: 'Explain the stack invariant (temperatures non-increasing bottom to top) and the amortized O(n) argument. Ask the learner to predict how many days the next temperature will pop.',
     elements: [
         array('temps', 'temps', [-5, 2.2, 0], {
@@ -652,7 +652,7 @@ A rotated sorted array is two sorted runs. Cut it at \`mid\` and **at least one 
 
 ${MD_TAIL}
 
-**Practice:** Search in Rotated Sorted Array (33), Find Minimum in Rotated Sorted Array (153), Search a 2D Matrix II (240).`,
+**Practice:** Search in Rotated Sorted Array, Find Minimum in Rotated Sorted Array, Search a 2D Matrix II.`,
     prompt: 'Explain why one half is always sorted and how that keeps O(log n). Ask the learner to predict which half survives before each step.',
     elements: [
         array('nums', 'nums', [-5.5, 1.2, 0], {
@@ -705,7 +705,7 @@ Sorting dominates: O(n log n) time.
 
 ${MD_TAIL}
 
-**Practice:** Merge Intervals (56), Insert Interval (57), Non-overlapping Intervals (435).`,
+**Practice:** Merge Intervals, Insert Interval, Non-overlapping Intervals.`,
     prompt: 'Explain why sorting by start means only the last merged interval can overlap the next one. Ask the learner to predict whether the next interval extends the last group or starts a new one.',
     elements: [
         intervalChart,
@@ -749,7 +749,7 @@ The same recipe (define the state, write the recurrence, fill in order) drives t
 
 ${MD_TAIL}
 
-**Practice:** Climbing Stairs (70), House Robber (198), Coin Change (322), Longest Common Subsequence (1143), Longest Increasing Subsequence (300), Partition Equal Subset Sum (416).`,
+**Practice:** Climbing Stairs, House Robber, Coin Change, Longest Common Subsequence, Longest Increasing Subsequence, Partition Equal Subset Sum.`,
     prompt: 'Explain state, recurrence, and fill order. Ask the learner to predict dp[i] from the two cells before it before the player reveals it. Note dp only needs the last two values, so space can drop to O(1).',
     elements: [
         array('houses', 'houses', [-4.5, 1.8, 0], {
@@ -804,7 +804,7 @@ A match extends the best answer without both letters; otherwise one of the two l
 
 ${MD_TAIL}
 
-**Practice:** Longest Common Subsequence (1143), Edit Distance (72), Unique Paths (62), Minimum Path Sum (64), Longest Palindromic Subsequence (516).`,
+**Practice:** Longest Common Subsequence, Edit Distance, Unique Paths, Minimum Path Sum, Longest Palindromic Subsequence.`,
         prompt: 'Explain the 2D state and why each cell depends only on cells above and to the left. Ask the learner to predict each cell (match: diagonal + 1; else the max of above and left) before the player reveals it.',
         elements: [
             // a across the top, its letter j − 1 over table column j.
@@ -857,7 +857,7 @@ Each index enters and leaves the deque at most once, so all windows cost O(n) in
 
 ${MD_TAIL}
 
-**Practice:** Sliding Window Maximum (239), Shortest Subarray with Sum at Least K (862), Constrained Subsequence Sum (1425).`,
+**Practice:** Sliding Window Maximum, Shortest Subarray with Sum at Least K, Constrained Subsequence Sum.`,
     prompt: 'Explain why smaller values behind a new value can be discarded, and why the front is the maximum. Ask the learner to predict which indices the next value evicts.',
     elements: [
         array('nums', 'nums', [-4.5, 2.3, 0], {
@@ -905,7 +905,7 @@ A greedy solution needs an argument for why the local choice is safe; here, any 
 
 ${MD_TAIL}
 
-**Practice:** Jump Game (55), Jump Game II (45), Gas Station (134), Non-overlapping Intervals (435).`,
+**Practice:** Jump Game, Jump Game II, Gas Station, Non-overlapping Intervals.`,
     prompt: 'Explain why tracking only the farthest reach is enough, and why greedy needs a safety argument. Ask the learner to predict whether the walk will get stuck before it does.',
     elements: [
         array('nums', 'nums', [-4.5, 1.2, 0], {
@@ -932,7 +932,7 @@ Other everyday tricks: \`x & (x − 1)\` clears the lowest set bit, \`x & −x\`
 
 ${MD_TAIL}
 
-**Practice:** Single Number (136), Number of 1 Bits (191), Counting Bits (338), Missing Number (268), Subsets (78, as bitmasks).`,
+**Practice:** Single Number, Number of 1 Bits, Counting Bits, Missing Number, Subsets (as bitmasks).`,
     prompt: 'Explain XOR cancellation bit by bit. Ask the learner to predict the result bits before each step.',
     elements: [
         array('nums', 'nums', [-4.5, 2.5, 0], { from: inp('nums'), highlightExpr: `idx == ${tr('k')}`, markers: [marker('k', tr('k'))] }),
@@ -960,7 +960,7 @@ Phase 1 builds \`lps\` from the pattern itself; phase 2 scans the text. Gold tex
 
 ${MD_TAIL}
 
-**Practice:** Find the Index of the First Occurrence in a String (28), Repeated Substring Pattern (459), Shortest Palindrome (214).`,
+**Practice:** Find the Index of the First Occurrence in a String, Repeated Substring Pattern, Shortest Palindrome.`,
     prompt: 'Explain borders and the lps table, and why the text pointer never moves back. Ask the learner to predict k after each fallback.',
     elements: [
         array('text', 'text', [-5.6, 2.6, 0], {
@@ -1099,7 +1099,7 @@ ${MD_TAIL}
 
 The **See the forest** step shows the run twice: the input graph on the left, its edges arriving one by one and each component in its own colour, and the forest on the right.
 
-**Practice:** Number of Provinces (547), Redundant Connection (684), Accounts Merge (721), Number of Connected Components in an Undirected Graph (323).`,
+**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components in an Undirected Graph.`,
     prompt: 'Explain the parent array as a forest, find as climbing to the root, and union as linking roots. Ask the learner to predict each find result before the climb.',
     elements: [
         array('edge-from', 'edge a', [-4.5, 2.9, 0], { from: inp('from'), showIndices: false, highlightExpr: `idx == ${tr('e')}`, markers: [marker('edge', tr('e'))] }),
@@ -1137,7 +1137,7 @@ At every step the pointers hold two lists: the reversed part, walked from \`prev
 
 ${MD_TAIL}
 
-**Practice:** Reverse Linked List (206), Reverse Linked List II (92), Swap Nodes in Pairs (24), Reverse Nodes in k-Group (25), Palindrome Linked List (234).`,
+**Practice:** Reverse Linked List, Reverse Linked List II, Swap Nodes in Pairs, Reverse Nodes in k-Group, Palindrome Linked List.`,
         prompt: 'Explain the prev/curr/nxt dance and why saving nxt first matters. Ask the learner to predict where each arrow points after the flip before the player reveals it.',
         elements: [
             // The nodes in a row; each next pointer is an arrow, and a flip reverses it on the same line.
@@ -1182,7 +1182,7 @@ A heap is a complete binary tree stored in an array: slot i's children are 2i + 
 
 ${MD_TAIL}
 
-**Practice:** Kth Largest Element in an Array (215), Top K Frequent Elements (347), K Closest Points to Origin (973), Find K Pairs with Smallest Sums (373), Merge k Sorted Lists (23).`,
+**Practice:** Kth Largest Element in an Array, Top K Frequent Elements, K Closest Points to Origin, Find K Pairs with Smallest Sums, Merge k Sorted Lists.`,
         prompt: 'Explain why a min-heap of size k keeps the k largest, and how sift-up and sift-down restore the heap rule along one path. Ask the learner to predict each swap, and which value heappop drops, before the player reveals it.',
         elements: [
             array('nums', 'nums', [-3.6, 3.2, 0], { from: inp('nums'), highlightExpr: `idx == ${tr('i')}`, markers: [marker('x', tr('i'))] }),
@@ -1278,7 +1278,7 @@ The depth-first orders differ only in **where** \`out.append\` sits between the 
 
 ${MD_TAIL}
 
-**Practice:** Binary Tree Paths (257, preorder), Kth Smallest Element in a BST (230, inorder), Binary Tree Maximum Path Sum (124, postorder), Binary Tree Level Order Traversal (102, BFS), Binary Tree Right Side View (199).`,
+**Practice:** Binary Tree Paths (preorder), Kth Smallest Element in a BST (inorder), Binary Tree Maximum Path Sum (postorder), Binary Tree Level Order Traversal (BFS), Binary Tree Right Side View.`,
         prompt: 'Explain the three depth-first orders as the position of the visit between the recursive calls, and level order as a queue. Ask the learner to predict the next visited node before the player reveals it.',
         elements: elements('trace', false),
     });
@@ -1308,7 +1308,7 @@ Each island gets its own colour as the search visits it, and each visited cell p
 
 ${MD_TAIL}
 
-**Practice:** Number of Islands (200), Flood Fill (733), Max Area of Island (695), Surrounded Regions (130), Rotting Oranges (994, BFS).`,
+**Practice:** Number of Islands, Flood Fill, Max Area of Island, Surrounded Regions, Rotting Oranges (BFS).`,
         prompt: 'Explain the grid as a graph, overwriting as the visited mark, and why each cell is handled once. Ask the learner to predict which cells the next dfs call reaches before the player reveals it.',
         elements: [
             // The grid as a graph: one node per cell, laid out in rows and columns, showing the value the code holds.
@@ -1354,7 +1354,7 @@ Other problems add **pruning**: skip a choice, or a whole branch, that already b
 
 ${MD_TAIL}
 
-**Practice:** Subsets (78), Permutations (46), Combination Sum (39), Word Search (79), N-Queens (51).`,
+**Practice:** Subsets, Permutations, Combination Sum, Word Search, N-Queens.`,
         prompt: 'Explain choose / explore / un-choose and why path must be undone. Ask the learner to predict the next subset recorded, and what path looks like after each pop, before the player reveals it.',
         elements: [
             {
@@ -1402,7 +1402,7 @@ Inserting walks the word from the root, creating the nodes that are missing; \`s
 
 ${MD_TAIL}
 
-**Practice:** Implement Trie (208), Design Add and Search Words Data Structure (211), Word Search II (212), Longest Common Prefix (14), Replace Words (648).`,
+**Practice:** Implement Trie, Design Add and Search Words Data Structure, Word Search II, Longest Common Prefix, Replace Words.`,
         prompt: 'Explain shared prefixes and the end-of-word marker. Ask the learner to predict which nodes an insert creates, and where a starts_with walk fails, before the player reveals it.',
         elements: [
             array('words', 'words', [-5.4, 2.9, 0], { from: inp('words'), itemType: 'string', labelSide: 'top', highlightExpr: `idx == ${tr('wi')}` }),
@@ -1487,20 +1487,39 @@ ${MD_TAIL}
 
 **Signal:** prerequisites, build order, course schedules: "what order satisfies every dependency?", or "is there a cycle?".
 
-Draw each prerequisite as an edge **pre → course**. A course's **in-degree** counts the courses it still waits on. Kahn's algorithm:
+Draw each prerequisite as an edge **pre → course**. A valid order puts every course after all its prerequisites. There are two classic ways to find one; each step of this scene plays one of them.
+
+## 1. Count in-degrees (Kahn's algorithm)
+
+A course's **in-degree** counts the courses it still waits on.
 
 1. Count every in-degree.
 2. Queue every course that waits on nothing.
 3. Take a course from the queue and append it to the order. Each edge out of it is one wait fewer for its neighbour; a neighbour whose count reaches **0** joins the queue.
 
-Gold is the course just taken, pink courses are queued, teal ones are in the order, and dimmed edges have been used. If the queue empties before every course is ordered, the rest wait on each other in a **cycle**, and there is no valid order. Each node and edge is handled once: O(V + E).
+Gold is the course just taken, pink courses are queued, teal ones are in the order, and dimmed edges have been used. **Cycle:** the queue empties before every course is ordered; the rest wait on each other.
 
-**Without in-degrees** (next step): a depth-first search. \`dfs(node)\` first finishes every course that depends on \`node\`, then appends \`node\`, so each course lands in \`order\` **after** everything that needs it; reversing \`order\` puts every prerequisite first. A course is pink while it is on the current path and teal once done. Reaching a pink course again means the path loops back on itself: a cycle. Also O(V + E).
+## 2. Without in-degrees (DFS)
+
+\`dfs(node)\` first finishes every course that depends on \`node\`, then appends \`node\`, so each course lands in \`order\` **after** everything that needs it. Reversing \`order\` puts every prerequisite first.
+
+A course is pink while it is on the current path, teal once done, and gold where the search is. **Cycle:** the search reaches a pink course again: the path loops back on itself.
+
+## Which one?
+
+| | Kahn (in-degrees) | DFS (post-order) |
+|---|---|---|
+| Builds the order | front to back, as courses free up | back to front, then reversed |
+| Extra state | an in-degree per course, a queue | a state per course, the call stack |
+| Detects a cycle | courses left over | a course met again on the path |
+| Good for | layers ("what can run now?"), parallel schedules | recursion-friendly code, finding the cycle itself |
+
+Both handle each course and each edge once: **O(V + E)** time, O(V) extra space.
 
 ${MD_TAIL}
 
-**Practice:** Course Schedule (207), Course Schedule II (210), Alien Dictionary (269), Parallel Courses (1136), Minimum Height Trees (310).`,
-        prompt: 'Explain in-degrees and why a course can be taken once its count reaches zero. Ask the learner to predict which courses join the queue after each one is taken, and why leftover courses mean a cycle.',
+**Practice:** Course Schedule, Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.`,
+        prompt: 'Explain both approaches: in-degrees (a course is free once its count reaches zero) and DFS post-order (a course is appended after everything that depends on it, then the list is reversed). Ask the learner to predict the next course ordered, and how each approach notices a cycle.',
         elements: [
             {
                 id: 'courses', type: 'graph', label: 'courses', lengthExpr: String(n), valueExpr: 'idx',
@@ -1533,7 +1552,7 @@ Dijkstra keeps a **min-heap** of (distance, node). It repeatedly takes the close
 
 ${SOON} *(Needs a weighted graph object and a heap view.)*
 
-**Practice:** Network Delay Time (743), Path with Minimum Effort (1631), Cheapest Flights Within K Stops (787).`,
+**Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops.`,
     'Explain why the closest unsettled node is final with non-negative weights. This scene has no visualization yet.');
 // ── Recursion: the call tree, growing as calls are made ──
 (() => {
@@ -1593,7 +1612,7 @@ The scene draws every call as a node of the **call tree**, under the call that m
 
 ${MD_TAIL}
 
-**Practice:** Pow(x, n) (50), Merge Two Sorted Lists (21), Sort an Array (912, merge sort), Fibonacci Number (509), Climbing Stairs (70).`,
+**Practice:** Pow(x, n), Merge Two Sorted Lists, Sort an Array (merge sort), Fibonacci Number, Climbing Stairs.`,
         prompt: 'Explain base case, trusting the recursive call, and the call stack. Ask the learner to predict what each call returns before the player reveals it, and why naive Fibonacci repeats work.',
         elements: elements('trace', 'callsPow', 2.35, true),
     });
