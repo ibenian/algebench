@@ -144,7 +144,9 @@ if (typeof window !== 'undefined') {
  * Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
  * shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
  */
-const COMMON_PROMPTS: {label: string; prompt: string}[] = [
+const COMMON_PROMPTS: {label: string; prompt: string; display?: string}[] = [
+    // Understand the question before any answer: the solution, the pattern and the code stay out of it.
+    {label: 'Describe the problem', prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."},
     {label: "1-sentence gist", prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."},
     {label: 'Gist as bullets', prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."},
     // Pedagogy over precision: a rough restatement that lands beats an exact one that doesn't.
@@ -156,11 +158,14 @@ const COMMON_PROMPTS: {label: string; prompt: string}[] = [
     {label: 'Ask me about the current scene', prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."},
     // Quiz mode lasts beyond one reply: the request stays in the history, so the tutor keeps asking until told otherwise.
     {label: 'Quiz mode', prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."},
+    // Interview mode lasts like quiz mode, and steers by where the reader is: the question at the start, guiding
+    // questions mid-run. Its options arrive as preset prompt chips, refreshed each turn.
+    {label: 'Interview mode', display: '🎤 Interview mode', prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."},
     {label: 'Surprise me!', prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."},
 ];
 
 /** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
-function usePrompt(text: string, e: MouseEvent): void {
+function usePrompt(text: string, e: MouseEvent, display?: string): void {
     if (e.metaKey || e.ctrlKey) {
         const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
         if (input) {
@@ -169,7 +174,7 @@ function usePrompt(text: string, e: MouseEvent): void {
             input.dispatchEvent(new Event('input'));
         }
     } else {
-        sendChatMessage(text);
+        sendChatMessage(text, display ? { display } : undefined);
     }
 }
 
@@ -215,14 +220,14 @@ function morePromptsMenu(): HTMLElement {
     };
     const outside = (e: Event) => { if (!wrap.contains(e.target as Node)) close(); };
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') { close(); toggle.focus(); } };
-    for (const {label, prompt} of COMMON_PROMPTS) {
+    for (const {label, prompt, display} of COMMON_PROMPTS) {
         const item = document.createElement('button');
         item.type = 'button';
         item.className = 'preset-more-item';
         item.setAttribute('role', 'menuitem');
         item.textContent = label;
         item.title = prompt + '\n\nClick to send · ⌘/Ctrl-click to edit';
-        item.addEventListener('click', (e) => { close(); usePrompt(prompt, e); });
+        item.addEventListener('click', (e) => { close(); usePrompt(prompt, e, display); });
         menu.appendChild(item);
     }
     toggle.addEventListener('click', () => {
@@ -923,9 +928,13 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
  */
 const sendChatMessage = singleFlightSender(() => chatSending, _sendTurn);
 
-async function _sendTurn(text: string, { silent, noTools }: { silent: boolean; noTools: boolean }): Promise<void> {
+async function _sendTurn(text: string, { silent, noTools, display }: { silent: boolean; noTools: boolean; display?: string }): Promise<void> {
     setChatSending(true);
-    if (!silent) addChatMessage('user', text);
+    if (!silent) {
+        addChatMessage('user', display ?? text);
+        // The bubble shows `display`; the history the tutor reads keeps the full request.
+        if (display) chatHistory[chatHistory.length - 1]!.text = text;
+    }
 
     const loadingEl = addChatLoading();
     const context = buildChatContext();

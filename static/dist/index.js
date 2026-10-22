@@ -29060,9 +29060,12 @@ function singleFlightSender(isBusy, sendTurn) {
 	let active = null;
 	function sendNext() {
 		const next = queued.shift();
-		if (next) send(next.text, { noTools: next.noTools }).then(next.resolve, () => next.resolve(false));
+		if (next) send(next.text, {
+			noTools: next.noTools,
+			display: next.display
+		}).then(next.resolve, () => next.resolve(false));
 	}
-	function send(text, { silent = false, noTools = false } = {}) {
+	function send(text, { silent = false, noTools = false, display } = {}) {
 		if (isBusy()) {
 			if (silent) return Promise.resolve(false);
 			if (active && active.text === text && active.noTools === noTools) return active.done;
@@ -29075,6 +29078,7 @@ function singleFlightSender(isBusy, sendTurn) {
 			queued.push({
 				text,
 				noTools,
+				display,
 				done,
 				resolve
 			});
@@ -29091,7 +29095,8 @@ function singleFlightSender(isBusy, sendTurn) {
 		};
 		turn.done = sendTurn(text, {
 			silent,
-			noTools
+			noTools,
+			...display !== void 0 ? { display } : {}
 		}).then(() => {
 			settle();
 			return true;
@@ -29507,6 +29512,10 @@ if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) =>
 */
 var COMMON_PROMPTS = [
 	{
+		label: "Describe the problem",
+		prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."
+	},
+	{
 		label: "1-sentence gist",
 		prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."
 	},
@@ -29543,12 +29552,17 @@ var COMMON_PROMPTS = [
 		prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."
 	},
 	{
+		label: "Interview mode",
+		display: "🎤 Interview mode",
+		prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."
+	},
+	{
 		label: "Surprise me!",
 		prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."
 	}
 ];
 /** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
-function usePrompt(text, e) {
+function usePrompt(text, e, display) {
 	if (e.metaKey || e.ctrlKey) {
 		const input = document.getElementById("chat-input");
 		if (input) {
@@ -29556,7 +29570,7 @@ function usePrompt(text, e) {
 			input.focus();
 			input.dispatchEvent(new Event("input"));
 		}
-	} else sendChatMessage$1(text);
+	} else sendChatMessage$1(text, display ? { display } : void 0);
 }
 function setPresetPrompts$1(prompts) {
 	_presetPrompts = prompts || [];
@@ -29605,7 +29619,7 @@ function morePromptsMenu() {
 			toggle.focus();
 		}
 	};
-	for (const { label, prompt } of COMMON_PROMPTS) {
+	for (const { label, prompt, display } of COMMON_PROMPTS) {
 		const item = document.createElement("button");
 		item.type = "button";
 		item.className = "preset-more-item";
@@ -29614,7 +29628,7 @@ function morePromptsMenu() {
 		item.title = prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
 		item.addEventListener("click", (e) => {
 			close();
-			usePrompt(prompt, e);
+			usePrompt(prompt, e, display);
 		});
 		menu.appendChild(item);
 	}
@@ -30114,9 +30128,12 @@ function showBuiltScene(lesson, index, step) {
 * is queued and a silent one is turned away with `false`.
 */
 var sendChatMessage$1 = singleFlightSender(() => chatSending, _sendTurn);
-async function _sendTurn(text, { silent, noTools }) {
+async function _sendTurn(text, { silent, noTools, display }) {
 	setChatSending(true);
-	if (!silent) addChatMessage("user", text);
+	if (!silent) {
+		addChatMessage("user", display ?? text);
+		if (display) chatHistory[chatHistory.length - 1].text = text;
+	}
 	const loadingEl = addChatLoading();
 	const context = buildChatContext();
 	console.log("%c🤖 Chat send: %c" + text.substring(0, 60), "color: #8888ff; font-weight: bold", "color: #ccc");
