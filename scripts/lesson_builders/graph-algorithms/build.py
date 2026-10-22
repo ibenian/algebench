@@ -443,9 +443,139 @@ The arrows show the **DFS tree**: each node points to the nodes it discovered. G
         data={'nodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(DFS_POS, adj)]}, call_entry=line_of(DFS_SOURCE, 'def dfs(u)'))
 
 
+def loop_tip(values, vi):
+    """LaTeX for a loop variable's tooltip: every value it takes, the current one in gold bold."""
+    cells = [rf'\textcolor{{#f1c65b}}{{\mathbf{{{x}}}}}' if k == vi else str(x) for k, x in enumerate(values)]
+    return rf'v \in [{", ".join(cells)}]'
+
+
+# ── 3. BFS: level by level from node 0, on the DFS scene's graph, so the two orders can be compared ──
+BFS_SOURCE = """from collections import deque
+
+def bfs(n, adj, start):
+    dist = [-1] * n
+    dist[start] = 0
+    queue = deque([start])
+    while queue:
+        u = queue.popleft()
+        for v in adj[u]:
+            if dist[v] == -1:
+                dist[v] = dist[u] + 1
+                queue.append(v)
+    return dist"""
+
+
+def bfs_trace(n, edges, start=0):
+    """BFS from start. Per frame: u, the node just taken from the queue (−1 none); v and vi as in DFS; check, the
+    last `dist[v] == -1` (−1 none, 0 already reached, 1 new); dist (−1 unreached); queue, front first; order, the
+    nodes in the order they leave the queue; state per node (0 unreached, 1 queued, 2 processed); kids0 … the
+    BFS tree; adjU, adj[u]; vTip, v's tooltip."""
+    adj = adjacency(n, edges)
+    L = lambda t: line_of(BFS_SOURCE, t)
+    st = {'u': -1, 'v': -1, 'vi': -1, 'check': -1, 'dist': [-1] * n, 'queue': [], 'order': [], 'state': [0] * n,
+          **{f'kids{i}': [] for i in range(n)}, 'adjU': [], 'vTip': ''}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
+        emit0(line, message)
+    emit(L('dist = [-1] * n'), 'dist = -1 everywhere: no node reached yet. dist doubles as "visited".')
+    st['dist'] = [0 if i == start else d for i, d in enumerate(st['dist'])]
+    emit(L('dist[start] = 0'), f'The start, {start}, is 0 steps from itself.')
+    st['queue'] = [start]; st['state'] = [1 if i == start else x for i, x in enumerate(st['state'])]
+    emit(L('queue = deque'), f'The queue holds the frontier: nodes reached but not yet processed. It starts with {start}.')
+    while st['queue']:
+        st.update(u=-1, v=-1, vi=-1, check=-1, adjU=[])
+        emit(L('while queue'), f'The queue holds {st["queue"]}: keep going.')
+        u = st['queue'][0]; st['queue'] = st['queue'][1:]
+        st['order'] = st['order'] + [u]
+        st.update(u=u, adjU=adj[u])
+        emit(L('u = queue.popleft()'), f'Take {u} from the front: it is {st["dist"][u]} step{"" if st["dist"][u] == 1 else "s"} from {start}, and every node nearer was taken before it.')
+        for vi, v in enumerate(adj[u]):
+            st.update(v=v, vi=vi, check=-1)
+            emit(L('for v in adj[u]'), f'Neighbour {vi + 1} of {len(adj[u])} of {u}: {v}.')
+            new = st['dist'][v] == -1
+            st['check'] = 1 if new else 0
+            emit(L('if dist[v] == -1'), f'{v} has not been reached: it is one step further than {u}.' if new
+                 else f'{v} was already reached (dist {st["dist"][v]}): a shorter or equal path got there first. Skip it.')
+            if new:
+                st['dist'] = [st['dist'][u] + 1 if i == v else d for i, d in enumerate(st['dist'])]
+                st[f'kids{u}'] = st[f'kids{u}'] + [v]
+                emit(L('dist[v] = dist[u] + 1'), f'dist[{v}] = {st["dist"][v]}, set now, as {v} joins the queue: no later path can be shorter.')
+                st['queue'] = st['queue'] + [v]; st['state'] = [1 if i == v else x for i, x in enumerate(st['state'])]
+                emit(L('queue.append(v)'), f'{v} joins the back of the queue: queue = {st["queue"]}.')
+        st['state'] = [2 if i == u else x for i, x in enumerate(st['state'])]
+    st.update(u=-1, v=-1, vi=-1, check=-1, adjU=[])
+    emit(L('while queue'), 'The queue is empty: every node reachable from the start has been processed.')
+    emit(L('return dist'), f'dist = {st["dist"]}: the fewest edges from {start} to each node. O(V + E).')
+    return trace, adj
+
+
+def bfs_scene(header):
+    n, edges = DFS_N, DFS_EDGES
+    trace, adj = bfs_trace(n, edges)
+    L = lambda t: line_of(BFS_SOURCE, t)
+    state = lambda i, k: f"arrayAt({tr('state')}, {i}) == {k}"
+    current = f"(idx == {tr('u')} and to == {tr('v')}) or (idx == {tr('v')} and to == {tr('u')})"
+    reached = f"arrayAt({tr('dist')}, idx) >= 0"
+    elements = [
+        {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(n), 'valueExpr': 'idx',
+         'positionExpr': ["dataTable('nodes', idx, 'x')", "dataTable('nodes', idx, 'y')", '0'],
+         'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
+         'colorExpr': f"idx == {tr('u')} ? '{GOLD}' : ({state('idx', 1)} ? '#e67db0' : ({state('idx', 2)} ? '#77bfae' : ''))",
+         'connectTo': [
+             {'indexExpr': "dataTable('nodes', idx, 'adj')", 'pinned': True, 'bendExpr': '0', 'color': '#4a5868',
+              'colorExpr': f"{current} ? '{GOLD}' : ''", 'highlightExpr': current},
+             # The BFS tree: an arrow from each node to the nodes it reached first.
+             {'indexExpr': "dataTable('trace', frame, concat('kids', idx))", 'pinned': True, 'arrow': True, 'bendExpr': '0',
+              'color': '#77bfae', 'highlightExpr': 'true'}]},
+        {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [4.6, 3.4, 0],
+         'cellSize': 1.1, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+         'lengthExpr': f"arrayCount({tr('adjU')})", 'valueExpr': f"arrayAt({tr('adjU')}, idx)", 'highlightExpr': f"idx == {tr('vi')}",
+         'connectTo': {'object': 'graph', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8',
+                       'highlightExpr': f"idx == {tr('vi')}"},
+         'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': tr('vi'), 'valueExpr': tr('v'), 'visibleExpr': f"{tr('vi')} >= 0", 'color': GOLD}]},
+        # The frontier, front on the left: nodes leave from the front and join at the back.
+        {'id': 'queue', 'type': 'array', 'label': 'queue', 'labelSide': 'left', 'origin': [4.6, 1.6, 0], 'cellSize': 1.1,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'color': '#e67db0',
+         'lengthExpr': f"arrayCount({tr('queue')})", 'valueExpr': f"arrayAt({tr('queue')}, idx)",
+         'highlightExpr': f"idx == arrayCount({tr('queue')}) - 1 and {tr('line')} == {L('queue.append(v)')}",
+         'connectTo': {'object': 'graph', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#e67db0'}},
+        {'id': 'dist', 'type': 'array', 'label': 'dist', 'labelSide': 'left', 'origin': [-4.4, -2.2, 0], 'cellSize': 1.15,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(n),
+         'valueExpr': f"arrayAt({tr('dist')}, idx)", 'colorExpr': f"{reached} ? '#77bfae' : ''",
+         'highlightExpr': f"idx == {tr('v')} and {tr('check')} >= 0"},
+        {'id': 'order', 'type': 'array', 'label': 'order', 'labelSide': 'left', 'origin': [-4.4, -3.6, 0], 'cellSize': 1.15,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'color': '#b69bea',
+         'lengthExpr': f"arrayCount({tr('order')})", 'valueExpr': f"arrayAt({tr('order')}, idx)",
+         'highlightExpr': f"idx == arrayCount({tr('order')}) - 1 and {tr('line')} == {L('u = queue.popleft()')}"},
+        label('u', f"{tr('u')} < 0 ? 'u: —' : concat('u = ', {tr('u')})", ['graph', tr('u')], L('u = queue.popleft()'), 'bfs'),
+        {**label('v', f"{tr('v')} < 0 ? 'v: —' : concat('v = ', {tr('v')})", ['graph', tr('v')], L('for v in adj[u]'), 'bfs'),
+         'tooltipExpr': tr('vTip')},
+        {**label('check', f"{tr('check')} < 0 ? 'dist[v] == -1: —' : ({tr('check')} == 1 ? 'dist[v] == -1 → True' : 'dist[v] == -1 → False')",
+                 ['dist', f"{tr('check')} >= 0 ? {tr('v')} : -1"], L('if dist[v] == -1'), 'bfs'),
+         'highlightExpr': f"{tr('line')} == {L('if dist[v] == -1')}"},
+    ]
+    return run_scene('bfs', 'Level by level (breadth-first search)', header, """**Signal:** shortest path in steps on an unweighted graph, "minimum moves", nearest X, or anything level by level.
+
+BFS explores in rings: first every node one step from the start, then every node two steps away, and so on. A **queue** makes that happen: nodes leave from the front in the order they joined at the back, so nearer nodes are always processed first.
+
+**Mark a node when it joins the queue, not when it leaves.** Here `dist` is the mark: `-1` means unreached. Setting `dist[v]` at the moment `v` is queued stops another node from queueing it again, and the first time BFS reaches a node is along a **shortest** path, so its distance is final then.
+
+This is the DFS scene's graph, from the same start. DFS went 0, 1, 3, 2, 5, 4, deep before wide; BFS goes 0, 1, 2, 3, 5, 4, near before far. Gold is the node being processed, pink nodes wait in the queue, teal nodes are done; the arrows are the **BFS tree**, and following them from 0 gives a shortest path to every node.
+
+**Multi-source BFS** starts with several nodes in the queue at distance 0, for "distance to the nearest gate" or "rotting oranges".
+
+**Cost:** O(V + E) time, O(V) space for the queue and `dist`.
+
+**Practice:** Word Ladder, Rotting Oranges, Shortest Path in Binary Matrix, Open the Lock.""",
+        'Explain why a queue gives shortest paths in steps, and why a node is marked when queued. Ask the learner to predict the queue after each node is processed, and each new dist value.',
+        'bfs.py', BFS_SOURCE, trace, elements,
+        data={'nodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(DFS_POS, adj)]})
+
+
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
-BUILT = {'representations': representations_scene, 'dfs': dfs_scene}
+BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
