@@ -1461,7 +1461,8 @@ function rowBracketWire(edgeX, fromY, toY, side) {
 }
 /** The control point an end pulls toward: out along its cell's axis, further for a longer link. */
 function linkPull(axis, from, to) {
-	const d = axis === "v" ? to.y - from.y : to.x - from.x, bend = Math.max(8, Math.abs(d) * .45) * (d < 0 ? -1 : 1);
+	const d = axis === "v" ? to.y - from.y : to.x - from.x, across = axis === "v" ? to.x - from.x : to.y - from.y;
+	const bend = Math.max(8, Math.abs(d) * .45, Math.min(48, Math.abs(across) * .3)) * (d < 0 ? -1 : 1);
 	return axis === "v" ? {
 		x: from.x,
 		y: from.y + bend

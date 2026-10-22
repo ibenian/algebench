@@ -118,7 +118,11 @@ export function rowBracketWire(edgeX:number,fromY:number,toY:number,side:1|-1):s
 type Pt={x:number;y:number};
 /** The control point an end pulls toward: out along its cell's axis, further for a longer link. */
 function linkPull(axis:'v'|'h',from:Pt,to:Pt):Pt {
-    const d=axis==='v'?to.y-from.y:to.x-from.x, bend=Math.max(8,Math.abs(d)*.45)*(d<0?-1:1);
+    // Along the end's own axis, by its share of the gap; when the other end lies mostly across that axis (a link
+    // rising from below into a stacked cell's side), at least a stub scaled by the whole gap, so the curve swings
+    // out and arrives level instead of hooking in at the last pixels under a crooked arrowhead.
+    const d=axis==='v'?to.y-from.y:to.x-from.x, across=axis==='v'?to.x-from.x:to.y-from.y;
+    const bend=Math.max(8,Math.abs(d)*.45,Math.min(48,Math.abs(across)*.3))*(d<0?-1:1);
     return axis==='v'?{x:from.x,y:from.y+bend}:{x:from.x+bend,y:from.y};
 }
 /**

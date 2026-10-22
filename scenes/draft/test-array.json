@@ -263,7 +263,7 @@
         "position": [0, 0, 13],
         "target": [0, 0, 0]
       },
-      "markdown": "# List of dicts\n\n`people = [{...}, {...}, {...}]` holds **references**: each cell names the dict it points to, and the dict is an object of its own. The list's links use **objectExpr** to pick the target per cell (here the cell's value, the dict's id) and leave out indexExpr, so each arrow points at the **whole dict**.\n\n- **alias**: `people[2] = people[0]`. Two cells now refer to the same dict: two arrows into it, and nothing points at Cy any more.\n- **who**: lights one reference.\n- **ages**: a link *with* indexExpr points into a dict instead: `keyIndex(dataTable(value, 'key'), 'age')` finds the entry for `'age'` in the dict the cell names.",
+      "markdown": "# List of dicts\n\n`people = [{...}, {...}, {...}]` holds **references**: each cell names the dict it points to, and the dict is an object of its own. The list's links use **objectExpr** to pick the target per cell (here the cell's value, the dict's id) and leave out indexExpr, so each arrow points at the **whole dict**.\n\n- **alias**: `people[2] = people[0]`. Two cells now refer to the same dict: two arrows into it, and nothing points at Cy any more.\n- **append**: `people.append({'name': 'Di', 'age': 22})` creates a new dict and a fourth reference to it. Objects cannot be created at run time, so `p3` is declared up front and shown only once it exists (**visibleExpr**); a hidden object draws no links.\n- **who**: lights one reference.\n- **ages**: a link *with* indexExpr points into a dict instead: `keyIndex(dataTable(value, 'key'), 'age')` finds the entry for `'age'` in the dict the cell names.",
       "elements": [
         {
           "id": "grid",
@@ -289,6 +289,10 @@
         "p2": [
           {"key": "name", "value": "Cy"},
           {"key": "age", "value": 40}
+        ],
+        "p3": [
+          {"key": "name", "value": "Di"},
+          {"key": "age", "value": 22}
         ]
       },
       "steps": [
@@ -298,7 +302,8 @@
           "description": "Move the sliders.",
           "sliders": [
             {"id": "alias", "label": "alias people[2] = people[0]", "min": 0, "max": 1, "step": 1, "default": 0},
-            {"id": "who", "label": "who", "min": 0, "max": 2, "step": 1, "default": 0}
+            {"id": "append", "label": "append a new dict", "min": 0, "max": 1, "step": 1, "default": 0},
+            {"id": "who", "label": "who", "min": 0, "max": 3, "step": 1, "default": 0}
           ],
           "add": [
             {
@@ -309,7 +314,7 @@
               "itemType": "string",
               "origin": [-2.6, 3.2, 0],
               "cellSize": 1.4,
-              "lengthExpr": "3",
+              "lengthExpr": "3 + append",
               "valueExpr": "idx == 2 and alias == 1 ? 'p0' : concat('p', idx)",
               "axisLabels": "plane",
               "highlightExpr": "idx == who",
@@ -320,7 +325,7 @@
               "type": "dict",
               "label": "p0",
               "arrayLayout": "vertical",
-              "origin": [-3.6, 0.4, 0],
+              "origin": [-4.4, 0.4, 0],
               "lengthExpr": "2",
               "keyExpr": "dataTable('p0', idx, 'key')",
               "valueExpr": "dataTable('p0', idx, 'value')",
@@ -331,7 +336,7 @@
               "type": "dict",
               "label": "p1",
               "arrayLayout": "vertical",
-              "origin": [0.19999999999999973, 0.4, 0],
+              "origin": [-1.2000000000000002, 0.4, 0],
               "lengthExpr": "2",
               "keyExpr": "dataTable('p1', idx, 'key')",
               "valueExpr": "dataTable('p1', idx, 'value')",
@@ -342,11 +347,23 @@
               "type": "dict",
               "label": "p2",
               "arrayLayout": "vertical",
-              "origin": [3.9999999999999996, 0.4, 0],
+              "origin": [2.0, 0.4, 0],
               "lengthExpr": "2",
               "keyExpr": "dataTable('p2', idx, 'key')",
               "valueExpr": "dataTable('p2', idx, 'value')",
               "axisLabels": "plane"
+            },
+            {
+              "id": "p3",
+              "type": "dict",
+              "label": "p3",
+              "arrayLayout": "vertical",
+              "origin": [5.200000000000001, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p3', idx, 'key')",
+              "valueExpr": "dataTable('p3', idx, 'value')",
+              "axisLabels": "plane",
+              "visibleExpr": "append == 1"
             },
             {
               "id": "ages",

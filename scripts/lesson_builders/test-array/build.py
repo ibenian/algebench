@@ -108,25 +108,29 @@ Move **pick** to choose a fruit.""", [
 
 # A list of references to dicts: each cell holds the id of the dict it refers to, and objectExpr turns that
 # into a link to the whole dict. alias makes people[2] refer to the same dict as people[0] (two arrows in).
-records = {'p0': [('name', 'Ana'), ('age', 31)], 'p1': [('name', 'Bo'), ('age', 27)], 'p2': [('name', 'Cy'), ('age', 40)]}
+records = {'p0': [('name', 'Ana'), ('age', 31)], 'p1': [('name', 'Bo'), ('age', 27)], 'p2': [('name', 'Cy'), ('age', 40)],
+           'p3': [('name', 'Di'), ('age', 22)]}
 scenes.append(scene('list-of-dicts', 'List of dicts (references to whole objects)', """# List of dicts
 
 `people = [{...}, {...}, {...}]` holds **references**: each cell names the dict it points to, and the dict is an object of its own. The list's links use **objectExpr** to pick the target per cell (here the cell's value, the dict's id) and leave out indexExpr, so each arrow points at the **whole dict**.
 
 - **alias**: `people[2] = people[0]`. Two cells now refer to the same dict: two arrows into it, and nothing points at Cy any more.
+- **append**: `people.append({'name': 'Di', 'age': 22})` creates a new dict and a fourth reference to it. Objects cannot be created at run time, so `p3` is declared up front and shown only once it exists (**visibleExpr**); a hidden object draws no links.
 - **who**: lights one reference.
 - **ages**: a link *with* indexExpr points into a dict instead: `keyIndex(dataTable(value, 'key'), 'age')` finds the entry for `'age'` in the dict the cell names.""", [
     {'id': 'people', 'type': 'array', 'label': 'people', 'labelSide': 'left', 'itemType': 'string', 'origin': [-2.6, 3.2, 0],
-     'cellSize': 1.4, 'lengthExpr': '3', 'valueExpr': "idx == 2 and alias == 1 ? 'p0' : concat('p', idx)", 'axisLabels': 'plane',
+     'cellSize': 1.4, 'lengthExpr': '3 + append', 'valueExpr': "idx == 2 and alias == 1 ? 'p0' : concat('p', idx)", 'axisLabels': 'plane',
      'highlightExpr': 'idx == who',
      'connectTo': {'objectExpr': 'value', 'arrow': True, 'pinned': True, 'color': '#8aa0b8', 'highlightExpr': 'idx == who'}},
-    *[{'id': pid, 'type': 'dict', 'label': pid, 'arrayLayout': 'vertical', 'origin': [-3.6 + 3.8 * k, 0.4, 0], 'lengthExpr': str(len(rows)),
-       'keyExpr': f"dataTable('{pid}', idx, 'key')", 'valueExpr': f"dataTable('{pid}', idx, 'value')", 'axisLabels': 'plane'}
+    *[{'id': pid, 'type': 'dict', 'label': pid, 'arrayLayout': 'vertical', 'origin': [-4.4 + 3.2 * k, 0.4, 0], 'lengthExpr': str(len(rows)),
+       'keyExpr': f"dataTable('{pid}', idx, 'key')", 'valueExpr': f"dataTable('{pid}', idx, 'value')", 'axisLabels': 'plane',
+       # p3 exists only once it is appended.
+       **({'visibleExpr': 'append == 1'} if pid == 'p3' else {})}
       for k, (pid, rows) in enumerate(records.items())],
     {'id': 'ages', 'type': 'array', 'label': 'ages', 'labelSide': 'left', 'itemType': 'string', 'origin': [-2.6, -3.4, 0],
      'cellSize': 1.4, 'values': ['p0', 'p1', 'p2'], 'axisLabels': 'plane',
      'connectTo': {'objectExpr': 'value', 'indexExpr': "keyIndex(dataTable(value, 'key'), 'age')", 'arrow': True, 'pinned': True, 'color': '#c792ea'}},
-], sliders=[slider('alias', 'alias people[2] = people[0]', 0, 1, 0), slider('who', 'who', 0, 2, 0)],
+], sliders=[slider('alias', 'alias people[2] = people[0]', 0, 1, 0), slider('append', 'append a new dict', 0, 1, 0), slider('who', 'who', 0, 3, 0)],
     data={pid: [{'key': k, 'value': v} for k, v in rows] for pid, rows in records.items()}))
 
 lesson = {'title': 'Array and dict · test scenes', 'scenes': scenes}
