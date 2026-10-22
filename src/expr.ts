@@ -6,6 +6,7 @@
 import { state } from '/state.js';
 import { createBoundTableReader } from '/data-table.js';
 import { arrayValues, arrayResult, arrayCount, arrayAt } from '/array-operations.js';
+import { keyIndex } from '/objects/dict-keys.js';
 
 /**
  * A scope handed to a compiled expression: slider values, scene functions,
@@ -105,6 +106,8 @@ const _MATHJS_EXTENSIONS = {
     arrayResult: arrayResult,
     arrayCount: arrayCount,
     arrayAt: arrayAt,
+    // keyIndex(keys, key) — a dict entry's position from its key ('a', 3, or a tuple [1, 2]); -1 when absent.
+    keyIndex: keyIndex,
     toFixed: (val: unknown, decimals: unknown): string => Number(val).toFixed(Number(decimals)),
     concat: (...args: unknown[]): string => args.map((a) => String(a)).join(''),
     // bar(value, width=20) — Unicode block progress bar, e.g. bar(0.4) → "████████░░░░░░░░░░░░"

@@ -25,6 +25,7 @@ EXTENSION_NAMES: tuple[str, ...] = (
     "arrayResult",
     "arrayCount",
     "arrayAt",
+    "keyIndex",
     "toFixed",
     "concat",
     "bar",

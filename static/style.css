@@ -5748,6 +5748,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
     border-top: 0;
     border-radius: 0 0 5px 5px;
 }
+/* A dict key left of its cell: open on the right, where it meets the cell. */
+.array-index-tag.array-key-left { border-top: 1px solid rgba(157, 189, 227, .45); border-right: 0; border-radius: 5px 0 0 5px; }
 
 /* Annotation content is text-only. Hidden intrinsic copies prevent grouping feedback. */
 .expression-label { pointer-events: none; }
@@ -5807,6 +5809,10 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker, .expression-label { transition: none; }
 /* Owned markers sit above the projected cell edge, independent of camera zoom. */
 .step-marker-cursor.array-marker-cursor { transform: none; }
+/* A marker on the right edge of a cell (a dict column): pointer first, pointing left at the cell. */
+.step-marker-cursor.array-marker-right { flex-direction: row-reverse; }
+.array-marker-right .step-marker-pointer { border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-right: 8px solid var(--marker-color); border-left: 0; margin: 0 3px 0 0; }
+.array-marker-right .step-marker-stem { display: none; }
 .annotation-row-draggable { pointer-events: auto; cursor: grab; touch-action: none; user-select: none; }
 .dragging-expression-label, .dragging-expression-label .annotation-row-draggable { cursor: grabbing; user-select: none; }
 .annotation-titlebar { display: block; pointer-events: auto; cursor: grab; touch-action: none; user-select: none; font-size: .85em; opacity: .8; border-bottom: 1px solid #171c2233; padding-bottom: 4px; margin-bottom: 4px; }

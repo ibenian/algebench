@@ -34,9 +34,11 @@ export function planeTextTextureSize(width:number,height:number,density=128):[nu
 
 /**
  * `tag` paints the index-tag badge the screen mode draws in CSS (.array-index-tag): a dark plate with a
- * light outline and rounded lower corners, hung from the cell above, so world and screen tags match.
+ * light outline, open on the edge that meets its cell and rounded on the far side, so world and screen tags
+ * match. `true` or 'top' hangs it from the cell above (rounded lower corners); 'right' sets it left of its cell
+ * (a dict's key in a column: open on the right, rounded on the left).
  */
-export function createArrayPlaneText(width: number, height: number, color: NonNullable<Element['color']>, opts: {tag?: boolean; fitTo?: () => string} = {}): ArrayPlaneText {
+export function createArrayPlaneText(width: number, height: number, color: NonNullable<Element['color']>, opts: {tag?: boolean | 'top' | 'right'; fitTo?: () => string} = {}): ArrayPlaneText {
     const canvas=document.createElement('canvas');
     [canvas.width,canvas.height]=planeTextTextureSize(width,height);
     const ctx=canvas.getContext('2d');
@@ -62,7 +64,15 @@ export function createArrayPlaneText(width: number, height: number, color: NonNu
     function repaint(){
         ctx!.clearRect(0,0,canvas.width,canvas.height);
         const text=previousText??'';
-        if(opts.tag){
+        if(opts.tag==='right'){
+            const w=canvas.width,h=canvas.height,line=Math.max(1,h*.06),r=Math.min(h*.35,w*.3),x1=w,y0=line/2,y1=h-line/2,x0=line/2;
+            ctx!.beginPath();
+            ctx!.moveTo(x1,y0);ctx!.lineTo(r,y0);ctx!.quadraticCurveTo(x0,y0,x0,r);ctx!.lineTo(x0,h-r);ctx!.quadraticCurveTo(x0,y1,r,y1);ctx!.lineTo(x1,y1);ctx!.closePath();
+            ctx!.fillStyle='rgba(24, 48, 75, .9)';ctx!.fill();
+            // The right edge meets the cell, so it has no border there.
+            ctx!.beginPath();ctx!.moveTo(x1,y0);ctx!.lineTo(r,y0);ctx!.quadraticCurveTo(x0,y0,x0,r);ctx!.lineTo(x0,h-r);ctx!.quadraticCurveTo(x0,y1,r,y1);ctx!.lineTo(x1,y1);
+            ctx!.strokeStyle='rgba(157, 189, 227, .45)';ctx!.lineWidth=line;ctx!.stroke();
+        } else if(opts.tag){
             const w=canvas.width,h=canvas.height,line=Math.max(1,h*.06),r=Math.min(h*.35,w*.3);
             ctx!.beginPath();
             ctx!.moveTo(line/2,0);ctx!.lineTo(w-line/2,0);ctx!.lineTo(w-line/2,h-r);ctx!.quadraticCurveTo(w-line/2,h-line/2,w-r,h-line/2);

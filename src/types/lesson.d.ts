@@ -118,6 +118,7 @@ export type Element = {
     | 'stack'
     | 'graph'
     | 'heap'
+    | 'dict'
     | 'system_dag';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
@@ -998,6 +999,14 @@ export type Element = {
    */
   nodeDepth?: number;
   /**
+   * ARRAY / DICT. Corner radius of each cell, in data units: rounded-rectangle cells instead of boxes. A dict's entries default to 0.2.
+   */
+  cellCornerRadius?: number;
+  /**
+   * ARRAY / DICT. Math.js expression giving each cell's key, evaluated per cell with 'idx' and 'value' bound; the key is shown where an array shows its index, printed as Python would ('a', 3, (1, 2) for a tuple). A 'dict' element is an array with keys: its cells are the entries in insertion order. Example: "arrayAt(dataTable('trace', frame, 'keys'), idx)".
+   */
+  keyExpr?: string;
+  /**
    * HEAP: centre of the tree view's root, in data units. Defaults to 3.2 above origin (the array's slot 0). A heap is a wrapper: an array under its id (origin, cellSize and the array options) and a graph under '<id>-tree' (treeOrigin, treeWidth, levelGap, nodeSize).
    *
    * @minItems 3
@@ -1057,7 +1066,7 @@ export type Element = {
    */
   edgeBend?: number;
   /**
-   * ARRAY ONLY. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap.
+   * ARRAY / DICT. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap. A dict with 'vertical' stacks its entries down a column instead (first on top), each key to the left of its cell, title above.
    */
   arrayLayout?: 'horizontal' | 'vertical';
   /**

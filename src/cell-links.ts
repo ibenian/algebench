@@ -53,6 +53,14 @@ export function paintCellLinks(): void {
             linked = true;
             const mid = (c: {x: number; y: number}[]) => ({ x: c.reduce((s, p) => s + p.x, 0) / c.length, y: c.reduce((s, p) => s + p.y, 0) / c.length });
             const am = mid(ac), bm = mid(bc);
+            // A cell's front face: where its tags sit. Under perspective the back face projects off to one side, so a
+            // link that ends beside a stacked cell (a dict column, keys on the left) meets the front edge, where the key
+            // tag touches the cell, not a point behind the tag.
+            const front = (cell: {corners: number[][]}, c: typeof ac) => {
+                const z = Math.max(...cell.corners.map(q => q[2] ?? 0));
+                const f = c.filter((_, k) => (cell.corners[k]![2] ?? 0) >= z - 1e-9);
+                return f.length ? f : c;
+            };
             let curve: {d: string; arrive: {x: number; y: number}}, end: {x: number; y: number};
             if (a.graph || b.graph) {
                 // Graph nodes stand free: an edge runs from node edge to node edge, bowing away from the graph's centre.
@@ -89,8 +97,8 @@ export function paintCellLinks(): void {
             } else {
                 // Each end leaves along its own array's axis: a row's top or bottom edge, a stacked cell's side,
                 // so a stack's link never runs up through the cells above it. A row's end clears its index tag.
-                const start = a.vertical ? cellEdgeAnchor(ac, bm.x < am.x ? 'left' : 'right', 2) : cellEdgeAnchor(ac, bm.y < am.y ? 'top' : 'bottom', 2);
-                end = b.vertical ? cellEdgeAnchor(bc, am.x < bm.x ? 'left' : 'right', 2) : cellEdgeAnchor(bc, am.y < bm.y ? 'top' : 'bottom', am.y > bm.y ? 14 : 2);
+                const start = a.vertical ? cellEdgeAnchor(front(a, ac), bm.x < am.x ? 'left' : 'right', 2) : cellEdgeAnchor(ac, bm.y < am.y ? 'top' : 'bottom', 2);
+                end = b.vertical ? cellEdgeAnchor(front(b, bc), am.x < bm.x ? 'left' : 'right', 0) : cellEdgeAnchor(bc, am.y < bm.y ? 'top' : 'bottom', am.y > bm.y ? 14 : 2);
                 curve = cellLinkCurve(start, end, a.vertical ? 'h' : 'v', b.vertical ? 'h' : 'v');
             }
             const style = group.styles?.[p];

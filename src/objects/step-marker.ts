@@ -17,6 +17,10 @@ export interface MarkerOwner {
     animState: {stopped: boolean};
     position(index: number): number[] | null;
     corners(index: number): number[][];
+    /** The cell edge a marker hangs from: 'top' (default), or 'right' for a column whose keys are on the left. */
+    edge?: 'top' | 'right';
+    /** What a marker on this cell reads after `name =` when it has no valueExpr: a dict's key; null for the index. */
+    indexText?(index: number): string | null;
 }
 export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: MarkerOwner) {
     const marker = el.type === 'step_marker';
@@ -49,6 +53,8 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
     if(!marker&&el.connectTo)measure.classList.add('annotation-measure-wired');
     cursor.append(badge);
     if (owner) cursor.classList.add('array-marker-cursor');
+    if (owner?.edge === 'right') cursor.classList.add('array-marker-right');
+    const edge = owner?.edge ?? 'top';
     if (marker) {
         const stem = document.createElement('span'); stem.className='step-marker-stem'; stem.setAttribute('aria-hidden','true');
         const pointer = document.createElement('span'); pointer.className='step-marker-pointer'; pointer.setAttribute('aria-hidden','true'); cursor.append(stem, pointer);
@@ -69,13 +75,13 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
         const from = label.cellAttachment?.corners;
         cancelAnimationFrame(slide);
         if (!from || from.length !== target.length) {
-            label.cellAttachment = {corners:target, edge:'top', gap:8}; return;
+            label.cellAttachment = {corners:target, edge, gap:8}; return;
         }
         if (from.every((p, i) => p.every((v, k) => v === target[i]![k]))) return;
         const start = performance.now(), duration = 260;
         const step = (now: number) => {
             const t = Math.min(1, (now - start) / duration), e = 1 - (1 - t) ** 3;
-            label.cellAttachment = {corners:from.map((p, i) => p.map((v, k) => v + (target[i]![k]! - v) * e)), edge:'top', gap:8};
+            label.cellAttachment = {corners:from.map((p, i) => p.map((v, k) => v + (target[i]![k]! - v) * e)), edge, gap:8};
             if (t < 1 && !animState.stopped) slide = requestAnimationFrame(step);
         };
         slide = requestAnimationFrame(step);
@@ -113,6 +119,7 @@ export function renderStepMarker(el: Element, _view: MathBoxNode, owner?: Marker
                 if (!Number.isInteger(value) || value < 0) throw new Error('Invalid index');
                 annotation.index = {group:owner?.group ?? el.indexGroup!, name:el.indexName, value};
                 if (shownFn) annotation.index.shown = annotationText(evalExpr(shownFn,0));
+                else { const key = owner?.indexText?.(value); if (key != null) annotation.index.shown = key; }
             }
             const previous = annotation.text;
             annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.shown ?? annotation.index.value}` : text;

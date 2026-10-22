@@ -9,6 +9,8 @@ import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
 import type { Mesh, Object3D } from 'three';
 import { renderStepMarker } from '/objects/step-marker.js';
+import { keyText } from '/objects/dict-keys.js';
+import { roundedCellUnit } from '/objects/rounded-cell.js';
 import { arrayCell, arrayLength, cellColor, dynamicArrayLength, arrayIndexPosition, arrayCellPosition, arrayCellCorners, wrappedArrayCell } from '/objects/array-data.js';
 import { registerStackHover, stackCellOpacities } from '/objects/array-stack-hover.js';
 import { ArrayChangeTracker } from '/objects/array-changes.js';
@@ -24,6 +26,11 @@ let arrayMarkerGroup = 0;
 /** `vertical`: cells run up or down (a stack, a vertical layout), so links leave a cell's side, not its top. */
 /** `graph`: the cells are free-standing nodes (a graph), so links run node to node; `round` nodes are discs. */
 /** `ports`: where links may start on a cell (a graph node: under each gap of its cell row). */
+function roundedUnit(w:number,h:number,r:number) {
+    const {positions,normals}=roundedCellUnit(w,h,r),g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
+    return g;
+}
 export interface ArrayCellTarget { vertical:boolean; graph?:boolean; round?:boolean; at(index:number):{position:[number,number,number];corners:number[][]}|null; ports?(index:number):number[][]; }
 const PALETTE={number:'#75bfe9',character:'#74d0c2',string:'#b69bea',text:'#b69bea',boolean:'#efa768',empty:'#8793a6'};
 export interface ArrayDecoration { resize(length:number):void; }
@@ -39,7 +46,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     // Direction controls center positions independently of cell geometry.
     const centre=(i:number):[number,number,number]=>el.arrayColumns?wrappedArrayCell(i,n,origin,pitch,el.arrayColumns,el.arrayHeight,el.arrayCellHeight).position:arrayCellPosition(i,origin,pitch,el.arrayLayout,el.direction,el.arraySpacing);
     const cellHeight=()=>el.arrayColumns?wrappedArrayCell(0,n,origin,pitch,el.arrayColumns,el.arrayHeight,el.arrayCellHeight).height:.68;
-    const unit=new THREE.BoxGeometry(1,1,1).toNonIndexed();
+    // cellCornerRadius: rounded cells (a dict's entries), else plain boxes.
+    const unit=el.cellCornerRadius?roundedUnit(pitch*.78,cellHeight(),Number(el.cellCornerRadius)):new THREE.BoxGeometry(1,1,1).toNonIndexed();
     const source=unit.getAttribute('position'),normal=unit.getAttribute('normal'),vertices=source.count;
     let positions=new Float32Array(n*vertices*3),colors=new Float32Array(n*vertices*3);
     for(let i=0;i<n;i++)for(let v=0;v<vertices;v++){
@@ -84,18 +92,26 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         return position?{position,corners:arrayCellCorners(position,pitch).map(c=>[c[0]!,position[1]+(c[1]!-position[1])*cellHeight()/.68,c[2]!])}:null;
     }};
     mesh.userData.arrayCellTarget=cellTarget;
+    // Keys of a dict whose entries stack vertically sit left of their cells, in reading order down the column.
+    const keysLeft=!!el.keyExpr&&cellTarget.vertical;
+    const keyAt=(c:number[]):[number,number,number]=>keysLeft?[c[0]!-pitch*.78,c[1]!,c[2]!+.14]:[c[0]!,c[1]!-.34-.175,c[2]!+.14];
     state.three.scene.add(mesh);state.planeMeshes.push(mesh);
     const decoration=decorate?.(n,origin,pitch,mesh);
     // A world-space soft rim follows the cells without screen overlays or frame evaluation.
     const glowMaterial=new THREE.ShaderMaterial({
         transparent:true,depthWrite:false,side:THREE.DoubleSide,
-        uniforms:{opacity:{value:1}},
+        // The rim traces the cell's own edge, in data units: a rounded rectangle (radius 0 for a box). quad is the
+        // glow quad's half size, cell the cell's.
+        uniforms:{opacity:{value:1},quad:{value:new THREE.Vector2(pitch*.455,cellHeight()*.584)},cell:{value:new THREE.Vector2(pitch*.39,cellHeight()*.5)},
+            radius:{value:Math.min(Number(el.cellCornerRadius??0),pitch*.39,cellHeight()*.5)}},
         vertexShader:`attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-        fragmentShader:`uniform float opacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
-            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
-                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+        fragmentShader:`uniform float opacity; uniform vec2 quad; uniform vec2 cell; uniform float radius;
+            varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
+            void main(){vec2 q=abs(rimUV*quad)-cell+radius;
+                float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-radius;
+                float rim=exp(-pow(d/0.045,2.0));
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
                 float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`,
@@ -112,6 +128,9 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     function illuminate(changed:number[],removed:number[]){
         const positions:number[]=[],uv:number[]=[],removedFlags:number[]=[],rimOpacity:number[]=[];
         rimCells = [];
+        // A wrapped grid's cells change height as rows are added: keep the rim on the cell's current edge.
+        glowMaterial.uniforms.quad!.value.set(pitch*.455,cellHeight()*.584);glowMaterial.uniforms.cell!.value.set(pitch*.39,cellHeight()*.5);
+        glowMaterial.uniforms.radius!.value=Math.min(Number(el.cellCornerRadius??0),pitch*.39,cellHeight()*.5);
         const corners=[[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
         for(const [indices,isRemoved] of [[changed,0],[removed,1]] as const)for(const i of indices){
             const c=centre(i);
@@ -131,7 +150,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const planeText=el.axisLabels==='plane';
     const cellTextPlanes:ArrayPlaneText[]=[];
     const indexTextPlanes:ArrayPlaneText[]=[];
-    const addTextPlane=(width:number,height:number,color:NonNullable<Element['color']>,cell?:number,tag=false)=>{
+    const addTextPlane=(width:number,height:number,color:NonNullable<Element['color']>,cell?:number,tag:boolean|'top'|'right'=false)=>{
         const layer=createArrayPlaneText(width,height,color,{tag});
         // Parent ownership handles hide/show and dynamically added cell lifetimes.
         mesh.add(layer.mesh);
@@ -153,10 +172,11 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             const indexLabel = addLabel3D(String(i),c,'#e1ecf7',{cssClass:'label-3d array-index-tag'});
             if(el.indexFontSize!=null)indexLabel.el.style.setProperty('--array-index-font-size',`${el.indexFontSize}px`);
             indexLabel.ownerMesh=mesh;
-            if(planeText){indexLabel.forceHidden=true;indexLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(indexLabel.el);indexTextPlanes.push(addTextPlane(.7,.35,'#e1ecf7',i,true));}
-            indexLabel.el.setAttribute('aria-label',`Index ${i}`);
+            if(planeText){indexLabel.forceHidden=true;indexLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(indexLabel.el);indexTextPlanes.push(addTextPlane(el.keyExpr?pitch*.78:.7,.35,'#e1ecf7',i,keysLeft?'right':true));}
+            indexLabel.el.setAttribute('aria-label',el.keyExpr?`Key of cell ${i}`:`Index ${i}`);
+            if(keysLeft)indexLabel.el.classList.add('array-key-left');
             indexLabels.push(indexLabel);
-            indexLabel.cellAttachment = {corners:arrayCellCorners(c,pitch),edge:'bottom',gap:0};
+            indexLabel.cellAttachment = {corners:arrayCellCorners(c,pitch),edge:keysLeft?'left':'bottom',gap:0};
         }
         return label;
     };
@@ -201,11 +221,18 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     // Children share the owner's lifetime and never register independent updaters.
     const owner = {group: 'array-markers:' + arrayMarkerGroup++, animState,
         position: (index: number) => cellTarget.at(index)?.position??null,
-        corners: (index: number) => cellTarget.at(index)?.corners??[]};
+        corners: (index: number) => cellTarget.at(index)?.corners??[],
+        // A dict column has its keys on the left, so its markers hang off the right edge.
+        edge: keysLeft ? 'right' as const : 'top' as const,
+        // A dict's marker names the key it points at, not the entry's position.
+        indexText: (index: number) => keyFn ? cellKeys[index] ?? null : null};
     const markers = (el.markers ?? []).map(marker => renderStepMarker({...marker, type:'step_marker'}, _view, owner));
     const valueFn=el.valueExpr?compileExpr(el.valueExpr):null;
     const highlightFn=el.highlightExpr?compileExpr(el.highlightExpr):null;
     const colorFn=el.colorExpr?compileExpr(el.colorExpr):null;
+    // keyExpr (a dict): each cell's key, shown where an array shows its index.
+    const keyFn=el.keyExpr?compileExpr(el.keyExpr):null;
+    let cellKeys:(string|null)[]=[];
     const previous: string[]=[];
     // animateMoves: a value that moves to another cell (a swap, a sift) glides there instead of being redrawn in
     // place; identity comes from idExpr, else values are matched (cell-identity). A wrapped grid re-flows its
@@ -269,7 +296,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     // connectTo: each cell links to the cell of another object it names (indexExpr with idx and value bound),
     // one link group per target. Only cell targets apply to an array; the schema rejects the others.
     const connections=compileLinkTargets(el.connectTo,el.id,false);
-    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,...connections.flatMap(c=>c.sources),...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
+    const entry:AnimExprEntry={animState,exprStrings:[el.lengthExpr,el.valueExpr,el.highlightExpr,el.colorExpr,el.keyExpr,...connections.flatMap(c=>c.sources),...markers.flatMap(marker=>marker._animExprEntry.exprStrings ?? [])].filter((v):v is string=>!!v),_rebuildFn:()=>{
         // Hidden lesson steps must not advance the last-visible comparison baseline.
         if(animState.stopped||animState.hiddenByRemove)return;
         const next=lengthFn?dynamicArrayLength(evalExpr(lengthFn,0)):n;
@@ -278,8 +305,11 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             const cell=arrayCell(valueFn?evalExpr(valueFn,0,{overrideScope:{idx:i}}):el.values?.[i],el.itemType);
             const highlighted=highlightFn?!!evalExpr(highlightFn,0,{overrideScope:{idx:i,value:cell.value}}):false;
             const color=colorFn?cellColor(evalExpr(colorFn,0,{overrideScope:{idx:i,value:cell.value}})):null;
-            return {cell,highlighted,color};
+            let key:string|null=null;
+            if(keyFn)try{key=keyText(evalExpr(keyFn,0,{overrideScope:{idx:i,value:cell.value}}));}catch{key='?';}
+            return {cell,highlighted,color,key};
         });
+        cellKeys=cells.map(c=>c.key);
         const transition=JSON.stringify(Object.entries(state.sceneSliders).map(([id,s])=>[id,s.value,s.values]));
         const delta=changes.update(cells.map(({cell})=>JSON.stringify([cell.kind,cell.value])),transition);
         // Where each moving value was drawn, read before the resize and redraw move anything.
@@ -301,17 +331,19 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         let dirty=false;
         for(let i=0;i<n;i++){
-            const {cell,highlighted,color}=cells[i]!; // one successfully evaluated cell per slot
+            const {cell,highlighted,color,key:cellKey}=cells[i]!; // one successfully evaluated cell per slot
             const lit=illuminated.has(i);
-            const key=JSON.stringify([cell.kind,cell.value,highlighted,color,lit]);
+            const key=JSON.stringify([cell.kind,cell.value,highlighted,color,lit,cellKey]);
+            const tag=cellKey??String(i);
             if(previous[i]===key)continue;previous[i]=key;dirty=true;
             const label=labels[i]!; // one label allocated per cell
-            label.el.textContent=cell.text;label.el.title=`[${i}] ${cell.kind}: ${cell.text}`;
+            label.el.textContent=cell.text;label.el.title=`[${tag}] ${cell.kind}: ${cell.text}`;
+            if(cellKey!==null&&indexLabels[i]){indexLabels[i]!.el.textContent=cellKey;indexLabels[i]!.el.setAttribute('aria-label',`Key ${cellKey}`);indexLabels[i]!.boxW=null;indexLabels[i]!.boxH=null;}
             label.el.setAttribute('aria-label',label.el.title);label.boxW=null;label.boxH=null;
             if(planeText){
                 const c=centre(i);
                 cellTextPlanes[i]!.set(cell.text,[c[0],c[1],c[2]+.14]); // makeCellLabel allocates one text plane per slot.
-                indexTextPlanes[i]?.set(String(i),[c[0],c[1]-.34-.175,c[2]+.14]);
+                indexTextPlanes[i]?.set(tag,keyAt(c));
             }
             const rgb=parseColor(color??(highlighted?'#f1cc59':el.color??PALETTE[cell.kind]));
             if(lit)for(let j=0;j<3;j++)rgb[j]=rgb[j]!+(1-rgb[j]!)*.35;

@@ -25,24 +25,12 @@ import { createCellGlide } from '/objects/cell-glide.js';
 import { createArrayPlaneText } from '/objects/array-plane-text.js';
 import type { ArrayPlaneText } from '/objects/array-plane-text.js';
 import { layoutTree } from '/objects/tree-layout.js';
+import { nodeOutline } from '/objects/rounded-cell.js';
+export { nodeOutline };
 import type { TreeLayoutKind } from '/objects/tree-layout.js';
 
 const HIGHLIGHT = '#f1cc59', DEFAULT = '#9dbde3';
 let graphMarkerGroup = 0;
-
-/** Outline of one node in data units, centred on (x, y): a circle, or a rectangle with rounded corners. */
-export function nodeOutline(shape: 'point' | 'rect', w: number, h: number, radius: number, segments = 24): [number, number][] {
-    if (shape === 'point') return Array.from({length: segments}, (_, k) => {
-        const a = 2 * Math.PI * k / segments; return [Math.cos(a) * w / 2, Math.sin(a) * w / 2];
-    });
-    const r = Math.min(radius, w / 2, h / 2), pts: [number, number][] = [];
-    const corners: [number, number, number][] = [[w / 2 - r, h / 2 - r, 0], [-w / 2 + r, h / 2 - r, Math.PI / 2], [-w / 2 + r, -h / 2 + r, Math.PI], [w / 2 - r, -h / 2 + r, 1.5 * Math.PI]];
-    for (const [cx, cy, a0] of corners) {
-        const steps = r > 0 ? 6 : 0;
-        for (let s = 0; s <= steps; s++) { const a = a0 + (Math.PI / 2) * s / Math.max(steps, 1); pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
-    }
-    return pts;
-}
 
 export function renderGraph(el: Element, view: MathBoxNode) {
     if (!state.three) return null;

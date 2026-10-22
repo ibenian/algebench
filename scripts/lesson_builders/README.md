@@ -12,6 +12,7 @@ type-check include `scripts/lesson_builders/**`, so a builder's tests run with t
 |---|---|---|
 | [`common-algorithm-patterns/`](common-algorithm-patterns/) | `scenes/draft/common-algorithm-patterns.json` | `./run.sh scripts/lesson_builders/common-algorithm-patterns/build.py` |
 | [`test-graph/`](test-graph/) | `scenes/draft/test-graph.json` (graph object test scenes) | `./run.sh scripts/lesson_builders/test-graph/build.py` |
+| [`test-array/`](test-array/) | `scenes/draft/test-array.json` (array and dict test scenes) | `./run.sh scripts/lesson_builders/test-array/build.py` |
 
 ## common-algorithm-patterns
 

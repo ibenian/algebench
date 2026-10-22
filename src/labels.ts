@@ -343,7 +343,7 @@ export interface Label3D {
     dataPos: number[];
     /** Project a cell's corners to keep annotations outside its screen footprint. */
     snapToProjection?: boolean;
-    cellAttachment?: {corners: number[][]; edge: 'top' | 'bottom'; gap: number};
+    cellAttachment?: {corners: number[][]; edge: 'top' | 'bottom' | 'left' | 'right'; gap: number};
     screenX: number | null;
     screenY: number | null;
     forceHidden: boolean;
@@ -582,10 +582,12 @@ export function updateLabels(): void {
         lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
         lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
         lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
-        const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
+        // A label attached beside a cell (left or right edge) is centred on it vertically and grows away from it.
+        const side = lbl.cellAttachment?.edge === 'left' || lbl.cellAttachment?.edge === 'right' ? lbl.cellAttachment.edge : null;
+        const ax = side === 'left' || (!side && lbl.align === 'right') ? '-100%' : side === 'right' || lbl.align === 'left' ? '0%' : '-50%';
         const x = lbl.annotationAnchor?.x ?? lbl.screenX!;
         const y = (lbl.annotationAnchor?.y ?? lbl.screenY!) + lbl.offsetY;
-        const ay = lbl.cellAttachment ? (lbl.cellAttachment.edge === 'top' ? '-100%' : '0%') : '-50%';
+        const ay = lbl.cellAttachment && !side ? (lbl.cellAttachment.edge === 'top' ? '-100%' : '0%') : '-50%';
         const transform = `translate(${x}px, ${y}px) translate(${ax}, ${ay})`;
         if (paint.transform !== transform) { lbl.el.style.transform = transform; paint.transform = transform; }
         // Near-hidden far labels fade via opacity (fade); gentle recede uses brightness (dim).

@@ -319,6 +319,33 @@ function arrayAt(input, at) {
 	return values[index(at, values.length)];
 }
 //#endregion
+//#region src/objects/dict-keys.ts
+/**
+* A dictionary key as Python prints it, for the label under its cell: a string quoted ('a'), a number as is,
+* a tuple in parentheses ((1, 2); a one-element tuple keeps its comma, (1,)), True / False / None. A key may be
+* any of these, so a dict shows keys exactly where an array shows indices.
+*/
+function keyText(key) {
+	const plain = key !== null && typeof key === "object" && "valueOf" in key ? key.valueOf() : key;
+	if (Array.isArray(plain)) return plain.length === 1 ? `(${keyText(plain[0])},)` : `(${plain.map(keyText).join(", ")})`;
+	if (typeof plain === "string") return `'${plain.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+	if (typeof plain === "boolean") return plain ? "True" : "False";
+	if (plain === null || plain === void 0) return "None";
+	if (typeof plain === "number") return Number.isFinite(plain) ? String(plain) : plain > 0 ? "float('inf')" : plain < 0 ? "float('-inf')" : "float('nan')";
+	return String(plain);
+}
+/**
+* keyIndex(keys, key): where a key sits in a dict's list of keys (its entry's position), or −1 when absent.
+* Keys match as Python would compare them: 2 and '2' differ, tuples match element by element. A link or
+* marker names a dict entry by position, so this turns "the entry for key k" into one.
+*/
+function keyIndex(keys, key) {
+	const plain = keys !== null && typeof keys === "object" && "valueOf" in keys ? keys.valueOf() : keys;
+	if (!Array.isArray(plain)) return -1;
+	const wanted = keyText(key);
+	return plain.findIndex((k) => keyText(k) === wanted);
+}
+//#endregion
 //#region src/expr.ts
 var tableInputs = 0;
 if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
@@ -341,6 +368,7 @@ var _MATHJS_EXTENSIONS = {
 	arrayResult,
 	arrayCount,
 	arrayAt,
+	keyIndex,
 	toFixed: (val, decimals) => Number(val).toFixed(Number(decimals)),
 	concat: (...args) => args.map((a) => String(a)).join(""),
 	bar: (val, w = 20) => {
@@ -2060,6 +2088,11 @@ function paintCellLinks() {
 				y: c.reduce((s, p) => s + p.y, 0) / c.length
 			});
 			const am = mid(ac), bm = mid(bc);
+			const front = (cell, c) => {
+				const z = Math.max(...cell.corners.map((q) => q[2] ?? 0));
+				const f = c.filter((_, k) => (cell.corners[k][2] ?? 0) >= z - 1e-9);
+				return f.length ? f : c;
+			};
 			let curve, end;
 			if (a.graph || b.graph) {
 				const box = (c, m, round) => ({
@@ -2118,8 +2151,8 @@ function paintCellLinks() {
 				}
 				curve = cellArcCurve(start, end, side);
 			} else {
-				const start = a.vertical ? cellEdgeAnchor(ac, bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
-				end = b.vertical ? cellEdgeAnchor(bc, am.x < bm.x ? "left" : "right", 2) : cellEdgeAnchor(bc, am.y < bm.y ? "top" : "bottom", am.y > bm.y ? 14 : 2);
+				const start = a.vertical ? cellEdgeAnchor(front(a, ac), bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
+				end = b.vertical ? cellEdgeAnchor(front(b, bc), am.x < bm.x ? "left" : "right", 0) : cellEdgeAnchor(bc, am.y < bm.y ? "top" : "bottom", am.y > bm.y ? 14 : 2);
 				curve = cellLinkCurve(start, end, a.vertical ? "h" : "v", b.vertical ? "h" : "v");
 			}
 			const style = group.styles?.[p];
@@ -2991,8 +3024,9 @@ function updateLabels() {
 		lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
 		lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
 		lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
-		const ax = lbl.align === "right" ? "-100%" : lbl.align === "left" ? "0%" : "-50%";
-		const transform = `translate(${lbl.annotationAnchor?.x ?? lbl.screenX}px, ${(lbl.annotationAnchor?.y ?? lbl.screenY) + lbl.offsetY}px) translate(${ax}, ${lbl.cellAttachment ? lbl.cellAttachment.edge === "top" ? "-100%" : "0%" : "-50%"})`;
+		const side = lbl.cellAttachment?.edge === "left" || lbl.cellAttachment?.edge === "right" ? lbl.cellAttachment.edge : null;
+		const ax = side === "left" || !side && lbl.align === "right" ? "-100%" : side === "right" || lbl.align === "left" ? "0%" : "-50%";
+		const transform = `translate(${lbl.annotationAnchor?.x ?? lbl.screenX}px, ${(lbl.annotationAnchor?.y ?? lbl.screenY) + lbl.offsetY}px) translate(${ax}, ${lbl.cellAttachment && !side ? lbl.cellAttachment.edge === "top" ? "-100%" : "0%" : "-50%"})`;
 		if (paint.transform !== transform) {
 			lbl.el.style.transform = transform;
 			paint.transform = transform;
@@ -10737,7 +10771,9 @@ function planeTextTextureSize(width, height, density = 128) {
 }
 /**
 * `tag` paints the index-tag badge the screen mode draws in CSS (.array-index-tag): a dark plate with a
-* light outline and rounded lower corners, hung from the cell above, so world and screen tags match.
+* light outline, open on the edge that meets its cell and rounded on the far side, so world and screen tags
+* match. `true` or 'top' hangs it from the cell above (rounded lower corners); 'right' sets it left of its cell
+* (a dict's key in a column: open on the right, rounded on the left).
 */
 function createArrayPlaneText(width, height, color, opts = {}) {
 	const canvas = document.createElement("canvas");
@@ -10785,7 +10821,29 @@ function createArrayPlaneText(width, height, color, opts = {}) {
 	function repaint() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		const text = previousText ?? "";
-		if (opts.tag) {
+		if (opts.tag === "right") {
+			const w = canvas.width, h = canvas.height, line = Math.max(1, h * .06), r = Math.min(h * .35, w * .3), x1 = w, y0 = line / 2, y1 = h - line / 2, x0 = line / 2;
+			ctx.beginPath();
+			ctx.moveTo(x1, y0);
+			ctx.lineTo(r, y0);
+			ctx.quadraticCurveTo(x0, y0, x0, r);
+			ctx.lineTo(x0, h - r);
+			ctx.quadraticCurveTo(x0, y1, r, y1);
+			ctx.lineTo(x1, y1);
+			ctx.closePath();
+			ctx.fillStyle = "rgba(24, 48, 75, .9)";
+			ctx.fill();
+			ctx.beginPath();
+			ctx.moveTo(x1, y0);
+			ctx.lineTo(r, y0);
+			ctx.quadraticCurveTo(x0, y0, x0, r);
+			ctx.lineTo(x0, h - r);
+			ctx.quadraticCurveTo(x0, y1, r, y1);
+			ctx.lineTo(x1, y1);
+			ctx.strokeStyle = "rgba(157, 189, 227, .45)";
+			ctx.lineWidth = line;
+			ctx.stroke();
+		} else if (opts.tag) {
 			const w = canvas.width, h = canvas.height, line = Math.max(1, h * .06), r = Math.min(h * .35, w * .3);
 			ctx.beginPath();
 			ctx.moveTo(line / 2, 0);
@@ -11971,6 +12029,8 @@ function renderStepMarker(el, _view, owner) {
 	if (!marker && el.connectTo) measure.classList.add("annotation-measure-wired");
 	cursor.append(badge);
 	if (owner) cursor.classList.add("array-marker-cursor");
+	if (owner?.edge === "right") cursor.classList.add("array-marker-right");
+	const edge = owner?.edge ?? "top";
 	if (marker) {
 		const stem = document.createElement("span");
 		stem.className = "step-marker-stem";
@@ -12006,7 +12066,7 @@ function renderStepMarker(el, _view, owner) {
 		if (!from || from.length !== target.length) {
 			label.cellAttachment = {
 				corners: target,
-				edge: "top",
+				edge,
 				gap: 8
 			};
 			return;
@@ -12017,7 +12077,7 @@ function renderStepMarker(el, _view, owner) {
 			const t = Math.min(1, (now - start) / duration), e = 1 - (1 - t) ** 3;
 			label.cellAttachment = {
 				corners: from.map((p, i) => p.map((v, k) => v + (target[i][k] - v) * e)),
-				edge: "top",
+				edge,
 				gap: 8
 			};
 			if (t < 1 && !animState.stopped) slide = requestAnimationFrame(step);
@@ -12068,6 +12128,10 @@ function renderStepMarker(el, _view, owner) {
 						value
 					};
 					if (shownFn) annotation.index.shown = annotationText(evalExpr(shownFn, 0));
+					else {
+						const key = owner?.indexText?.(value);
+						if (key != null) annotation.index.shown = key;
+					}
 				}
 				const previous = annotation.text;
 				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.shown ?? annotation.index.value}` : text;
@@ -12107,6 +12171,132 @@ function renderStepMarker(el, _view, owner) {
 		_animState: animState,
 		_animExprEntry: entry,
 		type: el.type
+	};
+}
+//#endregion
+//#region src/objects/rounded-cell.ts
+/**
+* A rounded-rectangle cell, as unit geometry for the array's per-cell scaling: a prism over the rounded outline
+* of a w × h cell (corner radius r), with x and y divided by w and h and z running −½…½, so scaling it back by
+* the cell's size gives true round corners. Non-indexed triangles: the front and back caps fanned from the
+* centre, and a wall quad per outline edge, each with its face normal (the array shades by normal).
+*/
+/** Outline of one node in data units, centred on (x, y): a circle, or a rectangle with rounded corners. */
+function nodeOutline(shape, w, h, radius, segments = 24) {
+	if (shape === "point") return Array.from({ length: segments }, (_, k) => {
+		const a = 2 * Math.PI * k / segments;
+		return [Math.cos(a) * w / 2, Math.sin(a) * w / 2];
+	});
+	const r = Math.min(radius, w / 2, h / 2), pts = [];
+	const corners = [
+		[
+			w / 2 - r,
+			h / 2 - r,
+			0
+		],
+		[
+			-w / 2 + r,
+			h / 2 - r,
+			Math.PI / 2
+		],
+		[
+			-w / 2 + r,
+			-h / 2 + r,
+			Math.PI
+		],
+		[
+			w / 2 - r,
+			-h / 2 + r,
+			1.5 * Math.PI
+		]
+	];
+	for (const [cx, cy, a0] of corners) {
+		const steps = r > 0 ? 6 : 0;
+		for (let s = 0; s <= steps; s++) {
+			const a = a0 + Math.PI / 2 * s / Math.max(steps, 1);
+			pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+		}
+	}
+	return pts;
+}
+function roundedCellUnit(w, h, r) {
+	const outline = nodeOutline("rect", w, h, r).map(([x, y]) => [x / w, y / h]);
+	const positions = [], normals = [];
+	const tri = (a, b, c, n) => {
+		positions.push(...a, ...b, ...c);
+		for (let k = 0; k < 3; k++) normals.push(...n);
+	};
+	outline.forEach(([x0, y0], k) => {
+		const [x1, y1] = outline[(k + 1) % outline.length];
+		tri([
+			0,
+			0,
+			.5
+		], [
+			x0,
+			y0,
+			.5
+		], [
+			x1,
+			y1,
+			.5
+		], [
+			0,
+			0,
+			1
+		]);
+		tri([
+			0,
+			0,
+			-.5
+		], [
+			x1,
+			y1,
+			-.5
+		], [
+			x0,
+			y0,
+			-.5
+		], [
+			0,
+			0,
+			-1
+		]);
+		const dx = (x1 - x0) * w, dy = (y1 - y0) * h, len = Math.hypot(dx, dy) || 1, n = [
+			dy / len,
+			-dx / len,
+			0
+		];
+		tri([
+			x0,
+			y0,
+			.5
+		], [
+			x0,
+			y0,
+			-.5
+		], [
+			x1,
+			y1,
+			-.5
+		], n);
+		tri([
+			x0,
+			y0,
+			.5
+		], [
+			x1,
+			y1,
+			-.5
+		], [
+			x1,
+			y1,
+			.5
+		], n);
+	});
+	return {
+		positions,
+		normals
 	};
 }
 //#endregion
@@ -12520,6 +12710,16 @@ function evaluateLinkTargets(targets, values, extra = {}) {
 //#region src/objects/array.ts
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 var arrayMarkerGroup = 0;
+/** Shared presentation lookup for a cell, without references to other controls. */
+/** `vertical`: cells run up or down (a stack, a vertical layout), so links leave a cell's side, not its top. */
+/** `graph`: the cells are free-standing nodes (a graph), so links run node to node; `round` nodes are discs. */
+/** `ports`: where links may start on a cell (a graph node: under each gap of its cell row). */
+function roundedUnit(w, h, r) {
+	const { positions, normals } = roundedCellUnit(w, h, r), g = new THREE.BufferGeometry();
+	g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+	g.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+	return g;
+}
 var PALETTE = {
 	number: "#75bfe9",
 	character: "#74d0c2",
@@ -12543,7 +12743,7 @@ function renderArray(el, _view, decorate) {
 	if (el.direction && el.arrayColumns) throw new Error("Array direction and wrapped columns are alternative layouts.");
 	const centre = (i) => el.arrayColumns ? wrappedArrayCell(i, n, origin, pitch, el.arrayColumns, el.arrayHeight, el.arrayCellHeight).position : arrayCellPosition(i, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
 	const cellHeight = () => el.arrayColumns ? wrappedArrayCell(0, n, origin, pitch, el.arrayColumns, el.arrayHeight, el.arrayCellHeight).height : .68;
-	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+	const unit = el.cellCornerRadius ? roundedUnit(pitch * .78, cellHeight(), Number(el.cellCornerRadius)) : new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
 	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
 	for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
@@ -12615,6 +12815,16 @@ function renderArray(el, _view, decorate) {
 		}
 	};
 	mesh.userData.arrayCellTarget = cellTarget;
+	const keysLeft = !!el.keyExpr && cellTarget.vertical;
+	const keyAt = (c) => keysLeft ? [
+		c[0] - pitch * .78,
+		c[1],
+		c[2] + .14
+	] : [
+		c[0],
+		c[1] - .34 - .175,
+		c[2] + .14
+	];
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
 	const decoration = decorate?.(n, origin, pitch, mesh);
@@ -12622,13 +12832,20 @@ function renderArray(el, _view, decorate) {
 		transparent: true,
 		depthWrite: false,
 		side: THREE.DoubleSide,
-		uniforms: { opacity: { value: 1 } },
+		uniforms: {
+			opacity: { value: 1 },
+			quad: { value: new THREE.Vector2(pitch * .455, cellHeight() * .584) },
+			cell: { value: new THREE.Vector2(pitch * .39, cellHeight() * .5) },
+			radius: { value: Math.min(Number(el.cellCornerRadius ?? 0), pitch * .39, cellHeight() * .5) }
+		},
 		vertexShader: `attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-		fragmentShader: `uniform float opacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
-            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
-                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+		fragmentShader: `uniform float opacity; uniform vec2 quad; uniform vec2 cell; uniform float radius;
+            varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
+            void main(){vec2 q=abs(rimUV*quad)-cell+radius;
+                float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-radius;
+                float rim=exp(-pow(d/0.045,2.0));
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
                 float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
@@ -12650,6 +12867,9 @@ function renderArray(el, _view, decorate) {
 	function illuminate(changed, removed) {
 		const positions = [], uv = [], removedFlags = [], rimOpacity = [];
 		rimCells = [];
+		glowMaterial.uniforms.quad.value.set(pitch * .455, cellHeight() * .584);
+		glowMaterial.uniforms.cell.value.set(pitch * .39, cellHeight() * .5);
+		glowMaterial.uniforms.radius.value = Math.min(Number(el.cellCornerRadius ?? 0), pitch * .39, cellHeight() * .5);
 		const corners = [
 			[-1, -1],
 			[1, -1],
@@ -12721,13 +12941,14 @@ function renderArray(el, _view, decorate) {
 				indexLabel.forceHidden = true;
 				indexLabel.el.classList.add("array-plane-accessible");
 				clipArrayPlaneMirror(indexLabel.el);
-				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7", i, true));
+				indexTextPlanes.push(addTextPlane(el.keyExpr ? pitch * .78 : .7, .35, "#e1ecf7", i, keysLeft ? "right" : true));
 			}
-			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
+			indexLabel.el.setAttribute("aria-label", el.keyExpr ? `Key of cell ${i}` : `Index ${i}`);
+			if (keysLeft) indexLabel.el.classList.add("array-key-left");
 			indexLabels.push(indexLabel);
 			indexLabel.cellAttachment = {
 				corners: arrayCellCorners(c, pitch),
-				edge: "bottom",
+				edge: keysLeft ? "left" : "bottom",
 				gap: 0
 			};
 		}
@@ -12801,7 +13022,9 @@ function renderArray(el, _view, decorate) {
 		group: "array-markers:" + arrayMarkerGroup++,
 		animState,
 		position: (index) => cellTarget.at(index)?.position ?? null,
-		corners: (index) => cellTarget.at(index)?.corners ?? []
+		corners: (index) => cellTarget.at(index)?.corners ?? [],
+		edge: keysLeft ? "right" : "top",
+		indexText: (index) => keyFn ? cellKeys[index] ?? null : null
 	};
 	const markers = (el.markers ?? []).map((marker) => renderStepMarker({
 		...marker,
@@ -12810,6 +13033,8 @@ function renderArray(el, _view, decorate) {
 	const valueFn = el.valueExpr ? compileExpr(el.valueExpr) : null;
 	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
 	const colorFn = el.colorExpr ? compileExpr(el.colorExpr) : null;
+	const keyFn = el.keyExpr ? compileExpr(el.keyExpr) : null;
+	let cellKeys = [];
 	const previous = [];
 	const idFn = el.idExpr ? compileExpr(el.idExpr) : null;
 	const identities = el.animateMoves && !el.arrayColumns ? identityTracker(`${el.id ?? "array"}:`) : null;
@@ -12901,6 +13126,7 @@ function renderArray(el, _view, decorate) {
 			el.valueExpr,
 			el.highlightExpr,
 			el.colorExpr,
+			el.keyExpr,
 			...connections.flatMap((c) => c.sources),
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
@@ -12909,18 +13135,31 @@ function renderArray(el, _view, decorate) {
 			const next = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : n;
 			const cells = Array.from({ length: next }, (_, i) => {
 				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType);
+				const highlighted = highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
+					idx: i,
+					value: cell.value
+				} }) : false;
+				const color = colorFn ? cellColor(evalExpr(colorFn, 0, { overrideScope: {
+					idx: i,
+					value: cell.value
+				} })) : null;
+				let key = null;
+				if (keyFn) try {
+					key = keyText(evalExpr(keyFn, 0, { overrideScope: {
+						idx: i,
+						value: cell.value
+					} }));
+				} catch {
+					key = "?";
+				}
 				return {
 					cell,
-					highlighted: highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
-						idx: i,
-						value: cell.value
-					} }) : false,
-					color: colorFn ? cellColor(evalExpr(colorFn, 0, { overrideScope: {
-						idx: i,
-						value: cell.value
-					} })) : null
+					highlighted,
+					color,
+					key
 				};
 			});
+			cellKeys = cells.map((c) => c.key);
 			const transition = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
 				id,
 				s.value,
@@ -12944,21 +13183,29 @@ function renderArray(el, _view, decorate) {
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
-				const { cell, highlighted, color } = cells[i];
+				const { cell, highlighted, color, key: cellKey } = cells[i];
 				const lit = illuminated.has(i);
 				const key = JSON.stringify([
 					cell.kind,
 					cell.value,
 					highlighted,
 					color,
-					lit
+					lit,
+					cellKey
 				]);
+				const tag = cellKey ?? String(i);
 				if (previous[i] === key) continue;
 				previous[i] = key;
 				dirty = true;
 				const label = labels[i];
 				label.el.textContent = cell.text;
-				label.el.title = `[${i}] ${cell.kind}: ${cell.text}`;
+				label.el.title = `[${tag}] ${cell.kind}: ${cell.text}`;
+				if (cellKey !== null && indexLabels[i]) {
+					indexLabels[i].el.textContent = cellKey;
+					indexLabels[i].el.setAttribute("aria-label", `Key ${cellKey}`);
+					indexLabels[i].boxW = null;
+					indexLabels[i].boxH = null;
+				}
 				label.el.setAttribute("aria-label", label.el.title);
 				label.boxW = null;
 				label.boxH = null;
@@ -12969,11 +13216,7 @@ function renderArray(el, _view, decorate) {
 						c[1],
 						c[2] + .14
 					]);
-					indexTextPlanes[i]?.set(String(i), [
-						c[0],
-						c[1] - .34 - .175,
-						c[2] + .14
-					]);
+					indexTextPlanes[i]?.set(tag, keyAt(c));
 				}
 				const rgb = parseColor(color ?? (highlighted ? "#f1cc59" : el.color ?? PALETTE[cell.kind]));
 				if (lit) for (let j = 0; j < 3; j++) rgb[j] = rgb[j] + (1 - rgb[j]) * .35;
@@ -13460,44 +13703,6 @@ function layoutTree(kind, n, parentOf, options = {}, sideOf) {
 var HIGHLIGHT$1 = "#f1cc59";
 var DEFAULT = "#9dbde3";
 var graphMarkerGroup = 0;
-/** Outline of one node in data units, centred on (x, y): a circle, or a rectangle with rounded corners. */
-function nodeOutline(shape, w, h, radius, segments = 24) {
-	if (shape === "point") return Array.from({ length: segments }, (_, k) => {
-		const a = 2 * Math.PI * k / segments;
-		return [Math.cos(a) * w / 2, Math.sin(a) * w / 2];
-	});
-	const r = Math.min(radius, w / 2, h / 2), pts = [];
-	const corners = [
-		[
-			w / 2 - r,
-			h / 2 - r,
-			0
-		],
-		[
-			-w / 2 + r,
-			h / 2 - r,
-			Math.PI / 2
-		],
-		[
-			-w / 2 + r,
-			-h / 2 + r,
-			Math.PI
-		],
-		[
-			w / 2 - r,
-			-h / 2 + r,
-			1.5 * Math.PI
-		]
-	];
-	for (const [cx, cy, a0] of corners) {
-		const steps = r > 0 ? 6 : 0;
-		for (let s = 0; s <= steps; s++) {
-			const a = a0 + Math.PI / 2 * s / Math.max(steps, 1);
-			pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
-		}
-	}
-	return pts;
-}
 function renderGraph(el, view) {
 	if (!state.three) return null;
 	const shape = el.nodeShape === "rect" ? "rect" : "point";
@@ -14150,6 +14355,29 @@ function renderHeap(el, view) {
 		_animExprEntry: rowResult?._animExprEntry,
 		type: el.type
 	};
+}
+//#endregion
+//#region src/objects/dict.ts
+function renderDict(el, view) {
+	const vertical = el.arrayLayout === "vertical";
+	return renderArray({
+		...el,
+		type: "array",
+		itemType: el.itemType ?? "mixed",
+		cellSize: el.cellSize ?? 1.6,
+		labelSide: el.labelSide ?? (vertical ? "top" : "left"),
+		keyExpr: el.keyExpr ?? "idx",
+		cellCornerRadius: el.cellCornerRadius ?? .2,
+		...vertical ? {
+			arrayLayout: "horizontal",
+			direction: el.direction ?? [
+				0,
+				-1,
+				0
+			],
+			arraySpacing: el.arraySpacing ?? .82
+		} : {}
+	}, view);
 }
 //#endregion
 //#region src/algorithm/state.ts
@@ -19727,6 +19955,7 @@ function renderElement(el, view) {
 		case "stack": return renderStack(el, view);
 		case "graph": return renderGraph(el, view);
 		case "heap": return renderHeap(el, view);
+		case "dict": return renderDict(el, view);
 		case "tensor": return renderTensor(el, view);
 		case "chart": return renderChart(el, view);
 		default:
