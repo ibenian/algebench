@@ -127,6 +127,8 @@ export function setupStepPlayer(): void {
         });
     }
     window.addEventListener('algebench:playbackpause',pause);
+    // A conversation the reader now drives (interview, quiz): narration would answer each new state over it.
+    window.addEventListener('algebench:narrationoff',()=>{if(narrator.on){narrator.set(false);paintNarrate();}});
     window.addEventListener('algebench:navchange',refresh);
     window.addEventListener('algebench:sliderchange',render);
     document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});

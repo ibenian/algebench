@@ -9305,6 +9305,12 @@ function setupStepPlayer() {
 		});
 	}
 	window.addEventListener("algebench:playbackpause", pause);
+	window.addEventListener("algebench:narrationoff", () => {
+		if (narrator.on) {
+			narrator.set(false);
+			paintNarrate();
+		}
+	});
 	window.addEventListener("algebench:navchange", refresh);
 	window.addEventListener("algebench:sliderchange", render);
 	document.addEventListener("visibilitychange", () => {
@@ -29510,6 +29516,8 @@ if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) =>
 * Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
 * shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
 */
+/** takesOver: the prompt starts a conversation the reader drives (it waits for their answers), so playback stops
+*  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
 var COMMON_PROMPTS = [
 	{
 		label: "Describe the problem",
@@ -29537,23 +29545,28 @@ var COMMON_PROMPTS = [
 	},
 	{
 		label: "Guide me",
+		takesOver: true,
 		prompt: "Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on."
 	},
 	{
 		label: "Ask me about the current step",
+		takesOver: true,
 		prompt: "Ask me one question about the current step to check my understanding. Wait for my answer before explaining."
 	},
 	{
 		label: "Ask me about the current scene",
+		takesOver: true,
 		prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."
 	},
 	{
 		label: "Quiz mode",
+		takesOver: true,
 		prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."
 	},
 	{
 		label: "Interview mode",
 		display: "🎤 Interview mode",
+		takesOver: true,
 		prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."
 	},
 	{
@@ -29562,7 +29575,7 @@ var COMMON_PROMPTS = [
 	}
 ];
 /** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
-function usePrompt(text, e, display) {
+function usePrompt(text, e, display, takesOver = false) {
 	if (e.metaKey || e.ctrlKey) {
 		const input = document.getElementById("chat-input");
 		if (input) {
@@ -29570,7 +29583,13 @@ function usePrompt(text, e, display) {
 			input.focus();
 			input.dispatchEvent(new Event("input"));
 		}
-	} else sendChatMessage$1(text, display ? { display } : void 0);
+	} else {
+		if (takesOver) {
+			window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+			window.dispatchEvent(new CustomEvent("algebench:narrationoff"));
+		}
+		sendChatMessage$1(text, display ? { display } : void 0);
+	}
 }
 function setPresetPrompts$1(prompts) {
 	_presetPrompts = prompts || [];
@@ -29619,7 +29638,7 @@ function morePromptsMenu() {
 			toggle.focus();
 		}
 	};
-	for (const { label, prompt, display } of COMMON_PROMPTS) {
+	for (const { label, prompt, display, takesOver } of COMMON_PROMPTS) {
 		const item = document.createElement("button");
 		item.type = "button";
 		item.className = "preset-more-item";
@@ -29628,7 +29647,7 @@ function morePromptsMenu() {
 		item.title = prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
 		item.addEventListener("click", (e) => {
 			close();
-			usePrompt(prompt, e, display);
+			usePrompt(prompt, e, display, takesOver);
 		});
 		menu.appendChild(item);
 	}

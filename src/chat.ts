@@ -144,7 +144,9 @@ if (typeof window !== 'undefined') {
  * Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
  * shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
  */
-const COMMON_PROMPTS: {label: string; prompt: string; display?: string}[] = [
+/** takesOver: the prompt starts a conversation the reader drives (it waits for their answers), so playback stops
+ *  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
+const COMMON_PROMPTS: {label: string; prompt: string; display?: string; takesOver?: boolean}[] = [
     // Understand the question before any answer: the solution, the pattern and the code stay out of it.
     {label: 'Describe the problem', prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."},
     {label: "1-sentence gist", prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."},
@@ -153,19 +155,19 @@ const COMMON_PROMPTS: {label: string; prompt: string; display?: string}[] = [
     {label: 'Rephrase from first principles', prompt: "Take what you just explained and say it again from first principles, in the plainest words you can: what is really going on underneath, stripped of jargon, notation and caveats. Rough and loose is fine as long as the core idea lands. Don't add anything new; keep it short."},
     {label: 'Walk me through this view', prompt: 'Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate.'},
     {label: 'Walk me through key points', prompt: 'Walk me through the key points of this scene, one at a time, as a short list.'},
-    {label: 'Guide me', prompt: 'Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on.'},
-    {label: 'Ask me about the current step', prompt: 'Ask me one question about the current step to check my understanding. Wait for my answer before explaining.'},
-    {label: 'Ask me about the current scene', prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."},
+    {label: 'Guide me', takesOver: true, prompt: 'Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on.'},
+    {label: 'Ask me about the current step', takesOver: true, prompt: 'Ask me one question about the current step to check my understanding. Wait for my answer before explaining.'},
+    {label: 'Ask me about the current scene', takesOver: true, prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."},
     // Quiz mode lasts beyond one reply: the request stays in the history, so the tutor keeps asking until told otherwise.
-    {label: 'Quiz mode', prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."},
+    {label: 'Quiz mode', takesOver: true, prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."},
     // Interview mode lasts like quiz mode, and steers by where the reader is: the question at the start, guiding
     // questions mid-run. Its options arrive as preset prompt chips, refreshed each turn.
-    {label: 'Interview mode', display: '🎤 Interview mode', prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."},
+    {label: 'Interview mode', display: '🎤 Interview mode', takesOver: true, prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."},
     {label: 'Surprise me!', prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."},
 ];
 
 /** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
-function usePrompt(text: string, e: MouseEvent, display?: string): void {
+function usePrompt(text: string, e: MouseEvent, display?: string, takesOver = false): void {
     if (e.metaKey || e.ctrlKey) {
         const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
         if (input) {
@@ -174,6 +176,10 @@ function usePrompt(text: string, e: MouseEvent, display?: string): void {
             input.dispatchEvent(new Event('input'));
         }
     } else {
+        if (takesOver) {
+            window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+            window.dispatchEvent(new CustomEvent('algebench:narrationoff'));
+        }
         sendChatMessage(text, display ? { display } : undefined);
     }
 }
@@ -220,14 +226,14 @@ function morePromptsMenu(): HTMLElement {
     };
     const outside = (e: Event) => { if (!wrap.contains(e.target as Node)) close(); };
     const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') { close(); toggle.focus(); } };
-    for (const {label, prompt, display} of COMMON_PROMPTS) {
+    for (const {label, prompt, display, takesOver} of COMMON_PROMPTS) {
         const item = document.createElement('button');
         item.type = 'button';
         item.className = 'preset-more-item';
         item.setAttribute('role', 'menuitem');
         item.textContent = label;
         item.title = prompt + '\n\nClick to send · ⌘/Ctrl-click to edit';
-        item.addEventListener('click', (e) => { close(); usePrompt(prompt, e, display); });
+        item.addEventListener('click', (e) => { close(); usePrompt(prompt, e, display, takesOver); });
         menu.appendChild(item);
     }
     toggle.addEventListener('click', () => {
