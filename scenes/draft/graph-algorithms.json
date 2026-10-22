@@ -1983,6 +1983,7 @@
               "id": "adj-u",
               "type": "array",
               "label": "adj[u]",
+              "codeSymbol": "adj[u]",
               "labelSide": "left",
               "origin": [4.6, 3.4, 0],
               "cellSize": 1.1,

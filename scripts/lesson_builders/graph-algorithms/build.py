@@ -399,7 +399,7 @@ def dfs_scene(header):
              {'indexExpr': f"dataTable('trace', frame, concat('kids', idx))", 'pinned': True, 'arrow': True, 'bendExpr': '0', 'color': '#77bfae',
               'highlightExpr': 'true'}]},
         # The current node's neighbour list, with v walking along it.
-        {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'labelSide': 'left', 'origin': [4.6, 3.4, 0], 'cellSize': 1.1,
+        {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [4.6, 3.4, 0], 'cellSize': 1.1,
          'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
          'lengthExpr': f"arrayCount({tr('adjU')})", 'valueExpr': f"arrayAt({tr('adjU')}, idx)",
          'highlightExpr': f"idx == {tr('vi')}",

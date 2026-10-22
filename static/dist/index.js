@@ -13247,7 +13247,11 @@ function renderArray(el, _view, decorate) {
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
 				illuminate([...illuminated], delta.removed);
-				if (illuminated.size || delta.removed.length) flashSymbols([el.id, el.label].filter((v) => !!v));
+				if (illuminated.size || delta.removed.length) flashSymbols([
+					el.id,
+					el.label,
+					symbol
+				].filter((v) => !!v));
 			}
 			updateTitle();
 			decoration?.resize(next);
@@ -13357,7 +13361,7 @@ function renderArray(el, _view, decorate) {
 		}
 	}) : null;
 	let symbolLit = false;
-	const symbol = el.id;
+	const symbol = el.codeSymbol ? el.codeSymbol.replace(/\s+/g, "") : el.id;
 	const pointing = {
 		cells: false,
 		title: false

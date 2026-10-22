@@ -1003,6 +1003,10 @@ export type Element = {
    */
   cellCornerRadius?: number;
   /**
+   * ARRAY / DICT. The code expression this array shows, when its id cannot be it, e.g. "adj[u]" (ids cannot hold brackets). Pointing at that expression in the Code panel lights the array's title, and pointing at the array lights the expression. Default: the id.
+   */
+  codeSymbol?: string;
+  /**
    * ARRAY / DICT. Math.js expression giving each cell's key, evaluated per cell with 'idx' and 'value' bound; the key is shown where an array shows its index, printed as Python would ('a', 3, (1, 2) for a tuple). A 'dict' element is an array with keys: its cells are the entries in insertion order. Example: "arrayAt(dataTable('trace', frame, 'keys'), idx)".
    */
   keyExpr?: string;

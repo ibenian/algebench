@@ -321,7 +321,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             illuminated=new Set([...delta.changed,...delta.added]);
             illuminate([...illuminated],delta.removed);
             // Changed cells light the array's variable where it is executing (by id, or by its title).
-            if(illuminated.size||delta.removed.length)flashSymbols([el.id,el.label].filter((v):v is string=>!!v));
+            if(illuminated.size||delta.removed.length)flashSymbols([el.id,el.label,symbol].filter((v):v is string=>!!v));
         }
         updateTitle();
         decoration?.resize(next);
@@ -395,10 +395,11 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             return true;
         },
     }) : null;
-    // Code symbols: the array is the variable named by its id. Pointing at its cells or its title lights that
-    // variable in the Code panel; pointing at the variable there (or at the array) lights the array's title.
+    // Code symbols: the array is the variable named by codeSymbol (an expression such as adj[u], whitespace
+    // removed), else by its id. Pointing at its cells or its title lights that variable in the Code panel;
+    // pointing at the variable there (or at the array) lights the array's title.
     let symbolLit=false;
-    const symbol=el.id;
+    const symbol=el.codeSymbol?el.codeSymbol.replace(/\s+/g,''):el.id;
     const pointing={cells:false,title:false};
     const point=(part:keyof typeof pointing,now:boolean)=>{
         const was=pointing.cells||pointing.title;
