@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE, topoLine,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE, topoLine, twoSumTrace, subarraySumTrace, HASH_MAP_SOURCE, hashLine,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -47,6 +47,8 @@ const list = (v: unknown) => `[${(v as unknown[]).join(', ')}]`;
 const PROBLEMS: Record<string, { problem: string; example?: string }> = {
     'prefix-sum': { problem: 'Given an array, answer many queries of the form "what is the sum of nums[i..j]?"',
         example: `nums = ${list(IN.prefix.nums)}: ${IN.prefix.queries.map(([i, j]) => `sum(${i}..${j}) = ${IN.prefix.nums.slice(i, j + 1).reduce((a, b) => a + b, 0)}`).join(', ')}.` },
+    'hash-map': { problem: 'Given an unsorted list and a target, find two numbers that add up to the target, and return their indices.',
+        example: `nums = ${list(IN.hashMap.nums)}, target = ${IN.hashMap.target} → ${end(twoSumTrace(IN.hashMap.nums, IN.hashMap.target)).result}.` },
     'two-pointers': { problem: 'Given a sorted array and a target, find two numbers that add up to the target, and return their indices.',
         example: (() => { const f = end(twoPointersTrace(IN.twoPointers.nums, IN.twoPointers.target)); return `nums = ${list(IN.twoPointers.nums)}, target = ${IN.twoPointers.target} → indices ${f.left} and ${f.right} (${IN.twoPointers.nums[f.left as number]} + ${IN.twoPointers.nums[f.right as number]}).`; })() },
     'dp-2d': { problem: 'Given two strings, find the length of their longest common subsequence: letters in the same order, not necessarily adjacent.',
@@ -188,7 +190,8 @@ const DECISIONS: { category: string; signals: { signal: string; pattern: string;
         { signal: 'pair or triple?', pattern: 'Two pointers', scene: 'two-pointers', problems: ['Two Sum II', '3Sum'] },
         { signal: 'find a value fast?', pattern: 'Binary search', scene: 'rotated-search', problems: ['Search in Rotated Sorted Array', 'Find Peak Element'] } ] },
     { category: 'Ranges in an array', signals: [
-        { signal: 'many range sums?', pattern: 'Prefix sum', scene: 'prefix-sum', problems: ['Range Sum Query', 'Subarray Sum Equals K'] },
+        { signal: 'many range sums?', pattern: 'Prefix sum', scene: 'prefix-sum', problems: ['Range Sum Query', 'Product of Array Except Self'] },
+        { signal: 'seen it before?', pattern: 'Hash map', scene: 'hash-map', problems: ['Two Sum', 'Subarray Sum Equals K'] },
         { signal: 'window of size k?', pattern: 'Sliding window', scene: 'sliding-window', problems: ['Max Sum of k Consecutive', 'Longest Substring Without Repeating'] },
         { signal: 'best sum, any length?', pattern: 'Kadane', scene: 'kadane', problems: ['Maximum Subarray'] },
         { signal: 'max of each window?', pattern: 'Monotonic queue', scene: 'monotonic-queue', problems: ['Sliding Window Maximum'] } ] },
@@ -290,6 +293,7 @@ Most interview problems are variations on a small set of patterns. The skill is 
 | Signal in the problem | Pattern | Typical cost |
 | --- | --- | --- |
 | Many range-sum queries on a fixed array | Running totals (prefix sum) | O(n) build, O(1) per query |
+| Unsorted data: "have I seen this, or its partner, before?" | Remember what you've seen (hash map) | O(n), O(n) space |
 | Sorted array, find a pair or triple | Squeeze from both ends (two pointers) | O(n) |
 | Best contiguous subarray or substring | Slide a window (sliding window) | O(n) |
 | Largest sum of a contiguous subarray, any length | Keep the best running sum (Kadane) | O(n), O(1) space |
@@ -358,6 +362,88 @@ ${MD_TAIL}
     ],
 });
 
+// ── Hash map: Two Sum, then subarrays summing to k, both remembering what they have seen in a dict ──
+(() => {
+    const { nums, target, sums, k } = IN.hashMap;
+    const twoSum = twoSumTrace(nums, target), sub = subarraySumTrace(sums, k);
+    const L1 = (t: string) => hashLine('two_sum', t), L2 = (t: string) => hashLine('subarray_sum', t);
+    const ref = (line: number) => ({ file: 'hash-map', line });
+    // A dict over a table's keys / vals columns, the entry being read or written lit.
+    const dict = (id: string, c: (col: string) => string, origin: number[], extra: Json = {}): Json => ({
+        id, type: 'dict', label: id, origin, labelSide: 'left', cellSize: 1.35, fontSize: 16, indexFontSize: 10, axisLabels: ARRAY_TEXT,
+        lengthExpr: `arrayCount(${c('keys')})`, keyExpr: `arrayAt(${c('keys')}, idx)`, valueExpr: `arrayAt(${c('vals')}, idx)`,
+        highlightExpr: `idx == ${c('look')}`, ...extra,
+    });
+    // Two Sum: nums with i; seen maps each number to its index, and each entry points back at that cell. On a
+    // hit, nums[i] points at the entry for its partner.
+    const found = `${tr('cond')} == 1`;
+    const twoSumElements: Json[] = [
+        array('nums', 'nums', [-4.4, 2.4, 0], { from: inp('nums'), highlightExpr: `idx == ${tr('i')}`,
+            markers: [marker('i', tr('i'), PINK, `${tr('i')} >= 0`)],
+            connectTo: { object: 'seen', indexExpr: `idx == ${tr('i')} and ${found} ? ${tr('look')} : -1`, arrow: true, pinned: true, color: GOLD } }),
+        dict('seen', tr, [-4.4, -0.8, 0], {
+            markers: [marker('need', tr('look'), GOLD, `${found}`)],
+            connectTo: { object: 'nums', indexExpr: 'value', arrow: true, pinned: true, color: '#7f93aa',
+                highlightExpr: `idx == ${tr('look')} and ${found}` } }),
+        { ...label('i', `${tr('i')} < 0 ? 'i: —' : concat('i = ', ${tr('i')})`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: ref(L1('for i, num')) },
+        { ...label('num', `${tr('i')} < 0 ? 'num: —' : concat('num = ', ${tr('num')})`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: ref(L1('for i, num')) },
+        { ...label('need', `${tr('hasNeed')} == 0 ? 'need: —' : concat('need = ', ${tr('need')})`, [4.6, -3.6, 0]), codeRef: ref(L1('need = target - num')) },
+        { ...label('cond', `${tr('cond')} < 0 ? 'need in seen: —' : (${found} ? 'need in seen → True' : 'need in seen → False')`, [4.6, -3.6, 0],
+            ['seen', `${found} ? ${tr('look')} : -1`], `${tr('line')} == ${L1('if need in seen')}`), codeRef: ref(L1('if need in seen')) },
+        { ...label('result', tr('returned'), [4.6, -3.6, 0]), codeRef: ref(L1('return [seen[need], i]')) },
+    ];
+    // Subarray sum: count maps each prefix sum to how often it has appeared; a subarray ending here sums to k
+    // once for each earlier prefix equal to prefix − k.
+    const sb = (col: string) => `dataTable('hm_sub', frame, '${col}')`;
+    const subElements: Json[] = [
+        array('sums', 'nums', [-4.4, 2.4, 0], { from: inp('sums'), highlightExpr: `idx <= ${sb('i')}`,
+            markers: [marker('num', sb('i'), PINK, `${sb('i')} >= 0`)] }),
+        dict('count', sb, [-4.4, -0.8, 0]),
+        { ...label('num', `${sb('i')} < 0 ? 'num: —' : concat('num = ', ${sb('num')})`, [4.6, -3.6, 0], ['sums', sb('i')]), codeRef: ref(L2('for num in nums')) },
+        { ...label('prefix', `concat('prefix = ', ${sb('prefix')})`, [4.6, -3.6, 0]), codeRef: ref(L2('prefix += num')) },
+        { ...label('need', `${sb('i')} < 0 ? 'prefix - k: —' : concat('prefix - k = ', ${sb('need')})`, [4.6, -3.6, 0]), codeRef: ref(L2('total += count.get')) },
+        { ...label('got', sb('gotText'), [4.6, -3.6, 0],
+            ['count', `${sb('line')} == ${L2('total += count.get')} ? ${sb('look')} : -1`], `${sb('line')} == ${L2('total += count.get')}`), codeRef: ref(L2('total += count.get')) },
+        { ...label('total', `concat('total = ', ${sb('total')})`, [4.6, -3.6, 0]), codeRef: ref(L2('return total')) },
+    ];
+    pattern({
+        id: 'hash-map', title: "Remember what you've seen (hash map)", file: 'hash_map.py', source: HASH_MAP_SOURCE,
+        input: { nums, target, sums, k }, trace: twoSum,
+        more: {
+            data: { hm_sub: sub },
+            steps: [{
+                id: 'subarray-sum', title: 'Count by prefix (subarray sum = k)', description: 'Subarrays summing to k: count earlier prefix sums in a dict.',
+                descriptionExpr: `dataTable('hm_sub', frame, 'message')`,
+                remove: [{ id: '*' }, { type: 'slider' }],
+                sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: sub.length - 1, step: 1, default: 0 }],
+                codeRef: { file: 'hash-map', lineExpr: `dataTable('hm_sub', frame, 'line')` },
+                add: subElements,
+            }],
+            locations: sub.map((f, snapshot) => ({ line: f.line, scene: 'hash-map', step: 'subarray-sum', snapshot, label: `Subarray sum · ${f.message}` })),
+        },
+        markdown: `# Remember what you've seen (hash map)
+
+**Signal:** unsorted data and a question about pairs or earlier values: "two numbers that sum to…", "have I seen this before?", "how many times…", "first repeat".
+
+A **dict** (hash map) answers "have I seen this?" in O(1) on average, so one pass can do what nested loops do in O(n²). Walk the input once; at each element, **look up** what you need from the past, then **record** the current element for the elements still to come.
+
+## 1. Two Sum (this step)
+
+For each \`num\`, its partner is \`need = target − num\`. If \`need\` is already a key in \`seen\`, the answer is \`[seen[need], i]\`; otherwise remember \`seen[num] = i\`. Each entry in \`seen\` points back at the cell of \`nums\` it indexes; on a hit, \`nums[i]\` points at its partner's entry. O(n) time and O(n) space, against O(n²) for checking every pair. The sorted version needs no dict: see the two-pointers scene.
+
+## 2. Count by prefix (next step)
+
+Subarrays summing to \`k\`: a subarray ending here sums to \`k\` exactly when an earlier **prefix sum** equals \`prefix − k\`. So keep \`count\`, how often each prefix sum has appeared, starting with \`{0: 1}\` for the empty prefix, and add \`count.get(prefix − k, 0)\` at each step. This works with negative numbers, where a sliding window cannot.
+
+${MD_TAIL}
+
+**Practice:** Two Sum, Contains Duplicate, Subarray Sum Equals K, Longest Consecutive Sequence, Group Anagrams.`,
+        prompt: 'Explain why a dict turns the pair search into one pass: look up first, then record. Ask the learner to predict, before each lookup, whether need is already in seen, and for subarray sums, how many subarrays end at the current index.',
+        elements: twoSumElements,
+    });
+    const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
+    Object.assign(first, { title: 'Find the partner (Two Sum)', description: 'Two Sum: look up target − num among the numbers seen so far, then remember num.' });
+})();
 // ── Two pointers ──
 pattern({
     id: 'two-pointers', title: 'Squeeze from both ends (two pointers)', file: 'two_pointers.py', source: TWO_POINTERS_SOURCE,
@@ -1623,7 +1709,7 @@ ${MD_TAIL}
 
 // Simplest first: arrays, strings, stack/queue/heap, linked structures, trees and graphs, then search over choices.
 const ORDER = ['overview',
-    'prefix-sum', 'two-pointers', 'sliding-window', 'kadane', 'rotated-search', 'merge-intervals', 'greedy', 'bit-manipulation',   // arrays
+    'prefix-sum', 'hash-map', 'two-pointers', 'sliding-window', 'kadane', 'rotated-search', 'merge-intervals', 'greedy', 'bit-manipulation',   // arrays
     'string-matching', 'trie',                                                                                        // strings
     'monotonic-stack', 'monotonic-queue', 'top-k',                                                                    // stack, queue, heap
     'fast-slow', 'linked-list-reversal',                                                                              // linked structures

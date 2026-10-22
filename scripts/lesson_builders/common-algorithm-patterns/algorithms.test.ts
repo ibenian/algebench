@@ -5,10 +5,10 @@ import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../../../src/array-operations.js';
 import {
-    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,topoTrace,topoDfsTrace,
+    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,topoTrace,topoDfsTrace,twoSumTrace,subarraySumTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
-    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,RECURSION_SOURCE,SUBSETS_SOURCE,TOPO_SOURCE,
+    PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,RECURSION_SOURCE,SUBSETS_SOURCE,TOPO_SOURCE,HASH_MAP_SOURCE,
 } from './algorithms.js';
 import type {Frame} from './algorithms.js';
 import {PATTERN_INPUTS as IN} from './inputs.js';
@@ -245,6 +245,17 @@ test('topological sort by DFS reverses the post-order, with no in-degrees, and f
  for(const fr of trace)assert.ok((fr.calls as number[]).length>=(fr.state as number[]).filter(x=>x===1).length);
  assert.equal(last(topoDfsTrace(3,[[1,0],[2,1],[1,2]]).trace).result,'[]');
 });
+test('two sum with a dict finds the pair in one pass; subarray sum counts by earlier prefixes',()=>{
+ const t=twoSumTrace([4,11,7,2,15,5],9),f=last(t);
+ assert.equal(f.result,'[2, 3]');assert.deepEqual(f.keys,[4,11,7],'the hit returns before 2 is stored');
+ // Brute force agrees on every small case, and each number is looked up once.
+ const brute=(a:number[],t:number)=>{for(let j=0;j<a.length;j++)for(let i=0;i<j;i++)if(a[i]!+a[j]! === t)return `[${i}, ${j}]`;return '[]';};
+ for(const [a,tg] of [[[3,3],6],[[1,2,3],7],[[5,1,4,2],6],[[2,7,11,15],9]] as [number[],number][])assert.equal(last(twoSumTrace(a,tg)).result,brute(a,tg));
+ const s=subarraySumTrace([1,2,1,2,1],3),g=last(s);
+ assert.equal(g.total,4);assert.deepEqual(g.keys,[0,1,3,4,6,7]);assert.deepEqual(g.vals,[1,1,1,1,1,1]);
+ const count=(a:number[],k:number)=>{let c=0;for(let i=0;i<a.length;i++){let x=0;for(let j=i;j<a.length;j++){x+=a[j]!;if(x===k)c++;}}return c;};
+ for(const [a,k] of [[[1,1,1],2],[[1,-1,0],0],[[3,4,7,2,-3,1,4,2],7]] as [number[],number][])assert.equal(last(subarraySumTrace(a,k)).total,count(a,k));
+});
 test('monotonic queue gives every window maximum and keeps the deque decreasing',()=>{
  const {nums,k}=IN.monoQueue,trace=monotonicQueueTrace(nums,k);
  assert.deepEqual(last(trace).out,nums.slice(0,nums.length-k+1).map((_,i)=>Math.max(...nums.slice(i,i+k))));
@@ -309,7 +320,7 @@ test('KMP finds every occurrence, including overlaps, and builds lps',()=>{
 test('every trace frame has the same keys and ends Done',()=>{
  for(const trace of [prefixSumTrace(IN.prefix.nums,IN.prefix.queries),twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target),
   slidingWindowTrace(IN.slidingWindow.nums,IN.slidingWindow.k),fastSlowTrace(IN.fastSlow.nums),monotonicStackTrace(IN.monotonic.temps),
-  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),powerTrace(IN.recursion.x,IN.recursion.n).trace,fibTrace(IN.recursion.fib).trace,subsetsTrace(IN.subsets.nums).trace,topoTrace(IN.topo.n,IN.topo.prerequisites).trace,topoDfsTrace(IN.topo.n,IN.topo.prerequisites).trace,
+  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),powerTrace(IN.recursion.x,IN.recursion.n).trace,fibTrace(IN.recursion.fib).trace,subsetsTrace(IN.subsets.nums).trace,topoTrace(IN.topo.n,IN.topo.prerequisites).trace,topoDfsTrace(IN.topo.n,IN.topo.prerequisites).trace,twoSumTrace(IN.hashMap.nums,IN.hashMap.target),subarraySumTrace(IN.hashMap.sums,IN.hashMap.k),
   monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k),greedyTrace(IN.greedy.nums),bitsTrace(IN.bits.nums),
   unionFindTrace(IN.unionFind.n,IN.unionFind.edges),kmpTrace(IN.kmp.text,IN.kmp.pattern)]){
   const keys=Object.keys(trace[0]!).sort();
@@ -339,6 +350,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
   'recursion':[RECURSION_SOURCE,powerTrace(IN.recursion.x,IN.recursion.n).trace],
   'backtracking':[SUBSETS_SOURCE,subsetsTrace(IN.subsets.nums).trace],
   'topological-sort':[TOPO_SOURCE,topoDfsTrace(IN.topo.n,IN.topo.prerequisites).trace],
+  'hash-map':[HASH_MAP_SOURCE,twoSumTrace(IN.hashMap.nums,IN.hashMap.target)],
   'monotonic-queue':[MONOTONIC_QUEUE_SOURCE,monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k)],
   'greedy':[GREEDY_SOURCE,greedyTrace(IN.greedy.nums)],
   'bit-manipulation':[BITS_SOURCE,bitsTrace(IN.bits.nums)],
@@ -361,11 +373,14 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
    const line=math.evaluate(scene.codeRef.lineExpr,scope);
    assert.equal(line,trace[frame]!.line);assert.ok(line>=1&&line<=lines);
    for(const el of scene.steps[0].add){
-    for(const key of ['textExpr','visibleExpr','highlightExpr','tooltipExpr'])if(el[key]&&el.type!=='array'&&el.type!=='stack')assert.doesNotThrow(()=>math.evaluate(el[key],scope),`${scene.id}/${el.id}.${key}`);
-    if(el.type!=='array'&&el.type!=='stack')continue;
+    // Arrays, stacks and dicts evaluate per cell, with idx (and value) bound.
+    const cells=['array','stack','dict'].includes(el.type);
+    for(const key of ['textExpr','visibleExpr','highlightExpr','tooltipExpr'])if(el[key]&&!cells)assert.doesNotThrow(()=>math.evaluate(el[key],scope),`${scene.id}/${el.id}.${key}`);
+    if(!cells)continue;
     const length=math.evaluate(el.lengthExpr,scope);
     for(let idx=0;idx<length;idx++){
      const value=math.evaluate(el.valueExpr,{...scope,idx});
+     if(el.keyExpr)assert.doesNotThrow(()=>math.evaluate(el.keyExpr,{...scope,idx,value}),`${scene.id}/${el.id}.keyExpr`);
      // The array renderer binds each cell's idx and value for highlightExpr.
      if(el.highlightExpr)assert.equal(typeof math.evaluate(el.highlightExpr,{...scope,idx,value}),'boolean',`${scene.id}/${el.id}.highlightExpr`);
     }

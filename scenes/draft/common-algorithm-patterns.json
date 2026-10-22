@@ -32,6 +32,54 @@
       ]
     },
     {
+      "id": "hash-map",
+      "path": "patterns/hash_map.py",
+      "language": "python",
+      "source": "def two_sum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        need = target - num\n        if need in seen:\n            return [seen[need], i]\n        seen[num] = i\n    return []\n\ndef subarray_sum(nums, k):\n    count = {0: 1}\n    prefix = total = 0\n    for num in nums:\n        prefix += num\n        total += count.get(prefix - k, 0)\n        count[prefix] = count.get(prefix, 0) + 1\n    return total",
+      "locations": [
+        {"line": 2, "scene": "hash-map", "step": "run", "snapshot": 0, "label": "Remember what you've seen (hash map) · seen starts empty: it will map each number to its index."},
+        {"line": 3, "scene": "hash-map", "step": "run", "snapshot": 1, "label": "Remember what you've seen (hash map) · i = 0, num = 4."},
+        {"line": 4, "scene": "hash-map", "step": "run", "snapshot": 2, "label": "Remember what you've seen (hash map) · need = 9 − 4 = 5: the partner that would make 9."},
+        {"line": 5, "scene": "hash-map", "step": "run", "snapshot": 3, "label": "Remember what you've seen (hash map) · 5 is not in seen: no earlier number pairs with 4."},
+        {"line": 7, "scene": "hash-map", "step": "run", "snapshot": 4, "label": "Remember what you've seen (hash map) · Remember 4 at index 0: seen[4] = 0."},
+        {"line": 3, "scene": "hash-map", "step": "run", "snapshot": 5, "label": "Remember what you've seen (hash map) · i = 1, num = 11."},
+        {"line": 4, "scene": "hash-map", "step": "run", "snapshot": 6, "label": "Remember what you've seen (hash map) · need = 9 − 11 = -2: the partner that would make 9."},
+        {"line": 5, "scene": "hash-map", "step": "run", "snapshot": 7, "label": "Remember what you've seen (hash map) · -2 is not in seen: no earlier number pairs with 11."},
+        {"line": 7, "scene": "hash-map", "step": "run", "snapshot": 8, "label": "Remember what you've seen (hash map) · Remember 11 at index 1: seen[11] = 1."},
+        {"line": 3, "scene": "hash-map", "step": "run", "snapshot": 9, "label": "Remember what you've seen (hash map) · i = 2, num = 7."},
+        {"line": 4, "scene": "hash-map", "step": "run", "snapshot": 10, "label": "Remember what you've seen (hash map) · need = 9 − 7 = 2: the partner that would make 9."},
+        {"line": 5, "scene": "hash-map", "step": "run", "snapshot": 11, "label": "Remember what you've seen (hash map) · 2 is not in seen: no earlier number pairs with 7."},
+        {"line": 7, "scene": "hash-map", "step": "run", "snapshot": 12, "label": "Remember what you've seen (hash map) · Remember 7 at index 2: seen[7] = 2."},
+        {"line": 3, "scene": "hash-map", "step": "run", "snapshot": 13, "label": "Remember what you've seen (hash map) · i = 3, num = 2."},
+        {"line": 4, "scene": "hash-map", "step": "run", "snapshot": 14, "label": "Remember what you've seen (hash map) · need = 9 − 2 = 7: the partner that would make 9."},
+        {"line": 5, "scene": "hash-map", "step": "run", "snapshot": 15, "label": "Remember what you've seen (hash map) · 7 is in seen: one lookup, O(1)."},
+        {"line": 6, "scene": "hash-map", "step": "run", "snapshot": 16, "label": "Remember what you've seen (hash map) · Found: nums[2] + nums[3] = 7 + 2 = 9. Return [2, 3]."},
+        {"line": 11, "scene": "hash-map", "step": "subarray-sum", "snapshot": 0, "label": "Subarray sum · count = {0: 1}: the empty prefix, before any number, has sum 0 once."},
+        {"line": 12, "scene": "hash-map", "step": "subarray-sum", "snapshot": 1, "label": "Subarray sum · prefix and total start at 0."},
+        {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 2, "label": "Subarray sum · num = 1."},
+        {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 3, "label": "Subarray sum · prefix = 1: the sum of everything up to here."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 4, "label": "Subarray sum · prefix − k = -2 was never seen: no subarray ending here sums to 3."},
+        {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 5, "label": "Subarray sum · count[1] = 1: one more prefix with sum 1."},
+        {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 6, "label": "Subarray sum · num = 2."},
+        {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 7, "label": "Subarray sum · prefix = 3: the sum of everything up to here."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 8, "label": "Subarray sum · prefix − k = 0 was seen 1 time: that many subarrays ending here sum to 3. total = 1."},
+        {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 9, "label": "Subarray sum · count[3] = 1: one more prefix with sum 3."},
+        {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 10, "label": "Subarray sum · num = 1."},
+        {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 11, "label": "Subarray sum · prefix = 4: the sum of everything up to here."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 12, "label": "Subarray sum · prefix − k = 1 was seen 1 time: that many subarrays ending here sum to 3. total = 2."},
+        {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 13, "label": "Subarray sum · count[4] = 1: one more prefix with sum 4."},
+        {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 14, "label": "Subarray sum · num = 2."},
+        {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 15, "label": "Subarray sum · prefix = 6: the sum of everything up to here."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 16, "label": "Subarray sum · prefix − k = 3 was seen 1 time: that many subarrays ending here sum to 3. total = 3."},
+        {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 17, "label": "Subarray sum · count[6] = 1: one more prefix with sum 6."},
+        {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 18, "label": "Subarray sum · num = 1."},
+        {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 19, "label": "Subarray sum · prefix = 7: the sum of everything up to here."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 20, "label": "Subarray sum · prefix − k = 4 was seen 1 time: that many subarrays ending here sum to 3. total = 4."},
+        {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 21, "label": "Subarray sum · count[7] = 1: one more prefix with sum 7."},
+        {"line": 17, "scene": "hash-map", "step": "subarray-sum", "snapshot": 22, "label": "Subarray sum · 4 subarrays sum to 3, found in one pass: O(n) time, O(n) space for the dict."}
+      ]
+    },
+    {
       "id": "two-pointers",
       "path": "patterns/two_pointers.py",
       "language": "python",
@@ -1383,18 +1431,18 @@
           "color": "#9dbde3"
         }
       ],
-      "markdown": "# Which pattern fits?\n\nMost interview problems are variations on a small set of patterns. The skill is recognizing the **signal** in the problem statement and reaching for the matching plan.\n\n| Signal in the problem | Pattern | Typical cost |\n| --- | --- | --- |\n| Many range-sum queries on a fixed array | Running totals (prefix sum) | O(n) build, O(1) per query |\n| Sorted array, find a pair or triple | Squeeze from both ends (two pointers) | O(n) |\n| Best contiguous subarray or substring | Slide a window (sliding window) | O(n) |\n| Largest sum of a contiguous subarray, any length | Keep the best running sum (Kadane) | O(n), O(1) space |\n| Sorted data with a twist (rotated, 2D) | Halve the search (binary search) | O(log n) |\n| Intervals, meetings, ranges | Merge overlapping ranges (intervals) | O(n log n) |\n| Choices where the locally best step is always safe | Take the best step now (greedy) | Often O(n) or O(n log n) |\n| Pairs cancelling, parity, bitmask subsets | Flip bits (bit manipulation) | O(n), O(1) space |\n| Find a pattern inside a long text | Find a word fast (KMP string matching) | O(n + m) |\n| Prefix lookups over many words | Build trie | O(word length) |\n| \"Next greater / smaller element\" | Next bigger value (monotonic stack) | O(n) |\n| Max or min of every window | Max of every window (monotonic queue) | O(n) |\n| k largest, k smallest, k most frequent | Keep the best k (heap) | O(n log k) |\n| Cycle, or \"find the duplicate\" in O(1) space | Tortoise and hare (fast & slow pointers) | O(n), O(1) space |\n| Reverse or reorder linked-list nodes | Flip the links (linked list reversal) | O(n), O(1) space |\n| Visit every tree node in a set order | Walk a tree (traversal orders) | O(n) |\n| Explore every path, depth first (DFS) | Walk a tree (traversal orders) | O(V + E) |\n| Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |\n| Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |\n| Prerequisites, build order | Order by dependencies (topological sort) | O(V + E) |\n| Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |\n| Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |\n| A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |\n| All permutations, subsets, placements | Try, undo, retry (backtracking) | Exponential, pruned |\n| Optimal value from overlapping subproblems | Reuse answers (dynamic programming) | Subproblems × work each |\n| Two sequences to align, or a grid walked right and down | Fill a table (2D dynamic programming) | O(m·n) |\n\nThe steps here walk the same map as a **decision tree**: start from what the problem gives you, ask which signal it shows, and follow it to the pattern. Move **Problem** to see real interview problems take their path, or click a node: a category or a signal picks a problem that shows it, and a pattern opens its scene.\n\nEach following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.",
+      "markdown": "# Which pattern fits?\n\nMost interview problems are variations on a small set of patterns. The skill is recognizing the **signal** in the problem statement and reaching for the matching plan.\n\n| Signal in the problem | Pattern | Typical cost |\n| --- | --- | --- |\n| Many range-sum queries on a fixed array | Running totals (prefix sum) | O(n) build, O(1) per query |\n| Unsorted data: \"have I seen this, or its partner, before?\" | Remember what you've seen (hash map) | O(n), O(n) space |\n| Sorted array, find a pair or triple | Squeeze from both ends (two pointers) | O(n) |\n| Best contiguous subarray or substring | Slide a window (sliding window) | O(n) |\n| Largest sum of a contiguous subarray, any length | Keep the best running sum (Kadane) | O(n), O(1) space |\n| Sorted data with a twist (rotated, 2D) | Halve the search (binary search) | O(log n) |\n| Intervals, meetings, ranges | Merge overlapping ranges (intervals) | O(n log n) |\n| Choices where the locally best step is always safe | Take the best step now (greedy) | Often O(n) or O(n log n) |\n| Pairs cancelling, parity, bitmask subsets | Flip bits (bit manipulation) | O(n), O(1) space |\n| Find a pattern inside a long text | Find a word fast (KMP string matching) | O(n + m) |\n| Prefix lookups over many words | Build trie | O(word length) |\n| \"Next greater / smaller element\" | Next bigger value (monotonic stack) | O(n) |\n| Max or min of every window | Max of every window (monotonic queue) | O(n) |\n| k largest, k smallest, k most frequent | Keep the best k (heap) | O(n log k) |\n| Cycle, or \"find the duplicate\" in O(1) space | Tortoise and hare (fast & slow pointers) | O(n), O(1) space |\n| Reverse or reorder linked-list nodes | Flip the links (linked list reversal) | O(n), O(1) space |\n| Visit every tree node in a set order | Walk a tree (traversal orders) | O(n) |\n| Explore every path, depth first (DFS) | Walk a tree (traversal orders) | O(V + E) |\n| Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |\n| Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |\n| Prerequisites, build order | Order by dependencies (topological sort) | O(V + E) |\n| Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |\n| Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |\n| A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |\n| All permutations, subsets, placements | Try, undo, retry (backtracking) | Exponential, pruned |\n| Optimal value from overlapping subproblems | Reuse answers (dynamic programming) | Subproblems × work each |\n| Two sequences to align, or a grid walked right and down | Fill a table (2D dynamic programming) | O(m·n) |\n\nThe steps here walk the same map as a **decision tree**: start from what the problem gives you, ask which signal it shows, and follow it to the pattern. Move **Problem** to see real interview problems take their path, or click a node: a category or a signal picks a problem that shows it, and a pattern opens its scene.\n\nEach following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.",
       "prompt": "Help the learner recognize which pattern fits a problem. Ask them to name the signal (sorted input, contiguous range, cycle, next-greater, overlapping subproblems) before naming a pattern. Encourage predicting the pattern before revealing it.",
       "data": {
         "dt_root": [
           {"text": "What are you given?", "p": -1, "kind": 0, "pick": -1},
           {"text": "Sorted array", "p": 0, "kind": 1, "pick": 0},
           {"text": "Ranges in an array", "p": 0, "kind": 1, "pick": 4},
-          {"text": "Order & selection", "p": 0, "kind": 1, "pick": 10},
-          {"text": "Strings", "p": 0, "kind": 1, "pick": 18},
-          {"text": "Linked list", "p": 0, "kind": 1, "pick": 21},
-          {"text": "Trees & graphs", "p": 0, "kind": 1, "pick": 25},
-          {"text": "Choices", "p": 0, "kind": 1, "pick": 32}
+          {"text": "Order & selection", "p": 0, "kind": 1, "pick": 12},
+          {"text": "Strings", "p": 0, "kind": 1, "pick": 20},
+          {"text": "Linked list", "p": 0, "kind": 1, "pick": 23},
+          {"text": "Trees & graphs", "p": 0, "kind": 1, "pick": 27},
+          {"text": "Choices", "p": 0, "kind": 1, "pick": 34}
         ],
         "dp_root": [
           {
@@ -1423,9 +1471,19 @@
             "why": "Range Sum Query: ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
           },
           {
+            "name": "Product of Array Except Self",
+            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "why": "Product of Array Except Self: ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
+          },
+          {
+            "name": "Two Sum",
+            "on": [1, 0, 1, 0, 0, 0, 0, 0],
+            "why": "Two Sum: ranges in an array → seen it before? → Hash map. Its step shows the whole branch."
+          },
+          {
             "name": "Subarray Sum Equals K",
             "on": [1, 0, 1, 0, 0, 0, 0, 0],
-            "why": "Subarray Sum Equals K: ranges in an array → many range sums? → Prefix sum. Its step shows the whole branch."
+            "why": "Subarray Sum Equals K: ranges in an array → seen it before? → Hash map. Its step shows the whole branch."
           },
           {
             "name": "Max Sum of k Consecutive",
@@ -1626,42 +1684,54 @@
           {"text": "Ranges in an array", "p": -1, "kind": 0, "pick": -1, "scene": ""},
           {"text": "many range sums?", "p": 0, "kind": 1, "pick": 0, "scene": ""},
           {"text": "Prefix sum", "p": 1, "kind": 2, "pick": -1, "scene": "prefix-sum"},
-          {"text": "window of size k?", "p": 0, "kind": 1, "pick": 2, "scene": ""},
-          {"text": "Sliding window", "p": 3, "kind": 2, "pick": -1, "scene": "sliding-window"},
-          {"text": "best sum, any length?", "p": 0, "kind": 1, "pick": 4, "scene": ""},
-          {"text": "Kadane", "p": 5, "kind": 2, "pick": -1, "scene": "kadane"},
-          {"text": "max of each window?", "p": 0, "kind": 1, "pick": 5, "scene": ""},
-          {"text": "Monotonic queue", "p": 7, "kind": 2, "pick": -1, "scene": "monotonic-queue"}
+          {"text": "seen it before?", "p": 0, "kind": 1, "pick": 2, "scene": ""},
+          {"text": "Hash map", "p": 3, "kind": 2, "pick": -1, "scene": "hash-map"},
+          {"text": "window of size k?", "p": 0, "kind": 1, "pick": 4, "scene": ""},
+          {"text": "Sliding window", "p": 5, "kind": 2, "pick": -1, "scene": "sliding-window"},
+          {"text": "best sum, any length?", "p": 0, "kind": 1, "pick": 6, "scene": ""},
+          {"text": "Kadane", "p": 7, "kind": 2, "pick": -1, "scene": "kadane"},
+          {"text": "max of each window?", "p": 0, "kind": 1, "pick": 7, "scene": ""},
+          {"text": "Monotonic queue", "p": 9, "kind": 2, "pick": -1, "scene": "monotonic-queue"}
         ],
         "dp_1": [
           {
             "name": "Range Sum Query",
-            "on": [1, 1, 1, 0, 0, 0, 0, 0, 0],
+            "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
             "why": "Range Sum Query: ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
           },
           {
+            "name": "Product of Array Except Self",
+            "on": [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "why": "Product of Array Except Self: ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
+          },
+          {
+            "name": "Two Sum",
+            "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+            "why": "Two Sum: ranges in an array, and the problem asks \"seen it before?\" → Hash map."
+          },
+          {
             "name": "Subarray Sum Equals K",
-            "on": [1, 1, 1, 0, 0, 0, 0, 0, 0],
-            "why": "Subarray Sum Equals K: ranges in an array, and the problem asks \"many range sums?\" → Prefix sum."
+            "on": [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+            "why": "Subarray Sum Equals K: ranges in an array, and the problem asks \"seen it before?\" → Hash map."
           },
           {
             "name": "Max Sum of k Consecutive",
-            "on": [1, 0, 0, 1, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
             "why": "Max Sum of k Consecutive: ranges in an array, and the problem asks \"window of size k?\" → Sliding window."
           },
           {
             "name": "Longest Substring Without Repeating",
-            "on": [1, 0, 0, 1, 1, 0, 0, 0, 0],
+            "on": [1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
             "why": "Longest Substring Without Repeating: ranges in an array, and the problem asks \"window of size k?\" → Sliding window."
           },
           {
             "name": "Maximum Subarray",
-            "on": [1, 0, 0, 0, 0, 1, 1, 0, 0],
+            "on": [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
             "why": "Maximum Subarray: ranges in an array, and the problem asks \"best sum, any length?\" → Kadane."
           },
           {
             "name": "Sliding Window Maximum",
-            "on": [1, 0, 0, 0, 0, 0, 0, 1, 1],
+            "on": [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
             "why": "Sliding Window Maximum: ranges in an array, and the problem asks \"max of each window?\" → Monotonic queue."
           }
         ],
@@ -1887,7 +1957,7 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 38, "step": 1, "default": 0, "valueExpr": "dataTable('dp_root', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 40, "step": 1, "default": 0, "valueExpr": "dataTable('dp_root', problem, 'name')", "reset": true}
           ],
           "add": [
             {
@@ -1978,14 +2048,14 @@
             {"type": "slider"}
           ],
           "sliders": [
-            {"id": "problem", "label": "Problem", "min": 0, "max": 5, "step": 1, "default": 0, "valueExpr": "dataTable('dp_1', problem, 'name')", "reset": true}
+            {"id": "problem", "label": "Problem", "min": 0, "max": 7, "step": 1, "default": 0, "valueExpr": "dataTable('dp_1', problem, 'name')", "reset": true}
           ],
           "add": [
             {
               "id": "decisions",
               "type": "graph",
               "label": "",
-              "lengthExpr": "9",
+              "lengthExpr": "11",
               "valueExpr": "dataTable('dt_1', idx, 'text')",
               "treeLayout": {
                 "type": "tidy",
@@ -2783,6 +2853,808 @@
       ],
       "stepPlayback": {"slider": "frame", "intervalMs": 1200},
       "codeRef": {"file": "prefix-sum", "lineExpr": "dataTable('trace', frame, 'line')"}
+    },
+    {
+      "id": "hash-map",
+      "title": "Remember what you've seen (hash map)",
+      "description": "Given an unsorted list and a target, find two numbers that add up to the target, and return their indices.",
+      "range": [
+        [-7, 10],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 16],
+        "target": [0, 0, 0]
+      },
+      "data": {
+        "input": [
+          {
+            "nums": [4, 11, 7, 2, 15, 5],
+            "target": 9,
+            "sums": [1, 2, 1, 2, 1],
+            "k": 3
+          }
+        ],
+        "trace": [
+          {"i": -1, "num": 0, "need": 0, "hasNeed": 0, "keys": [], "vals": [], "look": -1, "cond": -1, "result": "—", "returned": "return: —", "line": 2, "message": "seen starts empty: it will map each number to its index.", "status": "Running", "running": 1},
+          {"i": 0, "num": 4, "need": 0, "hasNeed": 0, "keys": [], "vals": [], "look": -1, "cond": -1, "result": "—", "returned": "return: —", "line": 3, "message": "i = 0, num = 4.", "status": "Running", "running": 1},
+          {"i": 0, "num": 4, "need": 5, "hasNeed": 1, "keys": [], "vals": [], "look": -1, "cond": -1, "result": "—", "returned": "return: —", "line": 4, "message": "need = 9 − 4 = 5: the partner that would make 9.", "status": "Running", "running": 1},
+          {"i": 0, "num": 4, "need": 5, "hasNeed": 1, "keys": [], "vals": [], "look": -1, "cond": 0, "result": "—", "returned": "return: —", "line": 5, "message": "5 is not in seen: no earlier number pairs with 4.", "status": "Running", "running": 1},
+          {
+            "i": 0,
+            "num": 4,
+            "need": 5,
+            "hasNeed": 1,
+            "keys": [4],
+            "vals": [0],
+            "look": 0,
+            "cond": 0,
+            "result": "—",
+            "returned": "return: —",
+            "line": 7,
+            "message": "Remember 4 at index 0: seen[4] = 0.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 11,
+            "need": 5,
+            "hasNeed": 0,
+            "keys": [4],
+            "vals": [0],
+            "look": -1,
+            "cond": -1,
+            "result": "—",
+            "returned": "return: —",
+            "line": 3,
+            "message": "i = 1, num = 11.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 11,
+            "need": -2,
+            "hasNeed": 1,
+            "keys": [4],
+            "vals": [0],
+            "look": -1,
+            "cond": -1,
+            "result": "—",
+            "returned": "return: —",
+            "line": 4,
+            "message": "need = 9 − 11 = -2: the partner that would make 9.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 11,
+            "need": -2,
+            "hasNeed": 1,
+            "keys": [4],
+            "vals": [0],
+            "look": -1,
+            "cond": 0,
+            "result": "—",
+            "returned": "return: —",
+            "line": 5,
+            "message": "-2 is not in seen: no earlier number pairs with 11.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 11,
+            "need": -2,
+            "hasNeed": 1,
+            "keys": [4, 11],
+            "vals": [0, 1],
+            "look": 1,
+            "cond": 0,
+            "result": "—",
+            "returned": "return: —",
+            "line": 7,
+            "message": "Remember 11 at index 1: seen[11] = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 7,
+            "need": -2,
+            "hasNeed": 0,
+            "keys": [4, 11],
+            "vals": [0, 1],
+            "look": -1,
+            "cond": -1,
+            "result": "—",
+            "returned": "return: —",
+            "line": 3,
+            "message": "i = 2, num = 7.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 7,
+            "need": 2,
+            "hasNeed": 1,
+            "keys": [4, 11],
+            "vals": [0, 1],
+            "look": -1,
+            "cond": -1,
+            "result": "—",
+            "returned": "return: —",
+            "line": 4,
+            "message": "need = 9 − 7 = 2: the partner that would make 9.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 7,
+            "need": 2,
+            "hasNeed": 1,
+            "keys": [4, 11],
+            "vals": [0, 1],
+            "look": -1,
+            "cond": 0,
+            "result": "—",
+            "returned": "return: —",
+            "line": 5,
+            "message": "2 is not in seen: no earlier number pairs with 7.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 7,
+            "need": 2,
+            "hasNeed": 1,
+            "keys": [4, 11, 7],
+            "vals": [0, 1, 2],
+            "look": 2,
+            "cond": 0,
+            "result": "—",
+            "returned": "return: —",
+            "line": 7,
+            "message": "Remember 7 at index 2: seen[7] = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "need": 2,
+            "hasNeed": 0,
+            "keys": [4, 11, 7],
+            "vals": [0, 1, 2],
+            "look": -1,
+            "cond": -1,
+            "result": "—",
+            "returned": "return: —",
+            "line": 3,
+            "message": "i = 3, num = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "need": 7,
+            "hasNeed": 1,
+            "keys": [4, 11, 7],
+            "vals": [0, 1, 2],
+            "look": -1,
+            "cond": -1,
+            "result": "—",
+            "returned": "return: —",
+            "line": 4,
+            "message": "need = 9 − 2 = 7: the partner that would make 9.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "need": 7,
+            "hasNeed": 1,
+            "keys": [4, 11, 7],
+            "vals": [0, 1, 2],
+            "look": 2,
+            "cond": 1,
+            "result": "—",
+            "returned": "return: —",
+            "line": 5,
+            "message": "7 is in seen: one lookup, O(1).",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "need": 7,
+            "hasNeed": 1,
+            "keys": [4, 11, 7],
+            "vals": [0, 1, 2],
+            "look": 2,
+            "cond": 1,
+            "result": "[2, 3]",
+            "returned": "return [2, 3]",
+            "line": 6,
+            "message": "Found: nums[2] + nums[3] = 7 + 2 = 9. Return [2, 3].",
+            "status": "Done",
+            "running": 0
+          }
+        ],
+        "hm_sub": [
+          {
+            "i": -1,
+            "num": 0,
+            "prefix": 0,
+            "need": 0,
+            "got": -1,
+            "total": 0,
+            "keys": [0],
+            "vals": [1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 11,
+            "message": "count = {0: 1}: the empty prefix, before any number, has sum 0 once.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": -1,
+            "num": 0,
+            "prefix": 0,
+            "need": 0,
+            "got": -1,
+            "total": 0,
+            "keys": [0],
+            "vals": [1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 12,
+            "message": "prefix and total start at 0.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 0,
+            "num": 1,
+            "prefix": 0,
+            "need": 0,
+            "got": -1,
+            "total": 0,
+            "keys": [0],
+            "vals": [1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 13,
+            "message": "num = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 0,
+            "num": 1,
+            "prefix": 1,
+            "need": -2,
+            "got": -1,
+            "total": 0,
+            "keys": [0],
+            "vals": [1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 14,
+            "message": "prefix = 1: the sum of everything up to here.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 0,
+            "num": 1,
+            "prefix": 1,
+            "need": -2,
+            "got": 0,
+            "total": 0,
+            "keys": [0],
+            "vals": [1],
+            "look": -1,
+            "gotText": "count.get(-2, 0) = 0",
+            "line": 15,
+            "message": "prefix − k = -2 was never seen: no subarray ending here sums to 3.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 0,
+            "num": 1,
+            "prefix": 1,
+            "need": -2,
+            "got": 0,
+            "total": 0,
+            "keys": [0, 1],
+            "vals": [1, 1],
+            "look": 1,
+            "gotText": "count.get(-2, 0) = 0",
+            "line": 16,
+            "message": "count[1] = 1: one more prefix with sum 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 2,
+            "prefix": 1,
+            "need": -2,
+            "got": -1,
+            "total": 0,
+            "keys": [0, 1],
+            "vals": [1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 13,
+            "message": "num = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 2,
+            "prefix": 3,
+            "need": 0,
+            "got": -1,
+            "total": 0,
+            "keys": [0, 1],
+            "vals": [1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 14,
+            "message": "prefix = 3: the sum of everything up to here.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 2,
+            "prefix": 3,
+            "need": 0,
+            "got": 1,
+            "total": 1,
+            "keys": [0, 1],
+            "vals": [1, 1],
+            "look": 0,
+            "gotText": "count.get(0, 0) = 1",
+            "line": 15,
+            "message": "prefix − k = 0 was seen 1 time: that many subarrays ending here sum to 3. total = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 1,
+            "num": 2,
+            "prefix": 3,
+            "need": 0,
+            "got": 1,
+            "total": 1,
+            "keys": [0, 1, 3],
+            "vals": [1, 1, 1],
+            "look": 2,
+            "gotText": "count.get(0, 0) = 1",
+            "line": 16,
+            "message": "count[3] = 1: one more prefix with sum 3.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 1,
+            "prefix": 3,
+            "need": 0,
+            "got": -1,
+            "total": 1,
+            "keys": [0, 1, 3],
+            "vals": [1, 1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 13,
+            "message": "num = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 1,
+            "prefix": 4,
+            "need": 1,
+            "got": -1,
+            "total": 1,
+            "keys": [0, 1, 3],
+            "vals": [1, 1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 14,
+            "message": "prefix = 4: the sum of everything up to here.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 1,
+            "prefix": 4,
+            "need": 1,
+            "got": 1,
+            "total": 2,
+            "keys": [0, 1, 3],
+            "vals": [1, 1, 1],
+            "look": 1,
+            "gotText": "count.get(1, 0) = 1",
+            "line": 15,
+            "message": "prefix − k = 1 was seen 1 time: that many subarrays ending here sum to 3. total = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 2,
+            "num": 1,
+            "prefix": 4,
+            "need": 1,
+            "got": 1,
+            "total": 2,
+            "keys": [0, 1, 3, 4],
+            "vals": [1, 1, 1, 1],
+            "look": 3,
+            "gotText": "count.get(1, 0) = 1",
+            "line": 16,
+            "message": "count[4] = 1: one more prefix with sum 4.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "prefix": 4,
+            "need": 1,
+            "got": -1,
+            "total": 2,
+            "keys": [0, 1, 3, 4],
+            "vals": [1, 1, 1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 13,
+            "message": "num = 2.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "prefix": 6,
+            "need": 3,
+            "got": -1,
+            "total": 2,
+            "keys": [0, 1, 3, 4],
+            "vals": [1, 1, 1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 14,
+            "message": "prefix = 6: the sum of everything up to here.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "prefix": 6,
+            "need": 3,
+            "got": 1,
+            "total": 3,
+            "keys": [0, 1, 3, 4],
+            "vals": [1, 1, 1, 1],
+            "look": 2,
+            "gotText": "count.get(3, 0) = 1",
+            "line": 15,
+            "message": "prefix − k = 3 was seen 1 time: that many subarrays ending here sum to 3. total = 3.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 3,
+            "num": 2,
+            "prefix": 6,
+            "need": 3,
+            "got": 1,
+            "total": 3,
+            "keys": [0, 1, 3, 4, 6],
+            "vals": [1, 1, 1, 1, 1],
+            "look": 4,
+            "gotText": "count.get(3, 0) = 1",
+            "line": 16,
+            "message": "count[6] = 1: one more prefix with sum 6.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "num": 1,
+            "prefix": 6,
+            "need": 3,
+            "got": -1,
+            "total": 3,
+            "keys": [0, 1, 3, 4, 6],
+            "vals": [1, 1, 1, 1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 13,
+            "message": "num = 1.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "num": 1,
+            "prefix": 7,
+            "need": 4,
+            "got": -1,
+            "total": 3,
+            "keys": [0, 1, 3, 4, 6],
+            "vals": [1, 1, 1, 1, 1],
+            "look": -1,
+            "gotText": "count.get(prefix - k, 0): —",
+            "line": 14,
+            "message": "prefix = 7: the sum of everything up to here.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "num": 1,
+            "prefix": 7,
+            "need": 4,
+            "got": 1,
+            "total": 4,
+            "keys": [0, 1, 3, 4, 6],
+            "vals": [1, 1, 1, 1, 1],
+            "look": 3,
+            "gotText": "count.get(4, 0) = 1",
+            "line": 15,
+            "message": "prefix − k = 4 was seen 1 time: that many subarrays ending here sum to 3. total = 4.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": 4,
+            "num": 1,
+            "prefix": 7,
+            "need": 4,
+            "got": 1,
+            "total": 4,
+            "keys": [0, 1, 3, 4, 6, 7],
+            "vals": [1, 1, 1, 1, 1, 1],
+            "look": 5,
+            "gotText": "count.get(4, 0) = 1",
+            "line": 16,
+            "message": "count[7] = 1: one more prefix with sum 7.",
+            "status": "Running",
+            "running": 1
+          },
+          {
+            "i": -1,
+            "num": 1,
+            "prefix": 7,
+            "need": 4,
+            "got": 1,
+            "total": 4,
+            "keys": [0, 1, 3, 4, 6, 7],
+            "vals": [1, 1, 1, 1, 1, 1],
+            "look": -1,
+            "gotText": "count.get(4, 0) = 1",
+            "line": 17,
+            "message": "4 subarrays sum to 3, found in one pass: O(n) time, O(n) space for the dict.",
+            "status": "Done",
+            "running": 0
+          }
+        ]
+      },
+      "markdown": "# Remember what you've seen (hash map)\n\n**Problem:** Given an unsorted list and a target, find two numbers that add up to the target, and return their indices.\n\n**Example:** nums = [4, 11, 7, 2, 15, 5], target = 9 → [2, 3].\n\n**Signal:** unsorted data and a question about pairs or earlier values: \"two numbers that sum to…\", \"have I seen this before?\", \"how many times…\", \"first repeat\".\n\nA **dict** (hash map) answers \"have I seen this?\" in O(1) on average, so one pass can do what nested loops do in O(n²). Walk the input once; at each element, **look up** what you need from the past, then **record** the current element for the elements still to come.\n\n## 1. Two Sum (this step)\n\nFor each `num`, its partner is `need = target − num`. If `need` is already a key in `seen`, the answer is `[seen[need], i]`; otherwise remember `seen[num] = i`. Each entry in `seen` points back at the cell of `nums` it indexes; on a hit, `nums[i]` points at its partner's entry. O(n) time and O(n) space, against O(n²) for checking every pair. The sorted version needs no dict: see the two-pointers scene.\n\n## 2. Count by prefix (next step)\n\nSubarrays summing to `k`: a subarray ending here sums to `k` exactly when an earlier **prefix sum** equals `prefix − k`. So keep `count`, how often each prefix sum has appeared, starting with `{0: 1}` for the empty prefix, and add `count.get(prefix − k, 0)` at each step. This works with negative numbers, where a sliding window cannot.\n\nUse the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.\n\n**Practice:** Two Sum, Contains Duplicate, Subarray Sum Equals K, Longest Consecutive Sequence, Group Anagrams.",
+      "prompt": "Explain why a dict turns the pair search into one pass: look up first, then record. Ask the learner to predict, before each lookup, whether need is already in seen, and for subarray sums, how many subarrays end at the current index.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 10],
+            [-5, 5]
+          ],
+          "divisions": [17, 10],
+          "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Find the partner (Two Sum)",
+          "description": "Two Sum: look up target − num among the numbers seen so far, then remember num.",
+          "descriptionExpr": "dataTable('trace', frame, 'message')",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 16, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "nums",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4.4, 2.4, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "label": "nums",
+              "labelSide": "left",
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'nums'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'nums'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'i')",
+              "markers": [
+                {"type": "step_marker", "indexName": "i", "indexExpr": "dataTable('trace', frame, 'i')", "visibleExpr": "dataTable('trace', frame, 'i') >= 0", "color": "#e67db0"}
+              ],
+              "connectTo": {"object": "seen", "indexExpr": "idx == dataTable('trace', frame, 'i') and dataTable('trace', frame, 'cond') == 1 ? dataTable('trace', frame, 'look') : -1", "arrow": true, "pinned": true, "color": "#f1c65b"}
+            },
+            {
+              "id": "seen",
+              "type": "dict",
+              "label": "seen",
+              "origin": [-4.4, -0.8, 0],
+              "labelSide": "left",
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'keys'))",
+              "keyExpr": "arrayAt(dataTable('trace', frame, 'keys'), idx)",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'vals'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'look')",
+              "markers": [
+                {"type": "step_marker", "indexName": "need", "indexExpr": "dataTable('trace', frame, 'look')", "visibleExpr": "dataTable('trace', frame, 'cond') == 1", "color": "#f1c65b"}
+              ],
+              "connectTo": {"object": "nums", "indexExpr": "value", "arrow": true, "pinned": true, "color": "#7f93aa", "highlightExpr": "idx == dataTable('trace', frame, 'look') and dataTable('trace', frame, 'cond') == 1"}
+            },
+            {
+              "id": "i",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('trace', frame, 'i') < 0 ? 'i: —' : concat('i = ', dataTable('trace', frame, 'i'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'i')"},
+              "codeRef": {"file": "hash-map", "line": 3}
+            },
+            {
+              "id": "num",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('trace', frame, 'i') < 0 ? 'num: —' : concat('num = ', dataTable('trace', frame, 'num'))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'i')"},
+              "codeRef": {"file": "hash-map", "line": 3}
+            },
+            {
+              "id": "need",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('trace', frame, 'hasNeed') == 0 ? 'need: —' : concat('need = ', dataTable('trace', frame, 'need'))",
+              "codeRef": {"file": "hash-map", "line": 4}
+            },
+            {
+              "id": "cond",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('trace', frame, 'cond') < 0 ? 'need in seen: —' : (dataTable('trace', frame, 'cond') == 1 ? 'need in seen → True' : 'need in seen → False')",
+              "connectTo": {"object": "seen", "indexExpr": "dataTable('trace', frame, 'cond') == 1 ? dataTable('trace', frame, 'look') : -1"},
+              "highlightExpr": "dataTable('trace', frame, 'line') == 5",
+              "codeRef": {"file": "hash-map", "line": 5}
+            },
+            {
+              "id": "result",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('trace', frame, 'returned')",
+              "codeRef": {"file": "hash-map", "line": 6}
+            }
+          ]
+        },
+        {
+          "id": "subarray-sum",
+          "title": "Count by prefix (subarray sum = k)",
+          "description": "Subarrays summing to k: count earlier prefix sums in a dict.",
+          "descriptionExpr": "dataTable('hm_sub', frame, 'message')",
+          "remove": [
+            {"id": "*"},
+            {"type": "slider"}
+          ],
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 22, "step": 1, "default": 0}
+          ],
+          "codeRef": {"file": "hash-map", "lineExpr": "dataTable('hm_sub', frame, 'line')"},
+          "add": [
+            {
+              "id": "sums",
+              "type": "array",
+              "itemType": "number",
+              "origin": [-4.4, 2.4, 0],
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "label": "nums",
+              "labelSide": "left",
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('input', 0, 'sums'))",
+              "valueExpr": "arrayAt(dataTable('input', 0, 'sums'), idx)",
+              "highlightExpr": "idx <= dataTable('hm_sub', frame, 'i')",
+              "markers": [
+                {"type": "step_marker", "indexName": "num", "indexExpr": "dataTable('hm_sub', frame, 'i')", "visibleExpr": "dataTable('hm_sub', frame, 'i') >= 0", "color": "#e67db0"}
+              ]
+            },
+            {
+              "id": "count",
+              "type": "dict",
+              "label": "count",
+              "origin": [-4.4, -0.8, 0],
+              "labelSide": "left",
+              "cellSize": 1.35,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "lengthExpr": "arrayCount(dataTable('hm_sub', frame, 'keys'))",
+              "keyExpr": "arrayAt(dataTable('hm_sub', frame, 'keys'), idx)",
+              "valueExpr": "arrayAt(dataTable('hm_sub', frame, 'vals'), idx)",
+              "highlightExpr": "idx == dataTable('hm_sub', frame, 'look')"
+            },
+            {
+              "id": "num",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('hm_sub', frame, 'i') < 0 ? 'num: —' : concat('num = ', dataTable('hm_sub', frame, 'num'))",
+              "connectTo": {"object": "sums", "indexExpr": "dataTable('hm_sub', frame, 'i')"},
+              "codeRef": {"file": "hash-map", "line": 13}
+            },
+            {
+              "id": "prefix",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "concat('prefix = ', dataTable('hm_sub', frame, 'prefix'))",
+              "codeRef": {"file": "hash-map", "line": 14}
+            },
+            {
+              "id": "need",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('hm_sub', frame, 'i') < 0 ? 'prefix - k: —' : concat('prefix - k = ', dataTable('hm_sub', frame, 'need'))",
+              "codeRef": {"file": "hash-map", "line": 15}
+            },
+            {
+              "id": "got",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "dataTable('hm_sub', frame, 'gotText')",
+              "connectTo": {"object": "count", "indexExpr": "dataTable('hm_sub', frame, 'line') == 15 ? dataTable('hm_sub', frame, 'look') : -1"},
+              "highlightExpr": "dataTable('hm_sub', frame, 'line') == 15",
+              "codeRef": {"file": "hash-map", "line": 15}
+            },
+            {
+              "id": "total",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "concat('total = ', dataTable('hm_sub', frame, 'total'))",
+              "codeRef": {"file": "hash-map", "line": 17}
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200},
+      "codeRef": {"file": "hash-map", "lineExpr": "dataTable('trace', frame, 'line')"}
     },
     {
       "id": "two-pointers",
