@@ -706,25 +706,6 @@ export function linkedListTrace(values: number[]) {
 
 export const TOPO_SOURCE = `from collections import deque
 
-def find_order(n, prerequisites):
-    graph = [[] for _ in range(n)]
-    indegree = [0] * n
-    for course, pre in prerequisites:
-        graph[pre].append(course)
-        indegree[course] += 1
-
-    queue = deque(c for c in range(n) if indegree[c] == 0)
-    order = []
-    while queue:
-        node = queue.popleft()
-        order.append(node)
-        for nxt in graph[node]:
-            indegree[nxt] -= 1
-            if indegree[nxt] == 0:
-                queue.append(nxt)
-
-    return order if len(order) == n else []
-
 def find_order_dfs(n, prerequisites):
     graph = [[] for _ in range(n)]
     for course, pre in prerequisites:
@@ -749,9 +730,28 @@ def find_order_dfs(n, prerequisites):
     for c in range(n):
         if not dfs(c):
             return []
-    return order[::-1]`;
+    return order[::-1]
+
+def find_order(n, prerequisites):
+    graph = [[] for _ in range(n)]
+    indegree = [0] * n
+    for course, pre in prerequisites:
+        graph[pre].append(course)
+        indegree[course] += 1
+
+    queue = deque(c for c in range(n) if indegree[c] == 0)
+    order = []
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+        for nxt in graph[node]:
+            indegree[nxt] -= 1
+            if indegree[nxt] == 0:
+                queue.append(nxt)
+
+    return order if len(order) == n else []`;
 /** The 1-based line of TOPO_SOURCE that contains `text` (first match after line `after`). */
-const topoLine = (text: string, after = 0) => TOPO_SOURCE.split('\n').findIndex((l, i) => i >= after && l.includes(text)) + 1;
+export const topoLine = (text: string, after = 0) => TOPO_SOURCE.split('\n').findIndex((l, i) => i >= after && l.includes(text)) + 1;
 /**
  * Kahn's topological sort. `graph` gives each node's out-neighbours in insertion order (the edges the view draws).
  * Per frame: indeg, the in-degree counts; queue and order; node, the node just taken (−1 none); nxt, the
@@ -760,47 +760,49 @@ const topoLine = (text: string, after = 0) => TOPO_SOURCE.split('\n').findIndex(
  * returned order as text once done.
  */
 export function topoTrace(n: number, prerequisites: [number, number][]) {
+    // K(text): the in-degree function's line containing text.
+    const K = (text: string) => topoLine(text, topoLine('def find_order(') - 1);
     const graph: number[][] = Array.from({ length: n }, () => []);
     for (const [course, pre] of prerequisites) graph[pre]!.push(course);
     const v = { indeg: new Array(n).fill(0) as number[], queue: [] as number[], order: [] as number[], node: -1, nxt: -1, from: -1, to: -1,
         seen: new Array(n).fill(0) as number[], state: new Array(n).fill(0) as number[], result: '' };
     const { trace, emit } = recorder(v);
     const list = (xs: number[]) => `[${xs.join(', ')}]`;
-    emit(4, `${n} courses, ${prerequisites.length} prerequisites. Each pair [course, pre] is an edge pre → course: take pre first.`);
-    emit(5, 'Every in-degree starts at 0.');
+    emit(K('graph = [[] for _ in range(n)]'), `${n} courses, ${prerequisites.length} prerequisites. Each pair [course, pre] is an edge pre → course: take pre first.`);
+    emit(K('indegree = [0] * n'), 'Every in-degree starts at 0.');
     for (const [course, pre] of prerequisites) {
         v.from = pre; v.to = course; v.nxt = course;
-        emit(7, `Edge ${pre} → ${course}: ${course} needs ${pre} first.`);
+        emit(K('graph[pre].append(course)'), `Edge ${pre} → ${course}: ${course} needs ${pre} first.`);
         v.indeg[course]!++;
-        emit(8, `indegree[${course}] = ${v.indeg[course]}: ${course} waits on ${v.indeg[course]} course${v.indeg[course] === 1 ? '' : 's'}.`);
+        emit(K('indegree[course] += 1'), `indegree[${course}] = ${v.indeg[course]}: ${course} waits on ${v.indeg[course]} course${v.indeg[course] === 1 ? '' : 's'}.`);
     }
     v.from = v.to = v.nxt = -1;
     for (let c = 0; c < n; c++) if (v.indeg[c] === 0) { v.queue.push(c); v.state[c] = 1; }
-    emit(10, `Start the queue with every course that needs nothing: ${list(v.queue)}.`);
-    emit(11, 'order starts empty.');
+    emit(K('queue = deque'), `Start the queue with every course that needs nothing: ${list(v.queue)}.`);
+    emit(K('order = []'), 'order starts empty.');
     while (v.queue.length) {
         v.node = -1; v.nxt = -1; v.from = v.to = -1;
-        emit(12, `The queue holds ${list(v.queue)}: keep going.`);
+        emit(K('while queue'), `The queue holds ${list(v.queue)}: keep going.`);
         const node = v.queue.shift()!; v.node = node; v.state[node] = 2;
-        emit(13, `Take ${node}: everything it needs is already in order.`);
+        emit(K('node = queue.popleft()'), `Take ${node}: everything it needs is already in order.`);
         v.order.push(node);
-        emit(14, `order = ${list(v.order)}.`);
+        emit(K('order.append(node)'), `order = ${list(v.order)}.`);
         for (const nxt of graph[node]!) {
             v.nxt = nxt; v.from = node; v.to = nxt;
-            emit(15, `Edge ${node} → ${nxt}: ${nxt} was waiting on ${node}.`);
+            emit(K('for nxt in graph[node]'), `Edge ${node} → ${nxt}: ${nxt} was waiting on ${node}.`);
             v.indeg[nxt]!--;
-            emit(16, `indegree[${nxt}] = ${v.indeg[nxt]}: one fewer course to wait for.`);
+            emit(K('indegree[nxt] -= 1'), `indegree[${nxt}] = ${v.indeg[nxt]}: one fewer course to wait for.`);
             const free = v.indeg[nxt] === 0;
-            emit(17, free ? `${nxt} waits on nothing now.` : `${nxt} still waits on ${v.indeg[nxt]}.`);
-            if (free) { v.queue.push(nxt); v.state[nxt] = 1; emit(18, `Queue ${nxt}: queue = ${list(v.queue)}.`); }
+            emit(K('if indegree[nxt] == 0'), free ? `${nxt} waits on nothing now.` : `${nxt} still waits on ${v.indeg[nxt]}.`);
+            if (free) { v.queue.push(nxt); v.state[nxt] = 1; emit(K('queue.append(nxt)'), `Queue ${nxt}: queue = ${list(v.queue)}.`); }
             v.seen[node]!++;
         }
     }
     v.node = v.nxt = v.from = v.to = -1;
-    emit(12, 'The queue is empty.');
+    emit(K('while queue'), 'The queue is empty.');
     const ok = v.order.length === n;
     v.result = ok ? list(v.order) : '[]';
-    emit(20, ok ? `All ${n} courses are in order: ${v.result}. Each node and edge is handled once: O(V + E).`
+    emit(K('return order if len'), ok ? `All ${n} courses are in order: ${v.result}. Each node and edge is handled once: O(V + E).`
         : `Only ${v.order.length} of ${n} courses could be ordered: the rest wait on each other in a cycle, so return [].`, 'Done');
     return { trace, graph };
 }
@@ -810,7 +812,7 @@ export function topoTrace(n: number, prerequisites: [number, number][]) {
  * (post-order), so the reversed list puts every prerequisite first. state per node: 0 new, 1 on the current path,
  * 2 done; meeting a course that is on the path is a cycle. Per frame: state, order (post-order), node and nxt
  * (−1 none), from/to (the edge being followed), seen (per node, edges followed), c (the outer loop's course),
- * calls (call-site lines of the dfs calls not yet returned), result (the answer once done).
+ * calls (call-site lines of the dfs calls not yet returned), result (the answer once done, '—' before).
  */
 export function topoDfsTrace(n: number, prerequisites: [number, number][]) {
     // L(text): the DFS function's line containing text; L(text, line): the first such line after `line`.
@@ -818,7 +820,7 @@ export function topoDfsTrace(n: number, prerequisites: [number, number][]) {
     const graph: number[][] = Array.from({ length: n }, () => []);
     for (const [course, pre] of prerequisites) graph[pre]!.push(course);
     const v = { state: new Array(n).fill(0) as number[], order: [] as number[], node: -1, nxt: -1, from: -1, to: -1,
-        seen: new Array(n).fill(0) as number[], c: -1, calls: [] as number[], result: '' };
+        seen: new Array(n).fill(0) as number[], c: -1, calls: [] as number[], result: '—' };
     const { trace, emit } = recorder(v);
     const list = (xs: number[]) => `[${xs.join(', ')}]`;
     const stack: number[] = [];   // the nodes of the dfs calls not yet returned, outermost first

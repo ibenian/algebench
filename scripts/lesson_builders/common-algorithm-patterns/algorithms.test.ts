@@ -338,7 +338,7 @@ test('draft lesson is in sync with the traces and every bound expression evaluat
   'matrix-traversal':[ISLANDS_SOURCE,islandsTrace(IN.islands.grid)],
   'recursion':[RECURSION_SOURCE,powerTrace(IN.recursion.x,IN.recursion.n).trace],
   'backtracking':[SUBSETS_SOURCE,subsetsTrace(IN.subsets.nums).trace],
-  'topological-sort':[TOPO_SOURCE,topoTrace(IN.topo.n,IN.topo.prerequisites).trace],
+  'topological-sort':[TOPO_SOURCE,topoDfsTrace(IN.topo.n,IN.topo.prerequisites).trace],
   'monotonic-queue':[MONOTONIC_QUEUE_SOURCE,monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k)],
   'greedy':[GREEDY_SOURCE,greedyTrace(IN.greedy.nums)],
   'bit-manipulation':[BITS_SOURCE,bitsTrace(IN.bits.nums)],

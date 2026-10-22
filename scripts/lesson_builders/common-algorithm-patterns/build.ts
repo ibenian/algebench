@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE, topoLine,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -1432,56 +1432,76 @@ ${MD_TAIL}
         ],
     });
 })();
-// ── Topological sort: Kahn's algorithm on a course graph ──
+// ── Topological sort: DFS post-order, then Kahn's in-degrees, on one course graph ──
 (() => {
     const { n, prerequisites } = IN.topo;
-    const { trace, graph } = topoTrace(n, prerequisites);
+    const dfs = topoDfsTrace(n, prerequisites), kahn = topoTrace(n, prerequisites);
     // Lay the courses out by layer (longest prerequisite chain), so every edge points rightward.
     const layer = new Array(n).fill(0) as number[];
     for (let pass = 0; pass < n; pass++) for (const [c, p] of prerequisites) layer[c] = Math.max(layer[c]!, layer[p]! + 1);
-    const nodes = graph.map((next, i) => {
+    const nodes = dfs.graph.map((next, i) => {
         const same = layer.map((l, j) => [l, j] as const).filter(([l]) => l === layer[i]).map(([, j]) => j);
         return { next, x: -4.6 + layer[i]! * 2.6, y: 2.3 - (same.indexOf(i) - (same.length - 1) / 2) * 1.6 };
     });
     const nd = (col: string) => `dataTable('topoNodes', idx, '${col}')`;
-    const current = `idx == ${tr('from')} and to == ${tr('to')}`;
-    const dfs = topoDfsTrace(n, prerequisites);
-    const df = (col: string) => `dataTable('topo_dfs', frame, '${col}')`;
-    const dfsLine = (text: string) => TOPO_SOURCE.split('\n').findIndex((l, i) => i > TOPO_SOURCE.split('\n').findIndex(x => x.includes('def find_order_dfs')) && l.includes(text)) + 1;
-    // The DFS step: the same graph, coloured by state (pink on the path, teal done), with no in-degree row.
-    const dfsCurrent = `idx == ${df('from')} and to == ${df('to')}`;
-    const dfsElements: Json[] = [
-        {
+    // Each function's lines, found by their text, so the code can be edited without renumbering.
+    const dfsLine = (text: string) => topoLine(text, topoLine('def find_order_dfs') - 1);
+    const kahnLine = (text: string) => topoLine(text, topoLine('def find_order(') - 1);
+    const ref = (line: number) => ({ file: 'topological-sort', line });
+    // The course graph, coloured by each step's state: gold where the code is, pink waiting (on the DFS path, or
+    // queued), teal done (finished, or in order); the edge being followed is lit and used edges dim.
+    const courses = (c: (col: string) => string): Json => {
+        const current = `idx == ${c('from')} and to == ${c('to')}`;
+        return {
             id: 'courses', type: 'graph', label: 'courses', lengthExpr: String(n), valueExpr: 'idx',
             positionExpr: [nd('x'), nd('y'), '0'],
             nodeShape: 'rect', nodeWidth: 0.9, nodeHeight: 0.9, nodeCornerRadius: 0.45, valueLabel: 'inside', showIndices: false,
-            colorExpr: `idx == ${df('node')} ? '${GOLD}' : (arrayAt(${df('state')}, idx) == 2 ? '${TEAL}' : (arrayAt(${df('state')}, idx) == 1 ? '${PINK}' : ''))`,
-            // The path's edges are lit pink: from a course on the path to the next one on it.
+            colorExpr: `idx == ${c('node')} ? '${GOLD}' : (arrayAt(${c('state')}, idx) == 2 ? '${TEAL}' : (arrayAt(${c('state')}, idx) == 1 ? '${PINK}' : ''))`,
             connectTo: { indexExpr: nd('next'), pinned: true, arrow: true, bendExpr: '0', color: '#7f93aa',
-                colorExpr: `${dfsCurrent} ? '${GOLD}' : (slot < arrayAt(${df('seen')}, idx) ? '#3b4654' : '')`, highlightExpr: dfsCurrent },
-        },
-        array('state', 'state', [-4.2, -1.3, 0], { from: df('state'), markers: [marker('node', df('node'), GOLD, `${df('node')} >= 0`)] }),
-        array('order', 'order', [-4.2, -2.8, 0], { from: df('order'), color: '#b69bea', highlightExpr: `idx == count(${df('order')}) - 1 and ${df('line')} == ${dfsLine('order.append(node)')}` }),
-        { ...label('result', `${df('result')} == '' ? 'order[::-1]: —' : concat('order[::-1] = ', ${df('result')})`, [4.6, -3.6, 0]), codeRef: { file: 'topological-sort', line: dfsLine('return order[::-1]') } },
-        { ...label('c', `${df('c')} < 0 ? 'c: —' : concat('c = ', ${df('c')})`, [4.6, -3.6, 0], ['courses', df('c')]), codeRef: { file: 'topological-sort', line: dfsLine('for c in range(n)') } },
-        { ...label('node', `${df('node')} < 0 ? 'node: —' : concat('node = ', ${df('node')})`, [4.6, -3.6, 0], ['courses', df('node')]), codeRef: { file: 'topological-sort', line: dfsLine('def dfs(node)') } },
-        { ...label('nxt', `${df('nxt')} < 0 ? 'nxt: —' : concat('nxt = ', ${df('nxt')})`, [4.6, -3.6, 0], ['courses', df('nxt')]), codeRef: { file: 'topological-sort', line: dfsLine('for nxt in graph[node]') } },
-        { ...label('state-node', `${df('node')} < 0 ? 'state[node]: —' : concat('state[node] = ', arrayAt(${df('state')}, ${df('node')}))`, [4.6, -3.6, 0], ['state', df('node')]), codeRef: { file: 'topological-sort', line: dfsLine('state[node] = 1') } },
+                colorExpr: `${current} ? '${GOLD}' : (slot < arrayAt(${c('seen')}, idx) ? '#3b4654' : '')`, highlightExpr: current },
+        };
+    };
+    const dfsElements = (c: (col: string) => string): Json[] => [
+        courses(c),
+        array('state', 'state', [-4.2, -1.3, 0], { from: c('state'), markers: [marker('node', c('node'), GOLD, `${c('node')} >= 0`)] }),
+        array('order', 'order', [-4.2, -2.8, 0], { from: c('order'), color: '#b69bea', highlightExpr: `idx == count(${c('order')}) - 1 and ${c('line')} == ${dfsLine('order.append(node)')}` }),
+        { ...label('result', `concat('order[::-1] = ', ${c('result')})`, [4.6, -3.6, 0]), codeRef: ref(dfsLine('return order[::-1]')) },
+        { ...label('c', `${c('c')} < 0 ? 'c: —' : concat('c = ', ${c('c')})`, [4.6, -3.6, 0], ['courses', c('c')]), codeRef: ref(dfsLine('for c in range(n)')) },
+        { ...label('node', `${c('node')} < 0 ? 'node: —' : concat('node = ', ${c('node')})`, [4.6, -3.6, 0], ['courses', c('node')]), codeRef: ref(dfsLine('def dfs(node)')) },
+        { ...label('nxt', `${c('nxt')} < 0 ? 'nxt: —' : concat('nxt = ', ${c('nxt')})`, [4.6, -3.6, 0], ['courses', c('nxt')]), codeRef: ref(dfsLine('for nxt in graph[node]')) },
+        { ...label('state-node', `${c('node')} < 0 ? 'state[node]: —' : concat('state[node] = ', arrayAt(${c('state')}, ${c('node')}))`, [4.6, -3.6, 0], ['state', c('node')]), codeRef: ref(dfsLine('state[node] = 1')) },
     ];
+    const kahnElements = (c: (col: string) => string): Json[] => {
+        const counted = kahnLine('indegree[course] += 1'), relaxed = kahnLine('indegree[nxt] -= 1');
+        return [
+            courses(c),
+            array('indegree', 'indegree', [-4.2, -1.3, 0], { from: c('indeg'),
+                highlightExpr: `idx == ${c('nxt')} and (${c('line')} == ${counted} or ${c('line')} == ${relaxed})`,
+                markers: [marker('nxt', c('nxt'), PINK, `${c('nxt')} >= 0`)] }),
+            array('queue', 'queue', [-4.2, -2.8, 0], { from: c('queue') }),
+            array('order', 'order', [-4.2, -4.3, 0], { from: c('order'), color: '#b69bea', highlightExpr: `idx == count(${c('order')}) - 1 and ${c('line')} == ${kahnLine('order.append(node)')}` }),
+            { ...label('node', `${c('node')} < 0 ? 'node: —' : concat('node = ', ${c('node')})`, [4.6, -3.6, 0], ['courses', c('node')]), codeRef: ref(kahnLine('node = queue.popleft()')) },
+            { ...label('nxt', `${c('nxt')} < 0 ? 'nxt: —' : concat('nxt = ', ${c('nxt')})`, [4.6, -3.6, 0], ['courses', c('nxt')]), codeRef: ref(kahnLine('for nxt in graph[node]')) },
+            { ...label('indeg-nxt', `${c('nxt')} < 0 ? 'indegree[nxt]: —' : concat('indegree[nxt] = ', arrayAt(${c('indeg')}, ${c('nxt')}))`, [4.6, -3.6, 0], ['indegree', c('nxt')]),
+                codeRef: { file: 'topological-sort', lineExpr: `${c('line')} <= ${counted} ? ${counted} : ${relaxed}` } },
+            { ...label('len-order', `concat('len(order) = ', count(${c('order')}), ' of ', ${n})`, [4.6, -3.6, 0]), codeRef: ref(kahnLine('return order if len')) },
+        ];
+    };
+    const kh = (col: string) => `dataTable('topo_kahn', frame, '${col}')`;
     pattern({
         id: 'topological-sort', title: 'Order by dependencies (topological sort)', file: 'course_order.py', source: TOPO_SOURCE,
-        input: { n, prerequisites }, trace,
+        input: { n, prerequisites }, trace: dfs.trace, callEntryLine: dfsLine('def dfs(node)'),
         more: {
-            data: { topoNodes: nodes, topo_dfs: dfs.trace },
+            data: { topoNodes: nodes, topo_kahn: kahn.trace },
             steps: [{
-                id: 'dfs', title: 'Without in-degrees (DFS)', description: 'Depth-first search: finish everything that depends on a course, then append it; reverse at the end.',
-                descriptionExpr: `dataTable('topo_dfs', frame, 'message')`,
+                id: 'kahn', title: 'Count in-degrees (Kahn)', description: "Kahn's algorithm: count in-degrees, queue the courses that wait on nothing.",
+                descriptionExpr: `dataTable('topo_kahn', frame, 'message')`,
                 remove: [{ id: '*' }, { type: 'slider' }],
-                sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: dfs.trace.length - 1, step: 1, default: 0 }],
-                codeRef: { file: 'topological-sort', lineExpr: `dataTable('topo_dfs', frame, 'line')`, callsExpr: `dataTable('topo_dfs', frame, 'calls')`, callEntryLine: dfsLine('def dfs(node)') },
-                add: dfsElements,
+                sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: kahn.trace.length - 1, step: 1, default: 0 }],
+                codeRef: { file: 'topological-sort', lineExpr: `dataTable('topo_kahn', frame, 'line')` },
+                add: kahnElements(kh),
             }],
-            locations: dfs.trace.map((f, snapshot) => ({ line: f.line, scene: 'topological-sort', step: 'dfs', snapshot, label: `DFS · ${f.message}` })),
+            locations: kahn.trace.map((f, snapshot) => ({ line: f.line, scene: 'topological-sort', step: 'kahn', snapshot, label: `Kahn · ${f.message}` })),
         },
         markdown: `# Order by dependencies (topological sort)
 
@@ -1489,7 +1509,13 @@ ${MD_TAIL}
 
 Draw each prerequisite as an edge **pre → course**. A valid order puts every course after all its prerequisites. There are two classic ways to find one; each step of this scene plays one of them.
 
-## 1. Count in-degrees (Kahn's algorithm)
+## 1. Depth-first search (DFS)
+
+\`dfs(node)\` first finishes every course that depends on \`node\`, then appends \`node\`, so each course lands in \`order\` **after** everything that needs it. Reversing \`order\` puts every prerequisite first.
+
+A course is pink while it is on the current path, teal once done, and gold where the search is. **Cycle:** the search reaches a pink course again: the path loops back on itself.
+
+## 2. Count in-degrees (Kahn's algorithm)
 
 A course's **in-degree** counts the courses it still waits on.
 
@@ -1499,50 +1525,25 @@ A course's **in-degree** counts the courses it still waits on.
 
 Gold is the course just taken, pink courses are queued, teal ones are in the order, and dimmed edges have been used. **Cycle:** the queue empties before every course is ordered; the rest wait on each other.
 
-## 2. Without in-degrees (DFS)
-
-\`dfs(node)\` first finishes every course that depends on \`node\`, then appends \`node\`, so each course lands in \`order\` **after** everything that needs it. Reversing \`order\` puts every prerequisite first.
-
-A course is pink while it is on the current path, teal once done, and gold where the search is. **Cycle:** the search reaches a pink course again: the path loops back on itself.
-
 ## Which one?
 
-| | Kahn (in-degrees) | DFS (post-order) |
+| | DFS (post-order) | Kahn (in-degrees) |
 |---|---|---|
-| Builds the order | front to back, as courses free up | back to front, then reversed |
-| Extra state | an in-degree per course, a queue | a state per course, the call stack |
-| Detects a cycle | courses left over | a course met again on the path |
-| Good for | layers ("what can run now?"), parallel schedules | recursion-friendly code, finding the cycle itself |
+| Builds the order | back to front, then reversed | front to back, as courses free up |
+| Extra state | a state per course, the call stack | an in-degree per course, a queue |
+| Detects a cycle | a course met again on the path | courses left over |
+| Good for | recursion-friendly code, finding the cycle itself | layers ("what can run now?"), parallel schedules |
 
 Both handle each course and each edge once: **O(V + E)** time, O(V) extra space.
 
 ${MD_TAIL}
 
 **Practice:** Course Schedule, Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.`,
-        prompt: 'Explain both approaches: in-degrees (a course is free once its count reaches zero) and DFS post-order (a course is appended after everything that depends on it, then the list is reversed). Ask the learner to predict the next course ordered, and how each approach notices a cycle.',
-        elements: [
-            {
-                id: 'courses', type: 'graph', label: 'courses', lengthExpr: String(n), valueExpr: 'idx',
-                positionExpr: [nd('x'), nd('y'), '0'],
-                nodeShape: 'rect', nodeWidth: 0.9, nodeHeight: 0.9, nodeCornerRadius: 0.45, valueLabel: 'inside', showIndices: false,
-                colorExpr: `idx == ${tr('node')} ? '${GOLD}' : (arrayAt(${tr('state')}, idx) == 2 ? '${TEAL}' : (arrayAt(${tr('state')}, idx) == 1 ? '${PINK}' : ''))`,
-                // Every prerequisite edge pre → course; the one being counted or used is lit, used ones dim.
-                connectTo: { indexExpr: nd('next'), pinned: true, arrow: true, bendExpr: '0', color: '#7f93aa',
-                    colorExpr: `${current} ? '${GOLD}' : (slot < arrayAt(${tr('seen')}, idx) ? '#3b4654' : '')`, highlightExpr: current },
-            },
-            array('indegree', 'indegree', [-4.2, -1.3, 0], { from: tr('indeg'),
-                highlightExpr: `idx == ${tr('nxt')} and (${tr('line')} == 8 or ${tr('line')} == 16)`,
-                markers: [marker('nxt', tr('nxt'), PINK, `${tr('nxt')} >= 0`)] }),
-            array('queue', 'queue', [-4.2, -2.8, 0], { from: tr('queue') }),
-            array('order', 'order', [-4.2, -4.3, 0], { from: tr('order'), color: '#b69bea', highlightExpr: `idx == count(${tr('order')}) - 1 and ${tr('line')} == 14` }),
-            { ...label('node', `${tr('node')} < 0 ? 'node: —' : concat('node = ', ${tr('node')})`, [4.6, -3.6, 0], ['courses', tr('node')]), codeRef: { file: 'topological-sort', line: 13 } },
-            { ...label('nxt', `${tr('nxt')} < 0 ? 'nxt: —' : concat('nxt = ', ${tr('nxt')})`, [4.6, -3.6, 0], ['courses', tr('nxt')]), codeRef: { file: 'topological-sort', line: 15 } },
-            { ...label('indeg-nxt', `${tr('nxt')} < 0 ? 'indegree[nxt]: —' : concat('indegree[nxt] = ', arrayAt(${tr('indeg')}, ${tr('nxt')}))`, [4.6, -3.6, 0], ['indegree', tr('nxt')]), codeRef: { file: 'topological-sort', lineExpr: `${tr('line')} <= 8 ? 8 : 16` } },
-            { ...label('len-order', `concat('len(order) = ', count(${tr('order')}), ' of ', ${n})`, [4.6, -3.6, 0]), codeRef: { file: 'topological-sort', line: 20 } },
-        ],
+        prompt: 'Explain both approaches: DFS post-order (a course is appended after everything that depends on it, then the list is reversed) and in-degrees (a course is free once its count reaches zero). Ask the learner to predict the next course ordered, and how each approach notices a cycle.',
+        elements: dfsElements(tr),
     });
     const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
-    Object.assign(first, { title: 'Count in-degrees (Kahn)', description: "Kahn's algorithm: count in-degrees, queue the courses that wait on nothing." });
+    Object.assign(first, { title: 'Depth-first search (DFS)', description: 'Depth-first search: finish everything that depends on a course, then append it; reverse at the end.' });
 })();
 placeholder('shortest-path', 'Cheapest route (Dijkstra)', `# Cheapest route (Dijkstra)
 
