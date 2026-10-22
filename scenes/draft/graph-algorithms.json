@@ -819,6 +819,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [],
+            "vTip": "",
             "line": 2,
             "message": "No node visited yet. adj lists each node's neighbours: [[1, 2], [0, 3], [0, 3, 5], [1, 2, 4], [3], [2]]."
           },
@@ -840,6 +841,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [],
+            "vTip": "",
             "line": 3,
             "message": "order will record nodes in the order DFS first reaches them."
           },
@@ -861,6 +863,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [],
+            "vTip": "",
             "line": 12,
             "message": "Start the search at node 0."
           },
@@ -882,6 +885,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2],
+            "vTip": "v \\in [1, 2]",
             "line": 6,
             "message": "Visit 0: mark it visited first, so no other path enters it again."
           },
@@ -903,6 +907,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2],
+            "vTip": "v \\in [1, 2]",
             "line": 7,
             "message": "order = [0]."
           },
@@ -924,6 +929,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{1}}, 2]",
             "line": 8,
             "message": "Neighbour 1 of 2 of 0: 1."
           },
@@ -945,6 +951,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{1}}, 2]",
             "line": 9,
             "message": "1 is new: go deeper before trying 0's other neighbours."
           },
@@ -966,6 +973,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{1}}, 2]",
             "line": 10,
             "message": "Call dfs(1): 0 waits until everything reachable from 1 is done."
           },
@@ -987,6 +995,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3],
+            "vTip": "v \\in [0, 3]",
             "line": 6,
             "message": "Visit 1: mark it visited first, so no other path enters it again."
           },
@@ -1008,6 +1017,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3],
+            "vTip": "v \\in [0, 3]",
             "line": 7,
             "message": "order = [0, 1]."
           },
@@ -1029,6 +1039,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{0}}, 3]",
             "line": 8,
             "message": "Neighbour 1 of 2 of 1: 0."
           },
@@ -1050,6 +1061,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{0}}, 3]",
             "line": 9,
             "message": "0 is already visited (it is where we came from). Skip it."
           },
@@ -1071,6 +1083,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3],
+            "vTip": "v \\in [0, \\textcolor{#f1c65b}{\\mathbf{3}}]",
             "line": 8,
             "message": "Neighbour 2 of 2 of 1: 3."
           },
@@ -1092,6 +1105,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3],
+            "vTip": "v \\in [0, \\textcolor{#f1c65b}{\\mathbf{3}}]",
             "line": 9,
             "message": "3 is new: go deeper before trying 1's other neighbours."
           },
@@ -1113,6 +1127,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3],
+            "vTip": "v \\in [0, \\textcolor{#f1c65b}{\\mathbf{3}}]",
             "line": 10,
             "message": "Call dfs(3): 1 waits until everything reachable from 3 is done."
           },
@@ -1134,6 +1149,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, 2, 4]",
             "line": 6,
             "message": "Visit 3: mark it visited first, so no other path enters it again."
           },
@@ -1155,6 +1171,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, 2, 4]",
             "line": 7,
             "message": "order = [0, 1, 3]."
           },
@@ -1176,6 +1193,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{1}}, 2, 4]",
             "line": 8,
             "message": "Neighbour 1 of 3 of 3: 1."
           },
@@ -1197,6 +1215,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{1}}, 2, 4]",
             "line": 9,
             "message": "1 is already visited (it is where we came from). Skip it."
           },
@@ -1218,6 +1237,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, \\textcolor{#f1c65b}{\\mathbf{2}}, 4]",
             "line": 8,
             "message": "Neighbour 2 of 3 of 3: 2."
           },
@@ -1239,6 +1259,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, \\textcolor{#f1c65b}{\\mathbf{2}}, 4]",
             "line": 9,
             "message": "2 is new: go deeper before trying 3's other neighbours."
           },
@@ -1260,6 +1281,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, \\textcolor{#f1c65b}{\\mathbf{2}}, 4]",
             "line": 10,
             "message": "Call dfs(2): 3 waits until everything reachable from 2 is done."
           },
@@ -1281,6 +1303,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, 3, 5]",
             "line": 6,
             "message": "Visit 2: mark it visited first, so no other path enters it again."
           },
@@ -1302,6 +1325,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, 3, 5]",
             "line": 7,
             "message": "order = [0, 1, 3, 2]."
           },
@@ -1323,6 +1347,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{0}}, 3, 5]",
             "line": 8,
             "message": "Neighbour 1 of 3 of 2: 0."
           },
@@ -1344,6 +1369,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{0}}, 3, 5]",
             "line": 9,
             "message": "0 is already visited: an edge back into explored territory, a cycle. Skip it."
           },
@@ -1365,6 +1391,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, \\textcolor{#f1c65b}{\\mathbf{3}}, 5]",
             "line": 8,
             "message": "Neighbour 2 of 3 of 2: 3."
           },
@@ -1386,6 +1413,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, \\textcolor{#f1c65b}{\\mathbf{3}}, 5]",
             "line": 9,
             "message": "3 is already visited (it is where we came from). Skip it."
           },
@@ -1407,6 +1435,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, 3, \\textcolor{#f1c65b}{\\mathbf{5}}]",
             "line": 8,
             "message": "Neighbour 3 of 3 of 2: 5."
           },
@@ -1428,6 +1457,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, 3, \\textcolor{#f1c65b}{\\mathbf{5}}]",
             "line": 9,
             "message": "5 is new: go deeper before trying 2's other neighbours."
           },
@@ -1449,6 +1479,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, 3, \\textcolor{#f1c65b}{\\mathbf{5}}]",
             "line": 10,
             "message": "Call dfs(5): 2 waits until everything reachable from 5 is done."
           },
@@ -1470,6 +1501,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [2],
+            "vTip": "v \\in [2]",
             "line": 6,
             "message": "Visit 5: mark it visited first, so no other path enters it again."
           },
@@ -1491,6 +1523,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [2],
+            "vTip": "v \\in [2]",
             "line": 7,
             "message": "order = [0, 1, 3, 2, 5]."
           },
@@ -1512,6 +1545,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [2],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{2}}]",
             "line": 8,
             "message": "Neighbour 1 of 1 of 5: 2."
           },
@@ -1533,6 +1567,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 0],
             "adjU": [2],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{2}}]",
             "line": 9,
             "message": "2 is already visited (it is where we came from). Skip it."
           },
@@ -1554,6 +1589,7 @@
             "kids5": [],
             "done": [0, 0, 0, 0, 0, 1],
             "adjU": [0, 3, 5],
+            "vTip": "v \\in [0, 3, 5]",
             "line": 10,
             "message": "dfs(5) has run out of neighbours and returns: back in dfs(2), at the next neighbour."
           },
@@ -1575,6 +1611,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, 2, 4]",
             "line": 10,
             "message": "dfs(2) has run out of neighbours and returns: back in dfs(3), at the next neighbour."
           },
@@ -1596,6 +1633,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, 2, \\textcolor{#f1c65b}{\\mathbf{4}}]",
             "line": 8,
             "message": "Neighbour 3 of 3 of 3: 4."
           },
@@ -1617,6 +1655,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, 2, \\textcolor{#f1c65b}{\\mathbf{4}}]",
             "line": 9,
             "message": "4 is new: go deeper before trying 3's other neighbours."
           },
@@ -1638,6 +1677,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, 2, \\textcolor{#f1c65b}{\\mathbf{4}}]",
             "line": 10,
             "message": "Call dfs(4): 3 waits until everything reachable from 4 is done."
           },
@@ -1659,6 +1699,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [3],
+            "vTip": "v \\in [3]",
             "line": 6,
             "message": "Visit 4: mark it visited first, so no other path enters it again."
           },
@@ -1680,6 +1721,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [3],
+            "vTip": "v \\in [3]",
             "line": 7,
             "message": "order = [0, 1, 3, 2, 5, 4]."
           },
@@ -1701,6 +1743,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [3],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{3}}]",
             "line": 8,
             "message": "Neighbour 1 of 1 of 4: 3."
           },
@@ -1722,6 +1765,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 0, 1],
             "adjU": [3],
+            "vTip": "v \\in [\\textcolor{#f1c65b}{\\mathbf{3}}]",
             "line": 9,
             "message": "3 is already visited (it is where we came from). Skip it."
           },
@@ -1743,6 +1787,7 @@
             "kids5": [],
             "done": [0, 0, 1, 0, 1, 1],
             "adjU": [1, 2, 4],
+            "vTip": "v \\in [1, 2, 4]",
             "line": 10,
             "message": "dfs(4) has run out of neighbours and returns: back in dfs(3), at the next neighbour."
           },
@@ -1764,6 +1809,7 @@
             "kids5": [],
             "done": [0, 0, 1, 1, 1, 1],
             "adjU": [0, 3],
+            "vTip": "v \\in [0, 3]",
             "line": 10,
             "message": "dfs(3) has run out of neighbours and returns: back in dfs(1), at the next neighbour."
           },
@@ -1785,6 +1831,7 @@
             "kids5": [],
             "done": [0, 1, 1, 1, 1, 1],
             "adjU": [1, 2],
+            "vTip": "v \\in [1, 2]",
             "line": 10,
             "message": "dfs(1) has run out of neighbours and returns: back in dfs(0), at the next neighbour."
           },
@@ -1806,6 +1853,7 @@
             "kids5": [],
             "done": [0, 1, 1, 1, 1, 1],
             "adjU": [1, 2],
+            "vTip": "v \\in [1, \\textcolor{#f1c65b}{\\mathbf{2}}]",
             "line": 8,
             "message": "Neighbour 2 of 2 of 0: 2."
           },
@@ -1827,6 +1875,7 @@
             "kids5": [],
             "done": [0, 1, 1, 1, 1, 1],
             "adjU": [1, 2],
+            "vTip": "v \\in [1, \\textcolor{#f1c65b}{\\mathbf{2}}]",
             "line": 9,
             "message": "2 is already visited: an edge back into explored territory, a cycle. Skip it."
           },
@@ -1848,6 +1897,7 @@
             "kids5": [],
             "done": [1, 1, 1, 1, 1, 1],
             "adjU": [],
+            "vTip": "",
             "line": 13,
             "message": "Done: order = [0, 1, 3, 2, 5, 4]. Every node and every edge was looked at once: O(V + E)."
           }
@@ -1942,8 +1992,9 @@
               "lengthExpr": "arrayCount(dataTable('trace', frame, 'adjU'))",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'adjU'), idx)",
               "highlightExpr": "idx == dataTable('trace', frame, 'vi')",
+              "connectTo": {"object": "graph", "indexExpr": "value", "pinned": true, "arrow": true, "color": "#8aa0b8", "highlightExpr": "idx == dataTable('trace', frame, 'vi')"},
               "markers": [
-                {"type": "step_marker", "indexName": "v", "indexExpr": "dataTable('trace', frame, 'vi')", "visibleExpr": "dataTable('trace', frame, 'vi') >= 0", "color": "#f1c65b"}
+                {"type": "step_marker", "indexName": "v", "indexExpr": "dataTable('trace', frame, 'vi')", "valueExpr": "dataTable('trace', frame, 'v')", "visibleExpr": "dataTable('trace', frame, 'vi') >= 0", "color": "#f1c65b"}
               ]
             },
             {
@@ -2006,7 +2057,8 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'v') < 0 ? 'v: —' : concat('v = ', dataTable('trace', frame, 'v'))",
               "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'v')"},
-              "codeRef": {"file": "dfs", "line": 8}
+              "codeRef": {"file": "dfs", "line": 8},
+              "tooltipExpr": "dataTable('trace', frame, 'vTip')"
             },
             {
               "id": "check",

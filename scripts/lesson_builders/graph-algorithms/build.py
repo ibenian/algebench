@@ -332,8 +332,18 @@ def dfs_trace(n, edges):
     adj = adjacency(n, edges)
     L = lambda t: line_of(DFS_SOURCE, t)
     st = {'u': -1, 'v': -1, 'vi': -1, 'check': -1, 'visited': [0] * n, 'order': [], 'stack': [], 'calls': [],
-          'parent': [-1] * n, **{f'kids{i}': [] for i in range(n)}, 'done': [0] * n, 'adjU': []}
+          'parent': [-1] * n, **{f'kids{i}': [] for i in range(n)}, 'done': [0] * n, 'adjU': [], 'vTip': ''}
     trace, emit = recorder(st)
+    # vTip: every value v takes in the current call's loop, the current one in gold bold (LaTeX, for the v row's
+    # tooltip in the Code panel).
+    def tip():
+        u, vi = st['u'], st['vi']
+        if u < 0: return ''
+        cells = [rf'\textcolor{{#f1c65b}}{{\mathbf{{{x}}}}}' if k == vi else str(x) for k, x in enumerate(adj[u])]
+        return rf'v \in [{", ".join(cells)}]'
+    emit0 = emit
+    def emit(line, message):
+        st['vTip'] = tip(); emit0(line, message)
     emit(L('visited = [False]'), f'No node visited yet. adj lists each node\'s neighbours: {adj}.')
     emit(L('order = []'), 'order will record nodes in the order DFS first reaches them.')
 
@@ -393,7 +403,11 @@ def dfs_scene(header):
          'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
          'lengthExpr': f"arrayCount({tr('adjU')})", 'valueExpr': f"arrayAt({tr('adjU')}, idx)",
          'highlightExpr': f"idx == {tr('vi')}",
-         'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': tr('vi'), 'visibleExpr': f"{tr('vi')} >= 0", 'color': GOLD}]},
+         # Each neighbour links to its node in the graph; the one being looked at is lit.
+         'connectTo': {'object': 'graph', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8',
+                       'highlightExpr': f"idx == {tr('vi')}"},
+         # The marker sits on v's place in the list and names its value.
+         'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': tr('vi'), 'valueExpr': tr('v'), 'visibleExpr': f"{tr('vi')} >= 0", 'color': GOLD}]},
         {'id': 'visited', 'type': 'array', 'label': 'visited', 'labelSide': 'left', 'origin': [-4.4, -2.2, 0], 'cellSize': 1.15,
          'itemType': 'text', 'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(n),
          'valueExpr': f"{on('visited', 'idx')} ? 'T' : 'F'", 'highlightExpr': f"idx == {tr('v')} and {tr('check')} >= 0",
@@ -407,7 +421,8 @@ def dfs_scene(header):
          'lengthExpr': f"arrayCount({tr('order')})", 'valueExpr': f"arrayAt({tr('order')}, idx)",
          'highlightExpr': f"idx == arrayCount({tr('order')}) - 1 and {tr('line')} == {L('order.append(u)')}"},
         label('u', f"{tr('u')} < 0 ? 'u: —' : concat('u = ', {tr('u')})", ['graph', tr('u')], L('def dfs(u)'), 'dfs'),
-        label('v', f"{tr('v')} < 0 ? 'v: —' : concat('v = ', {tr('v')})", ['graph', tr('v')], L('for v in adj[u]'), 'dfs'),
+        {**label('v', f"{tr('v')} < 0 ? 'v: —' : concat('v = ', {tr('v')})", ['graph', tr('v')], L('for v in adj[u]'), 'dfs'),
+         'tooltipExpr': tr('vTip')},
         {**label('check', f"{tr('check')} < 0 ? 'not visited[v]: —' : ({tr('check')} == 1 ? 'not visited[v] → True' : 'not visited[v] → False')",
                  ['visited', f"{tr('check')} >= 0 ? {tr('v')} : -1"], L('if not visited[v]'), 'dfs'),
          'highlightExpr': f"{tr('line')} == {L('if not visited[v]')}"},

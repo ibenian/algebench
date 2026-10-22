@@ -2966,10 +2966,12 @@ function labelsForSymbol(key) {
 		const a = l.annotation;
 		if (!a?.text || !l.visible || l.forceHidden || l.el.style.display === "none") continue;
 		if (!rowSymbolKeys(a.text).includes(key)) continue;
-		if (!out.some((o) => o.text === a.text)) out.push({
+		const same = out.find((o) => o.text === a.text);
+		if (!same) out.push({
 			text: a.text,
 			...a.tooltip ? { tooltip: a.tooltip } : {}
 		});
+		else if (!same.tooltip && a.tooltip) same.tooltip = a.tooltip;
 	}
 	return out;
 }
@@ -25528,7 +25530,7 @@ function setupCodePanel() {
 		const found = labelsForSymbol(key);
 		if (!found.length) return null;
 		const plain = (t) => "\\text{" + t.replace(/[\\{}$&#%_^~]/g, (c) => c === "\\" ? "\\backslash " : "\\" + c) + "}";
-		return found.map((f) => f.tooltip || plain(f.text)).join("\\\\");
+		return [...new Set(found.map((f) => f.tooltip || plain(f.text)))].join("\\\\");
 	}
 	function paintSymbolHover() {
 		const keys = hoveredSymbols(), line = hoveredCodeLine();

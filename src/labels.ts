@@ -481,7 +481,10 @@ export function labelsForSymbol(key: string): {text: string; tooltip?: string}[]
         const a = l.annotation;
         if (!a?.text || !l.visible || l.forceHidden || l.el.style.display === 'none') continue;
         if (!rowSymbolKeys(a.text).includes(key)) continue;
-        if (!out.some(o => o.text === a.text)) out.push({text: a.text, ...(a.tooltip ? {tooltip: a.tooltip} : {})});
+        // Rows saying the same thing appear once; the one carrying a tooltip (richer LaTeX) wins.
+        const same = out.find(o => o.text === a.text);
+        if (!same) out.push({text: a.text, ...(a.tooltip ? {tooltip: a.tooltip} : {})});
+        else if (!same.tooltip && a.tooltip) same.tooltip = a.tooltip;
     }
     return out;
 }

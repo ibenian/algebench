@@ -322,7 +322,8 @@ export function setupCodePanel(): void {
         const found=labelsForSymbol(key);
         if(!found.length)return null;
         const plain=(t:string)=>'\\text{'+t.replace(/[\\{}$&#%_^~]/g,c=>c==='\\'?'\\backslash ':'\\'+c)+'}';
-        return found.map(f=>f.tooltip||plain(f.text)).join('\\\\');
+        // Two labels saying the same thing (a row and a marker) show once.
+        return [...new Set(found.map(f=>f.tooltip||plain(f.text)))].join('\\\\');
     }
     function paintSymbolHover() {
         const keys=hoveredSymbols(),line=hoveredCodeLine();
