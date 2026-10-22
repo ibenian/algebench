@@ -25,21 +25,21 @@ ALGORITHMS = [
      "An **adjacency list** maps each node to its neighbours: compact for sparse graphs and the default in interviews. An **adjacency matrix** answers \"is there an edge?\" in O(1) but costs O(V²) space. An **edge list** suits algorithms that sort or scan edges (Kruskal, Bellman-Ford). Many problems hand you edges or a grid; building the list is step one.",
      "Build: O(V + E) for a list, O(V²) for a matrix.",
      ["Find if Path Exists in Graph", "Clone Graph", "Find the Town Judge"]),
-    ("degrees", "Count degrees", "Count degrees (in, out, and peeling)", 0, ["representations"],
-     "a node defined by how many edges touch it (\"trusted by everyone\", \"the centre\"), sources and sinks, or peeling a graph layer by layer.",
-     "One pass over the edges counts each node's **in-degree** and **out-degree**, with no traversal. Sometimes the counts are the answer: the town judge has in-degree n − 1 and out-degree 0; nodes nothing points at (in-degree 0) are the ones every search must start from. Degrees also prove shape: they sum to 2E, a tree has V − 1 edges, and an Euler path needs balanced degrees. **Peeling** repeatedly removes the nodes whose degree hits a threshold: leaves (degree 1) layer by layer find a tree's centre, and nodes with in-degree 0 give Kahn's topological sort.",
-     "O(V + E) to count; peeling is O(V + E) too.",
-     ["Find the Town Judge", "Find Center of Star Graph", "Minimum Number of Vertices to Reach All Nodes", "Maximal Network Rank", "Minimum Height Trees"]),
-    ("bfs", "BFS", "Level by level (breadth-first search)", 0, ["representations"],
-     "shortest path in steps on an unweighted graph, \"minimum moves\", nearest X, or anything level by level.",
-     "A queue visits nodes in order of distance from the start: all nodes one step away, then two, and so on. Mark a node visited when it is **enqueued**, not when it is dequeued, or it is queued twice. The first time BFS reaches a node is along a shortest path. **Multi-source BFS** starts with every source in the queue (rotting oranges, distance to the nearest gate).",
-     "O(V + E) time, O(V) space for the queue and the visited set.",
-     ["Word Ladder", "Rotting Oranges", "Shortest Path in Binary Matrix", "Open the Lock"]),
     ("dfs", "DFS", "Go deep first (depth-first search)", 0, ["representations"],
      "explore everything reachable, count components, find any path, or anything that backtracks.",
      "Follow one path as far as it goes, then back up and try the next branch, with recursion or an explicit stack. Mark nodes visited so cycles do not loop forever. DFS is the engine under cycle detection, topological sort, components, bridges and strongly connected components.",
      "O(V + E) time, O(V) space for the visited set and the recursion stack.",
      ["Number of Connected Components", "Clone Graph", "All Paths From Source to Target", "Keys and Rooms"]),
+    ("bfs", "BFS", "Level by level (breadth-first search)", 0, ["representations"],
+     "shortest path in steps on an unweighted graph, \"minimum moves\", nearest X, or anything level by level.",
+     "A queue visits nodes in order of distance from the start: all nodes one step away, then two, and so on. Mark a node visited when it is **enqueued**, not when it is dequeued, or it is queued twice. The first time BFS reaches a node is along a shortest path. **Multi-source BFS** starts with every source in the queue (rotting oranges, distance to the nearest gate).",
+     "O(V + E) time, O(V) space for the queue and the visited set.",
+     ["Word Ladder", "Rotting Oranges", "Shortest Path in Binary Matrix", "Open the Lock"]),
+    ("degrees", "Count degrees", "Count degrees (in, out, and peeling)", 0, ["representations"],
+     "a node defined by how many edges touch it (\"trusted by everyone\", \"the centre\"), sources and sinks, or peeling a graph layer by layer.",
+     "One pass over the edges counts each node's **in-degree** and **out-degree**, with no traversal. Sometimes the counts are the answer: the town judge has in-degree n − 1 and out-degree 0; nodes nothing points at (in-degree 0) are the ones every search must start from. Degrees also prove shape: they sum to 2E, a tree has V − 1 edges, and an Euler path needs balanced degrees. **Peeling** repeatedly removes the nodes whose degree hits a threshold: leaves (degree 1) layer by layer find a tree's centre, and nodes with in-degree 0 give Kahn's topological sort.",
+     "O(V + E) to count; peeling is O(V + E) too.",
+     ["Find the Town Judge", "Find Center of Star Graph", "Minimum Number of Vertices to Reach All Nodes", "Maximal Network Rank", "Minimum Height Trees"]),
     ("grid-graphs", "Grid graphs", "A grid is a graph (islands, flood fill)", 0, ["bfs", "dfs"],
      "a 2D grid of cells with moves up, down, left and right.",
      "Each cell is a node and each allowed move an edge, so BFS and DFS work unchanged; no adjacency list is needed, just the four direction offsets and a bounds check. Mark cells visited in place or in a set. Counting islands is counting connected components.",
@@ -178,7 +178,7 @@ label = lambda id, text, connect=None, line=None, file=None: {
     **({'codeRef': {'file': file, 'line': line}} if line else {})}
 
 
-def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None):
+def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None, call_entry=None):
     """A scene that plays one recorded run: the frame slider, a caption from each frame's message, and the Code
     panel on the executing line (codeRef), with each line linked back to its frames."""
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
@@ -192,7 +192,8 @@ def run_scene(id, title, header, markdown, prompt, file, source, trace, elements
                    'sliders': [{'id': 'frame', 'label': 'Execution state', 'min': 0, 'max': len(trace) - 1, 'step': 1, 'default': 0}],
                    'add': elements}],
         'stepPlayback': {'slider': 'frame', 'intervalMs': 1200},
-        'codeRef': {'file': id, 'lineExpr': tr('line')},
+        # call_entry: a recursive run's function line; the trace's calls column lists the waiting call sites.
+        'codeRef': {'file': id, 'lineExpr': tr('line'), **({'callsExpr': tr('calls'), 'callEntryLine': call_entry} if call_entry else {})},
     }
 
 
@@ -297,9 +298,139 @@ Use the execution player to step through, or open **Code** to follow the active 
         data={'nodes': [{'x': round(x, 3), 'y': round(y, 3)} for x, y in pos]})
 
 
+# ── 2. DFS: go deep first, recursively, on an undirected graph with a cycle ──
+DFS_SOURCE = """def dfs_order(n, adj):
+    visited = [False] * n
+    order = []
+
+    def dfs(u):
+        visited[u] = True
+        order.append(u)
+        for v in adj[u]:
+            if not visited[v]:
+                dfs(v)
+
+    dfs(0)
+    return order"""
+DFS_N, DFS_EDGES = 6, [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (2, 5)]
+DFS_POS = [(-5.6, 2.2), (-3.6, 3.4), (-3.6, 1.0), (-1.6, 2.2), (0.4, 3.4), (-1.6, -0.2)]
+
+
+def adjacency(n, edges):
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v); adj[v].append(u)
+    return [sorted(a) for a in adj]
+
+
+def dfs_trace(n, edges):
+    """Recursive DFS from node 0. Per frame: u, the call the code is in (−1 none); v, the neighbour being looked at
+    (vi its place in adj[u]; −1 none); check, the last `not visited[v]` (−1 none, 0 visited, 1 new); visited (0/1
+    per node), order, stack (the nodes of the calls not yet returned, outermost first) and calls (their call-site
+    lines); parent (per node, the node it was discovered from; −1 none) and kids0 … kids{n−1} (each node's
+    discovered children, for the tree edges); done (0/1 per node: its call returned)."""
+    adj = adjacency(n, edges)
+    L = lambda t: line_of(DFS_SOURCE, t)
+    st = {'u': -1, 'v': -1, 'vi': -1, 'check': -1, 'visited': [0] * n, 'order': [], 'stack': [], 'calls': [],
+          'parent': [-1] * n, **{f'kids{i}': [] for i in range(n)}, 'done': [0] * n, 'adjU': []}
+    trace, emit = recorder(st)
+    emit(L('visited = [False]'), f'No node visited yet. adj lists each node\'s neighbours: {adj}.')
+    emit(L('order = []'), 'order will record nodes in the order DFS first reaches them.')
+
+    def dfs(u, site):
+        st['stack'] = st['stack'] + [u]; st['calls'] = st['calls'] + [site]
+        st.update(u=u, v=-1, vi=-1, check=-1, adjU=adj[u])
+        st['visited'] = [1 if i == u else x for i, x in enumerate(st['visited'])]
+        emit(L('visited[u] = True'), f'Visit {u}: mark it visited first, so no other path enters it again.')
+        st['order'] = st['order'] + [u]
+        emit(L('order.append(u)'), f'order = {st["order"]}.')
+        for vi, v in enumerate(adj[u]):
+            st.update(u=u, v=v, vi=vi, check=-1, adjU=adj[u])
+            emit(L('for v in adj[u]'), f'Neighbour {vi + 1} of {len(adj[u])} of {u}: {v}.')
+            new = not st['visited'][v]
+            st['check'] = 1 if new else 0
+            emit(L('if not visited[v]'), f'{v} is new: go deeper before trying {u}\'s other neighbours.' if new
+                 else f'{v} is already visited' + (' (it is where we came from)' if st['parent'][u] == v else ': an edge back into explored territory, a cycle') + '. Skip it.')
+            if new:
+                st['parent'] = [u if i == v else x for i, x in enumerate(st['parent'])]
+                st[f'kids{u}'] = st[f'kids{u}'] + [v]
+                emit(L('dfs(v)'), f'Call dfs({v}): {u} waits until everything reachable from {v} is done.')
+                dfs(v, L('dfs(v)'))
+                st.update(u=u, v=v, vi=vi, check=1, adjU=adj[u])
+        st['done'] = [1 if i == u else x for i, x in enumerate(st['done'])]
+        st['stack'] = st['stack'][:-1]; st['calls'] = st['calls'][:-1]
+        back = st['stack'][-1] if st['stack'] else -1
+        st.update(u=back, v=-1, vi=-1, check=-1, adjU=adj[back] if back >= 0 else [])
+        if back >= 0:
+            emit(L('dfs(v)'), f'dfs({u}) has run out of neighbours and returns: back in dfs({back}), at the next neighbour.')
+
+    emit(L('dfs(0)'), 'Start the search at node 0.')
+    dfs(0, L('dfs(0)'))
+    emit(L('return order'), f'Done: order = {st["order"]}. Every node and every edge was looked at once: O(V + E).')
+    return trace, adj
+
+
+def dfs_scene(header):
+    n, edges = DFS_N, DFS_EDGES
+    trace, adj = dfs_trace(n, edges)
+    L = lambda t: line_of(DFS_SOURCE, t)
+    on = lambda col, i: f"arrayAt({tr(col)}, {i}) == 1"
+    current = f"(idx == {tr('u')} and to == {tr('v')}) or (idx == {tr('v')} and to == {tr('u')})"
+    elements = [
+        # Every edge, grey; the DFS tree's edges (discovered through) brighter; the edge being looked at lit.
+        {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(n), 'valueExpr': 'idx',
+         'positionExpr': ["dataTable('nodes', idx, 'x')", "dataTable('nodes', idx, 'y')", '0'],
+         'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
+         'colorExpr': f"idx == {tr('u')} ? '{GOLD}' : (keyIndex({tr('stack')}, idx) >= 0 ? '#e67db0' : ({on('done', 'idx')} ? '#77bfae' : ''))",
+         'connectTo': [
+             {'indexExpr': "dataTable('nodes', idx, 'adj')", 'pinned': True, 'bendExpr': '0', 'color': '#4a5868',
+              'colorExpr': f"{current} ? '{GOLD}' : ''", 'highlightExpr': current},
+             # The DFS tree: an arrow from each node to the children it discovered.
+             {'indexExpr': f"dataTable('trace', frame, concat('kids', idx))", 'pinned': True, 'arrow': True, 'bendExpr': '0', 'color': '#77bfae',
+              'highlightExpr': 'true'}]},
+        # The current node's neighbour list, with v walking along it.
+        {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'labelSide': 'left', 'origin': [4.6, 3.4, 0], 'cellSize': 1.1,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+         'lengthExpr': f"arrayCount({tr('adjU')})", 'valueExpr': f"arrayAt({tr('adjU')}, idx)",
+         'highlightExpr': f"idx == {tr('vi')}",
+         'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': tr('vi'), 'visibleExpr': f"{tr('vi')} >= 0", 'color': GOLD}]},
+        {'id': 'visited', 'type': 'array', 'label': 'visited', 'labelSide': 'left', 'origin': [-4.4, -2.2, 0], 'cellSize': 1.15,
+         'itemType': 'text', 'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(n),
+         'valueExpr': f"{on('visited', 'idx')} ? 'T' : 'F'", 'highlightExpr': f"idx == {tr('v')} and {tr('check')} >= 0",
+         'colorExpr': f"{on('visited', 'idx')} ? '#77bfae' : ''"},
+        {'id': 'stack', 'type': 'array', 'label': 'call stack', 'labelSide': 'left', 'origin': [-4.4, -3.6, 0], 'cellSize': 1.15,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'color': '#e67db0',
+         'lengthExpr': f"arrayCount({tr('stack')})", 'valueExpr': f"arrayAt({tr('stack')}, idx)",
+         'highlightExpr': f"idx == arrayCount({tr('stack')}) - 1"},
+        {'id': 'order', 'type': 'array', 'label': 'order', 'labelSide': 'left', 'origin': [4.6, 1.6, 0], 'cellSize': 1.1,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'color': '#b69bea',
+         'lengthExpr': f"arrayCount({tr('order')})", 'valueExpr': f"arrayAt({tr('order')}, idx)",
+         'highlightExpr': f"idx == arrayCount({tr('order')}) - 1 and {tr('line')} == {L('order.append(u)')}"},
+        label('u', f"{tr('u')} < 0 ? 'u: —' : concat('u = ', {tr('u')})", ['graph', tr('u')], L('def dfs(u)'), 'dfs'),
+        label('v', f"{tr('v')} < 0 ? 'v: —' : concat('v = ', {tr('v')})", ['graph', tr('v')], L('for v in adj[u]'), 'dfs'),
+        {**label('check', f"{tr('check')} < 0 ? 'not visited[v]: —' : ({tr('check')} == 1 ? 'not visited[v] → True' : 'not visited[v] → False')",
+                 ['visited', f"{tr('check')} >= 0 ? {tr('v')} : -1"], L('if not visited[v]'), 'dfs'),
+         'highlightExpr': f"{tr('line')} == {L('if not visited[v]')}"},
+    ]
+    return run_scene('dfs', 'Go deep first (depth-first search)', header, """**Signal:** explore everything reachable, count components, find any path, or anything that backtracks.
+
+DFS follows one path as far as it goes, then **backs up** to the last node with an untried neighbour and goes deep again. Recursion does the backing up for free: each `dfs(v)` call waits on the stack until everything reachable from `v` is done.
+
+**Mark a node visited the moment you reach it.** A graph, unlike a tree, has cycles and several paths into one node; without `visited`, DFS would walk round a cycle forever. Here node 2 sees 0 again through the edge 0–2: already visited, so it is skipped, and that edge closes a cycle.
+
+The arrows show the **DFS tree**: each node points to the nodes it discovered. Gold is the call running now, pink calls wait on the stack (the current path from 0), teal calls have returned. Open **Code** to see each waiting `dfs(v)` call's arrow into the function, the call stack drawn in the code.
+
+**Cost:** each node is visited once and each adjacency list read once: O(V + E) time, O(V) space for `visited` and the recursion. On a very deep graph the recursion can overflow; an explicit stack does the same walk iteratively.
+
+**Practice:** Number of Connected Components, Clone Graph, All Paths From Source to Target, Keys and Rooms.""",
+        'Explain going deep, backing up, and why visited must be marked on arrival. Ask the learner to predict which node DFS visits next, and what happens when a neighbour is already visited.',
+        'dfs.py', DFS_SOURCE, trace, elements,
+        data={'nodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(DFS_POS, adj)]}, call_entry=line_of(DFS_SOURCE, 'def dfs(u)'))
+
+
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
-BUILT = {'representations': lambda header: representations_scene(header)}
+BUILT = {'representations': representations_scene, 'dfs': dfs_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
