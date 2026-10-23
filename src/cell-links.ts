@@ -80,8 +80,10 @@ export function paintCellLinks(): void {
                 curve = cellLinkCurve(start, end, a.vertical ? 'h' : 'v', across ? 'h' : 'v');
             } else if (a.graph || b.graph) {
                 // Graph nodes stand free: an edge runs from node edge to node edge, bowing away from the graph's centre.
+                // A node's four corners come in order round its face, so they are its outline as drawn (poly).
                 const box = (c: {x: number; y: number}[], m: {x: number; y: number}, round?: boolean) => ({ centre: m, round,
-                    hw: (Math.max(...c.map(q => q.x)) - Math.min(...c.map(q => q.x))) / 2, hh: (Math.max(...c.map(q => q.y)) - Math.min(...c.map(q => q.y))) / 2 });
+                    hw: (Math.max(...c.map(q => q.x)) - Math.min(...c.map(q => q.x))) / 2, hh: (Math.max(...c.map(q => q.y)) - Math.min(...c.map(q => q.y))) / 2,
+                    ...(c.length === 4 ? {poly: c} : {}) });
                 centre ??= graphCentre(from, screen) ?? am;
                 // Per edge (from bendExpr / arcCenterExpr): an arc round a given centre, or a bow of its own.
                 const route = group.styles?.[p];

@@ -14,3 +14,15 @@ test('stack container remains visible when empty, contains every cell, and grows
  }
  assert.equal(stackBounds(1,origin,pitch).top,empty.top);
 });
+
+test('a horizontal stack is closed on the left, contains every cell, and grows only to the right',()=>{
+ const origin=[-3,-3,0],pitch=1.1,empty=stackBounds(0,origin,pitch,true);
+ assert.ok(empty.right>empty.left);
+ for(const length of [1,2,10]){
+  const b=stackBounds(length,origin,pitch,true);
+  assert.equal(b.left,empty.left);assert.equal(b.bottom,empty.bottom);assert.equal(b.top,empty.top);
+  for(let i=0;i<length;i++)for(const [x,y,z] of arrayCellCorners(arrayCellPosition(i,origin,pitch),pitch)){
+   assert.ok(x!>b.left&&x!<b.right);assert.ok(y!>b.bottom&&y!<b.top);assert.ok(z!>b.back&&z!<b.front);
+  }
+ }
+});

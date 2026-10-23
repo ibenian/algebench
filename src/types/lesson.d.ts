@@ -1070,7 +1070,7 @@ export type Element = {
    */
   edgeBend?: number;
   /**
-   * ARRAY / DICT. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap. A dict with 'vertical' stacks its entries down a column instead (first on top), each key to the left of its cell, title above.
+   * ARRAY / DICT. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap. A dict with 'vertical' stacks its entries down a column instead (first on top), each key to the left of its cell, title above. A stack is upright by default; 'horizontal' lays it on its side, closed on the left and pushing to the right.
    */
   arrayLayout?: 'horizontal' | 'vertical';
   /**

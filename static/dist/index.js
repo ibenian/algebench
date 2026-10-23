@@ -1518,6 +1518,16 @@ function graphEdgeCurve(a, b, bend, centre) {
 				y: n.centre.y + dy / len * r
 			};
 		}
+		if (n.poly && n.poly.length >= 3) {
+			const t = rayExit(n.centre, {
+				x: dx / len,
+				y: dy / len
+			}, n.poly);
+			if (t !== null) return {
+				x: n.centre.x + dx / len * (t + 2),
+				y: n.centre.y + dy / len * (t + 2)
+			};
+		}
 		const t = Math.min(Math.abs(dx) > 1e-6 ? (n.hw + 2) / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-6 ? (n.hh + 2) / Math.abs(dy) : Infinity);
 		return {
 			x: n.centre.x + dx * t,
@@ -1560,11 +1570,26 @@ function graphEdgeCurve(a, b, bend, centre) {
 		y: mid.y + py * bend * len
 	};
 	const s = boundary(a, control), e = boundary(b, control);
+	const ux = dx / len, uy = dy / len, behind = (e.x - control.x) * ux + (e.y - control.y) * uy > 1;
 	return {
 		d: `M ${s.x} ${s.y} Q ${control.x} ${control.y}, ${e.x} ${e.y}`,
-		arrive: control,
+		arrive: behind ? control : {
+			x: e.x - ux * 10,
+			y: e.y - uy * 10
+		},
 		end: e
 	};
+}
+/** Distance from `from` (inside the polygon) along the unit direction `dir` to where the ray leaves it, or null. */
+function rayExit(from, dir, poly) {
+	let best = null;
+	for (let i = 0; i < poly.length; i++) {
+		const p = poly[i], q = poly[(i + 1) % poly.length], ex = q.x - p.x, ey = q.y - p.y, den = dir.x * ey - dir.y * ex;
+		if (Math.abs(den) < 1e-9) continue;
+		const t = ((p.x - from.x) * ey - (p.y - from.y) * ex) / den, u = ((p.x - from.x) * dir.y - (p.y - from.y) * dir.x) / den;
+		if (t >= 0 && u >= -1e-9 && u <= 1 + 1e-9 && (best === null || t < best)) best = t;
+	}
+	return best;
 }
 /**
 * A graph edge drawn as an arc of the circle around `centre` that passes through the source node: from node to
@@ -2127,7 +2152,8 @@ function paintCellLinks() {
 					centre: m,
 					round,
 					hw: (Math.max(...c.map((q) => q.x)) - Math.min(...c.map((q) => q.x))) / 2,
-					hh: (Math.max(...c.map((q) => q.y)) - Math.min(...c.map((q) => q.y))) / 2
+					hh: (Math.max(...c.map((q) => q.y)) - Math.min(...c.map((q) => q.y))) / 2,
+					...c.length === 4 ? { poly: c } : {}
 				});
 				centre ??= graphCentre(from, screen) ?? am;
 				const route = group.styles?.[p];
@@ -13457,9 +13483,18 @@ function renderArray(el, _view, decorate) {
 }
 //#endregion
 //#region src/objects/stack-layout.ts
-/** A fixed base and an open container that grows with its bottom-to-top cells. */
-function stackBounds(length, origin, pitch) {
+/** A fixed base and an open container that grows with its bottom-to-top cells; horizontal: closed on the left,
+*  growing to the right (cells at the array's horizontal pitch). */
+function stackBounds(length, origin, pitch, horizontal = false) {
 	const [x, y, z] = origin;
+	if (horizontal) return {
+		left: x - pitch * .39 - .55,
+		right: x + Math.max(0, length - 1) * pitch + pitch * .39 + .5,
+		bottom: y - .46,
+		top: y + .46,
+		back: z - .2,
+		front: z + .7
+	};
 	return {
 		left: x - pitch * .39 - .12,
 		right: x + pitch * .39 + .12,
@@ -13475,9 +13510,10 @@ function stackBounds(length, origin, pitch) {
 function renderStack(el, view) {
 	if (el.shape && el.shape.length !== 1) throw new Error("A stack needs a one-dimensional shape.");
 	const lengthExpr = el.lengthExpr ?? String(el.shape?.[0] ?? el.values?.length ?? 0);
+	const horizontal = el.arrayLayout === "horizontal";
 	return renderArray({
 		...el,
-		arrayLayout: "vertical",
+		arrayLayout: horizontal ? "horizontal" : "vertical",
 		lengthExpr,
 		showIndices: el.showIndices ?? false,
 		label: void 0,
@@ -13505,7 +13541,11 @@ function renderStack(el, view) {
 			return mesh;
 		};
 		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7);
-		const title = addLabel3D(el.label ?? "stack", [
+		const title = horizontal ? addLabel3D(el.label ?? "stack", [
+			origin[0] - pitch * .39 - .75,
+			origin[1],
+			origin[2]
+		], "#b5c1cf", { align: "right" }) : addLabel3D(el.label ?? "stack", [
 			origin[0],
 			origin[1] - 1.5,
 			origin[2]
@@ -13551,7 +13591,7 @@ function renderStack(el, view) {
 		const resize = (length) => {
 			if (length === previous) return;
 			previous = length;
-			const b = stackBounds(length, origin, pitch), t = .035, z = b.back;
+			const b = stackBounds(length, origin, pitch, horizontal), t = .035, z = b.back;
 			replace(back, [[
 				[
 					b.left,
@@ -13574,7 +13614,28 @@ function renderStack(el, view) {
 					z
 				]
 			]]);
-			replace(base, [[
+			replace(base, horizontal ? [[
+				[
+					b.left,
+					b.bottom,
+					z
+				],
+				[
+					b.left,
+					b.top,
+					z
+				],
+				[
+					b.left,
+					b.top,
+					b.front
+				],
+				[
+					b.left,
+					b.bottom,
+					b.front
+				]
+			]] : [[
 				[
 					b.left,
 					b.bottom,
@@ -13618,7 +13679,11 @@ function renderStack(el, view) {
 					z + .005
 				]
 			];
-			replace(outline, [
+			replace(outline, horizontal ? [
+				rect(b.left, b.bottom, b.left + t, b.top),
+				rect(b.left, b.bottom, b.right, b.bottom + t),
+				rect(b.left, b.top - t, b.right, b.top)
+			] : [
 				rect(b.left, b.bottom, b.left + t, b.top),
 				rect(b.right - t, b.bottom, b.right, b.top),
 				rect(b.left, b.bottom, b.right, b.bottom + t)

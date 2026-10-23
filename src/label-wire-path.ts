@@ -153,10 +153,13 @@ export function cellArcCurve(start:Pt,end:Pt,side:'up'|'down'|'left'|'right'):{d
  * `bend` of its length to the side away from `centre` (so the two directions of a pair, and edges around a loop,
  * curve apart). A node linked to itself gets a small loop over its top.
  */
-export function graphEdgeCurve(a:{centre:Pt;hw:number;hh:number;round?:boolean},b:{centre:Pt;hw:number;hh:number;round?:boolean},bend:number,centre:Pt):{d:string;arrive:Pt;end:Pt} {
+export function graphEdgeCurve(a:{centre:Pt;hw:number;hh:number;round?:boolean;poly?:Pt[]},b:{centre:Pt;hw:number;hh:number;round?:boolean;poly?:Pt[]},bend:number,centre:Pt):{d:string;arrive:Pt;end:Pt} {
     const boundary=(n:typeof a,toward:Pt):Pt=>{
         const dx=toward.x-n.centre.x,dy=toward.y-n.centre.y,len=Math.hypot(dx,dy)||1;
         if(n.round){const r=Math.min(n.hw,n.hh)+2;return {x:n.centre.x+dx/len*r,y:n.centre.y+dy/len*r};}
+        // The node's face as drawn (its projected corners, in order): exact under any rotation, where the upright
+        // box around them would reach into the neighbours and stretch the edge across them.
+        if(n.poly&&n.poly.length>=3){const t=rayExit(n.centre,{x:dx/len,y:dy/len},n.poly);if(t!==null)return {x:n.centre.x+dx/len*(t+2),y:n.centre.y+dy/len*(t+2)};}
         const t=Math.min(Math.abs(dx)>1e-6?(n.hw+2)/Math.abs(dx):Infinity,Math.abs(dy)>1e-6?(n.hh+2)/Math.abs(dy):Infinity);
         return {x:n.centre.x+dx*t,y:n.centre.y+dy*t};
     };
@@ -171,7 +174,21 @@ export function graphEdgeCurve(a:{centre:Pt;hw:number;hh:number;round?:boolean},
     if((mid.x-centre.x)*px+(mid.y-centre.y)*py<0){px=-px;py=-py;}
     const control={x:mid.x+px*bend*len,y:mid.y+py*bend*len};
     const s=boundary(a,control),e=boundary(b,control);
-    return {d:`M ${s.x} ${s.y} Q ${control.x} ${control.y}, ${e.x} ${e.y}`,arrive:control,end:e};
+    // The head points from `arrive` to the tip. Close nodes (or a zoomed-out view, where the 2 px margin dominates)
+    // can put the tip past the control point, which would turn the head round; then it follows the edge itself.
+    const ux=dx/len,uy=dy/len,behind=(e.x-control.x)*ux+(e.y-control.y)*uy>1;
+    return {d:`M ${s.x} ${s.y} Q ${control.x} ${control.y}, ${e.x} ${e.y}`,arrive:behind?control:{x:e.x-ux*10,y:e.y-uy*10},end:e};
+}
+/** Distance from `from` (inside the polygon) along the unit direction `dir` to where the ray leaves it, or null. */
+export function rayExit(from:Pt,dir:Pt,poly:readonly Pt[]):number|null {
+    let best:number|null=null;
+    for(let i=0;i<poly.length;i++){
+        const p=poly[i]!,q=poly[(i+1)%poly.length]!,ex=q.x-p.x,ey=q.y-p.y,den=dir.x*ey-dir.y*ex;
+        if(Math.abs(den)<1e-9)continue;
+        const t=((p.x-from.x)*ey-(p.y-from.y)*ex)/den,u=((p.x-from.x)*dir.y-(p.y-from.y)*dir.x)/den;
+        if(t>=0&&u>=-1e-9&&u<=1+1e-9&&(best===null||t<best))best=t;
+    }
+    return best;
 }
 /**
  * A graph edge drawn as an arc of the circle around `centre` that passes through the source node: from node to
