@@ -845,7 +845,9 @@ Repeatedly remove the nodes whose degree has hit a threshold, updating their nei
 
 
 # ── 5. A grid is a graph: flood fill, a recursive DFS whose neighbours come from four offsets ──
-GRID_SOURCE = """def flood_fill(image, sr, sc, color):
+GRID_SOURCE = """from collections import deque
+
+def flood_fill(image, sr, sc, color):
     rows, cols = len(image), len(image[0])
     old = image[sr][sc]
     if old == color:
@@ -859,6 +861,22 @@ GRID_SOURCE = """def flood_fill(image, sr, sc, color):
             fill(r + dr, c + dc)
 
     fill(sr, sc)
+    return image
+
+def flood_fill_bfs(image, sr, sc, color):
+    rows, cols = len(image), len(image[0])
+    old = image[sr][sc]
+    if old == color:
+        return image
+    image[sr][sc] = color
+    queue = deque([(sr, sc)])
+    while queue:
+        r, c = queue.popleft()
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and image[nr][nc] == old:
+                image[nr][nc] = color
+                queue.append((nr, nc))
     return image"""
 # A winding region of 1s around a 0 hole it encloses (left alone: another colour), and a block of 1s at the bottom
 # left that touches the region only at a corner (left alone: corners are not neighbours).
@@ -906,6 +924,10 @@ def grid_trace(image, start, color):
                 st.update(r=r, c=c, cur=r * cols + c, d=d, ok=-1, checkText='check: —', **{'from': caller})
                 emit(L('fill(r + dr, c + dc)'), f'Try the neighbour in direction ({dr}, {dc}): ({r + dr}, {c + dc}).')
                 fill(r + dr, c + dc, L('fill(r + dr, c + dc)'), r * cols + c)
+            # A filled call finishes too: shown while it is still on the stack, so each pop is visible.
+            st.update(r=r, c=c, cur=r * cols + c, d=-1, ok=-1, checkText='check: —', **{'from': caller})
+            back = st['stack'][-2] if len(st['stack']) > 1 else None
+            emit(L('for dr, dc in'), f'fill({r}, {c}) has tried all four neighbours: it returns' + (f' to fill{back}.' if back else ', and the fill is complete.'))
         st['stack'] = st['stack'][:-1]; st['calls'] = st['calls'][:-1]
 
     fill(sr, sc, L('fill(sr, sc)'), -1)
@@ -916,11 +938,61 @@ def grid_trace(image, start, color):
     return trace
 
 
+def grid_bfs_trace(image, start, color):
+    """Flood fill by BFS. Per frame: img; r, c and cur, the cell just taken from the queue (−1 none); d, nr, nc
+    and nbr, the neighbour being tried (nbr −1 off the image); ok and checkText, as in the DFS run; queue as
+    "(r, c)" texts, front first."""
+    rows, cols = len(image), len(image[0])
+    L = lambda t: line_of(GRID_SOURCE, t, 'def flood_fill_bfs')
+    img = [x for row in image for x in row]
+    sr, sc = start
+    old = img[sr * cols + sc]
+    at = lambda r, c: r * cols + c
+    st = {'img': list(img), 'r': -1, 'c': -1, 'cur': -1, 'd': -1, 'nr': -1, 'nc': -1, 'nbr': -1, 'ok': -1,
+          'checkText': 'check: —', 'queue': [], 'old': old}
+    trace, emit = recorder(st)
+    paint = lambda i: [color if j == i else x for j, x in enumerate(st['img'])]
+    emit(L('rows, cols ='), f'The same image, filled level by level from ({sr}, {sc}).')
+    emit(L('old = image[sr][sc]'), f'old = {old}.')
+    emit(L('if old == color'), f'{old} is not {color}: there is work to do.')
+    st['img'] = paint(at(sr, sc))
+    emit(L('image[sr][sc] = color'), f'Paint the start as it joins the queue: as in BFS, a cell is marked when queued, so it is never queued twice.')
+    q = [(sr, sc)]; st['queue'] = [f'({sr}, {sc})']
+    emit(L('queue = deque'), 'The queue holds the cells painted but not yet expanded.')
+    while q:
+        st.update(r=-1, c=-1, cur=-1, d=-1, nr=-1, nc=-1, nbr=-1, ok=-1, checkText='check: —')
+        emit(L('while queue'), f'The queue holds {len(q)} cell{"" if len(q) == 1 else "s"}: keep going.')
+        r, c = q.pop(0); st['queue'] = st['queue'][1:]
+        st.update(r=r, c=c, cur=at(r, c))
+        emit(L('r, c = queue.popleft()'), f'Take ({r}, {c}) from the front.')
+        for d, (dr, dc) in enumerate(DIRS):
+            nr, nc = r + dr, c + dc
+            inside = 0 <= nr < rows and 0 <= nc < cols
+            st.update(d=d, nr=nr, nc=nc, nbr=at(nr, nc) if inside else -1, ok=-1, checkText='check: —')
+            emit(L('nr, nc = r + dr'), f'Direction ({dr}, {dc}): ({nr}, {nc}).')
+            why = 'off the image' if not inside else (f'colour {st["img"][at(nr, nc)]}, not {old}' if st['img'][at(nr, nc)] != old else '')
+            st['ok'] = 0 if why else 1
+            st['checkText'] = ('✗ ' + why) if why else f'✓ colour {old}: paint and queue it'
+            emit(L('if 0 <= nr < rows'), f'({nr}, {nc}) is {why}: skip it.' if why else f'({nr}, {nc}) has colour {old}: part of the region.')
+            if not why:
+                st['img'] = paint(at(nr, nc))
+                emit(L('image[nr][nc] = color'), f'Paint ({nr}, {nc}) now, as it is queued.')
+                q.append((nr, nc)); st['queue'] = st['queue'] + [f'({nr}, {nc})']
+                emit(L('queue.append((nr, nc))'), f'({nr}, {nc}) joins the back of the queue.')
+    st.update(r=-1, c=-1, cur=-1, d=-1, nr=-1, nc=-1, nbr=-1, ok=-1, checkText='check: —')
+    emit(L('while queue'), 'The queue is empty.')
+    filled = sum(1 for a, b in zip(img, st['img']) if a != b)
+    emit(L('return image'), f'Done: the same {filled} cells as the DFS run, reached in rings around the start instead of down one path at a time. O(rows × cols), with a queue in place of the call stack.')
+    return trace
+
+
 def grid_scene(header):
     image, (sr, sc), color = IMAGE, FILL_START, FILL_COLOR
     rows, cols = len(image), len(image[0])
     trace = grid_trace(image, (sr, sc), color)
+    bfs_trace = grid_bfs_trace(image, (sr, sc), color)
     L = lambda t: line_of(GRID_SOURCE, t)
+    LB = lambda t: line_of(GRID_SOURCE, t, 'def flood_fill_bfs')
     cell = 1.0
     cells = [{'x': round(-5.6 + c * cell, 3), 'y': round(3.5 - r * cell, 3)} for r in range(rows) for c in range(cols)]
     g = lambda col: f"dataTable('cells', idx, '{col}')"
@@ -954,17 +1026,41 @@ def grid_scene(header):
         label('old', f"concat('old = ', {tr('old')})", None, L('old = image[sr][sc]'), 'grid-graphs'),
         {**label('check', tr('checkText'), None, L('if not (0 <= r < rows'), 'grid-graphs'), 'highlightExpr': f"{tr('line')} == {L('if not (0 <= r < rows')}"}]],
     ]
+    # The BFS step: the same image, a queue instead of the call stack; the cell just taken gold, queued cells pink.
+    b = lambda col: f"dataTable('ff_bfs', frame, '{col}')"
+    bpx = f"arrayAt({b('img')}, idx)"
+    bpal = ' : '.join(f"({bpx} == {k} ? '{v}'" for k, v in palette.items()) + " : ''" + ')' * len(palette)
+    in_queue = f"keyIndex({b('queue')}, concat('(', floor(idx / {cols}), ', ', mod(idx, {cols}), ')')) >= 0"
+    bfs_elements = [
+        {**elements[0], 'valueExpr': bpx,
+         'colorExpr': f"idx == {b('cur')} ? '{GOLD}' : ({in_queue} ? '#e67db0' : {bpal})",
+         'connectTo': {'indexExpr': f"idx == {b('cur')} ? {b('nbr')} : -1", 'pinned': True, 'arrow': True, 'bendExpr': '0', 'color': '#7f93aa',
+                       'colorExpr': f"{b('ok')} == 1 ? '{GOLD}' : ({b('ok')} == 0 ? '#e06c75' : '')", 'highlightExpr': f"{b('ok')} >= 0"}},
+        {**elements[1], 'highlightExpr': f"idx == {b('d')}"},
+        # The frontier, front on the left: cells painted but not yet expanded.
+        {'id': 'queue', 'type': 'array', 'label': 'queue', 'labelSide': 'left', 'itemType': 'text', 'origin': [-3.6, -3.1, 0],
+         'cellSize': 1.05, 'fontSize': 13, 'axisLabels': 'plane', 'color': '#e67db0',
+         'lengthExpr': f"arrayCount({b('queue')})", 'valueExpr': f"arrayAt({b('queue')}, idx)",
+         'highlightExpr': f"idx == arrayCount({b('queue')}) - 1 and {b('line')} == {LB('queue.append((nr, nc))')}"},
+        *[{**l, 'position': [7.6, 0.6, 0]} for l in [
+            label('rc', f"{b('r')} < 0 ? '(r, c): —' : concat('(r, c) = (', {b('r')}, ', ', {b('c')}, ')')", ['grid', b('cur')], LB('r, c = queue.popleft()'), 'grid-graphs'),
+            label('nrnc', f"{b('d')} < 0 ? '(nr, nc): —' : concat('(nr, nc) = (', {b('nr')}, ', ', {b('nc')}, ')')", ['grid', b('nbr')], LB('nr, nc = r + dr'), 'grid-graphs'),
+            label('old', f"concat('old = ', {b('old')})", None, LB('old = image[sr][sc]'), 'grid-graphs'),
+            {**label('check', b('checkText'), None, LB('if 0 <= nr < rows'), 'grid-graphs'), 'highlightExpr': f"{b('line')} == {LB('if 0 <= nr < rows')}"}]],
+    ]
     return run_scene('grid-graphs', 'A grid is a graph (islands, flood fill)', header, f"""**Signal:** a 2D grid of cells, with moves up, down, left and right: flood fill, islands, mazes, rotting oranges.
 
 A grid **is** a graph, just not written as one: every cell is a node, and two cells are joined when they touch side by side. There is no adjacency list to build. The neighbours of `(r, c)` come from four offsets, `(1, 0)`, `(-1, 0)`, `(0, 1)` and `(0, -1)`, and a test: inside the grid, and the right kind of cell. Every traversal from the earlier scenes then works unchanged.
 
 This run is **flood fill** (the paint bucket): recolour every cell of the start's colour that is joined to it side by side. It is a DFS. `fill(r, c)` returns at once when the cell is off the image or a different colour; otherwise it paints the cell and calls itself on the four neighbours. Painting the cell **is** the visited mark: it no longer matches the old colour, so no path enters it twice.
 
-Gold is the call running now, pink cells wait on the call stack, and the edge from the calling cell to the one being called is lit gold when it is filled and red when the call returns at once. Two kinds of cell are left alone: the **0 the region encloses** (another colour, so \`fill\` returns at once), and the **block of 1s at the bottom left**, which touches the region only at a corner: corners are not neighbours.
+Gold is the call running now, pink cells wait on the call stack, and the edge from the calling cell to the one being called is lit gold when it is filled and red when the call returns at once. Two kinds of cell are left alone: the **0 the region encloses** (another colour, so `fill` returns at once), and the **block of 1s at the bottom left**, which touches the region only at a corner: corners are not neighbours.
+
+**The BFS version** (next step) fills the same cells with a queue instead of the call stack: each cell is painted as it is **queued**, so it is never queued twice, and the region grows in rings around the start rather than down one path at a time. Either works for flood fill; BFS also avoids deep recursion on large images.
 
 **Variations:**
 - **Islands** (count groups of 1s): flood fill from every unvisited land cell; each fill is one island. The patterns lesson plays it.
-- **Shortest path in a maze:** BFS instead of DFS, since BFS reaches cells in order of distance.
+- **Shortest path in a maze:** BFS, since it reaches cells in order of distance; DFS would not.
 - **Multi-source BFS** (rotting oranges, distance to the nearest gate): every source starts in the queue at distance 0.
 - **Diagonal moves:** eight offsets instead of four.
 
@@ -973,7 +1069,10 @@ Gold is the call running now, pink cells wait on the call stack, and the edge fr
 **Practice:** Flood Fill, Number of Islands, Max Area of Island, Surrounded Regions, Rotting Oranges, Shortest Path in Binary Matrix.""",
         'Explain how a grid is a graph with neighbours from four offsets, and how flood fill uses the new colour as its visited mark. Ask the learner to predict which calls return at once and why, and why the enclosed 0 and the bottom-left block stay unfilled.',
         'flood_fill.py', GRID_SOURCE, trace, elements,
-        data={'cells': cells}, call_entry=line_of(GRID_SOURCE, 'def fill(r, c)'))
+        data={'cells': cells}, call_entry=line_of(GRID_SOURCE, 'def fill(r, c)'),
+        first={'title': 'Flood fill by DFS (recursion)', 'description': 'Flood fill with a recursive DFS: one path deep, then back up.'},
+        more=[{'id': 'bfs', 'title': 'Flood fill by BFS (queue)', 'description': 'The same fill with a queue: the region grows in rings.',
+               'table': 'ff_bfs', 'trace': bfs_trace, 'elements': bfs_elements}])
 
 
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
