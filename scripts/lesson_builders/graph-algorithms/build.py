@@ -166,9 +166,12 @@ def recorder(state):
     return trace, emit
 
 
-def line_of(source, text):
-    """The 1-based line of source holding text, so traces never hard-code line numbers."""
-    return next(i + 1 for i, l in enumerate(source.split('\n')) if text in l)
+def line_of(source, text, after=None):
+    """The 1-based line of source holding text, so traces never hard-code line numbers; after (a text) starts the
+    search at the line holding it, to tell apart lines that read the same in two functions."""
+    lines = source.split('\n')
+    start = next(i for i, l in enumerate(lines) if after in l) if after else 0
+    return next(i + 1 for i, l in enumerate(lines) if i >= start and text in l)
 
 
 tr = lambda col: f"dataTable('trace', frame, '{col}')"
@@ -178,19 +181,31 @@ label = lambda id, text, connect=None, line=None, file=None: {
     **({'codeRef': {'file': file, 'line': line}} if line else {})}
 
 
-def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None, call_entry=None):
+def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None, call_entry=None,
+              first=None, more=()):
     """A scene that plays one recorded run: the frame slider, a caption from each frame's message, and the Code
-    panel on the executing line (codeRef), with each line linked back to its frames."""
+    panel on the executing line (codeRef), with each line linked back to its frames. first retitles the run step
+    ({'title', 'description'}); more adds steps that each play their own run from their own table, in the same code
+    file: {'id', 'title', 'description', 'table', 'trace', 'elements'}."""
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
                       'locations': [{'line': f['line'], 'scene': id, 'step': 'run', 'snapshot': k, 'label': f"{title} · {f['message']}"}
-                                    for k, f in enumerate(trace)]})
+                                    for k, f in enumerate(trace)]
+                      + [{'line': f['line'], 'scene': id, 'step': m['id'], 'snapshot': k, 'label': f"{m['title']} · {f['message']}"}
+                         for m in more for k, f in enumerate(m['trace'])]})
+    col = lambda table, c: f"dataTable('{table}', frame, '{c}')"
+    extra = [{'id': m['id'], 'title': m['title'], 'description': m['description'], 'descriptionExpr': col(m['table'], 'message'),
+              'remove': [{'id': '*'}, {'type': 'slider'}],
+              'sliders': [{'id': 'frame', 'label': 'Execution state', 'min': 0, 'max': len(m['trace']) - 1, 'step': 1, 'default': 0}],
+              'codeRef': {'file': id, 'lineExpr': col(m['table'], 'line')}, 'add': m['elements']} for m in more]
     return {
         'id': id, 'title': title, 'description': trace[0]['message'], 'range': RANGE, 'camera': cam,
-        'data': {'trace': trace, **(data or {})}, 'markdown': f'# {title}\n\n{header}\n\n{markdown}', 'prompt': prompt,
+        'data': {'trace': trace, **{m['table']: m['trace'] for m in more}, **(data or {})},
+        'markdown': f'# {title}\n\n{header}\n\n{markdown}', 'prompt': prompt,
         'elements': [grid],
-        'steps': [{'id': 'run', 'title': 'Run it', 'description': 'Step through the run.', 'descriptionExpr': tr('message'),
+        'steps': [{'id': 'run', 'title': (first or {}).get('title', 'Run it'), 'description': (first or {}).get('description', 'Step through the run.'),
+                   'descriptionExpr': tr('message'),
                    'sliders': [{'id': 'frame', 'label': 'Execution state', 'min': 0, 'max': len(trace) - 1, 'step': 1, 'default': 0}],
-                   'add': elements}],
+                   'add': elements}, *extra],
         'stepPlayback': {'slider': 'frame', 'intervalMs': 1200},
         # call_entry: a recursive run's function line; the trace's calls column lists the waiting call sites.
         'codeRef': {'file': id, 'lineExpr': tr('line'), **({'callsExpr': tr('calls'), 'callEntryLine': call_entry} if call_entry else {})},
@@ -573,9 +588,265 @@ This is the DFS scene's graph, from the same start. DFS went 0, 1, 3, 2, 5, 4, d
         data={'nodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(DFS_POS, adj)]})
 
 
+# ── 4. Count degrees: read the counts (the town judge), then peel by degree (a tree's centre) ──
+DEGREES_SOURCE = """from collections import deque
+
+def find_judge(n, trust):
+    indeg = [0] * n
+    outdeg = [0] * n
+    for a, b in trust:
+        outdeg[a] += 1
+        indeg[b] += 1
+    for p in range(n):
+        if indeg[p] == n - 1 and outdeg[p] == 0:
+            return p
+    return -1
+
+def tree_centers(n, edges):
+    adj = [[] for _ in range(n)]
+    degree = [0] * n
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+        degree[u] += 1
+        degree[v] += 1
+    leaves = deque(i for i in range(n) if degree[i] == 1)
+    remaining = n
+    while remaining > 2:
+        for _ in range(len(leaves)):
+            leaf = leaves.popleft()
+            remaining -= 1
+            for nb in adj[leaf]:
+                degree[nb] -= 1
+                if degree[nb] == 1:
+                    leaves.append(nb)
+    return list(leaves)"""
+JUDGE_N, JUDGE_TRUST = 4, [(0, 2), (1, 2), (3, 2), (0, 1)]
+JUDGE_POS = [(-5.6, 3.4), (-5.6, 0.6), (-3.2, 2.0), (-0.8, 3.4)]
+TREE_N, TREE_EDGES = 7, [(0, 3), (1, 3), (2, 3), (3, 4), (4, 5), (5, 6)]
+TREE_POS = [(-5.0, 2.7), (-5.4, 1.2), (-5.0, -0.3), (-3.5, 1.2), (-2.0, 1.2), (-0.5, 1.2), (1.0, 1.2)]
+
+
+def judge_trace(n, trust):
+    """Per frame: k, the trust pair being counted (−1 none), a and b its ends; indeg and outdeg; p, the person
+    being checked (−1 none); ok, that check (−1 none, 0 no, 1 yes); result ('—' before the end)."""
+    L = lambda t: line_of(DEGREES_SOURCE, t, 'def find_judge')
+    st = {'k': -1, 'a': -1, 'b': -1, 'indeg': [0] * n, 'outdeg': [0] * n, 'p': -1, 'ok': -1, 'result': '—'}
+    trace, emit = recorder(st)
+    emit(L('indeg = [0] * n'), f'{n} people. indeg counts how many trust each person; it starts at 0.')
+    emit(L('outdeg = [0] * n'), 'outdeg counts how many each person trusts.')
+    for k, (a, b) in enumerate(trust):
+        st.update(k=k, a=a, b=b)
+        emit(L('for a, b in trust'), f'{a} trusts {b}: an edge {a} → {b}.')
+        st['outdeg'] = [x + 1 if i == a else x for i, x in enumerate(st['outdeg'])]
+        emit(L('outdeg[a] += 1'), f'outdeg[{a}] = {st["outdeg"][a]}: {a} trusts {st["outdeg"][a]} {"person" if st["outdeg"][a] == 1 else "people"}.')
+        st['indeg'] = [x + 1 if i == b else x for i, x in enumerate(st['indeg'])]
+        emit(L('indeg[b] += 1'), f'indeg[{b}] = {st["indeg"][b]}: {st["indeg"][b]} {"person trusts" if st["indeg"][b] == 1 else "people trust"} {b}.')
+    st.update(k=-1, a=-1, b=-1)
+    for p in range(n):
+        st.update(p=p, ok=-1)
+        emit(L('for p in range(n)'), f'Check {p}: the judge is trusted by everyone else ({n - 1}) and trusts no one.')
+        ok = st['indeg'][p] == n - 1 and st['outdeg'][p] == 0
+        st['ok'] = 1 if ok else 0
+        emit(L('if indeg[p] == n - 1'), f'indeg[{p}] = {st["indeg"][p]}, outdeg[{p}] = {st["outdeg"][p]}: ' + ('both fit.' if ok else 'not the judge.'))
+        if ok:
+            st['result'] = str(p)
+            emit(L('return p'), f'{p} is the judge, found from the counts alone: one pass over the edges and one over the people, O(V + E).')
+            return trace
+    st.update(p=-1, ok=-1, result='-1')
+    emit(L('return -1'), 'No one fits: there is no judge.')
+    return trace
+
+
+def centers_trace(n, edges):
+    """Every line the code runs. Per frame: degree; leaves (the queue); k, u and v, the edge being counted (−1
+    none); i and ci, the node the leaves line checks and its `degree[i] == 1` (−1 none, 0 no, 1 yes); leaf, the leaf
+    being removed (−1 none); nb and ni, its neighbour and that neighbour's place in adj[leaf] (−1 none); cnb, the
+    last `degree[nb] == 1` (−1 none); removed (0/1 per node) and round (the peeling round each removed node left
+    in, −1 not yet); remaining; rnd, the round now (0 before the loop); adjLeaf, adj[leaf]; result."""
+    L = lambda t: line_of(DEGREES_SOURCE, t, 'def tree_centers')
+    adj = adjacency(n, edges)
+    st = {'degree': [0] * n, 'leaves': [], 'k': -1, 'u': -1, 'v': -1, 'i': -1, 'ci': -1, 'leaf': -1, 'nb': -1, 'ni': -1,
+          'cnb': -1, 'removed': [0] * n, 'round': [-1] * n, 'remaining': n, 'rnd': 0, 'adjLeaf': [], 'result': '—',
+          'adjU': [], 'adjV': []}
+    trace, emit = recorder(st)
+    built = [[] for _ in range(n)]   # adj as the counting loop fills it; adjU / adjV show adj[u] / adj[v]
+    bump = lambda node, by: [d + by if j == node else d for j, d in enumerate(st['degree'])]
+    emit(L('adj = [[] for _ in range(n)]'), f'{n} empty neighbour lists.')
+    emit(L('degree = [0] * n'), 'Every degree starts at 0.')
+    for k, (u, v) in enumerate(edges):
+        st.update(k=k, u=u, v=v)
+        st.update(adjU=list(built[u]), adjV=list(built[v]))
+        emit(L('for u, v in edges'), f'Edge {u}–{v}.')
+        built[u].append(v); st['adjU'] = list(built[u])
+        emit(L('adj[u].append(v)'), f'{v} is a neighbour of {u}: adj[{u}] = {built[u]}.')
+        built[v].append(u); st['adjV'] = list(built[v])
+        emit(L('adj[v].append(u)'), f'{u} is a neighbour of {v}: adj[{v}] = {built[v]}.')
+        st['degree'] = bump(u, 1)
+        emit(L('degree[u] += 1'), f'degree[{u}] = {st["degree"][u]}.')
+        st['degree'] = bump(v, 1)
+        emit(L('degree[v] += 1'), f'degree[{v}] = {st["degree"][v]}.')
+    st.update(k=-1, u=-1, v=-1, adjU=[], adjV=[])
+    for i in range(n):
+        leaf_now = st['degree'][i] == 1
+        st.update(i=i, ci=1 if leaf_now else 0)
+        if leaf_now: st['leaves'] = st['leaves'] + [i]
+        emit(L('leaves = deque'), f'degree[{i}] = {st["degree"][i]}: ' + ('a leaf, queued.' if leaf_now else 'not a leaf.'))
+    st.update(i=-1, ci=-1)
+    emit(L('remaining = n'), f'The leaves {st["leaves"]} can never be a centre: a tree is tallest from them. {n} nodes remain.')
+    while True:
+        more = st['remaining'] > 2
+        emit(L('while remaining > 2'), f'{st["remaining"]} remain, more than 2: peel round {st["rnd"] + 1} removes every current leaf.' if more
+             else f'{st["remaining"]} remain: stop.')
+        if not more: break
+        st['rnd'] += 1
+        for _ in range(len(st['leaves'])):
+            leaf = st['leaves'][0]; st['leaves'] = st['leaves'][1:]
+            st['removed'] = [1 if j == leaf else x for j, x in enumerate(st['removed'])]
+            st['round'] = [st['rnd'] if j == leaf else x for j, x in enumerate(st['round'])]
+            st.update(leaf=leaf, nb=-1, ni=-1, cnb=-1, adjLeaf=adj[leaf])
+            emit(L('leaf = leaves.popleft()'), f'Peel leaf {leaf}.')
+            st['remaining'] -= 1
+            emit(L('remaining -= 1'), f'{st["remaining"]} remain.')
+            # Every neighbour, as the code does: one already peeled drops to 0 and never becomes a leaf again.
+            for ni, nb in enumerate(adj[leaf]):
+                st.update(nb=nb, ni=ni, cnb=-1)
+                emit(L('for nb in adj[leaf]'), f'Neighbour {ni + 1} of {len(adj[leaf])} of {leaf}: {nb}.')
+                st['degree'] = bump(nb, -1)
+                emit(L('degree[nb] -= 1'), f'{nb} loses an edge: degree[{nb}] = {st["degree"][nb]}.' if not st['removed'][nb]
+                     else f'{nb} was peeled already: its count drops to {st["degree"][nb]}, and it stays out.')
+                st['cnb'] = 1 if st['degree'][nb] == 1 else 0
+                emit(L('if degree[nb] == 1'), f'degree[{nb}] is 1: {nb} has just become a leaf.' if st['cnb'] else f'degree[{nb}] is {st["degree"][nb]}: not a leaf.')
+                if st['cnb']:
+                    st['leaves'] = st['leaves'] + [nb]
+                    emit(L('leaves.append(nb)'), f'{nb} waits for the next round. leaves = {st["leaves"]}.')
+        st.update(leaf=-1, nb=-1, ni=-1, cnb=-1, adjLeaf=[])
+    st['result'] = str(st['leaves'])
+    emit(L('return list(leaves)'), f'{st["leaves"]} is the centre: rooting the tree there gives the smallest height. Each node and edge is handled once: O(V).')
+    return trace, adj
+
+
+def degrees_scene(header):
+    jt, (ct, tadj) = judge_trace(JUDGE_N, JUDGE_TRUST), centers_trace(TREE_N, TREE_EDGES)
+    LJ = lambda t: line_of(DEGREES_SOURCE, t, 'def find_judge')
+    LC = lambda t: line_of(DEGREES_SOURCE, t, 'def tree_centers')
+    n = JUDGE_N
+    outs = [[b for a, b in JUDGE_TRUST if a == i] for i in range(n)]
+    cur = f"idx == {tr('a')} and to == {tr('b')}"
+    judge_elements = [
+        # Who trusts whom: an arrow a → b per trust pair; the pair being counted lit.
+        {'id': 'people', 'type': 'graph', 'label': 'trust', 'lengthExpr': str(n), 'valueExpr': 'idx',
+         'positionExpr': ["dataTable('people', idx, 'x')", "dataTable('people', idx, 'y')", '0'],
+         'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
+         'colorExpr': f"idx == {tr('p')} ? ({tr('ok')} == 1 ? '#77bfae' : '{GOLD}') : (idx == {tr('a')} or idx == {tr('b')} ? '{GOLD}' : '')",
+         'connectTo': {'indexExpr': "dataTable('people', idx, 'out')", 'pinned': True, 'arrow': True, 'bendExpr': '0', 'color': '#7f93aa',
+                       'colorExpr': f"{cur} ? '{GOLD}' : ''", 'highlightExpr': cur}},
+        {'id': 'trust', 'type': 'array', 'label': 'trust', 'labelSide': 'left', 'itemType': 'text', 'origin': [2.6, 3.4, 0], 'cellSize': 1.35,
+         'values': [f'({a}, {b})' for a, b in JUDGE_TRUST], 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+         'highlightExpr': f"idx == {tr('k')}"},
+        {'id': 'indeg', 'type': 'array', 'label': 'indeg', 'labelSide': 'left', 'origin': [-3.2, -1.6, 0], 'cellSize': 1.2,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(n), 'valueExpr': f"arrayAt({tr('indeg')}, idx)",
+         'highlightExpr': f"(idx == {tr('b')} and {tr('line')} == {LJ('indeg[b] += 1')}) or idx == {tr('p')}",
+         'markers': [{'type': 'step_marker', 'indexName': 'p', 'indexExpr': tr('p'), 'visibleExpr': f"{tr('p')} >= 0", 'color': GOLD}]},
+        {'id': 'outdeg', 'type': 'array', 'label': 'outdeg', 'labelSide': 'left', 'origin': [-3.2, -3.2, 0], 'cellSize': 1.2,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(n), 'valueExpr': f"arrayAt({tr('outdeg')}, idx)",
+         'highlightExpr': f"(idx == {tr('a')} and {tr('line')} == {LJ('outdeg[a] += 1')}) or idx == {tr('p')}"},
+        label('a', f"{tr('a')} < 0 ? 'a: —' : concat('a = ', {tr('a')})", ['people', tr('a')], LJ('for a, b in trust'), 'degrees'),
+        label('b', f"{tr('b')} < 0 ? 'b: —' : concat('b = ', {tr('b')})", ['people', tr('b')], LJ('for a, b in trust'), 'degrees'),
+        # The counts the code reads and writes, each wired to its cell.
+        *[label(f'{arr}-{v}', f"{tr(v)} < 0 ? '{arr}[{v}]: —' : concat('{arr}[{v}] = ', arrayAt({tr(arr)}, {tr(v)}))", [arr, tr(v)], LJ(line), 'degrees')
+          for arr, v, line in [('outdeg', 'a', 'outdeg[a] += 1'), ('indeg', 'b', 'indeg[b] += 1'),
+                               ('indeg', 'p', 'if indeg[p] == n - 1'), ('outdeg', 'p', 'if indeg[p] == n - 1')]],
+        {**label('cond', f"{tr('ok')} < 0 ? 'indeg[p] == n - 1 and outdeg[p] == 0: —' : ({tr('ok')} == 1 ? 'indeg[p] == n - 1 and outdeg[p] == 0 → True' : 'indeg[p] == n - 1 and outdeg[p] == 0 → False')",
+                 ['people', tr('p')], LJ('if indeg[p] == n - 1'), 'degrees'), 'highlightExpr': f"{tr('line')} == {LJ('if indeg[p] == n - 1')}"},
+    ]
+    c = lambda col: f"dataTable('deg_peel', frame, '{col}')"
+    removed = f"arrayAt({c('removed')}, idx) == 1"
+    pair = lambda a, b: f"((idx == {c(a)} and to == {c(b)}) or (idx == {c(b)} and to == {c(a)}))"
+    edge_now = f"{pair('u', 'v')} or ({c('nb')} >= 0 and {pair('leaf', 'nb')})"
+    tn = TREE_N
+    center_elements = [
+        # The tree: removed nodes dim by the round they left in; the leaf being peeled gold, queued leaves pink.
+        {'id': 'tree', 'type': 'graph', 'label': 'tree', 'lengthExpr': str(tn), 'valueExpr': 'idx',
+         'positionExpr': ["dataTable('treeNodes', idx, 'x')", "dataTable('treeNodes', idx, 'y')", '0'],
+         'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
+         'colorExpr': f"idx == {c('leaf')} ? '{GOLD}' : ({removed} ? '#3b4654' : (keyIndex({c('leaves')}, idx) >= 0 ? '#e67db0' : (idx == {c('nb')} ? '#9dbde3' : '')))",
+         # The edge being counted (u–v), or the one a peeled leaf drops (leaf–nb), lit; peeled edges dim.
+         'connectTo': {'indexExpr': "dataTable('treeNodes', idx, 'adj')", 'pinned': True, 'bendExpr': '0', 'color': '#7f93aa',
+                       'colorExpr': f"{edge_now} ? '{GOLD}' : ({removed} or arrayAt({c('removed')}, to) == 1 ? '#2c3540' : '')",
+                       'highlightExpr': edge_now}},
+        # While counting: adj[u] and adj[v] as they fill, the neighbour just appended lit.
+        *[{'id': f'adj-{w}', 'type': 'array', 'label': f'adj[{w}]', 'codeSymbol': f'adj[{w}]', 'labelSide': 'left',
+           'origin': [6.6, y, 0], 'cellSize': 1.15, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+           'visibleExpr': f"{c('u')} >= 0", 'lengthExpr': f"arrayCount({c(col)})", 'valueExpr': f"arrayAt({c(col)}, idx)",
+           'highlightExpr': f"idx == arrayCount({c(col)}) - 1 and {c('line')} == {LC(line)}",
+           'connectTo': {'object': 'tree', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8'}}
+          for w, col, y, line in [('u', 'adjU', 1.8, 'adj[u].append(v)'), ('v', 'adjV', 0.6, 'adj[v].append(u)')]],
+        # The leaf's neighbours, nb's cell lit as it walks along them, each linked to its node (no marker: the title
+        # sits above the row, and nb is the lit cell's own value).
+        # Alone on the tree's right while peeling, so its long title goes above the row, clear of the tree.
+        {'id': 'adj-leaf', 'visibleExpr': f"{c('leaf')} >= 0", 'type': 'array', 'label': 'adj[leaf]', 'codeSymbol': 'adj[leaf]', 'labelSide': 'top', 'origin': [4.0, 1.2, 0],
+         'cellSize': 1.15, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+         'lengthExpr': f"arrayCount({c('adjLeaf')})", 'valueExpr': f"arrayAt({c('adjLeaf')}, idx)", 'highlightExpr': f"idx == {c('ni')}",
+         'connectTo': {'object': 'tree', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8',
+                       'highlightExpr': f"idx == {c('ni')}"}},
+        {'id': 'tree-edges', 'type': 'array', 'label': 'edges', 'labelSide': 'left', 'itemType': 'text', 'origin': [-3.4, 4.3, 0],
+         'cellSize': 1.3, 'values': [f'({u}, {v})' for u, v in TREE_EDGES], 'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane',
+         'highlightExpr': f"idx == {c('k')}"},
+        {'id': 'degree', 'type': 'array', 'label': 'degree', 'labelSide': 'left', 'origin': [-3.4, -2.6, 0], 'cellSize': 1.05,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(tn), 'valueExpr': f"arrayAt({c('degree')}, idx)",
+         'colorExpr': f"{removed} ? '#3b4654' : ''",
+         'highlightExpr': f"idx == {c('nb')} or (idx == {c('leaf')} and {c('nb')} < 0) or idx == {c('i')} or idx == {c('u')} or idx == {c('v')}"},
+        {'id': 'leaves', 'type': 'array', 'label': 'leaves', 'labelSide': 'left', 'origin': [-3.4, -3.8, 0], 'cellSize': 1.05,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'color': '#e67db0',
+         'lengthExpr': f"arrayCount({c('leaves')})", 'valueExpr': f"arrayAt({c('leaves')}, idx)",
+         'connectTo': {'object': 'tree', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#e67db0'}},
+        label('uv', f"{c('u')} < 0 ? '(u, v): —' : concat('(u, v) = (', {c('u')}, ', ', {c('v')}, ')')", ['tree-edges', c('k')], LC('for u, v in edges'), 'degrees'),
+        label('degree-u', f"{c('u')} < 0 ? 'degree[u]: —' : concat('degree[u] = ', arrayAt({c('degree')}, {c('u')}))", ['degree', c('u')], LC('degree[u] += 1'), 'degrees'),
+        label('degree-v', f"{c('v')} < 0 ? 'degree[v]: —' : concat('degree[v] = ', arrayAt({c('degree')}, {c('v')}))", ['degree', c('v')], LC('degree[v] += 1'), 'degrees'),
+        label('i', f"{c('i')} < 0 ? 'i: —' : concat('i = ', {c('i')})", ['tree', c('i')], LC('leaves = deque'), 'degrees'),
+        {**label('ci', f"{c('ci')} < 0 ? 'degree[i] == 1: —' : ({c('ci')} == 1 ? 'degree[i] == 1 → True' : 'degree[i] == 1 → False')",
+                 ['degree', c('i')], LC('leaves = deque'), 'degrees'), 'highlightExpr': f"{c('ci')} >= 0"},
+        label('leaf', f"{c('leaf')} < 0 ? 'leaf: —' : concat('leaf = ', {c('leaf')})", ['tree', c('leaf')], LC('leaf = leaves.popleft()'), 'degrees'),
+        label('nb', f"{c('nb')} < 0 ? 'nb: —' : concat('nb = ', {c('nb')})", ['tree', c('nb')], LC('for nb in adj[leaf]'), 'degrees'),
+        label('degree-nb', f"{c('nb')} < 0 ? 'degree[nb]: —' : concat('degree[nb] = ', arrayAt({c('degree')}, {c('nb')}))",
+              ['degree', c('nb')], LC('degree[nb] -= 1'), 'degrees'),
+        {**label('cnb', f"{c('cnb')} < 0 ? 'degree[nb] == 1: —' : ({c('cnb')} == 1 ? 'degree[nb] == 1 → True' : 'degree[nb] == 1 → False')",
+                 ['degree', f"{c('cnb')} >= 0 ? {c('nb')} : -1"], LC('if degree[nb] == 1'), 'degrees'), 'highlightExpr': f"{c('line')} == {LC('if degree[nb] == 1')}"},
+        label('remaining', f"concat('remaining = ', {c('remaining')})", None, LC('remaining = n'), 'degrees'),
+        label('round', f"{c('rnd')} < 1 ? 'round: —' : concat('round = ', {c('rnd')})", None, LC('while remaining > 2'), 'degrees'),
+    ]
+    return run_scene('degrees', 'Count degrees (in, out, and peeling)', header, """**Signal:** a node defined by how many edges touch it ("trusted by everyone", "the centre"), sources and sinks, or peeling a graph layer by layer.
+
+A node's **degree** is how many edges touch it. In a directed graph it splits in two: **in-degree** (edges arriving) and **out-degree** (edges leaving). One pass over the edge list counts them all, with no traversal: O(V + E).
+
+## 1. Read the counts (this step)
+
+In Find the Town Judge, an edge `a → b` means "a trusts b". The judge is trusted by everyone else and trusts no one: in-degree n − 1, out-degree 0. Count, then scan; no search needed.
+
+## 2. Peel by degree (next step)
+
+Repeatedly remove the nodes whose degree has hit a threshold, updating their neighbours as you go. Peeling a tree's **leaves** (degree 1) round by round, with a queue, closes in from every side at once; the one or two nodes left last are the tree's **centre**, the roots that make it shortest (Minimum Height Trees). Removed nodes dim; pink nodes are queued for the next round.
+
+## Where degree counting is used
+
+- **The counts are the answer:** the town judge (in n − 1, out 0); the centre of a star graph (degree n − 1); the smallest set of starting points that reach everything (exactly the nodes with in-degree 0); maximal network rank (two degrees added, minus 1 if the two are joined).
+- **The counts prove a shape:** degrees always add up to 2E (each edge has two ends); a connected graph is a tree exactly when it has V − 1 edges; a path has two nodes of degree 1 and the rest degree 2; an **Euler path** needs balanced degrees (in = out everywhere, except one start and one end), which tells you up front whether an itinerary can use every ticket.
+- **Peeling:** Kahn's **topological sort** peels nodes with in-degree 0 (leftovers mean a cycle); **eventual safe states** peels out-degree 0 on the reversed graph; **parallel courses** counts the peeling rounds (one per semester); and the tree centre above.
+
+**Practice:** Find the Town Judge, Find Center of Star Graph, Minimum Number of Vertices to Reach All Nodes, Maximal Network Rank, Minimum Height Trees.""",
+        'Explain in-degree and out-degree, and peeling by degree. Ask the learner to predict the counts after each edge, who the judge is, and which nodes become leaves after each peeling round.',
+        'degrees.py', DEGREES_SOURCE, jt, judge_elements,
+        data={'people': [{'x': x, 'y': y, 'out': o} for (x, y), o in zip(JUDGE_POS, outs)],
+              'treeNodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(TREE_POS, tadj)]},
+        first={'title': 'Read the counts (town judge)', 'description': 'Count in- and out-degrees, then find who everyone trusts.'},
+        more=[{'id': 'peel', 'title': 'Peel by degree (tree centre)', 'description': "Peel a tree's leaves round by round to find its centre.",
+               'table': 'deg_peel', 'trace': ct, 'elements': center_elements}])
+
+
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
-BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene}
+BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
