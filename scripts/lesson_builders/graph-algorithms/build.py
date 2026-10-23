@@ -427,8 +427,8 @@ def dfs_scene(header):
          'itemType': 'text', 'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(n),
          'valueExpr': f"{on('visited', 'idx')} ? 'T' : 'F'", 'highlightExpr': f"idx == {tr('v')} and {tr('check')} >= 0",
          'colorExpr': f"{on('visited', 'idx')} ? '#77bfae' : ''"},
-        {'id': 'stack', 'type': 'array', 'label': 'call stack', 'labelSide': 'left', 'origin': [-4.4, -3.6, 0], 'cellSize': 1.15,
-         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'color': '#e67db0',
+        {'id': 'stack', 'type': 'stack', 'arrayLayout': 'horizontal', 'label': 'call stack', 'origin': [-4.4, -3.6, 0], 'cellSize': 1.15,
+         'showTop': False, 'containerColor': '#e67db0', 'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0',
          'lengthExpr': f"arrayCount({tr('stack')})", 'valueExpr': f"arrayAt({tr('stack')}, idx)",
          'highlightExpr': f"idx == arrayCount({tr('stack')}) - 1"},
         {'id': 'order', 'type': 'array', 'label': 'order', 'labelSide': 'left', 'origin': [4.6, 1.6, 0], 'cellSize': 1.1,
@@ -844,9 +844,141 @@ Repeatedly remove the nodes whose degree has hit a threshold, updating their nei
                'table': 'deg_peel', 'trace': ct, 'elements': center_elements}])
 
 
+# ── 5. A grid is a graph: flood fill, a recursive DFS whose neighbours come from four offsets ──
+GRID_SOURCE = """def flood_fill(image, sr, sc, color):
+    rows, cols = len(image), len(image[0])
+    old = image[sr][sc]
+    if old == color:
+        return image
+
+    def fill(r, c):
+        if not (0 <= r < rows and 0 <= c < cols) or image[r][c] != old:
+            return
+        image[r][c] = color
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            fill(r + dr, c + dc)
+
+    fill(sr, sc)
+    return image"""
+# A winding region of 1s around a 0 hole it encloses (left alone: another colour), and a block of 1s at the bottom
+# left that touches the region only at a corner (left alone: corners are not neighbours).
+IMAGE = [[1, 1, 0, 2, 2, 2],
+         [0, 1, 1, 1, 0, 2],
+         [0, 0, 1, 0, 1, 1],
+         [1, 0, 1, 1, 1, 0],
+         [1, 1, 0, 0, 1, 0],
+         [1, 1, 0, 1, 1, 1]]
+FILL_START, FILL_COLOR = (1, 1), 3
+DIRS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+
+def grid_trace(image, start, color):
+    """Flood fill by recursive DFS. Cells are numbered row by row (r * cols + c). Per frame: img, the pixel values
+    flattened; r, c, the call the code is in, and cur its cell (−1 off the grid or none); d, the direction being
+    called (−1 none); from, the cell that made the current call (−1 none); ok (−1 none, 0 returned at once, 1
+    filled) and checkText; stack, the waiting calls as "(r, c)" texts, and calls their call-site lines."""
+    rows, cols = len(image), len(image[0])
+    L = lambda t: line_of(GRID_SOURCE, t)
+    img = [x for row in image for x in row]
+    sr, sc = start
+    old = img[sr * cols + sc]
+    st = {'img': list(img), 'r': -1, 'c': -1, 'cur': -1, 'd': -1, 'from': -1, 'ok': -1, 'checkText': 'check: —',
+          'stack': [], 'calls': [], 'old': old}
+    trace, emit = recorder(st)
+    emit(L('rows, cols ='), f'A {rows} × {cols} image. Fill the region around ({sr}, {sc}) with colour {color}.')
+    emit(L('old = image[sr][sc]'), f'old = {old}: the colour being replaced. The region is every cell of colour {old} joined to the start side by side.')
+    emit(L('if old == color'), f'{old} is not {color}, so there is work to do (filling with the same colour would never stop marking).')
+
+    def fill(r, c, site, caller):
+        inside = 0 <= r < rows and 0 <= c < cols
+        st['stack'] = st['stack'] + [f'({r}, {c})']; st['calls'] = st['calls'] + [site]
+        st.update(r=r, c=c, cur=r * cols + c if inside else -1, d=-1, **{'from': caller})
+        why = 'off the image' if not inside else (f'colour {st["img"][r * cols + c]}, not {old}' if st['img'][r * cols + c] != old else '')
+        st['ok'] = 0 if why else 1
+        st['checkText'] = ('✗ ' + why) if why else f'✓ colour {old}: fill it'
+        emit(L('if not (0 <= r < rows'), f'fill({r}, {c}): ' + (f'{why}, so return at once.' if why else f'colour {old}, part of the region.'))
+        if why:
+            emit(line_of(GRID_SOURCE, 'return', 'def fill'), f'Back out of fill({r}, {c}).')
+        else:
+            st['img'] = [color if i == r * cols + c else x for i, x in enumerate(st['img'])]
+            emit(L('image[r][c] = color'), f'Colour ({r}, {c}) with {color}. It no longer matches {old}, so no other path can enter it again: the colour is the visited mark.')
+            for d, (dr, dc) in enumerate(DIRS):
+                st.update(r=r, c=c, cur=r * cols + c, d=d, ok=-1, checkText='check: —', **{'from': caller})
+                emit(L('fill(r + dr, c + dc)'), f'Try the neighbour in direction ({dr}, {dc}): ({r + dr}, {c + dc}).')
+                fill(r + dr, c + dc, L('fill(r + dr, c + dc)'), r * cols + c)
+        st['stack'] = st['stack'][:-1]; st['calls'] = st['calls'][:-1]
+
+    fill(sr, sc, L('fill(sr, sc)'), -1)
+    st.update(r=-1, c=-1, cur=-1, d=-1, ok=-1, checkText='check: —', **{'from': -1})
+    filled = sum(1 for a, b in zip(img, st['img']) if a != b)
+    emit(line_of(GRID_SOURCE, 'return image', 'fill(sr, sc)'),
+         f'Done: {filled} cells filled. The 0 the region encloses is another colour, so it stays; the block of {old}s at the bottom left touches the region only at a corner, and corners are not neighbours, so it keeps its colour too. O(rows × cols).')
+    return trace
+
+
+def grid_scene(header):
+    image, (sr, sc), color = IMAGE, FILL_START, FILL_COLOR
+    rows, cols = len(image), len(image[0])
+    trace = grid_trace(image, (sr, sc), color)
+    L = lambda t: line_of(GRID_SOURCE, t)
+    cell = 1.0
+    cells = [{'x': round(-5.6 + c * cell, 3), 'y': round(3.5 - r * cell, 3)} for r in range(rows) for c in range(cols)]
+    g = lambda col: f"dataTable('cells', idx, '{col}')"
+    px = f"arrayAt({tr('img')}, idx)"
+    palette = {0: '#3a4a5e', 1: '#9dbde3', 2: '#77bfae', 3: '#b69bea'}
+    pal = ' : '.join(f"({px} == {k} ? '{v}'" for k, v in palette.items()) + " : ''" + ')' * len(palette)
+    on_stack = f"keyIndex({tr('stack')}, concat('(', floor(idx / {cols}), ', ', mod(idx, {cols}), ')')) >= 0"
+    elements = [
+        # The image as a graph: one node per pixel, coloured by its value; the call running now gold, calls waiting on
+        # the stack outlined by their pink path. The edge from the calling cell to the one being called is lit.
+        {'id': 'grid', 'type': 'graph', 'label': 'image', 'lengthExpr': str(rows * cols), 'valueExpr': px,
+         'positionExpr': [g('x'), g('y'), '0'],
+         'nodeShape': 'rect', 'nodeWidth': 0.88, 'nodeHeight': 0.88, 'nodeCornerRadius': 0.12, 'valueLabel': 'inside', 'showIndices': False,
+         'axisLabels': 'plane',
+         'colorExpr': f"idx == {tr('cur')} ? '{GOLD}' : ({on_stack} ? '#e67db0' : {pal})",
+         'connectTo': {'indexExpr': f"idx == {tr('from')} and {tr('cur')} >= 0 ? {tr('cur')} : -1", 'pinned': True, 'arrow': True,
+                       'bendExpr': '0', 'color': '#7f93aa',
+                       'colorExpr': f"{tr('ok')} == 1 ? '{GOLD}' : ({tr('ok')} == 0 ? '#e06c75' : '')", 'highlightExpr': 'true'}},
+        {'id': 'dirs', 'type': 'array', 'label': 'dirs', 'labelSide': 'left', 'itemType': 'text', 'origin': [2.6, 3.0, 0], 'cellSize': 1.3,
+         'values': [f'({dr}, {dc})' for dr, dc in DIRS], 'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane',
+         'highlightExpr': f"idx == {tr('d')}"},
+        # The recursion: each waiting fill(r, c), outermost first; the top is the call running now.
+        {'id': 'calls', 'type': 'stack', 'arrayLayout': 'horizontal', 'label': 'call stack', 'itemType': 'text', 'origin': [-3.6, -3.1, 0],
+         'cellSize': 1.05, 'showTop': False, 'containerColor': '#e67db0',
+         'fontSize': 13, 'axisLabels': 'plane', 'color': '#e67db0',
+         'lengthExpr': f"arrayCount({tr('stack')})", 'valueExpr': f"arrayAt({tr('stack')}, idx)",
+         'highlightExpr': f"idx == arrayCount({tr('stack')}) - 1"},
+        # The variables box sits right of the grid (labels at one position merge), leaving the bottom to the stack.
+        *[{**l, 'position': [7.6, 0.6, 0]} for l in [
+        label('rc', f"{tr('r')} == -1 and {tr('c')} == -1 ? '(r, c): —' : concat('(r, c) = (', {tr('r')}, ', ', {tr('c')}, ')')", ['grid', tr('cur')], L('def fill(r, c)'), 'grid-graphs'),
+        label('old', f"concat('old = ', {tr('old')})", None, L('old = image[sr][sc]'), 'grid-graphs'),
+        {**label('check', tr('checkText'), None, L('if not (0 <= r < rows'), 'grid-graphs'), 'highlightExpr': f"{tr('line')} == {L('if not (0 <= r < rows')}"}]],
+    ]
+    return run_scene('grid-graphs', 'A grid is a graph (islands, flood fill)', header, f"""**Signal:** a 2D grid of cells, with moves up, down, left and right: flood fill, islands, mazes, rotting oranges.
+
+A grid **is** a graph, just not written as one: every cell is a node, and two cells are joined when they touch side by side. There is no adjacency list to build. The neighbours of `(r, c)` come from four offsets, `(1, 0)`, `(-1, 0)`, `(0, 1)` and `(0, -1)`, and a test: inside the grid, and the right kind of cell. Every traversal from the earlier scenes then works unchanged.
+
+This run is **flood fill** (the paint bucket): recolour every cell of the start's colour that is joined to it side by side. It is a DFS. `fill(r, c)` returns at once when the cell is off the image or a different colour; otherwise it paints the cell and calls itself on the four neighbours. Painting the cell **is** the visited mark: it no longer matches the old colour, so no path enters it twice.
+
+Gold is the call running now, pink cells wait on the call stack, and the edge from the calling cell to the one being called is lit gold when it is filled and red when the call returns at once. Two kinds of cell are left alone: the **0 the region encloses** (another colour, so \`fill\` returns at once), and the **block of 1s at the bottom left**, which touches the region only at a corner: corners are not neighbours.
+
+**Variations:**
+- **Islands** (count groups of 1s): flood fill from every unvisited land cell; each fill is one island. The patterns lesson plays it.
+- **Shortest path in a maze:** BFS instead of DFS, since BFS reaches cells in order of distance.
+- **Multi-source BFS** (rotting oranges, distance to the nearest gate): every source starts in the queue at distance 0.
+- **Diagonal moves:** eight offsets instead of four.
+
+**Cost:** each cell is painted once and tries 4 neighbours: O(rows × cols) time, and up to O(rows × cols) recursion depth, which an explicit stack avoids on large images.
+
+**Practice:** Flood Fill, Number of Islands, Max Area of Island, Surrounded Regions, Rotting Oranges, Shortest Path in Binary Matrix.""",
+        'Explain how a grid is a graph with neighbours from four offsets, and how flood fill uses the new colour as its visited mark. Ask the learner to predict which calls return at once and why, and why the enclosed 0 and the bottom-left block stay unfilled.',
+        'flood_fill.py', GRID_SOURCE, trace, elements,
+        data={'cells': cells}, call_entry=line_of(GRID_SOURCE, 'def fill(r, c)'))
+
+
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
-BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene}
+BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
