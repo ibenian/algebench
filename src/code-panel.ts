@@ -170,10 +170,19 @@ export function setupCodePanel(): void {
             if(row.top<viewport.top||row.bottom>viewport.bottom)body.scrollTop+=row.top-viewport.top;
         }
         lastExecution=signature;
-        // Only a move within one run is a jump: going to another step or scene starts afresh.
+        // Only a move within one run is a jump: going to another step or scene starts afresh. The arrow is the run's
+        // own step into this state (trace[state - 1] → trace[state]), whichever way or how far the reader moved.
         const place=`${state.currentSceneIndex}/${state.currentStepIndex}`;
-        drawArrows(place===lastPlace?lineJump(lastLines,lines):null,calls,entry);
+        const changed=place===lastPlace&&lineJump(lastLines,lines)!==null;
+        drawArrows(changed?stepInto():null,calls,entry);
         lastLines=lines;lastPlace=place;
+    }
+    /** The run's step into the current state: from the line at the previous state to the current one, or null. */
+    function stepInto():{from:number;to:number}|null {
+        const slider=runSlider?state.sceneSliders[runSlider.id]:undefined;
+        const at=runSlider&&slider?Math.round((Number(slider.value)-runSlider.min)/runSlider.step):0;
+        const from=runLines[at-1],to=runLines[at];
+        return at>0&&from!==undefined&&to!==undefined&&from!==to?{from,to}:null;
     }
     /**
      * The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,
@@ -183,11 +192,11 @@ export function setupCodePanel(): void {
      * Every move between lines in the step's whole run, for the hover arrows: the slider the codeRef's line follows
      * is replayed over its range (with the slider overridden, not moved). Cached per scene, step and codeRef.
      */
-    let moves:{from:number;to:number}[]=[],movesKey='';
+    let moves:{from:number;to:number}[]=[],movesKey='',runLines:number[]=[],runSlider:{id:string;min:number;step:number}|null=null;
     function runMoves(scene: Scene, ref: NonNullable<Scene['codeRef']>) {
         const key=`${state.currentSceneIndex}/${state.currentStepIndex}/${ref.lineExpr??ref.line}`;
         if(key===movesKey)return;
-        movesKey=key;moves=[];
+        movesKey=key;moves=[];runLines=[];runSlider=null;
         if(!ref.lineExpr)return;
         // The current step's own sliders first: a later step may reuse the id over a different range.
         const steps=scene.steps??[],own=steps[state.currentStepIndex];
@@ -199,10 +208,12 @@ export function setupCodePanel(): void {
         for(let v=slider.min,i=0;v<=slider.max&&i<5000;v+=step,i++){
             try{const line=evalExpr(fn,0,{overrideScope:{[slider.id]:v}});if(typeof line==='number')sequence.push(line);}catch{/* a position the expression cannot read */}
         }
-        moves=lineTransitions(sequence);
+        moves=lineTransitions(sequence);runLines=sequence;runSlider={id:slider.id,min:slider.min,step};
     }
     /**
-     * Hovering a line shows every move into it (teal) and out of it (gold) across the run. Hovering a call's name
+     * Hovering the code shows the step that led to the current state: from the line at the previous state to the
+     * current one, in the run's own order; hovering a line's number shows every move into it (teal) and out of it
+     * (gold) across the run. Hovering a call's name
      * instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
      * name lights every call to it, with an incoming arrow from each.
      */
@@ -226,7 +237,12 @@ export function setupCodePanel(): void {
                 const from=Number(c.closest<HTMLElement>('.code-line')!.dataset.line);
                 if(from!==def&&!incoming.some(m=>m.from===from))incoming.push({from,to:def});
             });
-        } else ({incoming,outgoing}=movesAt(moves,line));
+        } else if(target.closest('.code-line-number'))({incoming,outgoing}=movesAt(moves,line));
+        else {
+            // The step into the current state, in the run's own order: trace[state - 1] → trace[state].
+            const step=stepInto();
+            if(step)incoming=[step];
+        }
         for(const [list,kind] of [[incoming,'in'],[outgoing,'out']] as const)for(const m of list){
             const y1=rowY(m.from),y2=rowY(m.to);if(y1===null||y2===null)continue;
             const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('class',`code-arrow-${kind}`);

@@ -25371,9 +25371,19 @@ function setupCodePanel() {
 		}
 		lastExecution = signature;
 		const place = `${state.currentSceneIndex}/${state.currentStepIndex}`;
-		drawArrows(place === lastPlace ? lineJump(lastLines, lines) : null, calls, entry);
+		drawArrows(place === lastPlace && lineJump(lastLines, lines) !== null ? stepInto() : null, calls, entry);
 		lastLines = lines;
 		lastPlace = place;
+	}
+	/** The run's step into the current state: from the line at the previous state to the current one, or null. */
+	function stepInto() {
+		const slider = runSlider ? state.sceneSliders[runSlider.id] : void 0;
+		const at = runSlider && slider ? Math.round((Number(slider.value) - runSlider.min) / runSlider.step) : 0;
+		const from = runLines[at - 1], to = runLines[at];
+		return at > 0 && from !== void 0 && to !== void 0 && from !== to ? {
+			from,
+			to
+		} : null;
 	}
 	/**
 	* The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,
@@ -25383,12 +25393,14 @@ function setupCodePanel() {
 	* Every move between lines in the step's whole run, for the hover arrows: the slider the codeRef's line follows
 	* is replayed over its range (with the slider overridden, not moved). Cached per scene, step and codeRef.
 	*/
-	let moves = [], movesKey = "";
+	let moves = [], movesKey = "", runLines = [], runSlider = null;
 	function runMoves(scene, ref) {
 		const key = `${state.currentSceneIndex}/${state.currentStepIndex}/${ref.lineExpr ?? ref.line}`;
 		if (key === movesKey) return;
 		movesKey = key;
 		moves = [];
+		runLines = [];
+		runSlider = null;
 		if (!ref.lineExpr) return;
 		const steps = scene.steps ?? [];
 		const slider = [...steps[state.currentStepIndex]?.sliders ?? [], ...steps.flatMap((step) => step.sliders ?? [])].find((s) => s.id && new RegExp(`\\b${s.id}\\b`).test(ref.lineExpr));
@@ -25405,9 +25417,17 @@ function setupCodePanel() {
 			if (typeof line === "number") sequence.push(line);
 		} catch {}
 		moves = lineTransitions(sequence);
+		runLines = sequence;
+		runSlider = {
+			id: slider.id,
+			min: slider.min,
+			step
+		};
 	}
 	/**
-	* Hovering a line shows every move into it (teal) and out of it (gold) across the run. Hovering a call's name
+	* Hovering the code shows the step that led to the current state: from the line at the previous state to the
+	* current one, in the run's own order; hovering a line's number shows every move into it (teal) and out of it
+	* (gold) across the run. Hovering a call's name
 	* instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
 	* name lights every call to it, with an incoming arrow from each.
 	*/
@@ -25442,7 +25462,11 @@ function setupCodePanel() {
 					to: def
 				});
 			});
-		} else ({incoming, outgoing} = movesAt(moves, line));
+		} else if (target.closest(".code-line-number")) ({incoming, outgoing} = movesAt(moves, line));
+		else {
+			const step = stepInto();
+			if (step) incoming = [step];
+		}
 		for (const [list, kind] of [[incoming, "in"], [outgoing, "out"]]) for (const m of list) {
 			const y1 = rowY(m.from), y2 = rowY(m.to);
 			if (y1 === null || y2 === null) continue;
