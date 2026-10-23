@@ -4,7 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { _JS_ONLY_RE } from '/expr.js';
+import { isJsOnly } from '/expr.js';
 
 /** A JS-only expression found while scanning a scene spec. */
 export interface TrustIssue {
@@ -62,7 +62,7 @@ export function scanSpecForUnsafeJs(spec: unknown): boolean {
 
     function walk(obj: unknown, parentKey: string | null, path: string): void {
         if (typeof obj === 'string') {
-            if (parentKey && _carriesExpressions(parentKey) && _JS_ONLY_RE.test(obj)) {
+            if (parentKey && _carriesExpressions(parentKey) && isJsOnly(obj)) {
                 issues.push({ path, expr: obj, type: 'expr' });
             }
             return;
@@ -82,7 +82,7 @@ export function scanSpecForUnsafeJs(spec: unknown): boolean {
                         // always carries m[1]; `!` keeps that assumption where
                         // the JavaScript had it implicitly.
                         const inner = m[1]!;
-                        if (_JS_ONLY_RE.test(inner)) {
+                        if (isJsOnly(inner)) {
                             issues.push({ path: childPath, expr: inner.trim(), type: 'template' });
                         }
                     }

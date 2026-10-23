@@ -166,6 +166,33 @@ _mathjs.import({
 // \[\s*['"`] catches bracket-notation property access (e.g. obj['constructor']).
 export const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b|\[\s*['"`]|===|!==|\|\||&&|\$\{/;
 
+/**
+ * The source with each quoted string's contents emptied ('…' and "…", backslash escapes honoured), so the
+ * JS-only test reads the code and not the text: `concat('indeg[', v, '] = return')` is math.js, where the
+ * label text alone would match `[\s*'` and `return`. The quotes stay, so bracket access with a string
+ * (`obj['constructor']` → `obj['']`) still matches. A backtick anywhere, or an unclosed quote, leaves the
+ * source as it is: neither is math.js, and what such a source treats as a string is not settled.
+ */
+export function _blankStrings(src: string): string {
+    let out = '', i = 0;
+    while (i < src.length) {
+        const ch = src[i]!;
+        if (ch === '`') return src;
+        if (ch !== '"' && ch !== "'") { out += ch; i++; continue; }
+        let j = i + 1;
+        while (j < src.length && src[j] !== ch) j += src[j] === '\\' ? 2 : 1;
+        if (j >= src.length) return src;
+        out += ch + ch;
+        i = j + 1;
+    }
+    return out;
+}
+
+/** Whether an expression needs the JS fallback: _JS_ONLY_RE on its code, its string literals' text set aside. */
+export function isJsOnly(src: string): boolean {
+    return _JS_ONLY_RE.test(_blankStrings(src));
+}
+
 // Populated from _MATHJS_EXTENSIONS — do not add helpers here directly.
 const _EXPR_HELPERS: Record<string, unknown> = { ..._MATHJS_EXTENSIONS };
 
@@ -460,7 +487,7 @@ export function resolveVirtualAnimTime(rawT: number): number {
 export function explainCompileDegrade(exprStr: string): string | null {
     if (exprState._sceneJsTrustState === 'trusted') return null;
     const src = _normalizeSingleQuotes(exprStr);
-    if (_JS_ONLY_RE.test(src)) {
+    if (isJsOnly(src)) {
         return 'uses JavaScript-only syntax, which an untrusted scene compiles to 0';
     }
     try {
@@ -475,7 +502,7 @@ export function compileExpr(exprStr: string): CompiledExpr {
     // Normalise single-quoted strings to double-quoted so math.js can parse them
     // without falling through to the JS fallback (which requires scene trust).
     exprStr = _normalizeSingleQuotes(exprStr);
-    if (_JS_ONLY_RE.test(exprStr)) {
+    if (isJsOnly(exprStr)) {
         if (exprState._sceneJsTrustState === 'trusted') {
             const fn: ExprFallbackFn = Function('scope', 'with (scope) { return (' + exprStr + '); }') as ExprFallbackFn;
             fn._isFallback = true;
@@ -525,7 +552,7 @@ export function evalExpr(
 
 export function compileSurfaceExpr(exprStr: string): CompiledExpr {
     exprStr = _normalizeSingleQuotes(exprStr);
-    if (_JS_ONLY_RE.test(exprStr)) {
+    if (isJsOnly(exprStr)) {
         if (exprState._sceneJsTrustState === 'trusted') {
             const fn: ExprFallbackFn = Function('scope', 'with (scope) { return (' + exprStr + '); }') as ExprFallbackFn;
             fn._isFallback = true;

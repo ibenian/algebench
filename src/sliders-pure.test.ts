@@ -16,7 +16,7 @@ import type { SceneSlider } from '/sliders.js';
 (globalThis as unknown as { math: typeof mathjs }).math = mathjs;
 
 const { state } = await import('/state.js');
-const { _sliderValueNum, getSliderIds, formatTensorCell } = await import('/sliders.js');
+const { _sliderValueNum, getSliderIds, formatTensorCell, registerSliders, restoreSlider } = await import('/sliders.js');
 
 /**
  * Replace the shared slider registry with `entries` for one test.
@@ -121,4 +121,38 @@ test('formatTensorCell drops a decimal at each magnitude boundary', () => {
 
 test('formatTensorCell shows a placeholder for non-finite values', () => {
   for (const v of [NaN, Infinity, -Infinity]) assert.equal(formatTensorCell(v), '\u00b7');
+});
+
+test('going back to a step restores the range a later step replaced', () => {
+  withSliders({}, () => {
+    // Step 1 plays a 36-frame run; step 2 re-declares the slider for its own 28-frame run.
+    registerSliders([{ id: 'frame', min: 0, max: 35, step: 1, default: 0 }]);
+    const { prevStates } = registerSliders([{ id: 'frame', min: 0, max: 27, step: 1, default: 0 }]);
+    state.sceneSliders.frame!.value = 27;
+    // Back to step 1: its range again, and the position carries over.
+    restoreSlider('frame', prevStates.frame!);
+    assert.equal(state.sceneSliders.frame!.max, 35);
+    assert.equal(state.sceneSliders.frame!.value, 27);
+  });
+});
+
+test('a restored range that excludes the position clamps it', () => {
+  withSliders({}, () => {
+    registerSliders([{ id: 'frame', min: 0, max: 10, step: 1, default: 0 }]);
+    const { prevStates } = registerSliders([{ id: 'frame', min: 0, max: 40, step: 1, default: 0 }]);
+    state.sceneSliders.frame!.value = 33;
+    restoreSlider('frame', prevStates.frame!);
+    assert.equal(state.sceneSliders.frame!.max, 10);
+    assert.equal(state.sceneSliders.frame!.value, 10);
+  });
+});
+
+test('with reset the whole earlier slider comes back, position included', () => {
+  withSliders({}, () => {
+    registerSliders([{ id: 'k', min: 0, max: 5, step: 1, default: 2 }]);
+    const { prevStates } = registerSliders([{ id: 'k', min: 0, max: 9, step: 1, default: 7, reset: true }]);
+    restoreSlider('k', prevStates.k!);
+    assert.equal(state.sceneSliders.k!.max, 5);
+    assert.equal(state.sceneSliders.k!.value, 2);
+  });
 });

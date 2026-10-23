@@ -13,7 +13,10 @@ export function renderStack(el:Element,view:MathBoxNode) {
     const lengthExpr=el.lengthExpr??String(el.shape?.[0]??el.values?.length??0);
     // arrayLayout 'horizontal': the stack lies on its side, closed on the left, pushing to the right.
     const horizontal=el.arrayLayout==='horizontal';
-    const cells:Element={...el,arrayLayout:horizontal?'horizontal':'vertical',lengthExpr,showIndices:el.showIndices??false,label:undefined,
+    // On its side the stack is a row like any array, so the array draws its title (labelSide 'left'): the same
+    // text, right-aligned at the same x as the titles of the rows around it.
+    const cells:Element={...el,arrayLayout:horizontal?'horizontal':'vertical',lengthExpr,showIndices:el.showIndices??false,
+        label:horizontal?el.label??'stack':undefined,labelSide:horizontal?'left':el.labelSide,
         markers:[...(el.markers??[]),...(el.showTop===false?[]:[{
             type:'step_marker' as const,indexName:'top slot',indexExpr:`(${lengthExpr}) - 1`,color:'#f1c65b',
         }])]};
@@ -29,13 +32,11 @@ export function renderStack(el:Element,view:MathBoxNode) {
             return mesh;
         };
         const back=makeMesh(.12),base=makeMesh(.4),outline=makeMesh(.7);
-        // Vertical: the title under the base; horizontal: left of the closed end, like an array row's title.
-        const title=horizontal
-            ?addLabel3D(el.label??'stack',[origin[0]!-pitch*.39-.75,origin[1]!,origin[2]!],'#b5c1cf',{align:'right'})
-            :addLabel3D(el.label??'stack',[origin[0]!,origin[1]!-1.5,origin[2]!],'#b5c1cf');
-        title.ownerMesh=owner;title.snapToProjection=true;
+        // Vertical: the title under the base (a horizontal stack's title is the array's, above).
+        const title=horizontal?null:addLabel3D(el.label??'stack',[origin[0]!,origin[1]!-1.5,origin[2]!],'#b5c1cf');
+        if(title){title.ownerMesh=owner;title.snapToProjection=true;}
         // The title names the stack's variable: pointing at it lights that variable in the Code panel.
-        if(el.id){
+        if(title&&el.id){
             const symbol=el.id;
             title.el.style.pointerEvents='auto';
             title.el.addEventListener('pointerenter',()=>setSymbolHover([symbol]));

@@ -26,3 +26,10 @@ test('a horizontal stack is closed on the left, contains every cell, and grows o
   }
  }
 });
+
+test('a horizontal stack leaves room for the row title the array draws left of cell 0',()=>{
+ const origin=[-3,-3,0],pitch=1.15,b=stackBounds(3,origin,pitch,true);
+ const titleRight=origin[0]!-pitch*.39-.22;   // array.ts: a left title's right edge
+ assert.ok(titleRight<b.left,'the title clears the closed end');
+ assert.ok(b.left<origin[0]!-pitch*.39,'the closed end clears cell 0');
+});

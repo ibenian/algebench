@@ -404,6 +404,35 @@ _mathjs.import({
 	}
 }, { override: true });
 var _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b|\[\s*['"`]|===|!==|\|\||&&|\$\{/;
+/**
+* The source with each quoted string's contents emptied ('…' and "…", backslash escapes honoured), so the
+* JS-only test reads the code and not the text: `concat('indeg[', v, '] = return')` is math.js, where the
+* label text alone would match `[\s*'` and `return`. The quotes stay, so bracket access with a string
+* (`obj['constructor']` → `obj['']`) still matches. A backtick anywhere, or an unclosed quote, leaves the
+* source as it is: neither is math.js, and what such a source treats as a string is not settled.
+*/
+function _blankStrings(src) {
+	let out = "", i = 0;
+	while (i < src.length) {
+		const ch = src[i];
+		if (ch === "`") return src;
+		if (ch !== "\"" && ch !== "'") {
+			out += ch;
+			i++;
+			continue;
+		}
+		let j = i + 1;
+		while (j < src.length && src[j] !== ch) j += src[j] === "\\" ? 2 : 1;
+		if (j >= src.length) return src;
+		out += ch + ch;
+		i = j + 1;
+	}
+	return out;
+}
+/** Whether an expression needs the JS fallback: _JS_ONLY_RE on its code, its string literals' text set aside. */
+function isJsOnly(src) {
+	return _JS_ONLY_RE.test(_blankStrings(src));
+}
 var _EXPR_HELPERS = { ..._MATHJS_EXTENSIONS };
 var EXTENSION_NAMES = Object.keys(_MATHJS_EXTENSIONS);
 var _CORE_MATH_NAMES = [
@@ -671,7 +700,7 @@ function resolveVirtualAnimTime(rawT) {
 function explainCompileDegrade(exprStr) {
 	if (exprState._sceneJsTrustState === "trusted") return null;
 	const src = _normalizeSingleQuotes(exprStr);
-	if (_JS_ONLY_RE.test(src)) return "uses JavaScript-only syntax, which an untrusted scene compiles to 0";
+	if (isJsOnly(src)) return "uses JavaScript-only syntax, which an untrusted scene compiles to 0";
 	try {
 		_mathjs.parse(src);
 		return null;
@@ -681,7 +710,7 @@ function explainCompileDegrade(exprStr) {
 }
 function compileExpr(exprStr) {
 	exprStr = _normalizeSingleQuotes(exprStr);
-	if (_JS_ONLY_RE.test(exprStr)) {
+	if (isJsOnly(exprStr)) {
 		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
@@ -724,7 +753,7 @@ function evalExpr(compiled, t, opts = {}) {
 }
 function compileSurfaceExpr(exprStr) {
 	exprStr = _normalizeSingleQuotes(exprStr);
-	if (_JS_ONLY_RE.test(exprStr)) {
+	if (isJsOnly(exprStr)) {
 		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
@@ -3999,6 +4028,21 @@ function setupSliderDrag(e, overlay) {
 	document.addEventListener("mousemove", onMove);
 	document.addEventListener("mouseup", onUp);
 }
+/** A slider without its live position (value, cells, desired value, animation state): its range. */
+function sliderRange(s) {
+	const { value: _v, values: _vs, _desired: _d, _loopPlaying: _p, _loopRaf: _r, _tweening: _t, ...range } = s;
+	return range;
+}
+/** Put a snapshot from registerSliders() back on a live slider, keeping its position inside the restored range. */
+function restoreSlider(id, prev) {
+	const s = sliderState.sceneSliders[id];
+	if (!s) return;
+	Object.assign(s, prev);
+	if (!isTensorSlider(s) && Number.isFinite(s.value) && (s.value < s.min || s.value > s.max)) {
+		s.value = Math.min(s.max, Math.max(s.min, s.value));
+		s._desired = s.value;
+	}
+}
 function registerSliders(sliderDefs) {
 	if (!sliderDefs || !Array.isArray(sliderDefs)) return {
 		ids: [],
@@ -4010,7 +4054,7 @@ function registerSliders(sliderDefs) {
 		const prev = sliderState.sceneSliders[def.id];
 		if (prev) {
 			stopSliderLoop(def.id);
-			if (def.reset) prevStates[def.id] = { ...prev };
+			prevStates[def.id] = def.reset ? { ...prev } : sliderRange(prev);
 			delete sliderState.sceneSliders[def.id];
 		}
 		const min = def.min !== void 0 ? def.min : 0;
@@ -13484,11 +13528,12 @@ function renderArray(el, _view, decorate) {
 //#endregion
 //#region src/objects/stack-layout.ts
 /** A fixed base and an open container that grows with its bottom-to-top cells; horizontal: closed on the left,
-*  growing to the right (cells at the array's horizontal pitch). */
+*  growing to the right (cells at the array's horizontal pitch). The horizontal wall hugs cell 0, so the row
+*  title the array draws left of cell 0 (labelSide 'left') clears it and lines up with sibling rows. */
 function stackBounds(length, origin, pitch, horizontal = false) {
 	const [x, y, z] = origin;
 	if (horizontal) return {
-		left: x - pitch * .39 - .55,
+		left: x - pitch * .39 - .12,
 		right: x + Math.max(0, length - 1) * pitch + pitch * .39 + .5,
 		bottom: y - .46,
 		top: y + .46,
@@ -13516,7 +13561,8 @@ function renderStack(el, view) {
 		arrayLayout: horizontal ? "horizontal" : "vertical",
 		lengthExpr,
 		showIndices: el.showIndices ?? false,
-		label: void 0,
+		label: horizontal ? el.label ?? "stack" : void 0,
+		labelSide: horizontal ? "left" : el.labelSide,
 		markers: [...el.markers ?? [], ...el.showTop === false ? [] : [{
 			type: "step_marker",
 			indexName: "top slot",
@@ -13541,18 +13587,16 @@ function renderStack(el, view) {
 			return mesh;
 		};
 		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7);
-		const title = horizontal ? addLabel3D(el.label ?? "stack", [
-			origin[0] - pitch * .39 - .75,
-			origin[1],
-			origin[2]
-		], "#b5c1cf", { align: "right" }) : addLabel3D(el.label ?? "stack", [
+		const title = horizontal ? null : addLabel3D(el.label ?? "stack", [
 			origin[0],
 			origin[1] - 1.5,
 			origin[2]
 		], "#b5c1cf");
-		title.ownerMesh = owner;
-		title.snapToProjection = true;
-		if (el.id) {
+		if (title) {
+			title.ownerMesh = owner;
+			title.snapToProjection = true;
+		}
+		if (title && el.id) {
 			const symbol = el.id;
 			title.el.style.pointerEvents = "auto";
 			title.el.addEventListener("pointerenter", () => setSymbolHover([symbol]));
@@ -15720,8 +15764,8 @@ function renderSurface(el, view) {
 		const y = rangeY[0] + j * dy;
 		let z;
 		try {
-			if (_JS_ONLY_RE.test(expr) && surfaceState._sceneJsTrustState === "trusted") z = new Function("x", "y", "return " + expr)(x, y);
-			else if (_JS_ONLY_RE.test(expr)) z = 0;
+			if (isJsOnly(expr) && surfaceState._sceneJsTrustState === "trusted") z = new Function("x", "y", "return " + expr)(x, y);
+			else if (isJsOnly(expr)) z = 0;
 			else z = _mathjs.evaluate(expr, {
 				x,
 				y
@@ -16235,7 +16279,7 @@ function renderVectorField(el, view) {
 	const exprY = el.fy || "-x";
 	const exprZ = el.fz || "0";
 	const _compileVF = (e) => {
-		if (_JS_ONLY_RE.test(e)) {
+		if (isJsOnly(e)) {
 			if (vectorFieldState._sceneJsTrustState === "trusted") return new Function("x", "y", "z", "return " + e);
 			return null;
 		}
@@ -20131,7 +20175,7 @@ function scanSpecForUnsafeJs(spec) {
 	}
 	function walk(obj, parentKey, path) {
 		if (typeof obj === "string") {
-			if (parentKey && _carriesExpressions(parentKey) && _JS_ONLY_RE.test(obj)) issues.push({
+			if (parentKey && _carriesExpressions(parentKey) && isJsOnly(obj)) issues.push({
 				path,
 				expr: obj,
 				type: "expr"
@@ -20149,7 +20193,7 @@ function scanSpecForUnsafeJs(spec) {
 				_TEMPLATE_RE.lastIndex = 0;
 				while ((m = _TEMPLATE_RE.exec(v)) !== null) {
 					const inner = m[1];
-					if (_JS_ONLY_RE.test(inner)) issues.push({
+					if (isJsOnly(inner)) issues.push({
 						path: childPath,
 						expr: inner.trim(),
 						type: "template"
@@ -24109,7 +24153,7 @@ function removeStepTracker(tracker) {
 		const stillNeeded = new Set(sceneState.stepTrackers.flatMap((t) => t.sliderIds || []));
 		const toRemove = tracker.sliderIds.filter((id) => !stillNeeded.has(id));
 		if (tracker.prevSliderStates) {
-			for (const [id, prev] of Object.entries(tracker.prevSliderStates)) if (!toRemove.includes(id) && sceneState.sceneSliders[id]) Object.assign(sceneState.sceneSliders[id], prev);
+			for (const [id, prev] of Object.entries(tracker.prevSliderStates)) if (!toRemove.includes(id)) restoreSlider(id, prev);
 		}
 		if (toRemove.length > 0) removeSliderIds(toRemove);
 		buildSliderOverlay();

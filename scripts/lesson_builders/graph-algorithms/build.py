@@ -1075,9 +1075,333 @@ Gold is the call running now, pink cells wait on the call stack, and the edge fr
                'table': 'ff_bfs', 'trace': bfs_trace, 'elements': bfs_elements}])
 
 
+# ── 6. Is there a cycle? DFS with three states on a directed graph, then DFS that skips its parent on an undirected one ──
+CYCLE_SOURCE = """from collections import deque
+
+def has_cycle(n, adj):
+    state = [0] * n  # 0 new, 1 on the path, 2 done
+
+    def dfs(u):
+        state[u] = 1
+        for v in adj[u]:
+            if state[v] == 1:
+                return True
+            if state[v] == 0 and dfs(v):
+                return True
+        state[u] = 2
+        return False
+
+    for u in range(n):
+        if state[u] == 0 and dfs(u):
+            return True
+    return False
+
+def has_cycle_undirected(n, adj):
+    visited = [False] * n
+
+    def dfs(u, parent):
+        visited[u] = True
+        for v in adj[u]:
+            if v == parent:
+                continue
+            if visited[v] or dfs(v, u):
+                return True
+        return False
+
+    for u in range(n):
+        if not visited[u] and dfs(u, -1):
+            return True
+    return False
+
+def has_cycle_kahn(n, adj):
+    indeg = [0] * n
+    for u in range(n):
+        for v in adj[u]:
+            indeg[v] += 1
+    queue = deque(u for u in range(n) if indeg[u] == 0)
+    taken = 0
+    while queue:
+        u = queue.popleft()
+        taken += 1
+        for v in adj[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                queue.append(v)
+    return taken < n"""
+# Directed: 3 → 2 reaches a finished node (not a cycle) before 3 → 4 → 5 → 3 closes one.
+CYC_N, CYC_EDGES = 6, [(0, 1), (1, 2), (0, 3), (3, 2), (3, 4), (4, 5), (5, 3)]
+CYC_POS = [(-5.6, 2.0), (-3.6, 3.3), (-1.6, 3.3), (-3.6, 0.7), (-1.6, 0.7), (-2.6, -0.8)]
+# Undirected: the walk back to the parent is not a cycle; 3 – 4 – 5 – 3 is.
+UND_N, UND_EDGES = 6, [(0, 1), (1, 2), (1, 3), (3, 4), (4, 5), (5, 3)]
+
+
+def cycle_trace(n, edges, directed):
+    """DFS cycle detection. Per frame: u (the call running, −1 none), v and vi (the neighbour and its place in
+    adj[u], −1 none), adjU and vTip; state (directed: 0 new, 1 on the path, 2 done; undirected: 0/1 visited, with
+    on-path nodes as 1 too) and path (the nodes of the calls not yet returned); parent (undirected); checkText;
+    calls (call-site lines); kids0 … (the DFS tree); cyc (the edges of the cycle found, as [u, v] pairs) and
+    result."""
+    fn = 'def has_cycle(' if directed else 'def has_cycle_undirected('
+    lines = CYCLE_SOURCE.split('\n')
+    def L(text, after=None):
+        # The line holding text inside this function; after (a text) starts the search at the line holding it.
+        i = next(k for k, l in enumerate(lines) if fn in l)
+        if after: i = next(k for k, l in enumerate(lines) if k >= i and after in l)
+        return next(k + 1 for k, l in enumerate(lines) if k >= i and text in l)
+    adj = [[] for _ in range(n)]
+    for a, b in edges:
+        adj[a].append(b)
+        if not directed: adj[b].append(a)
+    adj = [a if directed else sorted(a) for a in adj]
+    st = {'u': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'state': [0] * n, 'path': [], 'parent': -1, 'checkText': 'check: —',
+          'calls': [], **{f'kids{i}': [] for i in range(n)}, 'cyc': [], 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
+        emit0(line, message)
+    setstate = lambda i, k: [k if j == i else x for j, x in enumerate(st['state'])]
+    emit(L('state = [0]' if directed else 'visited = [False]'), 'Every node starts new.' if directed else 'No node visited yet.')
+
+    def dfs(u, parent, site):
+        st['path'] = st['path'] + [u]; st['calls'] = st['calls'] + [site]
+        st.update(u=u, v=-1, vi=-1, adjU=adj[u], parent=parent, checkText='check: —')
+        st['state'] = setstate(u, 1)
+        emit(L('state[u] = 1' if directed else 'visited[u] = True'),
+             f'Visit {u}: it is on the current path now.' if directed else f'Visit {u}' + (f', reached from {parent}.' if parent >= 0 else '.'))
+        for vi, v in enumerate(adj[u]):
+            st.update(u=u, v=v, vi=vi, adjU=adj[u], parent=parent)
+            emit(L('for v in adj[u]'), f'Edge {u} → {v}.' if directed else f'Edge {u} – {v}.')
+            if directed:
+                on_path, new = st['state'][v] == 1, st['state'][v] == 0
+                st['checkText'] = (f'state[{v}] = 1: on the path' if on_path else f'state[{v}] = {st["state"][v]}: ' + ('new' if new else 'done, no loop through it'))
+                emit(L('if state[v] == 1'), f'{v} is on the current path: {u} → {v} leads back into it. A cycle!' if on_path
+                     else (f'{v} is new.' if new else f'{v} is done: everything reachable from it was explored and returned, so this edge closes no loop.'))
+                if on_path: return close(u, v)
+                if not new: continue
+                st['checkText'] = f'state[{v}] == 0: explore {v}'
+                emit(L('if state[v] == 0 and dfs(v)'), f'Go deeper: call dfs({v}).')
+                st[f'kids{u}'] = st[f'kids{u}'] + [v]
+                if dfs(v, u, L('if state[v] == 0 and dfs(v)')): return unwind(u)
+            else:
+                if v == parent:
+                    st['checkText'] = f'{v} is the parent: skip'
+                    emit(L('if v == parent'), f'{v} is where {u} was reached from: the same edge walked back, not a cycle. Skip it.')
+                    emit(L('continue'), 'Next neighbour.')
+                    continue
+                seen = st['state'][v] == 1
+                st['checkText'] = f'visited[{v}] = True: a second way in' if seen else f'visited[{v}] = False: explore it'
+                emit(L('if visited[v] or dfs(v, u)'), f'{v} was visited already, and not through this edge: a second way to reach it. A cycle!' if seen
+                     else f'{v} is new: call dfs({v}, {u}).')
+                if seen: return close(u, v)
+                st[f'kids{u}'] = st[f'kids{u}'] + [v]
+                if dfs(v, u, L('if visited[v] or dfs(v, u)')): return unwind(u)
+        st.update(u=u, v=-1, vi=-1, adjU=adj[u], parent=parent, checkText='check: —')
+        if directed:
+            st['state'] = setstate(u, 2)
+            emit(L('state[u] = 2'), f'Every edge out of {u} is explored: {u} is done.')
+        emit(L('return False'), f'dfs({u}) found no cycle below {u}.')
+        st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
+        back = st['path'][-1] if st['path'] else -1
+        st.update(u=back, v=-1, vi=-1, adjU=adj[back] if back >= 0 else [])
+        return False
+
+    def close(u, v):
+        # The cycle: the path from v down to u, then the edge u → v.
+        p = st['path']; loop = p[p.index(v):]
+        st['cyc'] = [[loop[k], loop[k + 1]] for k in range(len(loop) - 1)] + [[u, v]]
+        emit(L('return True'), f'The cycle: {(" → " if directed else " – ").join(map(str, loop + [v]))}. Return True.')
+        st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
+        return True
+
+    def unwind(u):
+        st.update(u=u, v=-1, vi=-1, adjU=adj[u])
+        emit(L('return True', 'dfs(v)' if directed else 'dfs(v, u)'), f'dfs({u}) passes True back up.')
+        st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
+        return True
+
+    for s0 in range(n):
+        st.update(u=-1, v=-1, vi=-1, adjU=[])
+        if st['state'][s0]:
+            continue
+        emit(L('for u in range(n)'), f'Start a search from {s0}.')
+        if dfs(s0, -1, L('dfs(u)' if directed else 'dfs(u, -1)', 'for u in range(n)')):
+            st.update(u=-1, v=-1, vi=-1, adjU=[], result='True')
+            emit(L('return True', 'for u in range(n)'), 'There is a cycle. O(V + E): each node and edge is looked at once.')
+            return trace, adj
+    st['result'] = 'False'
+    emit(L('return False', 'for u in range(n)'), 'No cycle.')
+    return trace, adj
+
+
+def kahn_cycle_trace(n, edges):
+    """Cycle check by indegree counting (Kahn). Per frame: u, v, vi, adjU, vTip as in the DFS runs; indeg, queue,
+    taken (how many nodes came off the queue) and removed (which); checkText; left, 1 on the last frames, when the
+    nodes never taken (and the edges among them) are the ones on or behind a cycle; result."""
+    L = lambda t, a=None: line_of(CYCLE_SOURCE, t, a or 'def has_cycle_kahn(')
+    adj = [[] for _ in range(n)]
+    for a, b in edges: adj[a].append(b)
+    st = {'u': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'indeg': [0] * n, 'queue': [], 'taken': 0, 'removed': [],
+          'checkText': 'check: —', 'left': 0, 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
+        emit0(line, message)
+    emit(L('indeg = [0] * n'), 'indeg[v] counts the edges coming into v: the things v still waits for.')
+    for u in range(n):
+        for vi, v in enumerate(adj[u]):
+            st['indeg'] = [x + 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            st.update(u=u, v=v, vi=vi, adjU=adj[u])
+            emit(L('indeg[v] += 1'), f'Edge {u} → {v}: indeg[{v}] = {st["indeg"][v]}.')
+    st.update(u=-1, v=-1, vi=-1, adjU=[])
+    st['queue'] = [u for u in range(n) if st['indeg'][u] == 0]
+    emit(L('queue = deque('), f'Nodes with nothing coming in can go first: {", ".join(map(str, st["queue"]))}.')
+    emit(L('taken = 0'), 'taken counts the nodes that come off the queue.')
+    while st['queue']:
+        emit(L('while queue'), f'The queue holds {", ".join(map(str, st["queue"]))}.')
+        u = st['queue'][0]; st['queue'] = st['queue'][1:]
+        st.update(u=u, v=-1, vi=-1, adjU=adj[u], checkText='check: —')
+        emit(L('u = queue.popleft()'), f'Take {u}: everything it waits for is done.')
+        st['taken'] += 1; st['removed'] = st['removed'] + [u]
+        emit(L('taken += 1'), f'taken = {st["taken"]}.')
+        for vi, v in enumerate(adj[u]):
+            st.update(v=v, vi=vi)
+            emit(L('for v in adj[u]', 'taken += 1'), f'Edge {u} → {v}.')
+            st['indeg'] = [x - 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            emit(L('indeg[v] -= 1'), f'{u} is done, so {v} waits for one thing fewer: indeg[{v}] = {st["indeg"][v]}.')
+            free = st['indeg'][v] == 0
+            st['checkText'] = f'indeg[{v}] = {st["indeg"][v]}: ' + ('free, queue it' if free else 'still waiting')
+            emit(L('if indeg[v] == 0'), f'{v} has nothing left to wait for.' if free else f'{v} still waits for {st["indeg"][v]} more.')
+            if free:
+                st['queue'] = st['queue'] + [v]
+                emit(L('queue.append(v)'), f'Queue {v}.')
+        st.update(v=-1, vi=-1, checkText='check: —')
+    left = [u for u in range(n) if u not in st['removed']]
+    st.update(u=-1, adjU=[], left=1, result='True' if left else 'False')
+    emit(L('while queue'), 'The queue is empty.' + (f' {", ".join(map(str, left))} never got free: each still waits on another node that waits too.' if left else ''))
+    emit(L('return taken < n'), f'taken = {st["taken"]} < {n}: there is a cycle. Every node never taken lies on a cycle or behind one (2 only waits on 3).'
+         if left else f'taken = {n}: every node got free, no cycle.')
+    return trace, adj
+
+
+def cycle_scene(header):
+    dtrace, dadj = cycle_trace(CYC_N, CYC_EDGES, True)
+    utrace, uadj = cycle_trace(UND_N, UND_EDGES, False)
+    LD = lambda t: line_of(CYCLE_SOURCE, t, 'def has_cycle(')
+    LU = lambda t: line_of(CYCLE_SOURCE, t, 'def has_cycle_undirected(')
+
+    def elements(c, directed, LL):
+        on = lambda k: f"arrayAt({c('state')}, idx) == {k}"
+        cur = f"(idx == {c('u')} and to == {c('v')})" + ('' if directed else f" or (idx == {c('v')} and to == {c('u')})")
+        incyc = "keyIndex(" + c('cyc') + ", [idx, to]) >= 0" + ('' if directed else " or keyIndex(" + c('cyc') + ", [to, idx]) >= 0")
+        done_col = "'#77bfae'"
+        return [
+            {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(CYC_N), 'valueExpr': 'idx',
+             'positionExpr': ["dataTable('cycNodes', idx, 'x')", "dataTable('cycNodes', idx, 'y')", '0'],
+             'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
+             'colorExpr': f"idx == {c('u')} ? '{GOLD}' : (keyIndex({c('path')}, idx) >= 0 ? '#e67db0' : ({on(2) if directed else on(1)} ? {done_col} : ''))",
+             # Every edge; the one being looked at gold, the cycle's edges red once found.
+             'connectTo': {'indexExpr': f"dataTable('{'cycNodes' if directed else 'undNodes'}', idx, 'adj')", 'pinned': True, 'arrow': directed,
+                           'bendExpr': '0.12' if directed else '0', 'color': '#7f93aa',
+                           'colorExpr': f"{incyc} ? '#e06c75' : ({cur} ? '{GOLD}' : '')", 'highlightExpr': f"{incyc} or {cur}"}},
+            {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [3.4, 3.0, 0],
+             'cellSize': 1.1, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+             'lengthExpr': f"arrayCount({c('adjU')})", 'valueExpr': f"arrayAt({c('adjU')}, idx)", 'highlightExpr': f"idx == {c('vi')}",
+             'connectTo': {'object': 'graph', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8', 'highlightExpr': f"idx == {c('vi')}"},
+             'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': c('vi'), 'valueExpr': c('v'), 'visibleExpr': f"{c('vi')} >= 0", 'color': GOLD}]},
+            {'id': 'state' if directed else 'visited', 'type': 'array', 'label': 'state' if directed else 'visited', 'labelSide': 'left',
+             'origin': [-2.4, -2.4, 0], 'cellSize': 1.15, 'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(CYC_N),
+             **({'valueExpr': f"arrayAt({c('state')}, idx)"} if directed else {'itemType': 'text', 'valueExpr': f"{on(1)} ? 'T' : 'F'"}),
+             'colorExpr': f"{on(1)} and keyIndex({c('path')}, idx) >= 0 ? '#e67db0' : ({on(2) if directed else on(1)} ? {done_col} : '')",
+             'highlightExpr': f"idx == {c('v')}"},
+            {'id': 'stack', 'type': 'stack', 'arrayLayout': 'horizontal', 'label': 'call stack', 'origin': [-2.4, -3.8, 0], 'cellSize': 1.15,
+             'showTop': False, 'containerColor': '#e67db0', 'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0',
+             'lengthExpr': f"arrayCount({c('path')})", 'valueExpr': f"arrayAt({c('path')}, idx)",
+             'highlightExpr': f"idx == arrayCount({c('path')}) - 1"},
+            label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], LL('def dfs('), 'cycle-detection'),
+            {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], LL('for v in adj[u]'), 'cycle-detection'), 'tooltipExpr': c('vTip')},
+            {**label('state-v', f"{c('v')} < 0 ? '{'state' if directed else 'visited'}[v]: —' : concat('{'state' if directed else 'visited'}[', {c('v')}, '] = ', "
+                     + (f"arrayAt({c('state')}, {c('v')}))" if directed else f"arrayAt({c('state')}, {c('v')}) == 1 ? 'True' : 'False')"),
+                     ['state' if directed else 'visited', c('v')], LL('if state[v] == 1' if directed else 'if visited[v]'), 'cycle-detection'),
+             'highlightExpr': f"{c('v')} >= 0"},
+            *([] if directed else [label('parent', f"{c('parent')} < 0 ? 'parent: —' : concat('parent = ', {c('parent')})", ['graph', c('parent')], LL('def dfs('), 'cycle-detection')]),
+            {**label('check', c('checkText'), None, LL('for v in adj[u]') + 1, 'cycle-detection'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+            label('result', f"concat('result: ', {c('result')})", None, LL('return False'), 'cycle-detection'),
+        ]
+
+    ktrace, _ = kahn_cycle_trace(CYC_N, CYC_EDGES)
+    LK = lambda t: line_of(CYCLE_SOURCE, t, 'def has_cycle_kahn(')
+    k = lambda col: f"dataTable('cyc_kahn', frame, '{col}')"
+    gone = lambda i: f"keyIndex({k('removed')}, {i}) >= 0"
+    kahn = [
+        {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(CYC_N), 'valueExpr': 'idx',
+         'positionExpr': ["dataTable('cycNodes', idx, 'x')", "dataTable('cycNodes', idx, 'y')", '0'],
+         'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
+         # Gold the node taken, teal the ones done, pink the queued; at the end red the ones never freed.
+         'colorExpr': f"idx == {k('u')} ? '{GOLD}' : ({gone('idx')} ? '#77bfae' : (keyIndex({k('queue')}, idx) >= 0 ? '#e67db0' : ({k('left')} == 1 ? '#e06c75' : '')))",
+         # An edge out of a taken node is used up: dim it. At the end, the edges among the nodes never taken turn red.
+         'connectTo': {'indexExpr': "dataTable('cycNodes', idx, 'adj')", 'pinned': True, 'arrow': True, 'bendExpr': '0.12', 'color': '#7f93aa',
+                       'colorExpr': f"idx == {k('u')} and to == {k('v')} ? '{GOLD}' : ({gone('idx')} ? '#3d4858' : ({k('left')} == 1 ? '#e06c75' : ''))",
+                       'highlightExpr': f"(idx == {k('u')} and to == {k('v')}) or ({k('left')} == 1 and not ({gone('idx')}))"}},
+        {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [3.4, 3.0, 0],
+         'cellSize': 1.1, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+         'lengthExpr': f"arrayCount({k('adjU')})", 'valueExpr': f"arrayAt({k('adjU')}, idx)", 'highlightExpr': f"idx == {k('vi')}",
+         'connectTo': {'object': 'graph', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8', 'highlightExpr': f"idx == {k('vi')}"},
+         'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': k('vi'), 'valueExpr': k('v'), 'visibleExpr': f"{k('vi')} >= 0", 'color': GOLD}]},
+        {'id': 'indeg', 'type': 'array', 'label': 'indeg', 'codeSymbol': 'indeg', 'labelSide': 'left', 'origin': [-2.4, -2.4, 0], 'cellSize': 1.15,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(CYC_N), 'valueExpr': f"arrayAt({k('indeg')}, idx)",
+         'colorExpr': f"{gone('idx')} ? '#77bfae' : ({k('left')} == 1 ? '#e06c75' : '')", 'highlightExpr': f"idx == {k('v')}"},
+        {'id': 'queue', 'type': 'array', 'label': 'queue', 'codeSymbol': 'queue', 'labelSide': 'left', 'origin': [-2.4, -3.8, 0], 'cellSize': 1.15,
+         'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0', 'showIndices': False,
+         'lengthExpr': f"arrayCount({k('queue')})", 'valueExpr': f"arrayAt({k('queue')}, idx)",
+         'highlightExpr': f"idx == arrayCount({k('queue')}) - 1 and {k('line')} == {LK('queue.append(v)')}"},
+        label('u', f"{k('u')} < 0 ? 'u: —' : concat('u = ', {k('u')})", ['graph', k('u')], LK('u = queue.popleft()'), 'cycle-detection'),
+        {**label('v', f"{k('v')} < 0 ? 'v: —' : concat('v = ', {k('v')})", ['graph', k('v')], LK('for v in adj[u]'), 'cycle-detection'), 'tooltipExpr': k('vTip')},
+        label('n', "'n = %d'" % CYC_N, None, LK('def has_cycle_kahn('), 'cycle-detection'),
+        {**label('indeg-v', f"{k('v')} < 0 ? 'indeg[v]: —' : concat('indeg[', {k('v')}, '] = ', arrayAt({k('indeg')}, {k('v')}))",
+                 ['indeg', k('v')], LK('indeg[v] -= 1'), 'cycle-detection'), 'highlightExpr': f"{k('v')} >= 0"},
+        label('queue-len', f"concat('len(queue) = ', arrayCount({k('queue')}))", ['queue', '0'], LK('while queue'), 'cycle-detection'),
+        label('taken', f"concat('taken = ', {k('taken')})", None, LK('taken += 1'), 'cycle-detection'),
+        {**label('taken-n', f"concat('taken < n: ', {k('taken')}, ' < {CYC_N} → ', ({k('taken')} < {CYC_N} ? 'True' : 'False'))",
+                 None, LK('return taken < n'), 'cycle-detection'), 'highlightExpr': f"{k('left')} == 1"},
+        {**label('check', k('checkText'), None, LK('if indeg[v] == 0'), 'cycle-detection'), 'highlightExpr': f"{k('checkText')} != 'check: —'"},
+        label('result', f"concat('result: ', {k('result')})", None, LK('return taken < n'), 'cycle-detection'),
+    ]
+    pos = lambda adj: [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(CYC_POS, adj)]
+    return run_scene('cycle-detection', 'Is there a cycle?', header, """**Signal:** can every task finish, is this graph a tree, deadlock, or a "redundant" edge that closes a loop.
+
+A cycle is a path that leads back to where it started. DFS finds one by noticing an edge that leads **back into the current path**; what counts as "back" depends on whether edges have a direction.
+
+## 1. Directed graph: three states (this step)
+
+Each node is **new** (0), **on the current path** (1, pink) or **done** (2, teal). Reaching a node that is on the path means the path loops back into itself: a cycle. Reaching a node that is **done** is not one: everything reachable from it was explored and returned. The graph shows both: `3 → 2` meets a finished node, then `3 → 4 → 5 → 3` closes a loop, drawn red. Two states (just "visited") would wrongly call `3 → 2` a cycle.
+
+## 2. Undirected graph: skip the parent (next step)
+
+Every edge appears in both directions, so the walk straight back to the node you came from is not a cycle: skip the **parent**. Any other already-visited neighbour is a second way in, so it closes a cycle. (Union-find spots the same thing as edges arrive: an edge whose ends are already joined closes a loop.)
+
+## 3. Directed graph: count indegrees (third step)
+
+No recursion: count each node's incoming edges (**indegree**, the things it waits for), queue the nodes with none, and take them one by one; taking u frees each v it points to by one. A node on a cycle waits on the node before it, which waits on it in turn, so its indegree never reaches 0: it is never taken. **taken < n means a cycle.** This is the topological sort's queue (Kahn's algorithm) used as a test; the nodes left over are on a cycle or behind one (here 2, waiting on 3). It tells whether there is a cycle, not which edges form it; DFS finds the loop itself.
+
+A graph is a **tree** exactly when it is connected and has no cycle: equivalently, connected with V − 1 edges.
+
+**Cost:** O(V + E) for all three: each node is visited once and each edge looked at once (twice when undirected).
+
+**Practice:** Course Schedule, Find Eventual Safe States, Graph Valid Tree, Redundant Connection.""",
+        'Explain why a directed cycle needs three states while an undirected one needs only the parent. Ask the learner to predict, for each edge, whether it closes a cycle.',
+        'cycle.py', CYCLE_SOURCE, dtrace, elements(tr, True, LD),
+        data={'cycNodes': pos(dadj), 'undNodes': pos(uadj)}, call_entry=LD('def dfs(u)'),
+        first={'title': 'Directed: three states', 'description': 'A node on the current path, reached again, closes a cycle.'},
+        more=[{'id': 'undirected', 'title': 'Undirected: skip the parent', 'description': 'Any visited neighbour other than the parent closes a cycle.',
+               'table': 'cyc_und', 'trace': utrace, 'elements': elements(lambda col: f"dataTable('cyc_und', frame, '{col}')", False, LU)},
+              {'id': 'indegree', 'title': 'Directed: count indegrees', 'description': 'Peel off nodes with nothing left to wait for; what never frees up is stuck on a cycle.',
+               'table': 'cyc_kahn', 'trace': ktrace, 'elements': kahn}])
+
+
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
-BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene}
+BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
+         'cycle-detection': cycle_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:

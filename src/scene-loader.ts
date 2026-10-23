@@ -8,7 +8,7 @@ import { PREV_ICON, NEXT_ICON, PLAY_ICON, PAUSE_ICON } from '/icons.js';
 import { renderElement } from '/objects/index.js';
 import { buildSliderOverlay, registerSliders, stopAllSliderLoops, stopSliderLoop,
          removeSliderIds, recompileActiveExprs, unregisterAnimExpr, unregisterAnimUpdater,
-         syncSliderState } from '/sliders.js';
+         syncSliderState, restoreSlider } from '/sliders.js';
 import { buildCameraButtons, animateCamera, resolveEffectiveStepCamera, DEFAULT_CAMERA } from '/camera.js';
 import type { CameraView, StepCamera } from '/camera.js';
 import { dataCameraToWorld, isDefaultScale, isotropicScale } from '/coords.js';
@@ -660,9 +660,7 @@ function removeStepTracker(tracker: StepTracker): void {
         // (i.e., sliders that existed before this step overrode their defaults).
         if (tracker.prevSliderStates) {
             for (const [id, prev] of Object.entries(tracker.prevSliderStates)) {
-                if (!toRemove.includes(id) && sceneState.sceneSliders[id]) {
-                    Object.assign(sceneState.sceneSliders[id], prev);
-                }
+                if (!toRemove.includes(id)) restoreSlider(id, prev);
             }
         }
         if (toRemove.length > 0) {
