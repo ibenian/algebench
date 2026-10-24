@@ -109,7 +109,7 @@ export function setupCodePractice(): void {
     const MAX_MESSAGES = 30;
     const WELCOME = 'OK, let\'s start coding. I\'ll guide you along the way. You can talk to me in comments: explain your thinking or ask me anything about the code.';
     const EMPTY_REPORT = 'The coach reviews each new line, after a pause, or on Check.';
-    const clearReport = () => { reportSummary.textContent = '';reportGrip.classList.remove('fresh');report.replaceChildren(Object.assign(el('div', 'cp-report-empty'), {textContent: EMPTY_REPORT})); };
+    const clearReport = () => { reportSummary.textContent = '';reportGrip.classList.remove('fresh', 'perfect');report.replaceChildren(Object.assign(el('div', 'cp-report-empty'), {textContent: EMPTY_REPORT})); };
     clearReport();
     // The editor's own header, as the review's: what it holds and how much of it is typed exactly.
     const codeHead = el('div', 'side-section-head cp-code-head');
@@ -528,7 +528,7 @@ export function setupCodePractice(): void {
     function showReview(out: {result?: Review; reason?: string}, focus: CodeSection | null, carried = new Set<string>()) {
         const r = out.result;
         if (!r) {
-            spoken = '';reportSummary.textContent = '';notes = new Map();
+            spoken = '';reportSummary.textContent = '';reportGrip.classList.remove('perfect');notes = new Map();
             message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: out.reason ?? 'No review.'}));
             render(false);return;
         }
@@ -539,6 +539,9 @@ export function setupCodePractice(): void {
         badge.title = 'The coach\'s judgement of this section\'s logic. The ring above scores typing it from memory.';
         // Folded, the bar still says what the coach thinks, and marks the review as new until it is opened.
         reportSummary.textContent = badge.textContent;reportGrip.classList.toggle('fresh', report.hidden === true);
+        // A fully correct review is marked green: the badge, the message and the bar's summary.
+        const perfect = r.verdict === 'correct' && r.score === 100;
+        reportGrip.classList.toggle('perfect', perfect);
         const about = el('span', 'cp-report-about');about.textContent = focus ? focus.title : 'The whole block';
         top.append(badge, about);
         body.append(top);
@@ -555,7 +558,7 @@ export function setupCodePractice(): void {
             body.append(list);
         }
         if (r.direction) md('cp-report-next', `**Next:** ${r.direction}`);
-        message('assistant', body);
+        message('assistant', body).classList.toggle('cp-msg-perfect', perfect);
         render(false);
         // Read as shown: the answer, the comment, the reminder, each new line issue, then what to do next.
         speakReview([r.reply, r.commentary, r.reminder, ...fresh.map(n => `Line ${n.line}: ${n.note}`), r.direction && `Next: ${r.direction}`]

@@ -6027,6 +6027,10 @@ body:has(.push-array) #legend { display: none; }
 .cp-report-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .cp-verdict { font-weight: 700; font-size: .78rem; padding: 1px 8px; border-radius: 10px; background: color-mix(in srgb, var(--text-color) 12%, transparent); }
 .cp-verdict-correct { background: color-mix(in srgb, #4fb39a 30%, transparent); }
+/* A review that finds the section fully correct reads green throughout. */
+.cp-msg-perfect .msg-body { border-color: #4fb39a !important; background: color-mix(in srgb, #4fb39a 14%, var(--panel-bg)) !important; }
+.cp-msg-perfect .cp-verdict { background: #4fb39a; color: #0f2a22; }
+.cp-report-grip.perfect .cp-report-summary { color: #4fb39a; font-weight: 600; }
 .cp-verdict-close { background: color-mix(in srgb, #6ea8e0 30%, transparent); }
 .cp-verdict-partial { background: color-mix(in srgb, #e3b04f 30%, transparent); }
 .cp-verdict-off_track { background: color-mix(in srgb, #e0645c 30%, transparent); }

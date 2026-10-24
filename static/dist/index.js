@@ -27164,7 +27164,7 @@ function setupCodePractice() {
 	const EMPTY_REPORT = "The coach reviews each new line, after a pause, or on Check.";
 	const clearReport = () => {
 		reportSummary.textContent = "";
-		reportGrip.classList.remove("fresh");
+		reportGrip.classList.remove("fresh", "perfect");
 		report.replaceChildren(Object.assign(el("div", "cp-report-empty"), { textContent: EMPTY_REPORT }));
 	};
 	clearReport();
@@ -27745,6 +27745,7 @@ function setupCodePractice() {
 		if (!r) {
 			spoken = "";
 			reportSummary.textContent = "";
+			reportGrip.classList.remove("perfect");
 			notes = /* @__PURE__ */ new Map();
 			message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: out.reason ?? "No review." }));
 			render(false);
@@ -27758,6 +27759,8 @@ function setupCodePractice() {
 		badge.title = "The coach's judgement of this section's logic. The ring above scores typing it from memory.";
 		reportSummary.textContent = badge.textContent;
 		reportGrip.classList.toggle("fresh", report.hidden === true);
+		const perfect = r.verdict === "correct" && r.score === 100;
+		reportGrip.classList.toggle("perfect", perfect);
 		const about = el("span", "cp-report-about");
 		about.textContent = focus ? focus.title : "The whole block";
 		top.append(badge, about);
@@ -27784,7 +27787,7 @@ function setupCodePractice() {
 			body.append(list);
 		}
 		if (r.direction) md("cp-report-next", `**Next:** ${r.direction}`);
-		message("assistant", body);
+		message("assistant", body).classList.toggle("cp-msg-perfect", perfect);
 		render(false);
 		speakReview([
 			r.reply,
