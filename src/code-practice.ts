@@ -13,12 +13,15 @@ import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
 import { invokeExpert } from '/expert-client.js';
+import { createPracticeStore } from '/practice-store.js';
+import { state } from '/state.js';
 import { renderMarkdown } from '/labels.js';
 
 /** The coach looks again after this long without typing. */
 const IDLE_REVIEW_MS = 5000;
 const INDENT = '    ';
-const STORE_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practice-view';
+/** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
+const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practice-view';
 
 /** One block's practice. `reviewed` is the text the coach last saw, so the next review knows what just changed. */
 interface Attempt { text: string; peeked: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
@@ -62,7 +65,12 @@ export function setupCodePractice(): void {
     const doc = document.getElementById('tab-doc');
     if (!doc) return;
     const prefs = loadJson<{open?: boolean; coach?: boolean; hints?: boolean; speak?: boolean; height?: number; reportHeight?: number; reportFolded?: boolean; docFolded?: boolean}>(VIEW_KEY, {});
-    const saved = loadJson<Record<string, Attempt>>(STORE_KEY, {});
+    // Attempts live in IndexedDB (practice-store.ts), one per lesson and block; this session's are cached here.
+    const store = createPracticeStore<Attempt>();
+    const cache = new Map<string, Attempt>();
+    const legacy = loadJson<Record<string, Attempt>>(LEGACY_KEY, {});
+    const lessonKey = () => String((state.lessonSpec as {title?: string} | null)?.title ?? '');
+    let saveTimer = 0;
 
     const root = el('section', 'code-practice');root.hidden = true;root.classList.toggle('open', !!prefs.open);
     // Headers as the side panel's sections (Proof, Chat): accent icon, small-caps title, fold chevron; the header folds.
@@ -250,10 +258,33 @@ export function setupCodePractice(): void {
         message('assistant', el('div', 'cp-report-text')).querySelector('.msg-body')!.textContent = WELCOME;
         greeting = WELCOME;
     }
+    /** The attempt for a block: this session's, else the stored one, else one kept in localStorage (moved over now). */
+    async function loadAttempt(lesson: string, block: string): Promise<Attempt> {
+        const full = `${lesson}\u0000${block}`;
+        const hit = cache.get(full) ?? await store.get(lesson, block);
+        if (hit) return hit;
+        const old = legacy[block];
+        if (old) {
+            await store.put(lesson, block, old);
+            delete legacy[block];
+            if (Object.keys(legacy).length) saveJson(LEGACY_KEY, legacy);
+            else try { localStorage.removeItem(LEGACY_KEY); } catch { /* storage blocked */ }
+            return old;
+        }
+        return {text: '', peeked: [], reviews: {}, celebrated: []};
+    }
     function persist() {
         if (!key) return;   // nothing targeted yet
-        saved[key] = attempt;saveJson(STORE_KEY, saved);
+        // Kept now in memory; written a moment after the typing stops, so each keystroke isn't a write.
+        const lesson = lessonKey(), block = key, now = attempt;
+        cache.set(`${lesson}\u0000${block}`, now);
+        clearTimeout(saveTimer);
+        pendingSave = () => { pendingSave = null;void store.put(lesson, block, now); };
+        saveTimer = window.setTimeout(() => pendingSave?.(), 400);
     }
+    // Leaving the page writes what is still waiting for its moment.
+    let pendingSave: (() => void) | null = null;
+    window.addEventListener('pagehide', () => { clearTimeout(saveTimer);pendingSave?.(); });
 
     /** Follow the Code panel to the block running now; each block keeps its own attempt. */
     function retarget() {
@@ -270,15 +301,22 @@ export function setupCodePractice(): void {
         if (next === key) return;
         key = next;block = text;
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
-        attempt = saved[key] ?? {text: '', peeked: [], reviews: {}, celebrated: []};
-        input.value = attempt.text;notes = new Map();clearReport();cheer.hidden = true;score = null;   // another block: nothing to compare with
-        lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : '';
         const count = v.to - v.from + 1;
         target.textContent = `${v.file.path.split('/').pop()} · lines ${v.from}–${v.to}`;
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
-        render(false);
-        highlight();
-        if (hintsOn() && !input.value.trim() && root.classList.contains('open')) void review(false);
+        // Empty until the stored attempt arrives; a move to another block meanwhile leaves it unused.
+        attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';input.disabled = true;
+        notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);
+        const wanted = key;
+        void loadAttempt(lessonKey(), wanted).then(found => {
+            if (key !== wanted) return;
+            attempt = found;input.disabled = false;
+            input.value = attempt.text;score = null;   // another block: nothing to compare with
+            lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : '';
+            render(false);
+            highlight();
+            if (hintsOn() && !input.value.trim() && root.classList.contains('open')) void review(false);
+        });
     }
 
     function render(celebrate = true) {

@@ -25403,39 +25403,39 @@ function formatWatch(value) {
 }
 //#endregion
 //#region src/watch-store.ts
-var DB_NAME$1 = "algebench-watches";
-var DB_VERSION$1 = 1;
-var STORE$1 = "watches";
+var DB_NAME$2 = "algebench-watches";
+var DB_VERSION$2 = 1;
+var STORE$2 = "watches";
 var watchKey = (w) => [
 	w.lesson,
 	w.file,
 	w.line,
 	w.expr
 ].join("\0");
-function promised$1(req) {
+function promised$2(req) {
 	return new Promise((resolve, reject) => {
 		req.onsuccess = () => resolve(req.result);
 		req.onerror = () => reject(req.error);
 	});
 }
-function done$1(tx) {
+function done$2(tx) {
 	return new Promise((resolve, reject) => {
 		tx.oncomplete = () => resolve();
 		tx.onerror = () => reject(tx.error);
 		tx.onabort = () => reject(tx.error ?? /* @__PURE__ */ new Error("transaction aborted"));
 	});
 }
-function openDb$1(factory) {
-	const req = factory.open(DB_NAME$1, DB_VERSION$1);
+function openDb$2(factory) {
+	const req = factory.open(DB_NAME$2, DB_VERSION$2);
 	req.onupgradeneeded = () => {
 		const db = req.result;
-		if (!db.objectStoreNames.contains(STORE$1)) db.createObjectStore(STORE$1, { keyPath: "key" }).createIndex("lesson", "lesson");
+		if (!db.objectStoreNames.contains(STORE$2)) db.createObjectStore(STORE$2, { keyPath: "key" }).createIndex("lesson", "lesson");
 	};
-	return promised$1(req);
+	return promised$2(req);
 }
 var valid = (w) => !!w && typeof w.lesson === "string" && typeof w.file === "string" && Number.isInteger(w.line) && typeof w.expr === "string";
 /** In memory, for a browser without IndexedDB: the watches last the session. */
-function memoryStore() {
+function memoryStore$1() {
 	const all = /* @__PURE__ */ new Map();
 	return {
 		async list(lesson) {
@@ -25450,10 +25450,10 @@ function memoryStore() {
 	};
 }
 function createWatchStore(factory = globalThis.indexedDB) {
-	if (!factory) return memoryStore();
+	if (!factory) return memoryStore$1();
 	let db = null;
 	const conn = () => {
-		db ??= openDb$1(factory).then((d) => {
+		db ??= openDb$2(factory).then((d) => {
 			d.onversionchange = () => {
 				d.close();
 				db = null;
@@ -25468,11 +25468,11 @@ function createWatchStore(factory = globalThis.indexedDB) {
 		});
 		return db;
 	};
-	const fallback = memoryStore();
+	const fallback = memoryStore$1();
 	return {
 		async list(lesson) {
 			try {
-				return (await promised$1((await conn()).transaction(STORE$1, "readonly").objectStore(STORE$1).index("lesson").getAll(lesson))).filter(valid).sort((a, b) => a.addedAt - b.addedAt).map(({ lesson, file, line, expr }) => ({
+				return (await promised$2((await conn()).transaction(STORE$2, "readonly").objectStore(STORE$2).index("lesson").getAll(lesson))).filter(valid).sort((a, b) => a.addedAt - b.addedAt).map(({ lesson, file, line, expr }) => ({
 					lesson,
 					file,
 					line,
@@ -25484,22 +25484,22 @@ function createWatchStore(factory = globalThis.indexedDB) {
 		},
 		async add(w) {
 			try {
-				const tx = (await conn()).transaction(STORE$1, "readwrite");
-				tx.objectStore(STORE$1).put({
+				const tx = (await conn()).transaction(STORE$2, "readwrite");
+				tx.objectStore(STORE$2).put({
 					...w,
 					key: watchKey(w),
 					addedAt: Date.now()
 				});
-				await done$1(tx);
+				await done$2(tx);
 			} catch {
 				await fallback.add(w);
 			}
 		},
 		async remove(w) {
 			try {
-				const tx = (await conn()).transaction(STORE$1, "readwrite");
-				tx.objectStore(STORE$1).delete(watchKey(w));
-				await done$1(tx);
+				const tx = (await conn()).transaction(STORE$2, "readwrite");
+				tx.objectStore(STORE$2).delete(watchKey(w));
+				await done$2(tx);
 			} catch {
 				await fallback.remove(w);
 			}
@@ -27039,6 +27039,90 @@ function focusSection(score, cursor, sections) {
 	return next ? within(next.line) : null;
 }
 //#endregion
+//#region src/practice-store.ts
+var DB_NAME$1 = "algebench-practice";
+var DB_VERSION$1 = 1;
+var STORE$1 = "attempts";
+var attemptKey = (lesson, block) => `${lesson}\u0000${block}`;
+function promised$1(req) {
+	return new Promise((resolve, reject) => {
+		req.onsuccess = () => resolve(req.result);
+		req.onerror = () => reject(req.error);
+	});
+}
+function done$1(tx) {
+	return new Promise((resolve, reject) => {
+		tx.oncomplete = () => resolve();
+		tx.onerror = () => reject(tx.error);
+		tx.onabort = () => reject(tx.error ?? /* @__PURE__ */ new Error("transaction aborted"));
+	});
+}
+function openDb$1(factory) {
+	const req = factory.open(DB_NAME$1, DB_VERSION$1);
+	req.onupgradeneeded = () => {
+		const db = req.result;
+		if (!db.objectStoreNames.contains(STORE$1)) db.createObjectStore(STORE$1, { keyPath: "key" }).createIndex("lesson", "lesson");
+	};
+	return promised$1(req);
+}
+/** In memory, for a browser without IndexedDB: attempts last the session. */
+function memoryStore() {
+	const all = /* @__PURE__ */ new Map();
+	return {
+		async get(lesson, block) {
+			return all.get(attemptKey(lesson, block));
+		},
+		async put(lesson, block, attempt) {
+			all.set(attemptKey(lesson, block), attempt);
+		}
+	};
+}
+function createPracticeStore(factory = globalThis.indexedDB) {
+	if (!factory) return memoryStore();
+	let db = null;
+	const conn = () => {
+		db ??= openDb$1(factory).then((d) => {
+			d.onversionchange = () => {
+				d.close();
+				db = null;
+			};
+			d.onclose = () => {
+				db = null;
+			};
+			return d;
+		}, (e) => {
+			db = null;
+			throw e;
+		});
+		return db;
+	};
+	const fallback = memoryStore();
+	return {
+		async get(lesson, block) {
+			try {
+				return (await promised$1((await conn()).transaction(STORE$1, "readonly").objectStore(STORE$1).get(attemptKey(lesson, block))))?.attempt ?? await fallback.get(lesson, block);
+			} catch {
+				return fallback.get(lesson, block);
+			}
+		},
+		async put(lesson, block, attempt) {
+			try {
+				const tx = (await conn()).transaction(STORE$1, "readwrite");
+				tx.objectStore(STORE$1).put({
+					key: attemptKey(lesson, block),
+					lesson,
+					block,
+					attempt,
+					updatedAt: Date.now()
+				});
+				await done$1(tx);
+			} catch {
+				await fallback.put(lesson, block, attempt);
+			}
+		}
+	};
+}
+//#endregion
 //#region src/code-practice.ts
 /**
 * Type along: under the Doc, the learner types the code running now (the Code panel's running block) and sees,
@@ -27049,7 +27133,8 @@ function focusSection(score, cursor, sections) {
 /** The coach looks again after this long without typing. */
 var IDLE_REVIEW_MS = 5e3;
 var INDENT = "    ";
-var STORE_KEY = "algebench-code-practice";
+/** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
+var LEGACY_KEY = "algebench-code-practice";
 var VIEW_KEY = "algebench-code-practice-view";
 var VERDICTS = {
 	correct: "Correct",
@@ -27101,7 +27186,11 @@ function setupCodePractice() {
 	const doc = document.getElementById("tab-doc");
 	if (!doc) return;
 	const prefs = loadJson(VIEW_KEY, {});
-	const saved = loadJson(STORE_KEY, {});
+	const store = createPracticeStore();
+	const cache = /* @__PURE__ */ new Map();
+	const legacy = loadJson(LEGACY_KEY, {});
+	const lessonKey = () => String(state.lessonSpec?.title ?? "");
+	let saveTimer = 0;
 	const root = el("section", "code-practice");
 	root.hidden = true;
 	root.classList.toggle("open", !!prefs.open);
@@ -27381,11 +27470,44 @@ function setupCodePractice() {
 		message("assistant", el("div", "cp-report-text")).querySelector(".msg-body").textContent = WELCOME;
 		greeting = WELCOME;
 	}
+	/** The attempt for a block: this session's, else the stored one, else one kept in localStorage (moved over now). */
+	async function loadAttempt(lesson, block) {
+		const full = `${lesson}\u0000${block}`;
+		const hit = cache.get(full) ?? await store.get(lesson, block);
+		if (hit) return hit;
+		const old = legacy[block];
+		if (old) {
+			await store.put(lesson, block, old);
+			delete legacy[block];
+			if (Object.keys(legacy).length) saveJson(LEGACY_KEY, legacy);
+			else try {
+				localStorage.removeItem(LEGACY_KEY);
+			} catch {}
+			return old;
+		}
+		return {
+			text: "",
+			peeked: [],
+			reviews: {},
+			celebrated: []
+		};
+	}
 	function persist() {
 		if (!key) return;
-		saved[key] = attempt;
-		saveJson(STORE_KEY, saved);
+		const lesson = lessonKey(), block = key, now = attempt;
+		cache.set(`${lesson}\u0000${block}`, now);
+		clearTimeout(saveTimer);
+		pendingSave = () => {
+			pendingSave = null;
+			store.put(lesson, block, now);
+		};
+		saveTimer = window.setTimeout(() => pendingSave?.(), 400);
 	}
+	let pendingSave = null;
+	window.addEventListener("pagehide", () => {
+		clearTimeout(saveTimer);
+		pendingSave?.();
+	});
 	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
 	function retarget() {
 		const v = codeView();
@@ -27404,24 +27526,34 @@ function setupCodePractice() {
 		key = next;
 		block = text;
 		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
-		attempt = saved[key] ?? {
+		const count = v.to - v.from + 1;
+		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
+		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
+		attempt = {
 			text: "",
 			peeked: [],
 			reviews: {},
 			celebrated: []
 		};
-		input.value = attempt.text;
+		input.value = "";
+		input.disabled = true;
 		notes = /* @__PURE__ */ new Map();
 		clearReport();
 		cheer.hidden = true;
 		score = null;
-		lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : "";
-		const count = v.to - v.from + 1;
-		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
-		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
 		render(false);
-		highlight();
-		if (hintsOn() && !input.value.trim() && root.classList.contains("open")) review(false);
+		const wanted = key;
+		loadAttempt(lessonKey(), wanted).then((found) => {
+			if (key !== wanted) return;
+			attempt = found;
+			input.disabled = false;
+			input.value = attempt.text;
+			score = null;
+			lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : "";
+			render(false);
+			highlight();
+			if (hintsOn() && !input.value.trim() && root.classList.contains("open")) review(false);
+		});
 	}
 	function render(celebrate = true) {
 		if (!current) return;
