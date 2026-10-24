@@ -25507,6 +25507,29 @@ function createWatchStore(factory = globalThis.indexedDB) {
 	};
 }
 //#endregion
+//#region src/lesson-id.ts
+/**
+* A stable id for the lesson open now, for what the reader keeps per lesson (watches, Type along attempts): the
+* lesson file's path under scenes/ without `.json` (`draft/graph-algorithms`, `conditional-probability`), else its
+* title (an uploaded lesson with no path). The title is shown to people; the id survives a retitle.
+*/
+function lessonIdFrom(path, title) {
+	return path.replace(/\\/g, "/").replace(/^(.*\/)?scenes\//, "").replace(/^\/+/, "").replace(/\.json$/i, "") || title;
+}
+function lessonId() {
+	return lessonIdFrom(state.currentSceneSourcePath || "", lessonTitle());
+}
+/** Keys the lesson's records may still be under, oldest schemes first: its title, and its path before `scenes/` was
+*  stripped from relative paths. Read to move them to lessonId(). */
+function formerLessonKeys() {
+	const id = lessonId();
+	return [lessonTitle(), `scenes/${id}`].filter((k) => k && k !== id);
+}
+/** The lesson's title: how records were keyed before they had ids. */
+function lessonTitle() {
+	return String(state.lessonSpec?.title ?? "");
+}
+//#endregion
 //#region src/code-jump.ts
 /**
 * The executing line's move, drawn in the code panel's gutter: when one marked line gives way to another in the
@@ -25866,9 +25889,9 @@ function setupCodePanel() {
 	let disposeWatchLabels = null;
 	const watchStore = createWatchStore();
 	let watches = [], watchLesson = "";
-	const lessonKey = () => String(state.lessonSpec?.title ?? "");
+	const pathOf = (id) => files.find((f) => f.id === id)?.path ?? id;
 	function loadWatches() {
-		const key = lessonKey();
+		const key = lessonId();
 		if (key === watchLesson) return;
 		watchLesson = key;
 		watches = [];
@@ -25876,10 +25899,19 @@ function setupCodePanel() {
 			const legacy = settings.legacyWatches.splice(0);
 			if (legacy.length) {
 				for (const w of legacy) await watchStore.add({
+					...w,
 					lesson: key,
-					...w
+					file: pathOf(w.file)
 				});
 				saveSettings();
+			}
+			for (const former of formerLessonKeys()) for (const w of await watchStore.list(former)) {
+				await watchStore.add({
+					...w,
+					lesson: key,
+					file: pathOf(w.file)
+				});
+				await watchStore.remove(w);
 			}
 			const loaded = await watchStore.list(key);
 			if (watchLesson !== key) return;
@@ -25897,7 +25929,7 @@ function setupCodePanel() {
 		if (!at || !ref?.file) return;
 		const quote = (t) => t.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 		const seen = /* @__PURE__ */ new Set();
-		const elements = watches.filter((w) => w.file === ref.file && !seen.has(w.expr) && seen.add(w.expr)).flatMap((w, i) => {
+		const elements = watches.filter((w) => w.file === pathOf(ref.file) && !seen.has(w.expr) && seen.add(w.expr)).flatMap((w, i) => {
 			let value;
 			try {
 				value = watchExpr(w.expr, at.table, at.names);
@@ -25914,7 +25946,7 @@ function setupCodePanel() {
 				],
 				textExpr: `concat('${quote(w.expr)} = ', ${value})`,
 				codeRef: {
-					file: w.file,
+					file: ref.file,
 					line: w.line
 				}
 			}];
@@ -25931,7 +25963,7 @@ function setupCodePanel() {
 			watchError.hidden = false;
 			return;
 		}
-		const file = selected.id;
+		const file = selected.path;
 		if (!watches.some((w) => w.file === file && w.line === first && w.expr === expr)) {
 			const w = {
 				lesson: watchLesson,
@@ -26504,7 +26536,7 @@ function setupCodePanel() {
 				menu.append(sub);
 				for (const name of exprs) menu.append(check(name, !settings.hidden.includes(EXPR + name), toggleHidden(EXPR + name), !settings.inline));
 			}
-			const mine = watches.filter((w) => w.file === selected?.id);
+			const mine = watches.filter((w) => w.file === selected?.path);
 			if (mine.length) {
 				const sub = document.createElement("div");
 				sub.className = "code-view-heading";
@@ -26669,7 +26701,7 @@ function setupCodePanel() {
 			};
 			for (const ref of lineReferences(references, line)) if (!hiddenKey(ref.key)) valueTexts(ref.key).forEach(add);
 			labelsForCodeLine(file.id, line).filter((t) => isExpression(t) ? !settings.hidden.includes(EXPR + expressionName(t)) : !rowSymbolKeys(t).some(hiddenKey)).forEach(add);
-			const watched = watches.filter((w) => w.file === file.id && w.line === line).map((w) => {
+			const watched = watches.filter((w) => w.file === file.path && w.line === line).map((w) => {
 				try {
 					return watchText(w.expr);
 				} catch {
@@ -27043,7 +27075,11 @@ function focusSection(score, cursor, sections) {
 var DB_NAME$1 = "algebench-practice";
 var DB_VERSION$1 = 1;
 var STORE$1 = "attempts";
-var attemptKey = (lesson, block) => `${lesson}\u0000${block}`;
+var attemptKey = (lesson, file, block) => [
+	lesson,
+	file,
+	block
+].join("\0");
 function promised$1(req) {
 	return new Promise((resolve, reject) => {
 		req.onsuccess = () => resolve(req.result);
@@ -27069,11 +27105,16 @@ function openDb$1(factory) {
 function memoryStore() {
 	const all = /* @__PURE__ */ new Map();
 	return {
-		async get(lesson, block) {
-			return all.get(attemptKey(lesson, block));
+		async get(lesson, file, block) {
+			return all.get(attemptKey(lesson, file, block));
 		},
-		async put(lesson, block, attempt) {
-			all.set(attemptKey(lesson, block), attempt);
+		async put(lesson, file, block, attempt) {
+			all.set(attemptKey(lesson, file, block), attempt);
+		},
+		async take(key) {
+			const t = all.get(key);
+			all.delete(key);
+			return t;
 		}
 	};
 }
@@ -27098,26 +27139,39 @@ function createPracticeStore(factory = globalThis.indexedDB) {
 	};
 	const fallback = memoryStore();
 	return {
-		async get(lesson, block) {
+		async get(lesson, file, block) {
 			try {
-				return (await promised$1((await conn()).transaction(STORE$1, "readonly").objectStore(STORE$1).get(attemptKey(lesson, block))))?.attempt ?? await fallback.get(lesson, block);
+				return (await promised$1((await conn()).transaction(STORE$1, "readonly").objectStore(STORE$1).get(attemptKey(lesson, file, block))))?.attempt ?? await fallback.get(lesson, file, block);
 			} catch {
-				return fallback.get(lesson, block);
+				return fallback.get(lesson, file, block);
 			}
 		},
-		async put(lesson, block, attempt) {
+		async put(lesson, file, block, attempt) {
 			try {
 				const tx = (await conn()).transaction(STORE$1, "readwrite");
 				tx.objectStore(STORE$1).put({
-					key: attemptKey(lesson, block),
+					key: attemptKey(lesson, file, block),
 					lesson,
+					file,
 					block,
 					attempt,
 					updatedAt: Date.now()
 				});
 				await done$1(tx);
 			} catch {
-				await fallback.put(lesson, block, attempt);
+				await fallback.put(lesson, file, block, attempt);
+			}
+		},
+		async take(key) {
+			try {
+				const tx = (await conn()).transaction(STORE$1, "readwrite");
+				const store = tx.objectStore(STORE$1);
+				const row = await promised$1(store.get(key));
+				if (row) store.delete(key);
+				await done$1(tx);
+				return row?.attempt;
+			} catch {
+				return fallback.take(key);
 			}
 		}
 	};
@@ -27189,7 +27243,6 @@ function setupCodePractice() {
 	const store = createPracticeStore();
 	const cache = /* @__PURE__ */ new Map();
 	const legacy = loadJson(LEGACY_KEY, {});
-	const lessonKey = () => String(state.lessonSpec?.title ?? "");
 	let saveTimer = 0;
 	const root = el("section", "code-practice");
 	root.hidden = true;
@@ -27470,14 +27523,31 @@ function setupCodePractice() {
 		message("assistant", el("div", "cp-report-text")).querySelector(".msg-body").textContent = WELCOME;
 		greeting = WELCOME;
 	}
-	/** The attempt for a block: this session's, else the stored one, else one kept in localStorage (moved over now). */
-	async function loadAttempt(lesson, block) {
-		const full = `${lesson}\u0000${block}`;
-		const hit = cache.get(full) ?? await store.get(lesson, block);
+	/**
+	* The attempt for a block: this session's, else the stored one, else one stored under a former key of the lesson
+	* (formerLessonKeys), else one kept in localStorage; an older one moves to the new key now.
+	*/
+	async function loadAttempt(lesson, file, block) {
+		const hit = cache.get([
+			lesson,
+			file,
+			block
+		].join("\0")) ?? await store.get(lesson, file, block);
 		if (hit) return hit;
+		for (const former of formerLessonKeys()) {
+			const moved = await store.take(`${former}\u0000${block}`) ?? await store.take([
+				former,
+				file,
+				block
+			].join("\0"));
+			if (moved) {
+				await store.put(lesson, file, block, moved);
+				return moved;
+			}
+		}
 		const old = legacy[block];
 		if (old) {
-			await store.put(lesson, block, old);
+			await store.put(lesson, file, block, old);
 			delete legacy[block];
 			if (Object.keys(legacy).length) saveJson(LEGACY_KEY, legacy);
 			else try {
@@ -27494,12 +27564,16 @@ function setupCodePractice() {
 	}
 	function persist() {
 		if (!key) return;
-		const lesson = lessonKey(), block = key, now = attempt;
-		cache.set(`${lesson}\u0000${block}`, now);
+		const lesson = lessonId(), file = current?.file.path ?? "", block = key, now = attempt;
+		cache.set([
+			lesson,
+			file,
+			block
+		].join("\0"), now);
 		clearTimeout(saveTimer);
 		pendingSave = () => {
 			pendingSave = null;
-			store.put(lesson, block, now);
+			store.put(lesson, file, block, now);
 		};
 		saveTimer = window.setTimeout(() => pendingSave?.(), 400);
 	}
@@ -27543,7 +27617,7 @@ function setupCodePractice() {
 		score = null;
 		render(false);
 		const wanted = key;
-		loadAttempt(lessonKey(), wanted).then((found) => {
+		loadAttempt(lessonId(), v.file.path, wanted).then((found) => {
 			if (key !== wanted) return;
 			attempt = found;
 			input.disabled = false;

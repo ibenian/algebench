@@ -1,7 +1,7 @@
 // ============================================================
 // practice-store.ts — Type along's attempts (code-practice.ts), persisted in IndexedDB.
 //
-// One record per block practised (key: lesson and block), so what a learner types never weighs on localStorage
+// One record per block practised (key: lesson id, file path and block), so what a learner types never weighs on localStorage
 // and a lesson's attempts stay its own. Per browser, like the watches (watch-store.ts) and the plans: a private
 // window or cleared site data starts empty. A browser that refuses IndexedDB keeps attempts for the session only.
 // ============================================================
@@ -10,13 +10,15 @@ const DB_NAME = 'algebench-practice';
 const DB_VERSION = 1;
 const STORE = 'attempts';
 
-interface AttemptRecord<T> { key: string; lesson: string; block: string; attempt: T; updatedAt: number }
+interface AttemptRecord<T> { key: string; lesson: string; file: string; block: string; attempt: T; updatedAt: number }
 
-export const attemptKey = (lesson: string, block: string): string => `${lesson}\u0000${block}`;
+export const attemptKey = (lesson: string, file: string, block: string): string => [lesson, file, block].join('\u0000');
 
 export interface PracticeStore<T> {
-    get(lesson: string, block: string): Promise<T | undefined>;
-    put(lesson: string, block: string, attempt: T): Promise<void>;
+    get(lesson: string, file: string, block: string): Promise<T | undefined>;
+    put(lesson: string, file: string, block: string, attempt: T): Promise<void>;
+    /** The attempt stored under a raw key (an older key format), removed as it is read: for moving it. */
+    take(key: string): Promise<T | undefined>;
 }
 
 function promised<R>(req: IDBRequest<R>): Promise<R> {
@@ -47,8 +49,9 @@ function openDb(factory: IDBFactory): Promise<IDBDatabase> {
 function memoryStore<T>(): PracticeStore<T> {
     const all = new Map<string, T>();
     return {
-        async get(lesson, block) { return all.get(attemptKey(lesson, block)); },
-        async put(lesson, block, attempt) { all.set(attemptKey(lesson, block), attempt); },
+        async get(lesson, file, block) { return all.get(attemptKey(lesson, file, block)); },
+        async put(lesson, file, block, attempt) { all.set(attemptKey(lesson, file, block), attempt); },
+        async take(key) { const t = all.get(key);all.delete(key);return t; },
     };
 }
 
@@ -66,19 +69,29 @@ export function createPracticeStore<T>(factory: IDBFactory | undefined = globalT
     };
     const fallback = memoryStore<T>();
     return {
-        async get(lesson, block) {
+        async get(lesson, file, block) {
             try {
                 const tx = (await conn()).transaction(STORE, 'readonly');
-                const row = await promised(tx.objectStore(STORE).get(attemptKey(lesson, block)) as IDBRequest<AttemptRecord<T> | undefined>);
-                return row?.attempt ?? await fallback.get(lesson, block);
-            } catch { return fallback.get(lesson, block); }
+                const row = await promised(tx.objectStore(STORE).get(attemptKey(lesson, file, block)) as IDBRequest<AttemptRecord<T> | undefined>);
+                return row?.attempt ?? await fallback.get(lesson, file, block);
+            } catch { return fallback.get(lesson, file, block); }
         },
-        async put(lesson, block, attempt) {
+        async put(lesson, file, block, attempt) {
             try {
                 const tx = (await conn()).transaction(STORE, 'readwrite');
-                tx.objectStore(STORE).put({key: attemptKey(lesson, block), lesson, block, attempt, updatedAt: Date.now()} satisfies AttemptRecord<T>);
+                tx.objectStore(STORE).put({key: attemptKey(lesson, file, block), lesson, file, block, attempt, updatedAt: Date.now()} satisfies AttemptRecord<T>);
                 await done(tx);
-            } catch { await fallback.put(lesson, block, attempt); }
+            } catch { await fallback.put(lesson, file, block, attempt); }
+        },
+        async take(key) {
+            try {
+                const tx = (await conn()).transaction(STORE, 'readwrite');
+                const store = tx.objectStore(STORE);
+                const row = await promised(store.get(key) as IDBRequest<AttemptRecord<T> | undefined>);
+                if (row) store.delete(key);
+                await done(tx);
+                return row?.attempt;
+            } catch { return fallback.take(key); }
         },
     };
 }

@@ -11,7 +11,7 @@ const DB_NAME = 'algebench-watches';
 const DB_VERSION = 1;
 const STORE = 'watches';
 
-/** A watch: an expression the reader selected on a line of a lesson's code file. */
+/** A watch: an expression the reader selected on a line of a lesson's code file (lesson by id, file by path). */
 export interface Watch { lesson: string; file: string; line: number; expr: string }
 interface WatchRecord extends Watch { key: string; addedAt: number }
 

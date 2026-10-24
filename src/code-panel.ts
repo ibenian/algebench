@@ -19,6 +19,7 @@ import type { CodeSection, StructureMode } from '/code-sections.js';
 import { menuPlacement } from '/menu-placement.js';
 import { watchExpr, formatWatch, WatchError } from '/code-watch.js';
 import { createWatchStore } from '/watch-store.js';
+import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import type { Watch } from '/watch-store.js';
 import { lineJump, jumpArrowPath, waitingCalls, callArrowPath, JUMP_HOLD_MS, lineTransitions, movesAt } from '/code-jump.js';
 import type { LessonFormat, Scene, Element as LessonElement } from '/types/lesson.js';
@@ -198,16 +199,21 @@ export function setupCodePanel(): void {
     let disposeWatchLabels:(()=>void)|null=null;
     // The lesson's watches, from IndexedDB (watch-store.ts); loaded when a lesson opens, written as they change.
     const watchStore=createWatchStore();
+    // A watch names its lesson by id and its file by path (lesson-id.ts); the panel's lookups go by file id.
     let watches:Watch[]=[],watchLesson='';
-    const lessonKey=()=>String((state.lessonSpec as {title?:string}|null)?.title??'');
+    const pathOf=(id:string)=>files.find(f=>f.id===id)?.path??id;
     function loadWatches() {
-        const key=lessonKey();
+        const key=lessonId();
         if(key===watchLesson)return;
         watchLesson=key;watches=[];
         void (async()=>{
-            // Watches kept in the view settings before they moved to IndexedDB join this lesson once.
+            // Older watches move to this key once: ones kept in the view settings, and ones stored under a former
+            // key of the lesson (its title, with the file's id).
             const legacy=settings.legacyWatches.splice(0);
-            if(legacy.length){for(const w of legacy)await watchStore.add({lesson:key,...w});saveSettings();}
+            if(legacy.length){for(const w of legacy)await watchStore.add({...w,lesson:key,file:pathOf(w.file)});saveSettings();}
+            for(const former of formerLessonKeys())for(const w of await watchStore.list(former)){
+                await watchStore.add({...w,lesson:key,file:pathOf(w.file)});await watchStore.remove(w);
+            }
             const loaded=await watchStore.list(key);
             if(watchLesson!==key)return;   // another lesson opened meanwhile
             watches=loaded;renderInline();syncWatchLabels();
@@ -222,11 +228,11 @@ export function setupCodePanel(): void {
         const quote=(t:string)=>t.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         // One row per expression, however many lines watch it.
         const seen=new Set<string>();
-        const elements=watches.filter(w=>w.file===ref.file&&!seen.has(w.expr)&&seen.add(w.expr)).flatMap((w,i)=>{
+        const elements=watches.filter(w=>w.file===pathOf(ref.file!)&&!seen.has(w.expr)&&seen.add(w.expr)).flatMap((w,i)=>{
             let value:string;
             try{value=watchExpr(w.expr,at.table,at.names);}catch{return [];}
             return [{id:`__watch_${i}`,type:'expression_label',position:[7.6,-3.7,0],textExpr:`concat('${quote(w.expr)} = ', ${value})`,
-                codeRef:{file:w.file,line:w.line}} as LessonElement];
+                codeRef:{file:ref.file,line:w.line}} as LessonElement];
         });
         if(elements.length)disposeWatchLabels=addTransientElements(elements);
     }
@@ -235,7 +241,7 @@ export function setupCodePanel(): void {
         if(!selected||!expr)return;
         try{watchText(expr);}
         catch(e){watchError.textContent=e instanceof WatchError?e.message:`Can't evaluate ${expr}: ${(e as Error).message}`;watchError.hidden=false;return;}
-        const file=selected.id;
+        const file=selected.path;
         if(!watches.some(w=>w.file===file&&w.line===first&&w.expr===expr)){
             const w={lesson:watchLesson,file,line:first,expr};watches.push(w);void watchStore.add(w);
         }
@@ -620,7 +626,7 @@ export function setupCodePanel(): void {
                 for(const name of exprs)menu.append(check(name,!settings.hidden.includes(EXPR+name),toggleHidden(EXPR+name),!settings.inline));
             }
             // The reader's watches in this file, each with a way to remove it.
-            const mine=watches.filter(w=>w.file===selected?.id);
+            const mine=watches.filter(w=>w.file===selected?.path);
             if(mine.length){
                 const sub=document.createElement('div');sub.className='code-view-heading';sub.textContent='Watches';menu.append(sub);
                 for(const w of mine){
@@ -748,7 +754,7 @@ export function setupCodePanel(): void {
                 ?!settings.hidden.includes(EXPR+expressionName(t))
                 :!rowSymbolKeys(t).some(hiddenKey)).forEach(add);
             // The reader's own watches on this line, after the lesson's; one with no value now says so.
-            const watched=watches.filter(w=>w.file===file.id&&w.line===line).map(w=>{try{return watchText(w.expr);}catch{return `${w.expr}: —`;}})
+            const watched=watches.filter(w=>w.file===file.path&&w.line===line).map(w=>{try{return watchText(w.expr);}catch{return `${w.expr}: —`;}})
                 .filter(t=>!texts.includes(t));   // the lesson shows it already
             if(!texts.length&&!watched.length)return;
             const holder=document.createElement('span');holder.className='code-inline-values';

@@ -14,7 +14,7 @@ import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
 import { invokeExpert } from '/expert-client.js';
 import { createPracticeStore } from '/practice-store.js';
-import { state } from '/state.js';
+import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import { renderMarkdown } from '/labels.js';
 
 /** The coach looks again after this long without typing. */
@@ -69,7 +69,6 @@ export function setupCodePractice(): void {
     const store = createPracticeStore<Attempt>();
     const cache = new Map<string, Attempt>();
     const legacy = loadJson<Record<string, Attempt>>(LEGACY_KEY, {});
-    const lessonKey = () => String((state.lessonSpec as {title?: string} | null)?.title ?? '');
     let saveTimer = 0;
 
     const root = el('section', 'code-practice');root.hidden = true;root.classList.toggle('open', !!prefs.open);
@@ -258,14 +257,21 @@ export function setupCodePractice(): void {
         message('assistant', el('div', 'cp-report-text')).querySelector('.msg-body')!.textContent = WELCOME;
         greeting = WELCOME;
     }
-    /** The attempt for a block: this session's, else the stored one, else one kept in localStorage (moved over now). */
-    async function loadAttempt(lesson: string, block: string): Promise<Attempt> {
-        const full = `${lesson}\u0000${block}`;
-        const hit = cache.get(full) ?? await store.get(lesson, block);
+    /**
+     * The attempt for a block: this session's, else the stored one, else one stored under a former key of the lesson
+     * (formerLessonKeys), else one kept in localStorage; an older one moves to the new key now.
+     */
+    async function loadAttempt(lesson: string, file: string, block: string): Promise<Attempt> {
+        const hit = cache.get([lesson, file, block].join('\u0000')) ?? await store.get(lesson, file, block);
         if (hit) return hit;
+        // Keys before lesson ids and file paths: the title with the block alone, or an earlier id with this file.
+        for (const former of formerLessonKeys()) {
+            const moved = await store.take(`${former}\u0000${block}`) ?? await store.take([former, file, block].join('\u0000'));
+            if (moved) { await store.put(lesson, file, block, moved);return moved; }
+        }
         const old = legacy[block];
         if (old) {
-            await store.put(lesson, block, old);
+            await store.put(lesson, file, block, old);
             delete legacy[block];
             if (Object.keys(legacy).length) saveJson(LEGACY_KEY, legacy);
             else try { localStorage.removeItem(LEGACY_KEY); } catch { /* storage blocked */ }
@@ -276,10 +282,10 @@ export function setupCodePractice(): void {
     function persist() {
         if (!key) return;   // nothing targeted yet
         // Kept now in memory; written a moment after the typing stops, so each keystroke isn't a write.
-        const lesson = lessonKey(), block = key, now = attempt;
-        cache.set(`${lesson}\u0000${block}`, now);
+        const lesson = lessonId(), file = current?.file.path ?? '', block = key, now = attempt;
+        cache.set([lesson, file, block].join('\u0000'), now);
         clearTimeout(saveTimer);
-        pendingSave = () => { pendingSave = null;void store.put(lesson, block, now); };
+        pendingSave = () => { pendingSave = null;void store.put(lesson, file, block, now); };
         saveTimer = window.setTimeout(() => pendingSave?.(), 400);
     }
     // Leaving the page writes what is still waiting for its moment.
@@ -308,7 +314,7 @@ export function setupCodePractice(): void {
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';input.disabled = true;
         notes = new Map();clearReport();cheer.hidden = true;score = null;render(false);
         const wanted = key;
-        void loadAttempt(lessonKey(), wanted).then(found => {
+        void loadAttempt(lessonId(), v.file.path, wanted).then(found => {
             if (key !== wanted) return;
             attempt = found;input.disabled = false;
             input.value = attempt.text;score = null;   // another block: nothing to compare with
