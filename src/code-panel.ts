@@ -31,6 +31,14 @@ const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
     code:{title:'Sections over code',icon:'<path d="M3 3.5h12M6 8l-2 2.5L6 13M12 8l2 2.5-2 2.5M9.8 7.5 8.2 13.5"/>'},
 };
 
+/**
+ * What the type-along practice (code-practice.ts) reads of the panel: the open file, the block running now (the
+ * whole file when nothing runs), the lines a reader can see on screen, and a way to hide the code while typing.
+ */
+export interface CodeView { file: CodeFile; from: number; to: number; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
+let view: CodeView | null = null;
+export const codeView = (): CodeView | null => view;
+
 export function setupCodePanel(): void {
     const host=document.getElementById('dock-tab-code');
     if(!host)return;
@@ -38,7 +46,9 @@ export function setupCodePanel(): void {
     const title=document.createElement('div');title.className='code-file-title';
     const titleText=document.createElement('span');titleText.className='code-file-path';
     const execution=document.createElement('div');execution.className='code-execution-status';execution.setAttribute('role','status');
-    let lastExecution='',lastLines=new Set<number>(),lastPlace='',lastScopeKey='';
+    let lastExecution='',lastLines=new Set<number>(),lastPlace='',lastScopeKey='',lastViewKey='';
+    // Without sections to hide behind their titles, hiding the code for practice blurs the running block.
+    let veiled=false,modeBeforeHiding:StructureMode='plain';
     const body=document.createElement('div');body.className='code-source';body.setAttribute('aria-label','Source code');
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
@@ -182,8 +192,8 @@ export function setupCodePanel(): void {
         // Code outside the running function is paler; the structure follows execution into another function.
         const running=selected?inlineScope(selected.source,lines):null;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
-            const line=Number(row.dataset.line);
-            row.classList.toggle('code-inactive',!!running&&(line<running.from||line>running.to));
+            const line=Number(row.dataset.line),outside=!!running&&(line<running.from||line>running.to);
+            row.classList.toggle('code-inactive',outside);
         });
         const scope=structureScope(lines),scopeKey=scope?`${scope.from}-${scope.to}`:'all';
         if(scopeKey!==lastScopeKey){lastScopeKey=scopeKey;renderStructure(lines);}
@@ -214,7 +224,48 @@ export function setupCodePanel(): void {
         drawArrows(changed?stepInto():null,calls,entry);
         lastLines=lines;lastPlace=place;
         markExecutingSection();
+        veil(running);
+        publishView(running);
         scheduleInline();
+    }
+    /** Hidden for practice: the running block's lines that no section title hides (all of them, without sections). */
+    function veil(running:{from:number;to:number}|null) {
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            const line=Number(row.dataset.line),inside=!running||(line>=running.from&&line<=running.to);
+            row.classList.toggle('code-veiled',veiled&&inside&&(!hidingCode()||row.classList.contains('code-outside-structure')));
+        });
+    }
+    function hidingCode() {
+        return body.classList.contains('code-structure-blocks')||body.classList.contains('code-structure-outline');
+    }
+    /** The file lines a reader can see now: in the open Code tab, scrolled into view, not hidden by the structure or the veil. */
+    function shownLines():Set<number> {
+        const out=new Set<number>(),box=body.getBoundingClientRect();
+        if(!box.height)return out;
+        const hiding=hidingCode();
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            if(row.classList.contains('code-veiled'))return;
+            if(hiding&&!row.classList.contains('code-section-revealed')&&!row.classList.contains('code-outside-structure'))return;
+            const at=row.getBoundingClientRect();
+            if(at.height&&at.bottom>box.top&&at.top<box.bottom)out.add(Number(row.dataset.line));
+        });
+        return out;
+    }
+    function setHidden(on:boolean) {
+        if(selected&&codeSections(selected).length){
+            if(on&&!hidingCode()){modeBeforeHiding=settings.structureMode;settings.structureMode='outline';}
+            else if(!on&&hidingCode())settings.structureMode=modeBeforeHiding==='blocks'||modeBeforeHiding==='outline'?'plain':modeBeforeHiding;
+            saveSettings();renderStructure();
+        }
+        veiled=on;
+        refreshBinding();
+    }
+    function publishView(running:{from:number;to:number}|null) {
+        if(!selected){view=null;return;}
+        const file=selected,scope=running??{from:1,to:file.source.split('\n').length};
+        view={file,...scope,shown:shownLines,hidden:()=>veiled,setHidden};
+        const key=`${file.id}:${scope.from}-${scope.to}`;
+        if(key!==lastViewKey){lastViewKey=key;window.dispatchEvent(new CustomEvent('algebench:codeview'));}
     }
     /** The run's step into the current state: from the line at the previous state to the current one, or null. */
     function stepInto():{from:number;to:number}|null {
@@ -554,8 +605,7 @@ export function setupCodePanel(): void {
         const edge=body.getBoundingClientRect().right;
         const clipped=!!code&&(code.getBoundingClientRect().right>edge||tags.some(t=>t.scrollWidth>t.clientWidth||t.getBoundingClientRect().right>edge));
         // The structure's hidden-code views must not give the code away.
-        const hiding=(body.classList.contains('code-structure-blocks')||body.classList.contains('code-structure-outline'))
-            &&!!row&&!row.classList.contains('code-section-revealed')&&!row.classList.contains('code-outside-structure');
+        const hiding=!!row&&(row.classList.contains('code-veiled')||hidingCode()&&!row.classList.contains('code-section-revealed')&&!row.classList.contains('code-outside-structure'));
         if(!clipped||hiding){float.hidden=true;floated=null;return;}
         if(floated===row&&!float.hidden)return;
         floated=row;

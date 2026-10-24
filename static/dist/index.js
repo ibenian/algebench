@@ -25264,6 +25264,8 @@ var MODE_INFO = {
 		icon: "<path d=\"M3 3.5h12M6 8l-2 2.5L6 13M12 8l2 2.5-2 2.5M9.8 7.5 8.2 13.5\"/>"
 	}
 };
+var view = null;
+var codeView = () => view;
 function setupCodePanel() {
 	const host = document.getElementById("dock-tab-code");
 	if (!host) return;
@@ -25277,7 +25279,8 @@ function setupCodePanel() {
 	const execution = document.createElement("div");
 	execution.className = "code-execution-status";
 	execution.setAttribute("role", "status");
-	let lastExecution = "", lastLines = /* @__PURE__ */ new Set(), lastPlace = "", lastScopeKey = "";
+	let lastExecution = "", lastLines = /* @__PURE__ */ new Set(), lastPlace = "", lastScopeKey = "", lastViewKey = "";
+	let veiled = false, modeBeforeHiding = "plain";
 	const body = document.createElement("div");
 	body.className = "code-source";
 	body.setAttribute("aria-label", "Source code");
@@ -25512,8 +25515,8 @@ function setupCodePanel() {
 		const signature = [...lines].join(", ");
 		const running = selected ? inlineScope(selected.source, lines) : null;
 		body.querySelectorAll(".code-line").forEach((row) => {
-			const line = Number(row.dataset.line);
-			row.classList.toggle("code-inactive", !!running && (line < running.from || line > running.to));
+			const line = Number(row.dataset.line), outside = !!running && (line < running.from || line > running.to);
+			row.classList.toggle("code-inactive", outside);
 		});
 		const scope = structureScope(lines), scopeKey = scope ? `${scope.from}-${scope.to}` : "all";
 		if (scopeKey !== lastScopeKey) {
@@ -25543,7 +25546,66 @@ function setupCodePanel() {
 		lastLines = lines;
 		lastPlace = place;
 		markExecutingSection();
+		veil(running);
+		publishView(running);
 		scheduleInline();
+	}
+	/** Hidden for practice: the running block's lines that no section title hides (all of them, without sections). */
+	function veil(running) {
+		body.querySelectorAll(".code-line").forEach((row) => {
+			const line = Number(row.dataset.line), inside = !running || line >= running.from && line <= running.to;
+			row.classList.toggle("code-veiled", veiled && inside && (!hidingCode() || row.classList.contains("code-outside-structure")));
+		});
+	}
+	function hidingCode() {
+		return body.classList.contains("code-structure-blocks") || body.classList.contains("code-structure-outline");
+	}
+	/** The file lines a reader can see now: in the open Code tab, scrolled into view, not hidden by the structure or the veil. */
+	function shownLines() {
+		const out = /* @__PURE__ */ new Set(), box = body.getBoundingClientRect();
+		if (!box.height) return out;
+		const hiding = hidingCode();
+		body.querySelectorAll(".code-line").forEach((row) => {
+			if (row.classList.contains("code-veiled")) return;
+			if (hiding && !row.classList.contains("code-section-revealed") && !row.classList.contains("code-outside-structure")) return;
+			const at = row.getBoundingClientRect();
+			if (at.height && at.bottom > box.top && at.top < box.bottom) out.add(Number(row.dataset.line));
+		});
+		return out;
+	}
+	function setHidden(on) {
+		if (selected && codeSections(selected).length) {
+			if (on && !hidingCode()) {
+				modeBeforeHiding = settings.structureMode;
+				settings.structureMode = "outline";
+			} else if (!on && hidingCode()) settings.structureMode = modeBeforeHiding === "blocks" || modeBeforeHiding === "outline" ? "plain" : modeBeforeHiding;
+			saveSettings();
+			renderStructure();
+		}
+		veiled = on;
+		refreshBinding();
+	}
+	function publishView(running) {
+		if (!selected) {
+			view = null;
+			return;
+		}
+		const file = selected, scope = running ?? {
+			from: 1,
+			to: file.source.split("\n").length
+		};
+		view = {
+			file,
+			...scope,
+			shown: shownLines,
+			hidden: () => veiled,
+			setHidden
+		};
+		const key = `${file.id}:${scope.from}-${scope.to}`;
+		if (key !== lastViewKey) {
+			lastViewKey = key;
+			window.dispatchEvent(new CustomEvent("algebench:codeview"));
+		}
 	}
 	/** The run's step into the current state: from the line at the previous state to the current one, or null. */
 	function stepInto() {
@@ -26036,7 +26098,7 @@ function setupCodePanel() {
 		const tags = !!holder && getComputedStyle(holder).visibility !== "hidden" ? [...holder.querySelectorAll(".code-inline-value")] : [];
 		const edge = body.getBoundingClientRect().right;
 		const clipped = !!code && (code.getBoundingClientRect().right > edge || tags.some((t) => t.scrollWidth > t.clientWidth || t.getBoundingClientRect().right > edge));
-		const hiding = (body.classList.contains("code-structure-blocks") || body.classList.contains("code-structure-outline")) && !!row && !row.classList.contains("code-section-revealed") && !row.classList.contains("code-outside-structure");
+		const hiding = !!row && (row.classList.contains("code-veiled") || hidingCode() && !row.classList.contains("code-section-revealed") && !row.classList.contains("code-outside-structure"));
 		if (!clipped || hiding) {
 			float.hidden = true;
 			floated = null;
@@ -26286,6 +26348,596 @@ function setupCodePanel() {
 	window.addEventListener("algebench:navchange", refresh);
 	window.addEventListener("algebench:sliderchange", () => refreshBinding());
 	refresh();
+}
+//#endregion
+//#region src/code-practice-core.ts
+/** The most a line seen in the Code panel can score. */
+var PEEK_FACTOR = .5;
+/** Blank and comment-only lines carry no score: nobody has to type them. */
+function isNeutral(text) {
+	const t = text.trim();
+	return !t || t.startsWith("#") || t.startsWith("//");
+}
+/** A line without its trailing comment: nobody types those from memory. */
+var codeOf = (s) => s.replace(/\s+(#|\/\/)\s.*$/, "").trimEnd();
+var squeeze = (s) => s.replace(/\s+/g, "");
+/** Levenshtein distance, two rows at a time. */
+function distance(a, b) {
+	let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+	for (let i = 1; i <= a.length; i++) {
+		const row = [i];
+		for (let j = 1; j <= b.length; j++) row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+		prev = row;
+	}
+	return prev[b.length];
+}
+/**
+* How alike a typed line is to a reference line, 0 to 1. Whitespace is ignored, indentation included (the coach
+* judges nesting by meaning), as are trailing comments: 1 means the same code.
+*/
+function similarity(typed, reference) {
+	const a = squeeze(codeOf(typed)), b = squeeze(codeOf(reference));
+	if (!a || !b) return 0;
+	if (a === b) return 1;
+	return Math.min(.95, 1 - distance(a, b) / Math.max(a.length, b.length));
+}
+/**
+* The best in-order pairing of typed lines with reference lines (indices into each list), skipping neutral
+* lines on both sides: the most total similarity, each pair at least MIN_MATCH alike.
+*/
+function alignLines(reference, typed) {
+	const r = reference.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
+	const u = typed.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
+	const best = Array.from({ length: r.length + 1 }, () => new Array(u.length + 1).fill(0));
+	const sim = r.map(([a]) => u.map(([b]) => similarity(b, a)));
+	for (let i = 1; i <= r.length; i++) for (let j = 1; j <= u.length; j++) {
+		const s = sim[i - 1][j - 1];
+		best[i][j] = Math.max(best[i - 1][j], best[i][j - 1], s >= .4 ? best[i - 1][j - 1] + s : -1);
+	}
+	const pairs = [];
+	for (let i = r.length, j = u.length; i > 0 && j > 0;) {
+		const s = sim[i - 1][j - 1];
+		if (s >= .4 && best[i][j] === best[i - 1][j - 1] + s) {
+			pairs.push({
+				typed: u[j - 1][1],
+				reference: r[i - 1][1],
+				similarity: s
+			});
+			i--;
+			j--;
+		} else if (best[i][j] === best[i - 1][j]) i--;
+		else j--;
+	}
+	return pairs.reverse();
+}
+var mean = (xs) => xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
+/**
+* Score what was typed against the block of reference code starting at file line `first`. `peeked` holds the
+* file lines that were on screen; `sections` are the file's, and those inside the block are scored too.
+* `typedAll` says every line was typed exactly, seen or not.
+*/
+function scorePractice(reference, first, typedText, peeked, sections = []) {
+	const ref = reference.split("\n"), typed = typedText.split("\n");
+	const pairs = alignLines(ref, typed);
+	const byRef = new Map(pairs.map((p) => [p.reference, p]));
+	const lines = [];
+	ref.forEach((text, i) => {
+		if (isNeutral(text)) return;
+		const pair = byRef.get(i), line = first + i, seen = peeked.has(line);
+		const s = pair?.similarity ?? 0;
+		lines.push({
+			line,
+			typed: pair ? pair.typed : null,
+			similarity: s,
+			peeked: seen,
+			score: Math.round(100 * s * (seen ? PEEK_FACTOR : 1))
+		});
+	});
+	const byTyped = new Map(pairs.map((p) => [p.typed, p]));
+	const typedLines = typed.map((text, j) => {
+		const pair = byTyped.get(j);
+		return {
+			reference: pair ? first + pair.reference : null,
+			similarity: pair?.similarity ?? 0,
+			exact: pair?.similarity === 1,
+			neutral: isNeutral(text)
+		};
+	});
+	const last = first + ref.length - 1;
+	return {
+		lines,
+		typed: typedLines,
+		sections: sections.filter((s) => s.from >= first && s.to <= last).map((s) => {
+			const inside = lines.filter((l) => l.line >= s.from && l.line <= s.to);
+			return {
+				id: s.id,
+				title: s.title,
+				from: s.from,
+				to: s.to,
+				score: mean(inside.map((l) => l.score)),
+				lines: inside.length
+			};
+		}).filter((s) => s.lines > 0),
+		total: mean(lines.map((l) => l.score)),
+		typedAll: lines.length > 0 && lines.every((l) => l.similarity === 1)
+	};
+}
+/**
+* The section the learner is on: the one holding the reference line paired with the cursor's line, else the
+* one after the last paired line above the cursor (where they will go next), else the first.
+*/
+function focusSection(score, cursor, sections) {
+	const within = (line) => sections.find((s) => line >= s.from && line <= s.to) ?? null;
+	const here = score.typed[cursor]?.reference;
+	if (here != null) return within(here);
+	let above = null;
+	for (let j = Math.min(cursor, score.typed.length - 1); j >= 0 && above == null; j--) above = score.typed[j]?.reference ?? null;
+	const next = score.lines.find((l) => (above == null || l.line > above) && within(l.line));
+	return next ? within(next.line) : null;
+}
+//#endregion
+//#region src/code-practice.ts
+/**
+* Type along: under the Doc, the learner types the code running now (the Code panel's running block) and sees,
+* as they type, how each line, each section and the whole block matches it (code-practice-core.ts). Lines they
+* could see in the Code panel score less; "Hide code" hides it there. The coach (✦) reviews the typed code by
+* meaning (the code_practice expert): on Check, and while it is on, on each new line and after a pause.
+*/
+/** The coach looks again after this long without typing. */
+var IDLE_REVIEW_MS = 5e3;
+var INDENT = "    ";
+var STORE_KEY = "algebench-code-practice";
+var VIEW_KEY = "algebench-code-practice-view";
+var VERDICTS = {
+	correct: "Correct",
+	close: "Close",
+	partial: "Partly there",
+	off_track: "Off track",
+	empty: "Nothing yet"
+};
+function loadJson(key, fallback) {
+	try {
+		return JSON.parse(localStorage.getItem(key) ?? "null") ?? fallback;
+	} catch {
+		return fallback;
+	}
+}
+function saveJson(key, value) {
+	try {
+		localStorage.setItem(key, JSON.stringify(value));
+	} catch {}
+}
+/** A short stable hash, so a saved attempt belongs to the code it was typed against. */
+function hash(text) {
+	let h = 5381;
+	for (let i = 0; i < text.length; i++) h = (h * 33 ^ text.charCodeAt(i)) >>> 0;
+	return h.toString(36);
+}
+function setupCodePractice() {
+	const doc = document.getElementById("tab-doc");
+	if (!doc) return;
+	const prefs = loadJson(VIEW_KEY, {});
+	const saved = loadJson(STORE_KEY, {});
+	const root = el("section", "code-practice");
+	root.hidden = true;
+	root.classList.toggle("open", !!prefs.open);
+	const head = el("div", "cp-head");
+	const toggle = el("button", "cp-toggle");
+	toggle.type = "button";
+	toggle.innerHTML = "<span class=\"cp-chevron\" aria-hidden=\"true\">▸</span> Type along";
+	const target = el("span", "cp-target");
+	const total = el("span", "cp-total");
+	total.setAttribute("role", "status");
+	const tools = el("div", "cp-tools");
+	const hide = tool("Hide code", "Hide the code in the Code panel: lines typed without seeing them score in full");
+	const coach = tool("✦ Coach", "The coach reviews your code on each new line and after a 5 s pause");
+	const check = tool("Check", "Ask the coach to review what you typed now");
+	const reset = tool("Reset", "Start this block again");
+	const speak = tool("", "");
+	speak.classList.add("cp-speak");
+	speak.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z\"/></svg>";
+	tools.append(hide, coach, check, speak, reset);
+	head.append(toggle, target, total, tools);
+	const bodyEl = el("div", "cp-body");
+	const chips = el("div", "cp-sections");
+	const editor = el("div", "cp-editor");
+	const gutter = el("div", "cp-gutter");
+	gutter.setAttribute("aria-hidden", "true");
+	const stack = el("div", "cp-stack");
+	const paint = el("pre", "cp-paint");
+	paint.setAttribute("aria-hidden", "true");
+	const input = el("textarea", "cp-input");
+	input.spellcheck = false;
+	input.wrap = "off";
+	input.setAttribute("autocapitalize", "off");
+	input.setAttribute("autocomplete", "off");
+	input.setAttribute("aria-label", "Type the running code");
+	input.placeholder = "Type the running code here, from memory if you can…";
+	stack.append(paint, input);
+	editor.append(gutter, stack);
+	const cheer = el("div", "cp-cheer");
+	cheer.hidden = true;
+	cheer.setAttribute("role", "status");
+	const report = el("div", "cp-report");
+	report.hidden = true;
+	report.setAttribute("aria-live", "polite");
+	bodyEl.append(chips, editor, cheer, report);
+	root.append(head, bodyEl);
+	doc.append(root);
+	let current = null, key = "", block = "", sections = [];
+	let attempt = {
+		text: "",
+		peeked: [],
+		reviews: {},
+		celebrated: []
+	};
+	let score = null, tokens = [], tokenText = "";
+	let notes = /* @__PURE__ */ new Map(), cheerTimer = 0, reviewSeq = 0, lastReviewed = "", idle = 0, highlightTimer = 0;
+	coach.setAttribute("aria-pressed", String(!!prefs.coach));
+	paintSpeak(!!prefs.speak);
+	function el(tag, cls) {
+		const node = document.createElement(tag);
+		node.className = cls;
+		return node;
+	}
+	function tool(text, title) {
+		const b = el("button", "cp-tool");
+		b.type = "button";
+		b.textContent = text;
+		b.title = title;
+		return b;
+	}
+	const coachOn = () => coach.getAttribute("aria-pressed") === "true";
+	const speakOn = () => speak.getAttribute("aria-pressed") === "true";
+	const savePrefs = () => saveJson(VIEW_KEY, {
+		open: root.classList.contains("open"),
+		coach: coachOn(),
+		speak: speakOn()
+	});
+	function paintSpeak(on) {
+		speak.setAttribute("aria-pressed", String(on));
+		speak.title = on ? "Reading the coach aloud · click to stop" : "Read the coach's commentary aloud";
+		speak.setAttribute("aria-label", speak.title);
+	}
+	/** The review as it is spoken: the commentary and what to do next, without markdown. */
+	let spoken = "";
+	function speakReview(text) {
+		spoken = text;
+		if (speakOn() && text) window.algebenchSpeakText?.(text);
+	}
+	function persist() {
+		saved[key] = attempt;
+		saveJson(STORE_KEY, saved);
+	}
+	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
+	function retarget() {
+		const v = codeView();
+		root.hidden = !v;
+		if (!v) {
+			current = null;
+			return;
+		}
+		const text = v.file.source.split("\n").slice(v.from - 1, v.to).join("\n").replace(/\s+$/, "");
+		const next = `${v.file.id}:${v.from}:${hash(text)}`;
+		current = v;
+		if (next === key) return;
+		key = next;
+		block = text;
+		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
+		attempt = saved[key] ?? {
+			text: "",
+			peeked: [],
+			reviews: {},
+			celebrated: []
+		};
+		input.value = attempt.text;
+		notes = /* @__PURE__ */ new Map();
+		report.hidden = true;
+		cheer.hidden = true;
+		lastReviewed = "";
+		const count = v.to - v.from + 1;
+		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
+		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
+		render(false);
+		highlight();
+	}
+	function render(celebrate = true) {
+		if (!current) return;
+		const before = score;
+		score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
+		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
+		const focus = focusSection(score, cursor, sections);
+		const scoreOfTyped = new Map(score.lines.filter((l) => l.typed != null).map((l) => [l.typed, l]));
+		const typedLines = input.value.split("\n");
+		gutter.replaceChildren(...typedLines.map((text, j) => {
+			const row = el("div", "cp-mark"), t = score.typed[j], line = scoreOfTyped.get(j);
+			const n = el("span", "cp-n");
+			n.textContent = String(j + 1);
+			const mark = el("span", "cp-status");
+			if (t.neutral) row.classList.add("neutral");
+			else if (t.exact) {
+				row.classList.add(line?.peeked ? "seen" : "exact");
+				mark.textContent = line?.peeked ? "✓·" : "✓";
+			} else if (line) {
+				row.classList.add("fuzzy");
+				mark.textContent = `${line.score}`;
+			} else if (text.trim()) {
+				row.classList.add("miss");
+				mark.textContent = "✗";
+			}
+			row.title = t.neutral ? "" : line ? `Matches line ${line.line}: ${line.score}%${line.peeked ? " (seen in the Code panel, so at most half)" : ""}` : "No line of the code is like this one";
+			const note = notes.get(j + 1);
+			if (note) {
+				row.classList.add("noted");
+				row.title += `\nCoach: ${note}`;
+			}
+			row.append(n, mark);
+			return row;
+		}));
+		paintLines(typedLines);
+		chips.replaceChildren(...score.sections.map((s) => {
+			const chip = el("span", "cp-chip");
+			chip.classList.toggle("focus", s.id === focus?.id);
+			chip.classList.toggle("done", s.score === 100);
+			chip.style.setProperty("--fill", `${s.score}%`);
+			chip.textContent = `${s.score === 100 ? "★ " : ""}${s.title} · ${s.score}%`;
+			chip.title = `${s.title}: lines ${s.from}–${s.to}`;
+			return chip;
+		}));
+		chips.hidden = !score.sections.length;
+		total.textContent = `${score.total}%`;
+		total.style.setProperty("--fill", `${score.total * 3.6}deg`);
+		total.classList.toggle("done", score.total === 100);
+		total.title = `The whole block: ${score.total}%`;
+		if (celebrate && before) cheerFor(before, score);
+	}
+	/** Typed text coloured like the Code panel, by the same server lexer; plain until its colours arrive. */
+	function paintLines(lines) {
+		const fresh = tokenText === input.value;
+		paint.replaceChildren(...lines.map((text, j) => {
+			const row = el("div", "cp-line");
+			const t = score?.typed[j];
+			if (t && !t.neutral) row.classList.add(t.exact ? "exact" : t.reference != null ? "fuzzy" : text.trim() ? "miss" : "");
+			row.textContent = text || " ";
+			if (fresh && text) paintTokens(row, lineTokens(tokens, j + 1));
+			return row;
+		}));
+		paint.append(el("div", "cp-line"));
+	}
+	function highlight() {
+		clearTimeout(highlightTimer);
+		const language = current?.file.language?.trim().toLowerCase(), text = input.value;
+		if (!language || !text.trim()) return;
+		highlightTimer = window.setTimeout(() => {
+			fetch("/api/code/highlight", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					language,
+					source: text
+				})
+			}).then((res) => res.ok ? res.json() : null).then((body) => {
+				if (input.value !== text || !Array.isArray(body?.tokens)) return;
+				tokens = body.tokens;
+				tokenText = text;
+				paintLines(text.split("\n"));
+			}).catch(() => {});
+		}, 250);
+	}
+	/** Lines just typed exactly flash; a section or the block reaching 100% is congratulated, once. */
+	function cheerFor(before, after) {
+		after.typed.forEach((t, j) => {
+			if (t.exact && !before.typed[j]?.exact) gutter.children[j]?.classList.add("cp-flash");
+		});
+		const was = new Map(before.sections.map((s) => [s.id, s.score]));
+		const say = (id, text, big = false) => {
+			if (attempt.celebrated.includes(id)) return;
+			attempt.celebrated.push(id);
+			persist();
+			cheer.textContent = text;
+			cheer.classList.toggle("big", big);
+			cheer.hidden = false;
+			cheer.classList.remove("pop", "fading");
+			cheer.offsetWidth;
+			cheer.classList.add("pop");
+			clearTimeout(cheerTimer);
+			if (!big) cheerTimer = window.setTimeout(() => {
+				cheer.classList.add("fading");
+				cheerTimer = window.setTimeout(() => {
+					cheer.hidden = true;
+				}, 600);
+			}, 4e3);
+		};
+		for (const s of after.sections) if (s.score === 100 && was.get(s.id) !== 100) say(`section:${s.id}`, `🎉 “${s.title}” — 100%, from memory!`);
+		if (after.total === 100 && before.total !== 100) say("block", "🏆 The whole block, typed from memory: 100%! Brilliant.", true);
+		else if (after.typedAll && !before.typedAll && after.total < 100) say("typed", "✓ Every line typed. Hide the code and type it from memory for full marks.");
+	}
+	/** Lines on screen in the Code panel count as seen, except those already typed exactly before. */
+	function watchPeeks() {
+		if (!current || !root.classList.contains("open")) return;
+		hide.setAttribute("aria-pressed", String(current.hidden()));
+		const seen = new Set(attempt.peeked), done = new Set(score?.lines.filter((l) => l.similarity === 1).map((l) => l.line));
+		const reference = block.split("\n");
+		let added = false;
+		for (const line of current.shown()) {
+			if (line < current.from || line > current.to || seen.has(line) || done.has(line) || isNeutral(reference[line - current.from] ?? "")) continue;
+			attempt.peeked.push(line);
+			added = true;
+		}
+		if (added) {
+			persist();
+			render(false);
+		}
+	}
+	window.setInterval(watchPeeks, 500);
+	async function review(force) {
+		if (!current || !score || !input.value.trim()) return;
+		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
+		const focus = focusSection(score, cursor, sections);
+		const signature = `${focus?.id ?? "*"}\n${input.value}`;
+		if (!force && signature === lastReviewed) return;
+		lastReviewed = signature;
+		const id = focus?.id ?? "*", seq = ++reviewSeq;
+		report.hidden = false;
+		report.classList.add("busy");
+		report.replaceChildren(Object.assign(el("div", "cp-report-busy"), { textContent: `Coach is reviewing${focus ? ` “${focus.title}”` : ""}…` }));
+		try {
+			const out = await invokeExpert("code_practice", {
+				language: current.file.language ?? "",
+				expected: block,
+				first_line: current.from,
+				section: focus ? {
+					title: focus.title,
+					hint: focus.hint ?? "",
+					start: focus.from,
+					end: focus.to
+				} : null,
+				typed: input.value,
+				match: score.typed.map((t, j) => ({
+					typed: j + 1,
+					score: Math.round(100 * t.similarity),
+					...t.reference != null ? { reference: t.reference } : {}
+				})).filter((_, j) => !score.typed[j].neutral).slice(0, 400),
+				attempts: attempt.reviews[id] ?? 0
+			});
+			if (seq !== reviewSeq) return;
+			attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
+			persist();
+			showReview(out, focus);
+		} catch (e) {
+			if (seq !== reviewSeq) return;
+			showReview({ reason: e.message }, focus);
+		}
+	}
+	function showReview(out, focus) {
+		report.classList.remove("busy");
+		const r = out.result;
+		if (!r) {
+			spoken = "";
+			report.replaceChildren(Object.assign(el("div", "cp-report-reason"), { textContent: out.reason ?? "No review." }));
+			notes = /* @__PURE__ */ new Map();
+			render(false);
+			return;
+		}
+		notes = new Map(r.line_notes.map((n) => [n.line, n.note]));
+		const top = el("div", "cp-report-head");
+		const badge = el("span", `cp-verdict cp-verdict-${r.verdict}`);
+		badge.textContent = `${VERDICTS[r.verdict] ?? r.verdict} · ${r.score}%`;
+		const about = el("span", "cp-report-about");
+		about.textContent = focus ? focus.title : "The whole block";
+		top.append(badge, about);
+		const text = el("div", "cp-report-text");
+		text.innerHTML = renderMarkdown$1(r.commentary, {
+			untrusted: true,
+			glossary: false
+		});
+		const parts = [top, text];
+		if (r.direction) {
+			const next = el("div", "cp-report-next");
+			next.innerHTML = renderMarkdown$1(`**Next:** ${r.direction}`, {
+				untrusted: true,
+				glossary: false
+			});
+			parts.push(next);
+		}
+		if (r.line_notes.length) {
+			const list = el("ul", "cp-report-notes");
+			for (const n of r.line_notes) {
+				const li = el("li", "");
+				li.textContent = `Line ${n.line}: ${n.note}`;
+				list.append(li);
+			}
+			parts.push(list);
+		}
+		report.replaceChildren(...parts);
+		render(false);
+		speakReview([r.commentary, r.direction && `Next: ${r.direction}`].filter(Boolean).join(" ").replace(/[`*]/g, ""));
+	}
+	function insert(text) {
+		if (!document.execCommand("insertText", false, text)) {
+			input.setRangeText(text, input.selectionStart, input.selectionEnd, "end");
+			input.dispatchEvent(new Event("input"));
+		}
+	}
+	input.addEventListener("keydown", (e) => {
+		if (e.key === "Tab") {
+			e.preventDefault();
+			if (!e.shiftKey) {
+				insert(INDENT);
+				return;
+			}
+			const start = input.value.lastIndexOf("\n", input.selectionStart - 1) + 1;
+			const lead = /^ {1,4}/.exec(input.value.slice(start))?.[0].length ?? 0;
+			if (lead) {
+				input.setSelectionRange(start, start + lead);
+				insert("");
+			}
+		} else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+			e.preventDefault();
+			review(true);
+		} else if (e.key === "Enter" && !e.isComposing) {
+			e.preventDefault();
+			const start = input.value.lastIndexOf("\n", input.selectionStart - 1) + 1;
+			const line = input.value.slice(start, input.selectionStart);
+			insert("\n" + (/^\s*/.exec(line)[0] + (/[:{[(]\s*$/.test(line) ? INDENT : "")));
+			if (coachOn()) review(false);
+		}
+	});
+	input.addEventListener("input", () => {
+		attempt.text = input.value;
+		persist();
+		render();
+		highlight();
+		clearTimeout(idle);
+		if (coachOn()) idle = window.setTimeout(() => void review(false), IDLE_REVIEW_MS);
+	});
+	input.addEventListener("keyup", (e) => {
+		if (e.key.startsWith("Arrow")) render(false);
+	});
+	input.addEventListener("click", () => render(false));
+	toggle.addEventListener("click", () => {
+		root.classList.toggle("open");
+		toggle.setAttribute("aria-expanded", String(root.classList.contains("open")));
+		savePrefs();
+	});
+	toggle.setAttribute("aria-expanded", String(root.classList.contains("open")));
+	hide.addEventListener("click", () => {
+		if (!current) return;
+		current.setHidden(!current.hidden());
+		hide.setAttribute("aria-pressed", String(current.hidden()));
+	});
+	coach.addEventListener("click", () => {
+		coach.setAttribute("aria-pressed", String(!coachOn()));
+		savePrefs();
+		if (coachOn()) review(false);
+	});
+	check.addEventListener("click", () => void review(true));
+	speak.addEventListener("click", () => {
+		paintSpeak(!speakOn());
+		savePrefs();
+		if (speakOn()) {
+			if (!report.hidden && !report.classList.contains("busy")) speakReview(spoken);
+		} else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+	});
+	reset.addEventListener("click", () => {
+		attempt = {
+			text: "",
+			peeked: [],
+			reviews: {},
+			celebrated: []
+		};
+		input.value = "";
+		notes = /* @__PURE__ */ new Map();
+		report.hidden = true;
+		cheer.hidden = true;
+		lastReviewed = "";
+		persist();
+		render(false);
+		input.focus();
+	});
+	window.addEventListener("algebench:codeview", retarget);
+	window.addEventListener("algebench:navchange", retarget);
+	retarget();
 }
 //#endregion
 //#region src/view-state.ts
@@ -34435,6 +35087,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupProofPanel();
 	setupSceneDock();
 	setupCodePanel();
+	setupCodePractice();
 	setupStepPlayer();
 	setupCaptionDrag();
 	setupSceneDescDrag();
