@@ -26531,12 +26531,13 @@ function setupCodePractice() {
 	const tools = el("div", "cp-tools");
 	const hide = tool("Hide code", "Hide the code in the Code panel: lines typed without seeing them score in full");
 	const coach = tool("✦ Coach", "The coach reviews your code on each new line and after a 5 s pause");
+	const hint = tool("Hint", "Hints: the coach also says how to begin and what to write next. Off, it only comments on what you typed");
 	const check = tool("Check", "Ask the coach to review what you typed now");
 	const reset = tool("Reset", "Start this block again");
 	const speak = tool("", "");
 	speak.classList.add("cp-speak");
 	speak.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z\"/></svg>";
-	tools.append(hide, coach, check, speak, reset);
+	tools.append(hide, coach, hint, check, speak, reset);
 	head.append(toggle, target, total, tools);
 	const bodyEl = el("div", "cp-body");
 	const chips = el("div", "cp-sections");
@@ -26552,7 +26553,7 @@ function setupCodePractice() {
 	input.setAttribute("autocapitalize", "off");
 	input.setAttribute("autocomplete", "off");
 	input.setAttribute("aria-label", "Type the running code");
-	input.placeholder = "Type the running code here, from memory if you can…";
+	input.placeholder = "Type the running code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.";
 	stack.append(paint, input);
 	editor.append(gutter, stack);
 	const cheer = el("div", "cp-cheer");
@@ -26562,8 +26563,52 @@ function setupCodePractice() {
 	report.hidden = true;
 	report.setAttribute("aria-live", "polite");
 	bodyEl.append(chips, editor, cheer, report);
-	root.append(head, bodyEl);
+	const grip = el("div", "cp-resize");
+	grip.setAttribute("role", "separator");
+	grip.setAttribute("aria-orientation", "horizontal");
+	grip.setAttribute("aria-label", "Resize the Type along panel");
+	grip.title = "Drag to resize · double-click to reset";
+	root.append(grip, head, bodyEl);
 	doc.append(root);
+	const MIN_HEIGHT = 160;
+	function setHeight(px) {
+		if (px == null) {
+			root.style.removeProperty("flex");
+			root.style.removeProperty("max-height");
+			return;
+		}
+		const max = Math.max(MIN_HEIGHT, doc.clientHeight - 80);
+		const h = Math.round(Math.max(MIN_HEIGHT, Math.min(max, px)));
+		root.style.flex = `0 0 ${h}px`;
+		root.style.maxHeight = "none";
+	}
+	if (prefs.height) setHeight(prefs.height);
+	grip.addEventListener("pointerdown", (e) => {
+		if (!root.classList.contains("open")) return;
+		e.preventDefault();
+		grip.setPointerCapture(e.pointerId);
+		grip.classList.add("dragging");
+		const startY = e.clientY, startH = root.offsetHeight;
+		document.body.style.cursor = "row-resize";
+		document.body.style.userSelect = "none";
+		const move = (ev) => setHeight(startH + startY - ev.clientY);
+		const up = () => {
+			grip.removeEventListener("pointermove", move);
+			grip.classList.remove("dragging");
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+			prefs.height = root.offsetHeight;
+			savePrefs();
+		};
+		grip.addEventListener("pointermove", move);
+		grip.addEventListener("pointerup", up, { once: true });
+		grip.addEventListener("pointercancel", up, { once: true });
+	});
+	grip.addEventListener("dblclick", () => {
+		prefs.height = void 0;
+		setHeight(null);
+		savePrefs();
+	});
 	let current = null, key = "", block = "", sections = [];
 	let attempt = {
 		text: "",
@@ -26574,6 +26619,7 @@ function setupCodePractice() {
 	let score = null, tokens = [], tokenText = "";
 	let notes = /* @__PURE__ */ new Map(), cheerTimer = 0, reviewSeq = 0, lastReviewed = "", idle = 0, highlightTimer = 0;
 	coach.setAttribute("aria-pressed", String(!!prefs.coach));
+	hint.setAttribute("aria-pressed", String(!!prefs.hints));
 	paintSpeak(!!prefs.speak);
 	function el(tag, cls) {
 		const node = document.createElement(tag);
@@ -26589,10 +26635,13 @@ function setupCodePractice() {
 	}
 	const coachOn = () => coach.getAttribute("aria-pressed") === "true";
 	const speakOn = () => speak.getAttribute("aria-pressed") === "true";
+	const hintsOn = () => hint.getAttribute("aria-pressed") === "true";
 	const savePrefs = () => saveJson(VIEW_KEY, {
 		open: root.classList.contains("open"),
 		coach: coachOn(),
-		speak: speakOn()
+		hints: hintsOn(),
+		speak: speakOn(),
+		height: prefs.height
 	});
 	function paintSpeak(on) {
 		speak.setAttribute("aria-pressed", String(on));
@@ -26640,6 +26689,7 @@ function setupCodePractice() {
 		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
 		render(false);
 		highlight();
+		if (hintsOn() && !input.value.trim() && root.classList.contains("open")) review(false);
 	}
 	function render(celebrate = true) {
 		if (!current) return;
@@ -26771,16 +26821,16 @@ function setupCodePractice() {
 	}
 	window.setInterval(watchPeeks, 500);
 	async function review(force) {
-		if (!current || !score || !input.value.trim()) return;
+		if (!current || !score || !input.value.trim() && !hintsOn()) return;
 		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
 		const focus = focusSection(score, cursor, sections);
-		const signature = `${focus?.id ?? "*"}\n${input.value}`;
+		const signature = `${focus?.id ?? "*"}\n${hintsOn()}\n${input.value}`;
 		if (!force && signature === lastReviewed) return;
 		lastReviewed = signature;
 		const id = focus?.id ?? "*", seq = ++reviewSeq;
 		report.hidden = false;
 		report.classList.add("busy");
-		report.replaceChildren(Object.assign(el("div", "cp-report-busy"), { textContent: `Coach is reviewing${focus ? ` “${focus.title}”` : ""}…` }));
+		report.replaceChildren(Object.assign(el("div", "cp-report-busy"), { textContent: input.value.trim() ? `Coach is reviewing${focus ? ` “${focus.title}”` : ""}…` : "Coach is finding a way in…" }));
 		try {
 			const out = await invokeExpert("code_practice", {
 				language: current.file.language ?? "",
@@ -26798,7 +26848,8 @@ function setupCodePractice() {
 					score: Math.round(100 * t.similarity),
 					...t.reference != null ? { reference: t.reference } : {}
 				})).filter((_, j) => !score.typed[j].neutral).slice(0, 400),
-				attempts: attempt.reviews[id] ?? 0
+				attempts: attempt.reviews[id] ?? 0,
+				hints: hintsOn()
 			});
 			if (seq !== reviewSeq) return;
 			attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
@@ -26831,7 +26882,16 @@ function setupCodePractice() {
 			untrusted: true,
 			glossary: false
 		});
-		const parts = [top, text];
+		const parts = [top];
+		if (r.reply) {
+			const answer = el("div", "cp-report-reply");
+			answer.innerHTML = renderMarkdown$1(r.reply, {
+				untrusted: true,
+				glossary: false
+			});
+			parts.push(answer);
+		}
+		parts.push(text);
 		if (r.direction) {
 			const next = el("div", "cp-report-next");
 			next.innerHTML = renderMarkdown$1(`**Next:** ${r.direction}`, {
@@ -26851,7 +26911,11 @@ function setupCodePractice() {
 		}
 		report.replaceChildren(...parts);
 		render(false);
-		speakReview([r.commentary, r.direction && `Next: ${r.direction}`].filter(Boolean).join(" ").replace(/[`*]/g, ""));
+		speakReview([
+			r.reply,
+			r.commentary,
+			r.direction && `Next: ${r.direction}`
+		].filter(Boolean).join(" ").replace(/[`*]/g, ""));
 	}
 	function insert(text) {
 		if (!document.execCommand("insertText", false, text)) {
@@ -26899,6 +26963,7 @@ function setupCodePractice() {
 		root.classList.toggle("open");
 		toggle.setAttribute("aria-expanded", String(root.classList.contains("open")));
 		savePrefs();
+		if (root.classList.contains("open") && hintsOn() && !input.value.trim()) review(false);
 	});
 	toggle.setAttribute("aria-expanded", String(root.classList.contains("open")));
 	hide.addEventListener("click", () => {
@@ -26912,6 +26977,11 @@ function setupCodePractice() {
 		if (coachOn()) review(false);
 	});
 	check.addEventListener("click", () => void review(true));
+	hint.addEventListener("click", () => {
+		hint.setAttribute("aria-pressed", String(!hintsOn()));
+		savePrefs();
+		if (hintsOn()) review(false);
+	});
 	speak.addEventListener("click", () => {
 		paintSpeak(!speakOn());
 		savePrefs();

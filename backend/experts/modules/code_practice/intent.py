@@ -35,6 +35,7 @@ class CodeReview(BaseModel):
     verdict: str = "empty"
     commentary: str = ""
     direction: str = ""
+    reply: str = ""
     line_notes: list[LineNote] = Field(default_factory=list)
     #: Set when the CALL failed, so a crash isn't shown as a review.
     error: str = ""
@@ -76,5 +77,6 @@ def review_code(**inputs) -> CodeReview:
         verdict=verdict if verdict in VERDICTS else "partial",
         commentary=_clean(out.commentary),
         direction=_clean(out.direction),
+        reply=_clean(out.reply),
         line_notes=[n for n in (out.line_notes or []) if isinstance(n, LineNote)][:MAX_NOTES],
     )

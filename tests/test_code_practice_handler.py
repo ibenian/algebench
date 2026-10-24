@@ -39,13 +39,33 @@ def test_a_review_is_returned_without_its_error_field(monkeypatch):
     def stub(**inputs):
         seen.update(inputs)
         return CodeReview(score=40, verdict="partial", commentary="Good start.", direction="Add the loop.",
-                          line_notes=[LineNote(line=2, note="fine")])
+                          reply="", line_notes=[LineNote(line=2, note="fine")])
 
     monkeypatch.setattr(h, "review_code", stub)
-    out = h.code_practice(_req())
+    out = h.code_practice(_req(hints=True))
     assert out == {"result": {"score": 40, "verdict": "partial", "commentary": "Good start.",
-                              "direction": "Add the loop.", "line_notes": [{"line": 2, "note": "fine"}]}}
+                              "direction": "Add the loop.", "reply": "", "line_notes": [{"line": 2, "note": "fine"}]}}
     assert set(seen) == set(INPUT_FIELDS)
+
+
+def test_without_hints_there_is_no_direction_and_nothing_typed_is_refused(monkeypatch):
+    monkeypatch.setattr(h, "review_code", lambda **kw: CodeReview(score=10, verdict="partial", commentary="ok",
+                                                                    direction="Write the loop."))
+    assert h.code_practice(_req())["result"]["direction"] == ""
+    assert h.code_practice(_req(hints=True))["result"]["direction"] == "Write the loop."
+
+
+def test_with_hints_an_empty_editor_gets_a_start(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(h, "review_code", lambda **kw: seen.update(kw) or CodeReview(verdict="empty", commentary="Begin by…"))
+    out = h.code_practice(_req(typed="", hints=True))
+    assert out["result"]["commentary"] == "Begin by…" and seen["hints"] == "on"
+
+
+def test_the_learners_comments_are_notes_to_the_coach():
+    typed = "def f(n):  # takes the count\n    # why start at zero?\n    s = '#x'\n    #"
+    assert h.learner_notes(typed) == "line 1: takes the count\nline 2: why start at zero?"
+    assert h.render_inputs(_req(typed=typed))["notes"].startswith("line 1:")
 
 
 def test_a_failed_call_is_a_reason(monkeypatch):

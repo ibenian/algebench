@@ -5930,8 +5930,12 @@ body:has(.push-array) #legend { display: none; }
 
 /* ---- Type along (code-practice.ts): typing the running code under the Doc, scored as you go ---- */
 .code-line.code-veiled code { filter: blur(5px); user-select: none; }
-.code-practice { flex: 0 0 auto; display: flex; flex-direction: column; max-height: 58%; border-top: 1px solid var(--border-color); background: var(--panel-bg); }
+.code-practice { position: relative; flex: 0 0 auto; display: flex; flex-direction: column; max-height: 58%; border-top: 1px solid var(--border-color); background: var(--panel-bg); }
 .code-practice.open { flex: 0 1 60%; min-height: 240px; }
+.cp-resize { position: absolute; left: 0; right: 0; top: -3px; height: 6px; z-index: 5; cursor: row-resize; background: transparent; transition: background .15s; }
+.cp-resize:hover, .cp-resize.dragging { background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
+.code-practice:not(.open) .cp-resize { display: none; }
+.code-practice:not(.open) { flex: 0 0 auto !important; }
 .cp-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; flex-wrap: wrap; }
 .cp-toggle { border: 0; background: none; color: var(--text-color); font-weight: 600; cursor: pointer; padding: 2px 0; font-size: .9rem; }
 .cp-chevron { display: inline-block; transition: transform .15s; }
@@ -5993,4 +5997,7 @@ body:has(.push-array) #legend { display: none; }
 .cp-verdict-off_track { background: color-mix(in srgb, #e0645c 30%, transparent); }
 .cp-report-about { color: var(--muted-color); font-size: .78rem; }
 .cp-report p { margin: 4px 0; }
+.cp-report-reply { padding: 4px 8px; margin: 4px 0 6px; border-left: 3px solid #6ea8e0; background: color-mix(in srgb, #6ea8e0 12%, transparent); border-radius: 0 6px 6px 0; }
+.cp-report-reply > :first-child::before { content: '💬 '; }
+.cp-report-reply p { margin: 2px 0; }
 .cp-report-notes { margin: 4px 0 0; padding-left: 18px; color: #d36ba6; }

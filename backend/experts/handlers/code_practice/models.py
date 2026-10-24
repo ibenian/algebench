@@ -45,3 +45,5 @@ class CodePracticeRequest(BaseModel):
     typed: str = Field(default="", max_length=MAX_CODE_CHARS)
     match: list[LineMatch] = Field(default_factory=list, max_length=400)
     attempts: int = Field(default=0, ge=0, le=1000)
+    #: Guide the next step (and how to begin, before anything is typed); off, only review what is typed.
+    hints: bool = False
