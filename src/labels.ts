@@ -472,14 +472,17 @@ export function visibleAnnotationTexts(limit = 60): string[] {
 }
 
 /**
- * What the visible labels and markers say about a code symbol (by the key code-symbols.ts gives it): each one's
+ * What the labels and markers in the scene (on screen or not) say about a code symbol (by the key code-symbols.ts gives it): each one's
  * formula if it has a tooltipExpr, else its text as shown. For the Code panel's hover tooltip.
  */
 export function labelsForSymbol(key: string): {text: string; tooltip?: string}[] {
     const out: {text: string; tooltip?: string}[] = [];
     for (const l of labelsState.labels) {
         const a = l.annotation;
-        if (!a?.text || !l.visible || l.forceHidden || l.el.style.display === 'none') continue;
+        // Shown in the scene, not necessarily on screen: `visible` also turns off for a label panned or zoomed out of
+        // the viewport, and what a variable holds does not depend on where the camera is. A hidden element's labels
+        // are display:none, a visibleExpr that is false sets forceHidden.
+        if (!a?.text || l.forceHidden || l.el.style.display === 'none') continue;
         if (!rowSymbolKeys(a.text).includes(key)) continue;
         // Rows saying the same thing appear once; the one carrying a tooltip (richer LaTeX) wins.
         const same = out.find(o => o.text === a.text);

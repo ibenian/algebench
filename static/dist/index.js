@@ -3012,14 +3012,14 @@ function visibleAnnotationTexts(limit = 60) {
 	return [...new Set(texts)].slice(0, limit);
 }
 /**
-* What the visible labels and markers say about a code symbol (by the key code-symbols.ts gives it): each one's
+* What the labels and markers in the scene (on screen or not) say about a code symbol (by the key code-symbols.ts gives it): each one's
 * formula if it has a tooltipExpr, else its text as shown. For the Code panel's hover tooltip.
 */
 function labelsForSymbol(key) {
 	const out = [];
 	for (const l of labelsState.labels) {
 		const a = l.annotation;
-		if (!a?.text || !l.visible || l.forceHidden || l.el.style.display === "none") continue;
+		if (!a?.text || l.forceHidden || l.el.style.display === "none") continue;
 		if (!rowSymbolKeys(a.text).includes(key)) continue;
 		const same = out.find((o) => o.text === a.text);
 		if (!same) out.push({
