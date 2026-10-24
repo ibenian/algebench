@@ -35,7 +35,7 @@ const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
  * What the type-along practice (code-practice.ts) reads of the panel: the open file, the block running now (the
  * whole file when nothing runs, `running` false), the lines a reader can see on screen, and a way to hide the code while typing.
  */
-export interface CodeView { file: CodeFile; from: number; to: number; running: boolean; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
+export interface CodeView { file: CodeFile; from: number; to: number; running: boolean; tone(sectionId: string): string | undefined; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
 let view: CodeView | null = null;
 export const codeView = (): CodeView | null => view;
 
@@ -49,6 +49,8 @@ export function setupCodePanel(): void {
     let lastExecution='',lastLines=new Set<number>(),lastPlace='',lastScopeKey='',lastViewKey='';
     // Without sections to hide behind their titles, hiding the code for practice blurs the running block.
     let veiled=false,modeBeforeHiding:StructureMode='plain';
+    // Each section's tone as the panel paints it (in turn over the sections it shows), for Type along to match.
+    let tones=new Map<string,string>();
     const body=document.createElement('div');body.className='code-source';body.setAttribute('aria-label','Source code');
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
@@ -264,7 +266,7 @@ export function setupCodePanel(): void {
         // A lesson without code files has no view: say so, or Type along keeps the last lesson's.
         if(!selected){view=null;if(lastViewKey){lastViewKey='';window.dispatchEvent(new CustomEvent('algebench:codeview'));}return;}
         const file=selected,scope=running??{from:1,to:file.source.split('\n').length};
-        view={file,...scope,running:!!running,shown:shownLines,hidden:()=>veiled,setHidden};
+        view={file,...scope,running:!!running,tone:id=>tones.get(id),shown:shownLines,hidden:()=>veiled,setHidden};
         const key=`${file.id}:${scope.from}-${scope.to}:${!!running}`;
         if(key!==lastViewKey){lastViewKey=key;window.dispatchEvent(new CustomEvent('algebench:codeview'));}
     }
@@ -440,9 +442,10 @@ export function setupCodePanel(): void {
         for(const mode of STRUCTURE_MODES)body.classList.toggle(`code-structure-${mode}`,on&&settings.structureMode===mode);
         modes.hidden=!all.length;
         modes.querySelectorAll<HTMLButtonElement>('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===settings.structureMode)));
+        tones=new Map(sections.map((section,k)=>[section.id,SECTION_TONES[k%SECTION_TONES.length]!]));
         if(!on)return;
         sections.forEach((section,k)=>{
-            const tone=SECTION_TONES[k%SECTION_TONES.length]!;
+            const tone=tones.get(section.id)!;
             for(let line=section.from;line<=section.to;line++){
                 const row=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"]`);
                 if(!row)continue;

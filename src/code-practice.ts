@@ -318,6 +318,7 @@ export function setupCodePractice(): void {
             const chip = el('span', 'cp-chip');
             chip.classList.toggle('focus', s.id === focus?.id);chip.classList.toggle('done', s.score === 100);
             chip.style.setProperty('--fill', `${s.score}%`);
+            const tone = current?.tone(s.id);if (tone) chip.style.setProperty('--tone', tone);
             chip.textContent = `${s.score === 100 ? '★ ' : ''}${s.title} · ${s.score}%`;
             chip.title = `${s.title}: lines ${s.from}–${s.to}`;
             return chip;
@@ -337,11 +338,33 @@ export function setupCodePractice(): void {
     }
 
     /** Typed text coloured like the Code panel, by the same server lexer; plain until its colours arrive. */
+    /**
+     * Each typed line's section tone: a line paired with a reference line takes its section's; a line between two
+     * paired lines of the same section (a blank, a line not matched yet) is part of it too.
+     */
+    function sectionBands(count: number): (string | undefined)[] {
+        const own = Array.from({length: count}, (_, j) => {
+            const ref = score?.typed[j]?.reference;
+            return ref == null ? undefined : sections.find(s => ref >= s.from && ref <= s.to)?.id;
+        });
+        const out: (string | undefined)[] = [];
+        let before: string | undefined;
+        for (let j = 0; j < count; j++) {
+            if (own[j]) { before = own[j];out.push(current?.tone(own[j]!));continue; }
+            const after = own.slice(j + 1).find(Boolean);
+            out.push(before && before === after ? current?.tone(before) : undefined);
+        }
+        return out;
+    }
     function paintLines(lines: string[]) {
         const fresh = tokenText === input.value;
+        const bands = sectionBands(lines.length);
         paint.replaceChildren(...lines.map((text, j) => {
             const row = el('div', 'cp-line');
             const t = score?.typed[j];
+            // The section the line belongs to, in the Code panel's colour for it.
+            const band = bands[j];
+            if (band) { row.classList.add('cp-in-section');row.style.setProperty('--section-tone', band); }
             if (t && !t.neutral) row.classList.add(t.exact ? 'exact' : t.reference != null ? 'fuzzy' : text.trim() ? 'miss' : '');
             row.textContent = text || ' ';
             if (fresh && text) paintTokens(row, lineTokens(tokens, j + 1));

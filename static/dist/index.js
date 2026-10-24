@@ -25281,6 +25281,7 @@ function setupCodePanel() {
 	execution.setAttribute("role", "status");
 	let lastExecution = "", lastLines = /* @__PURE__ */ new Set(), lastPlace = "", lastScopeKey = "", lastViewKey = "";
 	let veiled = false, modeBeforeHiding = "plain";
+	let tones = /* @__PURE__ */ new Map();
 	const body = document.createElement("div");
 	body.className = "code-source";
 	body.setAttribute("aria-label", "Source code");
@@ -25602,6 +25603,7 @@ function setupCodePanel() {
 			file,
 			...scope,
 			running: !!running,
+			tone: (id) => tones.get(id),
 			shown: shownLines,
 			hidden: () => veiled,
 			setHidden
@@ -25842,9 +25844,10 @@ function setupCodePanel() {
 		for (const mode of STRUCTURE_MODES) body.classList.toggle(`code-structure-${mode}`, on && settings.structureMode === mode);
 		modes.hidden = !all.length;
 		modes.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === settings.structureMode)));
+		tones = new Map(sections.map((section, k) => [section.id, SECTION_TONES[k % SECTION_TONES.length]]));
 		if (!on) return;
 		sections.forEach((section, k) => {
-			const tone = SECTION_TONES[k % SECTION_TONES.length];
+			const tone = tones.get(section.id);
 			for (let line = section.from; line <= section.to; line++) {
 				const row = body.querySelector(`.code-line[data-line="${line}"]`);
 				if (!row) continue;
@@ -26932,6 +26935,8 @@ function setupCodePractice() {
 			chip.classList.toggle("focus", s.id === focus?.id);
 			chip.classList.toggle("done", s.score === 100);
 			chip.style.setProperty("--fill", `${s.score}%`);
+			const tone = current?.tone(s.id);
+			if (tone) chip.style.setProperty("--tone", tone);
 			chip.textContent = `${s.score === 100 ? "★ " : ""}${s.title} · ${s.score}%`;
 			chip.title = `${s.title}: lines ${s.from}–${s.to}`;
 			return chip;
@@ -26950,11 +26955,39 @@ function setupCodePractice() {
 		if (celebrate && before) cheerFor(before, score);
 	}
 	/** Typed text coloured like the Code panel, by the same server lexer; plain until its colours arrive. */
+	/**
+	* Each typed line's section tone: a line paired with a reference line takes its section's; a line between two
+	* paired lines of the same section (a blank, a line not matched yet) is part of it too.
+	*/
+	function sectionBands(count) {
+		const own = Array.from({ length: count }, (_, j) => {
+			const ref = score?.typed[j]?.reference;
+			return ref == null ? void 0 : sections.find((s) => ref >= s.from && ref <= s.to)?.id;
+		});
+		const out = [];
+		let before;
+		for (let j = 0; j < count; j++) {
+			if (own[j]) {
+				before = own[j];
+				out.push(current?.tone(own[j]));
+				continue;
+			}
+			const after = own.slice(j + 1).find(Boolean);
+			out.push(before && before === after ? current?.tone(before) : void 0);
+		}
+		return out;
+	}
 	function paintLines(lines) {
 		const fresh = tokenText === input.value;
+		const bands = sectionBands(lines.length);
 		paint.replaceChildren(...lines.map((text, j) => {
 			const row = el("div", "cp-line");
 			const t = score?.typed[j];
+			const band = bands[j];
+			if (band) {
+				row.classList.add("cp-in-section");
+				row.style.setProperty("--section-tone", band);
+			}
 			if (t && !t.neutral) row.classList.add(t.exact ? "exact" : t.reference != null ? "fuzzy" : text.trim() ? "miss" : "");
 			row.textContent = text || " ";
 			if (fresh && text) paintTokens(row, lineTokens(tokens, j + 1));

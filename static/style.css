@@ -5956,10 +5956,13 @@ body:has(.push-array) #legend { display: none; }
 .cp-body { display: flex; flex-direction: column; min-height: 0; flex: 1; padding: 10px 14px 10px; gap: 8px; overflow-y: auto; position: relative; }
 .cp-sections { display: flex; flex-wrap: wrap; gap: 4px; }
 .cp-sections[hidden] { display: none; }
-.cp-chip { --fill: 0%; font-size: .72rem; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border-color); color: var(--text-color);
-    background: linear-gradient(90deg, color-mix(in srgb, var(--accent-color) 26%, transparent) var(--fill), transparent 0); }
-.cp-chip.focus { border-color: var(--accent-color); box-shadow: 0 0 0 1px var(--accent-color) inset; }
-.cp-chip.done { background: color-mix(in srgb, #e3b04f 30%, transparent); border-color: #e3b04f; }
+.cp-chip { --fill: 0%; --tone: var(--accent-color); font-size: .72rem; padding: 2px 8px; border-radius: 10px; color: var(--text-color);
+    border: 1px solid color-mix(in srgb, var(--tone) 45%, var(--border-color)); border-left: 3px solid var(--tone);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 30%, transparent) var(--fill), transparent 0); }
+.cp-chip.focus { border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone) inset; }
+.cp-chip.done { background: color-mix(in srgb, var(--tone) 34%, transparent); border-color: var(--tone); }
+/* Typed lines carry their section's bar, as in the Code panel. */
+.cp-line.cp-in-section { box-shadow: inset 3px 0 0 var(--section-tone); }
 .cp-editor { flex: 1 1 80px; min-height: 80px; overflow: auto; display: flex; align-items: flex-start; border: 1px solid var(--border-color); border-radius: 6px;
     background: color-mix(in srgb, var(--page-bg) 60%, var(--panel-bg)); font: 12px/1.9 ui-monospace, monospace; }
 .cp-editor:focus-within { border-color: var(--accent-color); }
