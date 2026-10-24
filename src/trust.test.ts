@@ -10,7 +10,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-// `trust.ts` imports `/expr.js` for `_JS_ONLY_RE`, and `expr.ts` calls
+// `trust.ts` imports `/expr.js` for `isJsOnly`, and `expr.ts` calls
 // `math.create(math.all)` at module scope — `math` being the CDN <script> global
 // from index.html. So the module graph needs that global present BEFORE it
 // loads, which is why the import below is dynamic. Nothing here exercises
@@ -43,6 +43,20 @@ test('a math.js expression in the same place is not flagged', () => {
     // would train the reader to dismiss the dialog.
     assert.equal(scanSpecForUnsafeJs(animatedLine(
         [['sin(t)', '0', '0'], ['1', '1', '1']])), false);
+});
+
+test('JavaScript words inside a string literal are label text, not code', () => {
+    // A label that names code (indeg[v], return, new) is data math.js never runs.
+    const label = (textExpr: string) => scanSpecForUnsafeJs({ elements: [{ type: 'expression_label', id: 'x', textExpr }] });
+    assert.equal(label("concat('indeg[', v, '] = ', n)"), false);
+    assert.equal(label(`concat("return a new list: ", n)`), false);
+    assert.equal(label("concat('it\\'s new', n)"), false, 'an escaped quote stays inside the string');
+    // The same words as code still need trust; so does bracket access with a string key.
+    assert.equal(label("concat('x', new Date())"), true);
+    assert.equal(label("x['constructor']"), true);
+    assert.equal(label("x[\"constructor\"]"), true);
+    assert.equal(label("'a' + `${b}`"), true, 'a backtick leaves the source unblanked');
+    assert.equal(label("'unclosed new"), true, 'an unclosed quote leaves the source unblanked');
 });
 
 test('depth does not hide it — the walker carries the key down', () => {

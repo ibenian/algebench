@@ -2,6 +2,7 @@
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 import { addLabel3D } from '/labels.js';
+import { setSymbolHover, hoveredSymbols } from '/code-symbols.js';
 import { renderArray } from '/objects/array.js';
 import { stackBounds } from '/objects/stack-layout.js';
 import type { Element } from '/types/lesson.js';
@@ -10,7 +11,12 @@ import type { Mesh } from 'three';
 export function renderStack(el:Element,view:MathBoxNode) {
     if(el.shape && el.shape.length!==1)throw new Error('A stack needs a one-dimensional shape.');
     const lengthExpr=el.lengthExpr??String(el.shape?.[0]??el.values?.length??0);
-    const cells:Element={...el,arrayLayout:'vertical',lengthExpr,showIndices:el.showIndices??false,label:undefined,
+    // arrayLayout 'horizontal': the stack lies on its side, closed on the left, pushing to the right.
+    const horizontal=el.arrayLayout==='horizontal';
+    // On its side the stack is a row like any array, so the array draws its title (labelSide 'left'): the same
+    // text, right-aligned at the same x as the titles of the rows around it.
+    const cells:Element={...el,arrayLayout:horizontal?'horizontal':'vertical',lengthExpr,showIndices:el.showIndices??false,
+        label:horizontal?el.label??'stack':undefined,labelSide:horizontal?'left':el.labelSide,
         markers:[...(el.markers??[]),...(el.showTop===false?[]:[{
             type:'step_marker' as const,indexName:'top slot',indexExpr:`(${lengthExpr}) - 1`,color:'#f1c65b',
         }])]};
@@ -26,8 +32,23 @@ export function renderStack(el:Element,view:MathBoxNode) {
             return mesh;
         };
         const back=makeMesh(.12),base=makeMesh(.4),outline=makeMesh(.7);
-        const title=addLabel3D(el.label??'stack',[origin[0]!,origin[1]!-1.5,origin[2]!],'#b5c1cf');
-        title.ownerMesh=owner;title.snapToProjection=true;
+        // Vertical: the title under the base (a horizontal stack's title is the array's, above).
+        const title=horizontal?null:addLabel3D(el.label??'stack',[origin[0]!,origin[1]!-1.5,origin[2]!],'#b5c1cf');
+        if(title){title.ownerMesh=owner;title.snapToProjection=true;}
+        // The title names the stack's variable: pointing at it lights that variable in the Code panel.
+        if(title&&el.id){
+            const symbol=el.id;
+            title.el.style.pointerEvents='auto';
+            title.el.addEventListener('pointerenter',()=>setSymbolHover([symbol]));
+            title.el.addEventListener('pointerleave',()=>{if(hoveredSymbols().length===1&&hoveredSymbols()[0]===symbol)setSymbolHover([]);});
+            // Pointing at the variable (in the code, or at the stack) lights the title.
+            // The listener lives as long as the title: it removes itself once the stack's labels are gone.
+            const light=()=>{
+                if(!title.el.isConnected){window.removeEventListener('algebench:symbolhover',light);return;}
+                title.el.classList.toggle('array-title-symbol-hover',hoveredSymbols().includes(symbol));
+            };
+            window.addEventListener('algebench:symbolhover',light);
+        }
         const empty=addLabel3D(el.emptyText??'empty',origin,'#8ca9a0',{cssClass:'label-3d array-cell-label'});
         empty.ownerMesh=owner;empty.snapToProjection=true;empty.el.setAttribute('aria-label','Empty stack');
         let previous=-1;
@@ -39,12 +60,17 @@ export function renderStack(el:Element,view:MathBoxNode) {
         };
         const resize=(length:number)=>{
             if(length===previous)return;previous=length;
-            const b=stackBounds(length,origin,pitch),t=.035,z=b.back;
+            const b=stackBounds(length,origin,pitch,horizontal),t=.035,z=b.back;
             replace(back,[[[b.left,b.bottom,z],[b.right,b.bottom,z],[b.right,b.top,z],[b.left,b.top,z]]]);
-            replace(base,[[[b.left,b.bottom,z],[b.right,b.bottom,z],[b.right,b.bottom,b.front],[b.left,b.bottom,b.front]]]);
-            // Thin planar strips make a U; the top remains open for push/pop.
+            // The base is the closed end: the floor of an upright stack, the left wall of one on its side.
+            replace(base,horizontal
+                ?[[[b.left,b.bottom,z],[b.left,b.top,z],[b.left,b.top,b.front],[b.left,b.bottom,b.front]]]
+                :[[[b.left,b.bottom,z],[b.right,b.bottom,z],[b.right,b.bottom,b.front],[b.left,b.bottom,b.front]]]);
+            // Thin planar strips make a U; the open side (top, or right on its side) is where items push and pop.
             const rect=(left:number,bottom:number,right:number,top:number)=>[[left,bottom,z+.005],[right,bottom,z+.005],[right,top,z+.005],[left,top,z+.005]];
-            replace(outline,[rect(b.left,b.bottom,b.left+t,b.top),rect(b.right-t,b.bottom,b.right,b.top),rect(b.left,b.bottom,b.right,b.bottom+t)]);
+            replace(outline,horizontal
+                ?[rect(b.left,b.bottom,b.left+t,b.top),rect(b.left,b.bottom,b.right,b.bottom+t),rect(b.left,b.top-t,b.right,b.top)]
+                :[rect(b.left,b.bottom,b.left+t,b.top),rect(b.right-t,b.bottom,b.right,b.top),rect(b.left,b.bottom,b.right,b.bottom+t)]);
             empty.forceHidden=length!==0;
             // Scene fades also write opacity; remove the empty caption from
             // layout until the next empty state so a fade cannot reveal it.

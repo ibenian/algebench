@@ -76,6 +76,9 @@ interface InfoItem {
     position?: string;
     stepDefined?: boolean;
     keep?: boolean;
+    /** visibleExpr, compiled: while false the overlay is left out of the layout entirely. */
+    visibleFn?: ReturnType<typeof compileExpr> | null;
+    shown?: boolean;
 }
 
 /** An info-overlay definition, as a step or the tutor supplies it. `pos` is a
@@ -87,6 +90,7 @@ interface InfoOverlayDef {
     pos?: string;
     keep?: boolean;
     title?: string | null;
+    visibleExpr?: string;
 }
 
 /** The scene shape this module reads — titles, markdown, and the element lists
@@ -351,6 +355,8 @@ export function buildLegend(elements: Element[] | null | undefined): void {
     // Non-null: every caller passes an array; a null one threw in the JS.
     for (const el of elements!) {
         if (el.type === 'axis' || el.type === 'grid') continue;
+        // An array titled beside its row already names itself in place; a legend entry would repeat it.
+        if (el.labelSide === 'left') continue;
         // legendGroup lets an element join a legend group without rendering its own label text.
         // The group key matches the label+color of the primary element.
         const groupLabel = el.legendGroup || el.label;
@@ -664,7 +670,21 @@ export function resolveInfoContent(template: string | null | undefined): string 
     return _replaceDoubleBraceExprs(template!, (expr) => _evalInfoExpr(expr));
 }
 
+/** Re-evaluate overlays' visibleExpr; true when one changed, so the layout must be redone. */
+function _refreshInfoVisibility(): boolean {
+    let changed = false;
+    for (const item of Object.values(infoState.items)) {
+        if (!item.visibleFn) continue;
+        let shown = false;
+        try { shown = !!evalExpr(item.visibleFn, 0); } catch { /* an unavailable binding hides the overlay */ }
+        if (shown !== item.shown) { item.shown = shown; changed = true; }
+    }
+    return changed;
+}
+
 export function updateInfoOverlays(): void {
+    // A playback step that shows or hides an overlay (visibleExpr) re-lays them out; that route updates them.
+    if (_refreshInfoVisibility()) { _scheduleRoute(); return; }
     for (const item of Object.values(infoState.items)) {
         if (!item.contentEl) continue;
         const resolved = resolveInfoContent(item.content);
@@ -995,7 +1015,11 @@ function _scheduleRoute(): void {
 }
 
 function _route(): void {
-    const items = Object.values(infoState.items);
+    _refreshInfoVisibility();
+    // Hidden overlays (visibleExpr false) take no place: unmounted, and not counted toward the drawer mode.
+    const hidden = Object.values(infoState.items).filter(it => it.shown === false);
+    for (const item of hidden) { _unmountFree(item); _unmountSection(item); item.placement = 'free'; }
+    const items = Object.values(infoState.items).filter(it => it.shown !== false);
     const count = items.length;
     const mode = infoState.forcedMode || (count > 3 ? 'drawer' : 'free');
     infoState.mode = mode;
@@ -1035,7 +1059,7 @@ export function applyStepInfoOverlays(infoDefs: InfoOverlayDef[] | null | undefi
     removeStepInfoOverlays();
     if (infoDefs && infoDefs.length) {
         for (const def of infoDefs) {
-            addInfoOverlay(def.id, def.content, def.position || def.pos || 'top-left', true, def.keep || false, def.title);
+            addInfoOverlay(def.id, def.content, def.position || def.pos || 'top-left', true, def.keep || false, def.title, def.visibleExpr);
         }
     } else {
         _scheduleRoute();
@@ -1043,7 +1067,7 @@ export function applyStepInfoOverlays(infoDefs: InfoOverlayDef[] | null | undefi
 }
 
 export function addInfoOverlay(id: string, content: string, position?: string | null,
-                               stepDefined = false, keep = false, title: string | null = null): void {
+                               stepDefined = false, keep = false, title: string | null = null, visibleExpr?: string): void {
     if (!_infoContainer()) return;
     if (!id) {
         const preview = typeof content === 'string'
@@ -1068,6 +1092,8 @@ export function addInfoOverlay(id: string, content: string, position?: string | 
     item.position = position || 'top-left';
     item.stepDefined = stepDefined;
     item.keep = keep;
+    item.visibleFn = null; item.shown = undefined;
+    if (visibleExpr) { try { item.visibleFn = compileExpr(visibleExpr); } catch (e) { console.warn('info overlay visibleExpr:', id, e); } }
     _scheduleRoute();
 }
 

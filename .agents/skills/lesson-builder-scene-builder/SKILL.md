@@ -228,7 +228,7 @@ Example — a vector that already has a meaningful label (no separate text eleme
 
 ## Data Tables
 
-Define lookup tables in `data` at the lesson root (shared) or per-scene (overrides). Access values in expressions with `dataTable('tableName', rowIndex, 'column')`.
+Define lookup tables in `data` at the lesson root (shared) or per-scene (overrides). Access values in expressions with `dataTable('tableName', rowIndex, 'column')`, or a whole column as a list with `dataTable('tableName', 'column')` (e.g. a dict's keys for `keyIndex(dataTable('stock', 'key'), value)`).
 
 ```json
 "data": {

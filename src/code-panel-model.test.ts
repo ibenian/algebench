@@ -114,3 +114,13 @@ test('line actions never accept prototype keys, even if the slider lookup would'
     assert.equal(own('__proto__'), false);
     assert.equal(own('crashPoint'), true);
 });
+
+test('a scene codeRef resolves the executing file and line per step, fileExpr included',()=>{
+ const files:CodeFile[]=[{id:'main',path:'main.py',source:'a\nb\nc'},{id:'helper',path:'helper.py',source:'x\ny'}];
+ const state:Record<string,unknown>={file:'helper',line:2};
+ const evaluate=(expr:string)=>state[expr];
+ assert.deepEqual(resolveCodeRef(files,{file:'main',lineExpr:'line'},evaluate),{file:files[0],line:2});
+ assert.deepEqual(resolveCodeRef(files,{fileExpr:'file',lineExpr:'line'},evaluate),{file:files[1],line:2});
+ state.file='unknown';
+ assert.equal(resolveCodeRef(files,{fileExpr:'file',lineExpr:'line'},evaluate),null,'an unknown file marks nothing');
+});

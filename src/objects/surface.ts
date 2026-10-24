@@ -1,6 +1,6 @@
 import { state } from '/state.js';
 import { parseColor } from '/labels.js';
-import { _JS_ONLY_RE, _mathjs } from '/expr.js';
+import { isJsOnly, _mathjs } from '/expr.js';
 import type { Element } from '/types/lesson.js';
 
 /** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
@@ -32,9 +32,9 @@ export function renderSurface(el: Element, view: MathBoxNode) {
             // the value is only ever handed straight to MathBox as data.
             let z: unknown;
             try {
-                if (_JS_ONLY_RE.test(expr) && surfaceState._sceneJsTrustState === 'trusted') {
+                if (isJsOnly(expr) && surfaceState._sceneJsTrustState === 'trusted') {
                     z = new Function('x', 'y', 'return ' + expr)(x, y);
-                } else if (_JS_ONLY_RE.test(expr)) {
+                } else if (isJsOnly(expr)) {
                     z = 0;
                 } else {
                     z = _mathjs.evaluate(expr, { x, y });

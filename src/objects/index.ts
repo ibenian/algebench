@@ -1,6 +1,9 @@
 import { renderSystemDAG } from "/objects/system-dag.js";
 import { renderArray } from '/objects/array.js';
 import { renderStack } from '/objects/stack.js';
+import { renderGraph } from '/objects/graph.js';
+import { renderHeap } from '/objects/heap.js';
+import { renderDict } from '/objects/dict.js';
 import { renderStepMarker } from '/objects/step-marker.js';
 import { renderAlgorithmStructure } from '/objects/algorithm-structure.js';
 import { renderSkybox } from '/objects/skybox.js';
@@ -68,6 +71,9 @@ export function renderElement(el: Element, view: MathBoxNode) {
         case 'step_marker': return renderStepMarker(el, view);
         case 'array': return renderArray(el, view);
         case 'stack': return renderStack(el, view);
+        case 'graph': return renderGraph(el, view);
+        case 'heap': return renderHeap(el, view);
+        case 'dict': return renderDict(el, view);
         case 'tensor': return renderTensor(el, view);
         case 'chart': return renderChart(el, view);
         default:

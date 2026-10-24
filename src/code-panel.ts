@@ -2,26 +2,63 @@ import { setSliderValue } from '/sliders.js';
 import { state } from '/state.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
-import { makeAiAskButton } from '/labels.js';
+import { makeAiAskButton, sendAiPrompt } from '/labels.js';
 import { navigateTo } from '/scene-loader.js';
-import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor } from '/code-panel-model.js';
+import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
+import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys } from '/code-symbols.js';
+import { labelsForSymbol, labelsForCodeLine } from '/labels.js';
+import { showCodeSymbolTooltip } from '/label-tooltip.js';
+import type { CodeReference, CodeFunction, CodeCall } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
-import { highlightCode, lineTokens, paintTokens } from '/code-highlight.js';
+import { highlightCode, lineTokens, paintTokens, wrapColumns } from '/code-highlight.js';
+import { CODE_PROMPTS, codePromptMessage } from '/code-prompts.js';
+import type { CodePrompt } from '/code-prompts.js';
+import { codeSections, sectionAt, sectionsOutline, sectionPrompt, STRUCTURE_MODES } from '/code-sections.js';
+import type { CodeSection, StructureMode } from '/code-sections.js';
+import { menuPlacement } from '/menu-placement.js';
+import { lineJump, jumpArrowPath, waitingCalls, callArrowPath, JUMP_HOLD_MS, lineTransitions, movesAt } from '/code-jump.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
+
+/** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
+const GUTTER_X=37;
+/** Section tones, in turn, and the structure modes' icons (code-sections.ts). */
+const SECTION_TONES=['#e3b04f','#4fb39a','#6ea8e0','#d36ba6'];
+const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
+    plain:{title:'Code only',icon:'<path d="M3 4h9M5 7.5h8M5 11h6M3 14.5h7"/>'},
+    outline:{title:'Sections only',icon:'<path d="M3 4h2M7 4h8M3 9h2M7 9h8M3 14h2M7 14h8"/>'},
+    blocks:{title:'Sections over hidden code',icon:'<path d="M3 3.5h12"/><rect x="5" y="6" width="9" height="2" rx="1"/><rect x="5" y="10" width="6" height="2" rx="1"/><rect x="5" y="14" width="8" height="2" rx="1"/>'},
+    code:{title:'Sections over code',icon:'<path d="M3 3.5h12M6 8l-2 2.5L6 13M12 8l2 2.5-2 2.5M9.8 7.5 8.2 13.5"/>'},
+};
+
+/**
+ * What the type-along practice (code-practice.ts) reads of the panel: the open file, the block running now (the
+ * whole file when nothing runs, `running` false), the lines a reader can see on screen, and a way to hide the code while typing.
+ */
+export interface CodeView { file: CodeFile; from: number; to: number; running: boolean; tone(sectionId: string): string | undefined; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
+let view: CodeView | null = null;
+export const codeView = (): CodeView | null => view;
 
 export function setupCodePanel(): void {
     const host=document.getElementById('dock-tab-code');
     if(!host)return;
     const tree=document.createElement('div');tree.className='code-file-tree';tree.setAttribute('aria-label','Code files');
     const title=document.createElement('div');title.className='code-file-title';
+    const titleText=document.createElement('span');titleText.className='code-file-path';
     const execution=document.createElement('div');execution.className='code-execution-status';execution.setAttribute('role','status');
-    let lastExecution='';
+    let lastExecution='',lastLines=new Set<number>(),lastPlace='',lastScopeKey='',lastViewKey='';
+    // Without sections to hide behind their titles, hiding the code for practice blurs the running block.
+    let veiled=false,modeBeforeHiding:StructureMode='plain';
+    // Each section's tone as the panel paints it (in turn over the sections it shows), for Type along to match.
+    let tones=new Map<string,string>();
     const body=document.createElement('div');body.className='code-source';body.setAttribute('aria-label','Source code');
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
     let lesson: AlgeBenchLessonSpec | null | undefined, files: CodeFile[]=[], selected: CodeFile | undefined;
-    let first=0,last=0,excerpt='',active: CompiledExpr|null=null;
+    let first=0,last=0,excerpt='',active: CompiledExpr|null=null,followed: CodeFile | undefined;
+    let references: CodeReference[]=[];
+    const settings=loadSettings();
+    const compiled=new Map<string,CompiledExpr|null>();
     const targets=document.createElement('div');targets.className='code-step-targets';targets.hidden=true;
     const ask=makeAiAskButton('ai-ask-btn','Ask AI about selected code',()=>{
         if(!selected||!first)return null;
@@ -30,7 +67,54 @@ export function setupCodePanel(): void {
     });
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
     const what=document.createElement('span');what.className='code-line-actions';
-    actions.append(selectionLabel,ask,jump,what);host.append(tree,title,execution,body,actions,targets);
+    const modes=structureModes();
+    title.append(titleText,modes,viewSettingsMenu());
+    actions.append(selectionLabel,ask,jump,what,codePromptsMenu());host.append(tree,title,execution,body,actions,targets);
+    /**
+     * "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
+     * silently: the request carries the whole file and state, so only the tutor's reply shows in the chat.
+     */
+    function codePromptsMenu() {
+        const wrap=document.createElement('span');wrap.className='preset-more code-prompts';
+        const toggle=document.createElement('button');toggle.type='button';toggle.className='code-prompts-btn';toggle.textContent='⋯';
+        toggle.title='Ask AI to analyze this code';toggle.setAttribute('aria-label','More AI prompts about this code');
+        toggle.setAttribute('aria-haspopup','menu');toggle.setAttribute('aria-expanded','false');
+        const menu=document.createElement('div');menu.className='preset-more-menu';menu.setAttribute('role','menu');menu.hidden=true;
+        const close=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape,true);};
+        const outside=(e:Event)=>{if(!wrap.contains(e.target as Node))close();};
+        const escape=(e:KeyboardEvent)=>{if(e.key==='Escape'){close();toggle.focus();}};
+        for(const prompt of CODE_PROMPTS){
+            const item=document.createElement('button');item.type='button';item.className='preset-more-item';item.setAttribute('role','menuitem');
+            item.textContent=prompt.label;item.title=prompt.prompt+'\n\nClick to send · ⌘/Ctrl-click to edit';
+            item.addEventListener('click',e=>{close();const message=codeMessage(prompt);if(message)sendAiPrompt(message,e,{silent:true});});
+            menu.append(item);
+        }
+        toggle.addEventListener('click',()=>{
+            if(!menu.hidden){close();return;}
+            menu.hidden=false;menu.style.left='0px';menu.style.maxWidth='';
+            const bounds=(wrap.closest('.tab-content, #dock-tab-code')??document.documentElement).getBoundingClientRect();
+            const {offset,maxWidth}=menuPlacement(wrap.getBoundingClientRect().left,menu.getBoundingClientRect().width,Math.max(0,bounds.left),Math.min(bounds.right,document.documentElement.clientWidth));
+            menu.style.maxWidth=`${maxWidth}px`;menu.style.left=`${offset}px`;
+            toggle.setAttribute('aria-expanded','true');
+            document.addEventListener('pointerdown',outside,true);document.addEventListener('keydown',escape,true);
+            menu.querySelector<HTMLButtonElement>('button')?.focus();
+        });
+        wrap.append(toggle,menu);
+        return wrap;
+    }
+    function codeMessage(prompt: CodePrompt) {
+        if(!selected||!first)return null;
+        return codeMessageFor(prompt,first,last,excerpt);
+    }
+    /** A prompt about lines from–to of the open file, with the state and the file's structure. */
+    function codeMessageFor(prompt: CodePrompt,from:number,to:number,text:string) {
+        const file=selected!,scene=state.lessonSpec?.scenes?.[state.currentSceneIndex];
+        const sections=codeSections(file);
+        return codePromptMessage(prompt,{path:file.path,source:file.source,first:from,last:to,excerpt:text,executing:[...lastLines],waitingCalls:shownCalls,
+            scene:scene?.title??'',step:state.currentStepIndex+1,
+            values:Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value])),
+            ...(sections.length?{sections:sectionsOutline(sections)}:{})});
+    }
     function renderLineActions() {
         what.replaceChildren();
         const scene=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.id;
@@ -78,11 +162,44 @@ export function setupCodePanel(): void {
         targets.replaceChildren();targets.hidden=false;
         for(const choice of choices){const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.onclick=()=>{targets.hidden=true;go(choice);};targets.append(button);}
     });
-    function refreshBinding() {
+    function evaluate(expr: string) {
+        if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
+        const fn=compiled.get(expr);
+        if(!fn)throw new Error('Invalid code expression.');
+        return evalExpr(fn,0);
+    }
+    /**
+     * A scene's codeRef names the file and line executing now: the panel follows that file when it changes
+     * (or on scene entry) and marks the line only there. Scenes without one use the open file's activeLineExpr.
+     */
+    function refreshBinding(entering=false) {
         let lines=new Set<number>();
-        if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        // A step may override the scene's codeRef (a step playing its own data table).
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
+        const ref=scene?.steps?.[state.currentStepIndex]?.codeRef??scene?.codeRef;
+        let calls:number[]=[],entry:number|undefined;
+        if(ref){
+            const target=resolveCodeRef(files,ref,evaluate);
+            if(target&&(entering||target.file!==followed)&&target.file!==selected){followed=target.file;open(target.file);return;}
+            followed=target?.file;
+            if(target&&target.file===selected){
+                lines=new Set([target.line]);
+                runMoves(scene!,ref);
+                if(ref.callsExpr&&ref.callEntryLine){entry=ref.callEntryLine;try{calls=waitingCalls(evaluate(ref.callsExpr),target.file.source.split('\n').length);}catch{/* no stack at this position */}}
+            }
+        }
+        else if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
+        const bound=!!ref||!!active;
         const signature=[...lines].join(', ');
-        execution.textContent=active?(signature?'Active lines: '+signature:'No active lines at this position'):'';
+        // Code outside the running function is paler; the structure follows execution into another function.
+        const running=selected?inlineScope(selected.source,lines):null;
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            const line=Number(row.dataset.line),outside=!!running&&(line<running.from||line>running.to);
+            row.classList.toggle('code-inactive',outside);
+        });
+        const scope=structureScope(lines),scopeKey=scope?`${scope.from}-${scope.to}`:'all';
+        if(scopeKey!==lastScopeKey){lastScopeKey=scopeKey;renderStructure(lines);}
+        execution.textContent=bound?(signature?'Active lines: '+signature:'No active lines at this position'):'';
         let firstActive:HTMLElement|undefined;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
             const current=lines.has(Number(row.dataset.line));
@@ -91,14 +208,454 @@ export function setupCodePanel(): void {
             if(current)row.setAttribute('aria-current','step');else row.removeAttribute('aria-current');
         });
         if(signature!==lastExecution&&firstActive&&body.clientHeight>0){
-            const row=firstActive.getBoundingClientRect(),viewport=body.getBoundingClientRect();
-            if(row.top<viewport.top||row.bottom>viewport.bottom)body.scrollTop+=row.top-viewport.top;
+            // A line hidden by the structure (titles only) is shown by its section's title: keep that in view.
+            const hidden=!firstActive.getClientRects().length;
+            const target=hidden?body.querySelector<HTMLElement>(`.code-section-head[data-section="${CSS.escape(firstActive.dataset.section??'')}"]`):firstActive;
+            if(target&&target.getClientRects().length){
+                // Scroll no further than it takes to bring it into view.
+                const at=target.getBoundingClientRect(),viewport=body.getBoundingClientRect();
+                if(at.top<viewport.top)body.scrollTop+=at.top-viewport.top;
+                else if(at.bottom>viewport.bottom)body.scrollTop+=at.bottom-viewport.bottom;
+            }
         }
         lastExecution=signature;
+        // Only a move within one run is a jump: going to another step or scene starts afresh. The arrow is the run's
+        // own step into this state (trace[state - 1] → trace[state]), whichever way or how far the reader moved.
+        const place=`${state.currentSceneIndex}/${state.currentStepIndex}`;
+        const changed=place===lastPlace&&lineJump(lastLines,lines)!==null;
+        drawArrows(changed?stepInto():null,calls,entry);
+        lastLines=lines;lastPlace=place;
+        markExecutingSection();
+        veil(running);
+        publishView(running);
+        scheduleInline();
+    }
+    /** Hidden for practice: the running block's lines are blurred, a section opened from its title too (its shape shows, not its code). */
+    function veil(running:{from:number;to:number}|null) {
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            const line=Number(row.dataset.line),inside=!running||(line>=running.from&&line<=running.to);
+            row.classList.toggle('code-veiled',veiled&&inside);
+        });
+    }
+    function hidingCode() {
+        return body.classList.contains('code-structure-blocks')||body.classList.contains('code-structure-outline');
+    }
+    /** The file lines a reader can see now: in the open Code tab, scrolled into view, not hidden by the structure or the veil. */
+    function shownLines():Set<number> {
+        const out=new Set<number>(),box=body.getBoundingClientRect();
+        if(!box.height)return out;
+        const hiding=hidingCode();
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            if(row.classList.contains('code-veiled'))return;
+            if(hiding&&!row.classList.contains('code-section-revealed')&&!row.classList.contains('code-outside-structure'))return;
+            const at=row.getBoundingClientRect();
+            if(at.height&&at.bottom>box.top&&at.top<box.bottom)out.add(Number(row.dataset.line));
+        });
+        return out;
+    }
+    function setHidden(on:boolean) {
+        if(selected&&codeSections(selected).length){
+            if(on&&!hidingCode()){modeBeforeHiding=settings.structureMode;settings.structureMode='outline';}
+            else if(!on&&hidingCode())settings.structureMode=modeBeforeHiding==='blocks'||modeBeforeHiding==='outline'?'plain':modeBeforeHiding;
+            saveSettings();renderStructure();
+        }
+        veiled=on;
+        refreshBinding();
+    }
+    function publishView(running:{from:number;to:number}|null) {
+        // A lesson without code files has no view: say so, or Type along keeps the last lesson's.
+        if(!selected){view=null;if(lastViewKey){lastViewKey='';window.dispatchEvent(new CustomEvent('algebench:codeview'));}return;}
+        const file=selected,scope=running??{from:1,to:file.source.split('\n').length};
+        view={file,...scope,running:!!running,tone:id=>tones.get(id),shown:shownLines,hidden:()=>veiled,setHidden};
+        const key=`${file.id}:${scope.from}-${scope.to}:${!!running}`;
+        if(key!==lastViewKey){lastViewKey=key;window.dispatchEvent(new CustomEvent('algebench:codeview'));}
+    }
+    /** The run's step into the current state: from the line at the previous state to the current one, or null. */
+    function stepInto():{from:number;to:number}|null {
+        const slider=runSlider?state.sceneSliders[runSlider.id]:undefined;
+        const at=runSlider&&slider?Math.round((Number(slider.value)-runSlider.min)/runSlider.step):0;
+        const from=runLines[at-1],to=runLines[at];
+        return at>0&&from!==undefined&&to!==undefined&&from!==to?{from,to}:null;
+    }
+    /**
+     * The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,
+     * and a move of the executing line gets one that fades after a moment, with both line numbers lit.
+     */
+    /**
+     * Every move between lines in the step's whole run, for the hover arrows: the slider the codeRef's line follows
+     * is replayed over its range (with the slider overridden, not moved). Cached per scene, step and codeRef.
+     */
+    let moves:{from:number;to:number}[]=[],movesKey='',runLines:number[]=[],runSlider:{id:string;min:number;step:number}|null=null;
+    function runMoves(scene: Scene, ref: NonNullable<Scene['codeRef']>) {
+        const key=`${state.currentSceneIndex}/${state.currentStepIndex}/${ref.lineExpr??ref.line}`;
+        if(key===movesKey)return;
+        movesKey=key;moves=[];runLines=[];runSlider=null;
+        if(!ref.lineExpr)return;
+        // The current step's own sliders first: a later step may reuse the id over a different range.
+        const steps=scene.steps??[],own=steps[state.currentStepIndex];
+        const sliders=[...(own?.sliders??[]),...steps.flatMap(step=>step.sliders??[])] as {id?:string;min?:number;max?:number;step?:number}[];
+        const slider=sliders.find(s=>s.id&&new RegExp(`\\b${s.id}\\b`).test(ref.lineExpr!));
+        if(!slider?.id||slider.min===undefined||slider.max===undefined)return;
+        let fn:CompiledExpr;try{fn=compileExpr(ref.lineExpr);}catch{return;}
+        const step=slider.step&&slider.step>0?slider.step:1,sequence:number[]=[];
+        for(let v=slider.min,i=0;v<=slider.max&&i<5000;v+=step,i++){
+            try{const line=evalExpr(fn,0,{overrideScope:{[slider.id]:v}});if(typeof line==='number')sequence.push(line);}catch{/* a position the expression cannot read */}
+        }
+        moves=lineTransitions(sequence);runLines=sequence;runSlider={id:slider.id,min:slider.min,step};
+    }
+    /**
+     * Hovering the code shows the step that led to the current state: from the line at the previous state to the
+     * current one, in the run's own order; hovering a line's number shows every move into it (teal) and out of it
+     * (gold) across the run. Hovering a call's name
+     * instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
+     * name lights every call to it, with an incoming arrow from each.
+     */
+    /**
+     * Where an arrow meets a line (px from the top of the code): the middle of its row, or, for a line hidden in a
+     * collapsed section (titles only), the middle of that section's title. Null when neither is shown.
+     */
+    function lineY(line:number):number|null {
+        const row=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"]`);
+        if(!row)return null;
+        if(row.getClientRects().length)return row.offsetTop+row.offsetHeight/2;
+        const head=row.dataset.section?body.querySelector<HTMLElement>(`.code-section-head[data-section="${CSS.escape(row.dataset.section)}"]`):null;
+        return head?.getClientRects().length?head.offsetTop+head.offsetHeight/2:null;
+    }
+    function drawHover(target:HTMLElement|null) {
+        body.querySelectorAll('.code-link-lit').forEach(n=>n.classList.remove('code-link-lit'));
+        if(!arrows)return;
+        arrows.querySelectorAll('.code-arrow-in, .code-arrow-out').forEach(p=>p.remove());
+        const row=target?.closest<HTMLElement>('.code-line');
+        if(!target||!row)return;
+        const line=Number(row.dataset.line),call=target.closest<HTMLElement>('.code-call'),fn=target.closest<HTMLElement>('.code-fn');
+        const rowY=lineY;
+        let incoming:{from:number;to:number}[]=[],outgoing:{from:number;to:number}[]=[];
+        if(call){
+            const def=Number(call.dataset.def);
+            call.classList.add('code-link-lit');body.querySelector(`.code-fn[data-def="${def}"]`)?.classList.add('code-link-lit');
+            if(def!==line)outgoing=[{from:line,to:def}];
+        } else if(fn){
+            const def=Number(fn.dataset.def);fn.classList.add('code-link-lit');
+            body.querySelectorAll<HTMLElement>(`.code-call[data-def="${def}"]`).forEach(c=>{
+                c.classList.add('code-link-lit');
+                const from=Number(c.closest<HTMLElement>('.code-line')!.dataset.line);
+                if(from!==def&&!incoming.some(m=>m.from===from))incoming.push({from,to:def});
+            });
+        } else if(target.closest('.code-line-number'))({incoming,outgoing}=movesAt(moves,line));
+        else {
+            // The step into the current state, in the run's own order: trace[state - 1] → trace[state].
+            const step=stepInto();
+            if(step)incoming=[step];
+        }
+        for(const [list,kind] of [[incoming,'in'],[outgoing,'out']] as const)for(const m of list){
+            const y1=rowY(m.from),y2=rowY(m.to);if(y1===null||y2===null)continue;
+            const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('class',`code-arrow-${kind}`);
+            path.setAttribute('d',jumpArrowPath(GUTTER_X,y1,y2));path.setAttribute('marker-end',`url(#code-arrow-${kind})`);arrows.append(path);
+        }
+    }
+    body.addEventListener('pointerover',event=>drawHover(event.target as HTMLElement));
+    body.addEventListener('pointerleave',()=>drawHover(null));
+    let arrows: SVGSVGElement|null=null,fade=0,shownCalls:number[]=[],shownEntry:number|undefined;
+    // Rows have no position while the Code tab is hidden: lay the waiting calls' arrows out again once it shows.
+    new ResizeObserver(()=>{if(body.clientHeight>0)drawArrows(null,shownCalls,shownEntry);}).observe(body);
+    function drawArrows(jump:{from:number;to:number}|null, calls:number[], entry:number|undefined) {
+        const called=calls.length>shownCalls.length;
+        shownCalls=calls;shownEntry=entry;
+        if(body.clientHeight===0)return;
+        const rowY=lineY;
+        if(!arrows||!arrows.isConnected){
+            arrows=document.createElementNS('http://www.w3.org/2000/svg','svg');arrows.classList.add('code-arrows');arrows.setAttribute('aria-hidden','true');
+            arrows.innerHTML='<defs><marker id="code-arrow-jump" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker>'
+                +['call','in','out'].map(k=>`<marker id="code-arrow-${k}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker>`).join('')+'</defs>';
+            body.prepend(arrows);
+        }
+        arrows.style.height=`${body.scrollHeight}px`;
+        const x=GUTTER_X,svg='http://www.w3.org/2000/svg';
+        arrows.querySelectorAll('.code-arrow-call').forEach(p=>p.remove());
+        body.querySelectorAll('.code-line-number.calling').forEach(n=>n.classList.remove('calling'));
+        const to=entry===undefined?null:rowY(entry);
+        calls.forEach((line,depth)=>{
+            const from=rowY(line);if(from===null||to===null)return;
+            const path=document.createElementNS(svg,'path');path.setAttribute('class','code-arrow-call');path.setAttribute('d',callArrowPath(x,from,to,depth));path.setAttribute('marker-end','url(#code-arrow-call)');
+            arrows!.append(path);
+            body.querySelector(`.code-line[data-line="${line}"] .code-line-number`)?.classList.add('calling');
+        });
+        // A move that makes a call is drawn by that call's own arrow.
+        if(!jump||called)return;
+        // Two lines hidden in one section meet at its title: no move to draw.
+        const y1=rowY(jump.from),y2=rowY(jump.to);if(y1===null||y2===null||y1===y2)return;
+        arrows.querySelectorAll('.code-arrow-jump').forEach(p=>p.remove());
+        body.querySelectorAll('.code-line-number.jump-lit').forEach(n=>n.classList.remove('jump-lit'));
+        const path=document.createElementNS(svg,'path');path.setAttribute('class','code-arrow-jump');path.setAttribute('d',jumpArrowPath(x,y1,y2));path.setAttribute('marker-end','url(#code-arrow-jump)');path.setAttribute('pathLength','1');
+        arrows.append(path);
+        const numbers=[jump.from,jump.to].map(l=>body.querySelector(`.code-line[data-line="${l}"] .code-line-number`)).filter((n):n is Element=>!!n);
+        numbers.forEach(n=>n.classList.add('jump-lit'));
+        clearTimeout(fade);
+        fade=window.setTimeout(()=>{path.classList.add('fading');numbers.forEach(n=>n.classList.remove('jump-lit'));setTimeout(()=>path.remove(),400);},JUMP_HOLD_MS);
+    }
+    /**
+     * Structure: the file's sections (code-sections.ts) as titled bands. The icons in the title bar, shown for a
+     * file that has sections, go from least structured to most: plain code, titles over the code, titles over
+     * blocks the size of the hidden code, and titles only. A section's title selects its lines; its ✦ asks the tutor about it.
+     */
+    function structureModes() {
+        const wrap=document.createElement('span');wrap.className='code-structure-modes';wrap.setAttribute('role','group');wrap.setAttribute('aria-label','Structure view');wrap.hidden=true;
+        for(const mode of STRUCTURE_MODES){
+            const button=document.createElement('button');button.type='button';button.dataset.mode=mode;button.title=MODE_INFO[mode].title;button.setAttribute('aria-label',MODE_INFO[mode].title);
+            button.innerHTML=`<svg viewBox="0 0 18 18" width="15" height="15" aria-hidden="true">${MODE_INFO[mode].icon}</svg>`;
+            // Lines move between modes: the arrows are redrawn to follow them.
+            button.addEventListener('click',()=>{settings.structureMode=mode;saveSettings();renderStructure();refreshBinding();});
+            wrap.append(button);
+        }
+        return wrap;
+    }
+    // Sections the reader opened in a hidden-code mode, by file and section; they stay open across modes and steps.
+    const revealed=new Set<string>();
+    const revealKey=(section:CodeSection)=>`${selected?.id}:${section.id}`;
+    /** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
+    function paintReveal(section:CodeSection) {
+        const open=revealed.has(revealKey(section));
+        for(let line=section.from;line<=section.to;line++)body.querySelector(`.code-line[data-line="${line}"]`)?.classList.toggle('code-section-revealed',open);
+        const head=body.querySelector<HTMLElement>(`.code-section-head[data-section="${CSS.escape(section.id)}"]`);
+        head?.classList.toggle('revealed',open);head?.setAttribute('aria-expanded',String(open));
+    }
+    function sectionText(section:CodeSection):string {
+        return selected?.source.split('\n').slice(section.from-1,section.to).join('\n')??'';
+    }
+    /** The lines the structure covers: the running top-level function (with "running function only"), else all. */
+    function structureScope(lines:Set<number>) {
+        return settings.structureRunning&&selected?inlineScope(selected.source,lines):null;
+    }
+    function renderStructure(lines=lastLines) {
+        body.querySelectorAll('.code-section-head').forEach(n=>n.remove());
+        const all=selected?codeSections(selected):[];
+        const scope=structureScope(lines);
+        const sections=scope?all.filter(s=>s.from>=scope.from&&s.to<=scope.to):all;
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            row.classList.remove('code-in-section','code-section-first','code-section-last','code-section-revealed');row.style.removeProperty('--section-tone');delete row.dataset.section;
+            // Outside the structured function, or in no section (no title could reveal it), the code stays plain.
+            const line=Number(row.dataset.line);
+            row.classList.toggle('code-outside-structure',(!!scope&&(line<scope.from||line>scope.to))||!sectionAt(sections,line));
+        });
+        const on=settings.structureMode!=='plain'&&sections.length>0;
+        body.classList.toggle('code-structure',on);
+        for(const mode of STRUCTURE_MODES)body.classList.toggle(`code-structure-${mode}`,on&&settings.structureMode===mode);
+        modes.hidden=!all.length;
+        modes.querySelectorAll<HTMLButtonElement>('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===settings.structureMode)));
+        tones=new Map(sections.map((section,k)=>[section.id,SECTION_TONES[k%SECTION_TONES.length]!]));
+        if(!on)return;
+        sections.forEach((section,k)=>{
+            const tone=tones.get(section.id)!;
+            for(let line=section.from;line<=section.to;line++){
+                const row=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"]`);
+                if(!row)continue;
+                row.classList.add('code-in-section');row.classList.toggle('code-section-first',line===section.from);row.classList.toggle('code-section-last',line===section.to);
+                row.style.setProperty('--section-tone',tone);row.dataset.section=section.id;
+            }
+            const head=document.createElement('div');head.className='code-section-head';head.dataset.section=section.id;head.style.setProperty('--section-tone',tone);
+            head.tabIndex=0;head.setAttribute('role','button');
+            const count=section.to-section.from+1;
+            const chevron=document.createElement('span');chevron.className='code-section-chevron';chevron.setAttribute('aria-hidden','true');chevron.textContent='▸';
+            const name=document.createElement('span');name.className='code-section-title';name.textContent=section.title;
+            const meta=document.createElement('span');meta.className='code-section-meta';meta.textContent=`${section.from===section.to?`line ${section.from}`:`lines ${section.from}–${section.to}`} · ${count} line${count===1?'':'s'}`;
+            const ask=document.createElement('button');ask.type='button';ask.className='code-section-ask';ask.textContent='✦';
+            ask.title=`Ask the tutor about "${section.title}"\n\nClick to send · ⌘/Ctrl-click to edit`;ask.setAttribute('aria-label',`Ask the tutor about ${section.title}`);
+            ask.addEventListener('click',e=>{e.stopPropagation();sendAiPrompt(codeMessageFor(sectionPrompt(section),section.from,section.to,sectionText(section)),e,{silent:true});});
+            head.append(chevron,name,meta,ask);
+            if(section.hint){const hint=document.createElement('div');hint.className='code-section-hint';hint.textContent=section.hint;head.append(hint);}
+            head.title=section.hint??section.title;
+            // With the code hidden, the title shows or hides the section's code; with it shown, it selects the lines.
+            const pick=()=>{
+                if(settings.structureMode==='blocks'||settings.structureMode==='outline'){
+                    const key=revealKey(section);
+                    if(revealed.has(key))revealed.delete(key);else revealed.add(key);
+                    paintReveal(section);refreshBinding();
+                }else choose(section.from,section.to,sectionText(section));
+            };
+            head.addEventListener('click',pick);
+            head.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
+            body.querySelector(`.code-line[data-line="${section.from}"]`)?.before(head);
+            paintReveal(section);
+        });
+        markExecutingSection();
+    }
+    /** The section running now is lit, so the titles-only view still says where execution is. */
+    function markExecutingSection() {
+        const sections=selected?codeSections(selected):[];
+        const running=new Set([...lastLines].map(line=>sectionAt(sections,line)?.id).filter(Boolean));
+        body.querySelectorAll<HTMLElement>('.code-section-head').forEach(head=>head.classList.toggle('executing',running.has(head.dataset.section)));
+    }
+    /** View settings ("⚙", top right): inline values on or off, and which variables show them. Kept per browser. */
+    type ViewSettings={inline:boolean;onHover:boolean;hidden:string[];structureMode:StructureMode;structureRunning:boolean};
+    function loadSettings():ViewSettings {
+        try{
+            const saved=JSON.parse(localStorage.getItem('algebench-code-view')??'null') as Partial<ViewSettings>|null;
+            return {inline:saved?.inline??true,onHover:saved?.onHover??true,hidden:Array.isArray(saved?.hidden)?saved.hidden.filter(h=>typeof h==='string'):[],
+                structureMode:STRUCTURE_MODES.includes(saved?.structureMode as StructureMode)?saved!.structureMode!:'plain',
+                structureRunning:saved?.structureRunning??true};
+        }catch{return {inline:true,onHover:true,hidden:[],structureMode:'plain',structureRunning:true};}
+    }
+    function saveSettings() {
+        try{localStorage.setItem('algebench-code-view',JSON.stringify(settings));}catch{/* private mode: settings last the session */}
+    }
+    function viewSettingsMenu() {
+        const wrap=document.createElement('span');wrap.className='code-view-settings';
+        const toggle=document.createElement('button');toggle.type='button';toggle.className='code-view-settings-btn';toggle.textContent='⚙';
+        toggle.title='Code view settings';toggle.setAttribute('aria-label','Code view settings');
+        toggle.setAttribute('aria-haspopup','true');toggle.setAttribute('aria-expanded','false');
+        const menu=document.createElement('div');menu.className='code-view-menu';menu.hidden=true;
+        const close=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape,true);};
+        const outside=(e:Event)=>{if(!wrap.contains(e.target as Node))close();};
+        const escape=(e:KeyboardEvent)=>{if(e.key==='Escape'){close();toggle.focus();}};
+        const check=(text:string,on:boolean,change:(on:boolean)=>void,disabled=false)=>{
+            const label=document.createElement('label');label.className='code-view-option';
+            const box=document.createElement('input');box.type='checkbox';box.checked=on;box.disabled=disabled;
+            box.addEventListener('change',()=>{change(box.checked);saveSettings();renderInline();lastScopeKey='';renderStructure();fill();});
+            const name=document.createElement('span');name.textContent=text;
+            label.append(box,name);
+            return label;
+        };
+        // Built on each open: the variables are the ones this file names that the scene shows a value for now.
+        function fill() {
+            menu.replaceChildren(check('Inline values',settings.inline,on=>{settings.inline=on;}),
+                check('Only on the hovered line',settings.onHover,on=>{settings.onHover=on;},!settings.inline),
+                check('Structure the running function only',settings.structureRunning,on=>{settings.structureRunning=on;},!selected||!codeSections(selected).length));
+            const vars=availableVariables();
+            const heading=document.createElement('div');heading.className='code-view-heading';
+            heading.textContent=vars.length?'Variables':'No variables shown at this step';
+            menu.append(heading);
+            const toggleHidden=(key:string)=>(on:boolean)=>{settings.hidden=on?settings.hidden.filter(h=>h!==key):[...settings.hidden,key];};
+            for(const key of vars)menu.append(check(key,!settings.hidden.includes(key),toggleHidden(key),!settings.inline));
+            const exprs=availableExpressions();
+            if(exprs.length){
+                const sub=document.createElement('div');sub.className='code-view-heading';sub.textContent='Expressions';menu.append(sub);
+                for(const name of exprs)menu.append(check(name,!settings.hidden.includes(EXPR+name),toggleHidden(EXPR+name),!settings.inline));
+            }
+        }
+        toggle.addEventListener('click',()=>{
+            if(!menu.hidden){close();return;}
+            fill();menu.hidden=false;toggle.setAttribute('aria-expanded','true');
+            document.addEventListener('pointerdown',outside,true);document.addEventListener('keydown',escape,true);
+            menu.querySelector<HTMLInputElement>('input')?.focus();
+        });
+        wrap.append(toggle,menu);
+        return wrap;
+    }
+    /** What the scene says about a variable: its label rows (`v = 3`) and the objects holding it (`state = [1, 2]`). */
+    function valueTexts(key:string):string[] {
+        return [...labelsForSymbol(key).map(f=>f.text),...symbolValues(key).map(v=>`${key} = ${v}`)]
+            .filter(t=>!t.trim().endsWith('—'));
+    }
+    /**
+     * Expressions: label rows tied to a line by codeRef that are not a plain `name = value` row (`taken < n: …`,
+     * `check: …`, `len(queue) = 0`). Their text changes every frame, so each is named by what precedes its value.
+     */
+    const EXPR='expr:';
+    /** Unchecking a variable hides it and its elements and attributes (`state` hides `state[3]`). */
+    const hiddenKey=(key:string)=>settings.hidden.includes(key)||settings.hidden.includes(key.split(/[[.]/)[0]!);
+    const isExpression=(text:string)=>!rowSymbolKeys(text).length;
+    const expressionName=(text:string)=>text.split(/: | = /)[0]!.trim();
+    function lineExpressions(fileId:string,line:number):string[] {
+        // `v: —` is a variable with no value yet, not an expression.
+        return labelsForCodeLine(fileId,line).filter(t=>isExpression(t)&&!t.trim().endsWith('—'));
+    }
+    /** The expressions the scene shows for the lines in view, in line order. */
+    function availableExpressions():string[] {
+        if(!selected)return [];
+        const scope=inlineScope(selected.source,lastLines),names:string[]=[];
+        const count=selected.source.split('\n').length;
+        for(let line=scope?.from??1;line<=(scope?.to??count);line++)
+            for(const text of lineExpressions(selected.id,line))if(!names.includes(expressionName(text)))names.push(expressionName(text));
+        return names;
+    }
+    /** The variables the open file names that the scene shows a value for, in order of first appearance. */
+    function availableVariables():string[] {
+        const keys:string[]=[];
+        for(const ref of [...references].sort((a,b)=>a.line-b.line||a.col-b.col))if(!keys.includes(ref.key)&&valueTexts(ref.key).length)keys.push(ref.key);
+        return keys;
+    }
+    /**
+     * Inline values: right of each line, a tag for every value the scene shows for what the line names, then the
+     * label rows tied to the line by codeRef (conditions and other expressions). A tag too long for its room is
+     * cut with an ellipsis and floats out in full while pointed at.
+     */
+    let inlinePending=false;
+    function scheduleInline() {
+        // Labels and arrays take a new state on the next frame; read them after it.
+        if(inlinePending)return;inlinePending=true;
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{inlinePending=false;renderInline();}));
+    }
+    /**
+     * The lines whose names mean what the scene shows: the top-level block (def or class) holding the executing
+     * line. Another function's `u` is a different variable. Null (every line) when nothing is executing.
+     */
+    function inlineScope(source:string,executing:Set<number>):{from:number;to:number}|null {
+        const at=Math.min(...executing);
+        if(!Number.isFinite(at))return null;
+        const lines=source.split('\n'),top=(i:number)=>/^\S/.test(lines[i-1]??'');
+        let from=at;while(from>1&&!top(from))from--;
+        let to=at+1;while(to<=lines.length&&!top(to))to++;
+        return {from,to:to-1};
+    }
+    // A pointed-at line that does not fit (its code or tags running past the code view's edge, or a tag cut short)
+    // shows in full here, code and tags on one line fixed over the page: the code view scrolls, so it would clip it.
+    const float=document.createElement('div');float.className='code-inline-float';float.hidden=true;document.body.append(float);
+    let floated:HTMLElement|null=null;
+    function floatLine(row:HTMLElement|null) {
+        const code=row?.querySelector<HTMLElement>('code')??null;
+        const holder=row?.querySelector<HTMLElement>('.code-inline-values')??null;
+        const shown=!!holder&&getComputedStyle(holder).visibility!=='hidden';
+        const tags=shown?[...holder!.querySelectorAll<HTMLElement>('.code-inline-value')]:[];
+        const edge=body.getBoundingClientRect().right;
+        const clipped=!!code&&(code.getBoundingClientRect().right>edge||tags.some(t=>t.scrollWidth>t.clientWidth||t.getBoundingClientRect().right>edge));
+        // The structure's hidden-code views must not give the code away.
+        const hiding=!!row&&(row.classList.contains('code-veiled')||hidingCode()&&!row.classList.contains('code-section-revealed')&&!row.classList.contains('code-outside-structure'));
+        if(!clipped||hiding){float.hidden=true;floated=null;return;}
+        if(floated===row&&!float.hidden)return;
+        floated=row;
+        const line=document.createElement('code');line.className='code-inline-float-code';
+        line.append(...[...code!.childNodes].map(n=>n.cloneNode(true)));
+        float.replaceChildren(line,...tags.map(t=>{const copy=document.createElement('span');copy.className=t.className;copy.textContent=t.textContent;return copy;}));
+        float.classList.toggle('executing',!!row?.classList.contains('execution-line'));
+        float.hidden=false;
+        const at=code!.getBoundingClientRect(),width=float.getBoundingClientRect().width;
+        // Over the line's code, moved left as far as it takes to stay inside the window.
+        float.style.left=`${Math.max(8,Math.min(at.left-4,window.innerWidth-8-width))}px`;
+        float.style.top=`${at.top+at.height/2}px`;
+    }
+    body.addEventListener('pointerover',event=>floatLine((event.target as HTMLElement).closest<HTMLElement>('.code-line')));
+    body.addEventListener('pointerleave',()=>floatLine(null));
+    body.addEventListener('scroll',()=>floatLine(null));
+    function renderInline() {
+        const hovered=floated;floatLine(null);
+        body.querySelectorAll('.code-inline-values').forEach(n=>n.remove());
+        // On hover: every line gets its tags, shown only while the line is pointed at (style.css).
+        body.classList.toggle('code-inline-on-hover',settings.onHover);
+        if(!settings.inline||!selected)return;
+        const file=selected,scope=inlineScope(file.source,lastLines);
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            const line=Number(row.dataset.line),texts:string[]=[];
+            if(scope&&(line<scope.from||line>scope.to))return;
+            const add=(t:string)=>{if(!t.trim().endsWith('—')&&!texts.includes(t))texts.push(t);};
+            for(const ref of lineReferences(references,line))if(!hiddenKey(ref.key))valueTexts(ref.key).forEach(add);
+            labelsForCodeLine(file.id,line).filter(t=>isExpression(t)
+                ?!settings.hidden.includes(EXPR+expressionName(t))
+                :!rowSymbolKeys(t).some(hiddenKey)).forEach(add);
+            if(!texts.length)return;
+            const holder=document.createElement('span');holder.className='code-inline-values';
+            for(const text of texts){
+                const tag=document.createElement('span');tag.className='code-inline-value';
+                const inner=document.createElement('span');inner.textContent=text;
+                tag.append(inner);holder.append(tag);
+            }
+            row.append(holder);
+        });
+        // Values changed under the pointer: show the line's new ones.
+        if(hovered?.isConnected&&hovered.matches(':hover'))floatLine(hovered);
     }
     function open(file: CodeFile) {
-        selected=file;lastExecution='';first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
-        title.textContent=file.path+' · read only';body.replaceChildren();
+        selected=file;references=[];lastScopeKey='';lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
+        titleText.textContent=file.path+' · read only';body.replaceChildren();
         if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{
             const row=document.createElement('div');row.className='code-line';row.dataset.line=String(i+1);
@@ -106,6 +663,8 @@ export function setupCodePanel(): void {
             number.onclick=()=>choose(i+1,i+1,text);
             const code=document.createElement('code');code.dataset.line=String(i+1);
             for(const segment of markedSegments(text,(file.marks??[]).filter(m=>m.line===i+1))){const span=document.createElement('span');span.textContent=segment.text;if(segment.color)span.className=`code-mark-${segment.color}`;code.append(span);}
+            // The line's shape in characters, for the hidden-code blocks: where its text starts and how long it runs.
+            code.style.setProperty('--indent',String(text.length-text.trimStart().length));code.style.setProperty('--len',String(text.trim().length));
             row.append(number,code);body.append(row);
         });
         // Syntax colours arrive from the server; the file may have been switched meanwhile.
@@ -114,8 +673,77 @@ export function setupCodePanel(): void {
             body.querySelectorAll<HTMLElement>('.code-line code').forEach(code=>paintTokens(code,lineTokens(tokens,Number(code.dataset.line))));
         });
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
+        renderStructure();
         refreshBinding();
+        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file){markSymbols(analysis.references);markCalls(analysis.functions??[],analysis.calls??[]);}});
     }
+    /** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
+    function markSymbols(found: CodeReference[]) {
+        references=found;
+        body.querySelectorAll<HTMLElement>('.code-line code').forEach(code=>{
+            for(const ref of lineReferences(references,Number(code.dataset.line)))wrapRange(code,ref);
+        });
+        paintSymbolHover();
+        scheduleInline();
+    }
+    /** Wrap each def's name and each call to it, so pointing at either links the two (see drawHover). */
+    function markCalls(functions: CodeFunction[], calls: CodeCall[]) {
+        const wrap=(f:CodeFunction,cls:string,def:number)=>{
+            const code=body.querySelector<HTMLElement>(`.code-line[data-line="${f.line}"] code`);
+            if(code)wrapColumns(code,f.col,f.endCol,()=>{const span=document.createElement('span');span.className=cls;span.dataset.def=String(def);return span;});
+        };
+        for(const f of functions)wrap(f,'code-fn',f.line);
+        for(const c of calls)wrap(c,'code-call',c.defLine);
+    }
+    /** One variable reference: a `code-sym` span over its columns (wrapColumns splits whatever spans are there). */
+    function wrapRange(code: HTMLElement, ref: CodeReference) {
+        wrapColumns(code,ref.col,ref.endCol,()=>{
+            const span=document.createElement('span');span.className='code-sym';
+            span.dataset.key=ref.key;span.dataset.root=ref.root;span.dataset.kind=ref.kind;
+            return span;
+        });
+    }
+    /** LaTeX for what the visible labels say about a symbol, one line each; null when nothing shows it. */
+    function symbolTex(key:string):string|null {
+        const found=labelsForSymbol(key);
+        if(!found.length)return null;
+        const plain=(t:string)=>'\\text{'+t.replace(/[\\{}$&#%_^~]/g,c=>c==='\\'?'\\backslash ':'\\'+c)+'}';
+        // Two labels saying the same thing (a row and a marker) show once.
+        return [...new Set(found.map(f=>f.tooltip||plain(f.text)))].join('\\\\');
+    }
+    function paintSymbolHover() {
+        const keys=hoveredSymbols(),line=hoveredCodeLine();
+        body.querySelectorAll<HTMLElement>('.code-sym').forEach(span=>span.classList.toggle('code-sym-hover',keys.includes(span.dataset.key!)));
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>row.classList.toggle('code-line-ref-hover',!!selected&&line===codeLineKey(selected.id,Number(row.dataset.line))));
+    }
+    // Pointing at a variable lights every occurrence of it here and every row in the view that names it;
+    // pointing elsewhere on a line lights the rows whose codeRef is that line.
+    body.addEventListener('pointerover',event=>{
+        const target=event.target as HTMLElement;
+        const span=target.closest<HTMLElement>('.code-sym');
+        const row=target.closest<HTMLElement>('.code-line');
+        if(span)setSymbolHover([span.dataset.key!]);
+        else setSymbolHover([],row&&selected?codeLineKey(selected.id,Number(row.dataset.line)):null);
+        // What the scene shows for this symbol, as a KaTeX tooltip: a label's formula, else its value.
+        showCodeSymbolTooltip(span,span?symbolTex(span.dataset.key!):null);
+    });
+    body.addEventListener('pointerleave',()=>showCodeSymbolTooltip(null,null));
+    body.addEventListener('pointerleave',()=>setSymbolHover([]));
+    window.addEventListener('algebench:symbolhover',paintSymbolHover);
+    // A value that changed lights its variable where it is executing, after this step's line is marked.
+    window.addEventListener('algebench:symbolflash',event=>{
+        const keys=(event as CustomEvent<{keys:string[]}>).detail.keys;
+        requestAnimationFrame(()=>{
+            body.querySelectorAll<HTMLElement>('.code-line.execution-line .code-sym').forEach(span=>{
+                // An exact match, or an element of the changed variable (answer[j]); not a method call (stack.pop).
+                if(!keys.includes(span.dataset.key!)&&!(keys.includes(span.dataset.root!)&&span.dataset.kind==='subscript'))return;
+                // A timer, not an animation, ends the flash: the light holds a moment, then fades by transition.
+                span.classList.add('code-sym-flash');
+                clearTimeout(Number(span.dataset.flash));
+                span.dataset.flash=String(setTimeout(()=>span.classList.remove('code-sym-flash'),900));
+            });
+        });
+    });
     body.addEventListener('mouseup',event=>{
         const selection=window.getSelection();
         const nodeElement=(n:Node|null)=>n instanceof Element?n:n?.parentElement;
@@ -134,10 +762,10 @@ export function setupCodePanel(): void {
     function refresh() {
         if(lesson!==state.lessonSpec){
             lesson=state.lessonSpec;files=(lesson as LessonFormat|null)?.codeFiles??[];tree.replaceChildren();body.replaceChildren();actions.hidden=targets.hidden=true;
-            selected=undefined;active=null;setCodeFocus(null);build(fileTree(files),tree);
-            if(files[0])open(files[0]);else title.textContent='This lesson has no code files.';
+            selected=followed=undefined;active=null;compiled.clear();setCodeFocus(null);build(fileTree(files),tree);
+            if(files[0])open(files[0]);else titleText.textContent='This lesson has no code files.';
         }
-        refreshBinding();
+        refreshBinding(true);
         // Scene and step changes add or remove sliders, so the selected line's actions must be re-evaluated.
         renderLineActions();
     }
@@ -161,6 +789,6 @@ export function setupCodePanel(): void {
         }
     });
     window.addEventListener('algebench:navchange',refresh);
-    window.addEventListener('algebench:sliderchange',refreshBinding);
+    window.addEventListener('algebench:sliderchange',()=>refreshBinding());
     refresh();
 }

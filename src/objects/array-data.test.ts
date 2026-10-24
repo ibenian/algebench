@@ -23,6 +23,7 @@ test('declared types reject mismatches and unsupported nested/object values',()=
  assert.throws(()=>arrayCell('42','number'));assert.throws(()=>arrayCell(0,'boolean'));
  for(const value of [undefined,NaN,Infinity,{},[]])assert.throws(()=>arrayCell(value));
  assert.equal(arrayCell('<script>','string').text,'"<script>"');
+ assert.equal(arrayCell('[1, 2]','text').text,'[1, 2]','text cells show the string as is');assert.throws(()=>arrayCell(3,'text'));
 });
 test('array size is one-dimensional, bounded, and consistent with literal values',()=>{
  assert.equal(arrayLength(undefined,[1,2]),2);assert.equal(arrayLength([4],undefined),4);
@@ -50,6 +51,9 @@ test('wrapped arrays preserve every index and fit rows into the requested height
  assert.equal(new Set(cells.map(c=>JSON.stringify(c.position))).size,24);
  assert.deepEqual(cells[8]!.position,[-2.14,-.52,.25]);
  assert.ok(cells.every(c=>c.height>0&&c.height<.22));
+ const spaced=wrappedArrayCell(4,8,[0,0,0],2,4,2.6,.68);
+ assert.deepEqual([spaced.position[1],spaced.height],[-1.3,.68],'a fixed cell height leaves the rest of the row as a gap');
+ assert.equal(wrappedArrayCell(0,8,[0,0,0],2,4,1,.9).height,.5,'never taller than its row');
  const dense=wrappedArrayCell(255,256,[0,0,0],.6,8,.66);
  assert.ok(dense.position[1]>-.66);
  assert.ok(dense.height<cells[0]!.height);

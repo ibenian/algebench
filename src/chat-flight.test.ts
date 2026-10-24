@@ -113,3 +113,13 @@ test('a queued text-only ask keeps noTools, and never shares a tool-enabled turn
     assert.deepEqual(r.opts.map((o) => o.noTools), [false, true, true]);
     assert.deepEqual(await Promise.all([same, queued]), [true, true]);
 });
+
+test('a display text reaches the turn sender with the full text, and queues with it', async () => {
+    const turns: unknown[] = [];
+    let busy = false, release!: () => void;
+    const send = singleFlightSender(() => busy, async (text, opts) => { turns.push([text, opts]); busy = true; await new Promise<void>(r => { release = r; }); busy = false; });
+    const first = send('long rules…', { display: '🎤 Interview mode' });
+    const second = send('more rules…', { display: 'short' });
+    release(); await first; await new Promise(r => setTimeout(r, 0)); release(); await second;
+    assert.deepEqual(turns, [['long rules…', { silent: false, noTools: false, display: '🎤 Interview mode' }], ['more rules…', { silent: false, noTools: false, display: 'short' }]]);
+});

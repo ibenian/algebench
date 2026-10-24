@@ -1,4 +1,4 @@
-import { C as PREV_ICON, D as USER_ICON, E as UNDOCK_ICON, S as PLAY_ICON, T as TRASH_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as SHARE_VIEW_ICON, x as PLAN_ICON, y as NEXT_ICON } from "./theme.js";
+import { C as PREV_ICON, D as USER_ICON, E as UNDOCK_ICON, S as PLAY_ICON, T as TRASH_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, d as CODE_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as SHARE_VIEW_ICON, x as PLAN_ICON, y as NEXT_ICON } from "./theme.js";
 import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
@@ -151,10 +151,16 @@ var state = {
 //#endregion
 //#region src/data-table.ts
 /** Read scene table rows or a cell without changing the underlying data. */
+/** dataTable(table) → its rows; dataTable(table, 'column') → that column, one value per row (0 where missing);
+*  dataTable(table, row, 'column') → one cell, the row clamped and rounded. */
 function readDataTable(data, table, rowIndex, column) {
 	const rows = data?.[String(table)];
 	if (!Array.isArray(rows)) return 0;
 	if (rowIndex === void 0 && column === void 0) return rows;
+	if (column === void 0 && typeof rowIndex === "string") return rows.map((row) => {
+		const v = row?.[rowIndex];
+		return v != null ? v : 0;
+	});
 	const row = rows[Math.max(0, Math.min(rows.length - 1, Math.round(Number(rowIndex))))];
 	if (!row) return 0;
 	const value = row[String(column)];
@@ -319,6 +325,33 @@ function arrayAt(input, at) {
 	return values[index(at, values.length)];
 }
 //#endregion
+//#region src/objects/dict-keys.ts
+/**
+* A dictionary key as Python prints it, for the label under its cell: a string quoted ('a'), a number as is,
+* a tuple in parentheses ((1, 2); a one-element tuple keeps its comma, (1,)), True / False / None. A key may be
+* any of these, so a dict shows keys exactly where an array shows indices.
+*/
+function keyText(key) {
+	const plain = key !== null && typeof key === "object" && "valueOf" in key ? key.valueOf() : key;
+	if (Array.isArray(plain)) return plain.length === 1 ? `(${keyText(plain[0])},)` : `(${plain.map(keyText).join(", ")})`;
+	if (typeof plain === "string") return `'${plain.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+	if (typeof plain === "boolean") return plain ? "True" : "False";
+	if (plain === null || plain === void 0) return "None";
+	if (typeof plain === "number") return Number.isFinite(plain) ? String(plain) : plain > 0 ? "float('inf')" : plain < 0 ? "float('-inf')" : "float('nan')";
+	return String(plain);
+}
+/**
+* keyIndex(keys, key): where a key sits in a dict's list of keys (its entry's position), or −1 when absent.
+* Keys match as Python would compare them: 2 and '2' differ, tuples match element by element. A link or
+* marker names a dict entry by position, so this turns "the entry for key k" into one.
+*/
+function keyIndex(keys, key) {
+	const plain = keys !== null && typeof keys === "object" && "valueOf" in keys ? keys.valueOf() : keys;
+	if (!Array.isArray(plain)) return -1;
+	const wanted = keyText(key);
+	return plain.findIndex((k) => keyText(k) === wanted);
+}
+//#endregion
 //#region src/expr.ts
 var tableInputs = 0;
 if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
@@ -341,6 +374,7 @@ var _MATHJS_EXTENSIONS = {
 	arrayResult,
 	arrayCount,
 	arrayAt,
+	keyIndex,
 	toFixed: (val, decimals) => Number(val).toFixed(Number(decimals)),
 	concat: (...args) => args.map((a) => String(a)).join(""),
 	bar: (val, w = 20) => {
@@ -370,6 +404,35 @@ _mathjs.import({
 	}
 }, { override: true });
 var _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b|\[\s*['"`]|===|!==|\|\||&&|\$\{/;
+/**
+* The source with each quoted string's contents emptied ('…' and "…", backslash escapes honoured), so the
+* JS-only test reads the code and not the text: `concat('indeg[', v, '] = return')` is math.js, where the
+* label text alone would match `[\s*'` and `return`. The quotes stay, so bracket access with a string
+* (`obj['constructor']` → `obj['']`) still matches. A backtick anywhere, or an unclosed quote, leaves the
+* source as it is: neither is math.js, and what such a source treats as a string is not settled.
+*/
+function _blankStrings(src) {
+	let out = "", i = 0;
+	while (i < src.length) {
+		const ch = src[i];
+		if (ch === "`") return src;
+		if (ch !== "\"" && ch !== "'") {
+			out += ch;
+			i++;
+			continue;
+		}
+		let j = i + 1;
+		while (j < src.length && src[j] !== ch) j += src[j] === "\\" ? 2 : 1;
+		if (j >= src.length) return src;
+		out += ch + ch;
+		i = j + 1;
+	}
+	return out;
+}
+/** Whether an expression needs the JS fallback: _JS_ONLY_RE on its code, its string literals' text set aside. */
+function isJsOnly(src) {
+	return _JS_ONLY_RE.test(_blankStrings(src));
+}
 var _EXPR_HELPERS = { ..._MATHJS_EXTENSIONS };
 var EXTENSION_NAMES = Object.keys(_MATHJS_EXTENSIONS);
 var _CORE_MATH_NAMES = [
@@ -406,6 +469,7 @@ var _CORE_MATH_NAMES = [
 	"E"
 ];
 var _MATH_SCOPE = Object.fromEntries(_CORE_MATH_NAMES.map((n) => [n, Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, n) ? _EXPR_HELPERS[n] : Math[n]]));
+/** Single-quoted math.js strings keep their contents literally (LaTeX backslashes included). Exported for tests. */
 function _normalizeSingleQuotes(str) {
 	return str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, content) => JSON.stringify(content.replace(/\\'/g, "'")));
 }
@@ -636,7 +700,7 @@ function resolveVirtualAnimTime(rawT) {
 function explainCompileDegrade(exprStr) {
 	if (exprState._sceneJsTrustState === "trusted") return null;
 	const src = _normalizeSingleQuotes(exprStr);
-	if (_JS_ONLY_RE.test(src)) return "uses JavaScript-only syntax, which an untrusted scene compiles to 0";
+	if (isJsOnly(src)) return "uses JavaScript-only syntax, which an untrusted scene compiles to 0";
 	try {
 		_mathjs.parse(src);
 		return null;
@@ -646,7 +710,7 @@ function explainCompileDegrade(exprStr) {
 }
 function compileExpr(exprStr) {
 	exprStr = _normalizeSingleQuotes(exprStr);
-	if (_JS_ONLY_RE.test(exprStr)) {
+	if (isJsOnly(exprStr)) {
 		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
@@ -689,7 +753,7 @@ function evalExpr(compiled, t, opts = {}) {
 }
 function compileSurfaceExpr(exprStr) {
 	exprStr = _normalizeSingleQuotes(exprStr);
-	if (_JS_ONLY_RE.test(exprStr)) {
+	if (isJsOnly(exprStr)) {
 		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
@@ -756,7 +820,11 @@ function annotationRows(items) {
 			rows.push(item.text);
 			continue;
 		}
-		const { group, name, value } = item.index;
+		const { group, name, value, shown } = item.index;
+		if (shown !== void 0) {
+			rows.push(`${name} = ${shown}`);
+			continue;
+		}
 		const key = JSON.stringify([group, value]);
 		const existing = indexes.get(key);
 		if (existing) {
@@ -787,7 +855,7 @@ function annotationGroups(items) {
 		if (a.kind !== b.kind || a.detached || b.detached || a.coordinateMode !== b.coordinateMode) continue;
 		const sameIndex = a.index && b.index && a.index.group === b.index.group && a.index.value === b.index.value;
 		const overlaps = Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.y - b.y) < (a.height + b.height) / 2;
-		if (sameIndex || overlaps) parent[root(j)] = root(i);
+		if (sameIndex || overlaps && a.kind === "label") parent[root(j)] = root(i);
 	}
 	const groups = /* @__PURE__ */ new Map();
 	items.forEach((_, i) => {
@@ -796,6 +864,30 @@ function annotationGroups(items) {
 		groups.get(r).push(i);
 	});
 	return [...groups.values()];
+}
+/**
+* Upward lift, in px, for each marker badge so badges on different indexes never
+* overlap. Badges are placed left to right; one that would collide with a placed
+* badge climbs one badge height (plus a gap) at a time until it is clear. Its
+* pointer stretches into a stem, so it still points at its own cell.
+*/
+function markerLifts(boxes, gap = 4) {
+	const lifts = boxes.map(() => 0);
+	const placed = [];
+	for (const i of boxes.map((_, i) => i).sort((a, b) => boxes[a].x - boxes[b].x || a - b)) {
+		const b = boxes[i];
+		let lift = 0;
+		const hits = () => placed.some((p) => Math.abs(p.x - b.x) < (p.width + b.width) / 2 + gap && Math.abs(p.y - (b.y - lift)) < (p.height + b.height) / 2 + gap);
+		while (hits()) lift += b.height + gap;
+		lifts[i] = lift;
+		placed.push({
+			x: b.x,
+			y: b.y - lift,
+			width: b.width,
+			height: b.height
+		});
+	}
+	return lifts;
 }
 /** Shared expression-label boxes track their members without changing their anchors. */
 function annotationGroupAnchor(items) {
@@ -815,6 +907,121 @@ function annotationContainerTitle(rows) {
 		const parts = row.split(/(?<![<>=!])=(?!=)/);
 		return parts.length > 1 && parts.every((part) => part.trim().length > 0);
 	}) ? "Vars" : "Labels";
+}
+/**
+* The question a label row's Ask-AI button posts as the learner's message: the row as shown, how it was
+* computed, and the author's note. The scene, step and slider values reach the tutor with every message
+* already, so repeating them here would only clutter the question the learner sees.
+*/
+function labelAskMessage(o) {
+	const lines = [`Explain: ${o.text}`];
+	if (o.tooltip) lines.push(`Computed as $${o.tooltip}$`);
+	if (o.prompt) lines.push(o.prompt);
+	return lines.join("\n");
+}
+//#endregion
+//#region src/code-symbols.ts
+var analyses = /* @__PURE__ */ new Map();
+/** The analyzer language for a file, or null when there is none for it. */
+function codeLanguage(file) {
+	const language = file.language?.toLowerCase();
+	return language === "python" || !language && /\.py$/i.test(file.path) ? "python" : null;
+}
+/** The file's analysis, fetched once per distinct source; null when unavailable (no analyzer, offline, error). */
+function analyzeCode(file) {
+	const language = codeLanguage(file);
+	if (!language) return Promise.resolve(null);
+	const cacheKey = language + "\0" + file.source;
+	let pending = analyses.get(cacheKey);
+	if (!pending) {
+		pending = fetch("/api/code/analyze", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				language,
+				source: file.source
+			})
+		}).then((res) => res.ok ? res.json() : null).catch(() => null);
+		analyses.set(cacheKey, pending);
+	}
+	return pending;
+}
+var symbolKey = (text) => text.replace(/\s+/g, "");
+var EXPRESSION = /^[A-Za-z_][\w.]*(\[[^\]]*\]|\.[A-Za-z_]\w*)*\]*$/;
+/**
+* The symbols a label or marker row names: everything left of its last ` = `. A marker row can merge names
+* (`i = j = 3`), so there may be several. Rows that are not `name = value` (conditions) name none.
+*/
+function rowSymbolKeys(text) {
+	const parts = text.split(" = ");
+	return parts.length < 2 ? [] : parts.slice(0, -1).filter((name) => !/\w\s+\w/.test(name)).map(symbolKey).filter((key) => EXPRESSION.test(key));
+}
+/** The references on one line, outermost first, so nested expressions wrap inside their parents. */
+function lineReferences(references, line) {
+	return references.filter((r) => r.line === line && r.endLine === line).sort((a, b) => a.col - b.col || b.endCol - b.col - (a.endCol - a.col));
+}
+/** A code line, as a row's codeRef resolves it: `fileId:line`. */
+var codeLineKey = (fileId, line) => `${fileId}:${line}`;
+var hovered = [];
+var hoveredLine = null;
+/** Set (or clear, with an empty list and no line) the symbols and the code line being pointed at. */
+function setSymbolHover(keys, line = null) {
+	if (line === hoveredLine && keys.length === hovered.length && keys.every((k, i) => k === hovered[i])) return;
+	hovered = keys;
+	hoveredLine = line;
+	window.dispatchEvent(new CustomEvent("algebench:symbolhover", { detail: {
+		keys,
+		line
+	} }));
+}
+var hoveredSymbols = () => hovered;
+var hoveredCodeLine = () => hoveredLine;
+/**
+* What objects in the scene hold for a symbol right now (an array's cells as `[1, 2, 3]`), for the Code panel's
+* inline values. Each source reads its value on demand and answers null while it is not shown.
+*/
+var valueSources = /* @__PURE__ */ new Map();
+function registerSymbolValue(key, read) {
+	let set = valueSources.get(key);
+	if (!set) valueSources.set(key, set = /* @__PURE__ */ new Set());
+	set.add(read);
+	return () => {
+		set.delete(read);
+		if (!set.size) valueSources.delete(key);
+	};
+}
+function symbolValues(key) {
+	return [...valueSources.get(key) ?? []].map((read) => read()).filter((v) => v !== null);
+}
+/** Briefly light these symbols where they are executing (keys or bare variable names). */
+function flashSymbols(keys) {
+	if (keys.length) window.dispatchEvent(new CustomEvent("algebench:symbolflash", { detail: { keys } }));
+}
+/** Make a label/marker row take part in symbol hover: pointing at it lights its symbols (and its code line,
+* when it has a codeRef) in the code, and the code's hover lights it. Rows are rebuilt as values and lines
+* change, so a new row picks up the current hover. */
+function bindSymbolRow(row, text, code) {
+	const keys = rowSymbolKeys(text);
+	const line = code ? codeLineKey(code.fileId, code.line) : null;
+	if (!keys.length && !line) return;
+	listenForRows();
+	if (keys.length) row.dataset.symbols = keys.join("\n");
+	if (line) row.dataset.codeLine = line;
+	paintRow(row);
+	row.addEventListener("pointerenter", () => setSymbolHover(keys, line));
+	row.addEventListener("pointerleave", () => setSymbolHover([]));
+}
+function paintRow(row) {
+	const lit = (row.dataset.symbols?.split("\n").some((k) => hovered.includes(k)) ?? false) || hoveredLine !== null && row.dataset.codeLine === hoveredLine;
+	row.classList.toggle("annotation-row-symbol-hover", lit);
+}
+var listening = false;
+function listenForRows() {
+	if (listening) return;
+	listening = true;
+	window.addEventListener("algebench:symbolhover", () => {
+		document.querySelectorAll(".annotation-row[data-symbols], .annotation-row[data-code-line]").forEach(paintRow);
+	});
 }
 //#endregion
 //#region src/coords.ts
@@ -1046,7 +1253,16 @@ function objectCellAnchor(name, index) {
 	const tracker = match[1].tracker;
 	for (const mesh of tracker.planeMeshes ?? []) {
 		const cells = mesh.userData.arrayCellTarget;
-		if (mesh.visible && cells) return cells.at(index);
+		if (mesh.visible && cells) {
+			const at = cells.at(index);
+			return at && {
+				...at,
+				vertical: cells.vertical,
+				graph: cells.graph,
+				round: cells.round,
+				ports: cells.ports?.(index)
+			};
+		}
 	}
 	return null;
 }
@@ -1085,6 +1301,18 @@ function objectWorldAnchor(name) {
 	}
 	const label = tracker.labels?.[0];
 	return label ? new THREE.Vector3(...dataToWorld(label.dataPos)) : null;
+}
+/**
+* The visible box row of an expression label named by id, wherever it is drawn:
+* in its own box or merged into another label's box. Null for other objects.
+*/
+function objectLabelRow(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	const label = match[1].tracker.labels?.find((l) => l.annotation?.kind === "label");
+	if (!label) return null;
+	const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+	return row && row.offsetParent ? row : null;
 }
 //#endregion
 //#region src/label-wire-path.ts
@@ -1268,11 +1496,190 @@ function projectedCellEdge(start, centre, corners, gap = 4, avoidIndex = false) 
 		y: centre.y + ray.y * (nearest + gap / length)
 	} : centre;
 }
+/**
+* A link between two rows of the same label box: a bracket that leaves one row
+* sideways, bows out past the box edge and returns to the other row. Its bow
+* grows with the distance between the rows so adjacent rows stay tight.
+*/
+function rowBracketWire(edgeX, fromY, toY, side) {
+	const bow = side * (10 + Math.min(28, Math.abs(toY - fromY) * .3));
+	return `M ${edgeX} ${fromY} C ${edgeX + bow} ${fromY}, ${edgeX + bow} ${toY}, ${edgeX} ${toY}`;
+}
+/** The control point an end pulls toward: out along its cell's axis, further for a longer link. */
+function linkPull(axis, from, to) {
+	const d = axis === "v" ? to.y - from.y : to.x - from.x, across = axis === "v" ? to.x - from.x : to.y - from.y;
+	const bend = Math.max(8, Math.abs(d) * .45, Math.min(48, Math.abs(across) * .3)) * (d < 0 ? -1 : 1);
+	return axis === "v" ? {
+		x: from.x,
+		y: from.y + bend
+	} : {
+		x: from.x + bend,
+		y: from.y
+	};
+}
+/**
+* A cell-to-cell link between two arrays: each end leaves its cell along the cell's own axis, vertically
+* ('v', off a top or bottom edge of a horizontal row) or horizontally ('h', off the side of a stacked cell).
+* `arrive` is the last control point, the direction the curve enters its target (for an arrowhead).
+*/
+function cellLinkCurve(start, end, startAxis = "v", endAxis = "v") {
+	const c1 = linkPull(startAxis, start, end), c2 = linkPull(endAxis, end, start);
+	return {
+		d: `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`,
+		arrive: c2
+	};
+}
+/**
+* A link between two cells of the same array: an arch that leaves and lands on the same side of the row
+* ('up' / 'down' for a row, 'left' / 'right' for a stack), rising with the distance it spans, so it never
+* crosses the cells in between. Start and end on one cell make a small loop.
+*/
+function cellArcCurve(start, end, side) {
+	const span = Math.hypot(end.x - start.x, end.y - start.y), h = Math.max(18, span * .32);
+	const [dx, dy] = side === "up" ? [0, -h] : side === "down" ? [0, h] : side === "left" ? [-h, 0] : [h, 0];
+	const c1 = {
+		x: start.x + dx,
+		y: start.y + dy
+	}, c2 = {
+		x: end.x + dx,
+		y: end.y + dy
+	};
+	return {
+		d: `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`,
+		arrive: c2
+	};
+}
+/**
+* A graph edge between two nodes: from the edge of one node's box (or disc, `round`) to the other's, bowing by
+* `bend` of its length to the side away from `centre` (so the two directions of a pair, and edges around a loop,
+* curve apart). A node linked to itself gets a small loop over its top.
+*/
+function graphEdgeCurve(a, b, bend, centre) {
+	const boundary = (n, toward) => {
+		const dx = toward.x - n.centre.x, dy = toward.y - n.centre.y, len = Math.hypot(dx, dy) || 1;
+		if (n.round) {
+			const r = Math.min(n.hw, n.hh) + 2;
+			return {
+				x: n.centre.x + dx / len * r,
+				y: n.centre.y + dy / len * r
+			};
+		}
+		if (n.poly && n.poly.length >= 3) {
+			const t = rayExit(n.centre, {
+				x: dx / len,
+				y: dy / len
+			}, n.poly);
+			if (t !== null) return {
+				x: n.centre.x + dx / len * (t + 2),
+				y: n.centre.y + dy / len * (t + 2)
+			};
+		}
+		const t = Math.min(Math.abs(dx) > 1e-6 ? (n.hw + 2) / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-6 ? (n.hh + 2) / Math.abs(dy) : Infinity);
+		return {
+			x: n.centre.x + dx * t,
+			y: n.centre.y + dy * t
+		};
+	};
+	if (Math.hypot(b.centre.x - a.centre.x, b.centre.y - a.centre.y) < 1) {
+		const top = a.centre.y - a.hh - 2, w = Math.max(6, a.hw * .6), h = Math.max(22, a.hh * 2.2);
+		const s = {
+			x: a.centre.x - w,
+			y: top
+		}, e = {
+			x: a.centre.x + w,
+			y: top
+		}, c1 = {
+			x: a.centre.x - w * 2.2,
+			y: top - h
+		}, c2 = {
+			x: a.centre.x + w * 2.2,
+			y: top - h
+		};
+		return {
+			d: `M ${s.x} ${s.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${e.x} ${e.y}`,
+			arrive: c2,
+			end: e
+		};
+	}
+	const mid = {
+		x: (a.centre.x + b.centre.x) / 2,
+		y: (a.centre.y + b.centre.y) / 2
+	};
+	const dx = b.centre.x - a.centre.x, dy = b.centre.y - a.centre.y, len = Math.hypot(dx, dy);
+	let px = -dy / len, py = dx / len;
+	if ((mid.x - centre.x) * px + (mid.y - centre.y) * py < 0) {
+		px = -px;
+		py = -py;
+	}
+	const control = {
+		x: mid.x + px * bend * len,
+		y: mid.y + py * bend * len
+	};
+	const s = boundary(a, control), e = boundary(b, control);
+	const ux = dx / len, uy = dy / len, behind = (e.x - control.x) * ux + (e.y - control.y) * uy > 1;
+	return {
+		d: `M ${s.x} ${s.y} Q ${control.x} ${control.y}, ${e.x} ${e.y}`,
+		arrive: behind ? control : {
+			x: e.x - ux * 10,
+			y: e.y - uy * 10
+		},
+		end: e
+	};
+}
+/** Distance from `from` (inside the polygon) along the unit direction `dir` to where the ray leaves it, or null. */
+function rayExit(from, dir, poly) {
+	let best = null;
+	for (let i = 0; i < poly.length; i++) {
+		const p = poly[i], q = poly[(i + 1) % poly.length], ex = q.x - p.x, ey = q.y - p.y, den = dir.x * ey - dir.y * ex;
+		if (Math.abs(den) < 1e-9) continue;
+		const t = ((p.x - from.x) * ey - (p.y - from.y) * ex) / den, u = ((p.x - from.x) * dir.y - (p.y - from.y) * dir.x) / den;
+		if (t >= 0 && u >= -1e-9 && u <= 1 + 1e-9 && (best === null || t < best)) best = t;
+	}
+	return best;
+}
+/**
+* A graph edge drawn as an arc of the circle around `centre` that passes through the source node: from node to
+* node the short way round (clockwise on a tie), trimmed where it enters each node, so a loop of nodes on a
+* circle reads as one round loop. `arrive` sits on the circle just before the end, for the arrowhead.
+*/
+function graphArcCurve(a, b, centre) {
+	const r = Math.hypot(a.centre.x - centre.x, a.centre.y - centre.y) || 1;
+	const ta = Math.atan2(a.centre.y - centre.y, a.centre.x - centre.x);
+	let d = Math.atan2(b.centre.y - centre.y, b.centre.x - centre.x) - ta;
+	while (d <= -Math.PI) d += 2 * Math.PI;
+	while (d > Math.PI) d -= 2 * Math.PI;
+	if (Math.abs(d) < 1e-6) d = 2 * Math.PI;
+	const sign = d > 0 ? 1 : -1;
+	const trim = (n) => (Math.min(n.hw, n.hh) + 3) / r;
+	const s0 = ta + sign * trim(a), s1 = ta + d - sign * trim(b);
+	const at = (t) => ({
+		x: centre.x + Math.cos(t) * r,
+		y: centre.y + Math.sin(t) * r
+	});
+	const s = at(s0), e = at(s1);
+	const large = Math.abs(s1 - s0) > Math.PI ? 1 : 0, sweep = sign > 0 ? 1 : 0;
+	return {
+		d: `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} ${sweep} ${e.x} ${e.y}`,
+		arrive: at(s1 - sign * .2),
+		end: e
+	};
+}
+/** A filled arrowhead with its tip at `tip`, pointing away from `from`. */
+function arrowHeadPath(tip, from, size = 6) {
+	const len = Math.hypot(tip.x - from.x, tip.y - from.y) || 1, ux = (tip.x - from.x) / len, uy = (tip.y - from.y) / len;
+	const bx = tip.x - ux * size, by = tip.y - uy * size, w = size * .55;
+	const r = (n) => Math.round(n * 100) / 100;
+	return `M ${r(tip.x)} ${r(tip.y)} L ${r(bx - uy * w)} ${r(by + ux * w)} L ${r(bx + uy * w)} ${r(by - ux * w)} Z`;
+}
 //#endregion
 //#region src/cell-attachment.ts
 /** Shared screen-space anchor for a cell's index tag and connection endpoint. */
 function cellEdgeAnchor(corners, edge, gap = 0) {
 	const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+	if (edge === "left" || edge === "right") return {
+		x: edge === "left" ? Math.min(...xs) - gap : Math.max(...xs) + gap,
+		y: (Math.min(...ys) + Math.max(...ys)) / 2
+	};
 	return {
 		x: (Math.min(...xs) + Math.max(...xs)) / 2,
 		y: edge === "top" ? Math.min(...ys) - gap : Math.max(...ys) + gap
@@ -1281,9 +1688,20 @@ function cellEdgeAnchor(corners, edge, gap = 0) {
 //#endregion
 //#region src/label-wire.ts
 /** Hover wires are presentation only. Target expressions are evaluated by bindings. */
+var newPart = () => ({
+	svg: null,
+	path: null,
+	dot: null,
+	previous: "",
+	routeKey: "",
+	routePath: ""
+});
+/** Every target of a label: the full list when one was given, else the single target. */
+var targetsOf = (label) => label.wireTargets ?? (label.wireTarget ? [label.wireTarget] : []);
+var reachable = (t) => t.object ? objectTargetExists(t.object, t.index) : !!t.position;
 var wires = /* @__PURE__ */ new Map();
 function wireRowHover(row, label) {
-	if (!label.wireTarget) return;
+	if (!targetsOf(label).length) return;
 	let record = wires.get(label);
 	if (record) {
 		record.row = row;
@@ -1293,12 +1711,7 @@ function wireRowHover(row, label) {
 			label,
 			row,
 			hovered: false,
-			svg: null,
-			path: null,
-			dot: null,
-			previous: "",
-			routeKey: "",
-			routePath: ""
+			parts: []
 		};
 		wires.set(label, record);
 	}
@@ -1330,7 +1743,7 @@ function wireRowHover(row, label) {
 function updateLabelWire() {
 	for (const [label, wire] of wires) {
 		if (!label.el.isConnected) {
-			wire.svg?.remove();
+			wire.parts.forEach((p) => p.svg?.remove());
 			wires.delete(label);
 			continue;
 		}
@@ -1338,25 +1751,82 @@ function updateLabelWire() {
 	}
 }
 function paintWire(record) {
-	const hovered = record;
-	let { svg, path, dot, previous, routeKey, routePath } = record;
-	const camera = state.camera, canvas = state.renderer?.domElement;
-	const target = record.label.wireTarget;
-	const available = !!target && (target.object ? objectTargetExists(target.object, target.index) : !!target.position);
+	const targets = targetsOf(record.label);
+	const available = targets.some(reachable);
 	if (record.available !== available) {
 		record.available = available;
 		if (record.button) record.button.style.display = available ? "" : "none";
 	}
-	if (!available) {
-		if (svg) svg.style.display = "none";
-		return;
-	}
+	while (record.parts.length < targets.length) record.parts.push(newPart());
+	record.parts.forEach((part, i) => {
+		const target = targets[i];
+		if (!target || !reachable(target)) {
+			if (part.svg) part.svg.style.display = "none";
+			return;
+		}
+		paintTarget(record, part, target);
+	});
+}
+function paintTarget(record, part, target) {
+	const hovered = record;
+	let { svg, path, dot, previous, routeKey, routePath } = part;
+	const camera = state.camera, canvas = state.renderer?.domElement;
 	if (!record.hovered && !record.label.wirePinned || !hovered.row.isConnected || hovered.label.forceHidden || hovered.label.visible === false || hovered.label.el.style.display === "none" || !camera || !canvas) {
 		if (svg) svg.style.display = "none";
 		return;
 	}
 	if (hovered.label.annotationDragging) {
 		if (svg) svg.style.display = "none";
+		return;
+	}
+	const targetRow = target?.object && target.index === void 0 ? objectLabelRow(target.object) : null;
+	if (targetRow && targetRow !== hovered.row) {
+		const container = document.getElementById("labels-container");
+		if (!container) return;
+		({svg, path, dot} = ensureWireSvg(part, container));
+		const rect = container.getBoundingClientRect(), from = hovered.row.getBoundingClientRect(), to = targetRow.getBoundingClientRect();
+		const fromBox = hovered.row.closest(".annotation-badge").getBoundingClientRect(), toBox = targetRow.closest(".annotation-badge").getBoundingClientRect();
+		const fromY = (from.top + from.bottom) / 2 - rect.top, toY = (to.top + to.bottom) / 2 - rect.top;
+		let d, end;
+		if (hovered.row.closest(".annotation-badge") === targetRow.closest(".annotation-badge")) {
+			const edge = fromBox.right - rect.left;
+			d = rowBracketWire(edge, fromY, toY, 1);
+			end = {
+				x: edge,
+				y: toY
+			};
+		} else {
+			const rightward = (toBox.left + toBox.right) / 2 > (fromBox.left + fromBox.right) / 2;
+			const start = {
+				x: (rightward ? fromBox.right : fromBox.left) - rect.left,
+				y: fromY
+			};
+			end = {
+				x: (rightward ? toBox.left : toBox.right) - rect.left,
+				y: toY
+			};
+			const obstacles = [fromBox, toBox].map((b) => ({
+				left: b.left - rect.left,
+				top: b.top - rect.top,
+				right: b.right - rect.left,
+				bottom: b.bottom - rect.top,
+				padding: 0
+			}));
+			d = routedLabelWire(start, end, {
+				x: rightward ? 1 : -1,
+				y: 0
+			}, {
+				x: rightward ? -1 : 1,
+				y: 0
+			}, obstacles);
+		}
+		svg.style.display = "";
+		if (d !== part.previous) {
+			path.setAttribute("d", d);
+			dot.setAttribute("cx", String(end.x));
+			dot.setAttribute("cy", String(end.y));
+			part.previous = d;
+		}
 		return;
 	}
 	const cell = target?.object && target.index !== void 0 ? objectCellAnchor(target.object, target.index) : null;
@@ -1372,36 +1842,9 @@ function paintWire(record) {
 	}
 	const container = document.getElementById("labels-container");
 	if (!container) return;
-	if (!svg?.isConnected) {
-		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		svg.classList.add("label-hover-wire");
-		svg.setAttribute("aria-hidden", "true");
-		Object.assign(svg.style, {
-			position: "absolute",
-			inset: "0",
-			width: "100%",
-			height: "100%",
-			overflow: "visible",
-			pointerEvents: "none",
-			zIndex: "2147483647"
-		});
-		path = document.createElementNS(svg.namespaceURI, "path");
-		path.setAttribute("fill", "none");
-		path.setAttribute("stroke", "#a6d5ec");
-		path.setAttribute("stroke-opacity", ".65");
-		path.setAttribute("stroke-width", "1.5");
-		path.setAttribute("stroke-linecap", "round");
-		dot = document.createElementNS(svg.namespaceURI, "circle");
-		dot.setAttribute("r", "2");
-		dot.setAttribute("fill", "#bce8ff");
-		svg.append(path, dot);
-		container.append(svg);
-		previous = "";
-		routeKey = "";
-		record.svg = svg;
-		record.path = path;
-		record.dot = dot;
-	}
+	({svg, path, dot} = ensureWireSvg(part, container));
+	previous = part.previous;
+	routeKey = part.routeKey;
 	const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect(), row = hovered.row.getBoundingClientRect();
 	const screen = (p) => ({
 		x: viewport.left - rect.left + (p.x * .5 + .5) * viewport.width,
@@ -1484,8 +1927,8 @@ function paintWire(record) {
 	if (key !== routeKey) {
 		routeKey = key;
 		routePath = routedLabelWire(start, end, departure, approach, obstacles);
-		record.routeKey = routeKey;
-		record.routePath = routePath;
+		part.routeKey = routeKey;
+		part.routePath = routePath;
 	}
 	const d = routePath;
 	svg.style.display = "";
@@ -1493,8 +1936,444 @@ function paintWire(record) {
 		path.setAttribute("d", d);
 		dot.setAttribute("cx", String(end.x));
 		dot.setAttribute("cy", String(end.y));
-		record.previous = d;
+		part.previous = d;
 	}
+}
+/** A part's SVG wire, created on first use and after the container was rebuilt. */
+function ensureWireSvg(record, container) {
+	if (!record.svg?.isConnected) {
+		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		svg.classList.add("label-hover-wire");
+		svg.setAttribute("aria-hidden", "true");
+		Object.assign(svg.style, {
+			position: "absolute",
+			inset: "0",
+			width: "100%",
+			height: "100%",
+			overflow: "visible",
+			pointerEvents: "none",
+			zIndex: "2147483647"
+		});
+		const path = document.createElementNS(svg.namespaceURI, "path");
+		path.setAttribute("fill", "none");
+		path.setAttribute("stroke", "#a6d5ec");
+		path.setAttribute("stroke-opacity", ".65");
+		path.setAttribute("stroke-width", "1.5");
+		path.setAttribute("stroke-linecap", "round");
+		const dot = document.createElementNS(svg.namespaceURI, "circle");
+		dot.setAttribute("r", "2");
+		dot.setAttribute("fill", "#bce8ff");
+		svg.append(path, dot);
+		container.append(svg);
+		record.svg = svg;
+		record.path = path;
+		record.dot = dot;
+		record.previous = "";
+		record.routeKey = "";
+	}
+	return {
+		svg: record.svg,
+		path: record.path,
+		dot: record.dot
+	};
+}
+//#endregion
+//#region src/label-tooltip.ts
+var tip = null;
+var owner = null;
+var shown = "";
+function element() {
+	if (!tip?.isConnected) {
+		tip = document.createElement("div");
+		tip.className = "graph-panel-tooltip label-row-tooltip";
+		tip.setAttribute("role", "tooltip");
+		document.body.append(tip);
+		shown = "";
+	}
+	return tip;
+}
+function render$1(tex) {
+	if (tex === shown) return;
+	const el = element();
+	const katex = window.katex;
+	if (katex) katex.render(tex, el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else el.textContent = tex;
+	shown = tex;
+}
+function hide() {
+	owner = null;
+	tip?.classList.remove("visible");
+}
+/** Show `label`'s tooltip while the pointer is over this row. Rows are rebuilt as values change; each new row is wired again. */
+function wireRowTooltip(row, label) {
+	if (label.annotation?.tooltip === void 0) return;
+	row.addEventListener("pointerenter", () => {
+		owner = label;
+		render$1(label.annotation?.tooltip ?? "");
+		element().classList.toggle("visible", !!label.annotation?.tooltip);
+	});
+	row.addEventListener("pointermove", (event) => {
+		const el = element();
+		const overButton = event.target?.closest("button");
+		el.classList.toggle("visible", owner === label && !overButton && !!label.annotation?.tooltip);
+		el.style.left = `${event.clientX + 12}px`;
+		el.style.top = `${row.getBoundingClientRect().bottom + 6}px`;
+	});
+	row.addEventListener("pointerleave", () => {
+		if (owner === label) hide();
+	});
+}
+/**
+* The same tooltip for a code symbol: hovering a variable in the Code panel shows what the scene's labels say
+* about it (their formula, or their value), just under the symbol. `null` hides it.
+*/
+function showCodeSymbolTooltip(anchor, tex) {
+	if (!anchor || !tex) {
+		if (!owner) tip?.classList.remove("visible");
+		return;
+	}
+	owner = null;
+	render$1(tex);
+	const el = element(), r = anchor.getBoundingClientRect();
+	el.style.left = `${r.left}px`;
+	el.style.top = `${r.bottom + 6}px`;
+	el.classList.add("visible");
+}
+/** Called with the label layout each frame: follow value changes while open, and close when the row goes away. */
+function refreshLabelTooltip() {
+	if (callouts.size) placeCallouts();
+	if (!owner) return;
+	const tex = owner.annotation?.tooltip;
+	if (tex === void 0 || !owner.el.isConnected || owner.forceHidden || owner.visible === false) {
+		hide();
+		return;
+	}
+	render$1(tex);
+	tip?.classList.toggle("visible", !!tex);
+}
+var CALLOUT_MS = 2500;
+var callouts = /* @__PURE__ */ new Map();
+function calloutRender(c, tex) {
+	if (c.tex === tex) return;
+	const katex = window.katex;
+	if (katex) katex.render(tex, c.el, {
+		displayMode: true,
+		throwOnError: false,
+		strict: false
+	});
+	else c.el.textContent = tex;
+	c.tex = tex;
+}
+/** Show `label`'s formula beside its row for a few seconds, restarting the timer on each recalculation. */
+function announceLabelChange(label) {
+	let c = callouts.get(label);
+	if (!c || !c.el.isConnected) {
+		const el = document.createElement("div");
+		el.className = "graph-panel-tooltip label-row-tooltip label-change-callout";
+		el.setAttribute("role", "status");
+		document.body.append(el);
+		c = {
+			el,
+			until: 0,
+			tex: ""
+		};
+		callouts.set(label, c);
+	}
+	calloutRender(c, label.annotation?.tooltip ?? "");
+	c.until = performance.now() + CALLOUT_MS;
+}
+/** Each frame: keep callouts beside their rows (boxes move with the camera and drags), and retire expired ones. */
+function placeCallouts() {
+	const now = performance.now();
+	for (const [label, c] of callouts) {
+		const row = document.querySelector(`.annotation-row[data-label-seq="${label.seq}"]`);
+		const gone = !label.el.isConnected || label.forceHidden || label.visible === false || !row?.offsetParent;
+		if (gone || now > c.until || owner === label) {
+			c.el.classList.remove("visible");
+			if (gone || now > c.until + 400) {
+				c.el.remove();
+				callouts.delete(label);
+			}
+			continue;
+		}
+		calloutRender(c, label.annotation?.tooltip ?? c.tex);
+		const box = row.closest(".annotation-badge").getBoundingClientRect(), r = row.getBoundingClientRect();
+		const width = c.el.offsetWidth, roomRight = window.innerWidth - box.right - 8 >= width;
+		c.el.style.left = `${roomRight ? box.right + 8 : Math.max(8, box.left - 8 - width)}px`;
+		c.el.style.top = `${(r.top + r.bottom) / 2 - c.el.offsetHeight / 2}px`;
+		c.el.classList.add("visible");
+	}
+}
+//#endregion
+//#region src/cell-links.ts
+/**
+* Array cell links (an array's connectTo): a curve from each cell to the cell of another object it names,
+* e.g. a deque of indices to the values in `nums`. An array may connect to several objects; each target is
+* one link group with its own colour. The owning array evaluates the pairs on state changes (setCellLinks);
+* this module only projects and paints them, each frame, beside label wires. Like a label's wire, each array
+* has one pin toggle (just outside its right edge) for all its groups: pinned links always show; unpinned
+* ones show only while the toggle is hovered.
+*/
+var sets = /* @__PURE__ */ new Map();
+/** Replace the links drawn from array `from`. `pinned` sets the toggle's first state only; the reader owns it after. */
+function setCellLinks(from, groups, pinned) {
+	const set = sets.get(from);
+	if (set) set.groups = groups;
+	else sets.set(from, {
+		groups,
+		svg: null,
+		drawn: "",
+		pinned,
+		hovered: false,
+		toggle: null
+	});
+}
+/** Paint every link set; a set whose array left the scene is removed with its SVG. */
+function paintCellLinks() {
+	const camera = state.camera, canvas = state.renderer?.domElement, container = document.getElementById("labels-container");
+	for (const [from, set] of sets) {
+		if (!state.elementRegistry?.[from]) {
+			set.svg?.remove();
+			set.toggle?.remove();
+			sets.delete(from);
+			continue;
+		}
+		if (!camera || !canvas || !container) continue;
+		const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect();
+		const screen = (p) => {
+			const v = new THREE.Vector3(...dataToWorld(p)).project(camera);
+			return {
+				x: viewport.left - rect.left + (v.x * .5 + .5) * viewport.width,
+				y: viewport.top - rect.top + (-v.y * .5 + .5) * viewport.height,
+				z: v.z
+			};
+		};
+		const paths = [];
+		let centre = null;
+		let linked = false;
+		const outline = (name) => objectWorldCorners(name).map((v) => {
+			const q = v.clone().project(camera);
+			return {
+				x: viewport.left - rect.left + (q.x * .5 + .5) * viewport.width,
+				y: viewport.top - rect.top + (-q.y * .5 + .5) * viewport.height,
+				z: q.z
+			};
+		});
+		for (const group of set.groups) group.pairs.forEach(([i, j], p) => {
+			const a = objectCellAnchor(from, i);
+			const wholeCorners = group.whole ? outline(group.to) : null;
+			const b = group.whole ? wholeCorners.length ? {
+				corners: [],
+				vertical: false,
+				graph: false,
+				round: false
+			} : null : objectCellAnchor(group.to, j);
+			if (!a || !b) return;
+			const ac = a.corners.map(screen), bc = wholeCorners ?? b.corners.map(screen);
+			if ([...ac, ...bc].some((q) => q.z < -1 || q.z > 1)) return;
+			linked = true;
+			const mid = (c) => ({
+				x: c.reduce((s, p) => s + p.x, 0) / c.length,
+				y: c.reduce((s, p) => s + p.y, 0) / c.length
+			});
+			const am = mid(ac), bm = mid(bc);
+			const front = (cell, c) => {
+				const z = Math.max(...cell.corners.map((q) => q[2] ?? 0));
+				const f = c.filter((_, k) => (cell.corners[k][2] ?? 0) >= z - 1e-9);
+				return f.length ? f : c;
+			};
+			let curve, end;
+			if (group.whole) {
+				const start = a.vertical ? cellEdgeAnchor(front(a, ac), bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
+				const xs = bc.map((q) => q.x), ys = bc.map((q) => q.y);
+				const across = Math.max(Math.min(...xs) - start.x, start.x - Math.max(...xs), 0) > Math.max(Math.min(...ys) - start.y, start.y - Math.max(...ys), 0);
+				end = across ? cellEdgeAnchor(bc, start.x < bm.x ? "left" : "right", 4) : cellEdgeAnchor(bc, start.y < bm.y ? "top" : "bottom", 4);
+				curve = cellLinkCurve(start, end, a.vertical ? "h" : "v", across ? "h" : "v");
+			} else if (a.graph || b.graph) {
+				const box = (c, m, round) => ({
+					centre: m,
+					round,
+					hw: (Math.max(...c.map((q) => q.x)) - Math.min(...c.map((q) => q.x))) / 2,
+					hh: (Math.max(...c.map((q) => q.y)) - Math.min(...c.map((q) => q.y))) / 2,
+					...c.length === 4 ? { poly: c } : {}
+				});
+				centre ??= graphCentre(from, screen) ?? am;
+				const route = group.styles?.[p];
+				const port = route?.port !== void 0 ? a.ports?.[route.port] : void 0;
+				const edge = port ? (() => {
+					const s = screen(port), e = {
+						x: bm.x,
+						y: Math.min(...bc.map((q) => q.y)) - 2
+					};
+					return {
+						...cellLinkCurve(s, e, "v", "v"),
+						end: e
+					};
+				})() : route?.arcCentre ? graphArcCurve(box(ac, am, a.round), box(bc, bm, b.round), screen(route.arcCentre)) : graphEdgeCurve(box(ac, am, a.round), box(bc, bm, b.round), route?.bend ?? group.bend ?? .12, centre);
+				curve = edge;
+				end = edge.end;
+			} else if (group.to === from) {
+				const forward = j >= i;
+				const [startEdge, endEdge, side] = a.vertical ? forward ? [
+					"right",
+					"right",
+					"right"
+				] : [
+					"left",
+					"left",
+					"left"
+				] : forward ? [
+					"top",
+					"top",
+					"up"
+				] : [
+					"bottom",
+					"bottom",
+					"down"
+				];
+				const gap = !a.vertical && !forward ? 14 : 2;
+				let start = cellEdgeAnchor(ac, startEdge, gap);
+				end = cellEdgeAnchor(bc, endEdge, gap);
+				if (i === j) {
+					const w = (Math.max(...ac.map((p) => p.x)) - Math.min(...ac.map((p) => p.x))) * .25;
+					start = {
+						x: start.x - (a.vertical ? 0 : w),
+						y: start.y - (a.vertical ? w : 0)
+					};
+					end = {
+						x: end.x + (a.vertical ? 0 : w),
+						y: end.y + (a.vertical ? w : 0)
+					};
+				}
+				curve = cellArcCurve(start, end, side);
+			} else {
+				const start = a.vertical ? cellEdgeAnchor(front(a, ac), bm.x < am.x ? "left" : "right", 2) : cellEdgeAnchor(ac, bm.y < am.y ? "top" : "bottom", 2);
+				end = b.vertical ? cellEdgeAnchor(front(b, bc), am.x < bm.x ? "left" : "right", 0) : cellEdgeAnchor(bc, am.y < bm.y ? "top" : "bottom", am.y > bm.y ? 14 : 2);
+				curve = cellLinkCurve(start, end, a.vertical ? "h" : "v", b.vertical ? "h" : "v");
+			}
+			const style = group.styles?.[p];
+			paths.push({
+				d: curve.d,
+				color: style?.color || group.color,
+				lit: !!style?.lit,
+				...group.arrow ? { head: arrowHeadPath(end, curve.arrive, style?.lit ? 8 : 6) } : {}
+			});
+		});
+		paintToggle(set, container, linked ? outsideRight(from, screen) : null);
+		const shown = set.pinned || set.hovered;
+		const drawn = JSON.stringify(shown ? paths : []);
+		if (!set.svg?.isConnected) {
+			const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			svg.classList.add("cell-link-layer");
+			svg.setAttribute("aria-hidden", "true");
+			Object.assign(svg.style, {
+				position: "absolute",
+				inset: "0",
+				width: "100%",
+				height: "100%",
+				overflow: "visible",
+				pointerEvents: "none",
+				zIndex: "5"
+			});
+			container.append(svg);
+			set.svg = svg;
+			set.drawn = "";
+		}
+		if (drawn === set.drawn) continue;
+		set.drawn = drawn;
+		set.svg.replaceChildren(...(shown ? paths : []).flatMap(({ d, color, head, lit }) => {
+			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			path.setAttribute("d", d);
+			path.setAttribute("fill", "none");
+			path.setAttribute("stroke", color);
+			path.setAttribute("stroke-opacity", lit ? "1" : ".6");
+			path.setAttribute("stroke-width", lit ? "3" : "1.4");
+			path.setAttribute("stroke-linecap", "round");
+			if (lit) path.style.filter = `drop-shadow(0 0 3px ${color})`;
+			if (!head) return [path];
+			const tip = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			tip.setAttribute("d", head);
+			tip.setAttribute("fill", color);
+			tip.setAttribute("fill-opacity", lit ? "1" : ".8");
+			return [path, tip];
+		}));
+	}
+}
+/** A graph's centre on screen: the mean of its node centres, read through its cell target. */
+function graphCentre(name, screen) {
+	const pts = [];
+	for (let i = 0; i < 256; i++) {
+		const a = objectCellAnchor(name, i);
+		if (!a) break;
+		pts.push(screen(a.position));
+	}
+	return pts.length ? {
+		x: pts.reduce((s, q) => s + q.x, 0) / pts.length,
+		y: pts.reduce((s, q) => s + q.y, 0) / pts.length
+	} : null;
+}
+/** Just outside the object's right edge, clear of every cell and link: level with an array's rightmost cell,
+*  or at a graph's bottom-right corner (markers and labels sit above its nodes). */
+function outsideRight(name, screen) {
+	let best = null, bottom = -Infinity, graph = false;
+	for (let i = 0; i < 256; i++) {
+		const a = objectCellAnchor(name, i);
+		if (!a) break;
+		const c = a.corners.map(screen), x = Math.max(...c.map((q) => q.x));
+		graph ||= !!a.graph;
+		bottom = Math.max(bottom, ...c.map((q) => q.y));
+		if (!best || x > best.x + .5) best = {
+			x,
+			y: c.reduce((s, q) => s + q.y, 0) / c.length
+		};
+	}
+	return best && {
+		x: best.x + 6,
+		y: graph ? bottom : best.y
+	};
+}
+/** The set's pin toggle, built on first paint and kept just outside the source object's right edge. */
+function paintToggle(set, container, at) {
+	if (!set.toggle?.isConnected) {
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "expression-wire-toggle cell-link-toggle";
+		const label = () => {
+			button.setAttribute("aria-pressed", String(set.pinned));
+			button.setAttribute("aria-label", set.pinned ? "Unpin cell links" : "Pin cell links");
+			button.title = set.pinned ? "Links pinned · click to show them only on hover" : "Hover to show links · click to pin";
+		};
+		button.addEventListener("pointerdown", (event) => event.stopPropagation());
+		button.addEventListener("click", (event) => {
+			event.stopPropagation();
+			set.pinned = !set.pinned;
+			label();
+		});
+		button.addEventListener("pointerenter", () => {
+			set.hovered = true;
+		});
+		button.addEventListener("pointerleave", () => {
+			set.hovered = false;
+		});
+		label();
+		container.append(button);
+		set.toggle = button;
+	}
+	const button = set.toggle;
+	if (!at) {
+		if (button.style.display !== "none") button.style.display = "none";
+		return;
+	}
+	const style = `${Math.round(at.x)}px,${Math.round(at.y - 8)}px`;
+	if (button.dataset.at !== style) {
+		button.dataset.at = style;
+		button.style.transform = `translate(${style})`;
+	}
+	if (button.style.display === "none") button.style.display = "";
 }
 //#endregion
 //#region src/glossary-core.ts
@@ -2141,6 +3020,44 @@ function clearLabels() {
 }
 var _labelsContainer = null;
 var _appliedLabelScale = null;
+/**
+* The label, marker and condition rows on screen now, exactly as the learner reads them (`i = 5`,
+* `if i ≥ k - 1 → 4 ≥ 2 → True`), for the tutor: values it would otherwise have to re-derive from data.
+*/
+function visibleAnnotationTexts(limit = 60) {
+	const texts = labelsState.labels.filter((l) => l.annotation && l.visible && !l.forceHidden && l.el.style.display !== "none" && l.annotation.text).map((l) => l.annotation.text);
+	return [...new Set(texts)].slice(0, limit);
+}
+/**
+* What the labels and markers in the scene (on screen or not) say about a code symbol (by the key code-symbols.ts gives it): each one's
+* formula if it has a tooltipExpr, else its text as shown. For the Code panel's hover tooltip.
+*/
+function labelsForSymbol(key) {
+	const out = [];
+	for (const l of labelsState.labels) {
+		const a = l.annotation;
+		if (!a?.text || l.forceHidden || l.el.style.display === "none") continue;
+		if (!rowSymbolKeys(a.text).includes(key)) continue;
+		const same = out.find((o) => o.text === a.text);
+		if (!same) out.push({
+			text: a.text,
+			...a.tooltip ? { tooltip: a.tooltip } : {}
+		});
+		else if (!same.tooltip && a.tooltip) same.tooltip = a.tooltip;
+	}
+	return out;
+}
+/** The label rows tied to a code line by their codeRef (conditions and other expressions), as shown. */
+function labelsForCodeLine(fileId, line) {
+	const out = [];
+	for (const l of labelsState.labels) {
+		const a = l.annotation;
+		if (!a?.text || a.kind !== "label" || a.code?.fileId !== fileId || a.code.line !== line) continue;
+		if (l.forceHidden || l.el.style.display === "none" || out.includes(a.text)) continue;
+		out.push(a.text);
+	}
+	return out;
+}
 function updateLabels() {
 	const camera = labelsState.camera;
 	const renderer = labelsState.renderer;
@@ -2220,8 +3137,9 @@ function updateLabels() {
 		lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
 		lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
 		lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
-		const ax = lbl.align === "right" ? "-100%" : lbl.align === "left" ? "0%" : "-50%";
-		const transform = `translate(${lbl.annotationAnchor?.x ?? lbl.screenX}px, ${(lbl.annotationAnchor?.y ?? lbl.screenY) + lbl.offsetY}px) translate(${ax}, ${lbl.cellAttachment ? lbl.cellAttachment.edge === "top" ? "-100%" : "0%" : "-50%"})`;
+		const side = lbl.cellAttachment?.edge === "left" || lbl.cellAttachment?.edge === "right" ? lbl.cellAttachment.edge : null;
+		const ax = side === "left" || !side && lbl.align === "right" ? "-100%" : side === "right" || lbl.align === "left" ? "0%" : "-50%";
+		const transform = `translate(${lbl.annotationAnchor?.x ?? lbl.screenX}px, ${(lbl.annotationAnchor?.y ?? lbl.screenY) + lbl.offsetY}px) translate(${ax}, ${lbl.cellAttachment && !side ? lbl.cellAttachment.edge === "top" ? "-100%" : "0%" : "-50%"})`;
 		if (paint.transform !== transform) {
 			lbl.el.style.transform = transform;
 			paint.transform = transform;
@@ -2252,13 +3170,16 @@ function updateLabels() {
 	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
 		const o = ordered[i];
-		const zi = ordered.length - i + (o.annotationCoordinateMode === "screen" ? ordered.length : 0);
+		const band = o.annotationCoordinateMode === "screen" ? 4 : o.annotation?.kind === "label" ? 3 : o.annotation ? o.markerLifted ? 1 : 2 : 0;
+		const zi = ordered.length - i + band * ordered.length;
 		if (o._zi !== zi) {
 			o.el.style.zIndex = String(zi);
 			o._zi = zi;
 		}
 	}
 	updateLabelWire();
+	paintCellLinks();
+	refreshLabelTooltip();
 }
 /** Group only annotation objects. Expressions are evaluated by bindings, never here.
 * Intrinsic measurement nodes keep collision geometry independent of merged content. */
@@ -2294,7 +3215,9 @@ function groupAnnotations(scale) {
 		b.width,
 		b.height,
 		b.text,
-		b.index
+		b.index,
+		!!labels[i].annotation.highlighted,
+		labels[i].annotation.code?.line ?? 0
 	]));
 	if (key === annotationLayoutKey) return;
 	annotationLayoutKey = key;
@@ -2309,19 +3232,73 @@ function groupAnnotations(scale) {
 		const members = group.map((i) => boxes[i]);
 		if (a.kind === "label") leader.annotationAnchor = annotationGroupAnchor(members);
 		const rows = annotationRows(members);
-		const signature = JSON.stringify([rows, group.map((i) => [labels[i].seq, labels[i].annotationCoordinateMode ?? "world"])]);
+		const signature = JSON.stringify([rows, group.map((i) => [
+			labels[i].seq,
+			labels[i].annotationCoordinateMode ?? "world",
+			!!labels[i].annotation.highlighted,
+			labels[i].annotation.code?.line ?? 0
+		])]);
 		if (signature !== a.rendered) {
 			a.badge.replaceChildren(...rows.map((text, rowIndex) => {
 				const row = document.createElement("span");
 				row.className = "annotation-row";
 				row.textContent = text;
+				bindSymbolRow(row, text, a.kind === "label" ? labels[group[rowIndex]].annotation.code : null);
 				if (a.kind === "label") {
+					if (labels[group[rowIndex]].annotation.highlighted) row.classList.add("annotation-row-highlight");
 					wireRowHover(row, labels[group[rowIndex]]);
+					wireRowTooltip(row, labels[group[rowIndex]]);
+					const member = labels[group[rowIndex]];
+					const ask = makeAiAskButton("ai-ask-btn annotation-ask-btn", "Ask AI about this", () => labelAskMessage({
+						text: member.annotation.text,
+						tooltip: member.annotation.tooltip,
+						prompt: member.annotation.prompt
+					}));
+					ask.addEventListener("pointerdown", (event) => event.stopPropagation());
+					const code = member.annotation.code;
+					if (code) {
+						const open = document.createElement("button");
+						open.type = "button";
+						open.className = "ai-ask-btn annotation-code-btn";
+						open.innerHTML = CODE_ICON;
+						open.title = `Open ${code.path}:${code.line}`;
+						open.setAttribute("aria-label", open.title);
+						open.addEventListener("pointerdown", (event) => event.stopPropagation());
+						open.addEventListener("click", (event) => {
+							event.stopPropagation();
+							const now = member.annotation.code;
+							if (now) window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
+								fileId: now.fileId,
+								line: now.line
+							} }));
+						});
+						row.append(open);
+						let down = null;
+						row.addEventListener("pointerdown", (event) => {
+							down = {
+								x: event.clientX,
+								y: event.clientY
+							};
+						});
+						row.addEventListener("click", (event) => {
+							const moved = !down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 4;
+							down = null;
+							if (moved || event.target.closest("button")) return;
+							const now = member.annotation.code;
+							if (now) window.dispatchEvent(new CustomEvent("algebench:opencode", { detail: {
+								fileId: now.fileId,
+								line: now.line,
+								select: false
+							} }));
+						});
+						row.classList.add("annotation-row-coded");
+					}
+					row.append(ask);
 					row.dataset.labelSeq = String(labels[group[rowIndex]].seq);
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
 						row.classList.add("annotation-row-draggable");
-						if (!labels[group[rowIndex]].wireTarget) row.title = "Drag to move this label";
+						if (!labels[group[rowIndex]].wireTarget && !labels[group[rowIndex]].wireTargets?.length && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label";
 						row.addEventListener("pointerdown", drag);
 					}
 				}
@@ -2360,6 +3337,22 @@ function groupAnnotations(scale) {
 		}
 		for (const i of group.slice(1)) labels[i].annotationHidden = true;
 	}
+	const markerGroups = annotationGroups(boxes).filter((g) => boxes[g[0]].kind === "marker" && labels[g[0]].cellAttachment);
+	const lifts = markerLifts(markerGroups.map((g) => {
+		const leader = labels[g[0]], box = boxes[g[0]], badge = leader.annotation.badge;
+		const width = Math.max(box.width, badge.offsetWidth), height = Math.max(box.height, badge.offsetHeight);
+		return {
+			x: box.x,
+			y: leader.screenY - (height + 11) / 2,
+			width,
+			height
+		};
+	}));
+	markerGroups.forEach((g, k) => {
+		labels[g[0]].markerLifted = lifts[k] > 0;
+		const el = labels[g[0]].el, stem = `${lifts[k]}px`;
+		if (el.style.getPropertyValue("--marker-stem") !== stem) el.style.setProperty("--marker-stem", stem);
+	});
 }
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
 function placeExpressionLabel(label, x, y, clientX, clientY) {
@@ -2619,6 +3612,23 @@ function makeAiAskButton(className, title, getMessage) {
 */
 function makeSilentAiAskButton(className, title, getMessage) {
 	return _makeAiAskButton(className, title, getMessage, true);
+}
+/**
+* Send a prompt to the tutor, or with ⌘/Ctrl held put it in the input to edit first. Silent prompts are not
+* posted as the learner's message: only the reply shows (for long, context-laden requests).
+*/
+function sendAiPrompt(message, e, opts = {}) {
+	openChatPanel();
+	if (e.metaKey || e.ctrlKey) {
+		const input = document.getElementById("chat-input");
+		if (input) {
+			input.value = message;
+			input.focus();
+			input.dispatchEvent(new Event("input"));
+		}
+		return;
+	}
+	if (typeof sendChatMessage === "function" && !_chatBusy()) sendChatMessage(message, { silent: opts.silent });
 }
 /** True while a chat turn is in flight (chat.ts owns the state). */
 function _chatBusy() {
@@ -3046,6 +4056,21 @@ function setupSliderDrag(e, overlay) {
 	document.addEventListener("mousemove", onMove);
 	document.addEventListener("mouseup", onUp);
 }
+/** A slider without its live position (value, cells, desired value, animation state): its range. */
+function sliderRange(s) {
+	const { value: _v, values: _vs, _desired: _d, _loopPlaying: _p, _loopRaf: _r, _tweening: _t, ...range } = s;
+	return range;
+}
+/** Put a snapshot from registerSliders() back on a live slider, keeping its position inside the restored range. */
+function restoreSlider(id, prev) {
+	const s = sliderState.sceneSliders[id];
+	if (!s) return;
+	Object.assign(s, prev);
+	if (!isTensorSlider(s) && Number.isFinite(s.value) && (s.value < s.min || s.value > s.max)) {
+		s.value = Math.min(s.max, Math.max(s.min, s.value));
+		s._desired = s.value;
+	}
+}
 function registerSliders(sliderDefs) {
 	if (!sliderDefs || !Array.isArray(sliderDefs)) return {
 		ids: [],
@@ -3057,7 +4082,7 @@ function registerSliders(sliderDefs) {
 		const prev = sliderState.sceneSliders[def.id];
 		if (prev) {
 			stopSliderLoop(def.id);
-			if (def.reset) prevStates[def.id] = { ...prev };
+			prevStates[def.id] = def.reset ? { ...prev } : sliderRange(prev);
 			delete sliderState.sceneSliders[def.id];
 		}
 		const min = def.min !== void 0 ? def.min : 0;
@@ -5606,7 +6631,8 @@ function initMathBox() {
 		],
 		controls: { klass: CONTROL_CLASS },
 		camera: { fov: 75 },
-		renderer: { antialias: true }
+		renderer: { antialias: true },
+		size: { devicePixelRatio: false }
 	});
 	cameraState.three = cameraState.mathbox.three;
 	cameraState.camera = cameraState.three.camera;
@@ -6701,6 +7727,7 @@ function buildLegend(elements) {
 	const grouped = /* @__PURE__ */ new Map();
 	for (const el of elements) {
 		if (el.type === "axis" || el.type === "grid") continue;
+		if (el.labelSide === "left") continue;
 		const groupLabel = el.legendGroup || el.label;
 		if (!groupLabel || !el.color) continue;
 		const key = `${groupLabel}__${colorToCSS(el.color)}`;
@@ -6837,7 +7864,27 @@ function _replaceDoubleBraceExprs(template, evaluator) {
 function resolveInfoContent(template) {
 	return _replaceDoubleBraceExprs(template, (expr) => _evalInfoExpr(expr));
 }
+/** Re-evaluate overlays' visibleExpr; true when one changed, so the layout must be redone. */
+function _refreshInfoVisibility() {
+	let changed = false;
+	for (const item of Object.values(infoState.items)) {
+		if (!item.visibleFn) continue;
+		let shown = false;
+		try {
+			shown = !!evalExpr(item.visibleFn, 0);
+		} catch {}
+		if (shown !== item.shown) {
+			item.shown = shown;
+			changed = true;
+		}
+	}
+	return changed;
+}
 function updateInfoOverlays$1() {
+	if (_refreshInfoVisibility()) {
+		_scheduleRoute();
+		return;
+	}
 	for (const item of Object.values(infoState.items)) {
 		if (!item.contentEl) continue;
 		const resolved = resolveInfoContent(item.content);
@@ -7119,7 +8166,14 @@ function _scheduleRoute() {
 	});
 }
 function _route() {
-	const items = Object.values(infoState.items);
+	_refreshInfoVisibility();
+	const hidden = Object.values(infoState.items).filter((it) => it.shown === false);
+	for (const item of hidden) {
+		_unmountFree(item);
+		_unmountSection(item);
+		item.placement = "free";
+	}
+	const items = Object.values(infoState.items).filter((it) => it.shown !== false);
 	const count = items.length;
 	const mode = infoState.forcedMode || (count > 3 ? "drawer" : "free");
 	infoState.mode = mode;
@@ -7151,7 +8205,7 @@ function removeStepInfoOverlays() {
 	}
 	if (changed) _scheduleRoute();
 }
-function addInfoOverlay$1(id, content, position, stepDefined = false, keep = false, title = null) {
+function addInfoOverlay$1(id, content, position, stepDefined = false, keep = false, title = null, visibleExpr) {
 	if (!_infoContainer()) return;
 	if (!id) {
 		const preview = typeof content === "string" ? content.length > 80 ? content.slice(0, 80) + "…" : content : void 0;
@@ -7182,6 +8236,13 @@ function addInfoOverlay$1(id, content, position, stepDefined = false, keep = fal
 	item.position = position || "top-left";
 	item.stepDefined = stepDefined;
 	item.keep = keep;
+	item.visibleFn = null;
+	item.shown = void 0;
+	if (visibleExpr) try {
+		item.visibleFn = compileExpr(visibleExpr);
+	} catch (e) {
+		console.warn("info overlay visibleExpr:", id, e);
+	}
 	_scheduleRoute();
 }
 function _disposeItem(item) {
@@ -8025,6 +9086,131 @@ function setupAboutPopup() {
 	});
 }
 //#endregion
+//#region src/adaptive-settle.ts
+function createSettler(action, options = {}) {
+	const { minMs = 100, maxMs = 2500, idleMs = 1500, window = 6, factor = 1.5, stepMs = 150, now = () => Date.now() } = options;
+	let last = null, timer = null;
+	const gaps = [];
+	const run = () => {
+		timer = null;
+		action();
+	};
+	const arm = (ms) => {
+		if (timer) clearTimeout(timer);
+		timer = setTimeout(run, ms);
+	};
+	/** The wait for a transition at time t, given the burst so far (gaps holds only the burst's gaps). */
+	const delayAt = (t, burst) => {
+		if (last === null || t - last >= idleMs) return minMs;
+		const recent = [...burst, t - last].slice(-window);
+		const mean = recent.reduce((a, b) => a + b, 0) / recent.length;
+		return Math.min(maxMs, Math.max(minMs, factor * mean + stepMs * recent.length));
+	};
+	return {
+		poke(atLeast = 0) {
+			const t = now(), wait = delayAt(t, gaps);
+			if (last !== null && t - last < idleMs) gaps.push(t - last);
+			else gaps.length = 0;
+			if (gaps.length > window) gaps.shift();
+			last = t;
+			arm(Math.max(wait, atLeast));
+		},
+		after(ms) {
+			if (!timer) arm(ms);
+		},
+		cancel() {
+			if (timer) clearTimeout(timer);
+			timer = null;
+			gaps.length = 0;
+			last = null;
+		},
+		get pending() {
+			return timer !== null;
+		},
+		nextDelay() {
+			return delayAt(now(), gaps);
+		}
+	};
+}
+//#endregion
+//#region src/state-narrator.ts
+/**
+* State narration: while on, the tutor says what is happening at the current execution state in one short
+* sentence, and again each time the state changes. The request is sent silently (no user bubble); the reply
+* shows in the chat and is spoken like any other. Changes are coalesced: speech for the old state stops at
+* once, the request waits for the state to settle (adaptive-settle: almost at once after a pause, longer and
+* longer while the learner steps quickly or scrubs back and forth), and only one request is ever in flight,
+* re-sent after it if the state moved meanwhile.
+*/
+/** The request names where the learner is, so a move to another scene is never answered from the history. */
+function prompt(where) {
+	return `Narrate the current execution state in ONE short sentence. The learner is now at: ${where}. Describe what is happening at exactly this state, using the specific values on screen for it. If this is a different scene or step from your previous narration, describe this one fresh and do not repeat earlier narration; otherwise say only what is new. Do not restate the general idea, do not elaborate, and do not ask a question.`;
+}
+var NEW_VIEW_MS = 1200;
+var RETRY_MS = 700;
+var AFTER_TURN_MS = 100;
+var SPEECH_START_MS = 800;
+/**
+* `stateKey` names the state shown as `view:position` (view = scene and step), or null when there is nothing to
+* narrate; `describe` says the same for the tutor ("scene …, step …, state 3 of 25").
+*/
+function createNarrator(stateKey, describe) {
+	let on = false, sentKey = null, inFlight = false;
+	let doneKey = null, answeredAt = 0;
+	const stopSpeech = () => window.algebenchStopTTS?.();
+	const settle = createSettler(() => send());
+	function send() {
+		const key = stateKey();
+		if (!on || inFlight || key === null || key === sentKey) return;
+		inFlight = true;
+		sentKey = key;
+		window.sendChatMessage(prompt(describe()), {
+			silent: true,
+			noTools: true
+		}).then((sent) => {
+			inFlight = false;
+			if (!sent) {
+				sentKey = null;
+				if (on) settle.after(RETRY_MS);
+				return;
+			}
+			doneKey = key;
+			answeredAt = Date.now();
+			if (on && stateKey() !== sentKey) settle.after(AFTER_TURN_MS);
+		}, () => {
+			inFlight = false;
+			sentKey = null;
+			doneKey = key;
+			answeredAt = 0;
+		});
+	}
+	return {
+		get on() {
+			return on;
+		},
+		get busy() {
+			const key = stateKey();
+			if (!on || key === null) return false;
+			return inFlight || key !== doneKey || Date.now() - answeredAt < SPEECH_START_MS;
+		},
+		set(next) {
+			on = next;
+			settle.cancel();
+			sentKey = null;
+			doneKey = null;
+			if (on) send();
+			else stopSpeech();
+		},
+		stateChanged() {
+			if (!on) return;
+			const key = stateKey();
+			if (key !== sentKey) stopSpeech();
+			const view = (k) => k?.slice(0, k.lastIndexOf(":"));
+			settle.poke(view(key) === view(sentKey) ? 0 : NEW_VIEW_MS);
+		}
+	};
+}
+//#endregion
 //#region src/step-player.ts
 /** Generic discrete state playback. It writes a slider; views bind to its data. */
 /** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
@@ -8054,6 +9240,8 @@ function setupStepPlayer() {
 	next.innerHTML = playIcon;
 	previous.setAttribute("aria-label", "Previous execution state");
 	next.setAttribute("aria-label", "Next execution state");
+	previous.dataset.tip = "Previous state";
+	next.dataset.tip = "Next state";
 	for (const button of [
 		previous,
 		play,
@@ -8082,7 +9270,16 @@ function setupStepPlayer() {
 	}
 	speed.value = "1";
 	speed.hidden = true;
-	bar.append(previous, play, next, track, counter, speed);
+	const narrate = document.createElement("button");
+	narrate.type = "button";
+	narrate.className = "state-player-narrate";
+	narrate.innerHTML = icon("M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z");
+	const paintNarrate = () => {
+		narrate.setAttribute("aria-pressed", String(narrator.on));
+		narrate.setAttribute("aria-label", narrator.on ? "Stop narrating each state" : "Narrate each state");
+		narrate.dataset.tip = narrator.on ? "Narrating each state · click to stop" : "Narrate each state: the tutor explains it in one sentence as you move";
+	};
+	bar.append(previous, play, next, track, counter, speed, narrate);
 	host.append(bar);
 	new ResizeObserver(() => {
 		host.style.setProperty("--state-player-h", `${bar.offsetHeight}px`);
@@ -8090,12 +9287,28 @@ function setupStepPlayer() {
 	let timer = null;
 	let config;
 	const slider = () => config ? state.sceneSliders[config.slider] : void 0;
+	const narrator = createNarrator(() => {
+		const s = slider();
+		return s && !bar.hidden ? `${state.currentSceneIndex}/${state.currentStepIndex}:${playbackPosition(s.value, s.min, s.max).current}` : null;
+	}, () => {
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		const step = scene?.steps?.[state.currentStepIndex];
+		const s = slider();
+		return `scene "${scene?.title ?? ""}"${step?.title ? `, step "${step.title}"` : ""}${s ? `, execution state ${playbackPosition(s.value, s.min, s.max).display}` : ""}`;
+	});
+	narrate.onclick = () => {
+		narrator.set(!narrator.on);
+		paintNarrate();
+	};
+	window.algebenchNarrating = () => narrator.on;
+	paintNarrate();
 	const interval = () => (config?.intervalMs ?? 900) / Number(speed.value || 1);
 	function pause() {
-		if (timer !== null) clearInterval(timer);
+		if (timer !== null) clearTimeout(timer);
 		timer = null;
 		play.innerHTML = playIcon;
 		play.setAttribute("aria-label", "Play execution");
+		play.dataset.tip = "Play";
 	}
 	function render() {
 		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
@@ -8119,6 +9332,7 @@ function setupStepPlayer() {
 		next.disabled = p.current >= s.max;
 		play.disabled = p.total <= 1;
 		if (p.current >= s.max) pause();
+		narrator.stateChanged();
 	}
 	function move(value) {
 		if (config) setSliderValue(config.slider, value);
@@ -8138,14 +9352,27 @@ function setupStepPlayer() {
 		pause();
 		move(Number(track.value));
 	};
+	const narrationPending = () => narrator.on && (narrator.busy || !!window.algebenchTTSActive?.());
+	const WAIT_MS = 150;
+	function advance() {
+		timer = null;
+		if (narrationPending()) {
+			timer = setTimeout(advance, WAIT_MS);
+			return;
+		}
+		const current = slider();
+		if (!current) {
+			pause();
+			return;
+		}
+		move(current.value + 1);
+		if (play.getAttribute("aria-label") === "Pause execution" && slider() && slider().value < slider().max) timer = setTimeout(advance, interval());
+	}
 	function start() {
 		play.innerHTML = pauseIcon;
 		play.setAttribute("aria-label", "Pause execution");
-		timer = setInterval(() => {
-			const current = slider();
-			if (current) move(current.value + 1);
-			else pause();
-		}, interval());
+		play.dataset.tip = "Pause";
+		timer = setTimeout(advance, interval());
 	}
 	play.onclick = () => {
 		if (timer !== null) {
@@ -8159,13 +9386,16 @@ function setupStepPlayer() {
 	};
 	speed.onchange = () => {
 		if (timer !== null) {
-			clearInterval(timer);
+			clearTimeout(timer);
 			timer = null;
 			start();
 		}
 	};
+	let shownAt = "";
 	function refresh() {
-		pause();
+		const at = `${state.currentSceneIndex}/${state.currentStepIndex}`;
+		if (at !== shownAt || timer === null) pause();
+		shownAt = at;
 		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
 		speed.hidden = !config?.speedControl;
 		render();
@@ -8175,6 +9405,12 @@ function setupStepPlayer() {
 		});
 	}
 	window.addEventListener("algebench:playbackpause", pause);
+	window.addEventListener("algebench:narrationoff", () => {
+		if (narrator.on) {
+			narrator.set(false);
+			paintNarrate();
+		}
+	});
 	window.addEventListener("algebench:navchange", refresh);
 	window.addEventListener("algebench:sliderchange", render);
 	document.addEventListener("visibilitychange", () => {
@@ -9668,7 +10904,13 @@ function planeTextTextureSize(width, height, density = 128) {
 	const scale = Math.min(Math.max(128, density), 2048 / width, 2048 / height, Math.sqrt(1048576 / (width * height)));
 	return [Math.max(1, Math.floor(width * scale)), Math.max(1, Math.floor(height * scale))];
 }
-function createArrayPlaneText(width, height, color) {
+/**
+* `tag` paints the index-tag badge the screen mode draws in CSS (.array-index-tag): a dark plate with a
+* light outline, open on the edge that meets its cell and rounded on the far side, so world and screen tags
+* match. `true` or 'top' hangs it from the cell above (rounded lower corners); 'right' sets it left of its cell
+* (a dict's key in a column: open on the right, rounded on the left).
+*/
+function createArrayPlaneText(width, height, color, opts = {}) {
 	const canvas = document.createElement("canvas");
 	[canvas.width, canvas.height] = planeTextTextureSize(width, height);
 	const ctx = canvas.getContext("2d");
@@ -9709,15 +10951,78 @@ function createArrayPlaneText(width, height, color) {
 	let previousPosition;
 	let disposed = false;
 	let resolutionDensity = 128;
+	let highlighted = false;
 	const projected = new THREE.Vector3(), bufferSize = new THREE.Vector2();
 	function repaint() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		const text = previousText ?? "";
-		const px = fitPlainCellPx(canvas.width, canvas.height * 1.25, (size) => {
+		if (opts.tag === "right") {
+			const w = canvas.width, h = canvas.height, line = Math.max(1, h * .06), r = Math.min(h * .35, w * .3), x1 = w, y0 = line / 2, y1 = h - line / 2, x0 = line / 2;
+			ctx.beginPath();
+			ctx.moveTo(x1, y0);
+			ctx.lineTo(r, y0);
+			ctx.quadraticCurveTo(x0, y0, x0, r);
+			ctx.lineTo(x0, h - r);
+			ctx.quadraticCurveTo(x0, y1, r, y1);
+			ctx.lineTo(x1, y1);
+			ctx.closePath();
+			ctx.fillStyle = "rgba(24, 48, 75, .9)";
+			ctx.fill();
+			ctx.beginPath();
+			ctx.moveTo(x1, y0);
+			ctx.lineTo(r, y0);
+			ctx.quadraticCurveTo(x0, y0, x0, r);
+			ctx.lineTo(x0, h - r);
+			ctx.quadraticCurveTo(x0, y1, r, y1);
+			ctx.lineTo(x1, y1);
+			ctx.strokeStyle = "rgba(157, 189, 227, .45)";
+			ctx.lineWidth = line;
+			ctx.stroke();
+		} else if (opts.tag) {
+			const w = canvas.width, h = canvas.height, line = Math.max(1, h * .06), r = Math.min(h * .35, w * .3);
+			ctx.beginPath();
+			ctx.moveTo(line / 2, 0);
+			ctx.lineTo(w - line / 2, 0);
+			ctx.lineTo(w - line / 2, h - r);
+			ctx.quadraticCurveTo(w - line / 2, h - line / 2, w - r, h - line / 2);
+			ctx.lineTo(r, h - line / 2);
+			ctx.quadraticCurveTo(line / 2, h - line / 2, line / 2, h - r);
+			ctx.closePath();
+			ctx.fillStyle = "rgba(24, 48, 75, .9)";
+			ctx.fill();
+			ctx.beginPath();
+			ctx.moveTo(line / 2, 0);
+			ctx.lineTo(line / 2, h - r);
+			ctx.quadraticCurveTo(line / 2, h - line / 2, r, h - line / 2);
+			ctx.lineTo(w - r, h - line / 2);
+			ctx.quadraticCurveTo(w - line / 2, h - line / 2, w - line / 2, h - r);
+			ctx.lineTo(w - line / 2, 0);
+			ctx.strokeStyle = "rgba(157, 189, 227, .45)";
+			ctx.lineWidth = line;
+			ctx.stroke();
+		}
+		const sizing = opts.fitTo?.() || text;
+		const px = fitPlainCellPx(canvas.width * (opts.tag ? .72 : 1), canvas.height * (opts.tag ? .95 : 1.25), (size) => {
 			ctx.font = `600 ${size}px ui-monospace, monospace`;
-			return ctx.measureText(text).width;
+			return ctx.measureText(sizing).width;
 		});
 		ctx.font = `600 ${px}px ui-monospace, monospace`;
+		if (highlighted && text) {
+			const w = Math.min(canvas.width, ctx.measureText(text).width + px * .8), h = Math.min(canvas.height, px * 1.35), r = px * .2;
+			const x = (canvas.width - w) / 2, y = (canvas.height - h) / 2;
+			ctx.beginPath();
+			ctx.moveTo(x + r, y);
+			ctx.arcTo(x + w, y, x + w, y + h, r);
+			ctx.arcTo(x + w, y + h, x, y + h, r);
+			ctx.arcTo(x, y + h, x, y, r);
+			ctx.arcTo(x, y, x + w, y, r);
+			ctx.closePath();
+			const accent = getComputedStyle(document.body).getPropertyValue("--accent-color").trim() || "#f1cc59";
+			ctx.fillStyle = accent;
+			ctx.globalAlpha = .28;
+			ctx.fill();
+			ctx.globalAlpha = 1;
+		}
 		ctx.fillStyle = cssColor;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
@@ -9760,6 +11065,15 @@ function createArrayPlaneText(width, height, color) {
 	return {
 		mesh,
 		prepare,
+		refit() {
+			if (previousText !== void 0) repaint();
+		},
+		setHighlight(on) {
+			if (on !== highlighted) {
+				highlighted = on;
+				repaint();
+			}
+		},
 		set(text, position) {
 			if (text !== previousText) {
 				previousText = text;
@@ -10797,9 +12111,18 @@ function labelDragHandler(label, animState) {
 /** State-bound annotations. Projection/grouping belongs to the common label layer. */
 function renderStepMarker(el, _view, owner) {
 	const marker = el.type === "step_marker";
-	const targetPosition = !marker && el.connectTo && "positionExpr" in el.connectTo ? el.connectTo.positionExpr : [];
-	const targetFns = targetPosition.length ? targetPosition.map((source) => compileExpr(source)) : null;
-	const targetIndex = !marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? compileExpr(el.connectTo.indexExpr) : null;
+	const codeRef = !marker ? el.codeRef : void 0;
+	const codeFns = /* @__PURE__ */ new Map();
+	const connections = (marker || !el.connectTo ? [] : Array.isArray(el.connectTo) ? el.connectTo : [el.connectTo]).filter((c) => "positionExpr" in c || "object" in c);
+	const wires = connections.map((c) => "positionExpr" in c ? {
+		kind: "position",
+		fns: c.positionExpr.map((source) => compileExpr(source))
+	} : {
+		kind: "object",
+		object: c.object,
+		index: c.indexExpr ? compileExpr(c.indexExpr) : null
+	});
+	const targetSources = connections.flatMap((c) => "positionExpr" in c ? c.positionExpr : c.indexExpr ? [c.indexExpr] : []);
 	const position = owner ? [] : el.positionExpr ?? (el.position ?? [
 		0,
 		0,
@@ -10810,13 +12133,20 @@ function renderStepMarker(el, _view, owner) {
 		...el.textExpr ? [el.textExpr] : [],
 		...el.visibleExpr ? [el.visibleExpr] : [],
 		...el.indexExpr ? [el.indexExpr] : [],
-		...targetPosition,
-		...!marker && el.connectTo && "object" in el.connectTo && el.connectTo.indexExpr ? [el.connectTo.indexExpr] : []
+		...marker && el.valueExpr ? [el.valueExpr] : [],
+		...!marker && el.highlightExpr ? [el.highlightExpr] : [],
+		...!marker && el.tooltipExpr ? [el.tooltipExpr] : [],
+		...codeRef?.lineExpr ? [codeRef.lineExpr] : [],
+		...codeRef?.fileExpr ? [codeRef.fileExpr] : [],
+		...targetSources
 	];
 	const positionFns = position.map((source) => compileExpr(source));
 	const textFn = el.textExpr ? compileExpr(el.textExpr) : null;
 	const visibleFn = el.visibleExpr ? compileExpr(el.visibleExpr) : null;
 	const indexFn = el.indexExpr ? compileExpr(el.indexExpr) : null;
+	const shownFn = marker && el.valueExpr ? compileExpr(el.valueExpr) : null;
+	const highlightFn = !marker && el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const tooltipFn = !marker && el.tooltipExpr ? compileExpr(el.tooltipExpr) : null;
 	const animState = owner?.animState ?? { stopped: false };
 	const label = addLabel3D("", [
 		0,
@@ -10834,11 +12164,16 @@ function renderStepMarker(el, _view, owner) {
 	if (!marker && el.connectTo) measure.classList.add("annotation-measure-wired");
 	cursor.append(badge);
 	if (owner) cursor.classList.add("array-marker-cursor");
+	if (owner?.edge === "right") cursor.classList.add("array-marker-right");
+	const edge = owner?.edge ?? "top";
 	if (marker) {
+		const stem = document.createElement("span");
+		stem.className = "step-marker-stem";
+		stem.setAttribute("aria-hidden", "true");
 		const pointer = document.createElement("span");
 		pointer.className = "step-marker-pointer";
 		pointer.setAttribute("aria-hidden", "true");
-		cursor.append(pointer);
+		cursor.append(stem, pointer);
 	}
 	label.el.replaceChildren(cursor, measure);
 	label.el.style.setProperty("--marker-color", colorToCSS(el.color ?? (marker ? "#f1c65b" : "#172e50")));
@@ -10853,17 +12188,53 @@ function renderStepMarker(el, _view, owner) {
 		rendered: ""
 	};
 	if (!marker) label.annotation.startDrag = labelDragHandler(label, animState);
-	if (!marker && el.connectTo && "object" in el.connectTo) label.wireTarget = { object: el.connectTo.object };
+	if (!marker) label.annotation.prompt = el.prompt ?? null;
+	if (wires.length) {
+		label.wireTargets = wires.map((w) => w.kind === "object" ? { object: w.object } : {});
+		label.wireTarget = label.wireTargets[0];
+	}
+	if (connections.some((c) => c.pinned)) label.wirePinned = true;
+	let slide = 0;
+	const slideTo = (target) => {
+		const from = label.cellAttachment?.corners;
+		cancelAnimationFrame(slide);
+		if (!from || from.length !== target.length) {
+			label.cellAttachment = {
+				corners: target,
+				edge,
+				gap: 8
+			};
+			return;
+		}
+		if (from.every((p, i) => p.every((v, k) => v === target[i][k]))) return;
+		const start = performance.now(), duration = 260;
+		const step = (now) => {
+			const t = Math.min(1, (now - start) / duration), e = 1 - (1 - t) ** 3;
+			label.cellAttachment = {
+				corners: from.map((p, i) => p.map((v, k) => v + (target[i][k] - v) * e)),
+				edge,
+				gap: 8
+			};
+			if (t < 1 && !animState.stopped) slide = requestAnimationFrame(step);
+		};
+		slide = requestAnimationFrame(step);
+	};
 	const entry = {
 		animState,
 		exprStrings: sources,
 		_rebuildFn: () => {
 			if (animState.stopped) return;
 			try {
-				if (targetIndex) label.wireTarget.index = Number(evalExpr(targetIndex, 0));
-				if (targetFns) {
-					const target = targetFns.map((fn) => Number(evalExpr(fn, 0)));
-					label.wireTarget = target.every(Number.isFinite) ? { position: target } : {};
+				if (wires.length) {
+					label.wireTargets = wires.map((w) => {
+						if (w.kind === "object") return w.index ? {
+							object: w.object,
+							index: Number(evalExpr(w.index, 0))
+						} : { object: w.object };
+						const target = w.fns.map((fn) => Number(evalExpr(fn, 0)));
+						return target.every(Number.isFinite) ? { position: target } : {};
+					});
+					label.wireTarget = label.wireTargets[0];
 				}
 				const indexValue = indexFn ? Number(evalExpr(indexFn, 0)) : null;
 				const point = owner ? owner.position(indexValue ?? NaN) : positionFns.map((fn) => Number(evalExpr(fn, 0)));
@@ -10878,11 +12249,7 @@ function renderStepMarker(el, _view, owner) {
 					label.annotationOrder = void 0;
 				}
 				label.dataPos = point;
-				if (owner) label.cellAttachment = {
-					corners: owner.corners(indexValue),
-					edge: "top",
-					gap: 8
-				};
+				if (owner) slideTo(owner.corners(indexValue));
 				label.forceHidden = visibleFn ? !evalExpr(visibleFn, 0) : false;
 				const text = textFn ? annotationText(evalExpr(textFn, 0)) : el.text ?? "";
 				const annotation = label.annotation;
@@ -10895,8 +12262,33 @@ function renderStepMarker(el, _view, owner) {
 						name: el.indexName,
 						value
 					};
+					if (shownFn) annotation.index.shown = annotationText(evalExpr(shownFn, 0));
+					else {
+						const key = owner?.indexText?.(value);
+						if (key != null) annotation.index.shown = key;
+					}
 				}
-				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.value}` : text;
+				const previous = annotation.text;
+				annotation.text = annotation.index ? `${annotation.index.name} = ${annotation.index.shown ?? annotation.index.value}` : text;
+				if (highlightFn) annotation.highlighted = !!evalExpr(highlightFn, 0);
+				if (tooltipFn) try {
+					annotation.tooltip = String(evalExpr(tooltipFn, 0));
+				} catch {
+					annotation.tooltip = "";
+				}
+				if (codeRef) {
+					const target = resolveCodeRef(state.lessonSpec?.codeFiles ?? [], codeRef, (expr) => {
+						if (!codeFns.has(expr)) codeFns.set(expr, compileExpr(expr));
+						return evalExpr(codeFns.get(expr), 0);
+					});
+					annotation.code = target ? {
+						fileId: target.file.id,
+						path: target.file.path,
+						line: target.line
+					} : null;
+				}
+				if (tooltipFn && previous && previous !== annotation.text && annotation.tooltip) announceLabelChange(label);
+				if (previous && previous !== annotation.text) flashSymbols(rowSymbolKeys(annotation.text));
 				if (measure.textContent !== annotation.text) {
 					measure.textContent = annotation.text;
 					annotation.scale = null;
@@ -10914,6 +12306,132 @@ function renderStepMarker(el, _view, owner) {
 		_animState: animState,
 		_animExprEntry: entry,
 		type: el.type
+	};
+}
+//#endregion
+//#region src/objects/rounded-cell.ts
+/**
+* A rounded-rectangle cell, as unit geometry for the array's per-cell scaling: a prism over the rounded outline
+* of a w × h cell (corner radius r), with x and y divided by w and h and z running −½…½, so scaling it back by
+* the cell's size gives true round corners. Non-indexed triangles: the front and back caps fanned from the
+* centre, and a wall quad per outline edge, each with its face normal (the array shades by normal).
+*/
+/** Outline of one node in data units, centred on (x, y): a circle, or a rectangle with rounded corners. */
+function nodeOutline(shape, w, h, radius, segments = 24) {
+	if (shape === "point") return Array.from({ length: segments }, (_, k) => {
+		const a = 2 * Math.PI * k / segments;
+		return [Math.cos(a) * w / 2, Math.sin(a) * w / 2];
+	});
+	const r = Math.min(radius, w / 2, h / 2), pts = [];
+	const corners = [
+		[
+			w / 2 - r,
+			h / 2 - r,
+			0
+		],
+		[
+			-w / 2 + r,
+			h / 2 - r,
+			Math.PI / 2
+		],
+		[
+			-w / 2 + r,
+			-h / 2 + r,
+			Math.PI
+		],
+		[
+			w / 2 - r,
+			-h / 2 + r,
+			1.5 * Math.PI
+		]
+	];
+	for (const [cx, cy, a0] of corners) {
+		const steps = r > 0 ? 6 : 0;
+		for (let s = 0; s <= steps; s++) {
+			const a = a0 + Math.PI / 2 * s / Math.max(steps, 1);
+			pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+		}
+	}
+	return pts;
+}
+function roundedCellUnit(w, h, r) {
+	const outline = nodeOutline("rect", w, h, r).map(([x, y]) => [x / w, y / h]);
+	const positions = [], normals = [];
+	const tri = (a, b, c, n) => {
+		positions.push(...a, ...b, ...c);
+		for (let k = 0; k < 3; k++) normals.push(...n);
+	};
+	outline.forEach(([x0, y0], k) => {
+		const [x1, y1] = outline[(k + 1) % outline.length];
+		tri([
+			0,
+			0,
+			.5
+		], [
+			x0,
+			y0,
+			.5
+		], [
+			x1,
+			y1,
+			.5
+		], [
+			0,
+			0,
+			1
+		]);
+		tri([
+			0,
+			0,
+			-.5
+		], [
+			x1,
+			y1,
+			-.5
+		], [
+			x0,
+			y0,
+			-.5
+		], [
+			0,
+			0,
+			-1
+		]);
+		const dx = (x1 - x0) * w, dy = (y1 - y0) * h, len = Math.hypot(dx, dy) || 1, n = [
+			dy / len,
+			-dx / len,
+			0
+		];
+		tri([
+			x0,
+			y0,
+			.5
+		], [
+			x0,
+			y0,
+			-.5
+		], [
+			x1,
+			y1,
+			-.5
+		], n);
+		tri([
+			x0,
+			y0,
+			.5
+		], [
+			x1,
+			y1,
+			-.5
+		], [
+			x1,
+			y1,
+			.5
+		], n);
+	});
+	return {
+		positions,
+		normals
 	};
 }
 //#endregion
@@ -10939,6 +12457,11 @@ function arrayCell(value, type = "mixed") {
 		value,
 		kind,
 		text: JSON.stringify(value)
+	};
+	if (kind === "text" && typeof value === "string") return {
+		value,
+		kind,
+		text: value
 	};
 	if (kind === "character" && typeof value === "string" && [...value].length === 1) return {
 		value,
@@ -10993,7 +12516,7 @@ function arrayCellCorners(centre, pitch) {
 	])));
 }
 /** A wrapped array remains one-dimensional; fitting preserves all record positions. */
-function wrappedArrayCell(index, length, origin, pitch, columns, height) {
+function wrappedArrayCell(index, length, origin, pitch, columns, height, cellHeight) {
 	const rows = Math.max(1, Math.ceil(length / columns));
 	const rowPitch = height === void 0 ? .78 : height / rows;
 	return {
@@ -11002,7 +12525,7 @@ function wrappedArrayCell(index, length, origin, pitch, columns, height) {
 			origin[1] - Math.floor(index / columns) * rowPitch,
 			origin[2]
 		],
-		height: rowPitch * (.68 / .78)
+		height: cellHeight === void 0 ? rowPitch * (.68 / .78) : Math.min(cellHeight, rowPitch)
 	};
 }
 /** A colorExpr result is accepted only as a 6-digit hex color; anything else defers to highlight/base color. */
@@ -11116,13 +12639,262 @@ var ArrayChangeTracker = class {
 	}
 };
 //#endregion
+//#region src/objects/cell-identity.ts
+/**
+* Which value is which between two states of an array or graph, so a value that moves (a swap, a heap's
+* sift, a pop moving the last value to the front) can glide to its new cell instead of being redrawn in
+* place. Without explicit ids, values are matched: a value still in its cell keeps its identity, then each
+* remaining cell takes the nearest unused cell that held an equal value; anything left over is new. Equal
+* values only blur which of two identical values moved, which looks the same.
+*/
+function matchIdentities(prevKeys, prevIds, keys, fresh) {
+	const used = /* @__PURE__ */ new Set(), ids = keys.map(() => void 0);
+	keys.forEach((k, j) => {
+		if (j < prevKeys.length && prevKeys[j] === k && prevIds[j] !== void 0) {
+			ids[j] = prevIds[j];
+			used.add(j);
+		}
+	});
+	keys.forEach((k, j) => {
+		if (ids[j] !== void 0) return;
+		let best = -1;
+		prevKeys.forEach((p, i) => {
+			if (used.has(i) || prevIds[i] === void 0 || p !== k) return;
+			if (best < 0 || Math.abs(i - j) < Math.abs(best - j)) best = i;
+		});
+		if (best >= 0) {
+			ids[j] = prevIds[best];
+			used.add(best);
+		}
+	});
+	return ids.map((id) => id ?? fresh());
+}
+/** For each cell whose identity sat in another cell before: new cell → old cell. */
+function identityMoves(prevIds, ids) {
+	const was = new Map(prevIds.map((id, i) => [id, i]));
+	const moves = /* @__PURE__ */ new Map();
+	ids.forEach((id, i) => {
+		const p = was.get(id);
+		if (p !== void 0 && p !== i) moves.set(i, p);
+	});
+	return moves;
+}
+/**
+* Tracks identities across an object's states: `next` takes the new state's value keys (or explicit ids)
+* and returns the moves since the last state.
+*/
+function identityTracker(prefix) {
+	let keys = [], ids = [], seq = 0;
+	return { next(nextKeys, explicit) {
+		const nextIds = explicit ?? matchIdentities(keys, ids, nextKeys, () => `${prefix}${seq++}`);
+		const moves = identityMoves(ids, nextIds);
+		keys = nextKeys;
+		ids = nextIds;
+		return moves;
+	} };
+}
+//#endregion
+//#region src/objects/cell-glide.ts
+function createCellGlide(opts) {
+	let from = /* @__PURE__ */ new Map(), start = 0, frame = 0;
+	const progress = () => opts.ms > 0 ? Math.min(1, (performance.now() - start) / opts.ms) : 1;
+	const ease = (t) => t * t * (3 - 2 * t);
+	/** Where cell i's value is drawn now, given where the cell itself is. */
+	const at = (i, home) => {
+		const f = from.get(i);
+		if (!f) return home;
+		const e = ease(progress());
+		return [
+			f[0] + (home[0] - f[0]) * e,
+			f[1] + (home[1] - f[1]) * e,
+			f[2] + (home[2] - f[2]) * e
+		];
+	};
+	const tick = () => {
+		frame = 0;
+		if (opts.stopped()) return;
+		const done = progress() >= 1;
+		if (done) from = /* @__PURE__ */ new Map();
+		opts.draw();
+		if (!done) frame = requestAnimationFrame(tick);
+	};
+	return {
+		at,
+		get moving() {
+			return from.size > 0;
+		},
+		/** moves: new cell → old cell; drawnBefore(old): where the old cell's value was drawn a moment ago. */
+		moved(moves, drawnBefore) {
+			const next = /* @__PURE__ */ new Map();
+			for (const [to, old] of moves) {
+				const p = drawnBefore(old);
+				if (p) next.set(to, p);
+			}
+			from = next;
+			start = performance.now();
+			if (from.size && !frame) frame = requestAnimationFrame(tick);
+		},
+		dispose() {
+			cancelAnimationFrame(frame);
+			frame = 0;
+		}
+	};
+}
+//#endregion
+//#region src/objects/link-targets.ts
+/**
+* An element's `connectTo`, compiled once and evaluated on state changes into cell-link groups. Shared by the
+* owners of cells (arrays, stacks) and nodes (graphs), so links mean the same everywhere: each entry's indexExpr
+* runs per cell with `idx` and `value` bound and may name one index or a list; colorExpr / highlightExpr style
+* each link, with `to` bound as well. A graph entry may omit `object`: the link stays in the same graph.
+* objectExpr names the target per cell instead (a list of references to dicts, say: concat('person', idx)); without
+* indexExpr such a link points at the whole object rather than one of its cells.
+*/
+/** Compile the entries that link cells; `self` is the owner's id, used where an entry names no object. */
+function compileLinkTargets(connectTo, self, allowSelf) {
+	if (!self || !connectTo) return [];
+	return (Array.isArray(connectTo) ? connectTo : [connectTo]).flatMap((c) => {
+		if ("positionExpr" in c) return [];
+		const objectExpr = "objectExpr" in c ? c.objectExpr : void 0;
+		if (!objectExpr && (!("indexExpr" in c) || !c.indexExpr)) return [];
+		const object = objectExpr ? "" : "object" in c ? c.object : allowSelf ? self : null;
+		if (object === null || object === void 0) return [];
+		const indexExpr = "indexExpr" in c ? c.indexExpr : void 0;
+		const color = "colorExpr" in c ? c.colorExpr : void 0, lit = "highlightExpr" in c ? c.highlightExpr : void 0;
+		const bend = "bendExpr" in c ? c.bendExpr : void 0, arc = "arcCenterExpr" in c ? c.arcCenterExpr : void 0, port = "fromPortExpr" in c ? c.fromPortExpr : void 0;
+		return [{
+			object,
+			objectFn: objectExpr ? compileExpr(objectExpr) : void 0,
+			index: indexExpr ? compileExpr(indexExpr) : null,
+			base: c.color ? colorToCSS(c.color) : "#9dbde3",
+			color: color ? compileExpr(color) : void 0,
+			lit: lit ? compileExpr(lit) : void 0,
+			bend: bend ? compileExpr(bend) : void 0,
+			arc: arc?.length === 3 ? arc.map((e) => compileExpr(e)) : void 0,
+			port: port ? compileExpr(port) : void 0,
+			arrow: !!c.arrow,
+			pinned: !!c.pinned,
+			sources: [
+				objectExpr,
+				indexExpr,
+				color,
+				lit,
+				bend,
+				port,
+				...arc ?? []
+			].filter((s) => !!s)
+		}];
+	});
+}
+var indices = (result) => {
+	const plain = result !== null && typeof result === "object" && "valueOf" in result ? result.valueOf() : result;
+	return (Array.isArray(plain) ? plain.flat(Infinity) : [plain]).map(Number).map((j) => Number.isInteger(j) && j >= 0 ? j : -1);
+};
+/**
+* Evaluate every entry for these cell values: one link group per entry and target object, styled per link when it
+* asks. An entry with objectExpr makes a group per object its cells name; one without indexExpr links each cell to
+* the whole object (a pair [cell, 0] in a group marked `whole`).
+*/
+function evaluateLinkTargets(targets, values, extra = {}) {
+	return targets.flatMap((t) => {
+		const groups = /* @__PURE__ */ new Map();
+		const group = (object) => {
+			let g = groups.get(object);
+			if (!g) groups.set(object, g = {
+				pairs: [],
+				styles: []
+			});
+			return g;
+		};
+		if (!t.objectFn) group(t.object);
+		values.forEach((value, i) => {
+			let object = t.object;
+			if (t.objectFn) {
+				try {
+					object = String(evalExpr(t.objectFn, 0, { overrideScope: {
+						idx: i,
+						value
+					} }) ?? "");
+				} catch {
+					object = "";
+				}
+				if (!object || object === "0") return;
+			}
+			let targetsOf = [];
+			if (!t.index) targetsOf = [0];
+			else try {
+				targetsOf = indices(evalExpr(t.index, 0, { overrideScope: {
+					idx: i,
+					value
+				} }));
+			} catch {}
+			const g = group(object);
+			targetsOf.forEach((j, slot) => {
+				if (j < 0) return;
+				g.pairs.push([i, j]);
+				if (!t.color && !t.lit && !t.bend && !t.arc && !t.port) {
+					g.styles.push(null);
+					return;
+				}
+				const scope = { overrideScope: {
+					idx: i,
+					value,
+					to: j,
+					slot
+				} };
+				const style = {};
+				try {
+					const c = t.color ? evalExpr(t.color, 0, scope) : "";
+					if (typeof c === "string" && c) style.color = c;
+				} catch {}
+				try {
+					style.lit = t.lit ? !!evalExpr(t.lit, 0, scope) : false;
+				} catch {}
+				try {
+					const b = t.bend ? Number(evalExpr(t.bend, 0, scope)) : NaN;
+					if (Number.isFinite(b)) style.bend = b;
+				} catch {}
+				try {
+					const c = t.arc?.map((fn) => Number(evalExpr(fn, 0, scope)));
+					if (c?.every(Number.isFinite)) style.arcCentre = c;
+				} catch {}
+				try {
+					const q = t.port ? Number(evalExpr(t.port, 0, scope)) : NaN;
+					if (Number.isInteger(q) && q >= 0) style.port = q;
+				} catch {}
+				g.styles.push(style);
+			});
+		});
+		return [...groups].map(([to, g]) => ({
+			to,
+			pairs: g.pairs,
+			color: t.base,
+			...t.arrow ? { arrow: true } : {},
+			...!t.index ? { whole: true } : {},
+			...g.styles.some(Boolean) ? { styles: g.styles } : {},
+			...extra
+		}));
+	});
+}
+//#endregion
 //#region src/objects/array.ts
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 var arrayMarkerGroup = 0;
+/** Shared presentation lookup for a cell, without references to other controls. */
+/** `vertical`: cells run up or down (a stack, a vertical layout), so links leave a cell's side, not its top. */
+/** `graph`: the cells are free-standing nodes (a graph), so links run node to node; `round` nodes are discs. */
+/** `ports`: where links may start on a cell (a graph node: under each gap of its cell row). */
+function roundedUnit(w, h, r) {
+	const { positions, normals } = roundedCellUnit(w, h, r), g = new THREE.BufferGeometry();
+	g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+	g.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+	return g;
+}
 var PALETTE = {
 	number: "#75bfe9",
 	character: "#74d0c2",
 	string: "#b69bea",
+	text: "#b69bea",
 	boolean: "#efa768",
 	empty: "#8793a6"
 };
@@ -11139,9 +12911,9 @@ function renderArray(el, _view, decorate) {
 	const pitch = Number(el.cellSize ?? 2);
 	if (!Number.isFinite(pitch) || pitch <= 0) throw new Error("Array cellSize must be positive.");
 	if (el.direction && el.arrayColumns) throw new Error("Array direction and wrapped columns are alternative layouts.");
-	const centre = (i) => el.arrayColumns ? wrappedArrayCell(i, n, origin, pitch, el.arrayColumns, el.arrayHeight).position : arrayCellPosition(i, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
-	const cellHeight = () => el.arrayColumns ? wrappedArrayCell(0, n, origin, pitch, el.arrayColumns, el.arrayHeight).height : .68;
-	const unit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+	const centre = (i) => el.arrayColumns ? wrappedArrayCell(i, n, origin, pitch, el.arrayColumns, el.arrayHeight, el.arrayCellHeight).position : arrayCellPosition(i, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
+	const cellHeight = () => el.arrayColumns ? wrappedArrayCell(0, n, origin, pitch, el.arrayColumns, el.arrayHeight, el.arrayCellHeight).height : .68;
+	const unit = el.cellCornerRadius ? roundedUnit(pitch * .78, cellHeight(), Number(el.cellCornerRadius)) : new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 	const source = unit.getAttribute("position"), normal = unit.getAttribute("normal"), vertices = source.count;
 	let positions = new Float32Array(n * vertices * 3), colors = new Float32Array(n * vertices * 3);
 	for (let i = 0; i < n; i++) for (let v = 0; v < vertices; v++) {
@@ -11197,18 +12969,32 @@ function renderArray(el, _view, decorate) {
 		};
 		mesh.add(ghostMesh);
 	}
-	const cellTarget = { at(index) {
-		const position = el.arrayColumns ? Number.isInteger(index) && index >= 0 && index < n ? centre(index) : null : arrayIndexPosition(index, n, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
-		return position ? {
-			position,
-			corners: arrayCellCorners(position, pitch).map((c) => [
-				c[0],
-				position[1] + (c[1] - position[1]) * cellHeight() / .68,
-				c[2]
-			])
-		} : null;
-	} };
+	const step = centre(1).map((v, i) => v - centre(0)[i]);
+	const cellTarget = {
+		vertical: Math.abs(step[1]) > Math.abs(step[0]),
+		at(index) {
+			const position = el.arrayColumns ? Number.isInteger(index) && index >= 0 && index < n ? centre(index) : null : arrayIndexPosition(index, n, origin, pitch, el.arrayLayout, el.direction, el.arraySpacing);
+			return position ? {
+				position,
+				corners: arrayCellCorners(position, pitch).map((c) => [
+					c[0],
+					position[1] + (c[1] - position[1]) * cellHeight() / .68,
+					c[2]
+				])
+			} : null;
+		}
+	};
 	mesh.userData.arrayCellTarget = cellTarget;
+	const keysLeft = !!el.keyExpr && cellTarget.vertical;
+	const keyAt = (c) => keysLeft ? [
+		c[0] - pitch * .78,
+		c[1],
+		c[2] + .14
+	] : [
+		c[0],
+		c[1] - .34 - .175,
+		c[2] + .14
+	];
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
 	const decoration = decorate?.(n, origin, pitch, mesh);
@@ -11216,13 +13002,20 @@ function renderArray(el, _view, decorate) {
 		transparent: true,
 		depthWrite: false,
 		side: THREE.DoubleSide,
-		uniforms: { opacity: { value: 1 } },
+		uniforms: {
+			opacity: { value: 1 },
+			quad: { value: new THREE.Vector2(pitch * .455, cellHeight() * .584) },
+			cell: { value: new THREE.Vector2(pitch * .39, cellHeight() * .5) },
+			radius: { value: Math.min(Number(el.cellCornerRadius ?? 0), pitch * .39, cellHeight() * .5) }
+		},
 		vertexShader: `attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-		fragmentShader: `uniform float opacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
-            void main(){float edge=max(abs(rimUV.x),abs(rimUV.y));
-                float rim=exp(-pow((edge-0.86)/0.09,2.0));
+		fragmentShader: `uniform float opacity; uniform vec2 quad; uniform vec2 cell; uniform float radius;
+            varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
+            void main(){vec2 q=abs(rimUV*quad)-cell+radius;
+                float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-radius;
+                float rim=exp(-pow(d/0.045,2.0));
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
                 float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
@@ -11244,6 +13037,9 @@ function renderArray(el, _view, decorate) {
 	function illuminate(changed, removed) {
 		const positions = [], uv = [], removedFlags = [], rimOpacity = [];
 		rimCells = [];
+		glowMaterial.uniforms.quad.value.set(pitch * .455, cellHeight() * .584);
+		glowMaterial.uniforms.cell.value.set(pitch * .39, cellHeight() * .5);
+		glowMaterial.uniforms.radius.value = Math.min(Number(el.cellCornerRadius ?? 0), pitch * .39, cellHeight() * .5);
 		const corners = [
 			[-1, -1],
 			[1, -1],
@@ -11278,8 +13074,8 @@ function renderArray(el, _view, decorate) {
 	const planeText = el.axisLabels === "plane";
 	const cellTextPlanes = [];
 	const indexTextPlanes = [];
-	const addTextPlane = (width, height, color, cell) => {
-		const layer = createArrayPlaneText(width, height, color);
+	const addTextPlane = (width, height, color, cell, tag = false) => {
+		const layer = createArrayPlaneText(width, height, color, { tag });
 		mesh.add(layer.mesh);
 		layer.mesh.onBeforeRender = (renderer, _scene, camera) => {
 			layer.prepare(renderer, camera);
@@ -11315,13 +13111,14 @@ function renderArray(el, _view, decorate) {
 				indexLabel.forceHidden = true;
 				indexLabel.el.classList.add("array-plane-accessible");
 				clipArrayPlaneMirror(indexLabel.el);
-				indexTextPlanes.push(addTextPlane(.7, .35, "#e1ecf7", i));
+				indexTextPlanes.push(addTextPlane(el.keyExpr ? pitch * .78 : .7, .35, "#e1ecf7", i, keysLeft ? "right" : true));
 			}
-			indexLabel.el.setAttribute("aria-label", `Index ${i}`);
+			indexLabel.el.setAttribute("aria-label", el.keyExpr ? `Key of cell ${i}` : `Index ${i}`);
+			if (keysLeft) indexLabel.el.classList.add("array-key-left");
 			indexLabels.push(indexLabel);
 			indexLabel.cellAttachment = {
 				corners: arrayCellCorners(c, pitch),
-				edge: "bottom",
+				edge: keysLeft ? "left" : "bottom",
 				gap: 0
 			};
 		}
@@ -11329,9 +13126,25 @@ function renderArray(el, _view, decorate) {
 	};
 	const labels = Array.from({ length: n }, (_, i) => makeCellLabel(i));
 	let titleLabel;
-	const titleCentre = () => el.arrayColumns ? centre(Math.min(el.arrayColumns, n) - 1) : centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
+	const titleCentre = () => {
+		if (el.arrayColumns) return centre(Math.min(el.arrayColumns, n) - 1);
+		if (el.direction && n > 1) {
+			const first = centre(0), last = centre(n - 1);
+			if (Math.abs(last[1] - first[1]) > Math.abs(last[0] - first[0])) return last[1] > first[1] ? last : first;
+		}
+		return centre(Math.max(0, n - 1) / (el.arrayLayout === "vertical" ? 1 : 2));
+	};
 	const titleWidth = Math.max(1, (el.label?.length ?? 0) * .38);
+	const leftTitle = el.labelSide === "left" && el.arrayLayout !== "vertical";
 	const titlePosition = () => {
+		if (leftTitle && !el.labelPosition) {
+			const c = centre(0), gap = pitch * .39 + .22;
+			return [
+				c[0] - gap - (planeText ? titleWidth / 2 : 0),
+				c[1],
+				c[2] + .14
+			];
+		}
 		const at = el.labelPosition ?? titleCentre().map((value, i) => value + (el.labelOffset ?? [
 			0,
 			.88,
@@ -11343,11 +13156,11 @@ function renderArray(el, _view, decorate) {
 			Number(at[2]) + .14
 		];
 	};
-	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.color ?? "#b5c1cf") : null;
-	const emptyPlane = planeText ? addTextPlane(.7, .68, "#8793a6") : null;
+	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.labelSide === "left" ? "#b5c1cf" : el.color ?? "#b5c1cf") : null;
+	const emptyPlane = planeText && !decorate ? addTextPlane(.7, .68, "#8793a6") : null;
 	if (el.label) {
 		titleLabel = addLabel3D("", titlePosition(), "#b5c1cf", {
-			align: el.align,
+			align: leftTitle ? "right" : el.align,
 			cssClass: `label-3d ${el.cssClass ?? ""}`
 		});
 		if (planeText) {
@@ -11359,7 +13172,9 @@ function renderArray(el, _view, decorate) {
 		titleLabel.snapToProjection = true;
 		titleLabel.ownerMesh = mesh;
 	}
+	let titleHit = null;
 	const updateTitle = () => {
+		placeTitleHit();
 		if (titleLabel) titleLabel.dataPos = titlePosition();
 		if (titlePlane) titlePlane.set(el.label, titlePosition());
 		if (emptyPlane) {
@@ -11377,7 +13192,9 @@ function renderArray(el, _view, decorate) {
 		group: "array-markers:" + arrayMarkerGroup++,
 		animState,
 		position: (index) => cellTarget.at(index)?.position ?? null,
-		corners: (index) => cellTarget.at(index)?.corners ?? []
+		corners: (index) => cellTarget.at(index)?.corners ?? [],
+		edge: keysLeft ? "right" : "top",
+		indexText: (index) => keyFn ? cellKeys[index] ?? null : null
 	};
 	const markers = (el.markers ?? []).map((marker) => renderStepMarker({
 		...marker,
@@ -11386,7 +13203,41 @@ function renderArray(el, _view, decorate) {
 	const valueFn = el.valueExpr ? compileExpr(el.valueExpr) : null;
 	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
 	const colorFn = el.colorExpr ? compileExpr(el.colorExpr) : null;
+	const keyFn = el.keyExpr ? compileExpr(el.keyExpr) : null;
+	let cellKeys = [], valueText = "[]";
 	const previous = [];
+	const idFn = el.idExpr ? compileExpr(el.idExpr) : null;
+	const identities = el.animateMoves && !el.arrayColumns ? identityTracker(`${el.id ?? "array"}:`) : null;
+	const glide = identities ? createCellGlide({
+		ms: Math.max(0, Number(el.animationMs ?? 450)),
+		stopped: () => animState.stopped,
+		draw: () => placeCells()
+	}) : null;
+	const cellText = [];
+	const drawnAt = (i) => glide ? glide.at(i, centre(i)) : centre(i);
+	function placeCells() {
+		for (let i = 0; i < n; i++) {
+			const c = drawnAt(i);
+			for (let v = 0; v < vertices; v++) positions.set(dataToWorld([
+				c[0] + source.getX(v) * pitch * .78,
+				c[1] + source.getY(v) * cellHeight(),
+				c[2] + source.getZ(v) * .22
+			]), (i * vertices + v) * 3);
+			const label = labels[i];
+			if (label) label.dataPos = [
+				c[0],
+				c[1],
+				c[2] + .14
+			];
+			if (planeText && cellText[i] !== void 0) cellTextPlanes[i]?.set(cellText[i], [
+				c[0],
+				c[1],
+				c[2] + .14
+			]);
+		}
+		mesh.geometry.getAttribute("position").needsUpdate = true;
+		mesh.geometry.computeBoundingSphere();
+	}
 	function resize(next) {
 		if (next === n) return;
 		selectCell(null);
@@ -11437,6 +13288,7 @@ function renderArray(el, _view, decorate) {
 		previous.length = 0;
 		updateTitle();
 	}
+	const connections = compileLinkTargets(el.connectTo, el.id, false);
 	const entry = {
 		animState,
 		exprStrings: [
@@ -11444,6 +13296,8 @@ function renderArray(el, _view, decorate) {
 			el.valueExpr,
 			el.highlightExpr,
 			el.colorExpr,
+			el.keyExpr,
+			...connections.flatMap((c) => c.sources),
 			...markers.flatMap((marker) => marker._animExprEntry.exprStrings ?? [])
 		].filter((v) => !!v),
 		_rebuildFn: () => {
@@ -11451,49 +13305,82 @@ function renderArray(el, _view, decorate) {
 			const next = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : n;
 			const cells = Array.from({ length: next }, (_, i) => {
 				const cell = arrayCell(valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i], el.itemType);
+				const highlighted = highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
+					idx: i,
+					value: cell.value
+				} }) : false;
+				const color = colorFn ? cellColor(evalExpr(colorFn, 0, { overrideScope: {
+					idx: i,
+					value: cell.value
+				} })) : null;
+				let key = null;
+				if (keyFn) try {
+					key = keyText(evalExpr(keyFn, 0, { overrideScope: {
+						idx: i,
+						value: cell.value
+					} }));
+				} catch {
+					key = "?";
+				}
 				return {
 					cell,
-					highlighted: highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
-						idx: i,
-						value: cell.value
-					} }) : false,
-					color: colorFn ? cellColor(evalExpr(colorFn, 0, { overrideScope: {
-						idx: i,
-						value: cell.value
-					} })) : null
+					highlighted,
+					color,
+					key
 				};
 			});
+			cellKeys = cells.map((c) => c.key);
+			valueText = cellKeys.some((k) => k !== null) ? `{${cells.map((c) => `${c.key}: ${c.cell.text}`).join(", ")}}` : `[${cells.map((c) => c.cell.text).join(", ")}]`;
 			const transition = JSON.stringify(Object.entries(state.sceneSliders).map(([id, s]) => [
 				id,
 				s.value,
 				s.values
 			]));
 			const delta = changes.update(cells.map(({ cell }) => JSON.stringify([cell.kind, cell.value])), transition);
+			const moves = identities?.next(cells.map(({ cell }) => JSON.stringify([cell.kind, cell.value])), idFn ? cells.map(({ cell }, i) => String(evalExpr(idFn, 0, { overrideScope: {
+				idx: i,
+				value: cell.value
+			} }))) : void 0);
+			const before = moves?.size ? new Map([...new Set(moves.values())].map((p) => [p, drawnAt(p)])) : null;
 			resize(next);
 			if (delta) {
 				illuminated = /* @__PURE__ */ new Set([...delta.changed, ...delta.added]);
 				illuminate([...illuminated], delta.removed);
+				if (illuminated.size || delta.removed.length) flashSymbols([
+					el.id,
+					el.label,
+					symbol
+				].filter((v) => !!v));
 			}
 			updateTitle();
 			decoration?.resize(next);
+			if (connections.length) setCellLinks(el.id, evaluateLinkTargets(connections, cells.map(({ cell }) => cell.value)), connections.some((c) => c.pinned));
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			let dirty = false;
 			for (let i = 0; i < n; i++) {
-				const { cell, highlighted, color } = cells[i];
+				const { cell, highlighted, color, key: cellKey } = cells[i];
 				const lit = illuminated.has(i);
 				const key = JSON.stringify([
 					cell.kind,
 					cell.value,
 					highlighted,
 					color,
-					lit
+					lit,
+					cellKey
 				]);
+				const tag = cellKey ?? String(i);
 				if (previous[i] === key) continue;
 				previous[i] = key;
 				dirty = true;
 				const label = labels[i];
 				label.el.textContent = cell.text;
-				label.el.title = `[${i}] ${cell.kind}: ${cell.text}`;
+				label.el.title = `[${tag}] ${cell.kind}: ${cell.text}`;
+				if (cellKey !== null && indexLabels[i]) {
+					indexLabels[i].el.textContent = cellKey;
+					indexLabels[i].el.setAttribute("aria-label", `Key ${cellKey}`);
+					indexLabels[i].boxW = null;
+					indexLabels[i].boxH = null;
+				}
 				label.el.setAttribute("aria-label", label.el.title);
 				label.boxW = null;
 				label.boxH = null;
@@ -11504,11 +13391,7 @@ function renderArray(el, _view, decorate) {
 						c[1],
 						c[2] + .14
 					]);
-					indexTextPlanes[i]?.set(String(i), [
-						c[0],
-						c[1] - .58,
-						c[2] + .14
-					]);
+					indexTextPlanes[i]?.set(tag, keyAt(c));
 				}
 				const rgb = parseColor(color ?? (highlighted ? "#f1cc59" : el.color ?? PALETTE[cell.kind]));
 				if (lit) for (let j = 0; j < 3; j++) rgb[j] = rgb[j] + (1 - rgb[j]) * .35;
@@ -11521,6 +13404,13 @@ function renderArray(el, _view, decorate) {
 				}
 			}
 			if (dirty) colorAttribute.needsUpdate = true;
+			cells.forEach(({ cell }, i) => {
+				cellText[i] = cell.text;
+			});
+			if (glide && moves) {
+				glide.moved(moves, (p) => before?.get(p) ?? null);
+				if (glide.moving) placeCells();
+			}
 		}
 	};
 	function selectCell(index) {
@@ -11569,8 +13459,87 @@ function renderArray(el, _view, decorate) {
 			return true;
 		}
 	}) : null;
+	let symbolLit = false;
+	const symbol = el.codeSymbol ? el.codeSymbol.replace(/\s+/g, "") : el.id;
+	const pointing = {
+		cells: false,
+		title: false
+	};
+	const point = (part, now) => {
+		const was = pointing.cells || pointing.title;
+		pointing[part] = now;
+		const is = pointing.cells || pointing.title;
+		if (!symbol || is === was) return;
+		if (is) setSymbolHover([symbol]);
+		else if (hoveredSymbols().length === 1 && hoveredSymbols()[0] === symbol) setSymbolHover([]);
+	};
+	const shown = () => {
+		if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+		for (let part = mesh; part; part = part.parent) if (!part.visible) return false;
+		return true;
+	};
+	const disposeSymbolHover = symbol && canvas ? registerStackHover(canvas, () => state.camera, {
+		mesh,
+		visible: shown,
+		select: (index) => point("cells", index !== null)
+	}) : null;
+	titleHit = symbol && canvas && titlePlane ? new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({
+		visible: false,
+		side: THREE.DoubleSide
+	})) : null;
+	function placeTitleHit() {
+		if (!titleHit) return;
+		const [x, y, z] = titlePosition(), w = titleWidth / 2, h = .95 / 2;
+		const corners = [
+			[x - w, y - h],
+			[x + w, y - h],
+			[x + w, y + h],
+			[x - w, y + h]
+		].map(([cx, cy]) => dataToWorld([
+			cx,
+			cy,
+			z
+		]));
+		const positions = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		].flatMap((i) => corners[i]);
+		titleHit.geometry.dispose();
+		titleHit.geometry = new THREE.BufferGeometry();
+		titleHit.geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+	}
+	placeTitleHit();
+	const disposeValue = symbol ? registerSymbolValue(symbol, () => shown() ? valueText : null) : null;
+	const disposeTitleHover = titleHit && canvas ? registerStackHover(canvas, () => state.camera, {
+		mesh: titleHit,
+		visible: shown,
+		select: (index) => point("title", index !== null)
+	}) : null;
+	if (symbol && titleLabel && !planeText) {
+		titleLabel.el.style.pointerEvents = "auto";
+		titleLabel.el.addEventListener("pointerenter", () => point("title", true));
+		titleLabel.el.addEventListener("pointerleave", () => point("title", false));
+	}
+	const onSymbolHover = () => {
+		const lit = !!symbol && hoveredSymbols().includes(symbol);
+		if (lit === symbolLit || animState.stopped) return;
+		symbolLit = lit;
+		titlePlane?.setHighlight(lit);
+		titleLabel?.el.classList.toggle("array-title-symbol-hover", lit);
+	};
+	if (symbol) window.addEventListener("algebench:symbolhover", onSymbolHover);
 	material.addEventListener("dispose", () => {
 		disposeHover?.();
+		glide?.dispose();
+		disposeSymbolHover?.();
+		disposeTitleHover?.();
+		disposeValue?.();
+		titleHit?.geometry.dispose();
+		window.removeEventListener("algebench:symbolhover", onSymbolHover);
 		ghostMaterial?.dispose();
 		unit.dispose();
 		for (const layer of [
@@ -11589,9 +13558,19 @@ function renderArray(el, _view, decorate) {
 }
 //#endregion
 //#region src/objects/stack-layout.ts
-/** A fixed base and an open container that grows with its bottom-to-top cells. */
-function stackBounds(length, origin, pitch) {
+/** A fixed base and an open container that grows with its bottom-to-top cells; horizontal: closed on the left,
+*  growing to the right (cells at the array's horizontal pitch). The horizontal wall hugs cell 0, so the row
+*  title the array draws left of cell 0 (labelSide 'left') clears it and lines up with sibling rows. */
+function stackBounds(length, origin, pitch, horizontal = false) {
 	const [x, y, z] = origin;
+	if (horizontal) return {
+		left: x - pitch * .39 - .12,
+		right: x + Math.max(0, length - 1) * pitch + pitch * .39 + .5,
+		bottom: y - .46,
+		top: y + .46,
+		back: z - .2,
+		front: z + .7
+	};
 	return {
 		left: x - pitch * .39 - .12,
 		right: x + pitch * .39 + .12,
@@ -11607,12 +13586,14 @@ function stackBounds(length, origin, pitch) {
 function renderStack(el, view) {
 	if (el.shape && el.shape.length !== 1) throw new Error("A stack needs a one-dimensional shape.");
 	const lengthExpr = el.lengthExpr ?? String(el.shape?.[0] ?? el.values?.length ?? 0);
+	const horizontal = el.arrayLayout === "horizontal";
 	return renderArray({
 		...el,
-		arrayLayout: "vertical",
+		arrayLayout: horizontal ? "horizontal" : "vertical",
 		lengthExpr,
 		showIndices: el.showIndices ?? false,
-		label: void 0,
+		label: horizontal ? el.label ?? "stack" : void 0,
+		labelSide: horizontal ? "left" : el.labelSide,
 		markers: [...el.markers ?? [], ...el.showTop === false ? [] : [{
 			type: "step_marker",
 			indexName: "top slot",
@@ -11637,13 +13618,31 @@ function renderStack(el, view) {
 			return mesh;
 		};
 		const back = makeMesh(.12), base = makeMesh(.4), outline = makeMesh(.7);
-		const title = addLabel3D(el.label ?? "stack", [
+		const title = horizontal ? null : addLabel3D(el.label ?? "stack", [
 			origin[0],
 			origin[1] - 1.5,
 			origin[2]
 		], "#b5c1cf");
-		title.ownerMesh = owner;
-		title.snapToProjection = true;
+		if (title) {
+			title.ownerMesh = owner;
+			title.snapToProjection = true;
+		}
+		if (title && el.id) {
+			const symbol = el.id;
+			title.el.style.pointerEvents = "auto";
+			title.el.addEventListener("pointerenter", () => setSymbolHover([symbol]));
+			title.el.addEventListener("pointerleave", () => {
+				if (hoveredSymbols().length === 1 && hoveredSymbols()[0] === symbol) setSymbolHover([]);
+			});
+			const light = () => {
+				if (!title.el.isConnected) {
+					window.removeEventListener("algebench:symbolhover", light);
+					return;
+				}
+				title.el.classList.toggle("array-title-symbol-hover", hoveredSymbols().includes(symbol));
+			};
+			window.addEventListener("algebench:symbolhover", light);
+		}
 		const empty = addLabel3D(el.emptyText ?? "empty", origin, "#8ca9a0", { cssClass: "label-3d array-cell-label" });
 		empty.ownerMesh = owner;
 		empty.snapToProjection = true;
@@ -11667,7 +13666,7 @@ function renderStack(el, view) {
 		const resize = (length) => {
 			if (length === previous) return;
 			previous = length;
-			const b = stackBounds(length, origin, pitch), t = .035, z = b.back;
+			const b = stackBounds(length, origin, pitch, horizontal), t = .035, z = b.back;
 			replace(back, [[
 				[
 					b.left,
@@ -11690,7 +13689,28 @@ function renderStack(el, view) {
 					z
 				]
 			]]);
-			replace(base, [[
+			replace(base, horizontal ? [[
+				[
+					b.left,
+					b.bottom,
+					z
+				],
+				[
+					b.left,
+					b.top,
+					z
+				],
+				[
+					b.left,
+					b.top,
+					b.front
+				],
+				[
+					b.left,
+					b.bottom,
+					b.front
+				]
+			]] : [[
 				[
 					b.left,
 					b.bottom,
@@ -11734,7 +13754,11 @@ function renderStack(el, view) {
 					z + .005
 				]
 			];
-			replace(outline, [
+			replace(outline, horizontal ? [
+				rect(b.left, b.bottom, b.left + t, b.top),
+				rect(b.left, b.bottom, b.right, b.bottom + t),
+				rect(b.left, b.top - t, b.right, b.top)
+			] : [
 				rect(b.left, b.bottom, b.left + t, b.top),
 				rect(b.right - t, b.bottom, b.right, b.top),
 				rect(b.left, b.bottom, b.right, b.bottom + t)
@@ -11745,6 +13769,831 @@ function renderStack(el, view) {
 		resize(initial);
 		return { resize };
 	});
+}
+//#endregion
+//#region src/objects/node-click.ts
+/** The node under a screen point: the nearest (smallest depth) whose box contains it, or null. */
+function pickBox(boxes, x, y) {
+	let best = null;
+	for (const b of boxes) {
+		if (x < b.minX || x > b.maxX || y < b.minY || y > b.maxY) continue;
+		if (!best || b.depth < best.depth) best = b;
+	}
+	return best ? best.index : null;
+}
+function isClick(down, up) {
+	return !!down && Math.hypot(up.x - down.x, up.y - down.y) <= 6;
+}
+//#endregion
+//#region src/objects/tree-layout.ts
+/** Children (in index order), roots, and depths, for n nodes given each one's parent. Cycles become roots. */
+function treeShape(n, parentOf) {
+	const parent = Array.from({ length: n }, (_, i) => {
+		const p = Number(parentOf(i));
+		return Number.isInteger(p) && p >= 0 && p < n && p !== i ? p : -1;
+	});
+	for (let i = 0; i < n; i++) for (let j = parent[i], steps = 0; j >= 0 && steps <= n; j = parent[j], steps++) if (j === i) {
+		parent[i] = -1;
+		break;
+	}
+	const children = Array.from({ length: n }, () => []);
+	parent.forEach((p, i) => {
+		if (p >= 0) children[p].push(i);
+	});
+	const roots = parent.flatMap((p, i) => p < 0 ? [i] : []);
+	const depth = Array(n).fill(0);
+	const walk = (i, d) => {
+		depth[i] = d;
+		for (const c of children[i]) walk(c, d + 1);
+	};
+	roots.forEach((r) => walk(r, 0));
+	return {
+		parent,
+		children,
+		roots,
+		depth
+	};
+}
+function layoutTree(kind, n, parentOf, options = {}, sideOf) {
+	const [ox = 0, oy = 0, oz = 0] = (options.origin ?? [
+		0,
+		0,
+		0
+	]).map(Number);
+	const spacing = Number(options.spacing ?? 1.2), gap = Number(options.levelGap ?? 1.3);
+	const spot = (along, depth) => options.orientation === "horizontal" ? [
+		ox + depth * gap,
+		oy - along * spacing,
+		oz
+	] : [
+		ox + along * spacing,
+		oy - depth * gap,
+		oz
+	];
+	if (n <= 0) return [];
+	if (kind === "complete") {
+		const width = Number(options.width ?? 6);
+		return Array.from({ length: n }, (_, i) => {
+			const level = Math.floor(Math.log2(i + 1)), slots = 2 ** level, at = i + 1 - slots;
+			return [
+				ox - width / 2 + (at + .5) * width / slots,
+				oy - level * gap,
+				oz
+			];
+		});
+	}
+	const { children, roots, depth } = treeShape(n, parentOf);
+	const x = Array(n).fill(0);
+	if (kind === "indented") {
+		let row = 0;
+		const out = Array(n);
+		const visit = (i) => {
+			out[i] = [
+				ox + depth[i] * spacing,
+				oy - row++ * gap,
+				oz
+			];
+			children[i].forEach(visit);
+		};
+		roots.forEach(visit);
+		return out;
+	}
+	if (kind === "binary") {
+		let order = 0;
+		const sides = (i) => {
+			let left, right;
+			for (const c of children[i]) {
+				const s = sideOf ? Number(sideOf(c)) : NaN;
+				if (s === 1 && right === void 0) right = c;
+				else if (s === 0 && left === void 0) left = c;
+				else if (left === void 0) left = c;
+				else if (right === void 0) right = c;
+			}
+			return [left, right];
+		};
+		const visit = (i) => {
+			const [l, r] = sides(i);
+			if (l !== void 0) visit(l);
+			x[i] = order++;
+			if (r !== void 0) visit(r);
+		};
+		roots.forEach(visit);
+		const mid = (order - 1) / 2;
+		return Array.from({ length: n }, (_, i) => spot(x[i] - mid, depth[i]));
+	}
+	let leaves = 0;
+	const place = (i) => {
+		const c = children[i];
+		if (!c.length) return x[i] = leaves++;
+		const xs = c.map(place);
+		return x[i] = (xs[0] + xs[xs.length - 1]) / 2;
+	};
+	roots.forEach(place);
+	if (kind === "radial") return Array.from({ length: n }, (_, i) => {
+		if (depth[i] === 0 && roots.length === 1) return [
+			ox,
+			oy,
+			oz
+		];
+		const angle = Math.PI / 2 - 2 * Math.PI * (x[i] + .5) / Math.max(1, leaves);
+		const r = (depth[i] + (roots.length > 1 ? 1 : 0)) * gap;
+		return [
+			ox + r * Math.cos(angle),
+			oy + r * Math.sin(angle),
+			oz
+		];
+	});
+	const mid = (leaves - 1) / 2;
+	return Array.from({ length: n }, (_, i) => spot(x[i] - mid, depth[i]));
+}
+//#endregion
+//#region src/objects/graph.ts
+/**
+* A graph: nodes with a value each, placed by an expression, linked by connectTo. Nodes are discs ('point',
+* value written outside) or rounded blocks ('rect', value inside); one mesh holds them all. The graph behaves
+* like an array towards the rest of the app: it exposes its nodes as cells (arrayCellTarget), so owned index
+* markers sit on and glide between nodes, label wires and other objects' links can point at a node, and its own
+* connectTo is drawn live by the cell-link layer (a target without `object` stays in this graph).
+* Expressions run on state changes, never per frame.
+*/
+var HIGHLIGHT$1 = "#f1cc59";
+var DEFAULT = "#9dbde3";
+var graphMarkerGroup = 0;
+function renderGraph(el, view) {
+	if (!state.three) return null;
+	const shape = el.nodeShape === "rect" ? "rect" : "point";
+	const w = shape === "point" ? Number(el.nodeSize ?? .45) : Number(el.nodeWidth ?? 1);
+	const h = shape === "point" ? w : Number(el.nodeHeight ?? .7);
+	const radius = Number(el.nodeCornerRadius ?? .12);
+	if (![w, h].every((v) => Number.isFinite(v) && v > 0)) throw new Error("Graph node size must be positive.");
+	const outline = nodeOutline(shape, w, h, radius);
+	const depth = Math.max(0, Number(el.nodeDepth ?? .22));
+	const valueAt = el.valueLabel && el.valueLabel !== "auto" ? el.valueLabel : shape === "point" ? "outside" : "inside";
+	const lengthFn = el.lengthExpr ? compileExpr(el.lengthExpr) : null;
+	const valueFn = el.valueExpr ? compileExpr(el.valueExpr) : null;
+	const positionFns = (el.positionExpr ?? []).map((p) => compileExpr(String(p)));
+	const tree = el.treeLayout;
+	const parentFn = tree?.parentExpr ? compileExpr(tree.parentExpr) : null, sideFn = tree?.sideExpr ? compileExpr(tree.sideExpr) : null;
+	if (!tree && positionFns.length !== 3) throw new Error("A graph needs positionExpr: [x, y, z] expressions per node, or a treeLayout.");
+	const colorFn = el.colorExpr ? compileExpr(el.colorExpr) : null;
+	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const links = compileLinkTargets(el.connectTo, el.id, true);
+	const showIndices = el.showIndices !== false;
+	const cellsFn = el.nodeCellsExpr ? compileExpr(el.nodeCellsExpr) : null;
+	const cellW = Number(el.nodeCellWidth ?? .7);
+	const cellHighlightFn = el.cellHighlightExpr ? compileExpr(el.cellHighlightExpr) : null;
+	const cellOutline = nodeOutline("rect", Math.max(.05, cellW - .06), h, Math.min(radius, .08));
+	const material = new THREE.MeshBasicMaterial({
+		vertexColors: true,
+		transparent: true,
+		opacity: 1,
+		side: THREE.DoubleSide
+	});
+	const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+	mesh.userData.ignorePlaneOpacity = true;
+	mesh.userData.targetOpacity = 1;
+	state.three.scene.add(mesh);
+	state.planeMeshes.push(mesh);
+	let nodes = [];
+	const axes = () => {
+		const o = dataToWorld([
+			0,
+			0,
+			0
+		]), ex = dataToWorld([
+			1,
+			0,
+			0
+		]), ey = dataToWorld([
+			0,
+			1,
+			0
+		]);
+		const vx = ex.map((v, i) => v - o[i]), vy = ey.map((v, i) => v - o[i]);
+		const sx = Math.hypot(...vx) || 1, sy = Math.hypot(...vy) || 1;
+		return {
+			sx,
+			sy,
+			ux: vx.map((v) => v / sx),
+			uy: vy.map((v) => v / sy)
+		};
+	};
+	let span = {
+		hw: w / 2,
+		hh: h / 2
+	};
+	const animState = { stopped: false };
+	const cellTarget = {
+		vertical: false,
+		graph: true,
+		round: shape === "point" || radius >= Math.min(w, h) / 2,
+		at(index) {
+			const n = Number.isInteger(index) ? nodes[index] : void 0;
+			if (!n) return null;
+			const hw = n.hw, { hh } = span;
+			return {
+				position: [
+					n.x,
+					n.y,
+					n.z
+				],
+				corners: [
+					[
+						n.x - hw,
+						n.y - hh,
+						n.z
+					],
+					[
+						n.x + hw,
+						n.y - hh,
+						n.z
+					],
+					[
+						n.x + hw,
+						n.y + hh,
+						n.z
+					],
+					[
+						n.x - hw,
+						n.y + hh,
+						n.z
+					]
+				]
+			};
+		},
+		ports(index) {
+			const n = Number.isInteger(index) ? nodes[index] : void 0;
+			if (!n) return [];
+			const bottom = n.y - span.hh;
+			if (!n.cells) return [[
+				n.x,
+				bottom,
+				n.z
+			]];
+			return Array.from({ length: n.cells.length + 1 }, (_, p) => [
+				n.x - n.hw + p * cellW,
+				bottom,
+				n.z
+			]);
+		}
+	};
+	mesh.userData.arrayCellTarget = cellTarget;
+	const idFn = el.idExpr ? compileExpr(el.idExpr) : null;
+	const identities = el.animateMoves ? identityTracker(`${el.id ?? "graph"}:`) : null;
+	const glide = identities ? createCellGlide({
+		ms: Math.max(0, Number(el.animationMs ?? 450)),
+		stopped: () => animState.stopped,
+		draw: () => paint()
+	}) : null;
+	const drawnAt = (i) => {
+		const n = nodes[i];
+		const home = n ? [
+			n.x,
+			n.y,
+			n.z
+		] : [
+			0,
+			0,
+			0
+		];
+		return glide ? glide.at(i, home) : home;
+	};
+	const owner = {
+		group: "graph-markers:" + graphMarkerGroup++,
+		animState,
+		position: (index) => cellTarget.at(index)?.position ?? null,
+		corners: (index) => cellTarget.at(index)?.corners ?? []
+	};
+	const markers = (el.markers ?? []).map((marker) => renderStepMarker({
+		...marker,
+		type: "step_marker"
+	}, view, owner));
+	const valueLabels = [], indexLabels = [];
+	const planeText = el.axisLabels === "plane" && valueAt === "inside";
+	const planes = [];
+	let longest = "";
+	const planeFor = (i) => {
+		let layer = planes[i];
+		if (!layer) {
+			const { sx, sy } = axes();
+			layer = createArrayPlaneText(w * .88, h * (sx / sy) * .72, "#e6edf5", { fitTo: () => longest });
+			mesh.add(layer.mesh);
+			const plane = layer;
+			plane.mesh.onBeforeRender = (renderer, _scene, camera) => {
+				plane.prepare(renderer, camera);
+				plane.mesh.material.opacity = material.opacity;
+			};
+			planes[i] = layer;
+		}
+		return layer;
+	};
+	const labelFor = (list, i, cls) => {
+		let label = list[i];
+		if (!label) {
+			label = addLabel3D("", [
+				0,
+				0,
+				0
+			], "#e6edf5", { cssClass: `label-3d ${cls}` });
+			label.ownerMesh = mesh;
+			label.snapToProjection = true;
+			list[i] = label;
+		}
+		return label;
+	};
+	const cellLabels = /* @__PURE__ */ new Map();
+	const cellLabelFor = (key) => {
+		let label = cellLabels.get(key);
+		if (!label) {
+			label = addLabel3D("", [
+				0,
+				0,
+				0
+			], "#e6edf5", { cssClass: "label-3d graph-node-value graph-node-value-inside" });
+			label.ownerMesh = mesh;
+			label.snapToProjection = true;
+			cellLabels.set(key, label);
+		}
+		return label;
+	};
+	const rebuild = () => {
+		const count = lengthFn ? dynamicArrayLength(evalExpr(lengthFn, 0)) : Array.isArray(el.values) ? el.values.length : 0;
+		const values = Array.from({ length: count }, (_, i) => valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : el.values?.[i]);
+		const scoped = (fn, i) => fn ? Number(evalExpr(fn, 0, { overrideScope: {
+			idx: i,
+			value: values[i]
+		} })) : NaN;
+		const laid = tree ? layoutTree(tree.type, count, (i) => parentFn ? scoped(parentFn, i) : -1, {
+			origin: tree.origin,
+			spacing: tree.spacing,
+			levelGap: tree.levelGap,
+			width: tree.width,
+			orientation: tree.orientation
+		}, sideFn ? (i) => scoped(sideFn, i) : void 0) : null;
+		const next = Array.from({ length: count }, (_, i) => {
+			const value = values[i];
+			const [x, y, z] = laid ? laid[i] : positionFns.map((fn) => Number(evalExpr(fn, 0, { overrideScope: {
+				idx: i,
+				value
+			} })));
+			if (![
+				x,
+				y,
+				z
+			].every(Number.isFinite)) throw new Error(`Graph node ${i} has no position.`);
+			let color = null;
+			try {
+				const c = colorFn ? evalExpr(colorFn, 0, { overrideScope: {
+					idx: i,
+					value
+				} }) : "";
+				if (typeof c === "string" && c) color = c;
+			} catch {}
+			const lit = highlightFn ? !!evalExpr(highlightFn, 0, { overrideScope: {
+				idx: i,
+				value
+			} }) : false;
+			let cells = null, cellLit = [];
+			if (cellsFn) {
+				const raw = evalExpr(cellsFn, 0, { overrideScope: {
+					idx: i,
+					value
+				} });
+				const plain = raw !== null && typeof raw === "object" && "valueOf" in raw ? raw.valueOf() : raw;
+				cells = Array.isArray(plain) ? plain.flat(Infinity) : [plain];
+				cellLit = cells.map((v, c) => {
+					try {
+						return !!(cellHighlightFn && evalExpr(cellHighlightFn, 0, { overrideScope: {
+							node: i,
+							idx: c,
+							value: v
+						} }));
+					} catch {
+						return false;
+					}
+				});
+			}
+			const hw = cells ? Math.max(1, cells.length) * cellW / 2 : w / 2;
+			return {
+				x,
+				y,
+				z,
+				value,
+				cells,
+				cellLit,
+				hw,
+				color: color ?? (lit ? HIGHLIGHT$1 : el.color ? null : DEFAULT),
+				lit
+			};
+		});
+		const moves = identities?.next(next.map((n) => JSON.stringify(n.value ?? null)), idFn ? next.map((n, i) => String(evalExpr(idFn, 0, { overrideScope: {
+			idx: i,
+			value: n.value
+		} }))) : void 0);
+		const before = moves?.size ? new Map([...new Set(moves.values())].map((p) => [p, drawnAt(p)])) : null;
+		nodes = next;
+		if (glide && moves) glide.moved(moves, (p) => before?.get(p) ?? null);
+		paint();
+		for (const marker of markers) marker._animExprEntry._rebuildFn?.();
+		if (links.length) setCellLinks(el.id, evaluateLinkTargets(links, next.map((n) => n.value), { bend: Number(el.edgeBend ?? .12) }), links.some((l) => l.pinned));
+	};
+	const paint = () => {
+		const next = nodes;
+		if (planeText) {
+			const widest = next.map((n) => typeof n.value === "string" ? n.value : String(n.value ?? "")).reduce((a, b) => [...b].length > [...a].length ? b : a, "");
+			if (widest !== longest) {
+				longest = widest;
+				for (const layer of planes) layer.refit();
+			}
+		}
+		const positions = [], colors = [];
+		const { sx, sy, ux, uy } = axes();
+		span = {
+			hw: w / 2,
+			hh: h / 2 * sx / sy
+		};
+		const offset = (centre, ax, ay) => centre.map((c, i) => c + (ax * ux[i] + ay * uy[i]) * sx);
+		const o = dataToWorld([
+			0,
+			0,
+			0
+		]), half = dataToWorld([
+			0,
+			0,
+			depth / 2
+		]).map((v, i) => v - o[i]);
+		const push = (p, fill, shade) => {
+			positions.push(...p);
+			colors.push(fill[0] * shade, fill[1] * shade, fill[2] * shade);
+		};
+		const fan = (centre, shape, fill) => {
+			const front = centre.map((c, i) => c + half[i]), back = centre.map((c, i) => c - half[i]);
+			for (let k = 0; k < shape.length; k++) {
+				const [ax, ay] = shape[k], [bx, by] = shape[(k + 1) % shape.length];
+				const fa = offset(front, ax, ay), fb = offset(front, bx, by);
+				for (const p of [
+					front,
+					fa,
+					fb
+				]) push(p, fill, 1);
+				if (depth <= 0) continue;
+				const ba = offset(back, ax, ay), bb = offset(back, bx, by);
+				for (const p of [
+					back,
+					bb,
+					ba
+				]) push(p, fill, .56);
+				const ny = -(bx - ax) / (Math.hypot(bx - ax, by - ay) || 1), shade = .56 + .22 * Math.max(0, ny);
+				for (const p of [
+					fa,
+					ba,
+					bb,
+					fa,
+					bb,
+					fb
+				]) push(p, fill, shade);
+			}
+		};
+		next.forEach((n, i) => {
+			const rgb = parseColor(n.color ?? (typeof el.color === "string" ? el.color : DEFAULT));
+			const fill = n.lit && n.color !== HIGHLIGHT$1 ? rgb.map((c) => c + (1 - c) * .35) : rgb;
+			if (!n.cells) {
+				fan(dataToWorld(drawnAt(i)), outline, fill);
+				return;
+			}
+			n.cells.forEach((_, c) => fan(dataToWorld([
+				n.x - n.hw + (c + .5) * cellW,
+				n.y,
+				n.z
+			]), cellOutline, n.cellLit[c] ? parseColor(HIGHLIGHT$1) : fill));
+		});
+		const geometry = new THREE.BufferGeometry();
+		geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+		geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+		mesh.geometry.dispose();
+		mesh.geometry = geometry;
+		next.forEach((n, i) => {
+			let text;
+			if (typeof n.value === "string") text = n.value;
+			else try {
+				text = arrayCell(n.value ?? null, el.itemType ?? "mixed").text;
+			} catch {
+				text = String(n.value ?? "");
+			}
+			if (n.cells) n.cells.forEach((v, c) => {
+				const label = cellLabelFor(`${i}:${c}`);
+				label.dataPos = [
+					n.x - n.hw + (c + .5) * cellW,
+					n.y,
+					n.z
+				];
+				const t = typeof v === "string" ? v : String(v ?? "");
+				if (label.el.textContent !== t) label.el.textContent = t;
+				label.el.style.display = "";
+			});
+			else if (planeText) {
+				const [x, y, z] = drawnAt(i), layer = planeFor(i);
+				layer.mesh.visible = true;
+				layer.set(text, [
+					x,
+					y,
+					z + depth / 2 + .02
+				]);
+			} else if (valueAt !== "none") {
+				const value = labelFor(valueLabels, i, `graph-node-value graph-node-value-${valueAt}`), [x, y, z] = drawnAt(i);
+				value.dataPos = valueAt === "inside" ? [
+					x,
+					y,
+					z
+				] : [
+					x + span.hw + .25,
+					y,
+					z
+				];
+				if (value.el.textContent !== text) value.el.textContent = text;
+			}
+			if (showIndices) {
+				const tag = labelFor(indexLabels, i, "graph-node-index");
+				tag.dataPos = [
+					n.x,
+					n.y - span.hh - .3 * sx / sy,
+					n.z
+				];
+				if (tag.el.textContent !== String(i)) tag.el.textContent = String(i);
+			}
+		});
+		for (const list of [valueLabels, indexLabels]) list.forEach((label, i) => {
+			label.el.style.display = i < next.length ? "" : "none";
+		});
+		planes.forEach((layer, i) => {
+			layer.mesh.visible = i < next.length;
+		});
+		for (const [key, label] of cellLabels) {
+			const [i, c] = key.split(":").map(Number);
+			if (!(next[i]?.cells && c < next[i].cells.length)) label.el.style.display = "none";
+		}
+	};
+	function wireClicks() {
+		const canvas = state.renderer?.domElement;
+		const actions = (el.onClick ?? []).map((a) => ({
+			...a,
+			valueFn: a.valueExpr ? compileExpr(a.valueExpr) : null,
+			stepFn: a.stepExpr ? compileExpr(a.stepExpr) : null,
+			sceneFn: a.sceneExpr ? compileExpr(a.sceneExpr) : null
+		}));
+		if (!canvas || !actions.length) return null;
+		const shown = () => {
+			if (animState.stopped || animState.hiddenByRemove || material.opacity <= 0) return false;
+			for (let part = mesh; part; part = part.parent) if (!part.visible) return false;
+			return true;
+		};
+		const nodeAt = (clientX, clientY) => {
+			const camera = state.camera;
+			if (!camera || !shown()) return null;
+			const rect = canvas.getBoundingClientRect(), boxes = [];
+			nodes.forEach((_, i) => {
+				const corners = cellTarget.at(i)?.corners;
+				if (!corners) return;
+				const pts = corners.map((c) => new THREE.Vector3(...dataToWorld(c)).project(camera));
+				if (pts.some((p) => p.z < -1 || p.z > 1)) return;
+				const xs = pts.map((p) => (p.x * .5 + .5) * rect.width), ys = pts.map((p) => (-p.y * .5 + .5) * rect.height);
+				boxes.push({
+					index: i,
+					minX: Math.min(...xs),
+					maxX: Math.max(...xs),
+					minY: Math.min(...ys),
+					maxY: Math.max(...ys),
+					depth: Math.min(...pts.map((p) => p.z))
+				});
+			});
+			return pickBox(boxes, clientX - rect.left, clientY - rect.top);
+		};
+		const run = (i) => {
+			const scope = { overrideScope: {
+				idx: i,
+				value: nodes[i]?.value
+			} };
+			for (const a of actions) try {
+				if (a.action === "setSlider" && a.slider && a.valueFn) setSliderValue(a.slider, Number(evalExpr(a.valueFn, 0, scope)));
+				else if (a.action === "goToScene") {
+					const id = a.scene ?? (a.sceneFn ? String(evalExpr(a.sceneFn, 0, scope)) : "");
+					const at = (state.lessonSpec?.scenes ?? []).findIndex((sc) => sc.id === id);
+					if (id && at >= 0) navigateTo(at, 0);
+				} else if (a.action === "goToStep") {
+					const id = a.step ?? (a.stepFn ? String(evalExpr(a.stepFn, 0, scope)) : "");
+					const at = ((state.lessonSpec?.scenes?.[state.currentSceneIndex])?.steps ?? []).findIndex((step) => step.id === id);
+					if (at >= 0) navigateTo(state.currentSceneIndex, at);
+				}
+			} catch (error) {
+				console.warn("graph onClick:", error);
+			}
+		};
+		const controller = new AbortController();
+		let down = null, pointing = false;
+		canvas.addEventListener("pointerdown", (e) => {
+			down = e.button === 0 ? {
+				x: e.clientX,
+				y: e.clientY
+			} : null;
+		}, { signal: controller.signal });
+		canvas.addEventListener("pointerup", (e) => {
+			const pressed = down;
+			down = null;
+			if (e.button !== 0 || !isClick(pressed, {
+				x: e.clientX,
+				y: e.clientY
+			})) return;
+			const i = nodeAt(e.clientX, e.clientY);
+			if (i !== null) run(i);
+		}, { signal: controller.signal });
+		canvas.addEventListener("pointermove", (e) => {
+			const over = !e.buttons && nodeAt(e.clientX, e.clientY) !== null;
+			if (over !== pointing) {
+				pointing = over;
+				canvas.style.cursor = over ? "pointer" : "";
+			}
+		}, {
+			signal: controller.signal,
+			passive: true
+		});
+		return () => {
+			controller.abort();
+			if (pointing) canvas.style.cursor = "";
+		};
+	}
+	const entry = {
+		animState,
+		exprStrings: [
+			el.lengthExpr,
+			el.valueExpr,
+			el.idExpr,
+			el.treeLayout?.parentExpr,
+			el.treeLayout?.sideExpr,
+			...(el.positionExpr ?? []).map(String),
+			el.colorExpr,
+			el.highlightExpr,
+			el.nodeCellsExpr,
+			el.cellHighlightExpr,
+			...links.flatMap((l) => l.sources),
+			...markers.flatMap((m) => m._animExprEntry.exprStrings ?? [])
+		].filter((v) => !!v),
+		_rebuildFn: () => {
+			if (!animState.stopped && !animState.hiddenByRemove) rebuild();
+		}
+	};
+	try {
+		rebuild();
+	} catch (error) {
+		console.warn("graph:", error);
+	}
+	material.addEventListener("dispose", () => {
+		animState.stopped = true;
+		glide?.dispose();
+		for (const layer of planes) layer.dispose();
+	});
+	registerAnimExpr(entry);
+	const disposeClicks = wireClicks();
+	material.addEventListener("dispose", () => disposeClicks?.());
+	return {
+		_animState: animState,
+		_animExprEntry: entry,
+		type: el.type
+	};
+}
+//#endregion
+//#region src/objects/heap.ts
+/**
+* heap: one list shown twice, as an array (the list as stored) and as the complete binary tree it encodes
+* (slot i's children are 2i + 1 and 2i + 2, its parent ⌊(i − 1) / 2⌋). It is a thin wrapper: it renders a
+* real array under the element's id and a real graph under `<id>-tree`, both from the same lengthExpr and
+* valueExpr, the graph laid out as a tree with an edge from each slot to its parent. Both have animateMoves
+* on, so a sift's swap glides the two values in both views and a pop's last value travels to the root.
+*
+* Everything an array or a graph supports works on its view: markers on the array, label wires and links
+* to either id, colorExpr / highlightExpr per slot (shared), edgeColorExpr on the tree's edges.
+*/
+function renderHeap(el, view) {
+	if (!state.three) return null;
+	const id = el.id, treeId = `${id}-tree`;
+	const [ox = 0, oy = 0, oz = 0] = (el.origin ?? [
+		0,
+		0,
+		0
+	]).map(Number);
+	const origin = [
+		ox,
+		oy,
+		oz
+	];
+	const [rx = ox, ry = oy + 3.2, rz = oz] = (el.treeOrigin ?? []).map(Number);
+	const root = [
+		rx,
+		ry,
+		rz
+	];
+	const node = Number(el.nodeSize ?? .9);
+	const shared = {
+		lengthExpr: el.lengthExpr,
+		valueExpr: el.valueExpr,
+		values: el.values,
+		itemType: el.itemType ?? "number",
+		colorExpr: el.colorExpr,
+		highlightExpr: el.highlightExpr,
+		color: el.color,
+		showIndices: el.showIndices,
+		animateMoves: true,
+		idExpr: el.idExpr,
+		animationMs: el.animationMs
+	};
+	const row = {
+		...shared,
+		type: "array",
+		id,
+		label: el.label,
+		labelSide: el.labelSide ?? "left",
+		origin,
+		cellSize: el.cellSize,
+		fontSize: el.fontSize,
+		indexFontSize: el.indexFontSize,
+		axisLabels: el.axisLabels,
+		markers: el.markers,
+		prompt: el.prompt,
+		codeRef: el.codeRef
+	};
+	const tree = {
+		...shared,
+		type: "graph",
+		id: treeId,
+		label: el.treeLabel,
+		treeLayout: {
+			type: "complete",
+			origin: root,
+			width: Number(el.treeWidth ?? 6),
+			levelGap: Number(el.levelGap ?? 1.3)
+		},
+		nodeShape: "rect",
+		nodeWidth: node,
+		nodeHeight: node,
+		nodeCornerRadius: node / 2,
+		valueLabel: "inside",
+		connectTo: {
+			indexExpr: "idx == 0 ? -1 : floor((idx - 1) / 2)",
+			pinned: true,
+			bendExpr: "0",
+			color: el.edgeColor ?? "#7f93aa",
+			...el.edgeColorExpr ? {
+				colorExpr: el.edgeColorExpr,
+				highlightExpr: el.edgeColorExpr
+			} : {}
+		}
+	};
+	const rowResult = renderArray(row, view);
+	const meshesBefore = state.planeMeshes.length;
+	const treeResult = renderGraph(tree, view);
+	const treeMeshes = state.planeMeshes.slice(meshesBefore);
+	registerCompositePart(treeId, id, view, treeMeshes, state.labels.filter((l) => l.ownerMesh && treeMeshes.includes(l.ownerMesh)), el.treeLabel ?? `${el.label ?? id} as a tree`, el.prompt, "graph");
+	const parts = [rowResult?._animState, treeResult?._animState].filter((s) => !!s);
+	return {
+		_animState: {
+			get stopped() {
+				return parts.every((p) => p.stopped);
+			},
+			set stopped(v) {
+				for (const p of parts) p.stopped = v;
+			},
+			get hiddenByRemove() {
+				return parts.some((p) => p.hiddenByRemove);
+			},
+			set hiddenByRemove(v) {
+				for (const p of parts) p.hiddenByRemove = v;
+			}
+		},
+		_animExprEntry: rowResult?._animExprEntry,
+		type: el.type
+	};
+}
+//#endregion
+//#region src/objects/dict.ts
+function renderDict(el, view) {
+	const vertical = el.arrayLayout === "vertical";
+	return renderArray({
+		...el,
+		type: "array",
+		itemType: el.itemType ?? "mixed",
+		cellSize: el.cellSize ?? 1.6,
+		labelSide: el.labelSide ?? (vertical ? "top" : "left"),
+		keyExpr: el.keyExpr ?? "idx",
+		cellCornerRadius: el.cellCornerRadius ?? .2,
+		...vertical ? {
+			arrayLayout: "horizontal",
+			direction: el.direction ?? [
+				0,
+				-1,
+				0
+			],
+			arraySpacing: el.arraySpacing ?? .82
+		} : {}
+	}, view);
 }
 //#endregion
 //#region src/algorithm/state.ts
@@ -12946,8 +15795,8 @@ function renderSurface(el, view) {
 		const y = rangeY[0] + j * dy;
 		let z;
 		try {
-			if (_JS_ONLY_RE.test(expr) && surfaceState._sceneJsTrustState === "trusted") z = new Function("x", "y", "return " + expr)(x, y);
-			else if (_JS_ONLY_RE.test(expr)) z = 0;
+			if (isJsOnly(expr) && surfaceState._sceneJsTrustState === "trusted") z = new Function("x", "y", "return " + expr)(x, y);
+			else if (isJsOnly(expr)) z = 0;
 			else z = _mathjs.evaluate(expr, {
 				x,
 				y
@@ -13461,7 +16310,7 @@ function renderVectorField(el, view) {
 	const exprY = el.fy || "-x";
 	const exprZ = el.fz || "0";
 	const _compileVF = (e) => {
-		if (_JS_ONLY_RE.test(e)) {
+		if (isJsOnly(e)) {
 			if (vectorFieldState._sceneJsTrustState === "trusted") return new Function("x", "y", "z", "return " + e);
 			return null;
 		}
@@ -16062,6 +18911,33 @@ function axisLabelList(axis, hasLabelExpr) {
 function staticTickLabel(list, k) {
 	return list[k] ?? "";
 }
+/**
+* The bars an interval set draws. `n` is clamped to 0..max (a non-finite count
+* draws nothing); a bar whose start, end or lane is not finite is dropped
+* rather than drawn at 0; and a reversed span is normalised so start <= end.
+*/
+function intervalBars(n, max, read) {
+	const count = Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : 0;
+	const bars = [];
+	for (let i = 0; i < count; i++) {
+		const b = read(i, count);
+		if (!Number.isFinite(b.s) || !Number.isFinite(b.e) || !Number.isFinite(b.lane)) continue;
+		bars.push({
+			...b,
+			s: Math.min(b.s, b.e),
+			e: Math.max(b.s, b.e)
+		});
+	}
+	return bars;
+}
+/** Most bars one interval set draws; a counted set reserves this many once. */
+var MAX_INTERVALS = 256;
+/** The gold an array cell uses for a highlighted slot, so a bar reads as "selected" the same way. */
+var HIGHLIGHT = [
+	241 / 255,
+	204 / 255,
+	89 / 255
+];
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 var MAX_TICKS = 50;
 var PLANE_AXES = {
@@ -16205,6 +19081,44 @@ function renderChart(el, view) {
 			bands.splice(k, 1);
 		}
 	}
+	const numList = (v) => Array.isArray(v) ? v.map(Number) : null;
+	const srcOf = (v) => typeof v === "string" ? v.trim() || null : null;
+	const intervalSets = [];
+	(Array.isArray(chart.intervals) ? chart.intervals : []).forEach((sp, k) => {
+		const starts = numList(sp.start), ends = numList(sp.end);
+		const set = {
+			color: parseColor(sp.color || el.color || "#74d0c2"),
+			opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .85,
+			thickness: Number(sp.thickness) > 0 ? Number(sp.thickness) : .6,
+			label: typeof sp.label === "string" && sp.label.trim() ? sp.label.trim() : null,
+			starts,
+			ends,
+			lanes: numList(sp.lane),
+			lane: Number.isFinite(Number(sp.lane)) ? Number(sp.lane) : 0,
+			countSrc: srcOf(sp.countExpr),
+			startSrc: srcOf(sp.startExpr),
+			endSrc: srcOf(sp.endExpr),
+			laneSrc: srcOf(sp.laneExpr),
+			hlSrc: srcOf(sp.highlightExpr),
+			labelSrc: srcOf(sp.labelExpr),
+			countFn: compileOpt(sp.countExpr, `intervals[${k}].countExpr`),
+			startFn: compileOpt(sp.startExpr, `intervals[${k}].startExpr`),
+			endFn: compileOpt(sp.endExpr, `intervals[${k}].endExpr`),
+			laneFn: compileOpt(sp.laneExpr, `intervals[${k}].laneExpr`),
+			hlFn: compileOpt(sp.highlightExpr, `intervals[${k}].highlightExpr`),
+			labelFn: compileOpt(sp.labelExpr, `intervals[${k}].labelExpr`),
+			max: srcOf(sp.countExpr) ? MAX_INTERVALS : Math.min(MAX_INTERVALS, Math.min(starts?.length ?? 0, ends?.length ?? 0)),
+			bars: [],
+			mesh: null,
+			attr: null,
+			colors: null
+		};
+		if (!set.countSrc && !set.max) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: intervals[${k}] needs start/end arrays or a countExpr; skipped.`);
+			return;
+		}
+		intervalSets.push(set);
+	});
 	const axes = Array.isArray(chart.axes) ? chart.axes : [];
 	const xAxis = axes[0], yAxis = axes[1];
 	const xTitle = xAxis && xAxis.title ? String(xAxis.title) : null;
@@ -16255,7 +19169,49 @@ function renderChart(el, view) {
 	/** Plot-local v for a value read on right axis `a`. The mapping is affine,
 	*  so the two endpoints fix it and the interior interpolates. */
 	const toPlaneYOn = (y, a) => rightAxisPlace(y, a.dom, H);
-	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || rightAxes.length > 0;
+	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || intervalSets.some((v) => v.countSrc || v.startSrc || v.endSrc || v.laneSrc || v.hlSrc || v.labelSrc) || rightAxes.length > 0;
+	/** Evaluate one interval set's bars through the pure `intervalBars`. */
+	function sampleIntervals(v, tSec) {
+		let n = v.max;
+		if (v.countFn) try {
+			n = Number(evalExpr(v.countFn.fn, tSec, {}));
+		} catch (_e) {
+			n = 0;
+		}
+		else if (v.countSrc) n = 0;
+		const scope = {
+			i: 0,
+			n: 0
+		};
+		const run = (fn) => fn ? evalExpr(fn.fn, tSec, { overrideScope: scope }) : void 0;
+		v.bars = intervalBars(n, v.max, (i, count) => {
+			scope.i = i;
+			scope.n = count;
+			const num = (fn, lit) => {
+				if (!fn) return lit ?? NaN;
+				try {
+					return Number(run(fn));
+				} catch (_e) {
+					return NaN;
+				}
+			};
+			let hl = false, text = "";
+			if (v.hlFn) try {
+				hl = !!run(v.hlFn);
+			} catch (_e) {}
+			if (v.labelFn) try {
+				const out = run(v.labelFn);
+				text = out === null || out === void 0 ? "" : String(out);
+			} catch (_e) {}
+			return {
+				s: num(v.startFn, v.starts?.[i]),
+				e: num(v.endFn, v.ends?.[i]),
+				lane: num(v.laneFn, v.lanes ? v.lanes[i] : v.lane),
+				hl,
+				text
+			};
+		});
+	}
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -16306,9 +19262,14 @@ function renderChart(el, view) {
 				if (Number.isFinite(v)) b.hi = v;
 			} catch (_e) {}
 		}
+		for (const v of intervalSets) sampleIntervals(v, tSec);
 		if (!xFixed) {
 			const xs = [];
 			for (const s of series) for (const x of s.px) xs.push(x);
+			for (const v of intervalSets) for (const b of v.bars) {
+				xs.push(b.s);
+				xs.push(b.e);
+			}
 			xDom = autoDomain(xs, 0);
 		}
 		if (!yFixed) {
@@ -16318,6 +19279,10 @@ function renderChart(el, view) {
 			for (const b of bands) {
 				ys.push(b.lo);
 				ys.push(b.hi);
+			}
+			for (const v of intervalSets) for (const b of v.bars) {
+				ys.push(b.lane - v.thickness / 2);
+				ys.push(b.lane + v.thickness / 2);
 			}
 			yDom = autoDomain(ys);
 		}
@@ -16489,6 +19454,43 @@ function renderChart(el, view) {
 		}
 		attr.needsUpdate = true;
 	};
+	/** Write every bar of a set as two triangles, clipped to the plot; unused slots collapse to nothing. */
+	function placeIntervals(v) {
+		if (!v.attr || !v.colors) return;
+		const a = v.attr.array, c = v.colors.array;
+		a.fill(0);
+		const order = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		];
+		v.bars.forEach((b, k) => {
+			const [h0] = toPlane(b.s, 0), [h1] = toPlane(b.e, 0);
+			const [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+			const clip = (x, hi) => Math.max(0, Math.min(hi, x));
+			const P = [
+				at(clip(h0, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v0, H), lift * 1.5),
+				at(clip(h1, W), clip(v1, H), lift * 1.5),
+				at(clip(h0, W), clip(v1, H), lift * 1.5)
+			].map(dataToWorld);
+			const rgb = b.hl ? HIGHLIGHT : v.color;
+			for (let j = 0; j < 6; j++) {
+				const p = P[order[j]], o = (k * 6 + j) * 3;
+				a[o] = p[0];
+				a[o + 1] = p[1];
+				a[o + 2] = p[2];
+				c[o] = rgb[0];
+				c[o + 1] = rgb[1];
+				c[o + 2] = rgb[2];
+			}
+		});
+		v.attr.needsUpdate = true;
+		v.colors.needsUpdate = true;
+	}
 	/** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
 	const placeBand = (b) => {
 		if (!b.attr) return;
@@ -16504,6 +19506,34 @@ function renderChart(el, view) {
 		b.mesh = q.mesh;
 		b.attr = q.attr;
 		placeBand(b);
+	}
+	const barOrder = intervalSets.length ? el.renderOrder !== void 0 ? serial + 2 : chartState._planeMeshSerial++ : serial + 2;
+	for (const v of intervalSets) {
+		const pos = new Float32Array(v.max * 18), col = new Float32Array(v.max * 18);
+		const attr = new THREE.BufferAttribute(pos, 3), colors = new THREE.BufferAttribute(col, 3);
+		attr.setUsage(THREE.DynamicDrawUsage);
+		colors.setUsage(THREE.DynamicDrawUsage);
+		const geom = new THREE.BufferGeometry();
+		geom.setAttribute("position", attr);
+		geom.setAttribute("color", colors);
+		const mat = new THREE.MeshBasicMaterial({
+			vertexColors: true,
+			transparent: true,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			opacity: ignoresPlaneOpacity ? v.opacity : chartState.displayParams.planeOpacity * v.opacity
+		});
+		const mesh = new THREE.Mesh(geom, mat);
+		mesh.frustumCulled = false;
+		mesh.userData.targetOpacity = v.opacity;
+		mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+		mesh.renderOrder = barOrder;
+		chartState.three.scene.add(mesh);
+		chartState.planeMeshes.push(mesh);
+		v.mesh = mesh;
+		v.attr = attr;
+		v.colors = colors;
+		placeIntervals(v);
 	}
 	const mL = yTitle ? 1.6 : 1.1;
 	const mB = xTitle ? 1.1 : .7;
@@ -16565,6 +19595,48 @@ function renderChart(el, view) {
 		paper.mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 		writeQuad(paper.attr, -mL, W + mR, -mB, H + mT, 0);
 	}
+	let ink = null;
+	if (ctx && intervalSets.some((v) => v.labelSrc)) {
+		const inkCanvas = document.createElement("canvas");
+		inkCanvas.width = canvas.width;
+		inkCanvas.height = canvas.height;
+		const inkCtx = inkCanvas.getContext("2d");
+		if (inkCtx) {
+			const inkTex = new THREE.CanvasTexture(inkCanvas);
+			inkTex.minFilter = THREE.LinearFilter;
+			inkTex.magFilter = THREE.LinearFilter;
+			inkTex.generateMipmaps = false;
+			const sheet = makeQuad([
+				1,
+				1,
+				1
+			], 1, el.renderOrder !== void 0 ? serial + 3 : chartState._planeMeshSerial++, false);
+			const sheetMat = sheet.mesh.material;
+			sheetMat.map = inkTex;
+			sheetMat.color.set(16777215);
+			sheetMat.alphaTest = .02;
+			sheetMat.addEventListener("dispose", () => inkTex.dispose());
+			sheet.mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array([
+				0,
+				0,
+				1,
+				0,
+				1,
+				1,
+				0,
+				0,
+				1,
+				1,
+				0,
+				1
+			]), 2));
+			writeQuad(sheet.attr, -mL, W + mR, -mB, H + mT, lift * 2.5);
+			ink = {
+				ctx: inkCtx,
+				tex: inkTex
+			};
+		}
+	}
 	/** Tick label text: the axis's labelExpr with `value` bound, else the value to the step's decimals. */
 	const tickText = (fn, v, step, tSec) => {
 		if (fn) try {
@@ -16595,6 +19667,7 @@ function renderChart(el, view) {
 				labels: t.ticks.map((v) => tickText(a.labelFn, v, t.step, tSec))
 			};
 		});
+		const barLabelKey = intervalSets.filter((v) => v.labelSrc).map((v) => v.bars.map((b) => `${b.text}\u0001${b.s}\u0001${b.e}\u0001${b.lane}`).join("")).join("");
 		const key = JSON.stringify([
 			xDom,
 			yDom,
@@ -16602,7 +19675,8 @@ function renderChart(el, view) {
 			yLabels,
 			rightAxes.map((a) => a.dom),
 			rightTicks.map((t) => t && t.labels),
-			pointLabelKey
+			pointLabelKey,
+			barLabelKey
 		]);
 		if (key === paperKey) return;
 		paperKey = key;
@@ -16859,7 +19933,34 @@ function renderChart(el, view) {
 				});
 			});
 		}
-		const legendRows = series.filter((sr) => sr.label);
+		if (ink) {
+			ink.ctx.clearRect(0, 0, cw, ch);
+			for (const v of intervalSets) for (const b of v.bars) {
+				if (!b.text || b.e < xDom[0] || b.s > xDom[1]) continue;
+				const [h0] = toPlane(Math.max(b.s, xDom[0]), 0), [h1] = toPlane(Math.min(b.e, xDom[1]), 0);
+				const [, mid] = toPlane(0, b.lane), [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+				if (mid < 0 || mid > H) continue;
+				const widthPx = (h1 - h0) * pxPer, heightPx = (v1 - v0) * pxPer;
+				const fontPx = Math.min(pxPer * .3, heightPx * .72, fitLatexPx(b.text, widthPx * .9, pxPer * .3));
+				if (fontPx < 6) continue;
+				drawLatex(ink.ctx, b.text, X((h0 + h1) / 2), Y(mid), {
+					fontPx,
+					color: "#1b1606",
+					align: "center",
+					vAlign: "middle"
+				});
+			}
+			ink.tex.needsUpdate = true;
+		}
+		const legendRows = [...series.filter((sr) => sr.label).map((sr) => ({
+			label: sr.label,
+			color: sr.color,
+			swatch: sr.kind
+		})), ...intervalSets.filter((v) => v.label).map((v) => ({
+			label: v.label,
+			color: v.color,
+			swatch: "bar"
+		}))];
 		if (legendRows.length) {
 			const titleRef = xTitle || yTitle;
 			const fontPx = titleRef ? fitLatexPx(titleRef, (xTitle ? W : H) * pxPer, pxPer * .5) : pxPer * .4;
@@ -16873,11 +19974,12 @@ function renderChart(el, view) {
 				const sx = bx + pad;
 				ctx.fillStyle = css(sr.color);
 				ctx.strokeStyle = css(sr.color);
-				if (sr.kind === "points") {
+				if (sr.swatch === "points") {
 					ctx.beginPath();
 					ctx.arc(sx + swatchW / 2, cy, fontPx * .2, 0, Math.PI * 2);
 					ctx.fill();
-				} else {
+				} else if (sr.swatch === "bar") ctx.fillRect(sx, cy - fontPx * .22, swatchW, fontPx * .44);
+				else {
 					ctx.lineWidth = Math.max(1.5, fontPx * .12);
 					ctx.beginPath();
 					ctx.moveTo(sx, cy);
@@ -16911,6 +20013,7 @@ function renderChart(el, view) {
 			}
 		}
 		for (const b of bands) placeBand(b);
+		for (const v of intervalSets) placeIntervals(v);
 	}
 	const animState = { stopped: false };
 	const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === "string" ? seriesSpecs[0].label : void 0);
@@ -16927,6 +20030,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.src),
 		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
+		...intervalSets.flatMap((v) => [
+			v.countSrc,
+			v.startSrc,
+			v.endSrc,
+			v.laneSrc,
+			v.hlSrc,
+			v.labelSrc
+		]),
 		...rightAxes.flatMap((a) => [a.src, a.labelSrc]),
 		xLabelSrc,
 		yLabelSrc
@@ -16940,6 +20051,14 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.fn?.fn),
 		...bands.flatMap((b) => [b.loFn?.fn, b.hiFn?.fn]),
+		...intervalSets.flatMap((v) => [
+			v.countFn?.fn,
+			v.startFn?.fn,
+			v.endFn?.fn,
+			v.laneFn?.fn,
+			v.hlFn?.fn,
+			v.labelFn?.fn
+		]),
 		...rightAxes.flatMap((a) => [a.fn?.fn, a.labelFn?.fn]),
 		xLabelFn?.fn,
 		yLabelFn?.fn
@@ -16965,6 +20084,14 @@ function renderChart(el, view) {
 			bands.forEach((b, k) => {
 				if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
 				if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
+			});
+			intervalSets.forEach((v, k) => {
+				v.countFn = compileOpt(v.countSrc, `intervals[${k}].countExpr`);
+				v.startFn = compileOpt(v.startSrc, `intervals[${k}].startExpr`);
+				v.endFn = compileOpt(v.endSrc, `intervals[${k}].endExpr`);
+				v.laneFn = compileOpt(v.laneSrc, `intervals[${k}].laneExpr`);
+				v.hlFn = compileOpt(v.hlSrc, `intervals[${k}].highlightExpr`);
+				v.labelFn = compileOpt(v.labelSrc, `intervals[${k}].labelExpr`);
 			});
 			if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
 			if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
@@ -17042,6 +20169,9 @@ function renderElement(el, view) {
 		case "step_marker": return renderStepMarker(el, view);
 		case "array": return renderArray(el, view);
 		case "stack": return renderStack(el, view);
+		case "graph": return renderGraph(el, view);
+		case "heap": return renderHeap(el, view);
+		case "dict": return renderDict(el, view);
 		case "tensor": return renderTensor(el, view);
 		case "chart": return renderChart(el, view);
 		default:
@@ -17076,7 +20206,7 @@ function scanSpecForUnsafeJs(spec) {
 	}
 	function walk(obj, parentKey, path) {
 		if (typeof obj === "string") {
-			if (parentKey && _carriesExpressions(parentKey) && _JS_ONLY_RE.test(obj)) issues.push({
+			if (parentKey && _carriesExpressions(parentKey) && isJsOnly(obj)) issues.push({
 				path,
 				expr: obj,
 				type: "expr"
@@ -17094,7 +20224,7 @@ function scanSpecForUnsafeJs(spec) {
 				_TEMPLATE_RE.lastIndex = 0;
 				while ((m = _TEMPLATE_RE.exec(v)) !== null) {
 					const inner = m[1];
-					if (_JS_ONLY_RE.test(inner)) issues.push({
+					if (isJsOnly(inner)) issues.push({
 						path: childPath,
 						expr: inner.trim(),
 						type: "template"
@@ -18614,9 +21744,9 @@ function updateTreeHighlight$1() {
 }
 //#endregion
 //#region src/side-sections.ts
-var svg$1 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-var ICON_FOLD = svg$1("M6 9l6 6 6-6");
-var ICON_UNFOLD = svg$1("M6 15l6-6 6 6");
+var svg$2 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+var ICON_FOLD$1 = svg$2("M6 9l6 6 6-6");
+var ICON_UNFOLD$1 = svg$2("M6 15l6-6 6 6");
 var SECTIONS = [{
 	head: "proof-section-head",
 	host: "proof-panel",
@@ -18672,7 +21802,7 @@ function refreshButtons() {
 	for (const w of wired) {
 		const folded = isFolded(w);
 		const alone = shown.length === 1 && shown[0] === w;
-		w.btn.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+		w.btn.innerHTML = folded ? ICON_UNFOLD$1 : ICON_FOLD$1;
 		w.btn.disabled = alone && !folded;
 		w.btn.title = folded ? `Show the ${w.sec.name}` : alone ? `The ${w.sec.name} is the only section open, so it stays open` : `Fold the ${w.sec.name} down to its header`;
 		w.btn.setAttribute("aria-label", w.btn.title);
@@ -20781,7 +23911,8 @@ function renderStepAdd(elements, sliderDefs) {
 				type: el.type,
 				prompt: el.prompt || null,
 				label: elementDisplayName(el),
-				animState: result?._animState ?? null
+				animState: result?._animState ?? null,
+				rebuild: result?._animExprEntry?._rebuildFn ?? null
 			};
 			watchVisibleExpr(el);
 		}
@@ -20809,7 +23940,7 @@ function applyTrackerInfoOverlays(tracker, step) {
 	const infoDefs = step.info;
 	if (!infoDefs || !infoDefs.length) return;
 	for (const def of infoDefs) {
-		addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false);
+		addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false, def.title ?? null, def.visibleExpr);
 		tracker.infoIds.push(def.id);
 	}
 }
@@ -20928,6 +24059,11 @@ function showElementById(id) {
 	if (t.group) try {
 		t.group.set("visible", true);
 	} catch (e) {}
+	try {
+		reg.rebuild?.();
+	} catch (e) {
+		console.warn("show: rebuild failed:", id, e);
+	}
 	fadeInTracker(t);
 }
 window._algebenchHideElementById = hideElementById;
@@ -21048,7 +24184,7 @@ function removeStepTracker(tracker) {
 		const stillNeeded = new Set(sceneState.stepTrackers.flatMap((t) => t.sliderIds || []));
 		const toRemove = tracker.sliderIds.filter((id) => !stillNeeded.has(id));
 		if (tracker.prevSliderStates) {
-			for (const [id, prev] of Object.entries(tracker.prevSliderStates)) if (!toRemove.includes(id) && sceneState.sceneSliders[id]) Object.assign(sceneState.sceneSliders[id], prev);
+			for (const [id, prev] of Object.entries(tracker.prevSliderStates)) if (!toRemove.includes(id)) restoreSlider(id, prev);
 		}
 		if (toRemove.length > 0) removeSliderIds(toRemove);
 		buildSliderOverlay();
@@ -21593,7 +24729,7 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			const landingTracker = sceneState.stepTrackers[sceneState.stepTrackers.length - 1];
 			if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
 				removeStepInfoOverlays();
-				for (const def of landingTracker.infoDefs) addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false);
+				for (const def of landingTracker.infoDefs) addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false, def.title ?? null, def.visibleExpr);
 				landingTracker.infoIds = landingTracker.infoDefs.map((d) => d.id);
 			}
 		}
@@ -21884,7 +25020,252 @@ function paintTokens(code, tokens) {
 	});
 }
 //#endregion
+//#region src/code-prompts.ts
+var CODE_PROMPTS = [
+	{
+		label: "Analyze code structure",
+		prompt: "Analyze the structure of this code: its functions and how they call each other, its loops and branches, and the data structures it keeps. Say where the selected lines fit in."
+	},
+	{
+		label: "What's this line for?",
+		prompt: "What is the selected code for? Say what goes wrong, or what is missing, if it were removed."
+	},
+	{
+		label: "Analyze call stack",
+		prompt: "Analyze the call stack at the current step: each call still waiting to return, outermost first, with its arguments and what it is waiting for, and the call that is running now."
+	},
+	{
+		label: "I don't understand this line",
+		prompt: "I don't understand the selected code. Explain it in plain words, one piece at a time, using the values on screen right now."
+	},
+	{
+		label: "How many times does this line run?",
+		prompt: "How many times does the selected code run for this input? Then say how that count grows with the input size, and why."
+	},
+	{
+		label: "This line's share of the complexity",
+		prompt: "How much does the selected line add to the program's runtime and space complexity? Count how often it runs and what each run costs, then say whether it dominates the total or not, and why."
+	},
+	{
+		label: "Total runtime / space complexity",
+		prompt: "What is the total runtime and space complexity of this code? Derive both from the loops and the recursion, and count the call stack and the output in the space."
+	},
+	{
+		label: "Which lines determine the complexity?",
+		prompt: "Which lines determine the runtime and space complexity of this code? Name each one by line number, say what it contributes (a loop bound, a recursive call, a growing structure, the call stack), and which one dominates."
+	},
+	{
+		label: "Complexity of this function only",
+		prompt: "What are the runtime and space complexity of only the function that contains the selected code, not counting its callers?"
+	}
+];
+/** The `def` enclosing a line (1-based): the nearest one above it, indented less than the line, or null. */
+function enclosingFunction(source, line) {
+	const lines = source.split("\n");
+	const indent = (text) => text.length - text.trimStart().length;
+	let limit = lines[line - 1] !== void 0 && lines[line - 1].trim() ? indent(lines[line - 1]) : Infinity;
+	for (let i = line - 1; i >= 0; i--) {
+		const text = lines[i];
+		if (!text.trim()) continue;
+		const def = /^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(/.exec(text);
+		if (def && (i === line - 1 || indent(text) < limit)) return {
+			name: def[1],
+			line: i + 1
+		};
+		limit = Math.min(limit, indent(text));
+		if (limit === 0 && !def) return null;
+	}
+	return null;
+}
+/** The message for one prompt: the request, then the code and the state it is about. */
+function codePromptMessage(prompt, c) {
+	const fn = enclosingFunction(c.source, c.first);
+	const numbered = c.source.split("\n").map((text, i) => `${String(i + 1).padStart(3)}  ${text}`).join("\n");
+	return [
+		prompt.prompt,
+		"",
+		`File: ${c.path} (shown, not executed)`,
+		`Selected: ${c.first === c.last ? `line ${c.first}` : `lines ${c.first}–${c.last}`}${fn ? `, inside ${fn.name}() (line ${fn.line})` : ""}`,
+		`Selected text:\n${c.excerpt}`,
+		...c.sections ? [`The code's sections (its teaching structure; explain in these terms):\n${c.sections}`] : [],
+		`Executing now: ${c.executing.length ? `line ${c.executing.join(", ")}` : "no line marked"}`,
+		`Calls waiting to return (call-site lines, outermost first): ${c.waitingCalls.length ? c.waitingCalls.join(", ") : "none"}`,
+		`Scene: ${c.scene}, step ${c.step}`,
+		`Scalar variables: ${JSON.stringify(c.values)}`,
+		`Full source:\n${numbered}`
+	].join("\n");
+}
+//#endregion
+//#region src/code-sections.ts
+var STRUCTURE_MODES = [
+	"plain",
+	"code",
+	"blocks",
+	"outline"
+];
+/**
+* The sections a file can show, in line order: ranges clipped to the file, and any that is inverted, outside
+* it, or overlapping the one before it left out (an author's slip should hide a section, not break the panel).
+*/
+function codeSections(file) {
+	const count = file.source.split("\n").length;
+	const out = [];
+	for (const s of [...file.sections ?? []].sort((a, b) => a.from - b.from)) {
+		const to = Math.min(s.to, count);
+		if (!Number.isInteger(s.from) || !Number.isInteger(s.to) || s.from < 1 || s.from > to) continue;
+		if (out.length && s.from <= out[out.length - 1].to) continue;
+		out.push(to === s.to ? s : {
+			...s,
+			to
+		});
+	}
+	return out;
+}
+/** The section holding a line, or null. */
+function sectionAt(sections, line) {
+	return sections.find((s) => line >= s.from && line <= s.to) ?? null;
+}
+/** The structure as the tutor reads it: one line per section, its range and title. */
+function sectionsOutline(sections) {
+	return sections.map((s) => `${s.from === s.to ? `line ${s.from}` : `lines ${s.from}–${s.to}`}: ${s.title}`).join("\n");
+}
+/** What the tutor is asked about one section: its own prompt, else a general one built from its title. */
+function sectionPrompt(section) {
+	return {
+		label: section.title,
+		prompt: section.prompt ?? `Explain the section "${section.title}" of this code: what it achieves, why the code needs it at this point, and how it does it, using the values on screen right now.`
+	};
+}
+//#endregion
+//#region src/menu-placement.ts
+/**
+* Horizontal placement for a popup menu anchored to a button inside a clipping panel: where its left edge goes,
+* relative to the anchor, so the menu stays inside the panel's bounds (less a margin). It starts aligned with
+* the anchor's left edge, shifts left only as far as it must, and never past the panel's left edge; a menu
+* wider than the room is narrowed to fit (the caller lets its items wrap).
+*/
+function menuPlacement(anchorLeft, menuWidth, boundsLeft, boundsRight, margin = 8) {
+	const room = Math.max(0, boundsRight - boundsLeft - 2 * margin);
+	const width = Math.min(menuWidth, room);
+	return {
+		offset: Math.max(boundsLeft + margin, Math.min(anchorLeft, boundsRight - margin - width)) - anchorLeft,
+		maxWidth: room
+	};
+}
+//#endregion
+//#region src/code-jump.ts
+/**
+* The executing line's move, drawn in the code panel's gutter: when one marked line gives way to another in the
+* same file, an arrow arcs beside the line numbers from the old line to the new one, and both numbers light up
+* for a moment. Several marked lines, or none, on either side is not a move.
+*
+* A call into a function is different: its arrow, from the call site to the function's entry line, stays until
+* the call returns. A recursive call nests inside its caller, so each waiting call's arrow bows a little
+* further out than the one it was made from, and the gutter shows the call stack's depth.
+*/
+/** The move from one set of marked lines to the next: one line to a different one, or null. */
+function lineJump(previous, next) {
+	if (previous.size !== 1 || next.size !== 1) return null;
+	const [from] = previous, [to] = next;
+	return from === to ? null : {
+		from,
+		to
+	};
+}
+/**
+* SVG path for the arrow from y1 down (or up) to y2, both ending at x: a curve that bows left in proportion to
+* its length (up to `bow` px), so adjacent lines get a small hook and arrows nest instead of crossing.
+*/
+function jumpArrowPath(x, y1, y2, bow = 28) {
+	return arc(x, y1, y2, callBow(0, Math.abs(y2 - y1), bow));
+}
+/** The call-site lines of the calls still waiting to return, outermost first, from a callsExpr value. */
+function waitingCalls(value, lineCount) {
+	const matrix = value;
+	const raw = matrix && typeof matrix.toArray === "function" ? matrix.toArray() : value;
+	if (!Array.isArray(raw)) return [];
+	return raw.filter((line) => typeof line === "number" && Number.isInteger(line) && line >= 1 && line <= lineCount);
+}
+/**
+* Bow of an arrow spanning `span` px: mostly its length, so a short arrow stays inside a longer one instead of
+* crossing it, plus a little per call depth to part arrows that share both lines. Capped at `max`.
+*/
+function callBow(depth, span, max = 28) {
+	return Math.min(max, 4 + span / 8 + Math.min(depth, 3) * 2);
+}
+/**
+* How far an arrow's ends reach past their lines' centres, from its bow: an arrow that bows further also reaches
+* further at both ends, so arrows sharing a line nest like brackets instead of crossing, whatever their lengths.
+*/
+function endReach(bow) {
+	return Math.max(-8, Math.min(8, bow - 16));
+}
+/** SVG path for a waiting call's arrow, from its call site to the entry line, nested by its bow. */
+function callArrowPath(x, y1, y2, depth) {
+	const bow = callBow(depth, Math.abs(y2 - y1)), out = endReach(bow) * Math.sign(y1 - y2);
+	return arc(x, y1 + out, y2 - out, bow);
+}
+/** Bow left by `reach`, then run straight into x for the last LEAD px, so the arrowhead points level at the number. */
+function arc(x, y1, y2, reach) {
+	const tip = x - LEAD;
+	return `M ${x} ${y1} C ${x - reach} ${y1}, ${tip - reach} ${y2}, ${tip} ${y2} L ${x} ${y2}`;
+}
+var LEAD = 7;
+/** Every distinct move between lines in a run's sequence of executing lines, in order of first appearance. */
+function lineTransitions(sequence) {
+	const seen = /* @__PURE__ */ new Set(), out = [];
+	for (let i = 1; i < sequence.length; i++) {
+		const from = sequence[i - 1], to = sequence[i], key = `${from}>${to}`;
+		if (from !== to && !seen.has(key)) {
+			seen.add(key);
+			out.push({
+				from,
+				to
+			});
+		}
+	}
+	return out;
+}
+/** The moves into and out of one line. */
+function movesAt(moves, line) {
+	return {
+		incoming: moves.filter((m) => m.to === line),
+		outgoing: moves.filter((m) => m.from === line)
+	};
+}
+/** How long the arrow and the lit numbers hold before fading (ms). */
+var JUMP_HOLD_MS = 1e3;
+//#endregion
 //#region src/code-panel.ts
+/** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
+var GUTTER_X = 37;
+/** Section tones, in turn, and the structure modes' icons (code-sections.ts). */
+var SECTION_TONES = [
+	"#e3b04f",
+	"#4fb39a",
+	"#6ea8e0",
+	"#d36ba6"
+];
+var MODE_INFO = {
+	plain: {
+		title: "Code only",
+		icon: "<path d=\"M3 4h9M5 7.5h8M5 11h6M3 14.5h7\"/>"
+	},
+	outline: {
+		title: "Sections only",
+		icon: "<path d=\"M3 4h2M7 4h8M3 9h2M7 9h8M3 14h2M7 14h8\"/>"
+	},
+	blocks: {
+		title: "Sections over hidden code",
+		icon: "<path d=\"M3 3.5h12\"/><rect x=\"5\" y=\"6\" width=\"9\" height=\"2\" rx=\"1\"/><rect x=\"5\" y=\"10\" width=\"6\" height=\"2\" rx=\"1\"/><rect x=\"5\" y=\"14\" width=\"8\" height=\"2\" rx=\"1\"/>"
+	},
+	code: {
+		title: "Sections over code",
+		icon: "<path d=\"M3 3.5h12M6 8l-2 2.5L6 13M12 8l2 2.5-2 2.5M9.8 7.5 8.2 13.5\"/>"
+	}
+};
+var view = null;
+var codeView = () => view;
 function setupCodePanel() {
 	const host = document.getElementById("dock-tab-code");
 	if (!host) return;
@@ -21893,10 +25274,14 @@ function setupCodePanel() {
 	tree.setAttribute("aria-label", "Code files");
 	const title = document.createElement("div");
 	title.className = "code-file-title";
+	const titleText = document.createElement("span");
+	titleText.className = "code-file-path";
 	const execution = document.createElement("div");
 	execution.className = "code-execution-status";
 	execution.setAttribute("role", "status");
-	let lastExecution = "";
+	let lastExecution = "", lastLines = /* @__PURE__ */ new Set(), lastPlace = "", lastScopeKey = "", lastViewKey = "";
+	let veiled = false, modeBeforeHiding = "plain";
+	let tones = /* @__PURE__ */ new Map();
 	const body = document.createElement("div");
 	body.className = "code-source";
 	body.setAttribute("aria-label", "Source code");
@@ -21905,7 +25290,10 @@ function setupCodePanel() {
 	actions.hidden = true;
 	const selectionLabel = document.createElement("span");
 	let lesson, files = [], selected;
-	let first = 0, last = 0, excerpt = "", active = null;
+	let first = 0, last = 0, excerpt = "", active = null, followed;
+	let references = [];
+	const settings = loadSettings();
+	const compiled = /* @__PURE__ */ new Map();
 	const targets = document.createElement("div");
 	targets.className = "code-step-targets";
 	targets.hidden = true;
@@ -21919,8 +25307,100 @@ function setupCodePanel() {
 	jump.textContent = "↗ Go to step";
 	const what = document.createElement("span");
 	what.className = "code-line-actions";
-	actions.append(selectionLabel, ask, jump, what);
+	const modes = structureModes();
+	title.append(titleText, modes, viewSettingsMenu());
+	actions.append(selectionLabel, ask, jump, what, codePromptsMenu());
 	host.append(tree, title, execution, body, actions, targets);
+	/**
+	* "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
+	* silently: the request carries the whole file and state, so only the tutor's reply shows in the chat.
+	*/
+	function codePromptsMenu() {
+		const wrap = document.createElement("span");
+		wrap.className = "preset-more code-prompts";
+		const toggle = document.createElement("button");
+		toggle.type = "button";
+		toggle.className = "code-prompts-btn";
+		toggle.textContent = "⋯";
+		toggle.title = "Ask AI to analyze this code";
+		toggle.setAttribute("aria-label", "More AI prompts about this code");
+		toggle.setAttribute("aria-haspopup", "menu");
+		toggle.setAttribute("aria-expanded", "false");
+		const menu = document.createElement("div");
+		menu.className = "preset-more-menu";
+		menu.setAttribute("role", "menu");
+		menu.hidden = true;
+		const close = () => {
+			menu.hidden = true;
+			toggle.setAttribute("aria-expanded", "false");
+			document.removeEventListener("pointerdown", outside, true);
+			document.removeEventListener("keydown", escape, true);
+		};
+		const outside = (e) => {
+			if (!wrap.contains(e.target)) close();
+		};
+		const escape = (e) => {
+			if (e.key === "Escape") {
+				close();
+				toggle.focus();
+			}
+		};
+		for (const prompt of CODE_PROMPTS) {
+			const item = document.createElement("button");
+			item.type = "button";
+			item.className = "preset-more-item";
+			item.setAttribute("role", "menuitem");
+			item.textContent = prompt.label;
+			item.title = prompt.prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
+			item.addEventListener("click", (e) => {
+				close();
+				const message = codeMessage(prompt);
+				if (message) sendAiPrompt(message, e, { silent: true });
+			});
+			menu.append(item);
+		}
+		toggle.addEventListener("click", () => {
+			if (!menu.hidden) {
+				close();
+				return;
+			}
+			menu.hidden = false;
+			menu.style.left = "0px";
+			menu.style.maxWidth = "";
+			const bounds = (wrap.closest(".tab-content, #dock-tab-code") ?? document.documentElement).getBoundingClientRect();
+			const { offset, maxWidth } = menuPlacement(wrap.getBoundingClientRect().left, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
+			menu.style.maxWidth = `${maxWidth}px`;
+			menu.style.left = `${offset}px`;
+			toggle.setAttribute("aria-expanded", "true");
+			document.addEventListener("pointerdown", outside, true);
+			document.addEventListener("keydown", escape, true);
+			menu.querySelector("button")?.focus();
+		});
+		wrap.append(toggle, menu);
+		return wrap;
+	}
+	function codeMessage(prompt) {
+		if (!selected || !first) return null;
+		return codeMessageFor(prompt, first, last, excerpt);
+	}
+	/** A prompt about lines from–to of the open file, with the state and the file's structure. */
+	function codeMessageFor(prompt, from, to, text) {
+		const file = selected, scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		const sections = codeSections(file);
+		return codePromptMessage(prompt, {
+			path: file.path,
+			source: file.source,
+			first: from,
+			last: to,
+			excerpt: text,
+			executing: [...lastLines],
+			waitingCalls: shownCalls,
+			scene: scene?.title ?? "",
+			step: state.currentStepIndex + 1,
+			values: Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value])),
+			...sections.length ? { sections: sectionsOutline(sections) } : {}
+		});
+	}
 	function renderLineActions() {
 		what.replaceChildren();
 		const scene = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.id;
@@ -21992,13 +25472,59 @@ function setupCodePanel() {
 			targets.append(button);
 		}
 	});
-	function refreshBinding() {
+	function evaluate(expr) {
+		if (!compiled.has(expr)) try {
+			compiled.set(expr, compileExpr(expr));
+		} catch {
+			compiled.set(expr, null);
+		}
+		const fn = compiled.get(expr);
+		if (!fn) throw new Error("Invalid code expression.");
+		return evalExpr(fn, 0);
+	}
+	/**
+	* A scene's codeRef names the file and line executing now: the panel follows that file when it changes
+	* (or on scene entry) and marks the line only there. Scenes without one use the open file's activeLineExpr.
+	*/
+	function refreshBinding(entering = false) {
 		let lines = /* @__PURE__ */ new Set();
-		if (active) try {
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		const ref = scene?.steps?.[state.currentStepIndex]?.codeRef ?? scene?.codeRef;
+		let calls = [], entry;
+		if (ref) {
+			const target = resolveCodeRef(files, ref, evaluate);
+			if (target && (entering || target.file !== followed) && target.file !== selected) {
+				followed = target.file;
+				open(target.file);
+				return;
+			}
+			followed = target?.file;
+			if (target && target.file === selected) {
+				lines = /* @__PURE__ */ new Set([target.line]);
+				runMoves(scene, ref);
+				if (ref.callsExpr && ref.callEntryLine) {
+					entry = ref.callEntryLine;
+					try {
+						calls = waitingCalls(evaluate(ref.callsExpr), target.file.source.split("\n").length);
+					} catch {}
+				}
+			}
+		} else if (active) try {
 			lines = activeCodeLines(evalExpr(active, 0));
 		} catch {}
+		const bound = !!ref || !!active;
 		const signature = [...lines].join(", ");
-		execution.textContent = active ? signature ? "Active lines: " + signature : "No active lines at this position" : "";
+		const running = selected ? inlineScope(selected.source, lines) : null;
+		body.querySelectorAll(".code-line").forEach((row) => {
+			const line = Number(row.dataset.line), outside = !!running && (line < running.from || line > running.to);
+			row.classList.toggle("code-inactive", outside);
+		});
+		const scope = structureScope(lines), scopeKey = scope ? `${scope.from}-${scope.to}` : "all";
+		if (scopeKey !== lastScopeKey) {
+			lastScopeKey = scopeKey;
+			renderStructure(lines);
+		}
+		execution.textContent = bound ? signature ? "Active lines: " + signature : "No active lines at this position" : "";
 		let firstActive;
 		body.querySelectorAll(".code-line").forEach((row) => {
 			const current = lines.has(Number(row.dataset.line));
@@ -22008,20 +25534,646 @@ function setupCodePanel() {
 			else row.removeAttribute("aria-current");
 		});
 		if (signature !== lastExecution && firstActive && body.clientHeight > 0) {
-			const row = firstActive.getBoundingClientRect(), viewport = body.getBoundingClientRect();
-			if (row.top < viewport.top || row.bottom > viewport.bottom) body.scrollTop += row.top - viewport.top;
+			const target = !firstActive.getClientRects().length ? body.querySelector(`.code-section-head[data-section="${CSS.escape(firstActive.dataset.section ?? "")}"]`) : firstActive;
+			if (target && target.getClientRects().length) {
+				const at = target.getBoundingClientRect(), viewport = body.getBoundingClientRect();
+				if (at.top < viewport.top) body.scrollTop += at.top - viewport.top;
+				else if (at.bottom > viewport.bottom) body.scrollTop += at.bottom - viewport.bottom;
+			}
 		}
 		lastExecution = signature;
+		const place = `${state.currentSceneIndex}/${state.currentStepIndex}`;
+		drawArrows(place === lastPlace && lineJump(lastLines, lines) !== null ? stepInto() : null, calls, entry);
+		lastLines = lines;
+		lastPlace = place;
+		markExecutingSection();
+		veil(running);
+		publishView(running);
+		scheduleInline();
+	}
+	/** Hidden for practice: the running block's lines are blurred, a section opened from its title too (its shape shows, not its code). */
+	function veil(running) {
+		body.querySelectorAll(".code-line").forEach((row) => {
+			const line = Number(row.dataset.line), inside = !running || line >= running.from && line <= running.to;
+			row.classList.toggle("code-veiled", veiled && inside);
+		});
+	}
+	function hidingCode() {
+		return body.classList.contains("code-structure-blocks") || body.classList.contains("code-structure-outline");
+	}
+	/** The file lines a reader can see now: in the open Code tab, scrolled into view, not hidden by the structure or the veil. */
+	function shownLines() {
+		const out = /* @__PURE__ */ new Set(), box = body.getBoundingClientRect();
+		if (!box.height) return out;
+		const hiding = hidingCode();
+		body.querySelectorAll(".code-line").forEach((row) => {
+			if (row.classList.contains("code-veiled")) return;
+			if (hiding && !row.classList.contains("code-section-revealed") && !row.classList.contains("code-outside-structure")) return;
+			const at = row.getBoundingClientRect();
+			if (at.height && at.bottom > box.top && at.top < box.bottom) out.add(Number(row.dataset.line));
+		});
+		return out;
+	}
+	function setHidden(on) {
+		if (selected && codeSections(selected).length) {
+			if (on && !hidingCode()) {
+				modeBeforeHiding = settings.structureMode;
+				settings.structureMode = "outline";
+			} else if (!on && hidingCode()) settings.structureMode = modeBeforeHiding === "blocks" || modeBeforeHiding === "outline" ? "plain" : modeBeforeHiding;
+			saveSettings();
+			renderStructure();
+		}
+		veiled = on;
+		refreshBinding();
+	}
+	function publishView(running) {
+		if (!selected) {
+			view = null;
+			if (lastViewKey) {
+				lastViewKey = "";
+				window.dispatchEvent(new CustomEvent("algebench:codeview"));
+			}
+			return;
+		}
+		const file = selected, scope = running ?? {
+			from: 1,
+			to: file.source.split("\n").length
+		};
+		view = {
+			file,
+			...scope,
+			running: !!running,
+			tone: (id) => tones.get(id),
+			shown: shownLines,
+			hidden: () => veiled,
+			setHidden
+		};
+		const key = `${file.id}:${scope.from}-${scope.to}:${!!running}`;
+		if (key !== lastViewKey) {
+			lastViewKey = key;
+			window.dispatchEvent(new CustomEvent("algebench:codeview"));
+		}
+	}
+	/** The run's step into the current state: from the line at the previous state to the current one, or null. */
+	function stepInto() {
+		const slider = runSlider ? state.sceneSliders[runSlider.id] : void 0;
+		const at = runSlider && slider ? Math.round((Number(slider.value) - runSlider.min) / runSlider.step) : 0;
+		const from = runLines[at - 1], to = runLines[at];
+		return at > 0 && from !== void 0 && to !== void 0 && from !== to ? {
+			from,
+			to
+		} : null;
+	}
+	/**
+	* The gutter's arrows: each call still waiting to return keeps one from its call site to the entry line,
+	* and a move of the executing line gets one that fades after a moment, with both line numbers lit.
+	*/
+	/**
+	* Every move between lines in the step's whole run, for the hover arrows: the slider the codeRef's line follows
+	* is replayed over its range (with the slider overridden, not moved). Cached per scene, step and codeRef.
+	*/
+	let moves = [], movesKey = "", runLines = [], runSlider = null;
+	function runMoves(scene, ref) {
+		const key = `${state.currentSceneIndex}/${state.currentStepIndex}/${ref.lineExpr ?? ref.line}`;
+		if (key === movesKey) return;
+		movesKey = key;
+		moves = [];
+		runLines = [];
+		runSlider = null;
+		if (!ref.lineExpr) return;
+		const steps = scene.steps ?? [];
+		const slider = [...steps[state.currentStepIndex]?.sliders ?? [], ...steps.flatMap((step) => step.sliders ?? [])].find((s) => s.id && new RegExp(`\\b${s.id}\\b`).test(ref.lineExpr));
+		if (!slider?.id || slider.min === void 0 || slider.max === void 0) return;
+		let fn;
+		try {
+			fn = compileExpr(ref.lineExpr);
+		} catch {
+			return;
+		}
+		const step = slider.step && slider.step > 0 ? slider.step : 1, sequence = [];
+		for (let v = slider.min, i = 0; v <= slider.max && i < 5e3; v += step, i++) try {
+			const line = evalExpr(fn, 0, { overrideScope: { [slider.id]: v } });
+			if (typeof line === "number") sequence.push(line);
+		} catch {}
+		moves = lineTransitions(sequence);
+		runLines = sequence;
+		runSlider = {
+			id: slider.id,
+			min: slider.min,
+			step
+		};
+	}
+	/**
+	* Hovering the code shows the step that led to the current state: from the line at the previous state to the
+	* current one, in the run's own order; hovering a line's number shows every move into it (teal) and out of it
+	* (gold) across the run. Hovering a call's name
+	* instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
+	* name lights every call to it, with an incoming arrow from each.
+	*/
+	/**
+	* Where an arrow meets a line (px from the top of the code): the middle of its row, or, for a line hidden in a
+	* collapsed section (titles only), the middle of that section's title. Null when neither is shown.
+	*/
+	function lineY(line) {
+		const row = body.querySelector(`.code-line[data-line="${line}"]`);
+		if (!row) return null;
+		if (row.getClientRects().length) return row.offsetTop + row.offsetHeight / 2;
+		const head = row.dataset.section ? body.querySelector(`.code-section-head[data-section="${CSS.escape(row.dataset.section)}"]`) : null;
+		return head?.getClientRects().length ? head.offsetTop + head.offsetHeight / 2 : null;
+	}
+	function drawHover(target) {
+		body.querySelectorAll(".code-link-lit").forEach((n) => n.classList.remove("code-link-lit"));
+		if (!arrows) return;
+		arrows.querySelectorAll(".code-arrow-in, .code-arrow-out").forEach((p) => p.remove());
+		const row = target?.closest(".code-line");
+		if (!target || !row) return;
+		const line = Number(row.dataset.line), call = target.closest(".code-call"), fn = target.closest(".code-fn");
+		const rowY = lineY;
+		let incoming = [], outgoing = [];
+		if (call) {
+			const def = Number(call.dataset.def);
+			call.classList.add("code-link-lit");
+			body.querySelector(`.code-fn[data-def="${def}"]`)?.classList.add("code-link-lit");
+			if (def !== line) outgoing = [{
+				from: line,
+				to: def
+			}];
+		} else if (fn) {
+			const def = Number(fn.dataset.def);
+			fn.classList.add("code-link-lit");
+			body.querySelectorAll(`.code-call[data-def="${def}"]`).forEach((c) => {
+				c.classList.add("code-link-lit");
+				const from = Number(c.closest(".code-line").dataset.line);
+				if (from !== def && !incoming.some((m) => m.from === from)) incoming.push({
+					from,
+					to: def
+				});
+			});
+		} else if (target.closest(".code-line-number")) ({incoming, outgoing} = movesAt(moves, line));
+		else {
+			const step = stepInto();
+			if (step) incoming = [step];
+		}
+		for (const [list, kind] of [[incoming, "in"], [outgoing, "out"]]) for (const m of list) {
+			const y1 = rowY(m.from), y2 = rowY(m.to);
+			if (y1 === null || y2 === null) continue;
+			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			path.setAttribute("class", `code-arrow-${kind}`);
+			path.setAttribute("d", jumpArrowPath(GUTTER_X, y1, y2));
+			path.setAttribute("marker-end", `url(#code-arrow-${kind})`);
+			arrows.append(path);
+		}
+	}
+	body.addEventListener("pointerover", (event) => drawHover(event.target));
+	body.addEventListener("pointerleave", () => drawHover(null));
+	let arrows = null, fade = 0, shownCalls = [], shownEntry;
+	new ResizeObserver(() => {
+		if (body.clientHeight > 0) drawArrows(null, shownCalls, shownEntry);
+	}).observe(body);
+	function drawArrows(jump, calls, entry) {
+		const called = calls.length > shownCalls.length;
+		shownCalls = calls;
+		shownEntry = entry;
+		if (body.clientHeight === 0) return;
+		const rowY = lineY;
+		if (!arrows || !arrows.isConnected) {
+			arrows = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			arrows.classList.add("code-arrows");
+			arrows.setAttribute("aria-hidden", "true");
+			arrows.innerHTML = "<defs><marker id=\"code-arrow-jump\" viewBox=\"0 0 6 6\" refX=\"5\" refY=\"3\" markerWidth=\"6\" markerHeight=\"6\" markerUnits=\"userSpaceOnUse\" orient=\"auto\"><path d=\"M0,0 L6,3 L0,6 z\"/></marker>" + [
+				"call",
+				"in",
+				"out"
+			].map((k) => `<marker id="code-arrow-${k}" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker>`).join("") + "</defs>";
+			body.prepend(arrows);
+		}
+		arrows.style.height = `${body.scrollHeight}px`;
+		const x = GUTTER_X, svg = "http://www.w3.org/2000/svg";
+		arrows.querySelectorAll(".code-arrow-call").forEach((p) => p.remove());
+		body.querySelectorAll(".code-line-number.calling").forEach((n) => n.classList.remove("calling"));
+		const to = entry === void 0 ? null : rowY(entry);
+		calls.forEach((line, depth) => {
+			const from = rowY(line);
+			if (from === null || to === null) return;
+			const path = document.createElementNS(svg, "path");
+			path.setAttribute("class", "code-arrow-call");
+			path.setAttribute("d", callArrowPath(x, from, to, depth));
+			path.setAttribute("marker-end", "url(#code-arrow-call)");
+			arrows.append(path);
+			body.querySelector(`.code-line[data-line="${line}"] .code-line-number`)?.classList.add("calling");
+		});
+		if (!jump || called) return;
+		const y1 = rowY(jump.from), y2 = rowY(jump.to);
+		if (y1 === null || y2 === null || y1 === y2) return;
+		arrows.querySelectorAll(".code-arrow-jump").forEach((p) => p.remove());
+		body.querySelectorAll(".code-line-number.jump-lit").forEach((n) => n.classList.remove("jump-lit"));
+		const path = document.createElementNS(svg, "path");
+		path.setAttribute("class", "code-arrow-jump");
+		path.setAttribute("d", jumpArrowPath(x, y1, y2));
+		path.setAttribute("marker-end", "url(#code-arrow-jump)");
+		path.setAttribute("pathLength", "1");
+		arrows.append(path);
+		const numbers = [jump.from, jump.to].map((l) => body.querySelector(`.code-line[data-line="${l}"] .code-line-number`)).filter((n) => !!n);
+		numbers.forEach((n) => n.classList.add("jump-lit"));
+		clearTimeout(fade);
+		fade = window.setTimeout(() => {
+			path.classList.add("fading");
+			numbers.forEach((n) => n.classList.remove("jump-lit"));
+			setTimeout(() => path.remove(), 400);
+		}, JUMP_HOLD_MS);
+	}
+	/**
+	* Structure: the file's sections (code-sections.ts) as titled bands. The icons in the title bar, shown for a
+	* file that has sections, go from least structured to most: plain code, titles over the code, titles over
+	* blocks the size of the hidden code, and titles only. A section's title selects its lines; its ✦ asks the tutor about it.
+	*/
+	function structureModes() {
+		const wrap = document.createElement("span");
+		wrap.className = "code-structure-modes";
+		wrap.setAttribute("role", "group");
+		wrap.setAttribute("aria-label", "Structure view");
+		wrap.hidden = true;
+		for (const mode of STRUCTURE_MODES) {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.dataset.mode = mode;
+			button.title = MODE_INFO[mode].title;
+			button.setAttribute("aria-label", MODE_INFO[mode].title);
+			button.innerHTML = `<svg viewBox="0 0 18 18" width="15" height="15" aria-hidden="true">${MODE_INFO[mode].icon}</svg>`;
+			button.addEventListener("click", () => {
+				settings.structureMode = mode;
+				saveSettings();
+				renderStructure();
+				refreshBinding();
+			});
+			wrap.append(button);
+		}
+		return wrap;
+	}
+	const revealed = /* @__PURE__ */ new Set();
+	const revealKey = (section) => `${selected?.id}:${section.id}`;
+	/** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
+	function paintReveal(section) {
+		const open = revealed.has(revealKey(section));
+		for (let line = section.from; line <= section.to; line++) body.querySelector(`.code-line[data-line="${line}"]`)?.classList.toggle("code-section-revealed", open);
+		const head = body.querySelector(`.code-section-head[data-section="${CSS.escape(section.id)}"]`);
+		head?.classList.toggle("revealed", open);
+		head?.setAttribute("aria-expanded", String(open));
+	}
+	function sectionText(section) {
+		return selected?.source.split("\n").slice(section.from - 1, section.to).join("\n") ?? "";
+	}
+	/** The lines the structure covers: the running top-level function (with "running function only"), else all. */
+	function structureScope(lines) {
+		return settings.structureRunning && selected ? inlineScope(selected.source, lines) : null;
+	}
+	function renderStructure(lines = lastLines) {
+		body.querySelectorAll(".code-section-head").forEach((n) => n.remove());
+		const all = selected ? codeSections(selected) : [];
+		const scope = structureScope(lines);
+		const sections = scope ? all.filter((s) => s.from >= scope.from && s.to <= scope.to) : all;
+		body.querySelectorAll(".code-line").forEach((row) => {
+			row.classList.remove("code-in-section", "code-section-first", "code-section-last", "code-section-revealed");
+			row.style.removeProperty("--section-tone");
+			delete row.dataset.section;
+			const line = Number(row.dataset.line);
+			row.classList.toggle("code-outside-structure", !!scope && (line < scope.from || line > scope.to) || !sectionAt(sections, line));
+		});
+		const on = settings.structureMode !== "plain" && sections.length > 0;
+		body.classList.toggle("code-structure", on);
+		for (const mode of STRUCTURE_MODES) body.classList.toggle(`code-structure-${mode}`, on && settings.structureMode === mode);
+		modes.hidden = !all.length;
+		modes.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === settings.structureMode)));
+		tones = new Map(sections.map((section, k) => [section.id, SECTION_TONES[k % SECTION_TONES.length]]));
+		if (!on) return;
+		sections.forEach((section, k) => {
+			const tone = tones.get(section.id);
+			for (let line = section.from; line <= section.to; line++) {
+				const row = body.querySelector(`.code-line[data-line="${line}"]`);
+				if (!row) continue;
+				row.classList.add("code-in-section");
+				row.classList.toggle("code-section-first", line === section.from);
+				row.classList.toggle("code-section-last", line === section.to);
+				row.style.setProperty("--section-tone", tone);
+				row.dataset.section = section.id;
+			}
+			const head = document.createElement("div");
+			head.className = "code-section-head";
+			head.dataset.section = section.id;
+			head.style.setProperty("--section-tone", tone);
+			head.tabIndex = 0;
+			head.setAttribute("role", "button");
+			const count = section.to - section.from + 1;
+			const chevron = document.createElement("span");
+			chevron.className = "code-section-chevron";
+			chevron.setAttribute("aria-hidden", "true");
+			chevron.textContent = "▸";
+			const name = document.createElement("span");
+			name.className = "code-section-title";
+			name.textContent = section.title;
+			const meta = document.createElement("span");
+			meta.className = "code-section-meta";
+			meta.textContent = `${section.from === section.to ? `line ${section.from}` : `lines ${section.from}–${section.to}`} · ${count} line${count === 1 ? "" : "s"}`;
+			const ask = document.createElement("button");
+			ask.type = "button";
+			ask.className = "code-section-ask";
+			ask.textContent = "✦";
+			ask.title = `Ask the tutor about "${section.title}"\n\nClick to send · ⌘/Ctrl-click to edit`;
+			ask.setAttribute("aria-label", `Ask the tutor about ${section.title}`);
+			ask.addEventListener("click", (e) => {
+				e.stopPropagation();
+				sendAiPrompt(codeMessageFor(sectionPrompt(section), section.from, section.to, sectionText(section)), e, { silent: true });
+			});
+			head.append(chevron, name, meta, ask);
+			if (section.hint) {
+				const hint = document.createElement("div");
+				hint.className = "code-section-hint";
+				hint.textContent = section.hint;
+				head.append(hint);
+			}
+			head.title = section.hint ?? section.title;
+			const pick = () => {
+				if (settings.structureMode === "blocks" || settings.structureMode === "outline") {
+					const key = revealKey(section);
+					if (revealed.has(key)) revealed.delete(key);
+					else revealed.add(key);
+					paintReveal(section);
+					refreshBinding();
+				} else choose(section.from, section.to, sectionText(section));
+			};
+			head.addEventListener("click", pick);
+			head.addEventListener("keydown", (e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					pick();
+				}
+			});
+			body.querySelector(`.code-line[data-line="${section.from}"]`)?.before(head);
+			paintReveal(section);
+		});
+		markExecutingSection();
+	}
+	/** The section running now is lit, so the titles-only view still says where execution is. */
+	function markExecutingSection() {
+		const sections = selected ? codeSections(selected) : [];
+		const running = new Set([...lastLines].map((line) => sectionAt(sections, line)?.id).filter(Boolean));
+		body.querySelectorAll(".code-section-head").forEach((head) => head.classList.toggle("executing", running.has(head.dataset.section)));
+	}
+	function loadSettings() {
+		try {
+			const saved = JSON.parse(localStorage.getItem("algebench-code-view") ?? "null");
+			return {
+				inline: saved?.inline ?? true,
+				onHover: saved?.onHover ?? true,
+				hidden: Array.isArray(saved?.hidden) ? saved.hidden.filter((h) => typeof h === "string") : [],
+				structureMode: STRUCTURE_MODES.includes(saved?.structureMode) ? saved.structureMode : "plain",
+				structureRunning: saved?.structureRunning ?? true
+			};
+		} catch {
+			return {
+				inline: true,
+				onHover: true,
+				hidden: [],
+				structureMode: "plain",
+				structureRunning: true
+			};
+		}
+	}
+	function saveSettings() {
+		try {
+			localStorage.setItem("algebench-code-view", JSON.stringify(settings));
+		} catch {}
+	}
+	function viewSettingsMenu() {
+		const wrap = document.createElement("span");
+		wrap.className = "code-view-settings";
+		const toggle = document.createElement("button");
+		toggle.type = "button";
+		toggle.className = "code-view-settings-btn";
+		toggle.textContent = "⚙";
+		toggle.title = "Code view settings";
+		toggle.setAttribute("aria-label", "Code view settings");
+		toggle.setAttribute("aria-haspopup", "true");
+		toggle.setAttribute("aria-expanded", "false");
+		const menu = document.createElement("div");
+		menu.className = "code-view-menu";
+		menu.hidden = true;
+		const close = () => {
+			menu.hidden = true;
+			toggle.setAttribute("aria-expanded", "false");
+			document.removeEventListener("pointerdown", outside, true);
+			document.removeEventListener("keydown", escape, true);
+		};
+		const outside = (e) => {
+			if (!wrap.contains(e.target)) close();
+		};
+		const escape = (e) => {
+			if (e.key === "Escape") {
+				close();
+				toggle.focus();
+			}
+		};
+		const check = (text, on, change, disabled = false) => {
+			const label = document.createElement("label");
+			label.className = "code-view-option";
+			const box = document.createElement("input");
+			box.type = "checkbox";
+			box.checked = on;
+			box.disabled = disabled;
+			box.addEventListener("change", () => {
+				change(box.checked);
+				saveSettings();
+				renderInline();
+				lastScopeKey = "";
+				renderStructure();
+				fill();
+			});
+			const name = document.createElement("span");
+			name.textContent = text;
+			label.append(box, name);
+			return label;
+		};
+		function fill() {
+			menu.replaceChildren(check("Inline values", settings.inline, (on) => {
+				settings.inline = on;
+			}), check("Only on the hovered line", settings.onHover, (on) => {
+				settings.onHover = on;
+			}, !settings.inline), check("Structure the running function only", settings.structureRunning, (on) => {
+				settings.structureRunning = on;
+			}, !selected || !codeSections(selected).length));
+			const vars = availableVariables();
+			const heading = document.createElement("div");
+			heading.className = "code-view-heading";
+			heading.textContent = vars.length ? "Variables" : "No variables shown at this step";
+			menu.append(heading);
+			const toggleHidden = (key) => (on) => {
+				settings.hidden = on ? settings.hidden.filter((h) => h !== key) : [...settings.hidden, key];
+			};
+			for (const key of vars) menu.append(check(key, !settings.hidden.includes(key), toggleHidden(key), !settings.inline));
+			const exprs = availableExpressions();
+			if (exprs.length) {
+				const sub = document.createElement("div");
+				sub.className = "code-view-heading";
+				sub.textContent = "Expressions";
+				menu.append(sub);
+				for (const name of exprs) menu.append(check(name, !settings.hidden.includes(EXPR + name), toggleHidden(EXPR + name), !settings.inline));
+			}
+		}
+		toggle.addEventListener("click", () => {
+			if (!menu.hidden) {
+				close();
+				return;
+			}
+			fill();
+			menu.hidden = false;
+			toggle.setAttribute("aria-expanded", "true");
+			document.addEventListener("pointerdown", outside, true);
+			document.addEventListener("keydown", escape, true);
+			menu.querySelector("input")?.focus();
+		});
+		wrap.append(toggle, menu);
+		return wrap;
+	}
+	/** What the scene says about a variable: its label rows (`v = 3`) and the objects holding it (`state = [1, 2]`). */
+	function valueTexts(key) {
+		return [...labelsForSymbol(key).map((f) => f.text), ...symbolValues(key).map((v) => `${key} = ${v}`)].filter((t) => !t.trim().endsWith("—"));
+	}
+	/**
+	* Expressions: label rows tied to a line by codeRef that are not a plain `name = value` row (`taken < n: …`,
+	* `check: …`, `len(queue) = 0`). Their text changes every frame, so each is named by what precedes its value.
+	*/
+	const EXPR = "expr:";
+	/** Unchecking a variable hides it and its elements and attributes (`state` hides `state[3]`). */
+	const hiddenKey = (key) => settings.hidden.includes(key) || settings.hidden.includes(key.split(/[[.]/)[0]);
+	const isExpression = (text) => !rowSymbolKeys(text).length;
+	const expressionName = (text) => text.split(/: | = /)[0].trim();
+	function lineExpressions(fileId, line) {
+		return labelsForCodeLine(fileId, line).filter((t) => isExpression(t) && !t.trim().endsWith("—"));
+	}
+	/** The expressions the scene shows for the lines in view, in line order. */
+	function availableExpressions() {
+		if (!selected) return [];
+		const scope = inlineScope(selected.source, lastLines), names = [];
+		const count = selected.source.split("\n").length;
+		for (let line = scope?.from ?? 1; line <= (scope?.to ?? count); line++) for (const text of lineExpressions(selected.id, line)) if (!names.includes(expressionName(text))) names.push(expressionName(text));
+		return names;
+	}
+	/** The variables the open file names that the scene shows a value for, in order of first appearance. */
+	function availableVariables() {
+		const keys = [];
+		for (const ref of [...references].sort((a, b) => a.line - b.line || a.col - b.col)) if (!keys.includes(ref.key) && valueTexts(ref.key).length) keys.push(ref.key);
+		return keys;
+	}
+	/**
+	* Inline values: right of each line, a tag for every value the scene shows for what the line names, then the
+	* label rows tied to the line by codeRef (conditions and other expressions). A tag too long for its room is
+	* cut with an ellipsis and floats out in full while pointed at.
+	*/
+	let inlinePending = false;
+	function scheduleInline() {
+		if (inlinePending) return;
+		inlinePending = true;
+		requestAnimationFrame(() => requestAnimationFrame(() => {
+			inlinePending = false;
+			renderInline();
+		}));
+	}
+	/**
+	* The lines whose names mean what the scene shows: the top-level block (def or class) holding the executing
+	* line. Another function's `u` is a different variable. Null (every line) when nothing is executing.
+	*/
+	function inlineScope(source, executing) {
+		const at = Math.min(...executing);
+		if (!Number.isFinite(at)) return null;
+		const lines = source.split("\n"), top = (i) => /^\S/.test(lines[i - 1] ?? "");
+		let from = at;
+		while (from > 1 && !top(from)) from--;
+		let to = at + 1;
+		while (to <= lines.length && !top(to)) to++;
+		return {
+			from,
+			to: to - 1
+		};
+	}
+	const float = document.createElement("div");
+	float.className = "code-inline-float";
+	float.hidden = true;
+	document.body.append(float);
+	let floated = null;
+	function floatLine(row) {
+		const code = row?.querySelector("code") ?? null;
+		const holder = row?.querySelector(".code-inline-values") ?? null;
+		const tags = !!holder && getComputedStyle(holder).visibility !== "hidden" ? [...holder.querySelectorAll(".code-inline-value")] : [];
+		const edge = body.getBoundingClientRect().right;
+		const clipped = !!code && (code.getBoundingClientRect().right > edge || tags.some((t) => t.scrollWidth > t.clientWidth || t.getBoundingClientRect().right > edge));
+		const hiding = !!row && (row.classList.contains("code-veiled") || hidingCode() && !row.classList.contains("code-section-revealed") && !row.classList.contains("code-outside-structure"));
+		if (!clipped || hiding) {
+			float.hidden = true;
+			floated = null;
+			return;
+		}
+		if (floated === row && !float.hidden) return;
+		floated = row;
+		const line = document.createElement("code");
+		line.className = "code-inline-float-code";
+		line.append(...[...code.childNodes].map((n) => n.cloneNode(true)));
+		float.replaceChildren(line, ...tags.map((t) => {
+			const copy = document.createElement("span");
+			copy.className = t.className;
+			copy.textContent = t.textContent;
+			return copy;
+		}));
+		float.classList.toggle("executing", !!row?.classList.contains("execution-line"));
+		float.hidden = false;
+		const at = code.getBoundingClientRect(), width = float.getBoundingClientRect().width;
+		float.style.left = `${Math.max(8, Math.min(at.left - 4, window.innerWidth - 8 - width))}px`;
+		float.style.top = `${at.top + at.height / 2}px`;
+	}
+	body.addEventListener("pointerover", (event) => floatLine(event.target.closest(".code-line")));
+	body.addEventListener("pointerleave", () => floatLine(null));
+	body.addEventListener("scroll", () => floatLine(null));
+	function renderInline() {
+		const hovered = floated;
+		floatLine(null);
+		body.querySelectorAll(".code-inline-values").forEach((n) => n.remove());
+		body.classList.toggle("code-inline-on-hover", settings.onHover);
+		if (!settings.inline || !selected) return;
+		const file = selected, scope = inlineScope(file.source, lastLines);
+		body.querySelectorAll(".code-line").forEach((row) => {
+			const line = Number(row.dataset.line), texts = [];
+			if (scope && (line < scope.from || line > scope.to)) return;
+			const add = (t) => {
+				if (!t.trim().endsWith("—") && !texts.includes(t)) texts.push(t);
+			};
+			for (const ref of lineReferences(references, line)) if (!hiddenKey(ref.key)) valueTexts(ref.key).forEach(add);
+			labelsForCodeLine(file.id, line).filter((t) => isExpression(t) ? !settings.hidden.includes(EXPR + expressionName(t)) : !rowSymbolKeys(t).some(hiddenKey)).forEach(add);
+			if (!texts.length) return;
+			const holder = document.createElement("span");
+			holder.className = "code-inline-values";
+			for (const text of texts) {
+				const tag = document.createElement("span");
+				tag.className = "code-inline-value";
+				const inner = document.createElement("span");
+				inner.textContent = text;
+				tag.append(inner);
+				holder.append(tag);
+			}
+			row.append(holder);
+		});
+		if (hovered?.isConnected && hovered.matches(":hover")) floatLine(hovered);
 	}
 	function open(file) {
 		selected = file;
+		references = [];
+		lastScopeKey = "";
 		lastExecution = "";
+		lastLines = /* @__PURE__ */ new Set();
 		first = last = 0;
 		excerpt = "";
 		actions.hidden = targets.hidden = true;
 		active = null;
 		setCodeFocus(null);
-		title.textContent = file.path + " · read only";
+		titleText.textContent = file.path + " · read only";
 		body.replaceChildren();
 		if (file.activeLineExpr) try {
 			active = compileExpr(file.activeLineExpr);
@@ -22044,6 +26196,8 @@ function setupCodePanel() {
 				if (segment.color) span.className = `code-mark-${segment.color}`;
 				code.append(span);
 			}
+			code.style.setProperty("--indent", String(text.length - text.trimStart().length));
+			code.style.setProperty("--len", String(text.trim().length));
 			row.append(number, code);
 			body.append(row);
 		});
@@ -22052,8 +26206,83 @@ function setupCodePanel() {
 			body.querySelectorAll(".code-line code").forEach((code) => paintTokens(code, lineTokens(tokens, Number(code.dataset.line))));
 		});
 		tree.querySelectorAll("[data-file]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.file === file.id)));
+		renderStructure();
 		refreshBinding();
+		analyzeCode(file).then((analysis) => {
+			if (analysis && selected === file) {
+				markSymbols(analysis.references);
+				markCalls(analysis.functions ?? [], analysis.calls ?? []);
+			}
+		});
 	}
+	/** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
+	function markSymbols(found) {
+		references = found;
+		body.querySelectorAll(".code-line code").forEach((code) => {
+			for (const ref of lineReferences(references, Number(code.dataset.line))) wrapRange(code, ref);
+		});
+		paintSymbolHover();
+		scheduleInline();
+	}
+	/** Wrap each def's name and each call to it, so pointing at either links the two (see drawHover). */
+	function markCalls(functions, calls) {
+		const wrap = (f, cls, def) => {
+			const code = body.querySelector(`.code-line[data-line="${f.line}"] code`);
+			if (code) wrapColumns(code, f.col, f.endCol, () => {
+				const span = document.createElement("span");
+				span.className = cls;
+				span.dataset.def = String(def);
+				return span;
+			});
+		};
+		for (const f of functions) wrap(f, "code-fn", f.line);
+		for (const c of calls) wrap(c, "code-call", c.defLine);
+	}
+	/** One variable reference: a `code-sym` span over its columns (wrapColumns splits whatever spans are there). */
+	function wrapRange(code, ref) {
+		wrapColumns(code, ref.col, ref.endCol, () => {
+			const span = document.createElement("span");
+			span.className = "code-sym";
+			span.dataset.key = ref.key;
+			span.dataset.root = ref.root;
+			span.dataset.kind = ref.kind;
+			return span;
+		});
+	}
+	/** LaTeX for what the visible labels say about a symbol, one line each; null when nothing shows it. */
+	function symbolTex(key) {
+		const found = labelsForSymbol(key);
+		if (!found.length) return null;
+		const plain = (t) => "\\text{" + t.replace(/[\\{}$&#%_^~]/g, (c) => c === "\\" ? "\\backslash " : "\\" + c) + "}";
+		return [...new Set(found.map((f) => f.tooltip || plain(f.text)))].join("\\\\");
+	}
+	function paintSymbolHover() {
+		const keys = hoveredSymbols(), line = hoveredCodeLine();
+		body.querySelectorAll(".code-sym").forEach((span) => span.classList.toggle("code-sym-hover", keys.includes(span.dataset.key)));
+		body.querySelectorAll(".code-line").forEach((row) => row.classList.toggle("code-line-ref-hover", !!selected && line === codeLineKey(selected.id, Number(row.dataset.line))));
+	}
+	body.addEventListener("pointerover", (event) => {
+		const target = event.target;
+		const span = target.closest(".code-sym");
+		const row = target.closest(".code-line");
+		if (span) setSymbolHover([span.dataset.key]);
+		else setSymbolHover([], row && selected ? codeLineKey(selected.id, Number(row.dataset.line)) : null);
+		showCodeSymbolTooltip(span, span ? symbolTex(span.dataset.key) : null);
+	});
+	body.addEventListener("pointerleave", () => showCodeSymbolTooltip(null, null));
+	body.addEventListener("pointerleave", () => setSymbolHover([]));
+	window.addEventListener("algebench:symbolhover", paintSymbolHover);
+	window.addEventListener("algebench:symbolflash", (event) => {
+		const keys = event.detail.keys;
+		requestAnimationFrame(() => {
+			body.querySelectorAll(".code-line.execution-line .code-sym").forEach((span) => {
+				if (!keys.includes(span.dataset.key) && !(keys.includes(span.dataset.root) && span.dataset.kind === "subscript")) return;
+				span.classList.add("code-sym-flash");
+				clearTimeout(Number(span.dataset.flash));
+				span.dataset.flash = String(setTimeout(() => span.classList.remove("code-sym-flash"), 900));
+			});
+		});
+	});
 	body.addEventListener("mouseup", (event) => {
 		const selection = window.getSelection();
 		const nodeElement = (n) => n instanceof Element ? n : n?.parentElement;
@@ -22097,14 +26326,15 @@ function setupCodePanel() {
 			tree.replaceChildren();
 			body.replaceChildren();
 			actions.hidden = targets.hidden = true;
-			selected = void 0;
+			selected = followed = void 0;
 			active = null;
+			compiled.clear();
 			setCodeFocus(null);
 			build(fileTree(files), tree);
 			if (files[0]) open(files[0]);
-			else title.textContent = "This lesson has no code files.";
+			else titleText.textContent = "This lesson has no code files.";
 		}
-		refreshBinding();
+		refreshBinding(true);
 		renderLineActions();
 	}
 	window.addEventListener("algebench:opencode", (event) => {
@@ -22124,8 +26354,1021 @@ function setupCodePanel() {
 		}
 	});
 	window.addEventListener("algebench:navchange", refresh);
-	window.addEventListener("algebench:sliderchange", refreshBinding);
+	window.addEventListener("algebench:sliderchange", () => refreshBinding());
 	refresh();
+}
+//#endregion
+//#region src/code-practice-core.ts
+/** The most a line seen in the Code panel can score. */
+var PEEK_FACTOR = .5;
+/** Blank and comment-only lines carry no score: nobody has to type them. */
+function isNeutral(text) {
+	const t = text.trim();
+	return !t || t.startsWith("#") || t.startsWith("//");
+}
+/** A line without its trailing comment: nobody types those from memory. */
+var codeOf = (s) => s.replace(/\s+(#|\/\/)\s.*$/, "").trimEnd();
+var squeeze = (s) => s.replace(/\s+/g, "");
+/** Levenshtein distance, two rows at a time. */
+function distance(a, b) {
+	let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+	for (let i = 1; i <= a.length; i++) {
+		const row = [i];
+		for (let j = 1; j <= b.length; j++) row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+		prev = row;
+	}
+	return prev[b.length];
+}
+/**
+* How alike a typed line is to a reference line, 0 to 1. Whitespace is ignored, as are trailing comments: 1 means
+* the same code. Nesting is judged by alignLines, by depth rather than spaces.
+*/
+function similarity(typed, reference) {
+	const a = squeeze(codeOf(typed)), b = squeeze(codeOf(reference));
+	if (!a || !b) return 0;
+	if (a === b) return 1;
+	return Math.min(.95, 1 - distance(a, b) / Math.max(a.length, b.length));
+}
+/** A line typed right but at another nesting depth (`return False` inside the `if`, not after the loop) is not exact. */
+var OTHER_DEPTH = .9;
+var indentOf = (s) => s.replace(/\t/g, "    ").search(/\S/);
+var gcd = (a, b) => b ? gcd(b, a % b) : a;
+/** The indentation step of some code: the gcd of its indents (4 for 4, 8, 12), or 0 when nothing is indented. */
+function indentUnit(lines) {
+	return lines.filter((l) => !isNeutral(l)).map(indentOf).filter((n) => n > 0).reduce(gcd, 0);
+}
+/**
+* Each line's nesting depth, in steps of the reference's indentation: the learner may indent by another width
+* (2 spaces against 4) and still nest the same way; typed code that skips a level keeps the reference's step.
+*/
+function depths(lines, refUnit) {
+	const own = indentUnit(lines);
+	const unit = own && refUnit && own % refUnit === 0 ? refUnit : own || refUnit || 1;
+	return lines.map((l) => Math.round(Math.max(0, indentOf(l)) / unit));
+}
+/**
+* The best in-order pairing of typed lines with reference lines (indices into each list), skipping neutral
+* lines on both sides: the most total similarity, each pair at least MIN_MATCH alike. A pair at different
+* nesting depths counts OTHER_DEPTH of its similarity, so it is never exact and a pairing that nests alike wins.
+*/
+function alignLines(reference, typed) {
+	const unit = indentUnit(reference);
+	const rd = depths(reference, unit), td = depths(typed, unit);
+	const r = reference.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
+	const u = typed.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
+	const best = Array.from({ length: r.length + 1 }, () => new Array(u.length + 1).fill(0));
+	const sim = r.map(([a, i]) => u.map(([b, j]) => similarity(b, a) * (rd[i] === td[j] ? 1 : OTHER_DEPTH)));
+	for (let i = 1; i <= r.length; i++) for (let j = 1; j <= u.length; j++) {
+		const s = sim[i - 1][j - 1];
+		best[i][j] = Math.max(best[i - 1][j], best[i][j - 1], s >= .4 ? best[i - 1][j - 1] + s : -1);
+	}
+	const pairs = [];
+	for (let i = r.length, j = u.length; i > 0 && j > 0;) {
+		const s = sim[i - 1][j - 1];
+		if (s >= .4 && best[i][j] === best[i - 1][j - 1] + s) {
+			pairs.push({
+				typed: u[j - 1][1],
+				reference: r[i - 1][1],
+				similarity: s
+			});
+			i--;
+			j--;
+		} else if (best[i][j] === best[i - 1][j]) i--;
+		else j--;
+	}
+	return pairs.reverse();
+}
+var mean = (xs) => xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
+/**
+* Score what was typed against the block of reference code starting at file line `first`. `peeked` holds the
+* file lines that were on screen; `sections` are the file's, and those inside the block are scored too.
+* `typedAll` says every line was typed exactly, seen or not.
+*/
+function scorePractice(reference, first, typedText, peeked, sections = []) {
+	const ref = reference.split("\n"), typed = typedText.split("\n");
+	const pairs = alignLines(ref, typed);
+	const byRef = new Map(pairs.map((p) => [p.reference, p]));
+	const lines = [];
+	ref.forEach((text, i) => {
+		if (isNeutral(text)) return;
+		const pair = byRef.get(i), line = first + i, seen = peeked.has(line);
+		const s = pair?.similarity ?? 0;
+		lines.push({
+			line,
+			typed: pair ? pair.typed : null,
+			similarity: s,
+			peeked: seen,
+			score: Math.round(100 * s * (seen ? PEEK_FACTOR : 1))
+		});
+	});
+	const byTyped = new Map(pairs.map((p) => [p.typed, p]));
+	const typedLines = typed.map((text, j) => {
+		const pair = byTyped.get(j);
+		return {
+			reference: pair ? first + pair.reference : null,
+			similarity: pair?.similarity ?? 0,
+			exact: pair?.similarity === 1,
+			neutral: isNeutral(text)
+		};
+	});
+	const last = first + ref.length - 1;
+	return {
+		lines,
+		typed: typedLines,
+		sections: sections.filter((s) => s.from >= first && s.to <= last).map((s) => {
+			const inside = lines.filter((l) => l.line >= s.from && l.line <= s.to);
+			return {
+				id: s.id,
+				title: s.title,
+				from: s.from,
+				to: s.to,
+				score: mean(inside.map((l) => l.score)),
+				lines: inside.length
+			};
+		}).filter((s) => s.lines > 0),
+		total: mean(lines.map((l) => l.score)),
+		typedAll: lines.length > 0 && lines.every((l) => l.similarity === 1)
+	};
+}
+/**
+* The section the learner is on: the one holding the reference line paired with the cursor's line, else the
+* one after the last paired line above the cursor (where they will go next), else the first.
+*/
+function focusSection(score, cursor, sections) {
+	const within = (line) => sections.find((s) => line >= s.from && line <= s.to) ?? null;
+	const here = score.typed[cursor]?.reference;
+	if (here != null) return within(here);
+	let above = null;
+	for (let j = Math.min(cursor, score.typed.length - 1); j >= 0 && above == null; j--) above = score.typed[j]?.reference ?? null;
+	const next = score.lines.find((l) => (above == null || l.line > above) && within(l.line));
+	return next ? within(next.line) : null;
+}
+//#endregion
+//#region src/code-practice.ts
+/**
+* Type along: under the Doc, the learner types the code running now (the Code panel's running block) and sees,
+* as they type, how each line, each section and the whole block matches it (code-practice-core.ts). Lines they
+* could see in the Code panel score less; "Hide code" hides it there. The coach (✦) reviews the typed code by
+* meaning (the code_practice expert): on Check, and while it is on, on each new line and after a pause.
+*/
+/** The coach looks again after this long without typing. */
+var IDLE_REVIEW_MS = 5e3;
+var INDENT = "    ";
+var STORE_KEY = "algebench-code-practice";
+var VIEW_KEY = "algebench-code-practice-view";
+var VERDICTS = {
+	correct: "Correct",
+	close: "Close",
+	partial: "Partly there",
+	off_track: "Off track",
+	empty: "Nothing yet"
+};
+function loadJson(key, fallback) {
+	try {
+		return JSON.parse(localStorage.getItem(key) ?? "null") ?? fallback;
+	} catch {
+		return fallback;
+	}
+}
+function saveJson(key, value) {
+	try {
+		localStorage.setItem(key, JSON.stringify(value));
+	} catch {}
+}
+/** A short stable hash, so a saved attempt belongs to the code it was typed against. */
+function hash(text) {
+	let h = 5381;
+	for (let i = 0; i < text.length; i++) h = (h * 33 ^ text.charCodeAt(i)) >>> 0;
+	return h.toString(36);
+}
+var svg$1 = (d, size = 13, width = 2) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+/** The side sections' fold chevrons (side-sections.ts), and the two headers' icons: a keyboard, the coach's spark. */
+var ICON_FOLD = svg$1("<path d=\"M6 9l6 6 6-6\"/>", 12, 2.2);
+var ICON_UNFOLD = svg$1("<path d=\"M6 15l6-6 6 6\"/>", 12, 2.2);
+var ICON_TYPE = svg$1("<rect x=\"2.5\" y=\"6\" width=\"19\" height=\"12\" rx=\"2\"/><path d=\"M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8\"/>");
+var ICON_DOC = svg$1("<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>");
+var ICON_CODE = svg$1("<path d=\"M8 7l-5 5 5 5M16 7l5 5-5 5\"/>");
+var ICON_COACH = svg$1("<path d=\"M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z\"/>");
+function foldButton() {
+	const b = document.createElement("button");
+	b.type = "button";
+	b.className = "side-head-btn side-fold-btn";
+	return b;
+}
+function paintFold(b, folded, title) {
+	b.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+	b.title = title;
+	b.setAttribute("aria-label", title);
+	b.setAttribute("aria-expanded", String(!folded));
+}
+function setupCodePractice() {
+	const doc = document.getElementById("tab-doc");
+	if (!doc) return;
+	const prefs = loadJson(VIEW_KEY, {});
+	const saved = loadJson(STORE_KEY, {});
+	const root = el("section", "code-practice");
+	root.hidden = true;
+	root.classList.toggle("open", !!prefs.open);
+	const head = el("div", "side-section-head side-section-foldable cp-head");
+	const title = el("span", "side-section-title");
+	title.textContent = "Type along";
+	const toggle = foldButton();
+	const target = el("span", "cp-target");
+	const total = el("span", "cp-total");
+	total.setAttribute("role", "status");
+	const tools = el("div", "cp-tools");
+	const hide = tool("Hide code", "Hide the code in the Code panel: lines typed without seeing them score in full");
+	const coach = tool("✦ Coach", "The coach reviews your code on each new line and after a 5 s pause");
+	const hint = tool("Hint", "Hints: the coach also says how to begin and what to write next. Off, it only comments on what you typed");
+	const check = tool("Check", "Ask the coach to review what you typed now");
+	const reset = tool("Reset", "Start this block again");
+	const speak = tool("", "");
+	speak.classList.add("cp-speak");
+	speak.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z\"/></svg>";
+	tools.append(hide, coach, hint, check, speak, reset);
+	head.insertAdjacentHTML("beforeend", ICON_TYPE);
+	head.append(title, target, total, toggle);
+	const bodyEl = el("div", "cp-body");
+	bodyEl.append(tools);
+	const chips = el("div", "cp-sections");
+	const editor = el("div", "cp-editor");
+	const gutter = el("div", "cp-gutter");
+	gutter.setAttribute("aria-hidden", "true");
+	const stack = el("div", "cp-stack");
+	const paint = el("pre", "cp-paint");
+	paint.setAttribute("aria-hidden", "true");
+	const input = el("textarea", "cp-input");
+	input.spellcheck = false;
+	input.wrap = "off";
+	input.setAttribute("autocapitalize", "off");
+	input.setAttribute("autocomplete", "off");
+	input.setAttribute("aria-label", "Type the running code");
+	input.placeholder = "Type the running code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.";
+	stack.append(paint, input);
+	editor.append(gutter, stack);
+	const cheer = el("div", "cp-cheer");
+	cheer.hidden = true;
+	cheer.setAttribute("role", "status");
+	const reportGrip = el("div", "cp-report-grip");
+	reportGrip.setAttribute("role", "separator");
+	reportGrip.setAttribute("aria-orientation", "horizontal");
+	reportGrip.setAttribute("aria-label", "Resize the coach's review");
+	reportGrip.title = "Drag to resize the review · double-click to reset";
+	reportGrip.classList.add("side-section-head", "side-section-foldable");
+	const reportTitle = el("span", "side-section-title");
+	reportTitle.textContent = "Coach review";
+	const reportToggle = foldButton();
+	const reportSummary = el("span", "cp-report-summary");
+	reportGrip.insertAdjacentHTML("beforeend", ICON_COACH);
+	reportGrip.append(reportTitle, reportSummary, reportToggle);
+	const report = el("div", "cp-report");
+	report.setAttribute("aria-live", "polite");
+	const MAX_MESSAGES = 30;
+	const WELCOME = "OK, let's start coding. I'll guide you along the way. You can talk to me in comments: explain your thinking or ask me anything about the code.";
+	const EMPTY_REPORT = "The coach reviews each new line, after a pause, or on Check.";
+	const clearReport = () => {
+		reportSummary.textContent = "";
+		reportGrip.classList.remove("fresh");
+		report.replaceChildren(Object.assign(el("div", "cp-report-empty"), { textContent: EMPTY_REPORT }));
+	};
+	clearReport();
+	const codeHead = el("div", "side-section-head cp-code-head");
+	const codeTitle = el("span", "side-section-title");
+	codeTitle.textContent = "Your code";
+	const codeSummary = el("span", "cp-code-summary");
+	codeHead.insertAdjacentHTML("beforeend", ICON_CODE);
+	codeHead.append(codeTitle, codeSummary);
+	bodyEl.append(codeHead, chips, editor, cheer, reportGrip, report);
+	const grip = el("div", "cp-resize");
+	grip.setAttribute("role", "separator");
+	grip.setAttribute("aria-orientation", "horizontal");
+	grip.setAttribute("aria-label", "Resize the Type along panel");
+	grip.title = "Drag to resize · double-click to reset";
+	root.append(grip, head, bodyEl);
+	doc.append(root);
+	const MIN_HEIGHT = 160;
+	function setHeight(px) {
+		if (px == null) {
+			root.style.removeProperty("flex");
+			root.style.removeProperty("max-height");
+			return;
+		}
+		const max = Math.max(MIN_HEIGHT, doc.clientHeight - 80);
+		const h = Math.round(Math.max(MIN_HEIGHT, Math.min(max, px)));
+		root.style.flex = `0 0 ${h}px`;
+		root.style.maxHeight = "none";
+	}
+	if (prefs.height) setHeight(prefs.height);
+	grip.addEventListener("pointerdown", (e) => {
+		if (!root.classList.contains("open")) return;
+		e.preventDefault();
+		grip.setPointerCapture(e.pointerId);
+		grip.classList.add("dragging");
+		const startY = e.clientY, startH = root.offsetHeight;
+		document.body.style.cursor = "row-resize";
+		document.body.style.userSelect = "none";
+		const move = (ev) => setHeight(startH + startY - ev.clientY);
+		const up = () => {
+			grip.removeEventListener("pointermove", move);
+			grip.classList.remove("dragging");
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+			prefs.height = root.offsetHeight;
+			savePrefs();
+		};
+		grip.addEventListener("pointermove", move);
+		grip.addEventListener("pointerup", up, { once: true });
+		grip.addEventListener("pointercancel", up, { once: true });
+	});
+	grip.addEventListener("dblclick", () => {
+		prefs.height = void 0;
+		setHeight(null);
+		savePrefs();
+	});
+	const REPORT_HEIGHT = 140;
+	const setReportHeight = (px) => {
+		const max = bodyEl.clientHeight > 0 ? Math.max(48, bodyEl.clientHeight - 120) : px;
+		report.style.setProperty("--report-h", `${Math.round(Math.max(48, Math.min(px, max)))}px`);
+	};
+	setReportHeight(prefs.reportHeight ?? REPORT_HEIGHT);
+	let dragged = false;
+	reportGrip.addEventListener("pointerdown", (e) => {
+		dragged = false;
+		if (e.target.closest("button") || reportGrip.classList.contains("folded")) return;
+		e.preventDefault();
+		reportGrip.setPointerCapture(e.pointerId);
+		const startY = e.clientY, startH = report.offsetHeight;
+		const move = (ev) => {
+			if (!dragged && Math.abs(ev.clientY - startY) < 4) return;
+			if (!dragged) {
+				dragged = true;
+				reportGrip.classList.add("dragging");
+				document.body.style.cursor = "row-resize";
+				document.body.style.userSelect = "none";
+			}
+			setReportHeight(startH + startY - ev.clientY);
+		};
+		const up = () => {
+			reportGrip.removeEventListener("pointermove", move);
+			if (!dragged) return;
+			reportGrip.classList.remove("dragging");
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+			prefs.reportHeight = report.offsetHeight;
+			savePrefs();
+		};
+		reportGrip.addEventListener("pointermove", move);
+		reportGrip.addEventListener("pointerup", up, { once: true });
+		reportGrip.addEventListener("pointercancel", up, { once: true });
+	});
+	function foldReport(folded) {
+		report.hidden = folded;
+		reportGrip.classList.toggle("folded", folded);
+		reportGrip.classList.toggle("side-section-folded", folded);
+		paintFold(reportToggle, folded, folded ? "Show the coach's review" : "Fold the coach's review down to its header");
+	}
+	foldReport(!!prefs.reportFolded);
+	const flipReport = () => {
+		prefs.reportFolded = !report.hidden;
+		foldReport(prefs.reportFolded);
+		savePrefs();
+		if (!report.hidden) reportGrip.classList.remove("fresh");
+	};
+	reportToggle.addEventListener("click", (e) => {
+		e.stopPropagation();
+		flipReport();
+	});
+	reportGrip.addEventListener("click", (e) => {
+		if (!dragged && !e.target.closest("button")) flipReport();
+	});
+	const docHead = el("div", "side-section-head doc-head");
+	const docTitle = el("span", "side-section-title");
+	docTitle.textContent = "Doc";
+	const docToggle = foldButton();
+	docHead.insertAdjacentHTML("beforeend", ICON_DOC);
+	docHead.append(docTitle, docToggle);
+	const content = document.getElementById("explanation-content");
+	function foldDoc(folded) {
+		doc.classList.toggle("doc-folded", folded);
+		docHead.classList.toggle("side-section-folded", folded);
+		paintFold(docToggle, folded, folded ? "Show the Doc" : "Fold the Doc down to its header (Type along gets the room)");
+	}
+	if (content) {
+		doc.prepend(docHead);
+		foldDoc(!!prefs.docFolded);
+	}
+	const flipDoc = () => {
+		if (docToggle.hidden) return;
+		prefs.docFolded = !doc.classList.contains("doc-folded");
+		foldDoc(prefs.docFolded);
+		savePrefs();
+	};
+	docToggle.addEventListener("click", (e) => {
+		e.stopPropagation();
+		flipDoc();
+	});
+	docHead.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) flipDoc();
+	});
+	reportGrip.addEventListener("dblclick", (e) => {
+		if (e.target.closest("button")) return;
+		prefs.reportHeight = void 0;
+		setReportHeight(REPORT_HEIGHT);
+		savePrefs();
+	});
+	let current = null, key = "", block = "", sections = [];
+	let attempt = {
+		text: "",
+		peeked: [],
+		reviews: {},
+		celebrated: []
+	};
+	let score = null, tokens = [], tokenText = "";
+	let notes = /* @__PURE__ */ new Map(), cheerTimer = 0, reviewSeq = 0, lastReviewed = "", idle = 0, highlightTimer = 0;
+	coach.setAttribute("aria-pressed", String(!!prefs.coach));
+	hint.setAttribute("aria-pressed", String(!!prefs.hints));
+	for (const b of [
+		hint,
+		check,
+		speak
+	]) b.classList.add("cp-coach-only");
+	const paintCoach = () => root.classList.toggle("coach-off", coach.getAttribute("aria-pressed") !== "true");
+	paintCoach();
+	paintSpeak(!!prefs.speak);
+	function el(tag, cls) {
+		const node = document.createElement(tag);
+		node.className = cls;
+		return node;
+	}
+	function tool(text, title) {
+		const b = el("button", "cp-tool");
+		b.type = "button";
+		b.textContent = text;
+		b.title = title;
+		return b;
+	}
+	const coachOn = () => coach.getAttribute("aria-pressed") === "true";
+	const speakOn = () => speak.getAttribute("aria-pressed") === "true";
+	const hintsOn = () => hint.getAttribute("aria-pressed") === "true";
+	const savePrefs = () => saveJson(VIEW_KEY, {
+		open: root.classList.contains("open"),
+		coach: coachOn(),
+		hints: hintsOn(),
+		speak: speakOn(),
+		height: prefs.height,
+		reportHeight: prefs.reportHeight,
+		reportFolded: prefs.reportFolded,
+		docFolded: prefs.docFolded
+	});
+	function paintSpeak(on) {
+		speak.setAttribute("aria-pressed", String(on));
+		speak.title = on ? "Reading the coach aloud · click to stop" : "Read the coach's commentary aloud";
+		speak.setAttribute("aria-label", speak.title);
+	}
+	/** The review as it is spoken: the commentary and what to do next, without markdown. */
+	let spoken = "";
+	function speakReview(text) {
+		if (greeting && text) {
+			text = `${greeting} ${text}`;
+			greeting = "";
+		}
+		spoken = text;
+		if (speakOn() && text) window.algebenchSpeakText?.(text);
+	}
+	/**
+	* Turning the coach on, it says hello and how to talk to it (once per switch, not on every block). A review
+	* that starts at once speaks the greeting first, so it isn't cut off; otherwise it is spoken on its own.
+	*/
+	let greeting = "";
+	function welcome() {
+		if (!current || !coachOn()) return;
+		message("assistant", el("div", "cp-report-text")).querySelector(".msg-body").textContent = WELCOME;
+		greeting = WELCOME;
+	}
+	function persist() {
+		if (!key) return;
+		saved[key] = attempt;
+		saveJson(STORE_KEY, saved);
+	}
+	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
+	function retarget() {
+		const v = codeView();
+		root.hidden = !v?.running;
+		docToggle.hidden = root.hidden;
+		docHead.classList.toggle("side-section-foldable", !root.hidden);
+		foldDoc(!!prefs.docFolded && !root.hidden);
+		if (!v?.running) {
+			current = null;
+			return;
+		}
+		const text = v.file.source.split("\n").slice(v.from - 1, v.to).join("\n").replace(/\s+$/, "");
+		const next = `${v.file.id}:${v.from}:${hash(text)}`;
+		current = v;
+		if (next === key) return;
+		key = next;
+		block = text;
+		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
+		attempt = saved[key] ?? {
+			text: "",
+			peeked: [],
+			reviews: {},
+			celebrated: []
+		};
+		input.value = attempt.text;
+		notes = /* @__PURE__ */ new Map();
+		clearReport();
+		cheer.hidden = true;
+		score = null;
+		lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : "";
+		const count = v.to - v.from + 1;
+		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
+		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
+		render(false);
+		highlight();
+		if (hintsOn() && !input.value.trim() && root.classList.contains("open")) review(false);
+	}
+	function render(celebrate = true) {
+		if (!current) return;
+		const before = score;
+		score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
+		if (before && attempt.peeked.length) {
+			const was = new Set(before.lines.filter((l) => l.similarity === 1).map((l) => l.line));
+			const undone = new Set(score.lines.filter((l) => l.similarity < 1 && was.has(l.line)).map((l) => l.line));
+			if (undone.size) {
+				attempt.peeked = attempt.peeked.filter((line) => !undone.has(line));
+				persist();
+				score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
+			}
+		}
+		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
+		const focus = focusSection(score, cursor, sections);
+		const scoreOfTyped = new Map(score.lines.filter((l) => l.typed != null).map((l) => [l.typed, l]));
+		const typedLines = input.value.split("\n");
+		gutter.replaceChildren(...typedLines.map((text, j) => {
+			const row = el("div", "cp-mark"), t = score.typed[j], line = scoreOfTyped.get(j);
+			const n = el("span", "cp-n");
+			n.textContent = String(j + 1);
+			const mark = el("span", "cp-status");
+			if (t.neutral) row.classList.add("neutral");
+			else if (t.exact) {
+				row.classList.add(line?.peeked ? "seen" : "exact");
+				mark.textContent = line?.peeked ? "✓·" : "✓";
+			} else if (line) {
+				row.classList.add("fuzzy");
+				mark.textContent = `${line.score}`;
+			} else if (text.trim()) {
+				row.classList.add("miss");
+				mark.textContent = "✗";
+			}
+			row.title = t.neutral ? "" : line ? `Matches line ${line.line}: ${line.score}%${line.peeked ? " (seen in the Code panel, so at most half)" : ""}` : "No line of the code is like this one";
+			const note = notes.get(j + 1);
+			if (note) {
+				row.classList.add("noted");
+				row.title += `\nCoach: ${note}`;
+			}
+			row.append(n, mark);
+			return row;
+		}));
+		paintLines(typedLines);
+		chips.replaceChildren(...score.sections.map((s) => {
+			const chip = el("span", "cp-chip");
+			chip.classList.toggle("focus", s.id === focus?.id);
+			chip.classList.toggle("done", s.score === 100);
+			chip.style.setProperty("--fill", `${s.score}%`);
+			const tone = current?.tone(s.id);
+			if (tone) chip.style.setProperty("--tone", tone);
+			chip.textContent = `${s.score === 100 ? "★ " : ""}${s.title} · ${s.score}%`;
+			chip.title = `${s.title}: lines ${s.from}–${s.to}`;
+			return chip;
+		}));
+		chips.hidden = !score.sections.length;
+		const exact = score.lines.filter((l) => l.similarity === 1).length;
+		const seen = score.lines.filter((l) => l.peeked).length;
+		codeSummary.textContent = `${exact} of ${score.lines.length} lines exact${seen ? ` · ${seen} seen (half marks)` : ""}`;
+		codeSummary.title = seen ? "Lines visible in the Code panel while you practised (✓·) score half. Hide code and type them from memory for full marks." : "";
+		total.textContent = `${score.total}%`;
+		total.style.setProperty("--fill", `${score.total * 3.6}deg`);
+		total.classList.toggle("done", score.total === 100);
+		total.removeAttribute("title");
+		total.setAttribute("aria-label", `Typed from memory: ${score.total}%`);
+		if (!scoreTip.hidden) explainScore();
+		if (celebrate && before) cheerFor(before, score);
+	}
+	/** Typed text coloured like the Code panel, by the same server lexer; plain until its colours arrive. */
+	/**
+	* Each typed line's section tone: a line paired with a reference line takes its section's; a line between two
+	* paired lines of the same section (a blank, a line not matched yet) is part of it too.
+	*/
+	function sectionBands(count) {
+		const own = Array.from({ length: count }, (_, j) => {
+			const ref = score?.typed[j]?.reference;
+			return ref == null ? void 0 : sections.find((s) => ref >= s.from && ref <= s.to)?.id;
+		});
+		const out = [];
+		let before;
+		for (let j = 0; j < count; j++) {
+			if (own[j]) {
+				before = own[j];
+				out.push(current?.tone(own[j]));
+				continue;
+			}
+			const after = own.slice(j + 1).find(Boolean);
+			out.push(before && before === after ? current?.tone(before) : void 0);
+		}
+		return out;
+	}
+	function paintLines(lines) {
+		const fresh = tokenText === input.value;
+		const bands = sectionBands(lines.length);
+		paint.replaceChildren(...lines.map((text, j) => {
+			const row = el("div", "cp-line");
+			const t = score?.typed[j];
+			const band = bands[j];
+			if (band) {
+				row.classList.add("cp-in-section");
+				row.style.setProperty("--section-tone", band);
+			}
+			if (t && !t.neutral) row.classList.add(t.exact ? "exact" : t.reference != null ? "fuzzy" : text.trim() ? "miss" : "");
+			row.textContent = text || " ";
+			if (fresh && text) paintTokens(row, lineTokens(tokens, j + 1));
+			return row;
+		}));
+		paint.append(el("div", "cp-line"));
+	}
+	function highlight() {
+		clearTimeout(highlightTimer);
+		const language = current?.file.language?.trim().toLowerCase(), text = input.value;
+		if (!language || !text.trim()) return;
+		highlightTimer = window.setTimeout(() => {
+			fetch("/api/code/highlight", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					language,
+					source: text
+				})
+			}).then((res) => res.ok ? res.json() : null).then((body) => {
+				if (input.value !== text || !Array.isArray(body?.tokens)) return;
+				tokens = body.tokens;
+				tokenText = text;
+				paintLines(text.split("\n"));
+			}).catch(() => {});
+		}, 250);
+	}
+	/** How the ring's score was reached, shown while it is pointed at or focused: the rules, then this block's counts. */
+	const scoreTip = el("div", "cp-score-tip");
+	scoreTip.hidden = true;
+	scoreTip.setAttribute("role", "tooltip");
+	scoreTip.id = "cp-score-tip";
+	document.body.append(scoreTip);
+	total.tabIndex = 0;
+	total.setAttribute("aria-describedby", scoreTip.id);
+	function explainScore() {
+		if (!score) return;
+		const lines = score.lines, n = lines.length;
+		const exact = lines.filter((l) => l.similarity === 1).length, typed = lines.filter((l) => l.typed != null).length;
+		const seen = lines.filter((l) => l.peeked).length;
+		const row = (label, value) => {
+			const r = el("div", "cp-tip-row");
+			const a = el("span", "");
+			a.textContent = label;
+			const b = el("b", "");
+			b.textContent = value;
+			r.append(a, b);
+			return r;
+		};
+		const p = (text) => Object.assign(el("p", ""), { textContent: text });
+		const head = el("div", "cp-tip-head");
+		head.textContent = `Typed from memory: ${score.total}%`;
+		const rules = el("ul", "cp-tip-rules");
+		for (const t of [
+			"✓ exact line: 100 (spaces and trailing comments don't count)",
+			"close line: by how few edits it is away, up to 95",
+			`right code at the wrong nesting depth: ×${OTHER_DEPTH}`,
+			`✓· line seen in the Code panel before you typed it: ×${PEEK_FACTOR}`,
+			"line not typed yet: 0"
+		]) rules.append(Object.assign(el("li", ""), { textContent: t }));
+		const now = el("div", "cp-tip-now");
+		now.append(row("Lines to type", String(n)), row("Exact", String(exact)), row("Close", String(typed - exact)), row("Not typed yet", String(n - typed)), row("Seen (count half)", String(seen)));
+		const parts = [
+			head,
+			p("The score is the average over the running block's lines (blank and comment lines aside):"),
+			rules,
+			now
+		];
+		if (score.sections.length) {
+			const secs = el("div", "cp-tip-now");
+			for (const x of score.sections) secs.append(row(x.title, `${x.score}%`));
+			parts.push(p("By section:"), secs);
+		}
+		if (seen) parts.push(p("Hide code, then retype a seen line (or Reset) to earn it in full."));
+		scoreTip.replaceChildren(...parts);
+	}
+	function showScoreTip() {
+		explainScore();
+		scoreTip.hidden = false;
+		const at = total.getBoundingClientRect(), tip = scoreTip.getBoundingClientRect();
+		scoreTip.style.left = `${Math.max(8, Math.min(at.right - tip.width, window.innerWidth - 8 - tip.width))}px`;
+		scoreTip.style.top = `${at.bottom + 6 + tip.height > window.innerHeight ? at.top - 6 - tip.height : at.bottom + 6}px`;
+	}
+	const hideScoreTip = () => {
+		scoreTip.hidden = true;
+	};
+	total.addEventListener("pointerenter", showScoreTip);
+	total.addEventListener("pointerleave", hideScoreTip);
+	total.addEventListener("focus", showScoreTip);
+	total.addEventListener("blur", hideScoreTip);
+	total.addEventListener("click", (e) => e.stopPropagation());
+	/** Lines just typed exactly flash; a section or the block reaching 100% is congratulated, once. */
+	function cheerFor(before, after) {
+		after.typed.forEach((t, j) => {
+			if (t.exact && !before.typed[j]?.exact) gutter.children[j]?.classList.add("cp-flash");
+		});
+		const was = new Map(before.sections.map((s) => [s.id, s.score]));
+		const say = (id, text, big = false) => {
+			if (attempt.celebrated.includes(id)) return;
+			attempt.celebrated.push(id);
+			persist();
+			cheer.textContent = text;
+			cheer.classList.toggle("big", big);
+			cheer.hidden = false;
+			cheer.classList.remove("pop", "fading");
+			cheer.offsetWidth;
+			cheer.classList.add("pop");
+			clearTimeout(cheerTimer);
+			if (!big) cheerTimer = window.setTimeout(() => {
+				cheer.classList.add("fading");
+				cheerTimer = window.setTimeout(() => {
+					cheer.hidden = true;
+				}, 600);
+			}, 4e3);
+		};
+		for (const s of after.sections) if (s.score === 100 && was.get(s.id) !== 100) say(`section:${s.id}`, `🎉 “${s.title}” — 100%, from memory!`);
+		if (after.total === 100 && before.total !== 100) say("block", "🏆 The whole block, typed from memory: 100%! Brilliant.", true);
+		else if (after.typedAll && !before.typedAll && after.total < 100) say("typed", "✓ Every line typed. Hide the code and type it from memory for full marks.");
+	}
+	/** Lines on screen in the Code panel count as seen, except those already typed exactly before. */
+	function watchPeeks() {
+		if (!current || !root.classList.contains("open")) return;
+		hide.setAttribute("aria-pressed", String(current.hidden()));
+		const seen = new Set(attempt.peeked), done = new Set(score?.lines.filter((l) => l.similarity === 1).map((l) => l.line));
+		const reference = block.split("\n");
+		let added = false;
+		for (const line of current.shown()) {
+			if (line < current.from || line > current.to || seen.has(line) || done.has(line) || isNeutral(reference[line - current.from] ?? "")) continue;
+			attempt.peeked.push(line);
+			added = true;
+		}
+		if (added) {
+			persist();
+			render(false);
+		}
+	}
+	window.setInterval(watchPeeks, 500);
+	/** Only a change to the code itself calls for a review: not Enter's new indented line, nor a move of the cursor. */
+	const reviewKey = (text) => `${hintsOn()}\n${text.split("\n").map((l) => l.trimEnd()).join("\n").trimEnd()}`;
+	async function review(force) {
+		if (!coachOn() || !current || !score || !input.value.trim() && !hintsOn()) return;
+		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
+		const focus = focusSection(score, cursor, sections);
+		const signature = reviewKey(input.value);
+		if (!force && signature === lastReviewed) return;
+		lastReviewed = signature;
+		const id = focus?.id ?? "*", seq = ++reviewSeq, sent = input.value;
+		const asked = newComments(attempt.reviewed ?? "", sent);
+		if (asked.length) message("user", Object.assign(el("div", ""), { textContent: asked.join("\n") }));
+		const waiting = message("assistant", el("div", "chat-loading"));
+		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
+		reportSummary.textContent = "reviewing…";
+		try {
+			const out = await invokeExpert("code_practice", {
+				language: current.file.language ?? "",
+				expected: block,
+				first_line: current.from,
+				section: focus ? {
+					title: focus.title,
+					hint: focus.hint ?? "",
+					start: focus.from,
+					end: focus.to
+				} : null,
+				typed: input.value,
+				...attempt.reviewed != null ? {
+					previous: attempt.reviewed,
+					open_notes: (attempt.issues ?? []).slice(0, 40)
+				} : {},
+				match: score.typed.map((t, j) => ({
+					typed: j + 1,
+					score: Math.round(100 * t.similarity),
+					...t.reference != null ? { reference: t.reference } : {}
+				})).filter((_, j) => !score.typed[j].neutral).slice(0, 400),
+				attempts: attempt.reviews[id] ?? 0,
+				hints: hintsOn()
+			});
+			waiting.remove();
+			if (seq !== reviewSeq) return;
+			attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
+			const before = new Set((attempt.issues ?? []).map((n) => n.note));
+			if (out.result) {
+				attempt.reviewed = sent;
+				attempt.issues = out.result.line_notes;
+			}
+			persist();
+			showReview(out, focus, before);
+		} catch (e) {
+			waiting.remove();
+			if (seq !== reviewSeq) return;
+			showReview({ reason: e.message }, focus);
+		}
+	}
+	/** Comments in `typed` that weren't in `before`: what the learner just said to the coach. */
+	function newComments(before, typed) {
+		const said = (text) => text.split("\n").map((l) => /(?:^|\s)(?:#|\/\/)\s?(.*)$/.exec(l)?.[1]?.trim() ?? "").filter(Boolean);
+		const old = new Set(said(before));
+		return said(typed).filter((c) => !old.has(c));
+	}
+	/** One message in the review thread, styled as the chat's; the thread keeps the last MAX_MESSAGES. */
+	function message(role, body) {
+		const msg = el("div", `chat-msg ${role} cp-msg`);
+		const avatar = el("div", "msg-avatar");
+		const icon = role === "user" ? window.algebenchIcons?.user : window.algebenchIcons?.ai;
+		if (icon) avatar.innerHTML = icon;
+		else avatar.textContent = role === "user" ? "👤" : "🤖";
+		body.classList.add("msg-body");
+		msg.append(avatar, body);
+		report.querySelector(".cp-report-empty")?.remove();
+		report.append(msg);
+		while (report.children.length > MAX_MESSAGES) report.firstElementChild.remove();
+		report.scrollTop = report.scrollHeight;
+		return msg;
+	}
+	function showReview(out, focus, carried = /* @__PURE__ */ new Set()) {
+		const r = out.result;
+		if (!r) {
+			spoken = "";
+			reportSummary.textContent = "";
+			notes = /* @__PURE__ */ new Map();
+			message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: out.reason ?? "No review." }));
+			render(false);
+			return;
+		}
+		notes = new Map(r.line_notes.map((n) => [n.line, n.note]));
+		const body = el("div", "");
+		const top = el("div", "cp-report-head");
+		const badge = el("span", `cp-verdict cp-verdict-${r.verdict}`);
+		badge.textContent = `${VERDICTS[r.verdict] ?? r.verdict} · ${r.score}%`;
+		badge.title = "The coach's judgement of this section's logic. The ring above scores typing it from memory.";
+		reportSummary.textContent = badge.textContent;
+		reportGrip.classList.toggle("fresh", report.hidden === true);
+		const about = el("span", "cp-report-about");
+		about.textContent = focus ? focus.title : "The whole block";
+		top.append(badge, about);
+		body.append(top);
+		const md = (cls, text) => {
+			const part = el("div", cls);
+			part.innerHTML = renderMarkdown$1(text, {
+				untrusted: true,
+				glossary: false
+			});
+			body.append(part);
+		};
+		if (r.reply) md("cp-report-reply", r.reply);
+		if (r.commentary) md("cp-report-text", r.commentary);
+		if (r.reminder) md("cp-report-reminder", r.reminder);
+		const fresh = r.line_notes.filter((n) => !carried.has(n.note));
+		if (fresh.length) {
+			const list = el("ul", "cp-report-notes");
+			for (const n of fresh) {
+				const li = el("li", "");
+				li.textContent = `Line ${n.line}: ${n.note}`;
+				list.append(li);
+			}
+			body.append(list);
+		}
+		if (r.direction) md("cp-report-next", `**Next:** ${r.direction}`);
+		message("assistant", body);
+		render(false);
+		speakReview([
+			r.reply,
+			r.commentary,
+			r.reminder,
+			...fresh.map((n) => `Line ${n.line}: ${n.note}`),
+			r.direction && `Next: ${r.direction}`
+		].filter(Boolean).join(" ").replace(/[`*]/g, ""));
+	}
+	function insert(text) {
+		if (!document.execCommand("insertText", false, text)) {
+			input.setRangeText(text, input.selectionStart, input.selectionEnd, "end");
+			input.dispatchEvent(new Event("input"));
+		}
+	}
+	input.addEventListener("keydown", (e) => {
+		if (e.key === "Tab") {
+			e.preventDefault();
+			if (!e.shiftKey) {
+				insert(INDENT);
+				return;
+			}
+			const start = input.value.lastIndexOf("\n", input.selectionStart - 1) + 1;
+			const lead = /^ {1,4}/.exec(input.value.slice(start))?.[0].length ?? 0;
+			if (lead) {
+				input.setSelectionRange(start, start + lead);
+				insert("");
+			}
+		} else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+			e.preventDefault();
+			review(true);
+		} else if (e.key === "Enter" && !e.isComposing) {
+			e.preventDefault();
+			const start = input.value.lastIndexOf("\n", input.selectionStart - 1) + 1;
+			const line = input.value.slice(start, input.selectionStart);
+			insert("\n" + (/^\s*/.exec(line)[0] + (/[:{[(]\s*$/.test(line) ? INDENT : "")));
+			if (coachOn()) review(false);
+		}
+	});
+	input.addEventListener("input", () => {
+		attempt.text = input.value;
+		persist();
+		render();
+		highlight();
+		clearTimeout(idle);
+		if (coachOn()) idle = window.setTimeout(() => void review(false), IDLE_REVIEW_MS);
+	});
+	input.addEventListener("keyup", (e) => {
+		if (e.key.startsWith("Arrow")) render(false);
+	});
+	input.addEventListener("click", () => render(false));
+	const paintOpen = () => {
+		const open = root.classList.contains("open");
+		head.classList.toggle("side-section-folded", !open);
+		paintFold(toggle, !open, open ? "Fold Type along down to its header" : "Show Type along");
+	};
+	const flipOpen = () => {
+		root.classList.toggle("open");
+		paintOpen();
+		savePrefs();
+		if (root.classList.contains("open") && hintsOn() && !input.value.trim()) review(false);
+	};
+	toggle.addEventListener("click", (e) => {
+		e.stopPropagation();
+		flipOpen();
+	});
+	head.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) flipOpen();
+	});
+	paintOpen();
+	hide.addEventListener("click", () => {
+		if (!current) return;
+		current.setHidden(!current.hidden());
+		hide.setAttribute("aria-pressed", String(current.hidden()));
+	});
+	coach.addEventListener("click", () => {
+		coach.setAttribute("aria-pressed", String(!coachOn()));
+		savePrefs();
+		paintCoach();
+		if (coachOn()) {
+			const seq = reviewSeq;
+			welcome();
+			review(false);
+			if (reviewSeq === seq && greeting) {
+				const hello = greeting;
+				greeting = "";
+				speakReview(hello);
+			}
+		} else if (speakOn() && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+	});
+	check.addEventListener("click", () => void review(true));
+	hint.addEventListener("click", () => {
+		hint.setAttribute("aria-pressed", String(!hintsOn()));
+		savePrefs();
+		if (hintsOn()) review(false);
+	});
+	speak.addEventListener("click", () => {
+		paintSpeak(!speakOn());
+		savePrefs();
+		if (speakOn()) {
+			if (spoken) speakReview(spoken);
+		} else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+	});
+	reset.addEventListener("click", () => {
+		attempt = {
+			text: "",
+			peeked: [],
+			reviews: {},
+			celebrated: []
+		};
+		input.value = "";
+		notes = /* @__PURE__ */ new Map();
+		clearReport();
+		cheer.hidden = true;
+		lastReviewed = "";
+		persist();
+		render(false);
+		input.focus();
+		if (hintsOn()) review(false);
+	});
+	window.addEventListener("algebench:codeview", retarget);
+	window.addEventListener("algebench:navchange", retarget);
+	retarget();
 }
 //#endregion
 //#region src/view-state.ts
@@ -24052,6 +29295,7 @@ function setupJsonViewer() {
 			buildLineOffsets(text);
 			_pathLineMap = pathLineMap;
 			if (treePanel) _renderJsonTree(treePanel, json);
+			resetTreeSearch();
 		} else {
 			content.textContent = "// No scene loaded";
 			buildLineOffsets("// No scene loaded");
@@ -24156,9 +29400,17 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 		} else if (summaryBar) summaryBar.classList.add("hidden");
 		overlay.classList.remove("hidden");
 	});
-	closeBtn.addEventListener("click", () => overlay.classList.add("hidden"));
+	const closeViewer = () => {
+		overlay.classList.add("hidden");
+		content.textContent = "";
+		buildLineOffsets("");
+		_pathLineMap = {};
+		treePanel?.replaceChildren();
+		resetTreeSearch();
+	};
+	closeBtn.addEventListener("click", closeViewer);
 	overlay.addEventListener("click", (e) => {
-		if (e.target === overlay) overlay.classList.add("hidden");
+		if (e.target === overlay) closeViewer();
 	});
 	copyBtn.addEventListener("click", () => {
 		navigator.clipboard.writeText(content.textContent).then(() => {
@@ -24169,7 +29421,7 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 		});
 	});
 	document.addEventListener("keydown", (e) => {
-		if (e.key === "Escape" && !overlay.classList.contains("hidden")) overlay.classList.add("hidden");
+		if (e.key === "Escape" && !overlay.classList.contains("hidden")) closeViewer();
 	});
 	const keyInput = document.getElementById("json-search-key");
 	const valInput = document.getElementById("json-search-val");
@@ -24180,33 +29432,54 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 	if (!keyInput || !valInput) return;
 	let _matchItems = [];
 	let _matchIndex = -1;
+	let _searchIndex = null;
+	let _marked = [];
+	function resetTreeSearch() {
+		_searchIndex = null;
+		_marked = [];
+		_matchItems = [];
+		_matchIndex = -1;
+		treePanel?.classList.remove("jt-searching");
+	}
+	function searchIndex() {
+		if (!_searchIndex) _searchIndex = [...treePanel.querySelectorAll(".jt-item")].map((el) => {
+			const row = el.querySelector(":scope > .jt-row");
+			return {
+				el,
+				key: row?.querySelector(".jt-key")?.textContent?.toLowerCase() ?? "",
+				val: row?.querySelector(".jt-val")?.textContent?.toLowerCase() ?? ""
+			};
+		});
+		return _searchIndex;
+	}
 	function applyTreeSearch() {
 		if (!treePanel) return;
 		const focused = document.activeElement;
 		const keyTerm = keyInput.value.trim().toLowerCase();
 		const valTerm = valInput.value.trim().toLowerCase();
-		const items = [...treePanel.querySelectorAll(".jt-item")];
-		items.forEach((el) => el.classList.remove("jt-dim", "jt-match"));
+		for (const el of _marked) el.classList.remove("jt-match", "jt-path");
+		_marked = [];
 		[keyInput, valInput].forEach((inp) => inp.classList.remove("jsb-has-results", "jsb-no-results"));
 		if (keyCount) keyCount.textContent = "";
 		if (valCount) valCount.textContent = "";
 		_matchItems = [];
 		_matchIndex = -1;
-		if (!keyTerm && !valTerm) return;
-		items.forEach((el) => {
-			const keyEl = el.querySelector(":scope > .jt-row .jt-key");
-			const valEl = el.querySelector(":scope > .jt-row .jt-val");
-			const keyText = keyEl ? keyEl.textContent.toLowerCase() : "";
-			const valText = valEl ? valEl.textContent.toLowerCase() : "";
-			const keyOk = !keyTerm || keyText.includes(keyTerm);
-			const valOk = !valTerm || valText.includes(valTerm);
-			if (keyOk && valOk) el.classList.add("jt-match");
-			else el.classList.add("jt-dim");
-		});
-		treePanel.querySelectorAll(".jt-item.jt-match").forEach((matchEl) => {
+		if (!keyTerm && !valTerm) {
+			treePanel.classList.remove("jt-searching");
+			return;
+		}
+		treePanel.classList.add("jt-searching");
+		_matchItems = searchIndex().filter((item) => (!keyTerm || item.key.includes(keyTerm)) && (!valTerm || item.val.includes(valTerm))).map((item) => item.el);
+		for (const matchEl of _matchItems) {
+			matchEl.classList.add("jt-match");
+			_marked.push(matchEl);
 			let ancestor = matchEl.parentElement;
 			while (ancestor && ancestor !== treePanel) {
-				if (ancestor.classList.contains("jt-item")) ancestor.classList.remove("jt-dim");
+				if (ancestor.classList.contains("jt-item")) {
+					if (ancestor.classList.contains("jt-path") || ancestor.classList.contains("jt-match")) break;
+					ancestor.classList.add("jt-path");
+					_marked.push(ancestor);
+				}
 				if (ancestor.classList.contains("jt-children") && ancestor.classList.contains("jt-collapsed")) {
 					ancestor.classList.remove("jt-collapsed");
 					const row = ancestor.previousElementSibling;
@@ -24217,8 +29490,7 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 				}
 				ancestor = ancestor.parentElement;
 			}
-		});
-		_matchItems = [...treePanel.querySelectorAll(".jt-item.jt-match")];
+		}
 		const n = _matchItems.length;
 		if (keyTerm) {
 			keyInput.classList.toggle("jsb-has-results", n > 0);
@@ -24248,12 +29520,31 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 		if (valCount) valCount.textContent = label;
 		if (keyCount) keyCount.textContent = label;
 	}
-	keyInput.addEventListener("input", applyTreeSearch);
-	valInput.addEventListener("input", applyTreeSearch);
+	let searchTimer = null;
+	const scheduleSearch = () => {
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			searchTimer = null;
+			applyTreeSearch();
+		}, 150);
+	};
+	const flushSearch = () => {
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+			searchTimer = null;
+			applyTreeSearch();
+		}
+	};
+	keyInput.addEventListener("input", scheduleSearch);
+	valInput.addEventListener("input", scheduleSearch);
 	[keyInput, valInput].forEach((inp) => {
 		inp.addEventListener("keydown", (e) => {
 			if (e.key === "Enter") {
 				e.preventDefault();
+				if (searchTimer) {
+					flushSearch();
+					return;
+				}
 				navigateMatch(e.shiftKey ? -1 : 1);
 			}
 		});
@@ -25209,6 +30500,60 @@ function setupShareButton() {
 	});
 }
 //#endregion
+//#region src/speech-text.ts
+/**
+* Text for speech. Chat replies are markdown with LaTeX; read aloud verbatim, the voice pronounces the markup
+* ("asterisk asterisk", "dollar"), so speech gets the words only. The model also sometimes writes a tool call
+* into its reply as a processing-instruction tag (`<?set_preset_prompts prompts=[...] ?>`) instead of calling
+* the tool: the chat bubble hides it as HTML, but speech would read it, so it is removed (and can be honoured).
+*/
+var INLINE_TOOL = /<\?\s*([a-z_]+)\b([\s\S]*?)\?>|<call:([a-z_]+)\b([\s\S]*?)\/?>/gi;
+/** Pull `<?name key=json ...?>` tags out of a reply. Arguments that are not valid JSON are dropped. */
+function extractInlineToolCalls(text) {
+	const calls = [];
+	return {
+		text: text.replace(INLINE_TOOL, (_, piName, piBody, callName, callBody) => {
+			const name = piName ?? callName, body = piBody ?? callBody ?? "";
+			const args = {};
+			for (const m of body.matchAll(/([a-z_]+)\s*=\s*(\[[\s\S]*?\](?=\s*(?:[a-z_]+\s*=|$))|"(?:[^"\\]|\\.)*"|[^\s]+)/gi)) try {
+				args[m[1]] = JSON.parse(m[2]);
+			} catch {}
+			calls.push({
+				name,
+				args
+			});
+			return "";
+		}).replace(/[ \t]+\n/g, "\n").trim(),
+		calls
+	};
+}
+/** Plain words for a markdown + LaTeX reply. */
+function speechText(text) {
+	return extractInlineToolCalls(text).text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\)/g, (_, a, b, c) => speechMath(a ?? b ?? c)).replace(/`([^`]+)`/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/(^|\W)[*_]([^*_\n]+)[*_](?=\W|$)/g, "$1$2").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*>\s?/gm, "").replace(/[📍🤖👤]/gu, "").replace(/([^.!?:;,\s])[ \t]*\n+\s*/g, "$1. ").replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim();
+}
+var MATH_WORDS = {
+	le: "≤",
+	leq: "≤",
+	ge: "≥",
+	geq: "≥",
+	ne: "≠",
+	neq: "≠",
+	times: "×",
+	cdot: "·",
+	to: "→",
+	rightarrow: "→",
+	approx: "≈",
+	infty: "infinity",
+	pm: "±",
+	ldots: "…",
+	dots: "…",
+	cdots: "…"
+};
+/** Inline math as readable symbols: `74 > 73`, `\text{total} = 18` → `total = 18`. */
+function speechMath(tex) {
+	return tex.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^}]*)\}/g, "$1").replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1 over $2").replace(/\\([a-zA-Z]+)/g, (_, w) => MATH_WORDS[w] ?? w).replace(/[{}]/g, "").trim();
+}
+//#endregion
 //#region src/lesson-placement.ts
 /** Thrown when an op cannot be applied. Callers discard and clear history. */
 var PlacementError = class extends Error {};
@@ -25460,9 +30805,12 @@ function singleFlightSender(isBusy, sendTurn) {
 	let active = null;
 	function sendNext() {
 		const next = queued.shift();
-		if (next) send(next.text, { noTools: next.noTools }).then(next.resolve, () => next.resolve(false));
+		if (next) send(next.text, {
+			noTools: next.noTools,
+			display: next.display
+		}).then(next.resolve, () => next.resolve(false));
 	}
-	function send(text, { silent = false, noTools = false } = {}) {
+	function send(text, { silent = false, noTools = false, display } = {}) {
 		if (isBusy()) {
 			if (silent) return Promise.resolve(false);
 			if (active && active.text === text && active.noTools === noTools) return active.done;
@@ -25475,6 +30823,7 @@ function singleFlightSender(isBusy, sendTurn) {
 			queued.push({
 				text,
 				noTools,
+				display,
 				done,
 				resolve
 			});
@@ -25491,7 +30840,8 @@ function singleFlightSender(isBusy, sendTurn) {
 		};
 		turn.done = sendTurn(text, {
 			silent,
-			noTools
+			noTools,
+			...display !== void 0 ? { display } : {}
 		}).then(() => {
 			settle();
 			return true;
@@ -25901,33 +31251,165 @@ if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) =>
 	const surface = _classifyFocusTarget(e.target);
 	if (surface) _lastFocusedSurface = surface;
 }, true);
+/**
+* Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
+* shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
+*/
+/** takesOver: the prompt starts a conversation the reader drives (it waits for their answers), so playback stops
+*  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
+var COMMON_PROMPTS = [
+	{
+		label: "Describe the problem",
+		prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."
+	},
+	{
+		label: "1-sentence gist",
+		prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."
+	},
+	{
+		label: "Gist as bullets",
+		prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."
+	},
+	{
+		label: "Rephrase from first principles",
+		prompt: "Take what you just explained and say it again from first principles, in the plainest words you can: what is really going on underneath, stripped of jargon, notation and caveats. Rough and loose is fine as long as the core idea lands. Don't add anything new; keep it short."
+	},
+	{
+		label: "Walk me through this view",
+		prompt: "Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate."
+	},
+	{
+		label: "Walk me through key points",
+		prompt: "Walk me through the key points of this scene, one at a time, as a short list."
+	},
+	{
+		label: "Guide me",
+		takesOver: true,
+		prompt: "Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on."
+	},
+	{
+		label: "Ask me about the current step",
+		takesOver: true,
+		prompt: "Ask me one question about the current step to check my understanding. Wait for my answer before explaining."
+	},
+	{
+		label: "Ask me about the current scene",
+		takesOver: true,
+		prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."
+	},
+	{
+		label: "Quiz mode",
+		takesOver: true,
+		prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."
+	},
+	{
+		label: "Interview mode",
+		display: "🎤 Interview mode",
+		takesOver: true,
+		prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."
+	},
+	{
+		label: "Surprise me!",
+		prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."
+	}
+];
+/** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
+function usePrompt(text, e, display, takesOver = false) {
+	if (e.metaKey || e.ctrlKey) {
+		const input = document.getElementById("chat-input");
+		if (input) {
+			input.value = text;
+			input.focus();
+			input.dispatchEvent(new Event("input"));
+		}
+	} else {
+		if (takesOver) {
+			window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+			window.dispatchEvent(new CustomEvent("algebench:narrationoff"));
+		}
+		sendChatMessage$1(text, display ? { display } : void 0);
+	}
+}
 function setPresetPrompts$1(prompts) {
 	_presetPrompts = prompts || [];
 	const container = document.getElementById("preset-prompts");
 	if (!container) return;
 	container.innerHTML = "";
-	if (!_presetPrompts.length) {
-		container.classList.add("hidden");
-		return;
-	}
 	container.classList.remove("hidden");
 	for (const text of _presetPrompts) {
 		const btn = document.createElement("button");
 		btn.className = "preset-prompt-btn";
 		btn.textContent = text;
 		btn.title = text + "\n\nClick to send · ⌘/Ctrl-click to edit";
-		btn.addEventListener("click", (e) => {
-			if (e.metaKey || e.ctrlKey) {
-				const input = document.getElementById("chat-input");
-				if (input) {
-					input.value = text;
-					input.focus();
-					input.dispatchEvent(new Event("input"));
-				}
-			} else sendChatMessage$1(text);
-		});
+		btn.addEventListener("click", (e) => usePrompt(text, e));
 		container.appendChild(btn);
 	}
+	container.appendChild(morePromptsMenu());
+}
+/** A small chip that opens a menu of COMMON_PROMPTS above it. */
+function morePromptsMenu() {
+	const wrap = document.createElement("div");
+	wrap.className = "preset-more";
+	const toggle = document.createElement("button");
+	toggle.type = "button";
+	toggle.className = "preset-prompt-btn preset-more-btn";
+	toggle.textContent = "⋯";
+	toggle.title = "More prompts";
+	toggle.setAttribute("aria-label", "More prompts");
+	toggle.setAttribute("aria-haspopup", "menu");
+	toggle.setAttribute("aria-expanded", "false");
+	const menu = document.createElement("div");
+	menu.className = "preset-more-menu";
+	menu.setAttribute("role", "menu");
+	menu.hidden = true;
+	const close = () => {
+		menu.hidden = true;
+		toggle.setAttribute("aria-expanded", "false");
+		document.removeEventListener("pointerdown", outside, true);
+		document.removeEventListener("keydown", escape, true);
+	};
+	const outside = (e) => {
+		if (!wrap.contains(e.target)) close();
+	};
+	const escape = (e) => {
+		if (e.key === "Escape") {
+			close();
+			toggle.focus();
+		}
+	};
+	for (const { label, prompt, display, takesOver } of COMMON_PROMPTS) {
+		const item = document.createElement("button");
+		item.type = "button";
+		item.className = "preset-more-item";
+		item.setAttribute("role", "menuitem");
+		item.textContent = label;
+		item.title = prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
+		item.addEventListener("click", (e) => {
+			close();
+			usePrompt(prompt, e, display, takesOver);
+		});
+		menu.appendChild(item);
+	}
+	toggle.addEventListener("click", () => {
+		if (!menu.hidden) {
+			close();
+			return;
+		}
+		menu.hidden = false;
+		menu.style.left = "0px";
+		menu.style.maxWidth = "";
+		const bounds = (wrap.closest(".tab-content") ?? document.documentElement).getBoundingClientRect();
+		const anchor = wrap.getBoundingClientRect().left;
+		const { offset, maxWidth } = menuPlacement(anchor, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
+		menu.style.maxWidth = `${maxWidth}px`;
+		menu.style.left = `${offset}px`;
+		toggle.setAttribute("aria-expanded", "true");
+		document.addEventListener("pointerdown", outside, true);
+		document.addEventListener("keydown", escape, true);
+		menu.querySelector("button")?.focus();
+	});
+	wrap.append(toggle, menu);
+	return wrap;
 }
 /** Until this time (ms), the Chat-tab welcome is skipped — see suppressChatWelcome. */
 var _welcomeSuppressedUntil = 0;
@@ -25942,6 +31424,15 @@ function suppressChatWelcome(ms = 5e3) {
 }
 function shouldSkipWelcome() {
 	return chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
+}
+/** How long the Chat tab waits before greeting, so anything the learner starts first wins. */
+var WELCOME_DELAY_MS = 1e3;
+/** Nothing else has started since the Chat tab opened: still on it, the box empty, no speech, no narration. */
+function welcomeStillWanted() {
+	if (!document.getElementById("tab-chat")?.classList.contains("active")) return false;
+	if (document.getElementById("chat-input")?.value.trim()) return false;
+	if (window.algebenchTTSActive?.()) return false;
+	return !window.algebenchNarrating?.();
 }
 function buildChatContext() {
 	const ctx = {};
@@ -26033,6 +31524,8 @@ function buildChatContext() {
 		const value = evalExpr(compileExpr(promptExpr), 0);
 		if (value !== null && value !== void 0 && value !== "") runtime.simulationState = String(value).slice(0, 6e3);
 	} catch {}
+	const screenValues = visibleAnnotationTexts();
+	if (screenValues.length) runtime.screenValues = screenValues;
 	const captionEl = document.getElementById("step-caption");
 	if (captionEl && !captionEl.classList.contains("hidden")) runtime.currentCaption = (captionEl.dataset.markdown || captionEl.textContent).trim();
 	const activeTab = document.querySelector(".tab-content.active");
@@ -26081,8 +31574,8 @@ function switchPanelTab$1(tabName) {
 		const input = document.getElementById("chat-input");
 		if (input) setTimeout(() => input.focus(), 50);
 		if (chatAvailable$1 && !welcomeInFlight && !shouldSkipWelcome()) setTimeout(() => {
-			if (!welcomeInFlight && !shouldSkipWelcome()) sendWelcomeMessage();
-		}, 800);
+			if (!welcomeInFlight && !shouldSkipWelcome() && welcomeStillWanted()) sendWelcomeMessage();
+		}, WELCOME_DELAY_MS);
 	}
 }
 function setupChat() {
@@ -26393,9 +31886,12 @@ function showBuiltScene(lesson, index, step) {
 * is queued and a silent one is turned away with `false`.
 */
 var sendChatMessage$1 = singleFlightSender(() => chatSending, _sendTurn);
-async function _sendTurn(text, { silent, noTools }) {
+async function _sendTurn(text, { silent, noTools, display }) {
 	setChatSending(true);
-	if (!silent) addChatMessage("user", text);
+	if (!silent) {
+		addChatMessage("user", display ?? text);
+		if (display) chatHistory[chatHistory.length - 1].text = text;
+	}
 	const loadingEl = addChatLoading();
 	const context = buildChatContext();
 	console.log("%c🤖 Chat send: %c" + text.substring(0, 60), "color: #8888ff; font-weight: bold", "color: #ccc");
@@ -26459,7 +31955,9 @@ async function _sendTurn(text, { silent, noTools }) {
 			messagesEl.scrollTop = messagesEl.scrollHeight;
 		}
 		let assistantMsg = null;
-		if (data.response) assistantMsg = addChatMessage("assistant", data.response);
+		const reply = extractInlineToolCalls(data.response ?? "");
+		for (const call of reply.calls) if (call.name === "set_preset_prompts" && Array.isArray(call.args.prompts)) setPresetPrompts$1(call.args.prompts.filter((p) => typeof p === "string"));
+		if (reply.text) assistantMsg = addChatMessage("assistant", reply.text);
 		const builderTurns = [];
 		if (data.toolCalls && data.toolCalls.length > 0) {
 			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
@@ -26579,7 +32077,7 @@ async function _sendTurn(text, { silent, noTools }) {
 		}
 		chatHistory.push({
 			role: "assistant",
-			text: data.response
+			text: reply.text
 		});
 		for (const said of builderTurns) chatHistory.push({
 			role: "assistant",
@@ -27031,7 +32529,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 };
 async function speakText(text, { explicit = false } = {}) {
 	if (selectedTtsMode === "silent" && !explicit) return;
-	const clean = stripGlossaryMarkers(text).replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
+	const clean = speechText(stripGlossaryMarkers(text));
 	if (!clean) return;
 	const myId = ++ttsRequestId;
 	ttsPausedByUser = false;
@@ -30020,6 +35518,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupProofPanel();
 	setupSceneDock();
 	setupCodePanel();
+	setupCodePractice();
 	setupStepPlayer();
 	setupCaptionDrag();
 	setupSceneDescDrag();

@@ -6,7 +6,6 @@
       "path": "brackets/balanced.py",
       "language": "python",
       "source": "def balanced(text):\n    stack = []\n    for i, ch in enumerate(text):\n        if ch in \"([\":\n            stack.append(i)\n        else:\n            if not stack or not matches(text[stack[-1]], ch):\n                return False\n            stack.pop()\n    return not stack",
-      "activeLineExpr": "dataTable('trace', snapshot, 'pc')",
       "locations": [
         {
           "line": 2,
@@ -507,6 +506,10 @@
       "stepPlayback": {
         "slider": "snapshot",
         "intervalMs": 1000
+      },
+      "codeRef": {
+        "file": "balanced",
+        "lineExpr": "dataTable('trace', snapshot, 'pc')"
       }
     },
     {

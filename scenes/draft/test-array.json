@@ -1,0 +1,385 @@
+{
+  "title": "Array and dict · test scenes",
+  "scenes": [
+    {
+      "id": "dict",
+      "title": "Dictionary (string, tuple and number keys)",
+      "description": "Dictionary",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Dictionary\n\nA `dict` element is an array whose cells are the entries in insertion order, with each **key** shown where an array shows its index: a string (`'apple'`), a number (`7`) or a tuple (`(0, 1)`), printed as Python would. Entries are rounded rectangles. Markers, links and highlights work as on an array, by entry position.\n\nWith `arrayLayout: 'vertical'` the entries stack down a column, first on top, each key to the left of its cell (`stock`).\n\nMove **n** to add or remove entries.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "counts": [
+          {"k": "apple", "v": 3},
+          {"k": "kiwi", "v": 1},
+          {"k": "fig", "v": 2},
+          {"k": "plum", "v": 5},
+          {"k": "pear", "v": 4}
+        ],
+        "cells": [
+          {
+            "k": [0, 0],
+            "v": "land"
+          },
+          {
+            "k": [0, 1],
+            "v": "water"
+          },
+          {
+            "k": [1, 2],
+            "v": "land"
+          },
+          {
+            "k": [3, 1],
+            "v": "land"
+          }
+        ],
+        "seen": [
+          {"k": 2, "v": 0},
+          {"k": 7, "v": 1},
+          {"k": 11, "v": 2},
+          {"k": 15, "v": 3}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "n", "label": "n entries", "min": 0, "max": 5, "step": 1, "default": 3}
+          ],
+          "add": [
+            {
+              "id": "counts",
+              "type": "dict",
+              "label": "counts",
+              "origin": [-4.0, 2.6, 0],
+              "lengthExpr": "n",
+              "keyExpr": "dataTable('counts', idx, 'k')",
+              "valueExpr": "dataTable('counts', idx, 'v')",
+              "highlightExpr": "idx == n - 1",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "cells",
+              "type": "dict",
+              "label": "cells",
+              "origin": [-4.0, 0.2, 0],
+              "cellSize": 1.9,
+              "lengthExpr": "min(n, 4)",
+              "keyExpr": "dataTable('cells', idx, 'k')",
+              "valueExpr": "dataTable('cells', idx, 'v')",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "seen",
+              "type": "dict",
+              "label": "seen",
+              "origin": [-4.0, -2.2, 0],
+              "lengthExpr": "min(n, 4)",
+              "keyExpr": "dataTable('seen', idx, 'k')",
+              "valueExpr": "dataTable('seen', idx, 'v')",
+              "axisLabels": "plane",
+              "markers": [
+                {"type": "step_marker", "indexName": "last", "indexExpr": "min(n, 4) - 1", "color": "#f1cc59"}
+              ]
+            },
+            {
+              "id": "stock",
+              "type": "dict",
+              "label": "stock",
+              "arrayLayout": "vertical",
+              "origin": [5.9, 2.6, 0],
+              "lengthExpr": "n",
+              "keyExpr": "dataTable('counts', idx, 'k')",
+              "valueExpr": "dataTable('counts', idx, 'v')",
+              "highlightExpr": "idx == n - 1",
+              "axisLabels": "plane"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dict-links",
+      "title": "Dictionary links (to, from and between entries)",
+      "description": "Dictionary links",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# Dictionary links\n\nA dict entry is a cell, so everything that links cells links entries. **keyIndex(keys, key)** gives the position of a key (or −1); `dataTable('stock', 'key')` reads the table's key column as that list, so a link, marker or label can name *the entry for a key*:\n\n- **basket → stock**: each basket cell links to the stock entry whose key is its fruit: `keyIndex(keys, value)`.\n- **stock → shelves**: each entry links out to the shelf it sits on.\n- **spots → stock**: a dict with tuple keys links to another dict, by the fruit each spot holds.\n- **pick** and **stock[pick]**: rows wired to the entry for the picked key, and a marker on it that names the key.\n\nMove **pick** to choose a fruit.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "stock": [
+          {"key": "apple", "count": 3, "shelf": 0, "shown": "'apple'", "label": "stock['apple'] = 3"},
+          {"key": "kiwi", "count": 1, "shelf": 2, "shown": "'kiwi'", "label": "stock['kiwi'] = 1"},
+          {"key": "fig", "count": 2, "shelf": 2, "shown": "'fig'", "label": "stock['fig'] = 2"},
+          {"key": "plum", "count": 5, "shelf": 1, "shown": "'plum'", "label": "stock['plum'] = 5"}
+        ],
+        "spots": [
+          {
+            "k": [0, 1],
+            "v": "apple"
+          },
+          {
+            "k": [1, 0],
+            "v": "plum"
+          },
+          {
+            "k": [2, 2],
+            "v": "kiwi"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "pick", "label": "pick (fruit)", "min": 0, "max": 3, "step": 1, "default": 1}
+          ],
+          "add": [
+            {
+              "id": "basket",
+              "type": "array",
+              "label": "basket",
+              "labelSide": "left",
+              "itemType": "string",
+              "origin": [-4.4, 3.0, 0],
+              "cellSize": 1.4,
+              "values": ["fig", "apple", "fig", "plum", "kiwi"],
+              "axisLabels": "plane",
+              "highlightExpr": "keyIndex(dataTable('stock', 'key'), value) == pick",
+              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stock', 'key'), value)", "arrow": true, "pinned": true, "color": "#8aa0b8", "highlightExpr": "keyIndex(dataTable('stock', 'key'), value) == pick"}
+            },
+            {
+              "id": "stock",
+              "type": "dict",
+              "label": "stock",
+              "arrayLayout": "vertical",
+              "origin": [4.4, 1.6, 0],
+              "lengthExpr": "4",
+              "keyExpr": "dataTable('stock', idx, 'key')",
+              "valueExpr": "dataTable('stock', idx, 'count')",
+              "axisLabels": "plane",
+              "highlightExpr": "idx == pick",
+              "markers": [
+                {"type": "step_marker", "indexName": "pick", "indexExpr": "pick", "color": "#f1cc59"}
+              ],
+              "connectTo": {"object": "shelves", "indexExpr": "dataTable('stock', idx, 'shelf')", "arrow": true, "pinned": true, "color": "#c792ea", "highlightExpr": "idx == pick"}
+            },
+            {
+              "id": "shelves",
+              "type": "array",
+              "label": "shelves",
+              "labelSide": "left",
+              "itemType": "string",
+              "origin": [-4.4, -3.4, 0],
+              "values": ["top", "middle", "bottom"],
+              "cellSize": 1.6,
+              "axisLabels": "plane",
+              "highlightExpr": "idx == dataTable('stock', pick, 'shelf')"
+            },
+            {
+              "id": "spots",
+              "type": "dict",
+              "label": "spots",
+              "origin": [-4.4, 0.2, 0],
+              "cellSize": 1.7,
+              "lengthExpr": "3",
+              "keyExpr": "dataTable('spots', idx, 'k')",
+              "valueExpr": "dataTable('spots', idx, 'v')",
+              "axisLabels": "plane",
+              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stock', 'key'), value)", "arrow": true, "pinned": true, "color": "#74d0c2", "highlightExpr": "keyIndex(dataTable('stock', 'key'), value) == pick"}
+            },
+            {
+              "id": "pick-var",
+              "type": "expression_label",
+              "position": [1.2, -1.6, 0],
+              "textExpr": "concat('pick = ', dataTable('stock', pick, 'shown'))",
+              "connectTo": {"object": "stock", "indexExpr": "pick"}
+            },
+            {
+              "id": "pick-label",
+              "type": "expression_label",
+              "position": [1.2, -1.6, 0],
+              "textExpr": "dataTable('stock', pick, 'label')",
+              "connectTo": {"object": "stock", "indexExpr": "keyIndex(dataTable('stock', 'key'), dataTable('stock', pick, 'key'))"}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "list-of-dicts",
+      "title": "List of dicts (references to whole objects)",
+      "description": "List of dicts",
+      "range": [
+        [-7, 7],
+        [-5, 5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [0, 0, 13],
+        "target": [0, 0, 0]
+      },
+      "markdown": "# List of dicts\n\n`people = [{...}, {...}, {...}]` holds **references**: each cell names the dict it points to, and the dict is an object of its own. The list's links use **objectExpr** to pick the target per cell (here the cell's value, the dict's id) and leave out indexExpr, so each arrow points at the **whole dict**.\n\n- **alias**: `people[2] = people[0]`. Two cells now refer to the same dict: two arrows into it, and nothing points at Cy any more.\n- **append**: `people.append({'name': 'Di', 'age': 22})` creates a new dict and a fourth reference to it. Objects cannot be created at run time, so `p3` is declared up front and shown only once it exists (**visibleExpr**); a hidden object draws no links.\n- **who**: lights one reference.\n- **ages**: a link *with* indexExpr points into a dict instead: `keyIndex(dataTable(value, 'key'), 'age')` finds the entry for `'age'` in the dict the cell names.",
+      "elements": [
+        {
+          "id": "grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [-7, 7],
+            [-5, 5]
+          ],
+          "divisions": [14, 10],
+          "opacity": 0.08
+        }
+      ],
+      "data": {
+        "p0": [
+          {"key": "name", "value": "Ana"},
+          {"key": "age", "value": 31}
+        ],
+        "p1": [
+          {"key": "name", "value": "Bo"},
+          {"key": "age", "value": 27}
+        ],
+        "p2": [
+          {"key": "name", "value": "Cy"},
+          {"key": "age", "value": 40}
+        ],
+        "p3": [
+          {"key": "name", "value": "Di"},
+          {"key": "age", "value": 22}
+        ]
+      },
+      "steps": [
+        {
+          "id": "try",
+          "title": "Try it",
+          "description": "Move the sliders.",
+          "sliders": [
+            {"id": "alias", "label": "alias people[2] = people[0]", "min": 0, "max": 1, "step": 1, "default": 0},
+            {"id": "append", "label": "append a new dict", "min": 0, "max": 1, "step": 1, "default": 0},
+            {"id": "who", "label": "who", "min": 0, "max": 3, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "people",
+              "type": "array",
+              "label": "people",
+              "labelSide": "left",
+              "itemType": "string",
+              "origin": [-2.6, 3.2, 0],
+              "cellSize": 1.4,
+              "lengthExpr": "3 + append",
+              "valueExpr": "idx == 2 and alias == 1 ? 'p0' : concat('p', idx)",
+              "axisLabels": "plane",
+              "highlightExpr": "idx == who",
+              "connectTo": {"objectExpr": "value", "arrow": true, "pinned": true, "color": "#8aa0b8", "highlightExpr": "idx == who"}
+            },
+            {
+              "id": "p0",
+              "type": "dict",
+              "label": "p0",
+              "arrayLayout": "vertical",
+              "origin": [-4.4, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p0', idx, 'key')",
+              "valueExpr": "dataTable('p0', idx, 'value')",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "p1",
+              "type": "dict",
+              "label": "p1",
+              "arrayLayout": "vertical",
+              "origin": [-1.2000000000000002, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p1', idx, 'key')",
+              "valueExpr": "dataTable('p1', idx, 'value')",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "p2",
+              "type": "dict",
+              "label": "p2",
+              "arrayLayout": "vertical",
+              "origin": [2.0, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p2', idx, 'key')",
+              "valueExpr": "dataTable('p2', idx, 'value')",
+              "axisLabels": "plane"
+            },
+            {
+              "id": "p3",
+              "type": "dict",
+              "label": "p3",
+              "arrayLayout": "vertical",
+              "origin": [5.200000000000001, 0.4, 0],
+              "lengthExpr": "2",
+              "keyExpr": "dataTable('p3', idx, 'key')",
+              "valueExpr": "dataTable('p3', idx, 'value')",
+              "axisLabels": "plane",
+              "visibleExpr": "append == 1"
+            },
+            {
+              "id": "ages",
+              "type": "array",
+              "label": "ages",
+              "labelSide": "left",
+              "itemType": "string",
+              "origin": [-2.6, -3.4, 0],
+              "cellSize": 1.4,
+              "values": ["p0", "p1", "p2"],
+              "axisLabels": "plane",
+              "connectTo": {"objectExpr": "value", "indexExpr": "keyIndex(dataTable(value, 'key'), 'age')", "arrow": true, "pinned": true, "color": "#c792ea"}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

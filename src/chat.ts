@@ -15,7 +15,10 @@
 
 export {};
 
+import { menuPlacement } from '/menu-placement.js';
 import { playbackPosition } from '/step-player.js';
+import { speechText, extractInlineToolCalls } from '/speech-text.js';
+import { visibleAnnotationTexts } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
@@ -137,35 +140,120 @@ if (typeof window !== 'undefined') {
     }, true);
 }
 
+/**
+ * Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
+ * shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
+ */
+/** takesOver: the prompt starts a conversation the reader drives (it waits for their answers), so playback stops
+ *  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
+const COMMON_PROMPTS: {label: string; prompt: string; display?: string; takesOver?: boolean}[] = [
+    // Understand the question before any answer: the solution, the pattern and the code stay out of it.
+    {label: 'Describe the problem', prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."},
+    {label: "1-sentence gist", prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."},
+    {label: 'Gist as bullets', prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."},
+    // Pedagogy over precision: a rough restatement that lands beats an exact one that doesn't.
+    {label: 'Rephrase from first principles', prompt: "Take what you just explained and say it again from first principles, in the plainest words you can: what is really going on underneath, stripped of jargon, notation and caveats. Rough and loose is fine as long as the core idea lands. Don't add anything new; keep it short."},
+    {label: 'Walk me through this view', prompt: 'Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate.'},
+    {label: 'Walk me through key points', prompt: 'Walk me through the key points of this scene, one at a time, as a short list.'},
+    {label: 'Guide me', takesOver: true, prompt: 'Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on.'},
+    {label: 'Ask me about the current step', takesOver: true, prompt: 'Ask me one question about the current step to check my understanding. Wait for my answer before explaining.'},
+    {label: 'Ask me about the current scene', takesOver: true, prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."},
+    // Quiz mode lasts beyond one reply: the request stays in the history, so the tutor keeps asking until told otherwise.
+    {label: 'Quiz mode', takesOver: true, prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."},
+    // Interview mode lasts like quiz mode, and steers by where the reader is: the question at the start, guiding
+    // questions mid-run. Its options arrive as preset prompt chips, refreshed each turn.
+    {label: 'Interview mode', display: '🎤 Interview mode', takesOver: true, prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."},
+    {label: 'Surprise me!', prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."},
+];
+
+/** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
+function usePrompt(text: string, e: MouseEvent, display?: string, takesOver = false): void {
+    if (e.metaKey || e.ctrlKey) {
+        const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
+        if (input) {
+            input.value = text;
+            input.focus();
+            input.dispatchEvent(new Event('input'));
+        }
+    } else {
+        if (takesOver) {
+            window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+            window.dispatchEvent(new CustomEvent('algebench:narrationoff'));
+        }
+        sendChatMessage(text, display ? { display } : undefined);
+    }
+}
+
 function setPresetPrompts(prompts: string[] | null | undefined): void {
     _presetPrompts = prompts || [];
     const container = document.getElementById('preset-prompts');
     if (!container) return;
     container.innerHTML = '';
-    if (!_presetPrompts.length) {
-        container.classList.add('hidden');
-        return;
-    }
+    // The row always shows: the More prompts chip is useful even when the scene sets no presets.
     container.classList.remove('hidden');
     for (const text of _presetPrompts) {
         const btn = document.createElement('button');
         btn.className = 'preset-prompt-btn';
         btn.textContent = text;
         btn.title = text + '\n\nClick to send · ⌘/Ctrl-click to edit';
-        btn.addEventListener('click', (e) => {
-            if (e.metaKey || e.ctrlKey) {
-                const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
-                if (input) {
-                    input.value = text;
-                    input.focus();
-                    input.dispatchEvent(new Event('input'));
-                }
-            } else {
-                sendChatMessage(text);
-            }
-        });
+        btn.addEventListener('click', (e) => usePrompt(text, e));
         container.appendChild(btn);
     }
+    container.appendChild(morePromptsMenu());
+}
+
+/** A small chip that opens a menu of COMMON_PROMPTS above it. */
+function morePromptsMenu(): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'preset-more';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'preset-prompt-btn preset-more-btn';
+    toggle.textContent = '⋯';
+    toggle.title = 'More prompts';
+    toggle.setAttribute('aria-label', 'More prompts');
+    toggle.setAttribute('aria-haspopup', 'menu');
+    toggle.setAttribute('aria-expanded', 'false');
+    const menu = document.createElement('div');
+    menu.className = 'preset-more-menu';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    const close = () => {
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('pointerdown', outside, true);
+        document.removeEventListener('keydown', escape, true);
+    };
+    const outside = (e: Event) => { if (!wrap.contains(e.target as Node)) close(); };
+    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') { close(); toggle.focus(); } };
+    for (const {label, prompt, display, takesOver} of COMMON_PROMPTS) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'preset-more-item';
+        item.setAttribute('role', 'menuitem');
+        item.textContent = label;
+        item.title = prompt + '\n\nClick to send · ⌘/Ctrl-click to edit';
+        item.addEventListener('click', (e) => { close(); usePrompt(prompt, e, display, takesOver); });
+        menu.appendChild(item);
+    }
+    toggle.addEventListener('click', () => {
+        if (!menu.hidden) { close(); return; }
+        menu.hidden = false;
+        // Keep the menu inside the panel that clips it (the chat tab hides overflow), not just the window:
+        // the chip often ends a row near either edge, and the panel can be narrower than the menu.
+        menu.style.left = '0px'; menu.style.maxWidth = '';
+        const bounds = (wrap.closest('.tab-content') ?? document.documentElement).getBoundingClientRect();
+        const anchor = wrap.getBoundingClientRect().left;
+        const {offset, maxWidth} = menuPlacement(anchor, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
+        menu.style.maxWidth = `${maxWidth}px`;
+        menu.style.left = `${offset}px`;
+        toggle.setAttribute('aria-expanded', 'true');
+        document.addEventListener('pointerdown', outside, true);
+        document.addEventListener('keydown', escape, true);
+        menu.querySelector<HTMLButtonElement>('button')?.focus();
+    });
+    wrap.append(toggle, menu);
+    return wrap;
 }
 
 /** Until this time (ms), the Chat-tab welcome is skipped — see suppressChatWelcome. */
@@ -183,6 +271,17 @@ export function suppressChatWelcome(ms = 5000): void {
 
 function shouldSkipWelcome(): boolean {
     return chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
+}
+
+/** How long the Chat tab waits before greeting, so anything the learner starts first wins. */
+const WELCOME_DELAY_MS = 1000;
+/** Nothing else has started since the Chat tab opened: still on it, the box empty, no speech, no narration. */
+function welcomeStillWanted(): boolean {
+    if (!document.getElementById('tab-chat')?.classList.contains('active')) return false;
+    const input = document.getElementById('chat-input') as HTMLInputElement | HTMLTextAreaElement | null;
+    if (input?.value.trim()) return false;
+    if (window.algebenchTTSActive?.()) return false;
+    return !window.algebenchNarrating?.();
 }
 
 // ----- Context Snapshot -----
@@ -317,6 +416,10 @@ function buildChatContext(): AlgeBenchChatContext {
         } catch { /* an unavailable binding omits the state rather than failing the message */ }
     }
 
+    // The values on screen, as shown: the tutor reads these rather than re-deriving them from the data tables.
+    const screenValues = visibleAnnotationTexts();
+    if (screenValues.length) runtime.screenValues = screenValues;
+
     // Caption text — use raw data-markdown source to avoid KaTeX MathML artifacts
     const captionEl = document.getElementById('step-caption');
     if (captionEl && !captionEl.classList.contains('hidden')) {
@@ -414,13 +517,11 @@ function switchPanelTab(tabName: string): void {
         const input = document.getElementById('chat-input');
         if (input) setTimeout(() => input.focus(), 50);
         if (chatAvailable && !welcomeInFlight && !shouldSkipWelcome()) {
-            // Delay so any concurrently-triggered user message can arrive first.
-            // Re-check at execution time — if the user already sent something, skip.
+            // Wait a moment, then greet only if nothing else has started: a message, a reply, speech, narration,
+            // typing in the box, or leaving the Chat tab (welcomeStillWanted).
             setTimeout(() => {
-                if (!welcomeInFlight && !shouldSkipWelcome()) {
-                    sendWelcomeMessage();
-                }
-            }, 800);
+                if (!welcomeInFlight && !shouldSkipWelcome() && welcomeStillWanted()) sendWelcomeMessage();
+            }, WELCOME_DELAY_MS);
         }
     }
 }
@@ -833,9 +934,13 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
  */
 const sendChatMessage = singleFlightSender(() => chatSending, _sendTurn);
 
-async function _sendTurn(text: string, { silent, noTools }: { silent: boolean; noTools: boolean }): Promise<void> {
+async function _sendTurn(text: string, { silent, noTools, display }: { silent: boolean; noTools: boolean; display?: string }): Promise<void> {
     setChatSending(true);
-    if (!silent) addChatMessage('user', text);
+    if (!silent) {
+        addChatMessage('user', display ?? text);
+        // The bubble shows `display`; the history the tutor reads keeps the full request.
+        if (display) chatHistory[chatHistory.length - 1]!.text = text;
+    }
 
     const loadingEl = addChatLoading();
     const context = buildChatContext();
@@ -932,7 +1037,14 @@ async function _sendTurn(text: string, { silent, noTools }: { silent: boolean; n
         }
 
         let assistantMsg: ChatMessageElement | null = null;
-        if (data.response) assistantMsg = addChatMessage('assistant', data.response);
+        // The model sometimes writes set_preset_prompts into its text instead of calling it: honour the call
+        // and keep the tag out of the reply everywhere — the bubble hides it, speech would read it, and left
+        // in the history the model would copy it into later replies.
+        const reply = extractInlineToolCalls(data.response ?? '');
+        for (const call of reply.calls) {
+            if (call.name === 'set_preset_prompts' && Array.isArray(call.args.prompts)) setPresetPrompts(call.args.prompts.filter((p): p is string => typeof p === 'string'));
+        }
+        if (reply.text) assistantMsg = addChatMessage('assistant', reply.text);
 
         // What a client-executed builder SAID, to be filed after the agent's own
         // reply so the thread reads in the order the user saw it.
@@ -1085,7 +1197,7 @@ async function _sendTurn(text: string, { silent, noTools }: { silent: boolean; n
             }
         }
 
-        chatHistory.push({ role: 'assistant', text: data.response });
+        chatHistory.push({ role: 'assistant', text: reply.text });
         for (const said of builderTurns) chatHistory.push({ role: 'assistant', text: said });
 
         while (chatHistory.length > CHAT_HISTORY_MAX) {
@@ -1623,12 +1735,8 @@ async function speakText(text: string, { explicit = false }: { explicit?: boolea
 
     // Every spoken path lands here, so glossary markers are spoken as their
     // plain text whichever caller forgot to strip them.
-    const clean = stripGlossaryMarkers(text)
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/[📍🤖👤]/gu, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+    // Words only: markdown, LaTeX delimiters and stray tool tags would be pronounced (see speech-text.ts).
+    const clean = speechText(stripGlossaryMarkers(text));
 
     if (!clean) return;
 

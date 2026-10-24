@@ -6,6 +6,7 @@
 import { state } from '/state.js';
 import { createBoundTableReader } from '/data-table.js';
 import { arrayValues, arrayResult, arrayCount, arrayAt } from '/array-operations.js';
+import { keyIndex } from '/objects/dict-keys.js';
 
 /**
  * A scope handed to a compiled expression: slider values, scene functions,
@@ -105,6 +106,8 @@ const _MATHJS_EXTENSIONS = {
     arrayResult: arrayResult,
     arrayCount: arrayCount,
     arrayAt: arrayAt,
+    // keyIndex(keys, key) — a dict entry's position from its key ('a', 3, or a tuple [1, 2]); -1 when absent.
+    keyIndex: keyIndex,
     toFixed: (val: unknown, decimals: unknown): string => Number(val).toFixed(Number(decimals)),
     concat: (...args: unknown[]): string => args.map((a) => String(a)).join(''),
     // bar(value, width=20) — Unicode block progress bar, e.g. bar(0.4) → "████████░░░░░░░░░░░░"
@@ -112,8 +115,10 @@ const _MATHJS_EXTENSIONS = {
         const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
         return '\u2588'.repeat(n) + '\u2591'.repeat(Number(w) - n);
     },
-    // dataTable(table) returns table rows; dataTable(table, rowIndex, column) looks up a value from the scene's "data" tables.
-    // Example: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass
+    // dataTable(table) returns table rows; dataTable(table, column) one column as a list; dataTable(table, rowIndex,
+    // column) one value from the scene's "data" tables.
+    // Examples: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass;
+    //           keyIndex(dataTable('stock', 'key'), value) → the stock entry whose key is value.
     dataTable: (table: unknown, rowIndex?: unknown, column?: unknown): unknown =>
         boundTableReader(exprState.sceneData ?? {}, state.sceneTableBindings, table, rowIndex, column, expression => {
             if(!tableExpressions.has(expression)) tableExpressions.set(expression, compileExpr(expression));
@@ -161,6 +166,33 @@ _mathjs.import({
 // \[\s*['"`] catches bracket-notation property access (e.g. obj['constructor']).
 export const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b|\[\s*['"`]|===|!==|\|\||&&|\$\{/;
 
+/**
+ * The source with each quoted string's contents emptied ('…' and "…", backslash escapes honoured), so the
+ * JS-only test reads the code and not the text: `concat('indeg[', v, '] = return')` is math.js, where the
+ * label text alone would match `[\s*'` and `return`. The quotes stay, so bracket access with a string
+ * (`obj['constructor']` → `obj['']`) still matches. A backtick anywhere, or an unclosed quote, leaves the
+ * source as it is: neither is math.js, and what such a source treats as a string is not settled.
+ */
+export function _blankStrings(src: string): string {
+    let out = '', i = 0;
+    while (i < src.length) {
+        const ch = src[i]!;
+        if (ch === '`') return src;
+        if (ch !== '"' && ch !== "'") { out += ch; i++; continue; }
+        let j = i + 1;
+        while (j < src.length && src[j] !== ch) j += src[j] === '\\' ? 2 : 1;
+        if (j >= src.length) return src;
+        out += ch + ch;
+        i = j + 1;
+    }
+    return out;
+}
+
+/** Whether an expression needs the JS fallback: _JS_ONLY_RE on its code, its string literals' text set aside. */
+export function isJsOnly(src: string): boolean {
+    return _JS_ONLY_RE.test(_blankStrings(src));
+}
+
 // Populated from _MATHJS_EXTENSIONS — do not add helpers here directly.
 const _EXPR_HELPERS: Record<string, unknown> = { ..._MATHJS_EXTENSIONS };
 
@@ -179,7 +211,8 @@ const _MATH_SCOPE: ExprScope = Object.fromEntries(
     ]),
 );
 
-function _normalizeSingleQuotes(str: string): string {
+/** Single-quoted math.js strings keep their contents literally (LaTeX backslashes included). Exported for tests. */
+export function _normalizeSingleQuotes(str: string): string {
     return str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match: string, content: string) =>
         JSON.stringify(content.replace(/\\'/g, "'"))
     );
@@ -454,7 +487,7 @@ export function resolveVirtualAnimTime(rawT: number): number {
 export function explainCompileDegrade(exprStr: string): string | null {
     if (exprState._sceneJsTrustState === 'trusted') return null;
     const src = _normalizeSingleQuotes(exprStr);
-    if (_JS_ONLY_RE.test(src)) {
+    if (isJsOnly(src)) {
         return 'uses JavaScript-only syntax, which an untrusted scene compiles to 0';
     }
     try {
@@ -469,7 +502,7 @@ export function compileExpr(exprStr: string): CompiledExpr {
     // Normalise single-quoted strings to double-quoted so math.js can parse them
     // without falling through to the JS fallback (which requires scene trust).
     exprStr = _normalizeSingleQuotes(exprStr);
-    if (_JS_ONLY_RE.test(exprStr)) {
+    if (isJsOnly(exprStr)) {
         if (exprState._sceneJsTrustState === 'trusted') {
             const fn: ExprFallbackFn = Function('scope', 'with (scope) { return (' + exprStr + '); }') as ExprFallbackFn;
             fn._isFallback = true;
@@ -519,7 +552,7 @@ export function evalExpr(
 
 export function compileSurfaceExpr(exprStr: string): CompiledExpr {
     exprStr = _normalizeSingleQuotes(exprStr);
-    if (_JS_ONLY_RE.test(exprStr)) {
+    if (isJsOnly(exprStr)) {
         if (exprState._sceneJsTrustState === 'trusted') {
             const fn: ExprFallbackFn = Function('scope', 'with (scope) { return (' + exprStr + '); }') as ExprFallbackFn;
             fn._isFallback = true;

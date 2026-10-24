@@ -570,7 +570,8 @@ html, body {
 .jsb-clear:hover { color: rgba(220, 100, 100, 0.85); }
 
 /* Tree key-search filter states */
-.jt-item.jt-dim > .jt-row { opacity: 0.18; }
+/* While searching, every row dims except matches and the ancestors that lead to them (json-browser.ts). */
+.jt-searching .jt-item:not(.jt-match):not(.jt-path) > .jt-row { opacity: 0.18; }
 .jt-item.jt-match > .jt-row { background: rgba(80, 200, 120, 0.14); }
 .jt-item.jt-match > .jt-row .jt-key { color: rgba(120, 240, 160, 0.95); }
 
@@ -2159,7 +2160,8 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-top: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--text-color) 7%, transparent);
 }
-#slider-dock-host:not(:has(#slider-overlay:not(.hidden))) { display: none; }
+/* Empty when no row is visible, e.g. a scene whose only slider drives the step player, which hides that row. */
+#slider-dock-host:not(:has(#slider-overlay:not(.hidden) .slider-row:not([hidden]))) { display: none; }
 #slider-overlay.docked {
     position: static;
     left: auto !important;
@@ -2999,6 +3001,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
     max-width: 340px;
 }
 #slider-overlay.hidden { display: none; }
+#slider-overlay:not(:has(.slider-row:not([hidden]))) { display: none; }
 .slider-row {
     display: flex;
     align-items: center;
@@ -3677,6 +3680,23 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-color: color-mix(in srgb, var(--accent-color) 40%, transparent);
     color: var(--text-color);
 }
+/* More prompts: a small chip opening a menu of common prompts above the row. */
+.preset-more { position: relative; display: flex; }
+.preset-more-btn { padding: 4px 11px; font-size: 14px; line-height: 1; letter-spacing: 1px; }
+.preset-more-menu {
+    position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 30;
+    display: flex; flex-direction: column; min-width: 220px; padding: 4px;
+    background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 10px;
+    box-shadow: 0 8px 24px #0006;
+}
+.preset-more-menu[hidden] { display: none; }
+.preset-more-item {
+    text-align: left; padding: 7px 10px; border: 0; border-radius: 6px; background: none;
+    color: var(--text-color); font: 12px var(--font-body); cursor: pointer; white-space: nowrap;
+}
+/* Narrowed to fit a narrow panel (chat.ts sets max-width): items wrap instead of being cut off. */
+.preset-more-menu[style*="max-width"] .preset-more-item { white-space: normal; }
+.preset-more-item:hover, .preset-more-item:focus-visible { background: color-mix(in srgb, var(--accent-color) 14%, transparent); outline: none; }
 /* Chat Input Area */
 #chat-input-area {
     display: flex;
@@ -5332,6 +5352,7 @@ body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important;
 }
 .side-section-head > svg { flex: none; color: var(--accent-color); }
 .side-section-title { flex: 1; min-width: 0; }
+.cp-head .side-section-title, .cp-report-grip .side-section-title, .cp-code-head .side-section-title { flex: none; }
 /* Proof and Chat fold like the docked plan (src/side-sections.ts). */
 .side-section-foldable { cursor: pointer; user-select: none; }
 .side-section-foldable:hover { background: color-mix(in srgb, var(--text-color) 7%, transparent); }
@@ -5599,18 +5620,125 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-file-tree summary { cursor: pointer; padding: 5px 0; font-size: 13px; }
 .code-file-tree button { display: block; text-align: left; width: 100%; padding: 6px 10px; color: var(--text-color); background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
 .code-file-tree button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent-color) 20%, transparent); }
-.code-file-title { padding: 10px; font: 11px monospace; overflow-wrap: anywhere; opacity: .8; }
-.code-source { flex: 1; overflow: auto; min-height: 100px; padding-bottom: 20px; }
+.code-file-title { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; font: 11px monospace; }
+.code-file-path { flex: 1; min-width: 0; overflow-wrap: anywhere; opacity: .8; }
+/* View settings: a gear at the title's right, opening a small menu of checkboxes below it. */
+.code-view-settings { position: relative; flex: none; }
+.code-view-settings-btn { padding: 2px 7px; font-size: 14px; line-height: 1.2; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
+.code-view-settings-btn:hover, .code-view-settings-btn[aria-expanded="true"] { opacity: 1; border-color: var(--border-color); background: var(--panel-bg); }
+.code-view-menu {
+    position: absolute; top: calc(100% + 4px); right: 0; z-index: 30;
+    display: flex; flex-direction: column; min-width: 190px; max-height: 60vh; overflow: auto; padding: 6px;
+    background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 8px 24px #0006;
+    font: 12px var(--font-body);
+}
+.code-view-menu[hidden] { display: none; }
+.code-view-option { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; cursor: pointer; color: var(--text-color); }
+.code-view-option:hover { background: color-mix(in srgb, var(--accent-color) 14%, transparent); }
+.code-view-option:has(input:disabled) { opacity: .45; cursor: default; }
+.code-view-option input { margin: 0; accent-color: var(--accent-color); }
+.code-view-menu .code-view-option:not(:first-child) span { font-family: ui-monospace, monospace; }
+.code-view-heading { margin: 6px 8px 2px; padding-top: 6px; border-top: 1px solid var(--border-color); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .6; }
+/* Structure modes: three small icons in the title bar while Show structure is on. */
+.code-structure-modes { display: flex; gap: 2px; flex: none; padding: 2px; border: 1px solid var(--border-color); border-radius: 7px; }
+.code-structure-modes[hidden] { display: none; }
+.code-structure-modes button { display: grid; place-items: center; padding: 2px 4px; color: var(--text-color); background: transparent; border: 0; border-radius: 5px; cursor: pointer; opacity: .55; }
+.code-structure-modes button:hover { opacity: .9; }
+.code-structure-modes button[aria-pressed="true"] { opacity: 1; background: color-mix(in srgb, var(--accent-color) 22%, transparent); color: var(--accent-color); }
+.code-structure-modes svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.code-structure-modes svg rect { fill: currentColor; stroke: none; }
+/* A section: a titled band over its lines, in its own tone; the tone also marks its lines beside the numbers. */
+.code-section-head {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 8px 10px 3px 40px; padding: 4px 6px 4px 9px;
+    border-left: 3px solid var(--section-tone); border-radius: 0 6px 6px 0; background: color-mix(in srgb, var(--section-tone) 11%, transparent);
+    font: 12px var(--font-body); color: var(--text-color); cursor: pointer;
+}
+.code-section-head:hover, .code-section-head:focus-visible { background: color-mix(in srgb, var(--section-tone) 20%, transparent); outline: none; }
+.code-section-head.executing { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--section-tone) 70%, transparent); background: color-mix(in srgb, var(--section-tone) 22%, transparent); }
+.code-section-title { font-weight: 600; }
+/* In the hidden-code modes a title opens and closes its section's code; the chevron says which. */
+.code-section-chevron { display: none; width: 1ch; color: var(--section-tone); transition: transform .15s; }
+.code-structure-blocks .code-section-chevron, .code-structure-outline .code-section-chevron { display: inline-block; }
+.code-section-head.revealed .code-section-chevron { transform: rotate(90deg); }
+.code-section-meta { font: 10px ui-monospace, monospace; opacity: .55; }
+.code-section-ask { margin-left: auto; padding: 0 6px; font-size: 12px; line-height: 18px; color: var(--section-tone); background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.code-section-ask:hover { border-color: color-mix(in srgb, var(--section-tone) 60%, transparent); background: var(--panel-bg); }
+.code-section-hint { flex-basis: 100%; display: none; font-size: 11px; line-height: 1.4; opacity: .75; white-space: normal; max-width: 46ch; }
+.code-structure-outline .code-section-hint, .code-structure-blocks .code-section-hint { display: block; }
+.code-structure .code-line.code-in-section .code-line-number { box-shadow: inset -3px 0 0 color-mix(in srgb, var(--section-tone) 65%, transparent); }
+/* Sections only: the titles stand alone, a contents of the code; arrows to a hidden line end at its title. */
+/* Outside the structured function (running function only), and in a section the reader opened, the code stays
+   as it is: these rules skip it. */
+.code-structure-outline .code-line:not(.code-outside-structure):not(.code-section-revealed) { display: none; }
+.code-structure-outline .code-section-head { margin-top: 6px; }
+/* Over hidden code: each line a bar where its text runs, so the size and shape of a section show, not its code. */
+.code-structure-blocks .code-line:not(.code-outside-structure):not(.code-section-revealed) code { position: relative; color: transparent; }
+.code-structure-blocks .code-line:not(.code-outside-structure):not(.code-section-revealed) code * { color: transparent !important; background: none !important; box-shadow: none !important; }
+.code-structure-blocks .code-line:not(.code-outside-structure):not(.code-section-revealed) code::after {
+    content: ''; position: absolute; left: calc(var(--indent, 0) * 1ch); width: calc(var(--len, 0) * 1ch); top: 38%; height: 26%;
+    border-radius: 3px; background: color-mix(in srgb, var(--section-tone, var(--text-color)) 40%, transparent); pointer-events: none;
+}
+.code-structure-blocks .code-line:not(.code-in-section):not(.code-outside-structure):not(.code-section-revealed) code::after { background: color-mix(in srgb, var(--text-color) 18%, transparent); }
+.code-structure-blocks .code-line:not(.code-outside-structure):not(.code-section-revealed) .code-inline-values,
+.code-structure-outline .code-line:not(.code-outside-structure):not(.code-section-revealed) .code-inline-values { display: none; }
+/* Inline values: bordered tags right of a line. A long one is cut with an ellipsis; pointing at it shows it in
+   full in .code-inline-float, fixed over the page so the scrolling code view cannot clip it. */
+.code-inline-values { display: flex; gap: 6px; align-items: center; padding: 0 12px 0 10px; }
+.code-inline-value {
+    display: inline-block; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 0 6px; font-size: 11px; line-height: 17px; color: color-mix(in srgb, var(--text-color) 80%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 35%, var(--border-color)); border-radius: 5px;
+    background: color-mix(in srgb, var(--accent-color) 7%, var(--panel-bg));
+}
+/* "Only on the hovered line": the tags keep their room, so pointing at a line does not move anything. */
+.code-inline-on-hover .code-inline-values { visibility: hidden; }
+.code-inline-on-hover .code-line:hover .code-inline-values { visibility: visible; }
+.code-line.execution-line .code-inline-value { color: var(--text-color); border-color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
+.code-inline-float {
+    position: fixed; z-index: 10060; pointer-events: none; transform: translateY(-50%);
+    display: flex; gap: 6px; align-items: center; padding: 3px; border-radius: 7px;
+    background: var(--panel-bg); box-shadow: 0 4px 14px #0006; font: 12px ui-monospace, monospace;
+}
+.code-inline-float[hidden] { display: none; }
+.code-inline-float .code-inline-value { max-width: none; overflow: visible; color: var(--text-color); }
+.code-inline-float-code { white-space: pre; font: 12px/1.9 ui-monospace, monospace; padding: 0 8px 0 1px; color: var(--text-color); }
+.code-inline-float.executing { background: color-mix(in srgb, var(--accent-color) 13%, var(--panel-bg)); }
+.code-inline-float.executing .code-inline-value { border-color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
+.code-source { flex: 1; overflow: auto; min-height: 100px; padding-bottom: 20px; position: relative; }
+/* The gutter left of the line numbers: arrows for a move of the executing line, and for each call still waiting. */
+.code-arrows { position: absolute; left: 0; top: 0; width: 40px; overflow: visible; pointer-events: none; z-index: 1; }
+.code-arrows path { fill: none; stroke-width: 1.6; stroke-linecap: round; }
+.code-arrows .code-arrow-jump { stroke: var(--accent-color); stroke-dasharray: 1; stroke-dashoffset: 1; animation: code-arrow-draw .25s ease-out forwards; transition: opacity .4s; }
+.code-arrows .code-arrow-jump.fading { opacity: 0; }
+.code-arrows .code-arrow-call { stroke: #d36ba6; opacity: .75; }
+.code-arrows #code-arrow-jump path { fill: var(--accent-color); }
+.code-arrows #code-arrow-call path { fill: #d36ba6; }
+.code-arrows .code-arrow-in { stroke: #4fb39a; }
+.code-arrows .code-arrow-out { stroke: #e3b04f; }
+.code-arrows #code-arrow-in path { fill: #4fb39a; }
+.code-arrows #code-arrow-out path { fill: #e3b04f; }
+/* A call and the def it reaches, lit together while either is pointed at. */
+.code-call, .code-fn { text-decoration: underline dotted transparent; text-underline-offset: 3px; }
+.code-call.code-link-lit, .code-fn.code-link-lit { text-decoration-color: #e3b04f; background: color-mix(in srgb, #e3b04f 22%, transparent); border-radius: 3px; }
+@keyframes code-arrow-draw { to { stroke-dashoffset: 0; } }
+.code-line-number { transition: color .4s, opacity .4s; }
+.code-line-number.jump-lit { color: var(--accent-color); opacity: 1; font-weight: 700; }
+.code-line-number.calling { color: #d36ba6; opacity: 1; }
 .code-line { display: flex; min-width: max-content; font: 12px/1.9 ui-monospace, monospace; border-left: 3px solid transparent; }
 .code-line code { white-space: pre; padding-right: 14px; font: inherit; user-select: text; }
-.code-line-number { flex: 0 0 36px; width: 36px; border: 0; background: transparent; color: var(--text-color); opacity: .45; cursor: pointer; font: inherit; user-select: none; }
+.code-line-number { flex: 0 0 64px; width: 64px; padding-left: 36px; border: 0; background: transparent; color: var(--text-color); opacity: .45; cursor: pointer; font: inherit; user-select: none; }
+/* Lines outside the function that is running read paler, so the active code stands out. */
+.code-line.code-inactive code { opacity: .55; transition: opacity .2s; }
+.code-line.code-inactive:hover code { opacity: .85; }
 .code-line.execution-line { border-left-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 13%, transparent); }
 .code-line.selected { outline: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent); outline-offset: -1px; }
 .code-selection-actions { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; padding: 10px; border-top: 1px solid var(--border-color); font-size: 11px; }
 .code-selection-actions[hidden], .code-step-targets[hidden] { display: none; }
 .code-selection-actions .ai-ask-btn { position: static; opacity: 1; visibility: visible; }
-.code-selection-actions button:not(.ai-ask-btn), .code-step-targets button { color: var(--text-color); background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 5px; padding: 5px 8px; cursor: pointer; }
+.code-selection-actions button:not(.ai-ask-btn):not(.preset-more-item), .code-step-targets button { color: var(--text-color); background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 5px; padding: 5px 8px; cursor: pointer; }
 .code-selection-actions button:disabled { opacity: .4; cursor: default; }
+.code-selection-actions .code-prompts { margin-left: auto; }
+.code-selection-actions .code-prompts-btn { padding: 3px 10px; font-size: 15px; line-height: 1; letter-spacing: 1px; }
 .code-step-targets { max-height: 130px; overflow: auto; padding: 8px; }
 .code-step-targets button { display: block; width: 100%; text-align: left; margin-bottom: 5px; }
 .code-mark-gold { background: #c49a3044; }
@@ -5627,12 +5755,41 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-tok-number { color: var(--code-number); }
 .code-tok-comment { color: var(--code-comment); font-style: italic; }
 .code-tok-operator { color: var(--code-operator); }
+/* Variables (code_intel): hover lights every occurrence and the rows naming it; a changed value flashes on the executing line. */
+.code-sym { border-radius: 3px; transition: background-color .6s ease-out, box-shadow .6s ease-out; }
+/* A faint tint, padded by a spread shadow of the same tint so the code text never moves or changes colour. */
+/* Tints come from the theme accent, so they read on light and dark panels alike. */
+.code-sym.code-sym-hover { --sym-tint: color-mix(in srgb, var(--accent-color) 22%, transparent); background: var(--sym-tint); box-shadow: 0 0 0 3px var(--sym-tint); transition: none; }
+.code-sym.code-sym-flash { --sym-flash: color-mix(in srgb, var(--accent-color) 45%, transparent); background: var(--sym-flash); box-shadow: 0 0 0 3px var(--sym-flash), 0 0 10px 4px color-mix(in srgb, var(--accent-color) 30%, transparent); transition: none; }
+/* Marker badges let the 3D view through, except rows naming a code variable, which take hover. */
+.step-marker .annotation-row[data-symbols] { pointer-events: auto; }
+/* The line a hovered row's codeRef points at. */
+.code-line.code-line-ref-hover { background: color-mix(in srgb, var(--accent-color) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color) 45%, transparent); }
+/* An array or stack title naming the hovered variable: the same faint tint, text colour unchanged. */
+.array-title-symbol-hover { --sym-tint: color-mix(in srgb, var(--accent-color) 26%, transparent); background: var(--sym-tint); border-radius: 3px; box-shadow: 0 0 0 3px var(--sym-tint); }
+/* Padded sideways only (margin cancels padding, so nothing moves); the row's own height is enough. */
+.annotation-row.annotation-row-symbol-hover { background: #ffffff30; border-radius: 3px; margin-inline: -4px; padding-inline: 4px; }
 
 #state-player { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 8px; width: min(460px, calc(100% - 200px)); padding: 9px 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--panel-bg); }
 #state-player[hidden], .slider-row[hidden] { display: none; }
 #state-player button { border: 1px solid var(--border-color); background: transparent; color: var(--text-color); border-radius: 5px; min-width: 29px; height: 29px; cursor: pointer; }
 #state-player button:disabled { opacity: .35; cursor: default; }
-#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); }
+/* Player button tips: shown above the button on hover or keyboard focus. */
+#state-player button[data-tip] { position: relative; }
+#state-player button[data-tip]::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    padding: 5px 9px; border-radius: 6px; background: var(--panel-bg); color: var(--text-color);
+    border: 1px solid var(--border-color); box-shadow: 0 4px 14px #0005; font: 12px var(--font-body); white-space: nowrap;
+    pointer-events: none; opacity: 0; transition: opacity .12s .25s; z-index: 40;
+}
+#state-player button[data-tip]:hover::after, #state-player button[data-tip]:focus-visible::after { opacity: 1; }
+#state-player button[data-tip]:disabled::after { display: none; }
+/* The narrate button ends the bar: its tip anchors right so it stays inside the viewport. */
+#state-player .state-player-narrate[data-tip]::after { left: auto; right: 0; transform: none; }
+/* Narrate toggle: lit while the tutor narrates each state. */
+#state-player .state-player-narrate[aria-pressed="true"] { color: var(--accent-color); border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 14%, transparent); }
+#state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); cursor: pointer; }
+#state-player input:disabled { cursor: default; }
 #state-player output { white-space: nowrap; font: 12px ui-monospace, monospace; }
 @media (max-width: 750px) { #state-player { bottom: 58px; width: calc(100% - 50px); } }
 /* Reserve the left corner for the existing lesson-section navigation. */
@@ -5658,7 +5815,13 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker-cursor { display: flex; flex-direction: column; align-items: center; transform: translateY(-38px); }
 .step-marker-badge { display: block; padding: 4px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 13px/1.3 ui-monospace, monospace; white-space: nowrap; box-shadow: 0 2px 8px #0004; }
 .step-marker-pointer { display: block; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--marker-color); margin-top: 3px; }
+/* A badge lifted above a neighbour on another index reaches its own cell through a stem. */
+.step-marker-stem { display: block; width: 2px; height: var(--marker-stem, 0px); margin-top: 3px; margin-bottom: -3px; background: var(--marker-color); opacity: .85; }
 
+/* Graph nodes: a value inside a block or beside a disc, and a small index under each node. */
+.graph-node-value { font: 600 14px/1.2 ui-monospace, monospace; color: #e6edf5; text-shadow: 0 1px 2px #0009; pointer-events: none; white-space: nowrap; }
+.graph-node-value-inside { color: #10161e; text-shadow: none; }
+.graph-node-index { font: 600 11px/1 ui-monospace, monospace; color: #b5c1cf; pointer-events: none; }
 .array-cell-label { font: 600 var(--array-font-size, 14px)/1.25 ui-monospace, monospace; text-shadow: none; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: auto; }
 .array-index-tag {
     font: 600 calc(var(--array-index-font-size, 10px) * var(--label-scale, 1))/1.3 ui-monospace, monospace;
@@ -5672,6 +5835,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
     border-top: 0;
     border-radius: 0 0 5px 5px;
 }
+/* A dict key left of its cell: open on the right, where it meets the cell. */
+.array-index-tag.array-key-left { border-top: 1px solid rgba(157, 189, 227, .45); border-right: 0; border-radius: 5px 0 0 5px; }
 
 /* Annotation content is text-only. Hidden intrinsic copies prevent grouping feedback. */
 .expression-label { pointer-events: none; }
@@ -5683,12 +5848,47 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .expression-label .annotation-mode-toggle { background: #edf4ff12; border-color: #edf4ff55; }
 .annotation-badge { display: block; padding: 5px 10px; border-radius: 7px; background: var(--marker-color); color: #171c22; text-shadow: none; font: 600 calc(13px * var(--label-scale, 1))/1.35 ui-monospace, monospace; white-space: pre; box-shadow: 0 2px 8px #0004; }
 .annotation-row { display: block; }
+/* Label-row KaTeX tooltips: the semantic graph's tooltip chrome at the glossary tooltip's size. */
+.graph-panel-tooltip.label-row-tooltip { font-size: 13px; padding: 6px 10px; max-width: min(520px, calc(100vw - 16px)); }
+.label-row-tooltip .katex-display { margin: 0; }
+/* An unprompted formula beside a recalculated row: the tooltip, with a soft accent edge. */
+.label-change-callout { border-color: color-mix(in srgb, #f1cc59 55%, var(--border-color)); }
+/* A label whose highlightExpr is truthy: the same gold an array uses for a selected cell. */
+.annotation-row.annotation-row-highlight {
+    color: #1b1606; border-radius: 4px; padding-inline: 4px; margin-inline: -4px;
+    /* Lit like a changed array cell: a brighter centre and a soft gold glow. */
+    background: radial-gradient(ellipse at 50% 40%, #ffe9a3 0%, #f1cc59 70%);
+    box-shadow: 0 0 0 1px #ffe28a, 0 0 10px 2px #f1cc59a6, 0 0 22px 4px #f1cc5940;
+    animation: annotation-row-light .45s ease-out;
+}
+/* On a lit (gold) row the shared translucent button chrome disappears; give its buttons a dark plate. */
+.annotation-row-highlight .annotation-ask-btn,
+.annotation-row-highlight .annotation-code-btn {
+    background: rgba(24, 48, 75, .88); color: #f6e7b0; border-color: rgba(27, 22, 6, .55);
+}
+.annotation-row-highlight .annotation-ask-btn:hover,
+.annotation-row-highlight .annotation-code-btn:hover { background: rgba(24, 48, 75, 1); color: #fff6d6; }
+.annotation-row-highlight .expression-wire-toggle { color: #1b1606; }
+@keyframes annotation-row-light { from { box-shadow: 0 0 0 1px #fff3c4, 0 0 18px 6px #f1cc59d9, 0 0 36px 10px #f1cc5966; } }
+@media (prefers-reduced-motion: reduce) { .annotation-row.annotation-row-highlight { animation: none; } }
+/* Ask AI about a label row: the shared sparkle button, shown while hovering the row. */
+.annotation-row .annotation-ask-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
+.annotation-row:hover .annotation-ask-btn, .annotation-ask-btn:focus-visible,
+.annotation-row:hover .annotation-code-btn, .annotation-code-btn:focus-visible { opacity: 1; }
+/* Same round box as the row's Ask-AI button, with the shared code icon at the sparkle's size. */
+.annotation-row .annotation-code-btn { float: right; width: 16px; height: 16px; margin: 1px 0 0 6px; top: 0; pointer-events: auto; }
+.annotation-row .annotation-code-btn svg { width: 11px; height: 11px; pointer-events: none; }
 .expression-wire-toggle { float: right; width: 16px; height: 16px; margin: 1px 0 0 8px; padding: 0; border: 0; background: none; color: #a6d5ec; cursor: pointer; border-radius: 50%; }
 .expression-wire-toggle::after { content: ''; display: block; width: 5px; height: 5px; margin: auto; border: 1px solid currentColor; border-radius: 50%; opacity: .65; }
 .expression-wire-toggle[aria-pressed="true"]::after { background: currentColor; opacity: 1; box-shadow: 0 0 4px #a6d5ec55; }
 .expression-wire-toggle:hover::after { opacity: 1; }
 .expression-wire-toggle:focus-visible { outline: 1px solid #a6d5ec; outline-offset: 2px; }
+/* An array's cell-link toggle floats beside its last linked cell instead of sitting in a label row. */
+.cell-link-toggle { position: absolute; left: 0; top: 0; float: none; margin: 0; z-index: 6; pointer-events: auto; color: #9dbde3; }
 .annotation-measure-wired { padding-right: 34px; }
+/* Room for the row's Ask-AI button, plus the pin button when the label is wired. */
+.expression-label .annotation-measure { padding-right: 48px; }
+.expression-label .annotation-measure.annotation-measure-wired { padding-right: 80px; }
 .annotation-row + .annotation-row { border-top: 1px solid #171c2226; margin-top: 4px; padding-top: 4px; }
 .annotation-measure { position: absolute; visibility: hidden; pointer-events: none; top: 0; left: 0; width: max-content; }
 
@@ -5696,6 +5896,10 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .step-marker, .expression-label { transition: none; }
 /* Owned markers sit above the projected cell edge, independent of camera zoom. */
 .step-marker-cursor.array-marker-cursor { transform: none; }
+/* A marker on the right edge of a cell (a dict column): pointer first, pointing left at the cell. */
+.step-marker-cursor.array-marker-right { flex-direction: row-reverse; }
+.array-marker-right .step-marker-pointer { border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-right: 8px solid var(--marker-color); border-left: 0; margin: 0 3px 0 0; }
+.array-marker-right .step-marker-stem { display: none; }
 .annotation-row-draggable { pointer-events: auto; cursor: grab; touch-action: none; user-select: none; }
 .dragging-expression-label, .dragging-expression-label .annotation-row-draggable { cursor: grabbing; user-select: none; }
 .annotation-titlebar { display: block; pointer-events: auto; cursor: grab; touch-action: none; user-select: none; font-size: .85em; opacity: .8; border-bottom: 1px solid #171c2233; padding-bottom: 4px; margin-bottom: 4px; }
@@ -5724,3 +5928,138 @@ body:has(.push-array) #legend { display: none; }
 .step-code-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 6px; font: 11px ui-monospace, monospace; }
 .step-code-links button { color: var(--accent-color); background: transparent; border: 1px solid currentColor; border-radius: 4px; padding: 2px 5px; font: inherit; cursor: pointer; }
 .step-code-links button:hover, .step-code-links button:focus-visible { background: var(--button-hover-bg, #ffffff18); }
+
+/* ---- Type along (code-practice.ts): typing the running code under the Doc, scored as you go ---- */
+.code-line.code-veiled code { filter: blur(5px); user-select: none; }
+.code-practice { position: relative; flex: 0 0 auto; display: flex; flex-direction: column; max-height: 58%; border-top: 1px solid var(--border-color); background: var(--panel-bg); }
+.code-practice.open { flex: 0 0 50%; min-height: 200px; }
+.code-practice[hidden] { display: none; }
+.cp-resize { position: absolute; left: 0; right: 0; top: -3px; height: 6px; z-index: 5; cursor: row-resize; background: transparent; transition: background .15s; }
+.cp-resize:hover, .cp-resize.dragging { background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
+.code-practice:not(.open) .cp-resize { display: none; }
+.code-practice:not(.open) { flex: 0 0 auto !important; }
+.cp-head { border-top: 0; }
+.code-practice.open .cp-head { border-bottom: 1px solid var(--border-color); }
+.cp-chevron { display: inline-block; transition: transform .15s; }
+.cp-target { color: var(--muted-color); font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-total { --fill: 0deg; flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font: 600 8.5px ui-monospace, monospace; letter-spacing: 0; color: var(--text-color);
+    background: radial-gradient(closest-side, var(--panel-bg) 76%, transparent 78%), conic-gradient(var(--accent-color) var(--fill), color-mix(in srgb, var(--text-color) 14%, transparent) 0); }
+.cp-total.done { background: radial-gradient(closest-side, var(--panel-bg) 76%, transparent 78%), conic-gradient(#e3b04f 360deg, #e3b04f 0); box-shadow: 0 0 12px #e3b04f88; }
+.cp-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.code-practice:not(.open) .cp-tools, .code-practice:not(.open) .cp-body { display: none; }
+.cp-tool { min-height: 30px; padding: 5px 10px; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 10px; color: var(--text-color);
+    font-size: 0.76em; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s, transform .15s; }
+.cp-tool:hover { background: var(--btn-bg); border-color: color-mix(in srgb, var(--accent-color) 30%, transparent); transform: translateY(-1px); }
+.cp-speak { display: inline-grid; place-items: center; padding: 2px 6px; }
+.cp-speak[aria-pressed="true"] { color: var(--accent-color); }
+.cp-tool[aria-pressed="true"] { background: color-mix(in srgb, var(--accent-color) 88%, transparent); border-color: color-mix(in srgb, var(--accent-color) 36%, transparent); color: var(--text-color); }
+.cp-body { display: flex; flex-direction: column; min-height: 0; flex: 1; padding: 10px 14px 10px; gap: 8px; overflow-y: auto; position: relative; }
+.cp-sections { display: flex; flex-wrap: wrap; gap: 4px; }
+.cp-sections[hidden] { display: none; }
+.cp-chip { --fill: 0%; --tone: var(--accent-color); font-size: .72rem; padding: 2px 8px; border-radius: 10px; color: var(--text-color);
+    border: 1px solid color-mix(in srgb, var(--tone) 45%, var(--border-color)); border-left: 3px solid var(--tone);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 30%, transparent) var(--fill), transparent 0); }
+.cp-chip.focus { border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone) inset; }
+.cp-chip.done { background: color-mix(in srgb, var(--tone) 34%, transparent); border-color: var(--tone); }
+/* Typed lines carry their section's bar, as in the Code panel. */
+.cp-line.cp-in-section { box-shadow: inset 3px 0 0 var(--section-tone); }
+.cp-editor { flex: 1 1 80px; min-height: 80px; overflow: auto; display: flex; align-items: flex-start; border: 1px solid var(--border-color); border-radius: 6px;
+    background: color-mix(in srgb, var(--page-bg) 60%, var(--panel-bg)); font: 12px/1.9 ui-monospace, monospace; }
+.cp-editor:focus-within { border-color: var(--accent-color); }
+.cp-gutter { flex: 0 0 auto; position: sticky; left: 0; z-index: 1; background: inherit; padding: 4px 0; min-height: 100%; }
+.cp-mark { display: flex; gap: 4px; height: 1.9em; padding: 0 6px 0 4px; border-left: 3px solid transparent; }
+.cp-n { width: 2.2em; text-align: right; opacity: .45; }
+.cp-status { width: 2.4em; text-align: center; font-weight: 700; }
+.cp-mark.exact { border-left-color: #4fb39a; } .cp-mark.exact .cp-status { color: #4fb39a; }
+.cp-mark.seen { border-left-color: color-mix(in srgb, #4fb39a 50%, transparent); } .cp-mark.seen .cp-status { color: color-mix(in srgb, #4fb39a 60%, var(--muted-color)); }
+.cp-mark.fuzzy { border-left-color: #e3b04f; } .cp-mark.fuzzy .cp-status { color: #e3b04f; font-weight: 600; font-size: .9em; }
+.cp-mark.miss { border-left-color: #e0645c; } .cp-mark.miss .cp-status { color: #e0645c; }
+.cp-mark.noted .cp-n { opacity: 1; color: #d36ba6; text-decoration: underline dotted; }
+.cp-mark.cp-flash { animation: cp-flash .9s ease-out; }
+@keyframes cp-flash { 0% { background: color-mix(in srgb, #4fb39a 55%, transparent); } 100% { background: transparent; } }
+.cp-stack { position: relative; flex: 1; min-width: max-content; padding: 4px 0; }
+.cp-paint, .cp-input { font: inherit; tab-size: 4; white-space: pre; margin: 0; padding: 0 16px 0 8px; letter-spacing: normal; }
+.cp-paint { color: var(--text-color); pointer-events: none; min-height: 3.8em; }
+.cp-line { height: 1.9em; }
+.cp-line.exact { background: color-mix(in srgb, #4fb39a 10%, transparent); }
+.cp-line.miss { background: color-mix(in srgb, #e0645c 10%, transparent); }
+.cp-input { position: absolute; inset: 4px 0; width: 100%; height: calc(100% - 8px); resize: none; border: 0; outline: 0; overflow: hidden; background: transparent;
+    color: transparent; caret-color: var(--text-color); }
+.cp-input::placeholder { color: var(--muted-color); }
+.cp-input::selection { background: color-mix(in srgb, var(--accent-color) 35%, transparent); color: transparent; }
+.cp-cheer { position: sticky; bottom: 0; z-index: 2; box-shadow: var(--shadow-sm); backdrop-filter: blur(6px); transition: opacity .6s; font-size: .85rem; padding: 6px 10px; border-radius: 6px; background: color-mix(in srgb, #4fb39a 18%, transparent); border: 1px solid color-mix(in srgb, #4fb39a 55%, transparent); }
+.cp-cheer.fading { opacity: 0; }
+.cp-cheer.big { font-size: 1rem; font-weight: 600; background: color-mix(in srgb, #e3b04f 22%, transparent); border-color: #e3b04f; }
+.cp-cheer.pop { animation: cp-pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes cp-pop { 0% { transform: scale(.85); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.cp-report { --report-h: 140px; display: flex; flex-direction: column; gap: 10px; margin: -8px -14px -10px; padding: 12px 14px 10px; height: var(--report-h); overflow-y: auto; flex: 0 0 auto; background: var(--panel-bg); }
+.cp-report-empty { color: var(--muted-color); font-style: italic; font-size: 12.5px; padding: 0 6px; }
+/* The review thread reads as the chat; the user's comments are their messages. */
+.cp-msg .msg-avatar { width: 26px; height: 26px; }
+.cp-msg .msg-avatar svg { width: 15px; height: 15px; }
+.cp-msg .msg-body { font-size: 12.5px; line-height: 1.55; }
+.cp-msg.user .msg-body { white-space: pre-wrap; padding: 7px 12px; }
+.cp-msg.assistant .msg-body { padding: 8px 12px; }
+.cp-report-grip, .cp-code-head { margin: 0 -14px; }
+/* The review's header is its resize grip: it says so with the cursor and a grip mark, and lights when pointed at. */
+.cp-report-grip:not(.folded) { cursor: row-resize; }
+.cp-report-grip:not(.folded)::before { content: ''; position: absolute; left: 50%; top: 3px; width: 28px; height: 3px; margin-left: -14px; border-radius: 2px;
+    background: color-mix(in srgb, var(--text-color) 22%, transparent); }
+.cp-report-grip { position: relative; }
+.cp-report-grip:not(.folded):hover::before, .cp-report-grip.dragging::before { background: var(--accent-color); }
+.code-practice.coach-off .cp-report-grip, .code-practice.coach-off .cp-report, .code-practice.coach-off .cp-coach-only { display: none !important; }
+.cp-code-head { margin-top: -2px; }
+.cp-code-summary { flex: 1; text-align: right; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .74rem; color: var(--muted-color); }
+.cp-report-summary { flex: 1; text-align: right; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .74rem; color: var(--muted-color); }
+.cp-report-grip.fresh .cp-report-summary { color: var(--accent-color); font-weight: 600; }
+.cp-report-grip.fresh .cp-report-summary::after { content: ' • new'; }
+.cp-report[hidden] { display: none; }
+#tab-doc.doc-folded #explanation-content, #tab-doc.doc-folded #doc-toolbar { display: none; }
+.doc-head { border-top: 0; }
+#tab-doc.doc-folded .code-practice.open { flex: 1 1 auto !important; max-height: none !important; }
+#tab-doc.doc-folded .cp-resize { display: none; }
+.cp-report-grip.dragging { background: color-mix(in srgb, var(--accent-color) 22%, transparent); cursor: row-resize; }
+.cp-report-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cp-verdict { font-weight: 700; font-size: .78rem; padding: 1px 8px; border-radius: 10px; background: color-mix(in srgb, var(--text-color) 12%, transparent); }
+.cp-verdict-correct { background: color-mix(in srgb, #4fb39a 30%, transparent); }
+.cp-verdict-close { background: color-mix(in srgb, #6ea8e0 30%, transparent); }
+.cp-verdict-partial { background: color-mix(in srgb, #e3b04f 30%, transparent); }
+.cp-verdict-off_track { background: color-mix(in srgb, #e0645c 30%, transparent); }
+.cp-report-about { color: var(--muted-color); font-size: .78rem; }
+.cp-report p { margin: 4px 0; }
+.cp-report-reply { margin: 4px 0 8px; }
+.cp-report-reminder { margin: 6px 0 2px; color: #e3b04f; }
+.cp-report-reminder > :first-child::before { content: '↺ '; }
+.cp-report-reply > :first-child::before { content: '💬 '; }
+.cp-report-reply p { margin: 2px 0; }
+.cp-report-notes { margin: 4px 0 0; padding-left: 18px; color: #d36ba6; }
+
+/* Every pane splitter shows its grip, as the Coach review's header does: a small pill across its middle,
+   always visible, lit while pointed at or dragged. Horizontal splitters get a flat pill, vertical a tall one. */
+#graph-dock-resize-handle, #json-tree-resize-handle { position: relative; }
+.cp-resize::after, #proof-resize-handle::after,
+#panel-resize-handle::after, #scene-dock-resize-handle::after, #graph-dock-resize-handle::after, #json-tree-resize-handle::after {
+    content: ''; position: absolute; left: 50%; top: 50%; border-radius: 2px; pointer-events: none;
+    background: color-mix(in srgb, var(--text-color) 22%, transparent); transition: background .15s;
+}
+.cp-resize::after, #proof-resize-handle::after { width: 28px; height: 3px; margin: -1.5px 0 0 -14px; opacity: 1; }
+#panel-resize-handle::after, #scene-dock-resize-handle::after, #graph-dock-resize-handle::after, #json-tree-resize-handle::after {
+    width: 3px; height: 28px; margin: -14px 0 0 -1.5px;
+}
+.cp-resize:hover::after, .cp-resize.dragging::after, #proof-resize-handle:hover::after, #proof-resize-handle.dragging::after,
+#panel-resize-handle:hover::after, #panel-resize-handle.dragging::after, #scene-dock-resize-handle:hover::after, #scene-dock-resize-handle.dragging::after,
+#graph-dock-resize-handle:hover::after, #graph-dock-resize-handle.dragging::after, #json-tree-resize-handle:hover::after {
+    background: var(--accent-color);
+}
+
+/* The Type along score's explanation (code-practice.ts): the rules, then this block's counts. */
+.cp-total { cursor: help; }
+.cp-score-tip { position: fixed; z-index: 10070; width: 300px; padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; color: var(--text-color);
+    background: var(--panel-bg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm), 0 8px 24px rgba(0,0,0,.35); pointer-events: none; }
+.cp-score-tip[hidden] { display: none; }
+.cp-tip-head { font-weight: 700; margin-bottom: 4px; }
+.cp-score-tip p { margin: 6px 0 3px; color: var(--muted-color); }
+.cp-tip-rules { margin: 0; padding-left: 16px; }
+.cp-tip-now { display: grid; gap: 1px; margin-top: 6px; }
+.cp-tip-row { display: flex; justify-content: space-between; gap: 10px; }
+.cp-tip-row span { color: var(--muted-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

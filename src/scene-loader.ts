@@ -8,7 +8,7 @@ import { PREV_ICON, NEXT_ICON, PLAY_ICON, PAUSE_ICON } from '/icons.js';
 import { renderElement } from '/objects/index.js';
 import { buildSliderOverlay, registerSliders, stopAllSliderLoops, stopSliderLoop,
          removeSliderIds, recompileActiveExprs, unregisterAnimExpr, unregisterAnimUpdater,
-         syncSliderState } from '/sliders.js';
+         syncSliderState, restoreSlider } from '/sliders.js';
 import { buildCameraButtons, animateCamera, resolveEffectiveStepCamera, DEFAULT_CAMERA } from '/camera.js';
 import type { CameraView, StepCamera } from '/camera.js';
 import { dataCameraToWorld, isDefaultScale, isotropicScale } from '/coords.js';
@@ -94,6 +94,8 @@ interface ElementRegistryEntry {
     visibleFn?: CompiledExpr;
     hiddenByExpr?: boolean;
     animState?: { stopped: boolean; hiddenByRemove?: boolean } | null;
+    /** Re-evaluates the element's expressions; a hidden element skips them, so showing it calls this. */
+    rebuild?: (() => void) | null;
     type?: string;
     prompt?: string | null;
     label?: string | null;
@@ -105,6 +107,7 @@ interface InfoOverlayDef {
     content: string;
     position?: string;
     keep?: boolean;
+    visibleExpr?: string;
 }
 
 /** A SubTracker plus the undo bookkeeping a *step* needs for backward nav. */
@@ -360,6 +363,7 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
             sceneState.elementRegistry[el.id] = {
                 tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el),
                 animState: (result as RenderResult | null)?._animState ?? null,
+                rebuild: (result as RenderResult | null)?._animExprEntry?._rebuildFn ?? null,
             };
             watchVisibleExpr(el);
         }
@@ -395,7 +399,7 @@ function applyTrackerInfoOverlays(tracker: StepTracker, step: SceneStep): void {
     const infoDefs = step.info;
     if (!infoDefs || !infoDefs.length) return;
     for (const def of infoDefs) {
-        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false, (def as {title?: string}).title ?? null, def.visibleExpr);
         tracker.infoIds.push(def.id);
     }
 }
@@ -506,6 +510,8 @@ export function showElementById(id: string): void {
     for (const entry of (t.pointNodes || [])) { try { entry.node!.set('visible', true); } catch(e) {} }
     if (t.group) { try { t.group.set('visible', true); } catch(e) {} }
 
+    // A hidden element skipped every state change since it was hidden: catch it up before it fades in.
+    try { reg.rebuild?.(); } catch (e) { console.warn('show: rebuild failed:', id, e); }
     fadeInTracker(t);
 }
 
@@ -654,9 +660,7 @@ function removeStepTracker(tracker: StepTracker): void {
         // (i.e., sliders that existed before this step overrode their defaults).
         if (tracker.prevSliderStates) {
             for (const [id, prev] of Object.entries(tracker.prevSliderStates)) {
-                if (!toRemove.includes(id) && sceneState.sceneSliders[id]) {
-                    Object.assign(sceneState.sceneSliders[id], prev);
-                }
+                if (!toRemove.includes(id)) restoreSlider(id, prev);
             }
         }
         if (toRemove.length > 0) {
@@ -1304,7 +1308,7 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
                 removeStepInfoOverlays();
                 for (const def of landingTracker.infoDefs) {
-                    addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+                    addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false, (def as {title?: string}).title ?? null, def.visibleExpr);
                 }
                 landingTracker.infoIds = landingTracker.infoDefs.map(d => d.id);
             }

@@ -70,3 +70,21 @@ test('each dot pins its own wire, survives regrouping, and toggles back to hover
     assert.equal(first.style.display,'');assert.equal(replacement.children[0]!.style.display,'');
     Object.assign(label.el,{isConnected:false});Object.assign(secondLabel.el,{isConnected:false});updateLabelWire();
 });
+test('a row with several targets draws one wire per reachable target',()=>{
+    const container=new Element();
+    container.getBoundingClientRect=()=>({left:0,top:0,right:400,bottom:300,width:400,height:300});
+    Object.assign(globalThis,{
+        document:{getElementById:()=>container,createElementNS:()=>new Element(),createElement:()=>new Element()},
+        THREE:{Vector3:class {project(){return {x:.5,y:0,z:0};}}}
+    });
+    Object.assign(state,{camera:{},renderer:{domElement:container},labels:[],currentRange:[[-1,1],[-1,1],[-1,1]],currentScale:[1,1,1]});
+    const targets=[{position:[0,0,0]},{position:[1,0,0]}] as NonNullable<Label3D['wireTargets']>;
+    const label={el:new Element(),wireTarget:targets[0],wireTargets:targets,wirePinned:true} as unknown as Label3D;
+    wireRowHover(new Element() as unknown as HTMLElement,label);updateLabelWire();
+    assert.equal(container.children.length,2,'one wire per target');
+    assert.ok(container.children.every(svg=>svg.style.display===''));
+    label.wireTargets=[targets[0]!,{object:'missing'}];updateLabelWire();
+    assert.equal(container.children[0]!.style.display,'');assert.equal(container.children[1]!.style.display,'none','an unreachable target hides only its own wire');
+    Object.assign(label.el,{isConnected:false});updateLabelWire();
+    assert.ok(container.children.every(svg=>svg.isConnected===false),'all of a removed label\'s wires go with it');
+});

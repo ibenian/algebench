@@ -585,6 +585,23 @@ export function setupSliderDrag(e: MouseEvent, overlay: HTMLElement): void {
 
 // ----- Slider registration -----
 
+/** A slider without its live position (value, cells, desired value, animation state): its range. */
+export function sliderRange(s: SceneSlider): SceneSlider {
+    const { value: _v, values: _vs, _desired: _d, _loopPlaying: _p, _loopRaf: _r, _tweening: _t, ...range } = s;
+    return range as SceneSlider;
+}
+
+/** Put a snapshot from registerSliders() back on a live slider, keeping its position inside the restored range. */
+export function restoreSlider(id: string, prev: SceneSlider): void {
+    const s = sliderState.sceneSliders[id];
+    if (!s) return;
+    Object.assign(s, prev);
+    if (!isTensorSlider(s) && Number.isFinite(s.value) && (s.value < s.min || s.value > s.max)) {
+        s.value = Math.min(s.max, Math.max(s.min, s.value));
+        s._desired = s.value;
+    }
+}
+
 export function registerSliders(
     sliderDefs: SliderDef[] | null | undefined,
 ): { ids: string[]; prevStates: Record<string, SceneSlider> } {
@@ -592,13 +609,14 @@ export function registerSliders(
     const ids: string[] = [];
     const prevStates: Record<string, SceneSlider> = {};
     for (const def of sliderDefs) {
-        // Snapshot previous state for undo on backward navigation (only when reset flag is set).
+        // Snapshot previous state for undo on backward navigation. With reset the whole slider comes back;
+        // without it only its range does (bounds, step, label), and the position carries over, clamped.
+        // A step that re-declares a slider with a different range otherwise left that range in force on the
+        // way back: a step whose run is 36 frames long kept the 28-frame slider of the step after it.
         const prev = sliderState.sceneSliders[def.id];
         if (prev) {
             stopSliderLoop(def.id);
-            if (def.reset) {
-                prevStates[def.id] = { ...prev };
-            }
+            prevStates[def.id] = def.reset ? { ...prev } : sliderRange(prev);
             // Re-insert so the panel follows THIS step's declared order. A
             // slider carried over from an earlier step otherwise keeps its old
             // slot in the record and lands above the ones declared before it.

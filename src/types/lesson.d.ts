@@ -116,6 +116,9 @@ export type Element = {
     | 'array'
     | 'expression_label'
     | 'stack'
+    | 'graph'
+    | 'heap'
+    | 'dict'
     | 'system_dag';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
@@ -234,7 +237,11 @@ export type Element = {
    */
   heightExpr?: string;
   /**
-   * ARRAY and TENSOR. On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
+   * ARRAY / STACK (horizontal). Where the array's own label sits. 'top' (default) centres it above the cells; 'left' places it just left of cell 0, right-aligned, so it names the row, stays put as the array grows, and lines up with the labels of rows stacked above or below. With axisLabels 'plane' it is drawn on the array's face.
+   */
+  labelSide?: 'top' | 'left';
+  /**
+   * ARRAY, GRAPH and TENSOR. On a graph, 'plane' paints each node's inside value on the node's face, sized to the node and scaled with the view, so it always fits (screen labels keep a fixed font size and can spill past small nodes). On an array, 'plane' attaches its label, cell text, indices, and empty-state glyph to the array's XY face; the default is 'screen' for compatibility. On a tensor, how 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
    */
   axisLabels?: 'screen' | 'plane';
   /**
@@ -324,6 +331,61 @@ export type Element = {
      * Default 0.18.
      */
     opacity?: number;
+  }[];
+  /**
+   * CHART ONLY. Gantt bars: each set draws [start, end] spans as horizontal bars on lanes (y values), over the chart's x axis. Give literal 'start'/'end' arrays (static), or 'countExpr' plus per-bar 'startExpr'/'endExpr' with 'i' (bar index) and 'n' (bar count) bound, so the bars can follow lesson state. Example: {"label": "merged", "countExpr": "dataTable('trace', frame, 'm')", "startExpr": "arrayAt(dataTable('trace', frame, 'mStarts'), i)", "endExpr": "arrayAt(dataTable('trace', frame, 'mEnds'), i)", "lane": 0}.
+   */
+  intervals?: {
+    id?: string;
+    /**
+     * Legend text for the set, drawn with a bar swatch.
+     */
+    label?: string;
+    color?: Color;
+    /**
+     * Bar opacity. Default 0.85.
+     */
+    opacity?: number;
+    /**
+     * Bar height in lane (y) units. Default 0.6.
+     */
+    thickness?: number;
+    /**
+     * Literal bar starts, one per bar.
+     */
+    start?: number[];
+    /**
+     * Literal bar ends, one per bar.
+     */
+    end?: number[];
+    /**
+     * The lane (y value) of every bar, or one per bar. Default 0.
+     */
+    lane?: number | number[];
+    /**
+     * Expression for the number of bars (0-256). Required when spans come from expressions.
+     */
+    countExpr?: string;
+    /**
+     * Expression for bar i's start, with 'i' and 'n' bound. Wins over 'start'.
+     */
+    startExpr?: string;
+    /**
+     * Expression for bar i's end, with 'i' and 'n' bound. Wins over 'end'.
+     */
+    endExpr?: string;
+    /**
+     * Expression for bar i's lane, with 'i' and 'n' bound. Wins over 'lane'.
+     */
+    laneExpr?: string;
+    /**
+     * Expression, per bar with 'i' and 'n' bound; truthy draws the bar in the highlight gold.
+     */
+    highlightExpr?: string;
+    /**
+     * Expression for text drawn inside bar i (centred, sized to fit; omitted when the bar is too small), with 'i' and 'n' bound. Example: "concat(arrayAt(starts, i), '–', arrayAt(ends, i))".
+     */
+    labelExpr?: string;
   }[];
   /**
    * CHART ONLY. Draw faint grid lines at the ticks. Default true.
@@ -593,7 +655,7 @@ export type Element = {
    */
   data?: Vec3OrExpr[];
   /**
-   * Alias for 'expr' on animated_point. Math.js expression array [x,y,z] for dynamic position.
+   * Alias for 'expr' on animated_point. Math.js expression array [x,y,z] for dynamic position. GRAPH: each node's position, evaluated per node with 'idx' and 'value' bound (on state changes), so the lesson describes the layout, e.g. a path into a loop.
    *
    * @minItems 3
    * @maxItems 3
@@ -832,15 +894,183 @@ export type Element = {
    */
   depthSlider?: string;
   /**
-   * ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion.
+   * ARRAY / STACK. Logical cell type. Mixed preserves primitive types without numeric coercion. 'string' shows a string quoted, as code would print it; 'text' shows it as is, for a cell that displays a value the string describes (a list such as [1, 2]).
    */
-  itemType?: 'number' | 'character' | 'string' | 'boolean' | 'empty' | 'mixed';
+  itemType?: 'number' | 'character' | 'string' | 'text' | 'boolean' | 'empty' | 'mixed';
   /**
-   * ARRAY / STACK. Show small index tags attached to cells. Defaults to true for arrays and false for stacks.
+   * ARRAY / STACK / GRAPH. Show small index tags attached to cells (a graph: to nodes). Defaults to true for arrays and graphs and false for stacks.
    */
   showIndices?: boolean;
   /**
-   * ARRAY ONLY. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap.
+   * GRAPH: how a node looks. 'point': a disc of nodeSize, its value shown outside (below). 'rect': a nodeWidth x nodeHeight block with nodeCornerRadius rounding (half the smaller side makes a full circle), its value inside.
+   */
+  nodeShape?: 'point' | 'rect';
+  /**
+   * GRAPH: diameter of a 'point' node, in data units. HEAP: diameter of a tree node (default 0.9).
+   */
+  nodeSize?: number;
+  /**
+   * GRAPH: width of a 'rect' node, in data units.
+   */
+  nodeWidth?: number;
+  /**
+   * GRAPH: height of a 'rect' node, in data units.
+   */
+  nodeHeight?: number;
+  /**
+   * GRAPH: corner rounding of a 'rect' node; half the smaller side gives a circle.
+   */
+  nodeCornerRadius?: number;
+  /**
+   * GRAPH: actions run, in order, when the learner clicks a node (a drag that orbits the view is not a click); idx and value are the clicked node's. Use it to let the learner select by clicking, e.g. set a slider to the node's index.
+   */
+  onClick?: {
+    /**
+     * setSlider: set `slider` to `valueExpr`. goToStep: go to the current scene's step with id `step` (or `stepExpr`). goToScene: open the lesson's scene with id `scene` (or `sceneExpr`); an empty or unknown id does nothing.
+     */
+    action: 'setSlider' | 'goToStep' | 'goToScene';
+    /**
+     * setSlider: the slider id.
+     */
+    slider?: string;
+    /**
+     * setSlider: the value, with idx and value bound.
+     */
+    valueExpr?: string;
+    /**
+     * goToStep: a step id of the current scene.
+     */
+    step?: string;
+    /**
+     * goToStep: an expression giving the step id, with idx and value bound.
+     */
+    stepExpr?: string;
+    /**
+     * goToScene: a scene id of this lesson.
+     */
+    scene?: string;
+    /**
+     * goToScene: an expression giving the scene id, with idx and value bound.
+     */
+    sceneExpr?: string;
+  }[];
+  /**
+   * GRAPH: lay the nodes out as a tree (or forest) from each node's parent, instead of positionExpr. Re-laid as nodes appear, so a growing tree stays tidy. Edges are still connectTo (usually indexExpr = the same parent expression).
+   */
+  treeLayout?: {
+    /**
+     * tidy: any tree, leaves evenly spaced and each parent centred over its children. binary: left/right children matter (sideExpr); nodes left to right in inorder, as a binary search tree is drawn. complete: heap slots (parentExpr ignored), level d spread across width. radial: root at the centre, one ring per depth. indented: an outline, one row per node in preorder, indented by depth.
+     */
+    type: 'tidy' | 'binary' | 'complete' | 'radial' | 'indented';
+    /**
+     * Parent of node idx (idx and value bound); -1 (or any non-node) makes it a root. Several roots make a forest. Not needed for 'complete'.
+     */
+    parentExpr?: string;
+    /**
+     * binary: which side of its parent node idx hangs on, 0 left or 1 right (idx and value bound).
+     */
+    sideExpr?: string;
+    /**
+     * Root position (radial: the centre; indented: the first row). Default [0, 0, 0].
+     *
+     * @minItems 3
+     * @maxItems 3
+     */
+    origin?: [number, number, number];
+    /**
+     * Distance between neighbouring leaves (tidy, binary) or one indent (indented).
+     */
+    spacing?: number;
+    /**
+     * Distance between depths (radial: between rings; indented: between rows).
+     */
+    levelGap?: number;
+    /**
+     * complete: the width each level spreads across.
+     */
+    width?: number;
+    /**
+     * tidy, binary: 'horizontal' grows the tree left to right (root on the left, one column per depth, leaves down the rows); spacing is then between rows and levelGap between columns.
+     */
+    orientation?: 'vertical' | 'horizontal';
+  };
+  /**
+   * GRAPH: thickness of a node, in data units: 0.22 matches an array cell's depth; 0 draws flat discs and blocks.
+   */
+  nodeDepth?: number;
+  /**
+   * ARRAY / DICT. Corner radius of each cell, in data units: rounded-rectangle cells instead of boxes. A dict's entries default to 0.2.
+   */
+  cellCornerRadius?: number;
+  /**
+   * ARRAY / DICT. The code expression this array shows, when its id cannot be it, e.g. "adj[u]" (ids cannot hold brackets). Pointing at that expression in the Code panel lights the array's title, and pointing at the array lights the expression. Default: the id.
+   */
+  codeSymbol?: string;
+  /**
+   * ARRAY / DICT. Math.js expression giving each cell's key, evaluated per cell with 'idx' and 'value' bound; the key is shown where an array shows its index, printed as Python would ('a', 3, (1, 2) for a tuple). A 'dict' element is an array with keys: its cells are the entries in insertion order. Example: "arrayAt(dataTable('trace', frame, 'keys'), idx)".
+   */
+  keyExpr?: string;
+  /**
+   * HEAP: centre of the tree view's root, in data units. Defaults to 3.2 above origin (the array's slot 0). A heap is a wrapper: an array under its id (origin, cellSize and the array options) and a graph under '<id>-tree' (treeOrigin, treeWidth, levelGap, nodeSize).
+   *
+   * @minItems 3
+   * @maxItems 3
+   */
+  treeOrigin?: [number, number, number];
+  /**
+   * HEAP: width the tree view's levels spread across; level d splits it into 2^d equal places.
+   */
+  treeWidth?: number;
+  /**
+   * HEAP: vertical distance between tree levels, in data units.
+   */
+  levelGap?: number;
+  /**
+   * HEAP: title above the tree view. The tree is addressable as '<id>-tree' (markers, label wires and links can point at its slots).
+   */
+  treeLabel?: string;
+  /**
+   * ARRAY / GRAPH: when a value moves to another cell or node between states (a swap, a heap's sift, a pop moving the last value to the front), glide it there over animationMs instead of redrawing it in place. Index tags, markers and links belong to the cell and stay. Not for wrapped arrays (arrayColumns). HEAP: always on.
+   */
+  animateMoves?: boolean;
+  /**
+   * ARRAY / GRAPH / HEAP (with animateMoves): identity of the value in each cell, with idx and value bound, so a value that moves is animated as a move. Optional: without it, values are matched between states (equal values may swap identities, which looks the same).
+   */
+  idExpr?: string;
+  /**
+   * HEAP: colour of the tree edge from slot idx to its parent, with idx and value bound; a non-empty colour also lights the edge (e.g. the pair a sift is comparing).
+   */
+  edgeColorExpr?: string;
+  /**
+   * HEAP: default colour of the tree edges.
+   */
+  edgeColor?: string;
+  /**
+   * ARRAY / GRAPH / HEAP (with animateMoves): how long a moved value takes to glide to its new cell, in ms; 0 jumps.
+   */
+  animationMs?: number;
+  /**
+   * GRAPH: where a node's value is written: inside the node, outside (below) it, or not at all. 'auto' is outside for points and inside for rects.
+   */
+  valueLabel?: 'auto' | 'inside' | 'outside' | 'none';
+  /**
+   * GRAPH: a node's content as a row of cells, like a small array: a list of values per node, with 'idx' (the node) and 'value' bound, e.g. a B-tree node's keys. The node is as wide as its cells (nodeCellWidth each), writes one value per cell, and has a port under each gap (cells + 1) where child links can start (fromPortExpr).
+   */
+  nodeCellsExpr?: string;
+  /**
+   * GRAPH: width of one cell in a cell-row node (nodeCellsExpr), in data units.
+   */
+  nodeCellWidth?: number;
+  /**
+   * GRAPH: per cell of a cell-row node, with 'node', 'idx' (the cell) and 'value' bound; a truthy result draws that cell in the highlight gold.
+   */
+  cellHighlightExpr?: string;
+  /**
+   * GRAPH: how much connections bow, as a fraction of their length (0 is straight). Edges bow away from the graph's centre, so a pair of opposite edges never overlap.
+   */
+  edgeBend?: number;
+  /**
+   * ARRAY / DICT. Horizontal sequence or vertical stack (bottom to top). Vertical cells retain the same dimensions and have a compact 0.1 data-unit gap. A dict with 'vertical' stacks its entries down a column instead (first on top), each key to the left of its cell, title above. A stack is upright by default; 'horizontal' lays it on its side, closed on the left and pushing to the right.
    */
   arrayLayout?: 'horizontal' | 'vertical';
   /**
@@ -852,7 +1082,7 @@ export type Element = {
    */
   indexFontSize?: number;
   /**
-   * ARRAY ONLY. Boolean expression per cell with idx and value, evaluated on state changes.
+   * ARRAY / STACK: boolean expression per cell with idx and value. EXPRESSION_LABEL: truthy highlights the label's row in its box, e.g. when a running total reaches its target. Evaluated on state changes.
    */
   highlightExpr?: string;
   /**
@@ -871,24 +1101,15 @@ export type Element = {
    * STEP_MARKER: identity of the indexed data sequence (not a visual object reference). Equal indices in this group share a badge.
    */
   indexGroup?: string;
+  codeRef?: CodeRef;
   /**
-   * EXPRESSION_LABEL ONLY. Show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), or an exact data-space position expression. Expressions update on state changes.
+   * EXPRESSION_LABEL ONLY. Expression returning LaTeX, shown in a KaTeX tooltip while hovering the label's row, e.g. the formula that produced its value with the numbers substituted. Write LaTeX inside single-quoted strings with single backslashes ('\text{total}'): their contents are kept literally. Evaluated on state changes.
    */
-  connectTo?:
-    | {
-        object: string;
-        /**
-         * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
-         */
-        indexExpr?: string;
-      }
-    | {
-        /**
-         * @minItems 3
-         * @maxItems 3
-         */
-        positionExpr: [string, string, string];
-      };
+  tooltipExpr?: string;
+  /**
+   * EXPRESSION_LABEL: show a soft curved screen-space wire while hovering this label's row. Target a stable object id (or unique display name), including another expression label's id to link two labels, or an exact data-space position expression. Expressions update on state changes. Set `pinned` to show the wire from the start, as if the reader had pinned it. Give a list to connect one row to several targets, e.g. both values a comparison reads; each gets its own wire. ARRAY / STACK (needs an id): link each cell to the cell of another array it names, e.g. a deque of indices to the values they index. Each target needs object and indexExpr, evaluated per cell with 'idx' and 'value' bound; it may return one index or a list of them (one link each), and an index that is not a valid cell draws no link. A target may be the array itself: links within one row arch over it (forward) or under it (backward). A list links the cells to several arrays, each in its own colour. One toggle pins all of an array's links; `pinned` on any target shows them from the start.
+   */
+  connectTo?: ConnectTarget | [ConnectTarget, ...ConnectTarget[]];
   /**
    * ARRAY / STACK: owned index markers. The owner supplies cell positions, grouping identity and lifecycle; each marker supplies its index expression.
    */
@@ -925,6 +1146,10 @@ export type Element = {
    * ARRAY ONLY. With arrayColumns, fit all wrapped rows into this total height. Cells and their text shrink vertically together.
    */
   arrayHeight?: number;
+  /**
+   * ARRAY ONLY. With arrayColumns, each cell's height in data units (default: scaled with the row pitch). The rest of each row's pitch, from arrayHeight, is space between rows. Example: arrayHeight 2.6 over two rows with arrayCellHeight 0.68 keeps normal cells and opens a 0.62 gap.
+   */
+  arrayCellHeight?: number;
   /**
    * ARRAY ONLY. Nonzero direction vector for the cell sequence, normalized before use. [1,0,0] is X, [0,1,0] is Y, [0,0,1] is Z. Overrides arrayLayout; cannot be combined with arrayColumns.
    *
@@ -1038,6 +1263,131 @@ export type Vec3Number9 = [number, number, number];
  */
 export type Vec3Number10 = [number, number, number];
 /**
+ * One connectTo target: for an expression label, an object (optionally one array cell) or a data-space position; for an array or stack, a cell of another array (object + indexExpr); for a graph, also a node of the same graph (indexExpr alone). For an array or stack, objectExpr instead names the target object per cell (a list of references to dicts), and without indexExpr points at the whole object.
+ */
+export type ConnectTarget =
+  | {
+      object: string;
+      /**
+       * For an array target, select its zero-based cell index. The wire meets the projected cell edge and stays clear of its value.
+       */
+      indexExpr?: string;
+      /**
+       * Show the wire without hovering. The reader can still unpin it.
+       */
+      pinned?: boolean;
+      /**
+       * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+       */
+      color?: string | [number, number, number];
+      /**
+       * ARRAY / STACK cell links only: draw an arrowhead at the target end, for links with a direction (a cell pointing at the index it names).
+       */
+      arrow?: boolean;
+      /**
+       * ARRAY / STACK / GRAPH links only: per-link colour, evaluated with 'idx' and 'value' (the source cell or node) and 'to' (the target index); an empty result keeps `color`.
+       */
+      colorExpr?: string;
+      /**
+       * GRAPH links: per-edge bow, as a fraction of its length (0 draws a straight line), with 'idx', 'value' and 'to' bound. Overrides the graph's edgeBend; a non-number keeps it.
+       */
+      bendExpr?: string;
+      /**
+       * GRAPH links: the port of the source node the edge starts from, with 'idx', 'value', 'to' and 'slot' (the target's place in the list indexExpr returned) bound. A cell-row node has a port under each gap, so a B-tree child i uses "slot"; the edge then runs from that gap down to the child's top.
+       */
+      fromPortExpr?: string;
+      /**
+       * GRAPH links: [x, y, z] per edge, with 'idx', 'value' and 'to' bound. When finite, the edge is an arc of the circle round that point through its source node (the short way round), so nodes placed on a circle form a round loop. NaN means a normal edge.
+       *
+       * @minItems 3
+       * @maxItems 3
+       */
+      arcCenterExpr?: [string, string, string];
+      /**
+       * ARRAY / STACK / GRAPH links only: per-link boolean; a highlighted link is drawn thicker and lit.
+       */
+      highlightExpr?: string;
+    }
+  | {
+      /**
+       * Target object id for each cell, with 'idx' and 'value' bound. Cells naming the same object share its link group.
+       */
+      objectExpr: string;
+      /**
+       * Optional: the target cell, as for `object` targets. Omit it to point at the whole object.
+       */
+      indexExpr?: string;
+      /**
+       * Show the links without hovering. The reader can still unpin them.
+       */
+      pinned?: boolean;
+      /**
+       * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+       */
+      color?: string | [number, number, number];
+      /**
+       * Draw an arrowhead at the target end.
+       */
+      arrow?: boolean;
+      /**
+       * Per-link colour, with 'idx', 'value' and 'to' bound; an empty result keeps `color`.
+       */
+      colorExpr?: string;
+      /**
+       * Per-link boolean; a highlighted link is drawn thicker and lit.
+       */
+      highlightExpr?: string;
+    }
+  | {
+      /**
+       * @minItems 3
+       * @maxItems 3
+       */
+      positionExpr: [string, string, string];
+      /**
+       * Show the wire without hovering. The reader can still unpin it.
+       */
+      pinned?: boolean;
+    }
+  | {
+      /**
+       * Target node index for each node, with 'idx' and 'value' bound; may return a list of indices (one link each).
+       */
+      indexExpr: string;
+      /**
+       * Show the links from the start.
+       */
+      pinned?: boolean;
+      color?: Color;
+      /**
+       * Draw an arrowhead at the target end.
+       */
+      arrow?: boolean;
+      /**
+       * Per-link colour with 'idx', 'value' and 'to' bound; an empty result keeps `color`.
+       */
+      colorExpr?: string;
+      /**
+       * GRAPH links: per-edge bow, as a fraction of its length (0 draws a straight line), with 'idx', 'value' and 'to' bound. Overrides the graph's edgeBend; a non-number keeps it.
+       */
+      bendExpr?: string;
+      /**
+       * GRAPH links: the port of the source node the edge starts from, with 'idx', 'value', 'to' and 'slot' (the target's place in the list indexExpr returned) bound. A cell-row node has a port under each gap, so a B-tree child i uses "slot"; the edge then runs from that gap down to the child's top.
+       */
+      fromPortExpr?: string;
+      /**
+       * GRAPH links: [x, y, z] per edge, with 'idx', 'value' and 'to' bound. When finite, the edge is an arc of the circle round that point through its source node (the short way round), so nodes placed on a circle form a round loop. NaN means a normal edge.
+       *
+       * @minItems 3
+       * @maxItems 3
+       */
+      arcCenterExpr?: [string, string, string];
+      /**
+       * Per-link boolean; a highlighted link is drawn thicker and lit.
+       */
+      highlightExpr?: string;
+    };
+/**
  * 3D vector as [x,y,z] numeric array.
  *
  * @minItems 3
@@ -1135,7 +1485,7 @@ export interface GlossaryEntry {
   prompt?: string;
 }
 /**
- * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions.
+ * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions, or a whole column as a list via dataTable('tableName', 'column').
  */
 export interface DataTable {
   [k: string]:
@@ -1377,6 +1727,7 @@ export interface Scene {
     table: string;
     rowsExpr: string;
   }[];
+  codeRef?: CodeRef4;
 }
 /**
  * Initial camera position and target for this scene.
@@ -1703,6 +2054,35 @@ export interface AlgorithmSnapshot {
     operands: string[];
   };
 }
+/**
+ * EXPRESSION_LABEL: the source line behind this value. Its row gets a </> button that opens the Code tab there. Use lineExpr to follow the line that last assigned the value.
+ */
+export interface CodeRef {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
+}
 export interface ArrayMarker {
   /**
    * Uses the same marker component as a standalone step_marker.
@@ -1716,6 +2096,10 @@ export interface ArrayMarker {
    * STEP_MARKER: expression yielding a nonnegative integer index.
    */
   indexExpr: string;
+  /**
+   * Optional: what the badge shows after 'indexName =' instead of the index, e.g. the value at that cell ("temps[stack[-1]] = 74"). The index still places the marker; a value marker gets its own row rather than merging names with markers on the same cell.
+   */
+  valueExpr?: string;
   /**
    * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */
@@ -1755,7 +2139,7 @@ export interface SystemBlock {
    * Optional gap above this platform front surface for children with local positions. Child depth and local z offset are added; world and relative placement remain explicit.
    */
   childElevation?: number;
-  codeRef?: CodeRef;
+  codeRef?: CodeRef1;
   /**
    * Truthy expression that marks this block as focused (cyan rim and glow), independent of connection activity. Use it to show where a selected concept or component lives.
    */
@@ -1763,7 +2147,7 @@ export interface SystemBlock {
   /**
    * Additional source locations represented by this block. Selecting any of these lines (or the codeRef line) in the Code tab focuses the block.
    */
-  codeLinks?: CodeRef1[];
+  codeLinks?: CodeRef2[];
 }
 export interface SystemPlacement {
   relativeTo: string;
@@ -1816,24 +2200,6 @@ export interface SystemWaypoint {
 /**
  * Optional source location for this block.
  */
-export interface CodeRef {
-  /**
-   * ID of a lesson codeFiles entry.
-   */
-  file?: string;
-  /**
-   * Expression returning a codeFiles ID. Overrides file when present.
-   */
-  fileExpr?: string;
-  /**
-   * One-based source line to open in the Code tab.
-   */
-  line?: number;
-  /**
-   * Expression returning a one-based source line. Overrides line when present.
-   */
-  lineExpr?: string;
-}
 export interface CodeRef1 {
   /**
    * ID of a lesson codeFiles entry.
@@ -1851,6 +2217,40 @@ export interface CodeRef1 {
    * Expression returning a one-based source line. Overrides line when present.
    */
   lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
+}
+export interface CodeRef2 {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
 }
 /**
  * An incremental step that adds/removes elements and configures sliders.
@@ -1907,6 +2307,7 @@ export interface Step {
    * Optional expression returning markdown for the step caption. Re-evaluated on navigation and slider changes. Falls back to description if evaluation fails.
    */
   descriptionExpr?: string;
+  codeRef?: CodeRef3;
 }
 /**
  * Directive to hide elements or sliders. Use {id: '*'} to hide all elements, {type: 'slider'} to remove all sliders, or {id: 'some_id'} to hide a specific element.
@@ -2029,6 +2430,10 @@ export interface InfoOverlay {
    * Optional short title shown in the overlay/drawer header (KaTeX supported). Falls back to the first line of `content`, ellipsized. Example: "Bayes' rule".
    */
   title?: string;
+  /**
+   * Math.js expression, re-evaluated as sliders change: while falsy the overlay is hidden and takes no place. Lets a playback step reveal its overlays one at a time, e.g. "dataTable('proof', frame, 'stage') >= 4".
+   */
+  visibleExpr?: string;
 }
 /**
  * Virtual time expression that replaces the default wall-clock 't' variable.
@@ -2040,6 +2445,35 @@ export interface VirtualTime {
   expr: string;
 }
 /**
+ * Overrides the scene codeRef while this step is shown, e.g. a step that plays its own data table: the Code panel follows this file and line instead.
+ */
+export interface CodeRef3 {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
+}
+/**
  * General discrete state player bound to an existing integer slider. No algorithm knowledge.
  */
 export interface StepPlayback {
@@ -2049,6 +2483,35 @@ export interface StepPlayback {
    * Show a playback speed selector (0.25× to 4× of intervalMs).
    */
   speedControl?: boolean;
+}
+/**
+ * The code this scene executes: the file (or a per-state fileExpr) and the active line (or lineExpr). The Code panel follows that file when it changes and marks the line only there. Without it, an open file's activeLineExpr applies.
+ */
+export interface CodeRef4 {
+  /**
+   * ID of a lesson codeFiles entry.
+   */
+  file?: string;
+  /**
+   * Expression returning a codeFiles ID. Overrides file when present.
+   */
+  fileExpr?: string;
+  /**
+   * One-based source line to open in the Code tab.
+   */
+  line?: number;
+  /**
+   * Expression returning a one-based source line. Overrides line when present.
+   */
+  lineExpr?: string;
+  /**
+   * SCENE / STEP codeRef. Expression returning the call-site lines of the calls still waiting to return, outermost first (e.g. [11, 8, 8] for backtrack(0) and two recursive calls). The Code tab keeps an arrow from each to callEntryLine until that call returns, deeper calls bowing further out. Needs callEntryLine.
+   */
+  callsExpr?: string;
+  /**
+   * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
+   */
+  callEntryLine?: number;
 }
 export interface CodeFile {
   id: string;
@@ -2085,6 +2548,32 @@ export interface CodeFile {
     set: {
       [k: string]: number | string;
     };
+  }[];
+  /**
+   * The code's teaching structure: consecutive line ranges, each a step of the idea with a short title. The Code tab can show them, switched by icons in its title bar: plain code, titles only, titles over blocks the size of the hidden code, or titles over the code, and the tutor elaborates on a section rather than on loose lines. Ranges are ordered and do not overlap; lines outside every section are left as they are.
+   */
+  sections?: {
+    id: string;
+    /**
+     * What this part of the code does, in a few words ("Mark every node new").
+     */
+    title: string;
+    /**
+     * First line, one-based.
+     */
+    from: number;
+    /**
+     * Last line, inclusive.
+     */
+    to: number;
+    /**
+     * Guidance that stands without the code: what this part must achieve, for a learner who has not seen it yet.
+     */
+    hint?: string;
+    /**
+     * What the tutor is asked when the learner asks about this section; the section's code and the current state are sent with it.
+     */
+    prompt?: string;
   }[];
 }
 /**
@@ -2165,7 +2654,7 @@ export interface Camera2 {
   up?: Vec3Number3;
 }
 /**
- * Data tables accessible via dataTable() in expressions.
+ * Data tables accessible via dataTable() in expressions: dataTable('t', row, 'col') for one value, dataTable('t', 'col') for a column as a list.
  */
 export interface DataTable2 {
   [k: string]:

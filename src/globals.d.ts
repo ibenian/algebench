@@ -272,6 +272,8 @@ interface AlgeBenchChatRuntimeContext {
   stepNumber?: number;
   /** Scene-authored live state (Scene.promptExpr), capped client-side. */
   simulationState?: string;
+  /** The label, marker and condition rows on screen now, exactly as shown. */
+  screenValues?: string[];
   cameraPosition?: { x: number; y: number; z: number };
   cameraTarget?: { x: number; y: number; z: number };
   cameraViews?: string[];
@@ -431,7 +433,7 @@ interface Window {
   setupChat: () => void;
   initChatTtsControls: () => void;
   /** Resolves false when turned away because a turn is already in flight. */
-  sendChatMessage: (text: string, opts?: { silent?: boolean; noTools?: boolean }) => Promise<boolean>;
+  sendChatMessage: (text: string, opts?: { silent?: boolean; noTools?: boolean; display?: string }) => Promise<boolean>;
   /** True while a chat turn is in flight (chat.ts). */
   algebenchChatBusy?: () => boolean;
   algebenchChatAvailable?: () => boolean;
@@ -461,6 +463,8 @@ interface Window {
   algebenchResumeTTS: () => void;
   algebenchStopTTS: () => void;
   algebenchTTSActive?: () => boolean;
+  /** Whether state narration (step player) is on. */
+  algebenchNarrating?: () => boolean;
   algebenchSpeakText: (text: string, onEnd?: () => void) => void;
   /** Full Gemini transcript of the last turn — a debugging handle. */
   geminiChatHistory?: { systemPrompt?: string; contents: unknown[] };
@@ -478,7 +482,7 @@ interface Window {
 declare function switchPanelTab(tabName: string): void;
 
 /** Send a message to the AI chat (chat.ts). */
-declare function sendChatMessage(text: string, opts?: { silent?: boolean; noTools?: boolean }): Promise<boolean>;
+declare function sendChatMessage(text: string, opts?: { silent?: boolean; noTools?: boolean; display?: string }): Promise<boolean>;
 
 /** Replace the preset-prompt buttons under the chat input (chat.ts). */
 declare function setPresetPrompts(prompts: string[] | null | undefined): void;

@@ -9,7 +9,7 @@ const g = globalThis as unknown as { math: typeof mathjs; window: typeof globalT
 g.math = mathjs;
 g.window ??= globalThis;
 
-const { niceTicks, autoDomain, formatTick, axisLabelList, staticTickLabel } = await import('/objects/chart.js');
+const { niceTicks, autoDomain, formatTick, axisLabelList, staticTickLabel, intervalBars } = await import('/objects/chart.js');
 
 test('niceTicks lands on multiples of 1, 2 or 5 times a power of ten', () => {
     assert.deepEqual(niceTicks(0, 1).ticks, [0, 0.2, 0.4, 0.6, 0.8, 1]);
@@ -248,4 +248,16 @@ test('staticTickLabel maps positionally and leaves the remainder unlabelled', ()
     assert.equal(staticTickLabel(list, 99), '');
     // extra labels are simply never asked for, which is "extra labels ignored"
     assert.equal(staticTickLabel(['a', 'b', 'c'], 1), 'b');
+});
+
+test('intervalBars clamps the count, drops unevaluable bars and normalises reversed spans', () => {
+    const read = (i: number) => ({ s: [1, 9, NaN, 4][i]!, e: [3, 6, 2, 5][i]!, lane: i, hl: i === 1, text: '' });
+    const bars = intervalBars(4, 256, read);
+    assert.deepEqual(bars.map((b: { s: number; e: number; lane: number; hl: boolean }) => [b.s, b.e, b.lane, b.hl]), [[1, 3, 0, false], [6, 9, 1, true], [4, 5, 3, false]]);
+    assert.equal(intervalBars(10, 2, read).length, 2, 'count is capped at max');
+    assert.equal(intervalBars(NaN, 256, read).length, 0);
+    assert.equal(intervalBars(-3, 256, read).length, 0);
+    let seen = -1;
+    intervalBars(2.9, 256, (i: number, n: number) => { seen = n; return read(i); });
+    assert.equal(seen, 2, 'a fractional count floors, and n is the clamped count');
 });

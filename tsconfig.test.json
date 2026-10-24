@@ -23,5 +23,7 @@
   // types/*.d.ts) must be named explicitly: nothing imports them, so an
   // include of only the test files leaves them out of the program and every
   // global they declare goes missing.
-  "include": ["src/**/*.test.ts", "src/**/*.d.ts"]
+  // Lesson builders (scripts/lesson_builders) are build-time TypeScript with their own tests; checking
+  // them here keeps them honest without adding them to the app program.
+  "include": ["src/**/*.test.ts", "src/**/*.d.ts", "scripts/lesson_builders/**/*.ts"]
 }

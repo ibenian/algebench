@@ -1,6 +1,6 @@
 import { state } from '/state.js';
 import { parseColor } from '/labels.js';
-import { _JS_ONLY_RE, _mathjs } from '/expr.js';
+import { isJsOnly, _mathjs } from '/expr.js';
 import type { Element } from '/types/lesson.js';
 
 /** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
@@ -31,7 +31,7 @@ export function renderVectorField(el: Element, view: MathBoxNode) {
     const exprZ = el.fz || '0';
 
     const _compileVF = (e: string): VectorFieldFn => {
-        if (_JS_ONLY_RE.test(e)) {
+        if (isJsOnly(e)) {
             if (vectorFieldState._sceneJsTrustState === 'trusted') {
                 return new Function('x', 'y', 'z', 'return ' + e) as (x: number, y: number, z: number) => number;
             }

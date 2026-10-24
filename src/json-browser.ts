@@ -789,6 +789,7 @@ export function setupJsonViewer(): void {
             buildLineOffsets(text);
             _pathLineMap = pathLineMap;
             if (treePanel) _renderJsonTree(treePanel, json);
+            resetTreeSearch();
         } else {
             content.textContent = '// No scene loaded';
             buildLineOffsets('// No scene loaded');
@@ -873,10 +874,20 @@ export function setupJsonViewer(): void {
         overlay.classList.remove('hidden');
     });
 
-    closeBtn.addEventListener('click', () => overlay.classList.add('hidden'));
+    // Closing frees the rendered text and tree: a big lesson makes hundreds of thousands of elements, and
+    // even hidden they slow every later style update (labels change each frame). Opening rebuilds both.
+    const closeViewer = () => {
+        overlay.classList.add('hidden');
+        content.textContent = '';
+        buildLineOffsets('');
+        _pathLineMap = {};
+        treePanel?.replaceChildren();
+        resetTreeSearch();
+    };
+    closeBtn.addEventListener('click', closeViewer);
 
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.classList.add('hidden');
+        if (e.target === overlay) closeViewer();
     });
 
     copyBtn.addEventListener('click', () => {
@@ -887,9 +898,7 @@ export function setupJsonViewer(): void {
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
-            overlay.classList.add('hidden');
-        }
+        if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closeViewer();
     });
 
     // ── Search ──────────────────────────────────────────────────────────────
@@ -905,14 +914,31 @@ export function setupJsonViewer(): void {
     let _matchItems: HTMLElement[] = [];
     let _matchIndex = -1;
 
+    // The tree's search text, read once per render: a big lesson's tree has tens of thousands of items, and
+    // reading each one's key and value through the DOM on every keystroke made typing lag.
+    let _searchIndex: {el: HTMLElement; key: string; val: string}[] | null = null;
+    // Items this search marked (matches and the ancestors that lead to them): the next search clears only these.
+    let _marked: HTMLElement[] = [];
+    function resetTreeSearch(): void {
+        _searchIndex = null; _marked = []; _matchItems = []; _matchIndex = -1;
+        treePanel?.classList.remove('jt-searching');
+    }
+    function searchIndex(): {el: HTMLElement; key: string; val: string}[] {
+        if (!_searchIndex) _searchIndex = [...treePanel!.querySelectorAll<HTMLElement>('.jt-item')].map(el => {
+            const row = el.querySelector(':scope > .jt-row');
+            return {el, key: row?.querySelector('.jt-key')?.textContent?.toLowerCase() ?? '', val: row?.querySelector('.jt-val')?.textContent?.toLowerCase() ?? ''};
+        });
+        return _searchIndex;
+    }
+
     function applyTreeSearch() {
         if (!treePanel) return;
         const focused = document.activeElement;
         const keyTerm = keyInput.value.trim().toLowerCase();
         const valTerm = valInput.value.trim().toLowerCase();
-        const items   = [...treePanel.querySelectorAll<HTMLElement>('.jt-item')];
 
-        items.forEach(el => el.classList.remove('jt-dim', 'jt-match'));
+        for (const el of _marked) el.classList.remove('jt-match', 'jt-path');
+        _marked = [];
         [keyInput, valInput].forEach(inp =>
             inp.classList.remove('jsb-has-results', 'jsb-no-results'));
         if (keyCount) keyCount.textContent = '';
@@ -920,29 +946,19 @@ export function setupJsonViewer(): void {
         _matchItems = [];
         _matchIndex = -1;
 
-        if (!keyTerm && !valTerm) return;
+        if (!keyTerm && !valTerm) { treePanel.classList.remove('jt-searching'); return; }
 
-        items.forEach(el => {
-            const keyEl = el.querySelector(':scope > .jt-row .jt-key');
-            const valEl = el.querySelector(':scope > .jt-row .jt-val');
-            const keyText = keyEl ? keyEl.textContent.toLowerCase() : '';
-            const valText = valEl ? valEl.textContent.toLowerCase() : '';
-
-            const keyOk = !keyTerm || keyText.includes(keyTerm);
-            const valOk = !valTerm || valText.includes(valTerm);
-
-            if (keyOk && valOk) {
-                el.classList.add('jt-match');
-            } else {
-                el.classList.add('jt-dim');
-            }
-        });
-
-        treePanel.querySelectorAll('.jt-item.jt-match').forEach(matchEl => {
+        // Everything dims through one class on the panel (static/style.css); only matches and their ancestors
+        // are marked, so a search writes as many classes as it finds, not one per item.
+        treePanel.classList.add('jt-searching');
+        _matchItems = searchIndex().filter(item => (!keyTerm || item.key.includes(keyTerm)) && (!valTerm || item.val.includes(valTerm))).map(item => item.el);
+        for (const matchEl of _matchItems) {
+            matchEl.classList.add('jt-match'); _marked.push(matchEl);
             let ancestor = matchEl.parentElement;
             while (ancestor && ancestor !== treePanel) {
                 if (ancestor.classList.contains('jt-item')) {
-                    ancestor.classList.remove('jt-dim');
+                    if (ancestor.classList.contains('jt-path') || ancestor.classList.contains('jt-match')) break;   // the rest of the way is marked
+                    ancestor.classList.add('jt-path'); _marked.push(ancestor);
                 }
                 if (ancestor.classList.contains('jt-children') && ancestor.classList.contains('jt-collapsed')) {
                     ancestor.classList.remove('jt-collapsed');
@@ -951,9 +967,7 @@ export function setupJsonViewer(): void {
                 }
                 ancestor = ancestor.parentElement;
             }
-        });
-
-        _matchItems = [...treePanel.querySelectorAll<HTMLElement>('.jt-item.jt-match')];
+        }
         const n = _matchItems.length;
 
         if (keyTerm) {
@@ -992,13 +1006,18 @@ export function setupJsonViewer(): void {
         if (keyCount) keyCount.textContent = label;
     }
 
-    keyInput.addEventListener('input', applyTreeSearch);
-    valInput.addEventListener('input', applyTreeSearch);
+    // Search once typing pauses, not on every key; Enter runs a pending search first.
+    let searchTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleSearch = () => { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(() => { searchTimer = null; applyTreeSearch(); }, 150); };
+    const flushSearch = () => { if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; applyTreeSearch(); } };
+    keyInput.addEventListener('input', scheduleSearch);
+    valInput.addEventListener('input', scheduleSearch);
 
     [keyInput, valInput].forEach(inp => {
         inp.addEventListener('keydown', e => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                if (searchTimer) { flushSearch(); return; }
                 navigateMatch(e.shiftKey ? -1 : 1);
             }
         });
