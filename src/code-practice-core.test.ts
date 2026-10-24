@@ -12,6 +12,7 @@ test('the same code is an exact match, whatever its spacing; other text costs it
     assert.ok(similarity('    totl = 0', '    total = 0') < .95);
     assert.equal(similarity('', 'x'), 0);
     assert.equal(similarity('    state = [0] * n', '    state = [0] * n  # 0 new, 1 open'), 1, 'a trailing comment is not typed');
+    assert.equal(similarity('    state = [0] * n  #', '    state = [0] * n'), 1, 'a comment just begun is a comment already');
 });
 
 test('a line typed right at another depth is not exact, so out-of-place code earns no check', () => {

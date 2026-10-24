@@ -26902,7 +26902,7 @@ function isNeutral(text) {
 	return !t || t.startsWith("#") || t.startsWith("//");
 }
 /** A line without its trailing comment: nobody types those from memory. */
-var codeOf = (s) => s.replace(/\s+(#|\/\/)\s.*$/, "").trimEnd();
+var codeOf = (s) => s.replace(/\s+(#|\/\/).*$/, "").trimEnd();
 var squeeze = (s) => s.replace(/\s+/g, "");
 /** Levenshtein distance, two rows at a time. */
 function distance(a, b) {
@@ -27561,7 +27561,7 @@ function setupCodePractice() {
 		score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
 		if (before && attempt.peeked.length) {
 			const was = new Set(before.lines.filter((l) => l.similarity === 1).map((l) => l.line));
-			const undone = new Set(score.lines.filter((l) => l.similarity < 1 && was.has(l.line)).map((l) => l.line));
+			const undone = new Set(score.lines.filter((l) => l.typed == null && was.has(l.line)).map((l) => l.line));
 			if (undone.size) {
 				attempt.peeked = attempt.peeked.filter((line) => !undone.has(line));
 				persist();

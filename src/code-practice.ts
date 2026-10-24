@@ -323,11 +323,13 @@ export function setupCodePractice(): void {
         if (!current) return;
         const before = score;
         score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
-        // A seen line the learner takes apart is theirs to type again: if they retype it with the code hidden, it
+        // A seen line the learner deletes is theirs to type again: if they retype it with the code hidden, it
         // scores in full (seen again meanwhile, it is marked again). Seen before it was ever typed, it stays seen.
         if (before && attempt.peeked.length) {
             const was = new Set(before.lines.filter(l => l.similarity === 1).map(l => l.line));
-            const undone = new Set(score.lines.filter(l => l.similarity < 1 && was.has(l.line)).map(l => l.line));
+            // Taken apart means removed (no typed line pairs with it any more), not edited: adding a comment, or a
+            // keystroke on the way to the same text, leaves the line seen.
+            const undone = new Set(score.lines.filter(l => l.typed == null && was.has(l.line)).map(l => l.line));
             if (undone.size) {
                 attempt.peeked = attempt.peeked.filter(line => !undone.has(line));persist();
                 score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);

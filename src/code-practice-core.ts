@@ -21,7 +21,7 @@ export function isNeutral(text: string): boolean {
 }
 
 /** A line without its trailing comment: nobody types those from memory. */
-export const codeOf = (s: string) => s.replace(/\s+(#|\/\/)\s.*$/, '').trimEnd();
+export const codeOf = (s: string) => s.replace(/\s+(#|\/\/).*$/, '').trimEnd();
 const squeeze = (s: string) => s.replace(/\s+/g, '');
 
 /** Levenshtein distance, two rows at a time. */
