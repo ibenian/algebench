@@ -33,9 +33,9 @@ const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
 
 /**
  * What the type-along practice (code-practice.ts) reads of the panel: the open file, the block running now (the
- * whole file when nothing runs), the lines a reader can see on screen, and a way to hide the code while typing.
+ * whole file when nothing runs, `running` false), the lines a reader can see on screen, and a way to hide the code while typing.
  */
-export interface CodeView { file: CodeFile; from: number; to: number; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
+export interface CodeView { file: CodeFile; from: number; to: number; running: boolean; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
 let view: CodeView | null = null;
 export const codeView = (): CodeView | null => view;
 
@@ -261,10 +261,11 @@ export function setupCodePanel(): void {
         refreshBinding();
     }
     function publishView(running:{from:number;to:number}|null) {
-        if(!selected){view=null;return;}
+        // A lesson without code files has no view: say so, or Type along keeps the last lesson's.
+        if(!selected){view=null;if(lastViewKey){lastViewKey='';window.dispatchEvent(new CustomEvent('algebench:codeview'));}return;}
         const file=selected,scope=running??{from:1,to:file.source.split('\n').length};
-        view={file,...scope,shown:shownLines,hidden:()=>veiled,setHidden};
-        const key=`${file.id}:${scope.from}-${scope.to}`;
+        view={file,...scope,running:!!running,shown:shownLines,hidden:()=>veiled,setHidden};
+        const key=`${file.id}:${scope.from}-${scope.to}:${!!running}`;
         if(key!==lastViewKey){lastViewKey=key;window.dispatchEvent(new CustomEvent('algebench:codeview'));}
     }
     /** The run's step into the current state: from the line at the previous state to the current one, or null. */

@@ -36,8 +36,8 @@ function distance(a: string, b: string): number {
 }
 
 /**
- * How alike a typed line is to a reference line, 0 to 1. Whitespace is ignored, indentation included (the coach
- * judges nesting by meaning), as are trailing comments: 1 means the same code.
+ * How alike a typed line is to a reference line, 0 to 1. Whitespace is ignored, as are trailing comments: 1 means
+ * the same code. Nesting is judged by alignLines, by depth rather than spaces.
  */
 export function similarity(typed: string, reference: string): number {
     const a = squeeze(codeOf(typed)), b = squeeze(codeOf(reference));
@@ -48,15 +48,38 @@ export function similarity(typed: string, reference: string): number {
 
 export interface Pair { typed: number; reference: number; similarity: number }
 
+/** A line typed right but at another nesting depth (`return False` inside the `if`, not after the loop) is not exact. */
+export const OTHER_DEPTH = 0.9;
+
+const indentOf = (s: string) => s.replace(/\t/g, '    ').search(/\S/);
+const gcd = (a: number, b: number): number => b ? gcd(b, a % b) : a;
+/** The indentation step of some code: the gcd of its indents (4 for 4, 8, 12), or 0 when nothing is indented. */
+function indentUnit(lines: readonly string[]): number {
+    return lines.filter(l => !isNeutral(l)).map(indentOf).filter(n => n > 0).reduce(gcd, 0);
+}
+/**
+ * Each line's nesting depth, in steps of the reference's indentation: the learner may indent by another width
+ * (2 spaces against 4) and still nest the same way; typed code that skips a level keeps the reference's step.
+ */
+function depths(lines: readonly string[], refUnit: number): number[] {
+    const own = indentUnit(lines);
+    const unit = own && refUnit && own % refUnit === 0 ? refUnit : own || refUnit || 1;
+    return lines.map(l => Math.round(Math.max(0, indentOf(l)) / unit));
+}
+
 /**
  * The best in-order pairing of typed lines with reference lines (indices into each list), skipping neutral
- * lines on both sides: the most total similarity, each pair at least MIN_MATCH alike.
+ * lines on both sides: the most total similarity, each pair at least MIN_MATCH alike. A pair at different
+ * nesting depths counts OTHER_DEPTH of its similarity, so it is never exact and a pairing that nests alike wins.
  */
 export function alignLines(reference: readonly string[], typed: readonly string[]): Pair[] {
+    const unit = indentUnit(reference);
+    // Absolute depths: the block is a top-level function (the Code panel's running block), typed from column 0.
+    const rd = depths(reference, unit), td = depths(typed, unit);
     const r = reference.map((t, i) => [t, i] as const).filter(([t]) => !isNeutral(t));
     const u = typed.map((t, i) => [t, i] as const).filter(([t]) => !isNeutral(t));
     const best = Array.from({length: r.length + 1}, () => new Array<number>(u.length + 1).fill(0));
-    const sim = r.map(([a]) => u.map(([b]) => similarity(b, a)));
+    const sim = r.map(([a, i]) => u.map(([b, j]) => similarity(b, a) * (rd[i] === td[j] ? 1 : OTHER_DEPTH)));
     for (let i = 1; i <= r.length; i++) for (let j = 1; j <= u.length; j++) {
         const s = sim[i - 1]![j - 1]!;
         best[i]![j] = Math.max(best[i - 1]![j]!, best[i]![j - 1]!, s >= MIN_MATCH ? best[i - 1]![j - 1]! + s : -1);

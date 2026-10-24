@@ -21744,9 +21744,9 @@ function updateTreeHighlight$1() {
 }
 //#endregion
 //#region src/side-sections.ts
-var svg$1 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-var ICON_FOLD = svg$1("M6 9l6 6 6-6");
-var ICON_UNFOLD = svg$1("M6 15l6-6 6 6");
+var svg$2 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+var ICON_FOLD$1 = svg$2("M6 9l6 6 6-6");
+var ICON_UNFOLD$1 = svg$2("M6 15l6-6 6 6");
 var SECTIONS = [{
 	head: "proof-section-head",
 	host: "proof-panel",
@@ -21802,7 +21802,7 @@ function refreshButtons() {
 	for (const w of wired) {
 		const folded = isFolded(w);
 		const alone = shown.length === 1 && shown[0] === w;
-		w.btn.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+		w.btn.innerHTML = folded ? ICON_UNFOLD$1 : ICON_FOLD$1;
 		w.btn.disabled = alone && !folded;
 		w.btn.title = folded ? `Show the ${w.sec.name}` : alone ? `The ${w.sec.name} is the only section open, so it stays open` : `Fold the ${w.sec.name} down to its header`;
 		w.btn.setAttribute("aria-label", w.btn.title);
@@ -25588,6 +25588,10 @@ function setupCodePanel() {
 	function publishView(running) {
 		if (!selected) {
 			view = null;
+			if (lastViewKey) {
+				lastViewKey = "";
+				window.dispatchEvent(new CustomEvent("algebench:codeview"));
+			}
 			return;
 		}
 		const file = selected, scope = running ?? {
@@ -25597,11 +25601,12 @@ function setupCodePanel() {
 		view = {
 			file,
 			...scope,
+			running: !!running,
 			shown: shownLines,
 			hidden: () => veiled,
 			setHidden
 		};
-		const key = `${file.id}:${scope.from}-${scope.to}`;
+		const key = `${file.id}:${scope.from}-${scope.to}:${!!running}`;
 		if (key !== lastViewKey) {
 			lastViewKey = key;
 			window.dispatchEvent(new CustomEvent("algebench:codeview"));
@@ -26372,8 +26377,8 @@ function distance(a, b) {
 	return prev[b.length];
 }
 /**
-* How alike a typed line is to a reference line, 0 to 1. Whitespace is ignored, indentation included (the coach
-* judges nesting by meaning), as are trailing comments: 1 means the same code.
+* How alike a typed line is to a reference line, 0 to 1. Whitespace is ignored, as are trailing comments: 1 means
+* the same code. Nesting is judged by alignLines, by depth rather than spaces.
 */
 function similarity(typed, reference) {
 	const a = squeeze(codeOf(typed)), b = squeeze(codeOf(reference));
@@ -26381,15 +26386,35 @@ function similarity(typed, reference) {
 	if (a === b) return 1;
 	return Math.min(.95, 1 - distance(a, b) / Math.max(a.length, b.length));
 }
+/** A line typed right but at another nesting depth (`return False` inside the `if`, not after the loop) is not exact. */
+var OTHER_DEPTH = .9;
+var indentOf = (s) => s.replace(/\t/g, "    ").search(/\S/);
+var gcd = (a, b) => b ? gcd(b, a % b) : a;
+/** The indentation step of some code: the gcd of its indents (4 for 4, 8, 12), or 0 when nothing is indented. */
+function indentUnit(lines) {
+	return lines.filter((l) => !isNeutral(l)).map(indentOf).filter((n) => n > 0).reduce(gcd, 0);
+}
+/**
+* Each line's nesting depth, in steps of the reference's indentation: the learner may indent by another width
+* (2 spaces against 4) and still nest the same way; typed code that skips a level keeps the reference's step.
+*/
+function depths(lines, refUnit) {
+	const own = indentUnit(lines);
+	const unit = own && refUnit && own % refUnit === 0 ? refUnit : own || refUnit || 1;
+	return lines.map((l) => Math.round(Math.max(0, indentOf(l)) / unit));
+}
 /**
 * The best in-order pairing of typed lines with reference lines (indices into each list), skipping neutral
-* lines on both sides: the most total similarity, each pair at least MIN_MATCH alike.
+* lines on both sides: the most total similarity, each pair at least MIN_MATCH alike. A pair at different
+* nesting depths counts OTHER_DEPTH of its similarity, so it is never exact and a pairing that nests alike wins.
 */
 function alignLines(reference, typed) {
+	const unit = indentUnit(reference);
+	const rd = depths(reference, unit), td = depths(typed, unit);
 	const r = reference.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
 	const u = typed.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
 	const best = Array.from({ length: r.length + 1 }, () => new Array(u.length + 1).fill(0));
-	const sim = r.map(([a]) => u.map(([b]) => similarity(b, a)));
+	const sim = r.map(([a, i]) => u.map(([b, j]) => similarity(b, a) * (rd[i] === td[j] ? 1 : OTHER_DEPTH)));
 	for (let i = 1; i <= r.length; i++) for (let j = 1; j <= u.length; j++) {
 		const s = sim[i - 1][j - 1];
 		best[i][j] = Math.max(best[i - 1][j], best[i][j - 1], s >= .4 ? best[i - 1][j - 1] + s : -1);
@@ -26513,6 +26538,25 @@ function hash(text) {
 	for (let i = 0; i < text.length; i++) h = (h * 33 ^ text.charCodeAt(i)) >>> 0;
 	return h.toString(36);
 }
+var svg$1 = (d, size = 13, width = 2) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+/** The side sections' fold chevrons (side-sections.ts), and the two headers' icons: a keyboard, the coach's spark. */
+var ICON_FOLD = svg$1("<path d=\"M6 9l6 6 6-6\"/>", 12, 2.2);
+var ICON_UNFOLD = svg$1("<path d=\"M6 15l6-6 6 6\"/>", 12, 2.2);
+var ICON_TYPE = svg$1("<rect x=\"2.5\" y=\"6\" width=\"19\" height=\"12\" rx=\"2\"/><path d=\"M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8\"/>");
+var ICON_CODE = svg$1("<path d=\"M8 7l-5 5 5 5M16 7l5 5-5 5\"/>");
+var ICON_COACH = svg$1("<path d=\"M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z\"/>");
+function foldButton() {
+	const b = document.createElement("button");
+	b.type = "button";
+	b.className = "side-head-btn side-fold-btn";
+	return b;
+}
+function paintFold(b, folded, title) {
+	b.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;
+	b.title = title;
+	b.setAttribute("aria-label", title);
+	b.setAttribute("aria-expanded", String(!folded));
+}
 function setupCodePractice() {
 	const doc = document.getElementById("tab-doc");
 	if (!doc) return;
@@ -26521,10 +26565,10 @@ function setupCodePractice() {
 	const root = el("section", "code-practice");
 	root.hidden = true;
 	root.classList.toggle("open", !!prefs.open);
-	const head = el("div", "cp-head");
-	const toggle = el("button", "cp-toggle");
-	toggle.type = "button";
-	toggle.innerHTML = "<span class=\"cp-chevron\" aria-hidden=\"true\">▸</span> Type along";
+	const head = el("div", "side-section-head side-section-foldable cp-head");
+	const title = el("span", "side-section-title");
+	title.textContent = "Type along";
+	const toggle = foldButton();
 	const target = el("span", "cp-target");
 	const total = el("span", "cp-total");
 	total.setAttribute("role", "status");
@@ -26538,8 +26582,10 @@ function setupCodePractice() {
 	speak.classList.add("cp-speak");
 	speak.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z\"/></svg>";
 	tools.append(hide, coach, hint, check, speak, reset);
-	head.append(toggle, target, total, tools);
+	head.insertAdjacentHTML("beforeend", ICON_TYPE);
+	head.append(title, target, total, toggle);
 	const bodyEl = el("div", "cp-body");
+	bodyEl.append(tools);
 	const chips = el("div", "cp-sections");
 	const editor = el("div", "cp-editor");
 	const gutter = el("div", "cp-gutter");
@@ -26564,22 +26610,30 @@ function setupCodePractice() {
 	reportGrip.setAttribute("aria-orientation", "horizontal");
 	reportGrip.setAttribute("aria-label", "Resize the coach's review");
 	reportGrip.title = "Drag to resize the review · double-click to reset";
-	const reportToggle = el("button", "cp-report-toggle");
-	reportToggle.type = "button";
-	reportToggle.innerHTML = "<span class=\"cp-chevron\" aria-hidden=\"true\">▸</span> Coach review";
+	reportGrip.classList.add("side-section-head", "side-section-foldable");
+	const reportTitle = el("span", "side-section-title");
+	reportTitle.textContent = "Coach review";
+	const reportToggle = foldButton();
 	const reportSummary = el("span", "cp-report-summary");
-	reportGrip.append(reportToggle, reportSummary);
+	reportGrip.insertAdjacentHTML("beforeend", ICON_COACH);
+	reportGrip.append(reportTitle, reportSummary, reportToggle);
 	const report = el("div", "cp-report");
 	report.setAttribute("aria-live", "polite");
 	const MAX_MESSAGES = 30;
-	const EMPTY_REPORT = "The coach's review appears here: Check, or turn on ✦ Coach.";
+	const EMPTY_REPORT = "The coach reviews each new line, after a pause, or on Check.";
 	const clearReport = () => {
 		reportSummary.textContent = "";
 		reportGrip.classList.remove("fresh");
 		report.replaceChildren(Object.assign(el("div", "cp-report-empty"), { textContent: EMPTY_REPORT }));
 	};
 	clearReport();
-	bodyEl.append(chips, editor, cheer, reportGrip, report);
+	const codeHead = el("div", "side-section-head cp-code-head");
+	const codeTitle = el("span", "side-section-title");
+	codeTitle.textContent = "Your code";
+	const codeSummary = el("span", "cp-code-summary");
+	codeHead.insertAdjacentHTML("beforeend", ICON_CODE);
+	codeHead.append(codeTitle, codeSummary);
+	bodyEl.append(codeHead, chips, editor, cheer, reportGrip, report);
 	const grip = el("div", "cp-resize");
 	grip.setAttribute("role", "separator");
 	grip.setAttribute("aria-orientation", "horizontal");
@@ -26632,17 +26686,26 @@ function setupCodePractice() {
 		report.style.setProperty("--report-h", `${Math.round(Math.max(48, Math.min(px, max)))}px`);
 	};
 	setReportHeight(prefs.reportHeight ?? REPORT_HEIGHT);
+	let dragged = false;
 	reportGrip.addEventListener("pointerdown", (e) => {
+		dragged = false;
 		if (e.target.closest("button") || reportGrip.classList.contains("folded")) return;
 		e.preventDefault();
 		reportGrip.setPointerCapture(e.pointerId);
-		reportGrip.classList.add("dragging");
 		const startY = e.clientY, startH = report.offsetHeight;
-		document.body.style.cursor = "row-resize";
-		document.body.style.userSelect = "none";
-		const move = (ev) => setReportHeight(startH + startY - ev.clientY);
+		const move = (ev) => {
+			if (!dragged && Math.abs(ev.clientY - startY) < 4) return;
+			if (!dragged) {
+				dragged = true;
+				reportGrip.classList.add("dragging");
+				document.body.style.cursor = "row-resize";
+				document.body.style.userSelect = "none";
+			}
+			setReportHeight(startH + startY - ev.clientY);
+		};
 		const up = () => {
 			reportGrip.removeEventListener("pointermove", move);
+			if (!dragged) return;
 			reportGrip.classList.remove("dragging");
 			document.body.style.cursor = "";
 			document.body.style.userSelect = "";
@@ -26656,15 +26719,22 @@ function setupCodePractice() {
 	function foldReport(folded) {
 		report.hidden = folded;
 		reportGrip.classList.toggle("folded", folded);
-		reportToggle.setAttribute("aria-expanded", String(!folded));
-		reportToggle.title = folded ? "Show the coach's review" : "Fold the coach's review away";
+		reportGrip.classList.toggle("side-section-folded", folded);
+		paintFold(reportToggle, folded, folded ? "Show the coach's review" : "Fold the coach's review down to its header");
 	}
 	foldReport(!!prefs.reportFolded);
-	reportToggle.addEventListener("click", () => {
+	const flipReport = () => {
 		prefs.reportFolded = !report.hidden;
 		foldReport(prefs.reportFolded);
 		savePrefs();
 		if (!report.hidden) reportGrip.classList.remove("fresh");
+	};
+	reportToggle.addEventListener("click", (e) => {
+		e.stopPropagation();
+		flipReport();
+	});
+	reportGrip.addEventListener("click", (e) => {
+		if (!dragged && !e.target.closest("button")) flipReport();
 	});
 	const docToggle = el("button", "doc-fold");
 	docToggle.type = "button";
@@ -26701,6 +26771,13 @@ function setupCodePractice() {
 	let notes = /* @__PURE__ */ new Map(), cheerTimer = 0, reviewSeq = 0, lastReviewed = "", idle = 0, highlightTimer = 0;
 	coach.setAttribute("aria-pressed", String(!!prefs.coach));
 	hint.setAttribute("aria-pressed", String(!!prefs.hints));
+	for (const b of [
+		hint,
+		check,
+		speak
+	]) b.classList.add("cp-coach-only");
+	const paintCoach = () => root.classList.toggle("coach-off", coach.getAttribute("aria-pressed") !== "true");
+	paintCoach();
 	paintSpeak(!!prefs.speak);
 	function el(tag, cls) {
 		const node = document.createElement(tag);
@@ -26739,14 +26816,17 @@ function setupCodePractice() {
 		if (speakOn() && text) window.algebenchSpeakText?.(text);
 	}
 	function persist() {
+		if (!key) return;
 		saved[key] = attempt;
 		saveJson(STORE_KEY, saved);
 	}
 	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
 	function retarget() {
 		const v = codeView();
-		root.hidden = !v;
-		if (!v) {
+		root.hidden = !v?.running;
+		docToggle.hidden = root.hidden;
+		doc.classList.toggle("doc-folded", !!prefs.docFolded && !root.hidden);
+		if (!v?.running) {
 			current = null;
 			return;
 		}
@@ -26819,6 +26899,8 @@ function setupCodePractice() {
 			return chip;
 		}));
 		chips.hidden = !score.sections.length;
+		const exact = score.lines.filter((l) => l.similarity === 1).length;
+		codeSummary.textContent = `${exact} of ${score.lines.length} lines exact`;
 		total.textContent = `${score.total}%`;
 		total.style.setProperty("--fill", `${score.total * 3.6}deg`);
 		total.classList.toggle("done", score.total === 100);
@@ -26907,7 +26989,7 @@ function setupCodePractice() {
 	/** Only a change to the code itself calls for a review: not Enter's new indented line, nor a move of the cursor. */
 	const reviewKey = (text) => `${hintsOn()}\n${text.split("\n").map((l) => l.trimEnd()).join("\n").trimEnd()}`;
 	async function review(force) {
-		if (!current || !score || !input.value.trim() && !hintsOn()) return;
+		if (!coachOn() || !current || !score || !input.value.trim() && !hintsOn()) return;
 		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
 		const focus = focusSection(score, cursor, sections);
 		const signature = reviewKey(input.value);
@@ -27004,7 +27086,6 @@ function setupCodePractice() {
 		};
 		if (r.reply) md("cp-report-reply", r.reply);
 		if (r.commentary) md("cp-report-text", r.commentary);
-		if (r.direction) md("cp-report-next", `**Next:** ${r.direction}`);
 		if (r.line_notes.length) {
 			const list = el("ul", "cp-report-notes");
 			for (const n of r.line_notes) {
@@ -27014,11 +27095,13 @@ function setupCodePractice() {
 			}
 			body.append(list);
 		}
+		if (r.direction) md("cp-report-next", `**Next:** ${r.direction}`);
 		message("assistant", body);
 		render(false);
 		speakReview([
 			r.reply,
 			r.commentary,
+			...r.line_notes.map((n) => `Line ${n.line}: ${n.note}`),
 			r.direction && `Next: ${r.direction}`
 		].filter(Boolean).join(" ").replace(/[`*]/g, ""));
 	}
@@ -27064,13 +27147,25 @@ function setupCodePractice() {
 		if (e.key.startsWith("Arrow")) render(false);
 	});
 	input.addEventListener("click", () => render(false));
-	toggle.addEventListener("click", () => {
+	const paintOpen = () => {
+		const open = root.classList.contains("open");
+		head.classList.toggle("side-section-folded", !open);
+		paintFold(toggle, !open, open ? "Fold Type along down to its header" : "Show Type along");
+	};
+	const flipOpen = () => {
 		root.classList.toggle("open");
-		toggle.setAttribute("aria-expanded", String(root.classList.contains("open")));
+		paintOpen();
 		savePrefs();
 		if (root.classList.contains("open") && hintsOn() && !input.value.trim()) review(false);
+	};
+	toggle.addEventListener("click", (e) => {
+		e.stopPropagation();
+		flipOpen();
 	});
-	toggle.setAttribute("aria-expanded", String(root.classList.contains("open")));
+	head.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) flipOpen();
+	});
+	paintOpen();
 	hide.addEventListener("click", () => {
 		if (!current) return;
 		current.setHidden(!current.hidden());
@@ -27079,7 +27174,9 @@ function setupCodePractice() {
 	coach.addEventListener("click", () => {
 		coach.setAttribute("aria-pressed", String(!coachOn()));
 		savePrefs();
+		paintCoach();
 		if (coachOn()) review(false);
+		else if (speakOn() && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 	});
 	check.addEventListener("click", () => void review(true));
 	hint.addEventListener("click", () => {

@@ -39,6 +39,23 @@ function hash(text: string): string {
     return h.toString(36);
 }
 
+const svg = (d: string, size = 13, width = 2): string =>
+    `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${width}" ` +
+    `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+/** The side sections' fold chevrons (side-sections.ts), and the two headers' icons: a keyboard, the coach's spark. */
+const ICON_FOLD = svg('<path d="M6 9l6 6 6-6"/>', 12, 2.2), ICON_UNFOLD = svg('<path d="M6 15l6-6 6 6"/>', 12, 2.2);
+const ICON_TYPE = svg('<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8"/>');
+const ICON_CODE = svg('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>');
+const ICON_COACH = svg('<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/>');
+
+function foldButton(): HTMLButtonElement {
+    const b = document.createElement('button');b.type = 'button';b.className = 'side-head-btn side-fold-btn';return b;
+}
+function paintFold(b: HTMLButtonElement, folded: boolean, title: string) {
+    b.innerHTML = folded ? ICON_UNFOLD : ICON_FOLD;b.title = title;
+    b.setAttribute('aria-label', title);b.setAttribute('aria-expanded', String(!folded));
+}
+
 export function setupCodePractice(): void {
     const doc = document.getElementById('tab-doc');
     if (!doc) return;
@@ -46,8 +63,10 @@ export function setupCodePractice(): void {
     const saved = loadJson<Record<string, Attempt>>(STORE_KEY, {});
 
     const root = el('section', 'code-practice');root.hidden = true;root.classList.toggle('open', !!prefs.open);
-    const head = el('div', 'cp-head');
-    const toggle = el('button', 'cp-toggle');toggle.type = 'button';toggle.innerHTML = '<span class="cp-chevron" aria-hidden="true">▸</span> Type along';
+    // Headers as the side panel's sections (Proof, Chat): accent icon, small-caps title, fold chevron; the header folds.
+    const head = el('div', 'side-section-head side-section-foldable cp-head');
+    const title = el('span', 'side-section-title');title.textContent = 'Type along';
+    const toggle = foldButton();
     const target = el('span', 'cp-target');
     const total = el('span', 'cp-total');total.setAttribute('role', 'status');
     const tools = el('div', 'cp-tools');
@@ -60,8 +79,10 @@ export function setupCodePractice(): void {
     const speak = tool('', '');speak.classList.add('cp-speak');
     speak.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
     tools.append(hide, coach, hint, check, speak, reset);
-    head.append(toggle, target, total, tools);
+    head.insertAdjacentHTML('beforeend', ICON_TYPE);
+    head.append(title, target, total, toggle);
     const bodyEl = el('div', 'cp-body');
+    bodyEl.append(tools);
     const chips = el('div', 'cp-sections');
     const editor = el('div', 'cp-editor');
     const gutter = el('div', 'cp-gutter');gutter.setAttribute('aria-hidden', 'true');
@@ -76,16 +97,24 @@ export function setupCodePractice(): void {
     const reportGrip = el('div', 'cp-report-grip');reportGrip.setAttribute('role', 'separator');reportGrip.setAttribute('aria-orientation', 'horizontal');
     reportGrip.setAttribute('aria-label', 'Resize the coach\'s review');reportGrip.title = 'Drag to resize the review · double-click to reset';
     // The review's bar: its title folds the review away (its verdict stays on the bar), the rest of it is the grip.
-    const reportToggle = el('button', 'cp-report-toggle');reportToggle.type = 'button';
-    reportToggle.innerHTML = '<span class="cp-chevron" aria-hidden="true">▸</span> Coach review';
+    reportGrip.classList.add('side-section-head', 'side-section-foldable');
+    const reportTitle = el('span', 'side-section-title');reportTitle.textContent = 'Coach review';
+    const reportToggle = foldButton();
     const reportSummary = el('span', 'cp-report-summary');
-    reportGrip.append(reportToggle, reportSummary);
+    reportGrip.insertAdjacentHTML('beforeend', ICON_COACH);
+    reportGrip.append(reportTitle, reportSummary, reportToggle);
     const report = el('div', 'cp-report');report.setAttribute('aria-live', 'polite');
     const MAX_MESSAGES = 30;
-    const EMPTY_REPORT = 'The coach\'s review appears here: Check, or turn on ✦ Coach.';
+    const EMPTY_REPORT = 'The coach reviews each new line, after a pause, or on Check.';
     const clearReport = () => { reportSummary.textContent = '';reportGrip.classList.remove('fresh');report.replaceChildren(Object.assign(el('div', 'cp-report-empty'), {textContent: EMPTY_REPORT})); };
     clearReport();
-    bodyEl.append(chips, editor, cheer, reportGrip, report);
+    // The editor's own header, as the review's: what it holds and how much of it is typed exactly.
+    const codeHead = el('div', 'side-section-head cp-code-head');
+    const codeTitle = el('span', 'side-section-title');codeTitle.textContent = 'Your code';
+    const codeSummary = el('span', 'cp-code-summary');
+    codeHead.insertAdjacentHTML('beforeend', ICON_CODE);
+    codeHead.append(codeTitle, codeSummary);
+    bodyEl.append(codeHead, chips, editor, cheer, reportGrip, report);
     // The top edge resizes the panel, as the side panel's edge does; double-click returns to the default height.
     const grip = el('div', 'cp-resize');grip.setAttribute('role', 'separator');grip.setAttribute('aria-orientation', 'horizontal');
     grip.setAttribute('aria-label', 'Resize the Type along panel');grip.title = 'Drag to resize · double-click to reset';
@@ -122,14 +151,22 @@ export function setupCodePractice(): void {
         report.style.setProperty('--report-h', `${Math.round(Math.max(48, Math.min(px, max)))}px`);
     };
     setReportHeight(prefs.reportHeight ?? REPORT_HEIGHT);
+    // The review's header is its grip too: a drag resizes the review, a click (no drag) folds it.
+    let dragged = false;
     reportGrip.addEventListener('pointerdown', e => {
+        dragged = false;
         if ((e.target as HTMLElement).closest('button') || reportGrip.classList.contains('folded')) return;
-        e.preventDefault();reportGrip.setPointerCapture(e.pointerId);reportGrip.classList.add('dragging');
+        e.preventDefault();reportGrip.setPointerCapture(e.pointerId);
         const startY = e.clientY, startH = report.offsetHeight;
-        document.body.style.cursor = 'row-resize';document.body.style.userSelect = 'none';
-        const move = (ev: PointerEvent) => setReportHeight(startH + startY - ev.clientY);
+        const move = (ev: PointerEvent) => {
+            if (!dragged && Math.abs(ev.clientY - startY) < 4) return;
+            if (!dragged) { dragged = true;reportGrip.classList.add('dragging');document.body.style.cursor = 'row-resize';document.body.style.userSelect = 'none'; }
+            setReportHeight(startH + startY - ev.clientY);
+        };
         const up = () => {
-            reportGrip.removeEventListener('pointermove', move);reportGrip.classList.remove('dragging');
+            reportGrip.removeEventListener('pointermove', move);
+            if (!dragged) return;
+            reportGrip.classList.remove('dragging');
             document.body.style.cursor = '';document.body.style.userSelect = '';
             prefs.reportHeight = report.offsetHeight;savePrefs();
         };
@@ -138,12 +175,13 @@ export function setupCodePractice(): void {
         reportGrip.addEventListener('pointercancel', up, {once: true});
     });
     function foldReport(folded: boolean) {
-        report.hidden = folded;reportGrip.classList.toggle('folded', folded);
-        reportToggle.setAttribute('aria-expanded', String(!folded));
-        reportToggle.title = folded ? 'Show the coach\'s review' : 'Fold the coach\'s review away';
+        report.hidden = folded;reportGrip.classList.toggle('folded', folded);reportGrip.classList.toggle('side-section-folded', folded);
+        paintFold(reportToggle, folded, folded ? 'Show the coach\'s review' : 'Fold the coach\'s review down to its header');
     }
     foldReport(!!prefs.reportFolded);
-    reportToggle.addEventListener('click', () => { prefs.reportFolded = !report.hidden;foldReport(prefs.reportFolded);savePrefs();if (!report.hidden) reportGrip.classList.remove('fresh'); });
+    const flipReport = () => { prefs.reportFolded = !report.hidden;foldReport(prefs.reportFolded);savePrefs();if (!report.hidden) reportGrip.classList.remove('fresh'); };
+    reportToggle.addEventListener('click', e => { e.stopPropagation();flipReport(); });
+    reportGrip.addEventListener('click', e => { if (!dragged && !(e.target as HTMLElement).closest('button')) flipReport(); });
     // Fold the Doc away to give Type along the whole tab; the Doc's own toolbar gets the switch.
     const docToggle = el('button', 'doc-fold');docToggle.type = 'button';
     docToggle.innerHTML = '<span class="cp-chevron" aria-hidden="true">▸</span> Doc';
@@ -164,6 +202,10 @@ export function setupCodePractice(): void {
     let notes = new Map<number, string>(), cheerTimer = 0, reviewSeq = 0, lastReviewed = '', idle = 0, highlightTimer = 0;
     coach.setAttribute('aria-pressed', String(!!prefs.coach));
     hint.setAttribute('aria-pressed', String(!!prefs.hints));
+    // The coach's controls and its review show only while the coach is on.
+    for (const b of [hint, check, speak]) b.classList.add('cp-coach-only');
+    const paintCoach = () => root.classList.toggle('coach-off', coach.getAttribute('aria-pressed') !== 'true');
+    paintCoach();
     paintSpeak(!!prefs.speak);
 
     function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string): HTMLElementTagNameMap[K] {
@@ -189,14 +231,19 @@ export function setupCodePractice(): void {
         if (speakOn() && text) window.algebenchSpeakText?.(text);
     }
     function persist() {
+        if (!key) return;   // nothing targeted yet
         saved[key] = attempt;saveJson(STORE_KEY, saved);
     }
 
     /** Follow the Code panel to the block running now; each block keeps its own attempt. */
     function retarget() {
         const v = codeView();
-        root.hidden = !v;
-        if (!v) { current = null;return; }
+        // Only where the scene or step runs code: elsewhere there is nothing to type along with.
+        root.hidden = !v?.running;
+        // Folding the Doc only makes room for Type along: without it, the Doc stays and the switch goes.
+        docToggle.hidden = root.hidden;
+        doc!.classList.toggle('doc-folded', !!prefs.docFolded && !root.hidden);
+        if (!v?.running) { current = null;return; }
         const text = v.file.source.split('\n').slice(v.from - 1, v.to).join('\n').replace(/\s+$/, '');
         const next = `${v.file.id}:${v.from}:${hash(text)}`;
         current = v;
@@ -247,6 +294,8 @@ export function setupCodePractice(): void {
             return chip;
         }));
         chips.hidden = !score.sections.length;
+        const exact = score.lines.filter(l => l.similarity === 1).length;
+        codeSummary.textContent = `${exact} of ${score.lines.length} lines exact`;
         total.textContent = `${score.total}%`;
         total.style.setProperty('--fill', `${score.total * 3.6}deg`);
         total.classList.toggle('done', score.total === 100);
@@ -322,7 +371,7 @@ export function setupCodePractice(): void {
     const reviewKey = (text: string) => `${hintsOn()}\n${text.split('\n').map(l => l.trimEnd()).join('\n').trimEnd()}`;
     async function review(force: boolean) {
         // With hints, an empty editor is a beginning: the coach says how to start.
-        if (!current || !score || (!input.value.trim() && !hintsOn())) return;
+        if (!coachOn() || !current || !score || (!input.value.trim() && !hintsOn())) return;
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
         const focus = focusSection(score, cursor, sections);
         const signature = reviewKey(input.value);
@@ -396,15 +445,17 @@ export function setupCodePractice(): void {
         // The answer to the learner's own comments comes first: they asked.
         if (r.reply) md('cp-report-reply', r.reply);
         if (r.commentary) md('cp-report-text', r.commentary);
-        if (r.direction) md('cp-report-next', `**Next:** ${r.direction}`);
         if (r.line_notes.length) {
             const list = el('ul', 'cp-report-notes');
             for (const n of r.line_notes) { const li = el('li', '');li.textContent = `Line ${n.line}: ${n.note}`;list.append(li); }
             body.append(list);
         }
+        if (r.direction) md('cp-report-next', `**Next:** ${r.direction}`);
         message('assistant', body);
         render(false);
-        speakReview([r.reply, r.commentary, r.direction && `Next: ${r.direction}`].filter(Boolean).join(' ').replace(/[`*]/g, ''));
+        // Read as shown: the answer, the comment, each line's issue, then what to do next.
+        speakReview([r.reply, r.commentary, ...r.line_notes.map(n => `Line ${n.line}: ${n.note}`), r.direction && `Next: ${r.direction}`]
+            .filter(Boolean).join(' ').replace(/[`*]/g, ''));
     }
 
     function insert(text: string) {
@@ -437,15 +488,23 @@ export function setupCodePractice(): void {
     });
     input.addEventListener('keyup', e => { if (e.key.startsWith('Arrow')) render(false); });
     input.addEventListener('click', () => render(false));
-    toggle.addEventListener('click', () => {
-        root.classList.toggle('open');toggle.setAttribute('aria-expanded', String(root.classList.contains('open')));savePrefs();
+    const paintOpen = () => {
+        const open = root.classList.contains('open');
+        head.classList.toggle('side-section-folded', !open);
+        paintFold(toggle, !open, open ? 'Fold Type along down to its header' : 'Show Type along');
+    };
+    const flipOpen = () => {
+        root.classList.toggle('open');paintOpen();savePrefs();
         if (root.classList.contains('open') && hintsOn() && !input.value.trim()) void review(false);
-    });
-    toggle.setAttribute('aria-expanded', String(root.classList.contains('open')));
+    };
+    toggle.addEventListener('click', e => { e.stopPropagation();flipOpen(); });
+    head.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) flipOpen(); });
+    paintOpen();
     hide.addEventListener('click', () => { if (!current) return;current.setHidden(!current.hidden());hide.setAttribute('aria-pressed', String(current.hidden())); });
     coach.addEventListener('click', () => {
-        coach.setAttribute('aria-pressed', String(!coachOn()));savePrefs();
+        coach.setAttribute('aria-pressed', String(!coachOn()));savePrefs();paintCoach();
         if (coachOn()) void review(false);
+        else if (speakOn() && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     });
     check.addEventListener('click', () => void review(true));
     hint.addEventListener('click', () => {

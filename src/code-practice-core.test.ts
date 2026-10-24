@@ -14,6 +14,16 @@ test('the same code is an exact match, whatever its spacing; other text costs it
     assert.equal(similarity('    state = [0] * n', '    state = [0] * n  # 0 new, 1 open'), 1, 'a trailing comment is not typed');
 });
 
+test('a line typed right at another depth is not exact, so out-of-place code earns no check', () => {
+    const ref = ['def dfs(u):', '    for v in adj[u]:', '        if state[v] == 1:', '            return True', '    return False'];
+    const typed = ['def dfs(u):', '    for v in adj[u]:', '        if state[v] == 2:', '            return False'];
+    const pairs = alignLines(ref, typed);
+    const last = pairs.find(p => p.typed === 3)!;
+    assert.ok(last.similarity < 1, 'return False inside the if is not the return False after the loop');
+    assert.equal(alignLines(['def f():', '    x = 1', '    if x:', '        y'], ['def f():', '  x = 1', '  if x:', '    y']).every(p => p.similarity === 1), true,
+        'two-space indentation nests the same way');
+});
+
 test('blank and comment lines are neutral', () => {
     assert.ok(isNeutral('   ') && isNeutral('  # note') && isNeutral('// note') && !isNeutral('x = 1  # set'));
 });
