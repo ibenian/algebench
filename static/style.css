@@ -6048,3 +6048,15 @@ body:has(.push-array) #legend { display: none; }
 #graph-dock-resize-handle:hover::after, #graph-dock-resize-handle.dragging::after, #json-tree-resize-handle:hover::after {
     background: var(--accent-color);
 }
+
+/* The Type along score's explanation (code-practice.ts): the rules, then this block's counts. */
+.cp-total { cursor: help; }
+.cp-score-tip { position: fixed; z-index: 10070; width: 300px; padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; color: var(--text-color);
+    background: var(--panel-bg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm), 0 8px 24px rgba(0,0,0,.35); pointer-events: none; }
+.cp-score-tip[hidden] { display: none; }
+.cp-tip-head { font-weight: 700; margin-bottom: 4px; }
+.cp-score-tip p { margin: 6px 0 3px; color: var(--muted-color); }
+.cp-tip-rules { margin: 0; padding-left: 16px; }
+.cp-tip-now { display: grid; gap: 1px; margin-top: 6px; }
+.cp-tip-row { display: flex; justify-content: space-between; gap: 10px; }
+.cp-tip-row span { color: var(--muted-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

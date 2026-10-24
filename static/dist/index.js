@@ -26944,7 +26944,9 @@ function setupCodePractice() {
 		total.textContent = `${score.total}%`;
 		total.style.setProperty("--fill", `${score.total * 3.6}deg`);
 		total.classList.toggle("done", score.total === 100);
-		total.title = `Typed from memory: ${score.total}% of the whole block${seen ? ` (${seen} line${seen === 1 ? "" : "s"} seen in the Code panel count half)` : ""}`;
+		total.removeAttribute("title");
+		total.setAttribute("aria-label", `Typed from memory: ${score.total}%`);
+		if (!scoreTip.hidden) explainScore();
 		if (celebrate && before) cheerFor(before, score);
 	}
 	/** Typed text coloured like the Code panel, by the same server lexer; plain until its colours arrive. */
@@ -26980,6 +26982,70 @@ function setupCodePractice() {
 			}).catch(() => {});
 		}, 250);
 	}
+	/** How the ring's score was reached, shown while it is pointed at or focused: the rules, then this block's counts. */
+	const scoreTip = el("div", "cp-score-tip");
+	scoreTip.hidden = true;
+	scoreTip.setAttribute("role", "tooltip");
+	scoreTip.id = "cp-score-tip";
+	document.body.append(scoreTip);
+	total.tabIndex = 0;
+	total.setAttribute("aria-describedby", scoreTip.id);
+	function explainScore() {
+		if (!score) return;
+		const lines = score.lines, n = lines.length;
+		const exact = lines.filter((l) => l.similarity === 1).length, typed = lines.filter((l) => l.typed != null).length;
+		const seen = lines.filter((l) => l.peeked).length;
+		const row = (label, value) => {
+			const r = el("div", "cp-tip-row");
+			const a = el("span", "");
+			a.textContent = label;
+			const b = el("b", "");
+			b.textContent = value;
+			r.append(a, b);
+			return r;
+		};
+		const p = (text) => Object.assign(el("p", ""), { textContent: text });
+		const head = el("div", "cp-tip-head");
+		head.textContent = `Typed from memory: ${score.total}%`;
+		const rules = el("ul", "cp-tip-rules");
+		for (const t of [
+			"✓ exact line: 100 (spaces and trailing comments don't count)",
+			"close line: by how few edits it is away, up to 95",
+			`right code at the wrong nesting depth: ×${OTHER_DEPTH}`,
+			`✓· line seen in the Code panel before you typed it: ×${PEEK_FACTOR}`,
+			"line not typed yet: 0"
+		]) rules.append(Object.assign(el("li", ""), { textContent: t }));
+		const now = el("div", "cp-tip-now");
+		now.append(row("Lines to type", String(n)), row("Exact", String(exact)), row("Close", String(typed - exact)), row("Not typed yet", String(n - typed)), row("Seen (count half)", String(seen)));
+		const parts = [
+			head,
+			p("The score is the average over the running block's lines (blank and comment lines aside):"),
+			rules,
+			now
+		];
+		if (score.sections.length) {
+			const secs = el("div", "cp-tip-now");
+			for (const x of score.sections) secs.append(row(x.title, `${x.score}%`));
+			parts.push(p("By section:"), secs);
+		}
+		if (seen) parts.push(p("Hide code, then retype a seen line (or Reset) to earn it in full."));
+		scoreTip.replaceChildren(...parts);
+	}
+	function showScoreTip() {
+		explainScore();
+		scoreTip.hidden = false;
+		const at = total.getBoundingClientRect(), tip = scoreTip.getBoundingClientRect();
+		scoreTip.style.left = `${Math.max(8, Math.min(at.right - tip.width, window.innerWidth - 8 - tip.width))}px`;
+		scoreTip.style.top = `${at.bottom + 6 + tip.height > window.innerHeight ? at.top - 6 - tip.height : at.bottom + 6}px`;
+	}
+	const hideScoreTip = () => {
+		scoreTip.hidden = true;
+	};
+	total.addEventListener("pointerenter", showScoreTip);
+	total.addEventListener("pointerleave", hideScoreTip);
+	total.addEventListener("focus", showScoreTip);
+	total.addEventListener("blur", hideScoreTip);
+	total.addEventListener("click", (e) => e.stopPropagation());
 	/** Lines just typed exactly flash; a section or the block reaching 100% is congratulated, once. */
 	function cheerFor(before, after) {
 		after.typed.forEach((t, j) => {
