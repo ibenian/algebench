@@ -44,9 +44,19 @@ class CodePracticeSig(dspy.Signature):
     typed yet, `commentary` sets the learner off: what the code must achieve
     first, and how to begin, still without the code itself.
 
+    `changes` is what the learner typed since your last review. On the first
+    review, review everything typed. After that, review ONLY the changed lines,
+    marked `+` in `typed`: `commentary` and `line_notes` are about them alone,
+    in one or two sentences; never sum up the code as a whole. The rest was
+    reviewed already, so don't praise, restate or re-check it; read it only
+    for context (a changed line may fix or break what is around it). `score`
+    still rates the whole section. When `changes` says nothing changed, the
+    learner asked again: review the section as a whole.
+
     The learner talks to you through comments in their code (`notes`): they
-    may explain their thinking, guess, or ask a question. Read every note and
-    answer it in `reply`, as a patient tutor: confirm or gently correct an
+    may explain their thinking, guess, or ask a question. `notes` holds only
+    the NEW ones; other comments in `typed` were answered before, so leave
+    them be. Answer each new note in `reply` (empty when `notes` is), as a patient tutor: confirm or gently correct an
     explanation, and answer a question so they understand WHY, with an
     example, an analogy, or a question that leads them to it. A question is
     a request for help, so answer it even with hints off, but explain the idea
@@ -58,20 +68,27 @@ class CodePracticeSig(dspy.Signature):
     expected: str = dspy.InputField(desc="the reference code, with line numbers")
     section: str = dspy.InputField(
         desc="the section being typed: its title, hint and reference lines; may be empty")
-    typed: str = dspy.InputField(desc="what the learner has typed so far, with line numbers")
+    typed: str = dspy.InputField(
+        desc="what the learner has typed so far, with line numbers; on a follow-up review the lines "
+             "changed since the last one are marked +, and only those are reviewed")
     match: str = dspy.InputField(
         desc="how closely each typed line matches the reference, measured by text alone")
     attempts: str = dspy.InputField(desc="how many times this section has been reviewed before")
     hints: str = dspy.InputField(desc="on: guide the next step; off: comment only on what is typed")
+    changes: str = dspy.InputField(
+        desc="what changed in the typed code since your last review, as + added and - removed lines; "
+             "'first review' when there was none. After the first review, comment ONLY on these lines")
     notes: str = dspy.InputField(
-        desc="the learner's comments in their code, by line: explanations or questions to you; may be empty")
+        desc="the learner's new comments, by line (after the first review only those on changed lines): "
+             "explanations or questions to you; may be empty")
 
     score: int = dspy.OutputField(
         desc="0 to 100: how correct and complete the typed code is for the section, by meaning")
     verdict: str = dspy.OutputField(
         desc="one of: correct, close, partial, off_track, empty")
     commentary: str = dspy.OutputField(
-        desc="two or three sentences to the learner on what they got right and what is off; "
+        desc="two or three sentences to the learner on what they got right and what is off (on a follow-up, "
+             "one or two about the + lines only); "
              "with hints off, only about the typed lines, never what is still to write; "
              "markdown, code in backticks")
     direction: str = dspy.OutputField(

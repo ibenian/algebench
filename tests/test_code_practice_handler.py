@@ -68,6 +68,29 @@ def test_the_learners_comments_are_notes_to_the_coach():
     assert h.render_inputs(_req(typed=typed))["notes"].startswith("line 1:")
 
 
+def test_changes_since_the_last_review_are_marked():
+    assert h.changes_since(None, "x = 1") == "first review"
+    assert h.changes_since("a = 1\nb = 2", "a = 1\nb = 2   ") == h.NOTHING_CHANGED
+    assert h.changes_since("a = 1\nb = 2", "a = 1\nb = 3\nc = 4") == "- line 2: b = 2\n+ line 2: b = 3\n+ line 3: c = 4"
+    assert h.render_inputs(_req(previous="def f(n):"))["changes"] == "+ line 2:     total = 0"
+
+
+def test_a_follow_up_is_about_the_changed_lines(monkeypatch):
+    previous = "def f(n):  # what is n?"
+    typed = "def f(n):  # what is n?\n    total = 0  # start empty\n    x"
+    assert h.changed_lines(previous, typed) == {2, 3}
+    assert h.changed_lines(previous, previous) is None and h.changed_lines(None, typed) is None
+    inputs = h.render_inputs(_req(typed=typed, previous=previous))
+    assert inputs["notes"] == "line 2: start empty", "an answered note isn't asked again"
+    assert [l[:2] for l in inputs["typed"].splitlines()] == ["  ", "+ ", "+ "]
+    assert h.render_inputs(_req(typed=typed))["typed"].startswith("  1 |"), "a first review marks nothing"
+    monkeypatch.setattr(h, "review_code", lambda **_: CodeReview(score=30, verdict="partial", commentary="c",
+                                                                 line_notes=[LineNote(line=1, note="old"), LineNote(line=3, note="new")]))
+    assert h.code_practice(_req(typed=typed, previous=previous))["result"]["line_notes"] == [{"line": 3, "note": "new"}]
+    monkeypatch.setattr(h, "review_code", lambda **_: CodeReview(commentary="c", reply="u is the node"))
+    assert h.code_practice(_req(typed=previous + "\nx = 1", previous=previous))["result"]["reply"] == "", "no new note, no reply"
+
+
 def test_a_failed_call_is_a_reason(monkeypatch):
     monkeypatch.setattr(h, "review_code", lambda **_: CodeReview(error="nope"))
     assert h.code_practice(_req()) == {"reason": "nope"}

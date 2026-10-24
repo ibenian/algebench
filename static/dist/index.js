@@ -26559,10 +26559,27 @@ function setupCodePractice() {
 	const cheer = el("div", "cp-cheer");
 	cheer.hidden = true;
 	cheer.setAttribute("role", "status");
+	const reportGrip = el("div", "cp-report-grip");
+	reportGrip.setAttribute("role", "separator");
+	reportGrip.setAttribute("aria-orientation", "horizontal");
+	reportGrip.setAttribute("aria-label", "Resize the coach's review");
+	reportGrip.title = "Drag to resize the review · double-click to reset";
+	const reportToggle = el("button", "cp-report-toggle");
+	reportToggle.type = "button";
+	reportToggle.innerHTML = "<span class=\"cp-chevron\" aria-hidden=\"true\">▸</span> Coach review";
+	const reportSummary = el("span", "cp-report-summary");
+	reportGrip.append(reportToggle, reportSummary);
 	const report = el("div", "cp-report");
-	report.hidden = true;
 	report.setAttribute("aria-live", "polite");
-	bodyEl.append(chips, editor, cheer, report);
+	const MAX_MESSAGES = 30;
+	const EMPTY_REPORT = "The coach's review appears here: Check, or turn on ✦ Coach.";
+	const clearReport = () => {
+		reportSummary.textContent = "";
+		reportGrip.classList.remove("fresh");
+		report.replaceChildren(Object.assign(el("div", "cp-report-empty"), { textContent: EMPTY_REPORT }));
+	};
+	clearReport();
+	bodyEl.append(chips, editor, cheer, reportGrip, report);
 	const grip = el("div", "cp-resize");
 	grip.setAttribute("role", "separator");
 	grip.setAttribute("aria-orientation", "horizontal");
@@ -26609,6 +26626,70 @@ function setupCodePractice() {
 		setHeight(null);
 		savePrefs();
 	});
+	const REPORT_HEIGHT = 140;
+	const setReportHeight = (px) => {
+		const max = bodyEl.clientHeight > 0 ? Math.max(48, bodyEl.clientHeight - 120) : px;
+		report.style.setProperty("--report-h", `${Math.round(Math.max(48, Math.min(px, max)))}px`);
+	};
+	setReportHeight(prefs.reportHeight ?? REPORT_HEIGHT);
+	reportGrip.addEventListener("pointerdown", (e) => {
+		if (e.target.closest("button") || reportGrip.classList.contains("folded")) return;
+		e.preventDefault();
+		reportGrip.setPointerCapture(e.pointerId);
+		reportGrip.classList.add("dragging");
+		const startY = e.clientY, startH = report.offsetHeight;
+		document.body.style.cursor = "row-resize";
+		document.body.style.userSelect = "none";
+		const move = (ev) => setReportHeight(startH + startY - ev.clientY);
+		const up = () => {
+			reportGrip.removeEventListener("pointermove", move);
+			reportGrip.classList.remove("dragging");
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+			prefs.reportHeight = report.offsetHeight;
+			savePrefs();
+		};
+		reportGrip.addEventListener("pointermove", move);
+		reportGrip.addEventListener("pointerup", up, { once: true });
+		reportGrip.addEventListener("pointercancel", up, { once: true });
+	});
+	function foldReport(folded) {
+		report.hidden = folded;
+		reportGrip.classList.toggle("folded", folded);
+		reportToggle.setAttribute("aria-expanded", String(!folded));
+		reportToggle.title = folded ? "Show the coach's review" : "Fold the coach's review away";
+	}
+	foldReport(!!prefs.reportFolded);
+	reportToggle.addEventListener("click", () => {
+		prefs.reportFolded = !report.hidden;
+		foldReport(prefs.reportFolded);
+		savePrefs();
+		if (!report.hidden) reportGrip.classList.remove("fresh");
+	});
+	const docToggle = el("button", "doc-fold");
+	docToggle.type = "button";
+	docToggle.innerHTML = "<span class=\"cp-chevron\" aria-hidden=\"true\">▸</span> Doc";
+	const content = document.getElementById("explanation-content");
+	function foldDoc(folded) {
+		doc.classList.toggle("doc-folded", folded);
+		docToggle.setAttribute("aria-expanded", String(!folded));
+		docToggle.title = folded ? "Show the Doc" : "Fold the Doc away (Type along gets the room)";
+	}
+	if (content) {
+		document.getElementById("doc-toolbar")?.prepend(docToggle);
+		foldDoc(!!prefs.docFolded);
+	}
+	docToggle.addEventListener("click", () => {
+		prefs.docFolded = !doc.classList.contains("doc-folded");
+		foldDoc(prefs.docFolded);
+		savePrefs();
+	});
+	reportGrip.addEventListener("dblclick", (e) => {
+		if (e.target.closest("button")) return;
+		prefs.reportHeight = void 0;
+		setReportHeight(REPORT_HEIGHT);
+		savePrefs();
+	});
 	let current = null, key = "", block = "", sections = [];
 	let attempt = {
 		text: "",
@@ -26641,7 +26722,10 @@ function setupCodePractice() {
 		coach: coachOn(),
 		hints: hintsOn(),
 		speak: speakOn(),
-		height: prefs.height
+		height: prefs.height,
+		reportHeight: prefs.reportHeight,
+		reportFolded: prefs.reportFolded,
+		docFolded: prefs.docFolded
 	});
 	function paintSpeak(on) {
 		speak.setAttribute("aria-pressed", String(on));
@@ -26681,9 +26765,9 @@ function setupCodePractice() {
 		};
 		input.value = attempt.text;
 		notes = /* @__PURE__ */ new Map();
-		report.hidden = true;
+		clearReport();
 		cheer.hidden = true;
-		lastReviewed = "";
+		lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : "";
 		const count = v.to - v.from + 1;
 		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
 		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
@@ -26820,17 +26904,21 @@ function setupCodePractice() {
 		}
 	}
 	window.setInterval(watchPeeks, 500);
+	/** Only a change to the code itself calls for a review: not Enter's new indented line, nor a move of the cursor. */
+	const reviewKey = (text) => `${hintsOn()}\n${text.split("\n").map((l) => l.trimEnd()).join("\n").trimEnd()}`;
 	async function review(force) {
 		if (!current || !score || !input.value.trim() && !hintsOn()) return;
 		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
 		const focus = focusSection(score, cursor, sections);
-		const signature = `${focus?.id ?? "*"}\n${hintsOn()}\n${input.value}`;
+		const signature = reviewKey(input.value);
 		if (!force && signature === lastReviewed) return;
 		lastReviewed = signature;
-		const id = focus?.id ?? "*", seq = ++reviewSeq;
-		report.hidden = false;
-		report.classList.add("busy");
-		report.replaceChildren(Object.assign(el("div", "cp-report-busy"), { textContent: input.value.trim() ? `Coach is reviewing${focus ? ` “${focus.title}”` : ""}…` : "Coach is finding a way in…" }));
+		const id = focus?.id ?? "*", seq = ++reviewSeq, sent = input.value;
+		const asked = newComments(attempt.reviewed ?? "", sent);
+		if (asked.length) message("user", Object.assign(el("div", ""), { textContent: asked.join("\n") }));
+		const waiting = message("assistant", el("div", "chat-loading"));
+		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
+		reportSummary.textContent = "reviewing…";
 		try {
 			const out = await invokeExpert("code_practice", {
 				language: current.file.language ?? "",
@@ -26843,6 +26931,7 @@ function setupCodePractice() {
 					end: focus.to
 				} : null,
 				typed: input.value,
+				...attempt.reviewed != null ? { previous: attempt.reviewed } : {},
 				match: score.typed.map((t, j) => ({
 					typed: j + 1,
 					score: Math.round(100 * t.similarity),
@@ -26851,55 +26940,71 @@ function setupCodePractice() {
 				attempts: attempt.reviews[id] ?? 0,
 				hints: hintsOn()
 			});
+			waiting.remove();
 			if (seq !== reviewSeq) return;
 			attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
+			if (out.result) attempt.reviewed = sent;
 			persist();
 			showReview(out, focus);
 		} catch (e) {
+			waiting.remove();
 			if (seq !== reviewSeq) return;
 			showReview({ reason: e.message }, focus);
 		}
 	}
+	/** Comments in `typed` that weren't in `before`: what the learner just said to the coach. */
+	function newComments(before, typed) {
+		const said = (text) => text.split("\n").map((l) => /(?:^|\s)(?:#|\/\/)\s?(.*)$/.exec(l)?.[1]?.trim() ?? "").filter(Boolean);
+		const old = new Set(said(before));
+		return said(typed).filter((c) => !old.has(c));
+	}
+	/** One message in the review thread, styled as the chat's; the thread keeps the last MAX_MESSAGES. */
+	function message(role, body) {
+		const msg = el("div", `chat-msg ${role} cp-msg`);
+		const avatar = el("div", "msg-avatar");
+		const icon = role === "user" ? window.algebenchIcons?.user : window.algebenchIcons?.ai;
+		if (icon) avatar.innerHTML = icon;
+		else avatar.textContent = role === "user" ? "👤" : "🤖";
+		body.classList.add("msg-body");
+		msg.append(avatar, body);
+		report.querySelector(".cp-report-empty")?.remove();
+		report.append(msg);
+		while (report.children.length > MAX_MESSAGES) report.firstElementChild.remove();
+		report.scrollTop = report.scrollHeight;
+		return msg;
+	}
 	function showReview(out, focus) {
-		report.classList.remove("busy");
 		const r = out.result;
 		if (!r) {
 			spoken = "";
-			report.replaceChildren(Object.assign(el("div", "cp-report-reason"), { textContent: out.reason ?? "No review." }));
+			reportSummary.textContent = "";
 			notes = /* @__PURE__ */ new Map();
+			message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: out.reason ?? "No review." }));
 			render(false);
 			return;
 		}
 		notes = new Map(r.line_notes.map((n) => [n.line, n.note]));
+		const body = el("div", "");
 		const top = el("div", "cp-report-head");
 		const badge = el("span", `cp-verdict cp-verdict-${r.verdict}`);
 		badge.textContent = `${VERDICTS[r.verdict] ?? r.verdict} · ${r.score}%`;
+		reportSummary.textContent = badge.textContent;
+		reportGrip.classList.toggle("fresh", report.hidden === true);
 		const about = el("span", "cp-report-about");
 		about.textContent = focus ? focus.title : "The whole block";
 		top.append(badge, about);
-		const text = el("div", "cp-report-text");
-		text.innerHTML = renderMarkdown$1(r.commentary, {
-			untrusted: true,
-			glossary: false
-		});
-		const parts = [top];
-		if (r.reply) {
-			const answer = el("div", "cp-report-reply");
-			answer.innerHTML = renderMarkdown$1(r.reply, {
+		body.append(top);
+		const md = (cls, text) => {
+			const part = el("div", cls);
+			part.innerHTML = renderMarkdown$1(text, {
 				untrusted: true,
 				glossary: false
 			});
-			parts.push(answer);
-		}
-		parts.push(text);
-		if (r.direction) {
-			const next = el("div", "cp-report-next");
-			next.innerHTML = renderMarkdown$1(`**Next:** ${r.direction}`, {
-				untrusted: true,
-				glossary: false
-			});
-			parts.push(next);
-		}
+			body.append(part);
+		};
+		if (r.reply) md("cp-report-reply", r.reply);
+		if (r.commentary) md("cp-report-text", r.commentary);
+		if (r.direction) md("cp-report-next", `**Next:** ${r.direction}`);
 		if (r.line_notes.length) {
 			const list = el("ul", "cp-report-notes");
 			for (const n of r.line_notes) {
@@ -26907,9 +27012,9 @@ function setupCodePractice() {
 				li.textContent = `Line ${n.line}: ${n.note}`;
 				list.append(li);
 			}
-			parts.push(list);
+			body.append(list);
 		}
-		report.replaceChildren(...parts);
+		message("assistant", body);
 		render(false);
 		speakReview([
 			r.reply,
@@ -26986,7 +27091,7 @@ function setupCodePractice() {
 		paintSpeak(!speakOn());
 		savePrefs();
 		if (speakOn()) {
-			if (!report.hidden && !report.classList.contains("busy")) speakReview(spoken);
+			if (spoken) speakReview(spoken);
 		} else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 	});
 	reset.addEventListener("click", () => {
@@ -26998,7 +27103,7 @@ function setupCodePractice() {
 		};
 		input.value = "";
 		notes = /* @__PURE__ */ new Map();
-		report.hidden = true;
+		clearReport();
 		cheer.hidden = true;
 		lastReviewed = "";
 		persist();

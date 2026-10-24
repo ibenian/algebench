@@ -20,7 +20,8 @@ const IDLE_REVIEW_MS = 5000;
 const INDENT = '    ';
 const STORE_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practice-view';
 
-interface Attempt { text: string; peeked: number[]; reviews: Record<string, number>; celebrated: string[] }
+/** One block's practice. `reviewed` is the text the coach last saw, so the next review knows what just changed. */
+interface Attempt { text: string; peeked: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string }
 interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; line_notes: {line: number; note: string}[] }
 
 const VERDICTS: Record<string, string> = {correct: 'Correct', close: 'Close', partial: 'Partly there', off_track: 'Off track', empty: 'Nothing yet'};
@@ -41,7 +42,7 @@ function hash(text: string): string {
 export function setupCodePractice(): void {
     const doc = document.getElementById('tab-doc');
     if (!doc) return;
-    const prefs = loadJson<{open?: boolean; coach?: boolean; hints?: boolean; speak?: boolean; height?: number}>(VIEW_KEY, {});
+    const prefs = loadJson<{open?: boolean; coach?: boolean; hints?: boolean; speak?: boolean; height?: number; reportHeight?: number; reportFolded?: boolean; docFolded?: boolean}>(VIEW_KEY, {});
     const saved = loadJson<Record<string, Attempt>>(STORE_KEY, {});
 
     const root = el('section', 'code-practice');root.hidden = true;root.classList.toggle('open', !!prefs.open);
@@ -71,8 +72,20 @@ export function setupCodePractice(): void {
     input.setAttribute('aria-label', 'Type the running code');input.placeholder = 'Type the running code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.';
     stack.append(paint, input);editor.append(gutter, stack);
     const cheer = el('div', 'cp-cheer');cheer.hidden = true;cheer.setAttribute('role', 'status');
-    const report = el('div', 'cp-report');report.hidden = true;report.setAttribute('aria-live', 'polite');
-    bodyEl.append(chips, editor, cheer, report);
+    // The review keeps one height, the learner's to drag (its top edge), so a new review never moves the editor.
+    const reportGrip = el('div', 'cp-report-grip');reportGrip.setAttribute('role', 'separator');reportGrip.setAttribute('aria-orientation', 'horizontal');
+    reportGrip.setAttribute('aria-label', 'Resize the coach\'s review');reportGrip.title = 'Drag to resize the review · double-click to reset';
+    // The review's bar: its title folds the review away (its verdict stays on the bar), the rest of it is the grip.
+    const reportToggle = el('button', 'cp-report-toggle');reportToggle.type = 'button';
+    reportToggle.innerHTML = '<span class="cp-chevron" aria-hidden="true">▸</span> Coach review';
+    const reportSummary = el('span', 'cp-report-summary');
+    reportGrip.append(reportToggle, reportSummary);
+    const report = el('div', 'cp-report');report.setAttribute('aria-live', 'polite');
+    const MAX_MESSAGES = 30;
+    const EMPTY_REPORT = 'The coach\'s review appears here: Check, or turn on ✦ Coach.';
+    const clearReport = () => { reportSummary.textContent = '';reportGrip.classList.remove('fresh');report.replaceChildren(Object.assign(el('div', 'cp-report-empty'), {textContent: EMPTY_REPORT})); };
+    clearReport();
+    bodyEl.append(chips, editor, cheer, reportGrip, report);
     // The top edge resizes the panel, as the side panel's edge does; double-click returns to the default height.
     const grip = el('div', 'cp-resize');grip.setAttribute('role', 'separator');grip.setAttribute('aria-orientation', 'horizontal');
     grip.setAttribute('aria-label', 'Resize the Type along panel');grip.title = 'Drag to resize · double-click to reset';
@@ -102,6 +115,48 @@ export function setupCodePractice(): void {
         grip.addEventListener('pointercancel', up, {once: true});
     });
     grip.addEventListener('dblclick', () => { prefs.height = undefined;setHeight(null);savePrefs(); });
+    const REPORT_HEIGHT = 140;
+    const setReportHeight = (px: number) => {
+        // Leave the editor room when the panel is showing (a collapsed panel has no height to measure).
+        const max = bodyEl.clientHeight > 0 ? Math.max(48, bodyEl.clientHeight - 120) : px;
+        report.style.setProperty('--report-h', `${Math.round(Math.max(48, Math.min(px, max)))}px`);
+    };
+    setReportHeight(prefs.reportHeight ?? REPORT_HEIGHT);
+    reportGrip.addEventListener('pointerdown', e => {
+        if ((e.target as HTMLElement).closest('button') || reportGrip.classList.contains('folded')) return;
+        e.preventDefault();reportGrip.setPointerCapture(e.pointerId);reportGrip.classList.add('dragging');
+        const startY = e.clientY, startH = report.offsetHeight;
+        document.body.style.cursor = 'row-resize';document.body.style.userSelect = 'none';
+        const move = (ev: PointerEvent) => setReportHeight(startH + startY - ev.clientY);
+        const up = () => {
+            reportGrip.removeEventListener('pointermove', move);reportGrip.classList.remove('dragging');
+            document.body.style.cursor = '';document.body.style.userSelect = '';
+            prefs.reportHeight = report.offsetHeight;savePrefs();
+        };
+        reportGrip.addEventListener('pointermove', move);
+        reportGrip.addEventListener('pointerup', up, {once: true});
+        reportGrip.addEventListener('pointercancel', up, {once: true});
+    });
+    function foldReport(folded: boolean) {
+        report.hidden = folded;reportGrip.classList.toggle('folded', folded);
+        reportToggle.setAttribute('aria-expanded', String(!folded));
+        reportToggle.title = folded ? 'Show the coach\'s review' : 'Fold the coach\'s review away';
+    }
+    foldReport(!!prefs.reportFolded);
+    reportToggle.addEventListener('click', () => { prefs.reportFolded = !report.hidden;foldReport(prefs.reportFolded);savePrefs();if (!report.hidden) reportGrip.classList.remove('fresh'); });
+    // Fold the Doc away to give Type along the whole tab; the Doc's own toolbar gets the switch.
+    const docToggle = el('button', 'doc-fold');docToggle.type = 'button';
+    docToggle.innerHTML = '<span class="cp-chevron" aria-hidden="true">▸</span> Doc';
+    const content = document.getElementById('explanation-content');
+    function foldDoc(folded: boolean) {
+        doc!.classList.toggle('doc-folded', folded);
+        docToggle.setAttribute('aria-expanded', String(!folded));
+        docToggle.title = folded ? 'Show the Doc' : 'Fold the Doc away (Type along gets the room)';
+    }
+    if (content) { document.getElementById('doc-toolbar')?.prepend(docToggle);foldDoc(!!prefs.docFolded); }
+    docToggle.addEventListener('click', () => { prefs.docFolded = !doc!.classList.contains('doc-folded');foldDoc(prefs.docFolded);savePrefs(); });
+    reportGrip.addEventListener('dblclick', e => {
+        if ((e.target as HTMLElement).closest('button')) return; prefs.reportHeight = undefined;setReportHeight(REPORT_HEIGHT);savePrefs(); });
 
     let current: CodeView | null = null, key = '', block = '', sections: CodeSection[] = [];
     let attempt: Attempt = {text: '', peeked: [], reviews: {}, celebrated: []};
@@ -120,7 +175,8 @@ export function setupCodePractice(): void {
     const coachOn = () => coach.getAttribute('aria-pressed') === 'true';
     const speakOn = () => speak.getAttribute('aria-pressed') === 'true';
     const hintsOn = () => hint.getAttribute('aria-pressed') === 'true';
-    const savePrefs = () => saveJson(VIEW_KEY, {open: root.classList.contains('open'), coach: coachOn(), hints: hintsOn(), speak: speakOn(), height: prefs.height});
+    const savePrefs = () => saveJson(VIEW_KEY, {open: root.classList.contains('open'), coach: coachOn(), hints: hintsOn(), speak: speakOn(), height: prefs.height, reportHeight: prefs.reportHeight,
+        reportFolded: prefs.reportFolded, docFolded: prefs.docFolded});
     function paintSpeak(on: boolean) {
         speak.setAttribute('aria-pressed', String(on));
         speak.title = on ? 'Reading the coach aloud · click to stop' : 'Read the coach\'s commentary aloud';
@@ -148,7 +204,8 @@ export function setupCodePractice(): void {
         key = next;block = text;
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
         attempt = saved[key] ?? {text: '', peeked: [], reviews: {}, celebrated: []};
-        input.value = attempt.text;notes = new Map();report.hidden = true;cheer.hidden = true;lastReviewed = '';
+        input.value = attempt.text;notes = new Map();clearReport();cheer.hidden = true;
+        lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : '';
         const count = v.to - v.from + 1;
         target.textContent = `${v.file.path.split('/').pop()} · lines ${v.from}–${v.to}`;
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
@@ -261,55 +318,91 @@ export function setupCodePractice(): void {
     }
     window.setInterval(watchPeeks, 500);
 
+    /** Only a change to the code itself calls for a review: not Enter's new indented line, nor a move of the cursor. */
+    const reviewKey = (text: string) => `${hintsOn()}\n${text.split('\n').map(l => l.trimEnd()).join('\n').trimEnd()}`;
     async function review(force: boolean) {
         // With hints, an empty editor is a beginning: the coach says how to start.
         if (!current || !score || (!input.value.trim() && !hintsOn())) return;
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
         const focus = focusSection(score, cursor, sections);
-        const signature = `${focus?.id ?? '*'}\n${hintsOn()}\n${input.value}`;
+        const signature = reviewKey(input.value);
         if (!force && signature === lastReviewed) return;
         lastReviewed = signature;
-        const id = focus?.id ?? '*', seq = ++reviewSeq;
-        report.hidden = false;report.classList.add('busy');
-        report.replaceChildren(Object.assign(el('div', 'cp-report-busy'), {textContent: input.value.trim() ? `Coach is reviewing${focus ? ` “${focus.title}”` : ''}…` : 'Coach is finding a way in…'}));
+        const id = focus?.id ?? '*', seq = ++reviewSeq, sent = input.value;
+        // As in the chat: the learner's new comments are their message, the coach's review the reply.
+        const asked = newComments(attempt.reviewed ?? '', sent);
+        if (asked.length) message('user', Object.assign(el('div', ''), {textContent: asked.join('\n')}));
+        const waiting = message('assistant', el('div', 'chat-loading'));
+        waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
+        reportSummary.textContent = 'reviewing…';
         try {
             const out = await invokeExpert('code_practice', {
                 language: current.file.language ?? '', expected: block, first_line: current.from,
                 section: focus ? {title: focus.title, hint: focus.hint ?? '', start: focus.from, end: focus.to} : null,
-                typed: input.value,
+                typed: input.value, ...(attempt.reviewed != null ? {previous: attempt.reviewed} : {}),
                 match: score.typed.map((t, j) => ({typed: j + 1, score: Math.round(100 * t.similarity), ...(t.reference != null ? {reference: t.reference} : {})}))
                     .filter((_, j) => !score!.typed[j]!.neutral).slice(0, 400),
                 attempts: attempt.reviews[id] ?? 0, hints: hintsOn(),
             }) as {result?: Review; reason?: string};
+            waiting.remove();
             if (seq !== reviewSeq) return;
-            attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;persist();
+            attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
+            if (out.result) attempt.reviewed = sent;
+            persist();
             showReview(out, focus);
         } catch (e) {
+            waiting.remove();
             if (seq !== reviewSeq) return;
             showReview({reason: (e as Error).message}, focus);
         }
     }
+    /** Comments in `typed` that weren't in `before`: what the learner just said to the coach. */
+    function newComments(before: string, typed: string): string[] {
+        const said = (text: string) => text.split('\n').map(l => /(?:^|\s)(?:#|\/\/)\s?(.*)$/.exec(l)?.[1]?.trim() ?? '').filter(Boolean);
+        const old = new Set(said(before));
+        return said(typed).filter(c => !old.has(c));
+    }
+    /** One message in the review thread, styled as the chat's; the thread keeps the last MAX_MESSAGES. */
+    function message(role: 'user' | 'assistant', body: HTMLElement): HTMLElement {
+        const msg = el('div', `chat-msg ${role} cp-msg`);
+        const avatar = el('div', 'msg-avatar');
+        const icon = role === 'user' ? window.algebenchIcons?.user : window.algebenchIcons?.ai;
+        if (icon) avatar.innerHTML = icon;else avatar.textContent = role === 'user' ? '👤' : '🤖';
+        body.classList.add('msg-body');
+        msg.append(avatar, body);
+        report.querySelector('.cp-report-empty')?.remove();
+        report.append(msg);
+        while (report.children.length > MAX_MESSAGES) report.firstElementChild!.remove();
+        report.scrollTop = report.scrollHeight;
+        return msg;
+    }
     function showReview(out: {result?: Review; reason?: string}, focus: CodeSection | null) {
-        report.classList.remove('busy');
         const r = out.result;
-        if (!r) { spoken = '';report.replaceChildren(Object.assign(el('div', 'cp-report-reason'), {textContent: out.reason ?? 'No review.'}));notes = new Map();render(false);return; }
+        if (!r) {
+            spoken = '';reportSummary.textContent = '';notes = new Map();
+            message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: out.reason ?? 'No review.'}));
+            render(false);return;
+        }
         notes = new Map(r.line_notes.map(n => [n.line, n.note]));
+        const body = el('div', '');
         const top = el('div', 'cp-report-head');
         const badge = el('span', `cp-verdict cp-verdict-${r.verdict}`);badge.textContent = `${VERDICTS[r.verdict] ?? r.verdict} · ${r.score}%`;
+        // Folded, the bar still says what the coach thinks, and marks the review as new until it is opened.
+        reportSummary.textContent = badge.textContent;reportGrip.classList.toggle('fresh', report.hidden === true);
         const about = el('span', 'cp-report-about');about.textContent = focus ? focus.title : 'The whole block';
         top.append(badge, about);
-        const text = el('div', 'cp-report-text');text.innerHTML = renderMarkdown(r.commentary, {untrusted: true, glossary: false});
-        const parts: HTMLElement[] = [top];
+        body.append(top);
+        const md = (cls: string, text: string) => { const part = el('div', cls);part.innerHTML = renderMarkdown(text, {untrusted: true, glossary: false});body.append(part); };
         // The answer to the learner's own comments comes first: they asked.
-        if (r.reply) { const answer = el('div', 'cp-report-reply');answer.innerHTML = renderMarkdown(r.reply, {untrusted: true, glossary: false});parts.push(answer); }
-        parts.push(text);
-        if (r.direction) { const next = el('div', 'cp-report-next');next.innerHTML = renderMarkdown(`**Next:** ${r.direction}`, {untrusted: true, glossary: false});parts.push(next); }
+        if (r.reply) md('cp-report-reply', r.reply);
+        if (r.commentary) md('cp-report-text', r.commentary);
+        if (r.direction) md('cp-report-next', `**Next:** ${r.direction}`);
         if (r.line_notes.length) {
             const list = el('ul', 'cp-report-notes');
             for (const n of r.line_notes) { const li = el('li', '');li.textContent = `Line ${n.line}: ${n.note}`;list.append(li); }
-            parts.push(list);
+            body.append(list);
         }
-        report.replaceChildren(...parts);
+        message('assistant', body);
         render(false);
         speakReview([r.reply, r.commentary, r.direction && `Next: ${r.direction}`].filter(Boolean).join(' ').replace(/[`*]/g, ''));
     }
@@ -363,12 +456,12 @@ export function setupCodePractice(): void {
     speak.addEventListener('click', () => {
         paintSpeak(!speakOn());savePrefs();
         // On: read the review already shown. Off: stop, if speech is playing.
-        if (speakOn()) { if (!report.hidden && !report.classList.contains('busy')) speakReview(spoken); }
+        if (speakOn()) { if (spoken) speakReview(spoken); }
         else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     });
     reset.addEventListener('click', () => {
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
-        report.hidden = true;cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
+        clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
     });
     window.addEventListener('algebench:codeview', retarget);
     window.addEventListener('algebench:navchange', retarget);

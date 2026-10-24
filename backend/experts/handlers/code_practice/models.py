@@ -43,6 +43,8 @@ class CodePracticeRequest(BaseModel):
     first_line: int = Field(default=1, ge=1)
     section: Optional[PracticeSection] = None
     typed: str = Field(default="", max_length=MAX_CODE_CHARS)
+    #: What was typed at the last review, so the coach can speak to what changed since; None on a first review.
+    previous: Optional[str] = Field(default=None, max_length=MAX_CODE_CHARS)
     match: list[LineMatch] = Field(default_factory=list, max_length=400)
     attempts: int = Field(default=0, ge=0, le=1000)
     #: Guide the next step (and how to begin, before anything is typed); off, only review what is typed.
