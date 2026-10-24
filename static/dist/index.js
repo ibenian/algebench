@@ -26556,6 +26556,7 @@ var svg$1 = (d, size = 13, width = 2) => `<svg viewBox="0 0 24 24" width="${size
 var ICON_FOLD = svg$1("<path d=\"M6 9l6 6 6-6\"/>", 12, 2.2);
 var ICON_UNFOLD = svg$1("<path d=\"M6 15l6-6 6 6\"/>", 12, 2.2);
 var ICON_TYPE = svg$1("<rect x=\"2.5\" y=\"6\" width=\"19\" height=\"12\" rx=\"2\"/><path d=\"M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8\"/>");
+var ICON_SEEN = "<svg class=\"cp-eye\" viewBox=\"0 0 24 24\" width=\"10\" height=\"10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-label=\"seen\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>";
 var ICON_DOC = svg$1("<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>");
 var ICON_CODE = svg$1("<path d=\"M8 7l-5 5 5 5M16 7l5 5-5 5\"/>");
 var ICON_COACH = svg$1("<path d=\"M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z\"/>");
@@ -26927,13 +26928,17 @@ function setupCodePractice() {
 			if (t.neutral) row.classList.add("neutral");
 			else if (t.exact) {
 				row.classList.add(line?.peeked ? "seen" : "exact");
-				mark.textContent = line?.peeked ? "✓·" : "✓";
+				mark.textContent = "✓";
 			} else if (line) {
 				row.classList.add("fuzzy");
 				mark.textContent = `${line.score}`;
 			} else if (text.trim()) {
 				row.classList.add("miss");
 				mark.textContent = "✗";
+			}
+			if (line?.peeked) {
+				mark.insertAdjacentHTML("beforeend", ICON_SEEN);
+				row.classList.add("peeked");
 			}
 			row.title = t.neutral ? "" : line ? `Matches line ${line.line}: ${line.score}%${line.peeked ? " (seen in the Code panel, so at most half)" : ""}` : "No line of the code is like this one";
 			const note = notes.get(j + 1);
@@ -26960,7 +26965,7 @@ function setupCodePractice() {
 		const exact = score.lines.filter((l) => l.similarity === 1).length;
 		const seen = score.lines.filter((l) => l.peeked).length;
 		codeSummary.textContent = `${exact} of ${score.lines.length} lines exact${seen ? ` · ${seen} seen (half marks)` : ""}`;
-		codeSummary.title = seen ? "Lines visible in the Code panel while you practised (✓·) score half. Hide code and type them from memory for full marks." : "";
+		codeSummary.title = seen ? "Lines visible in the Code panel while you practised (marked with an eye) score half. Hide code and type them from memory for full marks." : "";
 		total.textContent = `${score.total}%`;
 		total.style.setProperty("--fill", `${score.total * 3.6}deg`);
 		total.classList.toggle("done", score.total === 100);
@@ -27054,7 +27059,7 @@ function setupCodePractice() {
 			"✓ exact line: 100 (spaces and trailing comments don't count)",
 			"close line: by how few edits it is away, up to 95",
 			`right code at the wrong nesting depth: ×${OTHER_DEPTH}`,
-			`✓· line seen in the Code panel before you typed it: ×${PEEK_FACTOR}`,
+			`👁 line seen in the Code panel before you typed it: ×${PEEK_FACTOR}`,
 			"line not typed yet: 0"
 		]) rules.append(Object.assign(el("li", ""), { textContent: t }));
 		const now = el("div", "cp-tip-now");
