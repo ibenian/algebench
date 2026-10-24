@@ -13157,7 +13157,7 @@ function renderArray(el, _view, decorate) {
 		];
 	};
 	const titlePlane = planeText && el.label ? addTextPlane(titleWidth, .95, el.labelSide === "left" ? "#b5c1cf" : el.color ?? "#b5c1cf") : null;
-	const emptyPlane = planeText ? addTextPlane(.7, .68, "#8793a6") : null;
+	const emptyPlane = planeText && !decorate ? addTextPlane(.7, .68, "#8793a6") : null;
 	if (el.label) {
 		titleLabel = addLabel3D("", titlePosition(), "#b5c1cf", {
 			align: leftTitle ? "right" : el.align,
@@ -26543,6 +26543,7 @@ var svg$1 = (d, size = 13, width = 2) => `<svg viewBox="0 0 24 24" width="${size
 var ICON_FOLD = svg$1("<path d=\"M6 9l6 6 6-6\"/>", 12, 2.2);
 var ICON_UNFOLD = svg$1("<path d=\"M6 15l6-6 6 6\"/>", 12, 2.2);
 var ICON_TYPE = svg$1("<rect x=\"2.5\" y=\"6\" width=\"19\" height=\"12\" rx=\"2\"/><path d=\"M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8\"/>");
+var ICON_DOC = svg$1("<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>");
 var ICON_CODE = svg$1("<path d=\"M8 7l-5 5 5 5M16 7l5 5-5 5\"/>");
 var ICON_COACH = svg$1("<path d=\"M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z\"/>");
 function foldButton() {
@@ -26737,23 +26738,34 @@ function setupCodePractice() {
 	reportGrip.addEventListener("click", (e) => {
 		if (!dragged && !e.target.closest("button")) flipReport();
 	});
-	const docToggle = el("button", "doc-fold");
-	docToggle.type = "button";
-	docToggle.innerHTML = "<span class=\"cp-chevron\" aria-hidden=\"true\">▸</span> Doc";
+	const docHead = el("div", "side-section-head doc-head");
+	const docTitle = el("span", "side-section-title");
+	docTitle.textContent = "Doc";
+	const docToggle = foldButton();
+	docHead.insertAdjacentHTML("beforeend", ICON_DOC);
+	docHead.append(docTitle, docToggle);
 	const content = document.getElementById("explanation-content");
 	function foldDoc(folded) {
 		doc.classList.toggle("doc-folded", folded);
-		docToggle.setAttribute("aria-expanded", String(!folded));
-		docToggle.title = folded ? "Show the Doc" : "Fold the Doc away (Type along gets the room)";
+		docHead.classList.toggle("side-section-folded", folded);
+		paintFold(docToggle, folded, folded ? "Show the Doc" : "Fold the Doc down to its header (Type along gets the room)");
 	}
 	if (content) {
-		document.getElementById("doc-toolbar")?.prepend(docToggle);
+		doc.prepend(docHead);
 		foldDoc(!!prefs.docFolded);
 	}
-	docToggle.addEventListener("click", () => {
+	const flipDoc = () => {
+		if (docToggle.hidden) return;
 		prefs.docFolded = !doc.classList.contains("doc-folded");
 		foldDoc(prefs.docFolded);
 		savePrefs();
+	};
+	docToggle.addEventListener("click", (e) => {
+		e.stopPropagation();
+		flipDoc();
+	});
+	docHead.addEventListener("click", (e) => {
+		if (!e.target.closest("button")) flipDoc();
 	});
 	reportGrip.addEventListener("dblclick", (e) => {
 		if (e.target.closest("button")) return;
@@ -26840,7 +26852,8 @@ function setupCodePractice() {
 		const v = codeView();
 		root.hidden = !v?.running;
 		docToggle.hidden = root.hidden;
-		doc.classList.toggle("doc-folded", !!prefs.docFolded && !root.hidden);
+		docHead.classList.toggle("side-section-foldable", !root.hidden);
+		foldDoc(!!prefs.docFolded && !root.hidden);
 		if (!v?.running) {
 			current = null;
 			return;

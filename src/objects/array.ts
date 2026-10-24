@@ -202,7 +202,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     };
     // Row titles share one neutral ink so stacked rows read as a set; a top title keeps the array's colour.
     const titlePlane=planeText&&el.label?addTextPlane(titleWidth,.95,el.labelSide==='left'?'#b5c1cf':el.color??'#b5c1cf'):null;
-    const emptyPlane=planeText?addTextPlane(.7,.68,'#8793a6'):null;
+    // A decorated array (a stack) says empty in its own words: no ∅ under its caption.
+    const emptyPlane=planeText&&!decorate?addTextPlane(.7,.68,'#8793a6'):null;
     if(el.label){
         titleLabel = addLabel3D('',titlePosition(),'#b5c1cf',{align:leftTitle?'right':el.align,cssClass:`label-3d ${el.cssClass??''}`});
         if(planeText){titleLabel.forceHidden=true;titleLabel.el.classList.add('array-plane-accessible');clipArrayPlaneMirror(titleLabel.el);}

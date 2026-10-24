@@ -6007,12 +6007,12 @@ body:has(.push-array) #legend { display: none; }
 .code-practice.coach-off .cp-report-grip, .code-practice.coach-off .cp-report, .code-practice.coach-off .cp-coach-only { display: none !important; }
 .cp-code-head { margin-top: -2px; }
 .cp-code-summary { flex: 1; text-align: right; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .74rem; color: var(--muted-color); }
-.doc-fold[aria-expanded="true"] .cp-chevron { transform: rotate(90deg); }
 .cp-report-summary { flex: 1; text-align: right; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .74rem; color: var(--muted-color); }
 .cp-report-grip.fresh .cp-report-summary { color: var(--accent-color); font-weight: 600; }
 .cp-report-grip.fresh .cp-report-summary::after { content: ' • new'; }
 .cp-report[hidden] { display: none; }
-#tab-doc.doc-folded #explanation-content { display: none; }
+#tab-doc.doc-folded #explanation-content, #tab-doc.doc-folded #doc-toolbar { display: none; }
+.doc-head { border-top: 0; }
 #tab-doc.doc-folded .code-practice.open { flex: 1 1 auto !important; max-height: none !important; }
 #tab-doc.doc-folded .cp-resize { display: none; }
 .cp-report-grip.dragging { background: color-mix(in srgb, var(--accent-color) 22%, transparent); cursor: row-resize; }
@@ -6030,3 +6030,21 @@ body:has(.push-array) #legend { display: none; }
 .cp-report-reply > :first-child::before { content: '💬 '; }
 .cp-report-reply p { margin: 2px 0; }
 .cp-report-notes { margin: 4px 0 0; padding-left: 18px; color: #d36ba6; }
+
+/* Every pane splitter shows its grip, as the Coach review's header does: a small pill across its middle,
+   always visible, lit while pointed at or dragged. Horizontal splitters get a flat pill, vertical a tall one. */
+#graph-dock-resize-handle, #json-tree-resize-handle { position: relative; }
+.cp-resize::after, #proof-resize-handle::after,
+#panel-resize-handle::after, #scene-dock-resize-handle::after, #graph-dock-resize-handle::after, #json-tree-resize-handle::after {
+    content: ''; position: absolute; left: 50%; top: 50%; border-radius: 2px; pointer-events: none;
+    background: color-mix(in srgb, var(--text-color) 22%, transparent); transition: background .15s;
+}
+.cp-resize::after, #proof-resize-handle::after { width: 28px; height: 3px; margin: -1.5px 0 0 -14px; opacity: 1; }
+#panel-resize-handle::after, #scene-dock-resize-handle::after, #graph-dock-resize-handle::after, #json-tree-resize-handle::after {
+    width: 3px; height: 28px; margin: -14px 0 0 -1.5px;
+}
+.cp-resize:hover::after, .cp-resize.dragging::after, #proof-resize-handle:hover::after, #proof-resize-handle.dragging::after,
+#panel-resize-handle:hover::after, #panel-resize-handle.dragging::after, #scene-dock-resize-handle:hover::after, #scene-dock-resize-handle.dragging::after,
+#graph-dock-resize-handle:hover::after, #graph-dock-resize-handle.dragging::after, #json-tree-resize-handle:hover::after {
+    background: var(--accent-color);
+}

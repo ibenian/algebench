@@ -45,6 +45,7 @@ const svg = (d: string, size = 13, width = 2): string =>
 /** The side sections' fold chevrons (side-sections.ts), and the two headers' icons: a keyboard, the coach's spark. */
 const ICON_FOLD = svg('<path d="M6 9l6 6 6-6"/>', 12, 2.2), ICON_UNFOLD = svg('<path d="M6 15l6-6 6 6"/>', 12, 2.2);
 const ICON_TYPE = svg('<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8"/>');
+const ICON_DOC = svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>');
 const ICON_CODE = svg('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>');
 const ICON_COACH = svg('<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/>');
 
@@ -184,16 +185,21 @@ export function setupCodePractice(): void {
     reportToggle.addEventListener('click', e => { e.stopPropagation();flipReport(); });
     reportGrip.addEventListener('click', e => { if (!dragged && !(e.target as HTMLElement).closest('button')) flipReport(); });
     // Fold the Doc away to give Type along the whole tab; the Doc's own toolbar gets the switch.
-    const docToggle = el('button', 'doc-fold');docToggle.type = 'button';
-    docToggle.innerHTML = '<span class="cp-chevron" aria-hidden="true">▸</span> Doc';
+    // The Doc gets the same header: its fold chevron shows only when Type along is there to take the room.
+    const docHead = el('div', 'side-section-head doc-head');
+    const docTitle = el('span', 'side-section-title');docTitle.textContent = 'Doc';
+    const docToggle = foldButton();
+    docHead.insertAdjacentHTML('beforeend', ICON_DOC);
+    docHead.append(docTitle, docToggle);
     const content = document.getElementById('explanation-content');
     function foldDoc(folded: boolean) {
-        doc!.classList.toggle('doc-folded', folded);
-        docToggle.setAttribute('aria-expanded', String(!folded));
-        docToggle.title = folded ? 'Show the Doc' : 'Fold the Doc away (Type along gets the room)';
+        doc!.classList.toggle('doc-folded', folded);docHead.classList.toggle('side-section-folded', folded);
+        paintFold(docToggle, folded, folded ? 'Show the Doc' : 'Fold the Doc down to its header (Type along gets the room)');
     }
-    if (content) { document.getElementById('doc-toolbar')?.prepend(docToggle);foldDoc(!!prefs.docFolded); }
-    docToggle.addEventListener('click', () => { prefs.docFolded = !doc!.classList.contains('doc-folded');foldDoc(prefs.docFolded);savePrefs(); });
+    if (content) { doc.prepend(docHead);foldDoc(!!prefs.docFolded); }
+    const flipDoc = () => { if (docToggle.hidden) return;prefs.docFolded = !doc!.classList.contains('doc-folded');foldDoc(prefs.docFolded);savePrefs(); };
+    docToggle.addEventListener('click', e => { e.stopPropagation();flipDoc(); });
+    docHead.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) flipDoc(); });
     reportGrip.addEventListener('dblclick', e => {
         if ((e.target as HTMLElement).closest('button')) return; prefs.reportHeight = undefined;setReportHeight(REPORT_HEIGHT);savePrefs(); });
 
@@ -254,8 +260,8 @@ export function setupCodePractice(): void {
         // Only where the scene or step runs code: elsewhere there is nothing to type along with.
         root.hidden = !v?.running;
         // Folding the Doc only makes room for Type along: without it, the Doc stays and the switch goes.
-        docToggle.hidden = root.hidden;
-        doc!.classList.toggle('doc-folded', !!prefs.docFolded && !root.hidden);
+        docToggle.hidden = root.hidden;docHead.classList.toggle('side-section-foldable', !root.hidden);
+        foldDoc(!!prefs.docFolded && !root.hidden);
         if (!v?.running) { current = null;return; }
         const text = v.file.source.split('\n').slice(v.from - 1, v.to).join('\n').replace(/\s+$/, '');
         const next = `${v.file.id}:${v.from}:${hash(text)}`;
