@@ -376,7 +376,7 @@ var _MATHJS_EXTENSIONS = {
 	arrayAt,
 	keyIndex,
 	toFixed: (val, decimals) => Number(val).toFixed(Number(decimals)),
-	concat: (...args) => args.map((a) => String(a)).join(""),
+	concat: (...args) => args.map((a) => Array.isArray(a) ? `[${a.join(", ")}]` : String(a)).join(""),
 	bar: (val, w = 20) => {
 		const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
 		return "█".repeat(n) + "░".repeat(Number(w) - n);
@@ -24179,6 +24179,19 @@ function undoStepRemoves(tracker) {
 		}
 	}
 }
+/**
+* Elements added outside the lesson's steps (the Code panel's watches as labels): rendered like a step's, and
+* removed by the disposer returned. The caller re-adds them after each navigation, which may already have
+* cleared the scene they were drawn in, so disposing then is quiet.
+*/
+function addTransientElements(elements) {
+	const tracker = renderStepAdd(elements, void 0);
+	return () => {
+		try {
+			removeStepTracker(tracker);
+		} catch {}
+	};
+}
 function removeStepTracker(tracker) {
 	if (tracker.sliderIds && tracker.sliderIds.length > 0) {
 		const stillNeeded = new Set(sceneState.stepTrackers.flatMap((t) => t.sliderIds || []));
@@ -25153,6 +25166,347 @@ function menuPlacement(anchorLeft, menuWidth, boundsLeft, boundsRight, margin = 
 	};
 }
 //#endregion
+//#region src/code-watch.ts
+/**
+* Watch expressions (code-panel.ts): a piece of code the reader selects, such as `1 - color[u]` or
+* `len(queue) > 0`, evaluated against the recorded run at the current frame. The code is Python; it is
+* translated into a math.js expression over the step's trace table (each name becomes that column at the
+* current frame) and then evaluated in the sandbox like any lesson expression. Pure, so it is testable.
+*/
+/** Why a selection can't be watched, in words for the reader. */
+var WatchError = class extends Error {};
+var OPS = [
+	"**",
+	"//",
+	"==",
+	"!=",
+	"<=",
+	">=",
+	"+",
+	"-",
+	"*",
+	"/",
+	"%",
+	"<",
+	">",
+	"(",
+	")",
+	"[",
+	"]",
+	",",
+	"="
+];
+function tokenize(src) {
+	const out = [];
+	for (let i = 0; i < src.length;) {
+		const ch = src[i];
+		if (/\s/.test(ch)) {
+			i++;
+			continue;
+		}
+		const num = /^\d+(\.\d+)?/.exec(src.slice(i));
+		if (num) {
+			out.push({
+				kind: "num",
+				text: num[0]
+			});
+			i += num[0].length;
+			continue;
+		}
+		const name = /^[A-Za-z_]\w*/.exec(src.slice(i));
+		if (name) {
+			out.push({
+				kind: "name",
+				text: name[0]
+			});
+			i += name[0].length;
+			continue;
+		}
+		if (ch === "\"" || ch === "'") {
+			const end = src.indexOf(ch, i + 1);
+			if (end < 0) throw new WatchError("A string is not closed.");
+			out.push({
+				kind: "str",
+				text: src.slice(i + 1, end)
+			});
+			i = end + 1;
+			continue;
+		}
+		const op = OPS.find((o) => src.startsWith(o, i));
+		if (!op && ch === ".") throw new WatchError("Methods and attributes (\".\") can't be watched yet: select a variable or an expression of them.");
+		if (!op) throw new WatchError(`"${ch}" can't be watched.`);
+		out.push({
+			kind: "op",
+			text: op
+		});
+		i += op.length;
+	}
+	return out;
+}
+/** Python functions a watch may call, and what they become. */
+var CALLS = {
+	len: (a) => `arrayCount(${a[0]})`,
+	abs: (a) => `abs(${a[0]})`,
+	min: (a) => `min(${a.join(", ")})`,
+	max: (a) => `max(${a.join(", ")})`
+};
+/**
+* The math.js expression for a Python expression, each name read from `table` at the current frame. `names` are
+* the columns the table has; any other name is refused, naming the `shown` ones (the code's own variables), so a typo says what exists.
+*/
+function watchExpr(python, table, names, shown = names) {
+	if (/(^|[^=!<>])=(?!=)/.test(python)) throw new WatchError("That is an assignment: select the expression on its right.");
+	const toks = tokenize(python);
+	if (!toks.length) throw new WatchError("Select an expression to watch.");
+	let k = 0;
+	const peek = () => toks[k], next = () => toks[k++];
+	const isOp = (t) => peek()?.kind === "op" && peek().text === t;
+	const isWord = (t) => peek()?.kind === "name" && peek().text === t;
+	const expect = (t) => {
+		if (!isOp(t)) throw new WatchError(`Expected "${t}".`);
+		k++;
+	};
+	function atom() {
+		const t = next();
+		if (!t) throw new WatchError("The expression ends too soon.");
+		if (t.kind === "num") return t.text;
+		if (t.kind === "str") return `'${t.text.replace(/'/g, "\\'")}'`;
+		if (t.kind === "op" && t.text === "(") {
+			const e = or();
+			expect(")");
+			return `(${e})`;
+		}
+		if (t.kind === "op" && t.text === "[") {
+			const items = [];
+			while (!isOp("]")) {
+				items.push(or());
+				if (!isOp("]")) expect(",");
+			}
+			k++;
+			return `[${items.join(", ")}]`;
+		}
+		if (t.kind === "name") {
+			if (t.text === "True") return "true";
+			if (t.text === "False") return "false";
+			if (CALLS[t.text] && isOp("(")) {
+				k++;
+				const args = [];
+				while (!isOp(")")) {
+					args.push(or());
+					if (!isOp(")")) expect(",");
+				}
+				k++;
+				return CALLS[t.text](args);
+			}
+			if (!names.includes(t.text)) throw new WatchError(`"${t.text}" isn't recorded at this step. It has: ${shown.join(", ")}.`);
+			return `dataTable('${table}', frame, '${t.text}')`;
+		}
+		throw new WatchError(`"${t.text}" is out of place.`);
+	}
+	function postfix() {
+		let e = atom();
+		while (isOp("[")) {
+			k++;
+			const i = or();
+			expect("]");
+			e = `arrayAt(${e}, ${i})`;
+		}
+		return e;
+	}
+	function power() {
+		const b = postfix();
+		if (isOp("**")) {
+			k++;
+			return `(${b}) ^ (${unary()})`;
+		}
+		return b;
+	}
+	function unary() {
+		if (isOp("-")) {
+			k++;
+			return `-(${unary()})`;
+		}
+		if (isOp("+")) {
+			k++;
+			return unary();
+		}
+		return power();
+	}
+	function term() {
+		let e = unary();
+		for (;;) if (isOp("//")) {
+			k++;
+			e = `floor((${e}) / (${unary()}))`;
+		} else if (isOp("*") || isOp("/") || isOp("%")) {
+			const op = next().text;
+			e = `${e} ${op === "%" ? "mod" : op} ${unary()}`;
+		} else return e;
+	}
+	function sum() {
+		let e = term();
+		while (isOp("+") || isOp("-")) {
+			const op = next().text;
+			e = `${e} ${op} ${term()}`;
+		}
+		return e;
+	}
+	function compare() {
+		let e = sum();
+		while ([
+			"==",
+			"!=",
+			"<",
+			">",
+			"<=",
+			">="
+		].some(isOp)) {
+			const op = next().text;
+			e = `${e} ${op} ${sum()}`;
+		}
+		return e;
+	}
+	function not() {
+		if (isWord("not")) {
+			k++;
+			return `not (${not()})`;
+		}
+		return compare();
+	}
+	function and() {
+		let e = not();
+		while (isWord("and")) {
+			k++;
+			e = `${e} and ${not()}`;
+		}
+		return e;
+	}
+	function or() {
+		let e = and();
+		while (isWord("or")) {
+			k++;
+			e = `${e} or ${and()}`;
+		}
+		return e;
+	}
+	const out = or();
+	if (k < toks.length) throw new WatchError(isOp("=") ? "That is an assignment: select the expression on its right." : `"${peek().text}" is out of place.`);
+	return out;
+}
+/** A watched value as Python prints it: lists in brackets, True and False. */
+function formatWatch(value) {
+	if (typeof value === "boolean") return value ? "True" : "False";
+	if (typeof value === "number") return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
+	if (Array.isArray(value)) return `[${value.map(formatWatch).join(", ")}]`;
+	if (value && typeof value === "object" && "toArray" in value) return formatWatch(value.toArray());
+	if (typeof value === "string") return `'${value}'`;
+	return String(value);
+}
+//#endregion
+//#region src/watch-store.ts
+var DB_NAME$1 = "algebench-watches";
+var DB_VERSION$1 = 1;
+var STORE$1 = "watches";
+var watchKey = (w) => [
+	w.lesson,
+	w.file,
+	w.line,
+	w.expr
+].join("\0");
+function promised$1(req) {
+	return new Promise((resolve, reject) => {
+		req.onsuccess = () => resolve(req.result);
+		req.onerror = () => reject(req.error);
+	});
+}
+function done$1(tx) {
+	return new Promise((resolve, reject) => {
+		tx.oncomplete = () => resolve();
+		tx.onerror = () => reject(tx.error);
+		tx.onabort = () => reject(tx.error ?? /* @__PURE__ */ new Error("transaction aborted"));
+	});
+}
+function openDb$1(factory) {
+	const req = factory.open(DB_NAME$1, DB_VERSION$1);
+	req.onupgradeneeded = () => {
+		const db = req.result;
+		if (!db.objectStoreNames.contains(STORE$1)) db.createObjectStore(STORE$1, { keyPath: "key" }).createIndex("lesson", "lesson");
+	};
+	return promised$1(req);
+}
+var valid = (w) => !!w && typeof w.lesson === "string" && typeof w.file === "string" && Number.isInteger(w.line) && typeof w.expr === "string";
+/** In memory, for a browser without IndexedDB: the watches last the session. */
+function memoryStore() {
+	const all = /* @__PURE__ */ new Map();
+	return {
+		async list(lesson) {
+			return [...all.values()].filter((w) => w.lesson === lesson);
+		},
+		async add(w) {
+			all.set(watchKey(w), w);
+		},
+		async remove(w) {
+			all.delete(watchKey(w));
+		}
+	};
+}
+function createWatchStore(factory = globalThis.indexedDB) {
+	if (!factory) return memoryStore();
+	let db = null;
+	const conn = () => {
+		db ??= openDb$1(factory).then((d) => {
+			d.onversionchange = () => {
+				d.close();
+				db = null;
+			};
+			d.onclose = () => {
+				db = null;
+			};
+			return d;
+		}, (e) => {
+			db = null;
+			throw e;
+		});
+		return db;
+	};
+	const fallback = memoryStore();
+	return {
+		async list(lesson) {
+			try {
+				return (await promised$1((await conn()).transaction(STORE$1, "readonly").objectStore(STORE$1).index("lesson").getAll(lesson))).filter(valid).sort((a, b) => a.addedAt - b.addedAt).map(({ lesson, file, line, expr }) => ({
+					lesson,
+					file,
+					line,
+					expr
+				}));
+			} catch {
+				return fallback.list(lesson);
+			}
+		},
+		async add(w) {
+			try {
+				const tx = (await conn()).transaction(STORE$1, "readwrite");
+				tx.objectStore(STORE$1).put({
+					...w,
+					key: watchKey(w),
+					addedAt: Date.now()
+				});
+				await done$1(tx);
+			} catch {
+				await fallback.add(w);
+			}
+		},
+		async remove(w) {
+			try {
+				const tx = (await conn()).transaction(STORE$1, "readwrite");
+				tx.objectStore(STORE$1).delete(watchKey(w));
+				await done$1(tx);
+			} catch {
+				await fallback.remove(w);
+			}
+		}
+	};
+}
+//#endregion
 //#region src/code-jump.ts
 /**
 * The executing line's move, drawn in the code panel's gutter: when one marked line gives way to another in the
@@ -25307,9 +25661,17 @@ function setupCodePanel() {
 	jump.textContent = "↗ Go to step";
 	const what = document.createElement("span");
 	what.className = "code-line-actions";
+	const watch = document.createElement("button");
+	watch.type = "button";
+	watch.textContent = "+ Watch";
+	watch.className = "code-watch-btn";
+	const watchError = document.createElement("span");
+	watchError.className = "code-watch-error";
+	watchError.setAttribute("role", "alert");
+	watchError.hidden = true;
 	const modes = structureModes();
 	title.append(titleText, modes, viewSettingsMenu());
-	actions.append(selectionLabel, ask, jump, what, codePromptsMenu());
+	actions.append(selectionLabel, ask, jump, watch, what, codePromptsMenu(), watchError);
 	host.append(tree, title, execution, body, actions, targets);
 	/**
 	* "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
@@ -25438,6 +25800,10 @@ function setupCodePanel() {
 		targets.hidden = true;
 		jump.disabled = !selected || !relatedLocations(selected, first, last).some((l) => resolve(l));
 		jump.title = jump.disabled ? "No linked lesson step for this selection" : "Navigate only when you press this button";
+		const expr = excerpt.trim();
+		watch.disabled = start !== end || !expr || expr.includes("\n");
+		watch.title = watch.disabled ? "Select an expression on one line to watch it" : `Watch ${expr}: its value at every frame, on line ${start}`;
+		watchError.hidden = true;
 		body.querySelectorAll(".code-line").forEach((row) => row.classList.toggle("selected", Number(row.dataset.line) >= first && Number(row.dataset.line) <= last));
 		if (selected) setCodeFocus({
 			fileId: selected.id,
@@ -25471,6 +25837,114 @@ function setupCodePanel() {
 			};
 			targets.append(button);
 		}
+	});
+	/** The trace table the step plays (named by its codeRef's line expression), and the columns it records. */
+	function stepTable() {
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		const ref = scene?.steps?.[state.currentStepIndex]?.codeRef ?? scene?.codeRef;
+		const table = /dataTable\('([^']+)'/.exec(ref?.lineExpr ?? "")?.[1];
+		const rows = table ? (scene?.data)?.[table] : null;
+		const row = Array.isArray(rows) ? rows[0] : void 0;
+		return table && row ? {
+			table,
+			names: Object.keys(row).filter((k) => k !== "line" && k !== "message")
+		} : null;
+	}
+	/** A watch's value now, as a tag's text; throws a WatchError (or the evaluator's error) when it can't be had. */
+	function watchText(expr) {
+		const at = stepTable();
+		if (!at) throw new WatchError("This step has no recorded run to read values from.");
+		const shown = at.names.filter((n) => selected && new RegExp(`\\b${n}\\b`).test(selected.source));
+		const value = evaluate(watchExpr(expr, at.table, at.names, shown));
+		if (value === void 0 || value === null || typeof value === "number" && !Number.isFinite(value)) throw new WatchError(`${expr} has no value at this frame.`);
+		return `${expr} = ${formatWatch(value)}`;
+	}
+	/**
+	* The watches also show as rows of the scene's labels, beside the lesson's own (tied to their line, as those
+	* are). Rebuilt after each navigation and whenever the watches change: they read this step's recorded run.
+	*/
+	let disposeWatchLabels = null;
+	const watchStore = createWatchStore();
+	let watches = [], watchLesson = "";
+	const lessonKey = () => String(state.lessonSpec?.title ?? "");
+	function loadWatches() {
+		const key = lessonKey();
+		if (key === watchLesson) return;
+		watchLesson = key;
+		watches = [];
+		(async () => {
+			const legacy = settings.legacyWatches.splice(0);
+			if (legacy.length) {
+				for (const w of legacy) await watchStore.add({
+					lesson: key,
+					...w
+				});
+				saveSettings();
+			}
+			const loaded = await watchStore.list(key);
+			if (watchLesson !== key) return;
+			watches = loaded;
+			renderInline();
+			syncWatchLabels();
+		})();
+	}
+	function syncWatchLabels() {
+		disposeWatchLabels?.();
+		disposeWatchLabels = null;
+		const at = stepTable();
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		const ref = scene?.steps?.[state.currentStepIndex]?.codeRef ?? scene?.codeRef;
+		if (!at || !ref?.file) return;
+		const quote = (t) => t.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+		const seen = /* @__PURE__ */ new Set();
+		const elements = watches.filter((w) => w.file === ref.file && !seen.has(w.expr) && seen.add(w.expr)).flatMap((w, i) => {
+			let value;
+			try {
+				value = watchExpr(w.expr, at.table, at.names);
+			} catch {
+				return [];
+			}
+			return [{
+				id: `__watch_${i}`,
+				type: "expression_label",
+				position: [
+					7.6,
+					-3.7,
+					0
+				],
+				textExpr: `concat('${quote(w.expr)} = ', ${value})`,
+				codeRef: {
+					file: w.file,
+					line: w.line
+				}
+			}];
+		});
+		if (elements.length) disposeWatchLabels = addTransientElements(elements);
+	}
+	watch.addEventListener("click", () => {
+		const expr = excerpt.trim();
+		if (!selected || !expr) return;
+		try {
+			watchText(expr);
+		} catch (e) {
+			watchError.textContent = e instanceof WatchError ? e.message : `Can't evaluate ${expr}: ${e.message}`;
+			watchError.hidden = false;
+			return;
+		}
+		const file = selected.id;
+		if (!watches.some((w) => w.file === file && w.line === first && w.expr === expr)) {
+			const w = {
+				lesson: watchLesson,
+				file,
+				line: first,
+				expr
+			};
+			watches.push(w);
+			watchStore.add(w);
+		}
+		watchError.hidden = true;
+		renderInline();
+		syncWatchLabels();
 	});
 	function evaluate(expr) {
 		if (!compiled.has(expr)) try {
@@ -25932,7 +26406,8 @@ function setupCodePanel() {
 				hidden: Array.isArray(saved?.hidden) ? saved.hidden.filter((h) => typeof h === "string") : [],
 				structureMode: STRUCTURE_MODES.includes(saved?.structureMode) ? saved.structureMode : "plain",
 				structureRunning: saved?.structureRunning ?? true,
-				blurInactive: saved?.blurInactive ?? false
+				blurInactive: saved?.blurInactive ?? false,
+				legacyWatches: Array.isArray(saved?.watches) ? saved.watches.filter((w) => w && typeof w.expr === "string" && typeof w.file === "string" && Number.isInteger(w.line)) : []
 			};
 		} catch {
 			return {
@@ -25941,13 +26416,15 @@ function setupCodePanel() {
 				hidden: [],
 				structureMode: "plain",
 				structureRunning: true,
-				blurInactive: false
+				blurInactive: false,
+				legacyWatches: []
 			};
 		}
 	}
 	function saveSettings() {
+		const { legacyWatches: _moved, ...kept } = settings;
 		try {
-			localStorage.setItem("algebench-code-view", JSON.stringify(settings));
+			localStorage.setItem("algebench-code-view", JSON.stringify(kept));
 		} catch {}
 	}
 	function viewSettingsMenu() {
@@ -26026,6 +26503,33 @@ function setupCodePanel() {
 				sub.textContent = "Expressions";
 				menu.append(sub);
 				for (const name of exprs) menu.append(check(name, !settings.hidden.includes(EXPR + name), toggleHidden(EXPR + name), !settings.inline));
+			}
+			const mine = watches.filter((w) => w.file === selected?.id);
+			if (mine.length) {
+				const sub = document.createElement("div");
+				sub.className = "code-view-heading";
+				sub.textContent = "Watches";
+				menu.append(sub);
+				for (const w of mine) {
+					const row = document.createElement("div");
+					row.className = "code-view-option code-view-watch";
+					const name = document.createElement("span");
+					name.textContent = `${w.expr}  · line ${w.line}`;
+					const remove = document.createElement("button");
+					remove.type = "button";
+					remove.textContent = "✕";
+					remove.title = `Stop watching ${w.expr}`;
+					remove.setAttribute("aria-label", remove.title);
+					remove.addEventListener("click", () => {
+						watches = watches.filter((x) => x !== w);
+						watchStore.remove(w);
+						renderInline();
+						syncWatchLabels();
+						fill();
+					});
+					row.append(name, remove);
+					menu.append(row);
+				}
 			}
 		}
 		toggle.addEventListener("click", () => {
@@ -26109,7 +26613,13 @@ function setupCodePanel() {
 	float.hidden = true;
 	document.body.append(float);
 	let floated = null;
+	let selecting = false;
+	const selectedText = (row) => {
+		const sel = window.getSelection();
+		return !!row && !!sel && !sel.isCollapsed && sel.rangeCount > 0 && sel.getRangeAt(0).intersectsNode(row);
+	};
 	function floatLine(row) {
+		if (selecting || selectedText(row)) row = null;
 		const code = row?.querySelector("code") ?? null;
 		const holder = row?.querySelector(".code-inline-values") ?? null;
 		const tags = !!holder && getComputedStyle(holder).visibility !== "hidden" ? [...holder.querySelectorAll(".code-inline-value")] : [];
@@ -26141,6 +26651,13 @@ function setupCodePanel() {
 	body.addEventListener("pointerover", (event) => floatLine(event.target.closest(".code-line")));
 	body.addEventListener("pointerleave", () => floatLine(null));
 	body.addEventListener("scroll", () => floatLine(null));
+	body.addEventListener("pointerdown", () => {
+		selecting = true;
+		floatLine(null);
+	});
+	document.addEventListener("pointerup", () => {
+		selecting = false;
+	});
 	function renderInline() {
 		const hovered = floated;
 		floatLine(null);
@@ -26156,12 +26673,20 @@ function setupCodePanel() {
 			};
 			for (const ref of lineReferences(references, line)) if (!hiddenKey(ref.key)) valueTexts(ref.key).forEach(add);
 			labelsForCodeLine(file.id, line).filter((t) => isExpression(t) ? !settings.hidden.includes(EXPR + expressionName(t)) : !rowSymbolKeys(t).some(hiddenKey)).forEach(add);
-			if (!texts.length) return;
+			const watched = watches.filter((w) => w.file === file.id && w.line === line).map((w) => {
+				try {
+					return watchText(w.expr);
+				} catch {
+					return `${w.expr}: —`;
+				}
+			}).filter((t) => !texts.includes(t));
+			if (!texts.length && !watched.length) return;
 			const holder = document.createElement("span");
 			holder.className = "code-inline-values";
-			for (const text of texts) {
+			for (const text of [...texts, ...watched]) {
 				const tag = document.createElement("span");
 				tag.className = "code-inline-value";
+				if (watched.includes(text) && !texts.includes(text)) tag.classList.add("code-inline-watch");
 				const inner = document.createElement("span");
 				inner.textContent = text;
 				tag.append(inner);
@@ -26344,9 +26869,11 @@ function setupCodePanel() {
 			build(fileTree(files), tree);
 			if (files[0]) open(files[0]);
 			else titleText.textContent = "This lesson has no code files.";
+			loadWatches();
 		}
 		refreshBinding(true);
 		renderLineActions();
+		syncWatchLabels();
 	}
 	window.addEventListener("algebench:opencode", (event) => {
 		const target = event.detail;

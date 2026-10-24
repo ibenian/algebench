@@ -3,7 +3,7 @@ import { state } from '/state.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { makeAiAskButton, sendAiPrompt } from '/labels.js';
-import { navigateTo } from '/scene-loader.js';
+import { navigateTo, addTransientElements } from '/scene-loader.js';
 import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
 import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys } from '/code-symbols.js';
@@ -17,8 +17,11 @@ import type { CodePrompt } from '/code-prompts.js';
 import { codeSections, sectionAt, sectionsOutline, sectionPrompt, STRUCTURE_MODES } from '/code-sections.js';
 import type { CodeSection, StructureMode } from '/code-sections.js';
 import { menuPlacement } from '/menu-placement.js';
+import { watchExpr, formatWatch, WatchError } from '/code-watch.js';
+import { createWatchStore } from '/watch-store.js';
+import type { Watch } from '/watch-store.js';
 import { lineJump, jumpArrowPath, waitingCalls, callArrowPath, JUMP_HOLD_MS, lineTransitions, movesAt } from '/code-jump.js';
-import type { LessonFormat, Scene } from '/types/lesson.js';
+import type { LessonFormat, Scene, Element as LessonElement } from '/types/lesson.js';
 
 /** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
 const GUTTER_X=37;
@@ -67,9 +70,12 @@ export function setupCodePanel(): void {
     });
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
     const what=document.createElement('span');what.className='code-line-actions';
+    // "+ Watch": the selected expression, evaluated at every frame and shown on its line (code-watch.ts).
+    const watch=document.createElement('button');watch.type='button';watch.textContent='+ Watch';watch.className='code-watch-btn';
+    const watchError=document.createElement('span');watchError.className='code-watch-error';watchError.setAttribute('role','alert');watchError.hidden=true;
     const modes=structureModes();
     title.append(titleText,modes,viewSettingsMenu());
-    actions.append(selectionLabel,ask,jump,what,codePromptsMenu());host.append(tree,title,execution,body,actions,targets);
+    actions.append(selectionLabel,ask,jump,watch,what,codePromptsMenu(),watchError);host.append(tree,title,execution,body,actions,targets);
     /**
      * "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
      * silently: the request carries the whole file and state, so only the tutor's reply shows in the chat.
@@ -143,6 +149,10 @@ export function setupCodePanel(): void {
         actions.hidden=false;targets.hidden=true;
         jump.disabled=!selected||!relatedLocations(selected,first,last).some(l=>resolve(l));
         jump.title=jump.disabled?'No linked lesson step for this selection':'Navigate only when you press this button';
+        const expr=excerpt.trim();
+        watch.disabled=start!==end||!expr||expr.includes('\n');
+        watch.title=watch.disabled?'Select an expression on one line to watch it':`Watch ${expr}: its value at every frame, on line ${start}`;
+        watchError.hidden=true;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>row.classList.toggle('selected',Number(row.dataset.line)>=first&&Number(row.dataset.line)<=last));
         if(selected)setCodeFocus({fileId:selected.id,first,last});
         renderLineActions();
@@ -161,6 +171,75 @@ export function setupCodePanel(): void {
         if(choices.length===1){go(choices[0]!);return;} // length guard
         targets.replaceChildren();targets.hidden=false;
         for(const choice of choices){const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.onclick=()=>{targets.hidden=true;go(choice);};targets.append(button);}
+    });
+    /** The trace table the step plays (named by its codeRef's line expression), and the columns it records. */
+    function stepTable():{table:string;names:string[]}|null {
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
+        const ref=scene?.steps?.[state.currentStepIndex]?.codeRef??scene?.codeRef;
+        const table=/dataTable\('([^']+)'/.exec(ref?.lineExpr??'')?.[1];
+        const rows=table?(scene?.data as Record<string,unknown>|undefined)?.[table]:null;
+        const row=Array.isArray(rows)?rows[0] as Record<string,unknown>|undefined:undefined;
+        return table&&row?{table,names:Object.keys(row).filter(k=>k!=='line'&&k!=='message')}:null;
+    }
+    /** A watch's value now, as a tag's text; throws a WatchError (or the evaluator's error) when it can't be had. */
+    function watchText(expr:string):string {
+        const at=stepTable();
+        if(!at)throw new WatchError('This step has no recorded run to read values from.');
+        // The error lists the recorded names the code itself uses, not the run's bookkeeping columns.
+        const shown=at.names.filter(n=>selected&&new RegExp(`\\b${n}\\b`).test(selected.source));
+        const value=evaluate(watchExpr(expr,at.table,at.names,shown));
+        if(value===undefined||value===null||(typeof value==='number'&&!Number.isFinite(value)))throw new WatchError(`${expr} has no value at this frame.`);
+        return `${expr} = ${formatWatch(value)}`;
+    }
+    /**
+     * The watches also show as rows of the scene's labels, beside the lesson's own (tied to their line, as those
+     * are). Rebuilt after each navigation and whenever the watches change: they read this step's recorded run.
+     */
+    let disposeWatchLabels:(()=>void)|null=null;
+    // The lesson's watches, from IndexedDB (watch-store.ts); loaded when a lesson opens, written as they change.
+    const watchStore=createWatchStore();
+    let watches:Watch[]=[],watchLesson='';
+    const lessonKey=()=>String((state.lessonSpec as {title?:string}|null)?.title??'');
+    function loadWatches() {
+        const key=lessonKey();
+        if(key===watchLesson)return;
+        watchLesson=key;watches=[];
+        void (async()=>{
+            // Watches kept in the view settings before they moved to IndexedDB join this lesson once.
+            const legacy=settings.legacyWatches.splice(0);
+            if(legacy.length){for(const w of legacy)await watchStore.add({lesson:key,...w});saveSettings();}
+            const loaded=await watchStore.list(key);
+            if(watchLesson!==key)return;   // another lesson opened meanwhile
+            watches=loaded;renderInline();syncWatchLabels();
+        })();
+    }
+    function syncWatchLabels() {
+        disposeWatchLabels?.();disposeWatchLabels=null;
+        const at=stepTable();
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
+        const ref=scene?.steps?.[state.currentStepIndex]?.codeRef??scene?.codeRef;
+        if(!at||!ref?.file)return;
+        const quote=(t:string)=>t.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        // One row per expression, however many lines watch it.
+        const seen=new Set<string>();
+        const elements=watches.filter(w=>w.file===ref.file&&!seen.has(w.expr)&&seen.add(w.expr)).flatMap((w,i)=>{
+            let value:string;
+            try{value=watchExpr(w.expr,at.table,at.names);}catch{return [];}
+            return [{id:`__watch_${i}`,type:'expression_label',position:[7.6,-3.7,0],textExpr:`concat('${quote(w.expr)} = ', ${value})`,
+                codeRef:{file:w.file,line:w.line}} as LessonElement];
+        });
+        if(elements.length)disposeWatchLabels=addTransientElements(elements);
+    }
+    watch.addEventListener('click',()=>{
+        const expr=excerpt.trim();
+        if(!selected||!expr)return;
+        try{watchText(expr);}
+        catch(e){watchError.textContent=e instanceof WatchError?e.message:`Can't evaluate ${expr}: ${(e as Error).message}`;watchError.hidden=false;return;}
+        const file=selected.id;
+        if(!watches.some(w=>w.file===file&&w.line===first&&w.expr===expr)){
+            const w={lesson:watchLesson,file,line:first,expr};watches.push(w);void watchStore.add(w);
+        }
+        watchError.hidden=true;renderInline();syncWatchLabels();
     });
     function evaluate(expr: string) {
         if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
@@ -488,17 +567,23 @@ export function setupCodePanel(): void {
         body.querySelectorAll<HTMLElement>('.code-section-head').forEach(head=>head.classList.toggle('executing',running.has(head.dataset.section)));
     }
     /** View settings ("⚙", top right): inline values on or off, and which variables show them. Kept per browser. */
-    type ViewSettings={inline:boolean;onHover:boolean;hidden:string[];structureMode:StructureMode;structureRunning:boolean;blurInactive:boolean};
+    // legacyWatches: watches saved here before they moved to IndexedDB, read once to move them, never written back.
+    type ViewSettings={inline:boolean;onHover:boolean;hidden:string[];structureMode:StructureMode;structureRunning:boolean;blurInactive:boolean;
+        legacyWatches:Omit<Watch,'lesson'>[]};
     function loadSettings():ViewSettings {
         try{
             const saved=JSON.parse(localStorage.getItem('algebench-code-view')??'null') as Partial<ViewSettings>|null;
             return {inline:saved?.inline??true,onHover:saved?.onHover??true,hidden:Array.isArray(saved?.hidden)?saved.hidden.filter(h=>typeof h==='string'):[],
                 structureMode:STRUCTURE_MODES.includes(saved?.structureMode as StructureMode)?saved!.structureMode!:'plain',
-                structureRunning:saved?.structureRunning??true,blurInactive:saved?.blurInactive??false};
-        }catch{return {inline:true,onHover:true,hidden:[],structureMode:'plain',structureRunning:true,blurInactive:false};}
+                structureRunning:saved?.structureRunning??true,blurInactive:saved?.blurInactive??false,
+                legacyWatches:Array.isArray((saved as {watches?:unknown}|null)?.watches)?((saved as {watches:Omit<Watch,'lesson'>[]}).watches)
+                    .filter(w=>w&&typeof w.expr==='string'&&typeof w.file==='string'&&Number.isInteger(w.line)):[]};
+        }catch{return {inline:true,onHover:true,hidden:[],structureMode:'plain',structureRunning:true,blurInactive:false,legacyWatches:[]};}
     }
     function saveSettings() {
-        try{localStorage.setItem('algebench-code-view',JSON.stringify(settings));}catch{/* private mode: settings last the session */}
+        // Watches live in IndexedDB: the view settings stay small.
+        const {legacyWatches:_moved,...kept}=settings;
+        try{localStorage.setItem('algebench-code-view',JSON.stringify(kept));}catch{/* private mode: settings last the session */}
     }
     function viewSettingsMenu() {
         const wrap=document.createElement('span');wrap.className='code-view-settings';
@@ -533,6 +618,18 @@ export function setupCodePanel(): void {
             if(exprs.length){
                 const sub=document.createElement('div');sub.className='code-view-heading';sub.textContent='Expressions';menu.append(sub);
                 for(const name of exprs)menu.append(check(name,!settings.hidden.includes(EXPR+name),toggleHidden(EXPR+name),!settings.inline));
+            }
+            // The reader's watches in this file, each with a way to remove it.
+            const mine=watches.filter(w=>w.file===selected?.id);
+            if(mine.length){
+                const sub=document.createElement('div');sub.className='code-view-heading';sub.textContent='Watches';menu.append(sub);
+                for(const w of mine){
+                    const row=document.createElement('div');row.className='code-view-option code-view-watch';
+                    const name=document.createElement('span');name.textContent=`${w.expr}  · line ${w.line}`;
+                    const remove=document.createElement('button');remove.type='button';remove.textContent='✕';remove.title=`Stop watching ${w.expr}`;remove.setAttribute('aria-label',remove.title);
+                    remove.addEventListener('click',()=>{watches=watches.filter(x=>x!==w);void watchStore.remove(w);renderInline();syncWatchLabels();fill();});
+                    row.append(name,remove);menu.append(row);
+                }
             }
         }
         toggle.addEventListener('click',()=>{
@@ -604,7 +701,14 @@ export function setupCodePanel(): void {
     // shows in full here, code and tags on one line fixed over the page: the code view scrolls, so it would clip it.
     const float=document.createElement('div');float.className='code-inline-float';float.hidden=true;document.body.append(float);
     let floated:HTMLElement|null=null;
+    // The float covers its line, so it stays away while the reader selects text there (or has text selected).
+    let selecting=false;
+    const selectedText=(row:HTMLElement|null)=>{
+        const sel=window.getSelection();
+        return !!row&&!!sel&&!sel.isCollapsed&&sel.rangeCount>0&&sel.getRangeAt(0).intersectsNode(row);
+    };
     function floatLine(row:HTMLElement|null) {
+        if(selecting||selectedText(row))row=null;
         const code=row?.querySelector<HTMLElement>('code')??null;
         const holder=row?.querySelector<HTMLElement>('.code-inline-values')??null;
         const shown=!!holder&&getComputedStyle(holder).visibility!=='hidden';
@@ -629,6 +733,8 @@ export function setupCodePanel(): void {
     body.addEventListener('pointerover',event=>floatLine((event.target as HTMLElement).closest<HTMLElement>('.code-line')));
     body.addEventListener('pointerleave',()=>floatLine(null));
     body.addEventListener('scroll',()=>floatLine(null));
+    body.addEventListener('pointerdown',()=>{selecting=true;floatLine(null);});
+    document.addEventListener('pointerup',()=>{selecting=false;});
     function renderInline() {
         const hovered=floated;floatLine(null);
         body.querySelectorAll('.code-inline-values').forEach(n=>n.remove());
@@ -644,10 +750,14 @@ export function setupCodePanel(): void {
             labelsForCodeLine(file.id,line).filter(t=>isExpression(t)
                 ?!settings.hidden.includes(EXPR+expressionName(t))
                 :!rowSymbolKeys(t).some(hiddenKey)).forEach(add);
-            if(!texts.length)return;
+            // The reader's own watches on this line, after the lesson's; one with no value now says so.
+            const watched=watches.filter(w=>w.file===file.id&&w.line===line).map(w=>{try{return watchText(w.expr);}catch{return `${w.expr}: —`;}})
+                .filter(t=>!texts.includes(t));   // the lesson shows it already
+            if(!texts.length&&!watched.length)return;
             const holder=document.createElement('span');holder.className='code-inline-values';
-            for(const text of texts){
+            for(const text of [...texts,...watched]){
                 const tag=document.createElement('span');tag.className='code-inline-value';
+                if(watched.includes(text)&&!texts.includes(text))tag.classList.add('code-inline-watch');
                 const inner=document.createElement('span');inner.textContent=text;
                 tag.append(inner);holder.append(tag);
             }
@@ -770,10 +880,12 @@ export function setupCodePanel(): void {
             lesson=state.lessonSpec;files=(lesson as LessonFormat|null)?.codeFiles??[];tree.replaceChildren();body.replaceChildren();actions.hidden=targets.hidden=true;
             selected=followed=undefined;active=null;compiled.clear();setCodeFocus(null);build(fileTree(files),tree);
             if(files[0])open(files[0]);else titleText.textContent='This lesson has no code files.';
+            loadWatches();
         }
         refreshBinding(true);
         // Scene and step changes add or remove sliders, so the selected line's actions must be re-evaluated.
         renderLineActions();
+        syncWatchLabels();
     }
     window.addEventListener('algebench:opencode', event => {
         // select: false only reveals the line. Caption links point at the line that is executing now, which

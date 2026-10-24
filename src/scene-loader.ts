@@ -652,6 +652,16 @@ function undoStepRemoves(tracker: StepTracker): void {
     }
 }
 
+/**
+ * Elements added outside the lesson's steps (the Code panel's watches as labels): rendered like a step's, and
+ * removed by the disposer returned. The caller re-adds them after each navigation, which may already have
+ * cleared the scene they were drawn in, so disposing then is quiet.
+ */
+export function addTransientElements(elements: Element[]): () => void {
+    const tracker = renderStepAdd(elements, undefined);
+    return () => { try { removeStepTracker(tracker); } catch { /* the scene was rebuilt under them */ } };
+}
+
 function removeStepTracker(tracker: StepTracker): void {
     if (tracker.sliderIds && tracker.sliderIds.length > 0) {
         const stillNeeded = new Set(sceneState.stepTrackers.flatMap(t => t.sliderIds || []));

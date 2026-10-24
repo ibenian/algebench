@@ -6068,3 +6068,11 @@ body:has(.push-array) #legend { display: none; }
 .cp-tip-now { display: grid; gap: 1px; margin-top: 6px; }
 .cp-tip-row { display: flex; justify-content: space-between; gap: 10px; }
 .cp-tip-row span { color: var(--muted-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Watch expressions (code-watch.ts): the selection's "+ Watch", its error, the reader's tags, and their list. */
+.code-watch-error { color: #e0645c; font-size: 11px; margin-left: 6px; }
+.code-inline-value.code-inline-watch { border-style: dashed; border-color: color-mix(in srgb, #6ea8e0 70%, transparent); color: #9cc4ee; }
+.code-view-watch { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.code-view-watch span { font-family: ui-monospace, monospace; font-size: 11px; white-space: pre; }
+.code-view-watch button { border: 0; background: none; color: var(--muted-color); cursor: pointer; padding: 0 2px; }
+.code-view-watch button:hover { color: #e0645c; }

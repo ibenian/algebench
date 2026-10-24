@@ -109,7 +109,8 @@ const _MATHJS_EXTENSIONS = {
     // keyIndex(keys, key) — a dict entry's position from its key ('a', 3, or a tuple [1, 2]); -1 when absent.
     keyIndex: keyIndex,
     toFixed: (val: unknown, decimals: unknown): string => Number(val).toFixed(Number(decimals)),
-    concat: (...args: unknown[]): string => args.map((a) => String(a)).join(''),
+    // A list reads as Python prints it, [0, 1, -1], not as String() joins it.
+    concat: (...args: unknown[]): string => args.map((a) => Array.isArray(a) ? `[${a.join(', ')}]` : String(a)).join(''),
     // bar(value, width=20) — Unicode block progress bar, e.g. bar(0.4) → "████████░░░░░░░░░░░░"
     bar: (val: unknown, w: number = 20): string => {
         const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
