@@ -25601,6 +25601,17 @@ function setupCodePanel() {
 	* instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
 	* name lights every call to it, with an incoming arrow from each.
 	*/
+	/**
+	* Where an arrow meets a line (px from the top of the code): the middle of its row, or, for a line hidden in a
+	* collapsed section (titles only), the middle of that section's title. Null when neither is shown.
+	*/
+	function lineY(line) {
+		const row = body.querySelector(`.code-line[data-line="${line}"]`);
+		if (!row) return null;
+		if (row.getClientRects().length) return row.offsetTop + row.offsetHeight / 2;
+		const head = row.dataset.section ? body.querySelector(`.code-section-head[data-section="${CSS.escape(row.dataset.section)}"]`) : null;
+		return head?.getClientRects().length ? head.offsetTop + head.offsetHeight / 2 : null;
+	}
 	function drawHover(target) {
 		body.querySelectorAll(".code-link-lit").forEach((n) => n.classList.remove("code-link-lit"));
 		if (!arrows) return;
@@ -25608,10 +25619,7 @@ function setupCodePanel() {
 		const row = target?.closest(".code-line");
 		if (!target || !row) return;
 		const line = Number(row.dataset.line), call = target.closest(".code-call"), fn = target.closest(".code-fn");
-		const rowY = (l) => {
-			const r = body.querySelector(`.code-line[data-line="${l}"]`);
-			return r ? r.offsetTop + r.offsetHeight / 2 : null;
-		};
+		const rowY = lineY;
 		let incoming = [], outgoing = [];
 		if (call) {
 			const def = Number(call.dataset.def);
@@ -25658,10 +25666,7 @@ function setupCodePanel() {
 		shownCalls = calls;
 		shownEntry = entry;
 		if (body.clientHeight === 0) return;
-		const rowY = (line) => {
-			const row = body.querySelector(`.code-line[data-line="${line}"]`);
-			return row ? row.offsetTop + row.offsetHeight / 2 : null;
-		};
+		const rowY = lineY;
 		if (!arrows || !arrows.isConnected) {
 			arrows = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 			arrows.classList.add("code-arrows");
@@ -25690,7 +25695,7 @@ function setupCodePanel() {
 		});
 		if (!jump || called) return;
 		const y1 = rowY(jump.from), y2 = rowY(jump.to);
-		if (y1 === null || y2 === null) return;
+		if (y1 === null || y2 === null || y1 === y2) return;
 		arrows.querySelectorAll(".code-arrow-jump").forEach((p) => p.remove());
 		body.querySelectorAll(".code-line-number.jump-lit").forEach((n) => n.classList.remove("jump-lit"));
 		const path = document.createElementNS(svg, "path");
@@ -25730,6 +25735,7 @@ function setupCodePanel() {
 				settings.structureMode = mode;
 				saveSettings();
 				renderStructure();
+				refreshBinding();
 			});
 			wrap.append(button);
 		}
@@ -25822,6 +25828,7 @@ function setupCodePanel() {
 					if (revealed.has(key)) revealed.delete(key);
 					else revealed.add(key);
 					paintReveal(section);
+					refreshBinding();
 				} else choose(section.from, section.to, sectionText(section));
 			};
 			head.addEventListener("click", pick);

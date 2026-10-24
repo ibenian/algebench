@@ -6,6 +6,11 @@
       "path": "graphs/build_graph.py",
       "language": "python",
       "source": "def build(n, edges):\n    adj = [[] for _ in range(n)]\n    matrix = [[0] * n for _ in range(n)]\n    for u, v in edges:\n        adj[u].append(v)\n        adj[v].append(u)\n        matrix[u][v] = matrix[v][u] = 1\n    return adj, matrix",
+      "sections": [
+        {"id": "r-empty", "title": "Start empty: a list per node, a grid of zeros", "from": 1, "to": 3, "hint": "Make room for n nodes twice: an empty neighbour list for each, and an n by n grid of zeros."},
+        {"id": "r-edges", "title": "Record each edge both ways", "from": 4, "to": 7, "hint": "An undirected edge joins u and v in both directions: add each to the other's list and set both grid cells.", "prompt": "Explain why each edge is recorded twice, in both the list and the matrix, and what each form costs in space and in lookup time."},
+        {"id": "r-return", "title": "Hand back both forms", "from": 8, "to": 8, "hint": "Return the adjacency list and the matrix."}
+      ],
       "locations": [
         {"line": 2, "scene": "representations", "step": "run", "snapshot": 0, "label": "Store a graph (adjacency list, matrix, edge list) · 5 nodes: one empty neighbour list per node."},
         {"line": 3, "scene": "representations", "step": "run", "snapshot": 1, "label": "Store a graph (adjacency list, matrix, edge list) · An 5 × 5 matrix of zeros: one cell per possible edge, 25 cells whatever the graph."},
@@ -41,6 +46,12 @@
       "path": "graphs/dfs.py",
       "language": "python",
       "source": "def dfs_order(n, adj):\n    visited = [False] * n\n    order = []\n\n    def dfs(u):\n        visited[u] = True\n        order.append(u)\n        for v in adj[u]:\n            if not visited[v]:\n                dfs(v)\n\n    dfs(0)\n    return order",
+      "sections": [
+        {"id": "d-init", "title": "Nothing visited, no order yet", "from": 1, "to": 3, "hint": "Remember which nodes were visited, and the order they were reached in."},
+        {"id": "d-visit", "title": "Visit u: mark it, record it", "from": 5, "to": 7, "hint": "On arriving at u, mark it visited at once, so no other path enters it again, and record it."},
+        {"id": "d-deeper", "title": "Go deeper into each new neighbour", "from": 8, "to": 10, "hint": "For each neighbour not seen yet, go all the way down from it before trying the next one.", "prompt": "Explain how this loop and the recursive call make the search go deep first, and what the call stack holds while it does."},
+        {"id": "d-start", "title": "Start at 0, return the order", "from": 12, "to": 13, "hint": "Start the search at node 0; the order is the answer."}
+      ],
       "locations": [
         {"line": 2, "scene": "dfs", "step": "run", "snapshot": 0, "label": "Go deep first (depth-first search) · No node visited yet. adj lists each node's neighbours: [[1, 2], [0, 3], [0, 3, 5], [1, 2, 4], [3], [2]]."},
         {"line": 3, "scene": "dfs", "step": "run", "snapshot": 1, "label": "Go deep first (depth-first search) · order will record nodes in the order DFS first reaches them."},
@@ -99,6 +110,12 @@
       "path": "graphs/bfs.py",
       "language": "python",
       "source": "from collections import deque\n\ndef bfs(n, adj, start):\n    dist = [-1] * n\n    dist[start] = 0\n    queue = deque([start])\n    while queue:\n        u = queue.popleft()\n        for v in adj[u]:\n            if dist[v] == -1:\n                dist[v] = dist[u] + 1\n                queue.append(v)\n    return dist",
+      "sections": [
+        {"id": "b-init", "title": "The start: distance 0, waiting in the queue", "from": 3, "to": 6, "hint": "Every distance starts unknown (-1); the start is 0 away and is the first to wait in the queue."},
+        {"id": "b-take", "title": "Take the node that waited longest", "from": 7, "to": 8, "hint": "While anything waits, take from the front: the queue hands nodes out in order of distance."},
+        {"id": "b-discover", "title": "Discover each new neighbour one step further", "from": 9, "to": 12, "hint": "A neighbour with no distance yet is one step further than u: set it, and queue it.", "prompt": "Explain why setting the distance when a node is queued (not when it is taken) keeps it from being queued twice, and why the first distance found is the shortest."},
+        {"id": "b-return", "title": "Every distance from the start", "from": 13, "to": 13, "hint": "Return the distances; -1 marks a node that cannot be reached."}
+      ],
       "locations": [
         {"line": 4, "scene": "bfs", "step": "run", "snapshot": 0, "label": "Level by level (breadth-first search) · dist = -1 everywhere: no node reached yet. dist doubles as \"visited\"."},
         {"line": 5, "scene": "bfs", "step": "run", "snapshot": 1, "label": "Level by level (breadth-first search) · The start, 0, is 0 steps from itself."},
@@ -158,6 +175,14 @@
       "path": "graphs/degrees.py",
       "language": "python",
       "source": "from collections import deque\n\ndef find_judge(n, trust):\n    indeg = [0] * n\n    outdeg = [0] * n\n    for a, b in trust:\n        outdeg[a] += 1\n        indeg[b] += 1\n    for p in range(n):\n        if indeg[p] == n - 1 and outdeg[p] == 0:\n            return p\n    return -1\n\ndef tree_centers(n, edges):\n    adj = [[] for _ in range(n)]\n    degree = [0] * n\n    for u, v in edges:\n        adj[u].append(v)\n        adj[v].append(u)\n        degree[u] += 1\n        degree[v] += 1\n    leaves = deque(i for i in range(n) if degree[i] == 1)\n    remaining = n\n    while remaining > 2:\n        for _ in range(len(leaves)):\n            leaf = leaves.popleft()\n            remaining -= 1\n            for nb in adj[leaf]:\n                degree[nb] -= 1\n                if degree[nb] == 1:\n                    leaves.append(nb)\n    return list(leaves)",
+      "sections": [
+        {"id": "j-count", "title": "Count edges in and out", "from": 3, "to": 8, "hint": "For each trust pair a → b, a trusts one more person and b is trusted by one more."},
+        {"id": "j-test", "title": "Find who all trust and who trusts no one", "from": 9, "to": 12, "hint": "The judge is trusted by the other n - 1 and trusts nobody; if no one fits, there is none."},
+        {"id": "t-build", "title": "Build the tree and each node's degree", "from": 14, "to": 21, "hint": "Record each edge in both lists, and count how many edges touch each node."},
+        {"id": "t-leaves", "title": "Start from the leaves", "from": 22, "to": 23, "hint": "The nodes with a single edge are the outer layer; n nodes remain."},
+        {"id": "t-peel", "title": "Peel one layer of leaves at a time", "from": 24, "to": 31, "hint": "Remove the whole current layer; a neighbour left with one edge becomes a leaf of the next layer.", "prompt": "Explain why peeling the leaves layer by layer ends at the centre of the tree, and why at most two nodes can remain."},
+        {"id": "t-centers", "title": "What is left is the centre", "from": 32, "to": 32, "hint": "When two or fewer nodes remain, they are the centre."}
+      ],
       "locations": [
         {"line": 4, "scene": "degrees", "step": "run", "snapshot": 0, "label": "Count degrees (in, out, and peeling) · 4 people. indeg counts how many trust each person; it starts at 0."},
         {"line": 5, "scene": "degrees", "step": "run", "snapshot": 1, "label": "Count degrees (in, out, and peeling) · outdeg counts how many each person trusts."},
@@ -276,6 +301,16 @@
       "path": "graphs/flood_fill.py",
       "language": "python",
       "source": "from collections import deque\n\ndef flood_fill(image, sr, sc, color):\n    rows, cols = len(image), len(image[0])\n    old = image[sr][sc]\n    if old == color:\n        return image\n\n    def fill(r, c):\n        if not (0 <= r < rows and 0 <= c < cols) or image[r][c] != old:\n            return\n        image[r][c] = color\n        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n            fill(r + dr, c + dc)\n\n    fill(sr, sc)\n    return image\n\ndef flood_fill_bfs(image, sr, sc, color):\n    rows, cols = len(image), len(image[0])\n    old = image[sr][sc]\n    if old == color:\n        return image\n    image[sr][sc] = color\n    queue = deque([(sr, sc)])\n    while queue:\n        r, c = queue.popleft()\n        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n            nr, nc = r + dr, c + dc\n            if 0 <= nr < rows and 0 <= nc < cols and image[nr][nc] == old:\n                image[nr][nc] = color\n                queue.append((nr, nc))\n    return image",
+      "sections": [
+        {"id": "f-guard", "title": "Note the old colour; stop if it is already the new one", "from": 3, "to": 7, "hint": "Remember the colour being replaced; if it already is the new colour, nothing would ever stop the fill."},
+        {"id": "f-stop", "title": "Stop outside the image or at another colour", "from": 9, "to": 11, "hint": "A cell off the image, or one not of the old colour, ends this branch of the fill."},
+        {"id": "f-paint", "title": "Paint the cell, spread to its four neighbours", "from": 12, "to": 14, "hint": "Painting a cell also marks it visited; then try the cells below, above, right and left.", "prompt": "Explain why painting the cell before the recursive calls keeps the fill from looping, and how the four calls cover the whole region."},
+        {"id": "f-start", "title": "Start the fill at the chosen cell", "from": 16, "to": 17, "hint": "Fill from the starting cell and return the image."},
+        {"id": "q-guard", "title": "Note the old colour; stop if it is already the new one", "from": 19, "to": 23, "hint": "The same check as the recursive version."},
+        {"id": "q-seed", "title": "Paint the start and queue it", "from": 24, "to": 25, "hint": "Paint the start cell when it is queued, so it is never queued again."},
+        {"id": "q-spread", "title": "Take a cell, paint and queue its same-coloured neighbours", "from": 26, "to": 32, "hint": "Take the oldest cell; each neighbour inside the image with the old colour is painted and queued.", "prompt": "Explain why this version paints a cell when it is queued rather than when it is taken, and how its order of painting differs from the recursive fill."},
+        {"id": "q-return", "title": "Return the painted image", "from": 33, "to": 33, "hint": "When the queue is empty the region is painted."}
+      ],
       "locations": [
         {"line": 4, "scene": "grid-graphs", "step": "run", "snapshot": 0, "label": "A grid is a graph (islands, flood fill) · A 6 × 6 image. Fill the region around (1, 1) with colour 3."},
         {"line": 5, "scene": "grid-graphs", "step": "run", "snapshot": 1, "label": "A grid is a graph (islands, flood fill) · old = 1: the colour being replaced. The region is every cell of colour 1 joined to the start side by side."},

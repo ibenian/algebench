@@ -5665,11 +5665,11 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-section-hint { flex-basis: 100%; display: none; font-size: 11px; line-height: 1.4; opacity: .75; white-space: normal; max-width: 46ch; }
 .code-structure-outline .code-section-hint, .code-structure-blocks .code-section-hint { display: block; }
 .code-structure .code-line.code-in-section .code-line-number { box-shadow: inset -3px 0 0 color-mix(in srgb, var(--section-tone) 65%, transparent); }
-/* Sections only: the titles stand alone, a contents of the code; the arrows have no lines to point at. */
+/* Sections only: the titles stand alone, a contents of the code; arrows to a hidden line end at its title. */
 /* Outside the structured function (running function only), and in a section the reader opened, the code stays
    as it is: these rules skip it. */
-.code-structure-outline .code-line:not(.code-outside-structure):not(.code-section-revealed), .code-structure-outline .code-arrows { display: none; }
-.code-structure-outline .code-section-head { margin-left: 10px; margin-top: 6px; }
+.code-structure-outline .code-line:not(.code-outside-structure):not(.code-section-revealed) { display: none; }
+.code-structure-outline .code-section-head { margin-top: 6px; }
 /* Over hidden code: each line a bar where its text runs, so the size and shape of a section show, not its code. */
 .code-structure-blocks .code-line:not(.code-outside-structure):not(.code-section-revealed) code { position: relative; color: transparent; }
 .code-structure-blocks .code-line:not(.code-outside-structure):not(.code-section-revealed) code * { color: transparent !important; background: none !important; box-shadow: none !important; }

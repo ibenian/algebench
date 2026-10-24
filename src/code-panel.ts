@@ -256,6 +256,17 @@ export function setupCodePanel(): void {
      * instead links it to its function: the def's name lights and an outgoing arrow runs to it; hovering a def's
      * name lights every call to it, with an incoming arrow from each.
      */
+    /**
+     * Where an arrow meets a line (px from the top of the code): the middle of its row, or, for a line hidden in a
+     * collapsed section (titles only), the middle of that section's title. Null when neither is shown.
+     */
+    function lineY(line:number):number|null {
+        const row=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"]`);
+        if(!row)return null;
+        if(row.getClientRects().length)return row.offsetTop+row.offsetHeight/2;
+        const head=row.dataset.section?body.querySelector<HTMLElement>(`.code-section-head[data-section="${CSS.escape(row.dataset.section)}"]`):null;
+        return head?.getClientRects().length?head.offsetTop+head.offsetHeight/2:null;
+    }
     function drawHover(target:HTMLElement|null) {
         body.querySelectorAll('.code-link-lit').forEach(n=>n.classList.remove('code-link-lit'));
         if(!arrows)return;
@@ -263,7 +274,7 @@ export function setupCodePanel(): void {
         const row=target?.closest<HTMLElement>('.code-line');
         if(!target||!row)return;
         const line=Number(row.dataset.line),call=target.closest<HTMLElement>('.code-call'),fn=target.closest<HTMLElement>('.code-fn');
-        const rowY=(l:number)=>{const r=body.querySelector<HTMLElement>(`.code-line[data-line="${l}"]`);return r?r.offsetTop+r.offsetHeight/2:null;};
+        const rowY=lineY;
         let incoming:{from:number;to:number}[]=[],outgoing:{from:number;to:number}[]=[];
         if(call){
             const def=Number(call.dataset.def);
@@ -297,7 +308,7 @@ export function setupCodePanel(): void {
         const called=calls.length>shownCalls.length;
         shownCalls=calls;shownEntry=entry;
         if(body.clientHeight===0)return;
-        const rowY=(line:number)=>{const row=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"]`);return row?row.offsetTop+row.offsetHeight/2:null;};
+        const rowY=lineY;
         if(!arrows||!arrows.isConnected){
             arrows=document.createElementNS('http://www.w3.org/2000/svg','svg');arrows.classList.add('code-arrows');arrows.setAttribute('aria-hidden','true');
             arrows.innerHTML='<defs><marker id="code-arrow-jump" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L6,3 L0,6 z"/></marker>'
@@ -317,7 +328,8 @@ export function setupCodePanel(): void {
         });
         // A move that makes a call is drawn by that call's own arrow.
         if(!jump||called)return;
-        const y1=rowY(jump.from),y2=rowY(jump.to);if(y1===null||y2===null)return;
+        // Two lines hidden in one section meet at its title: no move to draw.
+        const y1=rowY(jump.from),y2=rowY(jump.to);if(y1===null||y2===null||y1===y2)return;
         arrows.querySelectorAll('.code-arrow-jump').forEach(p=>p.remove());
         body.querySelectorAll('.code-line-number.jump-lit').forEach(n=>n.classList.remove('jump-lit'));
         const path=document.createElementNS(svg,'path');path.setAttribute('class','code-arrow-jump');path.setAttribute('d',jumpArrowPath(x,y1,y2));path.setAttribute('marker-end','url(#code-arrow-jump)');path.setAttribute('pathLength','1');
@@ -337,7 +349,8 @@ export function setupCodePanel(): void {
         for(const mode of STRUCTURE_MODES){
             const button=document.createElement('button');button.type='button';button.dataset.mode=mode;button.title=MODE_INFO[mode].title;button.setAttribute('aria-label',MODE_INFO[mode].title);
             button.innerHTML=`<svg viewBox="0 0 18 18" width="15" height="15" aria-hidden="true">${MODE_INFO[mode].icon}</svg>`;
-            button.addEventListener('click',()=>{settings.structureMode=mode;saveSettings();renderStructure();});
+            // Lines move between modes: the arrows are redrawn to follow them.
+            button.addEventListener('click',()=>{settings.structureMode=mode;saveSettings();renderStructure();refreshBinding();});
             wrap.append(button);
         }
         return wrap;
@@ -401,7 +414,7 @@ export function setupCodePanel(): void {
                 if(settings.structureMode==='blocks'||settings.structureMode==='outline'){
                     const key=revealKey(section);
                     if(revealed.has(key))revealed.delete(key);else revealed.add(key);
-                    paintReveal(section);
+                    paintReveal(section);refreshBinding();
                 }else choose(section.from,section.to,sectionText(section));
             };
             head.addEventListener('click',pick);

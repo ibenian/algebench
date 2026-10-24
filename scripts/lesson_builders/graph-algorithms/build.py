@@ -201,6 +201,7 @@ def run_scene(id, title, header, markdown, prompt, file, source, trace, elements
     ({'title', 'description'}); more adds steps that each play their own run from their own table, in the same code
     file: {'id', 'title', 'description', 'table', 'trace', 'elements'}. sections is the code's teaching structure
     (see section())."""
+    sections = sections or code_sections(id)
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
                       **({'sections': list(sections)} if sections else {}),
                       'locations': [{'line': f['line'], 'scene': id, 'step': 'run', 'snapshot': k, 'label': f"{title} · {f['message']}"}
@@ -1447,6 +1448,88 @@ A graph is a **tree** exactly when it is connected and has no cycle: equivalentl
                'table': 'cyc_und', 'trace': utrace, 'elements': elements(lambda col: f"dataTable('cyc_und', frame, '{col}')", False, LU)},
               {'id': 'indegree', 'title': 'Directed: count indegrees', 'description': 'Peel off nodes with nothing left to wait for; what never frees up is stuck on a cycle.',
                'table': 'cyc_kahn', 'trace': ktrace, 'elements': kahn}])
+
+
+def code_sections(scene_id):
+    """The teaching structure of each scene's code file (cycle.py has its own, cycle_sections)."""
+    if scene_id == 'representations':
+        S = lambda *a, **k: section(REPR_SOURCE, *a, **k)
+        return [
+            S('r-empty', 'Start empty: a list per node, a grid of zeros', 'def build(', 'matrix = [[0]',
+              hint='Make room for n nodes twice: an empty neighbour list for each, and an n by n grid of zeros.'),
+            S('r-edges', 'Record each edge both ways', 'for u, v in edges', 'matrix[u][v]',
+              hint='An undirected edge joins u and v in both directions: add each to the other\'s list and set both grid cells.',
+              prompt='Explain why each edge is recorded twice, in both the list and the matrix, and what each form costs in space and in lookup time.'),
+            S('r-return', 'Hand back both forms', 'return adj, matrix', None,
+              hint='Return the adjacency list and the matrix.'),
+        ]
+    if scene_id == 'dfs':
+        S = lambda *a, **k: section(DFS_SOURCE, *a, **k)
+        return [
+            S('d-init', 'Nothing visited, no order yet', 'def dfs_order(', 'order = []',
+              hint='Remember which nodes were visited, and the order they were reached in.'),
+            S('d-visit', 'Visit u: mark it, record it', 'def dfs(u)', 'order.append(u)',
+              hint='On arriving at u, mark it visited at once, so no other path enters it again, and record it.'),
+            S('d-deeper', 'Go deeper into each new neighbour', 'for v in adj[u]', 'dfs(v)',
+              hint='For each neighbour not seen yet, go all the way down from it before trying the next one.',
+              prompt='Explain how this loop and the recursive call make the search go deep first, and what the call stack holds while it does.'),
+            S('d-start', 'Start at 0, return the order', 'dfs(0)', 'return order',
+              hint='Start the search at node 0; the order is the answer.'),
+        ]
+    if scene_id == 'bfs':
+        S = lambda *a, **k: section(BFS_SOURCE, *a, **k)
+        return [
+            S('b-init', 'The start: distance 0, waiting in the queue', 'def bfs(', 'queue = deque',
+              hint='Every distance starts unknown (-1); the start is 0 away and is the first to wait in the queue.'),
+            S('b-take', 'Take the node that waited longest', 'while queue', 'u = queue.popleft()',
+              hint='While anything waits, take from the front: the queue hands nodes out in order of distance.'),
+            S('b-discover', 'Discover each new neighbour one step further', 'for v in adj[u]', 'queue.append(v)',
+              hint='A neighbour with no distance yet is one step further than u: set it, and queue it.',
+              prompt='Explain why setting the distance when a node is queued (not when it is taken) keeps it from being queued twice, and why the first distance found is the shortest.'),
+            S('b-return', 'Every distance from the start', 'return dist', None,
+              hint='Return the distances; -1 marks a node that cannot be reached.'),
+        ]
+    if scene_id == 'degrees':
+        S = lambda *a, **k: section(DEGREES_SOURCE, *a, **k)
+        return [
+            S('j-count', 'Count edges in and out', 'def find_judge(', 'indeg[b] += 1',
+              hint='For each trust pair a → b, a trusts one more person and b is trusted by one more.'),
+            S('j-test', 'Find who all trust and who trusts no one', 'for p in range(n)', 'return -1',
+              hint='The judge is trusted by the other n - 1 and trusts nobody; if no one fits, there is none.'),
+            S('t-build', 'Build the tree and each node\'s degree', 'def tree_centers(', 'degree[v] += 1',
+              hint='Record each edge in both lists, and count how many edges touch each node.'),
+            S('t-leaves', 'Start from the leaves', 'leaves = deque(', 'remaining = n',
+              hint='The nodes with a single edge are the outer layer; n nodes remain.'),
+            S('t-peel', 'Peel one layer of leaves at a time', 'while remaining > 2', 'leaves.append(nb)',
+              hint='Remove the whole current layer; a neighbour left with one edge becomes a leaf of the next layer.',
+              prompt='Explain why peeling the leaves layer by layer ends at the centre of the tree, and why at most two nodes can remain.'),
+            S('t-centers', 'What is left is the centre', 'return list(leaves)', None,
+              hint='When two or fewer nodes remain, they are the centre.'),
+        ]
+    if scene_id == 'grid-graphs':
+        S = lambda *a, **k: section(GRID_SOURCE, *a, **k)
+        F, B = 'def flood_fill(', 'def flood_fill_bfs('
+        return [
+            S('f-guard', 'Note the old colour; stop if it is already the new one', F, 'return image',
+              hint='Remember the colour being replaced; if it already is the new colour, nothing would ever stop the fill.'),
+            S('f-stop', 'Stop outside the image or at another colour', 'def fill(r, c)', 'return', F,
+              hint='A cell off the image, or one not of the old colour, ends this branch of the fill.'),
+            S('f-paint', 'Paint the cell, spread to its four neighbours', 'image[r][c] = color', 'fill(r + dr, c + dc)', F,
+              hint='Painting a cell also marks it visited; then try the cells below, above, right and left.',
+              prompt='Explain why painting the cell before the recursive calls keeps the fill from looping, and how the four calls cover the whole region.'),
+            S('f-start', 'Start the fill at the chosen cell', 'fill(sr, sc)', 'return image', F,
+              hint='Fill from the starting cell and return the image.'),
+            S('q-guard', 'Note the old colour; stop if it is already the new one', B, 'return image', B,
+              hint='The same check as the recursive version.'),
+            S('q-seed', 'Paint the start and queue it', 'image[sr][sc] = color', 'queue = deque', B,
+              hint='Paint the start cell when it is queued, so it is never queued again.'),
+            S('q-spread', 'Take a cell, paint and queue its same-coloured neighbours', 'while queue', 'queue.append((nr, nc))', B,
+              hint='Take the oldest cell; each neighbour inside the image with the old colour is painted and queued.',
+              prompt='Explain why this version paints a cell when it is queued rather than when it is taken, and how its order of painting differs from the recursive fill.'),
+            S('q-return', 'Return the painted image', 'return image', None, 'queue.append((nr, nc))',
+              hint='When the queue is empty the region is painted.'),
+        ]
+    return []
 
 
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
