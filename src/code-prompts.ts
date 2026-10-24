@@ -37,6 +37,8 @@ export function enclosingFunction(source: string, line: number): {name: string; 
 export interface CodeContext {
     path: string; source: string; first: number; last: number; excerpt: string;
     executing: number[]; waitingCalls: number[]; scene: string; step: number; values: Record<string, unknown>;
+    /** The file's teaching structure (code-sections.ts sectionsOutline), when it has one. */
+    sections?: string;
 }
 
 /** The message for one prompt: the request, then the code and the state it is about. */
@@ -49,6 +51,7 @@ export function codePromptMessage(prompt: CodePrompt, c: CodeContext): string {
         `File: ${c.path} (shown, not executed)`,
         `Selected: ${c.first === c.last ? `line ${c.first}` : `lines ${c.first}–${c.last}`}${fn ? `, inside ${fn.name}() (line ${fn.line})` : ''}`,
         `Selected text:\n${c.excerpt}`,
+        ...(c.sections ? [`The code's sections (its teaching structure; explain in these terms):\n${c.sections}`] : []),
         `Executing now: ${c.executing.length ? `line ${c.executing.join(', ')}` : 'no line marked'}`,
         `Calls waiting to return (call-site lines, outermost first): ${c.waitingCalls.length ? c.waitingCalls.join(', ') : 'none'}`,
         `Scene: ${c.scene}, step ${c.step}`,

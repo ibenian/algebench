@@ -5638,6 +5638,42 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-view-option input { margin: 0; accent-color: var(--accent-color); }
 .code-view-menu .code-view-option:not(:first-child) span { font-family: ui-monospace, monospace; }
 .code-view-heading { margin: 6px 8px 2px; padding-top: 6px; border-top: 1px solid var(--border-color); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .6; }
+/* Structure modes: three small icons in the title bar while Show structure is on. */
+.code-structure-modes { display: flex; gap: 2px; flex: none; padding: 2px; border: 1px solid var(--border-color); border-radius: 7px; }
+.code-structure-modes[hidden] { display: none; }
+.code-structure-modes button { display: grid; place-items: center; padding: 2px 4px; color: var(--text-color); background: transparent; border: 0; border-radius: 5px; cursor: pointer; opacity: .55; }
+.code-structure-modes button:hover { opacity: .9; }
+.code-structure-modes button[aria-pressed="true"] { opacity: 1; background: color-mix(in srgb, var(--accent-color) 22%, transparent); color: var(--accent-color); }
+.code-structure-modes svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.code-structure-modes svg rect { fill: currentColor; stroke: none; }
+/* A section: a titled band over its lines, in its own tone; the tone also marks its lines beside the numbers. */
+.code-section-head {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 8px 10px 3px 40px; padding: 4px 6px 4px 9px;
+    border-left: 3px solid var(--section-tone); border-radius: 0 6px 6px 0; background: color-mix(in srgb, var(--section-tone) 11%, transparent);
+    font: 12px var(--font-body); color: var(--text-color); cursor: pointer;
+}
+.code-section-head:hover, .code-section-head:focus-visible { background: color-mix(in srgb, var(--section-tone) 20%, transparent); outline: none; }
+.code-section-head.executing { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--section-tone) 70%, transparent); background: color-mix(in srgb, var(--section-tone) 22%, transparent); }
+.code-section-title { font-weight: 600; }
+.code-section-meta { font: 10px ui-monospace, monospace; opacity: .55; }
+.code-section-ask { margin-left: auto; padding: 0 6px; font-size: 12px; line-height: 18px; color: var(--section-tone); background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.code-section-ask:hover { border-color: color-mix(in srgb, var(--section-tone) 60%, transparent); background: var(--panel-bg); }
+.code-section-hint { flex-basis: 100%; display: none; font-size: 11px; line-height: 1.4; opacity: .75; white-space: normal; max-width: 46ch; }
+.code-structure-outline .code-section-hint, .code-structure-blocks .code-section-hint { display: block; }
+.code-structure .code-line.code-in-section .code-line-number { box-shadow: inset -3px 0 0 color-mix(in srgb, var(--section-tone) 65%, transparent); }
+/* Sections only: the titles stand alone, a contents of the code; the arrows have no lines to point at. */
+/* Outside the structured function (running function only) the code stays as it is: these rules skip it. */
+.code-structure-outline .code-line:not(.code-outside-structure), .code-structure-outline .code-arrows { display: none; }
+.code-structure-outline .code-section-head { margin-left: 10px; margin-top: 6px; }
+/* Over hidden code: each line a bar where its text runs, so the size and shape of a section show, not its code. */
+.code-structure-blocks .code-line:not(.code-outside-structure) code { position: relative; color: transparent; }
+.code-structure-blocks .code-line:not(.code-outside-structure) code * { color: transparent !important; background: none !important; box-shadow: none !important; }
+.code-structure-blocks .code-line:not(.code-outside-structure) code::after {
+    content: ''; position: absolute; left: calc(var(--indent, 0) * 1ch); width: calc(var(--len, 0) * 1ch); top: 38%; height: 26%;
+    border-radius: 3px; background: color-mix(in srgb, var(--section-tone, var(--text-color)) 40%, transparent); pointer-events: none;
+}
+.code-structure-blocks .code-line:not(.code-in-section):not(.code-outside-structure) code::after { background: color-mix(in srgb, var(--text-color) 18%, transparent); }
+.code-structure-blocks .code-line:not(.code-outside-structure) .code-inline-values, .code-structure-outline .code-inline-values { display: none; }
 /* Inline values: bordered tags right of a line. A long one is cut with an ellipsis; pointing at it shows it in
    full in .code-inline-float, fixed over the page so the scrolling code view cannot clip it. */
 .code-inline-values { display: flex; gap: 6px; align-items: center; padding: 0 12px 0 10px; }

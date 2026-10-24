@@ -13,12 +13,23 @@ import type { CodeReference, CodeFunction, CodeCall } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import { highlightCode, lineTokens, paintTokens, wrapColumns } from '/code-highlight.js';
 import { CODE_PROMPTS, codePromptMessage } from '/code-prompts.js';
+import type { CodePrompt } from '/code-prompts.js';
+import { codeSections, sectionAt, sectionsOutline, sectionPrompt, STRUCTURE_MODES } from '/code-sections.js';
+import type { CodeSection, StructureMode } from '/code-sections.js';
 import { menuPlacement } from '/menu-placement.js';
 import { lineJump, jumpArrowPath, waitingCalls, callArrowPath, JUMP_HOLD_MS, lineTransitions, movesAt } from '/code-jump.js';
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
 /** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
 const GUTTER_X=37;
+/** Section tones, in turn, and the structure modes' icons (code-sections.ts). */
+const SECTION_TONES=['#e3b04f','#4fb39a','#6ea8e0','#d36ba6'];
+const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
+    plain:{title:'Code only',icon:'<path d="M3 4h9M5 7.5h8M5 11h6M3 14.5h7"/>'},
+    outline:{title:'Sections only',icon:'<path d="M3 4h2M7 4h8M3 9h2M7 9h8M3 14h2M7 14h8"/>'},
+    blocks:{title:'Sections over hidden code',icon:'<path d="M3 3.5h12"/><rect x="5" y="6" width="9" height="2" rx="1"/><rect x="5" y="10" width="6" height="2" rx="1"/><rect x="5" y="14" width="8" height="2" rx="1"/>'},
+    code:{title:'Sections over code',icon:'<path d="M3 3.5h12M6 8l-2 2.5L6 13M12 8l2 2.5-2 2.5M9.8 7.5 8.2 13.5"/>'},
+};
 
 export function setupCodePanel(): void {
     const host=document.getElementById('dock-tab-code');
@@ -27,7 +38,7 @@ export function setupCodePanel(): void {
     const title=document.createElement('div');title.className='code-file-title';
     const titleText=document.createElement('span');titleText.className='code-file-path';
     const execution=document.createElement('div');execution.className='code-execution-status';execution.setAttribute('role','status');
-    let lastExecution='',lastLines=new Set<number>(),lastPlace='';
+    let lastExecution='',lastLines=new Set<number>(),lastPlace='',lastScopeKey='';
     const body=document.createElement('div');body.className='code-source';body.setAttribute('aria-label','Source code');
     const actions=document.createElement('div');actions.className='code-selection-actions';actions.hidden=true;
     const selectionLabel=document.createElement('span');
@@ -44,7 +55,8 @@ export function setupCodePanel(): void {
     });
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
     const what=document.createElement('span');what.className='code-line-actions';
-    title.append(titleText,viewSettingsMenu());
+    const modes=structureModes();
+    title.append(titleText,modes,viewSettingsMenu());
     actions.append(selectionLabel,ask,jump,what,codePromptsMenu());host.append(tree,title,execution,body,actions,targets);
     /**
      * "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
@@ -78,12 +90,18 @@ export function setupCodePanel(): void {
         wrap.append(toggle,menu);
         return wrap;
     }
-    function codeMessage(prompt: typeof CODE_PROMPTS[number]) {
+    function codeMessage(prompt: CodePrompt) {
         if(!selected||!first)return null;
-        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex];
-        return codePromptMessage(prompt,{path:selected.path,source:selected.source,first,last,excerpt,executing:[...lastLines],waitingCalls:shownCalls,
+        return codeMessageFor(prompt,first,last,excerpt);
+    }
+    /** A prompt about lines from–to of the open file, with the state and the file's structure. */
+    function codeMessageFor(prompt: CodePrompt,from:number,to:number,text:string) {
+        const file=selected!,scene=state.lessonSpec?.scenes?.[state.currentSceneIndex];
+        const sections=codeSections(file);
+        return codePromptMessage(prompt,{path:file.path,source:file.source,first:from,last:to,excerpt:text,executing:[...lastLines],waitingCalls:shownCalls,
             scene:scene?.title??'',step:state.currentStepIndex+1,
-            values:Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value]))});
+            values:Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value])),
+            ...(sections.length?{sections:sectionsOutline(sections)}:{})});
     }
     function renderLineActions() {
         what.replaceChildren();
@@ -161,6 +179,9 @@ export function setupCodePanel(): void {
         else if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
         const bound=!!ref||!!active;
         const signature=[...lines].join(', ');
+        // The structure follows execution into another function.
+        const scope=structureScope(lines),scopeKey=scope?`${scope.from}-${scope.to}`:'all';
+        if(scopeKey!==lastScopeKey){lastScopeKey=scopeKey;renderStructure(lines);}
         execution.textContent=bound?(signature?'Active lines: '+signature:'No active lines at this position'):'';
         let firstActive:HTMLElement|undefined;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
@@ -180,6 +201,7 @@ export function setupCodePanel(): void {
         const changed=place===lastPlace&&lineJump(lastLines,lines)!==null;
         drawArrows(changed?stepInto():null,calls,entry);
         lastLines=lines;lastPlace=place;
+        markExecutingSection();
         scheduleInline();
     }
     /** The run's step into the current state: from the line at the previous state to the current one, or null. */
@@ -293,13 +315,86 @@ export function setupCodePanel(): void {
         clearTimeout(fade);
         fade=window.setTimeout(()=>{path.classList.add('fading');numbers.forEach(n=>n.classList.remove('jump-lit'));setTimeout(()=>path.remove(),400);},JUMP_HOLD_MS);
     }
+    /**
+     * Structure: the file's sections (code-sections.ts) as titled bands. The icons in the title bar, shown for a
+     * file that has sections, go from least structured to most: plain code, titles over the code, titles over
+     * blocks the size of the hidden code, and titles only. A section's title selects its lines; its ✦ asks the tutor about it.
+     */
+    function structureModes() {
+        const wrap=document.createElement('span');wrap.className='code-structure-modes';wrap.setAttribute('role','group');wrap.setAttribute('aria-label','Structure view');wrap.hidden=true;
+        for(const mode of STRUCTURE_MODES){
+            const button=document.createElement('button');button.type='button';button.dataset.mode=mode;button.title=MODE_INFO[mode].title;button.setAttribute('aria-label',MODE_INFO[mode].title);
+            button.innerHTML=`<svg viewBox="0 0 18 18" width="15" height="15" aria-hidden="true">${MODE_INFO[mode].icon}</svg>`;
+            button.addEventListener('click',()=>{settings.structureMode=mode;saveSettings();renderStructure();});
+            wrap.append(button);
+        }
+        return wrap;
+    }
+    function sectionText(section:CodeSection):string {
+        return selected?.source.split('\n').slice(section.from-1,section.to).join('\n')??'';
+    }
+    /** The lines the structure covers: the running top-level function (with "running function only"), else all. */
+    function structureScope(lines:Set<number>) {
+        return settings.structureRunning&&selected?inlineScope(selected.source,lines):null;
+    }
+    function renderStructure(lines=lastLines) {
+        body.querySelectorAll('.code-section-head').forEach(n=>n.remove());
+        const all=selected?codeSections(selected):[];
+        const scope=structureScope(lines);
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            row.classList.remove('code-in-section','code-section-first','code-section-last');row.style.removeProperty('--section-tone');delete row.dataset.section;
+            // Outside the structured function the code stays plain, whatever the mode.
+            const line=Number(row.dataset.line);
+            row.classList.toggle('code-outside-structure',!!scope&&(line<scope.from||line>scope.to));
+        });
+        const sections=scope?all.filter(s=>s.from>=scope.from&&s.to<=scope.to):all;
+        const on=settings.structureMode!=='plain'&&sections.length>0;
+        body.classList.toggle('code-structure',on);
+        for(const mode of STRUCTURE_MODES)body.classList.toggle(`code-structure-${mode}`,on&&settings.structureMode===mode);
+        modes.hidden=!all.length;
+        modes.querySelectorAll<HTMLButtonElement>('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===settings.structureMode)));
+        if(!on)return;
+        sections.forEach((section,k)=>{
+            const tone=SECTION_TONES[k%SECTION_TONES.length]!;
+            for(let line=section.from;line<=section.to;line++){
+                const row=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"]`);
+                if(!row)continue;
+                row.classList.add('code-in-section');row.classList.toggle('code-section-first',line===section.from);row.classList.toggle('code-section-last',line===section.to);
+                row.style.setProperty('--section-tone',tone);row.dataset.section=section.id;
+            }
+            const head=document.createElement('div');head.className='code-section-head';head.dataset.section=section.id;head.style.setProperty('--section-tone',tone);
+            head.tabIndex=0;head.setAttribute('role','button');
+            const count=section.to-section.from+1;
+            const name=document.createElement('span');name.className='code-section-title';name.textContent=section.title;
+            const meta=document.createElement('span');meta.className='code-section-meta';meta.textContent=`${section.from===section.to?`line ${section.from}`:`lines ${section.from}–${section.to}`} · ${count} line${count===1?'':'s'}`;
+            const ask=document.createElement('button');ask.type='button';ask.className='code-section-ask';ask.textContent='✦';
+            ask.title=`Ask the tutor about "${section.title}"\n\nClick to send · ⌘/Ctrl-click to edit`;ask.setAttribute('aria-label',`Ask the tutor about ${section.title}`);
+            ask.addEventListener('click',e=>{e.stopPropagation();sendAiPrompt(codeMessageFor(sectionPrompt(section),section.from,section.to,sectionText(section)),e,{silent:true});});
+            head.append(name,meta,ask);
+            if(section.hint){const hint=document.createElement('div');hint.className='code-section-hint';hint.textContent=section.hint;head.append(hint);}
+            head.title=section.hint??section.title;
+            const pick=()=>choose(section.from,section.to,sectionText(section));
+            head.addEventListener('click',pick);
+            head.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
+            body.querySelector(`.code-line[data-line="${section.from}"]`)?.before(head);
+        });
+        markExecutingSection();
+    }
+    /** The section running now is lit, so the titles-only view still says where execution is. */
+    function markExecutingSection() {
+        const sections=selected?codeSections(selected):[];
+        const running=new Set([...lastLines].map(line=>sectionAt(sections,line)?.id).filter(Boolean));
+        body.querySelectorAll<HTMLElement>('.code-section-head').forEach(head=>head.classList.toggle('executing',running.has(head.dataset.section)));
+    }
     /** View settings ("⚙", top right): inline values on or off, and which variables show them. Kept per browser. */
-    type ViewSettings={inline:boolean;onHover:boolean;hidden:string[]};
+    type ViewSettings={inline:boolean;onHover:boolean;hidden:string[];structureMode:StructureMode;structureRunning:boolean};
     function loadSettings():ViewSettings {
         try{
             const saved=JSON.parse(localStorage.getItem('algebench-code-view')??'null') as Partial<ViewSettings>|null;
-            return {inline:saved?.inline??true,onHover:saved?.onHover??true,hidden:Array.isArray(saved?.hidden)?saved.hidden.filter(h=>typeof h==='string'):[]};
-        }catch{return {inline:true,onHover:true,hidden:[]};}
+            return {inline:saved?.inline??true,onHover:saved?.onHover??true,hidden:Array.isArray(saved?.hidden)?saved.hidden.filter(h=>typeof h==='string'):[],
+                structureMode:STRUCTURE_MODES.includes(saved?.structureMode as StructureMode)?saved!.structureMode!:'plain',
+                structureRunning:saved?.structureRunning??true};
+        }catch{return {inline:true,onHover:true,hidden:[],structureMode:'plain',structureRunning:true};}
     }
     function saveSettings() {
         try{localStorage.setItem('algebench-code-view',JSON.stringify(settings));}catch{/* private mode: settings last the session */}
@@ -316,7 +411,7 @@ export function setupCodePanel(): void {
         const check=(text:string,on:boolean,change:(on:boolean)=>void,disabled=false)=>{
             const label=document.createElement('label');label.className='code-view-option';
             const box=document.createElement('input');box.type='checkbox';box.checked=on;box.disabled=disabled;
-            box.addEventListener('change',()=>{change(box.checked);saveSettings();renderInline();fill();});
+            box.addEventListener('change',()=>{change(box.checked);saveSettings();renderInline();lastScopeKey='';renderStructure();fill();});
             const name=document.createElement('span');name.textContent=text;
             label.append(box,name);
             return label;
@@ -324,7 +419,8 @@ export function setupCodePanel(): void {
         // Built on each open: the variables are the ones this file names that the scene shows a value for now.
         function fill() {
             menu.replaceChildren(check('Inline values',settings.inline,on=>{settings.inline=on;}),
-                check('Only on the hovered line',settings.onHover,on=>{settings.onHover=on;},!settings.inline));
+                check('Only on the hovered line',settings.onHover,on=>{settings.onHover=on;},!settings.inline),
+                check('Structure the running function only',settings.structureRunning,on=>{settings.structureRunning=on;},!selected||!codeSections(selected).length));
             const vars=availableVariables();
             const heading=document.createElement('div');heading.className='code-view-heading';
             heading.textContent=vars.length?'Variables':'No variables shown at this step';
@@ -413,7 +509,9 @@ export function setupCodePanel(): void {
         const tags=shown?[...holder!.querySelectorAll<HTMLElement>('.code-inline-value')]:[];
         const edge=body.getBoundingClientRect().right;
         const clipped=!!code&&(code.getBoundingClientRect().right>edge||tags.some(t=>t.scrollWidth>t.clientWidth||t.getBoundingClientRect().right>edge));
-        if(!clipped){float.hidden=true;floated=null;return;}
+        // The structure's hidden-code views must not give the code away.
+        const hiding=body.classList.contains('code-structure-blocks')||body.classList.contains('code-structure-outline');
+        if(!clipped||hiding){float.hidden=true;floated=null;return;}
         if(floated===row&&!float.hidden)return;
         floated=row;
         const line=document.createElement('code');line.className='code-inline-float-code';
@@ -457,7 +555,7 @@ export function setupCodePanel(): void {
         if(hovered?.isConnected&&hovered.matches(':hover'))floatLine(hovered);
     }
     function open(file: CodeFile) {
-        selected=file;references=[];lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
+        selected=file;references=[];lastScopeKey='';lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
         titleText.textContent=file.path+' · read only';body.replaceChildren();
         if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{
@@ -466,6 +564,8 @@ export function setupCodePanel(): void {
             number.onclick=()=>choose(i+1,i+1,text);
             const code=document.createElement('code');code.dataset.line=String(i+1);
             for(const segment of markedSegments(text,(file.marks??[]).filter(m=>m.line===i+1))){const span=document.createElement('span');span.textContent=segment.text;if(segment.color)span.className=`code-mark-${segment.color}`;code.append(span);}
+            // The line's shape in characters, for the hidden-code blocks: where its text starts and how long it runs.
+            code.style.setProperty('--indent',String(text.length-text.trimStart().length));code.style.setProperty('--len',String(text.trim().length));
             row.append(number,code);body.append(row);
         });
         // Syntax colours arrive from the server; the file may have been switched meanwhile.
@@ -474,6 +574,7 @@ export function setupCodePanel(): void {
             body.querySelectorAll<HTMLElement>('.code-line code').forEach(code=>paintTokens(code,lineTokens(tokens,Number(code.dataset.line))));
         });
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
+        renderStructure();
         refreshBinding();
         void analyzeCode(file).then(analysis=>{if(analysis&&selected===file){markSymbols(analysis.references);markCalls(analysis.functions??[],analysis.calls??[]);}});
     }

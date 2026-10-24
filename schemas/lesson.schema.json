@@ -3309,6 +3309,49 @@
             ],
             "additionalProperties": false
           }
+        },
+        "sections": {
+          "type": "array",
+          "description": "The code's teaching structure: consecutive line ranges, each a step of the idea with a short title. The Code tab can show them, switched by icons in its title bar: plain code, titles only, titles over blocks the size of the hidden code, or titles over the code, and the tutor elaborates on a section rather than on loose lines. Ranges are ordered and do not overlap; lines outside every section are left as they are.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What this part of the code does, in a few words (\"Mark every node new\")."
+              },
+              "from": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "First line, one-based."
+              },
+              "to": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Last line, inclusive."
+              },
+              "hint": {
+                "type": "string",
+                "description": "Guidance that stands without the code: what this part must achieve, for a learner who has not seen it yet."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "What the tutor is asked when the learner asks about this section; the section's code and the current state are sent with it."
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [

@@ -174,6 +174,19 @@ def line_of(source, text, after=None):
     return next(i + 1 for i, l in enumerate(lines) if i >= start and text in l)
 
 
+def section(source, id, title, start, end, after=None, hint=None, prompt=None):
+    """One section of a code file's teaching structure: the lines from the one holding start to the one holding end
+    (both searched from after, a text, to tell functions apart), a short title, and optionally a hint that stands
+    without the code and the tutor's prompt."""
+    a = line_of(source, start, after)
+    lines = source.split('\n')
+    find = lambda text, k: next(i + 1 for i, l in enumerate(lines) if i >= k - 1 and text in l)
+    # end may be (text, anchor): the text found from the line holding anchor, for a text that repeats.
+    b = (find(end[0], find(end[1], a)) if isinstance(end, tuple) else find(end, a)) if end else a
+    return {'id': id, 'title': title, 'from': a, 'to': b,
+            **({'hint': hint} if hint else {}), **({'prompt': prompt} if prompt else {})}
+
+
 tr = lambda col: f"dataTable('trace', frame, '{col}')"
 label = lambda id, text, connect=None, line=None, file=None: {
     'id': id, 'type': 'expression_label', 'position': [7.6, -3.7, 0], 'textExpr': text,
@@ -182,12 +195,14 @@ label = lambda id, text, connect=None, line=None, file=None: {
 
 
 def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None, call_entry=None,
-              first=None, more=()):
+              first=None, more=(), sections=()):
     """A scene that plays one recorded run: the frame slider, a caption from each frame's message, and the Code
     panel on the executing line (codeRef), with each line linked back to its frames. first retitles the run step
     ({'title', 'description'}); more adds steps that each play their own run from their own table, in the same code
-    file: {'id', 'title', 'description', 'table', 'trace', 'elements'}."""
+    file: {'id', 'title', 'description', 'table', 'trace', 'elements'}. sections is the code's teaching structure
+    (see section())."""
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
+                      **({'sections': list(sections)} if sections else {}),
                       'locations': [{'line': f['line'], 'scene': id, 'step': 'run', 'snapshot': k, 'label': f"{title} · {f['message']}"}
                                     for k, f in enumerate(trace)]
                       + [{'line': f['line'], 'scene': id, 'step': m['id'], 'snapshot': k, 'label': f"{m['title']} · {f['message']}"}
@@ -1283,6 +1298,41 @@ def kahn_cycle_trace(n, edges):
     return trace, adj
 
 
+def cycle_sections():
+    """cycle.py's teaching structure: each function split into the steps of its idea."""
+    S = lambda *a, **k: section(CYCLE_SOURCE, *a, **k)
+    D, U, K = 'def has_cycle(', 'def has_cycle_undirected(', 'def has_cycle_kahn('
+    return [
+        S('d-init', 'Every node starts new', 'def has_cycle(', 'state = [0]',
+          hint='Keep one of three states per node: new, on the current path, or done. All start new.'),
+        S('d-enter', 'Enter u: it joins the path', 'def dfs(u)', 'state[u] = 1', D,
+          hint='When the search arrives at u, mark it as on the current path.'),
+        S('d-edges', 'Follow each edge out of u', 'for v in adj[u]', ('return True', 'and dfs(v)'), D,
+          hint='For each neighbour: one already on the path closes a loop; a new one is explored deeper, passing True back up.',
+          prompt='Explain this loop over the edges of u: why reaching a node that is on the current path means a cycle, why a node that is done does not, and why the result of the deeper call is passed straight back.'),
+        S('d-leave', 'Leave u: it is done', 'state[u] = 2', 'return False', D,
+          hint='Once every edge out of u is explored, mark u done: no cycle passes through it.'),
+        S('d-roots', 'Start a search from every new node', 'for u in range(n)', 'return False', D,
+          hint='The graph may be in pieces: start a search from every node not reached yet.'),
+        S('u-init', 'Nothing visited yet', 'def has_cycle_undirected(', 'visited = [False]',
+          hint='Undirected edges need only visited or not, plus where each visit came from.'),
+        S('u-edges', 'Visit u, skipping the edge back', 'def dfs(u, parent)', 'return False', U,
+          hint='Every edge runs both ways: skip the one back to the parent; any other visited neighbour is a second way in.',
+          prompt='Explain why the edge back to the parent must be skipped in an undirected graph, and why any other visited neighbour means a cycle.'),
+        S('u-roots', 'Start from every unvisited node', 'for u in range(n)', 'return False', U,
+          hint='Search each piece of the graph, starting with no parent.'),
+        S('k-count', 'Count incoming edges', 'indeg = [0] * n', 'indeg[v] += 1', K,
+          hint='For every node, count the edges that point at it: the things it waits for.'),
+        S('k-queue', 'Queue the free nodes', 'queue = deque(', 'taken = 0', K,
+          hint='Nodes that wait for nothing can be taken now; count how many get taken.'),
+        S('k-take', 'Take a node, free its neighbours', 'while queue', 'queue.append(v)', K,
+          hint='Take a free node; each edge out of it is one wait fewer for its target, which is queued once it waits for nothing.',
+          prompt='Explain this loop: why taking u lowers the indegree of each node it points to, and why a node on a cycle can never reach 0.'),
+        S('k-verdict', 'Some node never freed: a cycle', 'return taken < n', None, K,
+          hint='If not every node was taken, the ones left wait on each other in a loop.'),
+    ]
+
+
 def cycle_scene(header):
     dtrace, dadj = cycle_trace(CYC_N, CYC_EDGES, True)
     utrace, uadj = cycle_trace(UND_N, UND_EDGES, False)
@@ -1390,6 +1440,7 @@ A graph is a **tree** exactly when it is connected and has no cycle: equivalentl
 **Practice:** Course Schedule, Find Eventual Safe States, Graph Valid Tree, Redundant Connection.""",
         'Explain why a directed cycle needs three states while an undirected one needs only the parent. Ask the learner to predict, for each edge, whether it closes a cycle.',
         'cycle.py', CYCLE_SOURCE, dtrace, elements(tr, True, LD),
+        sections=cycle_sections(),
         data={'cycNodes': pos(dadj), 'undNodes': pos(uadj)}, call_entry=LD('def dfs(u)'),
         first={'title': 'Directed: three states', 'description': 'A node on the current path, reached again, closes a cycle.'},
         more=[{'id': 'undirected', 'title': 'Undirected: skip the parent', 'description': 'Any visited neighbour other than the parent closes a cycle.',

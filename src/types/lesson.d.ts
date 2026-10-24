@@ -2549,6 +2549,32 @@ export interface CodeFile {
       [k: string]: number | string;
     };
   }[];
+  /**
+   * The code's teaching structure: consecutive line ranges, each a step of the idea with a short title. The Code tab can show them, switched by icons in its title bar: plain code, titles only, titles over blocks the size of the hidden code, or titles over the code, and the tutor elaborates on a section rather than on loose lines. Ranges are ordered and do not overlap; lines outside every section are left as they are.
+   */
+  sections?: {
+    id: string;
+    /**
+     * What this part of the code does, in a few words ("Mark every node new").
+     */
+    title: string;
+    /**
+     * First line, one-based.
+     */
+    from: number;
+    /**
+     * Last line, inclusive.
+     */
+    to: number;
+    /**
+     * Guidance that stands without the code: what this part must achieve, for a learner who has not seen it yet.
+     */
+    hint?: string;
+    /**
+     * What the tutor is asked when the learner asks about this section; the section's code and the current state are sent with it.
+     */
+    prompt?: string;
+  }[];
 }
 /**
  * Single-scene format with top-level 'elements' (no 'scenes' array).
