@@ -53,6 +53,19 @@ class CodePracticeSig(dspy.Signature):
     still rates the whole section. When `changes` says nothing changed, the
     learner asked again: review the section as a whole.
 
+    `name_issues` are found by reading the code, not guessed: a name read on
+    that line that nothing in the typed code defines, though the reference
+    does (usually a rename not carried through, like a parameter renamed
+    while later lines keep the old name). Each is a real bug: say so in
+    `commentary` and give that line a `line_notes` entry, even if the line
+    itself did not change, and never call the rename that caused it correct.
+
+    `open_issues` are problems you pointed out before, on lines the learner
+    hasn't touched since: they are still there. Don't explain them again;
+    in `reminder`, nudge the learner back to them with a short hint each
+    (e.g. "Line 8 still has something to check: which state means 'on the
+    path'?"), never the fix itself.
+
     The learner talks to you through comments in their code (`notes`): they
     may explain their thinking, guess, or ask a question. `notes` holds only
     the NEW ones; other comments in `typed` were answered before, so leave
@@ -78,6 +91,10 @@ class CodePracticeSig(dspy.Signature):
     changes: str = dspy.InputField(
         desc="what changed in the typed code since your last review, as + added and - removed lines; "
              "'first review' when there was none. After the first review, comment ONLY on these lines")
+    name_issues: str = dspy.InputField(
+        desc="names read but never defined in the typed code, by line (found by analysis); may be empty")
+    open_issues: str = dspy.InputField(
+        desc="issues from your earlier reviews still open on untouched lines, by line; may be empty")
     notes: str = dspy.InputField(
         desc="the learner's new comments, by line (after the first review only those on changed lines): "
              "explanations or questions to you; may be empty")
@@ -93,6 +110,9 @@ class CodePracticeSig(dspy.Signature):
              "markdown, code in backticks")
     direction: str = dspy.OutputField(
         desc="one or two sentences on what to do next; empty when the section is correct or hints are off")
+    reminder: str = dspy.OutputField(
+        desc="one short hint per open issue, pointing the learner back to it without the fix; "
+             "empty when there are no open issues")
     reply: str = dspy.OutputField(
         desc="your answer to the learner's notes, two to four sentences, addressing them directly; "
              "markdown, code in backticks; empty when there are no notes")

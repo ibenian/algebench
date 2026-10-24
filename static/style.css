@@ -5998,6 +5998,12 @@ body:has(.push-array) #legend { display: none; }
 .cp-msg.user .msg-body { white-space: pre-wrap; padding: 7px 12px; }
 .cp-msg.assistant .msg-body { padding: 8px 12px; }
 .cp-report-grip, .cp-code-head { margin: 0 -14px; }
+/* The review's header is its resize grip: it says so with the cursor and a grip mark, and lights when pointed at. */
+.cp-report-grip:not(.folded) { cursor: row-resize; }
+.cp-report-grip:not(.folded)::before { content: ''; position: absolute; left: 50%; top: 3px; width: 28px; height: 3px; margin-left: -14px; border-radius: 2px;
+    background: color-mix(in srgb, var(--text-color) 22%, transparent); }
+.cp-report-grip { position: relative; }
+.cp-report-grip:not(.folded):hover::before, .cp-report-grip.dragging::before { background: var(--accent-color); }
 .code-practice.coach-off .cp-report-grip, .code-practice.coach-off .cp-report, .code-practice.coach-off .cp-coach-only { display: none !important; }
 .cp-code-head { margin-top: -2px; }
 .cp-code-summary { flex: 1; text-align: right; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .74rem; color: var(--muted-color); }
@@ -6019,6 +6025,8 @@ body:has(.push-array) #legend { display: none; }
 .cp-report-about { color: var(--muted-color); font-size: .78rem; }
 .cp-report p { margin: 4px 0; }
 .cp-report-reply { margin: 4px 0 8px; }
+.cp-report-reminder { margin: 6px 0 2px; color: #e3b04f; }
+.cp-report-reminder > :first-child::before { content: '↺ '; }
 .cp-report-reply > :first-child::before { content: '💬 '; }
 .cp-report-reply p { margin: 2px 0; }
 .cp-report-notes { margin: 4px 0 0; padding-left: 18px; color: #d36ba6; }

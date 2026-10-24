@@ -36,6 +36,7 @@ class CodeReview(BaseModel):
     commentary: str = ""
     direction: str = ""
     reply: str = ""
+    reminder: str = ""
     line_notes: list[LineNote] = Field(default_factory=list)
     #: Set when the CALL failed, so a crash isn't shown as a review.
     error: str = ""
@@ -78,5 +79,6 @@ def review_code(**inputs) -> CodeReview:
         commentary=_clean(out.commentary),
         direction=_clean(out.direction),
         reply=_clean(out.reply),
+        reminder=_clean(out.reminder),
         line_notes=[n for n in (out.line_notes or []) if isinstance(n, LineNote)][:MAX_NOTES],
     )

@@ -34,6 +34,15 @@ class LineMatch(BaseModel):
     score: int = Field(ge=0, le=100)
 
 
+class OpenNote(BaseModel):
+    """A remark from the last review, on a line of the code as it was then."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    line: int = Field(ge=1)
+    note: str = Field(max_length=400)
+
+
 class CodePracticeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -45,6 +54,8 @@ class CodePracticeRequest(BaseModel):
     typed: str = Field(default="", max_length=MAX_CODE_CHARS)
     #: What was typed at the last review, so the coach can speak to what changed since; None on a first review.
     previous: Optional[str] = Field(default=None, max_length=MAX_CODE_CHARS)
+    #: The last review's line notes, numbered as in ``previous``: those on lines not touched since are still open.
+    open_notes: list[OpenNote] = Field(default_factory=list, max_length=40)
     match: list[LineMatch] = Field(default_factory=list, max_length=400)
     attempts: int = Field(default=0, ge=0, le=1000)
     #: Guide the next step (and how to begin, before anything is typed); off, only review what is typed.

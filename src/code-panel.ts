@@ -228,11 +228,11 @@ export function setupCodePanel(): void {
         publishView(running);
         scheduleInline();
     }
-    /** Hidden for practice: the running block's lines that no section title hides (all of them, without sections). */
+    /** Hidden for practice: the running block's lines are blurred, a section opened from its title too (its shape shows, not its code). */
     function veil(running:{from:number;to:number}|null) {
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
             const line=Number(row.dataset.line),inside=!running||(line>=running.from&&line<=running.to);
-            row.classList.toggle('code-veiled',veiled&&inside&&(!hidingCode()||row.classList.contains('code-outside-structure')));
+            row.classList.toggle('code-veiled',veiled&&inside);
         });
     }
     function hidingCode() {

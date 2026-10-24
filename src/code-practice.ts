@@ -21,8 +21,8 @@ const INDENT = '    ';
 const STORE_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practice-view';
 
 /** One block's practice. `reviewed` is the text the coach last saw, so the next review knows what just changed. */
-interface Attempt { text: string; peeked: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string }
-interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; line_notes: {line: number; note: string}[] }
+interface Attempt { text: string; peeked: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
+interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; reminder?: string; line_notes: {line: number; note: string}[] }
 
 const VERDICTS: Record<string, string> = {correct: 'Correct', close: 'Close', partial: 'Partly there', off_track: 'Off track', empty: 'Nothing yet'};
 
@@ -105,6 +105,7 @@ export function setupCodePractice(): void {
     reportGrip.append(reportTitle, reportSummary, reportToggle);
     const report = el('div', 'cp-report');report.setAttribute('aria-live', 'polite');
     const MAX_MESSAGES = 30;
+    const WELCOME = 'OK, let\'s start coding. I\'ll guide you along the way. You can talk to me in comments: explain your thinking or ask me anything about the code.';
     const EMPTY_REPORT = 'The coach reviews each new line, after a pause, or on Check.';
     const clearReport = () => { reportSummary.textContent = '';reportGrip.classList.remove('fresh');report.replaceChildren(Object.assign(el('div', 'cp-report-empty'), {textContent: EMPTY_REPORT})); };
     clearReport();
@@ -227,8 +228,20 @@ export function setupCodePractice(): void {
     /** The review as it is spoken: the commentary and what to do next, without markdown. */
     let spoken = '';
     function speakReview(text: string) {
+        // A greeting not yet heard goes first, so the first review doesn't cut it off.
+        if (greeting && text) { text = `${greeting} ${text}`;greeting = ''; }
         spoken = text;
         if (speakOn() && text) window.algebenchSpeakText?.(text);
+    }
+    /**
+     * Turning the coach on, it says hello and how to talk to it (once per switch, not on every block). A review
+     * that starts at once speaks the greeting first, so it isn't cut off; otherwise it is spoken on its own.
+     */
+    let greeting = '';
+    function welcome() {
+        if (!current || !coachOn()) return;
+        message('assistant', el('div', 'cp-report-text')).querySelector('.msg-body')!.textContent = WELCOME;
+        greeting = WELCOME;
     }
     function persist() {
         if (!key) return;   // nothing targeted yet
@@ -251,7 +264,7 @@ export function setupCodePractice(): void {
         key = next;block = text;
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
         attempt = saved[key] ?? {text: '', peeked: [], reviews: {}, celebrated: []};
-        input.value = attempt.text;notes = new Map();clearReport();cheer.hidden = true;
+        input.value = attempt.text;notes = new Map();clearReport();cheer.hidden = true;score = null;   // another block: nothing to compare with
         lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : '';
         const count = v.to - v.from + 1;
         target.textContent = `${v.file.path.split('/').pop()} · lines ${v.from}–${v.to}`;
@@ -265,6 +278,16 @@ export function setupCodePractice(): void {
         if (!current) return;
         const before = score;
         score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
+        // A seen line the learner takes apart is theirs to type again: if they retype it with the code hidden, it
+        // scores in full (seen again meanwhile, it is marked again). Seen before it was ever typed, it stays seen.
+        if (before && attempt.peeked.length) {
+            const was = new Set(before.lines.filter(l => l.similarity === 1).map(l => l.line));
+            const undone = new Set(score.lines.filter(l => l.similarity < 1 && was.has(l.line)).map(l => l.line));
+            if (undone.size) {
+                attempt.peeked = attempt.peeked.filter(line => !undone.has(line));persist();
+                score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
+            }
+        }
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
         const focus = focusSection(score, cursor, sections);
         const scoreOfTyped = new Map(score.lines.filter(l => l.typed != null).map(l => [l.typed!, l]));
@@ -295,11 +318,14 @@ export function setupCodePractice(): void {
         }));
         chips.hidden = !score.sections.length;
         const exact = score.lines.filter(l => l.similarity === 1).length;
-        codeSummary.textContent = `${exact} of ${score.lines.length} lines exact`;
+        // The score is the match from memory: a line seen in the Code panel counts half, so say how many were.
+        const seen = score.lines.filter(l => l.peeked).length;
+        codeSummary.textContent = `${exact} of ${score.lines.length} lines exact${seen ? ` · ${seen} seen (half marks)` : ''}`;
+        codeSummary.title = seen ? 'Lines visible in the Code panel while you practised (✓·) score half. Hide code and type them from memory for full marks.' : '';
         total.textContent = `${score.total}%`;
         total.style.setProperty('--fill', `${score.total * 3.6}deg`);
         total.classList.toggle('done', score.total === 100);
-        total.title = `The whole block: ${score.total}%`;
+        total.title = `Typed from memory: ${score.total}% of the whole block${seen ? ` (${seen} line${seen === 1 ? '' : 's'} seen in the Code panel count half)` : ''}`;
         if (celebrate && before) cheerFor(before, score);
     }
 
@@ -388,7 +414,7 @@ export function setupCodePractice(): void {
             const out = await invokeExpert('code_practice', {
                 language: current.file.language ?? '', expected: block, first_line: current.from,
                 section: focus ? {title: focus.title, hint: focus.hint ?? '', start: focus.from, end: focus.to} : null,
-                typed: input.value, ...(attempt.reviewed != null ? {previous: attempt.reviewed} : {}),
+                typed: input.value, ...(attempt.reviewed != null ? {previous: attempt.reviewed, open_notes: (attempt.issues ?? []).slice(0, 40)} : {}),
                 match: score.typed.map((t, j) => ({typed: j + 1, score: Math.round(100 * t.similarity), ...(t.reference != null ? {reference: t.reference} : {})}))
                     .filter((_, j) => !score!.typed[j]!.neutral).slice(0, 400),
                 attempts: attempt.reviews[id] ?? 0, hints: hintsOn(),
@@ -396,9 +422,11 @@ export function setupCodePractice(): void {
             waiting.remove();
             if (seq !== reviewSeq) return;
             attempt.reviews[id] = (attempt.reviews[id] ?? 0) + 1;
-            if (out.result) attempt.reviewed = sent;
+            // What was open before, so a carried issue is hinted at rather than spelled out again.
+            const before = new Set((attempt.issues ?? []).map(n => n.note));
+            if (out.result) { attempt.reviewed = sent;attempt.issues = out.result.line_notes; }
             persist();
-            showReview(out, focus);
+            showReview(out, focus, before);
         } catch (e) {
             waiting.remove();
             if (seq !== reviewSeq) return;
@@ -425,7 +453,7 @@ export function setupCodePractice(): void {
         report.scrollTop = report.scrollHeight;
         return msg;
     }
-    function showReview(out: {result?: Review; reason?: string}, focus: CodeSection | null) {
+    function showReview(out: {result?: Review; reason?: string}, focus: CodeSection | null, carried = new Set<string>()) {
         const r = out.result;
         if (!r) {
             spoken = '';reportSummary.textContent = '';notes = new Map();
@@ -436,6 +464,7 @@ export function setupCodePractice(): void {
         const body = el('div', '');
         const top = el('div', 'cp-report-head');
         const badge = el('span', `cp-verdict cp-verdict-${r.verdict}`);badge.textContent = `${VERDICTS[r.verdict] ?? r.verdict} · ${r.score}%`;
+        badge.title = 'The coach\'s judgement of this section\'s logic. The ring above scores typing it from memory.';
         // Folded, the bar still says what the coach thinks, and marks the review as new until it is opened.
         reportSummary.textContent = badge.textContent;reportGrip.classList.toggle('fresh', report.hidden === true);
         const about = el('span', 'cp-report-about');about.textContent = focus ? focus.title : 'The whole block';
@@ -445,16 +474,19 @@ export function setupCodePractice(): void {
         // The answer to the learner's own comments comes first: they asked.
         if (r.reply) md('cp-report-reply', r.reply);
         if (r.commentary) md('cp-report-text', r.commentary);
-        if (r.line_notes.length) {
+        // An issue still open from before stays marked on its line; the review only nudges back to it.
+        if (r.reminder) md('cp-report-reminder', r.reminder);
+        const fresh = r.line_notes.filter(n => !carried.has(n.note));
+        if (fresh.length) {
             const list = el('ul', 'cp-report-notes');
-            for (const n of r.line_notes) { const li = el('li', '');li.textContent = `Line ${n.line}: ${n.note}`;list.append(li); }
+            for (const n of fresh) { const li = el('li', '');li.textContent = `Line ${n.line}: ${n.note}`;list.append(li); }
             body.append(list);
         }
         if (r.direction) md('cp-report-next', `**Next:** ${r.direction}`);
         message('assistant', body);
         render(false);
-        // Read as shown: the answer, the comment, each line's issue, then what to do next.
-        speakReview([r.reply, r.commentary, ...r.line_notes.map(n => `Line ${n.line}: ${n.note}`), r.direction && `Next: ${r.direction}`]
+        // Read as shown: the answer, the comment, the reminder, each new line issue, then what to do next.
+        speakReview([r.reply, r.commentary, r.reminder, ...fresh.map(n => `Line ${n.line}: ${n.note}`), r.direction && `Next: ${r.direction}`]
             .filter(Boolean).join(' ').replace(/[`*]/g, ''));
     }
 
@@ -503,7 +535,11 @@ export function setupCodePractice(): void {
     hide.addEventListener('click', () => { if (!current) return;current.setHidden(!current.hidden());hide.setAttribute('aria-pressed', String(current.hidden())); });
     coach.addEventListener('click', () => {
         coach.setAttribute('aria-pressed', String(!coachOn()));savePrefs();paintCoach();
-        if (coachOn()) void review(false);
+        if (coachOn()) {
+            const seq = reviewSeq;
+            welcome();void review(false);
+            if (reviewSeq === seq && greeting) { const hello = greeting;greeting = '';speakReview(hello); }
+        }
         else if (speakOn() && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     });
     check.addEventListener('click', () => void review(true));
@@ -521,6 +557,7 @@ export function setupCodePractice(): void {
     reset.addEventListener('click', () => {
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
         clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
+        if (hintsOn()) void review(false);
     });
     window.addEventListener('algebench:codeview', retarget);
     window.addEventListener('algebench:navchange', retarget);

@@ -14,7 +14,10 @@ import re
 from backend.experts.modules.code_practice.intent import review_code
 from backend.experts.registry import register_handler
 
+from backend.experts.modules.code_practice.signature import LineNote
+
 from .models import CodePracticeRequest
+from .names import undefined_names
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +70,20 @@ def diff_lines(previous: str, typed: str) -> tuple[list[str], set[int]]:
     return rows, added
 
 
+def carried_notes(previous: str | None, typed: str, notes) -> list[LineNote]:
+    """The last review's notes still open: on lines unchanged since, renumbered to where those lines are now.
+    A note on a changed line is dropped: that line is reviewed afresh."""
+    if previous is None or not notes:
+        return []
+    before = [t.rstrip() for t in previous.split("\n")]
+    after = [t.rstrip() for t in typed.split("\n")]
+    moved = {}
+    for op, a1, a2, b1, _ in difflib.SequenceMatcher(None, before, after, autojunk=False).get_opcodes():
+        if op == "equal":
+            moved.update({a1 + k + 1: b1 + k + 1 for k in range(a2 - a1)})
+    return [LineNote(line=moved[n.line], note=n.note) for n in notes if n.line in moved]
+
+
 def changes_since(previous: str | None, typed: str) -> str:
     """What changed since the last review, in the typed code's own line numbers."""
     if previous is None:
@@ -106,6 +123,8 @@ def render_inputs(req: CodePracticeRequest) -> dict:
         "hints": "on" if req.hints else "off",
         "notes": learner_notes(req.typed, changed_lines(req.previous, req.typed)),
         "changes": changes_since(req.previous, req.typed),
+        "name_issues": "\n".join(f"line {line}: {msg}" for line, msg in undefined_names(req.typed, req.expected, req.language)),
+        "open_issues": "\n".join(f"line {n.line}: {n.note}" for n in carried_notes(req.previous, req.typed, req.open_notes)),
     }
 
 
@@ -122,8 +141,15 @@ def code_practice(req: CodePracticeRequest) -> dict:
         review.reply = ""
     focus = changed_lines(req.previous, req.typed)
     if focus is not None:
-        # A follow-up is about what changed: remarks on lines already reviewed are dropped.
-        review.line_notes = [n for n in review.line_notes if n.line in focus]
+        # A follow-up is about what changed: remarks on lines already reviewed are dropped, and the issues
+        # still open there are carried over (kept on their lines, hinted at in `reminder`).
+        # A name left undefined breaks its line wherever the change was (a parameter renamed above it).
+        broken = {line for line, _ in undefined_names(req.typed, req.expected, req.language)}
+        fresh = [n for n in review.line_notes if n.line in focus or n.line in broken]
+        still = [n for n in carried_notes(req.previous, req.typed, req.open_notes) if n.line not in focus and n.line not in broken]
+        review.line_notes = sorted(fresh + still, key=lambda n: n.line)
+    if not inputs["open_issues"]:
+        review.reminder = ""
     if not req.hints:
         # Asked for no guidance: what to write next is never shown, whatever the model said.
         review.direction = ""

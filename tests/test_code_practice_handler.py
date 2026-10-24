@@ -39,12 +39,13 @@ def test_a_review_is_returned_without_its_error_field(monkeypatch):
     def stub(**inputs):
         seen.update(inputs)
         return CodeReview(score=40, verdict="partial", commentary="Good start.", direction="Add the loop.",
-                          reply="", line_notes=[LineNote(line=2, note="fine")])
+                          reply="", reminder="", line_notes=[LineNote(line=2, note="fine")])
 
     monkeypatch.setattr(h, "review_code", stub)
     out = h.code_practice(_req(hints=True))
     assert out == {"result": {"score": 40, "verdict": "partial", "commentary": "Good start.",
-                              "direction": "Add the loop.", "reply": "", "line_notes": [{"line": 2, "note": "fine"}]}}
+                              "direction": "Add the loop.", "reply": "", "reminder": "",
+                              "line_notes": [{"line": 2, "note": "fine"}]}}
     assert set(seen) == set(INPUT_FIELDS)
 
 
@@ -89,6 +90,38 @@ def test_a_follow_up_is_about_the_changed_lines(monkeypatch):
     assert h.code_practice(_req(typed=typed, previous=previous))["result"]["line_notes"] == [{"line": 3, "note": "new"}]
     monkeypatch.setattr(h, "review_code", lambda **_: CodeReview(commentary="c", reply="u is the node"))
     assert h.code_practice(_req(typed=previous + "\nx = 1", previous=previous))["result"]["reply"] == "", "no new note, no reply"
+
+
+def test_an_unfixed_issue_is_carried_and_hinted_at(monkeypatch):
+    previous = "def f(n):\n    if x == 2:\n        return False\n    y = 1"
+    typed = "def f(n):\n    if x == 1:\n        return False\n    y = 1\n    z = 2"
+    notes = [{"line": 2, "note": "wrong state"}, {"line": 3, "note": "wrong value"}]
+    # Line 2 was edited (reviewed afresh); line 3 is untouched, so its issue is still open.
+    assert [(n.line, n.note) for n in h.carried_notes(previous, typed, h.CodePracticeRequest(
+        expected="x", previous=previous, typed=typed, open_notes=notes).open_notes)] == [(3, "wrong value")]
+    seen = {}
+    monkeypatch.setattr(h, "review_code", lambda **kw: seen.update(kw) or CodeReview(
+        commentary="Fixed.", reminder="Line 3: look at what it returns.", line_notes=[LineNote(line=5, note="new")]))
+    out = h.code_practice(_req(typed=typed, previous=previous, open_notes=notes))["result"]
+    assert seen["open_issues"] == "line 3: wrong value"
+    assert out["reminder"] == "Line 3: look at what it returns."
+    assert out["line_notes"] == [{"line": 3, "note": "wrong value"}, {"line": 5, "note": "new"}]
+    monkeypatch.setattr(h, "review_code", lambda **kw: CodeReview(reminder="stray"))
+    assert h.code_practice(_req(typed=typed, previous=previous))["result"]["reminder"] == "", "no open issue, no reminder"
+
+
+def test_a_rename_not_carried_through_is_found_on_the_old_line(monkeypatch):
+    from backend.experts.handlers.code_practice.names import undefined_names
+    expected = "def f(n, adj):\n    for v in adj[n]:\n        print(v)"
+    typed = "def f(n, adj_list):\n    for v in adj[n]:\n        print(v)"
+    assert undefined_names(typed, expected, "python") == [(2, "`adj` is read here, but nothing in this code defines it")]
+    assert undefined_names(expected, expected, "python") == []
+    assert undefined_names(typed, expected, "javascript") == []
+    assert undefined_names(typed + "\n    if v", expected, "python")[0][0] == 2, "an unfinished last line is tolerated"
+    # Line 2 is unchanged since the last review, but the coach may still mark it: the rename above broke it.
+    monkeypatch.setattr(h, "review_code", lambda **kw: CodeReview(commentary="c", line_notes=[LineNote(line=2, note="adj is gone")]))
+    out = h.code_practice(_req(expected=expected, typed=typed, previous="def f(n, adj):\n    for v in adj[n]:\n        print(v)"))
+    assert out["result"]["line_notes"] == [{"line": 2, "note": "adj is gone"}]
 
 
 def test_a_failed_call_is_a_reason(monkeypatch):
