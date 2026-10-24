@@ -26259,11 +26259,13 @@ function setupCodePanel() {
 		});
 	}
 	/** LaTeX for what the visible labels say about a symbol, one line each; null when nothing shows it. */
-	function symbolTex(key) {
-		const found = labelsForSymbol(key);
-		if (!found.length) return null;
+	function symbolTex(key, line) {
 		const plain = (t) => "\\text{" + t.replace(/[\\{}$&#%_^~]/g, (c) => c === "\\" ? "\\backslash " : "\\" + c) + "}";
-		return [...new Set(found.map((f) => f.tooltip || plain(f.text)))].join("\\\\");
+		const word = new RegExp(`(^|[^\\w.])${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`);
+		const exprs = selected && line ? lineExpressions(selected.id, line).filter((t) => word.test(expressionName(t))) : [];
+		const found = [...labelsForSymbol(key).map((f) => f.tooltip || plain(f.text)), ...exprs.map(plain)];
+		if (!found.length) return null;
+		return [...new Set(found)].join("\\\\");
 	}
 	function paintSymbolHover() {
 		const keys = hoveredSymbols(), line = hoveredCodeLine();
@@ -26276,7 +26278,7 @@ function setupCodePanel() {
 		const row = target.closest(".code-line");
 		if (span) setSymbolHover([span.dataset.key]);
 		else setSymbolHover([], row && selected ? codeLineKey(selected.id, Number(row.dataset.line)) : null);
-		showCodeSymbolTooltip(span, span ? symbolTex(span.dataset.key) : null);
+		showCodeSymbolTooltip(span, span ? symbolTex(span.dataset.key, row ? Number(row.dataset.line) : void 0) : null);
 	});
 	body.addEventListener("pointerleave", () => showCodeSymbolTooltip(null, null));
 	body.addEventListener("pointerleave", () => setSymbolHover([]));

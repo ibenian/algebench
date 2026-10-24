@@ -707,12 +707,15 @@ export function setupCodePanel(): void {
         });
     }
     /** LaTeX for what the visible labels say about a symbol, one line each; null when nothing shows it. */
-    function symbolTex(key:string):string|null {
-        const found=labelsForSymbol(key);
-        if(!found.length)return null;
+    function symbolTex(key:string,line?:number):string|null {
         const plain=(t:string)=>'\\text{'+t.replace(/[\\{}$&#%_^~]/g,c=>c==='\\'?'\\backslash ':'\\'+c)+'}';
+        // The expressions this line computes from the symbol (`1 - color[u]` for `color[u]` or `u`) show with it.
+        const word=new RegExp(`(^|[^\\w.])${key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?!\\w)`);
+        const exprs=selected&&line?lineExpressions(selected.id,line).filter(t=>word.test(expressionName(t))):[];
+        const found=[...labelsForSymbol(key).map(f=>f.tooltip||plain(f.text)),...exprs.map(plain)];
+        if(!found.length)return null;
         // Two labels saying the same thing (a row and a marker) show once.
-        return [...new Set(found.map(f=>f.tooltip||plain(f.text)))].join('\\\\');
+        return [...new Set(found)].join('\\\\');
     }
     function paintSymbolHover() {
         const keys=hoveredSymbols(),line=hoveredCodeLine();
@@ -728,7 +731,7 @@ export function setupCodePanel(): void {
         if(span)setSymbolHover([span.dataset.key!]);
         else setSymbolHover([],row&&selected?codeLineKey(selected.id,Number(row.dataset.line)):null);
         // What the scene shows for this symbol, as a KaTeX tooltip: a label's formula, else its value.
-        showCodeSymbolTooltip(span,span?symbolTex(span.dataset.key!):null);
+        showCodeSymbolTooltip(span,span?symbolTex(span.dataset.key!,row?Number(row.dataset.line):undefined):null);
     });
     body.addEventListener('pointerleave',()=>showCodeSymbolTooltip(null,null));
     body.addEventListener('pointerleave',()=>setSymbolHover([]));

@@ -1450,6 +1450,354 @@ A graph is a **tree** exactly when it is connected and has no cycle: equivalentl
                'table': 'cyc_kahn', 'trace': ktrace, 'elements': kahn}])
 
 
+# ── 7. Two teams: colour by BFS, the opposite team for every neighbour; an odd cycle forces a clash ──
+BIP_SOURCE = """from collections import deque
+
+def is_bipartite(n, adj):
+    color = [-1] * n  # -1 no team yet, 0 and 1 the two teams
+
+    for s in range(n):
+        if color[s] != -1:
+            continue
+        color[s] = 0
+        queue = deque([s])
+        while queue:
+            u = queue.popleft()
+            for v in adj[u]:
+                if color[v] == -1:
+                    color[v] = 1 - color[u]
+                    queue.append(v)
+                elif color[v] == color[u]:
+                    return False
+    return True
+
+def is_bipartite_dfs(n, adj):
+    color = [-1] * n
+
+    def dfs(u, c):
+        color[u] = c
+        for v in adj[u]:
+            if color[v] == -1:
+                if not dfs(v, 1 - c):
+                    return False
+            elif color[v] == c:
+                return False
+        return True
+
+    for s in range(n):
+        if color[s] == -1 and not dfs(s, 0):
+            return False
+    return True"""
+BIP_N = 7
+# Two teams: a square with a tail, and a separate pair (the search starts again there).
+BIP_EDGES = [(0, 1), (0, 3), (1, 2), (2, 3), (2, 4), (5, 6)]
+# The same square, with 4 joined to 2 and 3: the triangle 2 – 3 – 4 is an odd cycle.
+ODD_EDGES = [(0, 1), (0, 3), (1, 2), (2, 3), (2, 4), (3, 4), (5, 6)]
+TEAM = ['#6ea8e0', '#e5a65c']
+# Rows: a node waits on the top row until it gets a team, then drops to its team's row, so the split shows as
+# two rows with every edge running between them (an edge inside a row is a clash).
+BIP_ROWS = {-1: 3.6, 0: 1.6, 1: -0.4}
+
+
+def bipartite_trace(n, edges):
+    """BFS two-colouring. Per frame: s (the search's start, −1 none), u, v, vi, adjU, vTip; color (−1 none, 0, 1);
+    queue; checkText; odd (the edges of the odd cycle found, as [a, b] pairs) and result."""
+    L = lambda t, a=None: line_of(BIP_SOURCE, t, a)
+    adj = [[] for _ in range(n)]
+    for a, b in edges: adj[a].append(b); adj[b].append(a)
+    adj = [sorted(a) for a in adj]
+    st = {'s': -1, 'u': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'color': [-1] * n, 'queue': [], 'checkText': 'check: —',
+          'odd': [], 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
+        emit0(line, message)
+    paint = lambda i, k: [k if j == i else x for j, x in enumerate(st['color'])]
+    name = lambda k: 'team 0 (blue)' if k == 0 else 'team 1 (orange)'
+    emit(L('color = [-1] * n'), 'Nobody is on a team yet.')
+    for s in range(n):
+        st.update(s=s, u=-1, v=-1, vi=-1, adjU=[], checkText='check: —')
+        emit(L('for s in range(n)'), f'Is {s} on a team?')
+        if st['color'][s] != -1:
+            emit(L('continue'), f'{s} already is: it was reached from an earlier start.')
+            continue
+        st['color'] = paint(s, 0)
+        emit(L('color[s] = 0'), f'{s} has no team: a new piece of the graph. Put {s} on {name(0)}; either team would do.')
+        st['queue'] = [s]
+        emit(L('queue = deque([s])'), f'Queue {s}: its neighbours get the other team.')
+        while st['queue']:
+            emit(L('while queue'), f'The queue holds {", ".join(map(str, st["queue"]))}.')
+            u = st['queue'][0]; st['queue'] = st['queue'][1:]
+            st.update(u=u, v=-1, vi=-1, adjU=adj[u], checkText='check: —')
+            emit(L('u = queue.popleft()'), f'Take {u}, on {name(st["color"][u])}.')
+            for vi, v in enumerate(adj[u]):
+                st.update(v=v, vi=vi)
+                emit(L('for v in adj[u]'), f'Edge {u} – {v}.')
+                cu, cv = st['color'][u], st['color'][v]
+                if cv == -1:
+                    st['checkText'] = f'color[{v}] = -1: no team yet'
+                    emit(L('if color[v] == -1'), f'{v} has no team yet.')
+                    st['color'] = paint(v, 1 - cu)
+                    emit(L('color[v] = 1 - color[u]'), f'{v} goes on the other team from {u}: {name(1 - cu)}.')
+                    st['queue'] = st['queue'] + [v]
+                    emit(L('queue.append(v)'), f'Queue {v}.')
+                    continue
+                st['checkText'] = f'color[{v}] = {cv}: ' + ('same team as u!' if cv == cu else 'other team, fine')
+                emit(L('if color[v] == -1'), f'{v} already has a team: {name(cv)}.')
+                emit(L('elif color[v] == color[u]'), f'{u} and {v} are on the same team, yet an edge joins them. No split can work.' if cv == cu
+                     else f'{u} and {v} are on opposite teams: this edge is fine.')
+                if cv == cu:
+                    loop = shortest_odd_cycle(adj, u, v)
+                    st['odd'] = [[loop[k], loop[k + 1]] for k in range(len(loop) - 1)] + [[loop[-1], loop[0]]]
+                    st['result'] = 'False'
+                    emit(L('return False'), f'The odd cycle: {" – ".join(map(str, loop + [loop[0]]))}, {len(loop)} edges. '
+                         'Around a cycle the teams must alternate, and an odd one cannot: not bipartite.')
+                    return trace, adj
+            st.update(v=-1, vi=-1, checkText='check: —')
+    st.update(s=-1, u=-1, adjU=[], result='True')
+    emit(L('return True'), 'Every edge joins the two teams: bipartite. O(V + E): each node and edge looked at once (each edge from both ends).')
+    return trace, adj
+
+
+def dfs_line(text, after=None):
+    """The line of text inside is_bipartite_dfs, searched from the line holding after (inside it too) when given:
+    the BFS version above repeats many of its lines."""
+    lines = BIP_SOURCE.split('\n')
+    k = next(i for i, l in enumerate(lines) if 'def is_bipartite_dfs(' in l)
+    if after: k = next(i for i, l in enumerate(lines) if i >= k and after in l)
+    return next(i + 1 for i, l in enumerate(lines) if i >= k and text in l)
+
+
+def bipartite_dfs_trace(n, edges):
+    """Two-colouring by recursive DFS. Per frame: s, u (the call running), c (its team), v, vi, adjU, vTip; color;
+    path (the calls not yet returned); checkText; odd and result, as in the BFS run."""
+    L = lambda t, a=None: dfs_line(t, a)
+    adj = [[] for _ in range(n)]
+    for a, b in edges: adj[a].append(b); adj[b].append(a)
+    adj = [sorted(a) for a in adj]
+    st = {'s': -1, 'u': -1, 'c': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'color': [-1] * n, 'path': [], 'checkText': 'check: —',
+          'odd': [], 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
+        emit0(line, message)
+    name = lambda k: 'team 0 (blue)' if k == 0 else 'team 1 (orange)'
+    emit(L('color = [-1] * n'), 'Nobody is on a team yet.')
+
+    def dfs(u, c):
+        st['path'] = st['path'] + [u]
+        st.update(u=u, c=c, v=-1, vi=-1, adjU=adj[u], checkText='check: —')
+        st['color'] = [c if j == u else x for j, x in enumerate(st['color'])]
+        emit(L('color[u] = c'), f'dfs({u}, {c}): {u} joins {name(c)}.')
+        for vi, v in enumerate(adj[u]):
+            st.update(u=u, c=c, v=v, vi=vi, adjU=adj[u])
+            emit(L('for v in adj[u]'), f'Edge {u} – {v}.')
+            cv = st['color'][v]
+            if cv == -1:
+                st['checkText'] = f'color[{v}] = -1: no team yet'
+                emit(L('if color[v] == -1'), f'{v} has no team yet.')
+                emit(L('if not dfs(v, 1 - c)'), f'Go deeper: {v} must be on the other team, so call dfs({v}, {1 - c}).')
+                if not dfs(v, 1 - c):
+                    st.update(u=u, c=c, v=v, vi=vi, adjU=adj[u])
+                    emit(L('return False', 'if not dfs(v, 1 - c)'), f'dfs({u}) passes the clash back up: False.')
+                    st['path'] = st['path'][:-1]
+                    return False
+                st.update(u=u, c=c, v=v, vi=vi, adjU=adj[u], checkText='check: —')
+                emit(L('if not dfs(v, 1 - c)'), f'dfs({v}) came back True: back in {u}.')
+                continue
+            st['checkText'] = f'color[{v}] = {cv}: ' + ('same team as u!' if cv == c else 'other team, fine')
+            emit(L('if color[v] == -1'), f'{v} already has a team: {name(cv)}.')
+            emit(L('elif color[v] == c'), f'{u} and {v} are on the same team, yet an edge joins them.' if cv == c
+                 else f'{v} is on the other team: this edge is fine.')
+            if cv == c:
+                loop = shortest_odd_cycle(adj, u, v)
+                st['odd'] = [[loop[k], loop[k + 1]] for k in range(len(loop) - 1)] + [[loop[-1], loop[0]]]
+                emit(L('return False', 'elif color[v] == c'), f'The odd cycle: {" – ".join(map(str, loop + [loop[0]]))}. Return False.')
+                st['path'] = st['path'][:-1]
+                return False
+        st.update(v=-1, vi=-1, checkText='check: —')
+        emit(L('return True', 'elif color[v] == c'), f'Every edge out of {u} checks out: dfs({u}) returns True.')
+        st['path'] = st['path'][:-1]
+        return True
+
+    for s in range(n):
+        st.update(s=s, u=-1, c=-1, v=-1, vi=-1, adjU=[], checkText='check: —')
+        if st['color'][s] != -1:
+            emit(L('if color[s] == -1 and not dfs(s, 0)'), f'{s} already has a team: skip it.')
+            continue
+        emit(L('if color[s] == -1 and not dfs(s, 0)'), f'{s} has no team: start a search there, on team 0.')
+        if not dfs(s, 0):
+            st.update(u=-1, c=-1, v=-1, vi=-1, adjU=[], result='False')
+            emit(L('return False', 'for s in range(n)'), 'Not bipartite. The DFS found the same clash as BFS, in a different order.')
+            return trace, adj
+    st.update(s=-1, u=-1, adjU=[], result='True')
+    emit(L('return True', 'for s in range(n)'), 'Every edge joins the two teams: bipartite.')
+    return trace, adj
+
+
+def shortest_odd_cycle(adj, u, v):
+    """The shortest cycle through the edge u – v with an odd number of edges: a shortest path from v back to u of
+    even length that avoids that edge, by BFS over (node, parity). Returns its nodes in order, from u."""
+    from collections import deque
+    start, prev = (v, 0), {(v, 0): None}
+    queue = deque([start])
+    while queue:
+        x, par = queue.popleft()
+        if (x, par) == (u, 0):
+            break
+        for y in adj[x]:
+            if {x, y} == {u, v} or (y, 1 - par) in prev:
+                continue
+            prev[(y, 1 - par)] = (x, par)
+            queue.append((y, 1 - par))
+    path, at = [], (u, 0)
+    while at:
+        path.append(at[0]); at = prev[at]
+    return path   # u … v; the edge v – u closes it
+
+
+def bipartite_sections():
+    S = lambda *a, **k: section(BIP_SOURCE, *a, **k)
+    return [
+        S('p-init', 'Nobody is on a team yet', 'def is_bipartite(', 'color = [-1]',
+          hint='Keep a team per node: -1 for none yet, 0 and 1 for the two teams.'),
+        S('p-start', 'Start each untouched piece on team 0', 'for s in range(n)', 'queue = deque([s])',
+          hint='The graph may come in pieces: from every node with no team yet, put it on team 0 and start a BFS there.'),
+        S('p-spread', 'Each new neighbour joins the other team', 'while queue', 'queue.append(v)',
+          hint='Take a node; a neighbour with no team goes on the opposite team and joins the queue.',
+          prompt='Explain why the neighbour must go on the opposite team, and why the first choice of team at each start does not matter.'),
+        S('p-clash', 'Same team on both ends: not bipartite', 'elif color[v] == color[u]', 'return False',
+          hint='A neighbour already on the same team means an edge inside one team: no split works.',
+          prompt='Explain why two neighbours on the same team mean an odd cycle, and why an odd cycle can never be split into two teams.'),
+        S('p-ok', 'No clash anywhere: two teams', 'return True', None, 'return False',
+          hint='If every edge joins the two teams, the colouring is the split.'),
+        S('q-init', 'Nobody is on a team yet', 'def is_bipartite_dfs(', 'color = [-1]',
+          hint='The same team per node as the BFS version.'),
+        S('q-enter', 'Join the team you are given', 'def dfs(u, c)', 'color[u] = c', 'def is_bipartite_dfs(',
+          hint='The call carries the team: u joins team c.'),
+        S('q-edges', 'Each neighbour: go deeper on the other team, or check it', 'for v in adj[u]', ('return False', 'elif color[v] == c'), 'def is_bipartite_dfs(',
+          hint='A neighbour with no team is explored on team 1 - c, passing a clash back up; one with a team must not be on team c.',
+          prompt='Explain how the recursive call carries the team, why a False from deeper is passed straight back, and how this finds the same clashes as the BFS version.'),
+        S('q-done', 'Every edge out of u checks out', 'return True', None, 'def dfs(u, c)',
+          hint='No clash below u: return True.'),
+        S('q-roots', 'Start each untouched piece on team 0', 'for s in range(n)', 'return True', 'def is_bipartite_dfs(',
+          hint='Start a search from every node with no team; any False means not bipartite.'),
+    ]
+
+
+def bipartite_scene(header):
+    btrace, badj = bipartite_trace(BIP_N, BIP_EDGES)
+    otrace, oadj = bipartite_trace(BIP_N, ODD_EDGES)
+    L = lambda t: line_of(BIP_SOURCE, t)
+
+    def elements(c, nodes):
+        team = lambda i: f"arrayAt({c('color')}, {i})"
+        cur = f"(idx == {c('u')} and to == {c('v')}) or (idx == {c('v')} and to == {c('u')})"
+        odd = f"keyIndex({c('odd')}, [idx, to]) >= 0 or keyIndex({c('odd')}, [to, idx]) >= 0"
+        fill = lambda i: f"{team(i)} == 0 ? '{TEAM[0]}' : ({team(i)} == 1 ? '{TEAM[1]}' : '')"
+        return [
+            {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(BIP_N), 'valueExpr': 'idx',
+             'positionExpr': [f"dataTable('{nodes}', idx, 'x')",
+                              f"{team('idx')} == 0 ? {BIP_ROWS[0]} : ({team('idx')} == 1 ? {BIP_ROWS[1]} : dataTable('{nodes}', idx, 'wait'))", '0'],
+             'nodeShape': 'rect', 'nodeWidth': 0.72, 'nodeHeight': 0.72, 'nodeCornerRadius': 0.36, 'valueLabel': 'inside', 'showIndices': False,
+             # A node takes its team's colour (the u label points at the one being processed; its edge in turn is gold).
+             'colorExpr': fill('idx'),
+             'connectTo': {'indexExpr': f"dataTable('{nodes}', idx, 'adj')", 'pinned': True, 'arrow': False, 'color': '#7f93aa',
+                           'colorExpr': f"{odd} ? '#e06c75' : ({cur} ? '{GOLD}' : '')", 'highlightExpr': f"{odd} or {cur}"}},
+            {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [6.4, 3.0, 0],
+             'cellSize': 1.1, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+             'lengthExpr': f"arrayCount({c('adjU')})", 'valueExpr': f"arrayAt({c('adjU')}, idx)", 'highlightExpr': f"idx == {c('vi')}",
+             'connectTo': {'object': 'graph', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8', 'highlightExpr': f"idx == {c('vi')}"},
+             'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': c('vi'), 'valueExpr': c('v'), 'visibleExpr': f"{c('vi')} >= 0", 'color': GOLD}]},
+            {'id': 'color', 'type': 'array', 'label': 'color', 'codeSymbol': 'color', 'labelSide': 'left', 'origin': [-2.3, -2.4, 0], 'cellSize': 1.15,
+             'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(BIP_N), 'valueExpr': f"{team('idx')}",
+             'colorExpr': fill('idx'), 'highlightExpr': f"idx == {c('v')}"},
+            {'id': 'queue', 'type': 'array', 'label': 'queue', 'codeSymbol': 'queue', 'labelSide': 'left', 'origin': [-2.3, -3.8, 0], 'cellSize': 1.15,
+             'fontSize': 15, 'axisLabels': 'plane', 'color': '#8aa0b8', 'showIndices': False,
+             'lengthExpr': f"arrayCount({c('queue')})", 'valueExpr': f"arrayAt({c('queue')}, idx)",
+             'highlightExpr': f"idx == arrayCount({c('queue')}) - 1 and {c('line')} == {L('queue.append(v)')}"},
+            *[{'id': f'row-{k}', 'type': 'text', 'text': t, 'position': [-4.4, y, 0], 'color': col, 'fontSize': 13, 'align': 'right'}
+              for k, (t, y, col) in enumerate([('team 0', BIP_ROWS[0], TEAM[0]), ('team 1', BIP_ROWS[1], TEAM[1])])],
+            label('s', f"{c('s')} < 0 ? 's: —' : concat('s = ', {c('s')})", ['graph', c('s')], L('for s in range(n)'), 'bipartite'),
+            label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], L('u = queue.popleft()'), 'bipartite'),
+            {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v in adj[u]'), 'bipartite'), 'tooltipExpr': c('vTip')},
+            {**label('color-u', f"{c('u')} < 0 ? 'color[u]: —' : concat('color[', {c('u')}, '] = ', {team(c('u'))})",
+                     ['color', c('u')], L('color[v] = 1 - color[u]'), 'bipartite'), 'highlightExpr': f"{c('u')} >= 0"},
+            {**label('color-v', f"{c('v')} < 0 ? 'color[v]: —' : concat('color[', {c('v')}, '] = ', {team(c('v'))})",
+                     ['color', c('v')], L('if color[v] == -1'), 'bipartite'), 'highlightExpr': f"{c('v')} >= 0"},
+            # The other team, as the code computes it for each new neighbour.
+            {**label('other', f"{c('u')} < 0 ? '1 - color[u]: —' : concat('1 - color[u] = 1 - ', {team(c('u'))}, ' = ', 1 - {team(c('u'))})",
+                     None, L('color[v] = 1 - color[u]'), 'bipartite'), 'highlightExpr': f"{c('line')} == {L('color[v] = 1 - color[u]')}"},
+            label('queue-len', f"concat('len(queue) = ', arrayCount({c('queue')}))", ['queue', '0'], L('while queue'), 'bipartite'),
+            {**label('check', c('checkText'), None, L('elif color[v] == color[u]'), 'bipartite'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+            label('result', f"concat('result: ', {c('result')})", None, L('return True'), 'bipartite'),
+        ]
+
+    dtrace, dadj = bipartite_dfs_trace(BIP_N, ODD_EDGES)
+    LD = dfs_line
+
+    def dfs_elements(c, nodes):
+        # The BFS view, with the call stack in place of the queue and labels tied to the DFS version's lines.
+        keep = [e for e in elements(c, nodes) if e['id'] in ('graph', 'adj-u', 'color', 'row-0', 'row-1')]
+        team = lambda i: f"arrayAt({c('color')}, {i})"
+        return keep + [
+            {'id': 'stack', 'type': 'stack', 'arrayLayout': 'horizontal', 'label': 'call stack', 'origin': [-2.3, -3.8, 0], 'cellSize': 1.15,
+             'showTop': False, 'containerColor': '#e67db0', 'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0',
+             'lengthExpr': f"arrayCount({c('path')})", 'valueExpr': f"arrayAt({c('path')}, idx)",
+             'highlightExpr': f"idx == arrayCount({c('path')}) - 1"},
+            label('s', f"{c('s')} < 0 ? 's: —' : concat('s = ', {c('s')})", ['graph', c('s')], LD('for s in range(n)'), 'bipartite'),
+            label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], LD('def dfs(u, c)'), 'bipartite'),
+            label('c', f"{c('c')} < 0 ? 'c: —' : concat('c = ', {c('c')})", None, LD('color[u] = c'), 'bipartite'),
+            {**label('other', f"{c('c')} < 0 ? '1 - c: —' : concat('1 - c = 1 - ', {c('c')}, ' = ', 1 - {c('c')})",
+                     None, LD('if not dfs(v, 1 - c)'), 'bipartite'), 'highlightExpr': f"{c('line')} == {LD('if not dfs(v, 1 - c)')}"},
+            {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], LD('for v in adj[u]'), 'bipartite'), 'tooltipExpr': c('vTip')},
+            {**label('color-v', f"{c('v')} < 0 ? 'color[v]: —' : concat('color[', {c('v')}, '] = ', {team(c('v'))})",
+                     ['color', c('v')], LD('if color[v] == -1'), 'bipartite'), 'highlightExpr': f"{c('v')} >= 0"},
+            {**label('check', c('checkText'), None, LD('elif color[v] == c'), 'bipartite'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+            label('result', f"concat('result: ', {c('result')})", None, LD('return True', 'for s in range(n)'), 'bipartite'),
+        ]
+
+    def pos(trace, adj):
+        # Each node's column: the order the run gives it a team, so a row reads in BFS order and nodes never share a column.
+        first = lambda i: next((k for k, f in enumerate(trace) if f['color'][i] != -1), len(trace))
+        order = sorted(range(BIP_N), key=first)
+        # On the top row the nodes zigzag up and down a little, so the edges among them stand apart.
+        return [{'x': -3.8 + order.index(i) * 1.0, 'wait': BIP_ROWS[-1] + (0.45 if order.index(i) % 2 else -0.15), 'adj': a}
+                for i, a in enumerate(adj)]
+    return run_scene('bipartite', 'Two teams (bipartite check)', header, """**Signal:** split the nodes into two groups so that every edge runs between the groups: two-colouring, "possible bipartition", people who dislike each other in different rooms.
+
+A graph is **bipartite** when its nodes fit on two teams with no edge inside a team. You don't have to search for the split: **the first choice forces everything else.** Put one node on team 0; each neighbour must then be on team 1, each of theirs on team 0, and so on. BFS (or DFS) spreads that rule outwards.
+
+## 1. Colour by BFS (this step)
+
+`color[v]` is `-1` until `v` gets a team. Taking `u` off the queue, every neighbour with no team joins **the other team**, `1 - color[u]`, and the queue. A neighbour that already has a team is checked: **the other team is fine; the same team is a clash.** Each node waits on the top row until it gets a team, then drops to that team's row, so the split builds up as two rows. Here every check passes: when the run ends, **every edge runs between the two rows** and none lies inside one. That picture is what bipartite means.
+
+The graph has two pieces. When the first BFS runs dry, node 5 still has no team, so the outer loop starts a new search there: **every untouched node starts a new piece**, as in counting components.
+
+## 2. An odd cycle (next step)
+
+Join 4 to 3 as well, and the triangle 2 – 3 – 4 appears. Around a cycle the teams must alternate, blue, orange, blue, …, which only closes up when the cycle has an **even** number of edges. On a cycle of 3, the third node meets a neighbour on its own team: an edge **inside a row**, the clash, drawn red with the cycle it closes.
+
+**A graph is bipartite exactly when it has no odd cycle.** Trees and grids always are; anything with a triangle is not.
+
+## 3. Colour by DFS (third step)
+
+The rule doesn't care about order, so DFS works as well as BFS. The recursive call carries the team: `dfs(u, c)` puts `u` on team `c` and calls `dfs(v, 1 - c)` for each neighbour with no team. A clash returns `False`, and every call waiting on the stack passes it straight back up. On the odd graph, DFS walks 0 → 1 → 2 → 3 → 4 and meets the same clash, 4 – 2, from the other end.
+
+**Cost:** O(V + E): each node is coloured once and each edge checked from both ends.
+
+**Practice:** Is Graph Bipartite?, Possible Bipartition.""",
+        'Explain why the first team choice forces every other node, and why an odd cycle makes a clash unavoidable. Ask the learner to predict each new node\'s team, and on the second graph, which edge will clash.',
+        'bipartite.py', BIP_SOURCE, btrace, elements(tr, 'bipNodes'),
+        sections=bipartite_sections(),
+        data={'bipNodes': pos(btrace, badj), 'oddNodes': pos(otrace, oadj), 'dfsNodes': pos(dtrace, dadj)},
+        first={'title': 'Colour by BFS', 'description': 'Every neighbour goes on the other team.'},
+        more=[{'id': 'odd', 'title': 'An odd cycle: a clash', 'description': 'A cycle of three cannot alternate two teams.',
+               'table': 'bip_odd', 'trace': otrace, 'elements': elements(lambda col: f"dataTable('bip_odd', frame, '{col}')", 'oddNodes')},
+              {'id': 'dfs', 'title': 'Colour by DFS', 'description': 'The same rule, spread by recursion: the call carries the team.',
+               'table': 'bip_dfs', 'trace': dtrace, 'elements': dfs_elements(lambda col: f"dataTable('bip_dfs', frame, '{col}')", 'dfsNodes')}])
+
+
 def code_sections(scene_id):
     """The teaching structure of each scene's code file (cycle.py has its own, cycle_sections)."""
     if scene_id == 'representations':
@@ -1535,7 +1883,7 @@ def code_sections(scene_id):
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
-         'cycle-detection': cycle_scene}
+         'cycle-detection': cycle_scene, 'bipartite': bipartite_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
