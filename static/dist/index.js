@@ -26614,12 +26614,8 @@ function setupCodePanel() {
 	document.body.append(float);
 	let floated = null;
 	let selecting = false;
-	const selectedText = (row) => {
-		const sel = window.getSelection();
-		return !!row && !!sel && !sel.isCollapsed && sel.rangeCount > 0 && sel.getRangeAt(0).intersectsNode(row);
-	};
 	function floatLine(row) {
-		if (selecting || selectedText(row)) row = null;
+		if (selecting) row = null;
 		const code = row?.querySelector("code") ?? null;
 		const holder = row?.querySelector(".code-inline-values") ?? null;
 		const tags = !!holder && getComputedStyle(holder).visibility !== "hidden" ? [...holder.querySelectorAll(".code-inline-value")] : [];

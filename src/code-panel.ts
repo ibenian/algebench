@@ -701,14 +701,11 @@ export function setupCodePanel(): void {
     // shows in full here, code and tags on one line fixed over the page: the code view scrolls, so it would clip it.
     const float=document.createElement('div');float.className='code-inline-float';float.hidden=true;document.body.append(float);
     let floated:HTMLElement|null=null;
-    // The float covers its line, so it stays away while the reader selects text there (or has text selected).
+    // The float covers its line, so it stays away while the reader drags out a selection there; once the button is
+    // up it shows again (the selection is still there underneath, and the actions bar names it).
     let selecting=false;
-    const selectedText=(row:HTMLElement|null)=>{
-        const sel=window.getSelection();
-        return !!row&&!!sel&&!sel.isCollapsed&&sel.rangeCount>0&&sel.getRangeAt(0).intersectsNode(row);
-    };
     function floatLine(row:HTMLElement|null) {
-        if(selecting||selectedText(row))row=null;
+        if(selecting)row=null;
         const code=row?.querySelector<HTMLElement>('code')??null;
         const holder=row?.querySelector<HTMLElement>('.code-inline-values')??null;
         const shown=!!holder&&getComputedStyle(holder).visibility!=='hidden';

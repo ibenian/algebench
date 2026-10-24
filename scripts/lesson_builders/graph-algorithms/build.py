@@ -199,7 +199,8 @@ def run_scene(id, title, header, markdown, prompt, file, source, trace, elements
     """A scene that plays one recorded run: the frame slider, a caption from each frame's message, and the Code
     panel on the executing line (codeRef), with each line linked back to its frames. first retitles the run step
     ({'title', 'description'}); more adds steps that each play their own run from their own table, in the same code
-    file: {'id', 'title', 'description', 'table', 'trace', 'elements'}. sections is the code's teaching structure
+    file: {'id', 'title', 'description', 'table', 'trace', 'elements'}, plus 'call_entry' (its function's line) for a
+    recursive one, for the Code panel's call arrows. sections is the code's teaching structure
     (see section())."""
     sections = sections or code_sections(id)
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
@@ -212,7 +213,10 @@ def run_scene(id, title, header, markdown, prompt, file, source, trace, elements
     extra = [{'id': m['id'], 'title': m['title'], 'description': m['description'], 'descriptionExpr': col(m['table'], 'message'),
               'remove': [{'id': '*'}, {'type': 'slider'}],
               'sliders': [{'id': 'frame', 'label': 'Execution state', 'min': 0, 'max': len(m['trace']) - 1, 'step': 1, 'default': 0}],
-              'codeRef': {'file': id, 'lineExpr': col(m['table'], 'line')}, 'add': m['elements']} for m in more]
+              # A recursive run's step names its function's line (call_entry); its table's calls column lists the waiting call sites.
+              'codeRef': {'file': id, 'lineExpr': col(m['table'], 'line'),
+                          **({'callsExpr': col(m['table'], 'calls'), 'callEntryLine': m['call_entry']} if m.get('call_entry') else {})},
+              'add': m['elements']} for m in more]
     return {
         'id': id, 'title': title, 'description': trace[0]['message'], 'range': RANGE, 'camera': cam,
         'data': {'trace': trace, **{m['table']: m['trace'] for m in more}, **(data or {})},
@@ -1445,7 +1449,7 @@ A graph is a **tree** exactly when it is connected and has no cycle: equivalentl
         data={'cycNodes': pos(dadj), 'undNodes': pos(uadj)}, call_entry=LD('def dfs(u)'),
         first={'title': 'Directed: three states', 'description': 'A node on the current path, reached again, closes a cycle.'},
         more=[{'id': 'undirected', 'title': 'Undirected: skip the parent', 'description': 'Any visited neighbour other than the parent closes a cycle.',
-               'table': 'cyc_und', 'trace': utrace, 'elements': elements(lambda col: f"dataTable('cyc_und', frame, '{col}')", False, LU)},
+               'table': 'cyc_und', 'trace': utrace, 'call_entry': LU('def dfs(u, parent)'), 'elements': elements(lambda col: f"dataTable('cyc_und', frame, '{col}')", False, LU)},
               {'id': 'indegree', 'title': 'Directed: count indegrees', 'description': 'Peel off nodes with nothing left to wait for; what never frees up is stuck on a cycle.',
                'table': 'cyc_kahn', 'trace': ktrace, 'elements': kahn}])
 
@@ -1570,12 +1574,13 @@ def dfs_line(text, after=None):
 
 def bipartite_dfs_trace(n, edges):
     """Two-colouring by recursive DFS. Per frame: s, u (the call running), c (its team), v, vi, adjU, vTip; color;
-    path (the calls not yet returned); checkText; odd and result, as in the BFS run."""
+    path (the calls not yet returned) and calls (their call-site lines, for the Code panel's call arrows); checkText; odd
+    and result, as in the BFS run."""
     L = lambda t, a=None: dfs_line(t, a)
     adj = [[] for _ in range(n)]
     for a, b in edges: adj[a].append(b); adj[b].append(a)
     adj = [sorted(a) for a in adj]
-    st = {'s': -1, 'u': -1, 'c': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'color': [-1] * n, 'path': [], 'checkText': 'check: —',
+    st = {'s': -1, 'u': -1, 'c': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'color': [-1] * n, 'path': [], 'calls': [], 'checkText': 'check: —',
           'odd': [], 'result': '—'}
     trace, emit0 = recorder(st)
     def emit(line, message):
@@ -1584,8 +1589,8 @@ def bipartite_dfs_trace(n, edges):
     name = lambda k: 'team 0 (blue)' if k == 0 else 'team 1 (orange)'
     emit(L('color = [-1] * n'), 'Nobody is on a team yet.')
 
-    def dfs(u, c):
-        st['path'] = st['path'] + [u]
+    def dfs(u, c, site):
+        st['path'] = st['path'] + [u]; st['calls'] = st['calls'] + [site]
         st.update(u=u, c=c, v=-1, vi=-1, adjU=adj[u], checkText='check: —')
         st['color'] = [c if j == u else x for j, x in enumerate(st['color'])]
         emit(L('color[u] = c'), f'dfs({u}, {c}): {u} joins {name(c)}.')
@@ -1597,10 +1602,10 @@ def bipartite_dfs_trace(n, edges):
                 st['checkText'] = f'color[{v}] = -1: no team yet'
                 emit(L('if color[v] == -1'), f'{v} has no team yet.')
                 emit(L('if not dfs(v, 1 - c)'), f'Go deeper: {v} must be on the other team, so call dfs({v}, {1 - c}).')
-                if not dfs(v, 1 - c):
+                if not dfs(v, 1 - c, L('if not dfs(v, 1 - c)')):
                     st.update(u=u, c=c, v=v, vi=vi, adjU=adj[u])
                     emit(L('return False', 'if not dfs(v, 1 - c)'), f'dfs({u}) passes the clash back up: False.')
-                    st['path'] = st['path'][:-1]
+                    st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
                     return False
                 st.update(u=u, c=c, v=v, vi=vi, adjU=adj[u], checkText='check: —')
                 emit(L('if not dfs(v, 1 - c)'), f'dfs({v}) came back True: back in {u}.')
@@ -1613,11 +1618,11 @@ def bipartite_dfs_trace(n, edges):
                 loop = shortest_odd_cycle(adj, u, v)
                 st['odd'] = [[loop[k], loop[k + 1]] for k in range(len(loop) - 1)] + [[loop[-1], loop[0]]]
                 emit(L('return False', 'elif color[v] == c'), f'The odd cycle: {" – ".join(map(str, loop + [loop[0]]))}. Return False.')
-                st['path'] = st['path'][:-1]
+                st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
                 return False
         st.update(v=-1, vi=-1, checkText='check: —')
         emit(L('return True', 'elif color[v] == c'), f'Every edge out of {u} checks out: dfs({u}) returns True.')
-        st['path'] = st['path'][:-1]
+        st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
         return True
 
     for s in range(n):
@@ -1626,7 +1631,7 @@ def bipartite_dfs_trace(n, edges):
             emit(L('if color[s] == -1 and not dfs(s, 0)'), f'{s} already has a team: skip it.')
             continue
         emit(L('if color[s] == -1 and not dfs(s, 0)'), f'{s} has no team: start a search there, on team 0.')
-        if not dfs(s, 0):
+        if not dfs(s, 0, L('if color[s] == -1 and not dfs(s, 0)')):
             st.update(u=-1, c=-1, v=-1, vi=-1, adjU=[], result='False')
             emit(L('return False', 'for s in range(n)'), 'Not bipartite. The DFS found the same clash as BFS, in a different order.')
             return trace, adj
@@ -1795,7 +1800,288 @@ The rule doesn't care about order, so DFS works as well as BFS. The recursive ca
         more=[{'id': 'odd', 'title': 'An odd cycle: a clash', 'description': 'A cycle of three cannot alternate two teams.',
                'table': 'bip_odd', 'trace': otrace, 'elements': elements(lambda col: f"dataTable('bip_odd', frame, '{col}')", 'oddNodes')},
               {'id': 'dfs', 'title': 'Colour by DFS', 'description': 'The same rule, spread by recursion: the call carries the team.',
-               'table': 'bip_dfs', 'trace': dtrace, 'elements': dfs_elements(lambda col: f"dataTable('bip_dfs', frame, '{col}')", 'dfsNodes')}])
+               'table': 'bip_dfs', 'trace': dtrace, 'call_entry': dfs_line('def dfs(u, c)'), 'elements': dfs_elements(lambda col: f"dataTable('bip_dfs', frame, '{col}')", 'dfsNodes')}])
+
+
+# ── 8. Order by dependencies: Kahn's queue order, then DFS finish order reversed; both end lined up in order ──
+TOPO_SOURCE = """from collections import deque
+
+def topo_dfs(n, adj):
+    state = [0] * n  # 0 new, 1 on the path, 2 done
+    order = []
+
+    def dfs(u):
+        state[u] = 1
+        for v in adj[u]:
+            if state[v] == 1:
+                return False
+            if state[v] == 0 and not dfs(v):
+                return False
+        state[u] = 2
+        order.append(u)
+        return True
+
+    for u in range(n):
+        if state[u] == 0 and not dfs(u):
+            return []
+    return order[::-1]
+
+def topo_kahn(n, adj):
+    indeg = [0] * n
+    for u in range(n):
+        for v in adj[u]:
+            indeg[v] += 1
+    queue = deque(u for u in range(n) if indeg[u] == 0)
+    order = []
+    while queue:
+        u = queue.popleft()
+        order.append(u)
+        for v in adj[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                queue.append(v)
+    return order if len(order) == n else []"""
+# Tasks and what must come first: 4 and 5 wait on nothing; 0 needs 1 and 2; 3 comes last.
+TOPO_N, TOPO_EDGES = 6, [(5, 2), (4, 2), (4, 1), (2, 0), (1, 0), (0, 3)]
+TOPO_POS = [(-1.6, 2.0), (-3.6, 3.0), (-3.6, 1.0), (0.4, 2.0), (-5.6, 3.0), (-5.6, 1.0)]
+
+
+def topo_line(fn, text, after=None):
+    """The line of text inside function fn (searched from the line holding after, when given)."""
+    lines = TOPO_SOURCE.split('\n')
+    k = next(i for i, l in enumerate(lines) if f'def {fn}(' in l)
+    if after: k = next(i for i, l in enumerate(lines) if i >= k and after in l)
+    return next(i + 1 for i, l in enumerate(lines) if i >= k and text in l)
+
+
+def topo_adj():
+    adj = [[] for _ in range(TOPO_N)]
+    for a, b in TOPO_EDGES: adj[a].append(b)
+    return adj
+
+
+def ranks(order):
+    return [order.index(i) if i in order else -1 for i in range(TOPO_N)]
+
+
+def topo_kahn_trace():
+    """Kahn's algorithm. Per frame: u, v, vi, adjU, vTip; indeg; queue; order; checkText; rank (each node's place in
+    the result, −1 until the end) and lined (1 on the last frames, when the nodes line up in that order); result."""
+    L = lambda t, a=None: topo_line('topo_kahn', t, a)
+    adj = topo_adj()
+    st = {'u': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'indeg': [0] * TOPO_N, 'queue': [], 'order': [], 'checkText': 'check: —',
+          'rank': [-1] * TOPO_N, 'lined': 0, 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
+        emit0(line, message)
+    emit(L('indeg = [0] * n'), 'indeg[v] counts what v waits for: the edges coming into it.')
+    for u in range(TOPO_N):
+        for vi, v in enumerate(adj[u]):
+            st['indeg'] = [x + 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            st.update(u=u, v=v, vi=vi, adjU=adj[u])
+            emit(L('indeg[v] += 1'), f'{u} → {v}: {v} waits for {u}. indeg[{v}] = {st["indeg"][v]}.')
+    st.update(u=-1, v=-1, vi=-1, adjU=[])
+    st['queue'] = [u for u in range(TOPO_N) if st['indeg'][u] == 0]
+    emit(L('queue = deque('), f'{" and ".join(map(str, st["queue"]))} wait for nothing: they can go first.')
+    emit(L('order = []'), 'The order starts empty.')
+    while st['queue']:
+        emit(L('while queue'), f'Ready now: {", ".join(map(str, st["queue"]))}.')
+        u = st['queue'][0]; st['queue'] = st['queue'][1:]
+        st.update(u=u, v=-1, vi=-1, adjU=adj[u], checkText='check: —')
+        emit(L('u = queue.popleft()'), f'Take {u}: everything it needs is done.')
+        st['order'] = st['order'] + [u]
+        emit(L('order.append(u)'), f'{u} is next in the order.')
+        for vi, v in enumerate(adj[u]):
+            st.update(v=v, vi=vi)
+            emit(L('for v in adj[u]', 'order.append(u)'), f'{u} → {v}: {v} was waiting for {u}.')
+            st['indeg'] = [x - 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            emit(L('indeg[v] -= 1'), f'{u} is done, so {v} waits for one thing fewer: indeg[{v}] = {st["indeg"][v]}.')
+            free = st['indeg'][v] == 0
+            st['checkText'] = f'indeg[{v}] = {st["indeg"][v]}: ' + ('ready, queue it' if free else 'still waiting')
+            emit(L('if indeg[v] == 0'), f'Nothing left for {v} to wait for.' if free else f'{v} still waits for {st["indeg"][v]} more.')
+            if free:
+                st['queue'] = st['queue'] + [v]
+                emit(L('queue.append(v)'), f'Queue {v}.')
+        st.update(v=-1, vi=-1, checkText='check: —')
+    st.update(u=-1, adjU=[])
+    emit(L('while queue'), 'Nothing is left waiting.')
+    st.update(rank=ranks(st['order']), lined=1, result=str(st['order']))
+    emit(L('return order if'), f'All {TOPO_N} placed: {", ".join(map(str, st["order"]))}. A different order from the DFS one, and just as valid: every arrow points forward.')
+    return trace, adj
+
+
+def topo_dfs_trace():
+    """DFS topological sort. Per frame: u, v, vi, adjU, vTip; state (0 new, 1 on the path, 2 done); path (the calls
+    waiting) and calls (their call-site lines, for the Code panel's call arrows); order (finish order); checkText; rank,
+    lined and result as in Kahn's run."""
+    L = lambda t, a=None: topo_line('topo_dfs', t, a)
+    adj = topo_adj()
+    st = {'u': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'state': [0] * TOPO_N, 'path': [], 'calls': [], 'order': [], 'checkText': 'check: —',
+          'rank': [-1] * TOPO_N, 'lined': 0, 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
+        emit0(line, message)
+    put = lambda i, k: [k if j == i else x for j, x in enumerate(st['state'])]
+    emit(L('state = [0] * n'), 'Every task starts new.')
+    emit(L('order = []'), 'order collects tasks as they finish: each after everything that depends on it.')
+
+    def dfs(u, site):
+        st['path'] = st['path'] + [u]; st['calls'] = st['calls'] + [site]
+        st.update(u=u, v=-1, vi=-1, adjU=adj[u], checkText='check: —')
+        st['state'] = put(u, 1)
+        emit(L('state[u] = 1'), f'Visit {u}: on the current path.')
+        for vi, v in enumerate(adj[u]):
+            st.update(u=u, v=v, vi=vi, adjU=adj[u])
+            emit(L('for v in adj[u]'), f'{u} → {v}: {v} depends on {u}.')
+            sv = st['state'][v]
+            st['checkText'] = f'state[{v}] = {sv}: ' + ('new, go deeper' if sv == 0 else 'done already' if sv == 2 else 'on the path!')
+            emit(L('if state[v] == 1'), f'{v} is ' + ('new.' if sv == 0 else 'done: it is in the order already.'))
+            if sv == 0:
+                emit(L('if state[v] == 0 and not dfs(v)'), f'Finish {v} first: call dfs({v}).')
+                dfs(v, L('if state[v] == 0 and not dfs(v)'))
+                st.update(u=u, v=v, vi=vi, adjU=adj[u], checkText='check: —')
+                emit(L('if state[v] == 0 and not dfs(v)'), f'Back in {u}: {v} is finished.')
+        st.update(v=-1, vi=-1, checkText='check: —')
+        st['state'] = put(u, 2)
+        emit(L('state[u] = 2'), f'Everything after {u} is finished: {u} is done.')
+        st['order'] = st['order'] + [u]
+        emit(L('order.append(u)'), f'Append {u}: after every task that depends on it.')
+        emit(L('return True', 'order.append(u)'), f'dfs({u}) returns.')
+        st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
+        back = st['path'][-1] if st['path'] else -1
+        st.update(u=back, adjU=adj[back] if back >= 0 else [])
+        return True
+
+    for s0 in range(TOPO_N):
+        st.update(u=-1, v=-1, vi=-1, adjU=[], checkText='check: —')
+        if st['state'][s0]:
+            emit(L('if state[u] == 0 and not dfs(u)'), f'{s0} is done already.')
+            continue
+        emit(L('if state[u] == 0 and not dfs(u)'), f'{s0} is new: start a search there.')
+        dfs(s0, L('if state[u] == 0 and not dfs(u)'))
+    result = st['order'][::-1]
+    st.update(u=-1, adjU=[], rank=ranks(result), lined=1, result=str(result))
+    emit(L('return order[::-1]'), f'Finish order {", ".join(map(str, st["order"]))}, reversed: {", ".join(map(str, result))}. '
+         'Lined up in that order, every arrow points forward.')
+    return trace, adj
+
+
+def topo_sections():
+    S = lambda *a, **k: section(TOPO_SOURCE, *a, **k)
+    K, D = 'def topo_kahn(', 'def topo_dfs('
+    return [
+        S('d-init', 'Every task new, nothing finished', D, 'order = []',
+          hint='Track each task as new, on the current path, or done; collect tasks as they finish.'),
+        S('d-visit', 'Finish everything after u first', 'def dfs(u)', ('return False', 'not dfs(v)'), D,
+          hint='Mark u on the path, then finish each task that depends on it; meeting the path again is a cycle.',
+          prompt='Explain why u can only be appended after every task that depends on it is finished, and what meeting a task on the current path means.'),
+        S('d-finish', 'Done: append u', 'state[u] = 2', 'return True', D,
+          hint='Once everything after u is finished, u is done and goes into the order.'),
+        S('d-roots', 'Every task, then reverse', 'for u in range(n)', 'return order[::-1]', D,
+          hint='Start from every task not yet done; the finish order reversed puts each task before what depends on it.'),
+        S('k-count', 'Count what each task waits for', K, 'indeg[v] += 1',
+          hint='For each edge u → v, v waits for one more task.'),
+        S('k-start', 'Queue what waits for nothing', 'queue = deque(', 'order = []', K,
+          hint='Tasks with no prerequisites can start now; the order starts empty.'),
+        S('k-take', 'Take a ready task; free what waited on it', 'while queue', 'queue.append(v)', K,
+          hint='The taken task goes next in the order; each task it unblocks waits for one fewer, and joins the queue at zero.',
+          prompt='Explain why a task can be placed once its indegree reaches 0, and why every edge then points forward in the order.'),
+        S('k-check', 'All placed, or a cycle', 'return order if', None, K,
+          hint='If some task never got free, it waits on a cycle: no order exists.'),
+    ]
+
+
+def topo_scene(header):
+    ktrace, adj = topo_kahn_trace()
+    dtrace, _ = topo_dfs_trace()
+    LK = lambda t, a=None: topo_line('topo_kahn', t, a)
+    LD = lambda t, a=None: topo_line('topo_dfs', t, a)
+
+    def graph(c, fill):
+        lined = f"{c('lined')} == 1"
+        return {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(TOPO_N), 'valueExpr': 'idx',
+                # Lined up at the end: each task at its place in the result, so every arrow points to the right.
+                'positionExpr': [f"{lined} ? -5.6 + arrayAt({c('rank')}, idx) * 1.5 : dataTable('topoNodes', idx, 'x')",
+                                 f"{lined} ? 2.0 : dataTable('topoNodes', idx, 'y')", '0'],
+                'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
+                'colorExpr': fill,
+                'connectTo': {'indexExpr': "dataTable('topoNodes', idx, 'adj')", 'pinned': True, 'arrow': True,
+                              'bendExpr': f"{lined} ? 0.35 : 0.08", 'color': '#7f93aa',
+                              'colorExpr': f"idx == {c('u')} and to == {c('v')} ? '{GOLD}' : ''", 'highlightExpr': f"idx == {c('u')} and to == {c('v')}"}}
+
+    def common(c, L):
+        return [
+            {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [6.4, 3.0, 0],
+             'cellSize': 1.1, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
+             'lengthExpr': f"arrayCount({c('adjU')})", 'valueExpr': f"arrayAt({c('adjU')}, idx)", 'highlightExpr': f"idx == {c('vi')}",
+             'connectTo': {'object': 'graph', 'indexExpr': 'value', 'pinned': True, 'arrow': True, 'color': '#8aa0b8', 'highlightExpr': f"idx == {c('vi')}"},
+             'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': c('vi'), 'valueExpr': c('v'), 'visibleExpr': f"{c('vi')} >= 0", 'color': GOLD}]},
+            {'id': 'order', 'type': 'array', 'label': 'order', 'codeSymbol': 'order', 'labelSide': 'left', 'origin': [-2.3, -3.8, 0], 'cellSize': 1.15,
+             'fontSize': 15, 'axisLabels': 'plane', 'color': '#77bfae',
+             'lengthExpr': f"arrayCount({c('order')})", 'valueExpr': f"arrayAt({c('order')}, idx)",
+             'highlightExpr': f"idx == arrayCount({c('order')}) - 1 and {c('line')} == {L('order.append(u)')}"},
+            label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], L('def dfs(u)') if L is LD else L('u = queue.popleft()'), 'topological-sort'),
+            {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v in adj[u]'), 'topological-sort'), 'tooltipExpr': c('vTip')},
+            label('order-len', f"concat('len(order) = ', arrayCount({c('order')}))", ['order', '0'], L('order.append(u)'), 'topological-sort'),
+            {**label('check', c('checkText'), None, L('if state[v] == 1') if L is LD else L('if indeg[v] == 0'), 'topological-sort'),
+             'highlightExpr': f"{c('checkText')} != 'check: —'"},
+            label('result', f"concat('result: ', {c('result')})", None, L('return order'), 'topological-sort'),
+        ]
+
+    k = lambda col: f"dataTable('topo_kahn', frame, '{col}')"
+    taken = lambda i: f"keyIndex({k('order')}, {i}) >= 0"
+    kahn = [graph(k, f"idx == {k('u')} ? '{GOLD}' : ({taken('idx')} ? '#77bfae' : (keyIndex({k('queue')}, idx) >= 0 ? '#e67db0' : ''))"),
+            *common(k, LK),
+            {'id': 'indeg', 'type': 'array', 'label': 'indeg', 'codeSymbol': 'indeg', 'labelSide': 'left', 'origin': [-2.3, -1.0, 0], 'cellSize': 1.15,
+             'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(TOPO_N), 'valueExpr': f"arrayAt({k('indeg')}, idx)",
+             'colorExpr': f"{taken('idx')} ? '#77bfae' : (arrayAt({k('indeg')}, idx) == 0 ? '#e67db0' : '')", 'highlightExpr': f"idx == {k('v')}"},
+            {'id': 'queue', 'type': 'array', 'label': 'queue', 'codeSymbol': 'queue', 'labelSide': 'left', 'origin': [-2.3, -2.4, 0], 'cellSize': 1.15,
+             'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0', 'showIndices': False,
+             'lengthExpr': f"arrayCount({k('queue')})", 'valueExpr': f"arrayAt({k('queue')}, idx)",
+             'highlightExpr': f"idx == arrayCount({k('queue')}) - 1 and {k('line')} == {LK('queue.append(v)')}"},
+            {**label('indeg-v', f"{k('v')} < 0 ? 'indeg[v]: —' : concat('indeg[', {k('v')}, '] = ', arrayAt({k('indeg')}, {k('v')}))",
+                     ['indeg', k('v')], LK('indeg[v] -= 1'), 'topological-sort'), 'highlightExpr': f"{k('v')} >= 0"},
+            label('queue-len', f"concat('len(queue) = ', arrayCount({k('queue')}))", ['queue', '0'], LK('while queue'), 'topological-sort')]
+    d = tr
+    on = lambda i, v: f"arrayAt({d('state')}, {i}) == {v}"
+    dfs = [graph(d, f"idx == {d('u')} ? '{GOLD}' : ({on('idx', 1)} ? '#e67db0' : ({on('idx', 2)} ? '#77bfae' : ''))"),
+           *common(d, LD),
+           {'id': 'state', 'type': 'array', 'label': 'state', 'codeSymbol': 'state', 'labelSide': 'left', 'origin': [-2.3, -1.0, 0], 'cellSize': 1.15,
+            'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(TOPO_N), 'valueExpr': f"arrayAt({d('state')}, idx)",
+            'colorExpr': f"{on('idx', 1)} ? '#e67db0' : ({on('idx', 2)} ? '#77bfae' : '')", 'highlightExpr': f"idx == {d('v')}"},
+           {'id': 'stack', 'type': 'stack', 'arrayLayout': 'horizontal', 'label': 'call stack', 'origin': [-2.3, -2.4, 0], 'cellSize': 1.15,
+            'showTop': False, 'containerColor': '#e67db0', 'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0',
+            'lengthExpr': f"arrayCount({d('path')})", 'valueExpr': f"arrayAt({d('path')}, idx)", 'highlightExpr': f"idx == arrayCount({d('path')}) - 1"},
+           {**label('state-v', f"{d('v')} < 0 ? 'state[v]: —' : concat('state[', {d('v')}, '] = ', arrayAt({d('state')}, {d('v')}))",
+                    ['state', d('v')], LD('if state[v] == 1'), 'topological-sort'), 'highlightExpr': f"{d('v')} >= 0"}]
+    return run_scene('topological-sort', 'Order by dependencies (topological sort)', header, """**Signal:** prerequisites, build order, task scheduling: "in what order can everything run?"
+
+An edge **u → v** means *u must come before v* (a course before the one that needs it, a library before the code that uses it). A **topological order** lists every node so that **every edge points forward**. It exists exactly when there is no cycle, and there is usually more than one.
+
+## 1. DFS: finish order, reversed (this step)
+
+DFS finishes a task only after **everything that depends on it** has finished, so appending each task when it finishes lists them dependents-first. Reversed, that puts every task before what depends on it. Meeting a task that is still on the current path is a cycle.
+
+## 2. Kahn: take what waits for nothing (next step)
+
+Count each task's **indegree**, the number of things it waits for. Tasks at 0 are ready: queue them. Take one, append it to the order, and remove its edges: each task it unblocks waits for one fewer, and joins the queue when it reaches 0. Pink tasks are ready, teal ones placed. Here 4 and 5 start; 1 is freed by 4, 2 needs both 4 and 5, 0 needs 1 and 2, and 3 comes last.
+
+If the queue empties before every task is placed, the rest wait on each other in a loop: a cycle, and no order exists (the cycle scene's third step).
+
+DFS gives **5, 4, 2, 1, 0, 3** and Kahn gives **4, 5, 1, 2, 0, 3**: both have every arrow pointing forward. At the end of each step the tasks line up in their order, so you can check it.
+
+**Cost:** O(V + E) for both.
+
+**Practice:** Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.""",
+        'Explain what a topological order is and why it exists exactly when there is no cycle. Ask the learner to predict which task finishes next in DFS, and which task is ready next in Kahn.',
+        'topo.py', TOPO_SOURCE, dtrace, dfs,
+        sections=topo_sections(), call_entry=topo_line('topo_dfs', 'def dfs(u)'),
+        data={'topoNodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(TOPO_POS, adj)]},
+        first={'title': 'DFS: finish order, reversed', 'description': 'A task finishes after everything that depends on it.'},
+        more=[{'id': 'kahn', 'title': "Kahn: take what waits for nothing", 'description': 'Indegrees, a queue of ready tasks, and the order they leave in.',
+               'table': 'topo_kahn', 'trace': ktrace, 'elements': kahn}])
 
 
 def code_sections(scene_id):
@@ -1883,7 +2169,7 @@ def code_sections(scene_id):
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
-         'cycle-detection': cycle_scene, 'bipartite': bipartite_scene}
+         'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
