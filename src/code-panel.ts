@@ -179,7 +179,12 @@ export function setupCodePanel(): void {
         else if(active)try{lines=activeCodeLines(evalExpr(active,0));}catch{ /* unavailable slider or data clears the active marker */ }
         const bound=!!ref||!!active;
         const signature=[...lines].join(', ');
-        // The structure follows execution into another function.
+        // Code outside the running function is paler; the structure follows execution into another function.
+        const running=selected?inlineScope(selected.source,lines):null;
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            const line=Number(row.dataset.line);
+            row.classList.toggle('code-inactive',!!running&&(line<running.from||line>running.to));
+        });
         const scope=structureScope(lines),scopeKey=scope?`${scope.from}-${scope.to}`:'all';
         if(scopeKey!==lastScopeKey){lastScopeKey=scopeKey;renderStructure(lines);}
         execution.textContent=bound?(signature?'Active lines: '+signature:'No active lines at this position'):'';
@@ -191,8 +196,15 @@ export function setupCodePanel(): void {
             if(current)row.setAttribute('aria-current','step');else row.removeAttribute('aria-current');
         });
         if(signature!==lastExecution&&firstActive&&body.clientHeight>0){
-            const row=firstActive.getBoundingClientRect(),viewport=body.getBoundingClientRect();
-            if(row.top<viewport.top||row.bottom>viewport.bottom)body.scrollTop+=row.top-viewport.top;
+            // A line hidden by the structure (titles only) is shown by its section's title: keep that in view.
+            const hidden=!firstActive.getClientRects().length;
+            const target=hidden?body.querySelector<HTMLElement>(`.code-section-head[data-section="${CSS.escape(firstActive.dataset.section??'')}"]`):firstActive;
+            if(target&&target.getClientRects().length){
+                // Scroll no further than it takes to bring it into view.
+                const at=target.getBoundingClientRect(),viewport=body.getBoundingClientRect();
+                if(at.top<viewport.top)body.scrollTop+=at.top-viewport.top;
+                else if(at.bottom>viewport.bottom)body.scrollTop+=at.bottom-viewport.bottom;
+            }
         }
         lastExecution=signature;
         // Only a move within one run is a jump: going to another step or scene starts afresh. The arrow is the run's
@@ -330,6 +342,16 @@ export function setupCodePanel(): void {
         }
         return wrap;
     }
+    // Sections the reader opened in a hidden-code mode, by file and section; they stay open across modes and steps.
+    const revealed=new Set<string>();
+    const revealKey=(section:CodeSection)=>`${selected?.id}:${section.id}`;
+    /** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
+    function paintReveal(section:CodeSection) {
+        const open=revealed.has(revealKey(section));
+        for(let line=section.from;line<=section.to;line++)body.querySelector(`.code-line[data-line="${line}"]`)?.classList.toggle('code-section-revealed',open);
+        const head=body.querySelector<HTMLElement>(`.code-section-head[data-section="${CSS.escape(section.id)}"]`);
+        head?.classList.toggle('revealed',open);head?.setAttribute('aria-expanded',String(open));
+    }
     function sectionText(section:CodeSection):string {
         return selected?.source.split('\n').slice(section.from-1,section.to).join('\n')??'';
     }
@@ -341,13 +363,13 @@ export function setupCodePanel(): void {
         body.querySelectorAll('.code-section-head').forEach(n=>n.remove());
         const all=selected?codeSections(selected):[];
         const scope=structureScope(lines);
-        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
-            row.classList.remove('code-in-section','code-section-first','code-section-last');row.style.removeProperty('--section-tone');delete row.dataset.section;
-            // Outside the structured function the code stays plain, whatever the mode.
-            const line=Number(row.dataset.line);
-            row.classList.toggle('code-outside-structure',!!scope&&(line<scope.from||line>scope.to));
-        });
         const sections=scope?all.filter(s=>s.from>=scope.from&&s.to<=scope.to):all;
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            row.classList.remove('code-in-section','code-section-first','code-section-last','code-section-revealed');row.style.removeProperty('--section-tone');delete row.dataset.section;
+            // Outside the structured function, or in no section (no title could reveal it), the code stays plain.
+            const line=Number(row.dataset.line);
+            row.classList.toggle('code-outside-structure',(!!scope&&(line<scope.from||line>scope.to))||!sectionAt(sections,line));
+        });
         const on=settings.structureMode!=='plain'&&sections.length>0;
         body.classList.toggle('code-structure',on);
         for(const mode of STRUCTURE_MODES)body.classList.toggle(`code-structure-${mode}`,on&&settings.structureMode===mode);
@@ -365,18 +387,27 @@ export function setupCodePanel(): void {
             const head=document.createElement('div');head.className='code-section-head';head.dataset.section=section.id;head.style.setProperty('--section-tone',tone);
             head.tabIndex=0;head.setAttribute('role','button');
             const count=section.to-section.from+1;
+            const chevron=document.createElement('span');chevron.className='code-section-chevron';chevron.setAttribute('aria-hidden','true');chevron.textContent='▸';
             const name=document.createElement('span');name.className='code-section-title';name.textContent=section.title;
             const meta=document.createElement('span');meta.className='code-section-meta';meta.textContent=`${section.from===section.to?`line ${section.from}`:`lines ${section.from}–${section.to}`} · ${count} line${count===1?'':'s'}`;
             const ask=document.createElement('button');ask.type='button';ask.className='code-section-ask';ask.textContent='✦';
             ask.title=`Ask the tutor about "${section.title}"\n\nClick to send · ⌘/Ctrl-click to edit`;ask.setAttribute('aria-label',`Ask the tutor about ${section.title}`);
             ask.addEventListener('click',e=>{e.stopPropagation();sendAiPrompt(codeMessageFor(sectionPrompt(section),section.from,section.to,sectionText(section)),e,{silent:true});});
-            head.append(name,meta,ask);
+            head.append(chevron,name,meta,ask);
             if(section.hint){const hint=document.createElement('div');hint.className='code-section-hint';hint.textContent=section.hint;head.append(hint);}
             head.title=section.hint??section.title;
-            const pick=()=>choose(section.from,section.to,sectionText(section));
+            // With the code hidden, the title shows or hides the section's code; with it shown, it selects the lines.
+            const pick=()=>{
+                if(settings.structureMode==='blocks'||settings.structureMode==='outline'){
+                    const key=revealKey(section);
+                    if(revealed.has(key))revealed.delete(key);else revealed.add(key);
+                    paintReveal(section);
+                }else choose(section.from,section.to,sectionText(section));
+            };
             head.addEventListener('click',pick);
             head.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
             body.querySelector(`.code-line[data-line="${section.from}"]`)?.before(head);
+            paintReveal(section);
         });
         markExecutingSection();
     }
@@ -510,7 +541,8 @@ export function setupCodePanel(): void {
         const edge=body.getBoundingClientRect().right;
         const clipped=!!code&&(code.getBoundingClientRect().right>edge||tags.some(t=>t.scrollWidth>t.clientWidth||t.getBoundingClientRect().right>edge));
         // The structure's hidden-code views must not give the code away.
-        const hiding=body.classList.contains('code-structure-blocks')||body.classList.contains('code-structure-outline');
+        const hiding=(body.classList.contains('code-structure-blocks')||body.classList.contains('code-structure-outline'))
+            &&!!row&&!row.classList.contains('code-section-revealed')&&!row.classList.contains('code-outside-structure');
         if(!clipped||hiding){float.hidden=true;floated=null;return;}
         if(floated===row&&!float.hidden)return;
         floated=row;

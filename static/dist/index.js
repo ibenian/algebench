@@ -25510,6 +25510,11 @@ function setupCodePanel() {
 		} catch {}
 		const bound = !!ref || !!active;
 		const signature = [...lines].join(", ");
+		const running = selected ? inlineScope(selected.source, lines) : null;
+		body.querySelectorAll(".code-line").forEach((row) => {
+			const line = Number(row.dataset.line);
+			row.classList.toggle("code-inactive", !!running && (line < running.from || line > running.to));
+		});
 		const scope = structureScope(lines), scopeKey = scope ? `${scope.from}-${scope.to}` : "all";
 		if (scopeKey !== lastScopeKey) {
 			lastScopeKey = scopeKey;
@@ -25525,8 +25530,12 @@ function setupCodePanel() {
 			else row.removeAttribute("aria-current");
 		});
 		if (signature !== lastExecution && firstActive && body.clientHeight > 0) {
-			const row = firstActive.getBoundingClientRect(), viewport = body.getBoundingClientRect();
-			if (row.top < viewport.top || row.bottom > viewport.bottom) body.scrollTop += row.top - viewport.top;
+			const target = !firstActive.getClientRects().length ? body.querySelector(`.code-section-head[data-section="${CSS.escape(firstActive.dataset.section ?? "")}"]`) : firstActive;
+			if (target && target.getClientRects().length) {
+				const at = target.getBoundingClientRect(), viewport = body.getBoundingClientRect();
+				if (at.top < viewport.top) body.scrollTop += at.top - viewport.top;
+				else if (at.bottom > viewport.bottom) body.scrollTop += at.bottom - viewport.bottom;
+			}
 		}
 		lastExecution = signature;
 		const place = `${state.currentSceneIndex}/${state.currentStepIndex}`;
@@ -25726,6 +25735,16 @@ function setupCodePanel() {
 		}
 		return wrap;
 	}
+	const revealed = /* @__PURE__ */ new Set();
+	const revealKey = (section) => `${selected?.id}:${section.id}`;
+	/** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
+	function paintReveal(section) {
+		const open = revealed.has(revealKey(section));
+		for (let line = section.from; line <= section.to; line++) body.querySelector(`.code-line[data-line="${line}"]`)?.classList.toggle("code-section-revealed", open);
+		const head = body.querySelector(`.code-section-head[data-section="${CSS.escape(section.id)}"]`);
+		head?.classList.toggle("revealed", open);
+		head?.setAttribute("aria-expanded", String(open));
+	}
 	function sectionText(section) {
 		return selected?.source.split("\n").slice(section.from - 1, section.to).join("\n") ?? "";
 	}
@@ -25737,14 +25756,14 @@ function setupCodePanel() {
 		body.querySelectorAll(".code-section-head").forEach((n) => n.remove());
 		const all = selected ? codeSections(selected) : [];
 		const scope = structureScope(lines);
+		const sections = scope ? all.filter((s) => s.from >= scope.from && s.to <= scope.to) : all;
 		body.querySelectorAll(".code-line").forEach((row) => {
-			row.classList.remove("code-in-section", "code-section-first", "code-section-last");
+			row.classList.remove("code-in-section", "code-section-first", "code-section-last", "code-section-revealed");
 			row.style.removeProperty("--section-tone");
 			delete row.dataset.section;
 			const line = Number(row.dataset.line);
-			row.classList.toggle("code-outside-structure", !!scope && (line < scope.from || line > scope.to));
+			row.classList.toggle("code-outside-structure", !!scope && (line < scope.from || line > scope.to) || !sectionAt(sections, line));
 		});
-		const sections = scope ? all.filter((s) => s.from >= scope.from && s.to <= scope.to) : all;
 		const on = settings.structureMode !== "plain" && sections.length > 0;
 		body.classList.toggle("code-structure", on);
 		for (const mode of STRUCTURE_MODES) body.classList.toggle(`code-structure-${mode}`, on && settings.structureMode === mode);
@@ -25769,6 +25788,10 @@ function setupCodePanel() {
 			head.tabIndex = 0;
 			head.setAttribute("role", "button");
 			const count = section.to - section.from + 1;
+			const chevron = document.createElement("span");
+			chevron.className = "code-section-chevron";
+			chevron.setAttribute("aria-hidden", "true");
+			chevron.textContent = "▸";
 			const name = document.createElement("span");
 			name.className = "code-section-title";
 			name.textContent = section.title;
@@ -25785,7 +25808,7 @@ function setupCodePanel() {
 				e.stopPropagation();
 				sendAiPrompt(codeMessageFor(sectionPrompt(section), section.from, section.to, sectionText(section)), e, { silent: true });
 			});
-			head.append(name, meta, ask);
+			head.append(chevron, name, meta, ask);
 			if (section.hint) {
 				const hint = document.createElement("div");
 				hint.className = "code-section-hint";
@@ -25793,7 +25816,14 @@ function setupCodePanel() {
 				head.append(hint);
 			}
 			head.title = section.hint ?? section.title;
-			const pick = () => choose(section.from, section.to, sectionText(section));
+			const pick = () => {
+				if (settings.structureMode === "blocks" || settings.structureMode === "outline") {
+					const key = revealKey(section);
+					if (revealed.has(key)) revealed.delete(key);
+					else revealed.add(key);
+					paintReveal(section);
+				} else choose(section.from, section.to, sectionText(section));
+			};
 			head.addEventListener("click", pick);
 			head.addEventListener("keydown", (e) => {
 				if (e.key === "Enter" || e.key === " ") {
@@ -25802,6 +25832,7 @@ function setupCodePanel() {
 				}
 			});
 			body.querySelector(`.code-line[data-line="${section.from}"]`)?.before(head);
+			paintReveal(section);
 		});
 		markExecutingSection();
 	}
@@ -25998,7 +26029,7 @@ function setupCodePanel() {
 		const tags = !!holder && getComputedStyle(holder).visibility !== "hidden" ? [...holder.querySelectorAll(".code-inline-value")] : [];
 		const edge = body.getBoundingClientRect().right;
 		const clipped = !!code && (code.getBoundingClientRect().right > edge || tags.some((t) => t.scrollWidth > t.clientWidth || t.getBoundingClientRect().right > edge));
-		const hiding = body.classList.contains("code-structure-blocks") || body.classList.contains("code-structure-outline");
+		const hiding = (body.classList.contains("code-structure-blocks") || body.classList.contains("code-structure-outline")) && !!row && !row.classList.contains("code-section-revealed") && !row.classList.contains("code-outside-structure");
 		if (!clipped || hiding) {
 			float.hidden = true;
 			floated = null;
