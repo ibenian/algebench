@@ -25558,6 +25558,10 @@ function setupCodePanel() {
 			row.classList.toggle("code-veiled", veiled && inside);
 		});
 	}
+	/** Code outside the running function, blurred on request (the view setting) so the running one stands out. */
+	function paintBlur() {
+		body.classList.toggle("code-blur-inactive", settings.blurInactive);
+	}
 	function hidingCode() {
 		return body.classList.contains("code-structure-blocks") || body.classList.contains("code-structure-outline");
 	}
@@ -25927,7 +25931,8 @@ function setupCodePanel() {
 				onHover: saved?.onHover ?? true,
 				hidden: Array.isArray(saved?.hidden) ? saved.hidden.filter((h) => typeof h === "string") : [],
 				structureMode: STRUCTURE_MODES.includes(saved?.structureMode) ? saved.structureMode : "plain",
-				structureRunning: saved?.structureRunning ?? true
+				structureRunning: saved?.structureRunning ?? true,
+				blurInactive: saved?.blurInactive ?? false
 			};
 		} catch {
 			return {
@@ -25935,7 +25940,8 @@ function setupCodePanel() {
 				onHover: true,
 				hidden: [],
 				structureMode: "plain",
-				structureRunning: true
+				structureRunning: true,
+				blurInactive: false
 			};
 		}
 	}
@@ -26000,7 +26006,10 @@ function setupCodePanel() {
 				settings.onHover = on;
 			}, !settings.inline), check("Structure the running function only", settings.structureRunning, (on) => {
 				settings.structureRunning = on;
-			}, !selected || !codeSections(selected).length));
+			}, !selected || !codeSections(selected).length), check("Blur code outside the running function", settings.blurInactive, (on) => {
+				settings.blurInactive = on;
+				paintBlur();
+			}));
 			const vars = availableVariables();
 			const heading = document.createElement("div");
 			heading.className = "code-view-heading";
@@ -26355,6 +26364,7 @@ function setupCodePanel() {
 	});
 	window.addEventListener("algebench:navchange", refresh);
 	window.addEventListener("algebench:sliderchange", () => refreshBinding());
+	paintBlur();
 	refresh();
 }
 //#endregion
@@ -26904,8 +26914,13 @@ function setupCodePractice() {
 		const focus = focusSection(score, cursor, sections);
 		const scoreOfTyped = new Map(score.lines.filter((l) => l.typed != null).map((l) => [l.typed, l]));
 		const typedLines = input.value.split("\n");
+		const bands = sectionBands(typedLines.length);
 		gutter.replaceChildren(...typedLines.map((text, j) => {
 			const row = el("div", "cp-mark"), t = score.typed[j], line = scoreOfTyped.get(j);
+			if (bands[j]) {
+				row.classList.add("cp-in-section");
+				row.style.setProperty("--section-tone", bands[j]);
+			}
 			const n = el("span", "cp-n");
 			n.textContent = String(j + 1);
 			const mark = el("span", "cp-status");
@@ -26979,15 +26994,9 @@ function setupCodePractice() {
 	}
 	function paintLines(lines) {
 		const fresh = tokenText === input.value;
-		const bands = sectionBands(lines.length);
 		paint.replaceChildren(...lines.map((text, j) => {
 			const row = el("div", "cp-line");
 			const t = score?.typed[j];
-			const band = bands[j];
-			if (band) {
-				row.classList.add("cp-in-section");
-				row.style.setProperty("--section-tone", band);
-			}
 			if (t && !t.neutral) row.classList.add(t.exact ? "exact" : t.reference != null ? "fuzzy" : text.trim() ? "miss" : "");
 			row.textContent = text || " ";
 			if (fresh && text) paintTokens(row, lineTokens(tokens, j + 1));

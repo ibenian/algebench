@@ -298,8 +298,11 @@ export function setupCodePractice(): void {
         const focus = focusSection(score, cursor, sections);
         const scoreOfTyped = new Map(score.lines.filter(l => l.typed != null).map(l => [l.typed!, l]));
         const typedLines = input.value.split('\n');
+        // Left of the line numbers, the section each line belongs to, in the Code panel's colour for it.
+        const bands = sectionBands(typedLines.length);
         gutter.replaceChildren(...typedLines.map((text, j) => {
             const row = el('div', 'cp-mark'), t = score!.typed[j]!, line = scoreOfTyped.get(j);
+            if (bands[j]) { row.classList.add('cp-in-section');row.style.setProperty('--section-tone', bands[j]!); }
             const n = el('span', 'cp-n');n.textContent = String(j + 1);
             const mark = el('span', 'cp-status');
             if (t.neutral) row.classList.add('neutral');
@@ -358,13 +361,9 @@ export function setupCodePractice(): void {
     }
     function paintLines(lines: string[]) {
         const fresh = tokenText === input.value;
-        const bands = sectionBands(lines.length);
         paint.replaceChildren(...lines.map((text, j) => {
             const row = el('div', 'cp-line');
             const t = score?.typed[j];
-            // The section the line belongs to, in the Code panel's colour for it.
-            const band = bands[j];
-            if (band) { row.classList.add('cp-in-section');row.style.setProperty('--section-tone', band); }
             if (t && !t.neutral) row.classList.add(t.exact ? 'exact' : t.reference != null ? 'fuzzy' : text.trim() ? 'miss' : '');
             row.textContent = text || ' ';
             if (fresh && text) paintTokens(row, lineTokens(tokens, j + 1));

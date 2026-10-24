@@ -237,6 +237,8 @@ export function setupCodePanel(): void {
             row.classList.toggle('code-veiled',veiled&&inside);
         });
     }
+    /** Code outside the running function, blurred on request (the view setting) so the running one stands out. */
+    function paintBlur() { body.classList.toggle('code-blur-inactive',settings.blurInactive); }
     function hidingCode() {
         return body.classList.contains('code-structure-blocks')||body.classList.contains('code-structure-outline');
     }
@@ -486,14 +488,14 @@ export function setupCodePanel(): void {
         body.querySelectorAll<HTMLElement>('.code-section-head').forEach(head=>head.classList.toggle('executing',running.has(head.dataset.section)));
     }
     /** View settings ("⚙", top right): inline values on or off, and which variables show them. Kept per browser. */
-    type ViewSettings={inline:boolean;onHover:boolean;hidden:string[];structureMode:StructureMode;structureRunning:boolean};
+    type ViewSettings={inline:boolean;onHover:boolean;hidden:string[];structureMode:StructureMode;structureRunning:boolean;blurInactive:boolean};
     function loadSettings():ViewSettings {
         try{
             const saved=JSON.parse(localStorage.getItem('algebench-code-view')??'null') as Partial<ViewSettings>|null;
             return {inline:saved?.inline??true,onHover:saved?.onHover??true,hidden:Array.isArray(saved?.hidden)?saved.hidden.filter(h=>typeof h==='string'):[],
                 structureMode:STRUCTURE_MODES.includes(saved?.structureMode as StructureMode)?saved!.structureMode!:'plain',
-                structureRunning:saved?.structureRunning??true};
-        }catch{return {inline:true,onHover:true,hidden:[],structureMode:'plain',structureRunning:true};}
+                structureRunning:saved?.structureRunning??true,blurInactive:saved?.blurInactive??false};
+        }catch{return {inline:true,onHover:true,hidden:[],structureMode:'plain',structureRunning:true,blurInactive:false};}
     }
     function saveSettings() {
         try{localStorage.setItem('algebench-code-view',JSON.stringify(settings));}catch{/* private mode: settings last the session */}
@@ -519,7 +521,8 @@ export function setupCodePanel(): void {
         function fill() {
             menu.replaceChildren(check('Inline values',settings.inline,on=>{settings.inline=on;}),
                 check('Only on the hovered line',settings.onHover,on=>{settings.onHover=on;},!settings.inline),
-                check('Structure the running function only',settings.structureRunning,on=>{settings.structureRunning=on;},!selected||!codeSections(selected).length));
+                check('Structure the running function only',settings.structureRunning,on=>{settings.structureRunning=on;},!selected||!codeSections(selected).length),
+                check('Blur code outside the running function',settings.blurInactive,on=>{settings.blurInactive=on;paintBlur();}));
             const vars=availableVariables();
             const heading=document.createElement('div');heading.className='code-view-heading';
             heading.textContent=vars.length?'Variables':'No variables shown at this step';
@@ -790,5 +793,6 @@ export function setupCodePanel(): void {
     });
     window.addEventListener('algebench:navchange',refresh);
     window.addEventListener('algebench:sliderchange',()=>refreshBinding());
+    paintBlur();
     refresh();
 }

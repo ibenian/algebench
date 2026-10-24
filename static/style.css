@@ -5961,8 +5961,11 @@ body:has(.push-array) #legend { display: none; }
     background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 30%, transparent) var(--fill), transparent 0); }
 .cp-chip.focus { border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone) inset; }
 .cp-chip.done { background: color-mix(in srgb, var(--tone) 34%, transparent); border-color: var(--tone); }
-/* Typed lines carry their section's bar, as in the Code panel. */
-.cp-line.cp-in-section { box-shadow: inset 3px 0 0 var(--section-tone); }
+/* Typed lines carry their section's bar left of their numbers, as in the Code panel; the mark says the match. */
+.cp-mark { border-left-color: transparent !important; }
+.cp-mark.cp-in-section { border-left-color: var(--section-tone) !important; }
+.code-blur-inactive .code-line.code-inactive code { filter: blur(3px); transition: filter .2s; }
+.code-blur-inactive .code-line.code-inactive:hover code { filter: none; }
 .cp-editor { flex: 1 1 80px; min-height: 80px; overflow: auto; display: flex; align-items: flex-start; border: 1px solid var(--border-color); border-radius: 6px;
     background: color-mix(in srgb, var(--page-bg) 60%, var(--panel-bg)); font: 12px/1.9 ui-monospace, monospace; }
 .cp-editor:focus-within { border-color: var(--accent-color); }
