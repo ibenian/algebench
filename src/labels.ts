@@ -492,6 +492,18 @@ export function labelsForSymbol(key: string): {text: string; tooltip?: string}[]
     return out;
 }
 
+/** The label rows tied to a code line by their codeRef (conditions and other expressions), as shown. */
+export function labelsForCodeLine(fileId: string, line: number): string[] {
+    const out: string[] = [];
+    for (const l of labelsState.labels) {
+        const a = l.annotation;
+        if (!a?.text || a.kind !== 'label' || a.code?.fileId !== fileId || a.code.line !== line) continue;
+        if (l.forceHidden || l.el.style.display === 'none' || out.includes(a.text)) continue;
+        out.push(a.text);
+    }
+    return out;
+}
+
 export function updateLabels(): void {
     const camera = labelsState.camera;
     const renderer = labelsState.renderer;

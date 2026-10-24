@@ -74,6 +74,21 @@ export function setSymbolHover(keys: string[], line: string | null = null): void
 export const hoveredSymbols = (): readonly string[] => hovered;
 export const hoveredCodeLine = (): string | null => hoveredLine;
 
+/**
+ * What objects in the scene hold for a symbol right now (an array's cells as `[1, 2, 3]`), for the Code panel's
+ * inline values. Each source reads its value on demand and answers null while it is not shown.
+ */
+const valueSources = new Map<string, Set<() => string | null>>();
+export function registerSymbolValue(key: string, read: () => string | null): () => void {
+    let set = valueSources.get(key);
+    if (!set) valueSources.set(key, set = new Set());
+    set.add(read);
+    return () => { set!.delete(read); if (!set!.size) valueSources.delete(key); };
+}
+export function symbolValues(key: string): string[] {
+    return [...valueSources.get(key) ?? []].map(read => read()).filter((v): v is string => v !== null);
+}
+
 /** Briefly light these symbols where they are executing (keys or bare variable names). */
 export function flashSymbols(keys: string[]): void {
     if (keys.length) window.dispatchEvent(new CustomEvent('algebench:symbolflash', {detail: {keys}}));

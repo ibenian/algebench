@@ -1,6 +1,6 @@
 /** A typed one-dimensional array. One merged box mesh; expressions run on state changes. */
 import { state } from '/state.js';
-import { flashSymbols, setSymbolHover, hoveredSymbols } from '/code-symbols.js';
+import { flashSymbols, setSymbolHover, hoveredSymbols, registerSymbolValue } from '/code-symbols.js';
 import { dataToWorld } from '/coords.js';
 import { addLabel3D, parseColor, colorToCSS } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
@@ -232,7 +232,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const colorFn=el.colorExpr?compileExpr(el.colorExpr):null;
     // keyExpr (a dict): each cell's key, shown where an array shows its index.
     const keyFn=el.keyExpr?compileExpr(el.keyExpr):null;
-    let cellKeys:(string|null)[]=[];
+    let cellKeys:(string|null)[]=[],valueText='[]';
     const previous: string[]=[];
     // animateMoves: a value that moves to another cell (a swap, a sift) glides there instead of being redrawn in
     // place; identity comes from idExpr, else values are matched (cell-identity). A wrapped grid re-flows its
@@ -310,6 +310,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             return {cell,highlighted,color,key};
         });
         cellKeys=cells.map(c=>c.key);
+        // What the array holds, as Python would print it: a list, or a dict when its cells have keys.
+        valueText=cellKeys.some(k=>k!==null)?`{${cells.map(c=>`${c.key}: ${c.cell.text}`).join(', ')}}`:`[${cells.map(c=>c.cell.text).join(', ')}]`;
         const transition=JSON.stringify(Object.entries(state.sceneSliders).map(([id,s])=>[id,s.value,s.values]));
         const delta=changes.update(cells.map(({cell})=>JSON.stringify([cell.kind,cell.value])),transition);
         // Where each moving value was drawn, read before the resize and redraw move anything.
@@ -427,6 +429,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         titleHit.geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
     }
     placeTitleHit();
+    // The Code panel's inline values read the array as its variable holds it, while it is shown.
+    const disposeValue = symbol ? registerSymbolValue(symbol, () => shown() ? valueText : null) : null;
     const disposeTitleHover = titleHit && canvas ? registerStackHover(canvas, () => state.camera, {mesh:titleHit, visible:shown, select:index=>point('title',index!==null)}) : null;
     // A screen title is an HTML label: it takes the pointer itself.
     if(symbol&&titleLabel&&!planeText){
@@ -445,7 +449,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     // Shader/lifecycle resources follow the same registry as tensor boxes.
     material.addEventListener('dispose',()=>{
         disposeHover?.();glide?.dispose();
-        disposeSymbolHover?.();disposeTitleHover?.();titleHit?.geometry.dispose();
+        disposeSymbolHover?.();disposeTitleHover?.();disposeValue?.();titleHit?.geometry.dispose();
         window.removeEventListener('algebench:symbolhover',onSymbolHover);
         ghostMaterial?.dispose();
         unit.dispose();

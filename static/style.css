@@ -5619,7 +5619,48 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-file-tree summary { cursor: pointer; padding: 5px 0; font-size: 13px; }
 .code-file-tree button { display: block; text-align: left; width: 100%; padding: 6px 10px; color: var(--text-color); background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
 .code-file-tree button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent-color) 20%, transparent); }
-.code-file-title { padding: 10px; font: 11px monospace; overflow-wrap: anywhere; opacity: .8; }
+.code-file-title { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; font: 11px monospace; }
+.code-file-path { flex: 1; min-width: 0; overflow-wrap: anywhere; opacity: .8; }
+/* View settings: a gear at the title's right, opening a small menu of checkboxes below it. */
+.code-view-settings { position: relative; flex: none; }
+.code-view-settings-btn { padding: 2px 7px; font-size: 14px; line-height: 1.2; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
+.code-view-settings-btn:hover, .code-view-settings-btn[aria-expanded="true"] { opacity: 1; border-color: var(--border-color); background: var(--panel-bg); }
+.code-view-menu {
+    position: absolute; top: calc(100% + 4px); right: 0; z-index: 30;
+    display: flex; flex-direction: column; min-width: 190px; max-height: 60vh; overflow: auto; padding: 6px;
+    background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 8px 24px #0006;
+    font: 12px var(--font-body);
+}
+.code-view-menu[hidden] { display: none; }
+.code-view-option { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; cursor: pointer; color: var(--text-color); }
+.code-view-option:hover { background: color-mix(in srgb, var(--accent-color) 14%, transparent); }
+.code-view-option:has(input:disabled) { opacity: .45; cursor: default; }
+.code-view-option input { margin: 0; accent-color: var(--accent-color); }
+.code-view-menu .code-view-option:not(:first-child) span { font-family: ui-monospace, monospace; }
+.code-view-heading { margin: 6px 8px 2px; padding-top: 6px; border-top: 1px solid var(--border-color); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .6; }
+/* Inline values: bordered tags right of a line. A long one is cut with an ellipsis; pointing at it shows it in
+   full in .code-inline-float, fixed over the page so the scrolling code view cannot clip it. */
+.code-inline-values { display: flex; gap: 6px; align-items: center; padding: 0 12px 0 10px; }
+.code-inline-value {
+    display: inline-block; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 0 6px; font-size: 11px; line-height: 17px; color: color-mix(in srgb, var(--text-color) 80%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 35%, var(--border-color)); border-radius: 5px;
+    background: color-mix(in srgb, var(--accent-color) 7%, var(--panel-bg));
+}
+/* "Only on the hovered line": the tags keep their room, so pointing at a line does not move anything. */
+.code-inline-on-hover .code-inline-values { visibility: hidden; }
+.code-inline-on-hover .code-line:hover .code-inline-values { visibility: visible; }
+.code-line.execution-line .code-inline-value { color: var(--text-color); border-color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
+.code-inline-float {
+    position: fixed; z-index: 10060; pointer-events: none; transform: translateY(-50%);
+    display: flex; gap: 6px; align-items: center; padding: 3px; border-radius: 7px;
+    background: var(--panel-bg); box-shadow: 0 4px 14px #0006; font: 12px ui-monospace, monospace;
+}
+.code-inline-float[hidden] { display: none; }
+.code-inline-float .code-inline-value { max-width: none; overflow: visible; color: var(--text-color); }
+.code-inline-float-code { white-space: pre; font: 12px/1.9 ui-monospace, monospace; padding: 0 8px 0 1px; color: var(--text-color); }
+.code-inline-float.executing { background: color-mix(in srgb, var(--accent-color) 13%, var(--panel-bg)); }
+.code-inline-float.executing .code-inline-value { border-color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
 .code-source { flex: 1; overflow: auto; min-height: 100px; padding-bottom: 20px; position: relative; }
 /* The gutter left of the line numbers: arrows for a move of the executing line, and for each call still waiting. */
 .code-arrows { position: absolute; left: 0; top: 0; width: 40px; overflow: visible; pointer-events: none; z-index: 1; }
