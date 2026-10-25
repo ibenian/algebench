@@ -4808,6 +4808,34 @@ function makeStepCodeLinks() {
 	return links;
 }
 //#endregion
+//#region src/describe-problem.ts
+/**
+* "Describe the problem": a code scene starts with the question, before any solution. The step caption's Ask-AI
+* button sends it on a step tied to code, and narration turned on at a code scene's first state sends it in place
+* of that state's narration.
+*/
+var DESCRIBE_PROBLEM = {
+	label: "Describe the problem",
+	prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."
+};
+function currentScene() {
+	const lesson = state.lessonSpec;
+	const scene = lesson?.scenes?.[state.currentSceneIndex];
+	return lesson && scene?.id ? {
+		lesson,
+		scene
+	} : null;
+}
+/** True when the current scene has code: a code file points into it. */
+function sceneHasCode() {
+	const at = currentScene();
+	return !!at && (at.lesson.codeFiles ?? []).some((file) => (file.locations ?? []).some((l) => l.scene === at.scene.id));
+}
+/** Send the prompt; resolves once the reply is in (false if the chat turned it away). */
+function describeProblem() {
+	return window.sendChatMessage(DESCRIBE_PROBLEM.prompt, { display: DESCRIBE_PROBLEM.label });
+}
+//#endregion
 //#region src/follow-cam.ts
 var followState = state;
 function findElementSpecById(id) {
@@ -8798,9 +8826,9 @@ function updateStepCaption(scene, stepIdx, preservePosition = false) {
 	if (text) {
 		const plain = stripGlossaryMarkers(text);
 		el.dataset.markdown = plain;
-		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${plain}"`);
-		fillBoardOverlay(el, renderMarkdown$1(text), btn);
 		const codeLinks = makeStepCodeLinks();
+		const btn = codeLinks ? makeAiAskButton("ai-ask-btn caption-ai-btn", DESCRIBE_PROBLEM.label, () => DESCRIBE_PROBLEM.prompt) : makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${plain}"`);
+		fillBoardOverlay(el, renderMarkdown$1(text), btn);
 		if (codeLinks) el.querySelector(".bo-body").prepend(codeLinks);
 		el.style.opacity = String(overlayState.displayParams.overlayOpacity);
 		if (!preservePosition) resetCaptionPosition(el);
@@ -9188,9 +9216,10 @@ var AFTER_TURN_MS = 100;
 var SPEECH_START_MS = 800;
 /**
 * `stateKey` names the state shown as `view:position` (view = scene and step), or null when there is nothing to
-* narrate; `describe` says the same for the tutor ("scene …, step …, state 3 of 25").
+* narrate; `describe` says the same for the tutor ("scene …, step …, state 3 of 25"). `opening`, when it returns a
+* request, is sent for the state instead of its narration (a scene's first state introducing the problem).
 */
-function createNarrator(stateKey, describe) {
+function createNarrator(stateKey, describe, opening) {
 	let on = false, sentKey = null, inFlight = false;
 	let doneKey = null, answeredAt = 0;
 	const stopSpeech = () => window.algebenchStopTTS?.();
@@ -9200,10 +9229,10 @@ function createNarrator(stateKey, describe) {
 		if (!on || inFlight || key === null || key === sentKey) return;
 		inFlight = true;
 		sentKey = key;
-		window.sendChatMessage(prompt(describe()), {
+		(opening?.() ?? (() => window.sendChatMessage(prompt(describe()), {
 			silent: true,
 			noTools: true
-		}).then((sent) => {
+		})))().then((sent) => {
 			inFlight = false;
 			if (!sent) {
 				sentKey = null;
@@ -9331,8 +9360,14 @@ function setupStepPlayer() {
 		const step = scene?.steps?.[state.currentStepIndex];
 		const s = slider();
 		return `scene "${scene?.title ?? ""}"${step?.title ? `, step "${step.title}"` : ""}${s ? `, execution state ${playbackPosition(s.value, s.min, s.max).display}` : ""}`;
+	}, () => {
+		const s = slider(), first = opening;
+		opening = false;
+		return first && s && s.value <= s.min && sceneHasCode() ? describeProblem : null;
 	});
+	let opening = false;
 	narrate.onclick = () => {
+		opening = !narrator.on;
 		narrator.set(!narrator.on);
 		paintNarrate();
 	};
@@ -9431,6 +9466,10 @@ function setupStepPlayer() {
 	function refresh() {
 		const at = `${state.currentSceneIndex}/${state.currentStepIndex}`;
 		if (at !== shownAt || timer === null) pause();
+		if (shownAt && at.split("/")[0] !== shownAt.split("/")[0] && narrator.on) {
+			narrator.set(false);
+			paintNarrate();
+		}
 		shownAt = at;
 		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
 		speed.hidden = !config?.speedControl;
@@ -32163,10 +32202,7 @@ if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) =>
 /** takesOver: the prompt starts a conversation the reader drives (it waits for their answers), so playback stops
 *  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
 var COMMON_PROMPTS = [
-	{
-		label: "Describe the problem",
-		prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."
-	},
+	DESCRIBE_PROBLEM,
 	{
 		label: "1-sentence gist",
 		prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."

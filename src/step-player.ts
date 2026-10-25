@@ -3,6 +3,7 @@ import { state } from '/state.js';
 import { setSliderValue } from '/sliders.js';
 import { updateStepCaption } from '/overlay.js';
 import { createNarrator } from '/state-narrator.js';
+import { describeProblem, sceneHasCode } from '/describe-problem.js';
 import type { Scene, StepPlayback } from '/types/lesson.js';
 
 /** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
@@ -60,8 +61,14 @@ export function setupStepPlayer(): void {
         const step=scene?.steps?.[state.currentStepIndex];
         const s=slider();
         return `scene "${scene?.title??''}"${step?.title?`, step "${step.title}"`:''}${s?`, execution state ${playbackPosition(s.value,s.min,s.max).display}`:''}`;
+    },()=>{
+        // Narration turned on at a code scene's first state opens with the question: the problem is described there.
+        const s=slider(),first=opening;opening=false;
+        return first&&s&&s.value<=s.min&&sceneHasCode()?describeProblem:null;
     });
-    narrate.onclick=()=>{narrator.set(!narrator.on);paintNarrate();};
+    // opening: the next narration is the first since narration was turned on.
+    let opening=false;
+    narrate.onclick=()=>{opening=!narrator.on;narrator.set(!narrator.on);paintNarrate();};
     // Narration speaks for itself: the Chat tab's welcome stays quiet while it is on.
     window.algebenchNarrating=()=>narrator.on;
     paintNarrate();
@@ -116,6 +123,8 @@ export function setupStepPlayer(): void {
     function refresh(){
         const at=`${state.currentSceneIndex}/${state.currentStepIndex}`;
         if(at!==shownAt||timer===null)pause();
+        // Narration belongs to the scene it was turned on in: a new scene starts quiet, not narrating on its own.
+        if(shownAt&&at.split('/')[0]!==shownAt.split('/')[0]&&narrator.on){narrator.set(false);paintNarrate();}
         shownAt=at;
         config=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.stepPlayback;
         speed.hidden=!config?.speedControl;

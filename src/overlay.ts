@@ -5,6 +5,7 @@
 
 import { state } from '/state.js';
 import { makeStepCodeLinks } from '/step-code-links.js';
+import { DESCRIBE_PROBLEM } from '/describe-problem.js';
 import { GEAR_ICON, DOCK_BOTTOM_ICON, UNDOCK_ICON } from '/icons.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
 import { stripGlossaryMarkers } from '/glossary-core.js';
@@ -1736,9 +1737,12 @@ export function updateStepCaption(scene: OverlayScene | null | undefined, stepId
     if (text) {
         const plain = stripGlossaryMarkers(text);
         el.dataset.markdown = plain;
-        const btn = makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${plain}"`);
-        fillBoardOverlay(el, renderMarkdown(text), btn);
         const codeLinks = makeStepCodeLinks();
+        // A step tied to code starts from the question itself: the problem the code solves.
+        const btn = codeLinks
+            ? makeAiAskButton('ai-ask-btn caption-ai-btn', DESCRIBE_PROBLEM.label, () => DESCRIBE_PROBLEM.prompt)
+            : makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${plain}"`);
+        fillBoardOverlay(el, renderMarkdown(text), btn);
         // fillBoardOverlay creates this body synchronously.
         if (codeLinks) el.querySelector('.bo-body')!.prepend(codeLinks);
         el.style.opacity = String(overlayState.displayParams.overlayOpacity);

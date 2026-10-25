@@ -26,6 +26,7 @@ import type { BuildOp } from '/placement.js';
 import { findCamButton } from '/cam-buttons.js';
 import { stripGlossaryMarkers } from '/glossary-core.js';
 import { singleFlightSender } from '/chat-flight.js';
+import { DESCRIBE_PROBLEM } from '/describe-problem.js';
 import {
     buildSceneRequestFromToolCall, interpretBuildSceneReply,
     type BuildSceneToolArgs,
@@ -148,7 +149,7 @@ if (typeof window !== 'undefined') {
  *  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
 const COMMON_PROMPTS: {label: string; prompt: string; display?: string; takesOver?: boolean}[] = [
     // Understand the question before any answer: the solution, the pattern and the code stay out of it.
-    {label: 'Describe the problem', prompt: "Introduce the problem this scene is about the way a good teacher would, before any solution: in plain, friendly words, what's the situation and what are we trying to figure out? Ground it in a small, concrete everyday picture or a tiny example I can hold in my head, and let me feel why it's not as easy as it first looks. Keep it short and conversational, not a formal spec (no input/output/constraints lists). Don't give away the solution, name the pattern or walk through the code; end by inviting me to think about how I'd approach it."},
+    DESCRIBE_PROBLEM,
     {label: "1-sentence gist", prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."},
     {label: 'Gist as bullets', prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."},
     // Pedagogy over precision: a rough restatement that lands beats an exact one that doesn't.
