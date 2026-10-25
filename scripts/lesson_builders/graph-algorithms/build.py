@@ -649,10 +649,11 @@ TREE_POS = [(-5.0, 2.7), (-5.4, 1.2), (-5.0, -0.3), (-3.5, 1.2), (-2.0, 1.2), (-
 
 
 def judge_trace(n, trust):
-    """Per frame: k, the trust pair being counted (−1 none), a and b its ends; indeg and outdeg; p, the person
+    """Per frame: k, the trust pair being counted (−1 none), a and b its ends; indeg and outdeg; counted (the trust
+    edges counted into an indegree so far); p, the person
     being checked (−1 none); ok, that check (−1 none, 0 no, 1 yes); result ('—' before the end)."""
     L = lambda t: line_of(DEGREES_SOURCE, t, 'def find_judge')
-    st = {'k': -1, 'a': -1, 'b': -1, 'indeg': [0] * n, 'outdeg': [0] * n, 'p': -1, 'ok': -1, 'result': '—'}
+    st = {'k': -1, 'a': -1, 'b': -1, 'indeg': [0] * n, 'outdeg': [0] * n, 'counted': [], 'p': -1, 'ok': -1, 'result': '—'}
     trace, emit = recorder(st)
     emit(L('indeg = [0] * n'), f'{n} people. indeg counts how many trust each person; it starts at 0.')
     emit(L('outdeg = [0] * n'), 'outdeg counts how many each person trusts.')
@@ -662,6 +663,7 @@ def judge_trace(n, trust):
         st['outdeg'] = [x + 1 if i == a else x for i, x in enumerate(st['outdeg'])]
         emit(L('outdeg[a] += 1'), f'outdeg[{a}] = {st["outdeg"][a]}: {a} trusts {st["outdeg"][a]} {"person" if st["outdeg"][a] == 1 else "people"}.')
         st['indeg'] = [x + 1 if i == b else x for i, x in enumerate(st['indeg'])]
+        st['counted'] = st['counted'] + [[a, b]]
         emit(L('indeg[b] += 1'), f'indeg[{b}] = {st["indeg"][b]}: {st["indeg"][b]} {"person trusts" if st["indeg"][b] == 1 else "people trust"} {b}.')
     st.update(k=-1, a=-1, b=-1)
     for p in range(n):
@@ -683,13 +685,13 @@ def centers_trace(n, edges):
     """Every line the code runs. Per frame: degree; leaves (the queue); k, u and v, the edge being counted (−1
     none); i and ci, the node the leaves line checks and its `degree[i] == 1` (−1 none, 0 no, 1 yes); leaf, the leaf
     being removed (−1 none); nb and ni, its neighbour and that neighbour's place in adj[leaf] (−1 none); cnb, the
-    last `degree[nb] == 1` (−1 none); removed (0/1 per node) and round (the peeling round each removed node left
+    last `degree[nb] == 1` (−1 none); counted (the edges counted into both ends' degrees so far); removed (0/1 per node) and round (the peeling round each removed node left
     in, −1 not yet); remaining; rnd, the round now (0 before the loop); adjLeaf, adj[leaf]; result."""
     L = lambda t: line_of(DEGREES_SOURCE, t, 'def tree_centers')
     adj = adjacency(n, edges)
     st = {'degree': [0] * n, 'leaves': [], 'k': -1, 'u': -1, 'v': -1, 'i': -1, 'ci': -1, 'leaf': -1, 'nb': -1, 'ni': -1,
           'cnb': -1, 'removed': [0] * n, 'round': [-1] * n, 'remaining': n, 'rnd': 0, 'adjLeaf': [], 'result': '—',
-          'adjU': [], 'adjV': []}
+          'adjU': [], 'adjV': [], 'counted': []}
     trace, emit = recorder(st)
     built = [[] for _ in range(n)]   # adj as the counting loop fills it; adjU / adjV show adj[u] / adj[v]
     bump = lambda node, by: [d + by if j == node else d for j, d in enumerate(st['degree'])]
@@ -706,6 +708,7 @@ def centers_trace(n, edges):
         st['degree'] = bump(u, 1)
         emit(L('degree[u] += 1'), f'degree[{u}] = {st["degree"][u]}.')
         st['degree'] = bump(v, 1)
+        st['counted'] = st['counted'] + [[u, v]]
         emit(L('degree[v] += 1'), f'degree[{v}] = {st["degree"][v]}.')
     st.update(k=-1, u=-1, v=-1, adjU=[], adjV=[])
     for i in range(n):
@@ -761,7 +764,10 @@ def degrees_scene(header):
          'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
          'colorExpr': f"idx == {tr('p')} ? ({tr('ok')} == 1 ? '#77bfae' : '{GOLD}') : (idx == {tr('a')} or idx == {tr('b')} ? '{GOLD}' : '')",
          'connectTo': {'indexExpr': "dataTable('people', idx, 'out')", 'pinned': True, 'arrow': True, 'bendExpr': '0', 'color': '#7f93aa',
-                       'colorExpr': f"{cur} ? '{GOLD}' : ''", 'highlightExpr': cur}},
+                       'colorExpr': f"{cur} ? '{GOLD}' : ''", 'highlightExpr': cur,
+                       # A counted trust edge is thick and carries its target's indegree so far.
+                       'widthExpr': f"keyIndex({tr('counted')}, [idx, to]) >= 0 ? 2.6 : 1.2",
+                       'labelExpr': f"keyIndex({tr('counted')}, [idx, to]) >= 0 ? concat(arrayAt({tr('indeg')}, to)) : ''"}},
         {'id': 'trust', 'type': 'array', 'label': 'trust', 'labelSide': 'left', 'itemType': 'text', 'origin': [2.6, 3.4, 0], 'cellSize': 1.35,
          'values': [f'({a}, {b})' for a, b in JUDGE_TRUST], 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
          'highlightExpr': f"idx == {tr('k')}"},
@@ -785,6 +791,8 @@ def degrees_scene(header):
     removed = f"arrayAt({c('removed')}, idx) == 1"
     pair = lambda a, b: f"((idx == {c(a)} and to == {c(b)}) or (idx == {c(b)} and to == {c(a)}))"
     edge_now = f"{pair('u', 'v')} or ({c('nb')} >= 0 and {pair('leaf', 'nb')})"
+    tree_live = (f"(keyIndex({c('counted')}, [idx, to]) >= 0 or keyIndex({c('counted')}, [to, idx]) >= 0)"
+                 f" and arrayAt({c('removed')}, idx) == 0 and arrayAt({c('removed')}, to) == 0")
     tn = TREE_N
     center_elements = [
         # The tree: removed nodes dim by the round they left in; the leaf being peeled gold, queued leaves pink.
@@ -795,7 +803,11 @@ def degrees_scene(header):
          # The edge being counted (u–v), or the one a peeled leaf drops (leaf–nb), lit; peeled edges dim.
          'connectTo': {'indexExpr': "dataTable('treeNodes', idx, 'adj')", 'pinned': True, 'bendExpr': '0', 'color': '#7f93aa',
                        'colorExpr': f"{edge_now} ? '{GOLD}' : ({removed} or arrayAt({c('removed')}, to) == 1 ? '#2c3540' : '')",
-                       'highlightExpr': edge_now}},
+                       'highlightExpr': edge_now,
+                       # A counted edge still in the tree is thick; once (from its smaller end) it carries both ends'
+                       # degrees, so a leaf's edge reads 1 at one end.
+                       'widthExpr': f"({tree_live}) ? 2.6 : 1.2",
+                       'labelExpr': f"({tree_live}) and idx < to ? concat(arrayAt({c('degree')}, idx), ' · ', arrayAt({c('degree')}, to)) : ''"}},
         # While counting: adj[u] and adj[v] as they fill, the neighbour just appended lit.
         *[{'id': f'adj-{w}', 'type': 'array', 'label': f'adj[{w}]', 'codeSymbol': f'adj[{w}]', 'labelSide': 'left',
            'origin': [6.6, y, 0], 'cellSize': 1.15, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
@@ -2101,6 +2113,230 @@ DFS gives **5, 4, 2, 1, 0, 3** and Kahn gives **4, 5, 1, 2, 0, 3**: both have ev
                'table': 'topo_kahn', 'trace': ktrace, 'elements': kahn}])
 
 
+# ── 9. Union-find: edges arrive one by one; each node points to a parent, and the parent pointers form a forest ──
+UF_SOURCE = """def count_groups(n, edges):
+    parent = list(range(n))  # each node starts as its own root
+    rank = [0] * n
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])  # path compression
+        return parent[x]
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return False  # already connected: the edge closes a cycle
+        if rank[ra] < rank[rb]:
+            ra, rb = rb, ra
+        parent[rb] = ra  # the shorter tree goes under the taller
+        if rank[ra] == rank[rb]:
+            rank[ra] += 1
+        return True
+
+    groups = n
+    for a, b in edges:
+        if union(a, b):
+            groups -= 1
+    return groups"""
+UF_N = 9
+UF_EDGES = [(0, 1), (2, 3), (0, 2), (4, 5), (5, 6), (3, 1), (6, 3), (7, 6)]
+UF_POS = [(-6.0, 3.6), (-4.4, 3.6), (-6.0, 2.0), (-4.4, 2.0), (-2.8, 3.6), (-1.2, 3.6), (-2.8, 2.0), (-2.8, 0.5), (-1.2, 0.5)]
+UF_PALETTE = ['#6ea8e0', '#e5a65c', '#77bfae', '#e67db0', '#b39ddb', '#d4c86a', '#7fc8e8', '#e0896e', '#a3b86c']
+UF_ROW, UF_X0, UF_DX = (3.9, 2.5, 1.1), 0.8, 0.95
+
+
+def uf_forest(parent):
+    """Where each node sits in the parent-pointer forest: roots on the top row in index order, each child a row
+    below its parent, every tree as wide as its leaves."""
+    kids = [[] for _ in parent]
+    for i, p in enumerate(parent):
+        if p != i: kids[p].append(i)
+    width = lambda i: max(1, sum(width(k) for k in kids[i]))
+    xs, ys = [0.0] * len(parent), [0.0] * len(parent)
+    def place(i, left, depth):
+        xs[i] = UF_X0 + (left + (width(i) - 1) / 2) * UF_DX
+        ys[i] = UF_ROW[min(depth, len(UF_ROW) - 1)]
+        for k in kids[i]:
+            place(k, left, depth + 1); left += width(k)
+    left = 0
+    for r in (i for i, p in enumerate(parent) if p == i):
+        place(r, left, 0); left += width(r)
+    return xs, ys
+
+
+def uf_trace():
+    """count_groups on UF_EDGES. Per frame: parent, rank, groups; ei (the edge being processed), a, b; x and path (the
+    find calls waiting, their arguments) with calls (their call-site lines, for the Code panel's call arrows); ra, rb;
+    changed (the node whose pointer just moved); merged and redundant (edges as [a, b]); root (each node's group root,
+    for its colour); fx, fy (forest layout); checkText; result."""
+    L = lambda t: line_of(UF_SOURCE, t)
+    st = {'parent': list(range(UF_N)), 'rank': [0] * UF_N, 'groups': '—', 'ei': -1, 'a': -1, 'b': -1, 'x': -1, 'path': [], 'calls': [],
+          'ra': -1, 'rb': -1, 'changed': -1, 'merged': [], 'redundant': [], 'root': list(range(UF_N)), 'fx': [], 'fy': [],
+          'checkText': 'check: —', 'result': '—'}
+    trace, emit0 = recorder(st)
+    def root_of(i):
+        while st['parent'][i] != i: i = st['parent'][i]
+        return i
+    def emit(line, message):
+        st['root'] = [root_of(i) for i in range(UF_N)]
+        st['fx'], st['fy'] = uf_forest(st['parent'])
+        emit0(line, message)
+    def setp(i, v): st['parent'] = [v if j == i else p for j, p in enumerate(st['parent'])]
+
+    emit(L('parent = list(range(n))'), f'Every node is its own root: {UF_N} groups of one.')
+    emit(L('rank = [0] * n'), 'rank bounds each tree\'s height; every tree starts at height 0.')
+
+    def find(x, site):
+        st['path'] = st['path'] + [x]; st['calls'] = st['calls'] + [site]; st['x'] = x
+        p = st['parent'][x]
+        if p == x:
+            emit(L('if parent[x] != x'), f'parent[{x}] = {x}: {x} is a root. find returns {x}.')
+            r = x
+        else:
+            emit(L('if parent[x] != x'), f'parent[{x}] = {p}: not a root. Ask {p} for the root.')
+            r = find(p, L('parent[x] = find(parent[x])'))
+            st['x'] = x
+            if p != r:
+                setp(x, r); st['changed'] = x
+                emit(L('parent[x] = find(parent[x])'), f'Path compression: {x} now points straight at the root {r}, skipping {p}.')
+                st['changed'] = -1
+            else:
+                emit(L('return parent[x]'), f'{x}\'s parent {p} is the root. find returns {r}.')
+        st['path'] = st['path'][:-1]; st['calls'] = st['calls'][:-1]
+        st['x'] = st['path'][-1] if st['path'] else -1
+        return r
+
+    st['groups'] = UF_N
+    emit(L('groups = n'), f'groups = {UF_N}: no edge has joined anything yet.')
+    for ei, (a, b) in enumerate(UF_EDGES):
+        st.update(ei=ei, a=a, b=b, ra=-1, rb=-1, checkText='check: —')
+        emit(L('for a, b in edges'), f'Edge {a} – {b} arrives.')
+        site = L('ra, rb = find(a), find(b)')
+        ra = find(a, site); st['ra'] = ra
+        rb = find(b, site); st['rb'] = rb
+        emit(L('ra, rb = find(a), find(b)'), f'{a}\'s root is {ra}; {b}\'s root is {rb}.')
+        if ra == rb:
+            st['checkText'] = f'ra = rb = {ra}: already connected'
+            emit(L('if ra == rb'), f'Both are in {ra}\'s group already: the edge closes a cycle.')
+            st['redundant'] = st['redundant'] + [[a, b]]
+            emit(L('return False  # already'), f'{a} – {b} is redundant: nothing to merge. groups stays {st["groups"]}.')
+            continue
+        st['checkText'] = f'ra = {ra}, rb = {rb}: different groups'
+        emit(L('if ra == rb'), 'Different roots: two groups to merge.')
+        rk = st['rank']
+        emit(L('if rank[ra] < rank[rb]'), f'rank[{ra}] = {rk[ra]}, rank[{rb}] = {rk[rb]}: ' + ('swap, so ra is the taller tree.' if rk[ra] < rk[rb] else 'ra is at least as tall.'))
+        if rk[ra] < rk[rb]:
+            ra, rb = rb, ra; st.update(ra=ra, rb=rb)
+            emit(L('ra, rb = rb, ra'), f'Now ra = {ra}, rb = {rb}.')
+        setp(rb, ra); st['changed'] = rb
+        st['merged'] = st['merged'] + [[a, b]]
+        emit(L('parent[rb] = ra'), f'Link root {rb} under {ra}: one group now.')
+        st['changed'] = -1
+        if st['rank'][ra] == st['rank'][rb]:
+            st['rank'] = [r + 1 if j == ra else r for j, r in enumerate(st['rank'])]
+            emit(L('rank[ra] += 1'), f'Equal heights, so the joined tree is one taller: rank[{ra}] = {st["rank"][ra]}.')
+        st['groups'] -= 1; st['checkText'] = 'check: —'
+        emit(L('groups -= 1'), f'Two groups became one: groups = {st["groups"]}.')
+    st.update(ei=-1, a=-1, b=-1, ra=-1, rb=-1, result=str(st['groups']))
+    emit(L('return groups'), f'{st["groups"]} groups: {{0, 1, 2, 3, 4, 5, 6, 7}} and {{8}}, which no edge touched.')
+    return trace
+
+
+def uf_sections():
+    S = lambda *a, **k: section(UF_SOURCE, *a, **k)
+    return [
+        S('u-init', 'Every node its own root', 'def count_groups(', 'rank = [0] * n',
+          hint='Each node points at itself: n groups of one, every tree of height 0.'),
+        S('u-find', 'find: follow parents to the root, then point straight at it', 'def find(x)', 'return parent[x]',
+          hint='A root points at itself; anything else asks its parent, and on the way back points directly at the root.',
+          prompt='Explain how find reaches the root, and why pointing every node on the way straight at the root makes later finds faster.'),
+        S('u-same', 'union: same root means already connected', 'def union(a, b)', 'return False',
+          hint='Find both roots; if they are the same, the two are in one group already and the edge closes a cycle.'),
+        S('u-link', 'Link the shorter tree under the taller', 'if rank[ra] < rank[rb]', 'return True', 'def union(a, b)',
+          hint='Hang the shorter tree\'s root under the taller one\'s, so trees stay shallow; equal heights grow by one.',
+          prompt='Explain why linking by rank keeps every tree\'s height at most log n, and what would happen if roots were linked the other way.'),
+        S('u-count', 'Each merge removes one group', 'groups = n', 'return groups',
+          hint='Start with n groups; every edge that joins two different groups leaves one fewer.'),
+    ]
+
+
+def uf_scene(header):
+    trace = uf_trace()
+    L = lambda t: line_of(UF_SOURCE, t)
+    c = tr
+    group = lambda i: f"dataTable('ufPalette', arrayAt({c('root')}, {i}), 'c')"
+    cur = f"idx == {c('a')} and to == {c('b')}"
+    merged = f"keyIndex({c('merged')}, [idx, to]) >= 0"
+    redundant = f"keyIndex({c('redundant')}, [idx, to]) >= 0"
+    adj = [[b for a, b in UF_EDGES if a == i] for i in range(UF_N)]
+    node = {'nodeShape': 'rect', 'nodeWidth': 0.72, 'nodeHeight': 0.72, 'nodeCornerRadius': 0.36, 'valueLabel': 'inside', 'showIndices': False}
+    elements = [
+        {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(UF_N), 'valueExpr': 'idx', **node,
+         'positionExpr': ["dataTable('ufNodes', idx, 'x')", "dataTable('ufNodes', idx, 'y')", '0'],
+         # Each node takes its group's colour; edges still to come are faint.
+         'colorExpr': group('idx'),
+         'connectTo': {'indexExpr': "dataTable('ufNodes', idx, 'adj')", 'pinned': True, 'arrow': False, 'color': '#323a45',
+                       'colorExpr': f"{cur} ? '{GOLD}' : ({redundant} ? '#e06c75' : ({merged} ? {group('idx')} : ''))",
+                       'highlightExpr': f"{cur} or {redundant}",
+                       'widthExpr': f"{cur} or {merged} or {redundant} ? 2.4 : 1"}},
+        {'id': 'forest', 'type': 'graph', 'label': 'parent pointers', 'lengthExpr': str(UF_N), 'valueExpr': 'idx', **node,
+         'positionExpr': [f"arrayAt({c('fx')}, idx)", f"arrayAt({c('fy')}, idx)", '0'],
+         'colorExpr': f"idx == {c('x')} ? '{GOLD}' : {group('idx')}",
+         # Each node's arrow points at its parent; a root points at itself and draws none.
+         'connectTo': {'indexExpr': f"arrayAt({c('parent')}, idx) == idx ? -1 : arrayAt({c('parent')}, idx)", 'pinned': True, 'arrow': True,
+                       'color': '#8aa0b8', 'colorExpr': f"idx == {c('changed')} ? '{GOLD}' : ''", 'highlightExpr': f"idx == {c('changed')}"}},
+        *[{'id': f'title-{k}', 'type': 'text', 'text': t, 'position': [x, 4.7, 0], 'color': '#8aa0b8', 'fontSize': 13}
+          for k, (t, x) in enumerate([('edges arrive', -3.6), ('parent pointers: a forest of roots', 4.6)])],
+        {'id': 'parent', 'type': 'array', 'label': 'parent', 'codeSymbol': 'parent', 'labelSide': 'left', 'origin': [-2.3, -1.2, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(UF_N), 'valueExpr': f"arrayAt({c('parent')}, idx)",
+         'colorExpr': group('idx'), 'highlightExpr': f"idx == {c('changed')} or idx == {c('x')}"},
+        {'id': 'rank', 'type': 'array', 'label': 'rank', 'codeSymbol': 'rank', 'labelSide': 'left', 'origin': [-2.3, -2.5, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(UF_N), 'valueExpr': f"arrayAt({c('rank')}, idx)",
+         'highlightExpr': f"idx == {c('ra')} and {c('line')} == {L('rank[ra] += 1')}"},
+        {'id': 'edges', 'type': 'array', 'label': 'edges', 'codeSymbol': 'edges', 'labelSide': 'left', 'origin': [-2.3, -3.8, 0], 'cellSize': 1.15,
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'string', 'lengthExpr': str(len(UF_EDGES)),
+         'valueExpr': "dataTable('ufEdges', idx, 'name')",
+         'colorExpr': f"keyIndex({c('redundant')}, dataTable('ufEdges', idx, 'pair')) >= 0 ? '#e06c75' : "
+                      f"(keyIndex({c('merged')}, dataTable('ufEdges', idx, 'pair')) >= 0 ? '#77bfae' : '')",
+         'highlightExpr': f"idx == {c('ei')}"},
+        {'id': 'stack', 'type': 'stack', 'arrayLayout': 'horizontal', 'label': 'find', 'origin': [6.0, -0.1, 0], 'cellSize': 0.95,
+         'showTop': False, 'containerColor': '#e67db0', 'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0',
+         'lengthExpr': f"arrayCount({c('path')})", 'valueExpr': f"arrayAt({c('path')}, idx)", 'highlightExpr': f"idx == arrayCount({c('path')}) - 1"},
+        label('a', f"{c('a')} < 0 ? 'a: —' : concat('a = ', {c('a')})", ['graph', c('a')], L('for a, b in edges'), 'union-find'),
+        label('b', f"{c('b')} < 0 ? 'b: —' : concat('b = ', {c('b')})", ['graph', c('b')], L('for a, b in edges'), 'union-find'),
+        label('x', f"{c('x')} < 0 ? 'x: —' : concat('x = ', {c('x')})", ['forest', c('x')], L('def find(x)'), 'union-find'),
+        {**label('parent-x', f"{c('x')} < 0 ? 'parent[x]: —' : concat('parent[', {c('x')}, '] = ', arrayAt({c('parent')}, {c('x')}))",
+                 ['parent', c('x')], L('if parent[x] != x'), 'union-find'), 'highlightExpr': f"{c('x')} >= 0"},
+        label('ra', f"{c('ra')} < 0 ? 'ra: —' : concat('ra = ', {c('ra')})", ['forest', c('ra')], L('ra, rb = find(a), find(b)'), 'union-find'),
+        label('rb', f"{c('rb')} < 0 ? 'rb: —' : concat('rb = ', {c('rb')})", ['forest', c('rb')], L('ra, rb = find(a), find(b)'), 'union-find'),
+        {**label('check', c('checkText'), None, L('if ra == rb'), 'union-find'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        label('groups', f"concat('groups = ', {c('groups')})", None, L('groups -= 1'), 'union-find'),
+        label('result', f"concat('result: ', {c('result')})", None, L('return groups'), 'union-find'),
+    ]
+    return run_scene('union-find', 'Group as edges arrive (union-find)', header, """**Signal:** connectivity that grows edge by edge: counting groups, "are these two connected?", a redundant edge, merging accounts.
+
+Union-find keeps a **group label that can merge**. Every node points to a **parent**; following parents ends at the group's **root**, a node that points at itself. Two nodes are connected exactly when they reach the same root. The left shows the graph as its edges arrive; the right shows the parent pointers, a **forest** with one tree per group and its root on top.
+
+- **find(x)** follows parents up to the root. On the way back it points every node it passed **straight at the root** (path compression), so the next find is one hop.
+- **union(a, b)** finds both roots. The same root means a and b are already connected: the edge closes a **cycle** (drawn red). Different roots: hang one root under the other, and two groups become one.
+
+**Union by rank** hangs the **shorter** tree under the taller one, so no tree grows taller than log n; equal heights grow by one. Watch 3 → 2 → 0: when edge 3 – 1 arrives, find(3) climbs two hops and then points 3 straight at 0. Edge 3 – 1 itself is redundant: 3 and 1 already share root 0.
+
+Counting is free: start with n groups and subtract one per successful union. Here 9 nodes and 7 merges leave **2 groups**; node 8 never meets an edge.
+
+**Cost:** with both tricks, about O(α(n)) per operation, effectively constant. No traversal is repeated as edges arrive.
+
+**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components.""",
+        'Explain how parent pointers represent groups, why path compression and union by rank keep the trees flat, and how an edge whose ends share a root closes a cycle. Ask the learner to predict each find\'s root and which edge will be redundant.',
+        'union_find.py', UF_SOURCE, trace, elements,
+        sections=uf_sections(), call_entry=line_of(UF_SOURCE, 'def find(x)'),
+        data={'ufNodes': [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(UF_POS, adj)],
+              'ufEdges': [{'name': f'{a}–{b}', 'pair': [a, b]} for a, b in UF_EDGES],
+              'ufPalette': [{'c': col} for col in UF_PALETTE]},
+        first={'title': 'Merge groups as edges arrive', 'description': 'find climbs to the root; union links two roots.'})
+
+
 def code_sections(scene_id):
     """The teaching structure of each scene's code file (cycle.py has its own, cycle_sections)."""
     if scene_id == 'representations':
@@ -2186,7 +2422,8 @@ def code_sections(scene_id):
 # ── One scene per algorithm: a built one where there is a builder, else a placeholder ──
 codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
-         'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene}
+         'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene,
+         'union-find': uf_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:

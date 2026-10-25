@@ -2316,9 +2316,17 @@ function paintCellLinks() {
 			t.setAttribute("x", String(at.x));
 			t.setAttribute("y", String(at.y));
 			t.setAttribute("class", "cell-link-label");
-			t.setAttribute("fill", color);
 			t.textContent = text;
-			set.svg.append(t);
+			const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+			pill.setAttribute("class", "cell-link-label-pill");
+			pill.setAttribute("stroke", color);
+			set.svg.append(pill, t);
+			const box = t.getBBox(), padX = 4, padY = 1.5;
+			pill.setAttribute("x", String(box.x - padX));
+			pill.setAttribute("y", String(box.y - padY));
+			pill.setAttribute("width", String(box.width + 8));
+			pill.setAttribute("height", String(box.height + 2 * padY));
+			pill.setAttribute("rx", String((box.height + 2 * padY) / 2));
 		}
 	}
 }
@@ -25121,6 +25129,10 @@ var CODE_PROMPTS = [
 	{
 		label: "Complexity of this function only",
 		prompt: "What are the runtime and space complexity of only the function that contains the selected code, not counting its callers?"
+	},
+	{
+		label: "Can you write it in a more optimal way?",
+		prompt: "Can this code be written in a more optimal way? If it can, give the improved version, say what it changes, and compare its runtime and space complexity with the current one. If it is already optimal, say why: the lower bound it meets. Keep its behaviour and output the same."
 	}
 ];
 /** The `def` enclosing a line (1-based): the nearest one above it, indented less than the line, or null. */
@@ -25144,9 +25156,14 @@ function enclosingFunction(source, line) {
 /** The message for one prompt: the request, then the code and the state it is about. */
 function codePromptMessage(prompt, c) {
 	const fn = enclosingFunction(c.source, c.first);
-	const numbered = c.source.split("\n").map((text, i) => `${String(i + 1).padStart(3)}  ${text}`).join("\n");
+	const lines = c.source.split("\n");
+	const number = (text, i) => `${String(i + 1).padStart(3)}  ${text}`;
+	const numbered = lines.map(number).join("\n");
+	const active = c.active && (c.active.from > 1 || c.active.to < lines.length) ? c.active : null;
+	const owner = active ? enclosingFunction(c.source, active.from) : null;
 	return [
 		prompt.prompt,
+		...active ? [`Answer only for the active code: lines ${active.from}–${active.to}${owner ? `, ${owner.name}()` : ""}. The rest of the file is context; do not analyze, count or include it in the answer.`, `Active code:\n${lines.slice(active.from - 1, active.to).map((text, i) => number(text, active.from - 1 + i)).join("\n")}`] : [],
 		"",
 		`File: ${c.path} (shown, not executed)`,
 		`Selected: ${c.first === c.last ? `line ${c.first}` : `lines ${c.first}–${c.last}`}${fn ? `, inside ${fn.name}() (line ${fn.line})` : ""}`,
@@ -25156,7 +25173,7 @@ function codePromptMessage(prompt, c) {
 		`Calls waiting to return (call-site lines, outermost first): ${c.waitingCalls.length ? c.waitingCalls.join(", ") : "none"}`,
 		`Scene: ${c.scene}, step ${c.step}`,
 		`Scalar variables: ${JSON.stringify(c.values)}`,
-		`Full source:\n${numbered}`
+		`${active ? "Full source (context only)" : "Full source"}:\n${numbered}`
 	].join("\n");
 }
 //#endregion
@@ -25817,10 +25834,11 @@ function setupCodePanel() {
 	}
 	function codeMessage(prompt) {
 		if (!selected || !first) return null;
-		return codeMessageFor(prompt, first, last, excerpt);
+		const active = inlineScope(selected.source, lastLines) ?? inlineScope(selected.source, /* @__PURE__ */ new Set([first]));
+		return codeMessageFor(prompt, first, last, excerpt, active);
 	}
 	/** A prompt about lines from–to of the open file, with the state and the file's structure. */
-	function codeMessageFor(prompt, from, to, text) {
+	function codeMessageFor(prompt, from, to, text, active) {
 		const file = selected, scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
 		const sections = codeSections(file);
 		return codePromptMessage(prompt, {
@@ -25834,7 +25852,8 @@ function setupCodePanel() {
 			scene: scene?.title ?? "",
 			step: state.currentStepIndex + 1,
 			values: Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value])),
-			...sections.length ? { sections: sectionsOutline(sections) } : {}
+			...sections.length ? { sections: sectionsOutline(sections) } : {},
+			...active ? { active } : {}
 		});
 	}
 	function renderLineActions() {

@@ -6081,6 +6081,6 @@ body:has(.push-array) #legend { display: none; }
 .code-view-watch button { border: 0; background: none; color: var(--muted-color); cursor: pointer; padding: 0 2px; }
 .code-view-watch button:hover { color: #e0645c; }
 
-/* A link's label (connectTo labelExpr): small, at the curve's midpoint, haloed so it reads over the line. */
-.cell-link-label { font: 600 10px ui-monospace, monospace; text-anchor: middle; dominant-baseline: central;
-    paint-order: stroke; stroke: var(--page-bg, #111); stroke-width: 3px; stroke-linejoin: round; }
+/* A link's label (connectTo labelExpr): small text in a dark pill at the curve's midpoint, edged in the link's colour. */
+.cell-link-label { font: 600 10px ui-monospace, monospace; text-anchor: middle; dominant-baseline: central; fill: var(--text-color, #e8e6da); }
+.cell-link-label-pill { fill: var(--panel-bg, #15181d); fill-opacity: .92; stroke-width: 1; }

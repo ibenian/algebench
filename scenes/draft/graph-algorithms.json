@@ -1120,6 +1120,109 @@
         {"line": 30, "scene": "topological-sort", "step": "kahn", "snapshot": 49, "label": "Kahn: take what waits for nothing · Nothing is left waiting."},
         {"line": 37, "scene": "topological-sort", "step": "kahn", "snapshot": 50, "label": "Kahn: take what waits for nothing · All 6 placed: 4, 5, 1, 2, 0, 3. A different order from the DFS one, and just as valid: every arrow points forward."}
       ]
+    },
+    {
+      "id": "union-find",
+      "path": "graphs/union_find.py",
+      "language": "python",
+      "source": "def count_groups(n, edges):\n    parent = list(range(n))  # each node starts as its own root\n    rank = [0] * n\n\n    def find(x):\n        if parent[x] != x:\n            parent[x] = find(parent[x])  # path compression\n        return parent[x]\n\n    def union(a, b):\n        ra, rb = find(a), find(b)\n        if ra == rb:\n            return False  # already connected: the edge closes a cycle\n        if rank[ra] < rank[rb]:\n            ra, rb = rb, ra\n        parent[rb] = ra  # the shorter tree goes under the taller\n        if rank[ra] == rank[rb]:\n            rank[ra] += 1\n        return True\n\n    groups = n\n    for a, b in edges:\n        if union(a, b):\n            groups -= 1\n    return groups",
+      "sections": [
+        {"id": "u-init", "title": "Every node its own root", "from": 1, "to": 3, "hint": "Each node points at itself: n groups of one, every tree of height 0."},
+        {"id": "u-find", "title": "find: follow parents to the root, then point straight at it", "from": 5, "to": 8, "hint": "A root points at itself; anything else asks its parent, and on the way back points directly at the root.", "prompt": "Explain how find reaches the root, and why pointing every node on the way straight at the root makes later finds faster."},
+        {"id": "u-same", "title": "union: same root means already connected", "from": 10, "to": 13, "hint": "Find both roots; if they are the same, the two are in one group already and the edge closes a cycle."},
+        {"id": "u-link", "title": "Link the shorter tree under the taller", "from": 14, "to": 19, "hint": "Hang the shorter tree's root under the taller one's, so trees stay shallow; equal heights grow by one.", "prompt": "Explain why linking by rank keeps every tree's height at most log n, and what would happen if roots were linked the other way."},
+        {"id": "u-count", "title": "Each merge removes one group", "from": 21, "to": 25, "hint": "Start with n groups; every edge that joins two different groups leaves one fewer."}
+      ],
+      "locations": [
+        {"line": 2, "scene": "union-find", "step": "run", "snapshot": 0, "label": "Group as edges arrive (union-find) · Every node is its own root: 9 groups of one."},
+        {"line": 3, "scene": "union-find", "step": "run", "snapshot": 1, "label": "Group as edges arrive (union-find) · rank bounds each tree's height; every tree starts at height 0."},
+        {"line": 21, "scene": "union-find", "step": "run", "snapshot": 2, "label": "Group as edges arrive (union-find) · groups = 9: no edge has joined anything yet."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 3, "label": "Group as edges arrive (union-find) · Edge 0 – 1 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 4, "label": "Group as edges arrive (union-find) · parent[0] = 0: 0 is a root. find returns 0."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 5, "label": "Group as edges arrive (union-find) · parent[1] = 1: 1 is a root. find returns 1."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 6, "label": "Group as edges arrive (union-find) · 0's root is 0; 1's root is 1."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 7, "label": "Group as edges arrive (union-find) · Different roots: two groups to merge."},
+        {"line": 14, "scene": "union-find", "step": "run", "snapshot": 8, "label": "Group as edges arrive (union-find) · rank[0] = 0, rank[1] = 0: ra is at least as tall."},
+        {"line": 16, "scene": "union-find", "step": "run", "snapshot": 9, "label": "Group as edges arrive (union-find) · Link root 1 under 0: one group now."},
+        {"line": 18, "scene": "union-find", "step": "run", "snapshot": 10, "label": "Group as edges arrive (union-find) · Equal heights, so the joined tree is one taller: rank[0] = 1."},
+        {"line": 24, "scene": "union-find", "step": "run", "snapshot": 11, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 8."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 12, "label": "Group as edges arrive (union-find) · Edge 2 – 3 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 13, "label": "Group as edges arrive (union-find) · parent[2] = 2: 2 is a root. find returns 2."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 14, "label": "Group as edges arrive (union-find) · parent[3] = 3: 3 is a root. find returns 3."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 15, "label": "Group as edges arrive (union-find) · 2's root is 2; 3's root is 3."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 16, "label": "Group as edges arrive (union-find) · Different roots: two groups to merge."},
+        {"line": 14, "scene": "union-find", "step": "run", "snapshot": 17, "label": "Group as edges arrive (union-find) · rank[2] = 0, rank[3] = 0: ra is at least as tall."},
+        {"line": 16, "scene": "union-find", "step": "run", "snapshot": 18, "label": "Group as edges arrive (union-find) · Link root 3 under 2: one group now."},
+        {"line": 18, "scene": "union-find", "step": "run", "snapshot": 19, "label": "Group as edges arrive (union-find) · Equal heights, so the joined tree is one taller: rank[2] = 1."},
+        {"line": 24, "scene": "union-find", "step": "run", "snapshot": 20, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 7."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 21, "label": "Group as edges arrive (union-find) · Edge 0 – 2 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 22, "label": "Group as edges arrive (union-find) · parent[0] = 0: 0 is a root. find returns 0."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 23, "label": "Group as edges arrive (union-find) · parent[2] = 2: 2 is a root. find returns 2."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 24, "label": "Group as edges arrive (union-find) · 0's root is 0; 2's root is 2."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 25, "label": "Group as edges arrive (union-find) · Different roots: two groups to merge."},
+        {"line": 14, "scene": "union-find", "step": "run", "snapshot": 26, "label": "Group as edges arrive (union-find) · rank[0] = 1, rank[2] = 1: ra is at least as tall."},
+        {"line": 16, "scene": "union-find", "step": "run", "snapshot": 27, "label": "Group as edges arrive (union-find) · Link root 2 under 0: one group now."},
+        {"line": 18, "scene": "union-find", "step": "run", "snapshot": 28, "label": "Group as edges arrive (union-find) · Equal heights, so the joined tree is one taller: rank[0] = 2."},
+        {"line": 24, "scene": "union-find", "step": "run", "snapshot": 29, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 6."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 30, "label": "Group as edges arrive (union-find) · Edge 4 – 5 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 31, "label": "Group as edges arrive (union-find) · parent[4] = 4: 4 is a root. find returns 4."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 32, "label": "Group as edges arrive (union-find) · parent[5] = 5: 5 is a root. find returns 5."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 33, "label": "Group as edges arrive (union-find) · 4's root is 4; 5's root is 5."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 34, "label": "Group as edges arrive (union-find) · Different roots: two groups to merge."},
+        {"line": 14, "scene": "union-find", "step": "run", "snapshot": 35, "label": "Group as edges arrive (union-find) · rank[4] = 0, rank[5] = 0: ra is at least as tall."},
+        {"line": 16, "scene": "union-find", "step": "run", "snapshot": 36, "label": "Group as edges arrive (union-find) · Link root 5 under 4: one group now."},
+        {"line": 18, "scene": "union-find", "step": "run", "snapshot": 37, "label": "Group as edges arrive (union-find) · Equal heights, so the joined tree is one taller: rank[4] = 1."},
+        {"line": 24, "scene": "union-find", "step": "run", "snapshot": 38, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 5."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 39, "label": "Group as edges arrive (union-find) · Edge 5 – 6 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 40, "label": "Group as edges arrive (union-find) · parent[5] = 4: not a root. Ask 4 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 41, "label": "Group as edges arrive (union-find) · parent[4] = 4: 4 is a root. find returns 4."},
+        {"line": 8, "scene": "union-find", "step": "run", "snapshot": 42, "label": "Group as edges arrive (union-find) · 5's parent 4 is the root. find returns 4."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 43, "label": "Group as edges arrive (union-find) · parent[6] = 6: 6 is a root. find returns 6."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 44, "label": "Group as edges arrive (union-find) · 5's root is 4; 6's root is 6."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 45, "label": "Group as edges arrive (union-find) · Different roots: two groups to merge."},
+        {"line": 14, "scene": "union-find", "step": "run", "snapshot": 46, "label": "Group as edges arrive (union-find) · rank[4] = 1, rank[6] = 0: ra is at least as tall."},
+        {"line": 16, "scene": "union-find", "step": "run", "snapshot": 47, "label": "Group as edges arrive (union-find) · Link root 6 under 4: one group now."},
+        {"line": 24, "scene": "union-find", "step": "run", "snapshot": 48, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 4."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 49, "label": "Group as edges arrive (union-find) · Edge 3 – 1 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 50, "label": "Group as edges arrive (union-find) · parent[3] = 2: not a root. Ask 2 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 51, "label": "Group as edges arrive (union-find) · parent[2] = 0: not a root. Ask 0 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 52, "label": "Group as edges arrive (union-find) · parent[0] = 0: 0 is a root. find returns 0."},
+        {"line": 8, "scene": "union-find", "step": "run", "snapshot": 53, "label": "Group as edges arrive (union-find) · 2's parent 0 is the root. find returns 0."},
+        {"line": 7, "scene": "union-find", "step": "run", "snapshot": 54, "label": "Group as edges arrive (union-find) · Path compression: 3 now points straight at the root 0, skipping 2."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 55, "label": "Group as edges arrive (union-find) · parent[1] = 0: not a root. Ask 0 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 56, "label": "Group as edges arrive (union-find) · parent[0] = 0: 0 is a root. find returns 0."},
+        {"line": 8, "scene": "union-find", "step": "run", "snapshot": 57, "label": "Group as edges arrive (union-find) · 1's parent 0 is the root. find returns 0."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 58, "label": "Group as edges arrive (union-find) · 3's root is 0; 1's root is 0."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 59, "label": "Group as edges arrive (union-find) · Both are in 0's group already: the edge closes a cycle."},
+        {"line": 13, "scene": "union-find", "step": "run", "snapshot": 60, "label": "Group as edges arrive (union-find) · 3 – 1 is redundant: nothing to merge. groups stays 4."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 61, "label": "Group as edges arrive (union-find) · Edge 6 – 3 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 62, "label": "Group as edges arrive (union-find) · parent[6] = 4: not a root. Ask 4 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 63, "label": "Group as edges arrive (union-find) · parent[4] = 4: 4 is a root. find returns 4."},
+        {"line": 8, "scene": "union-find", "step": "run", "snapshot": 64, "label": "Group as edges arrive (union-find) · 6's parent 4 is the root. find returns 4."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 65, "label": "Group as edges arrive (union-find) · parent[3] = 0: not a root. Ask 0 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 66, "label": "Group as edges arrive (union-find) · parent[0] = 0: 0 is a root. find returns 0."},
+        {"line": 8, "scene": "union-find", "step": "run", "snapshot": 67, "label": "Group as edges arrive (union-find) · 3's parent 0 is the root. find returns 0."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 68, "label": "Group as edges arrive (union-find) · 6's root is 4; 3's root is 0."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 69, "label": "Group as edges arrive (union-find) · Different roots: two groups to merge."},
+        {"line": 14, "scene": "union-find", "step": "run", "snapshot": 70, "label": "Group as edges arrive (union-find) · rank[4] = 1, rank[0] = 2: swap, so ra is the taller tree."},
+        {"line": 15, "scene": "union-find", "step": "run", "snapshot": 71, "label": "Group as edges arrive (union-find) · Now ra = 0, rb = 4."},
+        {"line": 16, "scene": "union-find", "step": "run", "snapshot": 72, "label": "Group as edges arrive (union-find) · Link root 4 under 0: one group now."},
+        {"line": 24, "scene": "union-find", "step": "run", "snapshot": 73, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 3."},
+        {"line": 22, "scene": "union-find", "step": "run", "snapshot": 74, "label": "Group as edges arrive (union-find) · Edge 7 – 6 arrives."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 75, "label": "Group as edges arrive (union-find) · parent[7] = 7: 7 is a root. find returns 7."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 76, "label": "Group as edges arrive (union-find) · parent[6] = 4: not a root. Ask 4 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 77, "label": "Group as edges arrive (union-find) · parent[4] = 0: not a root. Ask 0 for the root."},
+        {"line": 6, "scene": "union-find", "step": "run", "snapshot": 78, "label": "Group as edges arrive (union-find) · parent[0] = 0: 0 is a root. find returns 0."},
+        {"line": 8, "scene": "union-find", "step": "run", "snapshot": 79, "label": "Group as edges arrive (union-find) · 4's parent 0 is the root. find returns 0."},
+        {"line": 7, "scene": "union-find", "step": "run", "snapshot": 80, "label": "Group as edges arrive (union-find) · Path compression: 6 now points straight at the root 0, skipping 4."},
+        {"line": 11, "scene": "union-find", "step": "run", "snapshot": 81, "label": "Group as edges arrive (union-find) · 7's root is 7; 6's root is 0."},
+        {"line": 12, "scene": "union-find", "step": "run", "snapshot": 82, "label": "Group as edges arrive (union-find) · Different roots: two groups to merge."},
+        {"line": 14, "scene": "union-find", "step": "run", "snapshot": 83, "label": "Group as edges arrive (union-find) · rank[7] = 0, rank[0] = 2: swap, so ra is the taller tree."},
+        {"line": 15, "scene": "union-find", "step": "run", "snapshot": 84, "label": "Group as edges arrive (union-find) · Now ra = 0, rb = 7."},
+        {"line": 16, "scene": "union-find", "step": "run", "snapshot": 85, "label": "Group as edges arrive (union-find) · Link root 7 under 0: one group now."},
+        {"line": 24, "scene": "union-find", "step": "run", "snapshot": 86, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 2."},
+        {"line": 25, "scene": "union-find", "step": "run", "snapshot": 87, "label": "Group as edges arrive (union-find) · 2 groups: {0, 1, 2, 3, 4, 5, 6, 7} and {8}, which no edge touched."}
+      ]
     }
   ],
   "scenes": [
@@ -4335,6 +4438,7 @@
             "b": -1,
             "indeg": [0, 0, 0, 0],
             "outdeg": [0, 0, 0, 0],
+            "counted": [],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4347,6 +4451,7 @@
             "b": -1,
             "indeg": [0, 0, 0, 0],
             "outdeg": [0, 0, 0, 0],
+            "counted": [],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4359,6 +4464,7 @@
             "b": 2,
             "indeg": [0, 0, 0, 0],
             "outdeg": [0, 0, 0, 0],
+            "counted": [],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4371,6 +4477,7 @@
             "b": 2,
             "indeg": [0, 0, 0, 0],
             "outdeg": [1, 0, 0, 0],
+            "counted": [],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4383,6 +4490,9 @@
             "b": 2,
             "indeg": [0, 0, 1, 0],
             "outdeg": [1, 0, 0, 0],
+            "counted": [
+              [0, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4395,6 +4505,9 @@
             "b": 2,
             "indeg": [0, 0, 1, 0],
             "outdeg": [1, 0, 0, 0],
+            "counted": [
+              [0, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4407,6 +4520,9 @@
             "b": 2,
             "indeg": [0, 0, 1, 0],
             "outdeg": [1, 1, 0, 0],
+            "counted": [
+              [0, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4419,6 +4535,10 @@
             "b": 2,
             "indeg": [0, 0, 2, 0],
             "outdeg": [1, 1, 0, 0],
+            "counted": [
+              [0, 2],
+              [1, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4431,6 +4551,10 @@
             "b": 2,
             "indeg": [0, 0, 2, 0],
             "outdeg": [1, 1, 0, 0],
+            "counted": [
+              [0, 2],
+              [1, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4443,6 +4567,10 @@
             "b": 2,
             "indeg": [0, 0, 2, 0],
             "outdeg": [1, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4455,6 +4583,11 @@
             "b": 2,
             "indeg": [0, 0, 3, 0],
             "outdeg": [1, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4467,6 +4600,11 @@
             "b": 1,
             "indeg": [0, 0, 3, 0],
             "outdeg": [1, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4479,6 +4617,11 @@
             "b": 1,
             "indeg": [0, 0, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4491,6 +4634,12 @@
             "b": 1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": -1,
             "ok": -1,
             "result": "—",
@@ -4503,6 +4652,12 @@
             "b": -1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": 0,
             "ok": -1,
             "result": "—",
@@ -4515,6 +4670,12 @@
             "b": -1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": 0,
             "ok": 0,
             "result": "—",
@@ -4527,6 +4688,12 @@
             "b": -1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": 1,
             "ok": -1,
             "result": "—",
@@ -4539,6 +4706,12 @@
             "b": -1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": 1,
             "ok": 0,
             "result": "—",
@@ -4551,6 +4724,12 @@
             "b": -1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": 2,
             "ok": -1,
             "result": "—",
@@ -4563,6 +4742,12 @@
             "b": -1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": 2,
             "ok": 1,
             "result": "—",
@@ -4575,6 +4760,12 @@
             "b": -1,
             "indeg": [0, 1, 3, 0],
             "outdeg": [2, 1, 0, 1],
+            "counted": [
+              [0, 2],
+              [1, 2],
+              [3, 2],
+              [0, 1]
+            ],
             "p": 2,
             "ok": 1,
             "result": "2",
@@ -4603,6 +4794,7 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [],
             "line": 15,
             "message": "7 empty neighbour lists."
           },
@@ -4626,6 +4818,7 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [],
             "line": 16,
             "message": "Every degree starts at 0."
           },
@@ -4649,6 +4842,7 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [],
             "line": 17,
             "message": "Edge 0–3."
           },
@@ -4672,6 +4866,7 @@
             "result": "—",
             "adjU": [3],
             "adjV": [],
+            "counted": [],
             "line": 18,
             "message": "3 is a neighbour of 0: adj[0] = [3]."
           },
@@ -4695,6 +4890,7 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0],
+            "counted": [],
             "line": 19,
             "message": "0 is a neighbour of 3: adj[3] = [0]."
           },
@@ -4718,6 +4914,7 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0],
+            "counted": [],
             "line": 20,
             "message": "degree[0] = 1."
           },
@@ -4741,6 +4938,9 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0],
+            "counted": [
+              [0, 3]
+            ],
             "line": 21,
             "message": "degree[3] = 1."
           },
@@ -4764,6 +4964,9 @@
             "result": "—",
             "adjU": [],
             "adjV": [0],
+            "counted": [
+              [0, 3]
+            ],
             "line": 17,
             "message": "Edge 1–3."
           },
@@ -4787,6 +4990,9 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0],
+            "counted": [
+              [0, 3]
+            ],
             "line": 18,
             "message": "3 is a neighbour of 1: adj[1] = [3]."
           },
@@ -4810,6 +5016,9 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0, 1],
+            "counted": [
+              [0, 3]
+            ],
             "line": 19,
             "message": "1 is a neighbour of 3: adj[3] = [0, 1]."
           },
@@ -4833,6 +5042,9 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0, 1],
+            "counted": [
+              [0, 3]
+            ],
             "line": 20,
             "message": "degree[1] = 1."
           },
@@ -4856,6 +5068,10 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0, 1],
+            "counted": [
+              [0, 3],
+              [1, 3]
+            ],
             "line": 21,
             "message": "degree[3] = 2."
           },
@@ -4879,6 +5095,10 @@
             "result": "—",
             "adjU": [],
             "adjV": [0, 1],
+            "counted": [
+              [0, 3],
+              [1, 3]
+            ],
             "line": 17,
             "message": "Edge 2–3."
           },
@@ -4902,6 +5122,10 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0, 1],
+            "counted": [
+              [0, 3],
+              [1, 3]
+            ],
             "line": 18,
             "message": "3 is a neighbour of 2: adj[2] = [3]."
           },
@@ -4925,6 +5149,10 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0, 1, 2],
+            "counted": [
+              [0, 3],
+              [1, 3]
+            ],
             "line": 19,
             "message": "2 is a neighbour of 3: adj[3] = [0, 1, 2]."
           },
@@ -4948,6 +5176,10 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0, 1, 2],
+            "counted": [
+              [0, 3],
+              [1, 3]
+            ],
             "line": 20,
             "message": "degree[2] = 1."
           },
@@ -4971,6 +5203,11 @@
             "result": "—",
             "adjU": [3],
             "adjV": [0, 1, 2],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3]
+            ],
             "line": 21,
             "message": "degree[3] = 3."
           },
@@ -4994,6 +5231,11 @@
             "result": "—",
             "adjU": [0, 1, 2],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3]
+            ],
             "line": 17,
             "message": "Edge 3–4."
           },
@@ -5017,6 +5259,11 @@
             "result": "—",
             "adjU": [0, 1, 2, 4],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3]
+            ],
             "line": 18,
             "message": "4 is a neighbour of 3: adj[3] = [0, 1, 2, 4]."
           },
@@ -5040,6 +5287,11 @@
             "result": "—",
             "adjU": [0, 1, 2, 4],
             "adjV": [3],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3]
+            ],
             "line": 19,
             "message": "3 is a neighbour of 4: adj[4] = [3]."
           },
@@ -5063,6 +5315,11 @@
             "result": "—",
             "adjU": [0, 1, 2, 4],
             "adjV": [3],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3]
+            ],
             "line": 20,
             "message": "degree[3] = 4."
           },
@@ -5086,6 +5343,12 @@
             "result": "—",
             "adjU": [0, 1, 2, 4],
             "adjV": [3],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4]
+            ],
             "line": 21,
             "message": "degree[4] = 1."
           },
@@ -5109,6 +5372,12 @@
             "result": "—",
             "adjU": [3],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4]
+            ],
             "line": 17,
             "message": "Edge 4–5."
           },
@@ -5132,6 +5401,12 @@
             "result": "—",
             "adjU": [3, 5],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4]
+            ],
             "line": 18,
             "message": "5 is a neighbour of 4: adj[4] = [3, 5]."
           },
@@ -5155,6 +5430,12 @@
             "result": "—",
             "adjU": [3, 5],
             "adjV": [4],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4]
+            ],
             "line": 19,
             "message": "4 is a neighbour of 5: adj[5] = [4]."
           },
@@ -5178,6 +5459,12 @@
             "result": "—",
             "adjU": [3, 5],
             "adjV": [4],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4]
+            ],
             "line": 20,
             "message": "degree[4] = 2."
           },
@@ -5201,6 +5488,13 @@
             "result": "—",
             "adjU": [3, 5],
             "adjV": [4],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5]
+            ],
             "line": 21,
             "message": "degree[5] = 1."
           },
@@ -5224,6 +5518,13 @@
             "result": "—",
             "adjU": [4],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5]
+            ],
             "line": 17,
             "message": "Edge 5–6."
           },
@@ -5247,6 +5548,13 @@
             "result": "—",
             "adjU": [4, 6],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5]
+            ],
             "line": 18,
             "message": "6 is a neighbour of 5: adj[5] = [4, 6]."
           },
@@ -5270,6 +5578,13 @@
             "result": "—",
             "adjU": [4, 6],
             "adjV": [5],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5]
+            ],
             "line": 19,
             "message": "5 is a neighbour of 6: adj[6] = [5]."
           },
@@ -5293,6 +5608,13 @@
             "result": "—",
             "adjU": [4, 6],
             "adjV": [5],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5]
+            ],
             "line": 20,
             "message": "degree[5] = 2."
           },
@@ -5316,6 +5638,14 @@
             "result": "—",
             "adjU": [4, 6],
             "adjV": [5],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 21,
             "message": "degree[6] = 1."
           },
@@ -5339,6 +5669,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 22,
             "message": "degree[0] = 1: a leaf, queued."
           },
@@ -5362,6 +5700,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 22,
             "message": "degree[1] = 1: a leaf, queued."
           },
@@ -5385,6 +5731,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 22,
             "message": "degree[2] = 1: a leaf, queued."
           },
@@ -5408,6 +5762,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 22,
             "message": "degree[3] = 4: not a leaf."
           },
@@ -5431,6 +5793,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 22,
             "message": "degree[4] = 2: not a leaf."
           },
@@ -5454,6 +5824,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 22,
             "message": "degree[5] = 2: not a leaf."
           },
@@ -5477,6 +5855,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 22,
             "message": "degree[6] = 1: a leaf, queued."
           },
@@ -5500,6 +5886,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 23,
             "message": "The leaves [0, 1, 2, 6] can never be a centre: a tree is tallest from them. 7 nodes remain."
           },
@@ -5523,6 +5917,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 24,
             "message": "7 remain, more than 2: peel round 1 removes every current leaf."
           },
@@ -5546,6 +5948,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 26,
             "message": "Peel leaf 0."
           },
@@ -5569,6 +5979,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 27,
             "message": "6 remain."
           },
@@ -5592,6 +6010,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 1 of 1 of 0: 3."
           },
@@ -5615,6 +6041,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "3 loses an edge: degree[3] = 3."
           },
@@ -5638,6 +6072,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[3] is 3: not a leaf."
           },
@@ -5661,6 +6103,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 26,
             "message": "Peel leaf 1."
           },
@@ -5684,6 +6134,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 27,
             "message": "5 remain."
           },
@@ -5707,6 +6165,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 1 of 1 of 1: 3."
           },
@@ -5730,6 +6196,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "3 loses an edge: degree[3] = 2."
           },
@@ -5753,6 +6227,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[3] is 2: not a leaf."
           },
@@ -5776,6 +6258,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 26,
             "message": "Peel leaf 2."
           },
@@ -5799,6 +6289,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 27,
             "message": "4 remain."
           },
@@ -5822,6 +6320,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 1 of 1 of 2: 3."
           },
@@ -5845,6 +6351,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "3 loses an edge: degree[3] = 1."
           },
@@ -5868,6 +6382,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[3] is 1: 3 has just become a leaf."
           },
@@ -5891,6 +6413,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 31,
             "message": "3 waits for the next round. leaves = [6, 3]."
           },
@@ -5914,6 +6444,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 26,
             "message": "Peel leaf 6."
           },
@@ -5937,6 +6475,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 27,
             "message": "3 remain."
           },
@@ -5960,6 +6506,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 1 of 1 of 6: 5."
           },
@@ -5983,6 +6537,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "5 loses an edge: degree[5] = 1."
           },
@@ -6006,6 +6568,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[5] is 1: 5 has just become a leaf."
           },
@@ -6029,6 +6599,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 31,
             "message": "5 waits for the next round. leaves = [3, 5]."
           },
@@ -6052,6 +6630,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 24,
             "message": "3 remain, more than 2: peel round 2 removes every current leaf."
           },
@@ -6075,6 +6661,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 26,
             "message": "Peel leaf 3."
           },
@@ -6098,6 +6692,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 27,
             "message": "2 remain."
           },
@@ -6121,6 +6723,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 1 of 4 of 3: 0."
           },
@@ -6144,6 +6754,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "0 was peeled already: its count drops to 0, and it stays out."
           },
@@ -6167,6 +6785,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[0] is 0: not a leaf."
           },
@@ -6190,6 +6816,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 2 of 4 of 3: 1."
           },
@@ -6213,6 +6847,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "1 was peeled already: its count drops to 0, and it stays out."
           },
@@ -6236,6 +6878,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[1] is 0: not a leaf."
           },
@@ -6259,6 +6909,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 3 of 4 of 3: 2."
           },
@@ -6282,6 +6940,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "2 was peeled already: its count drops to 0, and it stays out."
           },
@@ -6305,6 +6971,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[2] is 0: not a leaf."
           },
@@ -6328,6 +7002,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 4 of 4 of 3: 4."
           },
@@ -6351,6 +7033,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "4 loses an edge: degree[4] = 1."
           },
@@ -6374,6 +7064,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[4] is 1: 4 has just become a leaf."
           },
@@ -6397,6 +7095,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 31,
             "message": "4 waits for the next round. leaves = [5, 4]."
           },
@@ -6420,6 +7126,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 26,
             "message": "Peel leaf 5."
           },
@@ -6443,6 +7157,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 27,
             "message": "1 remain."
           },
@@ -6466,6 +7188,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 1 of 2 of 5: 4."
           },
@@ -6489,6 +7219,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "4 loses an edge: degree[4] = 0."
           },
@@ -6512,6 +7250,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[4] is 0: not a leaf."
           },
@@ -6535,6 +7281,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 28,
             "message": "Neighbour 2 of 2 of 5: 6."
           },
@@ -6558,6 +7312,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 29,
             "message": "6 was peeled already: its count drops to 0, and it stays out."
           },
@@ -6581,6 +7343,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 30,
             "message": "degree[6] is 0: not a leaf."
           },
@@ -6604,6 +7374,14 @@
             "result": "—",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 24,
             "message": "1 remain: stop."
           },
@@ -6627,6 +7405,14 @@
             "result": "[4]",
             "adjU": [],
             "adjV": [],
+            "counted": [
+              [0, 3],
+              [1, 3],
+              [2, 3],
+              [3, 4],
+              [4, 5],
+              [5, 6]
+            ],
             "line": 32,
             "message": "[4] is the centre: rooting the tree there gives the smallest height. Each node and edge is handled once: O(V)."
           }
@@ -6726,7 +7512,7 @@
               "valueLabel": "inside",
               "showIndices": false,
               "colorExpr": "idx == dataTable('trace', frame, 'p') ? (dataTable('trace', frame, 'ok') == 1 ? '#77bfae' : '#f1c65b') : (idx == dataTable('trace', frame, 'a') or idx == dataTable('trace', frame, 'b') ? '#f1c65b' : '')",
-              "connectTo": {"indexExpr": "dataTable('people', idx, 'out')", "pinned": true, "arrow": true, "bendExpr": "0", "color": "#7f93aa", "colorExpr": "idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b') ? '#f1c65b' : ''", "highlightExpr": "idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')"}
+              "connectTo": {"indexExpr": "dataTable('people', idx, 'out')", "pinned": true, "arrow": true, "bendExpr": "0", "color": "#7f93aa", "colorExpr": "idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b') ? '#f1c65b' : ''", "highlightExpr": "idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')", "widthExpr": "keyIndex(dataTable('trace', frame, 'counted'), [idx, to]) >= 0 ? 2.6 : 1.2", "labelExpr": "keyIndex(dataTable('trace', frame, 'counted'), [idx, to]) >= 0 ? concat(arrayAt(dataTable('trace', frame, 'indeg'), to)) : ''"}
             },
             {
               "id": "trust",
@@ -6860,7 +7646,7 @@
               "valueLabel": "inside",
               "showIndices": false,
               "colorExpr": "idx == dataTable('deg_peel', frame, 'leaf') ? '#f1c65b' : (arrayAt(dataTable('deg_peel', frame, 'removed'), idx) == 1 ? '#3b4654' : (keyIndex(dataTable('deg_peel', frame, 'leaves'), idx) >= 0 ? '#e67db0' : (idx == dataTable('deg_peel', frame, 'nb') ? '#9dbde3' : '')))",
-              "connectTo": {"indexExpr": "dataTable('treeNodes', idx, 'adj')", "pinned": true, "bendExpr": "0", "color": "#7f93aa", "colorExpr": "((idx == dataTable('deg_peel', frame, 'u') and to == dataTable('deg_peel', frame, 'v')) or (idx == dataTable('deg_peel', frame, 'v') and to == dataTable('deg_peel', frame, 'u'))) or (dataTable('deg_peel', frame, 'nb') >= 0 and ((idx == dataTable('deg_peel', frame, 'leaf') and to == dataTable('deg_peel', frame, 'nb')) or (idx == dataTable('deg_peel', frame, 'nb') and to == dataTable('deg_peel', frame, 'leaf')))) ? '#f1c65b' : (arrayAt(dataTable('deg_peel', frame, 'removed'), idx) == 1 or arrayAt(dataTable('deg_peel', frame, 'removed'), to) == 1 ? '#2c3540' : '')", "highlightExpr": "((idx == dataTable('deg_peel', frame, 'u') and to == dataTable('deg_peel', frame, 'v')) or (idx == dataTable('deg_peel', frame, 'v') and to == dataTable('deg_peel', frame, 'u'))) or (dataTable('deg_peel', frame, 'nb') >= 0 and ((idx == dataTable('deg_peel', frame, 'leaf') and to == dataTable('deg_peel', frame, 'nb')) or (idx == dataTable('deg_peel', frame, 'nb') and to == dataTable('deg_peel', frame, 'leaf'))))"}
+              "connectTo": {"indexExpr": "dataTable('treeNodes', idx, 'adj')", "pinned": true, "bendExpr": "0", "color": "#7f93aa", "colorExpr": "((idx == dataTable('deg_peel', frame, 'u') and to == dataTable('deg_peel', frame, 'v')) or (idx == dataTable('deg_peel', frame, 'v') and to == dataTable('deg_peel', frame, 'u'))) or (dataTable('deg_peel', frame, 'nb') >= 0 and ((idx == dataTable('deg_peel', frame, 'leaf') and to == dataTable('deg_peel', frame, 'nb')) or (idx == dataTable('deg_peel', frame, 'nb') and to == dataTable('deg_peel', frame, 'leaf')))) ? '#f1c65b' : (arrayAt(dataTable('deg_peel', frame, 'removed'), idx) == 1 or arrayAt(dataTable('deg_peel', frame, 'removed'), to) == 1 ? '#2c3540' : '')", "highlightExpr": "((idx == dataTable('deg_peel', frame, 'u') and to == dataTable('deg_peel', frame, 'v')) or (idx == dataTable('deg_peel', frame, 'v') and to == dataTable('deg_peel', frame, 'u'))) or (dataTable('deg_peel', frame, 'nb') >= 0 and ((idx == dataTable('deg_peel', frame, 'leaf') and to == dataTable('deg_peel', frame, 'nb')) or (idx == dataTable('deg_peel', frame, 'nb') and to == dataTable('deg_peel', frame, 'leaf'))))", "widthExpr": "((keyIndex(dataTable('deg_peel', frame, 'counted'), [idx, to]) >= 0 or keyIndex(dataTable('deg_peel', frame, 'counted'), [to, idx]) >= 0) and arrayAt(dataTable('deg_peel', frame, 'removed'), idx) == 0 and arrayAt(dataTable('deg_peel', frame, 'removed'), to) == 0) ? 2.6 : 1.2", "labelExpr": "((keyIndex(dataTable('deg_peel', frame, 'counted'), [idx, to]) >= 0 or keyIndex(dataTable('deg_peel', frame, 'counted'), [to, idx]) >= 0) and arrayAt(dataTable('deg_peel', frame, 'removed'), idx) == 0 and arrayAt(dataTable('deg_peel', frame, 'removed'), to) == 0) and idx < to ? concat(arrayAt(dataTable('deg_peel', frame, 'degree'), idx), ' · ', arrayAt(dataTable('deg_peel', frame, 'degree'), to)) : ''"}
             },
             {
               "id": "adj-u",
@@ -21990,7 +22776,7 @@
     {
       "id": "union-find",
       "title": "Group as edges arrive (union-find)",
-      "description": "Signal: connectivity that grows edge by edge, counting groups, \"are these two connected?\", merging accounts.",
+      "description": "Every node is its own root: 9 groups of one.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -22000,8 +22786,2577 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Group as edges arrive (union-find)\n\n**Step 9** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** connectivity that grows edge by edge, counting groups, \"are these two connected?\", merging accounts.\n\nEach node points to a parent; following parents reaches the group's root. **Union** links one root under another; **find** returns the root. With path compression and union by rank both are almost O(1). It answers connectivity questions without traversing the graph again after each edge.\n\n**Cost:** About O(α(n)) per operation: effectively constant.\n\n*Visualization coming soon.*\n\n**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components.",
-      "prompt": "Explain Union-find: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "data": {
+        "trace": [
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": "—",
+            "ei": -1,
+            "a": -1,
+            "b": -1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 2,
+            "message": "Every node is its own root: 9 groups of one."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": "—",
+            "ei": -1,
+            "a": -1,
+            "b": -1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 3,
+            "message": "rank bounds each tree's height; every tree starts at height 0."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": -1,
+            "a": -1,
+            "b": -1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 21,
+            "message": "groups = 9: no edge has joined anything yet."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 0 – 1 arrives."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": 0,
+            "path": [0],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[0] = 0: 0 is a root. find returns 0."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": 1,
+            "path": [1],
+            "calls": [11],
+            "ra": 0,
+            "rb": -1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[1] = 1: 1 is a root. find returns 1."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "0's root is 0; 1's root is 1."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 1: different groups",
+            "result": "—",
+            "line": 12,
+            "message": "Different roots: two groups to merge."
+          },
+          {
+            "parent": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 1,
+            "changed": -1,
+            "merged": [],
+            "redundant": [],
+            "root": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999, 8.4],
+            "fy": [3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 1: different groups",
+            "result": "—",
+            "line": 14,
+            "message": "rank[0] = 0, rank[1] = 0: ra is at least as tall."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 1,
+            "changed": 1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 1: different groups",
+            "result": "—",
+            "line": 16,
+            "message": "Link root 1 under 0: one group now."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 9,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 1,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 1: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Equal heights, so the joined tree is one taller: rank[0] = 1."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 0,
+            "a": 0,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 1,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 24,
+            "message": "Two groups became one: groups = 8."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 2 – 3 arrives."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": 2,
+            "path": [2],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[2] = 2: 2 is a root. find returns 2."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": 3,
+            "path": [3],
+            "calls": [11],
+            "ra": 2,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[3] = 3: 3 is a root. find returns 3."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 2,
+            "rb": 3,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "2's root is 2; 3's root is 3."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 2,
+            "rb": 3,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 2, rb = 3: different groups",
+            "result": "—",
+            "line": 12,
+            "message": "Different roots: two groups to merge."
+          },
+          {
+            "parent": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 2,
+            "rb": 3,
+            "changed": -1,
+            "merged": [
+              [0, 1]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 3, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999, 7.449999999999999],
+            "fy": [3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 2, rb = 3: different groups",
+            "result": "—",
+            "line": 14,
+            "message": "rank[2] = 0, rank[3] = 0: ra is at least as tall."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 2,
+            "rb": 3,
+            "changed": 3,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 2, rb = 3: different groups",
+            "result": "—",
+            "line": 16,
+            "message": "Link root 3 under 2: one group now."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 8,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 2,
+            "rb": 3,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 2, rb = 3: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Equal heights, so the joined tree is one taller: rank[2] = 1."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 1,
+            "a": 2,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 2,
+            "rb": 3,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 24,
+            "message": "Two groups became one: groups = 7."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 0 – 2 arrives."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": 0,
+            "path": [0],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[0] = 0: 0 is a root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": 2,
+            "path": [2],
+            "calls": [11],
+            "ra": 0,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[2] = 2: 2 is a root. find returns 2."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 2,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "0's root is 0; 2's root is 2."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 2,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 2: different groups",
+            "result": "—",
+            "line": 12,
+            "message": "Different roots: two groups to merge."
+          },
+          {
+            "parent": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 2,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3]
+            ],
+            "redundant": [],
+            "root": [0, 0, 2, 2, 4, 5, 6, 7, 8],
+            "fx": [0.8, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 3.9, 2.5, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 2: different groups",
+            "result": "—",
+            "line": 14,
+            "message": "rank[0] = 1, rank[2] = 1: ra is at least as tall."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [1, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 2,
+            "changed": 2,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 2: different groups",
+            "result": "—",
+            "line": 16,
+            "message": "Link root 2 under 0: one group now."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 7,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 2,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 0, rb = 2: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Equal heights, so the joined tree is one taller: rank[0] = 2."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 2,
+            "a": 0,
+            "b": 2,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 2,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 24,
+            "message": "Two groups became one: groups = 6."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 4 – 5 arrives."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": 4,
+            "path": [4],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[4] = 4: 4 is a root. find returns 4."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": 5,
+            "path": [5],
+            "calls": [11],
+            "ra": 4,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[5] = 5: 5 is a root. find returns 5."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 5,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "4's root is 4; 5's root is 5."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 5,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 5: different groups",
+            "result": "—",
+            "line": 12,
+            "message": "Different roots: two groups to merge."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 5, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 5,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 5, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 3.9, 3.9, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 5: different groups",
+            "result": "—",
+            "line": 14,
+            "message": "rank[4] = 0, rank[5] = 0: ra is at least as tall."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 0, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 5,
+            "changed": 5,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 5: different groups",
+            "result": "—",
+            "line": 16,
+            "message": "Link root 5 under 4: one group now."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 6,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 5,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 5: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Equal heights, so the joined tree is one taller: rank[4] = 1."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 3,
+            "a": 4,
+            "b": 5,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 5,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 24,
+            "message": "Two groups became one: groups = 5."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 5 – 6 arrives."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": 5,
+            "path": [5],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[5] = 4: not a root. Ask 4 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": 4,
+            "path": [5, 4],
+            "calls": [11, 7],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[4] = 4: 4 is a root. find returns 4."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": 5,
+            "path": [5],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "5's parent 4 is the root. find returns 4."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": 6,
+            "path": [6],
+            "calls": [11],
+            "ra": 4,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[6] = 6: 6 is a root. find returns 6."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 6,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "5's root is 4; 6's root is 6."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 6,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 6: different groups",
+            "result": "—",
+            "line": 12,
+            "message": "Different roots: two groups to merge."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 6, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 6,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 6, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 2.7, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 3.9, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 6: different groups",
+            "result": "—",
+            "line": 14,
+            "message": "rank[4] = 1, rank[6] = 0: ra is at least as tall."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 5,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 6,
+            "changed": 6,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 3.175, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 6: different groups",
+            "result": "—",
+            "line": 16,
+            "message": "Link root 6 under 4: one group now."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 4,
+            "a": 5,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 6,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 3.175, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 24,
+            "message": "Two groups became one: groups = 4."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 3.175, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 3 – 1 arrives."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 3,
+            "path": [3],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 3.175, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[3] = 2: not a root. Ask 2 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 2,
+            "path": [3, 2],
+            "calls": [11, 7],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 3.175, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[2] = 0: not a root. Ask 0 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 0,
+            "path": [3, 2, 0],
+            "calls": [11, 7, 7],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 3.175, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[0] = 0: 0 is a root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 2, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 2,
+            "path": [3, 2],
+            "calls": [11, 7],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.275, 0.8, 1.75, 1.75, 3.175, 2.7, 3.6499999999999995, 4.6, 5.55],
+            "fy": [3.9, 2.5, 2.5, 1.1, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "2's parent 0 is the root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 3,
+            "path": [3],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": 3,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "Path compression: 3 now points straight at the root 0, skipping 2."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 1,
+            "path": [1],
+            "calls": [11],
+            "ra": 0,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[1] = 0: not a root. Ask 0 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 0,
+            "path": [1, 0],
+            "calls": [11, 7],
+            "ra": 0,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[0] = 0: 0 is a root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": 1,
+            "path": [1],
+            "calls": [11],
+            "ra": 0,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "1's parent 0 is the root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "3's root is 0; 1's root is 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "ra = rb = 0: already connected",
+            "result": "—",
+            "line": 12,
+            "message": "Both are in 0's group already: the edge closes a cycle."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 5,
+            "a": 3,
+            "b": 1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "ra = rb = 0: already connected",
+            "result": "—",
+            "line": 13,
+            "message": "3 – 1 is redundant: nothing to merge. groups stays 4."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 6 – 3 arrives."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": 6,
+            "path": [6],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[6] = 4: not a root. Ask 4 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": 4,
+            "path": [6, 4],
+            "calls": [11, 7],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[4] = 4: 4 is a root. find returns 4."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": 6,
+            "path": [6],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "6's parent 4 is the root. find returns 4."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": 3,
+            "path": [3],
+            "calls": [11],
+            "ra": 4,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[3] = 0: not a root. Ask 0 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": 0,
+            "path": [3, 0],
+            "calls": [11, 7],
+            "ra": 4,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[0] = 0: 0 is a root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": 3,
+            "path": [3],
+            "calls": [11],
+            "ra": 4,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "3's parent 0 is the root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "6's root is 4; 3's root is 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 0: different groups",
+            "result": "—",
+            "line": 12,
+            "message": "Different roots: two groups to merge."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 4,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 0: different groups",
+            "result": "—",
+            "line": 14,
+            "message": "rank[4] = 1, rank[0] = 2: swap, so ra is the taller tree."
+          },
+          {
+            "parent": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 4,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 4, 4, 4, 7, 8],
+            "fx": [1.75, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 3.9, 2.5, 2.5, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 0: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Now ra = 0, rb = 4."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 4,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 4,
+            "changed": 4,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "ra = 4, rb = 0: different groups",
+            "result": "—",
+            "line": 16,
+            "message": "Link root 4 under 0: one group now."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 6,
+            "a": 6,
+            "b": 3,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 4,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 24,
+            "message": "Two groups became one: groups = 3."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 22,
+            "message": "Edge 7 – 6 arrives."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": 7,
+            "path": [7],
+            "calls": [11],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[7] = 7: 7 is a root. find returns 7."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": 6,
+            "path": [6],
+            "calls": [11],
+            "ra": 7,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[6] = 4: not a root. Ask 4 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": 4,
+            "path": [6, 4],
+            "calls": [11, 7],
+            "ra": 7,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[4] = 0: not a root. Ask 0 for the root."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": 0,
+            "path": [6, 4, 0],
+            "calls": [11, 7, 7],
+            "ra": 7,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "parent[0] = 0: 0 is a root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 4, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": 4,
+            "path": [6, 4],
+            "calls": [11, 7],
+            "ra": 7,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 4.125, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 1.1, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "4's parent 0 is the root. find returns 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": 6,
+            "path": [6],
+            "calls": [11],
+            "ra": 7,
+            "rb": -1,
+            "changed": 6,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "Path compression: 6 now points straight at the root 0, skipping 4."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 7,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 3.9, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 11,
+            "message": "7's root is 7; 6's root is 0."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 7,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 3.9, 3.9],
+            "checkText": "ra = 7, rb = 0: different groups",
+            "result": "—",
+            "line": 12,
+            "message": "Different roots: two groups to merge."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 7,
+            "rb": 0,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 3.9, 3.9],
+            "checkText": "ra = 7, rb = 0: different groups",
+            "result": "—",
+            "line": 14,
+            "message": "rank[7] = 0, rank[0] = 2: swap, so ra is the taller tree."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 7, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 7,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 7, 8],
+            "fx": [2.7, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 3.9, 3.9],
+            "checkText": "ra = 7, rb = 0: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Now ra = 0, rb = 7."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 0, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 3,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 7,
+            "changed": 7,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3],
+              [7, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 0, 8],
+            "fx": [3.175, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 2.5, 3.9],
+            "checkText": "ra = 7, rb = 0: different groups",
+            "result": "—",
+            "line": 16,
+            "message": "Link root 7 under 0: one group now."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 0, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 2,
+            "ei": 7,
+            "a": 7,
+            "b": 6,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": 0,
+            "rb": 7,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3],
+              [7, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 0, 8],
+            "fx": [3.175, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 2.5, 3.9],
+            "checkText": "check: —",
+            "result": "—",
+            "line": 24,
+            "message": "Two groups became one: groups = 2."
+          },
+          {
+            "parent": [0, 0, 0, 0, 0, 4, 0, 0, 8],
+            "rank": [2, 0, 1, 0, 1, 0, 0, 0, 0],
+            "groups": 2,
+            "ei": -1,
+            "a": -1,
+            "b": -1,
+            "x": -1,
+            "path": [],
+            "calls": [],
+            "ra": -1,
+            "rb": -1,
+            "changed": -1,
+            "merged": [
+              [0, 1],
+              [2, 3],
+              [0, 2],
+              [4, 5],
+              [5, 6],
+              [6, 3],
+              [7, 6]
+            ],
+            "redundant": [
+              [3, 1]
+            ],
+            "root": [0, 0, 0, 0, 0, 0, 0, 0, 8],
+            "fx": [3.175, 0.8, 1.75, 2.7, 3.6499999999999995, 3.6499999999999995, 4.6, 5.55, 6.499999999999999],
+            "fy": [3.9, 2.5, 2.5, 2.5, 2.5, 1.1, 2.5, 2.5, 3.9],
+            "checkText": "check: —",
+            "result": "2",
+            "line": 25,
+            "message": "2 groups: {0, 1, 2, 3, 4, 5, 6, 7} and {8}, which no edge touched."
+          }
+        ],
+        "ufNodes": [
+          {
+            "x": -6.0,
+            "y": 3.6,
+            "adj": [1, 2]
+          },
+          {"x": -4.4, "y": 3.6, "adj": []},
+          {
+            "x": -6.0,
+            "y": 2.0,
+            "adj": [3]
+          },
+          {
+            "x": -4.4,
+            "y": 2.0,
+            "adj": [1]
+          },
+          {
+            "x": -2.8,
+            "y": 3.6,
+            "adj": [5]
+          },
+          {
+            "x": -1.2,
+            "y": 3.6,
+            "adj": [6]
+          },
+          {
+            "x": -2.8,
+            "y": 2.0,
+            "adj": [3]
+          },
+          {
+            "x": -2.8,
+            "y": 0.5,
+            "adj": [6]
+          },
+          {"x": -1.2, "y": 0.5, "adj": []}
+        ],
+        "ufEdges": [
+          {
+            "name": "0–1",
+            "pair": [0, 1]
+          },
+          {
+            "name": "2–3",
+            "pair": [2, 3]
+          },
+          {
+            "name": "0–2",
+            "pair": [0, 2]
+          },
+          {
+            "name": "4–5",
+            "pair": [4, 5]
+          },
+          {
+            "name": "5–6",
+            "pair": [5, 6]
+          },
+          {
+            "name": "3–1",
+            "pair": [3, 1]
+          },
+          {
+            "name": "6–3",
+            "pair": [6, 3]
+          },
+          {
+            "name": "7–6",
+            "pair": [7, 6]
+          }
+        ],
+        "ufPalette": [
+          {"c": "#6ea8e0"},
+          {"c": "#e5a65c"},
+          {"c": "#77bfae"},
+          {"c": "#e67db0"},
+          {"c": "#b39ddb"},
+          {"c": "#d4c86a"},
+          {"c": "#7fc8e8"},
+          {"c": "#e0896e"},
+          {"c": "#a3b86c"}
+        ]
+      },
+      "markdown": "# Group as edges arrive (union-find)\n\n**Step 9** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** connectivity that grows edge by edge: counting groups, \"are these two connected?\", a redundant edge, merging accounts.\n\nUnion-find keeps a **group label that can merge**. Every node points to a **parent**; following parents ends at the group's **root**, a node that points at itself. Two nodes are connected exactly when they reach the same root. The left shows the graph as its edges arrive; the right shows the parent pointers, a **forest** with one tree per group and its root on top.\n\n- **find(x)** follows parents up to the root. On the way back it points every node it passed **straight at the root** (path compression), so the next find is one hop.\n- **union(a, b)** finds both roots. The same root means a and b are already connected: the edge closes a **cycle** (drawn red). Different roots: hang one root under the other, and two groups become one.\n\n**Union by rank** hangs the **shorter** tree under the taller one, so no tree grows taller than log n; equal heights grow by one. Watch 3 → 2 → 0: when edge 3 – 1 arrives, find(3) climbs two hops and then points 3 straight at 0. Edge 3 – 1 itself is redundant: 3 and 1 already share root 0.\n\nCounting is free: start with n groups and subtract one per successful union. Here 9 nodes and 7 merges leave **2 groups**; node 8 never meets an edge.\n\n**Cost:** with both tricks, about O(α(n)) per operation, effectively constant. No traversal is repeated as edges arrive.\n\n**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components.",
+      "prompt": "Explain how parent pointers represent groups, why path compression and union by rank keep the trees flat, and how an edge whose ends share a root closes a cycle. Ask the learner to predict each find's root and which edge will be redundant.",
       "elements": [
         {
           "id": "grid",
@@ -22013,15 +25368,206 @@
           ],
           "divisions": [17, 10],
           "opacity": 0.09
-        },
-        {
-          "id": "placeholder",
-          "type": "text",
-          "text": "Visualization coming soon",
-          "position": [1.5, 0, 0],
-          "color": "#9dbde3"
         }
-      ]
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Merge groups as edges arrive",
+          "description": "find climbs to the root; union links two roots.",
+          "descriptionExpr": "dataTable('trace', frame, 'message')",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 87, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "graph",
+              "type": "graph",
+              "label": "graph",
+              "lengthExpr": "9",
+              "valueExpr": "idx",
+              "nodeShape": "rect",
+              "nodeWidth": 0.72,
+              "nodeHeight": 0.72,
+              "nodeCornerRadius": 0.36,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "positionExpr": ["dataTable('ufNodes', idx, 'x')", "dataTable('ufNodes', idx, 'y')", "0"],
+              "colorExpr": "dataTable('ufPalette', arrayAt(dataTable('trace', frame, 'root'), idx), 'c')",
+              "connectTo": {"indexExpr": "dataTable('ufNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#323a45", "colorExpr": "idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b') ? '#f1c65b' : (keyIndex(dataTable('trace', frame, 'redundant'), [idx, to]) >= 0 ? '#e06c75' : (keyIndex(dataTable('trace', frame, 'merged'), [idx, to]) >= 0 ? dataTable('ufPalette', arrayAt(dataTable('trace', frame, 'root'), idx), 'c') : ''))", "highlightExpr": "idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b') or keyIndex(dataTable('trace', frame, 'redundant'), [idx, to]) >= 0", "widthExpr": "idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b') or keyIndex(dataTable('trace', frame, 'merged'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'redundant'), [idx, to]) >= 0 ? 2.4 : 1"}
+            },
+            {
+              "id": "forest",
+              "type": "graph",
+              "label": "parent pointers",
+              "lengthExpr": "9",
+              "valueExpr": "idx",
+              "nodeShape": "rect",
+              "nodeWidth": 0.72,
+              "nodeHeight": 0.72,
+              "nodeCornerRadius": 0.36,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "positionExpr": ["arrayAt(dataTable('trace', frame, 'fx'), idx)", "arrayAt(dataTable('trace', frame, 'fy'), idx)", "0"],
+              "colorExpr": "idx == dataTable('trace', frame, 'x') ? '#f1c65b' : dataTable('ufPalette', arrayAt(dataTable('trace', frame, 'root'), idx), 'c')",
+              "connectTo": {"indexExpr": "arrayAt(dataTable('trace', frame, 'parent'), idx) == idx ? -1 : arrayAt(dataTable('trace', frame, 'parent'), idx)", "pinned": true, "arrow": true, "color": "#8aa0b8", "colorExpr": "idx == dataTable('trace', frame, 'changed') ? '#f1c65b' : ''", "highlightExpr": "idx == dataTable('trace', frame, 'changed')"}
+            },
+            {
+              "id": "title-0",
+              "type": "text",
+              "text": "edges arrive",
+              "position": [-3.6, 4.7, 0],
+              "color": "#8aa0b8",
+              "fontSize": 13
+            },
+            {
+              "id": "title-1",
+              "type": "text",
+              "text": "parent pointers: a forest of roots",
+              "position": [4.6, 4.7, 0],
+              "color": "#8aa0b8",
+              "fontSize": 13
+            },
+            {
+              "id": "parent",
+              "type": "array",
+              "label": "parent",
+              "codeSymbol": "parent",
+              "labelSide": "left",
+              "origin": [-2.3, -1.2, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "lengthExpr": "9",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'parent'), idx)",
+              "colorExpr": "dataTable('ufPalette', arrayAt(dataTable('trace', frame, 'root'), idx), 'c')",
+              "highlightExpr": "idx == dataTable('trace', frame, 'changed') or idx == dataTable('trace', frame, 'x')"
+            },
+            {
+              "id": "rank",
+              "type": "array",
+              "label": "rank",
+              "codeSymbol": "rank",
+              "labelSide": "left",
+              "origin": [-2.3, -2.5, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "lengthExpr": "9",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'rank'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'ra') and dataTable('trace', frame, 'line') == 18"
+            },
+            {
+              "id": "edges",
+              "type": "array",
+              "label": "edges",
+              "codeSymbol": "edges",
+              "labelSide": "left",
+              "origin": [-2.3, -3.8, 0],
+              "cellSize": 1.15,
+              "fontSize": 16,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "itemType": "string",
+              "lengthExpr": "8",
+              "valueExpr": "dataTable('ufEdges', idx, 'name')",
+              "colorExpr": "keyIndex(dataTable('trace', frame, 'redundant'), dataTable('ufEdges', idx, 'pair')) >= 0 ? '#e06c75' : (keyIndex(dataTable('trace', frame, 'merged'), dataTable('ufEdges', idx, 'pair')) >= 0 ? '#77bfae' : '')",
+              "highlightExpr": "idx == dataTable('trace', frame, 'ei')"
+            },
+            {
+              "id": "stack",
+              "type": "stack",
+              "arrayLayout": "horizontal",
+              "label": "find",
+              "origin": [6.0, -0.1, 0],
+              "cellSize": 0.95,
+              "showTop": false,
+              "containerColor": "#e67db0",
+              "fontSize": 15,
+              "axisLabels": "plane",
+              "color": "#e67db0",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'path'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'path'), idx)",
+              "highlightExpr": "idx == arrayCount(dataTable('trace', frame, 'path')) - 1"
+            },
+            {
+              "id": "a",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'a') < 0 ? 'a: —' : concat('a = ', dataTable('trace', frame, 'a'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'a')"},
+              "codeRef": {"file": "union-find", "line": 22}
+            },
+            {
+              "id": "b",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'b') < 0 ? 'b: —' : concat('b = ', dataTable('trace', frame, 'b'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'b')"},
+              "codeRef": {"file": "union-find", "line": 22}
+            },
+            {
+              "id": "x",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'x') < 0 ? 'x: —' : concat('x = ', dataTable('trace', frame, 'x'))",
+              "connectTo": {"object": "forest", "indexExpr": "dataTable('trace', frame, 'x')"},
+              "codeRef": {"file": "union-find", "line": 5}
+            },
+            {
+              "id": "parent-x",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'x') < 0 ? 'parent[x]: —' : concat('parent[', dataTable('trace', frame, 'x'), '] = ', arrayAt(dataTable('trace', frame, 'parent'), dataTable('trace', frame, 'x')))",
+              "connectTo": {"object": "parent", "indexExpr": "dataTable('trace', frame, 'x')"},
+              "codeRef": {"file": "union-find", "line": 6},
+              "highlightExpr": "dataTable('trace', frame, 'x') >= 0"
+            },
+            {
+              "id": "ra",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'ra') < 0 ? 'ra: —' : concat('ra = ', dataTable('trace', frame, 'ra'))",
+              "connectTo": {"object": "forest", "indexExpr": "dataTable('trace', frame, 'ra')"},
+              "codeRef": {"file": "union-find", "line": 11}
+            },
+            {
+              "id": "rb",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'rb') < 0 ? 'rb: —' : concat('rb = ', dataTable('trace', frame, 'rb'))",
+              "connectTo": {"object": "forest", "indexExpr": "dataTable('trace', frame, 'rb')"},
+              "codeRef": {"file": "union-find", "line": 11}
+            },
+            {
+              "id": "check",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'checkText')",
+              "codeRef": {"file": "union-find", "line": 12},
+              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+            },
+            {
+              "id": "groups",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('groups = ', dataTable('trace', frame, 'groups'))",
+              "codeRef": {"file": "union-find", "line": 24}
+            },
+            {
+              "id": "result",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('result: ', dataTable('trace', frame, 'result'))",
+              "codeRef": {"file": "union-find", "line": 25}
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200},
+      "codeRef": {"file": "union-find", "lineExpr": "dataTable('trace', frame, 'line')", "callsExpr": "dataTable('trace', frame, 'calls')", "callEntryLine": 5}
     },
     {
       "id": "mst",

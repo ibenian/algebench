@@ -147,14 +147,21 @@ export function paintCellLinks(): void {
             tip.setAttribute('d', head); tip.setAttribute('fill', color); tip.setAttribute('fill-opacity', lit ? '1' : '.8');
             return [path, tip];
         }));
-        // Labels at each link's midpoint, along its own curve, once the paths are in the document to be measured.
+        // Labels at each link's midpoint, once the paths are in the document to be measured: a small pill over the
+        // line (dark, edged in the link's colour) so the text never sits on the stroke itself.
         for (const {path, text, color} of labelled) {
             const at = path.getPointAtLength(path.getTotalLength() / 2);
             const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             t.setAttribute('x', String(at.x)); t.setAttribute('y', String(at.y));
-            t.setAttribute('class', 'cell-link-label'); t.setAttribute('fill', color);
+            t.setAttribute('class', 'cell-link-label');
             t.textContent = text;
-            set.svg!.append(t);
+            const pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            pill.setAttribute('class', 'cell-link-label-pill'); pill.setAttribute('stroke', color);
+            set.svg!.append(pill, t);
+            const box = t.getBBox(), padX = 4, padY = 1.5;
+            pill.setAttribute('x', String(box.x - padX)); pill.setAttribute('y', String(box.y - padY));
+            pill.setAttribute('width', String(box.width + 2 * padX)); pill.setAttribute('height', String(box.height + 2 * padY));
+            pill.setAttribute('rx', String((box.height + 2 * padY) / 2));
         }
     }
 }
