@@ -1050,6 +1050,10 @@ export type Element = {
    */
   animationMs?: number;
   /**
+   * GRAPH: a short tag on each node's top-right corner, part of the node (it moves with it), with 'idx' and 'value' bound: a number, or a string such as concat('r', arrayAt(rank, idx)). Empty or null shows none, so a node can have one and its neighbour not.
+   */
+  badgeExpr?: string;
+  /**
    * GRAPH: where a node's value is written: inside the node, outside (below) it, or not at all. 'auto' is outside for points and inside for rects.
    */
   valueLabel?: 'auto' | 'inside' | 'outside' | 'none';

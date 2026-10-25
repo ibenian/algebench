@@ -13996,6 +13996,7 @@ function renderGraph(el, view) {
 	if (!tree && positionFns.length !== 3) throw new Error("A graph needs positionExpr: [x, y, z] expressions per node, or a treeLayout.");
 	const colorFn = el.colorExpr ? compileExpr(el.colorExpr) : null;
 	const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+	const badgeFn = el.badgeExpr ? compileExpr(el.badgeExpr) : null;
 	const links = compileLinkTargets(el.connectTo, el.id, true);
 	const showIndices = el.showIndices !== false;
 	const cellsFn = el.nodeCellsExpr ? compileExpr(el.nodeCellsExpr) : null;
@@ -14127,7 +14128,7 @@ function renderGraph(el, view) {
 		...marker,
 		type: "step_marker"
 	}, view, owner));
-	const valueLabels = [], indexLabels = [];
+	const valueLabels = [], indexLabels = [], badgeLabels = [];
 	const planeText = el.axisLabels === "plane" && valueAt === "inside";
 	const planes = [];
 	let longest = "";
@@ -14233,6 +14234,14 @@ function renderGraph(el, view) {
 				});
 			}
 			const hw = cells ? Math.max(1, cells.length) * cellW / 2 : w / 2;
+			let badge = "";
+			try {
+				const b = badgeFn ? evalExpr(badgeFn, 0, { overrideScope: {
+					idx: i,
+					value
+				} }) : null;
+				if (b !== null && b !== void 0) badge = String(b);
+			} catch {}
 			return {
 				x,
 				y,
@@ -14242,7 +14251,8 @@ function renderGraph(el, view) {
 				cellLit,
 				hw,
 				color: color ?? (lit ? HIGHLIGHT$1 : el.color ? null : DEFAULT),
-				lit
+				lit,
+				badge
 			};
 		});
 		const moves = identities?.next(next.map((n) => JSON.stringify(n.value ?? null)), idFn ? next.map((n, i) => String(evalExpr(idFn, 0, { overrideScope: {
@@ -14371,6 +14381,16 @@ function renderGraph(el, view) {
 				];
 				if (value.el.textContent !== text) value.el.textContent = text;
 			}
+			if (badgeFn) {
+				const badge = labelFor(badgeLabels, i, "graph-node-badge"), [x, y, z] = drawnAt(i);
+				badge.dataPos = [
+					x + n.hw * .85,
+					y + span.hh * .85,
+					z
+				];
+				if (badge.el.textContent !== n.badge) badge.el.textContent = n.badge;
+				badge.el.style.display = n.badge ? "" : "none";
+			}
 			if (showIndices) {
 				const tag = labelFor(indexLabels, i, "graph-node-index");
 				tag.dataPos = [
@@ -14383,6 +14403,9 @@ function renderGraph(el, view) {
 		});
 		for (const list of [valueLabels, indexLabels]) list.forEach((label, i) => {
 			label.el.style.display = i < next.length ? "" : "none";
+		});
+		badgeLabels.forEach((label, i) => {
+			if (i >= next.length) label.el.style.display = "none";
 		});
 		planes.forEach((layer, i) => {
 			layer.mesh.visible = i < next.length;
@@ -14491,6 +14514,7 @@ function renderGraph(el, view) {
 			...(el.positionExpr ?? []).map(String),
 			el.colorExpr,
 			el.highlightExpr,
+			el.badgeExpr,
 			el.nodeCellsExpr,
 			el.cellHighlightExpr,
 			...links.flatMap((l) => l.sources),

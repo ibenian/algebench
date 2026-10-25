@@ -2143,7 +2143,7 @@ UF_N = 9
 UF_EDGES = [(0, 1), (2, 3), (0, 2), (4, 5), (5, 6), (3, 1), (6, 3), (7, 6)]
 UF_POS = [(-6.0, 3.6), (-4.4, 3.6), (-6.0, 2.0), (-4.4, 2.0), (-2.8, 3.6), (-1.2, 3.6), (-2.8, 2.0), (-2.8, 0.5), (-1.2, 0.5)]
 UF_PALETTE = ['#6ea8e0', '#e5a65c', '#77bfae', '#e67db0', '#b39ddb', '#d4c86a', '#7fc8e8', '#e0896e', '#a3b86c']
-UF_ROW, UF_X0, UF_DX = (3.9, 2.5, 1.1), 0.8, 0.95
+UF_ROW, UF_X0, UF_DX = (3.55, 2.2, 0.85), 0.8, 0.95
 
 
 def uf_forest(parent):
@@ -2283,6 +2283,8 @@ def uf_scene(header):
         {'id': 'forest', 'type': 'graph', 'label': 'parent pointers', 'lengthExpr': str(UF_N), 'valueExpr': 'idx', **node,
          'positionExpr': [f"arrayAt({c('fx')}, idx)", f"arrayAt({c('fy')}, idx)", '0'],
          'colorExpr': f"idx == {c('x')} ? '{GOLD}' : {group('idx')}",
+         # A root's rank on its corner (a non-root's rank no longer matters).
+         'badgeExpr': f"arrayAt({c('parent')}, idx) == idx ? concat('r', arrayAt({c('rank')}, idx)) : ''",
          # Each node's arrow points at its parent; a root points at itself and draws none.
          'connectTo': {'indexExpr': f"arrayAt({c('parent')}, idx) == idx ? -1 : arrayAt({c('parent')}, idx)", 'pinned': True, 'arrow': True,
                        'color': '#8aa0b8', 'colorExpr': f"idx == {c('changed')} ? '{GOLD}' : ''", 'highlightExpr': f"idx == {c('changed')}"}},
@@ -2321,7 +2323,7 @@ Union-find keeps a **group label that can merge**. Every node points to a **pare
 - **find(x)** follows parents up to the root. On the way back it points every node it passed **straight at the root** (path compression), so the next find is one hop.
 - **union(a, b)** finds both roots. The same root means a and b are already connected: the edge closes a **cycle** (drawn red). Different roots: hang one root under the other, and two groups become one.
 
-**Union by rank** hangs the **shorter** tree under the taller one, so no tree grows taller than log n; equal heights grow by one. Watch 3 → 2 → 0: when edge 3 – 1 arrives, find(3) climbs two hops and then points 3 straight at 0. Edge 3 – 1 itself is redundant: 3 and 1 already share root 0.
+**Union by rank** hangs the **shorter** tree under the taller one, so no tree grows taller than log n; equal heights grow by one. Each root's rank shows on its corner in the forest (r0, r1, r2). Watch 3 → 2 → 0: when edge 3 – 1 arrives, find(3) climbs two hops and then points 3 straight at 0. Edge 3 – 1 itself is redundant: 3 and 1 already share root 0.
 
 Counting is free: start with n groups and subtract one per successful union. Here 9 nodes and 7 merges leave **2 groups**; node 8 never meets an edge.
 

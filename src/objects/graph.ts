@@ -51,6 +51,8 @@ export function renderGraph(el: Element, view: MathBoxNode) {
     if (!tree && positionFns.length !== 3) throw new Error('A graph needs positionExpr: [x, y, z] expressions per node, or a treeLayout.');
     const colorFn = el.colorExpr ? compileExpr(el.colorExpr) : null;
     const highlightFn = el.highlightExpr ? compileExpr(el.highlightExpr) : null;
+    // badgeExpr: a short tag on the node's top-right corner (a tree root's rank, a count), drawn with the node.
+    const badgeFn = el.badgeExpr ? compileExpr(el.badgeExpr) : null;
     const links = compileLinkTargets(el.connectTo, el.id, true);
     const showIndices = el.showIndices !== false;
     // Cell content (nodeCellsExpr): a node is a row of cells, one per value in its list, like a small array
@@ -65,7 +67,7 @@ export function renderGraph(el: Element, view: MathBoxNode) {
     mesh.userData.ignorePlaneOpacity = true; mesh.userData.targetOpacity = 1;
     state.three.scene.add(mesh); state.planeMeshes.push(mesh);
 
-    type Node = {x: number; y: number; z: number; value: unknown; cells: unknown[] | null; cellLit: boolean[]; hw: number; color: string | null; lit: boolean};
+    type Node = {x: number; y: number; z: number; value: unknown; cells: unknown[] | null; cellLit: boolean[]; hw: number; color: string | null; lit: boolean; badge: string};
     let nodes: Node[] = [];
     // The data axes may be scaled differently (a 14 × 10 range on a square view), so nodes are shaped in world
     // space with one scale, the x axis's: discs stay round and blocks keep their proportions. In data units a
@@ -108,7 +110,7 @@ export function renderGraph(el: Element, view: MathBoxNode) {
     const markers = (el.markers ?? []).map(marker => renderStepMarker({...marker, type: 'step_marker'}, view, owner));
 
     // Value and index labels, one per node, created as nodes appear and kept while they exist.
-    const valueLabels: ReturnType<typeof addLabel3D>[] = [], indexLabels: ReturnType<typeof addLabel3D>[] = [];
+    const valueLabels: ReturnType<typeof addLabel3D>[] = [], indexLabels: ReturnType<typeof addLabel3D>[] = [], badgeLabels: ReturnType<typeof addLabel3D>[] = [];
     // axisLabels 'plane': a node's text is painted on its face (as an array's cell text is), sized to the node and
     // scaled with the view, so it always fits; screen labels keep a fixed font size and can spill past small nodes.
     const planeText = el.axisLabels === 'plane' && valueAt === 'inside';
@@ -167,7 +169,9 @@ export function renderGraph(el: Element, view: MathBoxNode) {
                 cellLit = cells.map((v, c) => { try { return !!(cellHighlightFn && evalExpr(cellHighlightFn, 0, {overrideScope: {node: i, idx: c, value: v}})); } catch { return false; } });
             }
             const hw = cells ? Math.max(1, cells.length) * cellW / 2 : w / 2;
-            return {x: x!, y: y!, z: z!, value, cells, cellLit, hw, color: color ?? (lit ? HIGHLIGHT : el.color ? null : DEFAULT), lit};
+            let badge = '';
+            try { const b = badgeFn ? evalExpr(badgeFn, 0, {overrideScope: {idx: i, value}}) : null; if (b !== null && b !== undefined) badge = String(b); } catch { /* no badge */ }
+            return {x: x!, y: y!, z: z!, value, cells, cellLit, hw, color: color ?? (lit ? HIGHLIGHT : el.color ? null : DEFAULT), lit, badge};
         });
         // animateMoves: where each moving value was drawn, read before the nodes change.
         const moves = identities?.next(next.map(n => JSON.stringify(n.value ?? null)),
@@ -244,6 +248,12 @@ export function renderGraph(el: Element, view: MathBoxNode) {
                 value.dataPos = valueAt === 'inside' ? [x, y, z] : [x + span.hw + .25, y, z];
                 if (value.el.textContent !== text) value.el.textContent = text;
             }
+            if (badgeFn) {
+                const badge = labelFor(badgeLabels, i, 'graph-node-badge'), [x, y, z] = drawnAt(i);
+                badge.dataPos = [x + n.hw * .85, y + span.hh * .85, z];
+                if (badge.el.textContent !== n.badge) badge.el.textContent = n.badge;
+                badge.el.style.display = n.badge ? '' : 'none';
+            }
             if (showIndices) {
                 const tag = labelFor(indexLabels, i, 'graph-node-index');
                 tag.dataPos = [n.x, n.y - span.hh - .3 * sx / sy, n.z];
@@ -252,6 +262,7 @@ export function renderGraph(el: Element, view: MathBoxNode) {
         });
         // Nodes (and cells) that went away keep their labels for reuse, hidden.
         for (const list of [valueLabels, indexLabels]) list.forEach((label, i) => { label.el.style.display = i < next.length ? '' : 'none'; });
+        badgeLabels.forEach((label, i) => { if (i >= next.length) label.el.style.display = 'none'; });
         planes.forEach((layer, i) => { layer.mesh.visible = i < next.length; });
         for (const [key, label] of cellLabels) {
             const [i, c] = key.split(':').map(Number);
@@ -318,7 +329,7 @@ export function renderGraph(el: Element, view: MathBoxNode) {
         }, {signal: controller.signal, passive: true});
         return () => { controller.abort(); if (pointing) canvas.style.cursor = ''; };
     }
-    const entry: AnimExprEntry = {animState, exprStrings: [el.lengthExpr, el.valueExpr, el.idExpr, el.treeLayout?.parentExpr, el.treeLayout?.sideExpr, ...(el.positionExpr ?? []).map(String), el.colorExpr, el.highlightExpr, el.nodeCellsExpr, el.cellHighlightExpr,
+    const entry: AnimExprEntry = {animState, exprStrings: [el.lengthExpr, el.valueExpr, el.idExpr, el.treeLayout?.parentExpr, el.treeLayout?.sideExpr, ...(el.positionExpr ?? []).map(String), el.colorExpr, el.highlightExpr, el.badgeExpr, el.nodeCellsExpr, el.cellHighlightExpr,
         ...links.flatMap(l => l.sources), ...markers.flatMap(m => m._animExprEntry.exprStrings ?? [])].filter((v): v is string => !!v),
         _rebuildFn: () => { if (!animState.stopped && !animState.hiddenByRemove) rebuild(); }};
     try { rebuild(); } catch (error) { console.warn('graph:', error); }
