@@ -139,3 +139,12 @@ test('a rotated node trims its edges at its face as drawn, not at the box around
     const d = 30 * Math.SQRT1_2, {end} = graphEdgeCurve(at(0, 0), at(d, d), 0, {x: 0, y: 100});
     assert.ok(Math.abs(Math.hypot(end.x - d, end.y - d) - 12) < 1e-6, 'the tip sits 2 px outside the target face');
 });
+
+test('a graph edge passing the centre changes its bow smoothly, never jumping sides', () => {
+    // A horizontal edge 200 px long; the centre moves across it, as a turning view moves it.
+    const a = {centre: {x: 0, y: 0}, hw: 11, hh: 11}, b = {centre: {x: 200, y: 0}, hw: 11, hh: 11};
+    const controlY = (cy: number) => parseFloat(graphEdgeCurve(a, b, .12, {x: 100, y: cy}).d.split(' Q ')[1]!.split(' ')[1]);
+    assert.ok(Math.abs(controlY(0)) < 1e-9, 'straight with the centre on it');
+    assert.ok(Math.abs(controlY(1) - controlY(-1)) < 3, 'a pixel either side bows by about as little');
+    assert.ok(controlY(-100) > 20 && controlY(100) < -20, 'well clear of it, the full bow away from the centre');
+});

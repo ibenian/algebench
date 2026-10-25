@@ -170,9 +170,12 @@ export function graphEdgeCurve(a:{centre:Pt;hw:number;hh:number;round?:boolean;p
     }
     const mid={x:(a.centre.x+b.centre.x)/2,y:(a.centre.y+b.centre.y)/2};
     const dx=b.centre.x-a.centre.x,dy=b.centre.y-a.centre.y,len=Math.hypot(dx,dy);
-    let px=-dy/len,py=dx/len;
-    if((mid.x-centre.x)*px+(mid.y-centre.y)*py<0){px=-px;py=-py;}
-    const control={x:mid.x+px*bend*len,y:mid.y+py*bend*len};
+    const px=-dy/len,py=dx/len;
+    // Bow away from the centre. The side follows the midpoint's offset from the centre, eased over a band of a
+    // fifth of the edge's length: as the view turns an edge past the centre it straightens and bows the other
+    // way smoothly, where flipping on the offset's sign would jump.
+    const side=Math.max(-1,Math.min(1,((mid.x-centre.x)*px+(mid.y-centre.y)*py)/(len*.2)));
+    const control={x:mid.x+px*bend*len*side,y:mid.y+py*bend*len*side};
     const s=boundary(a,control),e=boundary(b,control);
     // The head points from `arrive` to the tip. Close nodes (or a zoomed-out view, where the 2 px margin dominates)
     // can put the tip past the control point, which would turn the head round; then it follows the edge itself.

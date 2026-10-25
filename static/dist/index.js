@@ -1606,14 +1606,11 @@ function graphEdgeCurve(a, b, bend, centre) {
 		y: (a.centre.y + b.centre.y) / 2
 	};
 	const dx = b.centre.x - a.centre.x, dy = b.centre.y - a.centre.y, len = Math.hypot(dx, dy);
-	let px = -dy / len, py = dx / len;
-	if ((mid.x - centre.x) * px + (mid.y - centre.y) * py < 0) {
-		px = -px;
-		py = -py;
-	}
+	const px = -dy / len, py = dx / len;
+	const side = Math.max(-1, Math.min(1, ((mid.x - centre.x) * px + (mid.y - centre.y) * py) / (len * .2)));
 	const control = {
-		x: mid.x + px * bend * len,
-		y: mid.y + py * bend * len
+		x: mid.x + px * bend * len * side,
+		y: mid.y + py * bend * len * side
 	};
 	const s = boundary(a, control), e = boundary(b, control);
 	const ux = dx / len, uy = dy / len, behind = (e.x - control.x) * ux + (e.y - control.y) * uy > 1;
