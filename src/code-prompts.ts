@@ -6,6 +6,7 @@
 export interface CodePrompt { label: string; prompt: string }
 
 export const CODE_PROMPTS: CodePrompt[] = [
+    {label: 'Explain the gist of this code', prompt: 'Explain the gist of this algorithm in a few sentences: the problem it solves, the one idea that makes it work, and how the code carries that idea out. Stay at that level: no line-by-line walkthrough.'},
     {label: 'Analyze code structure', prompt: 'Analyze the structure of this code: its functions and how they call each other, its loops and branches, and the data structures it keeps. Say where the selected lines fit in.'},
     {label: "What's this line for?", prompt: 'What is the selected code for? Say what goes wrong, or what is missing, if it were removed.'},
     {label: 'Analyze call stack', prompt: 'Analyze the call stack at the current step: each call still waiting to return, outermost first, with its arguments and what it is waiting for, and the call that is running now.'},

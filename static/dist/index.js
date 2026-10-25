@@ -25095,6 +25095,10 @@ function paintTokens(code, tokens) {
 //#region src/code-prompts.ts
 var CODE_PROMPTS = [
 	{
+		label: "Explain the gist of this code",
+		prompt: "Explain the gist of this algorithm in a few sentences: the problem it solves, the one idea that makes it work, and how the code carries that idea out. Stay at that level: no line-by-line walkthrough."
+	},
+	{
 		label: "Analyze code structure",
 		prompt: "Analyze the structure of this code: its functions and how they call each other, its loops and branches, and the data structures it keeps. Say where the selected lines fit in."
 	},
