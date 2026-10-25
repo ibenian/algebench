@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { watchExpr, formatWatch, WatchError } from '/code-watch.js';
+import { watchExpr, formatWatch, WatchError, conditionOf, truthOf } from '/code-watch.js';
 
 const names = ['u', 'v', 'color', 'queue'];
 const col = (n: string) => `dataTable('trace', frame, '${n}')`;
@@ -31,4 +31,23 @@ test('values print as Python would', () => {
     assert.equal(formatWatch([0, 1, -1]), '[0, 1, -1]');
     assert.equal(formatWatch(true), 'True');
     assert.equal(formatWatch(1 / 3), '0.3333');
+});
+
+test('an if, elif or while line gives its condition; other lines give none', () => {
+    assert.equal(conditionOf('        if d + w < dist[v]:'), 'd + w < dist[v]');
+    assert.equal(conditionOf('    while heap:'), 'heap');
+    assert.equal(conditionOf('        elif color[v] == color[u]:  # a clash'), 'color[v] == color[u]');
+    assert.equal(conditionOf('            continue  # stale'), null);
+    assert.equal(conditionOf('    for v in adj[u]:'), null);
+    assert.equal(conditionOf('    iffy = 1'), null);
+});
+
+test('a condition is true or false as Python tests it', () => {
+    assert.equal(truthOf(true), true);
+    assert.equal(truthOf(0), false);
+    assert.equal(truthOf(3), true);
+    assert.equal(truthOf([]), false, 'an empty list, as in while queue');
+    assert.equal(truthOf([1]), true);
+    assert.equal(truthOf({toArray: () => []}), false, 'a math.js matrix');
+    assert.equal(truthOf(undefined), null);
 });

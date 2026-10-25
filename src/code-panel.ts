@@ -17,7 +17,7 @@ import type { CodePrompt } from '/code-prompts.js';
 import { codeSections, sectionAt, sectionsOutline, sectionPrompt, STRUCTURE_MODES } from '/code-sections.js';
 import type { CodeSection, StructureMode } from '/code-sections.js';
 import { menuPlacement } from '/menu-placement.js';
-import { watchExpr, formatWatch, WatchError } from '/code-watch.js';
+import { watchExpr, formatWatch, WatchError, conditionOf, truthOf } from '/code-watch.js';
 import { createWatchStore } from '/watch-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import type { Watch } from '/watch-store.js';
@@ -700,7 +700,7 @@ export function setupCodePanel(): void {
     function scheduleInline() {
         // Labels and arrays take a new state on the next frame; read them after it.
         if(inlinePending)return;inlinePending=true;
-        requestAnimationFrame(()=>requestAnimationFrame(()=>{inlinePending=false;renderInline();}));
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{inlinePending=false;renderInline();paintConditions();}));
     }
     /**
      * The lines whose names mean what the scene shows: the top-level block (def or class) holding the executing
@@ -749,6 +749,28 @@ export function setupCodePanel(): void {
     body.addEventListener('scroll',()=>floatLine(null));
     body.addEventListener('pointerdown',()=>{selecting=true;floatLine(null);});
     document.addEventListener('pointerup',()=>{selecting=false;});
+    /**
+     * The executing line's test, when it is an if, elif or while: ✅ or ❌ after its code, the condition evaluated on
+     * the recorded run at this frame (code-watch.ts). A condition the run can't evaluate (a call, a name it doesn't
+     * record) gets no mark.
+     */
+    function paintConditions() {
+        body.querySelectorAll('.code-cond').forEach(n=>n.remove());
+        const at=stepTable();
+        if(!selected||!at)return;
+        const lines=selected.source.split('\n');
+        for(const line of lastLines){
+            const condition=conditionOf(lines[line-1]??'');
+            if(!condition)continue;
+            let truth:boolean|null=null;
+            try{truth=truthOf(evaluate(watchExpr(condition,at.table,at.names)));}catch{/* not evaluable on the run */}
+            const code=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"] code`);
+            if(truth===null||!code)continue;
+            const mark=document.createElement('span');mark.className=`code-cond ${truth?'code-cond-true':'code-cond-false'}`;
+            mark.textContent=truth?'✅':'❌';mark.title=`${condition}: ${truth?'True':'False'}`;
+            code.after(mark);
+        }
+    }
     function renderInline() {
         const hovered=floated;floatLine(null);
         body.querySelectorAll('.code-inline-values').forEach(n=>n.remove());

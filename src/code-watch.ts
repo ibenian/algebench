@@ -120,3 +120,18 @@ export function formatWatch(value: unknown): string {
     if (typeof value === 'string') return `'${value}'`;
     return String(value);
 }
+
+/** The condition an `if`, `elif` or `while` line tests (its trailing comment dropped), or null for any other line. */
+export function conditionOf(line: string): string | null {
+    const m = /^\s*(?:if|elif|while)\s+(.+?)\s*:\s*(?:#.*)?$/.exec(line);
+    return m ? m[1]! : null;
+}
+
+/** A condition's value as Python would test it: empty lists and zero are false. Null when it isn't one of those. */
+export function truthOf(value: unknown): boolean | null {
+    if (value && typeof value === 'object' && 'toArray' in value) return truthOf((value as {toArray(): unknown}).toArray());
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return Number.isNaN(value) ? null : value !== 0;
+    if (typeof value === 'string' || Array.isArray(value)) return value.length > 0;
+    return null;
+}

@@ -25476,6 +25476,19 @@ function formatWatch(value) {
 	if (typeof value === "string") return `'${value}'`;
 	return String(value);
 }
+/** The condition an `if`, `elif` or `while` line tests (its trailing comment dropped), or null for any other line. */
+function conditionOf(line) {
+	const m = /^\s*(?:if|elif|while)\s+(.+?)\s*:\s*(?:#.*)?$/.exec(line);
+	return m ? m[1] : null;
+}
+/** A condition's value as Python would test it: empty lists and zero are false. Null when it isn't one of those. */
+function truthOf(value) {
+	if (value && typeof value === "object" && "toArray" in value) return truthOf(value.toArray());
+	if (typeof value === "boolean") return value;
+	if (typeof value === "number") return Number.isNaN(value) ? null : value !== 0;
+	if (typeof value === "string" || Array.isArray(value)) return value.length > 0;
+	return null;
+}
 //#endregion
 //#region src/watch-store.ts
 var DB_NAME$2 = "algebench-watches";
@@ -26714,6 +26727,7 @@ function setupCodePanel() {
 		requestAnimationFrame(() => requestAnimationFrame(() => {
 			inlinePending = false;
 			renderInline();
+			paintConditions();
 		}));
 	}
 	/**
@@ -26779,6 +26793,32 @@ function setupCodePanel() {
 	document.addEventListener("pointerup", () => {
 		selecting = false;
 	});
+	/**
+	* The executing line's test, when it is an if, elif or while: ✅ or ❌ after its code, the condition evaluated on
+	* the recorded run at this frame (code-watch.ts). A condition the run can't evaluate (a call, a name it doesn't
+	* record) gets no mark.
+	*/
+	function paintConditions() {
+		body.querySelectorAll(".code-cond").forEach((n) => n.remove());
+		const at = stepTable();
+		if (!selected || !at) return;
+		const lines = selected.source.split("\n");
+		for (const line of lastLines) {
+			const condition = conditionOf(lines[line - 1] ?? "");
+			if (!condition) continue;
+			let truth = null;
+			try {
+				truth = truthOf(evaluate(watchExpr(condition, at.table, at.names)));
+			} catch {}
+			const code = body.querySelector(`.code-line[data-line="${line}"] code`);
+			if (truth === null || !code) continue;
+			const mark = document.createElement("span");
+			mark.className = `code-cond ${truth ? "code-cond-true" : "code-cond-false"}`;
+			mark.textContent = truth ? "✅" : "❌";
+			mark.title = `${condition}: ${truth ? "True" : "False"}`;
+			code.after(mark);
+		}
+	}
 	function renderInline() {
 		const hovered = floated;
 		floatLine(null);

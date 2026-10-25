@@ -2606,6 +2606,9 @@ Both find the same total, **22**, here even the same tree: with distinct weights
 
 
 # ── 11. Dijkstra: a min-heap pops the closest unsettled node; relaxing its edges may shorten its neighbours' distances ──
+# float('inf') as the trace records it (JSON has no infinity): larger than any distance, so the code's own conditions
+# (`d + w < dist[v]`) evaluate as they run. distText shows it as ∞.
+UNREACHED = 10 ** 9
 DIJ_SOURCE = """import heapq
 
 def dijkstra(n, adj, src):
@@ -2630,7 +2633,7 @@ DIJ_DONE, DIJ_HEAP = '#77bfae', '#e67db0'
 
 
 def dijkstra_trace():
-    """Dijkstra from 0. Per frame: d, u (the popped entry); v, w, vi; dist and distText ('∞' until reached); prev;
+    """Dijkstra from 0. Per frame: d, u (the popped entry); v, w, vi; dist (UNREACHED until reached) and distText ('∞'); prev;
     done (settled nodes, 1/0); heap (entries [d, v], sorted) and heapNames; checkText; result."""
     L = lambda t: line_of(DIJ_SOURCE, t)
     adj = [[(b, w) for a, b, w in DIJ_EDGES if a == i] for i in range(DIJ_N)]
@@ -2642,7 +2645,7 @@ def dijkstra_trace():
         emit0(line, message)
         f = trace[-1]
         f['distText'] = ['∞' if x == INF else str(x) for x in f['dist']]
-        f['dist'] = [-1 if x == INF else x for x in f['dist']]
+        f['dist'] = [UNREACHED if x == INF else x for x in f['dist']]
         f['heapNames'] = [f'{d}:{v}' for d, v in f['heap']]
         f['inHeap'] = sorted({v for _, v in f['heap']})
     def put(key, i, x): st[key] = [x if j == i else y for j, y in enumerate(st[key])]
@@ -2786,7 +2789,7 @@ ZOB_FREE = '#5fb3a3'                           # a 0-edge
 
 
 def zero_one_trace():
-    """0-1 BFS from 0. Per frame: u; v, w; dist (−1 for ∞) and distText; dq (the deque's nodes, front first) with dqNames
+    """0-1 BFS from 0. Per frame: u; v, w; dist (UNREACHED for ∞) and distText; dq (the deque's nodes, front first) with dqNames
     ('dist:node' as pushed); end (1 front, 2 back: where the last push went, 0 none); checkText; result."""
     L = lambda t: line_of(ZOB_SOURCE, t)
     adj = [[(b, w) for a, b, w in ZOB_EDGES if a == i] for i in range(ZOB_N)]
@@ -2797,7 +2800,7 @@ def zero_one_trace():
         emit0(line, message)
         f = trace[-1]
         f['distText'] = ['∞' if x == INF else str(x) for x in f['dist']]
-        f['dist'] = [-1 if x == INF else x for x in f['dist']]
+        f['dist'] = [UNREACHED if x == INF else x for x in f['dist']]
         f['dqNames'] = [f'{d}:{v}' for d, v in f['dq']]
         f['dq'] = [v for _, v in f['dq']]
     def put(i, x): st['dist'] = [x if j == i else y for j, y in enumerate(st['dist'])]
@@ -2861,7 +2864,7 @@ def zero_one_scene(header):
     cur = f"idx == {c('u')} and to == {c('v')}"
     free = "arrayAt(dataTable('zobNodes', idx, 'w'), to) == 0"
     level = lambda i: f"arrayAt({c('dist')}, {i})"
-    fill = f"idx == {c('u')} ? '{GOLD}' : ({level('idx')} == 0 ? '{ZOB_LEVEL[0]}' : ({level('idx')} == 1 ? '{ZOB_LEVEL[1]}' : ({level('idx')} >= 2 ? '{ZOB_LEVEL[2]}' : '')))"
+    fill = f"idx == {c('u')} ? '{GOLD}' : ({level('idx')} == 0 ? '{ZOB_LEVEL[0]}' : ({level('idx')} == 1 ? '{ZOB_LEVEL[1]}' : ({level('idx')} >= 2 and {level('idx')} < {UNREACHED} ? '{ZOB_LEVEL[2]}' : '')))"
     dq_last = f"arrayCount({c('dq')}) - 1"
     elements = [
         {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(ZOB_N), 'valueExpr': 'idx',
