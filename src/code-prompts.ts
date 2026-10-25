@@ -15,6 +15,7 @@ export const CODE_PROMPTS: CodePrompt[] = [
     {label: 'Total runtime / space complexity', prompt: 'What is the total runtime and space complexity of this code? Derive both from the loops and the recursion, and count the call stack and the output in the space.'},
     {label: 'Which lines determine the complexity?', prompt: 'Which lines determine the runtime and space complexity of this code? Name each one by line number, say what it contributes (a loop bound, a recursive call, a growing structure, the call stack), and which one dominates.'},
     {label: 'Complexity of this function only', prompt: 'What are the runtime and space complexity of only the function that contains the selected code, not counting its callers?'},
+    {label: 'Can you write it in a more optimal way?', prompt: 'Can this code be written in a more optimal way? If it can, give the improved version, say what it changes, and compare its runtime and space complexity with the current one. If it is already optimal, say why: the lower bound it meets. Keep its behaviour and output the same.'},
 ];
 
 /** The `def` enclosing a line (1-based): the nearest one above it, indented less than the line, or null. */
@@ -39,14 +40,24 @@ export interface CodeContext {
     executing: number[]; waitingCalls: number[]; scene: string; step: number; values: Record<string, unknown>;
     /** The file's teaching structure (code-sections.ts sectionsOutline), when it has one. */
     sections?: string;
+    /** The active code (the top-level block running now, else the one holding the selection): the answer is about it only. */
+    active?: {from: number; to: number};
 }
 
 /** The message for one prompt: the request, then the code and the state it is about. */
 export function codePromptMessage(prompt: CodePrompt, c: CodeContext): string {
     const fn = enclosingFunction(c.source, c.first);
-    const numbered = c.source.split('\n').map((text, i) => `${String(i + 1).padStart(3)}  ${text}`).join('\n');
+    const lines = c.source.split('\n');
+    const number = (text: string, i: number) => `${String(i + 1).padStart(3)}  ${text}`;
+    const numbered = lines.map(number).join('\n');
+    const active = c.active && (c.active.from > 1 || c.active.to < lines.length) ? c.active : null;
+    const owner = active ? enclosingFunction(c.source, active.from) : null;
     return [
         prompt.prompt,
+        ...(active ? [
+            `Answer only for the active code: lines ${active.from}–${active.to}${owner ? `, ${owner.name}()` : ''}. The rest of the file is context; do not analyze, count or include it in the answer.`,
+            `Active code:\n${lines.slice(active.from - 1, active.to).map((text, i) => number(text, active.from - 1 + i)).join('\n')}`,
+        ] : []),
         '',
         `File: ${c.path} (shown, not executed)`,
         `Selected: ${c.first === c.last ? `line ${c.first}` : `lines ${c.first}–${c.last}`}${fn ? `, inside ${fn.name}() (line ${fn.line})` : ''}`,
@@ -56,6 +67,6 @@ export function codePromptMessage(prompt: CodePrompt, c: CodeContext): string {
         `Calls waiting to return (call-site lines, outermost first): ${c.waitingCalls.length ? c.waitingCalls.join(', ') : 'none'}`,
         `Scene: ${c.scene}, step ${c.step}`,
         `Scalar variables: ${JSON.stringify(c.values)}`,
-        `Full source:\n${numbered}`,
+        `${active ? 'Full source (context only)' : 'Full source'}:\n${numbered}`,
     ].join('\n');
 }

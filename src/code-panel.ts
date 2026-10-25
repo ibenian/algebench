@@ -111,16 +111,18 @@ export function setupCodePanel(): void {
     }
     function codeMessage(prompt: CodePrompt) {
         if(!selected||!first)return null;
-        return codeMessageFor(prompt,first,last,excerpt);
+        // Answered for the active code only: the block running now, else the one holding the selection.
+        const active=inlineScope(selected.source,lastLines)??inlineScope(selected.source,new Set([first]));
+        return codeMessageFor(prompt,first,last,excerpt,active);
     }
     /** A prompt about lines from–to of the open file, with the state and the file's structure. */
-    function codeMessageFor(prompt: CodePrompt,from:number,to:number,text:string) {
+    function codeMessageFor(prompt: CodePrompt,from:number,to:number,text:string,active?:{from:number;to:number}|null) {
         const file=selected!,scene=state.lessonSpec?.scenes?.[state.currentSceneIndex];
         const sections=codeSections(file);
         return codePromptMessage(prompt,{path:file.path,source:file.source,first:from,last:to,excerpt:text,executing:[...lastLines],waitingCalls:shownCalls,
             scene:scene?.title??'',step:state.currentStepIndex+1,
             values:Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value])),
-            ...(sections.length?{sections:sectionsOutline(sections)}:{})});
+            ...(sections.length?{sections:sectionsOutline(sections)}:{}),...(active?{active}:{})});
     }
     function renderLineActions() {
         what.replaceChildren();

@@ -33,3 +33,16 @@ test('a prompt carries the selection, its function, execution, waiting calls and
     assert.match(message, / {2}8 {2}\s+backtrack\(i \+ 1\)/, 'numbered, so the tutor can cite lines');
     assert.equal(new Set(CODE_PROMPTS.map(p => p.label)).size, CODE_PROMPTS.length);
 });
+
+test('a prompt with an active block answers for that block only, the rest of the file being context', () => {
+    const source = `def bfs(g):\n    return 1\n\ndef dfs(g):\n    return 2`;
+    const message = codePromptMessage(CODE_PROMPTS[6]!, {path: 'g.py', source, first: 5, last: 5, excerpt: '    return 2',
+        executing: [5], waitingCalls: [], scene: 'S', step: 1, values: {}, active: {from: 4, to: 5}});
+    assert.match(message, /Answer only for the active code: lines 4–5, dfs\(\)/);
+    assert.match(message, /Active code:\n {2}4 {2}def dfs\(g\):\n {2}5 {6}return 2/);
+    assert.doesNotMatch(message.split('Full source')[0]!, /def bfs/, 'the other function is only in the full source');
+    assert.match(message, /Full source \(context only\):/);
+    const whole = codePromptMessage(CODE_PROMPTS[6]!, {path: 'g.py', source, first: 1, last: 1, excerpt: 'def bfs(g):',
+        executing: [], waitingCalls: [], scene: 'S', step: 1, values: {}, active: {from: 1, to: 5}});
+    assert.doesNotMatch(whole, /Answer only/, 'a block that is the whole file needs no restriction');
+});
