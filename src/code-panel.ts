@@ -64,10 +64,13 @@ export function setupCodePanel(): void {
     const settings=loadSettings();
     const compiled=new Map<string,CompiledExpr|null>();
     const targets=document.createElement('div');targets.className='code-step-targets';targets.hidden=true;
-    const ask=makeAiAskButton('ai-ask-btn','Ask AI about selected code',()=>{
-        if(!selected||!first)return null;
+    // ✦ in the header, beside ⋯: explains the selection, or with none, the active code (the function running now).
+    const ask=makeAiAskButton('ai-ask-btn','Ask AI about this code: the selection, or the running function',()=>{
+        if(!selected)return null;
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex];
-        return `Explain this selected code in the context of the current lesson. This source is displayed, not executed.\nFile: ${selected.path}\nLines: ${first}–${last}\nSelected text:\n${excerpt}\nCurrent scene: ${scene?.title??''}\nCurrent lesson step: ${state.currentStepIndex+1}\nScalar variables: ${JSON.stringify(Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value])))}`;
+        const scope=first?{from:first,to:last}:inlineScope(selected.source,lastLines)??{from:1,to:selected.source.split('\n').length};
+        const text=first?excerpt:selected.source.split('\n').slice(scope.from-1,scope.to).join('\n');
+        return `Explain this ${first?'selected':'active'} code in the context of the current lesson. This source is displayed, not executed.\nFile: ${selected.path}\nLines: ${scope.from}–${scope.to}\n${first?'Selected':'Active'} text:\n${text}\nCurrent scene: ${scene?.title??''}\nCurrent lesson step: ${state.currentStepIndex+1}\nScalar variables: ${JSON.stringify(Object.fromEntries(Object.entries(state.sceneSliders).filter(([,v])=>v.kind!=='tensor').map(([k,v])=>[k,v.value])))}`;
     });
     const jump=document.createElement('button');jump.type='button';jump.textContent='↗ Go to step';
     const what=document.createElement('span');what.className='code-line-actions';
@@ -75,11 +78,12 @@ export function setupCodePanel(): void {
     const watch=document.createElement('button');watch.type='button';watch.textContent='+ Watch';watch.className='code-watch-btn';
     const watchError=document.createElement('span');watchError.className='code-watch-error';watchError.setAttribute('role','alert');watchError.hidden=true;
     const modes=structureModes();
-    title.append(titleText,modes,viewSettingsMenu());
-    actions.append(selectionLabel,ask,jump,watch,what,codePromptsMenu(),watchError);host.append(tree,title,execution,body,actions,targets);
+    title.append(titleText,modes,ask,codePromptsMenu(),viewSettingsMenu());
+    actions.append(selectionLabel,jump,watch,what,watchError);host.append(tree,title,execution,body,actions,targets);
     /**
-     * "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
-     * silently: the request carries the whole file and state, so only the tutor's reply shows in the chat.
+     * "⋯" in the header: prompts about the active code (code-prompts.ts), so no selection is needed; those about a
+     * line wait for one. They are sent silently: the request carries the whole file and state, so only the tutor's
+     * reply shows in the chat.
      */
     function codePromptsMenu() {
         const wrap=document.createElement('span');wrap.className='preset-more code-prompts';
@@ -90,30 +94,35 @@ export function setupCodePanel(): void {
         const close=()=>{menu.hidden=true;toggle.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape,true);};
         const outside=(e:Event)=>{if(!wrap.contains(e.target as Node))close();};
         const escape=(e:KeyboardEvent)=>{if(e.key==='Escape'){close();toggle.focus();}};
-        for(const prompt of CODE_PROMPTS){
+        const items=CODE_PROMPTS.map(prompt=>{
             const item=document.createElement('button');item.type='button';item.className='preset-more-item';item.setAttribute('role','menuitem');
-            item.textContent=prompt.label;item.title=prompt.prompt+'\n\nClick to send · ⌘/Ctrl-click to edit';
+            item.textContent=prompt.label;
             item.addEventListener('click',e=>{close();const message=codeMessage(prompt);if(message)sendAiPrompt(message,e,{silent:true});});
             menu.append(item);
-        }
+            return {prompt,item};
+        });
         toggle.addEventListener('click',()=>{
             if(!menu.hidden){close();return;}
+            for(const {prompt,item} of items){
+                item.disabled=!selected||(!!prompt.line&&!first);
+                item.title=item.disabled?'Select a line first':prompt.prompt+'\n\nClick to send · ⌘/Ctrl-click to edit';
+            }
             menu.hidden=false;menu.style.left='0px';menu.style.maxWidth='';
             const bounds=(wrap.closest('.tab-content, #dock-tab-code')??document.documentElement).getBoundingClientRect();
             const {offset,maxWidth}=menuPlacement(wrap.getBoundingClientRect().left,menu.getBoundingClientRect().width,Math.max(0,bounds.left),Math.min(bounds.right,document.documentElement.clientWidth));
             menu.style.maxWidth=`${maxWidth}px`;menu.style.left=`${offset}px`;
             toggle.setAttribute('aria-expanded','true');
             document.addEventListener('pointerdown',outside,true);document.addEventListener('keydown',escape,true);
-            menu.querySelector<HTMLButtonElement>('button')?.focus();
+            menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
         });
         wrap.append(toggle,menu);
         return wrap;
     }
     function codeMessage(prompt: CodePrompt) {
-        if(!selected||!first)return null;
-        // Answered for the active code only: the block running now, else the one holding the selection.
-        const active=inlineScope(selected.source,lastLines)??inlineScope(selected.source,new Set([first]));
-        return codeMessageFor(prompt,first,last,excerpt,active);
+        if(!selected||(prompt.line&&!first))return null;
+        // Answered for the active code only: the block running now, else the one holding the selection, else the file.
+        const active=inlineScope(selected.source,lastLines)??(first?inlineScope(selected.source,new Set([first])):null);
+        return codeMessageFor(prompt,first,last,first?excerpt:'',active);
     }
     /** A prompt about lines from–to of the open file, with the state and the file's structure. */
     function codeMessageFor(prompt: CodePrompt,from:number,to:number,text:string,active?:{from:number;to:number}|null) {

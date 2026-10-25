@@ -25104,7 +25104,8 @@ var CODE_PROMPTS = [
 	},
 	{
 		label: "What's this line for?",
-		prompt: "What is the selected code for? Say what goes wrong, or what is missing, if it were removed."
+		prompt: "What is the selected code for? Say what goes wrong, or what is missing, if it were removed.",
+		line: true
 	},
 	{
 		label: "Analyze call stack",
@@ -25112,15 +25113,18 @@ var CODE_PROMPTS = [
 	},
 	{
 		label: "I don't understand this line",
-		prompt: "I don't understand the selected code. Explain it in plain words, one piece at a time, using the values on screen right now."
+		prompt: "I don't understand the selected code. Explain it in plain words, one piece at a time, using the values on screen right now.",
+		line: true
 	},
 	{
 		label: "How many times does this line run?",
-		prompt: "How many times does the selected code run for this input? Then say how that count grows with the input size, and why."
+		prompt: "How many times does the selected code run for this input? Then say how that count grows with the input size, and why.",
+		line: true
 	},
 	{
 		label: "This line's share of the complexity",
-		prompt: "How much does the selected line add to the program's runtime and space complexity? Count how often it runs and what each run costs, then say whether it dominates the total or not, and why."
+		prompt: "How much does the selected line add to the program's runtime and space complexity? Count how often it runs and what each run costs, then say whether it dominates the total or not, and why.",
+		line: true
 	},
 	{
 		label: "Total runtime / space complexity",
@@ -25132,7 +25136,7 @@ var CODE_PROMPTS = [
 	},
 	{
 		label: "Complexity of this function only",
-		prompt: "What are the runtime and space complexity of only the function that contains the selected code, not counting its callers?"
+		prompt: "What are the runtime and space complexity of only the function that contains the selected code (or of the active code), not counting its callers?"
 	},
 	{
 		label: "Can you write it in a more optimal way?",
@@ -25159,19 +25163,18 @@ function enclosingFunction(source, line) {
 }
 /** The message for one prompt: the request, then the code and the state it is about. */
 function codePromptMessage(prompt, c) {
-	const fn = enclosingFunction(c.source, c.first);
 	const lines = c.source.split("\n");
 	const number = (text, i) => `${String(i + 1).padStart(3)}  ${text}`;
 	const numbered = lines.map(number).join("\n");
 	const active = c.active && (c.active.from > 1 || c.active.to < lines.length) ? c.active : null;
 	const owner = active ? enclosingFunction(c.source, active.from) : null;
+	const fn = c.first ? enclosingFunction(c.source, c.first) : null;
 	return [
 		prompt.prompt,
 		...active ? [`Answer only for the active code: lines ${active.from}–${active.to}${owner ? `, ${owner.name}()` : ""}. The rest of the file is context; do not analyze, count or include it in the answer.`, `Active code:\n${lines.slice(active.from - 1, active.to).map((text, i) => number(text, active.from - 1 + i)).join("\n")}`] : [],
 		"",
 		`File: ${c.path} (shown, not executed)`,
-		`Selected: ${c.first === c.last ? `line ${c.first}` : `lines ${c.first}–${c.last}`}${fn ? `, inside ${fn.name}() (line ${fn.line})` : ""}`,
-		`Selected text:\n${c.excerpt}`,
+		...c.first ? [`Selected: ${c.first === c.last ? `line ${c.first}` : `lines ${c.first}–${c.last}`}${fn ? `, inside ${fn.name}() (line ${fn.line})` : ""}`, `Selected text:\n${c.excerpt}`] : ["Nothing is selected: the question is about the active code as a whole."],
 		...c.sections ? [`The code's sections (its teaching structure; explain in these terms):\n${c.sections}`] : [],
 		`Executing now: ${c.executing.length ? `line ${c.executing.join(", ")}` : "no line marked"}`,
 		`Calls waiting to return (call-site lines, outermost first): ${c.waitingCalls.length ? c.waitingCalls.join(", ") : "none"}`,
@@ -25746,10 +25749,18 @@ function setupCodePanel() {
 	const targets = document.createElement("div");
 	targets.className = "code-step-targets";
 	targets.hidden = true;
-	const ask = makeAiAskButton("ai-ask-btn", "Ask AI about selected code", () => {
-		if (!selected || !first) return null;
+	const ask = makeAiAskButton("ai-ask-btn", "Ask AI about this code: the selection, or the running function", () => {
+		if (!selected) return null;
 		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
-		return `Explain this selected code in the context of the current lesson. This source is displayed, not executed.\nFile: ${selected.path}\nLines: ${first}–${last}\nSelected text:\n${excerpt}\nCurrent scene: ${scene?.title ?? ""}\nCurrent lesson step: ${state.currentStepIndex + 1}\nScalar variables: ${JSON.stringify(Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value])))}`;
+		const scope = first ? {
+			from: first,
+			to: last
+		} : inlineScope(selected.source, lastLines) ?? {
+			from: 1,
+			to: selected.source.split("\n").length
+		};
+		const text = first ? excerpt : selected.source.split("\n").slice(scope.from - 1, scope.to).join("\n");
+		return `Explain this ${first ? "selected" : "active"} code in the context of the current lesson. This source is displayed, not executed.\nFile: ${selected.path}\nLines: ${scope.from}–${scope.to}\n${first ? "Selected" : "Active"} text:\n${text}\nCurrent scene: ${scene?.title ?? ""}\nCurrent lesson step: ${state.currentStepIndex + 1}\nScalar variables: ${JSON.stringify(Object.fromEntries(Object.entries(state.sceneSliders).filter(([, v]) => v.kind !== "tensor").map(([k, v]) => [k, v.value])))}`;
 	});
 	const jump = document.createElement("button");
 	jump.type = "button";
@@ -25765,12 +25776,13 @@ function setupCodePanel() {
 	watchError.setAttribute("role", "alert");
 	watchError.hidden = true;
 	const modes = structureModes();
-	title.append(titleText, modes, viewSettingsMenu());
-	actions.append(selectionLabel, ask, jump, watch, what, codePromptsMenu(), watchError);
+	title.append(titleText, modes, ask, codePromptsMenu(), viewSettingsMenu());
+	actions.append(selectionLabel, jump, watch, what, watchError);
 	host.append(tree, title, execution, body, actions, targets);
 	/**
-	* "⋯": prompts that analyze the selected code (code-prompts.ts), in a menu that opens upward. They are sent
-	* silently: the request carries the whole file and state, so only the tutor's reply shows in the chat.
+	* "⋯" in the header: prompts about the active code (code-prompts.ts), so no selection is needed; those about a
+	* line wait for one. They are sent silently: the request carries the whole file and state, so only the tutor's
+	* reply shows in the chat.
 	*/
 	function codePromptsMenu() {
 		const wrap = document.createElement("span");
@@ -25802,24 +25814,31 @@ function setupCodePanel() {
 				toggle.focus();
 			}
 		};
-		for (const prompt of CODE_PROMPTS) {
+		const items = CODE_PROMPTS.map((prompt) => {
 			const item = document.createElement("button");
 			item.type = "button";
 			item.className = "preset-more-item";
 			item.setAttribute("role", "menuitem");
 			item.textContent = prompt.label;
-			item.title = prompt.prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
 			item.addEventListener("click", (e) => {
 				close();
 				const message = codeMessage(prompt);
 				if (message) sendAiPrompt(message, e, { silent: true });
 			});
 			menu.append(item);
-		}
+			return {
+				prompt,
+				item
+			};
+		});
 		toggle.addEventListener("click", () => {
 			if (!menu.hidden) {
 				close();
 				return;
+			}
+			for (const { prompt, item } of items) {
+				item.disabled = !selected || !!prompt.line && !first;
+				item.title = item.disabled ? "Select a line first" : prompt.prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
 			}
 			menu.hidden = false;
 			menu.style.left = "0px";
@@ -25831,15 +25850,15 @@ function setupCodePanel() {
 			toggle.setAttribute("aria-expanded", "true");
 			document.addEventListener("pointerdown", outside, true);
 			document.addEventListener("keydown", escape, true);
-			menu.querySelector("button")?.focus();
+			menu.querySelector("button:not(:disabled)")?.focus();
 		});
 		wrap.append(toggle, menu);
 		return wrap;
 	}
 	function codeMessage(prompt) {
-		if (!selected || !first) return null;
-		const active = inlineScope(selected.source, lastLines) ?? inlineScope(selected.source, /* @__PURE__ */ new Set([first]));
-		return codeMessageFor(prompt, first, last, excerpt, active);
+		if (!selected || prompt.line && !first) return null;
+		const active = inlineScope(selected.source, lastLines) ?? (first ? inlineScope(selected.source, /* @__PURE__ */ new Set([first])) : null);
+		return codeMessageFor(prompt, first, last, first ? excerpt : "", active);
 	}
 	/** A prompt about lines from–to of the open file, with the state and the file's structure. */
 	function codeMessageFor(prompt, from, to, text, active) {

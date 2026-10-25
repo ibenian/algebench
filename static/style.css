@@ -5734,11 +5734,15 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-line.selected { outline: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent); outline-offset: -1px; }
 .code-selection-actions { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; padding: 10px; border-top: 1px solid var(--border-color); font-size: 11px; }
 .code-selection-actions[hidden], .code-step-targets[hidden] { display: none; }
-.code-selection-actions .ai-ask-btn { position: static; opacity: 1; visibility: visible; }
+.code-file-title .ai-ask-btn { position: static; opacity: 1; visibility: visible; margin-left: 0; }
 .code-selection-actions button:not(.ai-ask-btn):not(.preset-more-item), .code-step-targets button { color: var(--text-color); background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 5px; padding: 5px 8px; cursor: pointer; }
 .code-selection-actions button:disabled { opacity: .4; cursor: default; }
-.code-selection-actions .code-prompts { margin-left: auto; }
-.code-selection-actions .code-prompts-btn { padding: 3px 10px; font-size: 15px; line-height: 1; letter-spacing: 1px; }
+/* "⋯" in the Code header, beside ⚙: its menu opens downward. */
+.code-file-title .code-prompts { flex: none; }
+.code-file-title .code-prompts-btn { padding: 2px 8px; font-size: 14px; line-height: 1.2; letter-spacing: 1px; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
+.code-file-title .code-prompts-btn:hover, .code-file-title .code-prompts-btn[aria-expanded="true"] { opacity: 1; border-color: var(--border-color); background: var(--panel-bg); }
+.code-file-title .code-prompts .preset-more-menu { bottom: auto; top: calc(100% + 6px); }
+.preset-more-item:disabled { opacity: .4; cursor: default; background: none; }
 .code-step-targets { max-height: 130px; overflow: auto; padding: 8px; }
 .code-step-targets button { display: block; width: 100%; text-align: left; margin-bottom: 5px; }
 .code-mark-gold { background: #c49a3044; }

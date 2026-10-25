@@ -46,3 +46,15 @@ test('a prompt with an active block answers for that block only, the rest of the
         executing: [], waitingCalls: [], scene: 'S', step: 1, values: {}, active: {from: 1, to: 5}});
     assert.doesNotMatch(whole, /Answer only/, 'a block that is the whole file needs no restriction');
 });
+
+test('without a selection a prompt is about the active code as a whole; line prompts are marked as needing one', () => {
+    const source = `def bfs(g):\n    return 1\n\ndef dfs(g):\n    return 2`;
+    const gist = CODE_PROMPTS[0]!;
+    const message = codePromptMessage(gist, {path: 'g.py', source, first: 0, last: 0, excerpt: '',
+        executing: [5], waitingCalls: [], scene: 'S', step: 1, values: {}, active: {from: 4, to: 5}});
+    assert.doesNotMatch(message, /Selected/);
+    assert.match(message, /Nothing is selected: the question is about the active code as a whole\./);
+    assert.match(message, /Answer only for the active code: lines 4–5, dfs\(\)/);
+    assert.ok(!gist.line, 'the gist needs no selection');
+    assert.ok(CODE_PROMPTS.some(p => p.line) && CODE_PROMPTS.some(p => !p.line));
+});
