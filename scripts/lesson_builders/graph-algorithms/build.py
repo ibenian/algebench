@@ -2295,7 +2295,7 @@ def uf_scene(header):
          'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(UF_N), 'valueExpr': f"arrayAt({c('rank')}, idx)",
          'highlightExpr': f"idx == {c('ra')} and {c('line')} == {L('rank[ra] += 1')}"},
         {'id': 'edges', 'type': 'array', 'label': 'edges', 'codeSymbol': 'edges', 'labelSide': 'left', 'origin': [-2.3, -3.8, 0], 'cellSize': 1.15,
-         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'string', 'lengthExpr': str(len(UF_EDGES)),
+         'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(len(UF_EDGES)),
          'valueExpr': "dataTable('ufEdges', idx, 'name')",
          'colorExpr': f"keyIndex({c('redundant')}, dataTable('ufEdges', idx, 'pair')) >= 0 ? '#e06c75' : "
                       f"(keyIndex({c('merged')}, dataTable('ufEdges', idx, 'pair')) >= 0 ? '#77bfae' : '')",
@@ -2523,7 +2523,7 @@ def mst_scene(header):
 
     def pairs(id, label, col, y, color):
         return {'id': id, 'type': 'array', 'label': label, 'codeSymbol': id, 'labelSide': 'left', 'origin': [-2.3, y, 0], 'cellSize': 1.15,
-                'fontSize': 16, 'axisLabels': 'plane', 'itemType': 'string', 'color': color, 'showIndices': False,
+                'fontSize': 16, 'axisLabels': 'plane', 'itemType': 'text', 'color': color, 'showIndices': False,
                 'lengthExpr': f"arrayCount({col})", 'valueExpr': f"arrayAt({col}, idx)"}
 
     k = tr
@@ -2532,7 +2532,7 @@ def mst_scene(header):
     kruskal = [
         graph(f"dataTable('ufPalette', arrayAt({k('root')}, idx), 'c')", kcur, either(k('tree')), either(k('rejected')), MST_REJECT),
         {'id': 'sorted', 'type': 'array', 'label': 'sorted', 'codeSymbol': 'sorted(edges)', 'labelSide': 'left', 'origin': [-2.3, -1.7, 0],
-         'cellSize': 1.0, 'fontSize': 14, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'string', 'lengthExpr': str(len(sorted_edges)),
+         'cellSize': 1.0, 'fontSize': 14, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(len(sorted_edges)),
          'valueExpr': "dataTable('mstSorted', idx, 'name')",
          'colorExpr': f"keyIndex({k('tree')}, dataTable('mstSorted', idx, 'pair')) >= 0 ? '{MST_TREE}' : "
                       f"(keyIndex({k('rejected')}, dataTable('mstSorted', idx, 'pair')) >= 0 ? '{MST_REJECT}' : '')",
@@ -2557,7 +2557,7 @@ def mst_scene(header):
     prim = [
         graph(f"idx == {p('u')} ? '{GOLD}' : (arrayAt({p('seen')}, idx) == 1 ? '{MST_TREE}' : '')", pcur, either(p('tree')), frontier, MST_FRONTIER),
         {'id': 'heap', 'type': 'array', 'label': 'heap', 'codeSymbol': 'heap', 'labelSide': 'left', 'origin': [-2.3, -1.7, 0], 'cellSize': 1.0,
-         'fontSize': 14, 'axisLabels': 'plane', 'itemType': 'string', 'color': MST_FRONTIER, 'showIndices': False,
+         'fontSize': 14, 'axisLabels': 'plane', 'itemType': 'text', 'color': MST_FRONTIER, 'showIndices': False,
          'lengthExpr': f"arrayCount({p('heapNames')})", 'valueExpr': f"arrayAt({p('heapNames')}, idx)",
          'highlightExpr': f"idx == 0 and {p('line')} == {LP('w, u, p = heapq.heappop(heap)')}"},
         {'id': 'seen', 'type': 'array', 'label': 'seen', 'codeSymbol': 'seen', 'labelSide': 'left', 'origin': [-2.3, -3.0, 0], 'cellSize': 1.0,
@@ -2603,6 +2603,162 @@ Both find the same total, **22**, here even the same tree: with distinct weights
         first={'title': 'Kruskal: cheapest edge first', 'description': 'Take each edge that joins two groups.'},
         more=[{'id': 'prim', 'title': 'Prim: grow one tree', 'description': 'Always add the cheapest edge leaving the tree.',
                'table': 'mst_prim', 'trace': ptrace, 'elements': prim}])
+
+
+# ── 11. Dijkstra: a min-heap pops the closest unsettled node; relaxing its edges may shorten its neighbours' distances ──
+DIJ_SOURCE = """import heapq
+
+def dijkstra(n, adj, src):
+    dist = [float('inf')] * n
+    prev = [-1] * n
+    dist[src] = 0
+    heap = [(0, src)]
+    while heap:
+        d, u = heapq.heappop(heap)
+        if d > dist[u]:
+            continue  # stale: u was reached more cheaply
+        for v, w in adj[u]:
+            if d + w < dist[v]:
+                dist[v] = d + w  # relax: a shorter way to v
+                prev[v] = u
+                heapq.heappush(heap, (dist[v], v))
+    return dist, prev"""
+DIJ_N = 6
+DIJ_EDGES = [(0, 1, 7), (0, 2, 2), (2, 1, 3), (1, 3, 1), (2, 3, 8), (2, 4, 5), (4, 3, 2), (3, 5, 4), (4, 5, 6)]
+DIJ_POS = [(-6.0, 2.1), (-3.5, 3.6), (-3.5, 0.6), (-1.0, 3.6), (-1.0, 0.6), (1.5, 2.1)]
+DIJ_DONE, DIJ_HEAP = '#77bfae', '#e67db0'
+
+
+def dijkstra_trace():
+    """Dijkstra from 0. Per frame: d, u (the popped entry); v, w, vi; dist and distText ('∞' until reached); prev;
+    done (settled nodes, 1/0); heap (entries [d, v], sorted) and heapNames; checkText; result."""
+    L = lambda t: line_of(DIJ_SOURCE, t)
+    adj = [[(b, w) for a, b, w in DIJ_EDGES if a == i] for i in range(DIJ_N)]
+    INF = float('inf')
+    st = {'d': -1, 'u': -1, 'v': -1, 'w': -1, 'vi': -1, 'dist': [INF] * DIJ_N, 'prev': [-1] * DIJ_N, 'done': [0] * DIJ_N,
+          'heap': [], 'checkText': 'check: —', 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        emit0(line, message)
+        f = trace[-1]
+        f['distText'] = ['∞' if x == INF else str(x) for x in f['dist']]
+        f['dist'] = [-1 if x == INF else x for x in f['dist']]
+        f['heapNames'] = [f'{d}:{v}' for d, v in f['heap']]
+        f['inHeap'] = sorted({v for _, v in f['heap']})
+    def put(key, i, x): st[key] = [x if j == i else y for j, y in enumerate(st[key])]
+    emit(L('dist = [float'), 'Every distance starts unknown: ∞.')
+    emit(L('prev = [-1] * n'), 'prev[v] will hold the node v is reached from, to rebuild the path.')
+    put('dist', 0, 0)
+    emit(L('dist[src] = 0'), 'The source is 0 away from itself.')
+    st['heap'] = [[0, 0]]
+    emit(L('heap = [(0, src)]'), 'The heap holds (distance, node) pairs; it starts with the source.')
+    while st['heap']:
+        emit(L('while heap'), f'{len(st["heap"])} entr{"ies" if len(st["heap"]) > 1 else "y"} waiting in the heap.')
+        (d, u), st['heap'] = st['heap'][0], st['heap'][1:]
+        st.update(d=d, u=u, v=-1, w=-1, vi=-1)
+        emit(L('d, u = heapq.heappop(heap)'), f'Pop the closest: {u} at distance {d}.')
+        if d > st['dist'][u]:
+            st['checkText'] = f'd = {d} > dist[{u}] = {st["dist"][u]}: stale'
+            emit(L('continue  # stale'), f'{u} was already reached for {st["dist"][u]}: this entry is stale, skip it.')
+            st['checkText'] = 'check: —'
+            continue
+        put('done', u, 1)
+        st['checkText'] = f'd = {d} = dist[{u}]: settled'
+        emit(L('if d > dist[u]'), f'dist[{u}] = {d} is final: nothing left in the heap is closer, and no edge is negative.')
+        for vi, (v, w) in enumerate(adj[u]):
+            st.update(v=v, w=w, vi=vi)
+            nd, old = d + w, st['dist'][v]
+            oldText = '∞' if old == INF else str(old)
+            st['checkText'] = f'd + w = {d} + {w} = {nd} ' + ('<' if nd < old else '≥') + f' dist[{v}] = {oldText}'
+            emit(L('if d + w < dist[v]'), f'Through {u}, {v} is {nd} away; ' + (f'better than {oldText}.' if nd < old else f'no better than {oldText}.'))
+            if nd < old:
+                put('dist', v, nd)
+                emit(L('dist[v] = d + w'), f'Relax: dist[{v}] = {nd}' + ('.' if old == INF else f', down from {old}.'))
+                put('prev', v, u)
+                emit(L('prev[v] = u'), f'The best way to {v} now comes from {u}.')
+                st['heap'] = sorted(st['heap'] + [[nd, v]])
+                emit(L('heapq.heappush(heap, (dist[v], v))'), f'Push ({nd}, {v})' + ('.' if old == INF else f'; the old ({old}, {v}) stays behind, stale.'))
+            st['checkText'] = 'check: —'
+        st.update(v=-1, w=-1, vi=-1)
+    st.update(d=-1, u=-1, result=str(st['dist']))
+    emit(L('return dist, prev'), f'Shortest distances from 0: {", ".join(map(str, st["dist"]))}. Following prev back gives each path.')
+    return trace, adj
+
+
+def dijkstra_sections():
+    S = lambda *a, **k: section(DIJ_SOURCE, *a, **k)
+    return [
+        S('j-init', 'Distances unknown; the source at 0 in the heap', 'def dijkstra(', 'heap = [(0, src)]',
+          hint='Every distance starts at infinity except the source; the heap holds (distance, node) and starts with the source.'),
+        S('j-pop', 'Pop the closest; skip a stale entry', 'while heap', 'continue',
+          hint='The smallest distance in the heap is final for its node, unless the node was already reached more cheaply.',
+          prompt='Explain why the node popped with the smallest distance is final when no edge is negative, and why stale entries are skipped rather than removed.'),
+        S('j-relax', 'Relax each edge: a shorter way?', 'for v, w in adj[u]', 'heapq.heappush', None,
+          hint='If going through u is shorter than what v has, lower v\'s distance, remember u, and push the new entry.',
+          prompt='Explain relaxation, and why pushing a new entry instead of updating the old one is correct.'),
+        S('j-return', 'Distances and the path tree', 'return dist, prev', None),
+    ]
+
+
+def dijkstra_scene(header):
+    trace, adj = dijkstra_trace()
+    L = lambda t: line_of(DIJ_SOURCE, t)
+    c = tr
+    weights = [[next((w for a, b, w in DIJ_EDGES if (a, b) == (i, j)), 0) for j in range(DIJ_N)] for i in range(DIJ_N)]
+    nodes = [{'x': x, 'y': y, 'adj': [b for b, _ in adj[i]], 'w': weights[i]} for i, (x, y) in enumerate(DIJ_POS)]
+    cur = f"idx == {c('u')} and to == {c('v')}"
+    path = f"arrayAt({c('prev')}, to) == idx"
+    fill = (f"idx == {c('u')} ? '{GOLD}' : (arrayAt({c('done')}, idx) == 1 ? '{DIJ_DONE}' : "
+            f"(keyIndex({c('inHeap')}, idx) >= 0 ? '{DIJ_HEAP}' : ''))")
+    elements = [
+        {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(DIJ_N), 'valueExpr': 'idx',
+         'nodeShape': 'rect', 'nodeWidth': 0.75, 'nodeHeight': 0.75, 'nodeCornerRadius': 0.375, 'valueLabel': 'inside', 'showIndices': False,
+         'positionExpr': ["dataTable('dijNodes', idx, 'x')", "dataTable('dijNodes', idx, 'y')", '0'], 'colorExpr': fill,
+         # The edge each node's best distance comes through (prev) is thick: together they form the shortest-path tree.
+         'connectTo': {'indexExpr': "dataTable('dijNodes', idx, 'adj')", 'pinned': True, 'arrow': True, 'color': '#4a5563',
+                       'colorExpr': f"{cur} ? '{GOLD}' : ({path} ? '{DIJ_DONE}' : '')", 'highlightExpr': cur,
+                       'widthExpr': f"{path} ? 3.2 : ({cur} ? 2.4 : 1.2)",
+                       'labelExpr': "concat(arrayAt(dataTable('dijNodes', idx, 'w'), to))"}},
+        {'id': 'heap', 'type': 'array', 'label': 'heap', 'codeSymbol': 'heap', 'labelSide': 'left', 'origin': [-2.3, -1.7, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'axisLabels': 'plane', 'itemType': 'text', 'color': DIJ_HEAP, 'showIndices': False,
+         'lengthExpr': f"arrayCount({c('heapNames')})", 'valueExpr': f"arrayAt({c('heapNames')}, idx)",
+         'highlightExpr': f"idx == 0 and {c('line')} == {L('while heap')}"},
+        {'id': 'dist', 'type': 'array', 'label': 'dist', 'codeSymbol': 'dist', 'labelSide': 'left', 'origin': [-2.3, -3.0, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(DIJ_N),
+         'valueExpr': f"arrayAt({c('distText')}, idx)", 'colorExpr': f"arrayAt({c('done')}, idx) == 1 ? '{DIJ_DONE}' : ''",
+         'highlightExpr': f"idx == {c('v')} or idx == {c('u')}"},
+        {'id': 'prev', 'type': 'array', 'label': 'prev', 'codeSymbol': 'prev', 'labelSide': 'left', 'origin': [-2.3, -4.3, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(DIJ_N), 'valueExpr': f"arrayAt({c('prev')}, idx)",
+         'highlightExpr': f"idx == {c('v')} and {c('line')} == {L('prev[v] = u')}"},
+        label('d', f"{c('d')} < 0 ? 'd: —' : concat('d = ', {c('d')})", None, L('d, u = heapq.heappop(heap)'), 'dijkstra'),
+        label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], L('d, u = heapq.heappop(heap)'), 'dijkstra'),
+        label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v, w in adj[u]'), 'dijkstra'),
+        label('w', f"{c('w')} < 0 ? 'w: —' : concat('w = ', {c('w')})", None, L('for v, w in adj[u]'), 'dijkstra'),
+        {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[', {c('v')}, '] = ', arrayAt({c('distText')}, {c('v')}))",
+                 ['dist', c('v')], L('dist[v] = d + w'), 'dijkstra'), 'highlightExpr': f"{c('v')} >= 0"},
+        {**label('check', c('checkText'), None, L('if d + w < dist[v]'), 'dijkstra'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        label('heap-len', f"concat('len(heap) = ', arrayCount({c('heapNames')}))", ['heap', '0'], L('while heap'), 'dijkstra'),
+        label('result', f"concat('result: ', {c('result')})", None, L('return dist, prev'), 'dijkstra'),
+    ]
+    return run_scene('dijkstra', 'Cheapest route (Dijkstra)', header, """**Signal:** shortest or cheapest path when edges have **non-negative** weights: travel time, network delay, "minimum effort".
+
+BFS finds shortest paths when every edge costs the same: nodes leave the queue in order of distance. With weights, a plain queue no longer does that, so Dijkstra uses a **min-heap** of (distance, node): it always pops the **closest** node not yet settled.
+
+- **Settle:** when a node is popped, its distance is **final**. Anything still in the heap is at least as far, and with no negative edges a detour through it can only add. Settled nodes are green.
+- **Relax:** for each edge u → v of weight w, if `dist[u] + w` beats `dist[v]`, lower it, record `prev[v] = u`, and push the new entry. Pink nodes wait in the heap.
+- **Stale entries:** an improved node keeps its old, larger entry in the heap. When it is popped later, `d > dist[u]` gives it away: skip it. That is cheaper than finding and updating it.
+
+Here the direct edge 0 → 1 costs 7, but 0 → 2 → 1 costs 2 + 3 = **5**, so 1 is relaxed twice and its (7, 1) entry turns stale; 3 drops from 10 to **6** the same way. The thick edges are each node's `prev`: the **shortest-path tree**, and following them back from any node gives its path.
+
+**Negative edges break it:** a settled node could later be beaten by a path through a negative edge (use Bellman-Ford).
+
+**Cost:** O((V + E) log V) with a binary heap.
+
+**Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops, Swim in Rising Water.""",
+        'Explain why the popped node\'s distance is final when no edge is negative, what relaxation does, and why stale heap entries appear. Ask the learner to predict which node pops next and whether a relaxation improves the distance.',
+        'dijkstra.py', DIJ_SOURCE, trace, elements, sections=dijkstra_sections(),
+        data={'dijNodes': nodes},
+        first={'title': 'Settle the closest, relax its edges', 'description': 'A min-heap pops the closest unsettled node.'})
 
 
 def code_sections(scene_id):
@@ -2691,7 +2847,8 @@ def code_sections(scene_id):
 codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
          'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene,
-         'union-find': uf_scene, 'mst': mst_scene}
+         'union-find': uf_scene, 'mst': mst_scene,
+         'dijkstra': dijkstra_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
