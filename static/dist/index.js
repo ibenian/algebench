@@ -3617,7 +3617,15 @@ function makeSilentAiAskButton(className, title, getMessage) {
 * Send a prompt to the tutor, or with ⌘/Ctrl held put it in the input to edit first. Silent prompts are not
 * posted as the learner's message: only the reply shows (for long, context-laden requests).
 */
+/**
+* An Ask-AI click is about what is on screen now: playback stops, so the state the question carries is still the
+* one shown when the answer comes back (and the reply isn't about a frame long gone).
+*/
+function holdStateForAsk() {
+	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+}
 function sendAiPrompt(message, e, opts = {}) {
+	holdStateForAsk();
 	openChatPanel();
 	if (e.metaKey || e.ctrlKey) {
 		const input = document.getElementById("chat-input");
@@ -3665,6 +3673,7 @@ function _makeAiAskButton(className, title, getMessage, silent) {
 		const raw = getMessage();
 		const message = raw ? stripGlossaryMarkers(raw) : raw;
 		if (!message) return;
+		holdStateForAsk();
 		openChatPanel();
 		if (e.metaKey || e.ctrlKey) {
 			const input = document.getElementById("chat-input");
@@ -13004,6 +13013,7 @@ function renderArray(el, _view, decorate) {
 		side: THREE.DoubleSide,
 		uniforms: {
 			opacity: { value: 1 },
+			phase: { value: 0 },
 			quad: { value: new THREE.Vector2(pitch * .455, cellHeight() * .584) },
 			cell: { value: new THREE.Vector2(pitch * .39, cellHeight() * .5) },
 			radius: { value: Math.min(Number(el.cellCornerRadius ?? 0), pitch * .39, cellHeight() * .5) }
@@ -13011,13 +13021,14 @@ function renderArray(el, _view, decorate) {
 		vertexShader: `attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-		fragmentShader: `uniform float opacity; uniform vec2 quad; uniform vec2 cell; uniform float radius;
+		fragmentShader: `uniform float opacity; uniform float phase; uniform vec2 quad; uniform vec2 cell; uniform float radius;
             varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){vec2 q=abs(rimUV*quad)-cell+radius;
                 float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-radius;
                 float rim=exp(-pow(d/0.045,2.0));
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
+                float beat=0.6+0.4*cos(6.2831853*phase);
+                float alpha=rim*mix(0.85*beat,0.35,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
 	});
 	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
@@ -13031,6 +13042,14 @@ function renderArray(el, _view, decorate) {
 	glowMesh.raycast = () => {};
 	state.three.scene.add(glowMesh);
 	state.planeMeshes.push(glowMesh);
+	registerAnimUpdater({
+		animState: { get stopped() {
+			return animState.stopped;
+		} },
+		updateFrame(nowMs) {
+			if (glowMesh.visible) glowMaterial.uniforms.phase.value = pipeFlowPhase(nowMs);
+		}
+	});
 	const changes = new ArrayChangeTracker();
 	let illuminated = /* @__PURE__ */ new Set();
 	let rimCells = [];

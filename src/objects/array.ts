@@ -4,7 +4,8 @@ import { flashSymbols, setSymbolHover, hoveredSymbols, registerSymbolValue } fro
 import { dataToWorld } from '/coords.js';
 import { addLabel3D, parseColor, colorToCSS } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
-import { registerAnimExpr } from '/sliders.js';
+import { registerAnimExpr, registerAnimUpdater } from '/sliders.js';
+import { pipeFlowPhase } from '/objects/system-dag-flow.js';
 import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
 import type { Mesh, Object3D } from 'three';
@@ -102,18 +103,20 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         transparent:true,depthWrite:false,side:THREE.DoubleSide,
         // The rim traces the cell's own edge, in data units: a rounded rectangle (radius 0 for a box). quad is the
         // glow quad's half size, cell the cell's.
-        uniforms:{opacity:{value:1},quad:{value:new THREE.Vector2(pitch*.455,cellHeight()*.584)},cell:{value:new THREE.Vector2(pitch*.39,cellHeight()*.5)},
+        // phase: where the changed cells' rim is in its breath, one per second (as the system DAG's pipe flow).
+        uniforms:{opacity:{value:1},phase:{value:0},quad:{value:new THREE.Vector2(pitch*.455,cellHeight()*.584)},cell:{value:new THREE.Vector2(pitch*.39,cellHeight()*.5)},
             radius:{value:Math.min(Number(el.cellCornerRadius??0),pitch*.39,cellHeight()*.5)}},
         vertexShader:`attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
                 gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-        fragmentShader:`uniform float opacity; uniform vec2 quad; uniform vec2 cell; uniform float radius;
+        fragmentShader:`uniform float opacity; uniform float phase; uniform vec2 quad; uniform vec2 cell; uniform float radius;
             varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){vec2 q=abs(rimUV*quad)-cell+radius;
                 float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-radius;
                 float rim=exp(-pow(d/0.045,2.0));
                 vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float alpha=rim*mix(0.85,0.35,removedCell)*opacity*stackOpacity;
+                float beat=0.6+0.4*cos(6.2831853*phase);
+                float alpha=rim*mix(0.85*beat,0.35,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`,
     });
     const glowMesh=new THREE.Mesh(new THREE.BufferGeometry(),glowMaterial);
@@ -122,6 +125,10 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     // Decorative rims must not alter wire anchors or capture object picking.
     glowMesh.userData.annotationTextPlane=true;glowMesh.raycast=()=>{};
     state.three.scene.add(glowMesh);state.planeMeshes.push(glowMesh);
+    // A changed value's rim breathes softly, once a second, while it stays lit.
+    registerAnimUpdater({animState:{get stopped(){return animState.stopped;}},updateFrame(nowMs){
+        if(glowMesh.visible)glowMaterial.uniforms.phase!.value=pipeFlowPhase(nowMs);
+    }});
     const changes=new ArrayChangeTracker();
     let illuminated=new Set<number>();
     let rimCells: number[] = [];

@@ -1087,7 +1087,16 @@ export function makeSilentAiAskButton(
  * Send a prompt to the tutor, or with ⌘/Ctrl held put it in the input to edit first. Silent prompts are not
  * posted as the learner's message: only the reply shows (for long, context-laden requests).
  */
+/**
+ * An Ask-AI click is about what is on screen now: playback stops, so the state the question carries is still the
+ * one shown when the answer comes back (and the reply isn't about a frame long gone).
+ */
+function holdStateForAsk(): void {
+    window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+}
+
 export function sendAiPrompt(message: string, e: MouseEvent, opts: { silent?: boolean } = {}): void {
+    holdStateForAsk();
     openChatPanel();
     if (e.metaKey || e.ctrlKey) {
         const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
@@ -1139,6 +1148,7 @@ function _makeAiAskButton(
         const raw = getMessage();
         const message = raw ? stripGlossaryMarkers(raw) : raw;
         if (!message) return;
+        holdStateForAsk();
         openChatPanel();
         if (e.metaKey || e.ctrlKey) {
             const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
