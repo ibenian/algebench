@@ -19,7 +19,7 @@ export interface CellLinkGroup {
     /** The links point at the whole of `to` (its outline), not at its cells: each pair's target index is ignored. */
     whole?: boolean;
     /** Per pair, from colorExpr / highlightExpr: its own colour, and whether it is lit (thicker, glowing). */
-    styles?: ({color?: string; lit?: boolean; bend?: number; arcCentre?: number[]; port?: number} | null)[];
+    styles?: ({color?: string; lit?: boolean; bend?: number; arcCentre?: number[]; port?: number; width?: number; label?: string} | null)[];
     /** Graph edges: how much they bow, as a fraction of their length. */
     bend?: number;
 }
@@ -44,7 +44,7 @@ export function paintCellLinks(): void {
             const v = new THREE.Vector3(...dataToWorld(p as [number, number, number])).project(camera);
             return { x: viewport.left - rect.left + (v.x * .5 + .5) * viewport.width, y: viewport.top - rect.top + (-v.y * .5 + .5) * viewport.height, z: v.z };
         };
-        const paths: {d: string; color: string; head?: string; lit?: boolean}[] = [];
+        const paths: {d: string; color: string; head?: string; lit?: boolean; width?: number; label?: string}[] = [];
         let centre: {x: number; y: number} | null = null;   // a graph's centre, for which side its edges bow to
         let linked = false;
         // A whole object's outline, projected: its world bounds' corners.
@@ -120,7 +120,9 @@ export function paintCellLinks(): void {
                 curve = cellLinkCurve(start, end, a.vertical ? 'h' : 'v', b.vertical ? 'h' : 'v');
             }
             const style = group.styles?.[p];
-            paths.push({ d: curve.d, color: style?.color || group.color, lit: !!style?.lit, ...(group.arrow ? {head: arrowHeadPath(end, curve.arrive, style?.lit ? 8 : 6)} : {}) });
+            const width = style?.width;
+            paths.push({ d: curve.d, color: style?.color || group.color, lit: !!style?.lit, ...(width ? {width} : {}), ...(style?.label ? {label: style.label} : {}),
+                ...(group.arrow ? {head: arrowHeadPath(end, curve.arrive, Math.max(style?.lit ? 8 : 6, (width ?? 0) * 2.4))} : {}) });
         });
         paintToggle(set, container, linked ? outsideRight(from, screen) : null);
         const shown = set.pinned || set.hovered;
@@ -133,16 +135,27 @@ export function paintCellLinks(): void {
         }
         if (drawn === set.drawn) continue;
         set.drawn = drawn;
-        set.svg!.replaceChildren(...(shown ? paths : []).flatMap(({d, color, head, lit}) => {
+        const labelled: {path: SVGPathElement; text: string; color: string}[] = [];
+        set.svg!.replaceChildren(...(shown ? paths : []).flatMap(({d, color, head, lit, width, label}) => {
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', color);
-            path.setAttribute('stroke-opacity', lit ? '1' : '.6'); path.setAttribute('stroke-width', lit ? '3' : '1.4'); path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-opacity', lit ? '1' : '.6'); path.setAttribute('stroke-width', String(width ?? (lit ? 3 : 1.4))); path.setAttribute('stroke-linecap', 'round');
+            if (label) labelled.push({path, text: label, color});
             if (lit) path.style.filter = `drop-shadow(0 0 3px ${color})`;
             if (!head) return [path];
             const tip = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             tip.setAttribute('d', head); tip.setAttribute('fill', color); tip.setAttribute('fill-opacity', lit ? '1' : '.8');
             return [path, tip];
         }));
+        // Labels at each link's midpoint, along its own curve, once the paths are in the document to be measured.
+        for (const {path, text, color} of labelled) {
+            const at = path.getPointAtLength(path.getTotalLength() / 2);
+            const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            t.setAttribute('x', String(at.x)); t.setAttribute('y', String(at.y));
+            t.setAttribute('class', 'cell-link-label'); t.setAttribute('fill', color);
+            t.textContent = text;
+            set.svg!.append(t);
+        }
     }
 }
 

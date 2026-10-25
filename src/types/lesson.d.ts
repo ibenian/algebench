@@ -1307,6 +1307,14 @@ export type ConnectTarget =
        * ARRAY / STACK / GRAPH links only: per-link boolean; a highlighted link is drawn thicker and lit.
        */
       highlightExpr?: string;
+      /**
+       * ARRAY / STACK / GRAPH links: per-link line width in pixels, with 'idx', 'value' and 'to' bound (default 1.4, 3 when highlighted). A non-number keeps the default. E.g. "keyIndex(used, [idx, to]) >= 0 ? 1 : 3" draws the edges still in force thick.
+       */
+      widthExpr?: string;
+      /**
+       * ARRAY / STACK / GRAPH links: a short label at the link's midpoint, about half the size of node text, with 'idx', 'value' and 'to' bound. An empty string draws nothing.
+       */
+      labelExpr?: string;
     }
   | {
       /**
@@ -1337,6 +1345,14 @@ export type ConnectTarget =
        * Per-link boolean; a highlighted link is drawn thicker and lit.
        */
       highlightExpr?: string;
+      /**
+       * ARRAY / STACK / GRAPH links: per-link line width in pixels, with 'idx', 'value' and 'to' bound (default 1.4, 3 when highlighted). A non-number keeps the default. E.g. "keyIndex(used, [idx, to]) >= 0 ? 1 : 3" draws the edges still in force thick.
+       */
+      widthExpr?: string;
+      /**
+       * ARRAY / STACK / GRAPH links: a short label at the link's midpoint, about half the size of node text, with 'idx', 'value' and 'to' bound. An empty string draws nothing.
+       */
+      labelExpr?: string;
     }
   | {
       /**
@@ -1386,6 +1402,14 @@ export type ConnectTarget =
        * Per-link boolean; a highlighted link is drawn thicker and lit.
        */
       highlightExpr?: string;
+      /**
+       * ARRAY / STACK / GRAPH links: per-link line width in pixels, with 'idx', 'value' and 'to' bound (default 1.4, 3 when highlighted). A non-number keeps the default. E.g. "keyIndex(used, [idx, to]) >= 0 ? 1 : 3" draws the edges still in force thick.
+       */
+      widthExpr?: string;
+      /**
+       * ARRAY / STACK / GRAPH links: a short label at the link's midpoint, about half the size of node text, with 'idx', 'value' and 'to' bound. An empty string draws nothing.
+       */
+      labelExpr?: string;
     };
 /**
  * 3D vector as [x,y,z] numeric array.

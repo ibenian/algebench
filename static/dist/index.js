@@ -2256,11 +2256,14 @@ function paintCellLinks() {
 				curve = cellLinkCurve(start, end, a.vertical ? "h" : "v", b.vertical ? "h" : "v");
 			}
 			const style = group.styles?.[p];
+			const width = style?.width;
 			paths.push({
 				d: curve.d,
 				color: style?.color || group.color,
 				lit: !!style?.lit,
-				...group.arrow ? { head: arrowHeadPath(end, curve.arrive, style?.lit ? 8 : 6) } : {}
+				...width ? { width } : {},
+				...style?.label ? { label: style.label } : {},
+				...group.arrow ? { head: arrowHeadPath(end, curve.arrive, Math.max(style?.lit ? 8 : 6, (width ?? 0) * 2.4)) } : {}
 			});
 		});
 		paintToggle(set, container, linked ? outsideRight(from, screen) : null);
@@ -2285,14 +2288,20 @@ function paintCellLinks() {
 		}
 		if (drawn === set.drawn) continue;
 		set.drawn = drawn;
-		set.svg.replaceChildren(...(shown ? paths : []).flatMap(({ d, color, head, lit }) => {
+		const labelled = [];
+		set.svg.replaceChildren(...(shown ? paths : []).flatMap(({ d, color, head, lit, width, label }) => {
 			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 			path.setAttribute("d", d);
 			path.setAttribute("fill", "none");
 			path.setAttribute("stroke", color);
 			path.setAttribute("stroke-opacity", lit ? "1" : ".6");
-			path.setAttribute("stroke-width", lit ? "3" : "1.4");
+			path.setAttribute("stroke-width", String(width ?? (lit ? 3 : 1.4)));
 			path.setAttribute("stroke-linecap", "round");
+			if (label) labelled.push({
+				path,
+				text: label,
+				color
+			});
 			if (lit) path.style.filter = `drop-shadow(0 0 3px ${color})`;
 			if (!head) return [path];
 			const tip = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -2301,6 +2310,16 @@ function paintCellLinks() {
 			tip.setAttribute("fill-opacity", lit ? "1" : ".8");
 			return [path, tip];
 		}));
+		for (const { path, text, color } of labelled) {
+			const at = path.getPointAtLength(path.getTotalLength() / 2);
+			const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+			t.setAttribute("x", String(at.x));
+			t.setAttribute("y", String(at.y));
+			t.setAttribute("class", "cell-link-label");
+			t.setAttribute("fill", color);
+			t.textContent = text;
+			set.svg.append(t);
+		}
 	}
 }
 /** A graph's centre on screen: the mean of its node centres, read through its cell target. */
@@ -12754,8 +12773,8 @@ function createCellGlide(opts) {
 /**
 * An element's `connectTo`, compiled once and evaluated on state changes into cell-link groups. Shared by the
 * owners of cells (arrays, stacks) and nodes (graphs), so links mean the same everywhere: each entry's indexExpr
-* runs per cell with `idx` and `value` bound and may name one index or a list; colorExpr / highlightExpr style
-* each link, with `to` bound as well. A graph entry may omit `object`: the link stays in the same graph.
+* runs per cell with `idx` and `value` bound and may name one index or a list; colorExpr / highlightExpr / widthExpr /
+* labelExpr style each link, with `to` bound as well. A graph entry may omit `object`: the link stays in the same graph.
 * objectExpr names the target per cell instead (a list of references to dicts, say: concat('person', idx)); without
 * indexExpr such a link points at the whole object rather than one of its cells.
 */
@@ -12771,6 +12790,7 @@ function compileLinkTargets(connectTo, self, allowSelf) {
 		const indexExpr = "indexExpr" in c ? c.indexExpr : void 0;
 		const color = "colorExpr" in c ? c.colorExpr : void 0, lit = "highlightExpr" in c ? c.highlightExpr : void 0;
 		const bend = "bendExpr" in c ? c.bendExpr : void 0, arc = "arcCenterExpr" in c ? c.arcCenterExpr : void 0, port = "fromPortExpr" in c ? c.fromPortExpr : void 0;
+		const width = "widthExpr" in c ? c.widthExpr : void 0, label = "labelExpr" in c ? c.labelExpr : void 0;
 		return [{
 			object,
 			objectFn: objectExpr ? compileExpr(objectExpr) : void 0,
@@ -12781,6 +12801,8 @@ function compileLinkTargets(connectTo, self, allowSelf) {
 			bend: bend ? compileExpr(bend) : void 0,
 			arc: arc?.length === 3 ? arc.map((e) => compileExpr(e)) : void 0,
 			port: port ? compileExpr(port) : void 0,
+			width: width ? compileExpr(width) : void 0,
+			label: label ? compileExpr(label) : void 0,
 			arrow: !!c.arrow,
 			pinned: !!c.pinned,
 			sources: [
@@ -12790,6 +12812,8 @@ function compileLinkTargets(connectTo, self, allowSelf) {
 				lit,
 				bend,
 				port,
+				width,
+				label,
 				...arc ?? []
 			].filter((s) => !!s)
 		}];
@@ -12841,7 +12865,7 @@ function evaluateLinkTargets(targets, values, extra = {}) {
 			targetsOf.forEach((j, slot) => {
 				if (j < 0) return;
 				g.pairs.push([i, j]);
-				if (!t.color && !t.lit && !t.bend && !t.arc && !t.port) {
+				if (!t.color && !t.lit && !t.bend && !t.arc && !t.port && !t.width && !t.label) {
 					g.styles.push(null);
 					return;
 				}
@@ -12870,6 +12894,14 @@ function evaluateLinkTargets(targets, values, extra = {}) {
 				try {
 					const q = t.port ? Number(evalExpr(t.port, 0, scope)) : NaN;
 					if (Number.isInteger(q) && q >= 0) style.port = q;
+				} catch {}
+				try {
+					const w = t.width ? Number(evalExpr(t.width, 0, scope)) : NaN;
+					if (Number.isFinite(w) && w > 0) style.width = Math.min(w, 12);
+				} catch {}
+				try {
+					const l = t.label ? evalExpr(t.label, 0, scope) : "";
+					if (l !== "" && l != null) style.label = String(l);
 				} catch {}
 				g.styles.push(style);
 			});

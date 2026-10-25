@@ -15003,6 +15003,8 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [],
+            "used": [],
             "result": "—",
             "line": 39,
             "message": "indeg[v] counts the edges coming into v: the things v still waits for."
@@ -15019,6 +15021,10 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1]
+            ],
+            "used": [],
             "result": "—",
             "line": 42,
             "message": "Edge 0 → 1: indeg[1] = 1."
@@ -15035,6 +15041,11 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 42,
             "message": "Edge 0 → 3: indeg[3] = 1."
@@ -15051,6 +15062,12 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2]
+            ],
+            "used": [],
             "result": "—",
             "line": 42,
             "message": "Edge 1 → 2: indeg[2] = 1."
@@ -15067,6 +15084,13 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2]
+            ],
+            "used": [],
             "result": "—",
             "line": 42,
             "message": "Edge 3 → 2: indeg[2] = 2."
@@ -15083,6 +15107,14 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4]
+            ],
+            "used": [],
             "result": "—",
             "line": 42,
             "message": "Edge 3 → 4: indeg[4] = 1."
@@ -15099,6 +15131,15 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5]
+            ],
+            "used": [],
             "result": "—",
             "line": 42,
             "message": "Edge 4 → 5: indeg[5] = 1."
@@ -15115,6 +15156,16 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 42,
             "message": "Edge 5 → 3: indeg[3] = 2."
@@ -15131,6 +15182,16 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 43,
             "message": "Nodes with nothing coming in can go first: 0."
@@ -15147,6 +15208,16 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 44,
             "message": "taken counts the nodes that come off the queue."
@@ -15163,6 +15234,16 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 45,
             "message": "The queue holds 0."
@@ -15179,6 +15260,16 @@
             "removed": [],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 46,
             "message": "Take 0: everything it waits for is done."
@@ -15195,6 +15286,16 @@
             "removed": [0],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 47,
             "message": "taken = 1."
@@ -15211,6 +15312,16 @@
             "removed": [0],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [],
             "result": "—",
             "line": 48,
             "message": "Edge 0 → 1."
@@ -15227,6 +15338,18 @@
             "removed": [0],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1]
+            ],
             "result": "—",
             "line": 49,
             "message": "0 is done, so 1 waits for one thing fewer: indeg[1] = 0."
@@ -15243,6 +15366,18 @@
             "removed": [0],
             "checkText": "indeg[1] = 0: free, queue it",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1]
+            ],
             "result": "—",
             "line": 50,
             "message": "1 has nothing left to wait for."
@@ -15259,6 +15394,18 @@
             "removed": [0],
             "checkText": "indeg[1] = 0: free, queue it",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1]
+            ],
             "result": "—",
             "line": 51,
             "message": "Queue 1."
@@ -15275,6 +15422,18 @@
             "removed": [0],
             "checkText": "indeg[1] = 0: free, queue it",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1]
+            ],
             "result": "—",
             "line": 48,
             "message": "Edge 0 → 3."
@@ -15291,6 +15450,19 @@
             "removed": [0],
             "checkText": "indeg[1] = 0: free, queue it",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3]
+            ],
             "result": "—",
             "line": 49,
             "message": "0 is done, so 3 waits for one thing fewer: indeg[3] = 1."
@@ -15307,6 +15479,19 @@
             "removed": [0],
             "checkText": "indeg[3] = 1: still waiting",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3]
+            ],
             "result": "—",
             "line": 50,
             "message": "3 still waits for 1 more."
@@ -15323,6 +15508,19 @@
             "removed": [0],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3]
+            ],
             "result": "—",
             "line": 45,
             "message": "The queue holds 1."
@@ -15339,6 +15537,19 @@
             "removed": [0],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3]
+            ],
             "result": "—",
             "line": 46,
             "message": "Take 1: everything it waits for is done."
@@ -15355,6 +15566,19 @@
             "removed": [0, 1],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3]
+            ],
             "result": "—",
             "line": 47,
             "message": "taken = 2."
@@ -15371,6 +15595,19 @@
             "removed": [0, 1],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3]
+            ],
             "result": "—",
             "line": 48,
             "message": "Edge 1 → 2."
@@ -15387,6 +15624,20 @@
             "removed": [0, 1],
             "checkText": "check: —",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3],
+              [1, 2]
+            ],
             "result": "—",
             "line": 49,
             "message": "1 is done, so 2 waits for one thing fewer: indeg[2] = 1."
@@ -15403,6 +15654,20 @@
             "removed": [0, 1],
             "checkText": "indeg[2] = 1: still waiting",
             "left": 0,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3],
+              [1, 2]
+            ],
             "result": "—",
             "line": 50,
             "message": "2 still waits for 1 more."
@@ -15419,6 +15684,20 @@
             "removed": [0, 1],
             "checkText": "check: —",
             "left": 1,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3],
+              [1, 2]
+            ],
             "result": "True",
             "line": 45,
             "message": "The queue is empty. 2, 3, 4, 5 never got free: each still waits on another node that waits too."
@@ -15435,6 +15714,20 @@
             "removed": [0, 1],
             "checkText": "check: —",
             "left": 1,
+            "counted": [
+              [0, 1],
+              [0, 3],
+              [1, 2],
+              [3, 2],
+              [3, 4],
+              [4, 5],
+              [5, 3]
+            ],
+            "used": [
+              [0, 1],
+              [0, 3],
+              [1, 2]
+            ],
             "result": "True",
             "line": 52,
             "message": "taken = 2 < 6: there is a cycle. Every node never taken lies on a cycle or behind one (2 only waits on 3)."
@@ -15794,8 +16087,8 @@
               "nodeCornerRadius": 0.4,
               "valueLabel": "inside",
               "showIndices": false,
-              "colorExpr": "idx == dataTable('cyc_kahn', frame, 'u') ? '#f1c65b' : (keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0 ? '#77bfae' : (keyIndex(dataTable('cyc_kahn', frame, 'queue'), idx) >= 0 ? '#e67db0' : (dataTable('cyc_kahn', frame, 'left') == 1 ? '#e06c75' : '')))",
-              "connectTo": {"indexExpr": "dataTable('cycNodes', idx, 'adj')", "pinned": true, "arrow": true, "bendExpr": "0.12", "color": "#7f93aa", "colorExpr": "idx == dataTable('cyc_kahn', frame, 'u') and to == dataTable('cyc_kahn', frame, 'v') ? '#f1c65b' : (keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0 ? '#3d4858' : (dataTable('cyc_kahn', frame, 'left') == 1 ? '#e06c75' : ''))", "highlightExpr": "(idx == dataTable('cyc_kahn', frame, 'u') and to == dataTable('cyc_kahn', frame, 'v')) or (dataTable('cyc_kahn', frame, 'left') == 1 and not (keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0))"}
+              "colorExpr": "idx == dataTable('cyc_kahn', frame, 'u') ? '#f1c65b' : (keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0 ? '#3b4654' : (keyIndex(dataTable('cyc_kahn', frame, 'queue'), idx) >= 0 ? '#e67db0' : (dataTable('cyc_kahn', frame, 'left') == 1 ? '#e06c75' : '')))",
+              "connectTo": {"indexExpr": "dataTable('cycNodes', idx, 'adj')", "pinned": true, "arrow": true, "bendExpr": "0.12", "color": "#7f93aa", "colorExpr": "idx == dataTable('cyc_kahn', frame, 'u') and to == dataTable('cyc_kahn', frame, 'v') ? '#f1c65b' : (keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0 ? '#3d4858' : (dataTable('cyc_kahn', frame, 'left') == 1 ? '#e06c75' : ''))", "highlightExpr": "(idx == dataTable('cyc_kahn', frame, 'u') and to == dataTable('cyc_kahn', frame, 'v')) or (dataTable('cyc_kahn', frame, 'left') == 1 and not (keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0))", "widthExpr": "keyIndex(dataTable('cyc_kahn', frame, 'counted'), [idx, to]) >= 0 and keyIndex(dataTable('cyc_kahn', frame, 'used'), [idx, to]) < 0 ? 3 : 1.2", "labelExpr": "keyIndex(dataTable('cyc_kahn', frame, 'counted'), [idx, to]) >= 0 and keyIndex(dataTable('cyc_kahn', frame, 'used'), [idx, to]) < 0 ? concat(arrayAt(dataTable('cyc_kahn', frame, 'indeg'), to)) : ''"}
             },
             {
               "id": "adj-u",
@@ -15829,7 +16122,7 @@
               "axisLabels": "plane",
               "lengthExpr": "6",
               "valueExpr": "arrayAt(dataTable('cyc_kahn', frame, 'indeg'), idx)",
-              "colorExpr": "keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0 ? '#77bfae' : (dataTable('cyc_kahn', frame, 'left') == 1 ? '#e06c75' : '')",
+              "colorExpr": "keyIndex(dataTable('cyc_kahn', frame, 'removed'), idx) >= 0 ? '#3b4654' : (dataTable('cyc_kahn', frame, 'left') == 1 ? '#e06c75' : '')",
               "highlightExpr": "idx == dataTable('cyc_kahn', frame, 'v')"
             },
             {
@@ -19921,6 +20214,8 @@
             "queue": [],
             "order": [],
             "checkText": "check: —",
+            "counted": [],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -19937,6 +20232,10 @@
             "queue": [],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -19953,6 +20252,11 @@
             "queue": [],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -19969,6 +20273,12 @@
             "queue": [],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -19985,6 +20295,13 @@
             "queue": [],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20001,6 +20318,14 @@
             "queue": [],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20017,6 +20342,15 @@
             "queue": [],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20033,6 +20367,15 @@
             "queue": [4, 5],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20049,6 +20392,15 @@
             "queue": [4, 5],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20065,6 +20417,15 @@
             "queue": [4, 5],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20081,6 +20442,15 @@
             "queue": [5],
             "order": [],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20097,6 +20467,15 @@
             "queue": [5],
             "order": [4],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20113,6 +20492,15 @@
             "queue": [5],
             "order": [4],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20129,6 +20517,17 @@
             "queue": [5],
             "order": [4],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20145,6 +20544,17 @@
             "queue": [5],
             "order": [4],
             "checkText": "indeg[2] = 1: still waiting",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20161,6 +20571,17 @@
             "queue": [5],
             "order": [4],
             "checkText": "indeg[2] = 1: still waiting",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20177,6 +20598,18 @@
             "queue": [5],
             "order": [4],
             "checkText": "indeg[2] = 1: still waiting",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20193,6 +20626,18 @@
             "queue": [5],
             "order": [4],
             "checkText": "indeg[1] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20209,6 +20654,18 @@
             "queue": [5, 1],
             "order": [4],
             "checkText": "indeg[1] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20225,6 +20682,18 @@
             "queue": [5, 1],
             "order": [4],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20241,6 +20710,18 @@
             "queue": [1],
             "order": [4],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20257,6 +20738,18 @@
             "queue": [1],
             "order": [4, 5],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20273,6 +20766,18 @@
             "queue": [1],
             "order": [4, 5],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20289,6 +20794,19 @@
             "queue": [1],
             "order": [4, 5],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20305,6 +20823,19 @@
             "queue": [1],
             "order": [4, 5],
             "checkText": "indeg[2] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20321,6 +20852,19 @@
             "queue": [1, 2],
             "order": [4, 5],
             "checkText": "indeg[2] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20337,6 +20881,19 @@
             "queue": [1, 2],
             "order": [4, 5],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20353,6 +20910,19 @@
             "queue": [2],
             "order": [4, 5],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20369,6 +20939,19 @@
             "queue": [2],
             "order": [4, 5, 1],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20385,6 +20968,19 @@
             "queue": [2],
             "order": [4, 5, 1],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20401,6 +20997,20 @@
             "queue": [2],
             "order": [4, 5, 1],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20417,6 +21027,20 @@
             "queue": [2],
             "order": [4, 5, 1],
             "checkText": "indeg[0] = 1: still waiting",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20433,6 +21057,20 @@
             "queue": [2],
             "order": [4, 5, 1],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20449,6 +21087,20 @@
             "queue": [],
             "order": [4, 5, 1],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20465,6 +21117,20 @@
             "queue": [],
             "order": [4, 5, 1, 2],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20481,6 +21147,20 @@
             "queue": [],
             "order": [4, 5, 1, 2],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20497,6 +21177,21 @@
             "queue": [],
             "order": [4, 5, 1, 2],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20513,6 +21208,21 @@
             "queue": [],
             "order": [4, 5, 1, 2],
             "checkText": "indeg[0] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20529,6 +21239,21 @@
             "queue": [0],
             "order": [4, 5, 1, 2],
             "checkText": "indeg[0] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20545,6 +21270,21 @@
             "queue": [0],
             "order": [4, 5, 1, 2],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20561,6 +21301,21 @@
             "queue": [],
             "order": [4, 5, 1, 2],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20577,6 +21332,21 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20593,6 +21363,21 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20609,6 +21394,22 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20625,6 +21426,22 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0],
             "checkText": "indeg[3] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20641,6 +21458,22 @@
             "queue": [3],
             "order": [4, 5, 1, 2, 0],
             "checkText": "indeg[3] = 0: ready, queue it",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20657,6 +21490,22 @@
             "queue": [3],
             "order": [4, 5, 1, 2, 0],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20673,6 +21522,22 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20689,6 +21554,22 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0, 3],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20705,6 +21586,22 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0, 3],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [-1, -1, -1, -1, -1, -1],
             "lined": 0,
             "result": "—",
@@ -20721,6 +21618,22 @@
             "queue": [],
             "order": [4, 5, 1, 2, 0, 3],
             "checkText": "check: —",
+            "counted": [
+              [0, 3],
+              [1, 0],
+              [2, 0],
+              [4, 2],
+              [4, 1],
+              [5, 2]
+            ],
+            "used": [
+              [4, 2],
+              [4, 1],
+              [5, 2],
+              [1, 0],
+              [2, 0],
+              [0, 3]
+            ],
             "rank": [4, 2, 3, 5, 0, 1],
             "lined": 1,
             "result": "[4, 5, 1, 2, 0, 3]",
@@ -20757,7 +21670,7 @@
           }
         ]
       },
-      "markdown": "# Order by dependencies (topological sort)\n\n**Step 8** of 19 · **Tier:** Core (expect these) · **Builds on:** Count degrees, BFS, DFS, Cycle detection\n\n**Signal:** prerequisites, build order, task scheduling: \"in what order can everything run?\"\n\nAn edge **u → v** means *u must come before v* (a course before the one that needs it, a library before the code that uses it). A **topological order** lists every node so that **every edge points forward**. It exists exactly when there is no cycle, and there is usually more than one.\n\n## 1. DFS: finish order, reversed (this step)\n\nDFS finishes a task only after **everything that depends on it** has finished, so appending each task when it finishes lists them dependents-first. Reversed, that puts every task before what depends on it. Meeting a task that is still on the current path is a cycle.\n\n## 2. Kahn: take what waits for nothing (next step)\n\nCount each task's **indegree**, the number of things it waits for. Tasks at 0 are ready: queue them. Take one, append it to the order, and remove its edges: each task it unblocks waits for one fewer, and joins the queue when it reaches 0. Pink tasks are ready, teal ones placed. Here 4 and 5 start; 1 is freed by 4, 2 needs both 4 and 5, 0 needs 1 and 2, and 3 comes last.\n\nIf the queue empties before every task is placed, the rest wait on each other in a loop: a cycle, and no order exists (the cycle scene's third step).\n\nDFS gives **5, 4, 2, 1, 0, 3** and Kahn gives **4, 5, 1, 2, 0, 3**: both have every arrow pointing forward. At the end of each step the tasks line up in their order, so you can check it.\n\n**Cost:** O(V + E) for both.\n\n**Practice:** Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.",
+      "markdown": "# Order by dependencies (topological sort)\n\n**Step 8** of 19 · **Tier:** Core (expect these) · **Builds on:** Count degrees, BFS, DFS, Cycle detection\n\n**Signal:** prerequisites, build order, task scheduling: \"in what order can everything run?\"\n\nAn edge **u → v** means *u must come before v* (a course before the one that needs it, a library before the code that uses it). A **topological order** lists every node so that **every edge points forward**. It exists exactly when there is no cycle, and there is usually more than one.\n\n## 1. DFS: finish order, reversed (this step)\n\nDFS finishes a task only after **everything that depends on it** has finished, so appending each task when it finishes lists them dependents-first. Reversed, that puts every task before what depends on it. Meeting a task that is still on the current path is a cycle.\n\n## 2. Kahn: take what waits for nothing (next step)\n\nCount each task's **indegree**, the number of things it waits for. Tasks at 0 are ready: queue them. Take one, append it to the order, and remove its edges: each task it unblocks waits for one fewer, and joins the queue when it reaches 0. Pink tasks are ready; a placed task goes pale, peeled off the graph like the degree scene's leaves, and the thick edges into a task are the ones it still waits for. Here 4 and 5 start; 1 is freed by 4, 2 needs both 4 and 5, 0 needs 1 and 2, and 3 comes last.\n\nIf the queue empties before every task is placed, the rest wait on each other in a loop: a cycle, and no order exists (the cycle scene's third step).\n\nDFS gives **5, 4, 2, 1, 0, 3** and Kahn gives **4, 5, 1, 2, 0, 3**: both have every arrow pointing forward. At the end of each step the tasks line up in their order, so you can check it.\n\n**Cost:** O(V + E) for both.\n\n**Practice:** Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.",
       "prompt": "Explain what a topological order is and why it exists exactly when there is no cycle. Ask the learner to predict which task finishes next in DFS, and which task is ready next in Kahn.",
       "elements": [
         {
@@ -20942,8 +21855,8 @@
               "nodeCornerRadius": 0.4,
               "valueLabel": "inside",
               "showIndices": false,
-              "colorExpr": "idx == dataTable('topo_kahn', frame, 'u') ? '#f1c65b' : (keyIndex(dataTable('topo_kahn', frame, 'order'), idx) >= 0 ? '#77bfae' : (keyIndex(dataTable('topo_kahn', frame, 'queue'), idx) >= 0 ? '#e67db0' : ''))",
-              "connectTo": {"indexExpr": "dataTable('topoNodes', idx, 'adj')", "pinned": true, "arrow": true, "bendExpr": "dataTable('topo_kahn', frame, 'lined') == 1 ? 0.35 : 0.08", "color": "#7f93aa", "colorExpr": "idx == dataTable('topo_kahn', frame, 'u') and to == dataTable('topo_kahn', frame, 'v') ? '#f1c65b' : ''", "highlightExpr": "idx == dataTable('topo_kahn', frame, 'u') and to == dataTable('topo_kahn', frame, 'v')"}
+              "colorExpr": "dataTable('topo_kahn', frame, 'lined') == 1 ? '#77bfae' : (idx == dataTable('topo_kahn', frame, 'u') ? '#f1c65b' : (keyIndex(dataTable('topo_kahn', frame, 'order'), idx) >= 0 ? '#3b4654' : (keyIndex(dataTable('topo_kahn', frame, 'queue'), idx) >= 0 ? '#e67db0' : '')))",
+              "connectTo": {"indexExpr": "dataTable('topoNodes', idx, 'adj')", "pinned": true, "arrow": true, "bendExpr": "dataTable('topo_kahn', frame, 'lined') == 1 ? 0.35 : 0.08", "color": "#7f93aa", "colorExpr": "idx == dataTable('topo_kahn', frame, 'u') and to == dataTable('topo_kahn', frame, 'v') ? '#f1c65b' : ''", "highlightExpr": "idx == dataTable('topo_kahn', frame, 'u') and to == dataTable('topo_kahn', frame, 'v')", "widthExpr": "keyIndex(dataTable('topo_kahn', frame, 'counted'), [idx, to]) >= 0 and keyIndex(dataTable('topo_kahn', frame, 'used'), [idx, to]) < 0 ? 3 : 1.2", "labelExpr": "keyIndex(dataTable('topo_kahn', frame, 'counted'), [idx, to]) >= 0 and keyIndex(dataTable('topo_kahn', frame, 'used'), [idx, to]) < 0 ? concat(arrayAt(dataTable('topo_kahn', frame, 'indeg'), to)) : ''"}
             },
             {
               "id": "adj-u",
@@ -21032,7 +21945,7 @@
               "axisLabels": "plane",
               "lengthExpr": "6",
               "valueExpr": "arrayAt(dataTable('topo_kahn', frame, 'indeg'), idx)",
-              "colorExpr": "keyIndex(dataTable('topo_kahn', frame, 'order'), idx) >= 0 ? '#77bfae' : (arrayAt(dataTable('topo_kahn', frame, 'indeg'), idx) == 0 ? '#e67db0' : '')",
+              "colorExpr": "keyIndex(dataTable('topo_kahn', frame, 'order'), idx) >= 0 ? '#3b4654' : (arrayAt(dataTable('topo_kahn', frame, 'indeg'), idx) == 0 ? '#e67db0' : '')",
               "highlightExpr": "idx == dataTable('topo_kahn', frame, 'v')"
             },
             {

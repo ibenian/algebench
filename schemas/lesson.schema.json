@@ -3071,6 +3071,14 @@
                 "highlightExpr": {
                   "type": "string",
                   "description": "ARRAY / STACK / GRAPH links only: per-link boolean; a highlighted link is drawn thicker and lit."
+                },
+                "widthExpr": {
+                  "type": "string",
+                  "description": "ARRAY / STACK / GRAPH links: per-link line width in pixels, with 'idx', 'value' and 'to' bound (default 1.4, 3 when highlighted). A non-number keeps the default. E.g. \"keyIndex(used, [idx, to]) >= 0 ? 1 : 3\" draws the edges still in force thick."
+                },
+                "labelExpr": {
+                  "type": "string",
+                  "description": "ARRAY / STACK / GRAPH links: a short label at the link's midpoint, about half the size of node text, with 'idx', 'value' and 'to' bound. An empty string draws nothing."
                 }
               },
               "additionalProperties": false
@@ -3111,6 +3119,14 @@
                 "highlightExpr": {
                   "type": "string",
                   "description": "Per-link boolean; a highlighted link is drawn thicker and lit."
+                },
+                "widthExpr": {
+                  "type": "string",
+                  "description": "ARRAY / STACK / GRAPH links: per-link line width in pixels, with 'idx', 'value' and 'to' bound (default 1.4, 3 when highlighted). A non-number keeps the default. E.g. \"keyIndex(used, [idx, to]) >= 0 ? 1 : 3\" draws the edges still in force thick."
+                },
+                "labelExpr": {
+                  "type": "string",
+                  "description": "ARRAY / STACK / GRAPH links: a short label at the link's midpoint, about half the size of node text, with 'idx', 'value' and 'to' bound. An empty string draws nothing."
                 }
               },
               "additionalProperties": false
@@ -3183,6 +3199,14 @@
                 "highlightExpr": {
                   "type": "string",
                   "description": "Per-link boolean; a highlighted link is drawn thicker and lit."
+                },
+                "widthExpr": {
+                  "type": "string",
+                  "description": "ARRAY / STACK / GRAPH links: per-link line width in pixels, with 'idx', 'value' and 'to' bound (default 1.4, 3 when highlighted). A non-number keeps the default. E.g. \"keyIndex(used, [idx, to]) >= 0 ? 1 : 3\" draws the edges still in force thick."
+                },
+                "labelExpr": {
+                  "type": "string",
+                  "description": "ARRAY / STACK / GRAPH links: a short label at the link's midpoint, about half the size of node text, with 'idx', 'value' and 'to' bound. An empty string draws nothing."
                 }
               },
               "additionalProperties": false

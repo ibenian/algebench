@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from _json_format import dumps_compact_leaves  # noqa: E402
 
 GOLD, BLUE, GREY = '#f1c65b', '#9dbde3', '#7f93aa'
+PALE = "'#3b4654'"   # a node peeled off its graph (degree peeling, Kahn's taken nodes), as an expression literal
 RANGE = [[-7, 10], [-5, 5], [-2, 2]]
 grid = {'id': 'grid', 'type': 'grid', 'plane': 'xy', 'range': [[-7, 10], [-5, 5]], 'divisions': [17, 10], 'opacity': 0.09}
 cam = {'position': [1.5, 0, 15], 'target': [1.5, 0, 0]}
@@ -1261,7 +1262,7 @@ def kahn_cycle_trace(n, edges):
     adj = [[] for _ in range(n)]
     for a, b in edges: adj[a].append(b)
     st = {'u': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'indeg': [0] * n, 'queue': [], 'taken': 0, 'removed': [],
-          'checkText': 'check: —', 'left': 0, 'result': '—'}
+          'checkText': 'check: —', 'left': 0, 'counted': [], 'used': [], 'result': '—'}
     trace, emit0 = recorder(st)
     def emit(line, message):
         st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
@@ -1270,6 +1271,7 @@ def kahn_cycle_trace(n, edges):
     for u in range(n):
         for vi, v in enumerate(adj[u]):
             st['indeg'] = [x + 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            st['counted'] = st['counted'] + [[u, v]]
             st.update(u=u, v=v, vi=vi, adjU=adj[u])
             emit(L('indeg[v] += 1'), f'Edge {u} → {v}: indeg[{v}] = {st["indeg"][v]}.')
     st.update(u=-1, v=-1, vi=-1, adjU=[])
@@ -1287,6 +1289,7 @@ def kahn_cycle_trace(n, edges):
             st.update(v=v, vi=vi)
             emit(L('for v in adj[u]', 'taken += 1'), f'Edge {u} → {v}.')
             st['indeg'] = [x - 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            st['used'] = st['used'] + [[u, v]]
             emit(L('indeg[v] -= 1'), f'{u} is done, so {v} waits for one thing fewer: indeg[{v}] = {st["indeg"][v]}.')
             free = st['indeg'][v] == 0
             st['checkText'] = f'indeg[{v}] = {st["indeg"][v]}: ' + ('free, queue it' if free else 'still waiting')
@@ -1391,12 +1394,13 @@ def cycle_scene(header):
         {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(CYC_N), 'valueExpr': 'idx',
          'positionExpr': ["dataTable('cycNodes', idx, 'x')", "dataTable('cycNodes', idx, 'y')", '0'],
          'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
-         # Gold the node taken, teal the ones done, pink the queued; at the end red the ones never freed.
-         'colorExpr': f"idx == {k('u')} ? '{GOLD}' : ({gone('idx')} ? '#77bfae' : (keyIndex({k('queue')}, idx) >= 0 ? '#e67db0' : ({k('left')} == 1 ? '#e06c75' : '')))",
+         # Gold the node taken, pale the ones peeled off, pink the queued; at the end red the ones never freed.
+         'colorExpr': f"idx == {k('u')} ? '{GOLD}' : ({gone('idx')} ? {PALE} : (keyIndex({k('queue')}, idx) >= 0 ? '#e67db0' : ({k('left')} == 1 ? '#e06c75' : '')))",
          # An edge out of a taken node is used up: dim it. At the end, the edges among the nodes never taken turn red.
          'connectTo': {'indexExpr': "dataTable('cycNodes', idx, 'adj')", 'pinned': True, 'arrow': True, 'bendExpr': '0.12', 'color': '#7f93aa',
                        'colorExpr': f"idx == {k('u')} and to == {k('v')} ? '{GOLD}' : ({gone('idx')} ? '#3d4858' : ({k('left')} == 1 ? '#e06c75' : ''))",
-                       'highlightExpr': f"(idx == {k('u')} and to == {k('v')}) or ({k('left')} == 1 and not ({gone('idx')}))"}},
+                       'highlightExpr': f"(idx == {k('u')} and to == {k('v')}) or ({k('left')} == 1 and not ({gone('idx')}))",
+                       **edge_counts(k)}},
         {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [3.4, 3.0, 0],
          'cellSize': 1.1, 'fontSize': 16, 'indexFontSize': 10, 'axisLabels': 'plane',
          'lengthExpr': f"arrayCount({k('adjU')})", 'valueExpr': f"arrayAt({k('adjU')}, idx)", 'highlightExpr': f"idx == {k('vi')}",
@@ -1404,7 +1408,7 @@ def cycle_scene(header):
          'markers': [{'type': 'step_marker', 'indexName': 'v', 'indexExpr': k('vi'), 'valueExpr': k('v'), 'visibleExpr': f"{k('vi')} >= 0", 'color': GOLD}]},
         {'id': 'indeg', 'type': 'array', 'label': 'indeg', 'codeSymbol': 'indeg', 'labelSide': 'left', 'origin': [-2.4, -2.4, 0], 'cellSize': 1.15,
          'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(CYC_N), 'valueExpr': f"arrayAt({k('indeg')}, idx)",
-         'colorExpr': f"{gone('idx')} ? '#77bfae' : ({k('left')} == 1 ? '#e06c75' : '')", 'highlightExpr': f"idx == {k('v')}"},
+         'colorExpr': f"{gone('idx')} ? {PALE} : ({k('left')} == 1 ? '#e06c75' : '')", 'highlightExpr': f"idx == {k('v')}"},
         {'id': 'queue', 'type': 'array', 'label': 'queue', 'codeSymbol': 'queue', 'labelSide': 'left', 'origin': [-2.4, -3.8, 0], 'cellSize': 1.15,
          'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0', 'showIndices': False,
          'lengthExpr': f"arrayCount({k('queue')})", 'valueExpr': f"arrayAt({k('queue')}, idx)",
@@ -1846,6 +1850,13 @@ TOPO_N, TOPO_EDGES = 6, [(5, 2), (4, 2), (4, 1), (2, 0), (1, 0), (0, 3)]
 TOPO_POS = [(-1.6, 2.0), (-3.6, 3.0), (-3.6, 1.0), (0.4, 2.0), (-5.6, 3.0), (-5.6, 1.0)]
 
 
+def edge_counts(c):
+    """Indegree on the edges themselves: an edge counted into its target's indegree and not yet taken off it is drawn
+    thick and labelled with that indegree, so the thick edges into a node are what it still waits for."""
+    live = f"keyIndex({c('counted')}, [idx, to]) >= 0 and keyIndex({c('used')}, [idx, to]) < 0"
+    return {'widthExpr': f"{live} ? 3 : 1.2", 'labelExpr': f"{live} ? concat(arrayAt({c('indeg')}, to)) : ''"}
+
+
 def topo_line(fn, text, after=None):
     """The line of text inside function fn (searched from the line holding after, when given)."""
     lines = TOPO_SOURCE.split('\n')
@@ -1865,12 +1876,13 @@ def ranks(order):
 
 
 def topo_kahn_trace():
-    """Kahn's algorithm. Per frame: u, v, vi, adjU, vTip; indeg; queue; order; checkText; rank (each node's place in
+    """Kahn's algorithm. Per frame: u, v, vi, adjU, vTip; indeg; queue; order; checkText; counted and used (the edges
+    counted into an indegree, and those taken off it again); rank (each node's place in
     the result, −1 until the end) and lined (1 on the last frames, when the nodes line up in that order); result."""
     L = lambda t, a=None: topo_line('topo_kahn', t, a)
     adj = topo_adj()
     st = {'u': -1, 'v': -1, 'vi': -1, 'adjU': [], 'vTip': '', 'indeg': [0] * TOPO_N, 'queue': [], 'order': [], 'checkText': 'check: —',
-          'rank': [-1] * TOPO_N, 'lined': 0, 'result': '—'}
+          'counted': [], 'used': [], 'rank': [-1] * TOPO_N, 'lined': 0, 'result': '—'}
     trace, emit0 = recorder(st)
     def emit(line, message):
         st['vTip'] = loop_tip(adj[st['u']], st['vi']) if st['u'] >= 0 else ''
@@ -1879,6 +1891,7 @@ def topo_kahn_trace():
     for u in range(TOPO_N):
         for vi, v in enumerate(adj[u]):
             st['indeg'] = [x + 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            st['counted'] = st['counted'] + [[u, v]]
             st.update(u=u, v=v, vi=vi, adjU=adj[u])
             emit(L('indeg[v] += 1'), f'{u} → {v}: {v} waits for {u}. indeg[{v}] = {st["indeg"][v]}.')
     st.update(u=-1, v=-1, vi=-1, adjU=[])
@@ -1896,6 +1909,7 @@ def topo_kahn_trace():
             st.update(v=v, vi=vi)
             emit(L('for v in adj[u]', 'order.append(u)'), f'{u} → {v}: {v} was waiting for {u}.')
             st['indeg'] = [x - 1 if i == v else x for i, x in enumerate(st['indeg'])]
+            st['used'] = st['used'] + [[u, v]]
             emit(L('indeg[v] -= 1'), f'{u} is done, so {v} waits for one thing fewer: indeg[{v}] = {st["indeg"][v]}.')
             free = st['indeg'][v] == 0
             st['checkText'] = f'indeg[{v}] = {st["indeg"][v]}: ' + ('ready, queue it' if free else 'still waiting')
@@ -1999,17 +2013,19 @@ def topo_scene(header):
     LK = lambda t, a=None: topo_line('topo_kahn', t, a)
     LD = lambda t, a=None: topo_line('topo_dfs', t, a)
 
-    def graph(c, fill):
+    def graph(c, fill, counts=False):
         lined = f"{c('lined')} == 1"
         return {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(TOPO_N), 'valueExpr': 'idx',
                 # Lined up at the end: each task at its place in the result, so every arrow points to the right.
                 'positionExpr': [f"{lined} ? -5.6 + arrayAt({c('rank')}, idx) * 1.5 : dataTable('topoNodes', idx, 'x')",
                                  f"{lined} ? 2.0 : dataTable('topoNodes', idx, 'y')", '0'],
                 'nodeShape': 'rect', 'nodeWidth': 0.8, 'nodeHeight': 0.8, 'nodeCornerRadius': 0.4, 'valueLabel': 'inside', 'showIndices': False,
-                'colorExpr': fill,
+                # Kahn's placed tasks are pale while peeling; lined up at the end, the order is shown in full colour.
+                'colorExpr': f"{lined} ? '#77bfae' : ({fill})" if counts else fill,
                 'connectTo': {'indexExpr': "dataTable('topoNodes', idx, 'adj')", 'pinned': True, 'arrow': True,
                               'bendExpr': f"{lined} ? 0.35 : 0.08", 'color': '#7f93aa',
-                              'colorExpr': f"idx == {c('u')} and to == {c('v')} ? '{GOLD}' : ''", 'highlightExpr': f"idx == {c('u')} and to == {c('v')}"}}
+                              'colorExpr': f"idx == {c('u')} and to == {c('v')} ? '{GOLD}' : ''", 'highlightExpr': f"idx == {c('u')} and to == {c('v')}",
+                              **(edge_counts(c) if counts else {})}}
 
     def common(c, L):
         return [
@@ -2032,11 +2048,12 @@ def topo_scene(header):
 
     k = lambda col: f"dataTable('topo_kahn', frame, '{col}')"
     taken = lambda i: f"keyIndex({k('order')}, {i}) >= 0"
-    kahn = [graph(k, f"idx == {k('u')} ? '{GOLD}' : ({taken('idx')} ? '#77bfae' : (keyIndex({k('queue')}, idx) >= 0 ? '#e67db0' : ''))"),
+    # Peeled off (placed in the order) the nodes go pale, as the degree scene's peeled leaves do.
+    kahn = [graph(k, f"idx == {k('u')} ? '{GOLD}' : ({taken('idx')} ? {PALE} : (keyIndex({k('queue')}, idx) >= 0 ? '#e67db0' : ''))", counts=True),
             *common(k, LK),
             {'id': 'indeg', 'type': 'array', 'label': 'indeg', 'codeSymbol': 'indeg', 'labelSide': 'left', 'origin': [-2.3, -1.0, 0], 'cellSize': 1.15,
              'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(TOPO_N), 'valueExpr': f"arrayAt({k('indeg')}, idx)",
-             'colorExpr': f"{taken('idx')} ? '#77bfae' : (arrayAt({k('indeg')}, idx) == 0 ? '#e67db0' : '')", 'highlightExpr': f"idx == {k('v')}"},
+             'colorExpr': f"{taken('idx')} ? {PALE} : (arrayAt({k('indeg')}, idx) == 0 ? '#e67db0' : '')", 'highlightExpr': f"idx == {k('v')}"},
             {'id': 'queue', 'type': 'array', 'label': 'queue', 'codeSymbol': 'queue', 'labelSide': 'left', 'origin': [-2.3, -2.4, 0], 'cellSize': 1.15,
              'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0', 'showIndices': False,
              'lengthExpr': f"arrayCount({k('queue')})", 'valueExpr': f"arrayAt({k('queue')}, idx)",
@@ -2066,7 +2083,7 @@ DFS finishes a task only after **everything that depends on it** has finished, s
 
 ## 2. Kahn: take what waits for nothing (next step)
 
-Count each task's **indegree**, the number of things it waits for. Tasks at 0 are ready: queue them. Take one, append it to the order, and remove its edges: each task it unblocks waits for one fewer, and joins the queue when it reaches 0. Pink tasks are ready, teal ones placed. Here 4 and 5 start; 1 is freed by 4, 2 needs both 4 and 5, 0 needs 1 and 2, and 3 comes last.
+Count each task's **indegree**, the number of things it waits for. Tasks at 0 are ready: queue them. Take one, append it to the order, and remove its edges: each task it unblocks waits for one fewer, and joins the queue when it reaches 0. Pink tasks are ready; a placed task goes pale, peeled off the graph like the degree scene's leaves, and the thick edges into a task are the ones it still waits for. Here 4 and 5 start; 1 is freed by 4, 2 needs both 4 and 5, 0 needs 1 and 2, and 3 comes last.
 
 If the queue empties before every task is placed, the rest wait on each other in a loop: a cycle, and no order exists (the cycle scene's third step).
 
