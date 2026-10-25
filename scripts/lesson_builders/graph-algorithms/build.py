@@ -2337,6 +2337,274 @@ Counting is free: start with n groups and subtract one per successful union. Her
         first={'title': 'Merge groups as edges arrive', 'description': 'find climbs to the root; union links two roots.'})
 
 
+# ── 10. Minimum spanning tree: Kruskal (sorted edges + union-find), then Prim (a min-heap growing one tree) ──
+MST_SOURCE = """import heapq
+
+def kruskal(n, edges):
+    parent = list(range(n))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]  # path halving
+            x = parent[x]
+        return x
+
+    tree, cost = [], 0
+    for w, a, b in sorted(edges):
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            continue  # would close a cycle
+        parent[rb] = ra
+        tree.append((a, b))
+        cost += w
+        if len(tree) == n - 1:
+            break
+    return cost, tree
+
+def prim(n, adj):
+    seen = [False] * n
+    heap = [(0, 0, -1)]  # (weight, node, reached from)
+    tree, cost = [], 0
+    while heap:
+        w, u, p = heapq.heappop(heap)
+        if seen[u]:
+            continue  # a cheaper edge reached u first
+        seen[u] = True
+        cost += w
+        if p >= 0:
+            tree.append((p, u))
+        for v, wv in adj[u]:
+            if not seen[v]:
+                heapq.heappush(heap, (wv, v, u))
+    return cost, tree"""
+MST_N = 7
+MST_EDGES = [(0, 1, 4), (1, 2, 8), (0, 3, 7), (1, 4, 2), (2, 4, 6), (2, 5, 5), (3, 4, 9), (4, 5, 1), (3, 6, 3), (4, 6, 10), (5, 6, 11)]
+MST_POS = [(-6.0, 3.4), (-3.6, 4.1), (-1.2, 3.4), (-6.0, 1.0), (-3.6, 1.8), (-1.2, 1.0), (-3.6, -0.4)]
+MST_TREE, MST_REJECT, MST_FRONTIER = '#77bfae', '#e06c75', '#e67db0'
+
+
+def mst_line(fn, text, after=None):
+    """The line of text inside function fn (searched from the line holding after, when given)."""
+    lines = MST_SOURCE.split('\n')
+    k = next(i for i, l in enumerate(lines) if f'def {fn}(' in l)
+    if after: k = next(i for i, l in enumerate(lines) if i >= k and after in l)
+    return next(i + 1 for i, l in enumerate(lines) if i >= k and text in l)
+
+
+def kruskal_trace():
+    """Kruskal on MST_EDGES. Per frame: ei (place in the sorted list), w, a, b, ra, rb; parent; root (each node's
+    root, for its colour); tree and rejected (edges as [a, b]); cost; checkText; result."""
+    L = lambda t, a=None: mst_line('kruskal', t, a)
+    st = {'ei': -1, 'w': -1, 'a': -1, 'b': -1, 'ra': -1, 'rb': -1, 'parent': list(range(MST_N)), 'root': list(range(MST_N)),
+          'tree': [], 'rejected': [], 'cost': 0, 'checkText': 'check: —', 'result': '—'}
+    trace, emit0 = recorder(st)
+    def find(x):
+        while st['parent'][x] != x:
+            st['parent'] = [st['parent'][st['parent'][x]] if j == x else p for j, p in enumerate(st['parent'])]
+            x = st['parent'][x]
+        return x
+    def emit(line, message):
+        root = lambda i: i if st['parent'][i] == i else root(st['parent'][i])
+        st['root'] = [root(i) for i in range(MST_N)]
+        emit0(line, message)
+    emit(L('parent = list(range(n))'), f'Every node is its own group: {MST_N} pieces, no edge chosen.')
+    emit(L('tree, cost = [], 0'), 'The tree starts empty, at cost 0.')
+    for ei, (w, a, b) in enumerate(sorted((w, a, b) for a, b, w in MST_EDGES)):
+        st.update(ei=ei, w=w, a=a, b=b, ra=-1, rb=-1, checkText='check: —')
+        emit(L('for w, a, b in sorted(edges)'), f'Next cheapest edge: {a} – {b}, weight {w}.')
+        ra, rb = find(a), find(b)
+        st.update(ra=ra, rb=rb)
+        emit(L('ra, rb = find(a), find(b)'), f'{a} is in {ra}\'s group, {b} in {rb}\'s.')
+        if ra == rb:
+            st['checkText'] = f'ra = rb = {ra}: same group'
+            st['rejected'] = st['rejected'] + [[a, b]]
+            emit(L('continue  # would close'), f'{a} and {b} are joined already: {a} – {b} would close a cycle. Skip it.')
+            continue
+        st['checkText'] = f'ra = {ra}, rb = {rb}: different groups'
+        emit(L('if ra == rb'), 'Different groups: the edge joins two pieces, so it is safe to take.')
+        st['parent'] = [ra if j == rb else p for j, p in enumerate(st['parent'])]
+        emit(L('parent[rb] = ra'), f'Merge: {rb}\'s group joins {ra}\'s.')
+        st['tree'] = st['tree'] + [[a, b]]
+        emit(L('tree.append((a, b))'), f'Take {a} – {b}.')
+        st['cost'] += w; st['checkText'] = 'check: —'
+        emit(L('cost += w'), f'cost = {st["cost"]}.')
+        if len(st['tree']) == MST_N - 1:
+            emit(L('break'), f'{MST_N - 1} edges join all {MST_N} nodes: the tree is complete. The rest are never looked at.')
+            break
+    st.update(ei=-1, w=-1, a=-1, b=-1, ra=-1, rb=-1, result=f'cost {st["cost"]}')
+    emit(L('return cost, tree'), f'Minimum spanning tree: {len(st["tree"])} edges, total weight {st["cost"]}.')
+    return trace
+
+
+def prim_trace(adj):
+    """Prim from node 0. Per frame: w, u, p (the popped entry); v, vi; heap (entries [w, v, from], sorted); seen; tree
+    (edges as [from, to]); cost; checkText; result."""
+    L = lambda t, a=None: mst_line('prim', t, a)
+    st = {'w': -1, 'u': -1, 'p': -1, 'v': -1, 'heap': [], 'seen': [0] * MST_N, 'tree': [], 'cost': 0, 'checkText': 'check: —', 'result': '—'}
+    trace, emit = recorder(st)
+    emit(L('seen = [False] * n'), 'No node is in the tree yet.')
+    st['heap'] = [[0, 0, -1]]
+    emit(L('heap = [(0, 0, -1)]'), 'Start at node 0: it costs nothing to reach.')
+    emit(L('tree, cost = [], 0'), 'The tree starts empty, at cost 0.')
+    while st['heap']:
+        emit(L('while heap'), f'{len(st["heap"])} candidate edge{"s" if len(st["heap"]) > 1 else ""} in the heap.')
+        (w, u, p), st['heap'] = st['heap'][0], st['heap'][1:]
+        st.update(w=w, u=u, p=p, v=-1)
+        emit(L('w, u, p = heapq.heappop(heap)'), f'Pop the cheapest: reach {u}' + (f' from {p} for {w}.' if p >= 0 else '.'))
+        if st['seen'][u]:
+            st['checkText'] = f'seen[{u}]: already in the tree'
+            emit(L('continue  # a cheaper'), f'{u} is in the tree already, through a cheaper edge: skip this stale entry.')
+            st['checkText'] = 'check: —'
+            continue
+        st['checkText'] = f'seen[{u}] = False: new'
+        st['seen'] = [1 if j == u else s for j, s in enumerate(st['seen'])]
+        emit(L('seen[u] = True'), f'{u} joins the tree.')
+        st['cost'] += w; st['checkText'] = 'check: —'
+        emit(L('cost += w'), f'cost = {st["cost"]}.')
+        if p >= 0:
+            st['tree'] = st['tree'] + [[p, u]]
+            emit(L('tree.append((p, u))'), f'Take {p} – {u}: the cheapest edge leaving the tree.')
+        for v, wv in adj[u]:
+            st['v'] = v
+            if st['seen'][v]:
+                continue
+            st['heap'] = sorted(st['heap'] + [[wv, v, u]])
+            emit(L('heapq.heappush(heap, (wv, v, u))'), f'{u} – {v} leaves the tree: push it, weight {wv}.')
+        st.update(v=-1)
+    st.update(w=-1, u=-1, p=-1, result=f'cost {st["cost"]}')
+    emit(L('return cost, tree'), f'The heap is empty. Same total as Kruskal: {st["cost"]}.')
+    return trace
+
+
+def mst_sections():
+    S = lambda *a, **k: section(MST_SOURCE, *a, **k)
+    K, P = 'def kruskal(', 'def prim('
+    return [
+        S('k-init', 'Every node its own group', K, 'return x', K,
+          hint='Union-find over the nodes: find follows parents to a group\'s root.'),
+        S('k-scan', 'Cheapest edge first', 'tree, cost = [], 0', 'ra, rb = find(a), find(b)', K,
+          hint='Look at the edges from cheapest to dearest, and find the groups of their two ends.'),
+        S('k-take', 'Take it unless it closes a cycle', 'if ra == rb', 'break', K,
+          hint='An edge inside one group would close a cycle; any other joins two pieces, so take it, until n - 1 are taken.',
+          prompt='Explain why the cheapest edge joining two different groups is always safe to take (the cut property), and why an edge within a group is never needed.'),
+        S('k-return', 'The total and the tree', 'return cost, tree', None, K),
+        S('p-init', 'Start at node 0', P, 'tree, cost = [], 0', P,
+          hint='A min-heap of candidate edges, starting with node 0 at no cost.'),
+        S('p-pop', 'Pop the cheapest edge; skip it if stale', 'while heap', 'continue', P,
+          hint='The cheapest candidate reaches a node; if that node is in the tree already, the entry is stale.'),
+        S('p-add', 'Add the node; push its edges out', 'seen[u] = True', 'heapq.heappush', P,
+          hint='Add the node and its edge to the tree, then push every edge from it to a node outside.',
+          prompt='Explain why the cheapest edge leaving the tree is always safe, and why stale heap entries are skipped rather than removed.'),
+        S('p-return', 'The total and the tree', 'return cost, tree', None, P),
+    ]
+
+
+def mst_scene(header):
+    ktrace = kruskal_trace()
+    adj = [[] for _ in range(MST_N)]
+    for a, b, w in MST_EDGES:
+        adj[a].append((b, w)); adj[b].append((a, w))
+    ptrace = prim_trace(adj)
+    LK = lambda t, a=None: mst_line('kruskal', t, a)
+    LP = lambda t, a=None: mst_line('prim', t, a)
+    weights = [[next((w for a, b, w in MST_EDGES if {a, b} == {i, j}), 0) for j in range(MST_N)] for i in range(MST_N)]
+    nodes = [{'x': x, 'y': y, 'adj': [b for a, b, _ in MST_EDGES if a == i], 'w': weights[i]} for i, (x, y) in enumerate(MST_POS)]
+    either = lambda col: f"(keyIndex({col}, [idx, to]) >= 0 or keyIndex({col}, [to, idx]) >= 0)"
+    node = {'nodeShape': 'rect', 'nodeWidth': 0.72, 'nodeHeight': 0.72, 'nodeCornerRadius': 0.36, 'valueLabel': 'inside', 'showIndices': False}
+
+    def graph(fill, cur, tree, other, other_color):
+        return {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(MST_N), 'valueExpr': 'idx', **node,
+                'positionExpr': ["dataTable('mstNodes', idx, 'x')", "dataTable('mstNodes', idx, 'y')", '0'], 'colorExpr': fill,
+                # Every edge is labelled with its weight; the tree's edges are thick.
+                'connectTo': {'indexExpr': "dataTable('mstNodes', idx, 'adj')", 'pinned': True, 'arrow': False, 'color': '#3e4855',
+                              'colorExpr': f"{cur} ? '{GOLD}' : ({tree} ? '{MST_TREE}' : ({other} ? '{other_color}' : ''))",
+                              'highlightExpr': cur, 'widthExpr': f"{tree} ? 3.2 : ({cur} ? 2.4 : 1.2)",
+                              'labelExpr': "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}}
+
+    def pairs(id, label, col, y, color):
+        return {'id': id, 'type': 'array', 'label': label, 'codeSymbol': id, 'labelSide': 'left', 'origin': [-2.3, y, 0], 'cellSize': 1.15,
+                'fontSize': 16, 'axisLabels': 'plane', 'itemType': 'string', 'color': color, 'showIndices': False,
+                'lengthExpr': f"arrayCount({col})", 'valueExpr': f"arrayAt({col}, idx)"}
+
+    k = tr
+    kcur = f"((idx == {k('a')} and to == {k('b')}) or (idx == {k('b')} and to == {k('a')}))"
+    sorted_edges = sorted((w, a, b) for a, b, w in MST_EDGES)
+    kruskal = [
+        graph(f"dataTable('ufPalette', arrayAt({k('root')}, idx), 'c')", kcur, either(k('tree')), either(k('rejected')), MST_REJECT),
+        {'id': 'sorted', 'type': 'array', 'label': 'sorted', 'codeSymbol': 'sorted(edges)', 'labelSide': 'left', 'origin': [-2.3, -1.7, 0],
+         'cellSize': 1.0, 'fontSize': 14, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'string', 'lengthExpr': str(len(sorted_edges)),
+         'valueExpr': "dataTable('mstSorted', idx, 'name')",
+         'colorExpr': f"keyIndex({k('tree')}, dataTable('mstSorted', idx, 'pair')) >= 0 ? '{MST_TREE}' : "
+                      f"(keyIndex({k('rejected')}, dataTable('mstSorted', idx, 'pair')) >= 0 ? '{MST_REJECT}' : '')",
+         'highlightExpr': f"idx == {k('ei')}"},
+        {'id': 'parent', 'type': 'array', 'label': 'parent', 'codeSymbol': 'parent', 'labelSide': 'left', 'origin': [-2.3, -3.0, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(MST_N), 'valueExpr': f"arrayAt({k('parent')}, idx)",
+         'colorExpr': f"dataTable('ufPalette', arrayAt({k('root')}, idx), 'c')", 'highlightExpr': f"idx == {k('rb')} and {k('line')} == {LK('parent[rb] = ra')}"},
+        pairs('tree', 'tree', k('treeNames'), -4.3, MST_TREE),
+        label('w', f"{k('w')} < 0 ? 'w: —' : concat('w = ', {k('w')})", None, LK('for w, a, b in sorted(edges)'), 'mst'),
+        label('a', f"{k('a')} < 0 ? 'a: —' : concat('a = ', {k('a')})", ['graph', k('a')], LK('for w, a, b in sorted(edges)'), 'mst'),
+        label('b', f"{k('b')} < 0 ? 'b: —' : concat('b = ', {k('b')})", ['graph', k('b')], LK('for w, a, b in sorted(edges)'), 'mst'),
+        label('ra', f"{k('ra')} < 0 ? 'ra: —' : concat('ra = ', {k('ra')})", ['graph', k('ra')], LK('ra, rb = find(a), find(b)'), 'mst'),
+        label('rb', f"{k('rb')} < 0 ? 'rb: —' : concat('rb = ', {k('rb')})", ['graph', k('rb')], LK('ra, rb = find(a), find(b)'), 'mst'),
+        {**label('check', k('checkText'), None, LK('if ra == rb'), 'mst'), 'highlightExpr': f"{k('checkText')} != 'check: —'"},
+        label('cost', f"concat('cost = ', {k('cost')})", None, LK('cost += w'), 'mst'),
+        label('tree-len', f"concat('len(tree) = ', arrayCount({k('tree')}))", ['tree', '0'], LK('if len(tree) == n - 1'), 'mst'),
+        label('result', f"concat('result: ', {k('result')})", None, LK('return cost, tree'), 'mst'),
+    ]
+    p = lambda col: f"dataTable('mst_prim', frame, '{col}')"
+    pcur = f"((idx == {p('p')} and to == {p('u')}) or (idx == {p('u')} and to == {p('p')}))"
+    frontier = f"(keyIndex({p('heapPairs')}, [idx, to]) >= 0 or keyIndex({p('heapPairs')}, [to, idx]) >= 0)"
+    prim = [
+        graph(f"idx == {p('u')} ? '{GOLD}' : (arrayAt({p('seen')}, idx) == 1 ? '{MST_TREE}' : '')", pcur, either(p('tree')), frontier, MST_FRONTIER),
+        {'id': 'heap', 'type': 'array', 'label': 'heap', 'codeSymbol': 'heap', 'labelSide': 'left', 'origin': [-2.3, -1.7, 0], 'cellSize': 1.0,
+         'fontSize': 14, 'axisLabels': 'plane', 'itemType': 'string', 'color': MST_FRONTIER, 'showIndices': False,
+         'lengthExpr': f"arrayCount({p('heapNames')})", 'valueExpr': f"arrayAt({p('heapNames')}, idx)",
+         'highlightExpr': f"idx == 0 and {p('line')} == {LP('w, u, p = heapq.heappop(heap)')}"},
+        {'id': 'seen', 'type': 'array', 'label': 'seen', 'codeSymbol': 'seen', 'labelSide': 'left', 'origin': [-2.3, -3.0, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(MST_N), 'valueExpr': f"arrayAt({p('seen')}, idx)",
+         'colorExpr': f"arrayAt({p('seen')}, idx) == 1 ? '{MST_TREE}' : ''", 'highlightExpr': f"idx == {p('u')}"},
+        pairs('tree', 'tree', p('treeNames'), -4.3, MST_TREE),
+        label('w', f"{p('w')} < 0 ? 'w: —' : concat('w = ', {p('w')})", None, LP('w, u, p = heapq.heappop(heap)'), 'mst'),
+        label('u', f"{p('u')} < 0 ? 'u: —' : concat('u = ', {p('u')})", ['graph', p('u')], LP('w, u, p = heapq.heappop(heap)'), 'mst'),
+        label('p', f"{p('p')} < 0 ? 'p: —' : concat('p = ', {p('p')})", ['graph', p('p')], LP('w, u, p = heapq.heappop(heap)'), 'mst'),
+        label('v', f"{p('v')} < 0 ? 'v: —' : concat('v = ', {p('v')})", ['graph', p('v')], LP('for v, wv in adj[u]'), 'mst'),
+        {**label('check', p('checkText'), None, LP('if seen[u]'), 'mst'), 'highlightExpr': f"{p('checkText')} != 'check: —'"},
+        label('cost', f"concat('cost = ', {p('cost')})", None, LP('cost += w'), 'mst'),
+        label('heap-len', f"concat('len(heap) = ', arrayCount({p('heapNames')}))", ['heap', '0'], LP('while heap'), 'mst'),
+        label('result', f"concat('result: ', {p('result')})", None, LP('return cost, tree'), 'mst'),
+    ]
+    for f in ptrace:
+        # The heap's entries and the tree's edges as text, for the arrays (a cell holds a string, not a pair).
+        f['heapPairs'] = [[fr, v] for _, v, fr in f['heap'] if fr >= 0]
+        f['heapNames'] = [f'{w}→{v}' for w, v, _ in f['heap']]
+    for f in ktrace + ptrace:
+        f['treeNames'] = [f'{a}–{b}' for a, b in f['tree']]
+    return run_scene('mst', 'Connect everything cheaply (minimum spanning tree)', header, """**Signal:** connect all points or cities at the lowest total cost; "minimum cost to connect", a network with no wasted link.
+
+A **spanning tree** uses n − 1 edges to connect all n nodes with no cycle. The **minimum** one has the smallest total weight. Both algorithms are greedy, and both rest on one fact, the **cut property**: split the nodes into two sides any way you like, and the cheapest edge crossing between the sides is safe to take.
+
+## 1. Kruskal: cheapest edge first (this step)
+
+Sort the edges by weight and walk the list. An edge whose ends are already in one group would close a **cycle** (red): skip it. Any other joins two pieces, so take it (green) and merge the groups, with **union-find** from the previous scene. Nodes are coloured by group, so you can watch the pieces merge. Stop once n − 1 edges are taken: here edge 0 – 3 completes the tree and the four dearest edges are never looked at.
+
+## 2. Prim: grow one tree (next step)
+
+Start from node 0 and keep a **min-heap** of edges leaving the tree (pink). Pop the cheapest; if it reaches a node already in the tree it is **stale**, skip it. Otherwise add the node and its edge, and push its edges to nodes outside. The heap is shown sorted; a real heap only keeps its minimum at the front.
+
+Both find the same total, **22**, here even the same tree: with distinct weights the minimum spanning tree is unique.
+
+**Cost:** Kruskal O(E log E) for the sort; Prim O(E log V) with a binary heap. Kruskal suits an edge list, Prim an adjacency list of a dense graph.
+
+**Practice:** Min Cost to Connect All Points, Connecting Cities With Minimum Cost.""",
+        'Explain the cut property and why each greedy choice is safe. Ask the learner to predict which edge Kruskal takes or skips next, and which edge Prim pops next.',
+        'mst.py', MST_SOURCE, ktrace, kruskal, sections=mst_sections(),
+        data={'mstNodes': nodes, 'mstSorted': [{'name': f'{a}–{b}', 'pair': [a, b]} for _, a, b in sorted_edges],
+              'ufPalette': [{'c': col} for col in UF_PALETTE]},
+        first={'title': 'Kruskal: cheapest edge first', 'description': 'Take each edge that joins two groups.'},
+        more=[{'id': 'prim', 'title': 'Prim: grow one tree', 'description': 'Always add the cheapest edge leaving the tree.',
+               'table': 'mst_prim', 'trace': ptrace, 'elements': prim}])
+
+
 def code_sections(scene_id):
     """The teaching structure of each scene's code file (cycle.py has its own, cycle_sections)."""
     if scene_id == 'representations':
@@ -2423,7 +2691,7 @@ def code_sections(scene_id):
 codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
          'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene,
-         'union-find': uf_scene}
+         'union-find': uf_scene, 'mst': mst_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:

@@ -1223,6 +1223,131 @@
         {"line": 24, "scene": "union-find", "step": "run", "snapshot": 86, "label": "Group as edges arrive (union-find) · Two groups became one: groups = 2."},
         {"line": 25, "scene": "union-find", "step": "run", "snapshot": 87, "label": "Group as edges arrive (union-find) · 2 groups: {0, 1, 2, 3, 4, 5, 6, 7} and {8}, which no edge touched."}
       ]
+    },
+    {
+      "id": "mst",
+      "path": "graphs/mst.py",
+      "language": "python",
+      "source": "import heapq\n\ndef kruskal(n, edges):\n    parent = list(range(n))\n\n    def find(x):\n        while parent[x] != x:\n            parent[x] = parent[parent[x]]  # path halving\n            x = parent[x]\n        return x\n\n    tree, cost = [], 0\n    for w, a, b in sorted(edges):\n        ra, rb = find(a), find(b)\n        if ra == rb:\n            continue  # would close a cycle\n        parent[rb] = ra\n        tree.append((a, b))\n        cost += w\n        if len(tree) == n - 1:\n            break\n    return cost, tree\n\ndef prim(n, adj):\n    seen = [False] * n\n    heap = [(0, 0, -1)]  # (weight, node, reached from)\n    tree, cost = [], 0\n    while heap:\n        w, u, p = heapq.heappop(heap)\n        if seen[u]:\n            continue  # a cheaper edge reached u first\n        seen[u] = True\n        cost += w\n        if p >= 0:\n            tree.append((p, u))\n        for v, wv in adj[u]:\n            if not seen[v]:\n                heapq.heappush(heap, (wv, v, u))\n    return cost, tree",
+      "sections": [
+        {"id": "k-init", "title": "Every node its own group", "from": 3, "to": 10, "hint": "Union-find over the nodes: find follows parents to a group's root."},
+        {"id": "k-scan", "title": "Cheapest edge first", "from": 12, "to": 14, "hint": "Look at the edges from cheapest to dearest, and find the groups of their two ends."},
+        {"id": "k-take", "title": "Take it unless it closes a cycle", "from": 15, "to": 21, "hint": "An edge inside one group would close a cycle; any other joins two pieces, so take it, until n - 1 are taken.", "prompt": "Explain why the cheapest edge joining two different groups is always safe to take (the cut property), and why an edge within a group is never needed."},
+        {"id": "k-return", "title": "The total and the tree", "from": 22, "to": 22},
+        {"id": "p-init", "title": "Start at node 0", "from": 24, "to": 27, "hint": "A min-heap of candidate edges, starting with node 0 at no cost."},
+        {"id": "p-pop", "title": "Pop the cheapest edge; skip it if stale", "from": 28, "to": 31, "hint": "The cheapest candidate reaches a node; if that node is in the tree already, the entry is stale."},
+        {"id": "p-add", "title": "Add the node; push its edges out", "from": 32, "to": 38, "hint": "Add the node and its edge to the tree, then push every edge from it to a node outside.", "prompt": "Explain why the cheapest edge leaving the tree is always safe, and why stale heap entries are skipped rather than removed."},
+        {"id": "p-return", "title": "The total and the tree", "from": 39, "to": 39}
+      ],
+      "locations": [
+        {"line": 4, "scene": "mst", "step": "run", "snapshot": 0, "label": "Connect everything cheaply (minimum spanning tree) · Every node is its own group: 7 pieces, no edge chosen."},
+        {"line": 12, "scene": "mst", "step": "run", "snapshot": 1, "label": "Connect everything cheaply (minimum spanning tree) · The tree starts empty, at cost 0."},
+        {"line": 13, "scene": "mst", "step": "run", "snapshot": 2, "label": "Connect everything cheaply (minimum spanning tree) · Next cheapest edge: 4 – 5, weight 1."},
+        {"line": 14, "scene": "mst", "step": "run", "snapshot": 3, "label": "Connect everything cheaply (minimum spanning tree) · 4 is in 4's group, 5 in 5's."},
+        {"line": 15, "scene": "mst", "step": "run", "snapshot": 4, "label": "Connect everything cheaply (minimum spanning tree) · Different groups: the edge joins two pieces, so it is safe to take."},
+        {"line": 17, "scene": "mst", "step": "run", "snapshot": 5, "label": "Connect everything cheaply (minimum spanning tree) · Merge: 5's group joins 4's."},
+        {"line": 18, "scene": "mst", "step": "run", "snapshot": 6, "label": "Connect everything cheaply (minimum spanning tree) · Take 4 – 5."},
+        {"line": 19, "scene": "mst", "step": "run", "snapshot": 7, "label": "Connect everything cheaply (minimum spanning tree) · cost = 1."},
+        {"line": 13, "scene": "mst", "step": "run", "snapshot": 8, "label": "Connect everything cheaply (minimum spanning tree) · Next cheapest edge: 1 – 4, weight 2."},
+        {"line": 14, "scene": "mst", "step": "run", "snapshot": 9, "label": "Connect everything cheaply (minimum spanning tree) · 1 is in 1's group, 4 in 4's."},
+        {"line": 15, "scene": "mst", "step": "run", "snapshot": 10, "label": "Connect everything cheaply (minimum spanning tree) · Different groups: the edge joins two pieces, so it is safe to take."},
+        {"line": 17, "scene": "mst", "step": "run", "snapshot": 11, "label": "Connect everything cheaply (minimum spanning tree) · Merge: 4's group joins 1's."},
+        {"line": 18, "scene": "mst", "step": "run", "snapshot": 12, "label": "Connect everything cheaply (minimum spanning tree) · Take 1 – 4."},
+        {"line": 19, "scene": "mst", "step": "run", "snapshot": 13, "label": "Connect everything cheaply (minimum spanning tree) · cost = 3."},
+        {"line": 13, "scene": "mst", "step": "run", "snapshot": 14, "label": "Connect everything cheaply (minimum spanning tree) · Next cheapest edge: 3 – 6, weight 3."},
+        {"line": 14, "scene": "mst", "step": "run", "snapshot": 15, "label": "Connect everything cheaply (minimum spanning tree) · 3 is in 3's group, 6 in 6's."},
+        {"line": 15, "scene": "mst", "step": "run", "snapshot": 16, "label": "Connect everything cheaply (minimum spanning tree) · Different groups: the edge joins two pieces, so it is safe to take."},
+        {"line": 17, "scene": "mst", "step": "run", "snapshot": 17, "label": "Connect everything cheaply (minimum spanning tree) · Merge: 6's group joins 3's."},
+        {"line": 18, "scene": "mst", "step": "run", "snapshot": 18, "label": "Connect everything cheaply (minimum spanning tree) · Take 3 – 6."},
+        {"line": 19, "scene": "mst", "step": "run", "snapshot": 19, "label": "Connect everything cheaply (minimum spanning tree) · cost = 6."},
+        {"line": 13, "scene": "mst", "step": "run", "snapshot": 20, "label": "Connect everything cheaply (minimum spanning tree) · Next cheapest edge: 0 – 1, weight 4."},
+        {"line": 14, "scene": "mst", "step": "run", "snapshot": 21, "label": "Connect everything cheaply (minimum spanning tree) · 0 is in 0's group, 1 in 1's."},
+        {"line": 15, "scene": "mst", "step": "run", "snapshot": 22, "label": "Connect everything cheaply (minimum spanning tree) · Different groups: the edge joins two pieces, so it is safe to take."},
+        {"line": 17, "scene": "mst", "step": "run", "snapshot": 23, "label": "Connect everything cheaply (minimum spanning tree) · Merge: 1's group joins 0's."},
+        {"line": 18, "scene": "mst", "step": "run", "snapshot": 24, "label": "Connect everything cheaply (minimum spanning tree) · Take 0 – 1."},
+        {"line": 19, "scene": "mst", "step": "run", "snapshot": 25, "label": "Connect everything cheaply (minimum spanning tree) · cost = 10."},
+        {"line": 13, "scene": "mst", "step": "run", "snapshot": 26, "label": "Connect everything cheaply (minimum spanning tree) · Next cheapest edge: 2 – 5, weight 5."},
+        {"line": 14, "scene": "mst", "step": "run", "snapshot": 27, "label": "Connect everything cheaply (minimum spanning tree) · 2 is in 2's group, 5 in 0's."},
+        {"line": 15, "scene": "mst", "step": "run", "snapshot": 28, "label": "Connect everything cheaply (minimum spanning tree) · Different groups: the edge joins two pieces, so it is safe to take."},
+        {"line": 17, "scene": "mst", "step": "run", "snapshot": 29, "label": "Connect everything cheaply (minimum spanning tree) · Merge: 0's group joins 2's."},
+        {"line": 18, "scene": "mst", "step": "run", "snapshot": 30, "label": "Connect everything cheaply (minimum spanning tree) · Take 2 – 5."},
+        {"line": 19, "scene": "mst", "step": "run", "snapshot": 31, "label": "Connect everything cheaply (minimum spanning tree) · cost = 15."},
+        {"line": 13, "scene": "mst", "step": "run", "snapshot": 32, "label": "Connect everything cheaply (minimum spanning tree) · Next cheapest edge: 2 – 4, weight 6."},
+        {"line": 14, "scene": "mst", "step": "run", "snapshot": 33, "label": "Connect everything cheaply (minimum spanning tree) · 2 is in 2's group, 4 in 2's."},
+        {"line": 16, "scene": "mst", "step": "run", "snapshot": 34, "label": "Connect everything cheaply (minimum spanning tree) · 2 and 4 are joined already: 2 – 4 would close a cycle. Skip it."},
+        {"line": 13, "scene": "mst", "step": "run", "snapshot": 35, "label": "Connect everything cheaply (minimum spanning tree) · Next cheapest edge: 0 – 3, weight 7."},
+        {"line": 14, "scene": "mst", "step": "run", "snapshot": 36, "label": "Connect everything cheaply (minimum spanning tree) · 0 is in 2's group, 3 in 3's."},
+        {"line": 15, "scene": "mst", "step": "run", "snapshot": 37, "label": "Connect everything cheaply (minimum spanning tree) · Different groups: the edge joins two pieces, so it is safe to take."},
+        {"line": 17, "scene": "mst", "step": "run", "snapshot": 38, "label": "Connect everything cheaply (minimum spanning tree) · Merge: 3's group joins 2's."},
+        {"line": 18, "scene": "mst", "step": "run", "snapshot": 39, "label": "Connect everything cheaply (minimum spanning tree) · Take 0 – 3."},
+        {"line": 19, "scene": "mst", "step": "run", "snapshot": 40, "label": "Connect everything cheaply (minimum spanning tree) · cost = 22."},
+        {"line": 21, "scene": "mst", "step": "run", "snapshot": 41, "label": "Connect everything cheaply (minimum spanning tree) · 6 edges join all 7 nodes: the tree is complete. The rest are never looked at."},
+        {"line": 22, "scene": "mst", "step": "run", "snapshot": 42, "label": "Connect everything cheaply (minimum spanning tree) · Minimum spanning tree: 6 edges, total weight 22."},
+        {"line": 25, "scene": "mst", "step": "prim", "snapshot": 0, "label": "Prim: grow one tree · No node is in the tree yet."},
+        {"line": 26, "scene": "mst", "step": "prim", "snapshot": 1, "label": "Prim: grow one tree · Start at node 0: it costs nothing to reach."},
+        {"line": 27, "scene": "mst", "step": "prim", "snapshot": 2, "label": "Prim: grow one tree · The tree starts empty, at cost 0."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 3, "label": "Prim: grow one tree · 1 candidate edge in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 4, "label": "Prim: grow one tree · Pop the cheapest: reach 0."},
+        {"line": 32, "scene": "mst", "step": "prim", "snapshot": 5, "label": "Prim: grow one tree · 0 joins the tree."},
+        {"line": 33, "scene": "mst", "step": "prim", "snapshot": 6, "label": "Prim: grow one tree · cost = 0."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 7, "label": "Prim: grow one tree · 0 – 1 leaves the tree: push it, weight 4."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 8, "label": "Prim: grow one tree · 0 – 3 leaves the tree: push it, weight 7."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 9, "label": "Prim: grow one tree · 2 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 10, "label": "Prim: grow one tree · Pop the cheapest: reach 1 from 0 for 4."},
+        {"line": 32, "scene": "mst", "step": "prim", "snapshot": 11, "label": "Prim: grow one tree · 1 joins the tree."},
+        {"line": 33, "scene": "mst", "step": "prim", "snapshot": 12, "label": "Prim: grow one tree · cost = 4."},
+        {"line": 35, "scene": "mst", "step": "prim", "snapshot": 13, "label": "Prim: grow one tree · Take 0 – 1: the cheapest edge leaving the tree."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 14, "label": "Prim: grow one tree · 1 – 2 leaves the tree: push it, weight 8."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 15, "label": "Prim: grow one tree · 1 – 4 leaves the tree: push it, weight 2."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 16, "label": "Prim: grow one tree · 3 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 17, "label": "Prim: grow one tree · Pop the cheapest: reach 4 from 1 for 2."},
+        {"line": 32, "scene": "mst", "step": "prim", "snapshot": 18, "label": "Prim: grow one tree · 4 joins the tree."},
+        {"line": 33, "scene": "mst", "step": "prim", "snapshot": 19, "label": "Prim: grow one tree · cost = 6."},
+        {"line": 35, "scene": "mst", "step": "prim", "snapshot": 20, "label": "Prim: grow one tree · Take 1 – 4: the cheapest edge leaving the tree."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 21, "label": "Prim: grow one tree · 4 – 2 leaves the tree: push it, weight 6."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 22, "label": "Prim: grow one tree · 4 – 3 leaves the tree: push it, weight 9."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 23, "label": "Prim: grow one tree · 4 – 5 leaves the tree: push it, weight 1."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 24, "label": "Prim: grow one tree · 4 – 6 leaves the tree: push it, weight 10."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 25, "label": "Prim: grow one tree · 6 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 26, "label": "Prim: grow one tree · Pop the cheapest: reach 5 from 4 for 1."},
+        {"line": 32, "scene": "mst", "step": "prim", "snapshot": 27, "label": "Prim: grow one tree · 5 joins the tree."},
+        {"line": 33, "scene": "mst", "step": "prim", "snapshot": 28, "label": "Prim: grow one tree · cost = 7."},
+        {"line": 35, "scene": "mst", "step": "prim", "snapshot": 29, "label": "Prim: grow one tree · Take 4 – 5: the cheapest edge leaving the tree."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 30, "label": "Prim: grow one tree · 5 – 2 leaves the tree: push it, weight 5."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 31, "label": "Prim: grow one tree · 5 – 6 leaves the tree: push it, weight 11."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 32, "label": "Prim: grow one tree · 7 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 33, "label": "Prim: grow one tree · Pop the cheapest: reach 2 from 5 for 5."},
+        {"line": 32, "scene": "mst", "step": "prim", "snapshot": 34, "label": "Prim: grow one tree · 2 joins the tree."},
+        {"line": 33, "scene": "mst", "step": "prim", "snapshot": 35, "label": "Prim: grow one tree · cost = 12."},
+        {"line": 35, "scene": "mst", "step": "prim", "snapshot": 36, "label": "Prim: grow one tree · Take 5 – 2: the cheapest edge leaving the tree."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 37, "label": "Prim: grow one tree · 6 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 38, "label": "Prim: grow one tree · Pop the cheapest: reach 2 from 4 for 6."},
+        {"line": 31, "scene": "mst", "step": "prim", "snapshot": 39, "label": "Prim: grow one tree · 2 is in the tree already, through a cheaper edge: skip this stale entry."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 40, "label": "Prim: grow one tree · 5 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 41, "label": "Prim: grow one tree · Pop the cheapest: reach 3 from 0 for 7."},
+        {"line": 32, "scene": "mst", "step": "prim", "snapshot": 42, "label": "Prim: grow one tree · 3 joins the tree."},
+        {"line": 33, "scene": "mst", "step": "prim", "snapshot": 43, "label": "Prim: grow one tree · cost = 19."},
+        {"line": 35, "scene": "mst", "step": "prim", "snapshot": 44, "label": "Prim: grow one tree · Take 0 – 3: the cheapest edge leaving the tree."},
+        {"line": 38, "scene": "mst", "step": "prim", "snapshot": 45, "label": "Prim: grow one tree · 3 – 6 leaves the tree: push it, weight 3."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 46, "label": "Prim: grow one tree · 5 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 47, "label": "Prim: grow one tree · Pop the cheapest: reach 6 from 3 for 3."},
+        {"line": 32, "scene": "mst", "step": "prim", "snapshot": 48, "label": "Prim: grow one tree · 6 joins the tree."},
+        {"line": 33, "scene": "mst", "step": "prim", "snapshot": 49, "label": "Prim: grow one tree · cost = 22."},
+        {"line": 35, "scene": "mst", "step": "prim", "snapshot": 50, "label": "Prim: grow one tree · Take 3 – 6: the cheapest edge leaving the tree."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 51, "label": "Prim: grow one tree · 4 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 52, "label": "Prim: grow one tree · Pop the cheapest: reach 2 from 1 for 8."},
+        {"line": 31, "scene": "mst", "step": "prim", "snapshot": 53, "label": "Prim: grow one tree · 2 is in the tree already, through a cheaper edge: skip this stale entry."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 54, "label": "Prim: grow one tree · 3 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 55, "label": "Prim: grow one tree · Pop the cheapest: reach 3 from 4 for 9."},
+        {"line": 31, "scene": "mst", "step": "prim", "snapshot": 56, "label": "Prim: grow one tree · 3 is in the tree already, through a cheaper edge: skip this stale entry."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 57, "label": "Prim: grow one tree · 2 candidate edges in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 58, "label": "Prim: grow one tree · Pop the cheapest: reach 6 from 4 for 10."},
+        {"line": 31, "scene": "mst", "step": "prim", "snapshot": 59, "label": "Prim: grow one tree · 6 is in the tree already, through a cheaper edge: skip this stale entry."},
+        {"line": 28, "scene": "mst", "step": "prim", "snapshot": 60, "label": "Prim: grow one tree · 1 candidate edge in the heap."},
+        {"line": 29, "scene": "mst", "step": "prim", "snapshot": 61, "label": "Prim: grow one tree · Pop the cheapest: reach 6 from 5 for 11."},
+        {"line": 31, "scene": "mst", "step": "prim", "snapshot": 62, "label": "Prim: grow one tree · 6 is in the tree already, through a cheaper edge: skip this stale entry."},
+        {"line": 39, "scene": "mst", "step": "prim", "snapshot": 63, "label": "Prim: grow one tree · The heap is empty. Same total as Kruskal: 22."}
+      ]
     }
   ],
   "scenes": [
@@ -25572,7 +25697,7 @@
     {
       "id": "mst",
       "title": "Connect everything cheaply (minimum spanning tree)",
-      "description": "Signal: connect all points or cities at the lowest total cost.",
+      "description": "Every node is its own group: 7 pieces, no edge chosen.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -25582,8 +25707,2914 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Connect everything cheaply (minimum spanning tree)\n\n**Step 10** of 19 · **Tier:** Common (often asked) · **Builds on:** Union-find\n\n**Signal:** connect all points or cities at the lowest total cost.\n\n**Kruskal** sorts edges by weight and adds each one that does not close a cycle (union-find tells). **Prim** grows one tree from a start node, always adding the cheapest edge that leaves it (a min-heap). Both are greedy and both are correct because the cheapest edge across any cut is safe.\n\n**Cost:** Kruskal O(E log E); Prim O(E log V).\n\n*Visualization coming soon.*\n\n**Practice:** Min Cost to Connect All Points, Connecting Cities With Minimum Cost.",
-      "prompt": "Explain Kruskal / Prim: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "data": {
+        "trace": [
+          {
+            "ei": -1,
+            "w": -1,
+            "a": -1,
+            "b": -1,
+            "ra": -1,
+            "rb": -1,
+            "parent": [0, 1, 2, 3, 4, 5, 6],
+            "root": [0, 1, 2, 3, 4, 5, 6],
+            "tree": [],
+            "rejected": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 4,
+            "message": "Every node is its own group: 7 pieces, no edge chosen.",
+            "treeNames": []
+          },
+          {
+            "ei": -1,
+            "w": -1,
+            "a": -1,
+            "b": -1,
+            "ra": -1,
+            "rb": -1,
+            "parent": [0, 1, 2, 3, 4, 5, 6],
+            "root": [0, 1, 2, 3, 4, 5, 6],
+            "tree": [],
+            "rejected": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 12,
+            "message": "The tree starts empty, at cost 0.",
+            "treeNames": []
+          },
+          {
+            "ei": 0,
+            "w": 1,
+            "a": 4,
+            "b": 5,
+            "ra": -1,
+            "rb": -1,
+            "parent": [0, 1, 2, 3, 4, 5, 6],
+            "root": [0, 1, 2, 3, 4, 5, 6],
+            "tree": [],
+            "rejected": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "Next cheapest edge: 4 – 5, weight 1.",
+            "treeNames": []
+          },
+          {
+            "ei": 0,
+            "w": 1,
+            "a": 4,
+            "b": 5,
+            "ra": 4,
+            "rb": 5,
+            "parent": [0, 1, 2, 3, 4, 5, 6],
+            "root": [0, 1, 2, 3, 4, 5, 6],
+            "tree": [],
+            "rejected": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 14,
+            "message": "4 is in 4's group, 5 in 5's.",
+            "treeNames": []
+          },
+          {
+            "ei": 0,
+            "w": 1,
+            "a": 4,
+            "b": 5,
+            "ra": 4,
+            "rb": 5,
+            "parent": [0, 1, 2, 3, 4, 5, 6],
+            "root": [0, 1, 2, 3, 4, 5, 6],
+            "tree": [],
+            "rejected": [],
+            "cost": 0,
+            "checkText": "ra = 4, rb = 5: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Different groups: the edge joins two pieces, so it is safe to take.",
+            "treeNames": []
+          },
+          {
+            "ei": 0,
+            "w": 1,
+            "a": 4,
+            "b": 5,
+            "ra": 4,
+            "rb": 5,
+            "parent": [0, 1, 2, 3, 4, 4, 6],
+            "root": [0, 1, 2, 3, 4, 4, 6],
+            "tree": [],
+            "rejected": [],
+            "cost": 0,
+            "checkText": "ra = 4, rb = 5: different groups",
+            "result": "—",
+            "line": 17,
+            "message": "Merge: 5's group joins 4's.",
+            "treeNames": []
+          },
+          {
+            "ei": 0,
+            "w": 1,
+            "a": 4,
+            "b": 5,
+            "ra": 4,
+            "rb": 5,
+            "parent": [0, 1, 2, 3, 4, 4, 6],
+            "root": [0, 1, 2, 3, 4, 4, 6],
+            "tree": [
+              [4, 5]
+            ],
+            "rejected": [],
+            "cost": 0,
+            "checkText": "ra = 4, rb = 5: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Take 4 – 5.",
+            "treeNames": ["4–5"]
+          },
+          {
+            "ei": 0,
+            "w": 1,
+            "a": 4,
+            "b": 5,
+            "ra": 4,
+            "rb": 5,
+            "parent": [0, 1, 2, 3, 4, 4, 6],
+            "root": [0, 1, 2, 3, 4, 4, 6],
+            "tree": [
+              [4, 5]
+            ],
+            "rejected": [],
+            "cost": 1,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 19,
+            "message": "cost = 1.",
+            "treeNames": ["4–5"]
+          },
+          {
+            "ei": 1,
+            "w": 2,
+            "a": 1,
+            "b": 4,
+            "ra": -1,
+            "rb": -1,
+            "parent": [0, 1, 2, 3, 4, 4, 6],
+            "root": [0, 1, 2, 3, 4, 4, 6],
+            "tree": [
+              [4, 5]
+            ],
+            "rejected": [],
+            "cost": 1,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "Next cheapest edge: 1 – 4, weight 2.",
+            "treeNames": ["4–5"]
+          },
+          {
+            "ei": 1,
+            "w": 2,
+            "a": 1,
+            "b": 4,
+            "ra": 1,
+            "rb": 4,
+            "parent": [0, 1, 2, 3, 4, 4, 6],
+            "root": [0, 1, 2, 3, 4, 4, 6],
+            "tree": [
+              [4, 5]
+            ],
+            "rejected": [],
+            "cost": 1,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 14,
+            "message": "1 is in 1's group, 4 in 4's.",
+            "treeNames": ["4–5"]
+          },
+          {
+            "ei": 1,
+            "w": 2,
+            "a": 1,
+            "b": 4,
+            "ra": 1,
+            "rb": 4,
+            "parent": [0, 1, 2, 3, 4, 4, 6],
+            "root": [0, 1, 2, 3, 4, 4, 6],
+            "tree": [
+              [4, 5]
+            ],
+            "rejected": [],
+            "cost": 1,
+            "checkText": "ra = 1, rb = 4: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Different groups: the edge joins two pieces, so it is safe to take.",
+            "treeNames": ["4–5"]
+          },
+          {
+            "ei": 1,
+            "w": 2,
+            "a": 1,
+            "b": 4,
+            "ra": 1,
+            "rb": 4,
+            "parent": [0, 1, 2, 3, 1, 4, 6],
+            "root": [0, 1, 2, 3, 1, 1, 6],
+            "tree": [
+              [4, 5]
+            ],
+            "rejected": [],
+            "cost": 1,
+            "checkText": "ra = 1, rb = 4: different groups",
+            "result": "—",
+            "line": 17,
+            "message": "Merge: 4's group joins 1's.",
+            "treeNames": ["4–5"]
+          },
+          {
+            "ei": 1,
+            "w": 2,
+            "a": 1,
+            "b": 4,
+            "ra": 1,
+            "rb": 4,
+            "parent": [0, 1, 2, 3, 1, 4, 6],
+            "root": [0, 1, 2, 3, 1, 1, 6],
+            "tree": [
+              [4, 5],
+              [1, 4]
+            ],
+            "rejected": [],
+            "cost": 1,
+            "checkText": "ra = 1, rb = 4: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Take 1 – 4.",
+            "treeNames": ["4–5", "1–4"]
+          },
+          {
+            "ei": 1,
+            "w": 2,
+            "a": 1,
+            "b": 4,
+            "ra": 1,
+            "rb": 4,
+            "parent": [0, 1, 2, 3, 1, 4, 6],
+            "root": [0, 1, 2, 3, 1, 1, 6],
+            "tree": [
+              [4, 5],
+              [1, 4]
+            ],
+            "rejected": [],
+            "cost": 3,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 19,
+            "message": "cost = 3.",
+            "treeNames": ["4–5", "1–4"]
+          },
+          {
+            "ei": 2,
+            "w": 3,
+            "a": 3,
+            "b": 6,
+            "ra": -1,
+            "rb": -1,
+            "parent": [0, 1, 2, 3, 1, 4, 6],
+            "root": [0, 1, 2, 3, 1, 1, 6],
+            "tree": [
+              [4, 5],
+              [1, 4]
+            ],
+            "rejected": [],
+            "cost": 3,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "Next cheapest edge: 3 – 6, weight 3.",
+            "treeNames": ["4–5", "1–4"]
+          },
+          {
+            "ei": 2,
+            "w": 3,
+            "a": 3,
+            "b": 6,
+            "ra": 3,
+            "rb": 6,
+            "parent": [0, 1, 2, 3, 1, 4, 6],
+            "root": [0, 1, 2, 3, 1, 1, 6],
+            "tree": [
+              [4, 5],
+              [1, 4]
+            ],
+            "rejected": [],
+            "cost": 3,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 14,
+            "message": "3 is in 3's group, 6 in 6's.",
+            "treeNames": ["4–5", "1–4"]
+          },
+          {
+            "ei": 2,
+            "w": 3,
+            "a": 3,
+            "b": 6,
+            "ra": 3,
+            "rb": 6,
+            "parent": [0, 1, 2, 3, 1, 4, 6],
+            "root": [0, 1, 2, 3, 1, 1, 6],
+            "tree": [
+              [4, 5],
+              [1, 4]
+            ],
+            "rejected": [],
+            "cost": 3,
+            "checkText": "ra = 3, rb = 6: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Different groups: the edge joins two pieces, so it is safe to take.",
+            "treeNames": ["4–5", "1–4"]
+          },
+          {
+            "ei": 2,
+            "w": 3,
+            "a": 3,
+            "b": 6,
+            "ra": 3,
+            "rb": 6,
+            "parent": [0, 1, 2, 3, 1, 4, 3],
+            "root": [0, 1, 2, 3, 1, 1, 3],
+            "tree": [
+              [4, 5],
+              [1, 4]
+            ],
+            "rejected": [],
+            "cost": 3,
+            "checkText": "ra = 3, rb = 6: different groups",
+            "result": "—",
+            "line": 17,
+            "message": "Merge: 6's group joins 3's.",
+            "treeNames": ["4–5", "1–4"]
+          },
+          {
+            "ei": 2,
+            "w": 3,
+            "a": 3,
+            "b": 6,
+            "ra": 3,
+            "rb": 6,
+            "parent": [0, 1, 2, 3, 1, 4, 3],
+            "root": [0, 1, 2, 3, 1, 1, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6]
+            ],
+            "rejected": [],
+            "cost": 3,
+            "checkText": "ra = 3, rb = 6: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Take 3 – 6.",
+            "treeNames": ["4–5", "1–4", "3–6"]
+          },
+          {
+            "ei": 2,
+            "w": 3,
+            "a": 3,
+            "b": 6,
+            "ra": 3,
+            "rb": 6,
+            "parent": [0, 1, 2, 3, 1, 4, 3],
+            "root": [0, 1, 2, 3, 1, 1, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6]
+            ],
+            "rejected": [],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 19,
+            "message": "cost = 6.",
+            "treeNames": ["4–5", "1–4", "3–6"]
+          },
+          {
+            "ei": 3,
+            "w": 4,
+            "a": 0,
+            "b": 1,
+            "ra": -1,
+            "rb": -1,
+            "parent": [0, 1, 2, 3, 1, 4, 3],
+            "root": [0, 1, 2, 3, 1, 1, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6]
+            ],
+            "rejected": [],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "Next cheapest edge: 0 – 1, weight 4.",
+            "treeNames": ["4–5", "1–4", "3–6"]
+          },
+          {
+            "ei": 3,
+            "w": 4,
+            "a": 0,
+            "b": 1,
+            "ra": 0,
+            "rb": 1,
+            "parent": [0, 1, 2, 3, 1, 4, 3],
+            "root": [0, 1, 2, 3, 1, 1, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6]
+            ],
+            "rejected": [],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 14,
+            "message": "0 is in 0's group, 1 in 1's.",
+            "treeNames": ["4–5", "1–4", "3–6"]
+          },
+          {
+            "ei": 3,
+            "w": 4,
+            "a": 0,
+            "b": 1,
+            "ra": 0,
+            "rb": 1,
+            "parent": [0, 1, 2, 3, 1, 4, 3],
+            "root": [0, 1, 2, 3, 1, 1, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6]
+            ],
+            "rejected": [],
+            "cost": 6,
+            "checkText": "ra = 0, rb = 1: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Different groups: the edge joins two pieces, so it is safe to take.",
+            "treeNames": ["4–5", "1–4", "3–6"]
+          },
+          {
+            "ei": 3,
+            "w": 4,
+            "a": 0,
+            "b": 1,
+            "ra": 0,
+            "rb": 1,
+            "parent": [0, 0, 2, 3, 1, 4, 3],
+            "root": [0, 0, 2, 3, 0, 0, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6]
+            ],
+            "rejected": [],
+            "cost": 6,
+            "checkText": "ra = 0, rb = 1: different groups",
+            "result": "—",
+            "line": 17,
+            "message": "Merge: 1's group joins 0's.",
+            "treeNames": ["4–5", "1–4", "3–6"]
+          },
+          {
+            "ei": 3,
+            "w": 4,
+            "a": 0,
+            "b": 1,
+            "ra": 0,
+            "rb": 1,
+            "parent": [0, 0, 2, 3, 1, 4, 3],
+            "root": [0, 0, 2, 3, 0, 0, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1]
+            ],
+            "rejected": [],
+            "cost": 6,
+            "checkText": "ra = 0, rb = 1: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Take 0 – 1.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1"]
+          },
+          {
+            "ei": 3,
+            "w": 4,
+            "a": 0,
+            "b": 1,
+            "ra": 0,
+            "rb": 1,
+            "parent": [0, 0, 2, 3, 1, 4, 3],
+            "root": [0, 0, 2, 3, 0, 0, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1]
+            ],
+            "rejected": [],
+            "cost": 10,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 19,
+            "message": "cost = 10.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1"]
+          },
+          {
+            "ei": 4,
+            "w": 5,
+            "a": 2,
+            "b": 5,
+            "ra": -1,
+            "rb": -1,
+            "parent": [0, 0, 2, 3, 1, 4, 3],
+            "root": [0, 0, 2, 3, 0, 0, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1]
+            ],
+            "rejected": [],
+            "cost": 10,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "Next cheapest edge: 2 – 5, weight 5.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1"]
+          },
+          {
+            "ei": 4,
+            "w": 5,
+            "a": 2,
+            "b": 5,
+            "ra": 2,
+            "rb": 0,
+            "parent": [0, 0, 2, 3, 1, 1, 3],
+            "root": [0, 0, 2, 3, 0, 0, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1]
+            ],
+            "rejected": [],
+            "cost": 10,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 14,
+            "message": "2 is in 2's group, 5 in 0's.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1"]
+          },
+          {
+            "ei": 4,
+            "w": 5,
+            "a": 2,
+            "b": 5,
+            "ra": 2,
+            "rb": 0,
+            "parent": [0, 0, 2, 3, 1, 1, 3],
+            "root": [0, 0, 2, 3, 0, 0, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1]
+            ],
+            "rejected": [],
+            "cost": 10,
+            "checkText": "ra = 2, rb = 0: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Different groups: the edge joins two pieces, so it is safe to take.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1"]
+          },
+          {
+            "ei": 4,
+            "w": 5,
+            "a": 2,
+            "b": 5,
+            "ra": 2,
+            "rb": 0,
+            "parent": [2, 0, 2, 3, 1, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1]
+            ],
+            "rejected": [],
+            "cost": 10,
+            "checkText": "ra = 2, rb = 0: different groups",
+            "result": "—",
+            "line": 17,
+            "message": "Merge: 0's group joins 2's.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1"]
+          },
+          {
+            "ei": 4,
+            "w": 5,
+            "a": 2,
+            "b": 5,
+            "ra": 2,
+            "rb": 0,
+            "parent": [2, 0, 2, 3, 1, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [],
+            "cost": 10,
+            "checkText": "ra = 2, rb = 0: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Take 2 – 5.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 4,
+            "w": 5,
+            "a": 2,
+            "b": 5,
+            "ra": 2,
+            "rb": 0,
+            "parent": [2, 0, 2, 3, 1, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [],
+            "cost": 15,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 19,
+            "message": "cost = 15.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 5,
+            "w": 6,
+            "a": 2,
+            "b": 4,
+            "ra": -1,
+            "rb": -1,
+            "parent": [2, 0, 2, 3, 1, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [],
+            "cost": 15,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "Next cheapest edge: 2 – 4, weight 6.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 5,
+            "w": 6,
+            "a": 2,
+            "b": 4,
+            "ra": 2,
+            "rb": 2,
+            "parent": [2, 0, 2, 3, 0, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [],
+            "cost": 15,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 14,
+            "message": "2 is in 2's group, 4 in 2's.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 5,
+            "w": 6,
+            "a": 2,
+            "b": 4,
+            "ra": 2,
+            "rb": 2,
+            "parent": [2, 0, 2, 3, 0, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 15,
+            "checkText": "ra = rb = 2: same group",
+            "result": "—",
+            "line": 16,
+            "message": "2 and 4 are joined already: 2 – 4 would close a cycle. Skip it.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 6,
+            "w": 7,
+            "a": 0,
+            "b": 3,
+            "ra": -1,
+            "rb": -1,
+            "parent": [2, 0, 2, 3, 0, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 15,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "Next cheapest edge: 0 – 3, weight 7.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 6,
+            "w": 7,
+            "a": 0,
+            "b": 3,
+            "ra": 2,
+            "rb": 3,
+            "parent": [2, 0, 2, 3, 0, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 15,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 14,
+            "message": "0 is in 2's group, 3 in 3's.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 6,
+            "w": 7,
+            "a": 0,
+            "b": 3,
+            "ra": 2,
+            "rb": 3,
+            "parent": [2, 0, 2, 3, 0, 1, 3],
+            "root": [2, 2, 2, 3, 2, 2, 3],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 15,
+            "checkText": "ra = 2, rb = 3: different groups",
+            "result": "—",
+            "line": 15,
+            "message": "Different groups: the edge joins two pieces, so it is safe to take.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 6,
+            "w": 7,
+            "a": 0,
+            "b": 3,
+            "ra": 2,
+            "rb": 3,
+            "parent": [2, 0, 2, 2, 0, 1, 3],
+            "root": [2, 2, 2, 2, 2, 2, 2],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 15,
+            "checkText": "ra = 2, rb = 3: different groups",
+            "result": "—",
+            "line": 17,
+            "message": "Merge: 3's group joins 2's.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5"]
+          },
+          {
+            "ei": 6,
+            "w": 7,
+            "a": 0,
+            "b": 3,
+            "ra": 2,
+            "rb": 3,
+            "parent": [2, 0, 2, 2, 0, 1, 3],
+            "root": [2, 2, 2, 2, 2, 2, 2],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5],
+              [0, 3]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 15,
+            "checkText": "ra = 2, rb = 3: different groups",
+            "result": "—",
+            "line": 18,
+            "message": "Take 0 – 3.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5", "0–3"]
+          },
+          {
+            "ei": 6,
+            "w": 7,
+            "a": 0,
+            "b": 3,
+            "ra": 2,
+            "rb": 3,
+            "parent": [2, 0, 2, 2, 0, 1, 3],
+            "root": [2, 2, 2, 2, 2, 2, 2],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5],
+              [0, 3]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 19,
+            "message": "cost = 22.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5", "0–3"]
+          },
+          {
+            "ei": 6,
+            "w": 7,
+            "a": 0,
+            "b": 3,
+            "ra": 2,
+            "rb": 3,
+            "parent": [2, 0, 2, 2, 0, 1, 3],
+            "root": [2, 2, 2, 2, 2, 2, 2],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5],
+              [0, 3]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 21,
+            "message": "6 edges join all 7 nodes: the tree is complete. The rest are never looked at.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5", "0–3"]
+          },
+          {
+            "ei": -1,
+            "w": -1,
+            "a": -1,
+            "b": -1,
+            "ra": -1,
+            "rb": -1,
+            "parent": [2, 0, 2, 2, 0, 1, 3],
+            "root": [2, 2, 2, 2, 2, 2, 2],
+            "tree": [
+              [4, 5],
+              [1, 4],
+              [3, 6],
+              [0, 1],
+              [2, 5],
+              [0, 3]
+            ],
+            "rejected": [
+              [2, 4]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "cost 22",
+            "line": 22,
+            "message": "Minimum spanning tree: 6 edges, total weight 22.",
+            "treeNames": ["4–5", "1–4", "3–6", "0–1", "2–5", "0–3"]
+          }
+        ],
+        "mst_prim": [
+          {
+            "w": -1,
+            "u": -1,
+            "p": -1,
+            "v": -1,
+            "heap": [],
+            "seen": [0, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 25,
+            "message": "No node is in the tree yet.",
+            "heapPairs": [],
+            "heapNames": [],
+            "treeNames": []
+          },
+          {
+            "w": -1,
+            "u": -1,
+            "p": -1,
+            "v": -1,
+            "heap": [
+              [0, 0, -1]
+            ],
+            "seen": [0, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 26,
+            "message": "Start at node 0: it costs nothing to reach.",
+            "heapPairs": [],
+            "heapNames": ["0→0"],
+            "treeNames": []
+          },
+          {
+            "w": -1,
+            "u": -1,
+            "p": -1,
+            "v": -1,
+            "heap": [
+              [0, 0, -1]
+            ],
+            "seen": [0, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 27,
+            "message": "The tree starts empty, at cost 0.",
+            "heapPairs": [],
+            "heapNames": ["0→0"],
+            "treeNames": []
+          },
+          {
+            "w": -1,
+            "u": -1,
+            "p": -1,
+            "v": -1,
+            "heap": [
+              [0, 0, -1]
+            ],
+            "seen": [0, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "1 candidate edge in the heap.",
+            "heapPairs": [],
+            "heapNames": ["0→0"],
+            "treeNames": []
+          },
+          {
+            "w": 0,
+            "u": 0,
+            "p": -1,
+            "v": -1,
+            "heap": [],
+            "seen": [0, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 0.",
+            "heapPairs": [],
+            "heapNames": [],
+            "treeNames": []
+          },
+          {
+            "w": 0,
+            "u": 0,
+            "p": -1,
+            "v": -1,
+            "heap": [],
+            "seen": [1, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "seen[0] = False: new",
+            "result": "—",
+            "line": 32,
+            "message": "0 joins the tree.",
+            "heapPairs": [],
+            "heapNames": [],
+            "treeNames": []
+          },
+          {
+            "w": 0,
+            "u": 0,
+            "p": -1,
+            "v": -1,
+            "heap": [],
+            "seen": [1, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 33,
+            "message": "cost = 0.",
+            "heapPairs": [],
+            "heapNames": [],
+            "treeNames": []
+          },
+          {
+            "w": 0,
+            "u": 0,
+            "p": -1,
+            "v": 1,
+            "heap": [
+              [4, 1, 0]
+            ],
+            "seen": [1, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "0 – 1 leaves the tree: push it, weight 4.",
+            "heapPairs": [
+              [0, 1]
+            ],
+            "heapNames": ["4→1"],
+            "treeNames": []
+          },
+          {
+            "w": 0,
+            "u": 0,
+            "p": -1,
+            "v": 3,
+            "heap": [
+              [4, 1, 0],
+              [7, 3, 0]
+            ],
+            "seen": [1, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "0 – 3 leaves the tree: push it, weight 7.",
+            "heapPairs": [
+              [0, 1],
+              [0, 3]
+            ],
+            "heapNames": ["4→1", "7→3"],
+            "treeNames": []
+          },
+          {
+            "w": 0,
+            "u": 0,
+            "p": -1,
+            "v": -1,
+            "heap": [
+              [4, 1, 0],
+              [7, 3, 0]
+            ],
+            "seen": [1, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "2 candidate edges in the heap.",
+            "heapPairs": [
+              [0, 1],
+              [0, 3]
+            ],
+            "heapNames": ["4→1", "7→3"],
+            "treeNames": []
+          },
+          {
+            "w": 4,
+            "u": 1,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [7, 3, 0]
+            ],
+            "seen": [1, 0, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 1 from 0 for 4.",
+            "heapPairs": [
+              [0, 3]
+            ],
+            "heapNames": ["7→3"],
+            "treeNames": []
+          },
+          {
+            "w": 4,
+            "u": 1,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [7, 3, 0]
+            ],
+            "seen": [1, 1, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 0,
+            "checkText": "seen[1] = False: new",
+            "result": "—",
+            "line": 32,
+            "message": "1 joins the tree.",
+            "heapPairs": [
+              [0, 3]
+            ],
+            "heapNames": ["7→3"],
+            "treeNames": []
+          },
+          {
+            "w": 4,
+            "u": 1,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [7, 3, 0]
+            ],
+            "seen": [1, 1, 0, 0, 0, 0, 0],
+            "tree": [],
+            "cost": 4,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 33,
+            "message": "cost = 4.",
+            "heapPairs": [
+              [0, 3]
+            ],
+            "heapNames": ["7→3"],
+            "treeNames": []
+          },
+          {
+            "w": 4,
+            "u": 1,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [7, 3, 0]
+            ],
+            "seen": [1, 1, 0, 0, 0, 0, 0],
+            "tree": [
+              [0, 1]
+            ],
+            "cost": 4,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 35,
+            "message": "Take 0 – 1: the cheapest edge leaving the tree.",
+            "heapPairs": [
+              [0, 3]
+            ],
+            "heapNames": ["7→3"],
+            "treeNames": ["0–1"]
+          },
+          {
+            "w": 4,
+            "u": 1,
+            "p": 0,
+            "v": 2,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 0, 0, 0],
+            "tree": [
+              [0, 1]
+            ],
+            "cost": 4,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "1 – 2 leaves the tree: push it, weight 8.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["7→3", "8→2"],
+            "treeNames": ["0–1"]
+          },
+          {
+            "w": 4,
+            "u": 1,
+            "p": 0,
+            "v": 4,
+            "heap": [
+              [2, 4, 1],
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 0, 0, 0],
+            "tree": [
+              [0, 1]
+            ],
+            "cost": 4,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "1 – 4 leaves the tree: push it, weight 2.",
+            "heapPairs": [
+              [1, 4],
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["2→4", "7→3", "8→2"],
+            "treeNames": ["0–1"]
+          },
+          {
+            "w": 4,
+            "u": 1,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [2, 4, 1],
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 0, 0, 0],
+            "tree": [
+              [0, 1]
+            ],
+            "cost": 4,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "3 candidate edges in the heap.",
+            "heapPairs": [
+              [1, 4],
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["2→4", "7→3", "8→2"],
+            "treeNames": ["0–1"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 0, 0, 0],
+            "tree": [
+              [0, 1]
+            ],
+            "cost": 4,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 4 from 1 for 2.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["7→3", "8→2"],
+            "treeNames": ["0–1"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1]
+            ],
+            "cost": 4,
+            "checkText": "seen[4] = False: new",
+            "result": "—",
+            "line": 32,
+            "message": "4 joins the tree.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["7→3", "8→2"],
+            "treeNames": ["0–1"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 33,
+            "message": "cost = 6.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["7→3", "8→2"],
+            "treeNames": ["0–1"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 35,
+            "message": "Take 1 – 4: the cheapest edge leaving the tree.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["7→3", "8→2"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": 2,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "4 – 2 leaves the tree: push it, weight 6.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": 3,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "4 – 3 leaves the tree: push it, weight 9.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": 5,
+            "heap": [
+              [1, 5, 4],
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "4 – 5 leaves the tree: push it, weight 1.",
+            "heapPairs": [
+              [4, 5],
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3]
+            ],
+            "heapNames": ["1→5", "6→2", "7→3", "8→2", "9→3"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": 6,
+            "heap": [
+              [1, 5, 4],
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "4 – 6 leaves the tree: push it, weight 10.",
+            "heapPairs": [
+              [4, 5],
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6]
+            ],
+            "heapNames": ["1→5", "6→2", "7→3", "8→2", "9→3", "10→6"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 2,
+            "u": 4,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [1, 5, 4],
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "6 candidate edges in the heap.",
+            "heapPairs": [
+              [4, 5],
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6]
+            ],
+            "heapNames": ["1→5", "6→2", "7→3", "8→2", "9→3", "10→6"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 1,
+            "u": 5,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 0, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 5 from 4 for 1.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 1,
+            "u": 5,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 6,
+            "checkText": "seen[5] = False: new",
+            "result": "—",
+            "line": 32,
+            "message": "5 joins the tree.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 1,
+            "u": 5,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4]
+            ],
+            "cost": 7,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 33,
+            "message": "cost = 7.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6"],
+            "treeNames": ["0–1", "1–4"]
+          },
+          {
+            "w": 1,
+            "u": 5,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5]
+            ],
+            "cost": 7,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 35,
+            "message": "Take 4 – 5: the cheapest edge leaving the tree.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6"],
+            "treeNames": ["0–1", "1–4", "4–5"]
+          },
+          {
+            "w": 1,
+            "u": 5,
+            "p": 4,
+            "v": 2,
+            "heap": [
+              [5, 2, 5],
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4]
+            ],
+            "seen": [1, 1, 0, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5]
+            ],
+            "cost": 7,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "5 – 2 leaves the tree: push it, weight 5.",
+            "heapPairs": [
+              [5, 2],
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6]
+            ],
+            "heapNames": ["5→2", "6→2", "7→3", "8→2", "9→3", "10→6"],
+            "treeNames": ["0–1", "1–4", "4–5"]
+          },
+          {
+            "w": 1,
+            "u": 5,
+            "p": 4,
+            "v": 6,
+            "heap": [
+              [5, 2, 5],
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 0, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5]
+            ],
+            "cost": 7,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "5 – 6 leaves the tree: push it, weight 11.",
+            "heapPairs": [
+              [5, 2],
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["5→2", "6→2", "7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5"]
+          },
+          {
+            "w": 1,
+            "u": 5,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [5, 2, 5],
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 0, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5]
+            ],
+            "cost": 7,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "7 candidate edges in the heap.",
+            "heapPairs": [
+              [5, 2],
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["5→2", "6→2", "7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5"]
+          },
+          {
+            "w": 5,
+            "u": 2,
+            "p": 5,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 0, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5]
+            ],
+            "cost": 7,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 2 from 5 for 5.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5"]
+          },
+          {
+            "w": 5,
+            "u": 2,
+            "p": 5,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5]
+            ],
+            "cost": 7,
+            "checkText": "seen[2] = False: new",
+            "result": "—",
+            "line": 32,
+            "message": "2 joins the tree.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5"]
+          },
+          {
+            "w": 5,
+            "u": 2,
+            "p": 5,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5]
+            ],
+            "cost": 12,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 33,
+            "message": "cost = 12.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5"]
+          },
+          {
+            "w": 5,
+            "u": 2,
+            "p": 5,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 12,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 35,
+            "message": "Take 5 – 2: the cheapest edge leaving the tree.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 5,
+            "u": 2,
+            "p": 5,
+            "v": -1,
+            "heap": [
+              [6, 2, 4],
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 12,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "6 candidate edges in the heap.",
+            "heapPairs": [
+              [4, 2],
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["6→2", "7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 6,
+            "u": 2,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 12,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 2 from 4 for 6.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 6,
+            "u": 2,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 12,
+            "checkText": "seen[2]: already in the tree",
+            "result": "—",
+            "line": 31,
+            "message": "2 is in the tree already, through a cheaper edge: skip this stale entry.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 6,
+            "u": 2,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [7, 3, 0],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 12,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "5 candidate edges in the heap.",
+            "heapPairs": [
+              [0, 3],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["7→3", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 7,
+            "u": 3,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 0, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 12,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 3 from 0 for 7.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 7,
+            "u": 3,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 12,
+            "checkText": "seen[3] = False: new",
+            "result": "—",
+            "line": 32,
+            "message": "3 joins the tree.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 7,
+            "u": 3,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2]
+            ],
+            "cost": 19,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 33,
+            "message": "cost = 19.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2"]
+          },
+          {
+            "w": 7,
+            "u": 3,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3]
+            ],
+            "cost": 19,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 35,
+            "message": "Take 0 – 3: the cheapest edge leaving the tree.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3"]
+          },
+          {
+            "w": 7,
+            "u": 3,
+            "p": 0,
+            "v": 6,
+            "heap": [
+              [3, 6, 3],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3]
+            ],
+            "cost": 19,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 38,
+            "message": "3 – 6 leaves the tree: push it, weight 3.",
+            "heapPairs": [
+              [3, 6],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["3→6", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3"]
+          },
+          {
+            "w": 7,
+            "u": 3,
+            "p": 0,
+            "v": -1,
+            "heap": [
+              [3, 6, 3],
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3]
+            ],
+            "cost": 19,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "5 candidate edges in the heap.",
+            "heapPairs": [
+              [3, 6],
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["3→6", "8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3"]
+          },
+          {
+            "w": 3,
+            "u": 6,
+            "p": 3,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 0],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3]
+            ],
+            "cost": 19,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 6 from 3 for 3.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3"]
+          },
+          {
+            "w": 3,
+            "u": 6,
+            "p": 3,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3]
+            ],
+            "cost": 19,
+            "checkText": "seen[6] = False: new",
+            "result": "—",
+            "line": 32,
+            "message": "6 joins the tree.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3"]
+          },
+          {
+            "w": 3,
+            "u": 6,
+            "p": 3,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 33,
+            "message": "cost = 22.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3"]
+          },
+          {
+            "w": 3,
+            "u": 6,
+            "p": 3,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 35,
+            "message": "Take 3 – 6: the cheapest edge leaving the tree.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 3,
+            "u": 6,
+            "p": 3,
+            "v": -1,
+            "heap": [
+              [8, 2, 1],
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "4 candidate edges in the heap.",
+            "heapPairs": [
+              [1, 2],
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["8→2", "9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 8,
+            "u": 2,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 2 from 1 for 8.",
+            "heapPairs": [
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 8,
+            "u": 2,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "seen[2]: already in the tree",
+            "result": "—",
+            "line": 31,
+            "message": "2 is in the tree already, through a cheaper edge: skip this stale entry.",
+            "heapPairs": [
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 8,
+            "u": 2,
+            "p": 1,
+            "v": -1,
+            "heap": [
+              [9, 3, 4],
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "3 candidate edges in the heap.",
+            "heapPairs": [
+              [4, 3],
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["9→3", "10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 9,
+            "u": 3,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 3 from 4 for 9.",
+            "heapPairs": [
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 9,
+            "u": 3,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "seen[3]: already in the tree",
+            "result": "—",
+            "line": 31,
+            "message": "3 is in the tree already, through a cheaper edge: skip this stale entry.",
+            "heapPairs": [
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 9,
+            "u": 3,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [10, 6, 4],
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "2 candidate edges in the heap.",
+            "heapPairs": [
+              [4, 6],
+              [5, 6]
+            ],
+            "heapNames": ["10→6", "11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 10,
+            "u": 6,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 6 from 4 for 10.",
+            "heapPairs": [
+              [5, 6]
+            ],
+            "heapNames": ["11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 10,
+            "u": 6,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "seen[6]: already in the tree",
+            "result": "—",
+            "line": 31,
+            "message": "6 is in the tree already, through a cheaper edge: skip this stale entry.",
+            "heapPairs": [
+              [5, 6]
+            ],
+            "heapNames": ["11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 10,
+            "u": 6,
+            "p": 4,
+            "v": -1,
+            "heap": [
+              [11, 6, 5]
+            ],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 28,
+            "message": "1 candidate edge in the heap.",
+            "heapPairs": [
+              [5, 6]
+            ],
+            "heapNames": ["11→6"],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 11,
+            "u": 6,
+            "p": 5,
+            "v": -1,
+            "heap": [],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 29,
+            "message": "Pop the cheapest: reach 6 from 5 for 11.",
+            "heapPairs": [],
+            "heapNames": [],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": 11,
+            "u": 6,
+            "p": 5,
+            "v": -1,
+            "heap": [],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "seen[6]: already in the tree",
+            "result": "—",
+            "line": 31,
+            "message": "6 is in the tree already, through a cheaper edge: skip this stale entry.",
+            "heapPairs": [],
+            "heapNames": [],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          },
+          {
+            "w": -1,
+            "u": -1,
+            "p": -1,
+            "v": -1,
+            "heap": [],
+            "seen": [1, 1, 1, 1, 1, 1, 1],
+            "tree": [
+              [0, 1],
+              [1, 4],
+              [4, 5],
+              [5, 2],
+              [0, 3],
+              [3, 6]
+            ],
+            "cost": 22,
+            "checkText": "check: —",
+            "result": "cost 22",
+            "line": 39,
+            "message": "The heap is empty. Same total as Kruskal: 22.",
+            "heapPairs": [],
+            "heapNames": [],
+            "treeNames": ["0–1", "1–4", "4–5", "5–2", "0–3", "3–6"]
+          }
+        ],
+        "mstNodes": [
+          {
+            "x": -6.0,
+            "y": 3.4,
+            "adj": [1, 3],
+            "w": [0, 4, 0, 7, 0, 0, 0]
+          },
+          {
+            "x": -3.6,
+            "y": 4.1,
+            "adj": [2, 4],
+            "w": [4, 0, 8, 0, 2, 0, 0]
+          },
+          {
+            "x": -1.2,
+            "y": 3.4,
+            "adj": [4, 5],
+            "w": [0, 8, 0, 0, 6, 5, 0]
+          },
+          {
+            "x": -6.0,
+            "y": 1.0,
+            "adj": [4, 6],
+            "w": [7, 0, 0, 0, 9, 0, 3]
+          },
+          {
+            "x": -3.6,
+            "y": 1.8,
+            "adj": [5, 6],
+            "w": [0, 2, 6, 9, 0, 1, 10]
+          },
+          {
+            "x": -1.2,
+            "y": 1.0,
+            "adj": [6],
+            "w": [0, 0, 5, 0, 1, 0, 11]
+          },
+          {
+            "x": -3.6,
+            "y": -0.4,
+            "adj": [],
+            "w": [0, 0, 0, 3, 10, 11, 0]
+          }
+        ],
+        "mstSorted": [
+          {
+            "name": "4–5",
+            "pair": [4, 5]
+          },
+          {
+            "name": "1–4",
+            "pair": [1, 4]
+          },
+          {
+            "name": "3–6",
+            "pair": [3, 6]
+          },
+          {
+            "name": "0–1",
+            "pair": [0, 1]
+          },
+          {
+            "name": "2–5",
+            "pair": [2, 5]
+          },
+          {
+            "name": "2–4",
+            "pair": [2, 4]
+          },
+          {
+            "name": "0–3",
+            "pair": [0, 3]
+          },
+          {
+            "name": "1–2",
+            "pair": [1, 2]
+          },
+          {
+            "name": "3–4",
+            "pair": [3, 4]
+          },
+          {
+            "name": "4–6",
+            "pair": [4, 6]
+          },
+          {
+            "name": "5–6",
+            "pair": [5, 6]
+          }
+        ],
+        "ufPalette": [
+          {"c": "#6ea8e0"},
+          {"c": "#e5a65c"},
+          {"c": "#77bfae"},
+          {"c": "#e67db0"},
+          {"c": "#b39ddb"},
+          {"c": "#d4c86a"},
+          {"c": "#7fc8e8"},
+          {"c": "#e0896e"},
+          {"c": "#a3b86c"}
+        ]
+      },
+      "markdown": "# Connect everything cheaply (minimum spanning tree)\n\n**Step 10** of 19 · **Tier:** Common (often asked) · **Builds on:** Union-find\n\n**Signal:** connect all points or cities at the lowest total cost; \"minimum cost to connect\", a network with no wasted link.\n\nA **spanning tree** uses n − 1 edges to connect all n nodes with no cycle. The **minimum** one has the smallest total weight. Both algorithms are greedy, and both rest on one fact, the **cut property**: split the nodes into two sides any way you like, and the cheapest edge crossing between the sides is safe to take.\n\n## 1. Kruskal: cheapest edge first (this step)\n\nSort the edges by weight and walk the list. An edge whose ends are already in one group would close a **cycle** (red): skip it. Any other joins two pieces, so take it (green) and merge the groups, with **union-find** from the previous scene. Nodes are coloured by group, so you can watch the pieces merge. Stop once n − 1 edges are taken: here edge 0 – 3 completes the tree and the four dearest edges are never looked at.\n\n## 2. Prim: grow one tree (next step)\n\nStart from node 0 and keep a **min-heap** of edges leaving the tree (pink). Pop the cheapest; if it reaches a node already in the tree it is **stale**, skip it. Otherwise add the node and its edge, and push its edges to nodes outside. The heap is shown sorted; a real heap only keeps its minimum at the front.\n\nBoth find the same total, **22**, here even the same tree: with distinct weights the minimum spanning tree is unique.\n\n**Cost:** Kruskal O(E log E) for the sort; Prim O(E log V) with a binary heap. Kruskal suits an edge list, Prim an adjacency list of a dense graph.\n\n**Practice:** Min Cost to Connect All Points, Connecting Cities With Minimum Cost.",
+      "prompt": "Explain the cut property and why each greedy choice is safe. Ask the learner to predict which edge Kruskal takes or skips next, and which edge Prim pops next.",
       "elements": [
         {
           "id": "grid",
@@ -25595,15 +28626,299 @@
           ],
           "divisions": [17, 10],
           "opacity": 0.09
+        }
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Kruskal: cheapest edge first",
+          "description": "Take each edge that joins two groups.",
+          "descriptionExpr": "dataTable('trace', frame, 'message')",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 42, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "graph",
+              "type": "graph",
+              "label": "graph",
+              "lengthExpr": "7",
+              "valueExpr": "idx",
+              "nodeShape": "rect",
+              "nodeWidth": 0.72,
+              "nodeHeight": 0.72,
+              "nodeCornerRadius": 0.36,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "positionExpr": ["dataTable('mstNodes', idx, 'x')", "dataTable('mstNodes', idx, 'y')", "0"],
+              "colorExpr": "dataTable('ufPalette', arrayAt(dataTable('trace', frame, 'root'), idx), 'c')",
+              "connectTo": {"indexExpr": "dataTable('mstNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#3e4855", "colorExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? '#f1c65b' : ((keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? '#77bfae' : ((keyIndex(dataTable('trace', frame, 'rejected'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'rejected'), [to, idx]) >= 0) ? '#e06c75' : ''))", "highlightExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a')))", "widthExpr": "(keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? 3.2 : (((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? 2.4 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}
+            },
+            {
+              "id": "sorted",
+              "type": "array",
+              "label": "sorted",
+              "codeSymbol": "sorted(edges)",
+              "labelSide": "left",
+              "origin": [-2.3, -1.7, 0],
+              "cellSize": 1.0,
+              "fontSize": 14,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "itemType": "string",
+              "lengthExpr": "11",
+              "valueExpr": "dataTable('mstSorted', idx, 'name')",
+              "colorExpr": "keyIndex(dataTable('trace', frame, 'tree'), dataTable('mstSorted', idx, 'pair')) >= 0 ? '#77bfae' : (keyIndex(dataTable('trace', frame, 'rejected'), dataTable('mstSorted', idx, 'pair')) >= 0 ? '#e06c75' : '')",
+              "highlightExpr": "idx == dataTable('trace', frame, 'ei')"
+            },
+            {
+              "id": "parent",
+              "type": "array",
+              "label": "parent",
+              "codeSymbol": "parent",
+              "labelSide": "left",
+              "origin": [-2.3, -3.0, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "lengthExpr": "7",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'parent'), idx)",
+              "colorExpr": "dataTable('ufPalette', arrayAt(dataTable('trace', frame, 'root'), idx), 'c')",
+              "highlightExpr": "idx == dataTable('trace', frame, 'rb') and dataTable('trace', frame, 'line') == 17"
+            },
+            {
+              "id": "tree",
+              "type": "array",
+              "label": "tree",
+              "codeSymbol": "tree",
+              "labelSide": "left",
+              "origin": [-2.3, -4.3, 0],
+              "cellSize": 1.15,
+              "fontSize": 16,
+              "axisLabels": "plane",
+              "itemType": "string",
+              "color": "#77bfae",
+              "showIndices": false,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'treeNames'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'treeNames'), idx)"
+            },
+            {
+              "id": "w",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'w') < 0 ? 'w: —' : concat('w = ', dataTable('trace', frame, 'w'))",
+              "codeRef": {"file": "mst", "line": 13}
+            },
+            {
+              "id": "a",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'a') < 0 ? 'a: —' : concat('a = ', dataTable('trace', frame, 'a'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'a')"},
+              "codeRef": {"file": "mst", "line": 13}
+            },
+            {
+              "id": "b",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'b') < 0 ? 'b: —' : concat('b = ', dataTable('trace', frame, 'b'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'b')"},
+              "codeRef": {"file": "mst", "line": 13}
+            },
+            {
+              "id": "ra",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'ra') < 0 ? 'ra: —' : concat('ra = ', dataTable('trace', frame, 'ra'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'ra')"},
+              "codeRef": {"file": "mst", "line": 14}
+            },
+            {
+              "id": "rb",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'rb') < 0 ? 'rb: —' : concat('rb = ', dataTable('trace', frame, 'rb'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'rb')"},
+              "codeRef": {"file": "mst", "line": 14}
+            },
+            {
+              "id": "check",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'checkText')",
+              "codeRef": {"file": "mst", "line": 15},
+              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+            },
+            {
+              "id": "cost",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('cost = ', dataTable('trace', frame, 'cost'))",
+              "codeRef": {"file": "mst", "line": 19}
+            },
+            {
+              "id": "tree-len",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('len(tree) = ', arrayCount(dataTable('trace', frame, 'tree')))",
+              "connectTo": {"object": "tree", "indexExpr": "0"},
+              "codeRef": {"file": "mst", "line": 20}
+            },
+            {
+              "id": "result",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('result: ', dataTable('trace', frame, 'result'))",
+              "codeRef": {"file": "mst", "line": 22}
+            }
+          ]
         },
         {
-          "id": "placeholder",
-          "type": "text",
-          "text": "Visualization coming soon",
-          "position": [1.5, 0, 0],
-          "color": "#9dbde3"
+          "id": "prim",
+          "title": "Prim: grow one tree",
+          "description": "Always add the cheapest edge leaving the tree.",
+          "descriptionExpr": "dataTable('mst_prim', frame, 'message')",
+          "remove": [
+            {"id": "*"},
+            {"type": "slider"}
+          ],
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 63, "step": 1, "default": 0}
+          ],
+          "codeRef": {"file": "mst", "lineExpr": "dataTable('mst_prim', frame, 'line')"},
+          "add": [
+            {
+              "id": "graph",
+              "type": "graph",
+              "label": "graph",
+              "lengthExpr": "7",
+              "valueExpr": "idx",
+              "nodeShape": "rect",
+              "nodeWidth": 0.72,
+              "nodeHeight": 0.72,
+              "nodeCornerRadius": 0.36,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "positionExpr": ["dataTable('mstNodes', idx, 'x')", "dataTable('mstNodes', idx, 'y')", "0"],
+              "colorExpr": "idx == dataTable('mst_prim', frame, 'u') ? '#f1c65b' : (arrayAt(dataTable('mst_prim', frame, 'seen'), idx) == 1 ? '#77bfae' : '')",
+              "connectTo": {"indexExpr": "dataTable('mstNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#3e4855", "colorExpr": "((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p'))) ? '#f1c65b' : ((keyIndex(dataTable('mst_prim', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'tree'), [to, idx]) >= 0) ? '#77bfae' : ((keyIndex(dataTable('mst_prim', frame, 'heapPairs'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'heapPairs'), [to, idx]) >= 0) ? '#e67db0' : ''))", "highlightExpr": "((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p')))", "widthExpr": "(keyIndex(dataTable('mst_prim', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'tree'), [to, idx]) >= 0) ? 3.2 : (((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p'))) ? 2.4 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}
+            },
+            {
+              "id": "heap",
+              "type": "array",
+              "label": "heap",
+              "codeSymbol": "heap",
+              "labelSide": "left",
+              "origin": [-2.3, -1.7, 0],
+              "cellSize": 1.0,
+              "fontSize": 14,
+              "axisLabels": "plane",
+              "itemType": "string",
+              "color": "#e67db0",
+              "showIndices": false,
+              "lengthExpr": "arrayCount(dataTable('mst_prim', frame, 'heapNames'))",
+              "valueExpr": "arrayAt(dataTable('mst_prim', frame, 'heapNames'), idx)",
+              "highlightExpr": "idx == 0 and dataTable('mst_prim', frame, 'line') == 29"
+            },
+            {
+              "id": "seen",
+              "type": "array",
+              "label": "seen",
+              "codeSymbol": "seen",
+              "labelSide": "left",
+              "origin": [-2.3, -3.0, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "lengthExpr": "7",
+              "valueExpr": "arrayAt(dataTable('mst_prim', frame, 'seen'), idx)",
+              "colorExpr": "arrayAt(dataTable('mst_prim', frame, 'seen'), idx) == 1 ? '#77bfae' : ''",
+              "highlightExpr": "idx == dataTable('mst_prim', frame, 'u')"
+            },
+            {
+              "id": "tree",
+              "type": "array",
+              "label": "tree",
+              "codeSymbol": "tree",
+              "labelSide": "left",
+              "origin": [-2.3, -4.3, 0],
+              "cellSize": 1.15,
+              "fontSize": 16,
+              "axisLabels": "plane",
+              "itemType": "string",
+              "color": "#77bfae",
+              "showIndices": false,
+              "lengthExpr": "arrayCount(dataTable('mst_prim', frame, 'treeNames'))",
+              "valueExpr": "arrayAt(dataTable('mst_prim', frame, 'treeNames'), idx)"
+            },
+            {
+              "id": "w",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('mst_prim', frame, 'w') < 0 ? 'w: —' : concat('w = ', dataTable('mst_prim', frame, 'w'))",
+              "codeRef": {"file": "mst", "line": 29}
+            },
+            {
+              "id": "u",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('mst_prim', frame, 'u') < 0 ? 'u: —' : concat('u = ', dataTable('mst_prim', frame, 'u'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('mst_prim', frame, 'u')"},
+              "codeRef": {"file": "mst", "line": 29}
+            },
+            {
+              "id": "p",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('mst_prim', frame, 'p') < 0 ? 'p: —' : concat('p = ', dataTable('mst_prim', frame, 'p'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('mst_prim', frame, 'p')"},
+              "codeRef": {"file": "mst", "line": 29}
+            },
+            {
+              "id": "v",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('mst_prim', frame, 'v') < 0 ? 'v: —' : concat('v = ', dataTable('mst_prim', frame, 'v'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('mst_prim', frame, 'v')"},
+              "codeRef": {"file": "mst", "line": 36}
+            },
+            {
+              "id": "check",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('mst_prim', frame, 'checkText')",
+              "codeRef": {"file": "mst", "line": 30},
+              "highlightExpr": "dataTable('mst_prim', frame, 'checkText') != 'check: —'"
+            },
+            {
+              "id": "cost",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('cost = ', dataTable('mst_prim', frame, 'cost'))",
+              "codeRef": {"file": "mst", "line": 33}
+            },
+            {
+              "id": "heap-len",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('len(heap) = ', arrayCount(dataTable('mst_prim', frame, 'heapNames')))",
+              "connectTo": {"object": "heap", "indexExpr": "0"},
+              "codeRef": {"file": "mst", "line": 28}
+            },
+            {
+              "id": "result",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('result: ', dataTable('mst_prim', frame, 'result'))",
+              "codeRef": {"file": "mst", "line": 39}
+            }
+          ]
         }
-      ]
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200},
+      "codeRef": {"file": "mst", "lineExpr": "dataTable('trace', frame, 'line')"}
     },
     {
       "id": "dijkstra",
