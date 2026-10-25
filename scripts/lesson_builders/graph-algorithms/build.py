@@ -2761,6 +2761,161 @@ Here the direct edge 0 → 1 costs 7, but 0 → 2 → 1 costs 2 + 3 = **5**, so 
         first={'title': 'Settle the closest, relax its edges', 'description': 'A min-heap pops the closest unsettled node.'})
 
 
+# ── 12. 0-1 BFS: a deque in place of Dijkstra's heap; a 0-edge goes to the front, a 1-edge to the back ──
+ZOB_SOURCE = """from collections import deque
+
+def zero_one_bfs(n, adj, src):
+    dist = [float('inf')] * n
+    dist[src] = 0
+    dq = deque([src])
+    while dq:
+        u = dq.popleft()
+        for v, w in adj[u]:
+            if dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                if w == 0:
+                    dq.appendleft(v)  # as close as u: the front
+                else:
+                    dq.append(v)  # one step further: the back
+    return dist"""
+ZOB_N = 7
+ZOB_EDGES = [(0, 1, 1), (0, 2, 0), (2, 3, 1), (2, 4, 0), (4, 1, 0), (1, 5, 1), (4, 6, 1), (3, 6, 0), (5, 6, 0)]
+ZOB_POS = [(-6.0, 2.1), (-3.6, 3.7), (-3.6, 0.5), (-1.6, -0.6), (-1.6, 2.1), (0.8, 3.7), (0.8, 0.5)]
+ZOB_LEVEL = ['#77bfae', '#6ea8e0', '#e5a65c']   # distance 0, 1, 2
+ZOB_FREE = '#5fb3a3'                           # a 0-edge
+
+
+def zero_one_trace():
+    """0-1 BFS from 0. Per frame: u; v, w; dist (−1 for ∞) and distText; dq (the deque's nodes, front first) with dqNames
+    ('dist:node' as pushed); end (1 front, 2 back: where the last push went, 0 none); checkText; result."""
+    L = lambda t: line_of(ZOB_SOURCE, t)
+    adj = [[(b, w) for a, b, w in ZOB_EDGES if a == i] for i in range(ZOB_N)]
+    INF = float('inf')
+    st = {'u': -1, 'v': -1, 'w': -1, 'dist': [INF] * ZOB_N, 'dq': [], 'end': 0, 'checkText': 'check: —', 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        emit0(line, message)
+        f = trace[-1]
+        f['distText'] = ['∞' if x == INF else str(x) for x in f['dist']]
+        f['dist'] = [-1 if x == INF else x for x in f['dist']]
+        f['dqNames'] = [f'{d}:{v}' for d, v in f['dq']]
+        f['dq'] = [v for _, v in f['dq']]
+    def put(i, x): st['dist'] = [x if j == i else y for j, y in enumerate(st['dist'])]
+    emit(L('dist = [float'), 'Every distance starts unknown: ∞.')
+    put(0, 0)
+    emit(L('dist[src] = 0'), 'The source is 0 away from itself.')
+    st['dq'] = [[0, 0]]
+    emit(L('dq = deque([src])'), 'The deque starts with the source. It stays sorted by distance: front closest.')
+    while st['dq']:
+        st['end'] = 0
+        emit(L('while dq'), f'{len(st["dq"])} waiting; the front is the closest.')
+        (pushed, u), st['dq'] = st['dq'][0], st['dq'][1:]
+        st.update(u=u, v=-1, w=-1)
+        emit(L('u = dq.popleft()'), f'Take {u} from the front: distance {st["dist"][u]}.' if pushed == st['dist'][u] else
+             f'Take {u} again: an old entry, pushed at {pushed} before {u} was reached for {st["dist"][u]}. Its edges improve nothing now.')
+        for v, w in adj[u]:
+            st.update(v=v, w=w)
+            du, old = st['dist'][u], st['dist'][v]
+            oldText = '∞' if old == INF else str(old)
+            better = du + w < old
+            st['checkText'] = f'dist[u] + w = {du} + {w} = {du + w} ' + ('<' if better else '≥') + f' dist[{v}] = {oldText}'
+            emit(L('if dist[u] + w < dist[v]'), f'{u} → {v} costs {w}: {v} would be {du + w} away; ' + ('better.' if better else f'no better than {oldText}.'))
+            if not better:
+                continue
+            put(v, du + w)
+            emit(L('dist[v] = dist[u] + w'), f'dist[{v}] = {du + w}' + ('.' if old == INF else f', down from {old}.'))
+            st['checkText'] = 'check: —'
+            if w == 0:
+                st['dq'] = [[du, v]] + st['dq']; st['end'] = 1
+                emit(L('dq.appendleft(v)'), f'A free edge: {v} is as close as {u}, so it goes to the front.')
+            else:
+                st['dq'] = st['dq'] + [[du + 1, v]]; st['end'] = 2
+                emit(L('dq.append(v)'), f'A paid edge: {v} is one further, so it goes to the back.')
+            st['end'] = 0
+        st.update(v=-1, w=-1, checkText='check: —')
+    st.update(u=-1, result=str(st['dist']))
+    emit(L('return dist'), f'Distances from 0: {", ".join(map(str, st["dist"]))}. Only the paid edges count.')
+    return trace, adj
+
+
+def zero_one_sections():
+    S = lambda *a, **k: section(ZOB_SOURCE, *a, **k)
+    return [
+        S('z-init', 'Distances unknown; the source in the deque', 'def zero_one_bfs(', 'dq = deque([src])',
+          hint='Every distance is infinity but the source\'s; the deque starts with the source.'),
+        S('z-take', 'Take the closest from the front', 'while dq', 'u = dq.popleft()',
+          hint='The front of the deque is always the closest node waiting.'),
+        S('z-relax', 'A shorter way? Front for free, back for one', 'for v, w in adj[u]', 'dq.append(v)',
+          hint='If going through u is shorter, lower v\'s distance; a free edge puts v at the front, a paid one at the back.',
+          prompt='Explain why pushing 0-edges to the front and 1-edges to the back keeps the deque sorted by distance, so that it works like Dijkstra\'s heap.'),
+        S('z-return', 'Every distance from the source', 'return dist', None),
+    ]
+
+
+def zero_one_scene(header):
+    trace, adj = zero_one_trace()
+    L = lambda t: line_of(ZOB_SOURCE, t)
+    c = tr
+    weights = [[next((w for a, b, w in ZOB_EDGES if (a, b) == (i, j)), 0) for j in range(ZOB_N)] for i in range(ZOB_N)]
+    nodes = [{'x': x, 'y': y, 'adj': [b for b, _ in adj[i]], 'w': weights[i]} for i, (x, y) in enumerate(ZOB_POS)]
+    cur = f"idx == {c('u')} and to == {c('v')}"
+    free = "arrayAt(dataTable('zobNodes', idx, 'w'), to) == 0"
+    level = lambda i: f"arrayAt({c('dist')}, {i})"
+    fill = f"idx == {c('u')} ? '{GOLD}' : ({level('idx')} == 0 ? '{ZOB_LEVEL[0]}' : ({level('idx')} == 1 ? '{ZOB_LEVEL[1]}' : ({level('idx')} >= 2 ? '{ZOB_LEVEL[2]}' : '')))"
+    dq_last = f"arrayCount({c('dq')}) - 1"
+    elements = [
+        {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(ZOB_N), 'valueExpr': 'idx',
+         'nodeShape': 'rect', 'nodeWidth': 0.75, 'nodeHeight': 0.75, 'nodeCornerRadius': 0.375, 'valueLabel': 'inside', 'showIndices': False,
+         'positionExpr': ["dataTable('zobNodes', idx, 'x')", "dataTable('zobNodes', idx, 'y')", '0'],
+         # A node takes its distance's colour: green 0, blue 1, orange 2.
+         'colorExpr': fill,
+         # Free edges (weight 0) are teal, paid ones (weight 1) grey; each is labelled with its weight.
+         'connectTo': {'indexExpr': "dataTable('zobNodes', idx, 'adj')", 'pinned': True, 'arrow': True, 'color': '#5a6573',
+                       'colorExpr': f"{cur} ? '{GOLD}' : ({free} ? '{ZOB_FREE}' : '')", 'highlightExpr': cur,
+                       'widthExpr': f"{cur} ? 2.6 : ({free} ? 2 : 1.2)",
+                       'labelExpr': "concat(arrayAt(dataTable('zobNodes', idx, 'w'), to))"}},
+        {'id': 'dq', 'type': 'array', 'label': 'dq', 'codeSymbol': 'dq', 'labelSide': 'left', 'origin': [-2.3, -2.0, 0], 'cellSize': 1.05,
+         'fontSize': 15, 'axisLabels': 'plane', 'itemType': 'text', 'color': '#e67db0', 'showIndices': False,
+         'lengthExpr': f"arrayCount({c('dqNames')})", 'valueExpr': f"arrayAt({c('dqNames')}, idx)",
+         # The cell just pushed: the front for a free edge, the back for a paid one.
+         'highlightExpr': f"({c('end')} == 1 and idx == 0) or ({c('end')} == 2 and idx == {dq_last})"},
+        {'id': 'dist', 'type': 'array', 'label': 'dist', 'codeSymbol': 'dist', 'labelSide': 'left', 'origin': [-2.3, -3.6, 0], 'cellSize': 1.0,
+         'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(ZOB_N),
+         'valueExpr': f"arrayAt({c('distText')}, idx)", 'colorExpr': fill.replace(f"idx == {c('u')} ? '{GOLD}' : ", ''),
+         'highlightExpr': f"idx == {c('v')} or idx == {c('u')}"},
+        *[{'id': f'dq-{k}', 'type': 'text', 'text': t, 'position': [x, -1.3, 0], 'color': '#8aa0b8', 'fontSize': 11}
+          for k, (t, x) in enumerate([('front ←', -2.3), ('→ back', 2.4)])],
+        label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], L('u = dq.popleft()'), 'zero-one-bfs'),
+        label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v, w in adj[u]'), 'zero-one-bfs'),
+        label('w', f"{c('w')} < 0 ? 'w: —' : concat('w = ', {c('w')})", None, L('for v, w in adj[u]'), 'zero-one-bfs'),
+        {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[', {c('v')}, '] = ', arrayAt({c('distText')}, {c('v')}))",
+                 ['dist', c('v')], L('dist[v] = dist[u] + w'), 'zero-one-bfs'), 'highlightExpr': f"{c('v')} >= 0"},
+        {**label('check', c('checkText'), None, L('if dist[u] + w < dist[v]'), 'zero-one-bfs'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        label('dq-len', f"concat('len(dq) = ', arrayCount({c('dq')}))", ['dq', '0'], L('while dq'), 'zero-one-bfs'),
+        label('result', f"concat('result: ', {c('result')})", None, L('return dist'), 'zero-one-bfs'),
+    ]
+    return run_scene('zero-one-bfs', 'Weights of 0 or 1 (0-1 BFS)', header, """**Signal:** shortest path where every edge costs **0 or 1**: free moves and paid moves. "Minimum obstacles to remove", "minimum arrows to flip", walls you may break.
+
+Dijkstra needs a heap only to keep the waiting nodes **sorted by distance**. With weights of only 0 and 1, a **deque** stays sorted by itself:
+
+- **Free edge (0):** v is exactly as far as u, the closest waiting node. It belongs at the **front**: `appendleft`.
+- **Paid edge (1):** v is one further. Nothing waiting is further than that, so it belongs at the **back**: `append`.
+
+So the deque only ever holds two distances, d at the front and d + 1 behind them, and `popleft` always takes the closest node, as Dijkstra's heap would, in O(1) instead of O(log V). Each cell reads **distance:node**.
+
+Here 1 is first reached by the paid edge 0 → 1 at distance 1, then by the free path 0 → 2 → 4 → 1 at distance **0**. It goes to the front, and its old entry at the back is taken later and finds nothing to improve: a node can sit in the deque twice, harmlessly. Teal edges are free; a node's colour is its distance (green 0, blue 1).
+
+With every weight 1, this is plain BFS; with weights larger than 1, use Dijkstra.
+
+**Cost:** O(V + E).
+
+**Practice:** Minimum Cost to Make at Least One Valid Path in a Grid, Minimum Obstacle Removal to Reach Corner.""",
+        'Explain why a free edge goes to the front and a paid edge to the back, and why that keeps the deque sorted like Dijkstra\'s heap. Ask the learner to predict where each push goes and which node is taken next.',
+        'zero_one_bfs.py', ZOB_SOURCE, trace, elements, sections=zero_one_sections(),
+        data={'zobNodes': nodes},
+        first={'title': 'Free edges to the front, paid to the back', 'description': 'A deque that stays sorted by distance.'})
+
+
 def code_sections(scene_id):
     """The teaching structure of each scene's code file (cycle.py has its own, cycle_sections)."""
     if scene_id == 'representations':
@@ -2848,9 +3003,9 @@ codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
          'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene,
          'union-find': uf_scene, 'mst': mst_scene,
-         'dijkstra': dijkstra_scene}
+         'dijkstra': dijkstra_scene, 'zero-one-bfs': zero_one_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
-    header = f"**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
+    header = f"**Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
         scenes.append(BUILT[sid](header))
         continue
@@ -2858,7 +3013,7 @@ for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumera
         'id': sid, 'title': title, 'description': f'Signal: {signal}', 'range': RANGE, 'camera': cam,
         'markdown': f"""# {title}
 
-**Step {i + 1}** of {len(ALGORITHMS)} · **Tier:** {TIERS[tier][0]} ({TIERS[tier][2]}){' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else ''}
+{header}
 
 **Signal:** {signal}
 

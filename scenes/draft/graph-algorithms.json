@@ -1421,6 +1421,64 @@
         {"line": 10, "scene": "dijkstra", "step": "run", "snapshot": 57, "label": "Cheapest route (Dijkstra) · dist[5] = 10 is final: nothing left in the heap is closer, and no edge is negative."},
         {"line": 17, "scene": "dijkstra", "step": "run", "snapshot": 58, "label": "Cheapest route (Dijkstra) · Shortest distances from 0: 0, 5, 2, 6, 7, 10. Following prev back gives each path."}
       ]
+    },
+    {
+      "id": "zero-one-bfs",
+      "path": "graphs/zero_one_bfs.py",
+      "language": "python",
+      "source": "from collections import deque\n\ndef zero_one_bfs(n, adj, src):\n    dist = [float('inf')] * n\n    dist[src] = 0\n    dq = deque([src])\n    while dq:\n        u = dq.popleft()\n        for v, w in adj[u]:\n            if dist[u] + w < dist[v]:\n                dist[v] = dist[u] + w\n                if w == 0:\n                    dq.appendleft(v)  # as close as u: the front\n                else:\n                    dq.append(v)  # one step further: the back\n    return dist",
+      "sections": [
+        {"id": "z-init", "title": "Distances unknown; the source in the deque", "from": 3, "to": 6, "hint": "Every distance is infinity but the source's; the deque starts with the source."},
+        {"id": "z-take", "title": "Take the closest from the front", "from": 7, "to": 8, "hint": "The front of the deque is always the closest node waiting."},
+        {"id": "z-relax", "title": "A shorter way? Front for free, back for one", "from": 9, "to": 15, "hint": "If going through u is shorter, lower v's distance; a free edge puts v at the front, a paid one at the back.", "prompt": "Explain why pushing 0-edges to the front and 1-edges to the back keeps the deque sorted by distance, so that it works like Dijkstra's heap."},
+        {"id": "z-return", "title": "Every distance from the source", "from": 16, "to": 16}
+      ],
+      "locations": [
+        {"line": 4, "scene": "zero-one-bfs", "step": "run", "snapshot": 0, "label": "Weights of 0 or 1 (0-1 BFS) · Every distance starts unknown: ∞."},
+        {"line": 5, "scene": "zero-one-bfs", "step": "run", "snapshot": 1, "label": "Weights of 0 or 1 (0-1 BFS) · The source is 0 away from itself."},
+        {"line": 6, "scene": "zero-one-bfs", "step": "run", "snapshot": 2, "label": "Weights of 0 or 1 (0-1 BFS) · The deque starts with the source. It stays sorted by distance: front closest."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 3, "label": "Weights of 0 or 1 (0-1 BFS) · 1 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 4, "label": "Weights of 0 or 1 (0-1 BFS) · Take 0 from the front: distance 0."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 5, "label": "Weights of 0 or 1 (0-1 BFS) · 0 → 1 costs 1: 1 would be 1 away; better."},
+        {"line": 11, "scene": "zero-one-bfs", "step": "run", "snapshot": 6, "label": "Weights of 0 or 1 (0-1 BFS) · dist[1] = 1."},
+        {"line": 15, "scene": "zero-one-bfs", "step": "run", "snapshot": 7, "label": "Weights of 0 or 1 (0-1 BFS) · A paid edge: 1 is one further, so it goes to the back."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 8, "label": "Weights of 0 or 1 (0-1 BFS) · 0 → 2 costs 0: 2 would be 0 away; better."},
+        {"line": 11, "scene": "zero-one-bfs", "step": "run", "snapshot": 9, "label": "Weights of 0 or 1 (0-1 BFS) · dist[2] = 0."},
+        {"line": 13, "scene": "zero-one-bfs", "step": "run", "snapshot": 10, "label": "Weights of 0 or 1 (0-1 BFS) · A free edge: 2 is as close as 0, so it goes to the front."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 11, "label": "Weights of 0 or 1 (0-1 BFS) · 2 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 12, "label": "Weights of 0 or 1 (0-1 BFS) · Take 2 from the front: distance 0."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 13, "label": "Weights of 0 or 1 (0-1 BFS) · 2 → 3 costs 1: 3 would be 1 away; better."},
+        {"line": 11, "scene": "zero-one-bfs", "step": "run", "snapshot": 14, "label": "Weights of 0 or 1 (0-1 BFS) · dist[3] = 1."},
+        {"line": 15, "scene": "zero-one-bfs", "step": "run", "snapshot": 15, "label": "Weights of 0 or 1 (0-1 BFS) · A paid edge: 3 is one further, so it goes to the back."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 16, "label": "Weights of 0 or 1 (0-1 BFS) · 2 → 4 costs 0: 4 would be 0 away; better."},
+        {"line": 11, "scene": "zero-one-bfs", "step": "run", "snapshot": 17, "label": "Weights of 0 or 1 (0-1 BFS) · dist[4] = 0."},
+        {"line": 13, "scene": "zero-one-bfs", "step": "run", "snapshot": 18, "label": "Weights of 0 or 1 (0-1 BFS) · A free edge: 4 is as close as 2, so it goes to the front."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 19, "label": "Weights of 0 or 1 (0-1 BFS) · 3 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 20, "label": "Weights of 0 or 1 (0-1 BFS) · Take 4 from the front: distance 0."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 21, "label": "Weights of 0 or 1 (0-1 BFS) · 4 → 1 costs 0: 1 would be 0 away; better."},
+        {"line": 11, "scene": "zero-one-bfs", "step": "run", "snapshot": 22, "label": "Weights of 0 or 1 (0-1 BFS) · dist[1] = 0, down from 1."},
+        {"line": 13, "scene": "zero-one-bfs", "step": "run", "snapshot": 23, "label": "Weights of 0 or 1 (0-1 BFS) · A free edge: 1 is as close as 4, so it goes to the front."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 24, "label": "Weights of 0 or 1 (0-1 BFS) · 4 → 6 costs 1: 6 would be 1 away; better."},
+        {"line": 11, "scene": "zero-one-bfs", "step": "run", "snapshot": 25, "label": "Weights of 0 or 1 (0-1 BFS) · dist[6] = 1."},
+        {"line": 15, "scene": "zero-one-bfs", "step": "run", "snapshot": 26, "label": "Weights of 0 or 1 (0-1 BFS) · A paid edge: 6 is one further, so it goes to the back."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 27, "label": "Weights of 0 or 1 (0-1 BFS) · 4 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 28, "label": "Weights of 0 or 1 (0-1 BFS) · Take 1 from the front: distance 0."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 29, "label": "Weights of 0 or 1 (0-1 BFS) · 1 → 5 costs 1: 5 would be 1 away; better."},
+        {"line": 11, "scene": "zero-one-bfs", "step": "run", "snapshot": 30, "label": "Weights of 0 or 1 (0-1 BFS) · dist[5] = 1."},
+        {"line": 15, "scene": "zero-one-bfs", "step": "run", "snapshot": 31, "label": "Weights of 0 or 1 (0-1 BFS) · A paid edge: 5 is one further, so it goes to the back."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 32, "label": "Weights of 0 or 1 (0-1 BFS) · 4 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 33, "label": "Weights of 0 or 1 (0-1 BFS) · Take 1 again: an old entry, pushed at 1 before 1 was reached for 0. Its edges improve nothing now."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 34, "label": "Weights of 0 or 1 (0-1 BFS) · 1 → 5 costs 1: 5 would be 1 away; no better than 1."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 35, "label": "Weights of 0 or 1 (0-1 BFS) · 3 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 36, "label": "Weights of 0 or 1 (0-1 BFS) · Take 3 from the front: distance 1."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 37, "label": "Weights of 0 or 1 (0-1 BFS) · 3 → 6 costs 0: 6 would be 1 away; no better than 1."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 38, "label": "Weights of 0 or 1 (0-1 BFS) · 2 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 39, "label": "Weights of 0 or 1 (0-1 BFS) · Take 6 from the front: distance 1."},
+        {"line": 7, "scene": "zero-one-bfs", "step": "run", "snapshot": 40, "label": "Weights of 0 or 1 (0-1 BFS) · 1 waiting; the front is the closest."},
+        {"line": 8, "scene": "zero-one-bfs", "step": "run", "snapshot": 41, "label": "Weights of 0 or 1 (0-1 BFS) · Take 5 from the front: distance 1."},
+        {"line": 10, "scene": "zero-one-bfs", "step": "run", "snapshot": 42, "label": "Weights of 0 or 1 (0-1 BFS) · 5 → 6 costs 0: 6 would be 1 away; no better than 1."},
+        {"line": 16, "scene": "zero-one-bfs", "step": "run", "snapshot": 43, "label": "Weights of 0 or 1 (0-1 BFS) · Distances from 0: 0, 0, 0, 1, 0, 1, 1. Only the paid edges count."}
+      ]
     }
   ],
   "scenes": [
@@ -1934,7 +1992,7 @@
           {"x": -2.593, "y": 2.587}
         ]
       },
-      "markdown": "# Store a graph (adjacency list, matrix, edge list)\n\n**Step 1** of 19 · **Tier:** Core (expect these)\n\n**Signal:** any graph problem: the first decision is how to hold the edges.\n\nProblems usually hand you an **edge list**: pairs `(u, v)`, one per connection. It is easy to store but slow to ask \"who are `u`'s neighbours?\", so step one is almost always to build one of these:\n\n- **Adjacency list** (`adj[u]` = the neighbours of `u`): space O(V + E), and listing a node's neighbours costs exactly as many steps as it has. The default for interviews, since most graphs are sparse.\n- **Adjacency matrix** (`matrix[u][v]` = 1 for an edge): \"is there an edge?\" in O(1), but O(V²) space and O(V) to list neighbours, however few there are. Fine for small, dense graphs.\n\nThe run builds both from the edge list, one edge at a time. The graph is **undirected**, so each edge goes into two lists (`adj[u]` and `adj[v]`) and two matrix cells, which is why the matrix is symmetric. For a directed graph, drop the second line: store `u → v` only.\n\n| | Edge list | Adjacency list | Adjacency matrix |\n| --- | --- | --- | --- |\n| Space | O(E) | O(V + E) | O(V²) |\n| Neighbours of u | O(E) | O(deg u) | O(V) |\n| Is (u, v) an edge? | O(E) | O(deg u) | O(1) |\n| Best for | scanning or sorting edges | traversals (BFS, DFS) | dense graphs, quick edge checks |\n\nUse the execution player to step through, or open **Code** to follow the active line.\n\n**Practice:** Find if Path Exists in Graph, Clone Graph, Find the Town Judge.",
+      "markdown": "# Store a graph (adjacency list, matrix, edge list)\n\n**Tier:** Core (expect these)\n\n**Signal:** any graph problem: the first decision is how to hold the edges.\n\nProblems usually hand you an **edge list**: pairs `(u, v)`, one per connection. It is easy to store but slow to ask \"who are `u`'s neighbours?\", so step one is almost always to build one of these:\n\n- **Adjacency list** (`adj[u]` = the neighbours of `u`): space O(V + E), and listing a node's neighbours costs exactly as many steps as it has. The default for interviews, since most graphs are sparse.\n- **Adjacency matrix** (`matrix[u][v]` = 1 for an edge): \"is there an edge?\" in O(1), but O(V²) space and O(V) to list neighbours, however few there are. Fine for small, dense graphs.\n\nThe run builds both from the edge list, one edge at a time. The graph is **undirected**, so each edge goes into two lists (`adj[u]` and `adj[v]`) and two matrix cells, which is why the matrix is symmetric. For a directed graph, drop the second line: store `u → v` only.\n\n| | Edge list | Adjacency list | Adjacency matrix |\n| --- | --- | --- | --- |\n| Space | O(E) | O(V + E) | O(V²) |\n| Neighbours of u | O(E) | O(deg u) | O(V) |\n| Is (u, v) an edge? | O(E) | O(deg u) | O(1) |\n| Best for | scanning or sorting edges | traversals (BFS, DFS) | dense graphs, quick edge checks |\n\nUse the execution player to step through, or open **Code** to follow the active line.\n\n**Practice:** Find if Path Exists in Graph, Clone Graph, Find the Town Judge.",
       "prompt": "Explain why problems give an edge list but algorithms want an adjacency list, and when a matrix wins. Ask the learner to predict which lists and cells change before each edge is added.",
       "elements": [
         {
@@ -3263,7 +3321,7 @@
           }
         ]
       },
-      "markdown": "# Go deep first (depth-first search)\n\n**Step 2** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** explore everything reachable, count components, find any path, or anything that backtracks.\n\nDFS follows one path as far as it goes, then **backs up** to the last node with an untried neighbour and goes deep again. Recursion does the backing up for free: each `dfs(v)` call waits on the stack until everything reachable from `v` is done.\n\n**Mark a node visited the moment you reach it.** A graph, unlike a tree, has cycles and several paths into one node; without `visited`, DFS would walk round a cycle forever. Here node 2 sees 0 again through the edge 0–2: already visited, so it is skipped, and that edge closes a cycle.\n\nThe arrows show the **DFS tree**: each node points to the nodes it discovered. Gold is the call running now, pink calls wait on the stack (the current path from 0), teal calls have returned. Open **Code** to see each waiting `dfs(v)` call's arrow into the function, the call stack drawn in the code.\n\n**Cost:** each node is visited once and each adjacency list read once: O(V + E) time, O(V) space for `visited` and the recursion. On a very deep graph the recursion can overflow; an explicit stack does the same walk iteratively.\n\n**Practice:** Number of Connected Components, Clone Graph, All Paths From Source to Target, Keys and Rooms.",
+      "markdown": "# Go deep first (depth-first search)\n\n**Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** explore everything reachable, count components, find any path, or anything that backtracks.\n\nDFS follows one path as far as it goes, then **backs up** to the last node with an untried neighbour and goes deep again. Recursion does the backing up for free: each `dfs(v)` call waits on the stack until everything reachable from `v` is done.\n\n**Mark a node visited the moment you reach it.** A graph, unlike a tree, has cycles and several paths into one node; without `visited`, DFS would walk round a cycle forever. Here node 2 sees 0 again through the edge 0–2: already visited, so it is skipped, and that edge closes a cycle.\n\nThe arrows show the **DFS tree**: each node points to the nodes it discovered. Gold is the call running now, pink calls wait on the stack (the current path from 0), teal calls have returned. Open **Code** to see each waiting `dfs(v)` call's arrow into the function, the call stack drawn in the code.\n\n**Cost:** each node is visited once and each adjacency list read once: O(V + E) time, O(V) space for `visited` and the recursion. On a very deep graph the recursion can overflow; an explicit stack does the same walk iteratively.\n\n**Practice:** Number of Connected Components, Clone Graph, All Paths From Source to Target, Keys and Rooms.",
       "prompt": "Explain going deep, backing up, and why visited must be marked on arrival. Ask the learner to predict which node DFS visits next, and what happens when a neighbour is already visited.",
       "elements": [
         {
@@ -4474,7 +4532,7 @@
           }
         ]
       },
-      "markdown": "# Level by level (breadth-first search)\n\n**Step 3** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** shortest path in steps on an unweighted graph, \"minimum moves\", nearest X, or anything level by level.\n\nBFS explores in rings: first every node one step from the start, then every node two steps away, and so on. A **queue** makes that happen: nodes leave from the front in the order they joined at the back, so nearer nodes are always processed first.\n\n**Mark a node when it joins the queue, not when it leaves.** Here `dist` is the mark: `-1` means unreached. Setting `dist[v]` at the moment `v` is queued stops another node from queueing it again, and the first time BFS reaches a node is along a **shortest** path, so its distance is final then.\n\nThis is the DFS scene's graph, from the same start. DFS went 0, 1, 3, 2, 5, 4, deep before wide; BFS goes 0, 1, 2, 3, 5, 4, near before far. Gold is the node being processed, pink nodes wait in the queue, teal nodes are done; the arrows are the **BFS tree**, and following them from 0 gives a shortest path to every node.\n\n**Multi-source BFS** starts with several nodes in the queue at distance 0, for \"distance to the nearest gate\" or \"rotting oranges\".\n\n**Cost:** O(V + E) time, O(V) space for the queue and `dist`.\n\n**Practice:** Word Ladder, Rotting Oranges, Shortest Path in Binary Matrix, Open the Lock.",
+      "markdown": "# Level by level (breadth-first search)\n\n**Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** shortest path in steps on an unweighted graph, \"minimum moves\", nearest X, or anything level by level.\n\nBFS explores in rings: first every node one step from the start, then every node two steps away, and so on. A **queue** makes that happen: nodes leave from the front in the order they joined at the back, so nearer nodes are always processed first.\n\n**Mark a node when it joins the queue, not when it leaves.** Here `dist` is the mark: `-1` means unreached. Setting `dist[v]` at the moment `v` is queued stops another node from queueing it again, and the first time BFS reaches a node is along a **shortest** path, so its distance is final then.\n\nThis is the DFS scene's graph, from the same start. DFS went 0, 1, 3, 2, 5, 4, deep before wide; BFS goes 0, 1, 2, 3, 5, 4, near before far. Gold is the node being processed, pink nodes wait in the queue, teal nodes are done; the arrows are the **BFS tree**, and following them from 0 gives a shortest path to every node.\n\n**Multi-source BFS** starts with several nodes in the queue at distance 0, for \"distance to the nearest gate\" or \"rotting oranges\".\n\n**Cost:** O(V + E) time, O(V) space for the queue and `dist`.\n\n**Practice:** Word Ladder, Rotting Oranges, Shortest Path in Binary Matrix, Open the Lock.",
       "prompt": "Explain why a queue gives shortest paths in steps, and why a node is marked when queued. Ask the learner to predict the queue after each node is processed, and each new dist value.",
       "elements": [
         {
@@ -7671,7 +7729,7 @@
           }
         ]
       },
-      "markdown": "# Count degrees (in, out, and peeling)\n\n**Step 4** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** a node defined by how many edges touch it (\"trusted by everyone\", \"the centre\"), sources and sinks, or peeling a graph layer by layer.\n\nA node's **degree** is how many edges touch it. In a directed graph it splits in two: **in-degree** (edges arriving) and **out-degree** (edges leaving). One pass over the edge list counts them all, with no traversal: O(V + E).\n\n## 1. Read the counts (this step)\n\nIn Find the Town Judge, an edge `a → b` means \"a trusts b\". The judge is trusted by everyone else and trusts no one: in-degree n − 1, out-degree 0. Count, then scan; no search needed.\n\n## 2. Peel by degree (next step)\n\nRepeatedly remove the nodes whose degree has hit a threshold, updating their neighbours as you go. Peeling a tree's **leaves** (degree 1) round by round, with a queue, closes in from every side at once; the one or two nodes left last are the tree's **centre**, the roots that make it shortest (Minimum Height Trees). Removed nodes dim; pink nodes are queued for the next round.\n\n## Where degree counting is used\n\n- **The counts are the answer:** the town judge (in n − 1, out 0); the centre of a star graph (degree n − 1); the smallest set of starting points that reach everything (exactly the nodes with in-degree 0); maximal network rank (two degrees added, minus 1 if the two are joined).\n- **The counts prove a shape:** degrees always add up to 2E (each edge has two ends); a connected graph is a tree exactly when it has V − 1 edges; a path has two nodes of degree 1 and the rest degree 2; an **Euler path** needs balanced degrees (in = out everywhere, except one start and one end), which tells you up front whether an itinerary can use every ticket.\n- **Peeling:** Kahn's **topological sort** peels nodes with in-degree 0 (leftovers mean a cycle); **eventual safe states** peels out-degree 0 on the reversed graph; **parallel courses** counts the peeling rounds (one per semester); and the tree centre above.\n\n**Practice:** Find the Town Judge, Find Center of Star Graph, Minimum Number of Vertices to Reach All Nodes, Maximal Network Rank, Minimum Height Trees.",
+      "markdown": "# Count degrees (in, out, and peeling)\n\n**Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** a node defined by how many edges touch it (\"trusted by everyone\", \"the centre\"), sources and sinks, or peeling a graph layer by layer.\n\nA node's **degree** is how many edges touch it. In a directed graph it splits in two: **in-degree** (edges arriving) and **out-degree** (edges leaving). One pass over the edge list counts them all, with no traversal: O(V + E).\n\n## 1. Read the counts (this step)\n\nIn Find the Town Judge, an edge `a → b` means \"a trusts b\". The judge is trusted by everyone else and trusts no one: in-degree n − 1, out-degree 0. Count, then scan; no search needed.\n\n## 2. Peel by degree (next step)\n\nRepeatedly remove the nodes whose degree has hit a threshold, updating their neighbours as you go. Peeling a tree's **leaves** (degree 1) round by round, with a queue, closes in from every side at once; the one or two nodes left last are the tree's **centre**, the roots that make it shortest (Minimum Height Trees). Removed nodes dim; pink nodes are queued for the next round.\n\n## Where degree counting is used\n\n- **The counts are the answer:** the town judge (in n − 1, out 0); the centre of a star graph (degree n − 1); the smallest set of starting points that reach everything (exactly the nodes with in-degree 0); maximal network rank (two degrees added, minus 1 if the two are joined).\n- **The counts prove a shape:** degrees always add up to 2E (each edge has two ends); a connected graph is a tree exactly when it has V − 1 edges; a path has two nodes of degree 1 and the rest degree 2; an **Euler path** needs balanced degrees (in = out everywhere, except one start and one end), which tells you up front whether an itinerary can use every ticket.\n- **Peeling:** Kahn's **topological sort** peels nodes with in-degree 0 (leftovers mean a cycle); **eventual safe states** peels out-degree 0 on the reversed graph; **parallel courses** counts the peeling rounds (one per semester); and the tree centre above.\n\n**Practice:** Find the Town Judge, Find Center of Star Graph, Minimum Number of Vertices to Reach All Nodes, Maximal Network Rank, Minimum Height Trees.",
       "prompt": "Explain in-degree and out-degree, and peeling by degree. Ask the learner to predict the counts after each edge, who the judge is, and which nodes become leaves after each peeling round.",
       "elements": [
         {
@@ -14067,7 +14125,7 @@
           {"x": -0.6, "y": -1.5}
         ]
       },
-      "markdown": "# A grid is a graph (islands, flood fill)\n\n**Step 5** of 19 · **Tier:** Core (expect these) · **Builds on:** BFS, DFS\n\n**Signal:** a 2D grid of cells, with moves up, down, left and right: flood fill, islands, mazes, rotting oranges.\n\nA grid **is** a graph, just not written as one: every cell is a node, and two cells are joined when they touch side by side. There is no adjacency list to build. The neighbours of `(r, c)` come from four offsets, `(1, 0)`, `(-1, 0)`, `(0, 1)` and `(0, -1)`, and a test: inside the grid, and the right kind of cell. Every traversal from the earlier scenes then works unchanged.\n\nThis run is **flood fill** (the paint bucket): recolour every cell of the start's colour that is joined to it side by side. It is a DFS. `fill(r, c)` returns at once when the cell is off the image or a different colour; otherwise it paints the cell and calls itself on the four neighbours. Painting the cell **is** the visited mark: it no longer matches the old colour, so no path enters it twice.\n\nGold is the call running now, pink cells wait on the call stack, and the edge from the calling cell to the one being called is lit gold when it is filled and red when the call returns at once. Two kinds of cell are left alone: the **0 the region encloses** (another colour, so `fill` returns at once), and the **block of 1s at the bottom left**, which touches the region only at a corner: corners are not neighbours.\n\n**The BFS version** (next step) fills the same cells with a queue instead of the call stack: each cell is painted as it is **queued**, so it is never queued twice, and the region grows in rings around the start rather than down one path at a time. Either works for flood fill; BFS also avoids deep recursion on large images.\n\n**Variations:**\n- **Islands** (count groups of 1s): flood fill from every unvisited land cell; each fill is one island. The patterns lesson plays it.\n- **Shortest path in a maze:** BFS, since it reaches cells in order of distance; DFS would not.\n- **Multi-source BFS** (rotting oranges, distance to the nearest gate): every source starts in the queue at distance 0.\n- **Diagonal moves:** eight offsets instead of four.\n\n**Cost:** each cell is painted once and tries 4 neighbours: O(rows × cols) time, and up to O(rows × cols) recursion depth, which an explicit stack avoids on large images.\n\n**Practice:** Flood Fill, Number of Islands, Max Area of Island, Surrounded Regions, Rotting Oranges, Shortest Path in Binary Matrix.",
+      "markdown": "# A grid is a graph (islands, flood fill)\n\n**Tier:** Core (expect these) · **Builds on:** BFS, DFS\n\n**Signal:** a 2D grid of cells, with moves up, down, left and right: flood fill, islands, mazes, rotting oranges.\n\nA grid **is** a graph, just not written as one: every cell is a node, and two cells are joined when they touch side by side. There is no adjacency list to build. The neighbours of `(r, c)` come from four offsets, `(1, 0)`, `(-1, 0)`, `(0, 1)` and `(0, -1)`, and a test: inside the grid, and the right kind of cell. Every traversal from the earlier scenes then works unchanged.\n\nThis run is **flood fill** (the paint bucket): recolour every cell of the start's colour that is joined to it side by side. It is a DFS. `fill(r, c)` returns at once when the cell is off the image or a different colour; otherwise it paints the cell and calls itself on the four neighbours. Painting the cell **is** the visited mark: it no longer matches the old colour, so no path enters it twice.\n\nGold is the call running now, pink cells wait on the call stack, and the edge from the calling cell to the one being called is lit gold when it is filled and red when the call returns at once. Two kinds of cell are left alone: the **0 the region encloses** (another colour, so `fill` returns at once), and the **block of 1s at the bottom left**, which touches the region only at a corner: corners are not neighbours.\n\n**The BFS version** (next step) fills the same cells with a queue instead of the call stack: each cell is painted as it is **queued**, so it is never queued twice, and the region grows in rings around the start rather than down one path at a time. Either works for flood fill; BFS also avoids deep recursion on large images.\n\n**Variations:**\n- **Islands** (count groups of 1s): flood fill from every unvisited land cell; each fill is one island. The patterns lesson plays it.\n- **Shortest path in a maze:** BFS, since it reaches cells in order of distance; DFS would not.\n- **Multi-source BFS** (rotting oranges, distance to the nearest gate): every source starts in the queue at distance 0.\n- **Diagonal moves:** eight offsets instead of four.\n\n**Cost:** each cell is painted once and tries 4 neighbours: O(rows × cols) time, and up to O(rows × cols) recursion depth, which an explicit stack avoids on large images.\n\n**Practice:** Flood Fill, Number of Islands, Max Area of Island, Surrounded Regions, Rotting Oranges, Shortest Path in Binary Matrix.",
       "prompt": "Explain how a grid is a graph with neighbours from four offsets, and how flood fill uses the new colour as its visited mark. Ask the learner to predict which calls return at once and why, and why the enclosed 0 and the bottom-left block stay unfilled.",
       "elements": [
         {
@@ -16778,7 +16836,7 @@
           }
         ]
       },
-      "markdown": "# Is there a cycle?\n\n**Step 6** of 19 · **Tier:** Core (expect these) · **Builds on:** DFS, Count degrees\n\n**Signal:** can every task finish, is this graph a tree, deadlock, or a \"redundant\" edge that closes a loop.\n\nA cycle is a path that leads back to where it started. DFS finds one by noticing an edge that leads **back into the current path**; what counts as \"back\" depends on whether edges have a direction.\n\n## 1. Directed graph: three states (this step)\n\nEach node is **new** (0), **on the current path** (1, pink) or **done** (2, teal). Reaching a node that is on the path means the path loops back into itself: a cycle. Reaching a node that is **done** is not one: everything reachable from it was explored and returned. The graph shows both: `3 → 2` meets a finished node, then `3 → 4 → 5 → 3` closes a loop, drawn red. Two states (just \"visited\") would wrongly call `3 → 2` a cycle.\n\n## 2. Undirected graph: skip the parent (next step)\n\nEvery edge appears in both directions, so the walk straight back to the node you came from is not a cycle: skip the **parent**. Any other already-visited neighbour is a second way in, so it closes a cycle. (Union-find spots the same thing as edges arrive: an edge whose ends are already joined closes a loop.)\n\n## 3. Directed graph: count indegrees (third step)\n\nNo recursion: count each node's incoming edges (**indegree**, the things it waits for), queue the nodes with none, and take them one by one; taking u frees each v it points to by one. A node on a cycle waits on the node before it, which waits on it in turn, so its indegree never reaches 0: it is never taken. **taken < n means a cycle.** This is the topological sort's queue (Kahn's algorithm) used as a test; the nodes left over are on a cycle or behind one (here 2, waiting on 3). It tells whether there is a cycle, not which edges form it; DFS finds the loop itself.\n\nA graph is a **tree** exactly when it is connected and has no cycle: equivalently, connected with V − 1 edges.\n\n**Cost:** O(V + E) for all three: each node is visited once and each edge looked at once (twice when undirected).\n\n**Practice:** Course Schedule, Find Eventual Safe States, Graph Valid Tree, Redundant Connection.",
+      "markdown": "# Is there a cycle?\n\n**Tier:** Core (expect these) · **Builds on:** DFS, Count degrees\n\n**Signal:** can every task finish, is this graph a tree, deadlock, or a \"redundant\" edge that closes a loop.\n\nA cycle is a path that leads back to where it started. DFS finds one by noticing an edge that leads **back into the current path**; what counts as \"back\" depends on whether edges have a direction.\n\n## 1. Directed graph: three states (this step)\n\nEach node is **new** (0), **on the current path** (1, pink) or **done** (2, teal). Reaching a node that is on the path means the path loops back into itself: a cycle. Reaching a node that is **done** is not one: everything reachable from it was explored and returned. The graph shows both: `3 → 2` meets a finished node, then `3 → 4 → 5 → 3` closes a loop, drawn red. Two states (just \"visited\") would wrongly call `3 → 2` a cycle.\n\n## 2. Undirected graph: skip the parent (next step)\n\nEvery edge appears in both directions, so the walk straight back to the node you came from is not a cycle: skip the **parent**. Any other already-visited neighbour is a second way in, so it closes a cycle. (Union-find spots the same thing as edges arrive: an edge whose ends are already joined closes a loop.)\n\n## 3. Directed graph: count indegrees (third step)\n\nNo recursion: count each node's incoming edges (**indegree**, the things it waits for), queue the nodes with none, and take them one by one; taking u frees each v it points to by one. A node on a cycle waits on the node before it, which waits on it in turn, so its indegree never reaches 0: it is never taken. **taken < n means a cycle.** This is the topological sort's queue (Kahn's algorithm) used as a test; the nodes left over are on a cycle or behind one (here 2, waiting on 3). It tells whether there is a cycle, not which edges form it; DFS finds the loop itself.\n\nA graph is a **tree** exactly when it is connected and has no cycle: equivalently, connected with V − 1 edges.\n\n**Cost:** O(V + E) for all three: each node is visited once and each edge looked at once (twice when undirected).\n\n**Practice:** Course Schedule, Find Eventual Safe States, Graph Valid Tree, Redundant Connection.",
       "prompt": "Explain why a directed cycle needs three states while an undirected one needs only the parent. Ask the learner to predict, for each edge, whether it closes a cycle.",
       "elements": [
         {
@@ -19842,7 +19900,7 @@
           }
         ]
       },
-      "markdown": "# Two teams (bipartite check)\n\n**Step 7** of 19 · **Tier:** Common (often asked) · **Builds on:** BFS, DFS\n\n**Signal:** split the nodes into two groups so that every edge runs between the groups: two-colouring, \"possible bipartition\", people who dislike each other in different rooms.\n\nA graph is **bipartite** when its nodes fit on two teams with no edge inside a team. You don't have to search for the split: **the first choice forces everything else.** Put one node on team 0; each neighbour must then be on team 1, each of theirs on team 0, and so on. BFS (or DFS) spreads that rule outwards.\n\n## 1. Colour by BFS (this step)\n\n`color[v]` is `-1` until `v` gets a team. Taking `u` off the queue, every neighbour with no team joins **the other team**, `1 - color[u]`, and the queue. A neighbour that already has a team is checked: **the other team is fine; the same team is a clash.** Each node waits on the top row until it gets a team, then drops to that team's row, so the split builds up as two rows. Here every check passes: when the run ends, **every edge runs between the two rows** and none lies inside one. That picture is what bipartite means.\n\nThe graph has two pieces. When the first BFS runs dry, node 5 still has no team, so the outer loop starts a new search there: **every untouched node starts a new piece**, as in counting components.\n\n## 2. An odd cycle (next step)\n\nJoin 4 to 3 as well, and the triangle 2 – 3 – 4 appears. Around a cycle the teams must alternate, blue, orange, blue, …, which only closes up when the cycle has an **even** number of edges. On a cycle of 3, the third node meets a neighbour on its own team: an edge **inside a row**, the clash, drawn red with the cycle it closes.\n\n**A graph is bipartite exactly when it has no odd cycle.** Trees and grids always are; anything with a triangle is not.\n\n## 3. Colour by DFS (third step)\n\nThe rule doesn't care about order, so DFS works as well as BFS. The recursive call carries the team: `dfs(u, c)` puts `u` on team `c` and calls `dfs(v, 1 - c)` for each neighbour with no team. A clash returns `False`, and every call waiting on the stack passes it straight back up. On the odd graph, DFS walks 0 → 1 → 2 → 3 → 4 and meets the same clash, 4 – 2, from the other end.\n\n**Cost:** O(V + E): each node is coloured once and each edge checked from both ends.\n\n**Practice:** Is Graph Bipartite?, Possible Bipartition.",
+      "markdown": "# Two teams (bipartite check)\n\n**Tier:** Common (often asked) · **Builds on:** BFS, DFS\n\n**Signal:** split the nodes into two groups so that every edge runs between the groups: two-colouring, \"possible bipartition\", people who dislike each other in different rooms.\n\nA graph is **bipartite** when its nodes fit on two teams with no edge inside a team. You don't have to search for the split: **the first choice forces everything else.** Put one node on team 0; each neighbour must then be on team 1, each of theirs on team 0, and so on. BFS (or DFS) spreads that rule outwards.\n\n## 1. Colour by BFS (this step)\n\n`color[v]` is `-1` until `v` gets a team. Taking `u` off the queue, every neighbour with no team joins **the other team**, `1 - color[u]`, and the queue. A neighbour that already has a team is checked: **the other team is fine; the same team is a clash.** Each node waits on the top row until it gets a team, then drops to that team's row, so the split builds up as two rows. Here every check passes: when the run ends, **every edge runs between the two rows** and none lies inside one. That picture is what bipartite means.\n\nThe graph has two pieces. When the first BFS runs dry, node 5 still has no team, so the outer loop starts a new search there: **every untouched node starts a new piece**, as in counting components.\n\n## 2. An odd cycle (next step)\n\nJoin 4 to 3 as well, and the triangle 2 – 3 – 4 appears. Around a cycle the teams must alternate, blue, orange, blue, …, which only closes up when the cycle has an **even** number of edges. On a cycle of 3, the third node meets a neighbour on its own team: an edge **inside a row**, the clash, drawn red with the cycle it closes.\n\n**A graph is bipartite exactly when it has no odd cycle.** Trees and grids always are; anything with a triangle is not.\n\n## 3. Colour by DFS (third step)\n\nThe rule doesn't care about order, so DFS works as well as BFS. The recursive call carries the team: `dfs(u, c)` puts `u` on team `c` and calls `dfs(v, 1 - c)` for each neighbour with no team. A clash returns `False`, and every call waiting on the stack passes it straight back up. On the odd graph, DFS walks 0 → 1 → 2 → 3 → 4 and meets the same clash, 4 – 2, from the other end.\n\n**Cost:** O(V + E): each node is coloured once and each edge checked from both ends.\n\n**Practice:** Is Graph Bipartite?, Possible Bipartition.",
       "prompt": "Explain why the first team choice forces every other node, and why an odd cycle makes a clash unavoidable. Ask the learner to predict each new node's team, and on the second graph, which edge will clash.",
       "elements": [
         {
@@ -22654,7 +22712,7 @@
           }
         ]
       },
-      "markdown": "# Order by dependencies (topological sort)\n\n**Step 8** of 19 · **Tier:** Core (expect these) · **Builds on:** Count degrees, BFS, DFS, Cycle detection\n\n**Signal:** prerequisites, build order, task scheduling: \"in what order can everything run?\"\n\nAn edge **u → v** means *u must come before v* (a course before the one that needs it, a library before the code that uses it). A **topological order** lists every node so that **every edge points forward**. It exists exactly when there is no cycle, and there is usually more than one.\n\n## 1. DFS: finish order, reversed (this step)\n\nDFS finishes a task only after **everything that depends on it** has finished, so appending each task when it finishes lists them dependents-first. Reversed, that puts every task before what depends on it. Meeting a task that is still on the current path is a cycle.\n\n## 2. Kahn: take what waits for nothing (next step)\n\nCount each task's **indegree**, the number of things it waits for. Tasks at 0 are ready: queue them. Take one, append it to the order, and remove its edges: each task it unblocks waits for one fewer, and joins the queue when it reaches 0. Pink tasks are ready; a placed task goes pale, peeled off the graph like the degree scene's leaves, and the thick edges into a task are the ones it still waits for. Here 4 and 5 start; 1 is freed by 4, 2 needs both 4 and 5, 0 needs 1 and 2, and 3 comes last.\n\nIf the queue empties before every task is placed, the rest wait on each other in a loop: a cycle, and no order exists (the cycle scene's third step).\n\nDFS gives **5, 4, 2, 1, 0, 3** and Kahn gives **4, 5, 1, 2, 0, 3**: both have every arrow pointing forward. At the end of each step the tasks line up in their order, so you can check it.\n\n**Cost:** O(V + E) for both.\n\n**Practice:** Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.",
+      "markdown": "# Order by dependencies (topological sort)\n\n**Tier:** Core (expect these) · **Builds on:** Count degrees, BFS, DFS, Cycle detection\n\n**Signal:** prerequisites, build order, task scheduling: \"in what order can everything run?\"\n\nAn edge **u → v** means *u must come before v* (a course before the one that needs it, a library before the code that uses it). A **topological order** lists every node so that **every edge points forward**. It exists exactly when there is no cycle, and there is usually more than one.\n\n## 1. DFS: finish order, reversed (this step)\n\nDFS finishes a task only after **everything that depends on it** has finished, so appending each task when it finishes lists them dependents-first. Reversed, that puts every task before what depends on it. Meeting a task that is still on the current path is a cycle.\n\n## 2. Kahn: take what waits for nothing (next step)\n\nCount each task's **indegree**, the number of things it waits for. Tasks at 0 are ready: queue them. Take one, append it to the order, and remove its edges: each task it unblocks waits for one fewer, and joins the queue when it reaches 0. Pink tasks are ready; a placed task goes pale, peeled off the graph like the degree scene's leaves, and the thick edges into a task are the ones it still waits for. Here 4 and 5 start; 1 is freed by 4, 2 needs both 4 and 5, 0 needs 1 and 2, and 3 comes last.\n\nIf the queue empties before every task is placed, the rest wait on each other in a loop: a cycle, and no order exists (the cycle scene's third step).\n\nDFS gives **5, 4, 2, 1, 0, 3** and Kahn gives **4, 5, 1, 2, 0, 3**: both have every arrow pointing forward. At the end of each step the tasks line up in their order, so you can check it.\n\n**Cost:** O(V + E) for both.\n\n**Practice:** Course Schedule II, Alien Dictionary, Parallel Courses, Minimum Height Trees.",
       "prompt": "Explain what a topological order is and why it exists exactly when there is no cycle. Ask the learner to predict which task finishes next in DFS, and which task is ready next in Kahn.",
       "elements": [
         {
@@ -25553,7 +25611,7 @@
           {"c": "#a3b86c"}
         ]
       },
-      "markdown": "# Group as edges arrive (union-find)\n\n**Step 9** of 19 · **Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** connectivity that grows edge by edge: counting groups, \"are these two connected?\", a redundant edge, merging accounts.\n\nUnion-find keeps a **group label that can merge**. Every node points to a **parent**; following parents ends at the group's **root**, a node that points at itself. Two nodes are connected exactly when they reach the same root. The left shows the graph as its edges arrive; the right shows the parent pointers, a **forest** with one tree per group and its root on top.\n\n- **find(x)** follows parents up to the root. On the way back it points every node it passed **straight at the root** (path compression), so the next find is one hop.\n- **union(a, b)** finds both roots. The same root means a and b are already connected: the edge closes a **cycle** (drawn red). Different roots: hang one root under the other, and two groups become one.\n\n**Union by rank** hangs the **shorter** tree under the taller one, so no tree grows taller than log n; equal heights grow by one. Watch 3 → 2 → 0: when edge 3 – 1 arrives, find(3) climbs two hops and then points 3 straight at 0. Edge 3 – 1 itself is redundant: 3 and 1 already share root 0.\n\nCounting is free: start with n groups and subtract one per successful union. Here 9 nodes and 7 merges leave **2 groups**; node 8 never meets an edge.\n\n**Cost:** with both tricks, about O(α(n)) per operation, effectively constant. No traversal is repeated as edges arrive.\n\n**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components.",
+      "markdown": "# Group as edges arrive (union-find)\n\n**Tier:** Core (expect these) · **Builds on:** Representations\n\n**Signal:** connectivity that grows edge by edge: counting groups, \"are these two connected?\", a redundant edge, merging accounts.\n\nUnion-find keeps a **group label that can merge**. Every node points to a **parent**; following parents ends at the group's **root**, a node that points at itself. Two nodes are connected exactly when they reach the same root. The left shows the graph as its edges arrive; the right shows the parent pointers, a **forest** with one tree per group and its root on top.\n\n- **find(x)** follows parents up to the root. On the way back it points every node it passed **straight at the root** (path compression), so the next find is one hop.\n- **union(a, b)** finds both roots. The same root means a and b are already connected: the edge closes a **cycle** (drawn red). Different roots: hang one root under the other, and two groups become one.\n\n**Union by rank** hangs the **shorter** tree under the taller one, so no tree grows taller than log n; equal heights grow by one. Watch 3 → 2 → 0: when edge 3 – 1 arrives, find(3) climbs two hops and then points 3 straight at 0. Edge 3 – 1 itself is redundant: 3 and 1 already share root 0.\n\nCounting is free: start with n groups and subtract one per successful union. Here 9 nodes and 7 merges leave **2 groups**; node 8 never meets an edge.\n\n**Cost:** with both tricks, about O(α(n)) per operation, effectively constant. No traversal is repeated as edges arrive.\n\n**Practice:** Number of Provinces, Redundant Connection, Accounts Merge, Number of Connected Components.",
       "prompt": "Explain how parent pointers represent groups, why path compression and union by rank keep the trees flat, and how an edge whose ends share a root closes a cycle. Ask the learner to predict each find's root and which edge will be redundant.",
       "elements": [
         {
@@ -28686,7 +28744,7 @@
           {"c": "#a3b86c"}
         ]
       },
-      "markdown": "# Connect everything cheaply (minimum spanning tree)\n\n**Step 10** of 19 · **Tier:** Common (often asked) · **Builds on:** Union-find\n\n**Signal:** connect all points or cities at the lowest total cost; \"minimum cost to connect\", a network with no wasted link.\n\nA **spanning tree** uses n − 1 edges to connect all n nodes with no cycle. The **minimum** one has the smallest total weight. Both algorithms are greedy, and both rest on one fact, the **cut property**: split the nodes into two sides any way you like, and the cheapest edge crossing between the sides is safe to take.\n\n## 1. Kruskal: cheapest edge first (this step)\n\nSort the edges by weight and walk the list. An edge whose ends are already in one group would close a **cycle** (red): skip it. Any other joins two pieces, so take it (green) and merge the groups, with **union-find** from the previous scene. Nodes are coloured by group, so you can watch the pieces merge. Stop once n − 1 edges are taken: here edge 0 – 3 completes the tree and the four dearest edges are never looked at.\n\n## 2. Prim: grow one tree (next step)\n\nStart from node 0 and keep a **min-heap** of edges leaving the tree (pink). Pop the cheapest; if it reaches a node already in the tree it is **stale**, skip it. Otherwise add the node and its edge, and push its edges to nodes outside. The heap is shown sorted; a real heap only keeps its minimum at the front.\n\nBoth find the same total, **22**, here even the same tree: with distinct weights the minimum spanning tree is unique.\n\n**Cost:** Kruskal O(E log E) for the sort; Prim O(E log V) with a binary heap. Kruskal suits an edge list, Prim an adjacency list of a dense graph.\n\n**Practice:** Min Cost to Connect All Points, Connecting Cities With Minimum Cost.",
+      "markdown": "# Connect everything cheaply (minimum spanning tree)\n\n**Tier:** Common (often asked) · **Builds on:** Union-find\n\n**Signal:** connect all points or cities at the lowest total cost; \"minimum cost to connect\", a network with no wasted link.\n\nA **spanning tree** uses n − 1 edges to connect all n nodes with no cycle. The **minimum** one has the smallest total weight. Both algorithms are greedy, and both rest on one fact, the **cut property**: split the nodes into two sides any way you like, and the cheapest edge crossing between the sides is safe to take.\n\n## 1. Kruskal: cheapest edge first (this step)\n\nSort the edges by weight and walk the list. An edge whose ends are already in one group would close a **cycle** (red): skip it. Any other joins two pieces, so take it (green) and merge the groups, with **union-find** from the previous scene. Nodes are coloured by group, so you can watch the pieces merge. Stop once n − 1 edges are taken: here edge 0 – 3 completes the tree and the four dearest edges are never looked at.\n\n## 2. Prim: grow one tree (next step)\n\nStart from node 0 and keep a **min-heap** of edges leaving the tree (pink). Pop the cheapest; if it reaches a node already in the tree it is **stale**, skip it. Otherwise add the node and its edge, and push its edges to nodes outside. The heap is shown sorted; a real heap only keeps its minimum at the front.\n\nBoth find the same total, **22**, here even the same tree: with distinct weights the minimum spanning tree is unique.\n\n**Cost:** Kruskal O(E log E) for the sort; Prim O(E log V) with a binary heap. Kruskal suits an edge list, Prim an adjacency list of a dense graph.\n\n**Practice:** Min Cost to Connect All Points, Connecting Cities With Minimum Cost.",
       "prompt": "Explain the cut property and why each greedy choice is safe. Ask the learner to predict which edge Kruskal takes or skips next, and which edge Prim pops next.",
       "elements": [
         {
@@ -30269,7 +30327,7 @@
           }
         ]
       },
-      "markdown": "# Cheapest route (Dijkstra)\n\n**Step 11** of 19 · **Tier:** Common (often asked) · **Builds on:** BFS\n\n**Signal:** shortest or cheapest path when edges have **non-negative** weights: travel time, network delay, \"minimum effort\".\n\nBFS finds shortest paths when every edge costs the same: nodes leave the queue in order of distance. With weights, a plain queue no longer does that, so Dijkstra uses a **min-heap** of (distance, node): it always pops the **closest** node not yet settled.\n\n- **Settle:** when a node is popped, its distance is **final**. Anything still in the heap is at least as far, and with no negative edges a detour through it can only add. Settled nodes are green.\n- **Relax:** for each edge u → v of weight w, if `dist[u] + w` beats `dist[v]`, lower it, record `prev[v] = u`, and push the new entry. Pink nodes wait in the heap.\n- **Stale entries:** an improved node keeps its old, larger entry in the heap. When it is popped later, `d > dist[u]` gives it away: skip it. That is cheaper than finding and updating it.\n\nHere the direct edge 0 → 1 costs 7, but 0 → 2 → 1 costs 2 + 3 = **5**, so 1 is relaxed twice and its (7, 1) entry turns stale; 3 drops from 10 to **6** the same way. The thick edges are each node's `prev`: the **shortest-path tree**, and following them back from any node gives its path.\n\n**Negative edges break it:** a settled node could later be beaten by a path through a negative edge (use Bellman-Ford).\n\n**Cost:** O((V + E) log V) with a binary heap.\n\n**Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops, Swim in Rising Water.",
+      "markdown": "# Cheapest route (Dijkstra)\n\n**Tier:** Common (often asked) · **Builds on:** BFS\n\n**Signal:** shortest or cheapest path when edges have **non-negative** weights: travel time, network delay, \"minimum effort\".\n\nBFS finds shortest paths when every edge costs the same: nodes leave the queue in order of distance. With weights, a plain queue no longer does that, so Dijkstra uses a **min-heap** of (distance, node): it always pops the **closest** node not yet settled.\n\n- **Settle:** when a node is popped, its distance is **final**. Anything still in the heap is at least as far, and with no negative edges a detour through it can only add. Settled nodes are green.\n- **Relax:** for each edge u → v of weight w, if `dist[u] + w` beats `dist[v]`, lower it, record `prev[v] = u`, and push the new entry. Pink nodes wait in the heap.\n- **Stale entries:** an improved node keeps its old, larger entry in the heap. When it is popped later, `d > dist[u]` gives it away: skip it. That is cheaper than finding and updating it.\n\nHere the direct edge 0 → 1 costs 7, but 0 → 2 → 1 costs 2 + 3 = **5**, so 1 is relaxed twice and its (7, 1) entry turns stale; 3 drops from 10 to **6** the same way. The thick edges are each node's `prev`: the **shortest-path tree**, and following them back from any node gives its path.\n\n**Negative edges break it:** a settled node could later be beaten by a path through a negative edge (use Bellman-Ford).\n\n**Cost:** O((V + E) log V) with a binary heap.\n\n**Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops, Swim in Rising Water.",
       "prompt": "Explain why the popped node's distance is final when no edge is negative, what relaxation does, and why stale heap entries appear. Ask the learner to predict which node pops next and whether a relaxation improves the distance.",
       "elements": [
         {
@@ -30430,7 +30488,7 @@
     {
       "id": "zero-one-bfs",
       "title": "Weights of 0 or 1 (0-1 BFS)",
-      "description": "Signal: shortest path where every edge costs 0 or 1: free moves and paid moves.",
+      "description": "Every distance starts unknown: ∞.",
       "range": [
         [-7, 10],
         [-5, 5],
@@ -30440,8 +30498,672 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Weights of 0 or 1 (0-1 BFS)\n\n**Step 12** of 19 · **Tier:** Common (often asked) · **Builds on:** Dijkstra\n\n**Signal:** shortest path where every edge costs 0 or 1: free moves and paid moves.\n\nA deque replaces the heap: push a node reached by a 0-edge to the **front** and one reached by a 1-edge to the **back**. The deque stays sorted by distance, so it is Dijkstra without the log factor.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Minimum Cost to Make at Least One Valid Path, Minimum Obstacle Removal.",
-      "prompt": "Explain 0-1 BFS: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
+      "data": {
+        "trace": [
+          {
+            "u": -1,
+            "v": -1,
+            "w": -1,
+            "dist": [-1, -1, -1, -1, -1, -1, -1],
+            "dq": [],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 4,
+            "message": "Every distance starts unknown: ∞.",
+            "distText": ["∞", "∞", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": []
+          },
+          {
+            "u": -1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, -1, -1, -1, -1, -1, -1],
+            "dq": [],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 5,
+            "message": "The source is 0 away from itself.",
+            "distText": ["0", "∞", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": []
+          },
+          {
+            "u": -1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, -1, -1, -1, -1, -1, -1],
+            "dq": [0],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 6,
+            "message": "The deque starts with the source. It stays sorted by distance: front closest.",
+            "distText": ["0", "∞", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": ["0:0"]
+          },
+          {
+            "u": -1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, -1, -1, -1, -1, -1, -1],
+            "dq": [0],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "1 waiting; the front is the closest.",
+            "distText": ["0", "∞", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": ["0:0"]
+          },
+          {
+            "u": 0,
+            "v": -1,
+            "w": -1,
+            "dist": [0, -1, -1, -1, -1, -1, -1],
+            "dq": [],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 0 from the front: distance 0.",
+            "distText": ["0", "∞", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": []
+          },
+          {
+            "u": 0,
+            "v": 1,
+            "w": 1,
+            "dist": [0, -1, -1, -1, -1, -1, -1],
+            "dq": [],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[1] = ∞",
+            "result": "—",
+            "line": 10,
+            "message": "0 → 1 costs 1: 1 would be 1 away; better.",
+            "distText": ["0", "∞", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": []
+          },
+          {
+            "u": 0,
+            "v": 1,
+            "w": 1,
+            "dist": [0, 1, -1, -1, -1, -1, -1],
+            "dq": [],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[1] = ∞",
+            "result": "—",
+            "line": 11,
+            "message": "dist[1] = 1.",
+            "distText": ["0", "1", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": []
+          },
+          {
+            "u": 0,
+            "v": 1,
+            "w": 1,
+            "dist": [0, 1, -1, -1, -1, -1, -1],
+            "dq": [1],
+            "end": 2,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 15,
+            "message": "A paid edge: 1 is one further, so it goes to the back.",
+            "distText": ["0", "1", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": ["1:1"]
+          },
+          {
+            "u": 0,
+            "v": 2,
+            "w": 0,
+            "dist": [0, 1, -1, -1, -1, -1, -1],
+            "dq": [1],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 0 = 0 < dist[2] = ∞",
+            "result": "—",
+            "line": 10,
+            "message": "0 → 2 costs 0: 2 would be 0 away; better.",
+            "distText": ["0", "1", "∞", "∞", "∞", "∞", "∞"],
+            "dqNames": ["1:1"]
+          },
+          {
+            "u": 0,
+            "v": 2,
+            "w": 0,
+            "dist": [0, 1, 0, -1, -1, -1, -1],
+            "dq": [1],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 0 = 0 < dist[2] = ∞",
+            "result": "—",
+            "line": 11,
+            "message": "dist[2] = 0.",
+            "distText": ["0", "1", "0", "∞", "∞", "∞", "∞"],
+            "dqNames": ["1:1"]
+          },
+          {
+            "u": 0,
+            "v": 2,
+            "w": 0,
+            "dist": [0, 1, 0, -1, -1, -1, -1],
+            "dq": [2, 1],
+            "end": 1,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "A free edge: 2 is as close as 0, so it goes to the front.",
+            "distText": ["0", "1", "0", "∞", "∞", "∞", "∞"],
+            "dqNames": ["0:2", "1:1"]
+          },
+          {
+            "u": 0,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 1, 0, -1, -1, -1, -1],
+            "dq": [2, 1],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "2 waiting; the front is the closest.",
+            "distText": ["0", "1", "0", "∞", "∞", "∞", "∞"],
+            "dqNames": ["0:2", "1:1"]
+          },
+          {
+            "u": 2,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 1, 0, -1, -1, -1, -1],
+            "dq": [1],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 2 from the front: distance 0.",
+            "distText": ["0", "1", "0", "∞", "∞", "∞", "∞"],
+            "dqNames": ["1:1"]
+          },
+          {
+            "u": 2,
+            "v": 3,
+            "w": 1,
+            "dist": [0, 1, 0, -1, -1, -1, -1],
+            "dq": [1],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[3] = ∞",
+            "result": "—",
+            "line": 10,
+            "message": "2 → 3 costs 1: 3 would be 1 away; better.",
+            "distText": ["0", "1", "0", "∞", "∞", "∞", "∞"],
+            "dqNames": ["1:1"]
+          },
+          {
+            "u": 2,
+            "v": 3,
+            "w": 1,
+            "dist": [0, 1, 0, 1, -1, -1, -1],
+            "dq": [1],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[3] = ∞",
+            "result": "—",
+            "line": 11,
+            "message": "dist[3] = 1.",
+            "distText": ["0", "1", "0", "1", "∞", "∞", "∞"],
+            "dqNames": ["1:1"]
+          },
+          {
+            "u": 2,
+            "v": 3,
+            "w": 1,
+            "dist": [0, 1, 0, 1, -1, -1, -1],
+            "dq": [1, 3],
+            "end": 2,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 15,
+            "message": "A paid edge: 3 is one further, so it goes to the back.",
+            "distText": ["0", "1", "0", "1", "∞", "∞", "∞"],
+            "dqNames": ["1:1", "1:3"]
+          },
+          {
+            "u": 2,
+            "v": 4,
+            "w": 0,
+            "dist": [0, 1, 0, 1, -1, -1, -1],
+            "dq": [1, 3],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 0 = 0 < dist[4] = ∞",
+            "result": "—",
+            "line": 10,
+            "message": "2 → 4 costs 0: 4 would be 0 away; better.",
+            "distText": ["0", "1", "0", "1", "∞", "∞", "∞"],
+            "dqNames": ["1:1", "1:3"]
+          },
+          {
+            "u": 2,
+            "v": 4,
+            "w": 0,
+            "dist": [0, 1, 0, 1, 0, -1, -1],
+            "dq": [1, 3],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 0 = 0 < dist[4] = ∞",
+            "result": "—",
+            "line": 11,
+            "message": "dist[4] = 0.",
+            "distText": ["0", "1", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["1:1", "1:3"]
+          },
+          {
+            "u": 2,
+            "v": 4,
+            "w": 0,
+            "dist": [0, 1, 0, 1, 0, -1, -1],
+            "dq": [4, 1, 3],
+            "end": 1,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "A free edge: 4 is as close as 2, so it goes to the front.",
+            "distText": ["0", "1", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["0:4", "1:1", "1:3"]
+          },
+          {
+            "u": 2,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 1, 0, 1, 0, -1, -1],
+            "dq": [4, 1, 3],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "3 waiting; the front is the closest.",
+            "distText": ["0", "1", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["0:4", "1:1", "1:3"]
+          },
+          {
+            "u": 4,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 1, 0, 1, 0, -1, -1],
+            "dq": [1, 3],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 4 from the front: distance 0.",
+            "distText": ["0", "1", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["1:1", "1:3"]
+          },
+          {
+            "u": 4,
+            "v": 1,
+            "w": 0,
+            "dist": [0, 1, 0, 1, 0, -1, -1],
+            "dq": [1, 3],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 0 = 0 < dist[1] = 1",
+            "result": "—",
+            "line": 10,
+            "message": "4 → 1 costs 0: 1 would be 0 away; better.",
+            "distText": ["0", "1", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["1:1", "1:3"]
+          },
+          {
+            "u": 4,
+            "v": 1,
+            "w": 0,
+            "dist": [0, 0, 0, 1, 0, -1, -1],
+            "dq": [1, 3],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 0 = 0 < dist[1] = 1",
+            "result": "—",
+            "line": 11,
+            "message": "dist[1] = 0, down from 1.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["1:1", "1:3"]
+          },
+          {
+            "u": 4,
+            "v": 1,
+            "w": 0,
+            "dist": [0, 0, 0, 1, 0, -1, -1],
+            "dq": [1, 1, 3],
+            "end": 1,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 13,
+            "message": "A free edge: 1 is as close as 4, so it goes to the front.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["0:1", "1:1", "1:3"]
+          },
+          {
+            "u": 4,
+            "v": 6,
+            "w": 1,
+            "dist": [0, 0, 0, 1, 0, -1, -1],
+            "dq": [1, 1, 3],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[6] = ∞",
+            "result": "—",
+            "line": 10,
+            "message": "4 → 6 costs 1: 6 would be 1 away; better.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "∞"],
+            "dqNames": ["0:1", "1:1", "1:3"]
+          },
+          {
+            "u": 4,
+            "v": 6,
+            "w": 1,
+            "dist": [0, 0, 0, 1, 0, -1, 1],
+            "dq": [1, 1, 3],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[6] = ∞",
+            "result": "—",
+            "line": 11,
+            "message": "dist[6] = 1.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "1"],
+            "dqNames": ["0:1", "1:1", "1:3"]
+          },
+          {
+            "u": 4,
+            "v": 6,
+            "w": 1,
+            "dist": [0, 0, 0, 1, 0, -1, 1],
+            "dq": [1, 1, 3, 6],
+            "end": 2,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 15,
+            "message": "A paid edge: 6 is one further, so it goes to the back.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "1"],
+            "dqNames": ["0:1", "1:1", "1:3", "1:6"]
+          },
+          {
+            "u": 4,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, -1, 1],
+            "dq": [1, 1, 3, 6],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "4 waiting; the front is the closest.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "1"],
+            "dqNames": ["0:1", "1:1", "1:3", "1:6"]
+          },
+          {
+            "u": 1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, -1, 1],
+            "dq": [1, 3, 6],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 1 from the front: distance 0.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "1"],
+            "dqNames": ["1:1", "1:3", "1:6"]
+          },
+          {
+            "u": 1,
+            "v": 5,
+            "w": 1,
+            "dist": [0, 0, 0, 1, 0, -1, 1],
+            "dq": [1, 3, 6],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[5] = ∞",
+            "result": "—",
+            "line": 10,
+            "message": "1 → 5 costs 1: 5 would be 1 away; better.",
+            "distText": ["0", "0", "0", "1", "0", "∞", "1"],
+            "dqNames": ["1:1", "1:3", "1:6"]
+          },
+          {
+            "u": 1,
+            "v": 5,
+            "w": 1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [1, 3, 6],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 < dist[5] = ∞",
+            "result": "—",
+            "line": 11,
+            "message": "dist[5] = 1.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:1", "1:3", "1:6"]
+          },
+          {
+            "u": 1,
+            "v": 5,
+            "w": 1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [1, 3, 6, 5],
+            "end": 2,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 15,
+            "message": "A paid edge: 5 is one further, so it goes to the back.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:1", "1:3", "1:6", "1:5"]
+          },
+          {
+            "u": 1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [1, 3, 6, 5],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "4 waiting; the front is the closest.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:1", "1:3", "1:6", "1:5"]
+          },
+          {
+            "u": 1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [3, 6, 5],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 1 again: an old entry, pushed at 1 before 1 was reached for 0. Its edges improve nothing now.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:3", "1:6", "1:5"]
+          },
+          {
+            "u": 1,
+            "v": 5,
+            "w": 1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [3, 6, 5],
+            "end": 0,
+            "checkText": "dist[u] + w = 0 + 1 = 1 ≥ dist[5] = 1",
+            "result": "—",
+            "line": 10,
+            "message": "1 → 5 costs 1: 5 would be 1 away; no better than 1.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:3", "1:6", "1:5"]
+          },
+          {
+            "u": 1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [3, 6, 5],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "3 waiting; the front is the closest.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:3", "1:6", "1:5"]
+          },
+          {
+            "u": 3,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [6, 5],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 3 from the front: distance 1.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:6", "1:5"]
+          },
+          {
+            "u": 3,
+            "v": 6,
+            "w": 0,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [6, 5],
+            "end": 0,
+            "checkText": "dist[u] + w = 1 + 0 = 1 ≥ dist[6] = 1",
+            "result": "—",
+            "line": 10,
+            "message": "3 → 6 costs 0: 6 would be 1 away; no better than 1.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:6", "1:5"]
+          },
+          {
+            "u": 3,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [6, 5],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "2 waiting; the front is the closest.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:6", "1:5"]
+          },
+          {
+            "u": 6,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [5],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 6 from the front: distance 1.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:5"]
+          },
+          {
+            "u": 6,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [5],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 7,
+            "message": "1 waiting; the front is the closest.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": ["1:5"]
+          },
+          {
+            "u": 5,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "—",
+            "line": 8,
+            "message": "Take 5 from the front: distance 1.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": []
+          },
+          {
+            "u": 5,
+            "v": 6,
+            "w": 0,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [],
+            "end": 0,
+            "checkText": "dist[u] + w = 1 + 0 = 1 ≥ dist[6] = 1",
+            "result": "—",
+            "line": 10,
+            "message": "5 → 6 costs 0: 6 would be 1 away; no better than 1.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": []
+          },
+          {
+            "u": -1,
+            "v": -1,
+            "w": -1,
+            "dist": [0, 0, 0, 1, 0, 1, 1],
+            "dq": [],
+            "end": 0,
+            "checkText": "check: —",
+            "result": "[0, 0, 0, 1, 0, 1, 1]",
+            "line": 16,
+            "message": "Distances from 0: 0, 0, 0, 1, 0, 1, 1. Only the paid edges count.",
+            "distText": ["0", "0", "0", "1", "0", "1", "1"],
+            "dqNames": []
+          }
+        ],
+        "zobNodes": [
+          {
+            "x": -6.0,
+            "y": 2.1,
+            "adj": [1, 2],
+            "w": [0, 1, 0, 0, 0, 0, 0]
+          },
+          {
+            "x": -3.6,
+            "y": 3.7,
+            "adj": [5],
+            "w": [0, 0, 0, 0, 0, 1, 0]
+          },
+          {
+            "x": -3.6,
+            "y": 0.5,
+            "adj": [3, 4],
+            "w": [0, 0, 0, 1, 0, 0, 0]
+          },
+          {
+            "x": -1.6,
+            "y": -0.6,
+            "adj": [6],
+            "w": [0, 0, 0, 0, 0, 0, 0]
+          },
+          {
+            "x": -1.6,
+            "y": 2.1,
+            "adj": [1, 6],
+            "w": [0, 0, 0, 0, 0, 0, 1]
+          },
+          {
+            "x": 0.8,
+            "y": 3.7,
+            "adj": [6],
+            "w": [0, 0, 0, 0, 0, 0, 0]
+          },
+          {
+            "x": 0.8,
+            "y": 0.5,
+            "adj": [],
+            "w": [0, 0, 0, 0, 0, 0, 0]
+          }
+        ]
+      },
+      "markdown": "# Weights of 0 or 1 (0-1 BFS)\n\n**Tier:** Common (often asked) · **Builds on:** Dijkstra\n\n**Signal:** shortest path where every edge costs **0 or 1**: free moves and paid moves. \"Minimum obstacles to remove\", \"minimum arrows to flip\", walls you may break.\n\nDijkstra needs a heap only to keep the waiting nodes **sorted by distance**. With weights of only 0 and 1, a **deque** stays sorted by itself:\n\n- **Free edge (0):** v is exactly as far as u, the closest waiting node. It belongs at the **front**: `appendleft`.\n- **Paid edge (1):** v is one further. Nothing waiting is further than that, so it belongs at the **back**: `append`.\n\nSo the deque only ever holds two distances, d at the front and d + 1 behind them, and `popleft` always takes the closest node, as Dijkstra's heap would, in O(1) instead of O(log V). Each cell reads **distance:node**.\n\nHere 1 is first reached by the paid edge 0 → 1 at distance 1, then by the free path 0 → 2 → 4 → 1 at distance **0**. It goes to the front, and its old entry at the back is taken later and finds nothing to improve: a node can sit in the deque twice, harmlessly. Teal edges are free; a node's colour is its distance (green 0, blue 1).\n\nWith every weight 1, this is plain BFS; with weights larger than 1, use Dijkstra.\n\n**Cost:** O(V + E).\n\n**Practice:** Minimum Cost to Make at Least One Valid Path in a Grid, Minimum Obstacle Removal to Reach Corner.",
+      "prompt": "Explain why a free edge goes to the front and a paid edge to the back, and why that keeps the deque sorted like Dijkstra's heap. Ask the learner to predict where each push goes and which node is taken next.",
       "elements": [
         {
           "id": "grid",
@@ -30453,15 +31175,144 @@
           ],
           "divisions": [17, 10],
           "opacity": 0.09
-        },
-        {
-          "id": "placeholder",
-          "type": "text",
-          "text": "Visualization coming soon",
-          "position": [1.5, 0, 0],
-          "color": "#9dbde3"
         }
-      ]
+      ],
+      "steps": [
+        {
+          "id": "run",
+          "title": "Free edges to the front, paid to the back",
+          "description": "A deque that stays sorted by distance.",
+          "descriptionExpr": "dataTable('trace', frame, 'message')",
+          "sliders": [
+            {"id": "frame", "label": "Execution state", "min": 0, "max": 43, "step": 1, "default": 0}
+          ],
+          "add": [
+            {
+              "id": "graph",
+              "type": "graph",
+              "label": "graph",
+              "lengthExpr": "7",
+              "valueExpr": "idx",
+              "nodeShape": "rect",
+              "nodeWidth": 0.75,
+              "nodeHeight": 0.75,
+              "nodeCornerRadius": 0.375,
+              "valueLabel": "inside",
+              "showIndices": false,
+              "positionExpr": ["dataTable('zobNodes', idx, 'x')", "dataTable('zobNodes', idx, 'y')", "0"],
+              "colorExpr": "idx == dataTable('trace', frame, 'u') ? '#f1c65b' : (arrayAt(dataTable('trace', frame, 'dist'), idx) == 0 ? '#77bfae' : (arrayAt(dataTable('trace', frame, 'dist'), idx) == 1 ? '#6ea8e0' : (arrayAt(dataTable('trace', frame, 'dist'), idx) >= 2 ? '#e5a65c' : '')))",
+              "connectTo": {"indexExpr": "dataTable('zobNodes', idx, 'adj')", "pinned": true, "arrow": true, "color": "#5a6573", "colorExpr": "idx == dataTable('trace', frame, 'u') and to == dataTable('trace', frame, 'v') ? '#f1c65b' : (arrayAt(dataTable('zobNodes', idx, 'w'), to) == 0 ? '#5fb3a3' : '')", "highlightExpr": "idx == dataTable('trace', frame, 'u') and to == dataTable('trace', frame, 'v')", "widthExpr": "idx == dataTable('trace', frame, 'u') and to == dataTable('trace', frame, 'v') ? 2.6 : (arrayAt(dataTable('zobNodes', idx, 'w'), to) == 0 ? 2 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('zobNodes', idx, 'w'), to))"}
+            },
+            {
+              "id": "dq",
+              "type": "array",
+              "label": "dq",
+              "codeSymbol": "dq",
+              "labelSide": "left",
+              "origin": [-2.3, -2.0, 0],
+              "cellSize": 1.05,
+              "fontSize": 15,
+              "axisLabels": "plane",
+              "itemType": "text",
+              "color": "#e67db0",
+              "showIndices": false,
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'dqNames'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'dqNames'), idx)",
+              "highlightExpr": "(dataTable('trace', frame, 'end') == 1 and idx == 0) or (dataTable('trace', frame, 'end') == 2 and idx == arrayCount(dataTable('trace', frame, 'dq')) - 1)"
+            },
+            {
+              "id": "dist",
+              "type": "array",
+              "label": "dist",
+              "codeSymbol": "dist",
+              "labelSide": "left",
+              "origin": [-2.3, -3.6, 0],
+              "cellSize": 1.0,
+              "fontSize": 15,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "itemType": "text",
+              "lengthExpr": "7",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'distText'), idx)",
+              "colorExpr": "(arrayAt(dataTable('trace', frame, 'dist'), idx) == 0 ? '#77bfae' : (arrayAt(dataTable('trace', frame, 'dist'), idx) == 1 ? '#6ea8e0' : (arrayAt(dataTable('trace', frame, 'dist'), idx) >= 2 ? '#e5a65c' : '')))",
+              "highlightExpr": "idx == dataTable('trace', frame, 'v') or idx == dataTable('trace', frame, 'u')"
+            },
+            {
+              "id": "dq-0",
+              "type": "text",
+              "text": "front ←",
+              "position": [-2.3, -1.3, 0],
+              "color": "#8aa0b8",
+              "fontSize": 11
+            },
+            {
+              "id": "dq-1",
+              "type": "text",
+              "text": "→ back",
+              "position": [2.4, -1.3, 0],
+              "color": "#8aa0b8",
+              "fontSize": 11
+            },
+            {
+              "id": "u",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'u') < 0 ? 'u: —' : concat('u = ', dataTable('trace', frame, 'u'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'u')"},
+              "codeRef": {"file": "zero-one-bfs", "line": 8}
+            },
+            {
+              "id": "v",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'v') < 0 ? 'v: —' : concat('v = ', dataTable('trace', frame, 'v'))",
+              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'v')"},
+              "codeRef": {"file": "zero-one-bfs", "line": 9}
+            },
+            {
+              "id": "w",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'w') < 0 ? 'w: —' : concat('w = ', dataTable('trace', frame, 'w'))",
+              "codeRef": {"file": "zero-one-bfs", "line": 9}
+            },
+            {
+              "id": "dist-v",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'v') < 0 ? 'dist[v]: —' : concat('dist[', dataTable('trace', frame, 'v'), '] = ', arrayAt(dataTable('trace', frame, 'distText'), dataTable('trace', frame, 'v')))",
+              "connectTo": {"object": "dist", "indexExpr": "dataTable('trace', frame, 'v')"},
+              "codeRef": {"file": "zero-one-bfs", "line": 11},
+              "highlightExpr": "dataTable('trace', frame, 'v') >= 0"
+            },
+            {
+              "id": "check",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'checkText')",
+              "codeRef": {"file": "zero-one-bfs", "line": 10},
+              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+            },
+            {
+              "id": "dq-len",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('len(dq) = ', arrayCount(dataTable('trace', frame, 'dq')))",
+              "connectTo": {"object": "dq", "indexExpr": "0"},
+              "codeRef": {"file": "zero-one-bfs", "line": 7}
+            },
+            {
+              "id": "result",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "concat('result: ', dataTable('trace', frame, 'result'))",
+              "codeRef": {"file": "zero-one-bfs", "line": 16}
+            }
+          ]
+        }
+      ],
+      "stepPlayback": {"slider": "frame", "intervalMs": 1200},
+      "codeRef": {"file": "zero-one-bfs", "lineExpr": "dataTable('trace', frame, 'line')"}
     },
     {
       "id": "a-star",
@@ -30476,7 +31327,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Guided search (A*)\n\n**Step 13** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** Dijkstra\n\n**Signal:** shortest path with a good estimate of the remaining distance, such as grid pathfinding.\n\nDijkstra ordered by distance so far **plus** a heuristic estimate of the distance left. With an admissible heuristic (never overestimating, like Manhattan distance on a grid) the first time the goal is popped is optimal, and far fewer nodes are explored.\n\n**Cost:** Same worst case as Dijkstra; usually much faster.\n\n*Visualization coming soon.*\n\n**Practice:** Shortest Path in a Grid with Obstacles Elimination, Sliding Puzzle.",
+      "markdown": "# Guided search (A*)\n\n**Tier:** Advanced (rare; worth recognizing) · **Builds on:** Dijkstra\n\n**Signal:** shortest path with a good estimate of the remaining distance, such as grid pathfinding.\n\nDijkstra ordered by distance so far **plus** a heuristic estimate of the distance left. With an admissible heuristic (never overestimating, like Manhattan distance on a grid) the first time the goal is popped is optimal, and far fewer nodes are explored.\n\n**Cost:** Same worst case as Dijkstra; usually much faster.\n\n*Visualization coming soon.*\n\n**Practice:** Shortest Path in a Grid with Obstacles Elimination, Sliding Puzzle.",
       "prompt": "Explain A*: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
       "elements": [
         {
@@ -30512,7 +31363,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Negative edges (Bellman-Ford)\n\n**Step 14** of 19 · **Tier:** Common (often asked) · **Builds on:** Dijkstra\n\n**Signal:** weights can be negative, at most k edges, or \"detect a negative cycle\".\n\nRelax every edge V − 1 times; after round i, every shortest path that uses at most i edges is found. If a round V still improves something, there is a negative cycle. Limiting the rounds to k (relaxing from a copy of the last round's distances) gives \"cheapest with at most k stops\".\n\n**Cost:** O(V · E).\n\n*Visualization coming soon.*\n\n**Practice:** Cheapest Flights Within K Stops, Network Delay Time.",
+      "markdown": "# Negative edges (Bellman-Ford)\n\n**Tier:** Common (often asked) · **Builds on:** Dijkstra\n\n**Signal:** weights can be negative, at most k edges, or \"detect a negative cycle\".\n\nRelax every edge V − 1 times; after round i, every shortest path that uses at most i edges is found. If a round V still improves something, there is a negative cycle. Limiting the rounds to k (relaxing from a copy of the last round's distances) gives \"cheapest with at most k stops\".\n\n**Cost:** O(V · E).\n\n*Visualization coming soon.*\n\n**Practice:** Cheapest Flights Within K Stops, Network Delay Time.",
       "prompt": "Explain Bellman-Ford: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
       "elements": [
         {
@@ -30548,7 +31399,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Every pair at once (Floyd-Warshall)\n\n**Step 15** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** Bellman-Ford\n\n**Signal:** shortest distances between every pair of nodes, on a small graph.\n\nDynamic programming over intermediate nodes: for each k, allow paths through node k and update dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j]). Three nested loops, k outermost.\n\n**Cost:** O(V³) time, O(V²) space.\n\n*Visualization coming soon.*\n\n**Practice:** Find the City With the Smallest Number of Neighbors at a Threshold Distance, Course Schedule IV.",
+      "markdown": "# Every pair at once (Floyd-Warshall)\n\n**Tier:** Advanced (rare; worth recognizing) · **Builds on:** Bellman-Ford\n\n**Signal:** shortest distances between every pair of nodes, on a small graph.\n\nDynamic programming over intermediate nodes: for each k, allow paths through node k and update dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j]). Three nested loops, k outermost.\n\n**Cost:** O(V³) time, O(V²) space.\n\n*Visualization coming soon.*\n\n**Practice:** Find the City With the Smallest Number of Neighbors at a Threshold Distance, Course Schedule IV.",
       "prompt": "Explain Floyd-Warshall: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
       "elements": [
         {
@@ -30584,7 +31435,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Critical edges (bridges and articulation points)\n\n**Step 16** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** DFS\n\n**Signal:** edges or nodes whose removal disconnects the graph: \"critical connections\".\n\nOne DFS records each node's discovery time and **low-link**, the earliest time reachable from its subtree with one back edge. Edge (u, v) is a bridge when low[v] > disc[u]: nothing below v climbs back above u.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Critical Connections in a Network.",
+      "markdown": "# Critical edges (bridges and articulation points)\n\n**Tier:** Advanced (rare; worth recognizing) · **Builds on:** DFS\n\n**Signal:** edges or nodes whose removal disconnects the graph: \"critical connections\".\n\nOne DFS records each node's discovery time and **low-link**, the earliest time reachable from its subtree with one back edge. Edge (u, v) is a bridge when low[v] > disc[u]: nothing below v climbs back above u.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Critical Connections in a Network.",
       "prompt": "Explain Bridges: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
       "elements": [
         {
@@ -30620,7 +31471,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Mutual reachability (strongly connected components)\n\n**Step 17** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** DFS, Bridges\n\n**Signal:** groups where every node reaches every other in a directed graph; condensing a graph into a DAG.\n\n**Kosaraju:** DFS for finish order, reverse the edges, then DFS in reverse finish order; each search is one component. **Tarjan:** one DFS with discovery times and low-links; a node whose low-link equals its own time roots a component.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Critical Connections in a Network (related), Count the Number of Complete Components.",
+      "markdown": "# Mutual reachability (strongly connected components)\n\n**Tier:** Advanced (rare; worth recognizing) · **Builds on:** DFS, Bridges\n\n**Signal:** groups where every node reaches every other in a directed graph; condensing a graph into a DAG.\n\n**Kosaraju:** DFS for finish order, reverse the edges, then DFS in reverse finish order; each search is one component. **Tarjan:** one DFS with discovery times and low-links; a node whose low-link equals its own time roots a component.\n\n**Cost:** O(V + E).\n\n*Visualization coming soon.*\n\n**Practice:** Critical Connections in a Network (related), Count the Number of Complete Components.",
       "prompt": "Explain Kosaraju / Tarjan: when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
       "elements": [
         {
@@ -30656,7 +31507,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Use every edge once (Hierholzer)\n\n**Step 18** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** Count degrees, DFS\n\n**Signal:** use every edge exactly once: itineraries, domino chains, \"valid arrangement of pairs\".\n\nA path exists when at most one node has out-degree − in-degree = 1 (the start) and one has −1 (the end). **Hierholzer:** walk unused edges until stuck, append the stuck node, then back up; reverse at the end.\n\n**Cost:** O(E).\n\n*Visualization coming soon.*\n\n**Practice:** Reconstruct Itinerary, Valid Arrangement of Pairs.",
+      "markdown": "# Use every edge once (Hierholzer)\n\n**Tier:** Advanced (rare; worth recognizing) · **Builds on:** Count degrees, DFS\n\n**Signal:** use every edge exactly once: itineraries, domino chains, \"valid arrangement of pairs\".\n\nA path exists when at most one node has out-degree − in-degree = 1 (the start) and one has −1 (the end). **Hierholzer:** walk unused edges until stuck, append the stuck node, then back up; reverse at the end.\n\n**Cost:** O(E).\n\n*Visualization coming soon.*\n\n**Practice:** Reconstruct Itinerary, Valid Arrangement of Pairs.",
       "prompt": "Explain Euler path (Hierholzer): when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
       "elements": [
         {
@@ -30692,7 +31543,7 @@
         "position": [1.5, 0, 15],
         "target": [1.5, 0, 0]
       },
-      "markdown": "# Push as much as fits (max flow, matching)\n\n**Step 19** of 19 · **Tier:** Advanced (rare; worth recognizing) · **Builds on:** BFS\n\n**Signal:** capacities on edges, assignments, bipartite matching.\n\nRepeatedly find a path from source to sink with spare capacity in the **residual graph** (BFS: Edmonds-Karp) and push flow along it. Max flow equals min cut. Bipartite matching is max flow with unit capacities. Rare in interviews; worth recognizing.\n\n**Cost:** Edmonds-Karp O(V · E²).\n\n*Visualization coming soon.*\n\n**Practice:** Maximum Students Taking Exam (matching).",
+      "markdown": "# Push as much as fits (max flow, matching)\n\n**Tier:** Advanced (rare; worth recognizing) · **Builds on:** BFS\n\n**Signal:** capacities on edges, assignments, bipartite matching.\n\nRepeatedly find a path from source to sink with spare capacity in the **residual graph** (BFS: Edmonds-Karp) and push flow along it. Max flow equals min cut. Bipartite matching is max flow with unit capacities. Rare in interviews; worth recognizing.\n\n**Cost:** Edmonds-Karp O(V · E²).\n\n*Visualization coming soon.*\n\n**Practice:** Maximum Students Taking Exam (matching).",
       "prompt": "Explain Max flow (Edmonds-Karp): when a problem calls for it, the core idea, and the common mistakes. This scene has no visualization yet.",
       "elements": [
         {
