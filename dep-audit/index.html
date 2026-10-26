@@ -112,23 +112,33 @@
 
 Release cooldown: **30 days** — set by [`uv.toml`](https://github.com/ibenian/algebench/blob/main/uv.toml) (`exclude-newer`), which uv applies to every command in this project. Nothing here restates the value; it is read from that file.
 
-_2026-10-20 03:04 UTC_
+_2026-10-26 15:59 UTC_
 
-## ⚠️ 5 advisory(s) found
+## ⚠️ 15 advisory(s) found
 
 | Package | Pinned | Advisory | CVE | Fixed in |
 |---|---|---|---|---|
 | `aiohttp` | `3.14.3` | [CVE-2026-111064](https://github.com/advisories/GHSA-5wr8-gcqf-gqf3) | — | `3.14.4` |
 | `aiohttp` | `3.14.3` | [GHSA-2g87-pp6c-29x5](https://osv.dev/vulnerability/GHSA-2g87-pp6c-29x5) | — | `3.14.4` |
 | `aiohttp` | `3.14.3` | [CVE-2026-111063](https://github.com/advisories/GHSA-494j-54xm-rwp3) | — | `3.14.4` |
+| `aiohttp` | `3.14.3` | [CVE-2026-111750](https://github.com/advisories/GHSA-pqxq-w44r-73xw) | — | `3.14.4` |
+| `aiohttp` | `3.14.3` | [CVE-2026-111066](https://github.com/advisories/GHSA-9xw5-w5jj-pvcg) | — | `3.14.4` |
+| `aiohttp` | `3.14.3` | [CVE-2026-111749](https://github.com/advisories/GHSA-gx76-c99x-2c96) | — | `3.14.4` |
+| `aiohttp` | `3.14.3` | [CVE-2026-111065](https://github.com/advisories/GHSA-6cjc-53gc-5rqm) | — | `3.14.4` |
+| `aiohttp` | `3.14.3` | [CVE-2026-111748](https://github.com/advisories/GHSA-f9xw-jh8m-3mwq) | — | `3.14.4` |
+| `certifi` | `2026.6.17` | [PYSEC-2026-4320](https://github.com/advisories/GHSA-6q48-6c7w-9gw2) | — | `2026.10.19` |
+| `filelock` | `3.29.4` | [CVE-2026-112940](https://github.com/advisories/GHSA-v4x8-3wr5-3wq8) | — | `4.2.1` |
+| `filelock` | `3.29.4` | [CVE-2026-112913](https://github.com/advisories/GHSA-9vhv-jxww-xfm5) | — | `4.2.1` |
+| `filelock` | `3.29.4` | [CVE-2026-112907](https://github.com/advisories/GHSA-567q-5qvw-pf92) | — | `4.2.1` |
 | `multidict` | `6.7.1` | [PYSEC-2026-4244](https://github.com/advisories/GHSA-54p9-h82j-f925) | CVE-2026-104874 | `6.9.1` |
+| `opentelemetry-api` | `1.42.1` | [CVE-2026-114603](https://github.com/advisories/GHSA-xcq7-p3pf-p88h) | — | `1.45.1` |
 | `pydantic-ai-slim` | `1.107.6` | [PYSEC-2026-4290](https://github.com/advisories/GHSA-v36g-jcw9-x7cw) | CVE-2026-107287 | `1.107.7, 2.52.0` |
 
 Take a fix with a targeted relock, then rebuild the venv:
 
 ```bash
 uv pip compile requirements.txt -o requirements.lock \
-    --universal --python-version 3.12 --no-header --upgrade-package aiohttp --upgrade-package multidict --upgrade-package pydantic-ai-slim
+    --universal --python-version 3.12 --no-header --upgrade-package aiohttp --upgrade-package certifi --upgrade-package filelock --upgrade-package multidict --upgrade-package opentelemetry-api --upgrade-package pydantic-ai-slim
 ./scripts/setup-venv.sh
 ```
 
@@ -142,82 +152,82 @@ uv pip compile requirements.txt -o requirements.lock \
 |---|---|---|---|---|
 | ⬆️ | `aiohappyeyeballs` | `2.6.2` | `2.7.1` | `2.7.1` |
 | ⏳ | `aiohttp` | `3.14.3` | `3.14.3` | `3.14.5` |
-| ⬆️ | `alembic` | `1.18.4` | `1.20.0` | `1.20.0` |
+| ⏳ | `alembic` | `1.18.4` | `1.20.0` | `1.20.1` |
 | ⬆️ | `annotated-doc` | `0.0.4` | `0.0.5` | `0.0.5` |
 | ⬆️ | `annotated-types` | `0.7.0` | `0.8.0` | `0.8.0` |
 | ⬆️ | `anyio` | `4.14.2` | `4.15.1` | `4.15.1` |
-| ⏳ | `cachetools` | `7.1.4` | `7.2.0` | `7.2.4` |
-| ⏳ | `certifi` | `2026.6.17` | `2026.7.22` | `2026.10.19` |
+| ⏳ | `cachetools` | `7.1.4` | `7.2.0` | `7.2.5` |
+| ⏳ | `certifi` | `2026.6.17` | `2026.7.22` | `2026.10.23` |
 | ⬆️ | `cffi` | `2.0.0` | `2.1.1` | `2.1.1` |
 | ⏳ | `charset-normalizer` | `3.4.7` | `3.5.1` | `3.5.2` |
 | ⬆️ | `click` | `8.4.1` | `8.5.0` | `8.5.0` |
 | ⬆️ | `colorlog` | `6.10.1` | `6.12.0` | `6.12.0` |
 | ⏳ | `cryptography` | `50.0.0` | `50.0.1` | `50.0.2` |
-| ⏳ | `dspy` | `3.2.1` | `3.3.1` | `3.4.1` |
-| ⏳ | `fastapi` | `0.138.0` | `0.141.1` | `0.150.0` |
-| ⏳ | `filelock` | `3.29.4` | `4.0.1` | `4.2.4` |
-| ⏳ | `genai-prices` | `0.0.66` | `0.1.7` | `0.1.13` |
+| ⏳ | `dspy` | `3.2.1` | `3.4.0` | `3.4.1` |
+| ⏳ | `fastapi` | `0.138.0` | `0.141.1` | `0.162.0` |
+| ⏳ | `filelock` | `3.29.4` | `4.0.4` | `4.2.4` |
+| ⏳ | `genai-prices` | `0.0.66` | `0.1.9` | `0.1.13` |
 | ⬆️ | `gepa` | `0.0.27` | `0.1.4` | `0.1.4` |
-| ⏳ | `google-api-core` | `2.31.0` | `2.38.0` | `2.42.0` |
-| ⏳ | `google-auth` | `2.58.0` | `2.58.0` | `2.62.0` |
+| ⏳ | `google-api-core` | `2.31.0` | `2.39.0` | `2.43.0` |
+| ⏳ | `google-auth` | `2.58.0` | `2.58.1` | `2.62.0` |
 | ⏳ | `google-cloud-core` | `2.6.0` | `2.7.0` | `2.8.0` |
-| ⏳ | `google-cloud-storage` | `3.12.1` | `3.14.1` | `3.17.1` |
-| ⏳ | `google-crc32c` | `1.8.0` | `1.8.0` | `1.9.0` |
+| ⏳ | `google-cloud-storage` | `3.12.1` | `3.15.0` | `3.17.1` |
+| ⬆️ | `google-crc32c` | `1.8.0` | `1.9.0` | `1.9.0` |
+| 🔒 | `google-genai` | `2.25.0` | `2.26.0` | `2.33.0` |
 | ⏳ | `google-resumable-media` | `2.10.0` | `2.10.2` | `2.11.0` |
-| ⏳ | `googleapis-common-protos` | `1.75.0` | `1.75.3` | `1.75.5` |
-| ⏳ | `greenlet` | `3.5.5` | `3.5.6` | `3.5.6` |
-| ⏳ | `griffelib` | `2.1.0` | `2.3.0` | `2.4.0` |
+| ⏳ | `googleapis-common-protos` | `1.75.0` | `1.75.4` | `1.76.0` |
+| ⏳ | `griffelib` | `2.1.0` | `2.3.0` | `2.4.1` |
 | ⏳ | `hf-xet` | `1.5.1` | `1.6.0` | `1.7.0` |
-| ⏳ | `httpcore2` | `2.12.0` | `2.13.0` | `2.15.1` |
+| ⏳ | `httpcore2` | `2.12.0` | `2.13.1` | `2.16.0` |
 | ⏳ | `httptools` | `0.8.0` | `0.8.0` | `0.9.0` |
-| ⏳ | `httpx2` | `2.12.0` | `2.13.0` | `2.15.1` |
-| ⏳ | `huggingface-hub` | `1.20.1` | `1.32.0` | `2.2.0` |
+| ⏳ | `httpx2` | `2.12.0` | `2.13.1` | `2.16.0` |
+| ⏳ | `huggingface-hub` | `1.20.1` | `1.33.0` | `2.3.0` |
 | ⬆️ | `idna` | `3.18` | `3.20` | `3.20` |
-| ⬆️ | `jiter` | `0.15.0` | `0.17.0` | `0.17.0` |
-| ⏳ | `json-repair` | `0.61.0` | `0.63.4` | `0.64.1` |
-| ⏳ | `logfire-api` | `4.37.0` | `5.1.0` | `5.2.0` |
-| ⏳ | `mako` | `1.3.12` | `1.4.1` | `1.4.3` |
+| ⏳ | `jiter` | `0.15.0` | `0.17.0` | `0.18.0` |
+| ⏳ | `json-repair` | `0.61.0` | `0.63.5` | `0.64.2` |
+| ⏳ | `logfire-api` | `4.37.0` | `5.1.1` | `5.4.0` |
+| ⬆️ | `mako` | `1.3.12` | `1.4.3` | `1.4.3` |
 | ⏳ | `markupsafe` | `3.0.3` | `3.0.3` | `3.0.4` |
-| ⏳ | `multidict` | `6.7.1` | `6.9.0` | `7.1.0` |
+| ⏳ | `multidict` | `6.7.1` | `6.9.1` | `7.2.1` |
 | ⏳ | `numpy` | `2.4.6` | `2.5.3` | `2.5.4` |
-| 🔒 | `openai` | `2.43.0` | `2.54.0` | `3.35.1` |
-| ⏳ | `opentelemetry-api` | `1.42.1` | `1.44.0` | `1.45.1` |
+| 🔒 | `openai` | `2.43.0` | `2.54.0` | `3.37.0` |
+| ⏳ | `opentelemetry-api` | `1.42.1` | `1.45.0` | `1.45.1` |
 | ⬆️ | `optuna` | `4.9.0` | `5.0.0` | `5.0.0` |
 | ⏳ | `orjson` | `3.11.9` | `3.12.0` | `3.13.0` |
 | ⬆️ | `packaging` | `26.2` | `26.3` | `26.3` |
 | ⬆️ | `propcache` | `0.5.2` | `0.5.4` | `0.5.4` |
 | ⏳ | `proto-plus` | `1.28.1` | `1.28.4` | `1.29.0` |
 | ⬆️ | `protobuf` | `7.35.1` | `7.36.2` | `7.36.2` |
-| ⏳ | `pycparser` | `3.0` | `3.0` | `3.11` |
+| ⏳ | `pycparser` | `3.0` | `3.0` | `3.12` |
 | ⏳ | `pydantic` | `2.13.4` | `2.13.5` | `2.14.1` |
-| ⏳ | `pydantic-ai-slim` | `1.107.6` | `1.107.6` | `2.57.0` |
+| ⏳ | `pydantic-ai-slim` | `1.107.6` | `1.107.6` | `2.61.0` |
 | ⏳ | `pydantic-core` | `2.46.4` | `2.46.5` | `2.50.1` |
-| ⏳ | `pydantic-graph` | `1.107.6` | `1.107.6` | `2.57.0` |
+| ⏳ | `pydantic-graph` | `1.107.6` | `1.107.6` | `2.61.0` |
 | ⬆️ | `pygments` | `2.20.0` | `2.21.0` | `2.21.0` |
 | ⏳ | `python-dotenv` | `1.2.2` | `1.2.3` | `1.2.4` |
 | ⏳ | `regex` | `2026.5.9` | `2026.9.10` | `2026.9.29` |
 | ⏳ | `rpds-py` | `2026.5.1` | `2026.6.3` | `2026.9.1` |
 | ⬆️ | `sounddevice` | `0.5.5` | `0.5.6` | `0.5.6` |
-| ⏳ | `sqlalchemy` | `2.0.51` | `2.0.54` | `2.1.5` |
-| ⏳ | `starlette` | `1.3.1` | `1.6.0` | `1.9.0` |
+| ⏳ | `sqlalchemy` | `2.0.51` | `2.1.1` | `2.1.6` |
+| ⏳ | `starlette` | `1.3.1` | `1.7.0` | `1.10.0` |
 | ⬆️ | `tiktoken` | `0.13.0` | `0.14.0` | `0.14.0` |
 | ⏳ | `tokenizers` | `0.23.1` | `0.23.2` | `0.23.3` |
 | ⬆️ | `tqdm` | `4.68.3` | `4.70.1` | `4.70.1` |
 | ⏳ | `truststore` | `0.10.4` | `0.10.4` | `0.10.5` |
 | ⬆️ | `typing-extensions` | `4.15.0` | `4.16.0` | `4.16.0` |
 | ⬆️ | `typing-inspection` | `0.4.2` | `0.4.4` | `0.4.4` |
-| ⏳ | `uvicorn` | `0.49.0` | `0.53.0` | `0.54.0` |
+| ⬆️ | `uvicorn` | `0.49.0` | `0.54.0` | `0.54.0` |
 | ⏳ | `uvloop` | `0.22.1` | `0.22.1` | `0.23.0` |
-| ⏳ | `watchfiles` | `1.2.0` | `1.2.0` | `1.3.0` |
+| ⬆️ | `watchfiles` | `1.2.0` | `1.3.0` | `1.3.0` |
 | 🔒 | `websockets` | `16.0` | `16.1.1` | `17.3` |
 | ⬆️ | `yarl` | `1.24.2` | `1.25.1` | `1.25.1` |
-| ⏳ | `zipp` | `4.1.0` | `4.1.0` | `4.1.1` |
+| ⏳ | `zipp` | `4.1.0` | `4.1.0` | `4.1.2` |
 
 ### How to read this
 
-- ⬆️ **Ready** (22) — a newer release has cleared the 30 days cooldown. Take it with a targeted relock.
-- ⏳ **Cooling** (48) — something newer exists but is younger than 30 days. **This is the policy working, not a problem.** Compromised packages are usually caught and yanked within hours to days; waiting removes most of that exposure.
-- 🔒 **Capped** (2) — the cooldown is not what is holding this back; a constraint in `requirements.txt` (or a transitive dependency's own pin) is. Loosening the range is the only way forward.
+- ⬆️ **Ready** (24) — a newer release has cleared the 30 days cooldown. Take it with a targeted relock.
+- ⏳ **Cooling** (45) — something newer exists but is younger than 30 days. **This is the policy working, not a problem.** Compromised packages are usually caught and yanked within hours to days; waiting removes most of that exposure.
+- 🔒 **Capped** (3) — the cooldown is not what is holding this back; a constraint in `requirements.txt` (or a transitive dependency's own pin) is. Loosening the range is the only way forward.
 - 🔻 **Backwards** (0) — a relock would move this to an *older* release, because the current pin is itself younger than 30 days (a security fix taken deliberately). Older releases carry more advisories, never fewer — check the diff before committing any relock while this row is present.
 - ✅ **Current** — nothing newer exists.
 
