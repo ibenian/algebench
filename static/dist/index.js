@@ -9367,7 +9367,24 @@ function setupStepPlayer() {
 		opening = !narrator.on;
 		narrator.set(!narrator.on);
 		paintNarrate();
+		watchNarration();
 	};
+	let watching = null;
+	function watchNarration() {
+		const paint = () => {
+			const mode = !narrator.on ? "" : window.algebenchTTSActive?.() ? "speaking" : narrator.busy ? "thinking" : "";
+			if ((narrate.dataset.ai ?? "") !== mode) {
+				if (mode) narrate.dataset.ai = mode;
+				else delete narrate.dataset.ai;
+			}
+			if (!narrator.on && watching !== null) {
+				clearInterval(watching);
+				watching = null;
+			}
+		};
+		if (narrator.on && watching === null) watching = setInterval(paint, WAIT_MS);
+		paint();
+	}
 	window.algebenchNarrating = () => narrator.on;
 	paintNarrate();
 	const interval = () => (config?.intervalMs ?? 900) / Number(speed.value || 1);
@@ -9466,6 +9483,7 @@ function setupStepPlayer() {
 		if (shownAt && at.split("/")[0] !== shownAt.split("/")[0] && narrator.on) {
 			narrator.set(false);
 			paintNarrate();
+			watchNarration();
 		}
 		shownAt = at;
 		config = (state.lessonSpec?.scenes?.[state.currentSceneIndex])?.stepPlayback;
@@ -9481,6 +9499,7 @@ function setupStepPlayer() {
 		if (narrator.on) {
 			narrator.set(false);
 			paintNarrate();
+			watchNarration();
 		}
 	});
 	window.addEventListener("algebench:navchange", refresh);

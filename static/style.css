@@ -5803,6 +5803,25 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 #state-player .state-player-narrate[data-tip]::after { left: auto; right: 0; transform: none; }
 /* Narrate toggle: lit while the tutor narrates each state. */
 #state-player .state-player-narrate[aria-pressed="true"] { color: var(--accent-color); border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 14%, transparent); }
+/* While narrating, what playback waits on: a ring sweeping round the button while the tutor thinks, rings
+   pulsing out from it while it speaks. */
+#state-player .state-player-narrate[data-ai]::before {
+    content: ''; position: absolute; inset: -3px; border-radius: 7px; pointer-events: none;
+}
+#state-player .state-player-narrate[data-ai="thinking"]::before {
+    padding: 2px; background: conic-gradient(from var(--ai-sweep, 0deg), transparent 0 55%, var(--accent-color) 85%, #fff4c9 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: narrate-think 1.1s linear infinite;
+}
+#state-player .state-player-narrate[data-ai="speaking"]::before {
+    border: 1px solid var(--accent-color); animation: speak-ring 1.2s ease-out infinite;
+}
+#state-player .state-player-narrate[data-ai="speaking"] svg { animation: speak-pulse 1.2s ease-in-out infinite; }
+@property --ai-sweep { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes narrate-think { to { --ai-sweep: 360deg; } }
+@media (prefers-reduced-motion: reduce) {
+    #state-player .state-player-narrate[data-ai]::before, #state-player .state-player-narrate[data-ai] svg { animation: none; }
+}
 #state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); cursor: pointer; }
 #state-player input:disabled { cursor: default; }
 #state-player output { white-space: nowrap; font: 12px ui-monospace, monospace; }

@@ -68,7 +68,19 @@ export function setupStepPlayer(): void {
     });
     // opening: the next narration is the first since narration was turned on.
     let opening=false;
-    narrate.onclick=()=>{opening=!narrator.on;narrator.set(!narrator.on);paintNarrate();};
+    narrate.onclick=()=>{opening=!narrator.on;narrator.set(!narrator.on);paintNarrate();watchNarration();};
+    // While narrating, the button shows what playback waits on: the tutor thinking (its reply not yet in and
+    // spoken) or speaking (style.css). Checked every WAIT_MS while narration is on.
+    let watching:ReturnType<typeof setInterval>|null=null;
+    function watchNarration(){
+        const paint=()=>{
+            const mode=!narrator.on?'':window.algebenchTTSActive?.()?'speaking':narrator.busy?'thinking':'';
+            if((narrate.dataset.ai??'')!==mode){if(mode)narrate.dataset.ai=mode;else delete narrate.dataset.ai;}
+            if(!narrator.on&&watching!==null){clearInterval(watching);watching=null;}
+        };
+        if(narrator.on&&watching===null)watching=setInterval(paint,WAIT_MS);
+        paint();
+    }
     // Narration speaks for itself: the Chat tab's welcome stays quiet while it is on.
     window.algebenchNarrating=()=>narrator.on;
     paintNarrate();
@@ -124,7 +136,7 @@ export function setupStepPlayer(): void {
         const at=`${state.currentSceneIndex}/${state.currentStepIndex}`;
         if(at!==shownAt||timer===null)pause();
         // Narration belongs to the scene it was turned on in: a new scene starts quiet, not narrating on its own.
-        if(shownAt&&at.split('/')[0]!==shownAt.split('/')[0]&&narrator.on){narrator.set(false);paintNarrate();}
+        if(shownAt&&at.split('/')[0]!==shownAt.split('/')[0]&&narrator.on){narrator.set(false);paintNarrate();watchNarration();}
         shownAt=at;
         config=(state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined)?.stepPlayback;
         speed.hidden=!config?.speedControl;
@@ -137,7 +149,7 @@ export function setupStepPlayer(): void {
     }
     window.addEventListener('algebench:playbackpause',pause);
     // A conversation the reader now drives (interview, quiz): narration would answer each new state over it.
-    window.addEventListener('algebench:narrationoff',()=>{if(narrator.on){narrator.set(false);paintNarrate();}});
+    window.addEventListener('algebench:narrationoff',()=>{if(narrator.on){narrator.set(false);paintNarrate();watchNarration();}});
     window.addEventListener('algebench:navchange',refresh);
     window.addEventListener('algebench:sliderchange',render);
     document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
