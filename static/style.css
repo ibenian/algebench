@@ -5695,13 +5695,16 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-inline-on-hover .code-line:hover .code-inline-values { visibility: visible; }
 .code-line.execution-line .code-inline-value { color: var(--text-color); border-color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
 .code-inline-float {
-    position: fixed; z-index: 10060; transform: translateY(-50%);
+    position: fixed; z-index: 10060; pointer-events: none; transform: translateY(-50%);
     /* The line's own flex layout and line height, so its parts sit exactly where they do in the line. */
     display: flex; padding: 0; border-radius: 7px;
     background: var(--panel-bg); box-shadow: 0 4px 14px #0006; font: 12px/1.9 ui-monospace, monospace;
 }
 .code-inline-float[hidden] { display: none; }
 .code-inline-float .ai-ask-btn { opacity: 1; }
+/* The float lets the pointer through over the line's code, so its variables still show their values on hover;
+   its values and ✦ buttons take it, so following them past the code view's edge keeps the float up. */
+.code-inline-float .code-inline-values, .code-inline-float .ai-ask-btn { pointer-events: auto; }
 .code-inline-float .code-inline-value { max-width: none; overflow: visible; color: var(--text-color); }
 .code-inline-float-code { white-space: pre; font: 12px/1.9 ui-monospace, monospace; padding: 0 14px 0 0; color: var(--text-color); }
 .code-inline-float.executing { background: color-mix(in srgb, var(--accent-color) 13%, var(--panel-bg)); }
@@ -5819,8 +5822,13 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 #state-player .state-player-narrate[data-ai="speaking"] svg { animation: speak-pulse 1.2s ease-in-out infinite; }
 @property --ai-sweep { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 @keyframes narrate-think { to { --ai-sweep: 360deg; } }
+/* Reduced motion: nothing sweeps or grows; the ring fades in and out instead, once a second, so the wait
+   still shows. */
+@keyframes narrate-fade { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-    #state-player .state-player-narrate[data-ai]::before, #state-player .state-player-narrate[data-ai] svg { animation: none; }
+    #state-player .state-player-narrate[data-ai="thinking"]::before { --ai-sweep: 0deg; background: var(--accent-color); animation: narrate-fade 1s ease-in-out infinite; }
+    #state-player .state-player-narrate[data-ai="speaking"]::before { animation: narrate-fade 1s ease-in-out infinite; }
+    #state-player .state-player-narrate[data-ai] svg { animation: none; }
 }
 #state-player input { flex: 1; min-width: 30px; accent-color: var(--accent-color); cursor: pointer; }
 #state-player input:disabled { cursor: default; }

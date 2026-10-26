@@ -758,9 +758,9 @@ export function setupCodePanel(): void {
     body.addEventListener('pointerover',event=>floatLine((event.target as HTMLElement).closest<HTMLElement>('.code-line')));
     // Onto the float (its ✦ buttons) is not away from the line.
     body.addEventListener('pointerleave',event=>{if(!float.contains(event.relatedTarget as Node))floatLine(null);});
-    // The float takes the pointer, so it stays up while the reader follows a long line past the code view's edge,
-    // and goes when they leave it for anywhere but the code view. Pressing on it (not on a ✦) gets it out of the way
-    // of a selection, as pressing on the line itself does.
+    // The float's values and ✦ buttons take the pointer (its code lets it through to the line's), so it stays up
+    // while the reader follows a long line past the code view's edge, and goes when they leave it for anywhere but
+    // the code view. Pressing on its values gets it out of the way of a selection, as pressing on the line does.
     float.addEventListener('pointerleave',event=>{if(!body.contains(event.relatedTarget as Node))floatLine(null);});
     float.addEventListener('pointerdown',event=>{if(!(event.target as Element).closest('.ai-ask-btn')){selecting=true;floatLine(null);}});
     body.addEventListener('scroll',()=>floatLine(null));
