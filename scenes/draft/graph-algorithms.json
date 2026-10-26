@@ -28733,6 +28733,52 @@
             "pair": [5, 6]
           }
         ],
+        "mstEdges": [
+          {
+            "name": "4:0–1",
+            "pair": [0, 1]
+          },
+          {
+            "name": "8:1–2",
+            "pair": [1, 2]
+          },
+          {
+            "name": "7:0–3",
+            "pair": [0, 3]
+          },
+          {
+            "name": "2:1–4",
+            "pair": [1, 4]
+          },
+          {
+            "name": "6:2–4",
+            "pair": [2, 4]
+          },
+          {
+            "name": "5:2–5",
+            "pair": [2, 5]
+          },
+          {
+            "name": "9:3–4",
+            "pair": [3, 4]
+          },
+          {
+            "name": "1:4–5",
+            "pair": [4, 5]
+          },
+          {
+            "name": "3:3–6",
+            "pair": [3, 6]
+          },
+          {
+            "name": "10:4–6",
+            "pair": [4, 6]
+          },
+          {
+            "name": "11:5–6",
+            "pair": [5, 6]
+          }
+        ],
         "ufPalette": [
           {"c": "#6ea8e0"},
           {"c": "#e5a65c"},
@@ -28787,12 +28833,29 @@
               "connectTo": {"indexExpr": "dataTable('mstNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#3e4855", "colorExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? '#f1c65b' : ((keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? '#77bfae' : ((keyIndex(dataTable('trace', frame, 'rejected'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'rejected'), [to, idx]) >= 0) ? '#e06c75' : ''))", "highlightExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a')))", "widthExpr": "(keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? 3.2 : (((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? 2.4 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}
             },
             {
+              "id": "edges",
+              "type": "array",
+              "label": "edges",
+              "codeSymbol": "edges",
+              "labelSide": "left",
+              "origin": [-2.3, -1.7, 0],
+              "cellSize": 1.0,
+              "fontSize": 12,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "itemType": "text",
+              "lengthExpr": "11",
+              "valueExpr": "dataTable('mstEdges', idx, 'name')",
+              "colorExpr": "keyIndex(dataTable('trace', frame, 'tree'), dataTable('mstEdges', idx, 'pair')) >= 0 ? '#77bfae' : (keyIndex(dataTable('trace', frame, 'rejected'), dataTable('mstEdges', idx, 'pair')) >= 0 ? '#e06c75' : '')",
+              "highlightExpr": "dataTable('trace', frame, 'ei') >= 0 and keyIndex([dataTable('mstEdges', idx, 'pair')], [dataTable('trace', frame, 'a'), dataTable('trace', frame, 'b')]) >= 0"
+            },
+            {
               "id": "sorted",
               "type": "array",
               "label": "sorted",
               "codeSymbol": "sorted(edges)",
               "labelSide": "left",
-              "origin": [-2.3, -1.7, 0],
+              "origin": [-2.3, -3.0, 0],
               "cellSize": 1.0,
               "fontSize": 14,
               "indexFontSize": 10,
@@ -28809,7 +28872,7 @@
               "label": "parent",
               "codeSymbol": "parent",
               "labelSide": "left",
-              "origin": [-2.3, -3.0, 0],
+              "origin": [-2.3, -4.3, 0],
               "cellSize": 1.0,
               "fontSize": 15,
               "indexFontSize": 10,
@@ -28825,7 +28888,7 @@
               "label": "tree",
               "codeSymbol": "tree",
               "labelSide": "left",
-              "origin": [-2.3, -4.3, 0],
+              "origin": [-2.3, -5.6, 0],
               "cellSize": 1.15,
               "fontSize": 16,
               "axisLabels": "plane",

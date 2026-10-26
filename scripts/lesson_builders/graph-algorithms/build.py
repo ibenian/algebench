@@ -2531,18 +2531,25 @@ def mst_scene(header):
     k = tr
     kcur = f"((idx == {k('a')} and to == {k('b')}) or (idx == {k('b')} and to == {k('a')}))"
     sorted_edges = sorted((w, a, b) for a, b, w in MST_EDGES)
+    # An edge's colour once Kruskal has decided it (taken or skipped), keyed by its [a, b] in the given table.
+    decided = lambda table: (f"keyIndex({k('tree')}, dataTable('{table}', idx, 'pair')) >= 0 ? '{MST_TREE}' : "
+                             f"(keyIndex({k('rejected')}, dataTable('{table}', idx, 'pair')) >= 0 ? '{MST_REJECT}' : '')")
     kruskal = [
         graph(f"dataTable('ufPalette', arrayAt({k('root')}, idx), 'c')", kcur, either(k('tree')), either(k('rejected')), MST_REJECT),
-        {'id': 'sorted', 'type': 'array', 'label': 'sorted', 'codeSymbol': 'sorted(edges)', 'labelSide': 'left', 'origin': [-2.3, -1.7, 0],
+        # The input as given, (w, a, b) per edge in no order; sorted below is the same list by weight.
+        {'id': 'edges', 'type': 'array', 'label': 'edges', 'codeSymbol': 'edges', 'labelSide': 'left', 'origin': [-2.3, -1.7, 0],
+         'cellSize': 1.0, 'fontSize': 12, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(len(MST_EDGES)),
+         'valueExpr': "dataTable('mstEdges', idx, 'name')", 'colorExpr': decided('mstEdges'),
+         'highlightExpr': f"{k('ei')} >= 0 and keyIndex([dataTable('mstEdges', idx, 'pair')], [{k('a')}, {k('b')}]) >= 0"},
+        {'id': 'sorted', 'type': 'array', 'label': 'sorted', 'codeSymbol': 'sorted(edges)', 'labelSide': 'left', 'origin': [-2.3, -3.0, 0],
          'cellSize': 1.0, 'fontSize': 14, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(len(sorted_edges)),
          'valueExpr': "dataTable('mstSorted', idx, 'name')",
-         'colorExpr': f"keyIndex({k('tree')}, dataTable('mstSorted', idx, 'pair')) >= 0 ? '{MST_TREE}' : "
-                      f"(keyIndex({k('rejected')}, dataTable('mstSorted', idx, 'pair')) >= 0 ? '{MST_REJECT}' : '')",
+         'colorExpr': decided('mstSorted'),
          'highlightExpr': f"idx == {k('ei')}"},
-        {'id': 'parent', 'type': 'array', 'label': 'parent', 'codeSymbol': 'parent', 'labelSide': 'left', 'origin': [-2.3, -3.0, 0], 'cellSize': 1.0,
+        {'id': 'parent', 'type': 'array', 'label': 'parent', 'codeSymbol': 'parent', 'labelSide': 'left', 'origin': [-2.3, -4.3, 0], 'cellSize': 1.0,
          'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(MST_N), 'valueExpr': f"arrayAt({k('parent')}, idx)",
          'colorExpr': f"dataTable('ufPalette', arrayAt({k('root')}, idx), 'c')", 'highlightExpr': f"idx == {k('rb')} and {k('line')} == {LK('parent[rb] = ra')}"},
-        pairs('tree', 'tree', k('treeNames'), -4.3, MST_TREE),
+        pairs('tree', 'tree', k('treeNames'), -5.6, MST_TREE),
         label('w', f"{k('w')} < 0 ? 'w: —' : concat('w = ', {k('w')})", None, LK('for w, a, b in sorted(edges)'), 'mst'),
         label('a', f"{k('a')} < 0 ? 'a: —' : concat('a = ', {k('a')})", ['graph', k('a')], LK('for w, a, b in sorted(edges)'), 'mst'),
         label('b', f"{k('b')} < 0 ? 'b: —' : concat('b = ', {k('b')})", ['graph', k('b')], LK('for w, a, b in sorted(edges)'), 'mst'),
@@ -2601,6 +2608,7 @@ Both find the same total, **22**, here even the same tree: with distinct weights
         'Explain the cut property and why each greedy choice is safe. Ask the learner to predict which edge Kruskal takes or skips next, and which edge Prim pops next.',
         'mst.py', MST_SOURCE, ktrace, kruskal, sections=mst_sections(),
         data={'mstNodes': nodes, 'mstSorted': [{'name': f'{a}–{b}', 'pair': [a, b]} for _, a, b in sorted_edges],
+              'mstEdges': [{'name': f'{w}:{a}–{b}', 'pair': [a, b]} for a, b, w in MST_EDGES],
               'ufPalette': [{'c': col} for col in UF_PALETTE]},
         first={'title': 'Kruskal: cheapest edge first', 'description': 'Take each edge that joins two groups.'},
         more=[{'id': 'prim', 'title': 'Prim: grow one tree', 'description': 'Always add the cheapest edge leaving the tree.',
