@@ -590,7 +590,7 @@ function setupChat(): void {
             if (text && !chatSending) {
                 input.value = '';
                 input.style.height = 'auto';
-                sendChatMessage(text);
+                sendChatMessage(text, { typed: true });
             }
         }
     });
@@ -606,7 +606,7 @@ function setupChat(): void {
         if (text && !chatSending) {
             input.value = '';
             input.style.height = 'auto';
-            sendChatMessage(text);
+            sendChatMessage(text, { typed: true });
         }
     });
 }
@@ -935,7 +935,7 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
  */
 const sendChatMessage = singleFlightSender(() => chatSending, _sendTurn);
 
-async function _sendTurn(text: string, { silent, noTools, display }: { silent: boolean; noTools: boolean; display?: string }): Promise<void> {
+async function _sendTurn(text: string, { silent, noTools, display, typed }: { silent: boolean; noTools: boolean; display?: string; typed?: boolean }): Promise<void> {
     setChatSending(true);
     if (!silent) {
         addChatMessage('user', display ?? text);
@@ -956,6 +956,7 @@ async function _sendTurn(text: string, { silent, noTools, display }: { silent: b
         history: silent ? chatHistory : chatHistory.slice(0, -1),
         context: context,
         ...(noTools ? { noTools: true } : {}),
+        ...(typed ? { typed: true } : {}),
     };
 
     try {

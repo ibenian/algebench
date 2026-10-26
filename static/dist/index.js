@@ -31821,10 +31821,11 @@ function singleFlightSender(isBusy, sendTurn) {
 		const next = queued.shift();
 		if (next) send(next.text, {
 			noTools: next.noTools,
-			display: next.display
+			display: next.display,
+			typed: next.typed
 		}).then(next.resolve, () => next.resolve(false));
 	}
-	function send(text, { silent = false, noTools = false, display } = {}) {
+	function send(text, { silent = false, noTools = false, display, typed } = {}) {
 		if (isBusy()) {
 			if (silent) return Promise.resolve(false);
 			if (active && active.text === text && active.noTools === noTools) return active.done;
@@ -31838,6 +31839,7 @@ function singleFlightSender(isBusy, sendTurn) {
 				text,
 				noTools,
 				display,
+				typed,
 				done,
 				resolve
 			});
@@ -31855,7 +31857,8 @@ function singleFlightSender(isBusy, sendTurn) {
 		turn.done = sendTurn(text, {
 			silent,
 			noTools,
-			...display !== void 0 ? { display } : {}
+			...display !== void 0 ? { display } : {},
+			...typed ? { typed } : {}
 		}).then(() => {
 			settle();
 			return true;
@@ -32639,7 +32642,7 @@ function setupChat() {
 			if (text && !chatSending) {
 				input.value = "";
 				input.style.height = "auto";
-				sendChatMessage$1(text);
+				sendChatMessage$1(text, { typed: true });
 			}
 		}
 	});
@@ -32652,7 +32655,7 @@ function setupChat() {
 		if (text && !chatSending) {
 			input.value = "";
 			input.style.height = "auto";
-			sendChatMessage$1(text);
+			sendChatMessage$1(text, { typed: true });
 		}
 	});
 }
@@ -32897,7 +32900,7 @@ function showBuiltScene(lesson, index, step) {
 * is queued and a silent one is turned away with `false`.
 */
 var sendChatMessage$1 = singleFlightSender(() => chatSending, _sendTurn);
-async function _sendTurn(text, { silent, noTools, display }) {
+async function _sendTurn(text, { silent, noTools, display, typed }) {
 	setChatSending(true);
 	if (!silent) {
 		addChatMessage("user", display ?? text);
@@ -32910,7 +32913,8 @@ async function _sendTurn(text, { silent, noTools, display }) {
 		message: text,
 		history: silent ? chatHistory : chatHistory.slice(0, -1),
 		context,
-		...noTools ? { noTools: true } : {}
+		...noTools ? { noTools: true } : {},
+		...typed ? { typed: true } : {}
 	};
 	try {
 		const res = await fetch("/api/chat", {

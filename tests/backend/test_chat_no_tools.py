@@ -174,3 +174,13 @@ def test_the_next_step_shortcut_reply_is_cleaned_too(monkeypatch):
     text, tool_calls, _ = server.call_gemini_chat("next", [], {"currentScene": {"steps": [{}, {}]}})
     assert text == "Now the light clock ticks."
     assert ("set_preset_prompts", {"prompts": ["Why slower?"]}) in [(c["name"], c.get("args")) for c in tool_calls]
+
+
+def test_a_typed_turn_asks_the_tutor_to_echo_the_question(monkeypatch):
+    """A message the learner typed gets the echo rule in its system prompt; a preset or app request does not."""
+    models = _wire(monkeypatch)
+    monkeypatch.setattr(server, "_detect_navigation", lambda *_a, **_k: None)
+    server.call_gemini_chat("so it sorts by all fields?", [], {}, typed=True)
+    server.call_gemini_chat("Describe the problem", [], {})
+    assert server.TYPED_QUESTION_NOTE in models.configs[0].system_instruction
+    assert server.TYPED_QUESTION_NOTE not in models.configs[1].system_instruction

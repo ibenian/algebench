@@ -28899,6 +28899,13 @@
               "valueExpr": "arrayAt(dataTable('trace', frame, 'treeNames'), idx)"
             },
             {
+              "id": "n",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "'n = 7'",
+              "codeRef": {"file": "mst", "line": 3}
+            },
+            {
               "id": "w",
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
@@ -29047,6 +29054,13 @@
               "showIndices": false,
               "lengthExpr": "arrayCount(dataTable('mst_prim', frame, 'treeNames'))",
               "valueExpr": "arrayAt(dataTable('mst_prim', frame, 'treeNames'), idx)"
+            },
+            {
+              "id": "n",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "'n = 7'",
+              "codeRef": {"file": "mst", "line": 24}
             },
             {
               "id": "w",

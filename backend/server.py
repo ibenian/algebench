@@ -972,6 +972,14 @@ NO_TOOLS_NOTE = (
     "prompts."
 )
 
+TYPED_QUESTION_NOTE = (
+    "\n\n## The learner typed this message\n"
+    "If it asks something, open your reply by briefly echoing the question in your own words, so it is clear what "
+    "you are answering, then answer it in the same breath: \"Does it sort by all fields? Yes, exactly ...\" or "
+    "\"To your question of whether it sorts by all fields: yes, ...\". Keep the echo to one short clause, vary how "
+    "you phrase it, and skip it for a greeting, a thank-you or an instruction."
+)
+
 _TOOL_CODE_BLOCK = re.compile(
     r"<tool_code>.*?(?:</tool_code>|$)|```tool_code\b.*?(?:```|$)", re.DOTALL | re.IGNORECASE)
 
@@ -1124,7 +1132,7 @@ from backend.proof_chat import (  # noqa: E402
     call_proof_chat,
 )
 
-def call_gemini_chat(message, history, context, no_tools=False):
+def call_gemini_chat(message, history, context, no_tools=False, typed=False):
     """Call Gemini API using google-genai SDK. Returns (response_text, tool_calls_list, debug_info).
 
     ``no_tools`` makes a text-only turn: no tools are offered, the message is
@@ -1132,12 +1140,15 @@ def call_gemini_chat(message, history, context, no_tools=False):
     path (not even one recovered from inline JSON in the reply). The learning
     plan's guide uses it — its prompt quotes plan text that may come from an
     imported file, so the turn it starts must not be able to act on the app.
+
+    ``typed``: the learner typed the message themself (not a preset or an app
+    request), so a question in it is echoed before it is answered.
     """
-    text, tool_calls, debug_info = _call_gemini_chat(message, history, context, no_tools)
+    text, tool_calls, debug_info = _call_gemini_chat(message, history, context, no_tools, typed)
     return text, ([] if no_tools else tool_calls), debug_info
 
 
-def _call_gemini_chat(message, history, context, no_tools):
+def _call_gemini_chat(message, history, context, no_tools, typed=False):
     client = get_gemini_client()
     if not client:
         return "AI chat is not available (no API key configured).", [], {}
@@ -1229,6 +1240,8 @@ def _call_gemini_chat(message, history, context, no_tools):
     system_prompt = build_system_prompt(context, agent_memory=_agent_memory)
     if no_tools:
         system_prompt += NO_TOOLS_NOTE
+    if typed:
+        system_prompt += TYPED_QUESTION_NOTE
 
     # Build contents list
     contents = []
@@ -1793,6 +1806,8 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         context: dict = {}
         # Text-only turn: no tools, no navigation shortcut (see call_gemini_chat).
         noTools: bool = False
+        # The learner typed the message (see call_gemini_chat).
+        typed: bool = False
 
     class ProofChatRequest(BaseModel):
         # Full thread incl. the latest user turn: [{role:'user'|'bot', text}, …]
@@ -2628,7 +2643,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         try:
             loop = asyncio.get_running_loop()
             response_text, tool_calls, debug_info = await loop.run_in_executor(
-                None, lambda: call_gemini_chat(req.message, req.history, req.context, no_tools=req.noTools)
+                None, lambda: call_gemini_chat(req.message, req.history, req.context, no_tools=req.noTools, typed=req.typed)
             )
             if DEBUG_MODE:
                 print(f"   💬 Response ({len(response_text)} chars): {response_text}")

@@ -13,23 +13,24 @@
  *  message as nothing but a question (the learning plan's guide). */
 /** `display`: what the chat shows as the learner's message, when the text sent (and kept in the history the
  *  tutor reads on later turns) is a long instruction, e.g. a mode's rules behind a "🎤 Interview mode" bubble. */
-export interface SendOptions { silent?: boolean; noTools?: boolean; display?: string }
-export type SendTurn = (text: string, opts: { silent: boolean; noTools: boolean; display?: string }) => Promise<void>;
+/** `typed`: the learner typed the message in the chat box, so the tutor echoes a question before answering it. */
+export interface SendOptions { silent?: boolean; noTools?: boolean; display?: string; typed?: boolean }
+export type SendTurn = (text: string, opts: { silent: boolean; noTools: boolean; display?: string; typed?: boolean }) => Promise<void>;
 export type ChatSender = (text: string, opts?: SendOptions) => Promise<boolean>;
 
 export function singleFlightSender(isBusy: () => boolean, sendTurn: SendTurn): ChatSender {
     // A turn is the same turn only with the same text AND the same tool
     // permission: a text-only (noTools) ask must never share, or be replayed
     // as, a turn that may act on the app.
-    const queued: Array<{ text: string; noTools: boolean; display?: string; done: Promise<boolean>; resolve: (ok: boolean) => void }> = [];
+    const queued: Array<{ text: string; noTools: boolean; display?: string; typed?: boolean; done: Promise<boolean>; resolve: (ok: boolean) => void }> = [];
     let active: { text: string; noTools: boolean; done: Promise<boolean> } | null = null;   // the visible turn in flight
 
     function sendNext(): void {
         const next = queued.shift();
-        if (next) void send(next.text, { noTools: next.noTools, display: next.display }).then(next.resolve, () => next.resolve(false));
+        if (next) void send(next.text, { noTools: next.noTools, display: next.display, typed: next.typed }).then(next.resolve, () => next.resolve(false));
     }
 
-    function send(text: string, { silent = false, noTools = false, display }: SendOptions = {}): Promise<boolean> {
+    function send(text: string, { silent = false, noTools = false, display, typed }: SendOptions = {}): Promise<boolean> {
         if (isBusy()) {
             if (silent) return Promise.resolve(false);
             if (active && active.text === text && active.noTools === noTools) return active.done;
@@ -37,12 +38,12 @@ export function singleFlightSender(isBusy: () => boolean, sendTurn: SendTurn): C
             if (waiting) return waiting.done;
             let resolve!: (ok: boolean) => void;
             const done = new Promise<boolean>((r) => { resolve = r; });
-            queued.push({ text, noTools, display, done, resolve });
+            queued.push({ text, noTools, display, typed, done, resolve });
             return done;
         }
         const turn = { text, noTools, done: Promise.resolve(false) };
         const settle = () => { if (active === turn) active = null; sendNext(); };
-        turn.done = sendTurn(text, { silent, noTools, ...(display !== undefined ? { display } : {}) }).then(
+        turn.done = sendTurn(text, { silent, noTools, ...(display !== undefined ? { display } : {}), ...(typed ? { typed } : {}) }).then(
             () => { settle(); return true; },
             (err: unknown) => { settle(); throw err; },
         );

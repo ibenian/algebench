@@ -123,3 +123,13 @@ test('a display text reaches the turn sender with the full text, and queues with
     release(); await first; await new Promise(r => setTimeout(r, 0)); release(); await second;
     assert.deepEqual(turns, [['long rules…', { silent: false, noTools: false, display: '🎤 Interview mode' }], ['more rules…', { silent: false, noTools: false, display: 'short' }]]);
 });
+
+test('a typed message reaches the turn sender marked typed, and queues with it', async () => {
+    const turns: unknown[] = [];
+    let busy = false, release!: () => void;
+    const send = singleFlightSender(() => busy, async (text, opts) => { turns.push([text, opts]); busy = true; await new Promise<void>(r => { release = r; }); busy = false; });
+    const first = send('preset');
+    const second = send('so it sorts by all fields?', { typed: true });
+    release(); await first; await new Promise(r => setTimeout(r, 0)); release(); await second;
+    assert.deepEqual(turns, [['preset', { silent: false, noTools: false }], ['so it sorts by all fields?', { silent: false, noTools: false, typed: true }]]);
+});
