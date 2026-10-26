@@ -3322,8 +3322,8 @@ function groupAnnotations(scale) {
 					const drag = labels[group[rowIndex]].annotation.startDrag;
 					if (drag) {
 						row.classList.add("annotation-row-draggable");
-						if (!labels[group[rowIndex]].wireTarget && !labels[group[rowIndex]].wireTargets?.length && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label";
-						row.addEventListener("pointerdown", drag);
+						if (!labels[group[rowIndex]].wireTarget && !labels[group[rowIndex]].wireTargets?.length && labels[group[rowIndex]].annotation.tooltip === void 0) row.title = "Drag to move this label · ⌘-drag (Ctrl) moves the rows lit with it";
+						row.addEventListener("pointerdown", (event) => drag(event, event.metaKey || event.ctrlKey ? litRowGroup(row) : void 0));
 					}
 				}
 				return row;
@@ -3377,6 +3377,13 @@ function groupAnnotations(scale) {
 		const el = labels[g[0]].el, stem = `${lifts[k]}px`;
 		if (el.style.getPropertyValue("--marker-stem") !== stem) el.style.setProperty("--marker-stem", stem);
 	});
+}
+/** The labels of `row` and every row its hover lights (shared code line or symbol); undefined when it lights none. */
+function litRowGroup(row) {
+	const rows = /* @__PURE__ */ new Set([row, ...document.querySelectorAll(".annotation-row.annotation-row-symbol-hover[data-label-seq]")]);
+	if (rows.size < 2) return void 0;
+	const seqs = new Set([...rows].map((r) => Number(r.dataset.labelSeq)));
+	return labelsState.labels.filter((l) => seqs.has(l.seq));
 }
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
 function placeExpressionLabel(label, x, y, clientX, clientY) {
@@ -12144,7 +12151,8 @@ function labelDragHandler(label, animState) {
 			y: (row.top + row.bottom) / 2 - viewport.top
 		};
 		const moving = members ?? [label];
-		const box = event.currentTarget.closest(".annotation-badge")?.getBoundingClientRect() ?? row;
+		const badge = event.currentTarget.closest(".annotation-badge");
+		const box = !!badge && !!members && badge.querySelectorAll(".annotation-row").length <= members.length ? badge.getBoundingClientRect() : row;
 		const groupStart = {
 			x: (box.left + box.right) / 2 - viewport.left,
 			y: (box.top + box.bottom) / 2 - viewport.top

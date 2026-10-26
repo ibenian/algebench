@@ -14,7 +14,10 @@ export function labelDragHandler(label: Label3D, animState: {stopped: boolean}) 
         // A merged row starts at its visible position, not its hidden data anchor.
         const start = {x: (row.left + row.right) / 2 - viewport.left, y: (row.top + row.bottom) / 2 - viewport.top};
         const moving = members ?? [label];
-        const box=(event.currentTarget as HTMLElement).closest('.annotation-badge')?.getBoundingClientRect()??row;
+        // A whole box moves from where the box is; a group taken out of a box (⌘-drag) starts from the grabbed row.
+        const badge=(event.currentTarget as HTMLElement).closest('.annotation-badge');
+        const whole=!!badge&&!!members&&badge.querySelectorAll('.annotation-row').length<=members.length;
+        const box=whole?badge!.getBoundingClientRect():row;
         const groupStart={x:(box.left+box.right)/2-viewport.left,y:(box.top+box.bottom)/2-viewport.top};
         event.preventDefault();
         event.stopPropagation();

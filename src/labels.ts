@@ -721,8 +721,9 @@ function groupAnnotations(scale: number): void {
                     if (drag) {
                         row.classList.add('annotation-row-draggable');
                         // A native drag tooltip would obscure the hover connection.
-                        if(!labels[group[rowIndex]!]!.wireTarget&&!labels[group[rowIndex]!]!.wireTargets?.length&&labels[group[rowIndex]!]!.annotation!.tooltip===undefined)row.title='Drag to move this label';
-                        row.addEventListener('pointerdown',drag);
+                        if(!labels[group[rowIndex]!]!.wireTarget&&!labels[group[rowIndex]!]!.wireTargets?.length&&labels[group[rowIndex]!]!.annotation!.tooltip===undefined)row.title='Drag to move this label · ⌘-drag (Ctrl) moves the rows lit with it';
+                        // ⌘/Ctrl-drag takes the row's lit group with it: every row the hover lights (same code line or symbol).
+                        row.addEventListener('pointerdown',event=>drag(event,event.metaKey||event.ctrlKey?litRowGroup(row):undefined));
                     }
                 }
                 return row;
@@ -768,6 +769,14 @@ function groupAnnotations(scale: number): void {
         const el = labels[g[0]!]!.el, stem = `${lifts[k]}px`;
         if (el.style.getPropertyValue('--marker-stem') !== stem) el.style.setProperty('--marker-stem', stem);
     });
+}
+
+/** The labels of `row` and every row its hover lights (shared code line or symbol); undefined when it lights none. */
+function litRowGroup(row: HTMLElement): Label3D[] | undefined {
+    const rows = new Set([row, ...document.querySelectorAll<HTMLElement>('.annotation-row.annotation-row-symbol-hover[data-label-seq]')]);
+    if (rows.size < 2) return undefined;
+    const seqs = new Set([...rows].map(r => Number(r.dataset.labelSeq)));
+    return labelsState.labels.filter(l => seqs.has(l.seq));
 }
 
 /** Common presentation layer owns snapping and row order; renderers stay independent. */
