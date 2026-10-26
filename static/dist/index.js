@@ -25203,6 +25203,18 @@ var CODE_PROMPTS = [
 		prompt: "Can this code be written in a more optimal way? If it can, give the improved version, say what it changes, and compare its runtime and space complexity with the current one. If it is already optimal, say why: the lower bound it meets. Keep its behaviour and output the same."
 	}
 ];
+/** The ✦ on each code line: a question about that line alone. */
+var LINE_PROMPT = {
+	label: "Ask about this line",
+	line: true,
+	prompt: "Explain the selected line: what it does at this point in the algorithm and why it is needed, using the values on screen right now. Keep it to this line."
+};
+/** The ✦ after a line's values: the line explained through the values shown on it (appended to the prompt). */
+var LINE_VALUES_PROMPT = {
+	label: "Explain this line with its values",
+	line: true,
+	prompt: "Explain the selected line in the context of the expressions and values shown on it right now: what each one says at this state, how they relate, and what the line does with them. Keep it to this line. The values shown on it:"
+};
 /** The `def` enclosing a line (1-based): the nearest one above it, indented less than the line, or null. */
 function enclosingFunction(source, line) {
 	const lines = source.split("\n");
@@ -26831,20 +26843,50 @@ function setupCodePanel() {
 		const line = document.createElement("code");
 		line.className = "code-inline-float-code";
 		line.append(...[...code.childNodes].map((n) => n.cloneNode(true)));
-		float.replaceChildren(line, ...tags.map((t) => {
+		const ask = (cls) => {
+			const real = row.querySelector(`.${cls}`);
+			if (!real) return [];
+			const copy = real.cloneNode(true);
+			copy.disabled = real.disabled;
+			copy.addEventListener("click", (e) => {
+				e.stopPropagation();
+				real.dispatchEvent(new MouseEvent("click", {
+					metaKey: e.metaKey,
+					ctrlKey: e.ctrlKey
+				}));
+				floatLine(null);
+			});
+			return [copy];
+		};
+		const cond = row.querySelector(".code-cond")?.cloneNode(true);
+		const values = document.createElement("span");
+		values.className = "code-inline-values";
+		values.append(...tags.map((t) => {
 			const copy = document.createElement("span");
 			copy.className = t.className;
 			copy.textContent = t.textContent;
 			return copy;
-		}));
+		}), ...tags.length ? ask("code-values-ask") : []);
+		float.replaceChildren(line, ...cond ? [cond] : [], ...ask("code-line-ask"), ...tags.length ? [values] : []);
 		float.classList.toggle("executing", !!row?.classList.contains("execution-line"));
 		float.hidden = false;
 		const at = code.getBoundingClientRect(), width = float.getBoundingClientRect().width;
-		float.style.left = `${Math.max(8, Math.min(at.left - 4, window.innerWidth - 8 - width))}px`;
+		float.style.left = `${Math.max(8, Math.min(at.left, window.innerWidth - 8 - width))}px`;
 		float.style.top = `${at.top + at.height / 2}px`;
 	}
 	body.addEventListener("pointerover", (event) => floatLine(event.target.closest(".code-line")));
-	body.addEventListener("pointerleave", () => floatLine(null));
+	body.addEventListener("pointerleave", (event) => {
+		if (!float.contains(event.relatedTarget)) floatLine(null);
+	});
+	float.addEventListener("pointerleave", (event) => {
+		if (!body.contains(event.relatedTarget)) floatLine(null);
+	});
+	float.addEventListener("pointerdown", (event) => {
+		if (!event.target.closest(".ai-ask-btn")) {
+			selecting = true;
+			floatLine(null);
+		}
+	});
 	body.addEventListener("scroll", () => floatLine(null));
 	body.addEventListener("pointerdown", () => {
 		selecting = true;
@@ -26913,6 +26955,14 @@ function setupCodePanel() {
 				tag.append(inner);
 				holder.append(tag);
 			}
+			const shown = [...texts, ...watched], source = file.source.split("\n")[line - 1] ?? "";
+			holder.append(makeSilentAiAskButton("ai-ask-btn code-values-ask", `Explain line ${line} with these values`, () => {
+				choose(line, line, source);
+				return codeMessageFor({
+					...LINE_VALUES_PROMPT,
+					prompt: `${LINE_VALUES_PROMPT.prompt}\n${shown.map((t) => `- ${t}`).join("\n")}`
+				}, line, line, source, inlineScope(file.source, lastLines) ?? inlineScope(file.source, /* @__PURE__ */ new Set([line])));
+			}));
 			row.append(holder);
 		});
 		if (hovered?.isConnected && hovered.matches(":hover")) floatLine(hovered);
@@ -26954,6 +27004,10 @@ function setupCodePanel() {
 			code.style.setProperty("--indent", String(text.length - text.trimStart().length));
 			code.style.setProperty("--len", String(text.trim().length));
 			row.append(number, code);
+			if (text.trim()) row.append(makeSilentAiAskButton("ai-ask-btn code-line-ask", `Ask AI about line ${i + 1}`, () => {
+				choose(i + 1, i + 1, text);
+				return codeMessageFor(LINE_PROMPT, i + 1, i + 1, text, inlineScope(file.source, lastLines) ?? inlineScope(file.source, /* @__PURE__ */ new Set([i + 1])));
+			}));
 			body.append(row);
 		});
 		highlightCode(file).then((tokens) => {

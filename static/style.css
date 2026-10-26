@@ -5695,13 +5695,15 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-inline-on-hover .code-line:hover .code-inline-values { visibility: visible; }
 .code-line.execution-line .code-inline-value { color: var(--text-color); border-color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
 .code-inline-float {
-    position: fixed; z-index: 10060; pointer-events: none; transform: translateY(-50%);
-    display: flex; gap: 6px; align-items: center; padding: 3px; border-radius: 7px;
-    background: var(--panel-bg); box-shadow: 0 4px 14px #0006; font: 12px ui-monospace, monospace;
+    position: fixed; z-index: 10060; transform: translateY(-50%);
+    /* The line's own flex layout and line height, so its parts sit exactly where they do in the line. */
+    display: flex; padding: 0; border-radius: 7px;
+    background: var(--panel-bg); box-shadow: 0 4px 14px #0006; font: 12px/1.9 ui-monospace, monospace;
 }
 .code-inline-float[hidden] { display: none; }
+.code-inline-float .ai-ask-btn { opacity: 1; }
 .code-inline-float .code-inline-value { max-width: none; overflow: visible; color: var(--text-color); }
-.code-inline-float-code { white-space: pre; font: 12px/1.9 ui-monospace, monospace; padding: 0 8px 0 1px; color: var(--text-color); }
+.code-inline-float-code { white-space: pre; font: 12px/1.9 ui-monospace, monospace; padding: 0 14px 0 0; color: var(--text-color); }
 .code-inline-float.executing { background: color-mix(in srgb, var(--accent-color) 13%, var(--panel-bg)); }
 .code-inline-float.executing .code-inline-value { border-color: color-mix(in srgb, var(--accent-color) 70%, transparent); }
 .code-source { flex: 1; overflow: auto; min-height: 100px; padding-bottom: 20px; position: relative; }
@@ -5727,7 +5729,14 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-line { display: flex; min-width: max-content; font: 12px/1.9 ui-monospace, monospace; border-left: 3px solid transparent; }
 .code-line code { white-space: pre; padding-right: 14px; font: inherit; user-select: text; }
 /* The executing if/while line's test: ✅ true, ❌ false (code-panel.ts paintConditions). */
-.code-cond { margin: 0 6px 0 -8px; font-size: 11px; line-height: inherit; user-select: none; }
+.code-cond { margin: 0 6px 0 -8px; font-size: 11px; line-height: 1; align-self: center; position: relative; top: 1px; user-select: none; }
+/* ✦ on each line: after the code (the line alone) and after its values (the line through them); shown while
+   the line is hovered or selected. */
+.ai-ask-btn.code-line-ask, .ai-ask-btn.code-values-ask { width: 16px; height: 16px; align-self: center; top: 0; }
+.ai-ask-btn.code-line-ask { margin: 0 6px 0 -8px; }
+.code-cond + .code-line-ask { margin-left: -2px; }
+.ai-ask-btn.code-values-ask { margin: 0; }
+.code-line:hover :is(.code-line-ask, .code-values-ask), .code-line.selected :is(.code-line-ask, .code-values-ask), :is(.code-line-ask, .code-values-ask):focus-visible { opacity: 1; }
 .code-line-number { flex: 0 0 64px; width: 64px; padding-left: 36px; border: 0; background: transparent; color: var(--text-color); opacity: .45; cursor: pointer; font: inherit; user-select: none; }
 /* Lines outside the function that is running read paler, so the active code stands out. */
 .code-line.code-inactive code { opacity: .55; transition: opacity .2s; }

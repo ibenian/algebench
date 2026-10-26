@@ -20,6 +20,12 @@ export const CODE_PROMPTS: CodePrompt[] = [
     {label: 'Can you write it in a more optimal way?', prompt: 'Can this code be written in a more optimal way? If it can, give the improved version, say what it changes, and compare its runtime and space complexity with the current one. If it is already optimal, say why: the lower bound it meets. Keep its behaviour and output the same.'},
 ];
 
+/** The ✦ on each code line: a question about that line alone. */
+export const LINE_PROMPT: CodePrompt = {label: 'Ask about this line', line: true, prompt: 'Explain the selected line: what it does at this point in the algorithm and why it is needed, using the values on screen right now. Keep it to this line.'};
+
+/** The ✦ after a line's values: the line explained through the values shown on it (appended to the prompt). */
+export const LINE_VALUES_PROMPT: CodePrompt = {label: 'Explain this line with its values', line: true, prompt: "Explain the selected line in the context of the expressions and values shown on it right now: what each one says at this state, how they relate, and what the line does with them. Keep it to this line. The values shown on it:"};
+
 /** The `def` enclosing a line (1-based): the nearest one above it, indented less than the line, or null. */
 export function enclosingFunction(source: string, line: number): {name: string; line: number} | null {
     const lines = source.split('\n');

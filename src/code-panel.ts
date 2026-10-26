@@ -2,7 +2,7 @@ import { setSliderValue } from '/sliders.js';
 import { state } from '/state.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
-import { makeAiAskButton, sendAiPrompt } from '/labels.js';
+import { makeAiAskButton, makeSilentAiAskButton, sendAiPrompt } from '/labels.js';
 import { navigateTo, addTransientElements } from '/scene-loader.js';
 import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
@@ -12,7 +12,7 @@ import { showCodeSymbolTooltip } from '/label-tooltip.js';
 import type { CodeReference, CodeFunction, CodeCall } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import { highlightCode, lineTokens, paintTokens, wrapColumns } from '/code-highlight.js';
-import { CODE_PROMPTS, codePromptMessage } from '/code-prompts.js';
+import { CODE_PROMPTS, LINE_PROMPT, LINE_VALUES_PROMPT, codePromptMessage } from '/code-prompts.js';
 import type { CodePrompt } from '/code-prompts.js';
 import { codeSections, sectionAt, sectionsOutline, sectionPrompt, STRUCTURE_MODES } from '/code-sections.js';
 import type { CodeSection, StructureMode } from '/code-sections.js';
@@ -736,16 +736,33 @@ export function setupCodePanel(): void {
         floated=row;
         const line=document.createElement('code');line.className='code-inline-float-code';
         line.append(...[...code!.childNodes].map(n=>n.cloneNode(true)));
-        float.replaceChildren(line,...tags.map(t=>{const copy=document.createElement('span');copy.className=t.className;copy.textContent=t.textContent;return copy;}));
+        // The line's ✦ buttons, which the float covers, come along: each copy clicks its original.
+        const ask=(cls:string)=>{
+            const real=row!.querySelector<HTMLButtonElement>(`.${cls}`);if(!real)return [];
+            const copy=real.cloneNode(true) as HTMLButtonElement;copy.disabled=real.disabled;
+            copy.addEventListener('click',e=>{e.stopPropagation();real.dispatchEvent(new MouseEvent('click',{metaKey:e.metaKey,ctrlKey:e.ctrlKey}));floatLine(null);});
+            return [copy];
+        };
+        // Laid out as the line is (code, ✅/❌, ✦, then the values and their ✦), so nothing moves as it comes up.
+        const cond=row!.querySelector<HTMLElement>('.code-cond')?.cloneNode(true) as HTMLElement|undefined;
+        const values=document.createElement('span');values.className='code-inline-values';
+        values.append(...tags.map(t=>{const copy=document.createElement('span');copy.className=t.className;copy.textContent=t.textContent;return copy;}),...(tags.length?ask('code-values-ask'):[]));
+        float.replaceChildren(line,...(cond?[cond]:[]),...ask('code-line-ask'),...(tags.length?[values]:[]));
         float.classList.toggle('executing',!!row?.classList.contains('execution-line'));
         float.hidden=false;
         const at=code!.getBoundingClientRect(),width=float.getBoundingClientRect().width;
-        // Over the line's code, moved left as far as it takes to stay inside the window.
-        float.style.left=`${Math.max(8,Math.min(at.left-4,window.innerWidth-8-width))}px`;
+        // Exactly over the line's code; moved left only as far as it takes to stay inside the window.
+        float.style.left=`${Math.max(8,Math.min(at.left,window.innerWidth-8-width))}px`;
         float.style.top=`${at.top+at.height/2}px`;
     }
     body.addEventListener('pointerover',event=>floatLine((event.target as HTMLElement).closest<HTMLElement>('.code-line')));
-    body.addEventListener('pointerleave',()=>floatLine(null));
+    // Onto the float (its ✦ buttons) is not away from the line.
+    body.addEventListener('pointerleave',event=>{if(!float.contains(event.relatedTarget as Node))floatLine(null);});
+    // The float takes the pointer, so it stays up while the reader follows a long line past the code view's edge,
+    // and goes when they leave it for anywhere but the code view. Pressing on it (not on a ✦) gets it out of the way
+    // of a selection, as pressing on the line itself does.
+    float.addEventListener('pointerleave',event=>{if(!body.contains(event.relatedTarget as Node))floatLine(null);});
+    float.addEventListener('pointerdown',event=>{if(!(event.target as Element).closest('.ai-ask-btn')){selecting=true;floatLine(null);}});
     body.addEventListener('scroll',()=>floatLine(null));
     body.addEventListener('pointerdown',()=>{selecting=true;floatLine(null);});
     document.addEventListener('pointerup',()=>{selecting=false;});
@@ -797,6 +814,13 @@ export function setupCodePanel(): void {
                 const inner=document.createElement('span');inner.textContent=text;
                 tag.append(inner);holder.append(tag);
             }
+            // ✦ after the values: the line explained through them.
+            const shown=[...texts,...watched],source=file.source.split('\n')[line-1]??'';
+            holder.append(makeSilentAiAskButton('ai-ask-btn code-values-ask',`Explain line ${line} with these values`,()=>{
+                choose(line,line,source);
+                const prompt={...LINE_VALUES_PROMPT,prompt:`${LINE_VALUES_PROMPT.prompt}\n${shown.map(t=>`- ${t}`).join('\n')}`};
+                return codeMessageFor(prompt,line,line,source,inlineScope(file.source,lastLines)??inlineScope(file.source,new Set([line])));
+            }));
             row.append(holder);
         });
         // Values changed under the pointer: show the line's new ones.
@@ -814,7 +838,13 @@ export function setupCodePanel(): void {
             for(const segment of markedSegments(text,(file.marks??[]).filter(m=>m.line===i+1))){const span=document.createElement('span');span.textContent=segment.text;if(segment.color)span.className=`code-mark-${segment.color}`;code.append(span);}
             // The line's shape in characters, for the hidden-code blocks: where its text starts and how long it runs.
             code.style.setProperty('--indent',String(text.length-text.trimStart().length));code.style.setProperty('--len',String(text.trim().length));
-            row.append(number,code);body.append(row);
+            row.append(number,code);
+            // ✦ after the code, before its values: selects the line and asks about it alone.
+            if(text.trim())row.append(makeSilentAiAskButton('ai-ask-btn code-line-ask',`Ask AI about line ${i+1}`,()=>{
+                choose(i+1,i+1,text);
+                return codeMessageFor(LINE_PROMPT,i+1,i+1,text,inlineScope(file.source,lastLines)??inlineScope(file.source,new Set([i+1])));
+            }));
+            body.append(row);
         });
         // Syntax colours arrive from the server; the file may have been switched meanwhile.
         void highlightCode(file).then(tokens=>{
