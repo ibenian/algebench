@@ -25787,7 +25787,7 @@
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'ra') < 0 ? 'ra: —' : concat('ra = ', dataTable('trace', frame, 'ra'))",
-              "connectTo": {"object": "forest", "indexExpr": "dataTable('trace', frame, 'ra')"},
+              "connectTo": {"object": "parent", "indexExpr": "dataTable('trace', frame, 'ra')"},
               "codeRef": {"file": "union-find", "line": 11}
             },
             {
@@ -25795,7 +25795,7 @@
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'rb') < 0 ? 'rb: —' : concat('rb = ', dataTable('trace', frame, 'rb'))",
-              "connectTo": {"object": "forest", "indexExpr": "dataTable('trace', frame, 'rb')"},
+              "connectTo": {"object": "parent", "indexExpr": "dataTable('trace', frame, 'rb')"},
               "codeRef": {"file": "union-find", "line": 11}
             },
             {
@@ -28997,7 +28997,7 @@
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'ra') < 0 ? 'ra: —' : concat('ra = ', dataTable('trace', frame, 'ra'))",
-              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'ra')"},
+              "connectTo": {"object": "parent", "indexExpr": "dataTable('trace', frame, 'ra')"},
               "codeRef": {"file": "mst", "line": 14}
             },
             {
@@ -29005,7 +29005,7 @@
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'rb') < 0 ? 'rb: —' : concat('rb = ', dataTable('trace', frame, 'rb'))",
-              "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'rb')"},
+              "connectTo": {"object": "parent", "indexExpr": "dataTable('trace', frame, 'rb')"},
               "codeRef": {"file": "mst", "line": 14}
             },
             {
