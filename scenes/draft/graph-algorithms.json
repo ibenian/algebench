@@ -28894,7 +28894,7 @@
               "showIndices": false,
               "positionExpr": ["dataTable('mstNodes', idx, 'x')", "dataTable('mstNodes', idx, 'y')", "0"],
               "colorExpr": "dataTable('ufPalette', arrayAt(dataTable('trace', frame, 'root'), idx), 'c')",
-              "connectTo": {"indexExpr": "dataTable('mstNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#3e4855", "colorExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? '#f1c65b' : ((keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? '#77bfae' : ((keyIndex(dataTable('trace', frame, 'rejected'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'rejected'), [to, idx]) >= 0) ? '#e06c75' : ''))", "highlightExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a')))", "widthExpr": "(keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? 3.2 : (((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? 2.4 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}
+              "connectTo": {"indexExpr": "dataTable('mstNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#3e4855", "colorExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? '#f1c65b' : ((keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? '#4fdca4' : ((keyIndex(dataTable('trace', frame, 'rejected'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'rejected'), [to, idx]) >= 0) ? '#e06c75' : ''))", "highlightExpr": "((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) or (keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0)", "widthExpr": "(keyIndex(dataTable('trace', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('trace', frame, 'tree'), [to, idx]) >= 0) ? 5 : (((idx == dataTable('trace', frame, 'a') and to == dataTable('trace', frame, 'b')) or (idx == dataTable('trace', frame, 'b') and to == dataTable('trace', frame, 'a'))) ? 2.4 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}
             },
             {
               "id": "edges",
@@ -28910,7 +28910,7 @@
               "itemType": "text",
               "lengthExpr": "11",
               "valueExpr": "dataTable('mstEdges', idx, 'name')",
-              "colorExpr": "keyIndex(dataTable('trace', frame, 'tree'), dataTable('mstEdges', idx, 'pair')) >= 0 ? '#77bfae' : (keyIndex(dataTable('trace', frame, 'rejected'), dataTable('mstEdges', idx, 'pair')) >= 0 ? '#e06c75' : '')",
+              "colorExpr": "keyIndex(dataTable('trace', frame, 'tree'), dataTable('mstEdges', idx, 'pair')) >= 0 ? '#4fdca4' : (keyIndex(dataTable('trace', frame, 'rejected'), dataTable('mstEdges', idx, 'pair')) >= 0 ? '#e06c75' : '')",
               "highlightExpr": "dataTable('trace', frame, 'ei') >= 0 and keyIndex([dataTable('mstEdges', idx, 'pair')], [dataTable('trace', frame, 'a'), dataTable('trace', frame, 'b')]) >= 0"
             },
             {
@@ -28927,7 +28927,7 @@
               "itemType": "text",
               "lengthExpr": "11",
               "valueExpr": "dataTable('mstSorted', idx, 'name')",
-              "colorExpr": "keyIndex(dataTable('trace', frame, 'tree'), dataTable('mstSorted', idx, 'pair')) >= 0 ? '#77bfae' : (keyIndex(dataTable('trace', frame, 'rejected'), dataTable('mstSorted', idx, 'pair')) >= 0 ? '#e06c75' : '')",
+              "colorExpr": "keyIndex(dataTable('trace', frame, 'tree'), dataTable('mstSorted', idx, 'pair')) >= 0 ? '#4fdca4' : (keyIndex(dataTable('trace', frame, 'rejected'), dataTable('mstSorted', idx, 'pair')) >= 0 ? '#e06c75' : '')",
               "highlightExpr": "idx == dataTable('trace', frame, 'ei')"
             },
             {
@@ -28957,7 +28957,7 @@
               "fontSize": 16,
               "axisLabels": "plane",
               "itemType": "text",
-              "color": "#77bfae",
+              "color": "#4fdca4",
               "showIndices": false,
               "lengthExpr": "arrayCount(dataTable('trace', frame, 'treeNames'))",
               "valueExpr": "arrayAt(dataTable('trace', frame, 'treeNames'), idx)"
@@ -29067,8 +29067,8 @@
               "valueLabel": "inside",
               "showIndices": false,
               "positionExpr": ["dataTable('mstNodes', idx, 'x')", "dataTable('mstNodes', idx, 'y')", "0"],
-              "colorExpr": "idx == dataTable('mst_prim', frame, 'u') ? '#f1c65b' : (arrayAt(dataTable('mst_prim', frame, 'seen'), idx) == 1 ? '#77bfae' : '')",
-              "connectTo": {"indexExpr": "dataTable('mstNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#3e4855", "colorExpr": "((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p'))) ? '#f1c65b' : ((keyIndex(dataTable('mst_prim', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'tree'), [to, idx]) >= 0) ? '#77bfae' : ((keyIndex(dataTable('mst_prim', frame, 'heapPairs'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'heapPairs'), [to, idx]) >= 0) ? '#e67db0' : ''))", "highlightExpr": "((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p')))", "widthExpr": "(keyIndex(dataTable('mst_prim', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'tree'), [to, idx]) >= 0) ? 3.2 : (((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p'))) ? 2.4 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}
+              "colorExpr": "idx == dataTable('mst_prim', frame, 'u') ? '#f1c65b' : (arrayAt(dataTable('mst_prim', frame, 'seen'), idx) == 1 ? '#4fdca4' : '')",
+              "connectTo": {"indexExpr": "dataTable('mstNodes', idx, 'adj')", "pinned": true, "arrow": false, "color": "#3e4855", "colorExpr": "((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p'))) ? '#f1c65b' : ((keyIndex(dataTable('mst_prim', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'tree'), [to, idx]) >= 0) ? '#4fdca4' : ((keyIndex(dataTable('mst_prim', frame, 'heapPairs'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'heapPairs'), [to, idx]) >= 0) ? '#e67db0' : ''))", "highlightExpr": "((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p'))) or (keyIndex(dataTable('mst_prim', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'tree'), [to, idx]) >= 0)", "widthExpr": "(keyIndex(dataTable('mst_prim', frame, 'tree'), [idx, to]) >= 0 or keyIndex(dataTable('mst_prim', frame, 'tree'), [to, idx]) >= 0) ? 5 : (((idx == dataTable('mst_prim', frame, 'p') and to == dataTable('mst_prim', frame, 'u')) or (idx == dataTable('mst_prim', frame, 'u') and to == dataTable('mst_prim', frame, 'p'))) ? 2.4 : 1.2)", "labelExpr": "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}
             },
             {
               "id": "heap",
@@ -29100,7 +29100,7 @@
               "axisLabels": "plane",
               "lengthExpr": "7",
               "valueExpr": "arrayAt(dataTable('mst_prim', frame, 'seen'), idx)",
-              "colorExpr": "arrayAt(dataTable('mst_prim', frame, 'seen'), idx) == 1 ? '#77bfae' : ''",
+              "colorExpr": "arrayAt(dataTable('mst_prim', frame, 'seen'), idx) == 1 ? '#4fdca4' : ''",
               "highlightExpr": "idx == dataTable('mst_prim', frame, 'u')"
             },
             {
@@ -29114,7 +29114,7 @@
               "fontSize": 16,
               "axisLabels": "plane",
               "itemType": "text",
-              "color": "#77bfae",
+              "color": "#4fdca4",
               "showIndices": false,
               "lengthExpr": "arrayCount(dataTable('mst_prim', frame, 'treeNames'))",
               "valueExpr": "arrayAt(dataTable('mst_prim', frame, 'treeNames'), idx)"

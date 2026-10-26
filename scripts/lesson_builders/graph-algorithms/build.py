@@ -2382,7 +2382,7 @@ def prim(n, adj):
 MST_N = 7
 MST_EDGES = [(0, 1, 4), (1, 2, 8), (0, 3, 7), (1, 4, 2), (2, 4, 6), (2, 5, 5), (3, 4, 9), (4, 5, 1), (3, 6, 3), (4, 6, 10), (5, 6, 11)]
 MST_POS = [(-6.0, 3.4), (-3.6, 4.1), (-1.2, 3.4), (-6.0, 1.0), (-3.6, 1.8), (-1.2, 1.0), (-3.6, -0.4)]
-MST_TREE, MST_REJECT, MST_FRONTIER = '#77bfae', '#e06c75', '#e67db0'
+MST_TREE, MST_REJECT, MST_FRONTIER = '#4fdca4', '#e06c75', '#e67db0'
 
 
 def mst_line(fn, text, after=None):
@@ -2520,7 +2520,8 @@ def mst_scene(header):
                 # Every edge is labelled with its weight; the tree's edges are thick.
                 'connectTo': {'indexExpr': "dataTable('mstNodes', idx, 'adj')", 'pinned': True, 'arrow': False, 'color': '#3e4855',
                               'colorExpr': f"{cur} ? '{GOLD}' : ({tree} ? '{MST_TREE}' : ({other} ? '{other_color}' : ''))",
-                              'highlightExpr': cur, 'widthExpr': f"{tree} ? 3.2 : ({cur} ? 2.4 : 1.2)",
+                              # The tree glows, so it stands out from the edges still undecided.
+                              'highlightExpr': f"{cur} or {tree}", 'widthExpr': f"{tree} ? 5 : ({cur} ? 2.4 : 1.2)",
                               'labelExpr': "concat(arrayAt(dataTable('mstNodes', idx, 'w'), to))"}}
 
     def pairs(id, label, col, y, color):
