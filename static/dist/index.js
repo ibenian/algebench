@@ -26893,7 +26893,14 @@ function setupCodePanel() {
 		float.style.left = `${Math.max(8, Math.min(at.left, window.innerWidth - 8 - width))}px`;
 		float.style.top = `${at.top + at.height / 2}px`;
 	}
-	body.addEventListener("pointerover", (event) => floatLine(event.target.closest(".code-line")));
+	body.addEventListener("pointerover", (event) => {
+		const row = event.target.closest(".code-line");
+		if (!row && !float.hidden) {
+			const r = float.getBoundingClientRect();
+			if (event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom) return;
+		}
+		floatLine(row);
+	});
 	body.addEventListener("pointerleave", (event) => {
 		if (!float.contains(event.relatedTarget)) floatLine(null);
 	});

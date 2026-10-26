@@ -2649,7 +2649,8 @@ DIJ_DONE, DIJ_HEAP = '#77bfae', '#e67db0'
 
 def dijkstra_trace():
     """Dijkstra from 0. Per frame: d, u (the popped entry); v, w, vi; dist (UNREACHED until reached) and distText ('∞'); prev;
-    done (settled nodes, 1/0); heap (entries [d, v], sorted) and heapNames; checkText; result."""
+    done (settled nodes, 1/0); heap (entries [d, v], sorted) and heapNames; adjU and adjV (u's edges as text, and
+    their nodes); checkText; result."""
     L = lambda t: line_of(DIJ_SOURCE, t)
     adj = [[(b, w) for a, b, w in DIJ_EDGES if a == i] for i in range(DIJ_N)]
     INF = float('inf')
@@ -2663,6 +2664,10 @@ def dijkstra_trace():
         f['dist'] = [UNREACHED if x == INF else x for x in f['dist']]
         f['heapNames'] = [f'{d}:{v}' for d, v in f['heap']]
         f['inHeap'] = sorted({v for _, v in f['heap']})
+        # adj[u] as (v, w) pairs for the array (a cell holds text), and its nodes for the links to the graph.
+        out = adj[f['u']] if f['u'] >= 0 else []
+        f['adjU'] = [f'({v}, {w})' for v, w in out]
+        f['adjV'] = [v for v, _ in out]
     def put(key, i, x): st[key] = [x if j == i else y for j, y in enumerate(st[key])]
     emit(L('dist = [float'), 'Every distance starts unknown: ∞.')
     emit(L('prev = [-1] * n'), 'prev[v] will hold the node v is reached from, to rebuild the path.')
@@ -2741,6 +2746,12 @@ def dijkstra_scene(header):
          'fontSize': 15, 'axisLabels': 'plane', 'itemType': 'text', 'color': DIJ_HEAP, 'showIndices': False,
          'lengthExpr': f"arrayCount({c('heapNames')})", 'valueExpr': f"arrayAt({c('heapNames')}, idx)",
          'highlightExpr': f"idx == 0 and {c('line')} == {L('while heap')}"},
+        # The popped node's edges, with (v, w) walking along them; each links to its node in the graph.
+        {'id': 'adj-u', 'type': 'array', 'label': 'adj[u]', 'codeSymbol': 'adj[u]', 'labelSide': 'left', 'origin': [3.4, 5.0, 0], 'cellSize': 1.25,
+         'fontSize': 13, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text',
+         'lengthExpr': f"arrayCount({c('adjU')})", 'valueExpr': f"arrayAt({c('adjU')}, idx)", 'highlightExpr': f"idx == {c('vi')}",
+         'connectTo': {'object': 'graph', 'indexExpr': f"arrayAt({c('adjV')}, idx)", 'pinned': True, 'arrow': True, 'color': '#8aa0b8',
+                       'highlightExpr': f"idx == {c('vi')}"}},
         {'id': 'dist', 'type': 'array', 'label': 'dist', 'codeSymbol': 'dist', 'labelSide': 'left', 'origin': [-2.3, -3.0, 0], 'cellSize': 1.0,
          'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(DIJ_N),
          'valueExpr': f"arrayAt({c('distText')}, idx)", 'colorExpr': f"arrayAt({c('done')}, idx) == 1 ? '{DIJ_DONE}' : ''",
@@ -2748,8 +2759,10 @@ def dijkstra_scene(header):
         {'id': 'prev', 'type': 'array', 'label': 'prev', 'codeSymbol': 'prev', 'labelSide': 'left', 'origin': [-2.3, -4.3, 0], 'cellSize': 1.0,
          'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(DIJ_N), 'valueExpr': f"arrayAt({c('prev')}, idx)",
          'highlightExpr': f"idx == {c('v')} and {c('line')} == {L('prev[v] = u')}"},
+        label('src', "'src = 0'", ['graph', '0'], L('def dijkstra('), 'dijkstra'),
         label('d', f"{c('d')} < 0 ? 'd: —' : concat('d = ', {c('d')})", None, L('d, u = heapq.heappop(heap)'), 'dijkstra'),
         label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], L('d, u = heapq.heappop(heap)'), 'dijkstra'),
+        label('dist-u', f"{c('u')} < 0 ? 'dist[u]: —' : concat('dist[u] = ', arrayAt({c('distText')}, {c('u')}))", ['dist', c('u')], L('if d > dist[u]'), 'dijkstra'),
         label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v, w in adj[u]'), 'dijkstra'),
         label('w', f"{c('w')} < 0 ? 'w: —' : concat('w = ', {c('w')})", None, L('for v, w in adj[u]'), 'dijkstra'),
         {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[', {c('v')}, '] = ', arrayAt({c('distText')}, {c('v')}))",

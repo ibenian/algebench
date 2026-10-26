@@ -29238,7 +29238,9 @@
             "message": "Every distance starts unknown: ∞.",
             "distText": ["∞", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": [],
+            "adjV": []
           },
           {
             "d": -1,
@@ -29256,7 +29258,9 @@
             "message": "prev[v] will hold the node v is reached from, to rebuild the path.",
             "distText": ["∞", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": [],
+            "adjV": []
           },
           {
             "d": -1,
@@ -29274,7 +29278,9 @@
             "message": "The source is 0 away from itself.",
             "distText": ["0", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": [],
+            "adjV": []
           },
           {
             "d": -1,
@@ -29294,7 +29300,9 @@
             "message": "The heap holds (distance, node) pairs; it starts with the source.",
             "distText": ["0", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": ["0:0"],
-            "inHeap": [0]
+            "inHeap": [0],
+            "adjU": [],
+            "adjV": []
           },
           {
             "d": -1,
@@ -29314,7 +29322,9 @@
             "message": "1 entry waiting in the heap.",
             "distText": ["0", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": ["0:0"],
-            "inHeap": [0]
+            "inHeap": [0],
+            "adjU": [],
+            "adjV": []
           },
           {
             "d": 0,
@@ -29332,7 +29342,9 @@
             "message": "Pop the closest: 0 at distance 0.",
             "distText": ["0", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29350,7 +29362,9 @@
             "message": "dist[0] = 0 is final: nothing left in the heap is closer, and no edge is negative.",
             "distText": ["0", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29368,7 +29382,9 @@
             "message": "Through 0, 1 is 7 away; better than ∞.",
             "distText": ["0", "∞", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29386,7 +29402,9 @@
             "message": "Relax: dist[1] = 7.",
             "distText": ["0", "7", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29404,7 +29422,9 @@
             "message": "The best way to 1 now comes from 0.",
             "distText": ["0", "7", "∞", "∞", "∞", "∞"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29424,7 +29444,9 @@
             "message": "Push (7, 1).",
             "distText": ["0", "7", "∞", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29444,7 +29466,9 @@
             "message": "Through 0, 2 is 2 away; better than ∞.",
             "distText": ["0", "7", "∞", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29464,7 +29488,9 @@
             "message": "Relax: dist[2] = 2.",
             "distText": ["0", "7", "2", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29484,7 +29510,9 @@
             "message": "The best way to 2 now comes from 0.",
             "distText": ["0", "7", "2", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29505,7 +29533,9 @@
             "message": "Push (2, 2).",
             "distText": ["0", "7", "2", "∞", "∞", "∞"],
             "heapNames": ["2:2", "7:1"],
-            "inHeap": [1, 2]
+            "inHeap": [1, 2],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 0,
@@ -29526,7 +29556,9 @@
             "message": "2 entries waiting in the heap.",
             "distText": ["0", "7", "2", "∞", "∞", "∞"],
             "heapNames": ["2:2", "7:1"],
-            "inHeap": [1, 2]
+            "inHeap": [1, 2],
+            "adjU": ["(1, 7)", "(2, 2)"],
+            "adjV": [1, 2]
           },
           {
             "d": 2,
@@ -29546,7 +29578,9 @@
             "message": "Pop the closest: 2 at distance 2.",
             "distText": ["0", "7", "2", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29566,7 +29600,9 @@
             "message": "dist[2] = 2 is final: nothing left in the heap is closer, and no edge is negative.",
             "distText": ["0", "7", "2", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29586,7 +29622,9 @@
             "message": "Through 2, 1 is 5 away; better than 7.",
             "distText": ["0", "7", "2", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29606,7 +29644,9 @@
             "message": "Relax: dist[1] = 5, down from 7.",
             "distText": ["0", "5", "2", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29626,7 +29666,9 @@
             "message": "The best way to 1 now comes from 2.",
             "distText": ["0", "5", "2", "∞", "∞", "∞"],
             "heapNames": ["7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29647,7 +29689,9 @@
             "message": "Push (5, 1); the old (7, 1) stays behind, stale.",
             "distText": ["0", "5", "2", "∞", "∞", "∞"],
             "heapNames": ["5:1", "7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29668,7 +29712,9 @@
             "message": "Through 2, 3 is 10 away; better than ∞.",
             "distText": ["0", "5", "2", "∞", "∞", "∞"],
             "heapNames": ["5:1", "7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29689,7 +29735,9 @@
             "message": "Relax: dist[3] = 10.",
             "distText": ["0", "5", "2", "10", "∞", "∞"],
             "heapNames": ["5:1", "7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29710,7 +29758,9 @@
             "message": "The best way to 3 now comes from 2.",
             "distText": ["0", "5", "2", "10", "∞", "∞"],
             "heapNames": ["5:1", "7:1"],
-            "inHeap": [1]
+            "inHeap": [1],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29732,7 +29782,9 @@
             "message": "Push (10, 3).",
             "distText": ["0", "5", "2", "10", "∞", "∞"],
             "heapNames": ["5:1", "7:1", "10:3"],
-            "inHeap": [1, 3]
+            "inHeap": [1, 3],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29754,7 +29806,9 @@
             "message": "Through 2, 4 is 7 away; better than ∞.",
             "distText": ["0", "5", "2", "10", "∞", "∞"],
             "heapNames": ["5:1", "7:1", "10:3"],
-            "inHeap": [1, 3]
+            "inHeap": [1, 3],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29776,7 +29830,9 @@
             "message": "Relax: dist[4] = 7.",
             "distText": ["0", "5", "2", "10", "7", "∞"],
             "heapNames": ["5:1", "7:1", "10:3"],
-            "inHeap": [1, 3]
+            "inHeap": [1, 3],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29798,7 +29854,9 @@
             "message": "The best way to 4 now comes from 2.",
             "distText": ["0", "5", "2", "10", "7", "∞"],
             "heapNames": ["5:1", "7:1", "10:3"],
-            "inHeap": [1, 3]
+            "inHeap": [1, 3],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29821,7 +29879,9 @@
             "message": "Push (7, 4).",
             "distText": ["0", "5", "2", "10", "7", "∞"],
             "heapNames": ["5:1", "7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 2,
@@ -29844,7 +29904,9 @@
             "message": "4 entries waiting in the heap.",
             "distText": ["0", "5", "2", "10", "7", "∞"],
             "heapNames": ["5:1", "7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(1, 3)", "(3, 8)", "(4, 5)"],
+            "adjV": [1, 3, 4]
           },
           {
             "d": 5,
@@ -29866,7 +29928,9 @@
             "message": "Pop the closest: 1 at distance 5.",
             "distText": ["0", "5", "2", "10", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 5,
@@ -29888,7 +29952,9 @@
             "message": "dist[1] = 5 is final: nothing left in the heap is closer, and no edge is negative.",
             "distText": ["0", "5", "2", "10", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 5,
@@ -29910,7 +29976,9 @@
             "message": "Through 1, 3 is 6 away; better than 10.",
             "distText": ["0", "5", "2", "10", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 5,
@@ -29932,7 +30000,9 @@
             "message": "Relax: dist[3] = 6, down from 10.",
             "distText": ["0", "5", "2", "6", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 5,
@@ -29954,7 +30024,9 @@
             "message": "The best way to 3 now comes from 1.",
             "distText": ["0", "5", "2", "6", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 5,
@@ -29977,7 +30049,9 @@
             "message": "Push (6, 3); the old (10, 3) stays behind, stale.",
             "distText": ["0", "5", "2", "6", "7", "∞"],
             "heapNames": ["6:3", "7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 5,
@@ -30000,7 +30074,9 @@
             "message": "4 entries waiting in the heap.",
             "distText": ["0", "5", "2", "6", "7", "∞"],
             "heapNames": ["6:3", "7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 6,
@@ -30022,7 +30098,9 @@
             "message": "Pop the closest: 3 at distance 6.",
             "distText": ["0", "5", "2", "6", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 6,
@@ -30044,7 +30122,9 @@
             "message": "dist[3] = 6 is final: nothing left in the heap is closer, and no edge is negative.",
             "distText": ["0", "5", "2", "6", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 6,
@@ -30066,7 +30146,9 @@
             "message": "Through 3, 5 is 10 away; better than ∞.",
             "distText": ["0", "5", "2", "6", "7", "∞"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 6,
@@ -30088,7 +30170,9 @@
             "message": "Relax: dist[5] = 10.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 6,
@@ -30110,7 +30194,9 @@
             "message": "The best way to 5 now comes from 3.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["7:1", "7:4", "10:3"],
-            "inHeap": [1, 3, 4]
+            "inHeap": [1, 3, 4],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 6,
@@ -30133,7 +30219,9 @@
             "message": "Push (10, 5).",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["7:1", "7:4", "10:3", "10:5"],
-            "inHeap": [1, 3, 4, 5]
+            "inHeap": [1, 3, 4, 5],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 6,
@@ -30156,7 +30244,9 @@
             "message": "4 entries waiting in the heap.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["7:1", "7:4", "10:3", "10:5"],
-            "inHeap": [1, 3, 4, 5]
+            "inHeap": [1, 3, 4, 5],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 7,
@@ -30178,7 +30268,9 @@
             "message": "Pop the closest: 1 at distance 7.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["7:4", "10:3", "10:5"],
-            "inHeap": [3, 4, 5]
+            "inHeap": [3, 4, 5],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 7,
@@ -30200,7 +30292,9 @@
             "message": "1 was already reached for 5: this entry is stale, skip it.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["7:4", "10:3", "10:5"],
-            "inHeap": [3, 4, 5]
+            "inHeap": [3, 4, 5],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 7,
@@ -30222,7 +30316,9 @@
             "message": "3 entries waiting in the heap.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["7:4", "10:3", "10:5"],
-            "inHeap": [3, 4, 5]
+            "inHeap": [3, 4, 5],
+            "adjU": ["(3, 1)"],
+            "adjV": [3]
           },
           {
             "d": 7,
@@ -30243,7 +30339,9 @@
             "message": "Pop the closest: 4 at distance 7.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:3", "10:5"],
-            "inHeap": [3, 5]
+            "inHeap": [3, 5],
+            "adjU": ["(3, 2)", "(5, 6)"],
+            "adjV": [3, 5]
           },
           {
             "d": 7,
@@ -30264,7 +30362,9 @@
             "message": "dist[4] = 7 is final: nothing left in the heap is closer, and no edge is negative.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:3", "10:5"],
-            "inHeap": [3, 5]
+            "inHeap": [3, 5],
+            "adjU": ["(3, 2)", "(5, 6)"],
+            "adjV": [3, 5]
           },
           {
             "d": 7,
@@ -30285,7 +30385,9 @@
             "message": "Through 4, 3 is 9 away; no better than 6.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:3", "10:5"],
-            "inHeap": [3, 5]
+            "inHeap": [3, 5],
+            "adjU": ["(3, 2)", "(5, 6)"],
+            "adjV": [3, 5]
           },
           {
             "d": 7,
@@ -30306,7 +30408,9 @@
             "message": "Through 4, 5 is 13 away; no better than 10.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:3", "10:5"],
-            "inHeap": [3, 5]
+            "inHeap": [3, 5],
+            "adjU": ["(3, 2)", "(5, 6)"],
+            "adjV": [3, 5]
           },
           {
             "d": 7,
@@ -30327,7 +30431,9 @@
             "message": "2 entries waiting in the heap.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:3", "10:5"],
-            "inHeap": [3, 5]
+            "inHeap": [3, 5],
+            "adjU": ["(3, 2)", "(5, 6)"],
+            "adjV": [3, 5]
           },
           {
             "d": 10,
@@ -30347,7 +30453,9 @@
             "message": "Pop the closest: 3 at distance 10.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:5"],
-            "inHeap": [5]
+            "inHeap": [5],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 10,
@@ -30367,7 +30475,9 @@
             "message": "3 was already reached for 6: this entry is stale, skip it.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:5"],
-            "inHeap": [5]
+            "inHeap": [5],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 10,
@@ -30387,7 +30497,9 @@
             "message": "1 entry waiting in the heap.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": ["10:5"],
-            "inHeap": [5]
+            "inHeap": [5],
+            "adjU": ["(5, 4)"],
+            "adjV": [5]
           },
           {
             "d": 10,
@@ -30405,7 +30517,9 @@
             "message": "Pop the closest: 5 at distance 10.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": [],
+            "adjV": []
           },
           {
             "d": 10,
@@ -30423,7 +30537,9 @@
             "message": "dist[5] = 10 is final: nothing left in the heap is closer, and no edge is negative.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": [],
+            "adjV": []
           },
           {
             "d": -1,
@@ -30441,7 +30557,9 @@
             "message": "Shortest distances from 0: 0, 5, 2, 6, 7, 10. Following prev back gives each path.",
             "distText": ["0", "5", "2", "6", "7", "10"],
             "heapNames": [],
-            "inHeap": []
+            "inHeap": [],
+            "adjU": [],
+            "adjV": []
           }
         ],
         "dijNodes": [
@@ -30542,6 +30660,23 @@
               "highlightExpr": "idx == 0 and dataTable('trace', frame, 'line') == 8"
             },
             {
+              "id": "adj-u",
+              "type": "array",
+              "label": "adj[u]",
+              "codeSymbol": "adj[u]",
+              "labelSide": "left",
+              "origin": [3.4, 5.0, 0],
+              "cellSize": 1.25,
+              "fontSize": 13,
+              "indexFontSize": 10,
+              "axisLabels": "plane",
+              "itemType": "text",
+              "lengthExpr": "arrayCount(dataTable('trace', frame, 'adjU'))",
+              "valueExpr": "arrayAt(dataTable('trace', frame, 'adjU'), idx)",
+              "highlightExpr": "idx == dataTable('trace', frame, 'vi')",
+              "connectTo": {"object": "graph", "indexExpr": "arrayAt(dataTable('trace', frame, 'adjV'), idx)", "pinned": true, "arrow": true, "color": "#8aa0b8", "highlightExpr": "idx == dataTable('trace', frame, 'vi')"}
+            },
+            {
               "id": "dist",
               "type": "array",
               "label": "dist",
@@ -30574,6 +30709,14 @@
               "highlightExpr": "idx == dataTable('trace', frame, 'v') and dataTable('trace', frame, 'line') == 15"
             },
             {
+              "id": "src",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "'src = 0'",
+              "connectTo": {"object": "graph", "indexExpr": "0"},
+              "codeRef": {"file": "dijkstra", "line": 3}
+            },
+            {
               "id": "d",
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
@@ -30587,6 +30730,14 @@
               "textExpr": "dataTable('trace', frame, 'u') < 0 ? 'u: —' : concat('u = ', dataTable('trace', frame, 'u'))",
               "connectTo": {"object": "graph", "indexExpr": "dataTable('trace', frame, 'u')"},
               "codeRef": {"file": "dijkstra", "line": 9}
+            },
+            {
+              "id": "dist-u",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'u') < 0 ? 'dist[u]: —' : concat('dist[u] = ', arrayAt(dataTable('trace', frame, 'distText'), dataTable('trace', frame, 'u')))",
+              "connectTo": {"object": "dist", "indexExpr": "dataTable('trace', frame, 'u')"},
+              "codeRef": {"file": "dijkstra", "line": 10}
             },
             {
               "id": "v",
