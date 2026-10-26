@@ -167,6 +167,13 @@ const COMMON_PROMPTS: {label: string; prompt: string; display?: string; takesOve
     {label: 'Surprise me!', prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."},
 ];
 
+/** A question the learner typed is about what is on screen now: playback stops at once (even while the turn waits
+ *  for a narration in flight), so the next state and its narration don't move on and talk over the answer. */
+function sendTyped(text: string): void {
+    window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+    void sendChatMessage(text, { typed: true });
+}
+
 /** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
 function usePrompt(text: string, e: MouseEvent, display?: string, takesOver = false): void {
     if (e.metaKey || e.ctrlKey) {
@@ -177,10 +184,9 @@ function usePrompt(text: string, e: MouseEvent, display?: string, takesOver = fa
             input.dispatchEvent(new Event('input'));
         }
     } else {
-        if (takesOver) {
-            window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
-            window.dispatchEvent(new CustomEvent('algebench:narrationoff'));
-        }
+        // A prompt chip, like an Ask-AI button, is about what is on screen now: playback stops for the answer.
+        window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+        if (takesOver) window.dispatchEvent(new CustomEvent('algebench:narrationoff'));
         sendChatMessage(text, display ? { display } : undefined);
     }
 }
@@ -590,7 +596,7 @@ function setupChat(): void {
             if (text && !chatSending) {
                 input.value = '';
                 input.style.height = 'auto';
-                sendChatMessage(text, { typed: true });
+                sendTyped(text);
             }
         }
     });
@@ -606,7 +612,7 @@ function setupChat(): void {
         if (text && !chatSending) {
             input.value = '';
             input.style.height = 'auto';
-            sendChatMessage(text, { typed: true });
+            sendTyped(text);
         }
     });
 }

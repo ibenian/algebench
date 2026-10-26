@@ -32327,6 +32327,12 @@ var COMMON_PROMPTS = [
 		prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."
 	}
 ];
+/** A question the learner typed is about what is on screen now: playback stops at once (even while the turn waits
+*  for a narration in flight), so the next state and its narration don't move on and talk over the answer. */
+function sendTyped(text) {
+	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+	sendChatMessage$1(text, { typed: true });
+}
 /** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
 function usePrompt(text, e, display, takesOver = false) {
 	if (e.metaKey || e.ctrlKey) {
@@ -32337,10 +32343,8 @@ function usePrompt(text, e, display, takesOver = false) {
 			input.dispatchEvent(new Event("input"));
 		}
 	} else {
-		if (takesOver) {
-			window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
-			window.dispatchEvent(new CustomEvent("algebench:narrationoff"));
-		}
+		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+		if (takesOver) window.dispatchEvent(new CustomEvent("algebench:narrationoff"));
 		sendChatMessage$1(text, display ? { display } : void 0);
 	}
 }
@@ -32642,7 +32646,7 @@ function setupChat() {
 			if (text && !chatSending) {
 				input.value = "";
 				input.style.height = "auto";
-				sendChatMessage$1(text, { typed: true });
+				sendTyped(text);
 			}
 		}
 	});
@@ -32655,7 +32659,7 @@ function setupChat() {
 		if (text && !chatSending) {
 			input.value = "";
 			input.style.height = "auto";
-			sendChatMessage$1(text, { typed: true });
+			sendTyped(text);
 		}
 	});
 }

@@ -2439,10 +2439,10 @@ def kruskal_trace():
 
 
 def prim_trace(adj):
-    """Prim from node 0. Per frame: w, u, p (the popped entry); v, vi; heap (entries [w, v, from], sorted); seen; tree
+    """Prim from node 0. Per frame: w, u, p (the popped entry); v, wv (the neighbour and its edge's weight); heap (entries [w, v, from], sorted); seen; tree
     (edges as [from, to]); cost; checkText; result."""
     L = lambda t, a=None: mst_line('prim', t, a)
-    st = {'w': -1, 'u': -1, 'p': -1, 'v': -1, 'heap': [], 'seen': [0] * MST_N, 'tree': [], 'cost': 0, 'checkText': 'check: —', 'result': '—'}
+    st = {'w': -1, 'u': -1, 'p': -1, 'v': -1, 'wv': -1, 'heap': [], 'seen': [0] * MST_N, 'tree': [], 'cost': 0, 'checkText': 'check: —', 'result': '—'}
     trace, emit = recorder(st)
     emit(L('seen = [False] * n'), 'No node is in the tree yet.')
     st['heap'] = [[0, 0, -1]]
@@ -2467,12 +2467,12 @@ def prim_trace(adj):
             st['tree'] = st['tree'] + [[p, u]]
             emit(L('tree.append((p, u))'), f'Take {p} – {u}: the cheapest edge leaving the tree.')
         for v, wv in adj[u]:
-            st['v'] = v
+            st['v'], st['wv'] = v, wv
             if st['seen'][v]:
                 continue
             st['heap'] = sorted(st['heap'] + [[wv, v, u]])
             emit(L('heapq.heappush(heap, (wv, v, u))'), f'{u} – {v} leaves the tree: push it, weight {wv}.')
-        st.update(v=-1)
+        st.update(v=-1, wv=-1)
     st.update(w=-1, u=-1, p=-1, result=f'cost {st["cost"]}')
     emit(L('return cost, tree'), f'The heap is empty. Same total as Kruskal: {st["cost"]}.')
     return trace
@@ -2577,8 +2577,11 @@ def mst_scene(header):
         label('n', f"'n = {MST_N}'", None, LP('def prim('), 'mst'),
         label('w', f"{p('w')} < 0 ? 'w: —' : concat('w = ', {p('w')})", None, LP('w, u, p = heapq.heappop(heap)'), 'mst'),
         label('u', f"{p('u')} < 0 ? 'u: —' : concat('u = ', {p('u')})", ['graph', p('u')], LP('w, u, p = heapq.heappop(heap)'), 'mst'),
-        label('p', f"{p('p')} < 0 ? 'p: —' : concat('p = ', {p('p')})", ['graph', p('p')], LP('w, u, p = heapq.heappop(heap)'), 'mst'),
+        # p is -1 for the start entry (0, 0, -1), reached from no node: shown as -1 once an entry is popped.
+        label('p', f"{p('u')} < 0 ? 'p: —' : concat('p = ', {p('p')})", ['graph', p('p')], LP('w, u, p = heapq.heappop(heap)'), 'mst'),
         label('v', f"{p('v')} < 0 ? 'v: —' : concat('v = ', {p('v')})", ['graph', p('v')], LP('for v, wv in adj[u]'), 'mst'),
+        label('wv', f"{p('wv')} < 0 ? 'wv: —' : concat('wv = ', {p('wv')})", None, LP('for v, wv in adj[u]'), 'mst'),
+        label('seen-u', f"{p('u')} < 0 ? 'seen[u]: —' : concat('seen[u] = ', arrayAt({p('seen')}, {p('u')}) == 1 ? 'True' : 'False')", None, LP('if seen[u]'), 'mst'),
         {**label('check', p('checkText'), None, LP('if seen[u]'), 'mst'), 'highlightExpr': f"{p('checkText')} != 'check: —'"},
         label('cost', f"concat('cost = ', {p('cost')})", None, LP('cost += w'), 'mst'),
         label('heap-len', f"concat('len(heap) = ', arrayCount({p('heapNames')}))", ['heap', '0'], LP('while heap'), 'mst'),
