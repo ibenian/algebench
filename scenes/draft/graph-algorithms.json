@@ -17086,7 +17086,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "cycle-detection", "line": 9},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -17218,7 +17218,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('cyc_und', frame, 'checkText')",
               "codeRef": {"file": "cycle-detection", "line": 27},
-              "highlightExpr": "dataTable('cyc_und', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('cyc_und', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -17372,7 +17372,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('cyc_kahn', frame, 'checkText')",
               "codeRef": {"file": "cycle-detection", "line": 50},
-              "highlightExpr": "dataTable('cyc_kahn', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('cyc_kahn', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -20202,7 +20202,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "bipartite", "line": 17},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -20377,7 +20377,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('bip_odd', frame, 'checkText')",
               "codeRef": {"file": "bipartite", "line": 17},
-              "highlightExpr": "dataTable('bip_odd', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('bip_odd', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -20542,7 +20542,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('bip_dfs', frame, 'checkText')",
               "codeRef": {"file": "bipartite", "line": 30},
-              "highlightExpr": "dataTable('bip_dfs', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('bip_dfs', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -22945,7 +22945,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "topological-sort", "line": 10},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -23092,7 +23092,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('topo_kahn', frame, 'checkText')",
               "codeRef": {"file": "topological-sort", "line": 35},
-              "highlightExpr": "dataTable('topo_kahn', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('topo_kahn', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "result",
@@ -25931,7 +25931,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "union-find", "line": 12},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "groups",
@@ -29141,7 +29141,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "mst", "line": 15},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "cost",
@@ -29304,7 +29304,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('mst_prim', frame, 'checkText')",
               "codeRef": {"file": "mst", "line": 30},
-              "highlightExpr": "dataTable('mst_prim', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('mst_prim', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "cost",
@@ -30903,7 +30903,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "dijkstra", "line": 13},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "heap-len",
@@ -31740,7 +31740,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "zero-one-bfs", "line": 10},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "dq-len",
@@ -34575,7 +34575,7 @@
               "id": "nb",
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
-              "textExpr": "dataTable('trace', frame, 'nbText') == '—' ? 'nb: —' : concat('nb = ', dataTable('trace', frame, 'nbText'))",
+              "textExpr": "equalText(dataTable('trace', frame, 'nbText'), '—') ? 'nb: —' : concat('nb = ', dataTable('trace', frame, 'nbText'))",
               "connectTo": {"object": "grid-cells", "indexExpr": "dataTable('trace', frame, 'nb')"},
               "codeRef": {"file": "a-star", "line": 17}
             },
@@ -34606,7 +34606,7 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'checkText')",
               "codeRef": {"file": "a-star", "line": 22},
-              "highlightExpr": "dataTable('trace', frame, 'checkText') != 'check: —'"
+              "highlightExpr": "not equalText(dataTable('trace', frame, 'checkText'), 'check: —')"
             },
             {
               "id": "popped",

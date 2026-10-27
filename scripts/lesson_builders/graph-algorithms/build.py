@@ -1429,7 +1429,7 @@ def cycle_scene(header):
                      ['state' if directed else 'visited', c('v')], LL('if state[v] == 1' if directed else 'if visited[v]'), 'cycle-detection'),
              'highlightExpr': f"{c('v')} >= 0"},
             *([] if directed else [label('parent', f"{c('parent')} < 0 ? 'parent: —' : concat('parent = ', {c('parent')})", ['graph', c('parent')], LL('def dfs('), 'cycle-detection')]),
-            {**label('check', c('checkText'), None, LL('for v in adj[u]') + 1, 'cycle-detection'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+            {**label('check', c('checkText'), None, LL('for v in adj[u]') + 1, 'cycle-detection'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
             label('result', f"concat('result: ', {c('result')})", None, LL('return False'), 'cycle-detection'),
         ]
 
@@ -1469,7 +1469,7 @@ def cycle_scene(header):
         label('taken', f"concat('taken = ', {k('taken')})", None, LK('taken += 1'), 'cycle-detection'),
         {**label('taken-n', f"concat('taken < n: ', {k('taken')}, ' < {CYC_N} → ', ({k('taken')} < {CYC_N} ? 'True' : 'False'))",
                  None, LK('return taken < n'), 'cycle-detection'), 'highlightExpr': f"{k('left')} == 1"},
-        {**label('check', k('checkText'), None, LK('if indeg[v] == 0'), 'cycle-detection'), 'highlightExpr': f"{k('checkText')} != 'check: —'"},
+        {**label('check', k('checkText'), None, LK('if indeg[v] == 0'), 'cycle-detection'), 'highlightExpr': f"not equalText({k('checkText')}, 'check: —')"},
         label('result', f"concat('result: ', {k('result')})", None, LK('return taken < n'), 'cycle-detection'),
     ]
     pos = lambda adj: [{'x': x, 'y': y, 'adj': a} for (x, y), a in zip(CYC_POS, adj)]
@@ -1785,7 +1785,7 @@ def bipartite_scene(header):
             {**label('other', f"{c('u')} < 0 ? '1 - color[u]: —' : concat('1 - color[u] = 1 - ', {team(c('u'))}, ' = ', 1 - {team(c('u'))})",
                      None, L('color[v] = 1 - color[u]'), 'bipartite'), 'highlightExpr': f"{c('line')} == {L('color[v] = 1 - color[u]')}"},
             label('queue-len', f"concat('len(queue) = ', arrayCount({c('queue')}))", ['queue', '0'], L('while queue'), 'bipartite'),
-            {**label('check', c('checkText'), None, L('elif color[v] == color[u]'), 'bipartite'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+            {**label('check', c('checkText'), None, L('elif color[v] == color[u]'), 'bipartite'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
             label('result', f"concat('result: ', {c('result')})", None, L('return True'), 'bipartite'),
         ]
 
@@ -1809,7 +1809,7 @@ def bipartite_scene(header):
             {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], LD('for v in adj[u]'), 'bipartite'), 'tooltipExpr': c('vTip')},
             {**label('color-v', f"{c('v')} < 0 ? 'color[v]: —' : concat('color[', {c('v')}, '] = ', {team(c('v'))})",
                      ['color', c('v')], LD('if color[v] == -1'), 'bipartite'), 'highlightExpr': f"{c('v')} >= 0"},
-            {**label('check', c('checkText'), None, LD('elif color[v] == c'), 'bipartite'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+            {**label('check', c('checkText'), None, LD('elif color[v] == c'), 'bipartite'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
             label('result', f"concat('result: ', {c('result')})", None, LD('return True', 'for s in range(n)'), 'bipartite'),
         ]
 
@@ -2089,7 +2089,7 @@ def topo_scene(header):
             {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v in adj[u]'), 'topological-sort'), 'tooltipExpr': c('vTip')},
             label('order-len', f"concat('len(order) = ', arrayCount({c('order')}))", ['order', '0'], L('order.append(u)'), 'topological-sort'),
             {**label('check', c('checkText'), None, L('if state[v] == 1') if L is LD else L('if indeg[v] == 0'), 'topological-sort'),
-             'highlightExpr': f"{c('checkText')} != 'check: —'"},
+             'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
             label('result', f"concat('result: ', {c('result')})", None, L('return order'), 'topological-sort'),
         ]
 
@@ -2347,7 +2347,7 @@ def uf_scene(header):
                  ['parent', c('x')], L('if parent[x] != x'), 'union-find'), 'highlightExpr': f"{c('x')} >= 0"},
         label('ra', f"{c('ra')} < 0 ? 'ra: —' : concat('ra = ', {c('ra')})", ['parent', c('ra')], L('ra, rb = find(a), find(b)'), 'union-find'),
         label('rb', f"{c('rb')} < 0 ? 'rb: —' : concat('rb = ', {c('rb')})", ['parent', c('rb')], L('ra, rb = find(a), find(b)'), 'union-find'),
-        {**label('check', c('checkText'), None, L('if ra == rb'), 'union-find'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        {**label('check', c('checkText'), None, L('if ra == rb'), 'union-find'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
         label('groups', f"concat('groups = ', {c('groups')})", None, L('groups -= 1'), 'union-find'),
         label('result', f"concat('result: ', {c('result')})", None, L('return groups'), 'union-find'),
     ]
@@ -2592,7 +2592,7 @@ def mst_scene(header):
         label('b', f"{k('b')} < 0 ? 'b: —' : concat('b = ', {k('b')})", ['graph', k('b')], LK('for w, a, b in sorted(edges)'), 'mst'),
         label('ra', f"{k('ra')} < 0 ? 'ra: —' : concat('ra = ', {k('ra')})", ['parent', k('ra')], LK('ra, rb = find(a), find(b)'), 'mst'),
         label('rb', f"{k('rb')} < 0 ? 'rb: —' : concat('rb = ', {k('rb')})", ['parent', k('rb')], LK('ra, rb = find(a), find(b)'), 'mst'),
-        {**label('check', k('checkText'), None, LK('if ra == rb'), 'mst'), 'highlightExpr': f"{k('checkText')} != 'check: —'"},
+        {**label('check', k('checkText'), None, LK('if ra == rb'), 'mst'), 'highlightExpr': f"not equalText({k('checkText')}, 'check: —')"},
         label('cost', f"concat('cost = ', {k('cost')})", None, LK('cost += w'), 'mst'),
         label('tree-len', f"concat('len(tree) = ', arrayCount({k('tree')}))", ['tree', '0'], LK('if len(tree) == n - 1'), 'mst'),
         label('result', f"concat('result: ', {k('result')})", None, LK('return cost, tree'), 'mst'),
@@ -2618,7 +2618,7 @@ def mst_scene(header):
         label('v', f"{p('v')} < 0 ? 'v: —' : concat('v = ', {p('v')})", ['graph', p('v')], LP('for v, wv in adj[u]'), 'mst'),
         label('wv', f"{p('wv')} < 0 ? 'wv: —' : concat('wv = ', {p('wv')})", None, LP('for v, wv in adj[u]'), 'mst'),
         label('seen-u', f"{p('u')} < 0 ? 'seen[u]: —' : concat('seen[u] = ', arrayAt({p('seen')}, {p('u')}) == 1 ? 'True' : 'False')", None, LP('if seen[u]'), 'mst'),
-        {**label('check', p('checkText'), None, LP('if seen[u]'), 'mst'), 'highlightExpr': f"{p('checkText')} != 'check: —'"},
+        {**label('check', p('checkText'), None, LP('if seen[u]'), 'mst'), 'highlightExpr': f"not equalText({p('checkText')}, 'check: —')"},
         label('cost', f"concat('cost = ', {p('cost')})", None, LP('cost += w'), 'mst'),
         label('heap-len', f"concat('len(heap) = ', arrayCount({p('heapNames')}))", ['heap', '0'], LP('while heap'), 'mst'),
         label('result', f"concat('result: ', {p('result')})", None, LP('return cost, tree'), 'mst'),
@@ -2804,7 +2804,7 @@ def dijkstra_scene(header):
         label('d-plus-w', f"{c('w')} < 0 ? 'd + w: —' : concat('d + w = ', {c('d')} + {c('w')})", None, L('if d + w < dist[v]'), 'dijkstra'),
         {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[', {c('v')}, '] = ', arrayAt({c('distText')}, {c('v')}))",
                  ['dist', c('v')], L('dist[v] = d + w'), 'dijkstra'), 'highlightExpr': f"{c('v')} >= 0"},
-        {**label('check', c('checkText'), None, L('if d + w < dist[v]'), 'dijkstra'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        {**label('check', c('checkText'), None, L('if d + w < dist[v]'), 'dijkstra'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
         label('heap-len', f"concat('len(heap) = ', arrayCount({c('heapNames')}))", ['heap', '0'], L('while heap'), 'dijkstra'),
         label('result', f"concat('result: ', {c('result')})", None, L('return dist, prev'), 'dijkstra'),
     ]
@@ -2960,7 +2960,7 @@ def zero_one_scene(header):
               ['dist', c('u')], L('if dist[u] + w < dist[v]'), 'zero-one-bfs'),
         {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[', {c('v')}, '] = ', arrayAt({c('distText')}, {c('v')}))",
                  ['dist', c('v')], L('dist[v] = dist[u] + w'), 'zero-one-bfs'), 'highlightExpr': f"{c('v')} >= 0"},
-        {**label('check', c('checkText'), None, L('if dist[u] + w < dist[v]'), 'zero-one-bfs'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        {**label('check', c('checkText'), None, L('if dist[u] + w < dist[v]'), 'zero-one-bfs'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
         label('dq-len', f"concat('len(dq) = ', arrayCount({c('dq')}))", ['dq', '0'], L('while dq'), 'zero-one-bfs'),
         label('result', f"concat('result: ', {c('result')})", None, L('return dist'), 'zero-one-bfs'),
     ]
@@ -3241,11 +3241,11 @@ def a_star_scene(header):
         label('cell', f"{c('cell')} < 0 ? 'cell: —' : concat('cell = ', {c('cellText')})", ['grid-cells', c('cell')], L('f, _, d, cell = heapq.heappop'), 'a-star'),
         label('f', f"{c('cell')} < 0 ? 'f: —' : concat('f = ', {c('f')})", None, L('f, _, d, cell = heapq.heappop'), 'a-star'),
         label('d', f"{c('cell')} < 0 ? 'd: —' : concat('d = ', {c('d')})", None, L('f, _, d, cell = heapq.heappop'), 'a-star'),
-        label('nb', f"{c('nbText')} == '—' ? 'nb: —' : concat('nb = ', {c('nbText')})", ['grid-cells', c('nb')], L('for nb in'), 'a-star'),
+        label('nb', f"equalText({c('nbText')}, '—') ? 'nb: —' : concat('nb = ', {c('nbText')})", ['grid-cells', c('nb')], L('for nb in'), 'a-star'),
         label('nd', f"{c('nd')} < 0 ? 'nd: —' : concat('nd = ', {c('nd')})", None, L('nd = d + 1'), 'a-star'),
         label('h-nb', f"{c('hn')} < 0 ? 'h(nb): —' : concat('h(nb) = ', {c('hn')})", None, L('heapq.heappush'), 'a-star'),
         label('f-nb', f"{c('fn')} < 0 ? 'nd + h(nb): —' : concat('nd + h(nb) = ', {c('fn')})", None, L('heapq.heappush'), 'a-star'),
-        {**label('check', c('checkText'), None, L('if nd < g.get'), 'a-star'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        {**label('check', c('checkText'), None, L('if nd < g.get'), 'a-star'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
         label('popped', f"concat('cells popped = ', {c('popped')})", None, L('f, _, d, cell = heapq.heappop'), 'a-star'),
         label('heap-len', f"concat('len(heap) = ', arrayCount({c('heapNames')}))", ['heap', '0'], L('while heap'), 'a-star'),
         label('result', f"concat('result: ', {c('result')})", None, L('return d  #'), 'a-star'),
