@@ -2110,6 +2110,10 @@ export interface CodeRef {
    * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
    */
   callEntryLine?: number;
+  /**
+   * SCENE / STEP codeRef. Expression returning the values the calls just made returned, keyed by each call's source text without spaces (e.g. {"h(start)": 6}). The Code tab shows each beside its call on the line and when the call is pointed at; a call with no entry shows nothing.
+   */
+  returnsExpr?: string;
 }
 export interface ArrayMarker {
   /**
@@ -2253,6 +2257,10 @@ export interface CodeRef1 {
    * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
    */
   callEntryLine?: number;
+  /**
+   * SCENE / STEP codeRef. Expression returning the values the calls just made returned, keyed by each call's source text without spaces (e.g. {"h(start)": 6}). The Code tab shows each beside its call on the line and when the call is pointed at; a call with no entry shows nothing.
+   */
+  returnsExpr?: string;
 }
 export interface CodeRef2 {
   /**
@@ -2279,6 +2287,10 @@ export interface CodeRef2 {
    * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
    */
   callEntryLine?: number;
+  /**
+   * SCENE / STEP codeRef. Expression returning the values the calls just made returned, keyed by each call's source text without spaces (e.g. {"h(start)": 6}). The Code tab shows each beside its call on the line and when the call is pointed at; a call with no entry shows nothing.
+   */
+  returnsExpr?: string;
 }
 /**
  * An incremental step that adds/removes elements and configures sliders.
@@ -2500,6 +2512,10 @@ export interface CodeRef3 {
    * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
    */
   callEntryLine?: number;
+  /**
+   * SCENE / STEP codeRef. Expression returning the values the calls just made returned, keyed by each call's source text without spaces (e.g. {"h(start)": 6}). The Code tab shows each beside its call on the line and when the call is pointed at; a call with no entry shows nothing.
+   */
+  returnsExpr?: string;
 }
 /**
  * General discrete state player bound to an existing integer slider. No algorithm knowledge.
@@ -2540,6 +2556,10 @@ export interface CodeRef4 {
    * SCENE / STEP codeRef. The line a call made from a callsExpr line lands on: the called function's first line.
    */
   callEntryLine?: number;
+  /**
+   * SCENE / STEP codeRef. Expression returning the values the calls just made returned, keyed by each call's source text without spaces (e.g. {"h(start)": 6}). The Code tab shows each beside its call on the line and when the call is pointed at; a call with no entry shows nothing.
+   */
+  returnsExpr?: string;
 }
 export interface CodeFile {
   id: string;

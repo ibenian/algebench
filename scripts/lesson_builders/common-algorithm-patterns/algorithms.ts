@@ -4,12 +4,15 @@ export type Value = number | string | Cell[];
 /** One execution snapshot: every key is present in every frame of a trace, so bindings never miss a column. */
 export type Frame = Record<string, Value> & { line: number; message: string; status: 'Running' | 'Done'; running: number };
 
-/** Records full copies of `vars` (arrays sliced) with the active one-based source line. */
+/**
+ * Records full copies of `vars` (arrays sliced) with the active one-based source line, and what the calls on that
+ * line returned when given (`{'h(start)': 6}`, keyed by each call's source without spaces): the frame's `returns`.
+ */
 function recorder<V extends Record<string, Value>>(vars: V) {
     const trace: (V & Frame)[] = [];
     // ln_<var>: the line where <var> was last assigned, read off its tip changing. Labels link to it.
     const tipText: Record<string, Value> = {}, tipLine: Record<string, number> = {};
-    const emit = (line: number, message: string, status: Frame['status'] = 'Running') => {
+    const emit = (line: number, message: string, status: Frame['status'] = 'Running', returns?: Record<string, Value>) => {
         const copy = Object.fromEntries(Object.entries(vars).map(([k, v]) => [k, Array.isArray(v) ? v.slice() : v]));
         for (const [k, v] of Object.entries(vars)) {
             if (!k.startsWith('tip_')) continue;
@@ -17,7 +20,7 @@ function recorder<V extends Record<string, Value>>(vars: V) {
             tipText[k] = v;
             copy[`ln_${k.slice(4)}`] = v ? tipLine[k] ?? 0 : 0;
         }
-        trace.push({ ...copy, line, message, status, running: status === 'Running' ? 1 : 0 } as V & Frame);
+        trace.push({ ...copy, line, message, status, running: status === 'Running' ? 1 : 0, ...(returns ? { returns } : {}) } as unknown as V & Frame);
     };
     return { trace, emit };
 }

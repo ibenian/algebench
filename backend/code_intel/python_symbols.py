@@ -14,7 +14,8 @@ Each reference carries ``key``: its source text with whitespace removed, the
 string a label or marker that shows the same expression will match exactly.
 *Functions* are the file's own ``def``s, with the span of the name on the ``def`` line; *calls* are the places
 the file calls one of them by name (``backtrack(i + 1)``), each with the line of the ``def`` it reaches, so the
-panel can link a call to its function.
+panel can link a call to its function, and the whole call's ``key`` (``backtrack(i+1)``), the name a trace's
+``returns`` gives its value under.
 
 Positions are 1-based lines and 0-based *character* columns (``ast`` reports
 UTF-8 byte offsets; they are converted so the client can index JS strings).
@@ -104,11 +105,11 @@ def analyze_python(source: str) -> dict:
             references.append({"key": node.arg, "root": node.arg, "kind": "name", "store": True,
                                "line": node.lineno, "col": col, "endLine": node.lineno, "endCol": col + len(node.arg)})
     references.sort(key=lambda r: (r["line"], r["col"], -(r["endCol"] - r["col"])))
-    functions, calls = _functions_and_calls(tree, lines)
+    functions, calls = _functions_and_calls(tree, source, lines)
     return {"variables": sorted(variables), "references": references, "functions": functions, "calls": calls, "error": None}
 
 
-def _functions_and_calls(tree: ast.AST, lines: list[str]) -> tuple[list[dict], list[dict]]:
+def _functions_and_calls(tree: ast.AST, source: str, lines: list[str]) -> tuple[list[dict], list[dict]]:
     """The file's ``def``s (name spans) and the calls to them by plain name, in source order.
 
     A name defined twice links to its first ``def``; calls to anything else (builtins, methods) are not reported.
@@ -127,8 +128,9 @@ def _functions_and_calls(tree: ast.AST, lines: list[str]) -> tuple[list[dict], l
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in first:
             col = _char_col(lines[node.func.lineno - 1], node.func.col_offset)
+            text = ast.get_source_segment(source, node) or node.func.id
             calls.append({"name": node.func.id, "line": node.func.lineno, "col": col, "endCol": col + len(node.func.id),
-                          "defLine": first[node.func.id]})
+                          "defLine": first[node.func.id], "key": _key(text)})
     functions.sort(key=lambda f: (f["line"], f["col"]))
     calls.sort(key=lambda c: (c["line"], c["col"]))
     return functions, calls

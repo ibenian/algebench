@@ -152,6 +152,16 @@ interface PatternScene {
     more?: { steps: Json[]; data: Record<string, unknown[]>; locations: Json[] };
 }
 const scenes: Json[] = [], codeFiles: Json[] = [];
+/**
+ * The codeRef extras for the values calls returned, when any frame records them (a frame's `returns`); frames
+ * without get {} so every row has the column.
+ */
+function returnsRef(trace: Frame[], table = 'trace'): Json {
+    const frames = trace as unknown as Record<string, unknown>[];
+    if (!frames.some(f => 'returns' in f)) return {};
+    for (const f of frames) f.returns ??= {};
+    return { returnsExpr: `dataTable('${table}', frame, 'returns')` };
+}
 function pattern(p: PatternScene) {
     const x = p.cameraX ?? 0;
     scenes.push({
@@ -165,7 +175,7 @@ function pattern(p: PatternScene) {
             add: p.elements.map(withTip(p.id)),
         }, ...(p.more?.steps ?? [])],
         stepPlayback: { slider: 'frame', intervalMs: 1200 },
-        codeRef: { file: p.id, lineExpr: tr('line'), ...(p.callEntryLine ? { callsExpr: tr('calls'), callEntryLine: p.callEntryLine } : {}) },
+        codeRef: { file: p.id, lineExpr: tr('line'), ...(p.callEntryLine ? { callsExpr: tr('calls'), callEntryLine: p.callEntryLine } : {}), ...returnsRef(p.trace) },
     });
     codeFiles.push({
         id: p.id, path: `patterns/${p.file}`, language: 'python', source: p.source,

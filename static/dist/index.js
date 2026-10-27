@@ -25575,6 +25575,16 @@ function formatWatch(value) {
 	if (typeof value === "string") return `'${value}'`;
 	return String(value);
 }
+/**
+* A codeRef's returnsExpr value as a map from a call's key (its source without spaces, `h(start)`) to what it
+* returned; anything that is not such a map (no entry this frame, a bad expression) is none.
+*/
+function callReturns(value) {
+	if (!value || typeof value !== "object" || Array.isArray(value) || "toArray" in value) return /* @__PURE__ */ new Map();
+	return new Map(Object.entries(value).filter(([, v]) => v !== void 0 && v !== null));
+}
+/** `h(start) → 6`: a call and the value it returned. */
+var returnText = (key, value) => `${key} → ${formatWatch(value)}`;
 /** The condition an `if`, `elif` or `while` line tests (its trailing comment dropped), or null for any other line. */
 function conditionOf(line) {
 	const m = /^\s*(?:if|elif|while)\s+(.+?)\s*:\s*(?:#.*)?$/.exec(line);
@@ -25855,7 +25865,8 @@ function setupCodePanel() {
 	const selectionLabel = document.createElement("span");
 	let lesson, files = [], selected;
 	let first = 0, last = 0, excerpt = "", active = null, followed;
-	let references = [];
+	let references = [], codeCalls = [];
+	let returns = /* @__PURE__ */ new Map();
 	const settings = loadSettings();
 	const compiled = /* @__PURE__ */ new Map();
 	const targets = document.createElement("div");
@@ -26202,6 +26213,7 @@ function setupCodePanel() {
 		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
 		const ref = scene?.steps?.[state.currentStepIndex]?.codeRef ?? scene?.codeRef;
 		let calls = [], entry;
+		returns = /* @__PURE__ */ new Map();
 		if (ref) {
 			const target = resolveCodeRef(files, ref, evaluate);
 			if (target && (entering || target.file !== followed) && target.file !== selected) {
@@ -26213,6 +26225,9 @@ function setupCodePanel() {
 			if (target && target.file === selected) {
 				lines = /* @__PURE__ */ new Set([target.line]);
 				runMoves(scene, ref);
+				if (ref.returnsExpr) try {
+					returns = callReturns(evaluate(ref.returnsExpr));
+				} catch {}
 				if (ref.callsExpr && ref.callEntryLine) {
 					entry = ref.callEntryLine;
 					try {
@@ -26977,6 +26992,7 @@ function setupCodePanel() {
 				if (!t.trim().endsWith("—") && !texts.includes(t)) texts.push(t);
 			};
 			for (const ref of lineReferences(references, line)) if (!hiddenKey(ref.key)) valueTexts(ref.key).forEach(add);
+			for (const call of codeCalls) if (call.line === line && call.key && returns.has(call.key)) add(returnText(call.key, returns.get(call.key)));
 			labelsForCodeLine(file.id, line).filter((t) => isExpression(t) ? !settings.hidden.includes(EXPR + expressionName(t)) : !rowSymbolKeys(t).some(hiddenKey)).forEach(add);
 			const watched = watches.filter((w) => w.file === file.path && w.line === line).map((w) => {
 				try {
@@ -27012,6 +27028,7 @@ function setupCodePanel() {
 	function open(file) {
 		selected = file;
 		references = [];
+		codeCalls = [];
 		lastScopeKey = "";
 		lastExecution = "";
 		lastLines = /* @__PURE__ */ new Set();
@@ -27062,7 +27079,9 @@ function setupCodePanel() {
 		analyzeCode(file).then((analysis) => {
 			if (analysis && selected === file) {
 				markSymbols(analysis.references);
-				markCalls(analysis.functions ?? [], analysis.calls ?? []);
+				codeCalls = analysis.calls ?? [];
+				markCalls(analysis.functions ?? [], codeCalls);
+				scheduleInline();
 			}
 		});
 	}
@@ -27077,17 +27096,18 @@ function setupCodePanel() {
 	}
 	/** Wrap each def's name and each call to it, so pointing at either links the two (see drawHover). */
 	function markCalls(functions, calls) {
-		const wrap = (f, cls, def) => {
+		const wrap = (f, cls, def, key) => {
 			const code = body.querySelector(`.code-line[data-line="${f.line}"] code`);
 			if (code) wrapColumns(code, f.col, f.endCol, () => {
 				const span = document.createElement("span");
 				span.className = cls;
 				span.dataset.def = String(def);
+				if (key) span.dataset.call = key;
 				return span;
 			});
 		};
 		for (const f of functions) wrap(f, "code-fn", f.line);
-		for (const c of calls) wrap(c, "code-call", c.defLine);
+		for (const c of calls) wrap(c, "code-call", c.defLine, c.key);
 	}
 	/** One variable reference: a `code-sym` span over its columns (wrapColumns splits whatever spans are there). */
 	function wrapRange(code, ref) {
@@ -27100,9 +27120,10 @@ function setupCodePanel() {
 			return span;
 		});
 	}
+	const plainTex = (t) => "\\text{" + t.replace(/[\\{}$&#%_^~]/g, (c) => c === "\\" ? "\\backslash " : "\\" + c) + "}";
 	/** LaTeX for what the visible labels say about a symbol, one line each; null when nothing shows it. */
 	function symbolTex(key, line) {
-		const plain = (t) => "\\text{" + t.replace(/[\\{}$&#%_^~]/g, (c) => c === "\\" ? "\\backslash " : "\\" + c) + "}";
+		const plain = plainTex;
 		const word = new RegExp(`(^|[^\\w.])${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`);
 		const exprs = selected && line ? lineExpressions(selected.id, line).filter((t) => word.test(expressionName(t))) : [];
 		const found = [...labelsForSymbol(key).map((f) => f.tooltip || plain(f.text)), ...exprs.map(plain)];
@@ -27120,7 +27141,9 @@ function setupCodePanel() {
 		const row = target.closest(".code-line");
 		if (span) setSymbolHover([span.dataset.key]);
 		else setSymbolHover([], row && selected ? codeLineKey(selected.id, Number(row.dataset.line)) : null);
-		showCodeSymbolTooltip(span, span ? symbolTex(span.dataset.key, row ? Number(row.dataset.line) : void 0) : null);
+		const call = target.closest(".code-call"), key = call?.dataset.call;
+		if (call && key && returns.has(key)) showCodeSymbolTooltip(call, `${plainTex(key)}\\to ${plainTex(formatWatch(returns.get(key)))}`);
+		else showCodeSymbolTooltip(span, span ? symbolTex(span.dataset.key, row ? Number(row.dataset.line) : void 0) : null);
 	});
 	body.addEventListener("pointerleave", () => showCodeSymbolTooltip(null, null));
 	body.addEventListener("pointerleave", () => setSymbolHover([]));

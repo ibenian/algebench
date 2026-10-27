@@ -17,7 +17,7 @@ import type { CodePrompt } from '/code-prompts.js';
 import { codeSections, sectionAt, sectionsOutline, sectionPrompt, STRUCTURE_MODES } from '/code-sections.js';
 import type { CodeSection, StructureMode } from '/code-sections.js';
 import { menuPlacement } from '/menu-placement.js';
-import { watchExpr, formatWatch, WatchError, conditionOf, truthOf } from '/code-watch.js';
+import { watchExpr, formatWatch, WatchError, conditionOf, truthOf, callReturns, returnText } from '/code-watch.js';
 import { createWatchStore } from '/watch-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import type { Watch } from '/watch-store.js';
@@ -60,7 +60,9 @@ export function setupCodePanel(): void {
     const selectionLabel=document.createElement('span');
     let lesson: AlgeBenchLessonSpec | null | undefined, files: CodeFile[]=[], selected: CodeFile | undefined;
     let first=0,last=0,excerpt='',active: CompiledExpr|null=null,followed: CodeFile | undefined;
-    let references: CodeReference[]=[];
+    let references: CodeReference[]=[],codeCalls: CodeCall[]=[];
+    // What the calls just made returned, by call key (codeRef.returnsExpr); empty when the run records none.
+    let returns=new Map<string,unknown>();
     const settings=loadSettings();
     const compiled=new Map<string,CompiledExpr|null>();
     const targets=document.createElement('div');targets.className='code-step-targets';targets.hidden=true;
@@ -274,6 +276,7 @@ export function setupCodePanel(): void {
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
         const ref=scene?.steps?.[state.currentStepIndex]?.codeRef??scene?.codeRef;
         let calls:number[]=[],entry:number|undefined;
+        returns=new Map();
         if(ref){
             const target=resolveCodeRef(files,ref,evaluate);
             if(target&&(entering||target.file!==followed)&&target.file!==selected){followed=target.file;open(target.file);return;}
@@ -281,6 +284,7 @@ export function setupCodePanel(): void {
             if(target&&target.file===selected){
                 lines=new Set([target.line]);
                 runMoves(scene!,ref);
+                if(ref.returnsExpr)try{returns=callReturns(evaluate(ref.returnsExpr));}catch{/* nothing returned at this position */}
                 if(ref.callsExpr&&ref.callEntryLine){entry=ref.callEntryLine;try{calls=waitingCalls(evaluate(ref.callsExpr),target.file.source.split('\n').length);}catch{/* no stack at this position */}}
             }
         }
@@ -814,6 +818,8 @@ export function setupCodePanel(): void {
             if(scope&&(line<scope.from||line>scope.to))return;
             const add=(t:string)=>{if(!t.trim().endsWith('—')&&!texts.includes(t))texts.push(t);};
             for(const ref of lineReferences(references,line))if(!hiddenKey(ref.key))valueTexts(ref.key).forEach(add);
+            // The calls on this line that just returned: `h(start) → 6`.
+            for(const call of codeCalls)if(call.line===line&&call.key&&returns.has(call.key))add(returnText(call.key,returns.get(call.key)));
             labelsForCodeLine(file.id,line).filter(t=>isExpression(t)
                 ?!settings.hidden.includes(EXPR+expressionName(t))
                 :!rowSymbolKeys(t).some(hiddenKey)).forEach(add);
@@ -841,7 +847,7 @@ export function setupCodePanel(): void {
         if(hovered?.isConnected&&hovered.matches(':hover'))floatLine(hovered);
     }
     function open(file: CodeFile) {
-        selected=file;references=[];lastScopeKey='';lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
+        selected=file;references=[];codeCalls=[];lastScopeKey='';lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
         titleText.textContent=file.path+' · read only';body.replaceChildren();
         if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{
@@ -868,7 +874,7 @@ export function setupCodePanel(): void {
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
         renderStructure();
         refreshBinding();
-        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file){markSymbols(analysis.references);markCalls(analysis.functions??[],analysis.calls??[]);}});
+        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file){markSymbols(analysis.references);codeCalls=analysis.calls??[];markCalls(analysis.functions??[],codeCalls);scheduleInline();}});
     }
     /** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
     function markSymbols(found: CodeReference[]) {
@@ -881,12 +887,12 @@ export function setupCodePanel(): void {
     }
     /** Wrap each def's name and each call to it, so pointing at either links the two (see drawHover). */
     function markCalls(functions: CodeFunction[], calls: CodeCall[]) {
-        const wrap=(f:CodeFunction,cls:string,def:number)=>{
+        const wrap=(f:CodeFunction,cls:string,def:number,key?:string)=>{
             const code=body.querySelector<HTMLElement>(`.code-line[data-line="${f.line}"] code`);
-            if(code)wrapColumns(code,f.col,f.endCol,()=>{const span=document.createElement('span');span.className=cls;span.dataset.def=String(def);return span;});
+            if(code)wrapColumns(code,f.col,f.endCol,()=>{const span=document.createElement('span');span.className=cls;span.dataset.def=String(def);if(key)span.dataset.call=key;return span;});
         };
         for(const f of functions)wrap(f,'code-fn',f.line);
-        for(const c of calls)wrap(c,'code-call',c.defLine);
+        for(const c of calls)wrap(c,'code-call',c.defLine,c.key);
     }
     /** One variable reference: a `code-sym` span over its columns (wrapColumns splits whatever spans are there). */
     function wrapRange(code: HTMLElement, ref: CodeReference) {
@@ -896,9 +902,10 @@ export function setupCodePanel(): void {
             return span;
         });
     }
+    const plainTex=(t:string)=>'\\text{'+t.replace(/[\\{}$&#%_^~]/g,c=>c==='\\'?'\\backslash ':'\\'+c)+'}';
     /** LaTeX for what the visible labels say about a symbol, one line each; null when nothing shows it. */
     function symbolTex(key:string,line?:number):string|null {
-        const plain=(t:string)=>'\\text{'+t.replace(/[\\{}$&#%_^~]/g,c=>c==='\\'?'\\backslash ':'\\'+c)+'}';
+        const plain=plainTex;
         // The expressions this line computes from the symbol (`1 - color[u]` for `color[u]` or `u`) show with it.
         const word=new RegExp(`(^|[^\\w.])${key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?!\\w)`);
         const exprs=selected&&line?lineExpressions(selected.id,line).filter(t=>word.test(expressionName(t))):[];
@@ -920,8 +927,11 @@ export function setupCodePanel(): void {
         const row=target.closest<HTMLElement>('.code-line');
         if(span)setSymbolHover([span.dataset.key!]);
         else setSymbolHover([],row&&selected?codeLineKey(selected.id,Number(row.dataset.line)):null);
-        // What the scene shows for this symbol, as a KaTeX tooltip: a label's formula, else its value.
-        showCodeSymbolTooltip(span,span?symbolTex(span.dataset.key!,row?Number(row.dataset.line):undefined):null);
+        // What the scene shows for this symbol, as a KaTeX tooltip: a label's formula, else its value. A call's name
+        // shows what that call just returned, when the run recorded it.
+        const call=target.closest<HTMLElement>('.code-call'),key=call?.dataset.call;
+        if(call&&key&&returns.has(key))showCodeSymbolTooltip(call,`${plainTex(key)}\\to ${plainTex(formatWatch(returns.get(key)))}`);
+        else showCodeSymbolTooltip(span,span?symbolTex(span.dataset.key!,row?Number(row.dataset.line):undefined):null);
     });
     body.addEventListener('pointerleave',()=>showCodeSymbolTooltip(null,null));
     body.addEventListener('pointerleave',()=>setSymbolHover([]));

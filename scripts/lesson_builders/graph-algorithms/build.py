@@ -160,11 +160,25 @@ Each scene starts with the signal to look for and the idea; visualizations are b
 
 # ── Recorded runs: each scene plays a trace (one frame per executed line) with the Code panel following it ──
 def recorder(state):
-    """emit(line, message) appends a frame: a copy of the state with the line and the message."""
+    """emit(line, message, returns) appends a frame: a copy of the state with the line and the message, and what the
+    calls on the line returned ({'h(start)': 6}, keyed by each call's source without spaces) when given."""
     trace = []
-    def emit(line, message):
-        trace.append({**{k: (list(v) if isinstance(v, list) else v) for k, v in state.items()}, 'line': line, 'message': message})
+    def emit(line, message, returns=None):
+        trace.append({**{k: (list(v) if isinstance(v, list) else v) for k, v in state.items()}, 'line': line, 'message': message,
+                      **({'returns': returns} if returns else {})})
     return trace, emit
+
+
+def code_ref(file, table, call_entry=None, trace=()):
+    """A run's codeRef: its file and executing line, the waiting call sites for a recursive one (call_entry: its
+    function's line), and the values calls returned when the trace records any. A frame with none gets {} so every
+    row has the column."""
+    col = lambda c: f"dataTable('{table}', frame, '{c}')"
+    returns = any('returns' in f for f in trace)
+    for f in trace if returns else ():
+        f.setdefault('returns', {})
+    return {'file': file, 'lineExpr': col('line'), **({'callsExpr': col('calls'), 'callEntryLine': call_entry} if call_entry else {}),
+            **({'returnsExpr': col('returns')} if returns else {})}
 
 
 def line_of(source, text, after=None):
@@ -215,8 +229,7 @@ def run_scene(id, title, header, markdown, prompt, file, source, trace, elements
               'remove': [{'id': '*'}, {'type': 'slider'}],
               'sliders': [{'id': 'frame', 'label': 'Execution state', 'min': 0, 'max': len(m['trace']) - 1, 'step': 1, 'default': 0}],
               # A recursive run's step names its function's line (call_entry); its table's calls column lists the waiting call sites.
-              'codeRef': {'file': id, 'lineExpr': col(m['table'], 'line'),
-                          **({'callsExpr': col(m['table'], 'calls'), 'callEntryLine': m['call_entry']} if m.get('call_entry') else {})},
+              'codeRef': code_ref(id, m['table'], m.get('call_entry'), m['trace']),
               'add': m['elements']} for m in more]
     return {
         'id': id, 'title': title, 'description': trace[0]['message'], 'range': RANGE, 'camera': cam,
@@ -229,7 +242,7 @@ def run_scene(id, title, header, markdown, prompt, file, source, trace, elements
                    'add': elements}, *extra],
         'stepPlayback': {'slider': 'frame', 'intervalMs': 1200},
         # call_entry: a recursive run's function line; the trace's calls column lists the waiting call sites.
-        'codeRef': {'file': id, 'lineExpr': tr('line'), **({'callsExpr': tr('calls'), 'callEntryLine': call_entry} if call_entry else {})},
+        'codeRef': code_ref(id, 'trace', call_entry, trace),
     }
 
 
@@ -3044,8 +3057,8 @@ def a_star_trace():
           'g': [UNREACHED] * n, 'closed': [0] * n, 'prev': [-1] * n, 'heap': [], 'path': [], 'popped': 0,
           'checkText': 'check: —', 'result': '—'}
     trace, emit0 = recorder(st)
-    def emit(line, message):
-        emit0(line, message)
+    def emit(line, message, returns=None):
+        emit0(line, message, returns)
         f = trace[-1]
         f['gText'] = ['' if x == UNREACHED else str(x) for x in f['g']]
         f['heapNames'] = [f'{e[0]}:{e[3]},{e[4]}' for e in f['heap']]
@@ -3064,7 +3077,8 @@ def a_star_trace():
             sync(prev=k['prev'])
             emit(L('prev = {start: None}'), 'prev remembers where each cell was reached from, to rebuild the path.')
             sync(heap=k['heap'])
-            emit(L('heap = [(h(start)'), f'The heap holds (f, h, g, cell), f = g + h; on equal f the cell nearer the goal comes first. The start: f = 0 + {h(AST_START)}.')
+            emit(L('heap = [(h(start)'), f'The heap holds (f, h, g, cell), f = g + h; on equal f the cell nearer the goal comes first. The start: f = 0 + {h(AST_START)}.',
+                 {'h(start)': h(AST_START)})
         elif event == 'while':
             st.update(cell=-1, f=-1, d=-1, nb=-1, nd=-1, hn=-1, fn=-1, nbText='—', cellText='—', checkText='check: —')
             emit(L('while heap'), f'{len(k["heap"])} waiting. The heap orders them by f, the estimated cost of a whole path through each.')
@@ -3101,7 +3115,8 @@ def a_star_trace():
             nb = k['nb']
             st['g'] = [k['nd'] if i == at(nb) else x for i, x in enumerate(st['g'])]
             st['prev'] = [st['cell'] if i == at(nb) else x for i, x in enumerate(st['prev'])]
-            emit(L('heapq.heappush'), f'g = {k["nd"]}, h = {h(nb)}: push it with f = {k["f"]}, reached from {st["cellText"]}.')
+            emit(L('heapq.heappush'), f'g = {k["nd"]}, h = {h(nb)}: push it with f = {k["f"]}, reached from {st["cellText"]}.',
+                 {'h(nb)': h(nb)})
     cost, popped = a_star_search(h, record)
     _, dij_popped = a_star_search(lambda rc: 0)
     return trace, cost, popped, dij_popped

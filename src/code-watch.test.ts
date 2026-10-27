@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { watchExpr, formatWatch, WatchError, conditionOf, truthOf } from '/code-watch.js';
+import { watchExpr, formatWatch, WatchError, conditionOf, truthOf, callReturns, returnText } from '/code-watch.js';
 
 const names = ['u', 'v', 'color', 'queue'];
 const col = (n: string) => `dataTable('trace', frame, '${n}')`;
@@ -50,4 +50,11 @@ test('a condition is true or false as Python tests it', () => {
     assert.equal(truthOf([1]), true);
     assert.equal(truthOf({toArray: () => []}), false, 'a math.js matrix');
     assert.equal(truthOf(undefined), null);
+});
+
+test('returns map each call to its value; anything else, or no value, is none', () => {
+    assert.deepEqual([...callReturns({'h(start)': 6, 'f(x)': [1, 2], 'g()': null})], [['h(start)', 6], ['f(x)', [1, 2]]]);
+    for (const none of [undefined, null, 3, 'x', [1, 2], {toArray: () => []}]) assert.equal(callReturns(none).size, 0);
+    assert.equal(returnText('h(start)', 6), 'h(start) → 6');
+    assert.equal(returnText('find(x)', [0, 1]), 'find(x) → [0, 1]');
 });

@@ -82,3 +82,8 @@ def test_calls_link_to_the_def_they_reach_and_builtins_do_not():
     call = result["calls"][1]
     assert lines[8][call["col"]:call["endCol"]] == "backtrack"
     assert not any(r["root"] == "backtrack" for r in result["references"]), "a function is not a variable"
+
+
+def test_a_call_is_keyed_by_its_whole_text_without_spaces():
+    keys = [c["key"] for c in analyze_python(RECURSIVE)["calls"]]
+    assert keys == ["backtrack(i+1)", "backtrack(0)"], "the key a trace's returns names the call's value by"

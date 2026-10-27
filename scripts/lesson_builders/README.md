@@ -15,6 +15,15 @@ type-check include `scripts/lesson_builders/**`, so a builder's tests run with t
 | [`graph-algorithms/`](graph-algorithms/) | `scenes/draft/graph-algorithms.json` (graph algorithms: index and scenes) | `./run.sh scripts/lesson_builders/graph-algorithms/build.py` |
 | [`test-array/`](test-array/) | `scenes/draft/test-array.json` (array and dict test scenes) | `./run.sh scripts/lesson_builders/test-array/build.py` |
 
+## Recorded runs: what calls returned
+
+When a recorded run makes a call to one of the code's own functions (`h(start)`, `find(x)`, `dfs(nxt)`), record
+what it returned on the frame for that line: `emit(line, message, returns={'h(start)': 6})` in Python builders,
+`emit(line, message, status, {'h(start)': 6})` in `algorithms.ts`. The key is the call's source with spaces removed,
+exactly as written in the code. The scene's codeRef then gets a `returnsExpr` on its own (`code_ref` /
+`returnsRef`), and the Code panel shows `h(start) → 6` beside the call and when the call's name is pointed at. A run
+that records none shows nothing, so add them in every new lesson whose code calls its own functions.
+
 ## common-algorithm-patterns
 
 - `algorithms.ts`: the Python shown in the Code panel for each pattern, and a recorded run of it: every step's

@@ -121,6 +121,18 @@ export function formatWatch(value: unknown): string {
     return String(value);
 }
 
+/**
+ * A codeRef's returnsExpr value as a map from a call's key (its source without spaces, `h(start)`) to what it
+ * returned; anything that is not such a map (no entry this frame, a bad expression) is none.
+ */
+export function callReturns(value: unknown): Map<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || 'toArray' in value) return new Map();
+    return new Map(Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined && v !== null));
+}
+
+/** `h(start) → 6`: a call and the value it returned. */
+export const returnText = (key: string, value: unknown): string => `${key} → ${formatWatch(value)}`;
+
 /** The condition an `if`, `elif` or `while` line tests (its trailing comment dropped), or null for any other line. */
 export function conditionOf(line: string): string | null {
     const m = /^\s*(?:if|elif|while)\s+(.+?)\s*:\s*(?:#.*)?$/.exec(line);
