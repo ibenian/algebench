@@ -3151,6 +3151,12 @@ def a_star_scene(header):
          'fontSize': 13, 'axisLabels': 'plane', 'itemType': 'text', 'color': AST_OPEN, 'showIndices': False,
          'lengthExpr': f"arrayCount({c('heapNames')})", 'valueExpr': f"arrayAt({c('heapNames')}, idx)",
          'highlightExpr': f"idx == 0 and {c('line')} == {L('while heap')}"},
+        # Row numbers down the left, column numbers along the top: cells are named (row, col) in the code.
+        *[{'id': f'ast-row-{r}', 'type': 'text', 'text': str(r), 'position': [-7.0, round(4.2 - r * 1.2, 3), 0], 'color': '#8aa0b8', 'fontSize': 12}
+          for r in range(AST_ROWS)],
+        *[{'id': f'ast-col-{k}', 'type': 'text', 'text': str(k), 'position': [round(-6.2 + k * 1.2, 3), 4.95, 0], 'color': '#8aa0b8', 'fontSize': 12}
+          for k in range(AST_COLS)],
+        {'id': 'ast-row-head', 'type': 'text', 'text': 'r \\ c', 'position': [-7.0, 4.95, 0], 'color': '#6b7a8c', 'fontSize': 10},
         {'id': 'heap-key', 'type': 'text', 'text': 'each entry: f : row, col', 'position': [-4.6, -1.8, 0], 'color': '#8aa0b8', 'fontSize': 11},
         label('start', f"'start = {AST_START}'", ['grid-cells', str(start)], L('def a_star('), 'a-star'),
         label('goal', f"'goal = {AST_GOAL}'", ['grid-cells', str(goal)], L('def a_star('), 'a-star'),
@@ -3167,7 +3173,7 @@ def a_star_scene(header):
         label('result', f"concat('result: ', {c('result')})", None, L('return d  #'), 'a-star'),
     ]
     saved = dij_popped - popped
-    return run_scene('a-star', 'Guided search (A*)', header, f"""**Signal:** shortest path to **one goal** when you can estimate how far is left: grid and map pathfinding, puzzles with a distance-like measure.
+    scene = run_scene('a-star', 'Guided search (A*)', header, f"""**Signal:** shortest path to **one goal** when you can estimate how far is left: grid and map pathfinding, puzzles with a distance-like measure.
 
 Dijkstra pops the cell **closest to the start**, so it spreads out evenly in every direction, even away from the goal. A* pops the cell with the smallest **f = g + h**:
 
@@ -3188,6 +3194,56 @@ Here a wall stands in the way, so A* first heads straight at it, then works roun
         'a_star.py', AST_SOURCE, trace, elements, sections=a_star_sections(),
         data={'astCells': cells},
         first={'title': 'Expand the most promising cell', 'description': 'A heap ordered by f = g + h.'})
+    scene['proof'] = a_star_proof(cost)
+    return scene
+
+
+def a_star_proof(cost):
+    """Why A* with an admissible heuristic returns a shortest path the first time it pops the goal."""
+    h0 = abs(AST_START[0] - AST_GOAL[0]) + abs(AST_START[1] - AST_GOAL[1])
+    return {
+        'id': 'a-star-optimal', 'title': 'Why the first pop of the goal is optimal',
+        'technique': 'contradiction',
+        'techniqueHint': 'Assume the goal comes off the heap with too high a cost, and show some cell on a shortest path would have come off first.',
+        'goal': r"With $h$ admissible, the first time the goal $t$ is popped, $g(t) = C^*$, the cost of a shortest path.",
+        'sceneStep': 0,
+        'prompt': 'Walk through why A* is optimal with an admissible heuristic: f = g + h, admissibility, the cell on a shortest path waiting in the heap, and the contradiction. Tie it to the grid in the scene (h(start) = ' + str(h0) + ', C* = ' + str(cost) + ').',
+        'steps': [
+            {'id': 'a-def', 'type': 'definition', 'label': 'Cost so far, estimate left, and their sum',
+             'math': r"f(n) = \htmlClass{hl-g}{g(n)} + \htmlClass{hl-h}{h(n)}",
+             'highlights': {'g': {'color': 'green', 'label': 'known cost from the start to $n$'},
+                            'h': {'color': 'orange', 'label': 'estimated cost from $n$ to the goal'}},
+             'justification': 'The heap pops the entry with the smallest $f$.',
+             'explanation': 'In the code, `g` is the dictionary of best known costs and `h` is the Manhattan distance; each heap entry starts with $f = nd + h(nb)$.'},
+            {'id': 'a-admissible', 'type': 'assumption', 'label': 'Admissible: the estimate never overshoots',
+             'math': r"h(n) \le h^*(n) \quad \text{for every } n, \qquad h(t) = 0",
+             'justification': '$h^*(n)$ is the true cheapest cost from $n$ to the goal $t$.'},
+            {'id': 'a-manhattan', 'type': 'lemma', 'label': 'Manhattan distance is admissible on a 4-way grid',
+             'math': r"h(r, c) = |r - r_t| + |c - c_t| \le h^*(r, c)",
+             'justification': 'Each move changes the row or the column by one, so it lowers $|r - r_t| + |c - c_t|$ by at most 1; walls only add moves.',
+             'explanation': f'In the scene, $h$ of the start is {h0}, while the wall makes the real cost {cost}: an underestimate, as it must be.'},
+            {'id': 'a-frontier', 'type': 'lemma', 'label': 'A shortest path always has a cell waiting in the heap',
+             'math': r"\exists\, n \in P^* \text{ in the heap with } g(n) = g^*(n)",
+             'justification': 'Until $t$ is popped, take the first cell $n$ of a shortest path $P^*$ that has not been expanded: its predecessor on $P^*$ was expanded with its optimal cost, so $n$ was pushed with $g(n) = g^*(n)$.',
+             'explanation': 'The start is on every path and enters the heap with $g = 0$; each expansion pushes the next cell along a shortest path with its true cost.'},
+            {'id': 'a-bound', 'type': 'step', 'label': 'That cell\'s f is at most the optimal cost',
+             'math': r"f(n) = g^*(n) + h(n) \le g^*(n) + h^*(n) = C^*",
+             'justification': 'Admissibility, then: the cost to $n$ plus the cheapest cost on from $n$ is the length of $P^*$, since $n$ lies on it.'},
+            {'id': 'a-assume', 'type': 'assumption', 'label': 'Suppose the goal came off with too high a cost',
+             'math': r"f(t) = g(t) + h(t) = g(t) > C^*",
+             'justification': '$h(t) = 0$, so the goal\'s $f$ is its cost.'},
+            {'id': 'a-contradiction', 'type': 'step', 'label': 'Then the heap would have popped n first',
+             'math': r"f(n) \le C^* < f(t)",
+             'justification': 'The heap pops the smallest $f$, so $n$ comes off before $t$: $t$ could not have been popped yet. Contradiction.'},
+            {'id': 'a-conclusion', 'type': 'conclusion', 'label': 'The first pop of the goal is optimal',
+             'math': r"g(t) = C^*",
+             'justification': f'In the scene, the goal pops with cost {cost}, and nothing left in the heap can beat it.'},
+            {'id': 'a-fewer', 'type': 'theorem', 'label': 'Why A* expands fewer cells than Dijkstra',
+             'math': r"\text{expanded} \subseteq \{\, n : g^*(n) + h(n) \le C^* \,\}",
+             'justification': 'A cell is only popped while its $f$ is at most $C^*$. With $h = 0$ that is every cell closer than the goal (Dijkstra); a larger admissible $h$ rules more of them out.',
+             'explanation': 'With the Manhattan distance (it also never drops by more than one per move, so it is consistent), a popped cell\'s cost is final, which is why the code can skip a stale entry instead of expanding a cell twice.'},
+        ],
+    }
 
 
 def code_sections(scene_id):

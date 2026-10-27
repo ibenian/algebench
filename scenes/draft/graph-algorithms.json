@@ -34301,6 +34301,118 @@
               "highlightExpr": "idx == 0 and dataTable('trace', frame, 'line') == 10"
             },
             {
+              "id": "ast-row-0",
+              "type": "text",
+              "text": "0",
+              "position": [-7.0, 4.2, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-row-1",
+              "type": "text",
+              "text": "1",
+              "position": [-7.0, 3.0, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-row-2",
+              "type": "text",
+              "text": "2",
+              "position": [-7.0, 1.8, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-row-3",
+              "type": "text",
+              "text": "3",
+              "position": [-7.0, 0.6, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-row-4",
+              "type": "text",
+              "text": "4",
+              "position": [-7.0, -0.6, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-0",
+              "type": "text",
+              "text": "0",
+              "position": [-6.2, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-1",
+              "type": "text",
+              "text": "1",
+              "position": [-5.0, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-2",
+              "type": "text",
+              "text": "2",
+              "position": [-3.8, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-3",
+              "type": "text",
+              "text": "3",
+              "position": [-2.6, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-4",
+              "type": "text",
+              "text": "4",
+              "position": [-1.4, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-5",
+              "type": "text",
+              "text": "5",
+              "position": [-0.2, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-6",
+              "type": "text",
+              "text": "6",
+              "position": [1.0, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-col-7",
+              "type": "text",
+              "text": "7",
+              "position": [2.2, 4.95, 0],
+              "color": "#8aa0b8",
+              "fontSize": 12
+            },
+            {
+              "id": "ast-row-head",
+              "type": "text",
+              "text": "r \\ c",
+              "position": [-7.0, 4.95, 0],
+              "color": "#6b7a8c",
+              "fontSize": 10
+            },
+            {
               "id": "heap-key",
               "type": "text",
               "text": "each entry: f : row, col",
@@ -34409,7 +34521,38 @@
         }
       ],
       "stepPlayback": {"slider": "frame", "intervalMs": 1200},
-      "codeRef": {"file": "a-star", "lineExpr": "dataTable('trace', frame, 'line')"}
+      "codeRef": {"file": "a-star", "lineExpr": "dataTable('trace', frame, 'line')"},
+      "proof": {
+        "id": "a-star-optimal",
+        "title": "Why the first pop of the goal is optimal",
+        "technique": "contradiction",
+        "techniqueHint": "Assume the goal comes off the heap with too high a cost, and show some cell on a shortest path would have come off first.",
+        "goal": "With $h$ admissible, the first time the goal $t$ is popped, $g(t) = C^*$, the cost of a shortest path.",
+        "sceneStep": 0,
+        "prompt": "Walk through why A* is optimal with an admissible heuristic: f = g + h, admissibility, the cell on a shortest path waiting in the heap, and the contradiction. Tie it to the grid in the scene (h(start) = 6, C* = 8).",
+        "steps": [
+          {
+            "id": "a-def",
+            "type": "definition",
+            "label": "Cost so far, estimate left, and their sum",
+            "math": "f(n) = \\htmlClass{hl-g}{g(n)} + \\htmlClass{hl-h}{h(n)}",
+            "highlights": {
+              "g": {"color": "green", "label": "known cost from the start to $n$"},
+              "h": {"color": "orange", "label": "estimated cost from $n$ to the goal"}
+            },
+            "justification": "The heap pops the entry with the smallest $f$.",
+            "explanation": "In the code, `g` is the dictionary of best known costs and `h` is the Manhattan distance; each heap entry starts with $f = nd + h(nb)$."
+          },
+          {"id": "a-admissible", "type": "assumption", "label": "Admissible: the estimate never overshoots", "math": "h(n) \\le h^*(n) \\quad \\text{for every } n, \\qquad h(t) = 0", "justification": "$h^*(n)$ is the true cheapest cost from $n$ to the goal $t$."},
+          {"id": "a-manhattan", "type": "lemma", "label": "Manhattan distance is admissible on a 4-way grid", "math": "h(r, c) = |r - r_t| + |c - c_t| \\le h^*(r, c)", "justification": "Each move changes the row or the column by one, so it lowers $|r - r_t| + |c - c_t|$ by at most 1; walls only add moves.", "explanation": "In the scene, $h$ of the start is 6, while the wall makes the real cost 8: an underestimate, as it must be."},
+          {"id": "a-frontier", "type": "lemma", "label": "A shortest path always has a cell waiting in the heap", "math": "\\exists\\, n \\in P^* \\text{ in the heap with } g(n) = g^*(n)", "justification": "Until $t$ is popped, take the first cell $n$ of a shortest path $P^*$ that has not been expanded: its predecessor on $P^*$ was expanded with its optimal cost, so $n$ was pushed with $g(n) = g^*(n)$.", "explanation": "The start is on every path and enters the heap with $g = 0$; each expansion pushes the next cell along a shortest path with its true cost."},
+          {"id": "a-bound", "type": "step", "label": "That cell's f is at most the optimal cost", "math": "f(n) = g^*(n) + h(n) \\le g^*(n) + h^*(n) = C^*", "justification": "Admissibility, then: the cost to $n$ plus the cheapest cost on from $n$ is the length of $P^*$, since $n$ lies on it."},
+          {"id": "a-assume", "type": "assumption", "label": "Suppose the goal came off with too high a cost", "math": "f(t) = g(t) + h(t) = g(t) > C^*", "justification": "$h(t) = 0$, so the goal's $f$ is its cost."},
+          {"id": "a-contradiction", "type": "step", "label": "Then the heap would have popped n first", "math": "f(n) \\le C^* < f(t)", "justification": "The heap pops the smallest $f$, so $n$ comes off before $t$: $t$ could not have been popped yet. Contradiction."},
+          {"id": "a-conclusion", "type": "conclusion", "label": "The first pop of the goal is optimal", "math": "g(t) = C^*", "justification": "In the scene, the goal pops with cost 8, and nothing left in the heap can beat it."},
+          {"id": "a-fewer", "type": "theorem", "label": "Why A* expands fewer cells than Dijkstra", "math": "\\text{expanded} \\subseteq \\{\\, n : g^*(n) + h(n) \\le C^* \\,\\}", "justification": "A cell is only popped while its $f$ is at most $C^*$. With $h = 0$ that is every cell closer than the goal (Dijkstra); a larger admissible $h$ rules more of them out.", "explanation": "With the Manhattan distance (it also never drops by more than one per move, so it is consistent), a popped cell's cost is final, which is why the code can skip a stale entry instead of expanding a cell twice."}
+        ]
+      }
     },
     {
       "id": "bellman-ford",
