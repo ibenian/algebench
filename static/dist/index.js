@@ -27240,19 +27240,21 @@ function similarity(typed, reference) {
 /** A line typed right but at another nesting depth (`return False` inside the `if`, not after the loop) is not exact. */
 var OTHER_DEPTH = .9;
 var indentOf = (s) => s.replace(/\t/g, "    ").search(/\S/);
-var gcd = (a, b) => b ? gcd(b, a % b) : a;
-/** The indentation step of some code: the gcd of its indents (4 for 4, 8, 12), or 0 when nothing is indented. */
-function indentUnit(lines) {
-	return lines.filter((l) => !isNeutral(l)).map(indentOf).filter((n) => n > 0).reduce(gcd, 0);
-}
 /**
-* Each line's nesting depth, in steps of the reference's indentation: the learner may indent by another width
-* (2 spaces against 4) and still nest the same way; typed code that skips a level keeps the reference's step.
+* Each line's nesting depth, read the way Python reads blocks: a line indented past the one above opens a level,
+* a line indented less closes levels until it fits. Depth so counts levels, not spaces, so the learner may indent
+* by another width (2 spaces against 4), or one line a space off, and still nest the same way. Neutral lines
+* (blank, comment) neither open nor close a level.
 */
-function depths(lines, refUnit) {
-	const own = indentUnit(lines);
-	const unit = own && refUnit && own % refUnit === 0 ? refUnit : own || refUnit || 1;
-	return lines.map((l) => Math.round(Math.max(0, indentOf(l)) / unit));
+function depths(lines) {
+	const open = [0];
+	return lines.map((l) => {
+		if (isNeutral(l)) return open.length - 1;
+		const indent = Math.max(0, indentOf(l));
+		while (indent < open[open.length - 1]) open.pop();
+		if (indent > open[open.length - 1]) open.push(indent);
+		return open.length - 1;
+	});
 }
 /**
 * The best in-order pairing of typed lines with reference lines (indices into each list), skipping neutral
@@ -27260,8 +27262,7 @@ function depths(lines, refUnit) {
 * nesting depths counts OTHER_DEPTH of its similarity, so it is never exact and a pairing that nests alike wins.
 */
 function alignLines(reference, typed) {
-	const unit = indentUnit(reference);
-	const rd = depths(reference, unit), td = depths(typed, unit);
+	const rd = depths(reference), td = depths(typed);
 	const r = reference.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
 	const u = typed.map((t, i) => [t, i]).filter(([t]) => !isNeutral(t));
 	const best = Array.from({ length: r.length + 1 }, () => new Array(u.length + 1).fill(0));
@@ -27795,12 +27796,13 @@ function setupCodePractice() {
 		if (speakOn() && text) window.algebenchSpeakText?.(text);
 	}
 	/**
-	* Turning the coach on, it says hello and how to talk to it (once per switch, not on every block). A review
+	* Turning the coach on with nothing typed yet, it says hello and how to talk to it (once per switch, not on
+	* every block); with code already in the editor the learner is under way, so it goes straight to the review. A review
 	* that starts at once speaks the greeting first, so it isn't cut off; otherwise it is spoken on its own.
 	*/
 	let greeting = "";
 	function welcome() {
-		if (!current || !coachOn()) return;
+		if (!current || !coachOn() || input.value.trim()) return;
 		message("assistant", el("div", "cp-report-text")).querySelector(".msg-body").textContent = WELCOME;
 		greeting = WELCOME;
 	}
@@ -27863,6 +27865,14 @@ function setupCodePractice() {
 		clearTimeout(saveTimer);
 		pendingSave?.();
 	});
+	/** Leaving a block (a scene or step switch): the coach's word on it is over, spoken or still coming. */
+	function hushCoach() {
+		reviewSeq++;
+		greeting = "";
+		if (spoken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+		spoken = "";
+	}
+	let shownScene = -1;
 	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
 	function retarget() {
 		const v = codeView();
@@ -27870,7 +27880,10 @@ function setupCodePractice() {
 		docToggle.hidden = root.hidden;
 		docHead.classList.toggle("side-section-foldable", !root.hidden);
 		foldDoc(!!prefs.docFolded && !root.hidden);
+		const scene = state.currentSceneIndex, left = scene !== shownScene;
+		shownScene = scene;
 		if (!v?.running) {
+			if (current && left) hushCoach();
 			current = null;
 			return;
 		}
@@ -27878,6 +27891,7 @@ function setupCodePractice() {
 		const next = `${v.file.id}:${v.from}:${hash(text)}`;
 		current = v;
 		if (next === key) return;
+		if (key) hushCoach();
 		key = next;
 		block = text;
 		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
@@ -27907,7 +27921,7 @@ function setupCodePractice() {
 			lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : "";
 			render(false);
 			highlight();
-			if (hintsOn() && !input.value.trim() && root.classList.contains("open")) review(false);
+			if (hintsOn() && !input.value.trim() && root.classList.contains("open")) review(true);
 		});
 	}
 	function render(celebrate = true) {

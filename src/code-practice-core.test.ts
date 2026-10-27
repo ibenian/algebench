@@ -23,6 +23,10 @@ test('a line typed right at another depth is not exact, so out-of-place code ear
     assert.ok(last.similarity < 1, 'return False inside the if is not the return False after the loop');
     assert.equal(alignLines(['def f():', '    x = 1', '    if x:', '        y'], ['def f():', '  x = 1', '  if x:', '    y']).every(p => p.similarity === 1), true,
         'two-space indentation nests the same way');
+    // One line a space short (break at 11 under an if at 8) once set the indent unit to 1 for the whole block.
+    assert.equal(alignLines(['def f():', '    for x in y:', '        if x:', '            break', '    return x'],
+        ['def f():', '    for x in y:', '        if x:', '           break', '    return x']).every(p => p.similarity === 1), true,
+        'a line a space off still nests under its block, and the rest keep their depth');
 });
 
 test('blank and comment lines are neutral', () => {

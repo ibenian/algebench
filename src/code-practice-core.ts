@@ -52,19 +52,21 @@ export interface Pair { typed: number; reference: number; similarity: number }
 export const OTHER_DEPTH = 0.9;
 
 const indentOf = (s: string) => s.replace(/\t/g, '    ').search(/\S/);
-const gcd = (a: number, b: number): number => b ? gcd(b, a % b) : a;
-/** The indentation step of some code: the gcd of its indents (4 for 4, 8, 12), or 0 when nothing is indented. */
-function indentUnit(lines: readonly string[]): number {
-    return lines.filter(l => !isNeutral(l)).map(indentOf).filter(n => n > 0).reduce(gcd, 0);
-}
 /**
- * Each line's nesting depth, in steps of the reference's indentation: the learner may indent by another width
- * (2 spaces against 4) and still nest the same way; typed code that skips a level keeps the reference's step.
+ * Each line's nesting depth, read the way Python reads blocks: a line indented past the one above opens a level,
+ * a line indented less closes levels until it fits. Depth so counts levels, not spaces, so the learner may indent
+ * by another width (2 spaces against 4), or one line a space off, and still nest the same way. Neutral lines
+ * (blank, comment) neither open nor close a level.
  */
-function depths(lines: readonly string[], refUnit: number): number[] {
-    const own = indentUnit(lines);
-    const unit = own && refUnit && own % refUnit === 0 ? refUnit : own || refUnit || 1;
-    return lines.map(l => Math.round(Math.max(0, indentOf(l)) / unit));
+function depths(lines: readonly string[]): number[] {
+    const open = [0];
+    return lines.map(l => {
+        if (isNeutral(l)) return open.length - 1;
+        const indent = Math.max(0, indentOf(l));
+        while (indent < open[open.length - 1]!) open.pop();
+        if (indent > open[open.length - 1]!) open.push(indent);
+        return open.length - 1;
+    });
 }
 
 /**
@@ -73,9 +75,8 @@ function depths(lines: readonly string[], refUnit: number): number[] {
  * nesting depths counts OTHER_DEPTH of its similarity, so it is never exact and a pairing that nests alike wins.
  */
 export function alignLines(reference: readonly string[], typed: readonly string[]): Pair[] {
-    const unit = indentUnit(reference);
     // Absolute depths: the block is a top-level function (the Code panel's running block), typed from column 0.
-    const rd = depths(reference, unit), td = depths(typed, unit);
+    const rd = depths(reference), td = depths(typed);
     const r = reference.map((t, i) => [t, i] as const).filter(([t]) => !isNeutral(t));
     const u = typed.map((t, i) => [t, i] as const).filter(([t]) => !isNeutral(t));
     const best = Array.from({length: r.length + 1}, () => new Array<number>(u.length + 1).fill(0));

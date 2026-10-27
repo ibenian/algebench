@@ -4,6 +4,7 @@
  * could see in the Code panel score less; "Hide code" hides it there. The coach (✦) reviews the typed code by
  * meaning (the code_practice expert): on Check, and while it is on, on each new line and after a pause.
  */
+import { state } from '/state.js';
 import { codeView } from '/code-panel.js';
 import type { CodeView } from '/code-panel.js';
 import { codeSections } from '/code-sections.js';
@@ -248,12 +249,13 @@ export function setupCodePractice(): void {
         if (speakOn() && text) window.algebenchSpeakText?.(text);
     }
     /**
-     * Turning the coach on, it says hello and how to talk to it (once per switch, not on every block). A review
+     * Turning the coach on with nothing typed yet, it says hello and how to talk to it (once per switch, not on
+     * every block); with code already in the editor the learner is under way, so it goes straight to the review. A review
      * that starts at once speaks the greeting first, so it isn't cut off; otherwise it is spoken on its own.
      */
     let greeting = '';
     function welcome() {
-        if (!current || !coachOn()) return;
+        if (!current || !coachOn() || input.value.trim()) return;
         message('assistant', el('div', 'cp-report-text')).querySelector('.msg-body')!.textContent = WELCOME;
         greeting = WELCOME;
     }
@@ -292,6 +294,13 @@ export function setupCodePractice(): void {
     let pendingSave: (() => void) | null = null;
     window.addEventListener('pagehide', () => { clearTimeout(saveTimer);pendingSave?.(); });
 
+    /** Leaving a block (a scene or step switch): the coach's word on it is over, spoken or still coming. */
+    function hushCoach() {
+        reviewSeq++;greeting = '';
+        if (spoken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+        spoken = '';
+    }
+    let shownScene = -1;
     /** Follow the Code panel to the block running now; each block keeps its own attempt. */
     function retarget() {
         const v = codeView();
@@ -300,11 +309,14 @@ export function setupCodePractice(): void {
         // Folding the Doc only makes room for Type along: without it, the Doc stays and the switch goes.
         docToggle.hidden = root.hidden;docHead.classList.toggle('side-section-foldable', !root.hidden);
         foldDoc(!!prefs.docFolded && !root.hidden);
-        if (!v?.running) { current = null;return; }
+        // Another scene ends the coach's word; the view between steps can briefly run nothing, which must not.
+        const scene = state.currentSceneIndex, left = scene !== shownScene;shownScene = scene;
+        if (!v?.running) { if (current && left) hushCoach();current = null;return; }
         const text = v.file.source.split('\n').slice(v.from - 1, v.to).join('\n').replace(/\s+$/, '');
         const next = `${v.file.id}:${v.from}:${hash(text)}`;
         current = v;
         if (next === key) return;
+        if (key) hushCoach();
         key = next;block = text;
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
         const count = v.to - v.from + 1;
@@ -321,7 +333,9 @@ export function setupCodePractice(): void {
             lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : '';
             render(false);
             highlight();
-            if (hintsOn() && !input.value.trim() && root.classList.contains('open')) void review(false);
+            // An empty block is a beginning, each time it is reached: the coach says how to start, even if it said so
+            // on an earlier visit (that start was stored as reviewed, and would be skipped as nothing new).
+            if (hintsOn() && !input.value.trim() && root.classList.contains('open')) void review(true);
         });
     }
 
