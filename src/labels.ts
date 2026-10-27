@@ -266,11 +266,14 @@ function untrustedRenderer(): MarkedRenderer {
 function _renderMarkdown(md: string, untrusted = false): string {
     const mathBlocks: { tex: string; display: boolean }[] = [];
 
-    let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m: string, tex: string) => {
+    // An escaped dollar (\$70) is a literal one, never a math delimiter: it is set aside and restored as plain `$`.
+    let safe = md.replace(/\\\$/g, '%%DOLLAR%%').replace(/\$\$([\s\S]+?)\$\$/g, (_m: string, tex: string) => {
         mathBlocks.push({ tex: tex.trim(), display: true });
         return '%%MATH_BLOCK_' + (mathBlocks.length - 1) + '%%';
     });
-    safe = safe.replace(/\$([^$\n]+)\$/g, (_m: string, tex: string) => {
+    // Inline math as Pandoc reads it, so prices aren't taken for math ("$70 ... $20"): the opening $ has text right
+    // after it, the closing $ has text right before it and no digit after.
+    safe = safe.replace(/\$(?=\S)([^$\n]*?\S)\$(?!\d)/g, (_m: string, tex: string) => {
         mathBlocks.push({ tex: tex.trim(), display: false });
         return '%%MATH_BLOCK_' + (mathBlocks.length - 1) + '%%';
     });
@@ -286,7 +289,7 @@ function _renderMarkdown(md: string, untrusted = false): string {
         } catch (_e) { return block.tex; }
     });
 
-    return html;
+    return html.replace(/%%DOLLAR%%/g, '$');
 }
 
 // ----- Color parsing -----

@@ -5624,7 +5624,7 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-file-path { flex: 1; min-width: 0; overflow-wrap: anywhere; opacity: .8; }
 /* View settings: a gear at the title's right, opening a small menu of checkboxes below it. */
 .code-view-settings { position: relative; flex: none; }
-.code-view-settings-btn { padding: 2px 7px; font-size: 14px; line-height: 1.2; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
+.code-view-settings-btn { padding: 2px 1px; font-size: 14px; line-height: 1.2; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
 .code-view-settings-btn:hover, .code-view-settings-btn[aria-expanded="true"] { opacity: 1; border-color: var(--border-color); background: var(--panel-bg); }
 .code-view-menu {
     position: absolute; top: calc(100% + 4px); right: 0; z-index: 30;
@@ -5753,7 +5753,7 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-selection-actions button:disabled { opacity: .4; cursor: default; }
 /* "⋯" in the Code header, beside ⚙: its menu opens downward. */
 .code-file-title .code-prompts { flex: none; }
-.code-file-title .code-prompts-btn { padding: 2px 8px; font-size: 14px; line-height: 1.2; letter-spacing: 1px; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
+.code-file-title .code-prompts-btn { padding: 2px 1px; font-size: 14px; line-height: 1.2; letter-spacing: 1px; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
 .code-file-title .code-prompts-btn:hover, .code-file-title .code-prompts-btn[aria-expanded="true"] { opacity: 1; border-color: var(--border-color); background: var(--panel-bg); }
 .code-file-title .code-prompts .preset-more-menu { bottom: auto; top: calc(100% + 6px); }
 .preset-more-item:disabled { opacity: .4; cursor: default; background: none; }

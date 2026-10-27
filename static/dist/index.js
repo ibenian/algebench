@@ -2878,14 +2878,14 @@ function untrustedRenderer() {
 }
 function _renderMarkdown(md, untrusted = false) {
 	const mathBlocks = [];
-	let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex) => {
+	let safe = md.replace(/\\\$/g, "%%DOLLAR%%").replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex) => {
 		mathBlocks.push({
 			tex: tex.trim(),
 			display: true
 		});
 		return "%%MATH_BLOCK_" + (mathBlocks.length - 1) + "%%";
 	});
-	safe = safe.replace(/\$([^$\n]+)\$/g, (_m, tex) => {
+	safe = safe.replace(/\$(?=\S)([^$\n]*?\S)\$(?!\d)/g, (_m, tex) => {
 		mathBlocks.push({
 			tex: tex.trim(),
 			display: false
@@ -2906,7 +2906,7 @@ function _renderMarkdown(md, untrusted = false) {
 			return block.tex;
 		}
 	});
-	return html;
+	return html.replace(/%%DOLLAR%%/g, "$");
 }
 function parseColor(c) {
 	if (!c) return [

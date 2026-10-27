@@ -30755,6 +30755,13 @@
               "codeRef": {"file": "dijkstra", "line": 12}
             },
             {
+              "id": "d-plus-w",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'w') < 0 ? 'd + w: —' : concat('d + w = ', dataTable('trace', frame, 'd') + dataTable('trace', frame, 'w'))",
+              "codeRef": {"file": "dijkstra", "line": 13}
+            },
+            {
               "id": "dist-v",
               "type": "expression_label",
               "position": [7.6, -3.7, 0],
@@ -31582,6 +31589,14 @@
               "position": [7.6, -3.7, 0],
               "textExpr": "dataTable('trace', frame, 'w') < 0 ? 'w: —' : concat('w = ', dataTable('trace', frame, 'w'))",
               "codeRef": {"file": "zero-one-bfs", "line": 9}
+            },
+            {
+              "id": "dist-u-plus-w",
+              "type": "expression_label",
+              "position": [7.6, -3.7, 0],
+              "textExpr": "dataTable('trace', frame, 'w') < 0 ? 'dist[u] + w: —' : concat('dist[u] + w = ', arrayAt(dataTable('trace', frame, 'dist'), dataTable('trace', frame, 'u')) + dataTable('trace', frame, 'w'))",
+              "connectTo": {"object": "dist", "indexExpr": "dataTable('trace', frame, 'u')"},
+              "codeRef": {"file": "zero-one-bfs", "line": 10}
             },
             {
               "id": "dist-v",

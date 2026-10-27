@@ -40,3 +40,12 @@ test('lesson Markdown (trusted) keeps its HTML', () => {
     const out = renderMarkdown('A <span class="hl">highlight</span>', { glossary: false });
     assert.ok(out.includes('<span class="hl">highlight</span>'), out);
 });
+
+test('dollars that are money stay text; dollars around math still render math', () => {
+    const escaped = renderMarkdown('A direct road might cost \\$70, while a back road costs only \\$20.', { untrusted: true, glossary: false });
+    assert.ok(escaped.includes('cost $70, while a back road costs only $20.'), escaped);
+    const bare = renderMarkdown('It costs $70 here and $20 there.', { untrusted: true, glossary: false });
+    assert.ok(bare.includes('$70 here and $20 there.'), bare);
+    const math = renderMarkdown('The cost is $x + y$ in total.', { untrusted: true, glossary: false });
+    assert.ok(!math.includes('$x + y$'), math);
+});
