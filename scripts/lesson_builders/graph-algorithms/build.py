@@ -210,38 +210,38 @@ label = lambda id, text, connect=None, line=None, file=None: {
 
 
 def doc(name, text, start=None, end=None, source=None):
-    """A glossary entry documenting a name (variable, function, expression key) file-wide, or, with start (and end)
+    """An annotation documenting a name (variable, function, expression key) file-wide, or, with start (and end)
     texts and the source, only on the lines from the one holding start to the one holding end: an override for a
     name that means something else there."""
     if start is None:
         return {'name': name, 'text': text}
-    return {'name': name, 'from': line_of(source, start), 'to': line_of(source, end or start), 'text': text}
+    return {'name': name, 'line': line_of(source, start), 'endLine': line_of(source, end or start), 'text': text}
 
 
 def doc_block(source, start, end, text):
-    """A glossary entry documenting the lines from the one holding start to the one holding end."""
-    return {'from': line_of(source, start), 'to': line_of(source, end), 'text': text}
+    """An annotation documenting the lines from the one holding start to the one holding end."""
+    return {'line': line_of(source, start), 'endLine': line_of(source, end), 'text': text}
 
 
 def doc_expr(source, line_text, snippet, text):
-    """A glossary entry documenting an expression: snippet, on the line holding line_text."""
+    """An annotation documenting an expression: snippet, on the line holding line_text."""
     line = line_of(source, line_text)
     col = source.split('\n')[line - 1].index(snippet)
-    return {'from': line, 'col': col, 'endCol': col + len(snippet), 'text': text}
+    return {'line': line, 'col': col, 'endCol': col + len(snippet), 'text': text}
 
 
 def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None, call_entry=None,
-              first=None, more=(), sections=(), glossary=()):
+              first=None, more=(), sections=(), annotations=()):
     """A scene that plays one recorded run: the frame slider, a caption from each frame's message, and the Code
     panel on the executing line (codeRef), with each line linked back to its frames. first retitles the run step
     ({'title', 'description'}); more adds steps that each play their own run from their own table, in the same code
     file: {'id', 'title', 'description', 'table', 'trace', 'elements'}, plus 'call_entry' (its function's line) for a
     recursive one, for the Code panel's call arrows. sections is the code's teaching structure
-    (see section()); glossary its hover explanations (see doc(), doc_block(), doc_expr())."""
+    (see section()); annotations its hover explanations (see doc(), doc_block(), doc_expr())."""
     sections = sections or code_sections(id)
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
                       **({'sections': list(sections)} if sections else {}),
-                      **({'glossary': list(glossary)} if glossary else {}),
+                      **({'annotations': list(annotations)} if annotations else {}),
                       'locations': [{'line': f['line'], 'scene': id, 'step': 'run', 'snapshot': k, 'label': f"{title} · {f['message']}"}
                                     for k, f in enumerate(trace)]
                       + [{'line': f['line'], 'scene': id, 'step': m['id'], 'snapshot': k, 'label': f"{m['title']} · {f['message']}"}
@@ -3159,7 +3159,7 @@ def a_star_sections():
     ]
 
 
-def a_star_glossary():
+def a_star_annotations():
     """What a_star.py's names, its key expressions and its blocks mean, for hover."""
     S = AST_SOURCE
     return [
@@ -3269,7 +3269,7 @@ Here a wall stands in the way, so A* first heads straight at it, then works roun
 
 **Practice:** Shortest Path in a Grid with Obstacles Elimination, Sliding Puzzle, Shortest Path in Binary Matrix.""",
         'Explain how f = g + h orders the heap, why an admissible heuristic like Manhattan distance keeps the first goal pop optimal, and why A* expands fewer cells than Dijkstra. Ask the learner to predict which cell pops next and its f.',
-        'a_star.py', AST_SOURCE, trace, elements, sections=a_star_sections(), glossary=a_star_glossary(),
+        'a_star.py', AST_SOURCE, trace, elements, sections=a_star_sections(), annotations=a_star_annotations(),
         data={'astCells': cells},
         first={'title': 'Expand the most promising cell', 'description': 'A heap ordered by f = g + h.'})
     scene['proof'] = a_star_proof(cost)

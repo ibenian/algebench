@@ -5726,7 +5726,7 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-call, .code-fn { text-decoration: underline dotted transparent; text-underline-offset: 3px; }
 .code-call.code-link-lit, .code-fn.code-link-lit { text-decoration-color: #e3b04f; background: color-mix(in srgb, #e3b04f 22%, transparent); border-radius: 3px; }
 @keyframes code-arrow-draw { to { stroke-dashoffset: 0; } }
-/* Documented code (a glossary expression or block): a faint dotted underline only while pointed at. */
+/* Annotated code (an expression or block): a faint dotted underline only while pointed at. */
 .code-doc { text-decoration: underline dotted transparent; text-underline-offset: 3px; }
 .code-doc.code-doc-lit, .code-line.code-doc-lit code { text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
 .code-line-number { transition: color .4s, opacity .4s; }

@@ -9579,25 +9579,25 @@ function setupStepPlayer() {
 	refresh();
 }
 //#endregion
-//#region src/code-glossary.ts
-var span = (e) => (e.to ?? e.from ?? 0) - (e.from ?? 0);
-var holds = (e, line) => e.from !== void 0 && line >= e.from && line <= (e.to ?? e.from);
+//#region src/code-annotations.ts
+var span = (e) => (e.endLine ?? e.line ?? 0) - (e.line ?? 0);
+var holds = (e, line) => e.line !== void 0 && line >= e.line && line <= (e.endLine ?? e.line);
 /**
 * The entry documenting the first of `names` that has one at `line` (`g[cell]` before `g`): the narrowest range
 * holding the line, else the file-wide entry. Null when none does.
 */
-function glossaryFor(entries, names, line) {
+function annotationFor(entries, names, line) {
 	for (const name of names) {
 		const own = entries.filter((e) => e.name === name);
-		const found = own.filter((e) => holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? own.find((e) => e.from === void 0);
+		const found = own.filter((e) => holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? own.find((e) => e.line === void 0);
 		if (found) return found;
 	}
 	return null;
 }
 /** Unnamed entries over a column range: expressions, wrapped in the line's code. */
-var glossaryExpressions = (entries) => entries.filter((e) => !e.name && e.from !== void 0 && e.col !== void 0 && e.endCol !== void 0 && e.endCol > e.col);
+var annotatedExpressions = (entries) => entries.filter((e) => !e.name && e.line !== void 0 && e.col !== void 0 && e.endCol !== void 0 && e.endCol > e.col);
 /** The narrowest unnamed whole-line entry (a block) holding `line`, or null. */
-function glossaryBlockAt(entries, line) {
+function annotatedBlockAt(entries, line) {
 	return entries.filter((e) => !e.name && e.col === void 0 && holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? null;
 }
 //#endregion
@@ -26754,7 +26754,7 @@ function setupCodePanel() {
 				structureMode: STRUCTURE_MODES.includes(saved?.structureMode) ? saved.structureMode : "plain",
 				structureRunning: saved?.structureRunning ?? true,
 				blurInactive: saved?.blurInactive ?? false,
-				comments: saved?.comments ?? true,
+				annotations: saved?.annotations ?? true,
 				legacyWatches: Array.isArray(saved?.watches) ? saved.watches.filter((w) => w && typeof w.expr === "string" && typeof w.file === "string" && Number.isInteger(w.line)) : []
 			};
 		} catch {
@@ -26765,7 +26765,7 @@ function setupCodePanel() {
 				structureMode: "plain",
 				structureRunning: true,
 				blurInactive: false,
-				comments: true,
+				annotations: true,
 				legacyWatches: []
 			};
 		}
@@ -26835,9 +26835,9 @@ function setupCodePanel() {
 			}, !selected || !codeSections(selected).length), check("Blur code outside the running function", settings.blurInactive, (on) => {
 				settings.blurInactive = on;
 				paintBlur();
-			}), check("Explanations on hover", settings.comments, (on) => {
-				settings.comments = on;
-			}, !selected?.glossary?.length));
+			}), check("Explanations on hover", settings.annotations, (on) => {
+				settings.annotations = on;
+			}, !selected?.annotations?.length));
 			const vars = availableVariables();
 			const heading = document.createElement("div");
 			heading.className = "code-view-heading";
@@ -27168,7 +27168,7 @@ function setupCodePanel() {
 			}));
 			body.append(row);
 		});
-		markGlossaryExpressions(file);
+		markAnnotatedExpressions(file);
 		highlightCode(file).then((tokens) => {
 			if (selected !== file || !tokens.length) return;
 			body.querySelectorAll(".code-line code").forEach((code) => paintTokens(code, lineTokens(tokens, Number(code.dataset.line))));
@@ -27185,10 +27185,10 @@ function setupCodePanel() {
 			}
 		});
 	}
-	/** Wrap each documented expression (a glossary column range) in a span holding its entry, for hover. */
-	function markGlossaryExpressions(file) {
-		glossaryExpressions(file.glossary ?? []).forEach((entry) => {
-			const code = body.querySelector(`.code-line[data-line="${entry.from}"] code`);
+	/** Wrap each annotated expression (a column range) in a span holding its annotation, for hover. */
+	function markAnnotatedExpressions(file) {
+		annotatedExpressions(file.annotations ?? []).forEach((entry) => {
+			const code = body.querySelector(`.code-line[data-line="${entry.line}"] code`);
 			if (code) wrapColumns(code, entry.col, entry.endCol, () => {
 				const span = document.createElement("span");
 				span.className = "code-doc";
@@ -27242,10 +27242,10 @@ function setupCodePanel() {
 		if (!found.length) return null;
 		return [...new Set(found)].join("\\\\");
 	}
-	/** The glossary entry for the first of names that has one at line; null with explanations off. */
+	/** The annotation for the first of names that has one at line; null with explanations off. */
 	function docFor(names, line) {
-		if (!settings.comments || !selected?.glossary?.length) return null;
-		return glossaryFor(selected.glossary, names.filter((n) => !!n), line);
+		if (!settings.annotations || !selected?.annotations?.length) return null;
+		return annotationFor(selected.annotations, names.filter((n) => !!n), line);
 	}
 	function entryHtml(entry) {
 		if (!entry) return null;
@@ -27257,7 +27257,7 @@ function setupCodePanel() {
 	function lightDocBlock(entry) {
 		body.querySelectorAll(".code-doc-lit").forEach((n) => n.classList.remove("code-doc-lit"));
 		if (!entry) return;
-		for (let line = entry.from; line <= (entry.to ?? entry.from); line++) body.querySelector(`.code-line[data-line="${line}"]`)?.classList.add("code-doc-lit");
+		for (let line = entry.line; line <= (entry.endLine ?? entry.line); line++) body.querySelector(`.code-line[data-line="${line}"]`)?.classList.add("code-doc-lit");
 	}
 	/** The tooltip's ✦: the tutor explains subject (on lines from–to) at once, building on its note. */
 	function askAbout(subject, from, to, note) {
@@ -27299,22 +27299,22 @@ function setupCodePanel() {
 			showCodeSymbolTooltip(span, symbolTex(name, line || void 0), entryHtml(entry), askAbout(`\`${name}\``, line, line, entry), name);
 			return;
 		}
-		const expr = settings.comments ? target.closest(".code-doc") : null, exprEntry = expr ? docEntries.get(expr) : void 0;
+		const expr = settings.annotations ? target.closest(".code-doc") : null, exprEntry = expr ? docEntries.get(expr) : void 0;
 		if (expr && exprEntry) {
 			expr.classList.add("code-doc-lit");
 			showCodeSymbolTooltip(expr, null, entryHtml(exprEntry), askAbout(`the expression \`${expr.textContent ?? ""}\``, line, line, exprEntry));
 			return;
 		}
-		const block = settings.comments && selected && target.closest(".code-line code") ? glossaryBlockAt(selected.glossary ?? [], line) : null;
+		const block = settings.annotations && selected && target.closest(".code-line code") ? annotatedBlockAt(selected.annotations ?? [], line) : null;
 		if (block) {
 			lightDocBlock(block);
-			const to = block.to ?? block.from, first = body.querySelector(`.code-line[data-line="${block.from}"] code`), last = body.querySelector(`.code-line[data-line="${to}"] code`);
+			const to = block.endLine ?? block.line, first = body.querySelector(`.code-line[data-line="${block.line}"] code`), last = body.querySelector(`.code-line[data-line="${to}"] code`);
 			const region = { getBoundingClientRect: () => {
 				const a = first.getBoundingClientRect(), b = last.getBoundingClientRect();
 				return new DOMRect(a.left, a.top, a.width, b.bottom - a.top);
 			} };
 			if (first && last) {
-				showCodeSymbolTooltip(region, null, entryHtml(block), askAbout(`lines ${block.from}–${to}`, block.from, to, block));
+				showCodeSymbolTooltip(region, null, entryHtml(block), askAbout(`lines ${block.line}–${to}`, block.line, to, block));
 				return;
 			}
 		}
