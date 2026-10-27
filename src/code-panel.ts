@@ -755,19 +755,27 @@ export function setupCodePanel(): void {
         float.style.left=`${Math.max(8,Math.min(at.left,window.innerWidth-8-width))}px`;
         float.style.top=`${at.top+at.height/2}px`;
     }
+    /** The pointer is within the float's box: its code lets the pointer through, so the element under it says nothing. */
+    const overFloat=(e:PointerEvent)=>{if(float.hidden)return false;const r=float.getBoundingClientRect();return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;};
     body.addEventListener('pointerover',event=>{
         const row=(event.target as HTMLElement).closest<HTMLElement>('.code-line');
         // Over the code view's scrollbar (or its padding) there is no line, but the pointer may still be on the
         // float, passing through it on the way to its values: keep it up while the pointer is within it.
-        if(!row&&!float.hidden){const r=float.getBoundingClientRect();if(event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)return;}
+        if(!row&&overFloat(event))return;
         floatLine(row);
     });
-    // Onto the float (its ✦ buttons) is not away from the line.
-    body.addEventListener('pointerleave',event=>{if(!float.contains(event.relatedTarget as Node))floatLine(null);});
+    // Onto the float (its ✦ buttons) is not away from the line, nor is a scrollbar or panel edge the float covers.
+    body.addEventListener('pointerleave',event=>{if(!float.contains(event.relatedTarget as Node)&&!overFloat(event))floatLine(null);});
+    // Kept up past the code view's edge, the float goes once the pointer is neither on it nor back in the code view.
+    document.addEventListener('pointermove',event=>{
+        if(float.hidden)return;
+        const at=event.target as Node;
+        if(!body.contains(at)&&!float.contains(at)&&!overFloat(event))floatLine(null);
+    });
     // The float's values and ✦ buttons take the pointer (its code lets it through to the line's), so it stays up
     // while the reader follows a long line past the code view's edge, and goes when they leave it for anywhere but
     // the code view. Pressing on its values gets it out of the way of a selection, as pressing on the line does.
-    float.addEventListener('pointerleave',event=>{if(!body.contains(event.relatedTarget as Node))floatLine(null);});
+    float.addEventListener('pointerleave',event=>{if(!body.contains(event.relatedTarget as Node)&&!overFloat(event))floatLine(null);});
     float.addEventListener('pointerdown',event=>{if(!(event.target as Element).closest('.ai-ask-btn')){selecting=true;floatLine(null);}});
     body.addEventListener('scroll',()=>floatLine(null));
     body.addEventListener('pointerdown',()=>{selecting=true;floatLine(null);});

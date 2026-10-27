@@ -2951,6 +2951,245 @@ With every weight 1, this is plain BFS; with weights larger than 1, use Dijkstra
         first={'title': 'Free edges to the front, paid to the back', 'description': 'A deque that stays sorted by distance.'})
 
 
+# ── 13. A*: Dijkstra ordered by distance so far plus an estimate of the distance left (Manhattan on a grid) ──
+AST_SOURCE = """import heapq
+
+def a_star(grid, start, goal):
+    rows, cols = len(grid), len(grid[0])
+    def h(cell):  # Manhattan distance: never more than the real cost
+        return abs(cell[0] - goal[0]) + abs(cell[1] - goal[1])
+    g = {start: 0}
+    prev = {start: None}
+    heap = [(h(start), h(start), 0, start)]  # (f, h, g, cell): equal f, nearer the goal first
+    while heap:
+        f, _, d, cell = heapq.heappop(heap)
+        if cell == goal:
+            return d  # the goal's first pop is optimal
+        if d > g[cell]:
+            continue  # stale: cell was reached more cheaply
+        r, c = cell
+        for nb in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+            nr, nc = nb
+            if not (0 <= nr < rows and 0 <= nc < cols) or grid[nr][nc]:
+                continue  # off the grid, or a wall
+            nd = d + 1
+            if nd < g.get(nb, float('inf')):
+                g[nb] = nd
+                prev[nb] = cell
+                heapq.heappush(heap, (nd + h(nb), h(nb), nd, nb))
+    return -1"""
+AST_GRID = ['........',
+            '..####..',
+            'S.#.....',
+            '..#..G..',
+            '........']
+AST_ROWS, AST_COLS = len(AST_GRID), len(AST_GRID[0])
+AST_START = next((r, row.index('S')) for r, row in enumerate(AST_GRID) if 'S' in row)
+AST_GOAL = next((r, row.index('G')) for r, row in enumerate(AST_GRID) if 'G' in row)
+AST_CLOSED, AST_OPEN, AST_PATH, AST_WALL, AST_UNSEEN = '#77bfae', '#e67db0', '#f1c65b', '#14181e', '#3d4a5a'
+
+
+def a_star_search(heuristic, record=None):
+    """The search in AST_SOURCE over AST_GRID, with heuristic(cell) for h. record(event, **state) sees each step; returns
+    (cost, cells popped)."""
+    rows, cols = AST_ROWS, AST_COLS
+    wall = lambda r, c: AST_GRID[r][c] == '#'
+    g, prev = {AST_START: 0}, {AST_START: None}
+    heap = [(heuristic(AST_START), heuristic(AST_START), 0, AST_START)]
+    popped = 0
+    rec = record or (lambda *a, **k: None)
+    rec('init', g=g, prev=prev, heap=heap)
+    while heap:
+        rec('while', heap=heap)
+        heap.sort()
+        f, _, d, cell = heap.pop(0)
+        popped += 1
+        rec('pop', f=f, d=d, cell=cell, heap=heap, popped=popped)
+        if cell == AST_GOAL:
+            rec('goal', d=d, cell=cell, prev=prev)
+            return d, popped
+        if d > g[cell]:
+            rec('stale', d=d, cell=cell)
+            continue
+        rec('expand', cell=cell)
+        r, c = cell
+        for nb in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+            nr, nc = nb
+            if not (0 <= nr < rows and 0 <= nc < cols) or wall(nr, nc):
+                rec('blocked', nb=nb)
+                continue
+            nd = d + 1
+            old = g.get(nb)
+            better = old is None or nd < old
+            rec('check', nb=nb, nd=nd, old=old, better=better)
+            if better:
+                g[nb] = nd
+                prev[nb] = cell
+                heap.append((nd + heuristic(nb), heuristic(nb), nd, nb))
+                heap.sort()
+                rec('push', nb=nb, nd=nd, f=nd + heuristic(nb), old=old, heap=heap)
+    return -1, popped
+
+
+def a_star_trace():
+    """A* from S to G on AST_GRID. Per frame (cells as indices r * cols + c, -1 for none): cell (the popped one), f, d;
+    nb, nd, hn (h of nb), fn (nd + hn); g (UNREACHED until reached) and gText; closed (expanded cells, 1/0); prev;
+    heap (entries [f, h, d, r, c], sorted) with heapNames and inHeap; path (the goal's prev chain, once found); popped;
+    checkText; result."""
+    L = lambda t: line_of(AST_SOURCE, t)
+    n = AST_ROWS * AST_COLS
+    at = lambda rc: rc[0] * AST_COLS + rc[1]
+    h = lambda rc: abs(rc[0] - AST_GOAL[0]) + abs(rc[1] - AST_GOAL[1])
+    st = {'cell': -1, 'f': -1, 'd': -1, 'nb': -1, 'nd': -1, 'hn': -1, 'fn': -1, 'nbText': '—', 'cellText': '—',
+          'g': [UNREACHED] * n, 'closed': [0] * n, 'prev': [-1] * n, 'heap': [], 'path': [], 'popped': 0,
+          'checkText': 'check: —', 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        emit0(line, message)
+        f = trace[-1]
+        f['gText'] = ['' if x == UNREACHED else str(x) for x in f['g']]
+        f['heapNames'] = [f'{e[0]}:{e[3]},{e[4]}' for e in f['heap']]
+        f['inHeap'] = sorted({e[3] * AST_COLS + e[4] for e in f['heap']})
+    rc_text = lambda rc: f'({rc[0]}, {rc[1]})'
+    def sync(g=None, prev=None, heap=None):
+        if g is not None: st['g'] = [g.get((i // AST_COLS, i % AST_COLS), UNREACHED) for i in range(n)]
+        if prev is not None: st['prev'] = [at(prev[(i // AST_COLS, i % AST_COLS)]) if prev.get((i // AST_COLS, i % AST_COLS)) else -1 for i in range(n)]
+        if heap is not None: st['heap'] = [[f, hh, d, r, c] for f, hh, d, (r, c) in sorted(heap)]
+    def record(event, **k):
+        if event == 'init':
+            emit(L('rows, cols ='), f'A {AST_ROWS} by {AST_COLS} grid: start {rc_text(AST_START)}, goal {rc_text(AST_GOAL)}, a wall between them.')
+            emit(L('def h(cell)'), f'h guesses the distance left: rows apart plus columns apart. From the start it says {h(AST_START)}; the wall makes the real cost more, never less.')
+            sync(g=k['g'])
+            emit(L('g = {start: 0}'), 'g holds the best known cost to each cell; the start costs 0.')
+            sync(prev=k['prev'])
+            emit(L('prev = {start: None}'), 'prev remembers where each cell was reached from, to rebuild the path.')
+            sync(heap=k['heap'])
+            emit(L('heap = [(h(start)'), f'The heap holds (f, h, g, cell), f = g + h; on equal f the cell nearer the goal comes first. The start: f = 0 + {h(AST_START)}.')
+        elif event == 'while':
+            st.update(cell=-1, f=-1, d=-1, nb=-1, nd=-1, hn=-1, fn=-1, nbText='—', cellText='—', checkText='check: —')
+            emit(L('while heap'), f'{len(k["heap"])} waiting. The heap orders them by f, the estimated cost of a whole path through each.')
+        elif event == 'pop':
+            cell = k['cell']
+            sync(heap=k['heap'])
+            st.update(cell=at(cell), f=k['f'], d=k['d'], cellText=rc_text(cell), popped=k['popped'])
+            emit(L('f, _, d, cell = heapq.heappop'), f'Pop the most promising: {rc_text(cell)} with f = {k["d"]} + {h(cell)} = {k["f"]}.')
+        elif event == 'goal':
+            path, x = [], k['cell']
+            while x is not None:
+                path.append(at(x)); x = k['prev'][x]
+            st.update(path=path, result=str(k['d']), checkText=f'cell = goal: done')
+            emit(L('return d  #'), f'The goal is popped: cost {k["d"]}, after expanding {st["popped"] - 1} cells. Its f was exact, and nothing left can beat it.')
+        elif event == 'stale':
+            st['checkText'] = f'd = {k["d"]} > g = {st["g"][at(k["cell"])]}: stale'
+            emit(L('continue  # stale'), f'{rc_text(k["cell"])} was reached more cheaply since: this entry is stale, skip it.')
+        elif event == 'expand':
+            st['closed'] = [1 if i == st['cell'] else x for i, x in enumerate(st['closed'])]
+            emit(L('r, c = cell'), f'Expand {st["cellText"]}: its cost {st["d"]} is final. Try its four neighbours.')
+        elif event == 'blocked':
+            nb = k['nb']
+            inside = 0 <= nb[0] < AST_ROWS and 0 <= nb[1] < AST_COLS
+            st.update(nb=at(nb) if inside else -1, nbText=rc_text(nb), nd=-1, hn=-1, fn=-1, checkText='check: —')
+            emit(L('continue  # off'), f'{rc_text(nb)} is ' + ('a wall.' if inside else 'off the grid.'))
+        elif event == 'check':
+            nb, nd, old = k['nb'], k['nd'], k['old']
+            st.update(nb=at(nb), nbText=rc_text(nb), nd=nd, hn=h(nb), fn=nd + h(nb))
+            st['checkText'] = f'nd = {nd} ' + ('< ∞' if old is None else ('<' if k['better'] else '≥') + f' g = {old}')
+            emit(L('if nd < g.get'), f'{rc_text(nb)} is {nd} step{"s" if nd > 1 else ""} from the start this way; ' +
+                 ('first time reached.' if old is None else ('better.' if k['better'] else f'no better than {old}.')))
+        elif event == 'push':
+            sync(g=None, heap=k['heap'])
+            nb = k['nb']
+            st['g'] = [k['nd'] if i == at(nb) else x for i, x in enumerate(st['g'])]
+            st['prev'] = [st['cell'] if i == at(nb) else x for i, x in enumerate(st['prev'])]
+            emit(L('heapq.heappush'), f'g = {k["nd"]}, h = {h(nb)}: push it with f = {k["f"]}, reached from {st["cellText"]}.')
+    cost, popped = a_star_search(h, record)
+    _, dij_popped = a_star_search(lambda rc: 0)
+    return trace, cost, popped, dij_popped
+
+
+def a_star_sections():
+    S = lambda *a, **k: section(AST_SOURCE, *a, **k)
+    return [
+        S('a-init', 'The estimate, and the start in the heap', 'def a_star(', 'heap = [(h(start)',
+          hint='h guesses the distance left without overestimating; g is the known cost so far; the heap is ordered by f = g + h.',
+          prompt='Explain what the heuristic estimates, why Manhattan distance never overestimates on a 4-way grid, and why the heap is ordered by g + h.'),
+        S('a-pop', 'Pop the lowest f; stop at the goal', 'while heap', 'continue  # stale',
+          hint='The entry with the smallest estimated total goes first; popping the goal ends the search, and a stale entry is skipped.',
+          prompt='Explain why the first time the goal is popped its cost is optimal when the heuristic is admissible.'),
+        S('a-expand', 'Try each neighbour: a cheaper way?', 'r, c = cell', 'heapq.heappush', 'continue  # stale',
+          hint='Skip walls and cells off the grid; a neighbour reached more cheaply gets its new g, its prev, and a push with f = g + h.'),
+        S('a-none', 'No way through', 'return -1', None, 'heapq.heappush'),
+    ]
+
+
+def a_star_scene(header):
+    trace, cost, popped, dij_popped = a_star_trace()
+    L = lambda t: line_of(AST_SOURCE, t)
+    c = tr
+    cells = [{'x': round(-6.2 + col * 1.2, 3), 'y': round(4.2 - r * 1.2, 3), 'wall': 1 if AST_GRID[r][col] == '#' else 0,
+              'h': abs(r - AST_GOAL[0]) + abs(col - AST_GOAL[1])} for r in range(AST_ROWS) for col in range(AST_COLS)]
+    cell = lambda col: f"dataTable('astCells', idx, '{col}')"
+    gk = f"arrayAt({c('g')}, idx)"
+    known = f"{gk} < {UNREACHED}"
+    on_path = f"keyIndex({c('path')}, idx) >= 0"
+    start, goal = AST_START[0] * AST_COLS + AST_START[1], AST_GOAL[0] * AST_COLS + AST_GOAL[1]
+    fill = (f"{cell('wall')} == 1 ? '{AST_WALL}' : ({on_path} ? '{AST_PATH}' : (idx == {c('cell')} ? '{GOLD}' : "
+            f"(arrayAt({c('closed')}, idx) == 1 ? '{AST_CLOSED}' : (keyIndex({c('inHeap')}, idx) >= 0 ? '{AST_OPEN}' : '{AST_UNSEEN}'))))")
+    elements = [
+        # One node per cell. Inside, g + h once the cell is reached; the corner tag marks the start and the goal.
+        {'id': 'grid-cells', 'type': 'graph', 'label': 'grid', 'codeSymbol': 'grid', 'lengthExpr': str(AST_ROWS * AST_COLS),
+         'valueExpr': f"{cell('wall')} == 1 or not ({known}) ? '' : concat({gk}, '+', {cell('h')})",
+         'positionExpr': [cell('x'), cell('y'), '0'],
+         'nodeShape': 'rect', 'nodeWidth': 0.82, 'nodeHeight': 0.82, 'nodeCornerRadius': 0.12, 'valueLabel': 'inside', 'showIndices': False,
+         'axisLabels': 'plane', 'colorExpr': fill,
+         'badgeExpr': f"idx == {start} ? 'S' : (idx == {goal} ? 'G' : '')",
+         # Each reached cell's link to the cell it came from (prev): the search tree; on the goal's chain, the path.
+         'connectTo': {'indexExpr': f"arrayAt({c('prev')}, idx)", 'pinned': True, 'arrow': True, 'bendExpr': '0', 'color': '#5d6b7c',
+                       'colorExpr': f"{on_path} ? '{AST_PATH}' : (idx == {c('nb')} and to == {c('cell')} ? '{GOLD}' : '')",
+                       'widthExpr': f"{on_path} ? 3.2 : 1.4", 'highlightExpr': f"{on_path} or (idx == {c('nb')} and to == {c('cell')})"}},
+        {'id': 'heap', 'type': 'array', 'label': 'heap', 'codeSymbol': 'heap', 'labelSide': 'left', 'origin': [-4.6, -2.7, 0], 'cellSize': 1.25,
+         'fontSize': 13, 'axisLabels': 'plane', 'itemType': 'text', 'color': AST_OPEN, 'showIndices': False,
+         'lengthExpr': f"arrayCount({c('heapNames')})", 'valueExpr': f"arrayAt({c('heapNames')}, idx)",
+         'highlightExpr': f"idx == 0 and {c('line')} == {L('while heap')}"},
+        {'id': 'heap-key', 'type': 'text', 'text': 'each entry: f : row, col', 'position': [-4.6, -1.8, 0], 'color': '#8aa0b8', 'fontSize': 11},
+        label('start', f"'start = {AST_START}'", ['grid-cells', str(start)], L('def a_star('), 'a-star'),
+        label('goal', f"'goal = {AST_GOAL}'", ['grid-cells', str(goal)], L('def a_star('), 'a-star'),
+        label('cell', f"{c('cell')} < 0 ? 'cell: —' : concat('cell = ', {c('cellText')})", ['grid-cells', c('cell')], L('f, _, d, cell = heapq.heappop'), 'a-star'),
+        label('f', f"{c('cell')} < 0 ? 'f: —' : concat('f = ', {c('f')})", None, L('f, _, d, cell = heapq.heappop'), 'a-star'),
+        label('d', f"{c('cell')} < 0 ? 'd: —' : concat('d = ', {c('d')})", None, L('f, _, d, cell = heapq.heappop'), 'a-star'),
+        label('nb', f"{c('nbText')} == '—' ? 'nb: —' : concat('nb = ', {c('nbText')})", ['grid-cells', c('nb')], L('for nb in'), 'a-star'),
+        label('nd', f"{c('nd')} < 0 ? 'nd: —' : concat('nd = ', {c('nd')})", None, L('nd = d + 1'), 'a-star'),
+        label('h-nb', f"{c('hn')} < 0 ? 'h(nb): —' : concat('h(nb) = ', {c('hn')})", None, L('heapq.heappush'), 'a-star'),
+        label('f-nb', f"{c('fn')} < 0 ? 'nd + h(nb): —' : concat('nd + h(nb) = ', {c('fn')})", None, L('heapq.heappush'), 'a-star'),
+        {**label('check', c('checkText'), None, L('if nd < g.get'), 'a-star'), 'highlightExpr': f"{c('checkText')} != 'check: —'"},
+        label('popped', f"concat('cells popped = ', {c('popped')})", None, L('f, _, d, cell = heapq.heappop'), 'a-star'),
+        label('heap-len', f"concat('len(heap) = ', arrayCount({c('heapNames')}))", ['heap', '0'], L('while heap'), 'a-star'),
+        label('result', f"concat('result: ', {c('result')})", None, L('return d  #'), 'a-star'),
+    ]
+    saved = dij_popped - popped
+    return run_scene('a-star', 'Guided search (A*)', header, f"""**Signal:** shortest path to **one goal** when you can estimate how far is left: grid and map pathfinding, puzzles with a distance-like measure.
+
+Dijkstra pops the cell **closest to the start**, so it spreads out evenly in every direction, even away from the goal. A* pops the cell with the smallest **f = g + h**:
+
+- **g:** the known cost from the start, exactly as in Dijkstra.
+- **h:** a guess at the cost still to go. On a 4-way grid, the **Manhattan distance** (rows apart plus columns apart) is a good one.
+
+So A* prefers cells that look like they lie on a short **whole** path. When two cells tie on f, the one with the smaller h (nearer the goal) goes first, so A* keeps pressing on instead of widening. Each cell shows **g+h**; pink cells wait in the heap, green ones are expanded, and the gold chain is the path found.
+
+- **Admissible:** h must never **overestimate**. Manhattan distance can't: every step moves one row or one column, and walls only add steps. Then the first time the goal is popped, its cost is optimal.
+- **h = 0** turns A* back into Dijkstra. The better h is (closer to the real cost, still never over), the fewer cells A* expands.
+
+Here a wall stands in the way, so A* first heads straight at it, then works round its lower end, and reaches the goal at cost **{cost}** after popping **{popped}** cells. Dijkstra on the same grid pops **{dij_popped}** cells before reaching the goal: {saved} more.
+
+**Cost:** the same worst case as Dijkstra, O((V + E) log V); usually far fewer cells.
+
+**Practice:** Shortest Path in a Grid with Obstacles Elimination, Sliding Puzzle, Shortest Path in Binary Matrix.""",
+        'Explain how f = g + h orders the heap, why an admissible heuristic like Manhattan distance keeps the first goal pop optimal, and why A* expands fewer cells than Dijkstra. Ask the learner to predict which cell pops next and its f.',
+        'a_star.py', AST_SOURCE, trace, elements, sections=a_star_sections(),
+        data={'astCells': cells},
+        first={'title': 'Expand the most promising cell', 'description': 'A heap ordered by f = g + h.'})
+
+
 def code_sections(scene_id):
     """The teaching structure of each scene's code file (cycle.py has its own, cycle_sections)."""
     if scene_id == 'representations':
@@ -3038,7 +3277,7 @@ codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
          'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene,
          'union-find': uf_scene, 'mst': mst_scene,
-         'dijkstra': dijkstra_scene, 'zero-one-bfs': zero_one_scene}
+         'dijkstra': dijkstra_scene, 'zero-one-bfs': zero_one_scene, 'a-star': a_star_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:

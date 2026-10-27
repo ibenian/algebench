@@ -26901,19 +26901,27 @@ function setupCodePanel() {
 		float.style.left = `${Math.max(8, Math.min(at.left, window.innerWidth - 8 - width))}px`;
 		float.style.top = `${at.top + at.height / 2}px`;
 	}
+	/** The pointer is within the float's box: its code lets the pointer through, so the element under it says nothing. */
+	const overFloat = (e) => {
+		if (float.hidden) return false;
+		const r = float.getBoundingClientRect();
+		return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+	};
 	body.addEventListener("pointerover", (event) => {
 		const row = event.target.closest(".code-line");
-		if (!row && !float.hidden) {
-			const r = float.getBoundingClientRect();
-			if (event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom) return;
-		}
+		if (!row && overFloat(event)) return;
 		floatLine(row);
 	});
 	body.addEventListener("pointerleave", (event) => {
-		if (!float.contains(event.relatedTarget)) floatLine(null);
+		if (!float.contains(event.relatedTarget) && !overFloat(event)) floatLine(null);
+	});
+	document.addEventListener("pointermove", (event) => {
+		if (float.hidden) return;
+		const at = event.target;
+		if (!body.contains(at) && !float.contains(at) && !overFloat(event)) floatLine(null);
 	});
 	float.addEventListener("pointerleave", (event) => {
-		if (!body.contains(event.relatedTarget)) floatLine(null);
+		if (!body.contains(event.relatedTarget) && !overFloat(event)) floatLine(null);
 	});
 	float.addEventListener("pointerdown", (event) => {
 		if (!event.target.closest(".ai-ask-btn")) {
