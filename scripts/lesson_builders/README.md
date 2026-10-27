@@ -24,6 +24,13 @@ exactly as written in the code. The scene's codeRef then gets a `returnsExpr` on
 `returnsRef`), and the Code panel shows `h(start) → 6` beside the call and when the call's name is pointed at. A run
 that records none shows nothing, so add them in every new lesson whose code calls its own functions.
 
+## Code glossary: hover explanations
+
+A code file's `glossary` explains its names and parts on hover, under any value the Code panel shows. Document each
+function and important variable once by name (`doc('h', ...)` in `graph-algorithms/build.py`), override a name on the
+lines where it means something else (a parameter hiding an outer variable: `doc('cell', ..., 'def h(cell)', ..., source)`),
+and explain blocks (`doc_block`) and key expressions (`doc_expr`) that deserve it. Write it for every new code file.
+
 ## common-algorithm-patterns
 
 - `algorithms.ts`: the Python shown in the Code panel for each pattern, and a recorded run of it: every step's

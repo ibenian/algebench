@@ -2623,6 +2623,36 @@ export interface CodeFile {
      */
     prompt?: string;
   }[];
+  /**
+   * Hyper-comments the Code tab shows on hover, under a symbol's value as documentation. An entry with a name documents that variable, function, class or expression key (as the code writes it, without spaces) wherever it appears; with from/to too it documents it only on those lines, overriding the file-wide entry (a local name hiding an outer one). An entry without a name documents a region: lines from–to (a block), or columns col–endCol of line from (an expression); pointing at it shows a faint dotted underline and the text. The reader can turn them off in the Code tab's view settings.
+   */
+  glossary?: CodeGlossaryEntry[];
+}
+export interface CodeGlossaryEntry {
+  /**
+   * The documented name or expression key (h, heap, g[cell]). Omit to document a region.
+   */
+  name?: string;
+  /**
+   * First line, one-based: where a named entry applies, or the documented region.
+   */
+  from?: number;
+  /**
+   * Last line, inclusive; defaults to from.
+   */
+  to?: number;
+  /**
+   * Unnamed entries: first column (zero-based, in characters) of an expression on line from.
+   */
+  col?: number;
+  /**
+   * Unnamed entries: the column just past the expression.
+   */
+  endCol?: number;
+  /**
+   * The explanation, in markdown with $math$. An entry needs a name, a from, or both.
+   */
+  text: string;
 }
 /**
  * Single-scene format with top-level 'elements' (no 'scenes' array).

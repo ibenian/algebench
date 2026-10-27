@@ -5726,6 +5726,9 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-call, .code-fn { text-decoration: underline dotted transparent; text-underline-offset: 3px; }
 .code-call.code-link-lit, .code-fn.code-link-lit { text-decoration-color: #e3b04f; background: color-mix(in srgb, #e3b04f 22%, transparent); border-radius: 3px; }
 @keyframes code-arrow-draw { to { stroke-dashoffset: 0; } }
+/* Documented code (a glossary expression or block): a faint dotted underline only while pointed at. */
+.code-doc { text-decoration: underline dotted transparent; text-underline-offset: 3px; }
+.code-doc.code-doc-lit, .code-line.code-doc-lit code { text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
 .code-line-number { transition: color .4s, opacity .4s; }
 .code-line-number.jump-lit { color: var(--accent-color); opacity: 1; font-weight: 700; }
 .code-line-number.calling { color: #d36ba6; opacity: 1; }
@@ -5895,6 +5898,21 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 /* Label-row KaTeX tooltips: the semantic graph's tooltip chrome at the glossary tooltip's size. */
 .graph-panel-tooltip.label-row-tooltip { font-size: 13px; padding: 6px 10px; max-width: min(520px, calc(100vw - 16px)); }
 .label-row-tooltip .katex-display { margin: 0; }
+/* A code explanation under a symbol's value: documentation, in the body font, left-aligned. */
+.label-row-tooltip.code-doc-tooltip { max-width: min(420px, calc(100vw - 16px)); text-align: left; }
+.code-doc-tooltip .code-doc-text { font-family: var(--font-body); font-size: 12.5px; line-height: 1.45; opacity: 0.92; }
+/* Under a value, a hairline apart. */
+.code-doc-tooltip > div + .code-doc-text { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.code-doc-text p { margin: 0 0 4px; }
+.code-doc-text p:last-child { margin-bottom: 0; }
+.code-doc-text code { font-size: 0.95em; }
+.label-row-tooltip.code-doc-askable { pointer-events: auto; }
+/* The value starts at the left, under the symbol it belongs to, not centred over the explanation. */
+.code-doc-tooltip .katex-display, .code-doc-tooltip .katex-display > .katex { text-align: left; }
+.code-doc-tooltip .ai-ask-btn.code-doc-ask { float: right; opacity: 1; width: 18px; height: 18px; margin: 0 0 2px 8px; top: 0; }
+.code-doc-tooltip .code-doc-name { font-family: var(--font-mono, monospace); }
+/* Only a ✦ and nothing above: no rule to separate. */
+.code-doc-tooltip > .code-doc-text:only-child { margin-top: 0; padding-top: 0; border-top: 0; }
 /* An unprompted formula beside a recalculated row: the tooltip, with a soft accent edge. */
 .label-change-callout { border-color: color-mix(in srgb, #f1cc59 55%, var(--border-color)); }
 /* A label whose highlightExpr is truthy: the same gold an array uses for a selected cell. */

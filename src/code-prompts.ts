@@ -20,6 +20,14 @@ export const CODE_PROMPTS: CodePrompt[] = [
     {label: 'Can you write it in a more optimal way?', prompt: 'Can this code be written in a more optimal way? If it can, give the improved version, say what it changes, and compare its runtime and space complexity with the current one. If it is already optimal, say why: the lower bound it meets. Keep its behaviour and output the same.'},
 ];
 
+/**
+ * The ✦ in a code tooltip: the tutor explains one thing at once (a function, parameter or variable, a documented
+ * expression or block), building on the file's own note about it when there is one.
+ */
+export function explainPrompt(subject: string, note: string | null): CodePrompt {
+    return {label: 'Explain this', line: true, prompt: `Explain ${subject} in the selected code: what it is, what it does here and why it is needed, using the values on screen right now. Keep it short and about this alone.${note ? `\nThe code's own note about it:\n${note}` : ''}`};
+}
+
 /** The ✦ on each code line: a question about that line alone. */
 export const LINE_PROMPT: CodePrompt = {label: 'Ask about this line', line: true, prompt: 'Explain the selected line: what it does at this point in the algorithm and why it is needed, using the values on screen right now. Keep it to this line.'};
 

@@ -209,17 +209,39 @@ label = lambda id, text, connect=None, line=None, file=None: {
     **({'codeRef': {'file': file, 'line': line}} if line else {})}
 
 
+def doc(name, text, start=None, end=None, source=None):
+    """A glossary entry documenting a name (variable, function, expression key) file-wide, or, with start (and end)
+    texts and the source, only on the lines from the one holding start to the one holding end: an override for a
+    name that means something else there."""
+    if start is None:
+        return {'name': name, 'text': text}
+    return {'name': name, 'from': line_of(source, start), 'to': line_of(source, end or start), 'text': text}
+
+
+def doc_block(source, start, end, text):
+    """A glossary entry documenting the lines from the one holding start to the one holding end."""
+    return {'from': line_of(source, start), 'to': line_of(source, end), 'text': text}
+
+
+def doc_expr(source, line_text, snippet, text):
+    """A glossary entry documenting an expression: snippet, on the line holding line_text."""
+    line = line_of(source, line_text)
+    col = source.split('\n')[line - 1].index(snippet)
+    return {'from': line, 'col': col, 'endCol': col + len(snippet), 'text': text}
+
+
 def run_scene(id, title, header, markdown, prompt, file, source, trace, elements, data=None, call_entry=None,
-              first=None, more=(), sections=()):
+              first=None, more=(), sections=(), glossary=()):
     """A scene that plays one recorded run: the frame slider, a caption from each frame's message, and the Code
     panel on the executing line (codeRef), with each line linked back to its frames. first retitles the run step
     ({'title', 'description'}); more adds steps that each play their own run from their own table, in the same code
     file: {'id', 'title', 'description', 'table', 'trace', 'elements'}, plus 'call_entry' (its function's line) for a
     recursive one, for the Code panel's call arrows. sections is the code's teaching structure
-    (see section())."""
+    (see section()); glossary its hover explanations (see doc(), doc_block(), doc_expr())."""
     sections = sections or code_sections(id)
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
                       **({'sections': list(sections)} if sections else {}),
+                      **({'glossary': list(glossary)} if glossary else {}),
                       'locations': [{'line': f['line'], 'scene': id, 'step': 'run', 'snapshot': k, 'label': f"{title} · {f['message']}"}
                                     for k, f in enumerate(trace)]
                       + [{'line': f['line'], 'scene': id, 'step': m['id'], 'snapshot': k, 'label': f"{m['title']} · {f['message']}"}
@@ -3137,6 +3159,47 @@ def a_star_sections():
     ]
 
 
+def a_star_glossary():
+    """What a_star.py's names, its key expressions and its blocks mean, for hover."""
+    S = AST_SOURCE
+    return [
+        doc('a_star', 'Shortest path from `start` to `goal` on a grid, searching the most promising cells first. Returns '
+                      'the number of steps, or $-1$ when the goal cannot be reached.'),
+        doc('grid', 'The map, a list of rows: a truthy cell is a wall, a falsy one is open.'),
+        doc('start', 'The `(row, column)` cell the search starts from.'),
+        doc('goal', 'The `(row, column)` cell to reach: the search stops the first time it is popped.'),
+        doc('rows', 'How many rows the grid has: valid row indices are $0$ to rows $- 1$.'),
+        doc('cols', 'How many columns the grid has: valid column indices are $0$ to cols $- 1$.'),
+        doc('r', "The popped cell's row."),
+        doc('c', "The popped cell's column."),
+        doc('nr', "The neighbour's row; it may be off the grid, which the next line checks."),
+        doc('nc', "The neighbour's column; it may be off the grid, which the next line checks."),
+        doc('h', "**Heuristic** $h(\\text{cell})$: a guess at the cost still to go, here the **Manhattan distance** "
+                 "(rows apart plus columns apart). It never overestimates on a 4-way grid, so the first time the goal "
+                 "is popped its cost is optimal."),
+        doc('cell', "`h`'s own parameter: the cell being estimated, not the loop's popped cell.", 'def h(cell)', 'return abs(cell[0]', S),
+        doc('cell', 'The cell just popped from the heap: the most promising one, with the smallest $f$.'),
+        doc('g', 'The best known cost from the start to each cell reached so far: **g** in $f = g + h$.'),
+        doc('prev', 'Where each cell was reached from: follow it back from the goal to rebuild the path.'),
+        doc('heap', 'The frontier, as `(f, h, g, cell)` entries: `heappop` always takes the smallest $f$, and on a tie '
+                    'the smaller $h$, the cell nearer the goal.'),
+        doc('f', '$f = g + h$: the estimated cost of a whole path through this cell.'),
+        doc('d', "The popped entry's $g$: its cost when it was pushed."),
+        doc('nb', 'A neighbour of the popped cell: one step down, up, right or left.'),
+        doc('nd', "The neighbour's cost through the popped cell: one more step."),
+        doc_expr(S, 'heap = [(h(start)', '(h(start), h(start), 0, start)',
+                 'The start\'s entry: $f = 0 + h$, its $h$, $g = 0$, and the cell.'),
+        doc_expr(S, 'if not (0 <= nr', '(0 <= nr < rows and 0 <= nc < cols)', 'Inside the grid.'),
+        doc_expr(S, 'if nd < g.get', "g.get(nb, float('inf'))", 'The best cost known for the neighbour; infinity if it was never reached.'),
+        doc_block(S, 'if d > g[cell]', 'continue  # stale',
+                  'A **stale** entry: the cell was pushed again later with a lower cost and already expanded. Skip it '
+                  'instead of deleting old entries from the heap.'),
+        doc_block(S, 'for nb in', 'heapq.heappush',
+                  '**Relax** the four neighbours: skip walls and cells off the grid; a neighbour reached more cheaply '
+                  'than before gets the new cost, remembers where it came from, and goes into the heap with its $f$.'),
+    ]
+
+
 def a_star_scene(header):
     trace, cost, popped, dij_popped = a_star_trace()
     L = lambda t: line_of(AST_SOURCE, t)
@@ -3206,7 +3269,7 @@ Here a wall stands in the way, so A* first heads straight at it, then works roun
 
 **Practice:** Shortest Path in a Grid with Obstacles Elimination, Sliding Puzzle, Shortest Path in Binary Matrix.""",
         'Explain how f = g + h orders the heap, why an admissible heuristic like Manhattan distance keeps the first goal pop optimal, and why A* expands fewer cells than Dijkstra. Ask the learner to predict which cell pops next and its f.',
-        'a_star.py', AST_SOURCE, trace, elements, sections=a_star_sections(),
+        'a_star.py', AST_SOURCE, trace, elements, sections=a_star_sections(), glossary=a_star_glossary(),
         data={'astCells': cells},
         first={'title': 'Expand the most promising cell', 'description': 'A heap ordered by f = g + h.'})
     scene['proof'] = a_star_proof(cost)

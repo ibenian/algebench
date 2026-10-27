@@ -1979,19 +1979,27 @@ function ensureWireSvg(record, container) {
 var tip = null;
 var owner = null;
 var shown = "";
+var hideTimer;
+var overTip = false;
 function element() {
 	if (!tip?.isConnected) {
 		tip = document.createElement("div");
 		tip.className = "graph-panel-tooltip label-row-tooltip";
 		tip.setAttribute("role", "tooltip");
+		tip.addEventListener("pointerenter", () => {
+			overTip = true;
+			clearTimeout(hideTimer);
+		});
+		tip.addEventListener("pointerleave", () => {
+			overTip = false;
+			if (tip?.classList.contains("code-doc-askable")) hideCode();
+		});
 		document.body.append(tip);
 		shown = "";
 	}
 	return tip;
 }
-function render$1(tex) {
-	if (tex === shown) return;
-	const el = element();
+function renderInto(tex, el) {
 	const katex = window.katex;
 	if (katex) katex.render(tex, el, {
 		displayMode: true,
@@ -1999,6 +2007,12 @@ function render$1(tex) {
 		strict: false
 	});
 	else el.textContent = tex;
+}
+function render$1(tex) {
+	if (tex === shown) return;
+	const el = element();
+	el.classList.remove("code-doc-tooltip", "code-doc-askable");
+	renderInto(tex, el);
 	shown = tex;
 }
 function hide() {
@@ -2024,20 +2038,67 @@ function wireRowTooltip(row, label) {
 		if (owner === label) hide();
 	});
 }
+function hideCode() {
+	if (!owner) tip?.classList.remove("visible", "code-doc-askable");
+}
+/** Hide a code tooltip now, as its Ask-AI button is clicked. */
+function hideCodeTooltip() {
+	clearTimeout(hideTimer);
+	hideTimer = void 0;
+	overTip = false;
+	hideCode();
+}
 /**
 * The same tooltip for a code symbol: hovering a variable in the Code panel shows what the scene's labels say
-* about it (their formula, or their value), just under the symbol. `null` hides it.
+* about it (their formula, or their value), just under the symbol, and under that the file's documentation for it
+* (docHtml, rendered markdown) with an Ask-AI button (ask). A tooltip with only the button shows the symbol's name
+* (title). Nothing to show hides it. The anchor may be a region (a block of lines): the tooltip goes under or over
+* all of it, never on it.
 */
-function showCodeSymbolTooltip(anchor, tex) {
-	if (!anchor || !tex) {
-		if (!owner) tip?.classList.remove("visible");
+function showCodeSymbolTooltip(anchor, tex, docHtml = null, ask = null, title = null) {
+	if (!anchor || !tex && !docHtml && !ask) {
+		if (tip?.classList.contains("code-doc-askable")) {
+			if (hideTimer === void 0 && !overTip) hideTimer = setTimeout(() => {
+				hideTimer = void 0;
+				if (!overTip) hideCode();
+			}, 300);
+		} else hideCode();
 		return;
 	}
+	clearTimeout(hideTimer);
+	hideTimer = void 0;
 	owner = null;
-	render$1(tex);
-	const el = element(), r = anchor.getBoundingClientRect();
-	el.style.left = `${r.left}px`;
-	el.style.top = `${r.bottom + 6}px`;
+	const el = element();
+	if (docHtml || ask) {
+		const key = `${tex ?? ""}\0${docHtml ?? ""}\0${ask?.key ?? ""}\0${title ?? ""}`;
+		if (key !== shown) {
+			el.replaceChildren();
+			if (tex) {
+				const math = document.createElement("div");
+				el.append(math);
+				renderInto(tex, math);
+			}
+			const doc = document.createElement("div");
+			doc.className = "code-doc-text";
+			if (docHtml) doc.innerHTML = docHtml;
+			else if (title && !tex) {
+				const name = document.createElement("code");
+				name.className = "code-doc-name";
+				name.textContent = title;
+				doc.append(name);
+			}
+			if (ask) doc.prepend(ask.make());
+			el.append(doc);
+			shown = key;
+		}
+	} else render$1(tex);
+	const r = anchor.getBoundingClientRect();
+	el.classList.toggle("code-doc-tooltip", !!(docHtml || ask));
+	el.classList.toggle("code-doc-askable", !!ask);
+	const h = el.offsetHeight, w = el.offsetWidth, gap = 2, margin = 8;
+	const below = r.bottom + gap + h <= innerHeight - margin || r.top - gap - h < margin;
+	el.style.left = `${Math.max(margin, Math.min(r.left, innerWidth - w - margin))}px`;
+	el.style.top = `${Math.max(margin, Math.min(below ? r.bottom + gap : r.top - gap - h, innerHeight - h - margin))}px`;
 	el.classList.add("visible");
 }
 /** Called with the label layout each frame: follow value changes while open, and close when the row goes away. */
@@ -9516,6 +9577,28 @@ function setupStepPlayer() {
 	});
 	pause();
 	refresh();
+}
+//#endregion
+//#region src/code-glossary.ts
+var span = (e) => (e.to ?? e.from ?? 0) - (e.from ?? 0);
+var holds = (e, line) => e.from !== void 0 && line >= e.from && line <= (e.to ?? e.from);
+/**
+* The entry documenting the first of `names` that has one at `line` (`g[cell]` before `g`): the narrowest range
+* holding the line, else the file-wide entry. Null when none does.
+*/
+function glossaryFor(entries, names, line) {
+	for (const name of names) {
+		const own = entries.filter((e) => e.name === name);
+		const found = own.filter((e) => holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? own.find((e) => e.from === void 0);
+		if (found) return found;
+	}
+	return null;
+}
+/** Unnamed entries over a column range: expressions, wrapped in the line's code. */
+var glossaryExpressions = (entries) => entries.filter((e) => !e.name && e.from !== void 0 && e.col !== void 0 && e.endCol !== void 0 && e.endCol > e.col);
+/** The narrowest unnamed whole-line entry (a block) holding `line`, or null. */
+function glossaryBlockAt(entries, line) {
+	return entries.filter((e) => !e.name && e.col === void 0 && holds(e, line)).sort((a, b) => span(a) - span(b))[0] ?? null;
 }
 //#endregion
 //#region src/objects/composite-parts.ts
@@ -25230,6 +25313,17 @@ var CODE_PROMPTS = [
 		prompt: "Can this code be written in a more optimal way? If it can, give the improved version, say what it changes, and compare its runtime and space complexity with the current one. If it is already optimal, say why: the lower bound it meets. Keep its behaviour and output the same."
 	}
 ];
+/**
+* The ✦ in a code tooltip: the tutor explains one thing at once (a function, parameter or variable, a documented
+* expression or block), building on the file's own note about it when there is one.
+*/
+function explainPrompt(subject, note) {
+	return {
+		label: "Explain this",
+		line: true,
+		prompt: `Explain ${subject} in the selected code: what it is, what it does here and why it is needed, using the values on screen right now. Keep it short and about this alone.${note ? `\nThe code's own note about it:\n${note}` : ""}`
+	};
+}
 /** The ✦ on each code line: a question about that line alone. */
 var LINE_PROMPT = {
 	label: "Ask about this line",
@@ -25866,6 +25960,7 @@ function setupCodePanel() {
 	let lesson, files = [], selected;
 	let first = 0, last = 0, excerpt = "", active = null, followed;
 	let references = [], codeCalls = [];
+	const docEntries = /* @__PURE__ */ new WeakMap(), docHtml = /* @__PURE__ */ new Map();
 	let returns = /* @__PURE__ */ new Map();
 	const settings = loadSettings();
 	const compiled = /* @__PURE__ */ new Map();
@@ -26659,6 +26754,7 @@ function setupCodePanel() {
 				structureMode: STRUCTURE_MODES.includes(saved?.structureMode) ? saved.structureMode : "plain",
 				structureRunning: saved?.structureRunning ?? true,
 				blurInactive: saved?.blurInactive ?? false,
+				comments: saved?.comments ?? true,
 				legacyWatches: Array.isArray(saved?.watches) ? saved.watches.filter((w) => w && typeof w.expr === "string" && typeof w.file === "string" && Number.isInteger(w.line)) : []
 			};
 		} catch {
@@ -26669,6 +26765,7 @@ function setupCodePanel() {
 				structureMode: "plain",
 				structureRunning: true,
 				blurInactive: false,
+				comments: true,
 				legacyWatches: []
 			};
 		}
@@ -26738,7 +26835,9 @@ function setupCodePanel() {
 			}, !selected || !codeSections(selected).length), check("Blur code outside the running function", settings.blurInactive, (on) => {
 				settings.blurInactive = on;
 				paintBlur();
-			}));
+			}), check("Explanations on hover", settings.comments, (on) => {
+				settings.comments = on;
+			}, !selected?.glossary?.length));
 			const vars = availableVariables();
 			const heading = document.createElement("div");
 			heading.className = "code-view-heading";
@@ -27069,6 +27168,7 @@ function setupCodePanel() {
 			}));
 			body.append(row);
 		});
+		markGlossaryExpressions(file);
 		highlightCode(file).then((tokens) => {
 			if (selected !== file || !tokens.length) return;
 			body.querySelectorAll(".code-line code").forEach((code) => paintTokens(code, lineTokens(tokens, Number(code.dataset.line))));
@@ -27083,6 +27183,18 @@ function setupCodePanel() {
 				markCalls(analysis.functions ?? [], codeCalls);
 				scheduleInline();
 			}
+		});
+	}
+	/** Wrap each documented expression (a glossary column range) in a span holding its entry, for hover. */
+	function markGlossaryExpressions(file) {
+		glossaryExpressions(file.glossary ?? []).forEach((entry) => {
+			const code = body.querySelector(`.code-line[data-line="${entry.from}"] code`);
+			if (code) wrapColumns(code, entry.col, entry.endCol, () => {
+				const span = document.createElement("span");
+				span.className = "code-doc";
+				docEntries.set(span, entry);
+				return span;
+			});
 		});
 	}
 	/** Wrap each variable reference in a span keyed by its expression; nested ones wrap inside their parents. */
@@ -27130,6 +27242,84 @@ function setupCodePanel() {
 		if (!found.length) return null;
 		return [...new Set(found)].join("\\\\");
 	}
+	/** The glossary entry for the first of names that has one at line; null with explanations off. */
+	function docFor(names, line) {
+		if (!settings.comments || !selected?.glossary?.length) return null;
+		return glossaryFor(selected.glossary, names.filter((n) => !!n), line);
+	}
+	function entryHtml(entry) {
+		if (!entry) return null;
+		let html = docHtml.get(entry.text);
+		if (html === void 0) docHtml.set(entry.text, html = renderMarkdown$1(entry.text));
+		return html;
+	}
+	/** Light (with a faint dotted underline) the documented block holding a line; null clears it. */
+	function lightDocBlock(entry) {
+		body.querySelectorAll(".code-doc-lit").forEach((n) => n.classList.remove("code-doc-lit"));
+		if (!entry) return;
+		for (let line = entry.from; line <= (entry.to ?? entry.from); line++) body.querySelector(`.code-line[data-line="${line}"]`)?.classList.add("code-doc-lit");
+	}
+	/** The tooltip's ✦: the tutor explains subject (on lines from–to) at once, building on its note. */
+	function askAbout(subject, from, to, note) {
+		if (!selected) return null;
+		const file = selected, text = file.source.split("\n").slice(from - 1, to).join("\n");
+		return {
+			key: `${file.id}:${from}-${to}:${subject}`,
+			make: () => makeSilentAiAskButton("ai-ask-btn code-doc-ask", "Ask AI to explain this", () => {
+				hideCodeTooltip();
+				choose(from, to, text);
+				return codeMessageFor(explainPrompt(subject, note?.text ?? null), from, to, text, inlineScope(file.source, lastLines) ?? inlineScope(file.source, /* @__PURE__ */ new Set([from])));
+			})
+		};
+	}
+	/**
+	* The tooltip for what the pointer is on, innermost first: a call (what it just returned), a def's name, a
+	* variable or parameter (what the scene's labels say about it: a formula, else its value), each with its
+	* explanation and a ✦ to have the tutor explain it; then a documented expression, then a documented block.
+	*/
+	function showHoverTooltip(target, span, row) {
+		const line = row ? Number(row.dataset.line) : 0;
+		lightDocBlock(null);
+		const call = target.closest(".code-call"), key = call?.dataset.call;
+		if (call) {
+			const name = call.textContent ?? "";
+			const tex = key && returns.has(key) ? `${plainTex(key)}\\to ${plainTex(formatWatch(returns.get(key)))}` : null;
+			const entry = docFor([key, name], line);
+			showCodeSymbolTooltip(call, tex, entryHtml(entry), askAbout(`the call \`${key ?? name}\` (function \`${name}\`)`, line, line, entry), key ?? name);
+			return;
+		}
+		const fn = target.closest(".code-fn");
+		if (fn) {
+			const name = fn.textContent ?? "", entry = docFor([name], line);
+			showCodeSymbolTooltip(fn, null, entryHtml(entry), askAbout(`the function \`${name}\``, line, line, entry), name);
+			return;
+		}
+		if (span) {
+			const name = span.dataset.key, entry = docFor([name, span.dataset.root], line);
+			showCodeSymbolTooltip(span, symbolTex(name, line || void 0), entryHtml(entry), askAbout(`\`${name}\``, line, line, entry), name);
+			return;
+		}
+		const expr = settings.comments ? target.closest(".code-doc") : null, exprEntry = expr ? docEntries.get(expr) : void 0;
+		if (expr && exprEntry) {
+			expr.classList.add("code-doc-lit");
+			showCodeSymbolTooltip(expr, null, entryHtml(exprEntry), askAbout(`the expression \`${expr.textContent ?? ""}\``, line, line, exprEntry));
+			return;
+		}
+		const block = settings.comments && selected && target.closest(".code-line code") ? glossaryBlockAt(selected.glossary ?? [], line) : null;
+		if (block) {
+			lightDocBlock(block);
+			const to = block.to ?? block.from, first = body.querySelector(`.code-line[data-line="${block.from}"] code`), last = body.querySelector(`.code-line[data-line="${to}"] code`);
+			const region = { getBoundingClientRect: () => {
+				const a = first.getBoundingClientRect(), b = last.getBoundingClientRect();
+				return new DOMRect(a.left, a.top, a.width, b.bottom - a.top);
+			} };
+			if (first && last) {
+				showCodeSymbolTooltip(region, null, entryHtml(block), askAbout(`lines ${block.from}–${to}`, block.from, to, block));
+				return;
+			}
+		}
+		showCodeSymbolTooltip(null, null);
+	}
 	function paintSymbolHover() {
 		const keys = hoveredSymbols(), line = hoveredCodeLine();
 		body.querySelectorAll(".code-sym").forEach((span) => span.classList.toggle("code-sym-hover", keys.includes(span.dataset.key)));
@@ -27141,11 +27331,12 @@ function setupCodePanel() {
 		const row = target.closest(".code-line");
 		if (span) setSymbolHover([span.dataset.key]);
 		else setSymbolHover([], row && selected ? codeLineKey(selected.id, Number(row.dataset.line)) : null);
-		const call = target.closest(".code-call"), key = call?.dataset.call;
-		if (call && key && returns.has(key)) showCodeSymbolTooltip(call, `${plainTex(key)}\\to ${plainTex(formatWatch(returns.get(key)))}`);
-		else showCodeSymbolTooltip(span, span ? symbolTex(span.dataset.key, row ? Number(row.dataset.line) : void 0) : null);
+		showHoverTooltip(target, span, row);
 	});
-	body.addEventListener("pointerleave", () => showCodeSymbolTooltip(null, null));
+	body.addEventListener("pointerleave", () => {
+		showCodeSymbolTooltip(null, null);
+		lightDocBlock(null);
+	});
 	body.addEventListener("pointerleave", () => setSymbolHover([]));
 	window.addEventListener("algebench:symbolhover", paintSymbolHover);
 	window.addEventListener("algebench:symbolflash", (event) => {

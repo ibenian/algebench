@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CODE_PROMPTS, enclosingFunction, codePromptMessage } from '/code-prompts.js';
+import { CODE_PROMPTS, enclosingFunction, codePromptMessage, explainPrompt } from '/code-prompts.js';
 
 const SOURCE = `def subsets(nums):
     out, path = [], []
@@ -57,4 +57,12 @@ test('without a selection a prompt is about the active code as a whole; line pro
     assert.match(message, /Answer only for the active code: lines 4–5, dfs\(\)/);
     assert.ok(!gist.line, 'the gist needs no selection');
     assert.ok(CODE_PROMPTS.some(p => p.line) && CODE_PROMPTS.some(p => !p.line));
+});
+
+test("the tooltip's explain prompt names its subject and carries the code's note when there is one", () => {
+    const withNote = explainPrompt('`h`', 'The heuristic.');
+    assert.ok(withNote.line, 'it is about the selected lines');
+    assert.match(withNote.prompt, /^Explain `h` in the selected code/);
+    assert.match(withNote.prompt, /The code's own note about it:\nThe heuristic\.$/);
+    assert.doesNotMatch(explainPrompt('lines 3–5', null).prompt, /note/);
 });
