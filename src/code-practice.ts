@@ -662,7 +662,11 @@ export function setupCodePractice(): void {
     };
     const flipOpen = () => {
         root.classList.toggle('open');paintOpen();savePrefs();
-        if (root.classList.contains('open') && hintsOn() && !input.value.trim()) void review(false);
+        // Opened on an empty editor, the coach says how to start, as on reaching an empty block; with code typed, it
+        // reviews what is new since its last word.
+        if (root.classList.contains('open')) void review(!input.value.trim());
+        // Folded away, the coach is put aside too: its speech stops and a review still coming isn't shown.
+        else hushCoach();
     };
     toggle.addEventListener('click', e => { e.stopPropagation();flipOpen(); });
     head.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) flipOpen(); });

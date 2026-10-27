@@ -28349,7 +28349,8 @@ function setupCodePractice() {
 		root.classList.toggle("open");
 		paintOpen();
 		savePrefs();
-		if (root.classList.contains("open") && hintsOn() && !input.value.trim()) review(false);
+		if (root.classList.contains("open")) review(!input.value.trim());
+		else hushCoach();
 	};
 	toggle.addEventListener("click", (e) => {
 		e.stopPropagation();
