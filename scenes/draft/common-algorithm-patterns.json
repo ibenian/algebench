@@ -8,7 +8,7 @@
       "source": "def build_prefix(nums):\n    prefix = [0]\n    for k, x in enumerate(nums):\n        prefix.append(prefix[-1] + x)\n    return prefix\n\ndef range_sum(prefix, i, j):\n    return prefix[j + 1] - prefix[i]",
       "sections": [
         {"id": "p-start", "title": "Start from the empty sum", "from": 1, "to": 2, "hint": "prefix begins as [0]: the sum of no numbers, so the first range can subtract it."},
-        {"id": "p-build", "title": "Extend the running total", "from": 3, "to": 5, "hint": "Each new entry is the previous total plus the next number; one pass builds all n + 1 entries.", "prompt": "Explain why prefix gets n + 1 entries and why prefix[k + 1], not prefix[k], holds the sum through nums[k]."},
+        {"id": "p-build", "title": "Extend the running total", "from": 3, "to": 6, "hint": "Each new entry is the previous total plus the next number; one pass builds all n + 1 entries.", "prompt": "Explain why prefix gets n + 1 entries and why prefix[k + 1], not prefix[k], holds the sum through nums[k]."},
         {"id": "p-query", "title": "Answer a range in one subtraction", "from": 7, "to": 8, "hint": "The total up to j minus the total before i leaves exactly nums[i..j].", "prompt": "Explain why prefix[j + 1] - prefix[i] is the sum of nums[i..j], and what goes wrong with prefix[j] - prefix[i]."}
       ],
       "annotations": [
@@ -60,7 +60,7 @@
         {"id": "ts-need", "title": "Walk once; name the partner", "from": 3, "to": 4, "hint": "For each number, the only partner that works is target − num."},
         {"id": "ts-look", "title": "Look up the partner first", "from": 5, "to": 6, "hint": "If the partner was seen earlier, its index and this one are the answer.", "prompt": "Explain why two_sum looks up other before recording num, and what would go wrong with a number that is exactly half of target if it recorded first."},
         {"id": "ts-record", "title": "Then remember this number", "from": 7, "to": 7, "hint": "Record num with its index so the numbers still to come can find it."},
-        {"id": "ts-none", "title": "No pair", "from": 8, "to": 8, "hint": "The loop ended without a hit: no two numbers sum to target."},
+        {"id": "ts-none", "title": "No pair", "from": 8, "to": 9, "hint": "The loop ended without a hit: no two numbers sum to target."},
         {"id": "ss-init", "title": "Count the empty prefix once", "from": 10, "to": 12, "hint": "count starts as {0: 1}: the empty prefix, so a subarray starting at index 0 can be counted.", "prompt": "Explain why count starts with {0: 1} instead of empty, using a subarray that starts at index 0."},
         {"id": "ss-step", "title": "Extend the running sum", "from": 13, "to": 14, "hint": "prefix is the sum of every number up to and including this one."},
         {"id": "ss-count", "title": "Count the subarrays ending here", "from": 15, "to": 15, "hint": "Each earlier prefix equal to prefix − k starts a subarray that ends here and sums to k.", "prompt": "Explain why the number of earlier prefixes equal to prefix − k is the number of subarrays ending here that sum to k."},

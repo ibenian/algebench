@@ -173,6 +173,24 @@ function doc(name: string, text: string, scope?: { source: string; start: string
     if (!scope) return { name, text };
     return { name, line: lineOf(scope.source, scope.start), endLine: lineOf(scope.source, scope.end ?? scope.start, scope.start), text };
 }
+/**
+ * Sections that leave no line out: the first starts at line 1 (taking any imports), each runs on over the blank
+ * lines after it, and a code line no section holds is an error, so "sections only" never shows a stray line.
+ */
+function coverLines(source: string, sections: Json[]): Json[] {
+    const lines = source.split('\n'), sorted = [...sections].sort((a, b) => (a.from as number) - (b.from as number));
+    const out = sorted.map((s, k) => {
+        let to = s.to as number;
+        const stop = k + 1 < sorted.length ? (sorted[k + 1]!.from as number) - 1 : lines.length;
+        while (to < stop && !lines[to]!.trim()) to++;
+        return { ...s, ...(k === 0 ? { from: 1 } : {}), to };
+    });
+    lines.forEach((l, i) => {
+        if (l.trim() && !out.some(s => i + 1 >= (s.from as number) && i + 1 <= (s.to as number)))
+            throw new Error(`line ${i + 1} (${l.trim()}) is in no section`);
+    });
+    return out;
+}
 /** An annotation documenting the lines from the one holding start to the one holding end. */
 const docBlock = (source: string, start: string, end: string, text: string): Json =>
     ({ line: lineOf(source, start), endLine: lineOf(source, end, start), text });
@@ -210,7 +228,7 @@ function pattern(p: PatternScene) {
     });
     codeFiles.push({
         id: p.id, path: `patterns/${p.file}`, language: 'python', source: p.source,
-        ...(p.sections?.length ? { sections: p.sections } : {}), ...(p.annotations?.length ? { annotations: p.annotations } : {}),
+        ...(p.sections?.length ? { sections: coverLines(p.source, p.sections) } : {}), ...(p.annotations?.length ? { annotations: p.annotations } : {}),
         locations: [...p.trace.map((f, snapshot) => ({ line: f.line, scene: p.id, step: 'run', snapshot, label: `${p.title} · ${f.message}` })), ...(p.more?.locations ?? [])],
     });
 }

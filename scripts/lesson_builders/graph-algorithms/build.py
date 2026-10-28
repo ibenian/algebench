@@ -209,6 +209,22 @@ label = lambda id, text, connect=None, line=None, file=None: {
     **({'codeRef': {'file': file, 'line': line}} if line else {})}
 
 
+def cover_lines(source, sections):
+    """Sections that leave no line out: the first starts at line 1 (taking the imports), each runs on over the blank
+    lines after it, and a code line no section holds is an error, so "sections only" never shows a stray line."""
+    lines = source.split('\n')
+    out = [dict(s) for s in sorted(sections, key=lambda s: s['from'])]
+    out[0]['from'] = 1
+    for k, s in enumerate(out):
+        stop = out[k + 1]['from'] - 1 if k + 1 < len(out) else len(lines)
+        while s['to'] < stop and not lines[s['to']].strip():
+            s['to'] += 1
+    for i, l in enumerate(lines, 1):
+        if l.strip() and not any(s['from'] <= i <= s['to'] for s in out):
+            raise ValueError(f'line {i} ({l.strip()}) is in no section')
+    return out
+
+
 def doc(name, text, start=None, end=None, source=None):
     """An annotation documenting a name (variable, function, expression key) file-wide, or, with start (and end)
     texts and the source, only on the lines from the one holding start to the one holding end: an override for a
@@ -240,7 +256,7 @@ def run_scene(id, title, header, markdown, prompt, file, source, trace, elements
     (see section()); annotations its hover explanations (see doc(), doc_block(), doc_expr())."""
     sections = sections or code_sections(id)
     codeFiles.append({'id': id, 'path': f'graphs/{file}', 'language': 'python', 'source': source,
-                      **({'sections': list(sections)} if sections else {}),
+                      **({'sections': cover_lines(source, sections)} if sections else {}),
                       **({'annotations': list(annotations)} if annotations else {}),
                       'locations': [{'line': f['line'], 'scene': id, 'step': 'run', 'snapshot': k, 'label': f"{title} · {f['message']}"}
                                     for k, f in enumerate(trace)]
@@ -1376,7 +1392,7 @@ def cycle_sections():
           prompt='Explain why the edge back to the parent must be skipped in an undirected graph, and why any other visited neighbour means a cycle.'),
         S('u-roots', 'Start from every unvisited node', 'for u in range(n)', 'return False', U,
           hint='Search each piece of the graph, starting with no parent.'),
-        S('k-count', 'Count incoming edges', 'indeg = [0] * n', 'indeg[v] += 1', K,
+        S('k-count', 'Count incoming edges', 'def has_cycle_kahn(', 'indeg[v] += 1', K,
           hint='For every node, count the edges that point at it: the things it waits for.'),
         S('k-queue', 'Queue the free nodes', 'queue = deque(', 'taken = 0', K,
           hint='Nodes that wait for nothing can be taken now; count how many get taken.'),

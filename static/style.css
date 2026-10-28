@@ -5654,7 +5654,15 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
     font: 12px var(--font-body); color: var(--text-color); cursor: pointer;
 }
 .code-section-head:hover, .code-section-head:focus-visible { background: color-mix(in srgb, var(--section-tone) 20%, transparent); outline: none; }
-.code-section-head.executing { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--section-tone) 70%, transparent); background: color-mix(in srgb, var(--section-tone) 22%, transparent); }
+/* The running section stands out from the rest: a wide bar, a ring and a deeper band, its title in its tone. */
+.code-section-head.executing {
+    border-left-width: 7px; box-shadow: inset 0 0 0 2px var(--section-tone), 0 0 10px color-mix(in srgb, var(--section-tone) 35%, transparent);
+    background: color-mix(in srgb, var(--section-tone) 34%, transparent);
+}
+/* A section of a function that is not running dims with its code and loses its tone, until pointed at. */
+.code-section-head:has(+ .code-line.code-inactive):not(:hover) { opacity: .5; filter: grayscale(1); }
+.code-structure .code-line.code-inactive.code-in-section .code-line-number { box-shadow: inset -3px 0 0 color-mix(in srgb, var(--text-color) 18%, transparent); }
+.code-section-head.executing .code-section-title { color: color-mix(in srgb, var(--section-tone) 55%, var(--text-color)); }
 .code-section-title { font-weight: 600; }
 /* In the hidden-code modes a title opens and closes its section's code; the chevron says which. */
 .code-section-chevron { display: none; width: 1ch; color: var(--section-tone); transition: transform .15s; }

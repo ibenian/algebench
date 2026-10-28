@@ -26642,10 +26642,16 @@ function setupCodePanel() {
 		return wrap;
 	}
 	const revealed = /* @__PURE__ */ new Set();
+	const shut = /* @__PURE__ */ new Set();
+	let running = /* @__PURE__ */ new Set();
 	const revealKey = (section) => `${selected?.id}:${section.id}`;
+	const isOpen = (section) => {
+		const key = revealKey(section);
+		return revealed.has(key) || settings.structureMode === "outline" && running.has(section.id) && !shut.has(key);
+	};
 	/** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
 	function paintReveal(section) {
-		const open = revealed.has(revealKey(section));
+		const open = isOpen(section);
 		for (let line = section.from; line <= section.to; line++) body.querySelector(`.code-line[data-line="${line}"]`)?.classList.toggle("code-section-revealed", open);
 		const head = body.querySelector(`.code-section-head[data-section="${CSS.escape(section.id)}"]`);
 		head?.classList.toggle("revealed", open);
@@ -26726,8 +26732,13 @@ function setupCodePanel() {
 			const pick = () => {
 				if (settings.structureMode === "blocks" || settings.structureMode === "outline") {
 					const key = revealKey(section);
-					if (revealed.has(key)) revealed.delete(key);
-					else revealed.add(key);
+					if (isOpen(section)) {
+						revealed.delete(key);
+						if (running.has(section.id)) shut.add(key);
+					} else {
+						revealed.add(key);
+						shut.delete(key);
+					}
 					paintReveal(section);
 					refreshBinding();
 				} else choose(section.from, section.to, sectionText(section));
@@ -26740,15 +26751,16 @@ function setupCodePanel() {
 				}
 			});
 			body.querySelector(`.code-line[data-line="${section.from}"]`)?.before(head);
-			paintReveal(section);
 		});
 		markExecutingSection();
 	}
-	/** The section running now is lit, so the titles-only view still says where execution is. */
+	/** The section running now is lit, so the titles-only view still says where execution is, and opens there. */
 	function markExecutingSection() {
 		const sections = selected ? codeSections(selected) : [];
-		const running = new Set([...lastLines].map((line) => sectionAt(sections, line)?.id).filter(Boolean));
+		running = new Set([...lastLines].map((line) => sectionAt(sections, line)?.id).filter((id) => !!id));
+		for (const key of [...shut]) if (!running.has(key.slice(key.indexOf(":") + 1))) shut.delete(key);
 		body.querySelectorAll(".code-section-head").forEach((head) => head.classList.toggle("executing", running.has(head.dataset.section)));
+		if (settings.structureMode !== "plain") sections.forEach(paintReveal);
 	}
 	function loadSettings() {
 		try {

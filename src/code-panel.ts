@@ -518,10 +518,18 @@ export function setupCodePanel(): void {
     }
     // Sections the reader opened in a hidden-code mode, by file and section; they stay open across modes and steps.
     const revealed=new Set<string>();
+    // In "sections only" the running section opens by itself, so what runs is never hidden; these are the running
+    // ones the reader closed anyway, until they stop running.
+    const shut=new Set<string>();
+    let running=new Set<string>();
     const revealKey=(section:CodeSection)=>`${selected?.id}:${section.id}`;
+    const isOpen=(section:CodeSection)=>{
+        const key=revealKey(section);
+        return revealed.has(key)||(settings.structureMode==='outline'&&running.has(section.id)&&!shut.has(key));
+    };
     /** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
     function paintReveal(section:CodeSection) {
-        const open=revealed.has(revealKey(section));
+        const open=isOpen(section);
         for(let line=section.from;line<=section.to;line++)body.querySelector(`.code-line[data-line="${line}"]`)?.classList.toggle('code-section-revealed',open);
         const head=body.querySelector<HTMLElement>(`.code-section-head[data-section="${CSS.escape(section.id)}"]`);
         head?.classList.toggle('revealed',open);head?.setAttribute('aria-expanded',String(open));
@@ -575,22 +583,25 @@ export function setupCodePanel(): void {
             const pick=()=>{
                 if(settings.structureMode==='blocks'||settings.structureMode==='outline'){
                     const key=revealKey(section);
-                    if(revealed.has(key))revealed.delete(key);else revealed.add(key);
+                    if(isOpen(section)){revealed.delete(key);if(running.has(section.id))shut.add(key);}
+                    else{revealed.add(key);shut.delete(key);}
                     paintReveal(section);refreshBinding();
                 }else choose(section.from,section.to,sectionText(section));
             };
             head.addEventListener('click',pick);
             head.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
             body.querySelector(`.code-line[data-line="${section.from}"]`)?.before(head);
-            paintReveal(section);
         });
         markExecutingSection();
     }
-    /** The section running now is lit, so the titles-only view still says where execution is. */
+    /** The section running now is lit, so the titles-only view still says where execution is, and opens there. */
     function markExecutingSection() {
         const sections=selected?codeSections(selected):[];
-        const running=new Set([...lastLines].map(line=>sectionAt(sections,line)?.id).filter(Boolean));
-        body.querySelectorAll<HTMLElement>('.code-section-head').forEach(head=>head.classList.toggle('executing',running.has(head.dataset.section)));
+        running=new Set([...lastLines].map(line=>sectionAt(sections,line)?.id).filter((id):id is string=>!!id));
+        // A section the reader closed while it ran opens again the next time it runs.
+        for(const key of [...shut])if(!running.has(key.slice(key.indexOf(':')+1)))shut.delete(key);
+        body.querySelectorAll<HTMLElement>('.code-section-head').forEach(head=>head.classList.toggle('executing',running.has(head.dataset.section!)));
+        if(settings.structureMode!=='plain')sections.forEach(paintReveal);
     }
     /** View settings ("⚙", top right): inline values on or off, and which variables show them. Kept per browser. */
     // legacyWatches: watches saved here before they moved to IndexedDB, read once to move them, never written back.
