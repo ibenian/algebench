@@ -6,6 +6,25 @@
       "path": "patterns/prefix_sum.py",
       "language": "python",
       "source": "def build_prefix(nums):\n    prefix = [0]\n    for k, x in enumerate(nums):\n        prefix.append(prefix[-1] + x)\n    return prefix\n\ndef range_sum(prefix, i, j):\n    return prefix[j + 1] - prefix[i]",
+      "sections": [
+        {"id": "p-start", "title": "Start from the empty sum", "from": 1, "to": 2, "hint": "prefix begins as [0]: the sum of no numbers, so the first range can subtract it."},
+        {"id": "p-build", "title": "Extend the running total", "from": 3, "to": 5, "hint": "Each new entry is the previous total plus the next number; one pass builds all n + 1 entries.", "prompt": "Explain why prefix gets n + 1 entries and why prefix[k + 1], not prefix[k], holds the sum through nums[k]."},
+        {"id": "p-query", "title": "Answer a range in one subtraction", "from": 7, "to": 8, "hint": "The total up to j minus the total before i leaves exactly nums[i..j].", "prompt": "Explain why prefix[j + 1] - prefix[i] is the sum of nums[i..j], and what goes wrong with prefix[j] - prefix[i]."}
+      ],
+      "annotations": [
+        {"name": "build_prefix", "text": "`build_prefix(nums)` returns the running totals of `nums`: a list one longer than `nums` whose entry `m` is the sum of the first `m` numbers. One O(n) pass."},
+        {"name": "range_sum", "text": "`range_sum(prefix, i, j)` is the sum of `nums[i..j]`, both ends included, read from the running totals in O(1)."},
+        {"name": "nums", "text": "The input numbers. They never change, which is what makes precomputing totals worthwhile."},
+        {"name": "prefix", "text": "`prefix[m]` is the sum of `nums[0..m-1]`, the first `m` numbers. It has `len(nums) + 1` entries; `prefix[0] = 0` is the empty sum."},
+        {"name": "k", "text": "The index of the number being added, 0 to `len(nums) - 1`."},
+        {"name": "x", "text": "The number being added, `nums[k]`."},
+        {"name": "i", "text": "The first index of the range, included."},
+        {"name": "j", "text": "The last index of the range, included; the total through it is `prefix[j + 1]`."},
+        {"line": 4, "col": 22, "endCol": 36, "text": "The total so far plus the next number: the sum of the first `k + 1` numbers, which becomes `prefix[k + 1]`."},
+        {"line": 8, "col": 11, "endCol": 24, "text": "The sum of `nums[0..j]`: everything up to and including the range's end."},
+        {"line": 8, "col": 27, "endCol": 36, "text": "The sum of `nums[0..i-1]`: everything before the range, which the subtraction removes."},
+        {"line": 3, "endLine": 4, "text": "One pass over `nums`, each step appending the previous total plus the next number. After it, `prefix` holds every running total."}
+      ],
       "locations": [
         {"line": 2, "scene": "prefix-sum", "step": "run", "snapshot": 0, "label": "Running totals (prefix sum) · Start the prefix array with 0, the sum of no elements."},
         {"line": 3, "scene": "prefix-sum", "step": "run", "snapshot": 1, "label": "Running totals (prefix sum) · Read nums[0] = 3."},

@@ -150,6 +150,37 @@ interface PatternScene {
     callEntryLine?: number;
     /** Steps after the run, each playing its own data table (`data`) with its own code locations. */
     more?: { steps: Json[]; data: Record<string, unknown[]>; locations: Json[] };
+    /** The code's teaching structure (see section()) and its hover explanations (see doc(), docBlock(), docExpr()). */
+    sections?: Json[]; annotations?: Json[];
+}
+/** The 1-based line of source holding text, searched from the line holding after when given. */
+function lineOf(source: string, text: string, after?: string): number {
+    const lines = source.split('\n'), start = after ? lines.findIndex(l => l.includes(after)) : 0;
+    const i = lines.findIndex((l, k) => k >= start && l.includes(text));
+    if (i < 0) throw new Error(`no line holds ${JSON.stringify(text)}`);
+    return i + 1;
+}
+/** One section of a code file's teaching structure: the lines from the one holding start to the one holding end. */
+function section(source: string, id: string, title: string, start: string, end: string | null, extra: { hint?: string; prompt?: string } = {}): Json {
+    const from = lineOf(source, start);
+    return { id, title, from, to: end ? lineOf(source, end, start) : from, ...extra };
+}
+/**
+ * An annotation documenting a name file-wide, or, with start (and end) texts, only on the lines from the one
+ * holding start to the one holding end: an override for a name that means something else there.
+ */
+function doc(name: string, text: string, scope?: { source: string; start: string; end?: string }): Json {
+    if (!scope) return { name, text };
+    return { name, line: lineOf(scope.source, scope.start), endLine: lineOf(scope.source, scope.end ?? scope.start, scope.start), text };
+}
+/** An annotation documenting the lines from the one holding start to the one holding end. */
+const docBlock = (source: string, start: string, end: string, text: string): Json =>
+    ({ line: lineOf(source, start), endLine: lineOf(source, end, start), text });
+/** An annotation documenting an expression: snippet, on the line holding lineText. */
+function docExpr(source: string, lineText: string, snippet: string, text: string): Json {
+    const line = lineOf(source, lineText), col = source.split('\n')[line - 1]!.indexOf(snippet);
+    if (col < 0) throw new Error(`line ${line} has no ${JSON.stringify(snippet)}`);
+    return { line, col, endCol: col + snippet.length, text };
 }
 const scenes: Json[] = [], codeFiles: Json[] = [];
 /**
@@ -179,6 +210,7 @@ function pattern(p: PatternScene) {
     });
     codeFiles.push({
         id: p.id, path: `patterns/${p.file}`, language: 'python', source: p.source,
+        ...(p.sections?.length ? { sections: p.sections } : {}), ...(p.annotations?.length ? { annotations: p.annotations } : {}),
         locations: [...p.trace.map((f, snapshot) => ({ line: f.line, scene: p.id, step: 'run', snapshot, label: `${p.title} · ${f.message}` })), ...(p.more?.locations ?? [])],
     });
 }
@@ -345,6 +377,30 @@ Each following scene runs one pattern on a small example. Scenes marked *coming 
 pattern({
     id: 'prefix-sum', title: 'Running totals (prefix sum)', file: 'prefix_sum.py', source: PREFIX_SOURCE,
     input: { nums: IN.prefix.nums }, trace: prefixSumTrace(IN.prefix.nums, IN.prefix.queries),
+    sections: [
+        section(PREFIX_SOURCE, 'p-start', 'Start from the empty sum', 'def build_prefix(', 'prefix = [0]', {
+            hint: 'prefix begins as [0]: the sum of no numbers, so the first range can subtract it.' }),
+        section(PREFIX_SOURCE, 'p-build', 'Extend the running total', 'for k, x in enumerate', 'return prefix', {
+            hint: 'Each new entry is the previous total plus the next number; one pass builds all n + 1 entries.',
+            prompt: 'Explain why prefix gets n + 1 entries and why prefix[k + 1], not prefix[k], holds the sum through nums[k].' }),
+        section(PREFIX_SOURCE, 'p-query', 'Answer a range in one subtraction', 'def range_sum(', 'return prefix[j + 1]', {
+            hint: 'The total up to j minus the total before i leaves exactly nums[i..j].',
+            prompt: 'Explain why prefix[j + 1] - prefix[i] is the sum of nums[i..j], and what goes wrong with prefix[j] - prefix[i].' }),
+    ],
+    annotations: [
+        doc('build_prefix', '`build_prefix(nums)` returns the running totals of `nums`: a list one longer than `nums` whose entry `m` is the sum of the first `m` numbers. One O(n) pass.'),
+        doc('range_sum', '`range_sum(prefix, i, j)` is the sum of `nums[i..j]`, both ends included, read from the running totals in O(1).'),
+        doc('nums', 'The input numbers. They never change, which is what makes precomputing totals worthwhile.'),
+        doc('prefix', '`prefix[m]` is the sum of `nums[0..m-1]`, the first `m` numbers. It has `len(nums) + 1` entries; `prefix[0] = 0` is the empty sum.'),
+        doc('k', 'The index of the number being added, 0 to `len(nums) - 1`.'),
+        doc('x', 'The number being added, `nums[k]`.'),
+        doc('i', 'The first index of the range, included.'),
+        doc('j', 'The last index of the range, included; the total through it is `prefix[j + 1]`.'),
+        docExpr(PREFIX_SOURCE, 'prefix.append', 'prefix[-1] + x', 'The total so far plus the next number: the sum of the first `k + 1` numbers, which becomes `prefix[k + 1]`.'),
+        docExpr(PREFIX_SOURCE, 'return prefix[j + 1]', 'prefix[j + 1]', 'The sum of `nums[0..j]`: everything up to and including the range\'s end.'),
+        docExpr(PREFIX_SOURCE, 'return prefix[j + 1]', 'prefix[i]', 'The sum of `nums[0..i-1]`: everything before the range, which the subtraction removes.'),
+        docBlock(PREFIX_SOURCE, 'for k, x in enumerate', 'prefix.append', 'One pass over `nums`, each step appending the previous total plus the next number. After it, `prefix` holds every running total.'),
+    ],
     markdown: `# Running totals (prefix sum)
 
 **Signal:** many "sum of nums[i..j]" queries on an array that does not change.
