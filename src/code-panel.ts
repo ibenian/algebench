@@ -94,7 +94,32 @@ export function setupCodePanel(): void {
     hideCode.innerHTML=HIDE_CODE_ICON;
     hideCode.addEventListener('click',()=>{if(selected)setHidden(!veiled);});
     title.append(titleText,modes,hideCode,ask,codePromptsMenu(),viewSettingsMenu());
-    actions.append(selectionLabel,jump,watch,what,watchError);host.append(tree,title,execution,body,actions,targets);
+    // The edge between the file list and the code resizes them, as Type along's top edge does: the code starts at
+    // its usual height; a drag gives it more or less room (kept per browser), a double-click restores it.
+    const split=document.createElement('div');split.className='code-tree-resize';split.setAttribute('role','separator');
+    split.setAttribute('aria-orientation','horizontal');split.setAttribute('aria-label','Resize the code');split.title='Drag to resize the code · double-click to reset';
+    const TREE_KEY='algebench-code-tree-height';
+    function setTreeHeight(px:number|null) {
+        if(px==null){tree.style.removeProperty('flex');return;}
+        const max=Math.max(60,host!.clientHeight-160);
+        tree.style.flex=`0 0 ${Math.round(Math.max(60,Math.min(max,px)))}px`;
+    }
+    try{const saved=Number(localStorage.getItem(TREE_KEY));if(saved>0)setTreeHeight(saved);}catch{/* storage off: the default height */}
+    split.addEventListener('pointerdown',e=>{
+        e.preventDefault();split.setPointerCapture(e.pointerId);split.classList.add('dragging');
+        const startY=e.clientY,startH=tree.offsetHeight;
+        document.body.style.cursor='row-resize';document.body.style.userSelect='none';
+        const move=(ev:PointerEvent)=>setTreeHeight(startH+ev.clientY-startY);
+        const up=()=>{
+            split.removeEventListener('pointermove',move);split.classList.remove('dragging');
+            document.body.style.cursor='';document.body.style.userSelect='';
+            try{localStorage.setItem(TREE_KEY,String(tree.offsetHeight));}catch{/* not kept */}
+        };
+        split.addEventListener('pointermove',move);
+        split.addEventListener('pointerup',up,{once:true});split.addEventListener('pointercancel',up,{once:true});
+    });
+    split.addEventListener('dblclick',()=>{setTreeHeight(null);try{localStorage.removeItem(TREE_KEY);}catch{/* not kept */}});
+    actions.append(selectionLabel,jump,watch,what,watchError);host.append(tree,split,title,execution,body,actions,targets);
     /**
      * "⋯" in the header: prompts about the active code (code-prompts.ts), so no selection is needed; those about a
      * line wait for one. They are sent silently: the request carries the whole file and state, so only the tutor's

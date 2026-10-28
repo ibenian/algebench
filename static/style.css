@@ -5616,6 +5616,9 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 /* Display-only lesson source: browsing does not navigate the lesson. */
 #dock-tab-code { overflow: hidden; }
 .code-file-tree { flex: 0 1 25%; min-height: 90px; overflow: auto; padding: 12px; border-bottom: 1px solid var(--border-color); }
+/* The edge between the file list and the code: drag to give the code more or less room. */
+.code-tree-resize { position: relative; flex: 0 0 6px; margin: -3px 0; z-index: 5; cursor: row-resize; background: transparent; transition: background .15s; }
+.code-tree-resize:hover, .code-tree-resize.dragging { background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
 .code-file-tree details { padding-left: 12px; }
 .code-file-tree summary { cursor: pointer; padding: 5px 0; font-size: 13px; }
 .code-file-tree button { display: block; text-align: left; width: 100%; padding: 6px 10px; color: var(--text-color); background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
@@ -6124,16 +6127,16 @@ body:has(.push-array) #legend { display: none; }
 /* Every pane splitter shows its grip, as the Coach review's header does: a small pill across its middle,
    always visible, lit while pointed at or dragged. Horizontal splitters get a flat pill, vertical a tall one. */
 #graph-dock-resize-handle, #json-tree-resize-handle { position: relative; }
-.cp-resize::after, #proof-resize-handle::after,
+.cp-resize::after, #proof-resize-handle::after, .code-tree-resize::after,
 #panel-resize-handle::after, #scene-dock-resize-handle::after, #graph-dock-resize-handle::after, #json-tree-resize-handle::after {
     content: ''; position: absolute; left: 50%; top: 50%; border-radius: 2px; pointer-events: none;
     background: color-mix(in srgb, var(--text-color) 22%, transparent); transition: background .15s;
 }
-.cp-resize::after, #proof-resize-handle::after { width: 28px; height: 3px; margin: -1.5px 0 0 -14px; opacity: 1; }
+.cp-resize::after, #proof-resize-handle::after, .code-tree-resize::after { width: 28px; height: 3px; margin: -1.5px 0 0 -14px; opacity: 1; }
 #panel-resize-handle::after, #scene-dock-resize-handle::after, #graph-dock-resize-handle::after, #json-tree-resize-handle::after {
     width: 3px; height: 28px; margin: -14px 0 0 -1.5px;
 }
-.cp-resize:hover::after, .cp-resize.dragging::after, #proof-resize-handle:hover::after, #proof-resize-handle.dragging::after,
+.cp-resize:hover::after, .cp-resize.dragging::after, .code-tree-resize:hover::after, .code-tree-resize.dragging::after, #proof-resize-handle:hover::after, #proof-resize-handle.dragging::after,
 #panel-resize-handle:hover::after, #panel-resize-handle.dragging::after, #scene-dock-resize-handle:hover::after, #scene-dock-resize-handle.dragging::after,
 #graph-dock-resize-handle:hover::after, #graph-dock-resize-handle.dragging::after, #json-tree-resize-handle:hover::after {
     background: var(--accent-color);
