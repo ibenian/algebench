@@ -739,7 +739,8 @@ export const hashLine = (fn: string, text: string) => {
  */
 export function twoSumTrace(nums: number[], target: number) {
     const L = (t: string) => hashLine('two_sum', t);
-    const v = { i: -1, num: 0, other: 0, hasOther: 0, keys: [] as number[], vals: [] as number[], look: -1, cond: -1, result: '—', returned: 'return: —' };
+    // seen: the dict's keys, so the Code panel can test `other in seen`.
+    const v = { i: -1, num: 0, other: 0, hasOther: 0, keys: [] as number[], vals: [] as number[], seen: [] as number[], look: -1, cond: -1, result: '—', returned: 'return: —' };
     const { trace, emit } = recorder(v);
     emit(L('seen = {}'), `seen starts empty: it will map each number to its index.`);
     for (let i = 0; i < nums.length; i++) {
@@ -756,7 +757,7 @@ export function twoSumTrace(nums: number[], target: number) {
             emit(L('return [seen[other], i]'), `Found: nums[${v.vals[at]}] + nums[${i}] = ${v.other} + ${num} = ${target}. Return ${v.result}.`, 'Done');
             return trace;
         }
-        v.keys = [...v.keys, num]; v.vals = [...v.vals, i]; v.look = v.keys.length - 1;
+        v.keys = [...v.keys, num]; v.vals = [...v.vals, i]; v.seen = v.keys; v.look = v.keys.length - 1;
         emit(L('seen[num] = i'), `Remember ${num} at index ${i}: seen[${num}] = ${i}.`);
     }
     v.i = -1; v.look = -1; v.result = '[]'; v.returned = 'return []';

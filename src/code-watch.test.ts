@@ -17,6 +17,9 @@ test('Python operators become math.js ones', () => {
     assert.equal(watchExpr('u % 2', 'trace', names), `${col('u')} mod 2`);
     assert.equal(watchExpr('u ** 2', 'trace', names), `(${col('u')}) ^ (2)`);
     assert.equal(watchExpr('True', 'trace', names), 'true');
+    assert.equal(watchExpr('u in queue', 'trace', names), `keyIndex(${col('queue')}, ${col('u')}) >= 0`);
+    assert.equal(watchExpr('u + 1 not in queue', 'trace', names), `keyIndex(${col('queue')}, ${col('u')} + 1) < 0`);
+    assert.equal(watchExpr('not u in queue', 'trace', names), `not (keyIndex(${col('queue')}, ${col('u')}) >= 0)`);
 });
 
 test('what cannot be watched says why', () => {

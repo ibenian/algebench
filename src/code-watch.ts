@@ -97,10 +97,17 @@ export function watchExpr(python: string, table: string, names: readonly string[
         }
     }
     function sum(): string { let e = term();while (isOp('+') || isOp('-')) { const op = next()!.text;e = `${e} ${op} ${term()}`; }return e; }
+    // `x in d` (and `not in`): x is one of a list's items, or one of a dict's keys when the run records the dict as
+    // its list of keys.
+    const isNotIn = () => isWord('not') && toks[k + 1]?.kind === 'name' && toks[k + 1]!.text === 'in';
     function compare(): string {
         let e = sum();
-        while (['==', '!=', '<', '>', '<=', '>='].some(isOp)) { const op = next()!.text;e = `${e} ${op} ${sum()}`; }
-        return e;
+        for (;;) {
+            if (['==', '!=', '<', '>', '<=', '>='].some(isOp)) { const op = next()!.text;e = `${e} ${op} ${sum()}`; }
+            else if (isWord('in')) { k++;e = `keyIndex(${sum()}, ${e}) >= 0`; }
+            else if (isNotIn()) { k += 2;e = `keyIndex(${sum()}, ${e}) < 0`; }
+            else return e;
+        }
     }
     function not(): string { if (isWord('not')) { k++;return `not (${not()})`; }return compare(); }
     function and(): string { let e = not();while (isWord('and')) { k++;e = `${e} and ${not()}`; }return e; }

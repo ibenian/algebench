@@ -25618,9 +25618,10 @@ function watchExpr(python, table, names, shown = names) {
 		}
 		return e;
 	}
+	const isNotIn = () => isWord("not") && toks[k + 1]?.kind === "name" && toks[k + 1].text === "in";
 	function compare() {
 		let e = sum();
-		while ([
+		for (;;) if ([
 			"==",
 			"!=",
 			"<",
@@ -25630,8 +25631,13 @@ function watchExpr(python, table, names, shown = names) {
 		].some(isOp)) {
 			const op = next().text;
 			e = `${e} ${op} ${sum()}`;
-		}
-		return e;
+		} else if (isWord("in")) {
+			k++;
+			e = `keyIndex(${sum()}, ${e}) >= 0`;
+		} else if (isNotIn()) {
+			k += 2;
+			e = `keyIndex(${sum()}, ${e}) < 0`;
+		} else return e;
 	}
 	function not() {
 		if (isWord("not")) {
