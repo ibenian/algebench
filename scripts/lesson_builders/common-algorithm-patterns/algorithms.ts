@@ -710,9 +710,9 @@ export function linkedListTrace(values: number[]) {
 export const HASH_MAP_SOURCE = `def two_sum(nums, target):
     seen = {}
     for i, num in enumerate(nums):
-        need = target - num
-        if need in seen:
-            return [seen[need], i]
+        other = target - num
+        if other in seen:
+            return [seen[other], i]
         seen[num] = i
     return []
 
@@ -731,29 +731,29 @@ export const hashLine = (fn: string, text: string) => {
 };
 /**
  * Two Sum with a dict: walk the list once; for each number, look up the partner it needs among the numbers seen so
- * far, then remember this one (value → index). Per frame: i (−1 before the loop), num, need (hasNeed 1 once it is
+ * far, then remember this one (value → index). Per frame: i (−1 before the loop), num, other (hasOther 1 once it is
  * computed for this num); keys and
  * vals, the dict's entries in insertion order; look, the entry position the lookup found (−1 a miss or none);
- * cond, the last `need in seen` (−1 not yet, 0 False, 1 True); result, the answer once found ('—' before), and
+ * cond, the last `other in seen` (−1 not yet, 0 False, 1 True); result, the answer once found ('—' before), and
  * returned, its label text (kept in the data: an expression quoting "return" would read as JavaScript).
  */
 export function twoSumTrace(nums: number[], target: number) {
     const L = (t: string) => hashLine('two_sum', t);
-    const v = { i: -1, num: 0, need: 0, hasNeed: 0, keys: [] as number[], vals: [] as number[], look: -1, cond: -1, result: '—', returned: 'return: —' };
+    const v = { i: -1, num: 0, other: 0, hasOther: 0, keys: [] as number[], vals: [] as number[], look: -1, cond: -1, result: '—', returned: 'return: —' };
     const { trace, emit } = recorder(v);
     emit(L('seen = {}'), `seen starts empty: it will map each number to its index.`);
     for (let i = 0; i < nums.length; i++) {
         const num = nums[i]!;
-        v.i = i; v.num = num; v.look = -1; v.cond = -1; v.hasNeed = 0;
+        v.i = i; v.num = num; v.look = -1; v.cond = -1; v.hasOther = 0;
         emit(L('for i, num'), `i = ${i}, num = ${num}.`);
-        v.need = target - num; v.hasNeed = 1;
-        emit(L('need = target - num'), `need = ${target} − ${num} = ${v.need}: the partner that would make ${target}.`);
-        const at = v.keys.indexOf(v.need);
+        v.other = target - num; v.hasOther = 1;
+        emit(L('other = target - num'), `other = ${target} − ${num} = ${v.other}: the partner that would make ${target}.`);
+        const at = v.keys.indexOf(v.other);
         v.cond = at >= 0 ? 1 : 0; v.look = at;
-        emit(L('if need in seen'), at >= 0 ? `${v.need} is in seen: one lookup, O(1).` : `${v.need} is not in seen: no earlier number pairs with ${num}.`);
+        emit(L('if other in seen'), at >= 0 ? `${v.other} is in seen: one lookup, O(1).` : `${v.other} is not in seen: no earlier number pairs with ${num}.`);
         if (at >= 0) {
             v.result = `[${v.vals[at]}, ${i}]`; v.returned = `return ${v.result}`;
-            emit(L('return [seen[need], i]'), `Found: nums[${v.vals[at]}] + nums[${i}] = ${v.need} + ${num} = ${target}. Return ${v.result}.`, 'Done');
+            emit(L('return [seen[other], i]'), `Found: nums[${v.vals[at]}] + nums[${i}] = ${v.other} + ${num} = ${target}. Return ${v.result}.`, 'Done');
             return trace;
         }
         v.keys = [...v.keys, num]; v.vals = [...v.vals, i]; v.look = v.keys.length - 1;

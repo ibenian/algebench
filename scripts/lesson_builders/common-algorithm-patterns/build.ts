@@ -438,6 +438,8 @@ ${MD_TAIL}
     const twoSum = twoSumTrace(nums, target), sub = subarraySumTrace(sums, k);
     const L1 = (t: string) => hashLine('two_sum', t), L2 = (t: string) => hashLine('subarray_sum', t);
     const ref = (line: number) => ({ file: 'hash-map', line });
+    const S = (id: string, title: string, start: string, end: string | null, extra: { hint?: string; prompt?: string }) =>
+        section(HASH_MAP_SOURCE, id, title, start, end, extra);
     // A dict over a table's keys / vals columns, the entry being read or written lit.
     const dict = (id: string, c: (col: string) => string, origin: number[], extra: Json = {}): Json => ({
         id, type: 'dict', label: id, origin, labelSide: 'left', cellSize: 1.35, fontSize: 16, indexFontSize: 10, axisLabels: ARRAY_TEXT,
@@ -452,15 +454,17 @@ ${MD_TAIL}
             markers: [marker('i', tr('i'), PINK, `${tr('i')} >= 0`)],
             connectTo: { object: 'seen', indexExpr: `idx == ${tr('i')} and ${found} ? ${tr('look')} : -1`, arrow: true, pinned: true, color: GOLD } }),
         dict('seen', tr, [-4.4, -0.8, 0], {
-            markers: [marker('need', tr('look'), GOLD, `${found}`)],
+            markers: [marker('other', tr('look'), GOLD, `${found}`)],
             connectTo: { object: 'nums', indexExpr: 'value', arrow: true, pinned: true, color: '#7f93aa',
                 highlightExpr: `idx == ${tr('look')} and ${found}` } }),
         { ...label('i', `${tr('i')} < 0 ? 'i: —' : concat('i = ', ${tr('i')})`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: ref(L1('for i, num')) },
         { ...label('num', `${tr('i')} < 0 ? 'num: —' : concat('num = ', ${tr('num')})`, [4.6, -3.6, 0], ['nums', tr('i')]), codeRef: ref(L1('for i, num')) },
-        { ...label('need', `${tr('hasNeed')} == 0 ? 'need: —' : concat('need = ', ${tr('need')})`, [4.6, -3.6, 0]), codeRef: ref(L1('need = target - num')) },
-        { ...label('cond', `${tr('cond')} < 0 ? 'need in seen: —' : (${found} ? 'need in seen → True' : 'need in seen → False')`, [4.6, -3.6, 0],
-            ['seen', `${found} ? ${tr('look')} : -1`], `${tr('line')} == ${L1('if need in seen')}`), codeRef: ref(L1('if need in seen')) },
-        { ...label('result', tr('returned'), [4.6, -3.6, 0]), codeRef: ref(L1('return [seen[need], i]')) },
+        { ...label('target', `concat('target = ', ${inp('target')})`, [4.6, -3.6, 0]), codeRef: ref(L1('other = target - num')) },
+        { ...label('target-num', `${tr('hasOther')} == 0 ? 'target - num: —' : concat('target - num = ', ${inp('target')}, ' - ', ${tr('num')}, ' = ', ${tr('other')})`, [4.6, -3.6, 0]), codeRef: ref(L1('other = target - num')) },
+        { ...label('other', `${tr('hasOther')} == 0 ? 'other: —' : concat('other = ', ${tr('other')})`, [4.6, -3.6, 0]), codeRef: ref(L1('other = target - num')) },
+        { ...label('cond', `${tr('cond')} < 0 ? 'other in seen: —' : (${found} ? 'other in seen → True' : 'other in seen → False')`, [4.6, -3.6, 0],
+            ['seen', `${found} ? ${tr('look')} : -1`], `${tr('line')} == ${L1('if other in seen')}`), codeRef: ref(L1('if other in seen')) },
+        { ...label('result', tr('returned'), [4.6, -3.6, 0]), codeRef: ref(L1('return [seen[other], i]')) },
     ];
     // Subarray sum: count maps each prefix sum to how often it has appeared; a subarray ending here sums to k
     // once for each earlier prefix equal to prefix − k.
@@ -479,6 +483,52 @@ ${MD_TAIL}
     pattern({
         id: 'hash-map', title: "Remember what you've seen (hash map)", file: 'hash_map.py', source: HASH_MAP_SOURCE,
         input: { nums, target, sums, k }, trace: twoSum,
+        sections: [
+            S('ts-init', 'Nothing seen yet', 'def two_sum(', 'seen = {}', {
+                hint: 'seen will map each number already passed to its index; it starts empty.' }),
+            S('ts-need', 'Walk once; name the partner', 'for i, num in enumerate', 'other = target - num', {
+                hint: 'For each number, the only partner that works is target − num.' }),
+            S('ts-look', 'Look up the partner first', 'if other in seen', 'return [seen[other], i]', {
+                hint: 'If the partner was seen earlier, its index and this one are the answer.',
+                prompt: 'Explain why two_sum looks up other before recording num, and what would go wrong with a number that is exactly half of target if it recorded first.' }),
+            S('ts-record', 'Then remember this number', 'seen[num] = i', null, {
+                hint: 'Record num with its index so the numbers still to come can find it.' }),
+            S('ts-none', 'No pair', 'return []', null, { hint: 'The loop ended without a hit: no two numbers sum to target.' }),
+            S('ss-init', 'Count the empty prefix once', 'def subarray_sum(', 'prefix = total = 0', {
+                hint: 'count starts as {0: 1}: the empty prefix, so a subarray starting at index 0 can be counted.',
+                prompt: 'Explain why count starts with {0: 1} instead of empty, using a subarray that starts at index 0.' }),
+            S('ss-step', 'Extend the running sum', 'for num in nums', 'prefix += num', {
+                hint: 'prefix is the sum of every number up to and including this one.' }),
+            S('ss-count', 'Count the subarrays ending here', 'total += count.get', null, {
+                hint: 'Each earlier prefix equal to prefix − k starts a subarray that ends here and sums to k.',
+                prompt: 'Explain why the number of earlier prefixes equal to prefix − k is the number of subarrays ending here that sum to k.' }),
+            S('ss-record', 'Then record this prefix', 'count[prefix] =', null, {
+                hint: 'Add this prefix sum to count, after counting, so a subarray is never empty.' }),
+            S('ss-return', 'The total', 'return total', null, { hint: 'total counted every subarray summing to k, once each.' }),
+        ],
+        annotations: [
+            doc('two_sum', '`two_sum(nums, target)` returns the indices `[a, b]` of two numbers that add up to `target`, or `[]` when none do. One pass, O(n) time and space.'),
+            doc('subarray_sum', '`subarray_sum(nums, k)` counts the contiguous subarrays of `nums` whose sum is `k`. One pass with a dict of prefix sums; works with negative numbers.'),
+            doc('nums', 'The input numbers, read once from left to right.'),
+            doc('target', 'The sum the two numbers must reach.'),
+            doc('seen', 'Each number already passed, mapped to its index: `seen[value] = index`. Looking a value up costs O(1) on average.'),
+            doc('i', 'The index of the current number.'),
+            doc('num', 'The current number, `nums[i]`.'),
+            doc('other', 'The other number of the pair, the one `num` needs: `target − num`. Only this value can complete the pair.'),
+            doc('num', 'The next number of `nums`.', { source: HASH_MAP_SOURCE, start: 'def subarray_sum(', end: 'return total' }),
+            doc('k', 'The sum a subarray must have to be counted.'),
+            doc('count', 'How many times each prefix sum has appeared so far: `count[p]` is the number of earlier positions whose running sum was `p`. Starts as `{0: 1}` for the empty prefix.'),
+            doc('prefix', 'The running sum: every number up to and including the current one.'),
+            doc('total', 'The number of subarrays summing to `k` found so far, the answer.'),
+            docExpr(HASH_MAP_SOURCE, 'other = target - num', 'target - num', 'The partner `num` needs: the one value that, added to `num`, gives `target`.'),
+            docExpr(HASH_MAP_SOURCE, 'if other in seen', 'other in seen', 'Was the partner among the numbers already passed? A dict answers in O(1) on average, instead of a scan.'),
+            docExpr(HASH_MAP_SOURCE, 'return [seen[other], i]', '[seen[other], i]', 'The partner\'s index, from `seen`, then this number\'s: the earlier index comes first.'),
+            docExpr(HASH_MAP_SOURCE, 'count = {0: 1}', '{0: 1}', 'The empty prefix, sum 0, seen once: it lets a subarray that starts at index 0 be counted.'),
+            docExpr(HASH_MAP_SOURCE, 'total += count.get', 'count.get(prefix - k, 0)', 'How many earlier prefixes equal `prefix − k`. Each one starts a subarray ending here whose sum is `prefix − (prefix − k) = k`; 0 when there are none.'),
+            docExpr(HASH_MAP_SOURCE, 'count[prefix] =', 'count.get(prefix, 0) + 1', 'One more occurrence of this prefix sum, counting from 0 if it is new.'),
+            docBlock(HASH_MAP_SOURCE, 'if other in seen', 'seen[num] = i', 'Look up first, then record. Checking before recording means a number never pairs with itself, and every pair is found when its second number arrives.'),
+            docBlock(HASH_MAP_SOURCE, 'prefix += num', 'count[prefix] =', 'Extend the running sum, count the subarrays ending here, then record the new prefix sum for the numbers still to come.'),
+        ],
         more: {
             data: { hm_sub: sub },
             steps: [{
@@ -499,7 +549,7 @@ A **dict** (hash map) answers "have I seen this?" in O(1) on average, so one pas
 
 ## 1. Two Sum (this step)
 
-For each \`num\`, its partner is \`need = target − num\`. If \`need\` is already a key in \`seen\`, the answer is \`[seen[need], i]\`; otherwise remember \`seen[num] = i\`. Each entry in \`seen\` points back at the cell of \`nums\` it indexes; on a hit, \`nums[i]\` points at its partner's entry. O(n) time and O(n) space, against O(n²) for checking every pair. The sorted version needs no dict: see the two-pointers scene.
+For each \`num\`, its partner is \`other = target − num\`. If \`other\` is already a key in \`seen\`, the answer is \`[seen[other], i]\`; otherwise remember \`seen[num] = i\`. Each entry in \`seen\` points back at the cell of \`nums\` it indexes; on a hit, \`nums[i]\` points at its partner's entry. O(n) time and O(n) space, against O(n²) for checking every pair. The sorted version needs no dict: see the two-pointers scene.
 
 ## 2. Count by prefix (next step)
 
@@ -508,7 +558,7 @@ Subarrays summing to \`k\`: a subarray ending here sums to \`k\` exactly when an
 ${MD_TAIL}
 
 **Practice:** Two Sum, Contains Duplicate, Subarray Sum Equals K, Longest Consecutive Sequence, Group Anagrams.`,
-        prompt: 'Explain why a dict turns the pair search into one pass: look up first, then record. Ask the learner to predict, before each lookup, whether need is already in seen, and for subarray sums, how many subarrays end at the current index.',
+        prompt: 'Explain why a dict turns the pair search into one pass: look up first, then record. Ask the learner to predict, before each lookup, whether other is already in seen, and for subarray sums, how many subarrays end at the current index.',
         elements: twoSumElements,
     });
     const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
