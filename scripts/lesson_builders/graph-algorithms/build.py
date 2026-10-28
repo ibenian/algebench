@@ -1463,7 +1463,7 @@ def cycle_scene(header):
         label('u', f"{k('u')} < 0 ? 'u: —' : concat('u = ', {k('u')})", ['graph', k('u')], LK('u = queue.popleft()'), 'cycle-detection'),
         {**label('v', f"{k('v')} < 0 ? 'v: —' : concat('v = ', {k('v')})", ['graph', k('v')], LK('for v in adj[u]'), 'cycle-detection'), 'tooltipExpr': k('vTip')},
         label('n', "'n = %d'" % CYC_N, None, LK('def has_cycle_kahn('), 'cycle-detection'),
-        {**label('indeg-v', f"{k('v')} < 0 ? 'indeg[v]: —' : concat('indeg[', {k('v')}, '] = ', arrayAt({k('indeg')}, {k('v')}))",
+        {**label('indeg-v', f"{k('v')} < 0 ? 'indeg[v]: —' : concat('indeg[v] = ', arrayAt({k('indeg')}, {k('v')}))",
                  ['indeg', k('v')], LK('indeg[v] -= 1'), 'cycle-detection'), 'highlightExpr': f"{k('v')} >= 0"},
         label('queue-len', f"concat('len(queue) = ', arrayCount({k('queue')}))", ['queue', '0'], LK('while queue'), 'cycle-detection'),
         label('taken', f"concat('taken = ', {k('taken')})", None, LK('taken += 1'), 'cycle-detection'),
@@ -1777,9 +1777,9 @@ def bipartite_scene(header):
             label('s', f"{c('s')} < 0 ? 's: —' : concat('s = ', {c('s')})", ['graph', c('s')], L('for s in range(n)'), 'bipartite'),
             label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], L('u = queue.popleft()'), 'bipartite'),
             {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v in adj[u]'), 'bipartite'), 'tooltipExpr': c('vTip')},
-            {**label('color-u', f"{c('u')} < 0 ? 'color[u]: —' : concat('color[', {c('u')}, '] = ', {team(c('u'))})",
+            {**label('color-u', f"{c('u')} < 0 ? 'color[u]: —' : concat('color[u] = ', {team(c('u'))})",
                      ['color', c('u')], L('color[v] = 1 - color[u]'), 'bipartite'), 'highlightExpr': f"{c('u')} >= 0"},
-            {**label('color-v', f"{c('v')} < 0 ? 'color[v]: —' : concat('color[', {c('v')}, '] = ', {team(c('v'))})",
+            {**label('color-v', f"{c('v')} < 0 ? 'color[v]: —' : concat('color[v] = ', {team(c('v'))})",
                      ['color', c('v')], L('if color[v] == -1'), 'bipartite'), 'highlightExpr': f"{c('v')} >= 0"},
             # The other team, as the code computes it for each new neighbour.
             {**label('other', f"{c('u')} < 0 ? '1 - color[u]: —' : concat('1 - color[u] = 1 - ', {team(c('u'))}, ' = ', 1 - {team(c('u'))})",
@@ -1807,7 +1807,7 @@ def bipartite_scene(header):
             {**label('other', f"{c('c')} < 0 ? '1 - c: —' : concat('1 - c = 1 - ', {c('c')}, ' = ', 1 - {c('c')})",
                      None, LD('if not dfs(v, 1 - c)'), 'bipartite'), 'highlightExpr': f"{c('line')} == {LD('if not dfs(v, 1 - c)')}"},
             {**label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], LD('for v in adj[u]'), 'bipartite'), 'tooltipExpr': c('vTip')},
-            {**label('color-v', f"{c('v')} < 0 ? 'color[v]: —' : concat('color[', {c('v')}, '] = ', {team(c('v'))})",
+            {**label('color-v', f"{c('v')} < 0 ? 'color[v]: —' : concat('color[v] = ', {team(c('v'))})",
                      ['color', c('v')], LD('if color[v] == -1'), 'bipartite'), 'highlightExpr': f"{c('v')} >= 0"},
             {**label('check', c('checkText'), None, LD('elif color[v] == c'), 'bipartite'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
             label('result', f"concat('result: ', {c('result')})", None, LD('return True', 'for s in range(n)'), 'bipartite'),
@@ -2105,7 +2105,7 @@ def topo_scene(header):
              'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0', 'showIndices': False,
              'lengthExpr': f"arrayCount({k('queue')})", 'valueExpr': f"arrayAt({k('queue')}, idx)",
              'highlightExpr': f"idx == arrayCount({k('queue')}) - 1 and {k('line')} == {LK('queue.append(v)')}"},
-            {**label('indeg-v', f"{k('v')} < 0 ? 'indeg[v]: —' : concat('indeg[', {k('v')}, '] = ', arrayAt({k('indeg')}, {k('v')}))",
+            {**label('indeg-v', f"{k('v')} < 0 ? 'indeg[v]: —' : concat('indeg[v] = ', arrayAt({k('indeg')}, {k('v')}))",
                      ['indeg', k('v')], LK('indeg[v] -= 1'), 'topological-sort'), 'highlightExpr': f"{k('v')} >= 0"},
             label('queue-len', f"concat('len(queue) = ', arrayCount({k('queue')}))", ['queue', '0'], LK('while queue'), 'topological-sort')]
     d = tr
@@ -2118,7 +2118,7 @@ def topo_scene(header):
            {'id': 'stack', 'type': 'stack', 'arrayLayout': 'horizontal', 'label': 'call stack', 'origin': [-2.3, -2.4, 0], 'cellSize': 1.15,
             'showTop': False, 'containerColor': '#e67db0', 'fontSize': 15, 'axisLabels': 'plane', 'color': '#e67db0',
             'lengthExpr': f"arrayCount({d('path')})", 'valueExpr': f"arrayAt({d('path')}, idx)", 'highlightExpr': f"idx == arrayCount({d('path')}) - 1"},
-           {**label('state-v', f"{d('v')} < 0 ? 'state[v]: —' : concat('state[', {d('v')}, '] = ', arrayAt({d('state')}, {d('v')}))",
+           {**label('state-v', f"{d('v')} < 0 ? 'state[v]: —' : concat('state[v] = ', arrayAt({d('state')}, {d('v')}))",
                     ['state', d('v')], LD('if state[v] == 1'), 'topological-sort'), 'highlightExpr': f"{d('v')} >= 0"}]
     return run_scene('topological-sort', 'Order by dependencies (topological sort)', header, """**Signal:** prerequisites, build order, task scheduling: "in what order can everything run?"
 
@@ -2343,7 +2343,7 @@ def uf_scene(header):
         label('a', f"{c('a')} < 0 ? 'a: —' : concat('a = ', {c('a')})", ['graph', c('a')], L('for a, b in edges'), 'union-find'),
         label('b', f"{c('b')} < 0 ? 'b: —' : concat('b = ', {c('b')})", ['graph', c('b')], L('for a, b in edges'), 'union-find'),
         label('x', f"{c('x')} < 0 ? 'x: —' : concat('x = ', {c('x')})", ['forest', c('x')], L('def find(x)'), 'union-find'),
-        {**label('parent-x', f"{c('x')} < 0 ? 'parent[x]: —' : concat('parent[', {c('x')}, '] = ', arrayAt({c('parent')}, {c('x')}))",
+        {**label('parent-x', f"{c('x')} < 0 ? 'parent[x]: —' : concat('parent[x] = ', arrayAt({c('parent')}, {c('x')}))",
                  ['parent', c('x')], L('if parent[x] != x'), 'union-find'), 'highlightExpr': f"{c('x')} >= 0"},
         label('ra', f"{c('ra')} < 0 ? 'ra: —' : concat('ra = ', {c('ra')})", ['parent', c('ra')], L('ra, rb = find(a), find(b)'), 'union-find'),
         label('rb', f"{c('rb')} < 0 ? 'rb: —' : concat('rb = ', {c('rb')})", ['parent', c('rb')], L('ra, rb = find(a), find(b)'), 'union-find'),
@@ -2802,8 +2802,9 @@ def dijkstra_scene(header):
         label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for v, w in adj[u]'), 'dijkstra'),
         label('w', f"{c('w')} < 0 ? 'w: —' : concat('w = ', {c('w')})", None, L('for v, w in adj[u]'), 'dijkstra'),
         label('d-plus-w', f"{c('w')} < 0 ? 'd + w: —' : concat('d + w = ', {c('d')} + {c('w')})", None, L('if d + w < dist[v]'), 'dijkstra'),
-        {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[', {c('v')}, '] = ', arrayAt({c('distText')}, {c('v')}))",
-                 ['dist', c('v')], L('dist[v] = d + w'), 'dijkstra'), 'highlightExpr': f"{c('v')} >= 0"},
+        # Named as the code writes it, so it shows on every line that reads or sets dist[v].
+        {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[v] = ', arrayAt({c('distText')}, {c('v')}))",
+                 ['dist', c('v')], L('if d + w < dist[v]'), 'dijkstra'), 'highlightExpr': f"{c('v')} >= 0"},
         {**label('check', c('checkText'), None, L('if d + w < dist[v]'), 'dijkstra'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
         label('heap-len', f"concat('len(heap) = ', arrayCount({c('heapNames')}))", ['heap', '0'], L('while heap'), 'dijkstra'),
         label('result', f"concat('result: ', {c('result')})", None, L('return dist, prev'), 'dijkstra'),
@@ -2958,7 +2959,7 @@ def zero_one_scene(header):
         label('w', f"{c('w')} < 0 ? 'w: —' : concat('w = ', {c('w')})", None, L('for v, w in adj[u]'), 'zero-one-bfs'),
         label('dist-u-plus-w', f"{c('w')} < 0 ? 'dist[u] + w: —' : concat('dist[u] + w = ', arrayAt({c('dist')}, {c('u')}) + {c('w')})",
               ['dist', c('u')], L('if dist[u] + w < dist[v]'), 'zero-one-bfs'),
-        {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[', {c('v')}, '] = ', arrayAt({c('distText')}, {c('v')}))",
+        {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[v] = ', arrayAt({c('distText')}, {c('v')}))",
                  ['dist', c('v')], L('dist[v] = dist[u] + w'), 'zero-one-bfs'), 'highlightExpr': f"{c('v')} >= 0"},
         {**label('check', c('checkText'), None, L('if dist[u] + w < dist[v]'), 'zero-one-bfs'), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
         label('dq-len', f"concat('len(dq) = ', arrayCount({c('dq')}))", ['dq', '0'], L('while dq'), 'zero-one-bfs'),
@@ -3324,6 +3325,272 @@ def a_star_proof(cost):
     }
 
 
+# ── 14. Bellman-Ford: relax every edge, round after round; a round that still improves after n - 1 means a negative cycle ──
+BF_SOURCE = """def bellman_ford(n, edges, src):
+    dist = [float('inf')] * n
+    prev = [-1] * n
+    dist[src] = 0
+    for i in range(n - 1):
+        changed = False
+        for u, v, w in edges:
+            if dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w  # relax
+                prev[v] = u
+                changed = True
+        if not changed:
+            break  # a quiet round: every distance is final
+    for u, v, w in edges:
+        if dist[u] + w < dist[v]:
+            return None  # still improving: a negative cycle
+    return dist, prev"""
+BF_N = 5
+# Listed so each round fixes one more edge of the path 0 → 2 → 1 → 3 → 4: it needs all n - 1 rounds.
+BF_EDGES = [(3, 4, 2), (1, 3, 3), (2, 1, -2), (0, 1, 4), (0, 2, 5), (2, 4, 8)]
+# The same graph with 3 → 2 of weight -5: the cycle 2 → 1 → 3 → 2 sums to -2 + 3 - 5 = -4.
+BF_CYCLE_EDGES = BF_EDGES + [(3, 2, -5)]
+BF_POS = [(-6.0, 2.1), (-3.5, 3.6), (-3.5, 0.6), (-1.0, 3.6), (1.5, 2.1)]
+BF_FIXED = '#77bfae'
+
+
+def bellman_ford_trace(edges):
+    """Bellman-Ford from 0 over edges. Per frame: i (the round, -1 outside), phase (0 relaxing, 1 the check pass);
+    ei (the edge in hand) with u, v, w; dist (UNREACHED until reached) and distText; prev; changed (-1 before the
+    round's flag, else 0/1) and improved (the nodes lowered this round, 1/0); checkText; result."""
+    L = lambda t, after=None: line_of(BF_SOURCE, t, after)
+    INF = float('inf')
+    n = BF_N
+    st = {'i': -1, 'phase': 0, 'ei': -1, 'u': -1, 'v': -1, 'w': 0, 'dist': [INF] * n, 'prev': [-1] * n, 'changed': -1,
+          'improved': [0] * n, 'checkText': 'check: —', 'result': '—'}
+    trace, emit0 = recorder(st)
+    def emit(line, message):
+        emit0(line, message)
+        f = trace[-1]
+        f['distText'] = ['∞' if x == INF else str(x) for x in f['dist']]
+        f['dist'] = [UNREACHED if x == INF else x for x in f['dist']]
+    def put(key, i, x): st[key] = [x if j == i else y for j, y in enumerate(st[key])]
+    text = lambda x: '∞' if x == INF else str(x)
+    emit(L('dist = [float'), 'Every distance starts unknown: ∞.')
+    emit(L('prev = [-1] * n'), 'prev[v] will hold the node v is reached from, to rebuild the path.')
+    put('dist', 0, 0)
+    emit(L('dist[src] = 0'), 'The source is 0 away from itself.')
+    for i in range(n - 1):
+        st.update(i=i, changed=-1, improved=[0] * n, ei=-1, u=-1, v=-1, w=0)
+        emit(L('for i in range(n - 1)'), f'Round {i + 1} of {n - 1}: after it, every shortest path of at most {i + 1} edge{"s" if i else ""} is found.')
+        st['changed'] = 0
+        emit(L('changed = False'), 'Nothing improved in this round yet.')
+        for ei, (u, v, w) in enumerate(edges):
+            st.update(ei=ei, u=u, v=v, w=w)
+            du, dv = st['dist'][u], st['dist'][v]
+            better = du + w < dv
+            st['checkText'] = (f'dist[{u}] = ∞: skip' if du == INF else
+                               f'dist[u] + w = {du} + {w} = {du + w} ' + ('<' if better else '≥') + f' dist[{v}] = {text(dv)}')
+            emit(L('if dist[u] + w < dist[v]'), f'Edge {u} → {v} ({w}): ' + (f'{u} is not reached yet, nothing to offer.' if du == INF else
+                 f'through {u}, {v} is {du + w} away; ' + (f'better than {text(dv)}.' if better else f'no better than {text(dv)}.')))
+            if better:
+                put('dist', v, du + w)
+                put('improved', v, 1)
+                emit(L('dist[v] = dist[u] + w'), f'Relax: dist[{v}] = {du + w}' + ('.' if dv == INF else f', down from {dv}.'))
+                put('prev', v, u)
+                emit(L('prev[v] = u'), f'The best way to {v} now comes from {u}.')
+                st['changed'] = 1
+                emit(L('changed = True'), 'This round improved something: another round may improve more.')
+            st['checkText'] = 'check: —'
+        st.update(ei=-1, u=-1, v=-1, w=0)
+        emit(L('if not changed'), f'Round {i + 1} ' + ('lowered ' + ', '.join(str(k) for k, x in enumerate(st['improved']) if x) + ': keep going.'
+                                                        if st['changed'] else 'changed nothing: every distance is final.'))
+        if not st['changed']:
+            emit(L('break  #'), 'Stop early: another round would find nothing either.')
+            break
+    st.update(i=-1, phase=1, changed=-1, improved=[0] * n)
+    emit(L('for u, v, w in edges:', 'break  #'), f'{n - 1} rounds settle every shortest path, which has at most {n - 1} edges. One more pass: can anything still improve?')
+    for ei, (u, v, w) in enumerate(edges):
+        st.update(ei=ei, u=u, v=v, w=w)
+        du, dv = st['dist'][u], st['dist'][v]
+        better = du + w < dv
+        st['checkText'] = f'dist[u] + w = {du} + {w} = {du + w} ' + ('<' if better else '≥') + f' dist[{v}] = {text(dv)}'
+        emit(L('if dist[u] + w < dist[v]', 'break  #'), f'Edge {u} → {v} ({w}): ' + ('it still improves!' if better else 'no improvement.'))
+        if better:
+            st['result'] = 'None (negative cycle)'
+            emit(L('return None'), f'After {n - 1} rounds a shortest path cannot improve, unless it can loop forever: a cycle with negative total weight is reachable.')
+            return trace
+        st['checkText'] = 'check: —'
+    st.update(ei=-1, u=-1, v=-1, w=0, phase=1, result=str([text(x) for x in st['dist']]).replace("'", ''))
+    emit(L('return dist, prev'), f'No negative cycle. Shortest distances from 0: {", ".join(text(x) for x in st["dist"])}; following prev back gives each path.')
+    return trace
+
+
+def bellman_ford_sections():
+    S = lambda *a, **k: section(BF_SOURCE, *a, **k)
+    return [
+        S('b-init', 'Distances unknown; the source at 0', 'def bellman_ford(', 'dist[src] = 0',
+          hint='Every distance starts at infinity except the source, which is 0 away from itself.'),
+        S('b-rounds', 'Relax every edge, n - 1 rounds', 'for i in range(n - 1)', 'break  #',
+          hint='In each round, try every edge: if going through u is shorter than what v has, lower v\'s distance and remember u. Stop early when a round changes nothing.',
+          prompt='Explain why n - 1 rounds of relaxing every edge are enough, and why a round that changes nothing means every distance is final.'),
+        S('b-check', 'One more pass: a negative cycle?', 'for u, v, w in edges:', 'return None', after='break  #',
+          hint='If any edge can still lower a distance after n - 1 rounds, a negative cycle is reachable and there is no shortest path.',
+          prompt='Explain why an improvement in the extra pass proves a negative cycle.'),
+        S('b-return', 'Distances and the path tree', 'return dist, prev', None),
+    ]
+
+
+def bellman_ford_annotations():
+    """What bellman_ford.py's names, key expressions and blocks mean, for hover."""
+    S = BF_SOURCE
+    return [
+        doc('bellman_ford', 'Shortest distances from `src` when edges may be **negative**. Returns `(dist, prev)`, or `None` '
+                            'when a negative cycle is reachable from `src`.'),
+        doc('n', 'The number of nodes, $0$ to $n - 1$.'),
+        doc('edges', 'Every directed edge as `(u, v, w)`: from `u` to `v` with weight `w`, which may be negative. '
+                     'Bellman-Ford needs only this list, no adjacency list.'),
+        doc('src', 'The node every distance is measured from.'),
+        doc('dist', 'The best known distance from `src` to each node; $\\infty$ until reached.'),
+        doc('prev', 'The node each node\'s best distance comes from: follow it back to rebuild the path.'),
+        doc('i', 'The round, $0$ to $n - 2$. After round $i$, every shortest path of at most $i + 1$ edges is found.'),
+        doc('changed', 'Whether this round lowered any distance. A quiet round means the next one would find nothing either.'),
+        doc('u', 'The edge\'s tail: where it starts.'),
+        doc('v', 'The edge\'s head: where it ends.'),
+        doc('w', 'The edge\'s weight; negative weights are allowed.'),
+        doc_expr(S, 'for i in range(n - 1)', 'range(n - 1)',
+                 'A shortest path visits each node at most once, so it has at most $n - 1$ edges: $n - 1$ rounds are enough.'),
+        doc_expr(S, 'if dist[u] + w < dist[v]', 'dist[u] + w < dist[v]',
+                 'The **relaxation** test: is going to `v` through `u` shorter than the best known way? With `dist[u]` still $\\infty$ it never is.'),
+        doc_block(S, 'for u, v, w in edges:', 'changed = True',
+                  'One **round**: relax every edge once, in the list\'s order. The order decides how much a round achieves, '
+                  'not whether the result is right.'),
+        doc_block(S, 'if not changed', 'break  #',
+                  'Early exit: if a whole round improved nothing, every distance is already final.'),
+        {**doc_block(S, 'return None', 'return None', 'After $n - 1$ rounds no shortest path can improve. If one still does, it can '
+                     'keep improving forever by going round a **negative cycle**: shortest distances do not exist.')},
+    ]
+
+
+def bellman_ford_proof(dist):
+    """Why n - 1 rounds suffice, and why an improvement after them proves a negative cycle."""
+    return {
+        'id': 'bellman-ford-rounds', 'title': 'Why n − 1 rounds are enough, and what a further improvement means',
+        'technique': 'induction',
+        'techniqueHint': 'Induct on the number of edges a path uses: after round i, every path of at most i edges is matched.',
+        'goal': r"After $i$ rounds, $\mathrm{dist}[v] \le \delta_i(v)$, the cheapest path from $s$ to $v$ with at most $i$ edges; so $n - 1$ rounds give $\delta(v)$ when no negative cycle is reachable.",
+        'sceneStep': 0,
+        'prompt': 'Walk through the induction on the number of edges, why n - 1 rounds suffice, and why an improvement in the extra pass proves a negative cycle. Tie it to the scene: the path 0 → 2 → 1 → 3 → 4 has 4 edges and is found in round 4; final distances ' + str(dist) + '.',
+        'steps': [
+            {'id': 'b-def', 'type': 'definition', 'label': 'Cheapest path with at most i edges',
+             'math': r"\delta_i(v) = \min \{\, w(P) : P \text{ a path } s \to v \text{ with at most } i \text{ edges} \,\}",
+             'justification': '$\\delta_0(s) = 0$ and $\\delta_0(v) = \\infty$ for every other $v$: with no edges, only the source is reached.'},
+            {'id': 'b-relax', 'type': 'definition', 'label': 'Relaxing an edge',
+             'math': r"\mathrm{dist}[v] \leftarrow \min\bigl(\mathrm{dist}[v],\ \htmlClass{hl-du}{\mathrm{dist}[u]} + \htmlClass{hl-w}{w(u, v)}\bigr)",
+             'highlights': {'du': {'color': 'green', 'label': 'best known distance to $u$'},
+                            'w': {'color': 'orange', 'label': 'the edge\'s weight, possibly negative'}},
+             'justification': 'Each `dist` value is always the length of some real path, so it never drops below the true distance.'},
+            {'id': 'b-base', 'type': 'step', 'label': 'Base case: before any round',
+             'math': r"\mathrm{dist}[v] = \delta_0(v)",
+             'justification': 'The code sets `dist[src] = 0` and everything else to $\\infty$.'},
+            {'id': 'b-step', 'type': 'step', 'label': 'Inductive step: one more round, one more edge',
+             'math': r"\mathrm{dist}[v] \le \mathrm{dist}[u] + w(u, v) \le \delta_{i}(u) + w(u, v) = \delta_{i+1}(v)",
+             'justification': 'Take a cheapest path to $v$ with at most $i + 1$ edges, and $u$ its last node before $v$. After round $i$, $\\mathrm{dist}[u] \\le \\delta_i(u)$; round $i + 1$ relaxes the edge $(u, v)$, so $\\mathrm{dist}[v]$ drops to at most that path\'s length.',
+             'explanation': 'Distances can only fall within a round, so relaxing edges in any order keeps the bound; a good order just reaches it sooner.'},
+            {'id': 'b-simple', 'type': 'lemma', 'label': 'Without a negative cycle, a shortest path has at most n − 1 edges',
+             'math': r"\delta(v) = \delta_{n-1}(v)",
+             'justification': 'A path with $n$ or more edges repeats a node, so it contains a cycle; with no negative cycle, cutting the cycle out does not make it longer.'},
+            {'id': 'b-enough', 'type': 'conclusion', 'label': 'n − 1 rounds give every shortest distance',
+             'math': r"\delta(v) \le \mathrm{dist}[v] \le \delta_{n-1}(v) = \delta(v)",
+             'justification': f'The lower bound holds because every `dist` is a real path\'s length. In the scene, the path 0 → 2 → 1 → 3 → 4 has 4 edges: round 4 is the one that lowers dist[4] to 8. Final distances: {dist}.'},
+            {'id': 'b-cycle', 'type': 'theorem', 'label': 'An improvement after n − 1 rounds proves a negative cycle',
+             'math': r"\exists (u, v):\ \mathrm{dist}[u] + w(u, v) < \mathrm{dist}[v] \;\Longrightarrow\; \text{a negative cycle is reachable from } s",
+             'justification': 'Suppose no negative cycle were reachable. Then every distance would already equal $\\delta(v)$, and $\\delta(v) \\le \\delta(u) + w(u, v)$ for every edge (the triangle inequality), so no edge could improve anything. Contradiction.',
+             'explanation': 'In the second step, the cycle 2 → 1 → 3 → 2 sums to −4: each lap lowers the distances again, so the check pass still finds an improvement and the function returns None.'},
+            {'id': 'b-cost', 'type': 'step', 'label': 'Cost',
+             'math': r"O(V \cdot E)",
+             'justification': '$n - 1$ rounds, each relaxing all $E$ edges, then one more pass for the check.'},
+        ],
+    }
+
+
+def bellman_ford_scene(header):
+    L = lambda t, after=None: line_of(BF_SOURCE, t, after)
+    trace, ctrace = bellman_ford_trace(BF_EDGES), bellman_ford_trace(BF_CYCLE_EDGES)
+    def nodes(edges):
+        out = [[(b, w) for a, b, w in edges if a == i] for i in range(BF_N)]
+        weights = [[next((w for a, b, w in edges if (a, b) == (i, j)), 0) for j in range(BF_N)] for i in range(BF_N)]
+        return [{'x': x, 'y': y, 'adj': [b for b, _ in out[i]], 'w': weights[i]} for i, (x, y) in enumerate(BF_POS)]
+    # Each edge as u→v: a cell fits its text, and the weight is on the graph's edge and in the w label.
+    def elist(edges):
+        return [{'name': f'{u}→{v}'} for u, v, w in edges]
+    def elements(table, nodes_table, edges_table, edges, step):
+        c = lambda col: f"dataTable('{table}', frame, '{col}')"
+        cur = f"idx == {c('u')} and to == {c('v')}"
+        path = f"arrayAt({c('prev')}, to) == idx"
+        fill = (f"idx == {c('v')} ? '{GOLD}' : (arrayAt({c('improved')}, idx) == 1 ? '{BF_FIXED}' : "
+                f"(arrayAt({c('dist')}, idx) < {UNREACHED} ? '{BLUE}' : ''))")
+        node = lambda col: f"dataTable('{nodes_table}', idx, '{col}')"
+        return [
+            {'id': 'graph', 'type': 'graph', 'label': 'graph', 'lengthExpr': str(BF_N), 'valueExpr': 'idx',
+             'nodeShape': 'rect', 'nodeWidth': 0.75, 'nodeHeight': 0.75, 'nodeCornerRadius': 0.375, 'valueLabel': 'inside', 'showIndices': False,
+             'positionExpr': [node('x'), node('y'), '0'], 'colorExpr': fill,
+             # The edge being relaxed is gold; each node's prev edge is thick: together, the shortest-path tree.
+             'connectTo': {'indexExpr': node('adj'), 'pinned': True, 'arrow': True, 'color': '#4a5563',
+                           'colorExpr': f"{cur} ? '{GOLD}' : ({path} ? '{BF_FIXED}' : '')", 'highlightExpr': cur,
+                           'widthExpr': f"{path} ? 3.2 : ({cur} ? 2.4 : 1.2)",
+                           'labelExpr': f"concat(arrayAt({node('w')}, to))"}},
+            # The edge list, walked left to right each round; the edge in hand links to its tail and head.
+            {'id': 'edges', 'type': 'array', 'label': 'edges', 'codeSymbol': 'edges', 'labelSide': 'left', 'origin': [-4.6, -1.5, 0],
+             'cellSize': 1.2, 'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(len(edges)),
+             'valueExpr': f"dataTable('{edges_table}', idx, 'name')", 'highlightExpr': f"idx == {c('ei')}",
+             'colorExpr': f"idx == {c('ei')} ? '{GOLD}' : ''"},
+            {'id': 'dist', 'type': 'array', 'label': 'dist', 'codeSymbol': 'dist', 'labelSide': 'left', 'origin': [-4.6, -2.9, 0], 'cellSize': 1.0,
+             'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'itemType': 'text', 'lengthExpr': str(BF_N),
+             'valueExpr': f"arrayAt({c('distText')}, idx)", 'colorExpr': f"arrayAt({c('improved')}, idx) == 1 ? '{BF_FIXED}' : ''",
+             'highlightExpr': f"idx == {c('v')} or idx == {c('u')}"},
+            {'id': 'prev', 'type': 'array', 'label': 'prev', 'codeSymbol': 'prev', 'labelSide': 'left', 'origin': [-4.6, -4.2, 0], 'cellSize': 1.0,
+             'fontSize': 15, 'indexFontSize': 10, 'axisLabels': 'plane', 'lengthExpr': str(BF_N), 'valueExpr': f"arrayAt({c('prev')}, idx)",
+             'highlightExpr': f"idx == {c('v')} and {c('line')} == {L('prev[v] = u')}"},
+            label('src', "'src = 0'", ['graph', '0'], L('def bellman_ford('), step),
+            label('i', f"{c('phase')} == 1 ? 'i: — (check pass)' : ({c('i')} < 0 ? 'i: —' : concat('i = ', {c('i')}, '  (round ', {c('i')} + 1, ' of {BF_N - 1})'))",
+                  None, L('for i in range(n - 1)'), step),
+            label('changed', f"{c('changed')} < 0 ? 'changed: —' : ({c('changed')} == 1 ? 'changed = True' : 'changed = False')", None, L('changed = False'), step),
+            label('u', f"{c('u')} < 0 ? 'u: —' : concat('u = ', {c('u')})", ['graph', c('u')], L('for u, v, w in edges'), step),
+            label('v', f"{c('v')} < 0 ? 'v: —' : concat('v = ', {c('v')})", ['graph', c('v')], L('for u, v, w in edges'), step),
+            label('w', f"{c('ei')} < 0 ? 'w: —' : concat('w = ', {c('w')})", None, L('for u, v, w in edges'), step),
+            label('du-plus-w', f"{c('ei')} < 0 ? 'dist[u] + w: —' : (arrayAt({c('dist')}, {c('u')}) >= {UNREACHED} ? 'dist[u] + w = ∞' : "
+                               f"concat('dist[u] + w = ', arrayAt({c('dist')}, {c('u')}) + {c('w')}))", None, L('if dist[u] + w < dist[v]'), step),
+            # Named as the code writes them, so they show on every line that reads or sets dist[u] and dist[v].
+            label('dist-u', f"{c('u')} < 0 ? 'dist[u]: —' : concat('dist[u] = ', arrayAt({c('distText')}, {c('u')}))",
+                  ['dist', c('u')], L('if dist[u] + w < dist[v]'), step),
+            {**label('dist-v', f"{c('v')} < 0 ? 'dist[v]: —' : concat('dist[v] = ', arrayAt({c('distText')}, {c('v')}))",
+                     ['dist', c('v')], L('if dist[u] + w < dist[v]'), step), 'highlightExpr': f"{c('v')} >= 0"},
+            {**label('check', c('checkText'), None, L('if dist[u] + w < dist[v]'), step), 'highlightExpr': f"not equalText({c('checkText')}, 'check: —')"},
+            label('result', f"concat('result: ', {c('result')})", None, L('return dist, prev'), step),
+        ]
+    # Both runs share bellman_ford.py, so the code ref and the labels name the same file.
+    file = 'bellman-ford'
+    scene = run_scene(file, 'Negative edges (Bellman-Ford)', header, f"""**Signal:** shortest paths when weights can be **negative**; "at most k edges" or "k stops"; "detect a negative cycle" (arbitrage, impossible schedules).
+
+Dijkstra trusts that the closest node in the heap is final. A negative edge breaks that: a node settled early can be beaten later by a detour through a negative edge. Bellman-Ford trusts nothing early. It simply **relaxes every edge, round after round**:
+
+- **Round i** fixes one more edge of every shortest path: after round $i$, every shortest path that uses at most $i$ edges is found.
+- A shortest path visits each node at most once, so it has at most **n − 1 edges**: n − 1 rounds are enough. A round that changes nothing means everything is final already, so the loop can stop early.
+- **One more pass** checks the result: if an edge can still lower a distance, the path can keep improving by going round a **negative cycle**, and shortest distances do not exist.
+
+Here the edges are listed in an unlucky order, so each round reaches only one more edge along the path 0 → 2 → 1 → 3 → 4 (weights 5, −2, 3, 2): dist[1] drops from 4 to **3** through the negative edge, and dist[4] from 13 to 9 to **8**, needing all 4 rounds. Green marks what a round lowered; the thick edges are each node's `prev`, the shortest-path tree.
+
+The second step adds the edge 3 → 2 of weight −5: the cycle 2 → 1 → 3 → 2 sums to **−4**, every round keeps lowering it, and the check pass returns `None`.
+
+**Cost:** O(V · E): n − 1 rounds of E relaxations.
+
+**Practice:** Cheapest Flights Within K Stops (relax from a copy of the last round's `dist`, k + 1 rounds), Network Delay Time, detecting arbitrage.""",
+        'Explain why relaxing every edge n − 1 times finds every shortest path even with negative edges, why the edge order changes only how fast, and how the extra pass detects a negative cycle. Ask the learner to predict which distances the next round lowers.',
+        'bellman_ford.py', BF_SOURCE, trace, elements('trace', 'bfNodes', 'bfEdges', BF_EDGES, file),
+        sections=bellman_ford_sections(), annotations=bellman_ford_annotations(),
+        data={'bfNodes': nodes(BF_EDGES), 'bfCycleNodes': nodes(BF_CYCLE_EDGES), 'bfEdges': elist(BF_EDGES), 'bfCycleEdges': elist(BF_CYCLE_EDGES)},
+        first={'title': 'Relax every edge, round after round', 'description': 'n − 1 rounds over the edge list, then a check pass.'},
+        more=[{'id': 'negative-cycle', 'title': 'A negative cycle', 'description': 'Add 3 → 2 (−5): the cycle 2 → 1 → 3 → 2 sums to −4.',
+               'table': 'bf_cycle', 'trace': ctrace, 'elements': elements('bf_cycle', 'bfCycleNodes', 'bfCycleEdges', BF_CYCLE_EDGES, file)}])
+    final = [x for x in trace[-1]['distText']]
+    scene['proof'] = bellman_ford_proof(', '.join(final))
+    return scene
+
+
 def code_sections(scene_id):
     """The teaching structure of each scene's code file (cycle.py has its own, cycle_sections)."""
     if scene_id == 'representations':
@@ -3411,7 +3678,8 @@ codeFiles = []
 BUILT = {'representations': representations_scene, 'dfs': dfs_scene, 'bfs': bfs_scene, 'degrees': degrees_scene, 'grid-graphs': grid_scene,
          'cycle-detection': cycle_scene, 'bipartite': bipartite_scene, 'topological-sort': topo_scene,
          'union-find': uf_scene, 'mst': mst_scene,
-         'dijkstra': dijkstra_scene, 'zero-one-bfs': zero_one_scene, 'a-star': a_star_scene}
+         'dijkstra': dijkstra_scene, 'zero-one-bfs': zero_one_scene, 'a-star': a_star_scene,
+         'bellman-ford': bellman_ford_scene}
 for i, (sid, short, title, tier, after, signal, idea, cost, practice) in enumerate(ALGORITHMS):
     header = f"**Tier:** {TIERS[tier][0]} ({TIERS[tier][2]})" + (' · **Builds on:** ' + ', '.join(SHORT[b] for b in after) if after else '')
     if sid in BUILT:
