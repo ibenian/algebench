@@ -44,9 +44,11 @@ const CALLS: Record<string, (args: string[]) => string> = {
 
 /**
  * The math.js expression for a Python expression, each name read from `table` at the current frame. `names` are
- * the columns the table has; any other name is refused, naming the `shown` ones (the code's own variables), so a typo says what exists.
+ * the columns the table has; `fixed` gives the expression for names that never change and live elsewhere (the
+ * scene's inputs). Any other name is refused, naming the `shown` ones (the code's own variables), so a typo says what exists.
  */
-export function watchExpr(python: string, table: string, names: readonly string[], shown: readonly string[] = names): string {
+export function watchExpr(python: string, table: string, names: readonly string[], shown: readonly string[] = names,
+    fixed: Readonly<Record<string, string>> = {}): string {
     if (/(^|[^=!<>])=(?!=)/.test(python)) throw new WatchError('That is an assignment: select the expression on its right.');
     const toks = tokenize(python);
     if (!toks.length) throw new WatchError('Select an expression to watch.');
@@ -76,6 +78,7 @@ export function watchExpr(python: string, table: string, names: readonly string[
                 while (!isOp(')')) { args.push(or());if (!isOp(')')) expect(','); }
                 k++;return CALLS[t.text]!(args);
             }
+            if (!names.includes(t.text) && Object.hasOwn(fixed, t.text)) return fixed[t.text]!;
             if (!names.includes(t.text)) throw new WatchError(`"${t.text}" isn't recorded at this step. It has: ${shown.join(', ')}.`);
             return `dataTable('${table}', frame, '${t.text}')`;
         }

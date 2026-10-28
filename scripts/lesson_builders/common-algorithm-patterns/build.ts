@@ -586,6 +586,33 @@ ${MD_TAIL}
 pattern({
     id: 'two-pointers', title: 'Squeeze from both ends (two pointers)', file: 'two_pointers.py', source: TWO_POINTERS_SOURCE,
     input: { nums: IN.twoPointers.nums, target: IN.twoPointers.target }, trace: twoPointersTrace(IN.twoPointers.nums, IN.twoPointers.target),
+    sections: [
+        section(TWO_POINTERS_SOURCE, 'tp-ends', 'Start at both ends', 'def two_sum_sorted(', 'left, right = 0', {
+            hint: 'left on the smallest value, right on the largest.' }),
+        section(TWO_POINTERS_SOURCE, 'tp-sum', 'While they have not met, add the pair', 'while left < right', 'total = nums[left]', {
+            hint: 'Each round looks at one pair: the values under the two pointers.' }),
+        section(TWO_POINTERS_SOURCE, 'tp-hit', 'Found the target', 'if total == target', 'return [left, right]', {
+            hint: 'The pair adds up: return both indices.' }),
+        section(TWO_POINTERS_SOURCE, 'tp-move', 'Too small: move left; too big: move right', 'if total < target', 'right -= 1', {
+            hint: 'Only one move can help: a bigger left value raises the sum, a smaller right value lowers it.',
+            prompt: 'Explain why, when total is below target, no pair using nums[left] can work, so left can move on; and the mirror argument for right.' }),
+        section(TWO_POINTERS_SOURCE, 'tp-none', 'The pointers met: no pair', 'return []', null, {
+            hint: 'Every pair that could work was ruled out.' }),
+    ],
+    annotations: [
+        doc('two_sum_sorted', '`two_sum_sorted(nums, target)` returns the indices `[left, right]` of two numbers in a **sorted** list that add up to `target`, or `[]`. O(n) time and O(1) space: no dict needed.'),
+        doc('nums', 'The input numbers, sorted from smallest to largest. The sort is what lets one comparison rule out a whole row of pairs.'),
+        doc('target', 'The sum the pair must reach.'),
+        doc('left', 'The index of the smaller number of the pair. It only moves right, to raise the sum.'),
+        doc('right', 'The index of the larger number of the pair. It only moves left, to lower the sum.'),
+        doc('total', 'The sum of the current pair, `nums[left] + nums[right]`.'),
+        docExpr(TWO_POINTERS_SOURCE, 'left, right = 0', 'len(nums) - 1', 'The last index: `right` starts on the largest value.'),
+        docExpr(TWO_POINTERS_SOURCE, 'while left < right', 'left < right', 'The pointers have not met, so pairs remain. Once they meet, every pair has been ruled out.'),
+        docExpr(TWO_POINTERS_SOURCE, 'total = nums[left]', 'nums[left] + nums[right]', 'The smallest remaining value plus the largest remaining value.'),
+        docExpr(TWO_POINTERS_SOURCE, 'if total == target', 'total == target', 'Does this pair reach the target exactly?'),
+        docExpr(TWO_POINTERS_SOURCE, 'if total < target', 'total < target', 'Too small. `nums[left]` with any value left of `right` is smaller still, so `nums[left]` can be in no pair: move `left` on.'),
+        docBlock(TWO_POINTERS_SOURCE, 'if total < target', 'right -= 1', 'Each round drops one value for good: the smaller one when the sum is too small, the larger one when it is too big. So the loop runs at most n − 1 times.'),
+    ],
     markdown: `# Squeeze from both ends (two pointers)
 
 **Signal:** a **sorted** array and a question about a pair (or triple) of elements.

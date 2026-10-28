@@ -5,7 +5,7 @@
  * meaning (the code_practice expert): on Check, and while it is on, on each new line and after a pause.
  */
 import { state } from '/state.js';
-import { codeView } from '/code-panel.js';
+import { codeView, HIDE_CODE_ICON } from '/code-panel.js';
 import type { CodeView } from '/code-panel.js';
 import { codeSections } from '/code-sections.js';
 import type { CodeSection } from '/code-sections.js';
@@ -81,6 +81,7 @@ export function setupCodePractice(): void {
     const total = el('span', 'cp-total');total.setAttribute('role', 'status');
     const tools = el('div', 'cp-tools');
     const hide = tool('Hide code', 'Hide the code in the Code panel: lines typed without seeing them score in full');
+    hide.insertAdjacentHTML('afterbegin', HIDE_CODE_ICON);
     const coach = tool('✦ Coach', 'The coach reviews your code on each new line and after a 5 s pause');
     const hint = tool('Hint', 'Hints: the coach also says how to begin and what to write next. Off, it only comments on what you typed');
     const check = tool('Check', 'Ask the coach to review what you typed now');
@@ -671,7 +672,9 @@ export function setupCodePractice(): void {
     toggle.addEventListener('click', e => { e.stopPropagation();flipOpen(); });
     head.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) flipOpen(); });
     paintOpen();
-    hide.addEventListener('click', () => { if (!current) return;current.setHidden(!current.hidden());hide.setAttribute('aria-pressed', String(current.hidden())); });
+    hide.addEventListener('click', () => { if (!current) return;current.setHidden(!current.hidden()); });
+    // The Code panel's own Hide code button flips the same switch.
+    window.addEventListener('algebench:codehidden', e => hide.setAttribute('aria-pressed', String((e as CustomEvent<{hidden: boolean}>).detail.hidden)));
     coach.addEventListener('click', () => {
         coach.setAttribute('aria-pressed', String(!coachOn()));savePrefs();paintCoach();
         if (coachOn()) {

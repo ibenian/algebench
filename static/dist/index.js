@@ -25520,9 +25520,10 @@ var CALLS = {
 };
 /**
 * The math.js expression for a Python expression, each name read from `table` at the current frame. `names` are
-* the columns the table has; any other name is refused, naming the `shown` ones (the code's own variables), so a typo says what exists.
+* the columns the table has; `fixed` gives the expression for names that never change and live elsewhere (the
+* scene's inputs). Any other name is refused, naming the `shown` ones (the code's own variables), so a typo says what exists.
 */
-function watchExpr(python, table, names, shown = names) {
+function watchExpr(python, table, names, shown = names, fixed = {}) {
 	if (/(^|[^=!<>])=(?!=)/.test(python)) throw new WatchError("That is an assignment: select the expression on its right.");
 	const toks = tokenize(python);
 	if (!toks.length) throw new WatchError("Select an expression to watch.");
@@ -25566,6 +25567,7 @@ function watchExpr(python, table, names, shown = names) {
 				k++;
 				return CALLS[t.text](args);
 			}
+			if (!names.includes(t.text) && Object.hasOwn(fixed, t.text)) return fixed[t.text];
 			if (!names.includes(t.text)) throw new WatchError(`"${t.text}" isn't recorded at this step. It has: ${shown.join(", ")}.`);
 			return `dataTable('${table}', frame, '${t.text}')`;
 		}
@@ -25914,6 +25916,8 @@ var JUMP_HOLD_MS = 1e3;
 /** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
 var GUTTER_X = 37;
 /** Section tones, in turn, and the structure modes' icons (code-sections.ts). */
+/** The Hide code eye, here and on Type along's button; struck through (style.css) while the code is hidden. */
+var HIDE_CODE_ICON = "<svg class=\"code-hide-icon\" viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" aria-hidden=\"true\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/><path class=\"code-hide-slash\" d=\"M4 4l16 16\"/></svg>";
 var SECTION_TONES = [
 	"#e3b04f",
 	"#4fb39a",
@@ -26000,7 +26004,17 @@ function setupCodePanel() {
 	watchError.setAttribute("role", "alert");
 	watchError.hidden = true;
 	const modes = structureModes();
-	title.append(titleText, modes, ask, codePromptsMenu(), viewSettingsMenu());
+	const hideCode = document.createElement("button");
+	hideCode.type = "button";
+	hideCode.className = "code-hide-btn";
+	hideCode.title = "Hide code: practise the running block from memory (the same switch as Type along's Hide code)";
+	hideCode.setAttribute("aria-label", "Hide code");
+	hideCode.setAttribute("aria-pressed", "false");
+	hideCode.innerHTML = HIDE_CODE_ICON;
+	hideCode.addEventListener("click", () => {
+		if (selected) setHidden(!veiled);
+	});
+	title.append(titleText, modes, hideCode, ask, codePromptsMenu(), viewSettingsMenu());
 	actions.append(selectionLabel, jump, watch, what, watchError);
 	host.append(tree, title, execution, body, actions, targets);
 	/**
@@ -26183,19 +26197,23 @@ function setupCodePanel() {
 		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
 		const ref = scene?.steps?.[state.currentStepIndex]?.codeRef ?? scene?.codeRef;
 		const table = /dataTable\('([^']+)'/.exec(ref?.lineExpr ?? "")?.[1];
-		const rows = table ? (scene?.data)?.[table] : null;
+		const data = scene?.data;
+		const rows = table ? data?.[table] : null;
 		const row = Array.isArray(rows) ? rows[0] : void 0;
+		const input = Array.isArray(data?.input) && table !== "input" ? data.input[0] : void 0;
+		const fixed = Object.fromEntries(Object.keys(input ?? {}).map((k) => [k, `dataTable('input', 0, '${k}')`]));
 		return table && row ? {
 			table,
-			names: Object.keys(row).filter((k) => k !== "line" && k !== "message")
+			names: Object.keys(row).filter((k) => k !== "line" && k !== "message"),
+			fixed
 		} : null;
 	}
 	/** A watch's value now, as a tag's text; throws a WatchError (or the evaluator's error) when it can't be had. */
 	function watchText(expr) {
 		const at = stepTable();
 		if (!at) throw new WatchError("This step has no recorded run to read values from.");
-		const shown = at.names.filter((n) => selected && new RegExp(`\\b${n}\\b`).test(selected.source));
-		const value = evaluate(watchExpr(expr, at.table, at.names, shown));
+		const shown = [...at.names, ...Object.keys(at.fixed)].filter((n) => selected && new RegExp(`\\b${n}\\b`).test(selected.source));
+		const value = evaluate(watchExpr(expr, at.table, at.names, shown, at.fixed));
 		if (value === void 0 || value === null || typeof value === "number" && !Number.isFinite(value)) throw new WatchError(`${expr} has no value at this frame.`);
 		return `${expr} = ${formatWatch(value)}`;
 	}
@@ -26249,7 +26267,7 @@ function setupCodePanel() {
 		const elements = watches.filter((w) => w.file === pathOf(ref.file) && !seen.has(w.expr) && seen.add(w.expr)).flatMap((w, i) => {
 			let value;
 			try {
-				value = watchExpr(w.expr, at.table, at.names);
+				value = watchExpr(w.expr, at.table, at.names, at.names, at.fixed);
 			} catch {
 				return [];
 			}
@@ -26415,6 +26433,8 @@ function setupCodePanel() {
 			renderStructure();
 		}
 		veiled = on;
+		hideCode.setAttribute("aria-pressed", String(on));
+		window.dispatchEvent(new CustomEvent("algebench:codehidden", { detail: { hidden: on } }));
 		refreshBinding();
 	}
 	function publishView(running) {
@@ -27084,7 +27104,7 @@ function setupCodePanel() {
 			if (!condition) continue;
 			let truth = null;
 			try {
-				truth = truthOf(evaluate(watchExpr(condition, at.table, at.names)));
+				truth = truthOf(evaluate(watchExpr(condition, at.table, at.names, at.names, at.fixed)));
 			} catch {}
 			const code = body.querySelector(`.code-line[data-line="${line}"] code`);
 			if (truth === null || !code) continue;
@@ -27778,6 +27798,7 @@ function setupCodePractice() {
 	total.setAttribute("role", "status");
 	const tools = el("div", "cp-tools");
 	const hide = tool("Hide code", "Hide the code in the Code panel: lines typed without seeing them score in full");
+	hide.insertAdjacentHTML("afterbegin", HIDE_CODE_ICON);
 	const coach = tool("✦ Coach", "The coach reviews your code on each new line and after a 5 s pause");
 	const hint = tool("Hint", "Hints: the coach also says how to begin and what to write next. Off, it only comments on what you typed");
 	const check = tool("Check", "Ask the coach to review what you typed now");
@@ -28603,8 +28624,8 @@ function setupCodePractice() {
 	hide.addEventListener("click", () => {
 		if (!current) return;
 		current.setHidden(!current.hidden());
-		hide.setAttribute("aria-pressed", String(current.hidden()));
 	});
+	window.addEventListener("algebench:codehidden", (e) => hide.setAttribute("aria-pressed", String(e.detail.hidden)));
 	coach.addEventListener("click", () => {
 		coach.setAttribute("aria-pressed", String(!coachOn()));
 		savePrefs();

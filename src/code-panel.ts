@@ -30,6 +30,8 @@ import type { LessonFormat, Scene, Element as LessonElement } from '/types/lesso
 /** Where the gutter's arrows meet the line numbers (px from the panel's left edge). */
 const GUTTER_X=37;
 /** Section tones, in turn, and the structure modes' icons (code-sections.ts). */
+/** The Hide code eye, here and on Type along's button; struck through (style.css) while the code is hidden. */
+export const HIDE_CODE_ICON='<svg class="code-hide-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="code-hide-slash" d="M4 4l16 16"/></svg>';
 const SECTION_TONES=['#e3b04f','#4fb39a','#6ea8e0','#d36ba6'];
 const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
     plain:{title:'Code only',icon:'<path d="M3 4h9M5 7.5h8M5 11h6M3 14.5h7"/>'},
@@ -85,7 +87,13 @@ export function setupCodePanel(): void {
     const watch=document.createElement('button');watch.type='button';watch.textContent='+ Watch';watch.className='code-watch-btn';
     const watchError=document.createElement('span');watchError.className='code-watch-error';watchError.setAttribute('role','alert');watchError.hidden=true;
     const modes=structureModes();
-    title.append(titleText,modes,ask,codePromptsMenu(),viewSettingsMenu());
+    // Hide code, as Type along's button: one switch, so the two always agree (setHidden tells Type along).
+    const hideCode=document.createElement('button');hideCode.type='button';hideCode.className='code-hide-btn';
+    hideCode.title='Hide code: practise the running block from memory (the same switch as Type along\'s Hide code)';
+    hideCode.setAttribute('aria-label','Hide code');hideCode.setAttribute('aria-pressed','false');
+    hideCode.innerHTML=HIDE_CODE_ICON;
+    hideCode.addEventListener('click',()=>{if(selected)setHidden(!veiled);});
+    title.append(titleText,modes,hideCode,ask,codePromptsMenu(),viewSettingsMenu());
     actions.append(selectionLabel,jump,watch,what,watchError);host.append(tree,title,execution,body,actions,targets);
     /**
      * "⋯" in the header: prompts about the active code (code-prompts.ts), so no selection is needed; those about a
@@ -192,21 +200,25 @@ export function setupCodePanel(): void {
         for(const choice of choices){const button=document.createElement('button');button.type='button';button.textContent=choice.label;button.onclick=()=>{targets.hidden=true;go(choice);};targets.append(button);}
     });
     /** The trace table the step plays (named by its codeRef's line expression), and the columns it records. */
-    function stepTable():{table:string;names:string[]}|null {
+    function stepTable():{table:string;names:string[];fixed:Record<string,string>}|null {
         const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
         const ref=scene?.steps?.[state.currentStepIndex]?.codeRef??scene?.codeRef;
         const table=/dataTable\('([^']+)'/.exec(ref?.lineExpr??'')?.[1];
-        const rows=table?(scene?.data as Record<string,unknown>|undefined)?.[table]:null;
+        const data=scene?.data as Record<string,unknown>|undefined;
+        const rows=table?data?.[table]:null;
         const row=Array.isArray(rows)?rows[0] as Record<string,unknown>|undefined:undefined;
-        return table&&row?{table,names:Object.keys(row).filter(k=>k!=='line'&&k!=='message')}:null;
+        // The run's inputs (a one-row 'input' table) never change, so a run need not repeat them on every frame.
+        const input=Array.isArray(data?.input)&&table!=='input'?data.input[0] as Record<string,unknown>|undefined:undefined;
+        const fixed=Object.fromEntries(Object.keys(input??{}).map(k=>[k,`dataTable('input', 0, '${k}')`]));
+        return table&&row?{table,names:Object.keys(row).filter(k=>k!=='line'&&k!=='message'),fixed}:null;
     }
     /** A watch's value now, as a tag's text; throws a WatchError (or the evaluator's error) when it can't be had. */
     function watchText(expr:string):string {
         const at=stepTable();
         if(!at)throw new WatchError('This step has no recorded run to read values from.');
         // The error lists the recorded names the code itself uses, not the run's bookkeeping columns.
-        const shown=at.names.filter(n=>selected&&new RegExp(`\\b${n}\\b`).test(selected.source));
-        const value=evaluate(watchExpr(expr,at.table,at.names,shown));
+        const shown=[...at.names,...Object.keys(at.fixed)].filter(n=>selected&&new RegExp(`\\b${n}\\b`).test(selected.source));
+        const value=evaluate(watchExpr(expr,at.table,at.names,shown,at.fixed));
         if(value===undefined||value===null||(typeof value==='number'&&!Number.isFinite(value)))throw new WatchError(`${expr} has no value at this frame.`);
         return `${expr} = ${formatWatch(value)}`;
     }
@@ -248,7 +260,7 @@ export function setupCodePanel(): void {
         const seen=new Set<string>();
         const elements=watches.filter(w=>w.file===pathOf(ref.file!)&&!seen.has(w.expr)&&seen.add(w.expr)).flatMap((w,i)=>{
             let value:string;
-            try{value=watchExpr(w.expr,at.table,at.names);}catch{return [];}
+            try{value=watchExpr(w.expr,at.table,at.names,at.names,at.fixed);}catch{return [];}
             return [{id:`__watch_${i}`,type:'expression_label',position:[7.6,-3.7,0],textExpr:`concat('${quote(w.expr)} = ', ${value})`,
                 codeRef:{file:ref.file,line:w.line}} as LessonElement];
         });
@@ -367,6 +379,8 @@ export function setupCodePanel(): void {
             saveSettings();renderStructure();
         }
         veiled=on;
+        hideCode.setAttribute('aria-pressed',String(on));
+        window.dispatchEvent(new CustomEvent('algebench:codehidden',{detail:{hidden:on}}));
         refreshBinding();
     }
     function publishView(running:{from:number;to:number}|null) {
@@ -815,7 +829,7 @@ export function setupCodePanel(): void {
             const condition=conditionOf(lines[line-1]??'');
             if(!condition)continue;
             let truth:boolean|null=null;
-            try{truth=truthOf(evaluate(watchExpr(condition,at.table,at.names)));}catch{/* not evaluable on the run */}
+            try{truth=truthOf(evaluate(watchExpr(condition,at.table,at.names,at.names,at.fixed)));}catch{/* not evaluable on the run */}
             const code=body.querySelector<HTMLElement>(`.code-line[data-line="${line}"] code`);
             if(truth===null||!code)continue;
             const mark=document.createElement('span');mark.className=`code-cond ${truth?'code-cond-true':'code-cond-false'}`;

@@ -12,6 +12,13 @@ test('names read their column at the current frame; indexing and len translate',
         `arrayAt(${col('color')}, ${col('v')}) == arrayAt(${col('color')}, ${col('u')}) and not (${col('u')} == ${col('v')})`);
 });
 
+test('a name the run does not record reads from fixed, when given there', () => {
+    const target = `dataTable('input', 0, 'target')`;
+    assert.equal(watchExpr('u == target', 'trace', names, names, { target }), `${col('u')} == ${target}`);
+    assert.equal(watchExpr('u', 'trace', names, names, { u: 'x' }), col('u'), 'a recorded column wins');
+    assert.throws(() => watchExpr('u == target', 'trace', names), WatchError);
+});
+
 test('Python operators become math.js ones', () => {
     assert.equal(watchExpr('u // 2', 'trace', names), `floor((${col('u')}) / (2))`);
     assert.equal(watchExpr('u % 2', 'trace', names), `${col('u')} mod 2`);

@@ -138,6 +138,27 @@
       "path": "patterns/two_pointers.py",
       "language": "python",
       "source": "def two_sum_sorted(nums, target):\n    left, right = 0, len(nums) - 1\n    while left < right:\n        total = nums[left] + nums[right]\n        if total == target:\n            return [left, right]\n        if total < target:\n            left += 1\n        else:\n            right -= 1\n    return []",
+      "sections": [
+        {"id": "tp-ends", "title": "Start at both ends", "from": 1, "to": 2, "hint": "left on the smallest value, right on the largest."},
+        {"id": "tp-sum", "title": "While they have not met, add the pair", "from": 3, "to": 4, "hint": "Each round looks at one pair: the values under the two pointers."},
+        {"id": "tp-hit", "title": "Found the target", "from": 5, "to": 6, "hint": "The pair adds up: return both indices."},
+        {"id": "tp-move", "title": "Too small: move left; too big: move right", "from": 7, "to": 10, "hint": "Only one move can help: a bigger left value raises the sum, a smaller right value lowers it.", "prompt": "Explain why, when total is below target, no pair using nums[left] can work, so left can move on; and the mirror argument for right."},
+        {"id": "tp-none", "title": "The pointers met: no pair", "from": 11, "to": 11, "hint": "Every pair that could work was ruled out."}
+      ],
+      "annotations": [
+        {"name": "two_sum_sorted", "text": "`two_sum_sorted(nums, target)` returns the indices `[left, right]` of two numbers in a **sorted** list that add up to `target`, or `[]`. O(n) time and O(1) space: no dict needed."},
+        {"name": "nums", "text": "The input numbers, sorted from smallest to largest. The sort is what lets one comparison rule out a whole row of pairs."},
+        {"name": "target", "text": "The sum the pair must reach."},
+        {"name": "left", "text": "The index of the smaller number of the pair. It only moves right, to raise the sum."},
+        {"name": "right", "text": "The index of the larger number of the pair. It only moves left, to lower the sum."},
+        {"name": "total", "text": "The sum of the current pair, `nums[left] + nums[right]`."},
+        {"line": 2, "col": 21, "endCol": 34, "text": "The last index: `right` starts on the largest value."},
+        {"line": 3, "col": 10, "endCol": 22, "text": "The pointers have not met, so pairs remain. Once they meet, every pair has been ruled out."},
+        {"line": 4, "col": 16, "endCol": 40, "text": "The smallest remaining value plus the largest remaining value."},
+        {"line": 5, "col": 11, "endCol": 26, "text": "Does this pair reach the target exactly?"},
+        {"line": 7, "col": 11, "endCol": 25, "text": "Too small. `nums[left]` with any value left of `right` is smaller still, so `nums[left]` can be in no pair: move `left` on."},
+        {"line": 7, "endLine": 10, "text": "Each round drops one value for good: the smaller one when the sum is too small, the larger one when it is too big. So the loop runs at most n − 1 times."}
+      ],
       "locations": [
         {"line": 2, "scene": "two-pointers", "step": "run", "snapshot": 0, "label": "Squeeze from both ends (two pointers) · Start at both ends: left = 0, right = 7."},
         {"line": 3, "scene": "two-pointers", "step": "run", "snapshot": 1, "label": "Squeeze from both ends (two pointers) · left < right, so candidate pairs remain."},

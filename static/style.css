@@ -5624,6 +5624,14 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-file-path { flex: 1; min-width: 0; overflow-wrap: anywhere; opacity: .8; }
 /* View settings: a gear at the title's right, opening a small menu of checkboxes below it. */
 .code-view-settings { position: relative; flex: none; }
+/* Hide code (eye): pressed, the eye is struck through and lit, as Type along's Hide code. */
+.code-hide-btn { display: grid; place-items: center; padding: 2px 4px; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .6; }
+.code-hide-btn:hover { opacity: 1; border-color: var(--border-color); background: var(--panel-bg); }
+.code-hide-icon { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.code-hide-icon .code-hide-slash { display: none; }
+[aria-pressed="true"] > .code-hide-icon .code-hide-slash { display: inline; }
+.cp-tool > .code-hide-icon { width: 13px; height: 13px; margin-right: 5px; vertical-align: -2px; }
+.code-hide-btn[aria-pressed="true"] { opacity: 1; color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 22%, transparent); }
 .code-view-settings-btn { padding: 2px 1px; font-size: 14px; line-height: 1.2; color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .7; }
 .code-view-settings-btn:hover, .code-view-settings-btn[aria-expanded="true"] { opacity: 1; border-color: var(--border-color); background: var(--panel-bg); }
 .code-view-menu {
