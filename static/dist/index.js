@@ -25484,23 +25484,69 @@ function scrollerOf(host) {
 	});
 	return scroller;
 }
+var MODE_KEY = "algebench-exec-tree-mode";
+var mode = "grow";
+try {
+	if (localStorage.getItem(MODE_KEY) === "whole") mode = "whole";
+} catch {}
+var drawn = /* @__PURE__ */ new WeakMap();
+var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 /**
-* Draw the tree into host at the frame shown; the node executing now is scrolled into view. Clicking a node calls
-* `pick` with the frame it started at.
+* Draw the run's tree into host at the frame shown: `build(upto)` gives the tree for frames 0..upto, `last` is the
+* run's last frame. The node executing now is scrolled into view; clicking a node calls `pick` with the frame it
+* started at.
 */
-function drawExecTree(host, tree, frame, pick) {
+function drawExecTree(host, build, last, frame, pick) {
+	drawn.set(host, () => drawExecTree(host, build, last, frame, pick));
+	const now = build(frame), whole = mode === "whole" && last >= 0 ? build(last) : null;
+	const tree = whole ?? now;
+	const ran = (n) => n.id < now.nodes.length;
+	const state = (n) => ran(n) ? now.nodes[n.id] : n;
 	const scroller = scrollerOf(host);
 	host.replaceChildren();
-	const summary = document.createElement("div");
-	summary.className = "exec-tree-summary";
-	summary.textContent = tree.nodes.length ? `${tree.calls} call${tree.calls === 1 ? "" : "s"} · ${tree.iterations} loop iteration${tree.iterations === 1 ? "" : "s"} · depth ${tree.maxDepth}` : "No recorded run at this step.";
-	host.append(summary);
+	const head = document.createElement("div");
+	head.className = "exec-tree-summary";
+	const summary = document.createElement("span");
+	const of = (a, b) => whole ? `${a}/${b}` : String(a);
+	summary.textContent = tree.nodes.length ? `${of(now.calls, tree.calls)} call${tree.calls === 1 ? "" : "s"} · ${of(now.iterations, tree.iterations)} loop iteration${tree.iterations === 1 ? "" : "s"} · depth ${now.maxDepth}${whole ? `/${whole.maxDepth}` : ""}` : "No recorded run at this step.";
+	const modes = document.createElement("span");
+	modes.className = "exec-tree-modes";
+	modes.setAttribute("role", "group");
+	for (const [m, name, title] of [[
+		"grow",
+		"Grow",
+		"Build the tree as the run goes"
+	], [
+		"whole",
+		"Whole",
+		"Show the whole run's tree, the part not run yet grayed"
+	]]) {
+		const b = document.createElement("button");
+		b.type = "button";
+		b.textContent = name;
+		b.title = title;
+		b.setAttribute("aria-pressed", String(mode === m));
+		b.addEventListener("click", () => {
+			mode = m;
+			try {
+				localStorage.setItem(MODE_KEY, m);
+			} catch {}
+			drawn.get(host)?.();
+		});
+		modes.append(b);
+	}
+	head.append(summary, modes);
+	host.append(head);
 	if (!tree.nodes.length) {
 		scroller.replaceChildren();
 		return;
 	}
+	const label = (n) => {
+		if (n.kind === "call" || !whole) return text(state(n));
+		return `↻ ${loopName(n.label)} ×${ran(n) ? `${state(n).iterations}/` : ""}${n.iterations}`;
+	};
 	const x = columns(tree);
-	const COL = Math.max(64, Math.max(...tree.nodes.map((n) => text(n).length)) * CHAR + 18);
+	const COL = Math.max(64, Math.max(...tree.nodes.map((n) => label(n).length)) * CHAR + 18);
 	const width = (Math.max(...x.values()) + 1) * COL + 20, height = (Math.max(...tree.nodes.map((n) => n.depth)) + 1) * ROW + PAD;
 	const root = svg$2("svg", {
 		width,
@@ -25514,14 +25560,15 @@ function drawExecTree(host, tree, frame, pick) {
 	for (const n of tree.nodes) if (n.parent != null) {
 		const p = tree.nodes[n.parent];
 		root.append(svg$2("path", {
-			class: "exec-tree-edge",
+			class: `exec-tree-edge${ran(n) ? "" : " future"}`,
 			d: `M${cx(p.id)},${cy(p) + H / 2} C${cx(p.id)},${cy(p) + ROW / 2} ${cx(n.id)},${cy(n) - ROW / 2} ${cx(n.id)},${cy(n) - H / 2}`
 		}));
 	}
 	let current = null;
 	for (const n of tree.nodes) {
+		const st = state(n), future = !ran(n);
 		const g = svg$2("g", {
-			class: `exec-tree-node exec-tree-${n.kind}${n.done ? " done" : ""}${n.id === tree.current ? " current" : ""}${n.frame === frame ? " fresh" : ""}`,
+			class: `exec-tree-node exec-tree-${n.kind}${future ? " future" : st.done ? " done" : ""}${n.id === now.current ? " current" : ""}${!whole && n.frame === frame ? " fresh" : ""}`,
 			transform: `translate(${cx(n.id)},${cy(n)})`
 		});
 		const w = COL - 8;
@@ -25532,23 +25579,23 @@ function drawExecTree(host, tree, frame, pick) {
 			height: H,
 			rx: n.kind === "loop" ? H / 2 : 5
 		}));
-		const label = svg$2("text", {
+		const t = svg$2("text", {
 			"text-anchor": "middle",
 			dy: "0.35em"
 		});
-		label.textContent = text(n);
+		t.textContent = label(n);
 		const tip = svg$2("title", {});
-		tip.textContent = n.kind === "call" ? `${n.label}${n.site ? `, called from line ${n.site}` : ""}${n.iteration ? ` in iteration ${n.iteration}` : ""}${n.done ? ", returned" : ""}` : `${n.label}: ${n.iterations} iteration${n.iterations === 1 ? "" : "s"} so far${n.iteration ? ` (inside iteration ${n.iteration})` : ""}${n.done ? ", ended" : ""}`;
+		tip.textContent = n.kind === "call" ? `${n.label}${n.site ? `, called from line ${n.site}` : ""}${n.iteration ? ` in iteration ${n.iteration}` : ""}${future ? ", not run yet" : st.done ? ", returned" : ""}` : `${n.label}: ${future ? plural(n.iterations, "iteration") + ", not run yet" : `${plural(st.iterations, "iteration")} so far${whole ? ` of ${n.iterations}` : ""}`}${n.iteration ? ` (inside iteration ${n.iteration})` : ""}${!future && st.done ? ", ended" : ""}`;
 		tip.textContent += pick ? ` · click to go to frame ${n.frame}` : "";
-		g.append(label, tip);
+		g.append(t, tip);
 		if (pick) g.addEventListener("click", () => pick(n.frame));
 		root.append(g);
-		if (n.id === tree.current) current = g;
+		if (n.id === now.current) current = g;
 	}
 	scroller.replaceChildren(root);
 	host.append(scroller);
 	if (current) {
-		const n = tree.nodes[tree.current], nx = cx(n.id), ny = cy(n), w = COL / 2;
+		const n = tree.nodes[now.current], nx = cx(n.id), ny = cy(n), w = COL / 2;
 		if (!(nx - w >= scroller.scrollLeft && nx + w <= scroller.scrollLeft + scroller.clientWidth && ny - H >= scroller.scrollTop && ny + H <= scroller.scrollTop + scroller.clientHeight)) scroller.scrollTo({
 			left: Math.max(0, nx - scroller.clientWidth / 2),
 			top: Math.max(0, ny - scroller.clientHeight / 2)
@@ -26763,7 +26810,7 @@ function setupCodePanel() {
 		const rows = table ? (scene?.data)?.[table] : void 0;
 		const file = files.find((f) => f.id === ref?.file);
 		if (!table || !Array.isArray(rows) || !file) {
-			drawExecTree(execPane, execTree("", [], -1), 0);
+			drawExecTree(execPane, () => execTree("", [], -1), -1, 0);
 			return;
 		}
 		let frame = 0;
@@ -26796,7 +26843,7 @@ function setupCodePanel() {
 			window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
 			setSliderValue(slider, at);
 		} : void 0;
-		drawExecTree(execPane, execTree(file.source, frames, Math.min(frame, frames.length - 1), label), frame, pick);
+		drawExecTree(execPane, (upto) => execTree(file.source, frames, Math.min(upto, frames.length - 1), label), frames.length - 1, frame, pick);
 	}
 	function evaluate(expr) {
 		if (!compiled.has(expr)) try {

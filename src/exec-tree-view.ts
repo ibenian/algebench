@@ -79,49 +79,86 @@ function scrollerOf(host: HTMLElement): HTMLDivElement {
 }
 
 /**
- * Draw the tree into host at the frame shown; the node executing now is scrolled into view. Clicking a node calls
- * `pick` with the frame it started at.
+ * Two ways to watch a run: "grow" builds the tree as the run goes, only what has run so far; "whole" shows the
+ * whole run's tree from the start, the nodes not run yet grayed, so the run is seen walking it.
  */
-export function drawExecTree(host: HTMLElement, tree: ExecTree, frame: number, pick?: (frame: number) => void): void {
+export type ExecTreeMode = 'grow' | 'whole';
+const MODE_KEY = 'algebench-exec-tree-mode';
+let mode: ExecTreeMode = 'grow';
+try { if (localStorage.getItem(MODE_KEY) === 'whole') mode = 'whole'; } catch { /* storage off: grow */ }
+// What each host last drew, so switching the mode redraws it.
+const drawn = new WeakMap<HTMLElement, () => void>();
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * Draw the run's tree into host at the frame shown: `build(upto)` gives the tree for frames 0..upto, `last` is the
+ * run's last frame. The node executing now is scrolled into view; clicking a node calls `pick` with the frame it
+ * started at.
+ */
+export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTree, last: number, frame: number, pick?: (frame: number) => void): void {
+    drawn.set(host, () => drawExecTree(host, build, last, frame, pick));
+    const now = build(frame), whole = mode === 'whole' && last >= 0 ? build(last) : null;
+    const tree = whole ?? now;
+    // Nodes are made in run order, so the first ones of the whole tree are those run so far.
+    const ran = (n: ExecNode) => n.id < now.nodes.length;
+    const state = (n: ExecNode) => ran(n) ? now.nodes[n.id]! : n;
     const scroller = scrollerOf(host);
     host.replaceChildren();
-    const summary = document.createElement('div');summary.className = 'exec-tree-summary';
+    const head = document.createElement('div');head.className = 'exec-tree-summary';
+    const summary = document.createElement('span');
+    const of = (a: number, b: number) => whole ? `${a}/${b}` : String(a);
     summary.textContent = tree.nodes.length
-        ? `${tree.calls} call${tree.calls === 1 ? '' : 's'} · ${tree.iterations} loop iteration${tree.iterations === 1 ? '' : 's'} · depth ${tree.maxDepth}`
+        ? `${of(now.calls, tree.calls)} call${tree.calls === 1 ? '' : 's'} · ${of(now.iterations, tree.iterations)} loop iteration${tree.iterations === 1 ? '' : 's'} · depth ${now.maxDepth}${whole ? `/${whole.maxDepth}` : ''}`
         : 'No recorded run at this step.';
-    host.append(summary);
+    const modes = document.createElement('span');modes.className = 'exec-tree-modes';modes.setAttribute('role', 'group');
+    for (const [m, name, title] of [['grow', 'Grow', 'Build the tree as the run goes'], ['whole', 'Whole', 'Show the whole run\'s tree, the part not run yet grayed']] as const) {
+        const b = document.createElement('button');b.type = 'button';b.textContent = name;b.title = title;b.setAttribute('aria-pressed', String(mode === m));
+        b.addEventListener('click', () => {
+            mode = m;try { localStorage.setItem(MODE_KEY, m); } catch { /* not kept */ }
+            drawn.get(host)?.();
+        });
+        modes.append(b);
+    }
+    head.append(summary, modes);
+    host.append(head);
     if (!tree.nodes.length) { scroller.replaceChildren();return; }
+    const label = (n: ExecNode) => {
+        if (n.kind === 'call' || !whole) return text(state(n));
+        return `↻ ${loopName(n.label)} ×${ran(n) ? `${state(n).iterations}/` : ''}${n.iterations}`;
+    };
     const x = columns(tree);
     // One column width for all, wide enough for the longest label.
-    const COL = Math.max(64, Math.max(...tree.nodes.map(n => text(n).length)) * CHAR + 18);
+    const COL = Math.max(64, Math.max(...tree.nodes.map(n => label(n).length)) * CHAR + 18);
     const width = (Math.max(...x.values()) + 1) * COL + PAD * 2, height = (Math.max(...tree.nodes.map(n => n.depth)) + 1) * ROW + PAD;
     const root = svg('svg', { width, height, viewBox: `0 0 ${width} ${height}`, class: 'exec-tree-svg', role: 'img', 'aria-label': summary.textContent });
     const cx = (id: number) => PAD + x.get(id)! * COL + COL / 2, cy = (n: ExecNode) => PAD + n.depth * ROW + H / 2;
     for (const n of tree.nodes) if (n.parent != null) {
         const p = tree.nodes[n.parent]!;
-        root.append(svg('path', { class: 'exec-tree-edge', d: `M${cx(p.id)},${cy(p) + H / 2} C${cx(p.id)},${cy(p) + ROW / 2} ${cx(n.id)},${cy(n) - ROW / 2} ${cx(n.id)},${cy(n) - H / 2}` }));
+        root.append(svg('path', { class: `exec-tree-edge${ran(n) ? '' : ' future'}`, d: `M${cx(p.id)},${cy(p) + H / 2} C${cx(p.id)},${cy(p) + ROW / 2} ${cx(n.id)},${cy(n) - ROW / 2} ${cx(n.id)},${cy(n) - H / 2}` }));
     }
     let current: SVGGElement | null = null;
     for (const n of tree.nodes) {
-        const g = svg('g', { class: `exec-tree-node exec-tree-${n.kind}${n.done ? ' done' : ''}${n.id === tree.current ? ' current' : ''}${n.frame === frame ? ' fresh' : ''}`,
+        const st = state(n), future = !ran(n);
+        const g = svg('g', { class: `exec-tree-node exec-tree-${n.kind}${future ? ' future' : st.done ? ' done' : ''}${n.id === now.current ? ' current' : ''}${!whole && n.frame === frame ? ' fresh' : ''}`,
             transform: `translate(${cx(n.id)},${cy(n)})` });
         const w = COL - 8;
         g.append(svg('rect', { x: -w / 2, y: -H / 2, width: w, height: H, rx: n.kind === 'loop' ? H / 2 : 5 }));
-        const label = svg('text', { 'text-anchor': 'middle', dy: '0.35em' });label.textContent = text(n);
+        const t = svg('text', { 'text-anchor': 'middle', dy: '0.35em' });t.textContent = label(n);
         const tip = svg('title', {});
         tip.textContent = n.kind === 'call'
-            ? `${n.label}${n.site ? `, called from line ${n.site}` : ''}${n.iteration ? ` in iteration ${n.iteration}` : ''}${n.done ? ', returned' : ''}`
-            : `${n.label}: ${n.iterations} iteration${n.iterations === 1 ? '' : 's'} so far${n.iteration ? ` (inside iteration ${n.iteration})` : ''}${n.done ? ', ended' : ''}`;
+            ? `${n.label}${n.site ? `, called from line ${n.site}` : ''}${n.iteration ? ` in iteration ${n.iteration}` : ''}${future ? ', not run yet' : st.done ? ', returned' : ''}`
+            : `${n.label}: ${future ? plural(n.iterations, 'iteration') + ', not run yet' : `${plural(st.iterations, 'iteration')} so far${whole ? ` of ${n.iterations}` : ''}`}${n.iteration ? ` (inside iteration ${n.iteration})` : ''}${!future && st.done ? ', ended' : ''}`;
         tip.textContent += pick ? ` · click to go to frame ${n.frame}` : '';
-        g.append(label, tip);
+        g.append(t, tip);
         if (pick) g.addEventListener('click', () => pick(n.frame));
         root.append(g);
-        if (n.id === tree.current) current = g;
+        if (n.id === now.current) current = g;
     }
     scroller.replaceChildren(root);host.append(scroller);
     // Follow the run only when it leaves the view, so a reader's pan is kept while the node stays in sight.
     if (current) {
-        const n = tree.nodes[tree.current]!, nx = cx(n.id), ny = cy(n), w = COL / 2;
+        const n = tree.nodes[now.current]!, nx = cx(n.id), ny = cy(n), w = COL / 2;
         const seen = nx - w >= scroller.scrollLeft && nx + w <= scroller.scrollLeft + scroller.clientWidth
             && ny - H >= scroller.scrollTop && ny + H <= scroller.scrollTop + scroller.clientHeight;
         if (!seen) scroller.scrollTo({ left: Math.max(0, nx - scroller.clientWidth / 2), top: Math.max(0, ny - scroller.clientHeight / 2) });

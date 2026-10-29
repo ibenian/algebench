@@ -5625,7 +5625,11 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-file-tree[hidden], .code-exec-tree[hidden] { display: none; }
 /* The execution tree: calls as boxes, loops as pills with their iteration count, the running node lit. */
 .code-exec-tree { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.exec-tree-summary { padding: 4px 12px; font: 11px ui-monospace, monospace; opacity: .7; }
+.exec-tree-summary { display: flex; align-items: center; gap: 8px; padding: 4px 12px; font: 11px ui-monospace, monospace; }
+.exec-tree-summary > span:first-child { opacity: .7; }
+.exec-tree-modes { margin-left: auto; display: flex; gap: 2px; }
+.exec-tree-modes button { padding: 1px 7px; font: 10.5px var(--font-body); color: var(--text-color); background: transparent; border: 1px solid var(--border-color); border-radius: 5px; cursor: pointer; opacity: .6; }
+.exec-tree-modes button[aria-pressed="true"] { opacity: 1; color: var(--accent-color); border-color: color-mix(in srgb, var(--accent-color) 50%, transparent); background: color-mix(in srgb, var(--accent-color) 16%, transparent); }
 .exec-tree-scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 4px 8px; cursor: grab; touch-action: none; user-select: none; }
 .exec-tree-scroll.panning { cursor: grabbing; }
 .exec-tree-svg { display: block; }
@@ -5634,6 +5638,10 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .exec-tree-loop rect { fill: color-mix(in srgb, #4fb39a 16%, var(--panel-bg)); stroke: color-mix(in srgb, #4fb39a 60%, transparent); }
 .exec-tree-node text { font: 10.5px ui-monospace, monospace; fill: var(--text-color); pointer-events: none; user-select: none; }
 .exec-tree-node.done { opacity: .55; }
+/* Not run yet (whole-tree mode): gray, no tone. */
+.exec-tree-node.future { opacity: .35; filter: grayscale(1); }
+.exec-tree-node.future rect { stroke-dasharray: 3 2; }
+.exec-tree-edge.future { stroke-dasharray: 3 3; opacity: .45; }
 .exec-tree-scroll:not(.panning) .exec-tree-node { cursor: pointer; }
 .exec-tree-node:hover rect { stroke-width: 2; }
 .exec-tree-node.current rect { fill: color-mix(in srgb, #f1c65b 45%, var(--panel-bg)); stroke: #f1c65b; stroke-width: 2; }

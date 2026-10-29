@@ -140,3 +140,18 @@ test('a run that never stops on a loop header still shows its loops: going back 
     const mid = execTree(TRIE, frames, 3);
     assert.equal(shape(mid), 'build(words) [for word in words ×1 [for ch in word ×1]]', 'line 6 twice is one line, recorded twice');
 });
+
+test('the tree so far is the start of the whole tree: its nodes come first, in the same order', () => {
+    const runs: [string, { line: number; calls?: number[] }[]][] = [
+        [FIB, FIB_FRAMES],
+        [KMP, [2, 3, 2, 3, 4, 7, 8, 9, 8, 10, 13].map(line => ({ line }))],
+        [TRIE, [2, 4, 6, 6, 7, 4, 6, 7, 8].map(line => ({ line }))],
+    ];
+    for (const [src, frames] of runs) {
+        const whole = execTree(src, frames, frames.length - 1);
+        for (let f = 0; f < frames.length; f++) {
+            const now = execTree(src, frames, f);
+            assert.deepEqual(now.nodes.map(n => [n.kind, n.line, n.frame]), whole.nodes.slice(0, now.nodes.length).map(n => [n.kind, n.line, n.frame]), `frame ${f}`);
+        }
+    }
+});

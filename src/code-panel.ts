@@ -336,7 +336,7 @@ export function setupCodePanel(): void {
         const callsColumn=/^dataTable\('[^']+', frame, '([^']+)'\)$/.exec(ref?.callsExpr??'')?.[1];
         const rows=table?(scene?.data as Record<string,Record<string,unknown>[]>|undefined)?.[table]:undefined;
         const file=files.find(f=>f.id===ref?.file);
-        if(!table||!Array.isArray(rows)||!file){drawExecTree(execPane,execTree('',[],-1),0);return;}
+        if(!table||!Array.isArray(rows)||!file){drawExecTree(execPane,()=>execTree('',[],-1),-1,0);return;}
         let frame=0;try{frame=Number(evaluate('frame'));}catch{/* no frame slider: the start */}
         const frames=rows.map(r=>({line:Number(r.line),calls:callsColumn&&Array.isArray(r[callsColumn])?(r[callsColumn] as number[]):undefined}));
         const label=(call:string,at:number)=>{
@@ -357,7 +357,7 @@ export function setupCodePanel(): void {
         // A node is where its call or loop began: clicking it plays the run to that frame.
         const slider=scene?.stepPlayback?.slider;
         const pick=slider?(at:number)=>{window.dispatchEvent(new CustomEvent('algebench:playbackpause'));setSliderValue(slider,at);}:undefined;
-        drawExecTree(execPane,execTree(file.source,frames,Math.min(frame,frames.length-1),label),frame,pick);
+        drawExecTree(execPane,upto=>execTree(file.source,frames,Math.min(upto,frames.length-1),label),frames.length-1,frame,pick);
     }
     function evaluate(expr: string) {
         if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
