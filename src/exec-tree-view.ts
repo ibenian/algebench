@@ -51,22 +51,48 @@ function scrollerOf(host: HTMLElement): HTMLDivElement {
     let scroller = host.querySelector<HTMLDivElement>(':scope > .exec-tree-scroll');
     if (scroller) return scroller;
     scroller = document.createElement('div');scroller.className = 'exec-tree-scroll';
-    // A drag pans; a press that does not move is a click, left to the node under it.
+    // A drag pans; a press that does not move is a click, left to the node under it. On a loop, a drag (or a
+    // press held still) scrubs its iterations instead: sliding sideways moves the run to the start of each one.
+    // Panning starts anywhere else.
     scroller.addEventListener('pointerdown', e => {
         if (e.button !== 0) return;
         const s = scroller!, x0 = e.clientX, y0 = e.clientY, left = s.scrollLeft, top = s.scrollTop;
         let panning = false;
+        const loopEl = (e.target as Element).closest?.('.exec-tree-loop');
+        const loop = loopEl ? loopOf.get(loopEl) : undefined;
+        let scrub: { at: number; badge: HTMLDivElement } | null = null;
+        const show = (at: number, ev: { clientX: number; clientY: number }) => {
+            scrub!.badge.textContent = `${loop!.name} · iteration ${at + 1} of ${loop!.starts.length}`;
+            scrub!.badge.style.left = `${ev.clientX + 12}px`;scrub!.badge.style.top = `${ev.clientY - 28}px`;
+        };
+        const startScrub = () => {
+            if (scrub || !loop) return;
+            const badge = document.createElement('div');badge.className = 'exec-tree-scrub-badge';document.body.append(badge);
+            scrub = { at: loop.at, badge };s.classList.add('scrubbing');show(loop.at, e);
+        };
+        const hold = loop ? setTimeout(startScrub, HOLD_MS) : 0;
         const move = (ev: PointerEvent) => {
+            if (scrub) {
+                const at = Math.max(0, Math.min(loop!.starts.length - 1, loop!.at + Math.round((ev.clientX - x0) / SCRUB_PX)));
+                if (at !== scrub.at) { scrub.at = at;loop!.pick?.(loop!.starts[at]!); }
+                show(at, ev);
+                return;
+            }
             if (!panning && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+            clearTimeout(hold);
+            if (loop) { startScrub();move(ev);return; }
             if (!panning) { panning = true;s.classList.add('panning'); }
             s.scrollLeft = left - (ev.clientX - x0);s.scrollTop = top - (ev.clientY - y0);
         };
         // Followed on the window, so a release anywhere (outside the panel too) ends the drag.
         const up = () => {
             window.removeEventListener('pointermove', move);window.removeEventListener('pointerup', up);window.removeEventListener('pointercancel', up);
-            s.classList.remove('panning');
-            // The click that ends a pan (fired right after the release, if it ended over the panel) is not a pick.
-            if (panning) {
+            clearTimeout(hold);
+            s.classList.remove('panning', 'scrubbing');
+            const scrubbed = !!scrub;
+            scrub?.badge.remove();scrub = null;
+            // The click that ends a pan or a scrub (fired right after the release, if it ended over the panel) is not a pick.
+            if (panning || scrubbed) {
                 const swallow = (ev: Event) => ev.stopPropagation();
                 s.addEventListener('click', swallow, {capture: true, once: true});
                 setTimeout(() => s.removeEventListener('click', swallow, {capture: true}), 0);
@@ -90,6 +116,10 @@ try { if (localStorage.getItem(MODE_KEY) === 'whole') mode = 'whole'; } catch { 
 const drawn = new WeakMap<HTMLElement, () => void>();
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+// Holding a loop this long (or dragging it) starts scrubbing its iterations; each this many pixels sideways is one.
+const HOLD_MS = 250, SCRUB_PX = 14;
+// Each drawn loop: its name, the frame each iteration started at, the iteration the run is in, and where to go.
+const loopOf = new WeakMap<Element, { name: string; starts: number[]; at: number; pick?: (frame: number) => void }>();
 
 /**
  * Draw the run's tree into host at the frame shown: `build(upto)` gives the tree for frames 0..upto, `last` is the
@@ -98,7 +128,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
  */
 export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTree, last: number, frame: number, pick?: (frame: number) => void): void {
     drawn.set(host, () => drawExecTree(host, build, last, frame, pick));
-    const now = build(frame), whole = mode === 'whole' && last >= 0 ? build(last) : null;
+    const now = build(frame), full = last >= 0 ? build(last) : now, whole = mode === 'whole' ? full : null;
     const tree = whole ?? now;
     // Nodes are made in run order, so the first ones of the whole tree are those run so far.
     const ran = (n: ExecNode) => n.id < now.nodes.length;
@@ -144,6 +174,14 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
             transform: `translate(${cx(n.id)},${cy(n)})` });
         const w = COL - 8;
         g.append(svg('rect', { x: -w / 2, y: -H / 2, width: w, height: H, rx: n.kind === 'loop' ? H / 2 : 5 }));
+        // A loop fills from the left as its iterations are reached, as its label counts them: 4/4 is full.
+        const total = full.nodes[n.id]?.iterations ?? 0;
+        if (n.kind === 'loop' && !future && total > 0) {
+            const share = Math.min(1, st.iterations / total);
+            const clip = svg('clipPath', { id: `exec-tree-clip-${n.id}` });
+            clip.append(svg('rect', { x: -w / 2, y: -H / 2, width: w, height: H, rx: H / 2 }));
+            g.append(clip, svg('rect', { class: 'exec-tree-progress', x: -w / 2, y: -H / 2, width: w * share, height: H, 'clip-path': `url(#exec-tree-clip-${n.id})` }));
+        }
         const t = svg('text', { 'text-anchor': 'middle', dy: '0.35em' });t.textContent = label(n);
         const tip = svg('title', {});
         tip.textContent = n.kind === 'call'
@@ -152,6 +190,12 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
         tip.textContent += pick ? ` · click to go to frame ${n.frame}` : '';
         g.append(t, tip);
         if (pick) g.addEventListener('click', () => pick(n.frame));
+        if (n.kind === 'loop') {
+            // The iteration the run is in now: the last one started by this frame (the first while not reached).
+            const at = Math.max(0, n.starts.filter(f => f <= frame).length - 1);
+            loopOf.set(g, { name: `↻ ${loopName(n.label)}`, starts: n.starts, at, pick });
+            tip.textContent += ` · drag sideways to pick an iteration`;
+        }
         root.append(g);
         if (n.id === now.current) current = g;
     }

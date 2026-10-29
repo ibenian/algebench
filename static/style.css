@@ -5616,7 +5616,7 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 /* Display-only lesson source: browsing does not navigate the lesson. */
 #dock-tab-code { overflow: hidden; }
 /* Over the code: the files or the execution tree, switched by tabs; its height is what the edge below resizes. */
-.code-top-pane { flex: 0 1 25%; min-height: 90px; display: flex; flex-direction: column; border-bottom: 1px solid var(--border-color); overflow: hidden; }
+.code-top-pane { flex: 0 1 35%; min-height: 90px; display: flex; flex-direction: column; border-bottom: 1px solid var(--border-color); overflow: hidden; }
 .code-top-switch { display: flex; gap: 2px; padding: 6px 10px 0; flex: 0 0 auto; }
 .code-top-switch button { padding: 3px 9px; font: 11px var(--font-body); color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .6; }
 .code-top-switch button:hover { opacity: .9; }
@@ -5632,9 +5632,15 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .exec-tree-modes button[aria-pressed="true"] { opacity: 1; color: var(--accent-color); border-color: color-mix(in srgb, var(--accent-color) 50%, transparent); background: color-mix(in srgb, var(--accent-color) 16%, transparent); }
 .exec-tree-scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 4px 8px; cursor: grab; touch-action: none; user-select: none; }
 .exec-tree-scroll.panning { cursor: grabbing; }
+.exec-tree-scroll.scrubbing, .exec-tree-scroll.scrubbing .exec-tree-node { cursor: ew-resize; }
+/* While a loop is held and slid: which iteration the run is at. */
+.exec-tree-scrub-badge { position: fixed; z-index: 1000; pointer-events: none; padding: 3px 8px; font: 11px ui-monospace, monospace; color: var(--text-color);
+    background: var(--panel-bg); border: 1px solid #4fb39a; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.35); white-space: nowrap; }
 .exec-tree-svg { display: block; }
 .exec-tree-edge { fill: none; stroke: color-mix(in srgb, var(--text-color) 30%, transparent); stroke-width: 1.2; }
 .exec-tree-node rect { fill: color-mix(in srgb, var(--accent-color) 14%, var(--panel-bg)); stroke: color-mix(in srgb, var(--accent-color) 55%, transparent); stroke-width: 1; }
+.exec-tree-node rect.exec-tree-progress { fill: color-mix(in srgb, #4fb39a 45%, transparent); stroke: none; }
+.exec-tree-node.current rect.exec-tree-progress { fill: color-mix(in srgb, #f1c65b 55%, transparent); }
 .exec-tree-loop rect { fill: color-mix(in srgb, #4fb39a 16%, var(--panel-bg)); stroke: color-mix(in srgb, #4fb39a 60%, transparent); }
 .exec-tree-node text { font: 10.5px ui-monospace, monospace; fill: var(--text-color); pointer-events: none; user-select: none; }
 .exec-tree-node.done { opacity: .55; }

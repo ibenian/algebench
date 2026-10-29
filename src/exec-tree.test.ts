@@ -155,3 +155,10 @@ test('the tree so far is the start of the whole tree: its nodes come first, in t
         }
     }
 });
+
+test('a loop keeps the frame each iteration started at', () => {
+    const frames = [2, 4, 6, 6, 7, 4, 6, 7, 8].map(line => ({ line }));
+    const t = execTree(TRIE, frames, frames.length - 1);
+    const words = t.nodes.find(n => n.label === 'for word in words')!;
+    assert.deepEqual(words.starts, [1, 5]);
+});

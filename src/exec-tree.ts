@@ -23,6 +23,8 @@ export interface ExecNode {
     callDepth: number;
     /** The frame it started at. */
     frame: number;
+    /** A loop: the frame each of its iterations started at (a call: just its first). */
+    starts: number[];
     /** A loop's iterations so far; for a node made inside a loop, the iteration it was made in. */
     iterations: number;
     iteration: number | null;
@@ -94,7 +96,7 @@ export function execTree(source: string, frames: readonly ExecFrame[], upto: num
     const add = (kind: ExecNode['kind'], text: string, line: number, site: number | null, parent: number | null, frame: number): ExecNode => {
         const up = parent == null ? null : nodes[parent]!;
         const node: ExecNode = { id: nodes.length, kind, label: text, line, site, parent, children: [], depth: up ? up.depth + 1 : 0,
-            callDepth: (up?.callDepth ?? 0) + (kind === 'call' && up ? 1 : 0), frame,
+            callDepth: (up?.callDepth ?? 0) + (kind === 'call' && up ? 1 : 0), frame, starts: [frame],
             iterations: kind === 'loop' ? 1 : 0, iteration: up?.kind === 'loop' ? up.iterations : null, done: false };
         nodes.push(node);
         up?.children.push(node.id);
@@ -175,7 +177,7 @@ export function execTree(source: string, frames: readonly ExecFrame[], upto: num
         const top = inner();
         closeLoops(top, l => line >= l.node.line && line <= l.end);
         const back = top.loops[top.loops.length - 1];
-        if (back && top.last != null && (line < top.last || (line === top.last && line === back.node.line))) { back.node.iterations++;tree.iterations++; }
+        if (back && top.last != null && (line < top.last || (line === top.last && line === back.node.line))) { back.node.iterations++;back.node.starts.push(f);tree.iterations++; }
         const here = enclosingDef(lines, line)?.line;
         for (const loop of loops) {
             if (loop.line > line || loop.end < line || loop.def !== here) continue;

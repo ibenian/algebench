@@ -25274,6 +25274,7 @@ function execTree(source, frames, upto, label = (c) => c) {
 			depth: up ? up.depth + 1 : 0,
 			callDepth: (up?.callDepth ?? 0) + (kind === "call" && up ? 1 : 0),
 			frame,
+			starts: [frame],
 			iterations: kind === "loop" ? 1 : 0,
 			iteration: up?.kind === "loop" ? up.iterations : null,
 			done: false
@@ -25388,6 +25389,7 @@ function execTree(source, frames, upto, label = (c) => c) {
 		const back = top.loops[top.loops.length - 1];
 		if (back && top.last != null && (line < top.last || line === top.last && line === back.node.line)) {
 			back.node.iterations++;
+			back.node.starts.push(f);
 			tree.iterations++;
 		}
 		const here = enclosingDef(lines, line)?.line;
@@ -25455,8 +25457,44 @@ function scrollerOf(host) {
 		if (e.button !== 0) return;
 		const s = scroller, x0 = e.clientX, y0 = e.clientY, left = s.scrollLeft, top = s.scrollTop;
 		let panning = false;
+		const loopEl = e.target.closest?.(".exec-tree-loop");
+		const loop = loopEl ? loopOf.get(loopEl) : void 0;
+		let scrub = null;
+		const show = (at, ev) => {
+			scrub.badge.textContent = `${loop.name} · iteration ${at + 1} of ${loop.starts.length}`;
+			scrub.badge.style.left = `${ev.clientX + 12}px`;
+			scrub.badge.style.top = `${ev.clientY - 28}px`;
+		};
+		const startScrub = () => {
+			if (scrub || !loop) return;
+			const badge = document.createElement("div");
+			badge.className = "exec-tree-scrub-badge";
+			document.body.append(badge);
+			scrub = {
+				at: loop.at,
+				badge
+			};
+			s.classList.add("scrubbing");
+			show(loop.at, e);
+		};
+		const hold = loop ? setTimeout(startScrub, HOLD_MS) : 0;
 		const move = (ev) => {
+			if (scrub) {
+				const at = Math.max(0, Math.min(loop.starts.length - 1, loop.at + Math.round((ev.clientX - x0) / SCRUB_PX)));
+				if (at !== scrub.at) {
+					scrub.at = at;
+					loop.pick?.(loop.starts[at]);
+				}
+				show(at, ev);
+				return;
+			}
 			if (!panning && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+			clearTimeout(hold);
+			if (loop) {
+				startScrub();
+				move(ev);
+				return;
+			}
 			if (!panning) {
 				panning = true;
 				s.classList.add("panning");
@@ -25468,8 +25506,12 @@ function scrollerOf(host) {
 			window.removeEventListener("pointermove", move);
 			window.removeEventListener("pointerup", up);
 			window.removeEventListener("pointercancel", up);
-			s.classList.remove("panning");
-			if (panning) {
+			clearTimeout(hold);
+			s.classList.remove("panning", "scrubbing");
+			const scrubbed = !!scrub;
+			scrub?.badge.remove();
+			scrub = null;
+			if (panning || scrubbed) {
 				const swallow = (ev) => ev.stopPropagation();
 				s.addEventListener("click", swallow, {
 					capture: true,
@@ -25491,6 +25533,9 @@ try {
 } catch {}
 var drawn = /* @__PURE__ */ new WeakMap();
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+var HOLD_MS = 250;
+var SCRUB_PX = 14;
+var loopOf = /* @__PURE__ */ new WeakMap();
 /**
 * Draw the run's tree into host at the frame shown: `build(upto)` gives the tree for frames 0..upto, `last` is the
 * run's last frame. The node executing now is scrolled into view; clicking a node calls `pick` with the frame it
@@ -25498,7 +25543,7 @@ var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 */
 function drawExecTree(host, build, last, frame, pick) {
 	drawn.set(host, () => drawExecTree(host, build, last, frame, pick));
-	const now = build(frame), whole = mode === "whole" && last >= 0 ? build(last) : null;
+	const now = build(frame), full = last >= 0 ? build(last) : now, whole = mode === "whole" ? full : null;
 	const tree = whole ?? now;
 	const ran = (n) => n.id < now.nodes.length;
 	const state = (n) => ran(n) ? now.nodes[n.id] : n;
@@ -25579,6 +25624,26 @@ function drawExecTree(host, build, last, frame, pick) {
 			height: H,
 			rx: n.kind === "loop" ? H / 2 : 5
 		}));
+		const total = full.nodes[n.id]?.iterations ?? 0;
+		if (n.kind === "loop" && !future && total > 0) {
+			const share = Math.min(1, st.iterations / total);
+			const clip = svg$2("clipPath", { id: `exec-tree-clip-${n.id}` });
+			clip.append(svg$2("rect", {
+				x: -w / 2,
+				y: -11,
+				width: w,
+				height: H,
+				rx: H / 2
+			}));
+			g.append(clip, svg$2("rect", {
+				class: "exec-tree-progress",
+				x: -w / 2,
+				y: -11,
+				width: w * share,
+				height: H,
+				"clip-path": `url(#exec-tree-clip-${n.id})`
+			}));
+		}
 		const t = svg$2("text", {
 			"text-anchor": "middle",
 			dy: "0.35em"
@@ -25589,6 +25654,16 @@ function drawExecTree(host, build, last, frame, pick) {
 		tip.textContent += pick ? ` · click to go to frame ${n.frame}` : "";
 		g.append(t, tip);
 		if (pick) g.addEventListener("click", () => pick(n.frame));
+		if (n.kind === "loop") {
+			const at = Math.max(0, n.starts.filter((f) => f <= frame).length - 1);
+			loopOf.set(g, {
+				name: `↻ ${loopName(n.label)}`,
+				starts: n.starts,
+				at,
+				pick
+			});
+			tip.textContent += ` · drag sideways to pick an iteration`;
+		}
 		root.append(g);
 		if (n.id === now.current) current = g;
 	}
