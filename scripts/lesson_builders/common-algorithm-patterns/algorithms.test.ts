@@ -251,10 +251,10 @@ test('two sum with a dict finds the pair in one pass; subarray sum counts by ear
  // Brute force agrees on every small case, and each number is looked up once.
  const brute=(a:number[],t:number)=>{for(let j=0;j<a.length;j++)for(let i=0;i<j;i++)if(a[i]!+a[j]! === t)return `[${i}, ${j}]`;return '[]';};
  for(const [a,tg] of [[[3,3],6],[[1,2,3],7],[[5,1,4,2],6],[[2,7,11,15],9]] as [number[],number][])assert.equal(last(twoSumTrace(a,tg)).result,brute(a,tg));
- const s=subarraySumTrace([1,2,1,2,1],3),g=last(s);
- assert.equal(g.total,4);assert.deepEqual(g.keys,[0,1,3,4,6,7]);assert.deepEqual(g.vals,[1,1,1,1,1,1]);
+ const s=subarraySumTrace([1,2,-2,2,1],3),g=last(s);
+ assert.equal(g.subarrayCount,4);assert.deepEqual(g.keys,[0,1,3,4]);assert.deepEqual(g.vals,[1,2,2,1],'a negative number brings a running sum back, so its count passes 1');
  const count=(a:number[],k:number)=>{let c=0;for(let i=0;i<a.length;i++){let x=0;for(let j=i;j<a.length;j++){x+=a[j]!;if(x===k)c++;}}return c;};
- for(const [a,k] of [[[1,1,1],2],[[1,-1,0],0],[[3,4,7,2,-3,1,4,2],7]] as [number[],number][])assert.equal(last(subarraySumTrace(a,k)).total,count(a,k));
+ for(const [a,k] of [[[1,1,1],2],[[1,-1,0],0],[[3,4,7,2,-3,1,4,2],7]] as [number[],number][])assert.equal(last(subarraySumTrace(a,k)).subarrayCount,count(a,k));
 });
 test('monotonic queue gives every window maximum and keeps the deque decreasing',()=>{
  const {nums,k}=IN.monoQueue,trace=monotonicQueueTrace(nums,k);

@@ -10,7 +10,7 @@ import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineAction
 import { setCodeFocus } from '/code-focus.js';
 import { execTree, nodeLines, nodePath, treeSize } from '/exec-tree.js';
 import { drawExecTree } from '/exec-tree-view.js';
-import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys, usesAt, useSentence } from '/code-symbols.js';
+import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys, usesAt, useSentence, definitionAt } from '/code-symbols.js';
 import { labelsForSymbol, labelsForCodeLine } from '/labels.js';
 import { showCodeSymbolTooltip, hideCodeTooltip } from '/label-tooltip.js';
 import type { CodeTooltipAsk } from '/label-tooltip.js';
@@ -34,6 +34,22 @@ const GUTTER_X=37;
 /** Section tones, in turn, and the structure modes' icons (code-sections.ts). */
 /** The Hide code eye, here and on Type along's button; struck through (style.css) while the code is hidden. */
 export const HIDE_CODE_ICON='<svg class="code-hide-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="code-hide-slash" d="M4 4l16 16"/></svg>';
+const COPY_ICON='<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>';
+const COPIED_ICON='<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+/** A button that puts text() on the clipboard, its icon a ✓ for a moment after. */
+function copyButton(className:string,label:string,text:()=>string):HTMLButtonElement {
+    const button=document.createElement('button');button.type='button';button.className=`code-copy-btn ${className}`;
+    button.title=label;button.setAttribute('aria-label',label);button.innerHTML=COPY_ICON;
+    let reset:ReturnType<typeof setTimeout>|undefined;
+    button.addEventListener('click',e=>{
+        e.stopPropagation();
+        void navigator.clipboard.writeText(text()).then(()=>{
+            button.innerHTML=COPIED_ICON;button.classList.add('copied');button.title='Copied';
+            clearTimeout(reset);reset=setTimeout(()=>{button.innerHTML=COPY_ICON;button.classList.remove('copied');button.title=label;},1200);
+        },()=>{button.title='Copy failed: the browser blocked the clipboard';});
+    });
+    return button;
+}
 const SECTION_TONES=['#e3b04f','#4fb39a','#6ea8e0','#d36ba6'];
 const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
     plain:{title:'Code only',icon:'<path d="M3 4h9M5 7.5h8M5 11h6M3 14.5h7"/>'},
@@ -117,7 +133,8 @@ export function setupCodePanel(): void {
     hideCode.setAttribute('aria-label','Hide code');hideCode.setAttribute('aria-pressed','false');
     hideCode.innerHTML=HIDE_CODE_ICON;
     hideCode.addEventListener('click',()=>{if(selected)setHidden(!veiled);});
-    title.append(titleText,modes,hideCode,ask,codePromptsMenu(),viewSettingsMenu());
+    const copyFile=copyButton('code-copy-file','Copy the whole file',()=>selected?.source??'');
+    title.append(titleText,modes,hideCode,copyFile,ask,codePromptsMenu(),viewSettingsMenu());
     // The edge between the file list and the code resizes them, as Type along's top edge does: the code starts at
     // its usual height; a drag gives it more or less room (kept per browser), a double-click restores it.
     const split=document.createElement('div');split.className='code-tree-resize';split.setAttribute('role','separator');
@@ -1001,6 +1018,10 @@ export function setupCodePanel(): void {
                 choose(i+1,i+1,text);
                 return codeMessageFor(LINE_PROMPT,i+1,i+1,text,inlineScope(file.source,lastLines)??inlineScope(file.source,new Set([i+1])));
             }));
+            // A def or class line copies the whole definition.
+            const definition=definitionAt(file.source,i+1);
+            if(definition)row.append(copyButton('code-copy-def',`Copy ${definition.name} (lines ${definition.from}–${definition.to})`,
+                ()=>file.source.split('\n').slice(definition.from-1,definition.to).join('\n')));
             body.append(row);
         });
         markAnnotatedExpressions(file);

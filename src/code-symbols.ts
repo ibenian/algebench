@@ -66,6 +66,27 @@ export function usesAt(uses: readonly CodeUse[], name: string, line: number): Co
         ?? uses.find(u => u.name === name && u.from === 0) ?? null;
 }
 
+/**
+ * The def or class starting on `line` (1-based), with its decorators and its body: the lines up to the next one
+ * indented no deeper than its header. Null when the line starts no definition.
+ */
+export function definitionAt(source: string, line: number): {name: string; from: number; to: number} | null {
+    const lines = source.split('\n');
+    const head = /^(\s*)(?:async\s+)?(?:def|class)\s+(\w+)/.exec(lines[line - 1] ?? '');
+    if (!head) return null;
+    const indent = head[1]!.length, depth = (text: string) => text.length - text.trimStart().length;
+    let from = line;
+    while (from > 1 && lines[from - 2]!.trimStart().startsWith('@') && depth(lines[from - 2]!) === indent) from--;
+    let to = line;
+    for (let i = line; i < lines.length; i++) {
+        const text = lines[i]!;
+        if (!text.trim()) continue;
+        if (depth(text) <= indent) break;
+        to = i + 1;
+    }
+    return {name: head[2]!, from, to};
+}
+
 const analyses = new Map<string, Promise<CodeAnalysis | null>>();
 
 /** The analyzer language for a file, or null when there is none for it. */

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rowSymbolKeys, lineReferences, codeLanguage, symbolKey, usesAt, useSentence } from '/code-symbols.js';
+import { rowSymbolKeys, lineReferences, codeLanguage, symbolKey, usesAt, useSentence, definitionAt } from '/code-symbols.js';
 import type { CodeReference } from '/code-symbols.js';
 
 test('a row names the expressions left of its value, merged marker names included', () => {
@@ -42,4 +42,12 @@ test('a use says what its line does to the variable', () => {
     assert.equal(useSentence('stack', { line: 3, kinds: ['update', 'shrink'], how: 'method:pop', code: 'stack.pop()' }),
         '`stack.pop()` removes an item and gives it back (the last one, or the one at the given index or key).');
     assert.equal(useSentence('total', { line: 7, kinds: ['read'], how: 'read', code: 'total' }), 'Uses the value of `total` without changing it.');
+});
+
+test('a def line copies its whole definition: decorators, body, nested blocks, not the next one', () => {
+    const source = ['import x', '', '@cache', 'def f(a):', '    if a:', '', '        return 1', '    return 2', '', 'def g():', '    pass'].join('\n');
+    assert.deepEqual(definitionAt(source, 4), {name: 'f', from: 3, to: 8});
+    assert.deepEqual(definitionAt(source, 10), {name: 'g', from: 10, to: 11});
+    assert.equal(definitionAt(source, 5), null, 'not a definition');
+    assert.deepEqual(definitionAt('class A:\n    def m(self):\n        pass\n    x = 1', 2), {name: 'm', from: 2, to: 3}, 'a method ends at its class body');
 });

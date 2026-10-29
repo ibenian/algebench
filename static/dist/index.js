@@ -969,6 +969,30 @@ function useSentence(name, note) {
 function usesAt(uses, name, line) {
 	return uses.find((u) => u.name === name && u.from > 0 && u.from <= line && line <= u.to) ?? uses.find((u) => u.name === name && u.from === 0) ?? null;
 }
+/**
+* The def or class starting on `line` (1-based), with its decorators and its body: the lines up to the next one
+* indented no deeper than its header. Null when the line starts no definition.
+*/
+function definitionAt(source, line) {
+	const lines = source.split("\n");
+	const head = /^(\s*)(?:async\s+)?(?:def|class)\s+(\w+)/.exec(lines[line - 1] ?? "");
+	if (!head) return null;
+	const indent = head[1].length, depth = (text) => text.length - text.trimStart().length;
+	let from = line;
+	while (from > 1 && lines[from - 2].trimStart().startsWith("@") && depth(lines[from - 2]) === indent) from--;
+	let to = line;
+	for (let i = line; i < lines.length; i++) {
+		const text = lines[i];
+		if (!text.trim()) continue;
+		if (depth(text) <= indent) break;
+		to = i + 1;
+	}
+	return {
+		name: head[2],
+		from,
+		to
+	};
+}
 var analyses = /* @__PURE__ */ new Map();
 /** The analyzer language for a file, or null when there is none for it. */
 function codeLanguage(file) {
@@ -26622,6 +26646,35 @@ var GUTTER_X = 37;
 /** Section tones, in turn, and the structure modes' icons (code-sections.ts). */
 /** The Hide code eye, here and on Type along's button; struck through (style.css) while the code is hidden. */
 var HIDE_CODE_ICON = "<svg class=\"code-hide-icon\" viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" aria-hidden=\"true\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/><path class=\"code-hide-slash\" d=\"M4 4l16 16\"/></svg>";
+var COPY_ICON = "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" aria-hidden=\"true\"><rect x=\"9\" y=\"9\" width=\"11\" height=\"11\" rx=\"2\"/><path d=\"M5 15V6a2 2 0 0 1 2-2h8\"/></svg>";
+var COPIED_ICON = "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>";
+/** A button that puts text() on the clipboard, its icon a ✓ for a moment after. */
+function copyButton(className, label, text) {
+	const button = document.createElement("button");
+	button.type = "button";
+	button.className = `code-copy-btn ${className}`;
+	button.title = label;
+	button.setAttribute("aria-label", label);
+	button.innerHTML = COPY_ICON;
+	let reset;
+	button.addEventListener("click", (e) => {
+		e.stopPropagation();
+		navigator.clipboard.writeText(text()).then(() => {
+			button.innerHTML = COPIED_ICON;
+			button.classList.add("copied");
+			button.title = "Copied";
+			clearTimeout(reset);
+			reset = setTimeout(() => {
+				button.innerHTML = COPY_ICON;
+				button.classList.remove("copied");
+				button.title = label;
+			}, 1200);
+		}, () => {
+			button.title = "Copy failed: the browser blocked the clipboard";
+		});
+	});
+	return button;
+}
 var SECTION_TONES = [
 	"#e3b04f",
 	"#4fb39a",
@@ -26756,7 +26809,8 @@ function setupCodePanel() {
 	hideCode.addEventListener("click", () => {
 		if (selected) setHidden(!veiled);
 	});
-	title.append(titleText, modes, hideCode, ask, codePromptsMenu(), viewSettingsMenu());
+	const copyFile = copyButton("code-copy-file", "Copy the whole file", () => selected?.source ?? "");
+	title.append(titleText, modes, hideCode, copyFile, ask, codePromptsMenu(), viewSettingsMenu());
 	const split = document.createElement("div");
 	split.className = "code-tree-resize";
 	split.setAttribute("role", "separator");
@@ -28068,6 +28122,8 @@ function setupCodePanel() {
 				choose(i + 1, i + 1, text);
 				return codeMessageFor(LINE_PROMPT, i + 1, i + 1, text, inlineScope(file.source, lastLines) ?? inlineScope(file.source, /* @__PURE__ */ new Set([i + 1])));
 			}));
+			const definition = definitionAt(file.source, i + 1);
+			if (definition) row.append(copyButton("code-copy-def", `Copy ${definition.name} (lines ${definition.from}–${definition.to})`, () => file.source.split("\n").slice(definition.from - 1, definition.to).join("\n")));
 			body.append(row);
 		});
 		markAnnotatedExpressions(file);

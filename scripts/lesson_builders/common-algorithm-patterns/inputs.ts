@@ -3,7 +3,7 @@ export const PATTERN_INPUTS = {
     prefix: { nums: [3, 1, 4, 1, 5, 9, 2, 6], queries: [[2, 5], [0, 3]] as [number, number][] },
     twoPointers: { nums: [2, 3, 5, 7, 8, 11, 13, 17], target: 18 },
     // Two Sum on an unsorted list, then subarrays summing to k: both remember what they have seen in a dict.
-    hashMap: { nums: [4, 11, 7, 2, 15, 5], target: 9, sums: [1, 2, 1, 2, 1], sumTarget: 3 },
+    hashMap: { nums: [4, 11, 7, 2, 15, 5], target: 9, sums: [1, 2, -2, 2, 1], sumTarget: 3 },
     slidingWindow: { nums: [2, 1, 5, 1, 3, 2, 6, 1], k: 3 },
     fastSlow: { nums: [2, 6, 4, 1, 3, 1, 5] },
     monotonic: { temps: [73, 74, 75, 71, 69, 72, 76, 73] },
