@@ -10,11 +10,11 @@ import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineAction
 import { setCodeFocus } from '/code-focus.js';
 import { execTree, nodeLines, nodePath, treeSize } from '/exec-tree.js';
 import { drawExecTree } from '/exec-tree-view.js';
-import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys } from '/code-symbols.js';
+import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys, usesAt } from '/code-symbols.js';
 import { labelsForSymbol, labelsForCodeLine } from '/labels.js';
 import { showCodeSymbolTooltip, hideCodeTooltip } from '/label-tooltip.js';
 import type { CodeTooltipAsk } from '/label-tooltip.js';
-import type { CodeReference, CodeFunction, CodeCall } from '/code-symbols.js';
+import type { CodeReference, CodeFunction, CodeCall, CodeUse, CodeUseKind } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import { highlightCode, lineTokens, paintTokens, wrapColumns } from '/code-highlight.js';
 import { CODE_PROMPTS, LINE_PROMPT, LINE_VALUES_PROMPT, codePromptMessage, explainPrompt, execNodePrompt, repeatedCallsPrompt } from '/code-prompts.js';
@@ -87,7 +87,9 @@ export function setupCodePanel(): void {
     const selectionLabel=document.createElement('span');
     let lesson: AlgeBenchLessonSpec | null | undefined, files: CodeFile[]=[], selected: CodeFile | undefined;
     let first=0,last=0,excerpt='',active: CompiledExpr|null=null,followed: CodeFile | undefined;
-    let references: CodeReference[]=[],codeCalls: CodeCall[]=[];
+    let references: CodeReference[]=[],codeCalls: CodeCall[]=[],codeUses: CodeUse[]=[];
+    // The uses of a variable lit from its tooltip: each kind (Reads, Updates, Grows, Shrinks) switched on with its lines.
+    let finding:{name:string;kinds:Map<CodeUseKind,number[]>}|null=null;
     // The annotation of each annotated-expression span, and the rendered markdown of each entry's text.
     const docEntries=new WeakMap<HTMLElement,CodeAnnotation>(),docHtml=new Map<string,string>();
     // What the calls just made returned, by call key (codeRef.returnsExpr); empty when the run records none.
@@ -641,7 +643,9 @@ export function setupCodePanel(): void {
     const revealKey=(section:CodeSection)=>`${selected?.id}:${section.id}`;
     const isOpen=(section:CodeSection)=>{
         const key=revealKey(section);
-        return revealed.has(key)||(settings.structureMode==='outline'&&running.has(section.id)&&!shut.has(key));
+        // A section holding a found line (a variable's uses, from its tooltip) shows it too.
+        return revealed.has(key)||(settings.structureMode==='outline'&&running.has(section.id)&&!shut.has(key))
+            ||[...finding?.kinds.values()??[]].some(lines=>lines.some(line=>line>=section.from&&line<=section.to));
     };
     /** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
     function paintReveal(section:CodeSection) {
@@ -980,7 +984,7 @@ export function setupCodePanel(): void {
         if(hovered?.isConnected&&hovered.matches(':hover'))floatLine(hovered);
     }
     function open(file: CodeFile) {
-        selected=file;references=[];codeCalls=[];lastScopeKey='';lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
+        selected=file;references=[];codeCalls=[];codeUses=[];finding=null;lastScopeKey='';lastExecution='';lastLines=new Set();first=last=0;excerpt='';actions.hidden=targets.hidden=true;active=null;setCodeFocus(null);
         titleText.textContent=file.path+' · read only';body.replaceChildren();
         if(file.activeLineExpr)try{active=compileExpr(file.activeLineExpr);}catch{/* invalid expressions leave source readable */}
         file.source.split('\n').forEach((text,i)=>{
@@ -1008,7 +1012,7 @@ export function setupCodePanel(): void {
         tree.querySelectorAll<HTMLButtonElement>('[data-file]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.file===file.id)));
         renderStructure();
         refreshBinding();
-        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file){markSymbols(analysis.references);codeCalls=analysis.calls??[];markCalls(analysis.functions??[],codeCalls);scheduleInline();}});
+        void analyzeCode(file).then(analysis=>{if(analysis&&selected===file){markSymbols(analysis.references);codeCalls=analysis.calls??[];codeUses=analysis.uses??[];markCalls(analysis.functions??[],codeCalls);scheduleInline();}});
     }
     /** Wrap each annotated expression (a column range) in a span holding its annotation, for hover. */
     function markAnnotatedExpressions(file:CodeFile) {
@@ -1083,6 +1087,63 @@ export function setupCodePanel(): void {
         })};
     }
     /**
+     * Finding a variable's uses from its tooltip: Reads, Updates (any change, adding or removing included), Grows and
+     * Shrinks are switches, each lighting its lines in its own colour; several may be on at once. Switching one on
+     * scrolls its first line into view; Escape switches them all off, as does finding another variable's uses.
+     */
+    const FIND_COLORS:Record<CodeUseKind,string>={read:'#6ea8e0',update:'#e0b04a',grow:'#4fb39a',shrink:'#e0705a'};
+    const USE_FINDS:[CodeUseKind,string,string][]=[['read','Reads','read'],['update','Updates','update (any change, adding or removing included)'],
+        ['grow','Grows','grow (add to)'],['shrink','Shrinks','shrink (remove from)']];
+    function paintFind() {
+        body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
+            const line=Number(row.dataset.line),kinds=USE_FINDS.map(([kind])=>kind).filter(kind=>!!finding?.kinds.get(kind)?.includes(line));
+            for(const [kind] of USE_FINDS)row.classList.toggle(`code-find-${kind}`,kinds.includes(kind));
+            row.classList.toggle('code-found',kinds.length>0);
+            // One 3px bar per kind the line has, side by side in the gutter (the first shadow is drawn on top).
+            if(kinds.length){
+                row.style.setProperty('--find-tint',FIND_COLORS[kinds[0]!]);
+                row.style.setProperty('--find-bars',kinds.map((kind,k)=>`inset ${3*(k+1)}px 0 0 ${FIND_COLORS[kind]}`).join(', '));
+            }else{row.style.removeProperty('--find-tint');row.style.removeProperty('--find-bars');}
+        });
+        // With the code hidden under section titles, the sections holding the found lines open.
+        if(selected&&settings.structureMode!=='plain')codeSections(selected).forEach(paintReveal);
+    }
+    function toggleFind(name:string,kind:CodeUseKind,lines:number[]) {
+        if(finding?.name!==name)finding={name,kinds:new Map()};
+        if(finding.kinds.has(kind))finding.kinds.delete(kind);else finding.kinds.set(kind,lines);
+        if(!finding.kinds.size)finding=null;
+        paintFind();
+        const row=finding?.kinds.has(kind)?body.querySelector<HTMLElement>(`.code-line[data-line="${lines[0]}"]`):null;
+        if(row){
+            const at=row.getBoundingClientRect(),viewport=body.getBoundingClientRect();
+            if(at.top<viewport.top||at.bottom>viewport.bottom)body.scrollTop+=at.top-viewport.top-Math.max(0,(viewport.height-at.height)/2);
+        }
+    }
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&finding){finding=null;paintFind();}});
+    /** The tooltip's switches for the variable `name` as seen from `line`: one per kind of use, with its count. */
+    function usesMenu(name:string,line:number):CodeTooltipAsk|null {
+        const uses=usesAt(codeUses,name,line);
+        if(!uses)return null;
+        const on=(kind:CodeUseKind)=>finding?.name===name&&finding.kinds.has(kind);
+        const counts=USE_FINDS.map(([kind])=>uses[kind].length).join(',');
+        return {key:`uses:${name}:${uses.from}:${counts}:${USE_FINDS.filter(([kind])=>on(kind)).map(([kind])=>kind).join(',')}`,make:()=>{
+            const menu=document.createElement('div');menu.className='code-uses';
+            const caption=document.createElement('span');caption.className='code-uses-caption';caption.textContent='Find';menu.append(caption);
+            for(const [kind,label,verb] of USE_FINDS){
+                const lines=uses[kind],button=document.createElement('button');button.type='button';button.className=`code-uses-find code-uses-${kind}`;
+                button.textContent=`${label} ${lines.length}`;button.disabled=!lines.length;
+                button.title=lines.length?`Light the lines that ${verb} ${name}: ${lines.join(', ')}`:`Nothing here ${verb.split(' ')[0]}s ${name}`;
+                button.setAttribute('aria-pressed',String(on(kind)));
+                button.addEventListener('click',()=>{
+                    toggleFind(name,kind,lines);
+                    menu.querySelectorAll<HTMLButtonElement>('.code-uses-find').forEach((b,k)=>b.setAttribute('aria-pressed',String(on(USE_FINDS[k]![0]))));
+                });
+                menu.append(button);
+            }
+            return menu;
+        }};
+    }
+    /**
      * The tooltip for what the pointer is on, innermost first: a call (what it just returned), a def's name, a
      * variable or parameter (what the scene's labels say about it: a formula, else its value), each with its
      * explanation and a ✦ to have the tutor explain it; then a documented expression, then a documented block.
@@ -1104,7 +1165,8 @@ export function setupCodePanel(): void {
         }
         if(span){
             const name=span.dataset.key!,entry=docFor([name,span.dataset.root],line);
-            showCodeSymbolTooltip(span,symbolTex(name,line||undefined),entryHtml(entry),askAbout(`\`${name}\``,line,line,entry),name);return;
+            showCodeSymbolTooltip(span,symbolTex(name,line||undefined),entryHtml(entry),askAbout(`\`${name}\``,line,line,entry),name,
+                usesMenu(span.dataset.root??name,line));return;
         }
         const expr=settings.annotations?target.closest<HTMLElement>('.code-doc'):null,exprEntry=expr?docEntries.get(expr):undefined;
         if(expr&&exprEntry){

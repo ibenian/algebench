@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rowSymbolKeys, lineReferences, codeLanguage, symbolKey } from '/code-symbols.js';
+import { rowSymbolKeys, lineReferences, codeLanguage, symbolKey, usesAt } from '/code-symbols.js';
 import type { CodeReference } from '/code-symbols.js';
 
 test('a row names the expressions left of its value, merged marker names included', () => {
@@ -22,4 +22,16 @@ test('python files are analyzed by language or extension', () => {
     assert.equal(codeLanguage({path: 'patterns/a.py'}), 'python');
     assert.equal(codeLanguage({path: 'a.txt', language: 'Python'}), 'python');
     assert.equal(codeLanguage({path: 'a.ts'}), null);
+});
+
+test('a variable\'s uses are those of the function the line is in, else the module\'s', () => {
+    const none = { read: [], update: [], grow: [], shrink: [] };
+    const uses = [
+        { name: 'seen', from: 1, to: 8, ...none, grow: [7] },
+        { name: 'seen', from: 10, to: 17, ...none, grow: [16] },
+        { name: 'seen', from: 0, to: 0, ...none, read: [20] },
+    ];
+    assert.deepEqual(usesAt(uses, 'seen', 12)?.grow, [16]);
+    assert.deepEqual(usesAt(uses, 'seen', 20)?.read, [20]);
+    assert.equal(usesAt(uses, 'count', 12), null);
 });

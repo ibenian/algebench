@@ -19,7 +19,19 @@ export interface CodeReference {
  */
 export interface CodeFunction { name: string; line: number; col: number; endCol: number }
 export interface CodeCall extends CodeFunction { defLine: number; key?: string }
-export interface CodeAnalysis { variables: string[]; references: CodeReference[]; functions?: CodeFunction[]; calls?: CodeCall[]; error: string | null }
+/**
+ * Where a variable of one top-level function (lines from–to; 0–0 for the module's own code) is read, updated,
+ * grown and shrunk: `count.get(k)` reads, `count[k] = v` updates (and grows a dict), `stack.pop()` updates and shrinks.
+ */
+export interface CodeUse { name: string; from: number; to: number; read: number[]; update: number[]; grow: number[]; shrink: number[] }
+export type CodeUseKind = 'read' | 'update' | 'grow' | 'shrink';
+export interface CodeAnalysis { variables: string[]; references: CodeReference[]; functions?: CodeFunction[]; calls?: CodeCall[]; uses?: CodeUse[]; error: string | null }
+
+/** The uses of the variable `name` as seen from `line`: those of the function holding it, else the module's. */
+export function usesAt(uses: readonly CodeUse[], name: string, line: number): CodeUse | null {
+    return uses.find(u => u.name === name && u.from > 0 && u.from <= line && line <= u.to)
+        ?? uses.find(u => u.name === name && u.from === 0) ?? null;
+}
 
 const analyses = new Map<string, Promise<CodeAnalysis | null>>();
 

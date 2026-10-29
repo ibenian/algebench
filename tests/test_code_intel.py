@@ -87,3 +87,61 @@ def test_calls_link_to_the_def_they_reach_and_builtins_do_not():
 def test_a_call_is_keyed_by_its_whole_text_without_spaces():
     keys = [c["key"] for c in analyze_python(RECURSIVE)["calls"]]
     assert keys == ["backtrack(i+1)", "backtrack(0)"], "the key a trace's returns names the call's value by"
+
+
+def _uses_of(source: str, name: str) -> dict:
+    return next(u for u in analyze_python(source)["uses"] if u["name"] == name)
+
+
+def test_uses_say_where_a_dict_is_read_updated_and_grown():
+    source = "\n".join([
+        "def subarray_sum(nums, target):",
+        "    count = {0: 1}",
+        "    total = 0",
+        "    for num in nums:",
+        "        total += count.get(num - target, 0)",
+        "        count[num] = count.get(num, 0) + 1",
+        "    return total",
+    ])
+    count = _uses_of(source, "count")
+    assert (count["from"], count["to"]) == (1, 7)
+    assert count["read"] == [5, 6] and count["update"] == [2, 6] and count["grow"] == [6] and count["shrink"] == []
+    total = _uses_of(source, "total")
+    assert total["read"] == [5, 7] and total["update"] == [3, 5], "x += ... reads and updates x"
+
+
+def test_uses_of_lists_heaps_and_stacks():
+    source = "\n".join([
+        "import heapq",
+        "def f(xs):",
+        "    stack, heap, grid = [], [], [[0]]",
+        "    stack.append(1)",
+        "    heapq.heappush(heap, 2)",
+        "    grid[0][0] = 1",
+        "    while stack:",
+        "        stack.pop()",
+        "    del heap[0]",
+        "    heap.sort()",
+        "    return heapq.heappop(heap)",
+    ])
+    stack, heap, grid = (_uses_of(source, n) for n in ("stack", "heap", "grid"))
+    assert stack["grow"] == [4] and stack["shrink"] == [8] and stack["read"] == [7]
+    assert heap["grow"] == [5] and heap["shrink"] == [9, 11] and heap["update"] == [3, 5, 9, 10, 11]
+    assert grid["update"] == [3, 6] and grid["read"] == [], "setting a cell of a row updates the grid"
+    assert grid["grow"] == [], "assigning an item of a list never grows it"
+
+
+def test_each_top_level_function_has_its_own_uses_and_nested_ones_share_them():
+    source = "\n".join([
+        "def a():",
+        "    seen = set()",
+        "    def visit(u):",
+        "        seen.add(u)",
+        "    visit(0)",
+        "def b():",
+        "    seen = {}",
+        "    seen[1] = 2",
+    ])
+    first, second = (u for u in analyze_python(source)["uses"] if u["name"] == "seen")
+    assert (first["from"], first["grow"]) == (1, [4])
+    assert (second["from"], second["grow"]) == (6, [8])

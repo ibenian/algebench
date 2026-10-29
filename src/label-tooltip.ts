@@ -11,15 +11,18 @@ import type { Label3D } from '/labels.js';
 let tip: HTMLElement | null = null;
 let owner: Label3D | null = null;
 let shown = '';
-// A code tooltip with an Ask-AI button waits a moment before hiding, so the pointer can reach the button.
-let hideTimer: ReturnType<typeof setTimeout> | undefined, overTip = false;
+// A code tooltip with an Ask-AI button waits a moment before hiding, so the pointer can reach the button; it waits
+// the same before giving way to another one, as the pointer crossing the lines between the symbol and the tooltip
+// would otherwise replace it on the way.
+const GRACE_MS = 300;
+let hideTimer: ReturnType<typeof setTimeout> | undefined, switchTimer: ReturnType<typeof setTimeout> | undefined, overTip = false;
 
 function element(): HTMLElement {
     if (!tip?.isConnected) {
         tip = document.createElement('div');
         tip.className = 'graph-panel-tooltip label-row-tooltip';
         tip.setAttribute('role', 'tooltip');
-        tip.addEventListener('pointerenter', () => { overTip = true; clearTimeout(hideTimer); });
+        tip.addEventListener('pointerenter', () => { overTip = true; clearTimeout(hideTimer); clearTimeout(switchTimer); switchTimer = undefined; });
         tip.addEventListener('pointerleave', () => { overTip = false; if (tip?.classList.contains('code-doc-askable')) hideCode(); });
         document.body.append(tip);
         shown = '';
@@ -67,28 +70,40 @@ export interface CodeTooltipAsk { key: string; make: () => HTMLElement }
 function hideCode(): void { if (!owner) tip?.classList.remove('visible', 'code-doc-askable'); }
 
 /** Hide a code tooltip now, as its Ask-AI button is clicked. */
-export function hideCodeTooltip(): void { clearTimeout(hideTimer); hideTimer = undefined; overTip = false; hideCode(); }
+export function hideCodeTooltip(): void { clearTimeout(hideTimer); clearTimeout(switchTimer); hideTimer = switchTimer = undefined; overTip = false; hideCode(); }
 
 /**
  * The same tooltip for a code symbol: hovering a variable in the Code panel shows what the scene's labels say
  * about it (their formula, or their value), just under the symbol, and under that the file's documentation for it
  * (docHtml, rendered markdown) with an Ask-AI button (ask). A tooltip with only the button shows the symbol's name
  * (title). Nothing to show hides it. The anchor may be a region (a block of lines): the tooltip goes under or over
- * all of it, never on it.
+ * all of it, never on it. A menu of actions on the symbol (menu) goes under it all.
  */
 export function showCodeSymbolTooltip(anchor: { getBoundingClientRect(): DOMRect } | null, tex: string | null, docHtml: string | null = null,
-    ask: CodeTooltipAsk | null = null, title: string | null = null): void {
+    ask: CodeTooltipAsk | null = null, title: string | null = null, menu: CodeTooltipAsk | null = null): void {
+    clearTimeout(switchTimer); switchTimer = undefined;
+    const lingers = !!tip?.classList.contains('visible') && tip.classList.contains('code-doc-askable');
     if (!anchor || (!tex && !docHtml && !ask)) {
-        if (tip?.classList.contains('code-doc-askable')) {
-            if (hideTimer === undefined && !overTip) hideTimer = setTimeout(() => { hideTimer = undefined; if (!overTip) hideCode(); }, 300);
+        if (lingers) {
+            if (hideTimer === undefined && !overTip) hideTimer = setTimeout(() => { hideTimer = undefined; if (!overTip) hideCode(); }, GRACE_MS);
         } else hideCode();
         return;
     }
+    const key = docHtml || ask ? `${tex ?? ''}\0${docHtml ?? ''}\0${ask?.key ?? ''}\0${title ?? ''}\0${menu?.key ?? ''}` : null;
+    // Another symbol while one with buttons is open: shown only if the pointer stays on it, not on its way to the open one.
+    if (lingers && key !== shown) {
+        if (!overTip) switchTimer = setTimeout(() => { switchTimer = undefined; if (!overTip) placeCode(anchor, tex, docHtml, ask, title, menu, key); }, GRACE_MS);
+        return;
+    }
+    placeCode(anchor, tex, docHtml, ask, title, menu, key);
+}
+
+function placeCode(anchor: { getBoundingClientRect(): DOMRect }, tex: string | null, docHtml: string | null, ask: CodeTooltipAsk | null,
+    title: string | null, menu: CodeTooltipAsk | null, key: string | null): void {
     clearTimeout(hideTimer); hideTimer = undefined;
     owner = null;
     const el = element();
-    if (docHtml || ask) {
-        const key = `${tex ?? ''}\0${docHtml ?? ''}\0${ask?.key ?? ''}\0${title ?? ''}`;
+    if (key !== null) {
         if (key !== shown) {
             el.replaceChildren();
             if (tex) { const math = document.createElement('div'); el.append(math); renderInto(tex, math); }
@@ -98,6 +113,8 @@ export function showCodeSymbolTooltip(anchor: { getBoundingClientRect(): DOMRect
             // The ✦ floats at the top right of the explanation, the text wrapping round it.
             if (ask) doc.prepend(ask.make());
             el.append(doc);
+            // Actions on the symbol (finding its uses), under its explanation.
+            if (menu) el.append(menu.make());
             shown = key;
         }
     } else render(tex!);

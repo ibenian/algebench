@@ -5994,6 +5994,20 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-doc-tooltip .katex-display, .code-doc-tooltip .katex-display > .katex { text-align: left; }
 .code-doc-tooltip .ai-ask-btn.code-doc-ask { float: right; opacity: 1; width: 18px; height: 18px; margin: 0 0 2px 8px; top: 0; }
 .code-doc-tooltip .code-doc-name { font-family: var(--font-mono, monospace); }
+/* A variable's finds, under its explanation: Reads / Updates / Grows / Shrinks, each with its count. */
+.code-doc-tooltip .code-uses { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.code-uses-caption { font: 11px var(--font-body); opacity: .7; align-self: center; margin-right: 2px; }
+.code-uses-find { font: 11px var(--font-body); padding: 2px 7px; border-radius: 10px; cursor: pointer; color: inherit;
+    background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.code-uses-find:hover:not(:disabled) { border-color: var(--accent-color); }
+.code-uses-find:disabled { opacity: .4; cursor: default; }
+/* Each kind of use has its colour: the switch when on, and the bar it puts on its lines. */
+.code-uses-read { --find: #6ea8e0; } .code-uses-update { --find: #e0b04a; } .code-uses-grow { --find: #4fb39a; } .code-uses-shrink { --find: #e0705a; }
+.code-uses-find::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; border: 1px solid var(--find); vertical-align: 0; }
+.code-uses-find[aria-pressed="true"] { background: color-mix(in srgb, var(--find) 28%, transparent); border-color: var(--find); }
+.code-uses-find[aria-pressed="true"]::before { background: var(--find); }
+/* Lines a find lit: a tint, and in the gutter one 3px bar per kind of use the line has (code-panel.ts sets them). */
+.code-line.code-found { background: color-mix(in srgb, var(--find-tint) 14%, transparent); box-shadow: var(--find-bars); }
 /* Only a ✦ and nothing above: no rule to separate. */
 .code-doc-tooltip > .code-doc-text:only-child { margin-top: 0; padding-top: 0; border-top: 0; }
 /* An unprompted formula beside a recalculated row: the tooltip, with a soft accent edge. */
@@ -6110,7 +6124,7 @@ body:has(.push-array) #legend { display: none; }
 .cp-mark { border-left-color: transparent !important; }
 .cp-mark.cp-in-section { border-left-color: var(--section-tone) !important; }
 .code-blur-inactive .code-line.code-inactive code { filter: blur(3px); transition: filter .2s; }
-.code-blur-inactive .code-line.code-inactive:hover code { filter: none; }
+.code-blur-inactive .code-line.code-inactive:hover code, .code-blur-inactive .code-line.code-inactive.code-found code { filter: none; }
 .cp-editor { flex: 1 1 80px; min-height: 80px; overflow: auto; display: flex; align-items: flex-start; border: 1px solid var(--border-color); border-radius: 6px;
     background: color-mix(in srgb, var(--page-bg) 60%, var(--panel-bg)); font: 12px/1.9 ui-monospace, monospace; }
 .cp-editor:focus-within { border-color: var(--accent-color); }

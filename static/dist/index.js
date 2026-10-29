@@ -921,6 +921,10 @@ function labelAskMessage(o) {
 }
 //#endregion
 //#region src/code-symbols.ts
+/** The uses of the variable `name` as seen from `line`: those of the function holding it, else the module's. */
+function usesAt(uses, name, line) {
+	return uses.find((u) => u.name === name && u.from > 0 && u.from <= line && line <= u.to) ?? uses.find((u) => u.name === name && u.from === 0) ?? null;
+}
 var analyses = /* @__PURE__ */ new Map();
 /** The analyzer language for a file, or null when there is none for it. */
 function codeLanguage(file) {
@@ -1979,7 +1983,9 @@ function ensureWireSvg(record, container) {
 var tip = null;
 var owner = null;
 var shown = "";
+var GRACE_MS = 300;
 var hideTimer;
+var switchTimer;
 var overTip = false;
 function element() {
 	if (!tip?.isConnected) {
@@ -1989,6 +1995,8 @@ function element() {
 		tip.addEventListener("pointerenter", () => {
 			overTip = true;
 			clearTimeout(hideTimer);
+			clearTimeout(switchTimer);
+			switchTimer = void 0;
 		});
 		tip.addEventListener("pointerleave", () => {
 			overTip = false;
@@ -2044,7 +2052,8 @@ function hideCode() {
 /** Hide a code tooltip now, as its Ask-AI button is clicked. */
 function hideCodeTooltip() {
 	clearTimeout(hideTimer);
-	hideTimer = void 0;
+	clearTimeout(switchTimer);
+	hideTimer = switchTimer = void 0;
 	overTip = false;
 	hideCode();
 }
@@ -2053,24 +2062,37 @@ function hideCodeTooltip() {
 * about it (their formula, or their value), just under the symbol, and under that the file's documentation for it
 * (docHtml, rendered markdown) with an Ask-AI button (ask). A tooltip with only the button shows the symbol's name
 * (title). Nothing to show hides it. The anchor may be a region (a block of lines): the tooltip goes under or over
-* all of it, never on it.
+* all of it, never on it. A menu of actions on the symbol (menu) goes under it all.
 */
-function showCodeSymbolTooltip(anchor, tex, docHtml = null, ask = null, title = null) {
+function showCodeSymbolTooltip(anchor, tex, docHtml = null, ask = null, title = null, menu = null) {
+	clearTimeout(switchTimer);
+	switchTimer = void 0;
+	const lingers = !!tip?.classList.contains("visible") && tip.classList.contains("code-doc-askable");
 	if (!anchor || !tex && !docHtml && !ask) {
-		if (tip?.classList.contains("code-doc-askable")) {
+		if (lingers) {
 			if (hideTimer === void 0 && !overTip) hideTimer = setTimeout(() => {
 				hideTimer = void 0;
 				if (!overTip) hideCode();
-			}, 300);
+			}, GRACE_MS);
 		} else hideCode();
 		return;
 	}
+	const key = docHtml || ask ? `${tex ?? ""}\0${docHtml ?? ""}\0${ask?.key ?? ""}\0${title ?? ""}\0${menu?.key ?? ""}` : null;
+	if (lingers && key !== shown) {
+		if (!overTip) switchTimer = setTimeout(() => {
+			switchTimer = void 0;
+			if (!overTip) placeCode(anchor, tex, docHtml, ask, title, menu, key);
+		}, GRACE_MS);
+		return;
+	}
+	placeCode(anchor, tex, docHtml, ask, title, menu, key);
+}
+function placeCode(anchor, tex, docHtml, ask, title, menu, key) {
 	clearTimeout(hideTimer);
 	hideTimer = void 0;
 	owner = null;
 	const el = element();
-	if (docHtml || ask) {
-		const key = `${tex ?? ""}\0${docHtml ?? ""}\0${ask?.key ?? ""}\0${title ?? ""}`;
+	if (key !== null) {
 		if (key !== shown) {
 			el.replaceChildren();
 			if (tex) {
@@ -2089,6 +2111,7 @@ function showCodeSymbolTooltip(anchor, tex, docHtml = null, ask = null, title = 
 			}
 			if (ask) doc.prepend(ask.make());
 			el.append(doc);
+			if (menu) el.append(menu.make());
 			shown = key;
 		}
 	} else render$1(tex);
@@ -26643,7 +26666,8 @@ function setupCodePanel() {
 	const selectionLabel = document.createElement("span");
 	let lesson, files = [], selected;
 	let first = 0, last = 0, excerpt = "", active = null, followed;
-	let references = [], codeCalls = [];
+	let references = [], codeCalls = [], codeUses = [];
+	let finding = null;
 	const docEntries = /* @__PURE__ */ new WeakMap(), docHtml = /* @__PURE__ */ new Map();
 	let returns = /* @__PURE__ */ new Map();
 	const settings = loadSettings();
@@ -27461,7 +27485,7 @@ function setupCodePanel() {
 	const revealKey = (section) => `${selected?.id}:${section.id}`;
 	const isOpen = (section) => {
 		const key = revealKey(section);
-		return revealed.has(key) || settings.structureMode === "outline" && running.has(section.id) && !shut.has(key);
+		return revealed.has(key) || settings.structureMode === "outline" && running.has(section.id) && !shut.has(key) || [...finding?.kinds.values() ?? []].some((lines) => lines.some((line) => line >= section.from && line <= section.to));
 	};
 	/** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
 	function paintReveal(section) {
@@ -27960,6 +27984,8 @@ function setupCodePanel() {
 		selected = file;
 		references = [];
 		codeCalls = [];
+		codeUses = [];
+		finding = null;
 		lastScopeKey = "";
 		lastExecution = "";
 		lastLines = /* @__PURE__ */ new Set();
@@ -28012,6 +28038,7 @@ function setupCodePanel() {
 			if (analysis && selected === file) {
 				markSymbols(analysis.references);
 				codeCalls = analysis.calls ?? [];
+				codeUses = analysis.uses ?? [];
 				markCalls(analysis.functions ?? [], codeCalls);
 				scheduleInline();
 			}
@@ -28105,6 +28132,108 @@ function setupCodePanel() {
 		};
 	}
 	/**
+	* Finding a variable's uses from its tooltip: Reads, Updates (any change, adding or removing included), Grows and
+	* Shrinks are switches, each lighting its lines in its own colour; several may be on at once. Switching one on
+	* scrolls its first line into view; Escape switches them all off, as does finding another variable's uses.
+	*/
+	const FIND_COLORS = {
+		read: "#6ea8e0",
+		update: "#e0b04a",
+		grow: "#4fb39a",
+		shrink: "#e0705a"
+	};
+	const USE_FINDS = [
+		[
+			"read",
+			"Reads",
+			"read"
+		],
+		[
+			"update",
+			"Updates",
+			"update (any change, adding or removing included)"
+		],
+		[
+			"grow",
+			"Grows",
+			"grow (add to)"
+		],
+		[
+			"shrink",
+			"Shrinks",
+			"shrink (remove from)"
+		]
+	];
+	function paintFind() {
+		body.querySelectorAll(".code-line").forEach((row) => {
+			const line = Number(row.dataset.line), kinds = USE_FINDS.map(([kind]) => kind).filter((kind) => !!finding?.kinds.get(kind)?.includes(line));
+			for (const [kind] of USE_FINDS) row.classList.toggle(`code-find-${kind}`, kinds.includes(kind));
+			row.classList.toggle("code-found", kinds.length > 0);
+			if (kinds.length) {
+				row.style.setProperty("--find-tint", FIND_COLORS[kinds[0]]);
+				row.style.setProperty("--find-bars", kinds.map((kind, k) => `inset ${3 * (k + 1)}px 0 0 ${FIND_COLORS[kind]}`).join(", "));
+			} else {
+				row.style.removeProperty("--find-tint");
+				row.style.removeProperty("--find-bars");
+			}
+		});
+		if (selected && settings.structureMode !== "plain") codeSections(selected).forEach(paintReveal);
+	}
+	function toggleFind(name, kind, lines) {
+		if (finding?.name !== name) finding = {
+			name,
+			kinds: /* @__PURE__ */ new Map()
+		};
+		if (finding.kinds.has(kind)) finding.kinds.delete(kind);
+		else finding.kinds.set(kind, lines);
+		if (!finding.kinds.size) finding = null;
+		paintFind();
+		const row = finding?.kinds.has(kind) ? body.querySelector(`.code-line[data-line="${lines[0]}"]`) : null;
+		if (row) {
+			const at = row.getBoundingClientRect(), viewport = body.getBoundingClientRect();
+			if (at.top < viewport.top || at.bottom > viewport.bottom) body.scrollTop += at.top - viewport.top - Math.max(0, (viewport.height - at.height) / 2);
+		}
+	}
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && finding) {
+			finding = null;
+			paintFind();
+		}
+	});
+	/** The tooltip's switches for the variable `name` as seen from `line`: one per kind of use, with its count. */
+	function usesMenu(name, line) {
+		const uses = usesAt(codeUses, name, line);
+		if (!uses) return null;
+		const on = (kind) => finding?.name === name && finding.kinds.has(kind);
+		const counts = USE_FINDS.map(([kind]) => uses[kind].length).join(",");
+		return {
+			key: `uses:${name}:${uses.from}:${counts}:${USE_FINDS.filter(([kind]) => on(kind)).map(([kind]) => kind).join(",")}`,
+			make: () => {
+				const menu = document.createElement("div");
+				menu.className = "code-uses";
+				const caption = document.createElement("span");
+				caption.className = "code-uses-caption";
+				caption.textContent = "Find";
+				menu.append(caption);
+				for (const [kind, label, verb] of USE_FINDS) {
+					const lines = uses[kind], button = document.createElement("button");
+					button.type = "button";
+					button.className = `code-uses-find code-uses-${kind}`;
+					button.textContent = `${label} ${lines.length}`;
+					button.disabled = !lines.length;
+					button.title = lines.length ? `Light the lines that ${verb} ${name}: ${lines.join(", ")}` : `Nothing here ${verb.split(" ")[0]}s ${name}`;
+					button.setAttribute("aria-pressed", String(on(kind)));
+					button.addEventListener("click", () => {
+						toggleFind(name, kind, lines);
+						menu.querySelectorAll(".code-uses-find").forEach((b, k) => b.setAttribute("aria-pressed", String(on(USE_FINDS[k][0]))));
+					});
+					menu.append(button);
+				}
+				return menu;
+			}
+		};
+	}
+	/**
 	* The tooltip for what the pointer is on, innermost first: a call (what it just returned), a def's name, a
 	* variable or parameter (what the scene's labels say about it: a formula, else its value), each with its
 	* explanation and a ✦ to have the tutor explain it; then a documented expression, then a documented block.
@@ -28128,7 +28257,7 @@ function setupCodePanel() {
 		}
 		if (span) {
 			const name = span.dataset.key, entry = docFor([name, span.dataset.root], line);
-			showCodeSymbolTooltip(span, symbolTex(name, line || void 0), entryHtml(entry), askAbout(`\`${name}\``, line, line, entry), name);
+			showCodeSymbolTooltip(span, symbolTex(name, line || void 0), entryHtml(entry), askAbout(`\`${name}\``, line, line, entry), name, usesMenu(span.dataset.root ?? name, line));
 			return;
 		}
 		const expr = settings.annotations ? target.closest(".code-doc") : null, exprEntry = expr ? docEntries.get(expr) : void 0;
