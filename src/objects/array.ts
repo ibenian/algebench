@@ -201,7 +201,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const leftTitle=el.labelSide==='left'&&el.arrayLayout!=='vertical';
     const titlePosition=():[number,number,number]=>{
         if(leftTitle&&!el.labelPosition){
-            const c=centre(0),gap=pitch*.39+.22;
+            // A dict column's keys sit left of its cells: the title goes left of them too.
+            const c=centre(0),gap=pitch*.39+.22+(keysLeft?pitch*.78+.12:0);
             return [c[0]-gap-(planeText?titleWidth/2:0),c[1],c[2]+.14];
         }
         const at=el.labelPosition??titleCentre().map((value,i)=>value+(el.labelOffset??[0,.88,0])[i]!);

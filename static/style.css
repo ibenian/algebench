@@ -5616,7 +5616,7 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 /* Display-only lesson source: browsing does not navigate the lesson. */
 #dock-tab-code { overflow: hidden; }
 /* Over the code: the files or the execution tree, switched by tabs; its height is what the edge below resizes. */
-.code-top-pane { flex: 0 1 35%; min-height: 90px; display: flex; flex-direction: column; border-bottom: 1px solid var(--border-color); overflow: hidden; }
+.code-top-pane { flex: 0 1 30%; min-height: 90px; display: flex; flex-direction: column; border-bottom: 1px solid var(--border-color); overflow: hidden; }
 .code-top-switch { display: flex; gap: 2px; padding: 6px 10px 0; flex: 0 0 auto; }
 .code-top-switch button { padding: 3px 9px; font: 11px var(--font-body); color: var(--text-color); background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; opacity: .6; }
 .code-top-switch button:hover { opacity: .9; }

@@ -448,6 +448,8 @@ export function hideElementById(id: string): void {
         for (const lbl of t.labels) lbl.el.style.display = 'none';
         for (const entry of t.pointNodes) { try { entry.node!.set('visible', false); } catch(e) {} }
         if (t.group) { try { t.group.set('visible', false); } catch(e) {} }
+        // Its labels count as shown until now: what reads them (the Code panel's inline values) reads again.
+        if (t.labels.length) window.dispatchEvent(new CustomEvent('algebench:labelshidden'));
     }, cancelled);
     // Hide arrow cones immediately to prevent animated orphans
     for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }

@@ -716,12 +716,12 @@ export const HASH_MAP_SOURCE = `def two_sum(nums, target):
         seen[num] = i
     return []
 
-def subarray_sum(nums, k):
+def subarray_sum(nums, target):
     count = {0: 1}
     prefix = total = 0
     for num in nums:
         prefix += num
-        total += count.get(prefix - k, 0)
+        total += count.get(prefix - target, 0)
         count[prefix] = count.get(prefix, 0) + 1
     return total`;
 /** The 1-based line of HASH_MAP_SOURCE containing `text`, searching from the function `fn` on. */
@@ -766,36 +766,36 @@ export function twoSumTrace(nums: number[], target: number) {
 }
 
 /**
- * Subarrays summing to k, with prefix sums and a dict of how often each prefix has appeared: a subarray ending
- * here sums to k exactly when an earlier prefix equals prefix − k. Per frame: i, num, prefix, need (prefix − k),
+ * Subarrays summing to target, with prefix sums and a dict of how often each prefix has appeared: a subarray ending
+ * here sums to target exactly when an earlier prefix equals prefix − target. Per frame: i, num, prefix, need (prefix − target), target,
  * got (count.get(need, 0); −1 before the lookup), total; keys and vals, the dict's entries; look, the entry
  * position read or written (−1 none); gotText, the lookup's label text (in the data: an expression quoting
  * "count.get(" would read as JavaScript).
  */
-export function subarraySumTrace(nums: number[], k: number) {
+export function subarraySumTrace(nums: number[], target: number) {
     const L = (t: string) => hashLine('subarray_sum', t);
-    const v = { i: -1, num: 0, prefix: 0, need: 0, got: -1, total: 0, keys: [0] as number[], vals: [1] as number[], look: -1, gotText: 'count.get(prefix - k, 0): —' };
+    const v = { target, i: -1, num: 0, prefix: 0, need: 0, got: -1, total: 0, keys: [0] as number[], vals: [1] as number[], look: -1, gotText: 'count.get(prefix - target, 0): —' };
     const { trace, emit } = recorder(v);
     emit(L('count = {0: 1}'), 'count = {0: 1}: the empty prefix, before any number, has sum 0 once.');
     emit(L('prefix = total = 0'), 'prefix and total start at 0.');
     for (let i = 0; i < nums.length; i++) {
         const num = nums[i]!;
-        v.i = i; v.num = num; v.got = -1; v.look = -1; v.gotText = 'count.get(prefix - k, 0): —';
+        v.i = i; v.num = num; v.got = -1; v.look = -1; v.gotText = 'count.get(prefix - target, 0): —';
         emit(L('for num in nums'), `num = ${num}.`);
-        v.prefix += num; v.need = v.prefix - k;
+        v.prefix += num; v.need = v.prefix - target;
         emit(L('prefix += num'), `prefix = ${v.prefix}: the sum of everything up to here.`);
         const at = v.keys.indexOf(v.need);
         v.got = at >= 0 ? v.vals[at]! : 0; v.look = at; v.total += v.got; v.gotText = `count.get(${v.need}, 0) = ${v.got}`;
         emit(L('total += count.get'), at >= 0
-            ? `prefix − k = ${v.need} was seen ${v.got} time${v.got === 1 ? '' : 's'}: that many subarrays ending here sum to ${k}. total = ${v.total}.`
-            : `prefix − k = ${v.need} was never seen: no subarray ending here sums to ${k}.`);
+            ? `prefix − target = ${v.need} was seen ${v.got} time${v.got === 1 ? '' : 's'}: that many subarrays ending here sum to ${target}. total = ${v.total}.`
+            : `prefix − target = ${v.need} was never seen: no subarray ending here sums to ${target}.`);
         const own = v.keys.indexOf(v.prefix);
         if (own >= 0) { v.vals = v.vals.map((c, j) => j === own ? c + 1 : c); v.look = own; }
         else { v.keys = [...v.keys, v.prefix]; v.vals = [...v.vals, 1]; v.look = v.keys.length - 1; }
         emit(L('count[prefix] ='), `count[${v.prefix}] = ${v.vals[v.look]}: one more prefix with sum ${v.prefix}.`);
     }
     v.i = -1; v.look = -1;
-    emit(L('return total'), `${v.total} subarrays sum to ${k}, found in one pass: O(n) time, O(n) space for the dict.`, 'Done');
+    emit(L('return total'), `${v.total} subarrays sum to ${target}, found in one pass: O(n) time, O(n) space for the dict.`, 'Done');
     return trace;
 }
 

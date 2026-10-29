@@ -1202,6 +1202,8 @@ export function setupCodePanel(): void {
         }
     });
     window.addEventListener('algebench:navchange',refresh);
+    // A step's removed labels fade out before they hide: until then their values would still show inline.
+    window.addEventListener('algebench:labelshidden',scheduleInline);
     window.addEventListener('algebench:sliderchange',()=>refreshBinding());
     paintBlur();
     refresh();

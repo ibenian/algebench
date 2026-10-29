@@ -54,7 +54,7 @@
       "id": "hash-map",
       "path": "patterns/hash_map.py",
       "language": "python",
-      "source": "def two_sum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        other = target - num\n        if other in seen:\n            return [seen[other], i]\n        seen[num] = i\n    return []\n\ndef subarray_sum(nums, k):\n    count = {0: 1}\n    prefix = total = 0\n    for num in nums:\n        prefix += num\n        total += count.get(prefix - k, 0)\n        count[prefix] = count.get(prefix, 0) + 1\n    return total",
+      "source": "def two_sum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        other = target - num\n        if other in seen:\n            return [seen[other], i]\n        seen[num] = i\n    return []\n\ndef subarray_sum(nums, target):\n    count = {0: 1}\n    prefix = total = 0\n    for num in nums:\n        prefix += num\n        total += count.get(prefix - target, 0)\n        count[prefix] = count.get(prefix, 0) + 1\n    return total",
       "sections": [
         {"id": "ts-init", "title": "Nothing seen yet", "from": 1, "to": 2, "hint": "seen will map each number already passed to its index; it starts empty."},
         {"id": "ts-need", "title": "Walk once; name the partner", "from": 3, "to": 4, "hint": "For each number, the only partner that works is target − num."},
@@ -63,13 +63,13 @@
         {"id": "ts-none", "title": "No pair", "from": 8, "to": 9, "hint": "The loop ended without a hit: no two numbers sum to target."},
         {"id": "ss-init", "title": "Count the empty prefix once", "from": 10, "to": 12, "hint": "count starts as {0: 1}: the empty prefix, so a subarray starting at index 0 can be counted.", "prompt": "Explain why count starts with {0: 1} instead of empty, using a subarray that starts at index 0."},
         {"id": "ss-step", "title": "Extend the running sum", "from": 13, "to": 14, "hint": "prefix is the sum of every number up to and including this one."},
-        {"id": "ss-count", "title": "Count the subarrays ending here", "from": 15, "to": 15, "hint": "Each earlier prefix equal to prefix − k starts a subarray that ends here and sums to k.", "prompt": "Explain why the number of earlier prefixes equal to prefix − k is the number of subarrays ending here that sum to k."},
+        {"id": "ss-count", "title": "Count the subarrays ending here", "from": 15, "to": 15, "hint": "Each earlier prefix equal to prefix − target starts a subarray that ends here and sums to target.", "prompt": "Explain why the number of earlier prefixes equal to prefix − target is the number of subarrays ending here that sum to target."},
         {"id": "ss-record", "title": "Then record this prefix", "from": 16, "to": 16, "hint": "Add this prefix sum to count, after counting, so a subarray is never empty."},
-        {"id": "ss-return", "title": "The total", "from": 17, "to": 17, "hint": "total counted every subarray summing to k, once each."}
+        {"id": "ss-return", "title": "The total", "from": 17, "to": 17, "hint": "total counted every subarray summing to target, once each."}
       ],
       "annotations": [
         {"name": "two_sum", "text": "`two_sum(nums, target)` returns the indices `[a, b]` of two numbers that add up to `target`, or `[]` when none do. One pass, O(n) time and space."},
-        {"name": "subarray_sum", "text": "`subarray_sum(nums, k)` counts the contiguous subarrays of `nums` whose sum is `k`. One pass with a dict of prefix sums; works with negative numbers."},
+        {"name": "subarray_sum", "text": "`subarray_sum(nums, target)` counts the contiguous subarrays of `nums` whose sum is `target`. One pass with a dict of prefix sums; works with negative numbers."},
         {"name": "nums", "text": "The input numbers, read once from left to right."},
         {"name": "target", "text": "The sum the two numbers must reach."},
         {"name": "seen", "text": "Each number already passed, mapped to its index: `seen[value] = index`. Looking a value up costs O(1) on average."},
@@ -77,15 +77,15 @@
         {"name": "num", "text": "The current number, `nums[i]`."},
         {"name": "other", "text": "The other number of the pair, the one `num` needs: `target − num`. Only this value can complete the pair."},
         {"name": "num", "line": 10, "endLine": 17, "text": "The next number of `nums`."},
-        {"name": "k", "text": "The sum a subarray must have to be counted."},
+        {"name": "target", "line": 10, "endLine": 17, "text": "The sum a subarray must have to be counted."},
         {"name": "count", "text": "How many times each prefix sum has appeared so far: `count[p]` is the number of earlier positions whose running sum was `p`. Starts as `{0: 1}` for the empty prefix."},
         {"name": "prefix", "text": "The running sum: every number up to and including the current one."},
-        {"name": "total", "text": "The number of subarrays summing to `k` found so far, the answer."},
+        {"name": "total", "text": "The number of subarrays summing to `target` found so far, the answer."},
         {"line": 4, "col": 16, "endCol": 28, "text": "The partner `num` needs: the one value that, added to `num`, gives `target`."},
         {"line": 5, "col": 11, "endCol": 24, "text": "Was the partner among the numbers already passed? A dict answers in O(1) on average, instead of a scan."},
         {"line": 6, "col": 19, "endCol": 35, "text": "The partner's index, from `seen`, then this number's: the earlier index comes first."},
         {"line": 11, "col": 12, "endCol": 18, "text": "The empty prefix, sum 0, seen once: it lets a subarray that starts at index 0 be counted."},
-        {"line": 15, "col": 17, "endCol": 41, "text": "How many earlier prefixes equal `prefix − k`. Each one starts a subarray ending here whose sum is `prefix − (prefix − k) = k`; 0 when there are none."},
+        {"line": 15, "col": 17, "endCol": 46, "text": "How many earlier prefixes equal `prefix − target`. Each one starts a subarray ending here whose sum is `prefix − (prefix − target) = target`; 0 when there are none."},
         {"line": 16, "col": 24, "endCol": 48, "text": "One more occurrence of this prefix sum, counting from 0 if it is new."},
         {"line": 5, "endLine": 7, "text": "Look up first, then record. Checking before recording means a number never pairs with itself, and every pair is found when its second number arrives."},
         {"line": 14, "endLine": 16, "text": "Extend the running sum, count the subarrays ending here, then record the new prefix sum for the numbers still to come."}
@@ -112,23 +112,23 @@
         {"line": 12, "scene": "hash-map", "step": "subarray-sum", "snapshot": 1, "label": "Subarray sum · prefix and total start at 0."},
         {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 2, "label": "Subarray sum · num = 1."},
         {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 3, "label": "Subarray sum · prefix = 1: the sum of everything up to here."},
-        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 4, "label": "Subarray sum · prefix − k = -2 was never seen: no subarray ending here sums to 3."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 4, "label": "Subarray sum · prefix − target = -2 was never seen: no subarray ending here sums to 3."},
         {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 5, "label": "Subarray sum · count[1] = 1: one more prefix with sum 1."},
         {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 6, "label": "Subarray sum · num = 2."},
         {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 7, "label": "Subarray sum · prefix = 3: the sum of everything up to here."},
-        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 8, "label": "Subarray sum · prefix − k = 0 was seen 1 time: that many subarrays ending here sum to 3. total = 1."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 8, "label": "Subarray sum · prefix − target = 0 was seen 1 time: that many subarrays ending here sum to 3. total = 1."},
         {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 9, "label": "Subarray sum · count[3] = 1: one more prefix with sum 3."},
         {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 10, "label": "Subarray sum · num = 1."},
         {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 11, "label": "Subarray sum · prefix = 4: the sum of everything up to here."},
-        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 12, "label": "Subarray sum · prefix − k = 1 was seen 1 time: that many subarrays ending here sum to 3. total = 2."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 12, "label": "Subarray sum · prefix − target = 1 was seen 1 time: that many subarrays ending here sum to 3. total = 2."},
         {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 13, "label": "Subarray sum · count[4] = 1: one more prefix with sum 4."},
         {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 14, "label": "Subarray sum · num = 2."},
         {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 15, "label": "Subarray sum · prefix = 6: the sum of everything up to here."},
-        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 16, "label": "Subarray sum · prefix − k = 3 was seen 1 time: that many subarrays ending here sum to 3. total = 3."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 16, "label": "Subarray sum · prefix − target = 3 was seen 1 time: that many subarrays ending here sum to 3. total = 3."},
         {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 17, "label": "Subarray sum · count[6] = 1: one more prefix with sum 6."},
         {"line": 13, "scene": "hash-map", "step": "subarray-sum", "snapshot": 18, "label": "Subarray sum · num = 1."},
         {"line": 14, "scene": "hash-map", "step": "subarray-sum", "snapshot": 19, "label": "Subarray sum · prefix = 7: the sum of everything up to here."},
-        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 20, "label": "Subarray sum · prefix − k = 4 was seen 1 time: that many subarrays ending here sum to 3. total = 4."},
+        {"line": 15, "scene": "hash-map", "step": "subarray-sum", "snapshot": 20, "label": "Subarray sum · prefix − target = 4 was seen 1 time: that many subarrays ending here sum to 3. total = 4."},
         {"line": 16, "scene": "hash-map", "step": "subarray-sum", "snapshot": 21, "label": "Subarray sum · count[7] = 1: one more prefix with sum 7."},
         {"line": 17, "scene": "hash-map", "step": "subarray-sum", "snapshot": 22, "label": "Subarray sum · 4 subarrays sum to 3, found in one pass: O(n) time, O(n) space for the dict."}
       ]
@@ -3035,7 +3035,7 @@
             "nums": [4, 11, 7, 2, 15, 5],
             "target": 9,
             "sums": [1, 2, 1, 2, 1],
-            "k": 3
+            "sumTarget": 3
           }
         ],
         "trace": [
@@ -3267,6 +3267,7 @@
         ],
         "hm_sub": [
           {
+            "target": 3,
             "i": -1,
             "num": 0,
             "prefix": 0,
@@ -3276,13 +3277,14 @@
             "keys": [0],
             "vals": [1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 11,
             "message": "count = {0: 1}: the empty prefix, before any number, has sum 0 once.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": -1,
             "num": 0,
             "prefix": 0,
@@ -3292,13 +3294,14 @@
             "keys": [0],
             "vals": [1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 12,
             "message": "prefix and total start at 0.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 0,
             "num": 1,
             "prefix": 0,
@@ -3308,13 +3311,14 @@
             "keys": [0],
             "vals": [1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 13,
             "message": "num = 1.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 0,
             "num": 1,
             "prefix": 1,
@@ -3324,13 +3328,14 @@
             "keys": [0],
             "vals": [1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 14,
             "message": "prefix = 1: the sum of everything up to here.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 0,
             "num": 1,
             "prefix": 1,
@@ -3342,11 +3347,12 @@
             "look": -1,
             "gotText": "count.get(-2, 0) = 0",
             "line": 15,
-            "message": "prefix − k = -2 was never seen: no subarray ending here sums to 3.",
+            "message": "prefix − target = -2 was never seen: no subarray ending here sums to 3.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 0,
             "num": 1,
             "prefix": 1,
@@ -3363,6 +3369,7 @@
             "running": 1
           },
           {
+            "target": 3,
             "i": 1,
             "num": 2,
             "prefix": 1,
@@ -3372,13 +3379,14 @@
             "keys": [0, 1],
             "vals": [1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 13,
             "message": "num = 2.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 1,
             "num": 2,
             "prefix": 3,
@@ -3388,13 +3396,14 @@
             "keys": [0, 1],
             "vals": [1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 14,
             "message": "prefix = 3: the sum of everything up to here.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 1,
             "num": 2,
             "prefix": 3,
@@ -3406,11 +3415,12 @@
             "look": 0,
             "gotText": "count.get(0, 0) = 1",
             "line": 15,
-            "message": "prefix − k = 0 was seen 1 time: that many subarrays ending here sum to 3. total = 1.",
+            "message": "prefix − target = 0 was seen 1 time: that many subarrays ending here sum to 3. total = 1.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 1,
             "num": 2,
             "prefix": 3,
@@ -3427,6 +3437,7 @@
             "running": 1
           },
           {
+            "target": 3,
             "i": 2,
             "num": 1,
             "prefix": 3,
@@ -3436,13 +3447,14 @@
             "keys": [0, 1, 3],
             "vals": [1, 1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 13,
             "message": "num = 1.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 2,
             "num": 1,
             "prefix": 4,
@@ -3452,13 +3464,14 @@
             "keys": [0, 1, 3],
             "vals": [1, 1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 14,
             "message": "prefix = 4: the sum of everything up to here.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 2,
             "num": 1,
             "prefix": 4,
@@ -3470,11 +3483,12 @@
             "look": 1,
             "gotText": "count.get(1, 0) = 1",
             "line": 15,
-            "message": "prefix − k = 1 was seen 1 time: that many subarrays ending here sum to 3. total = 2.",
+            "message": "prefix − target = 1 was seen 1 time: that many subarrays ending here sum to 3. total = 2.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 2,
             "num": 1,
             "prefix": 4,
@@ -3491,6 +3505,7 @@
             "running": 1
           },
           {
+            "target": 3,
             "i": 3,
             "num": 2,
             "prefix": 4,
@@ -3500,13 +3515,14 @@
             "keys": [0, 1, 3, 4],
             "vals": [1, 1, 1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 13,
             "message": "num = 2.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 3,
             "num": 2,
             "prefix": 6,
@@ -3516,13 +3532,14 @@
             "keys": [0, 1, 3, 4],
             "vals": [1, 1, 1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 14,
             "message": "prefix = 6: the sum of everything up to here.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 3,
             "num": 2,
             "prefix": 6,
@@ -3534,11 +3551,12 @@
             "look": 2,
             "gotText": "count.get(3, 0) = 1",
             "line": 15,
-            "message": "prefix − k = 3 was seen 1 time: that many subarrays ending here sum to 3. total = 3.",
+            "message": "prefix − target = 3 was seen 1 time: that many subarrays ending here sum to 3. total = 3.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 3,
             "num": 2,
             "prefix": 6,
@@ -3555,6 +3573,7 @@
             "running": 1
           },
           {
+            "target": 3,
             "i": 4,
             "num": 1,
             "prefix": 6,
@@ -3564,13 +3583,14 @@
             "keys": [0, 1, 3, 4, 6],
             "vals": [1, 1, 1, 1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 13,
             "message": "num = 1.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 4,
             "num": 1,
             "prefix": 7,
@@ -3580,13 +3600,14 @@
             "keys": [0, 1, 3, 4, 6],
             "vals": [1, 1, 1, 1, 1],
             "look": -1,
-            "gotText": "count.get(prefix - k, 0): —",
+            "gotText": "count.get(prefix - target, 0): —",
             "line": 14,
             "message": "prefix = 7: the sum of everything up to here.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 4,
             "num": 1,
             "prefix": 7,
@@ -3598,11 +3619,12 @@
             "look": 3,
             "gotText": "count.get(4, 0) = 1",
             "line": 15,
-            "message": "prefix − k = 4 was seen 1 time: that many subarrays ending here sum to 3. total = 4.",
+            "message": "prefix − target = 4 was seen 1 time: that many subarrays ending here sum to 3. total = 4.",
             "status": "Running",
             "running": 1
           },
           {
+            "target": 3,
             "i": 4,
             "num": 1,
             "prefix": 7,
@@ -3619,6 +3641,7 @@
             "running": 1
           },
           {
+            "target": 3,
             "i": -1,
             "num": 1,
             "prefix": 7,
@@ -3756,8 +3779,8 @@
         },
         {
           "id": "subarray-sum",
-          "title": "Count by prefix (subarray sum = k)",
-          "description": "Subarrays summing to k: count earlier prefix sums in a dict.",
+          "title": "Count by prefix (subarray sum = target)",
+          "description": "Subarrays summing to target: count earlier prefix sums in a dict.",
           "descriptionExpr": "dataTable('hm_sub', frame, 'message')",
           "remove": [
             {"id": "*"},
@@ -3790,16 +3813,17 @@
               "id": "count",
               "type": "dict",
               "label": "count",
-              "origin": [-4.4, -0.8, 0],
+              "origin": [-3.4, 0.6, 0],
               "labelSide": "left",
-              "cellSize": 1.35,
+              "cellSize": 1.1,
               "fontSize": 16,
-              "indexFontSize": 10,
+              "indexFontSize": 14,
               "axisLabels": "plane",
               "lengthExpr": "arrayCount(dataTable('hm_sub', frame, 'keys'))",
               "keyExpr": "arrayAt(dataTable('hm_sub', frame, 'keys'), idx)",
               "valueExpr": "arrayAt(dataTable('hm_sub', frame, 'vals'), idx)",
-              "highlightExpr": "idx == dataTable('hm_sub', frame, 'look')"
+              "highlightExpr": "idx == dataTable('hm_sub', frame, 'look')",
+              "arrayLayout": "vertical"
             },
             {
               "id": "num",
@@ -3808,6 +3832,13 @@
               "textExpr": "dataTable('hm_sub', frame, 'i') < 0 ? 'num: —' : concat('num = ', dataTable('hm_sub', frame, 'num'))",
               "connectTo": {"object": "sums", "indexExpr": "dataTable('hm_sub', frame, 'i')"},
               "codeRef": {"file": "hash-map", "line": 13}
+            },
+            {
+              "id": "sum-target",
+              "type": "expression_label",
+              "position": [4.6, -3.6, 0],
+              "textExpr": "concat('target = ', dataTable('input', 0, 'sumTarget'))",
+              "codeRef": {"file": "hash-map", "line": 15}
             },
             {
               "id": "prefix",
@@ -3820,7 +3851,7 @@
               "id": "need",
               "type": "expression_label",
               "position": [4.6, -3.6, 0],
-              "textExpr": "dataTable('hm_sub', frame, 'i') < 0 ? 'prefix - k: —' : concat('prefix - k = ', dataTable('hm_sub', frame, 'need'))",
+              "textExpr": "dataTable('hm_sub', frame, 'i') < 0 ? 'prefix - target: —' : concat('prefix - target = ', dataTable('hm_sub', frame, 'need'))",
               "codeRef": {"file": "hash-map", "line": 15}
             },
             {

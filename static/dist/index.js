@@ -13343,7 +13343,7 @@ function renderArray(el, _view, decorate) {
 	const leftTitle = el.labelSide === "left" && el.arrayLayout !== "vertical";
 	const titlePosition = () => {
 		if (leftTitle && !el.labelPosition) {
-			const c = centre(0), gap = pitch * .39 + .22;
+			const c = centre(0), gap = pitch * .39 + .22 + (keysLeft ? pitch * .78 + .12 : 0);
 			return [
 				c[0] - gap - (planeText ? titleWidth / 2 : 0),
 				c[1],
@@ -24205,6 +24205,7 @@ function hideElementById(id) {
 		if (t.group) try {
 			t.group.set("visible", false);
 		} catch (e) {}
+		if (t.labels.length) window.dispatchEvent(new CustomEvent("algebench:labelshidden"));
 	}, cancelled);
 	for (const entry of t.arrowMeshes) {
 		entry.mesh.visible = false;
@@ -28254,6 +28255,7 @@ function setupCodePanel() {
 		}
 	});
 	window.addEventListener("algebench:navchange", refresh);
+	window.addEventListener("algebench:labelshidden", scheduleInline);
 	window.addEventListener("algebench:sliderchange", () => refreshBinding());
 	paintBlur();
 	refresh();

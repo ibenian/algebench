@@ -450,10 +450,10 @@ ${MD_TAIL}
     ],
 });
 
-// ── Hash map: Two Sum, then subarrays summing to k, both remembering what they have seen in a dict ──
+// ── Hash map: Two Sum, then subarrays summing to target, both remembering what they have seen in a dict ──
 (() => {
-    const { nums, target, sums, k } = IN.hashMap;
-    const twoSum = twoSumTrace(nums, target), sub = subarraySumTrace(sums, k);
+    const { nums, target, sums, sumTarget } = IN.hashMap;
+    const twoSum = twoSumTrace(nums, target), sub = subarraySumTrace(sums, sumTarget);
     const L1 = (t: string) => hashLine('two_sum', t), L2 = (t: string) => hashLine('subarray_sum', t);
     const ref = (line: number) => ({ file: 'hash-map', line });
     const S = (id: string, title: string, start: string, end: string | null, extra: { hint?: string; prompt?: string }) =>
@@ -484,23 +484,24 @@ ${MD_TAIL}
             ['seen', `${found} ? ${tr('look')} : -1`], `${tr('line')} == ${L1('if other in seen')}`), codeRef: ref(L1('if other in seen')) },
         { ...label('result', tr('returned'), [4.6, -3.6, 0]), codeRef: ref(L1('return [seen[other], i]')) },
     ];
-    // Subarray sum: count maps each prefix sum to how often it has appeared; a subarray ending here sums to k
-    // once for each earlier prefix equal to prefix − k.
+    // Subarray sum: count maps each prefix sum to how often it has appeared; a subarray ending here sums to target
+    // once for each earlier prefix equal to prefix − target.
     const sb = (col: string) => `dataTable('hm_sub', frame, '${col}')`;
     const subElements: Json[] = [
         array('sums', 'nums', [-4.4, 2.4, 0], { from: inp('sums'), highlightExpr: `idx <= ${sb('i')}`,
             markers: [marker('num', sb('i'), PINK, `${sb('i')} >= 0`)] }),
-        dict('count', sb, [-4.4, -0.8, 0]),
+        dict('count', sb, [-3.4, 0.6, 0], { arrayLayout: 'vertical', cellSize: 1.1, labelSide: 'left', indexFontSize: 14 }),
         { ...label('num', `${sb('i')} < 0 ? 'num: —' : concat('num = ', ${sb('num')})`, [4.6, -3.6, 0], ['sums', sb('i')]), codeRef: ref(L2('for num in nums')) },
+        { ...label('sum-target', `concat('target = ', ${inp('sumTarget')})`, [4.6, -3.6, 0]), codeRef: ref(L2('total += count.get')) },
         { ...label('prefix', `concat('prefix = ', ${sb('prefix')})`, [4.6, -3.6, 0]), codeRef: ref(L2('prefix += num')) },
-        { ...label('need', `${sb('i')} < 0 ? 'prefix - k: —' : concat('prefix - k = ', ${sb('need')})`, [4.6, -3.6, 0]), codeRef: ref(L2('total += count.get')) },
+        { ...label('need', `${sb('i')} < 0 ? 'prefix - target: —' : concat('prefix - target = ', ${sb('need')})`, [4.6, -3.6, 0]), codeRef: ref(L2('total += count.get')) },
         { ...label('got', sb('gotText'), [4.6, -3.6, 0],
             ['count', `${sb('line')} == ${L2('total += count.get')} ? ${sb('look')} : -1`], `${sb('line')} == ${L2('total += count.get')}`), codeRef: ref(L2('total += count.get')) },
         { ...label('total', `concat('total = ', ${sb('total')})`, [4.6, -3.6, 0]), codeRef: ref(L2('return total')) },
     ];
     pattern({
         id: 'hash-map', title: "Remember what you've seen (hash map)", file: 'hash_map.py', source: HASH_MAP_SOURCE,
-        input: { nums, target, sums, k }, trace: twoSum,
+        input: { nums, target, sums, sumTarget }, trace: twoSum,
         sections: [
             S('ts-init', 'Nothing seen yet', 'def two_sum(', 'seen = {}', {
                 hint: 'seen will map each number already passed to its index; it starts empty.' }),
@@ -518,15 +519,15 @@ ${MD_TAIL}
             S('ss-step', 'Extend the running sum', 'for num in nums', 'prefix += num', {
                 hint: 'prefix is the sum of every number up to and including this one.' }),
             S('ss-count', 'Count the subarrays ending here', 'total += count.get', null, {
-                hint: 'Each earlier prefix equal to prefix − k starts a subarray that ends here and sums to k.',
-                prompt: 'Explain why the number of earlier prefixes equal to prefix − k is the number of subarrays ending here that sum to k.' }),
+                hint: 'Each earlier prefix equal to prefix − target starts a subarray that ends here and sums to target.',
+                prompt: 'Explain why the number of earlier prefixes equal to prefix − target is the number of subarrays ending here that sum to target.' }),
             S('ss-record', 'Then record this prefix', 'count[prefix] =', null, {
                 hint: 'Add this prefix sum to count, after counting, so a subarray is never empty.' }),
-            S('ss-return', 'The total', 'return total', null, { hint: 'total counted every subarray summing to k, once each.' }),
+            S('ss-return', 'The total', 'return total', null, { hint: 'total counted every subarray summing to target, once each.' }),
         ],
         annotations: [
             doc('two_sum', '`two_sum(nums, target)` returns the indices `[a, b]` of two numbers that add up to `target`, or `[]` when none do. One pass, O(n) time and space.'),
-            doc('subarray_sum', '`subarray_sum(nums, k)` counts the contiguous subarrays of `nums` whose sum is `k`. One pass with a dict of prefix sums; works with negative numbers.'),
+            doc('subarray_sum', '`subarray_sum(nums, target)` counts the contiguous subarrays of `nums` whose sum is `target`. One pass with a dict of prefix sums; works with negative numbers.'),
             doc('nums', 'The input numbers, read once from left to right.'),
             doc('target', 'The sum the two numbers must reach.'),
             doc('seen', 'Each number already passed, mapped to its index: `seen[value] = index`. Looking a value up costs O(1) on average.'),
@@ -534,15 +535,15 @@ ${MD_TAIL}
             doc('num', 'The current number, `nums[i]`.'),
             doc('other', 'The other number of the pair, the one `num` needs: `target − num`. Only this value can complete the pair.'),
             doc('num', 'The next number of `nums`.', { source: HASH_MAP_SOURCE, start: 'def subarray_sum(', end: 'return total' }),
-            doc('k', 'The sum a subarray must have to be counted.'),
+            doc('target', 'The sum a subarray must have to be counted.', { source: HASH_MAP_SOURCE, start: 'def subarray_sum(', end: 'return total' }),
             doc('count', 'How many times each prefix sum has appeared so far: `count[p]` is the number of earlier positions whose running sum was `p`. Starts as `{0: 1}` for the empty prefix.'),
             doc('prefix', 'The running sum: every number up to and including the current one.'),
-            doc('total', 'The number of subarrays summing to `k` found so far, the answer.'),
+            doc('total', 'The number of subarrays summing to `target` found so far, the answer.'),
             docExpr(HASH_MAP_SOURCE, 'other = target - num', 'target - num', 'The partner `num` needs: the one value that, added to `num`, gives `target`.'),
             docExpr(HASH_MAP_SOURCE, 'if other in seen', 'other in seen', 'Was the partner among the numbers already passed? A dict answers in O(1) on average, instead of a scan.'),
             docExpr(HASH_MAP_SOURCE, 'return [seen[other], i]', '[seen[other], i]', 'The partner\'s index, from `seen`, then this number\'s: the earlier index comes first.'),
             docExpr(HASH_MAP_SOURCE, 'count = {0: 1}', '{0: 1}', 'The empty prefix, sum 0, seen once: it lets a subarray that starts at index 0 be counted.'),
-            docExpr(HASH_MAP_SOURCE, 'total += count.get', 'count.get(prefix - k, 0)', 'How many earlier prefixes equal `prefix − k`. Each one starts a subarray ending here whose sum is `prefix − (prefix − k) = k`; 0 when there are none.'),
+            docExpr(HASH_MAP_SOURCE, 'total += count.get', 'count.get(prefix - target, 0)', 'How many earlier prefixes equal `prefix − target`. Each one starts a subarray ending here whose sum is `prefix − (prefix − target) = target`; 0 when there are none.'),
             docExpr(HASH_MAP_SOURCE, 'count[prefix] =', 'count.get(prefix, 0) + 1', 'One more occurrence of this prefix sum, counting from 0 if it is new.'),
             docBlock(HASH_MAP_SOURCE, 'if other in seen', 'seen[num] = i', 'Look up first, then record. Checking before recording means a number never pairs with itself, and every pair is found when its second number arrives.'),
             docBlock(HASH_MAP_SOURCE, 'prefix += num', 'count[prefix] =', 'Extend the running sum, count the subarrays ending here, then record the new prefix sum for the numbers still to come.'),
@@ -550,7 +551,7 @@ ${MD_TAIL}
         more: {
             data: { hm_sub: sub },
             steps: [{
-                id: 'subarray-sum', title: 'Count by prefix (subarray sum = k)', description: 'Subarrays summing to k: count earlier prefix sums in a dict.',
+                id: 'subarray-sum', title: 'Count by prefix (subarray sum = target)', description: 'Subarrays summing to target: count earlier prefix sums in a dict.',
                 descriptionExpr: `dataTable('hm_sub', frame, 'message')`,
                 remove: [{ id: '*' }, { type: 'slider' }],
                 sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: sub.length - 1, step: 1, default: 0 }],
