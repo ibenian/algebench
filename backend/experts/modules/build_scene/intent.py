@@ -18,6 +18,7 @@ from dspy.utils.exceptions import AdapterParseError
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import make_adapter
+from backend.util.model_errors import model_error_message
 
 from .proposed import (
     MAX_FUNCTIONS, ProposedElement, ProposedFunction, ProposedSlider, ProposedStep)
@@ -140,7 +141,7 @@ def propose_scene(**inputs) -> SceneProposal:
         out = _attempt(inputs)
     except Exception as e:
         log.exception("build_scene: the model call failed")
-        return SceneProposal(error=f"{CALL_FAILED} ({type(e).__name__})")
+        return SceneProposal(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
 
     return SceneProposal(
         is_build=bool(out.is_build),

@@ -13,6 +13,7 @@ from dspy.utils.exceptions import AdapterParseError
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import make_adapter, scoped_lm
+from backend.util.model_errors import model_error_message
 
 from .signature import LearningPlanSig, PlanPick
 
@@ -74,7 +75,7 @@ def propose_plan(**inputs) -> PlanProposal:
             out = _planner()(**inputs)
     except Exception as e:
         log.exception("learning_plan: the model call failed")
-        return PlanProposal(error=f"{CALL_FAILED} ({type(e).__name__})")
+        return PlanProposal(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
     return PlanProposal(
         is_plan=bool(out.is_plan),
         question=_clean(out.question),

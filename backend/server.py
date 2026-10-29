@@ -52,6 +52,7 @@ proofs_dir = script_dir / "proofs"
 # ---------------------------------------------------------------------------
 from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode
 from backend.semantic_graph import SemanticGraphService
+from backend.util.model_errors import model_error_message
 from backend.semantic_graph.preprocessor import LaTeXPreprocessor, ends_with_command
 from backend.semantic_graph.constants import _DOT_ACCENT_ORDERS
 from backend.gemini_sampling import (CHAT_MAX_OUTPUT_TOKENS, gemini_temperature,
@@ -1296,7 +1297,8 @@ def _call_gemini_chat(message, history, context, no_tools, typed=False):
             )
         except Exception as e:
             print(f"   ❌ Gemini API error: {e}", flush=True)
-            return "Sorry, I encountered an error processing your request. Please try again.", [], debug_info
+            reason = model_error_message(e) or "Sorry, I encountered an error processing your request. Please try again."
+            return reason, [], debug_info
 
         # Log finish reason for debugging
         finish = None

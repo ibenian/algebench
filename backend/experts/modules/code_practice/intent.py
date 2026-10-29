@@ -12,6 +12,7 @@ import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import make_adapter, retry_on_parse_error, scoped_lm
+from backend.util.model_errors import model_error_message
 
 from .signature import CodePracticeSig, LineNote
 
@@ -67,7 +68,7 @@ def review_code(**inputs) -> CodeReview:
         out = retry_on_parse_error(lambda: _coach()(**inputs), label="code_practice")
     except Exception as e:
         log.exception("code_practice: the model call failed")
-        return CodeReview(error=f"{CALL_FAILED} ({type(e).__name__})")
+        return CodeReview(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
     verdict = _clean(out.verdict).lower().replace(" ", "_")
     try:
         score = int(out.score)
