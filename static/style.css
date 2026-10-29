@@ -5643,13 +5643,39 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .exec-tree-node.current rect.exec-tree-progress { fill: color-mix(in srgb, #f1c65b 55%, transparent); }
 .exec-tree-loop rect { fill: color-mix(in srgb, #4fb39a 16%, var(--panel-bg)); stroke: color-mix(in srgb, #4fb39a 60%, transparent); }
 .exec-tree-node text { font: 10.5px ui-monospace, monospace; fill: var(--text-color); pointer-events: none; user-select: none; }
-.exec-tree-node.done { opacity: .55; }
+/* Finished: still colored, a little quieter than the open ones, so all that has run reads apart from what has not. */
+.exec-tree-node.done { opacity: .85; }
+/* Repeated calls, marked from the alert: each group filled in its own color, at full strength even when done or
+   not run yet, so the repeated work stands out of the tree. */
+.exec-tree-node.repeated, .exec-tree-node.repeated.done, .exec-tree-node.repeated.future { opacity: 1; filter: none; }
+.exec-tree-node.repeated rect:first-of-type { fill: color-mix(in srgb, var(--repeat) 38%, var(--panel-bg)); stroke: var(--repeat); stroke-width: 1.5; stroke-dasharray: none; }
+.exec-tree-node.repeated.future rect:first-of-type { fill: color-mix(in srgb, var(--repeat) 16%, var(--panel-bg)); stroke-dasharray: 3 2; }
+.exec-tree-node.repeated.current rect:first-of-type { stroke: #f1c65b; stroke-width: 2.5; }
+.exec-tree-alert { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 8px 6px; padding: 4px 8px; text-align: left;
+    font: 11px var(--font-body); color: var(--text-color); cursor: pointer;
+    background: color-mix(in srgb, #e3b04f 10%, transparent); border: 1px solid color-mix(in srgb, #e3b04f 35%, transparent); border-radius: 6px; }
+.exec-tree-alert:hover { background: color-mix(in srgb, #e3b04f 18%, transparent); }
+.exec-tree-alert-chip { padding: 0 5px; font: 10.5px ui-monospace, monospace; border-radius: 4px; border: 1px solid var(--repeat, var(--border-color));
+    background: color-mix(in srgb, var(--repeat, transparent) 30%, transparent); }
+.exec-tree-alert-hint { margin-left: auto; opacity: .6; }
+.exec-tree-alert .ai-ask-btn.exec-tree-ask-btn { opacity: .9; width: 18px; height: 18px; margin: 0; top: 0; }
 /* Not run yet (whole-tree mode): gray, no tone. */
-.exec-tree-node.future { opacity: .35; filter: grayscale(1); }
+.exec-tree-node.future { opacity: .3; filter: grayscale(1); }
 .exec-tree-node.future rect { stroke-dasharray: 3 2; }
 .exec-tree-edge.future { stroke-dasharray: 3 3; opacity: .45; }
 .exec-tree-scroll:not(.panning) .exec-tree-node { cursor: pointer; }
 .exec-tree-node:hover rect { stroke-width: 2; }
+/* While a node is pointed at, every node like it (same call and values, or same loop) is lit, wherever it is. */
+.exec-tree-node.match, .exec-tree-node.match.done, .exec-tree-node.match.future { opacity: 1; filter: none; }
+.exec-tree-node.match rect:first-of-type { stroke: var(--text-color); stroke-width: 2; stroke-dasharray: none; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--text-color) 55%, transparent)); }
+/* The Ask AI button on each node: small enough for the node, shown while the node is pointed at (or the button is
+   focused, or its answer is on its way). */
+.exec-tree-ask { overflow: visible; }
+/* A block, not inline: inline it would sit on a text baseline inside the foreignObject, off the node's middle. */
+.exec-tree-ask .ai-ask-btn.exec-tree-ask-btn { display: flex; opacity: 0; width: 16px; height: 16px; margin: 1px; top: 0; font-size: 9px; }
+.exec-tree-node:hover .exec-tree-ask .ai-ask-btn.exec-tree-ask-btn, .exec-tree-ask .ai-ask-btn.exec-tree-ask-btn:focus-visible,
+.exec-tree-ask .ai-ask-btn.exec-tree-ask-btn[aria-busy="true"] { opacity: .85; }
+.exec-tree-ask .ai-ask-btn.exec-tree-ask-btn:hover { opacity: 1; }
 .exec-tree-node.current rect { fill: color-mix(in srgb, #f1c65b 45%, var(--panel-bg)); stroke: #f1c65b; stroke-width: 2; }
 .exec-tree-node.current { opacity: 1; }
 .exec-tree-node.fresh { animation: exec-tree-in .35s ease-out; }

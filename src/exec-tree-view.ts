@@ -3,6 +3,7 @@
  * writes them, loops as pills with their iteration count, the node executing now lit, the ones that finished
  * paler. Each leaf takes a column and a parent sits over its children, so the width is the work fanning out.
  */
+import { repeatedCalls } from '/exec-tree.js';
 import type { ExecTree, ExecNode } from '/exec-tree.js';
 
 const ROW = 46, H = 22, PAD = 10, CHAR = 6.4;
@@ -55,7 +56,8 @@ function scrollerOf(host: HTMLElement): HTMLDivElement {
     // press held still) scrubs its iterations instead: sliding sideways moves the run to the start of each one.
     // Panning starts anywhere else.
     scroller.addEventListener('pointerdown', e => {
-        if (e.button !== 0) return;
+        // The ✦ is a button: its press is its own click, never a pan or a scrub.
+        if (e.button !== 0 || (e.target as Element).closest?.('.exec-tree-ask')) return;
         const s = scroller!, x0 = e.clientX, y0 = e.clientY, left = s.scrollLeft, top = s.scrollTop;
         let panning = false;
         const loopEl = (e.target as Element).closest?.('.exec-tree-loop');
@@ -101,6 +103,14 @@ function scrollerOf(host: HTMLElement): HTMLDivElement {
         window.addEventListener('pointermove', move);
         window.addEventListener('pointerup', up);window.addEventListener('pointercancel', up);
     });
+    // Pointing at a node lights every node like it: the same call with the same values, or the same loop.
+    const light = (label: string | null) => scroller!.querySelectorAll<SVGGElement>('.exec-tree-node')
+        .forEach(g => g.classList.toggle('match', label != null && g.dataset.label === label));
+    scroller.addEventListener('pointerover', e => {
+        const g = (e.target as Element).closest?.<SVGGElement>('.exec-tree-node');
+        light(g ? g.dataset.label ?? null : null);
+    });
+    scroller.addEventListener('pointerleave', () => light(null));
     return scroller;
 }
 
@@ -109,15 +119,21 @@ function scrollerOf(host: HTMLElement): HTMLDivElement {
  * whole run's tree from the start, the nodes not run yet grayed, so the run is seen walking it.
  */
 export type ExecTreeMode = 'grow' | 'whole';
+/** A call made more than once with the same arguments: its label, how many times, and its function's line. */
+export interface RepeatGroup { label: string; count: number; line: number }
 const MODE_KEY = 'algebench-exec-tree-mode';
 let mode: ExecTreeMode = 'grow';
 try { if (localStorage.getItem(MODE_KEY) === 'whole') mode = 'whole'; } catch { /* storage off: grow */ }
+// Whether the repeated calls are marked: on from a click on the alert until the next.
+let markRepeats = false;
 // What each host last drew, so switching the mode redraws it.
 const drawn = new WeakMap<HTMLElement, () => void>();
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 // Holding a loop this long (or dragging it) starts scrubbing its iterations; each this many pixels sideways is one.
-const HOLD_MS = 250, SCRUB_PX = 14;
+const HOLD_MS = 250, SCRUB_PX = 14, ASK_W = 18;
+// The colors repeated calls are marked in, a group each (no gold: that is the running node).
+const REPEAT_COLORS = ['#6ea8e0', '#d36ba6', '#4fb39a', '#b69bea', '#e0875a', '#8fbf5a'];
 // Each drawn loop: its name, the frame each iteration started at, the iteration the run is in, and where to go.
 const loopOf = new WeakMap<Element, { name: string; starts: number[]; at: number; pick?: (frame: number) => void }>();
 
@@ -126,8 +142,9 @@ const loopOf = new WeakMap<Element, { name: string; starts: number[]; at: number
  * run's last frame. The node executing now is scrolled into view; clicking a node calls `pick` with the frame it
  * started at.
  */
-export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTree, last: number, frame: number, pick?: (frame: number) => void): void {
-    drawn.set(host, () => drawExecTree(host, build, last, frame, pick));
+export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTree, last: number, frame: number, pick?: (frame: number) => void,
+    ask?: (id: number) => HTMLElement, askRepeats?: (groups: RepeatGroup[], extra: number) => HTMLElement): void {
+    drawn.set(host, () => drawExecTree(host, build, last, frame, pick, ask, askRepeats));
     const now = build(frame), full = last >= 0 ? build(last) : now, whole = mode === 'whole' ? full : null;
     const tree = whole ?? now;
     // Nodes are made in run order, so the first ones of the whole tree are those run so far.
@@ -159,7 +176,7 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
     };
     const x = columns(tree);
     // One column width for all, wide enough for the longest label.
-    const COL = Math.max(64, Math.max(...tree.nodes.map(n => label(n).length)) * CHAR + 18);
+    const COL = Math.max(64, Math.max(...tree.nodes.map(n => label(n).length)) * CHAR + 18 + (ask ? ASK_W : 0));
     const width = (Math.max(...x.values()) + 1) * COL + PAD * 2, height = (Math.max(...tree.nodes.map(n => n.depth)) + 1) * ROW + PAD;
     const root = svg('svg', { width, height, viewBox: `0 0 ${width} ${height}`, class: 'exec-tree-svg', role: 'img', 'aria-label': summary.textContent });
     const cx = (id: number) => PAD + x.get(id)! * COL + COL / 2, cy = (n: ExecNode) => PAD + n.depth * ROW + H / 2;
@@ -167,11 +184,18 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
         const p = tree.nodes[n.parent]!;
         root.append(svg('path', { class: `exec-tree-edge${ran(n) ? '' : ' future'}`, d: `M${cx(p.id)},${cy(p) + H / 2} C${cx(p.id)},${cy(p) + ROW / 2} ${cx(n.id)},${cy(n) - ROW / 2} ${cx(n.id)},${cy(n) - H / 2}` }));
     }
+    // The same call with the same values more than once: repeated work, marked on request.
+    const repeats = repeatedCalls(tree);
+    // Each repeated call gets a color of its own, so its copies read as one group.
+    const groupColor = new Map<number, string>();
+    [...repeats.values()].forEach((ids, k) => ids.forEach(id => groupColor.set(id, REPEAT_COLORS[k % REPEAT_COLORS.length]!)));
     let current: SVGGElement | null = null;
     for (const n of tree.nodes) {
         const st = state(n), future = !ran(n);
-        const g = svg('g', { class: `exec-tree-node exec-tree-${n.kind}${future ? ' future' : st.done ? ' done' : ''}${n.id === now.current ? ' current' : ''}${!whole && n.frame === frame ? ' fresh' : ''}`,
+        const g = svg('g', { class: `exec-tree-node exec-tree-${n.kind}${future ? ' future' : st.done ? ' done' : ''}${n.id === now.current ? ' current' : ''}${!whole && n.frame === frame ? ' fresh' : ''}${markRepeats && groupColor.has(n.id) ? ' repeated' : ''}`,
             transform: `translate(${cx(n.id)},${cy(n)})` });
+        if (markRepeats && groupColor.has(n.id)) g.style.setProperty('--repeat', groupColor.get(n.id)!);
+        g.dataset.label = n.label;
         const w = COL - 8;
         g.append(svg('rect', { x: -w / 2, y: -H / 2, width: w, height: H, rx: n.kind === 'loop' ? H / 2 : 5 }));
         // A loop fills from the left as its iterations are reached, as its label counts them: 4/4 is full.
@@ -182,13 +206,22 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
             clip.append(svg('rect', { x: -w / 2, y: -H / 2, width: w, height: H, rx: H / 2 }));
             g.append(clip, svg('rect', { class: 'exec-tree-progress', x: -w / 2, y: -H / 2, width: w * share, height: H, 'clip-path': `url(#exec-tree-clip-${n.id})` }));
         }
-        const t = svg('text', { 'text-anchor': 'middle', dy: '0.35em' });t.textContent = label(n);
+        // The label sits left of the ✦ when there is one.
+        const t = svg('text', { 'text-anchor': 'middle', dy: '0.35em', x: ask ? -ASK_W / 2 : 0 });t.textContent = label(n);
         const tip = svg('title', {});
         tip.textContent = n.kind === 'call'
             ? `${n.label}${n.site ? `, called from line ${n.site}` : ''}${n.iteration ? ` in iteration ${n.iteration}` : ''}${future ? ', not run yet' : st.done ? ', returned' : ''}`
             : `${n.label}: ${future ? plural(n.iterations, 'iteration') + ', not run yet' : `${plural(st.iterations, 'iteration')} so far${whole ? ` of ${n.iterations}` : ''}`}${n.iteration ? ` (inside iteration ${n.iteration})` : ''}${!future && st.done ? ', ended' : ''}`;
         tip.textContent += pick ? ` · click to go to frame ${n.frame}` : '';
         g.append(t, tip);
+        if (ask) {
+            // The app's Ask AI button (✦ in its circle): the tutor on this step of the run, its structure and cost.
+            const a = svg('foreignObject', { class: 'exec-tree-ask', x: w / 2 - ASK_W - 2, y: -ASK_W / 2, width: ASK_W, height: ASK_W });
+            a.append(ask(n.id));
+            // Its click is its own: the node behind it does not jump.
+            a.addEventListener('click', ev => ev.stopPropagation());
+            g.append(a);
+        }
         if (pick) g.addEventListener('click', () => pick(n.frame));
         if (n.kind === 'loop') {
             // The iteration the run is in now: the last one started by this frame (the first while not reached).
@@ -200,6 +233,32 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
         if (n.id === now.current) current = g;
     }
     scroller.replaceChildren(root);host.append(scroller);
+    if (repeats.size) {
+        const calls = [...repeats.values()].reduce((sum, ids) => sum + ids.length - 1, 0);
+        // A div acting as a button, so the Ask AI button can sit inside it.
+        const alert = document.createElement('div');alert.className = 'exec-tree-alert';alert.setAttribute('role', 'button');alert.tabIndex = 0;
+        alert.setAttribute('aria-pressed', String(markRepeats));
+        alert.append(`⚠ ${plural(calls, 'repeated call')}: `);
+        // Each group in its color (once marked), as its nodes are.
+        [...repeats].forEach(([label, ids], k) => {
+            const chip = document.createElement('span');chip.className = 'exec-tree-alert-chip';chip.textContent = `${label} ×${ids.length}`;
+            if (markRepeats) chip.style.setProperty('--repeat', REPEAT_COLORS[k % REPEAT_COLORS.length]!);
+            alert.append(chip);
+        });
+        const hint = document.createElement('span');hint.className = 'exec-tree-alert-hint';hint.textContent = markRepeats ? 'click to clear' : 'click to mark';
+        alert.append(hint);
+        if (askRepeats) {
+            // ✦: the tutor recommends how to stop doing this work twice. Its click is its own, not a mark.
+            const b = askRepeats([...repeats].map(([label, ids]) => ({ label, count: ids.length, line: tree.nodes[ids[0]!]!.line })), calls);
+            b.addEventListener('click', ev => ev.stopPropagation());
+            alert.append(b);
+        }
+        alert.title = 'The same call with the same arguments, made again: work done more than once. Remembering each answer (memoization) would make each of these once.';
+        const toggle = () => { markRepeats = !markRepeats;drawn.get(host)?.(); };
+        alert.addEventListener('click', toggle);
+        alert.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault();toggle(); } });
+        host.append(alert);
+    }
     // Follow the run only when it leaves the view, so a reader's pan is kept while the node stays in sight.
     if (current) {
         const n = tree.nodes[now.current]!, nx = cx(n.id), ny = cy(n), w = COL / 2;

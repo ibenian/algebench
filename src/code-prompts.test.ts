@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CODE_PROMPTS, enclosingFunction, codePromptMessage, explainPrompt } from '/code-prompts.js';
+import { CODE_PROMPTS, enclosingFunction, codePromptMessage, explainPrompt, execNodePrompt, repeatedCallsPrompt } from '/code-prompts.js';
 
 const SOURCE = `def subsets(nums):
     out, path = [], []
@@ -65,4 +65,29 @@ test("the tooltip's explain prompt names its subject and carries the code's note
     assert.match(withNote.prompt, /^Explain `h` in the selected code/);
     assert.match(withNote.prompt, /The code's own note about it:\nThe heuristic\.$/);
     assert.doesNotMatch(explainPrompt('lines 3–5', null).prompt, /note/);
+});
+
+test('an execution-tree node asks about that step through the code structure and its cost', () => {
+    const loop = execNodePrompt({ kind: 'loop', label: 'for v in adj[u]', path: ['dfs(0)', 'for v in adj[u]'], iteration: null,
+        iterations: 2, totalIterations: 3, children: 1, done: false, run: '2 calls', whole: '5 calls' });
+    assert.ok(loop.line);
+    assert.match(loop.prompt, /the loop `for v in adj\[u\]`, at iteration 2 of 3/);
+    assert.match(loop.prompt, /dfs\(0\) → for v in adj\[u\]/);
+    assert.match(loop.prompt, /complexity/);
+    const call = execNodePrompt({ kind: 'call', label: 'fib(3)', path: ['fib(4)', 'fib(3)'], iteration: 2,
+        iterations: 0, totalIterations: 0, children: 2, done: true, run: 'a', whole: 'b' });
+    assert.match(call.prompt, /the call `fib\(3\)` \(it has returned\), which made 2 calls or loops so far, made in iteration 2/);
+});
+
+test('a node the run has not reached yet is asked about as one still to come', () => {
+    const p = execNodePrompt({ kind: 'loop', label: 'for ch in word', path: ['build(words)', 'for word in words', 'for ch in word'], iteration: 4,
+        iterations: 4, totalIterations: 4, children: 0, done: false, future: true, run: 'a', whole: 'b' });
+    assert.match(p.prompt, /the loop `for ch in word`, which the run has not reached yet \(it will run 4 iterations\)/);
+});
+
+test('the repeated-calls alert asks for a way to compute each distinct call once', () => {
+    const p = repeatedCallsPrompt([{ label: 'fib(2)', count: 2 }, { label: 'fib(1)', count: 3 }], 3, '9 calls');
+    assert.ok(p.line);
+    assert.match(p.prompt, /fib\(2\) ×2, fib\(1\) ×3 \(3 calls repeated; the whole run: 9 calls\)/);
+    assert.match(p.prompt, /memoization/);
 });

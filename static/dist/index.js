@@ -25405,8 +25405,49 @@ function execTree(source, frames, upto, label = (c) => c) {
 	}
 	return tree;
 }
+/** The lines a node stands for: a call's function (its def through its block), a loop's header through its block. */
+function nodeLines(source, node) {
+	return {
+		from: node.line,
+		to: blockEnd(source.split("\n"), node.line)
+	};
+}
+/** The labels from the first call down to a node: `fib(4) → fib(3) → fib(2)`. */
+function nodePath(tree, id) {
+	const out = [];
+	for (let n = tree.nodes[id]; n; n = n.parent == null ? void 0 : tree.nodes[n.parent]) out.unshift(n.label);
+	return out;
+}
+/** A tree's size in words: its calls, loop iterations and deepest nesting. */
+function treeSize(tree) {
+	const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+	return `${plural(tree.calls, "call")}, ${plural(tree.iterations, "loop iteration")}, call depth ${tree.maxDepth}`;
+}
+/**
+* Calls made more than once with the same arguments: repeated work (what memoization saves). Only calls whose
+* arguments are all values (`fib(2)`, `f('a', 3)`), not names the run did not record, are compared. Each label
+* maps to its nodes, in run order.
+*/
+function repeatedCalls(tree) {
+	const groups = /* @__PURE__ */ new Map();
+	for (const n of tree.nodes) {
+		if (n.kind !== "call") continue;
+		const open = n.label.indexOf("(");
+		if (open < 0) continue;
+		const args = n.label.slice(open + 1, -1).replace(/'[^']*'|"[^"]*"/g, "").replace(/\b(True|False|None)\b/g, "");
+		if (/[A-Za-z_]/.test(args)) continue;
+		groups.set(n.label, [...groups.get(n.label) ?? [], n.id]);
+	}
+	for (const [label, ids] of groups) if (ids.length < 2) groups.delete(label);
+	return groups;
+}
 //#endregion
 //#region src/exec-tree-view.ts
+/**
+* Draws an execution tree (exec-tree.ts) as a top-down node-link diagram: calls as boxes written as the code
+* writes them, loops as pills with their iteration count, the node executing now lit, the ones that finished
+* paler. Each leaf takes a column and a parent sits over its children, so the width is the work fanning out.
+*/
 var ROW = 46;
 var H = 22;
 var PAD = 10;
@@ -25454,7 +25495,7 @@ function scrollerOf(host) {
 	scroller = document.createElement("div");
 	scroller.className = "exec-tree-scroll";
 	scroller.addEventListener("pointerdown", (e) => {
-		if (e.button !== 0) return;
+		if (e.button !== 0 || e.target.closest?.(".exec-tree-ask")) return;
 		const s = scroller, x0 = e.clientX, y0 = e.clientY, left = s.scrollLeft, top = s.scrollTop;
 		let panning = false;
 		const loopEl = e.target.closest?.(".exec-tree-loop");
@@ -25524,6 +25565,12 @@ function scrollerOf(host) {
 		window.addEventListener("pointerup", up);
 		window.addEventListener("pointercancel", up);
 	});
+	const light = (label) => scroller.querySelectorAll(".exec-tree-node").forEach((g) => g.classList.toggle("match", label != null && g.dataset.label === label));
+	scroller.addEventListener("pointerover", (e) => {
+		const g = e.target.closest?.(".exec-tree-node");
+		light(g ? g.dataset.label ?? null : null);
+	});
+	scroller.addEventListener("pointerleave", () => light(null));
 	return scroller;
 }
 var MODE_KEY = "algebench-exec-tree-mode";
@@ -25531,18 +25578,28 @@ var mode = "grow";
 try {
 	if (localStorage.getItem(MODE_KEY) === "whole") mode = "whole";
 } catch {}
+var markRepeats = false;
 var drawn = /* @__PURE__ */ new WeakMap();
 var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 var HOLD_MS = 250;
 var SCRUB_PX = 14;
+var ASK_W = 18;
+var REPEAT_COLORS = [
+	"#6ea8e0",
+	"#d36ba6",
+	"#4fb39a",
+	"#b69bea",
+	"#e0875a",
+	"#8fbf5a"
+];
 var loopOf = /* @__PURE__ */ new WeakMap();
 /**
 * Draw the run's tree into host at the frame shown: `build(upto)` gives the tree for frames 0..upto, `last` is the
 * run's last frame. The node executing now is scrolled into view; clicking a node calls `pick` with the frame it
 * started at.
 */
-function drawExecTree(host, build, last, frame, pick) {
-	drawn.set(host, () => drawExecTree(host, build, last, frame, pick));
+function drawExecTree(host, build, last, frame, pick, ask, askRepeats) {
+	drawn.set(host, () => drawExecTree(host, build, last, frame, pick, ask, askRepeats));
 	const now = build(frame), full = last >= 0 ? build(last) : now, whole = mode === "whole" ? full : null;
 	const tree = whole ?? now;
 	const ran = (n) => n.id < now.nodes.length;
@@ -25591,7 +25648,7 @@ function drawExecTree(host, build, last, frame, pick) {
 		return `↻ ${loopName(n.label)} ×${ran(n) ? `${state(n).iterations}/` : ""}${n.iterations}`;
 	};
 	const x = columns(tree);
-	const COL = Math.max(64, Math.max(...tree.nodes.map((n) => label(n).length)) * CHAR + 18);
+	const COL = Math.max(64, Math.max(...tree.nodes.map((n) => label(n).length)) * CHAR + 18 + (ask ? ASK_W : 0));
 	const width = (Math.max(...x.values()) + 1) * COL + 20, height = (Math.max(...tree.nodes.map((n) => n.depth)) + 1) * ROW + PAD;
 	const root = svg$2("svg", {
 		width,
@@ -25609,13 +25666,18 @@ function drawExecTree(host, build, last, frame, pick) {
 			d: `M${cx(p.id)},${cy(p) + H / 2} C${cx(p.id)},${cy(p) + ROW / 2} ${cx(n.id)},${cy(n) - ROW / 2} ${cx(n.id)},${cy(n) - H / 2}`
 		}));
 	}
+	const repeats = repeatedCalls(tree);
+	const groupColor = /* @__PURE__ */ new Map();
+	[...repeats.values()].forEach((ids, k) => ids.forEach((id) => groupColor.set(id, REPEAT_COLORS[k % REPEAT_COLORS.length])));
 	let current = null;
 	for (const n of tree.nodes) {
 		const st = state(n), future = !ran(n);
 		const g = svg$2("g", {
-			class: `exec-tree-node exec-tree-${n.kind}${future ? " future" : st.done ? " done" : ""}${n.id === now.current ? " current" : ""}${!whole && n.frame === frame ? " fresh" : ""}`,
+			class: `exec-tree-node exec-tree-${n.kind}${future ? " future" : st.done ? " done" : ""}${n.id === now.current ? " current" : ""}${!whole && n.frame === frame ? " fresh" : ""}${markRepeats && groupColor.has(n.id) ? " repeated" : ""}`,
 			transform: `translate(${cx(n.id)},${cy(n)})`
 		});
+		if (markRepeats && groupColor.has(n.id)) g.style.setProperty("--repeat", groupColor.get(n.id));
+		g.dataset.label = n.label;
 		const w = COL - 8;
 		g.append(svg$2("rect", {
 			x: -w / 2,
@@ -25646,13 +25708,26 @@ function drawExecTree(host, build, last, frame, pick) {
 		}
 		const t = svg$2("text", {
 			"text-anchor": "middle",
-			dy: "0.35em"
+			dy: "0.35em",
+			x: ask ? -9 : 0
 		});
 		t.textContent = label(n);
 		const tip = svg$2("title", {});
 		tip.textContent = n.kind === "call" ? `${n.label}${n.site ? `, called from line ${n.site}` : ""}${n.iteration ? ` in iteration ${n.iteration}` : ""}${future ? ", not run yet" : st.done ? ", returned" : ""}` : `${n.label}: ${future ? plural(n.iterations, "iteration") + ", not run yet" : `${plural(st.iterations, "iteration")} so far${whole ? ` of ${n.iterations}` : ""}`}${n.iteration ? ` (inside iteration ${n.iteration})` : ""}${!future && st.done ? ", ended" : ""}`;
 		tip.textContent += pick ? ` · click to go to frame ${n.frame}` : "";
 		g.append(t, tip);
+		if (ask) {
+			const a = svg$2("foreignObject", {
+				class: "exec-tree-ask",
+				x: w / 2 - ASK_W - 2,
+				y: -9,
+				width: ASK_W,
+				height: ASK_W
+			});
+			a.append(ask(n.id));
+			a.addEventListener("click", (ev) => ev.stopPropagation());
+			g.append(a);
+		}
 		if (pick) g.addEventListener("click", () => pick(n.frame));
 		if (n.kind === "loop") {
 			const at = Math.max(0, n.starts.filter((f) => f <= frame).length - 1);
@@ -25669,6 +25744,48 @@ function drawExecTree(host, build, last, frame, pick) {
 	}
 	scroller.replaceChildren(root);
 	host.append(scroller);
+	if (repeats.size) {
+		const calls = [...repeats.values()].reduce((sum, ids) => sum + ids.length - 1, 0);
+		const alert = document.createElement("div");
+		alert.className = "exec-tree-alert";
+		alert.setAttribute("role", "button");
+		alert.tabIndex = 0;
+		alert.setAttribute("aria-pressed", String(markRepeats));
+		alert.append(`⚠ ${plural(calls, "repeated call")}: `);
+		[...repeats].forEach(([label, ids], k) => {
+			const chip = document.createElement("span");
+			chip.className = "exec-tree-alert-chip";
+			chip.textContent = `${label} ×${ids.length}`;
+			if (markRepeats) chip.style.setProperty("--repeat", REPEAT_COLORS[k % REPEAT_COLORS.length]);
+			alert.append(chip);
+		});
+		const hint = document.createElement("span");
+		hint.className = "exec-tree-alert-hint";
+		hint.textContent = markRepeats ? "click to clear" : "click to mark";
+		alert.append(hint);
+		if (askRepeats) {
+			const b = askRepeats([...repeats].map(([label, ids]) => ({
+				label,
+				count: ids.length,
+				line: tree.nodes[ids[0]].line
+			})), calls);
+			b.addEventListener("click", (ev) => ev.stopPropagation());
+			alert.append(b);
+		}
+		alert.title = "The same call with the same arguments, made again: work done more than once. Remembering each answer (memoization) would make each of these once.";
+		const toggle = () => {
+			markRepeats = !markRepeats;
+			drawn.get(host)?.();
+		};
+		alert.addEventListener("click", toggle);
+		alert.addEventListener("keydown", (ev) => {
+			if (ev.key === "Enter" || ev.key === " ") {
+				ev.preventDefault();
+				toggle();
+			}
+		});
+		host.append(alert);
+	}
 	if (current) {
 		const n = tree.nodes[now.current], nx = cx(n.id), ny = cy(n), w = COL / 2;
 		if (!(nx - w >= scroller.scrollLeft && nx + w <= scroller.scrollLeft + scroller.clientWidth && ny - H >= scroller.scrollTop && ny + H <= scroller.scrollTop + scroller.clientHeight)) scroller.scrollTo({
@@ -25798,6 +25915,32 @@ function explainPrompt(subject, note) {
 		label: "Explain this",
 		line: true,
 		prompt: `Explain ${subject} in the selected code: what it is, what it does here and why it is needed, using the values on screen right now. Keep it short and about this alone.${note ? `\nThe code's own note about it:\n${note}` : ""}`
+	};
+}
+/**
+* The ✦ on a node of the execution tree: the tutor comments on that step of the run through the code's structure,
+* for an intuition of its cost. `facts` says what the node is and where it sits in the run's tree.
+*/
+function execNodePrompt(facts) {
+	return {
+		label: "Explain this step of the run",
+		line: true,
+		prompt: `This is a node of the run's execution tree: ${facts.future ? `the ${facts.kind} \`${facts.label}\`, which the run has not reached yet${facts.kind === "loop" ? ` (it will run ${facts.totalIterations} iteration${facts.totalIterations === 1 ? "" : "s"})` : ""}` : facts.kind === "call" ? `the call \`${facts.label}\`${facts.done ? " (it has returned)" : ""}, which made ${facts.children} call${facts.children === 1 ? "" : "s"} or loop${facts.children === 1 ? "" : "s"} so far` : `the loop \`${facts.label}\`, at iteration ${facts.iterations} of ${facts.totalIterations}${facts.done ? " (it has ended)" : ""}`}${facts.iteration ? `, made in iteration ${facts.iteration} of the loop above it` : ""}.
+Its path from the first call: ${facts.path.join(" → ")}.
+The tree so far: ${facts.run}. The whole run: ${facts.whole}.
+Comment on this step in the context of the code's structure (the selected lines are the function or loop it stands for): why the run is (or will be) here, what this node does for the result, and what it says about the cost. Give an intuition for the complexity: how the number of nodes like it grows with the input (branching factor, depth, loop length, repeated work), and what that means for the running time. Keep it short and concrete, using this run's numbers.`
+	};
+}
+/**
+* The ✦ on the execution tree's repeated-calls alert: the tutor recommends how to stop doing the same work again,
+* and what it would cost after.
+*/
+function repeatedCallsPrompt(groups, extra, whole) {
+	return {
+		label: "How do I avoid the repeated work?",
+		line: true,
+		prompt: `The run's execution tree shows calls made more than once with the same arguments: ${groups.map((g) => `${g.label} ×${g.count}`).join(", ")} (${extra} call${extra === 1 ? "" : "s"} repeated; the whole run: ${whole}).
+Recommend how to improve the code so each distinct call is computed once: say why the repetition happens in this code's structure, name the technique (memoization, a bottom-up table, or another that fits better), show the changed code (the selected lines are the function that repeats), and compare the complexity before and after, using this run's numbers and how they grow with the input. Keep it short.`
 	};
 }
 /** The ✦ on each code line: a question about that line alone. */
@@ -26918,7 +27061,32 @@ function setupCodePanel() {
 			window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
 			setSliderValue(slider, at);
 		} : void 0;
-		drawExecTree(execPane, (upto) => execTree(file.source, frames, Math.min(upto, frames.length - 1), label), frames.length - 1, frame, pick);
+		const build = (upto) => execTree(file.source, frames, Math.min(upto, frames.length - 1), label);
+		const ask = (id) => makeSilentAiAskButton("ai-ask-btn exec-tree-ask-btn", "Ask AI about this step: how the code is structured here and what it costs", () => {
+			if (selected?.id !== file.id) return null;
+			const now = build(frame), whole = build(frames.length - 1), n = now.nodes[id] ?? whole.nodes[id];
+			const { from, to } = nodeLines(file.source, n);
+			return codeMessageFor(execNodePrompt({
+				kind: n.kind,
+				label: n.label,
+				path: nodePath(now.nodes[id] ? now : whole, id),
+				iteration: n.iteration,
+				iterations: n.iterations,
+				totalIterations: whole.nodes[id]?.iterations ?? n.iterations,
+				children: n.children.length,
+				done: n.done,
+				future: !now.nodes[id],
+				run: treeSize(now),
+				whole: treeSize(whole)
+			}), from, to, file.source.split("\n").slice(from - 1, to).join("\n"));
+		});
+		const askRepeats = (groups, extra) => makeSilentAiAskButton("ai-ask-btn exec-tree-ask-btn", "Ask AI how to avoid the repeated work", () => {
+			if (selected?.id !== file.id) return null;
+			const whole = build(frames.length - 1), node = whole.nodes.find((n) => n.line === groups[0].line && n.kind === "call");
+			const { from, to } = nodeLines(file.source, node);
+			return codeMessageFor(repeatedCallsPrompt(groups, extra, treeSize(whole)), from, to, file.source.split("\n").slice(from - 1, to).join("\n"));
+		});
+		drawExecTree(execPane, build, frames.length - 1, frame, pick, ask, askRepeats);
 	}
 	function evaluate(expr) {
 		if (!compiled.has(expr)) try {

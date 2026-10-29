@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execTree, callsOn } from '/exec-tree.js';
+import { execTree, callsOn, nodeLines, nodePath, treeSize, repeatedCalls } from '/exec-tree.js';
 import type { ExecTree } from '/exec-tree.js';
 import { loopName } from '/exec-tree-view.js';
 
@@ -161,4 +161,25 @@ test('a loop keeps the frame each iteration started at', () => {
     const t = execTree(TRIE, frames, frames.length - 1);
     const words = t.nodes.find(n => n.label === 'for word in words')!;
     assert.deepEqual(words.starts, [1, 5]);
+});
+
+test('a node stands for its lines and sits on a path from the first call', () => {
+    const t = execTree(FIB, FIB_FRAMES, FIB_FRAMES.length - 1);
+    assert.deepEqual(nodeLines(FIB, t.nodes[2]!), { from: 1, to: 4 });
+    assert.deepEqual(nodePath(t, 2), ['fib(n)', 'fib(n - 2)']);
+    assert.equal(treeSize(t), '3 calls, 0 loop iterations, call depth 1');
+    const trie = execTree(TRIE, [2, 4, 6, 7, 8].map(line => ({ line })), 4);
+    assert.deepEqual(nodeLines(TRIE, trie.nodes.find(n => n.label === 'for ch in word')!), { from: 5, to: 6 });
+});
+
+test('repeated calls are the same call with the same values, more than once', () => {
+    const frames = [
+        { line: 2, calls: [] }, { line: 4, calls: [] },
+        { line: 2, calls: [4] }, { line: 3, calls: [] }, { line: 4, calls: [] },
+        { line: 2, calls: [4] }, { line: 3, calls: [] }, { line: 4, calls: [] },
+    ];
+    // Both children read fib(1): the same call twice. Unresolved names are never compared.
+    const t = execTree(FIB, frames, frames.length - 1, call => call.replace(/n - \d/, '1'));
+    assert.deepEqual([...repeatedCalls(t)], [['fib(1)', [1, 2]]]);
+    assert.equal(repeatedCalls(execTree(FIB, frames, frames.length - 1)).size, 0, 'fib(n - 1) and fib(n - 2) are not values');
 });

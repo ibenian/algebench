@@ -28,6 +28,33 @@ export function explainPrompt(subject: string, note: string | null): CodePrompt 
     return {label: 'Explain this', line: true, prompt: `Explain ${subject} in the selected code: what it is, what it does here and why it is needed, using the values on screen right now. Keep it short and about this alone.${note ? `\nThe code's own note about it:\n${note}` : ''}`};
 }
 
+/**
+ * The ✦ on a node of the execution tree: the tutor comments on that step of the run through the code's structure,
+ * for an intuition of its cost. `facts` says what the node is and where it sits in the run's tree.
+ */
+export function execNodePrompt(facts: { kind: 'call' | 'loop'; label: string; path: string[]; iteration: number | null;
+    iterations: number; totalIterations: number; children: number; done: boolean; future?: boolean; run: string; whole: string }): CodePrompt {
+    const what = facts.future
+        ? `the ${facts.kind} \`${facts.label}\`, which the run has not reached yet${facts.kind === 'loop' ? ` (it will run ${facts.totalIterations} iteration${facts.totalIterations === 1 ? '' : 's'})` : ''}`
+        : facts.kind === 'call'
+        ? `the call \`${facts.label}\`${facts.done ? ' (it has returned)' : ''}, which made ${facts.children} call${facts.children === 1 ? '' : 's'} or loop${facts.children === 1 ? '' : 's'} so far`
+        : `the loop \`${facts.label}\`, at iteration ${facts.iterations} of ${facts.totalIterations}${facts.done ? ' (it has ended)' : ''}`;
+    return {label: 'Explain this step of the run', line: true, prompt: `This is a node of the run's execution tree: ${what}${facts.iteration ? `, made in iteration ${facts.iteration} of the loop above it` : ''}.
+Its path from the first call: ${facts.path.join(' → ')}.
+The tree so far: ${facts.run}. The whole run: ${facts.whole}.
+Comment on this step in the context of the code's structure (the selected lines are the function or loop it stands for): why the run is (or will be) here, what this node does for the result, and what it says about the cost. Give an intuition for the complexity: how the number of nodes like it grows with the input (branching factor, depth, loop length, repeated work), and what that means for the running time. Keep it short and concrete, using this run's numbers.`};
+}
+
+/**
+ * The ✦ on the execution tree's repeated-calls alert: the tutor recommends how to stop doing the same work again,
+ * and what it would cost after.
+ */
+export function repeatedCallsPrompt(groups: { label: string; count: number }[], extra: number, whole: string): CodePrompt {
+    const list = groups.map(g => `${g.label} ×${g.count}`).join(', ');
+    return {label: 'How do I avoid the repeated work?', line: true, prompt: `The run's execution tree shows calls made more than once with the same arguments: ${list} (${extra} call${extra === 1 ? '' : 's'} repeated; the whole run: ${whole}).
+Recommend how to improve the code so each distinct call is computed once: say why the repetition happens in this code's structure, name the technique (memoization, a bottom-up table, or another that fits better), show the changed code (the selected lines are the function that repeats), and compare the complexity before and after, using this run's numbers and how they grow with the input. Keep it short.`};
+}
+
 /** The ✦ on each code line: a question about that line alone. */
 export const LINE_PROMPT: CodePrompt = {label: 'Ask about this line', line: true, prompt: 'Explain the selected line: what it does at this point in the algorithm and why it is needed, using the values on screen right now. Keep it to this line.'};
 

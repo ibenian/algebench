@@ -188,3 +188,40 @@ export function execTree(source: string, frames: readonly ExecFrame[], upto: num
     }
     return tree;
 }
+
+/** The lines a node stands for: a call's function (its def through its block), a loop's header through its block. */
+export function nodeLines(source: string, node: ExecNode): { from: number; to: number } {
+    return { from: node.line, to: blockEnd(source.split('\n'), node.line) };
+}
+
+/** The labels from the first call down to a node: `fib(4) → fib(3) → fib(2)`. */
+export function nodePath(tree: ExecTree, id: number): string[] {
+    const out: string[] = [];
+    for (let n: ExecNode | undefined = tree.nodes[id]; n; n = n.parent == null ? undefined : tree.nodes[n.parent]) out.unshift(n.label);
+    return out;
+}
+
+/** A tree's size in words: its calls, loop iterations and deepest nesting. */
+export function treeSize(tree: ExecTree): string {
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    return `${plural(tree.calls, 'call')}, ${plural(tree.iterations, 'loop iteration')}, call depth ${tree.maxDepth}`;
+}
+
+/**
+ * Calls made more than once with the same arguments: repeated work (what memoization saves). Only calls whose
+ * arguments are all values (`fib(2)`, `f('a', 3)`), not names the run did not record, are compared. Each label
+ * maps to its nodes, in run order.
+ */
+export function repeatedCalls(tree: ExecTree): Map<string, number[]> {
+    const groups = new Map<string, number[]>();
+    for (const n of tree.nodes) {
+        if (n.kind !== 'call') continue;
+        const open = n.label.indexOf('(');
+        if (open < 0) continue;
+        const args = n.label.slice(open + 1, -1).replace(/'[^']*'|"[^"]*"/g, '').replace(/\b(True|False|None)\b/g, '');
+        if (/[A-Za-z_]/.test(args)) continue;
+        groups.set(n.label, [...(groups.get(n.label) ?? []), n.id]);
+    }
+    for (const [label, ids] of groups) if (ids.length < 2) groups.delete(label);
+    return groups;
+}

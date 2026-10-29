@@ -8,7 +8,7 @@ import type { CodeAnnotation } from '/code-annotations.js';
 import { navigateTo, addTransientElements } from '/scene-loader.js';
 import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
-import { execTree } from '/exec-tree.js';
+import { execTree, nodeLines, nodePath, treeSize } from '/exec-tree.js';
 import { drawExecTree } from '/exec-tree-view.js';
 import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys } from '/code-symbols.js';
 import { labelsForSymbol, labelsForCodeLine } from '/labels.js';
@@ -17,7 +17,7 @@ import type { CodeTooltipAsk } from '/label-tooltip.js';
 import type { CodeReference, CodeFunction, CodeCall } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import { highlightCode, lineTokens, paintTokens, wrapColumns } from '/code-highlight.js';
-import { CODE_PROMPTS, LINE_PROMPT, LINE_VALUES_PROMPT, codePromptMessage, explainPrompt } from '/code-prompts.js';
+import { CODE_PROMPTS, LINE_PROMPT, LINE_VALUES_PROMPT, codePromptMessage, explainPrompt, execNodePrompt, repeatedCallsPrompt } from '/code-prompts.js';
 import type { CodePrompt } from '/code-prompts.js';
 import { codeSections, sectionAt, sectionsOutline, sectionPrompt, STRUCTURE_MODES } from '/code-sections.js';
 import type { CodeSection, StructureMode } from '/code-sections.js';
@@ -357,7 +357,26 @@ export function setupCodePanel(): void {
         // A node is where its call or loop began: clicking it plays the run to that frame.
         const slider=scene?.stepPlayback?.slider;
         const pick=slider?(at:number)=>{window.dispatchEvent(new CustomEvent('algebench:playbackpause'));setSliderValue(slider,at);}:undefined;
-        drawExecTree(execPane,upto=>execTree(file.source,frames,Math.min(upto,frames.length-1),label),frames.length-1,frame,pick);
+        const build=(upto:number)=>execTree(file.source,frames,Math.min(upto,frames.length-1),label);
+        // ✦ on a node: the tutor on that step of the run, given the lines it stands for and where it sits in the tree.
+        const ask=(id:number)=>makeSilentAiAskButton('ai-ask-btn exec-tree-ask-btn','Ask AI about this step: how the code is structured here and what it costs',()=>{
+            if(selected?.id!==file.id)return null;
+            const now=build(frame),whole=build(frames.length-1),n=now.nodes[id]??whole.nodes[id]!;
+            const {from,to}=nodeLines(file.source,n);
+            const prompt=execNodePrompt({kind:n.kind,label:n.label,path:nodePath(now.nodes[id]?now:whole,id),iteration:n.iteration,
+                iterations:n.iterations,totalIterations:whole.nodes[id]?.iterations??n.iterations,children:n.children.length,done:n.done,future:!now.nodes[id],
+                run:treeSize(now),whole:treeSize(whole)});
+            return codeMessageFor(prompt,from,to,file.source.split('\n').slice(from-1,to).join('\n'));
+        });
+        // ✦ on the repeated-calls alert: the tutor recommends how to compute each distinct call once.
+        const askRepeats=(groups:{label:string;count:number;line:number}[],extra:number)=>
+            makeSilentAiAskButton('ai-ask-btn exec-tree-ask-btn','Ask AI how to avoid the repeated work',()=>{
+                if(selected?.id!==file.id)return null;
+                const whole=build(frames.length-1),node=whole.nodes.find(n=>n.line===groups[0]!.line&&n.kind==='call')!;
+                const {from,to}=nodeLines(file.source,node);
+                return codeMessageFor(repeatedCallsPrompt(groups,extra,treeSize(whole)),from,to,file.source.split('\n').slice(from-1,to).join('\n'));
+            });
+        drawExecTree(execPane,build,frames.length-1,frame,pick,ask,askRepeats);
     }
     function evaluate(expr: string) {
         if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
