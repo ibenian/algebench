@@ -8,6 +8,8 @@ import type { CodeAnnotation } from '/code-annotations.js';
 import { navigateTo, addTransientElements } from '/scene-loader.js';
 import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineActionsFor, resolveCodeRef } from '/code-panel-model.js';
 import { setCodeFocus } from '/code-focus.js';
+import { execTree } from '/exec-tree.js';
+import { drawExecTree } from '/exec-tree-view.js';
 import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys } from '/code-symbols.js';
 import { labelsForSymbol, labelsForCodeLine } from '/labels.js';
 import { showCodeSymbolTooltip, hideCodeTooltip } from '/label-tooltip.js';
@@ -52,6 +54,26 @@ export function setupCodePanel(): void {
     const host=document.getElementById('dock-tab-code');
     if(!host)return;
     const tree=document.createElement('div');tree.className='code-file-tree';tree.setAttribute('aria-label','Code files');
+    // Over the code: the files, or the run's execution tree (exec-tree.ts), switched by the bar above them.
+    const top=document.createElement('div');top.className='code-top-pane';
+    const topSwitch=document.createElement('div');topSwitch.className='code-top-switch';topSwitch.setAttribute('role','tablist');
+    const execPane=document.createElement('div');execPane.className='code-exec-tree';execPane.setAttribute('aria-label','Execution tree');
+    const TOP_KEY='algebench-code-top-view';
+    let topView:'files'|'tree'='files';
+    try{if(localStorage.getItem(TOP_KEY)==='tree')topView='tree';}catch{/* storage off: files */}
+    const topTabs=(['files','tree'] as const).map(view=>{
+        const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.dataset.view=view;
+        b.textContent=view==='files'?'Files':'Execution tree';
+        b.title=view==='files'?'The lesson\'s code files':'The run as a tree: each call under its caller, each loop with its iterations, growing with the code';
+        b.addEventListener('click',()=>{topView=view;try{localStorage.setItem(TOP_KEY,view);}catch{/* not kept */}paintTop();});
+        return b;
+    });
+    topSwitch.append(...topTabs);top.append(topSwitch,tree,execPane);
+    function paintTop() {
+        for(const b of topTabs)b.setAttribute('aria-selected',String(b.dataset.view===topView));
+        tree.hidden=topView!=='files';execPane.hidden=topView!=='tree';
+        if(topView==='tree')renderExecTree();
+    }
     const title=document.createElement('div');title.className='code-file-title';
     const titleText=document.createElement('span');titleText.className='code-file-path';
     const execution=document.createElement('div');execution.className='code-execution-status';execution.setAttribute('role','status');
@@ -100,26 +122,27 @@ export function setupCodePanel(): void {
     split.setAttribute('aria-orientation','horizontal');split.setAttribute('aria-label','Resize the code');split.title='Drag to resize the code · double-click to reset';
     const TREE_KEY='algebench-code-tree-height';
     function setTreeHeight(px:number|null) {
-        if(px==null){tree.style.removeProperty('flex');return;}
+        if(px==null){top.style.removeProperty('flex');return;}
         const max=Math.max(60,host!.clientHeight-160);
-        tree.style.flex=`0 0 ${Math.round(Math.max(60,Math.min(max,px)))}px`;
+        top.style.flex=`0 0 ${Math.round(Math.max(60,Math.min(max,px)))}px`;
     }
     try{const saved=Number(localStorage.getItem(TREE_KEY));if(saved>0)setTreeHeight(saved);}catch{/* storage off: the default height */}
     split.addEventListener('pointerdown',e=>{
         e.preventDefault();split.setPointerCapture(e.pointerId);split.classList.add('dragging');
-        const startY=e.clientY,startH=tree.offsetHeight;
+        const startY=e.clientY,startH=top.offsetHeight;
         document.body.style.cursor='row-resize';document.body.style.userSelect='none';
         const move=(ev:PointerEvent)=>setTreeHeight(startH+ev.clientY-startY);
         const up=()=>{
             split.removeEventListener('pointermove',move);split.classList.remove('dragging');
             document.body.style.cursor='';document.body.style.userSelect='';
-            try{localStorage.setItem(TREE_KEY,String(tree.offsetHeight));}catch{/* not kept */}
+            try{localStorage.setItem(TREE_KEY,String(top.offsetHeight));}catch{/* not kept */}
         };
         split.addEventListener('pointermove',move);
         split.addEventListener('pointerup',up,{once:true});split.addEventListener('pointercancel',up,{once:true});
     });
     split.addEventListener('dblclick',()=>{setTreeHeight(null);try{localStorage.removeItem(TREE_KEY);}catch{/* not kept */}});
-    actions.append(selectionLabel,jump,watch,what,watchError);host.append(tree,split,title,execution,body,actions,targets);
+    actions.append(selectionLabel,jump,watch,what,watchError);host.append(top,split,title,execution,body,actions,targets);
+    paintTop();
     /**
      * "⋯" in the header: prompts about the active code (code-prompts.ts), so no selection is needed; those about a
      * line wait for one. They are sent silently: the request carries the whole file and state, so only the tutor's
@@ -302,6 +325,37 @@ export function setupCodePanel(): void {
         }
         watchError.hidden=true;renderInline();syncWatchLabels();
     });
+    /**
+     * The execution tree of this step's run up to the frame shown, read off the trace's line (and calls) column and
+     * the code: nothing is recorded for it. A call is written with the values its arguments had where it was made.
+     */
+    function renderExecTree() {
+        const scene=state.lessonSpec?.scenes?.[state.currentSceneIndex] as Scene|undefined;
+        const ref=scene?.steps?.[state.currentStepIndex]?.codeRef??scene?.codeRef;
+        const table=/^dataTable\('([^']+)', frame, 'line'\)$/.exec(ref?.lineExpr??'')?.[1];
+        const callsColumn=/^dataTable\('[^']+', frame, '([^']+)'\)$/.exec(ref?.callsExpr??'')?.[1];
+        const rows=table?(scene?.data as Record<string,Record<string,unknown>[]>|undefined)?.[table]:undefined;
+        const file=files.find(f=>f.id===ref?.file);
+        if(!table||!Array.isArray(rows)||!file){drawExecTree(execPane,execTree('',[],-1),0);return;}
+        let frame=0;try{frame=Number(evaluate('frame'));}catch{/* no frame slider: the start */}
+        const frames=rows.map(r=>({line:Number(r.line),calls:callsColumn&&Array.isArray(r[callsColumn])?(r[callsColumn] as number[]):undefined}));
+        const label=(call:string,at:number)=>{
+            const row=rows[at]??{};
+            const open=call.indexOf('(');
+            const args=call.slice(open+1,-1).replace(/(?<![\w.'"])([A-Za-z_]\w*)(?![\w(])/g,(name:string)=>{
+                const v=row[name];return typeof v==='number'||typeof v==='boolean'?String(v):typeof v==='string'?`'${v}'`:name;
+            });
+            // Arithmetic of known values is worked out: fib(4 - 1) reads fib(3).
+            const worked=args.split(',').map(a=>{
+                if(!/^[\d\s+\-*/%().]+$/.test(a)||!/[+\-*/%]/.test(a.trim().slice(1)))return a.trim();
+                // Python's // is floor division.
+                const expr=a.trim().replace(/^(.+?)\s*\/\/\s*(.+)$/,'floor(($1) / ($2))');
+                try{return String(evalExpr(compileExpr(expr),0));}catch{return a.trim();}
+            });
+            return `${call.slice(0,open)}(${worked.join(', ')})`;
+        };
+        drawExecTree(execPane,execTree(file.source,frames,Math.min(frame,frames.length-1),label),frame);
+    }
     function evaluate(expr: string) {
         if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}
         const fn=compiled.get(expr);
@@ -368,6 +422,7 @@ export function setupCodePanel(): void {
         drawArrows(changed?stepInto():null,calls,entry);
         lastLines=lines;lastPlace=place;
         markExecutingSection();
+        if(topView==='tree')renderExecTree();
         veil(running);
         publishView(running);
         scheduleInline();

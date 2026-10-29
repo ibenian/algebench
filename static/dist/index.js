@@ -21454,7 +21454,7 @@ function planRequest(target, vs, clarifications = []) {
 	}));
 	return body;
 }
-var text = (v, max = MAX_TEXT) => typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
+var text$1 = (v, max = MAX_TEXT) => typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "";
 function readRef(raw, kind) {
 	if (!raw || typeof raw !== "object") return null;
 	const r = raw;
@@ -21472,7 +21472,7 @@ function readRef(raw, kind) {
 		ref[k] = v;
 	}
 	if (kind === "glossary") {
-		const g = text(r.glossary, 200);
+		const g = text$1(r.glossary, 200);
 		if (!g) return null;
 		ref.glossary = g;
 	}
@@ -21496,35 +21496,35 @@ function readPlanReply(raw) {
 			if (typeof o.kind !== "string" || !KINDS.has(o.kind)) continue;
 			const kind = o.kind;
 			const ref = readRef(o.ref, kind);
-			const title = text(o.title, 200);
+			const title = text$1(o.title, 200);
 			if (!ref || !title) continue;
 			steps.push({
 				kind,
 				title,
-				why: text(o.why),
+				why: text$1(o.why),
 				ref
 			});
 			if (steps.length === MAX_STEPS) break;
 		}
 		if (steps.length) return {
 			kind: "result",
-			title: text(res.title, 200),
+			title: text$1(res.title, 200),
 			steps,
-			caveat: text(r.caveat)
+			caveat: text$1(r.caveat)
 		};
 		return {
 			kind: "reason",
 			reason: "The plan that came back had no steps that could be used."
 		};
 	}
-	if (typeof r.question === "string" && text(r.question)) return {
+	if (typeof r.question === "string" && text$1(r.question)) return {
 		kind: "question",
-		question: text(r.question)
+		question: text$1(r.question)
 	};
 	if (r.fallback_to_chat === true) return { kind: "chat" };
 	return {
 		kind: "reason",
-		reason: text(r.reason) || "No plan came back."
+		reason: text$1(r.reason) || "No plan came back."
 	};
 }
 /** A new plan from the expert's steps. Throws if the result isn't a valid plan. */
@@ -21973,9 +21973,9 @@ function updateTreeHighlight$1() {
 }
 //#endregion
 //#region src/side-sections.ts
-var svg$2 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
-var ICON_FOLD$1 = svg$2("M6 9l6 6 6-6");
-var ICON_UNFOLD$1 = svg$2("M6 15l6-6 6 6");
+var svg$3 = (d) => `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+var ICON_FOLD$1 = svg$3("M6 9l6 6 6-6");
+var ICON_UNFOLD$1 = svg$3("M6 15l6-6 6 6");
 var SECTIONS = [{
 	head: "proof-section-head",
 	host: "proof-panel",
@@ -25202,6 +25202,341 @@ function setupSceneDock() {
 	});
 }
 //#endregion
+//#region src/exec-tree.ts
+var indent = (line) => line.length - line.trimStart().length;
+/** The last line of the block a header line opens (by indentation), 1-based. */
+function blockEnd(lines, header) {
+	const own = indent(lines[header - 1]);
+	let end = header;
+	for (let i = header; i < lines.length; i++) {
+		const text = lines[i];
+		if (!text.trim()) continue;
+		if (indent(text) <= own) break;
+		end = i + 1;
+	}
+	return end;
+}
+/** The innermost def holding a line: its line and name, or null for top-level code. */
+function enclosingDef(lines, line) {
+	let best = null;
+	lines.forEach((text, i) => {
+		const m = /^\s*def\s+([A-Za-z_]\w*)\s*\(/.exec(text);
+		if (m && i + 1 <= line && blockEnd(lines, i + 1) >= line) best = {
+			line: i + 1,
+			name: m[1],
+			text: text.trim().replace(/^def\s+/, "").replace(/:\s*(#.*)?$/, "")
+		};
+	});
+	return best;
+}
+/** Each `name(...)` call written on a line, parentheses balanced. */
+function callsOn(text, name) {
+	const out = [];
+	const re = new RegExp(`(?<![\\w.])${name}\\s*\\(`, "g");
+	for (let m = re.exec(text); m; m = re.exec(text)) {
+		let depth = 0, end = -1;
+		for (let i = m.index + m[0].length - 1; i < text.length; i++) if (text[i] === "(") depth++;
+		else if (text[i] === ")" && --depth === 0) {
+			end = i;
+			break;
+		}
+		if (end > 0) out.push(text.slice(m.index, end + 1).replace(/\s+\(/, "("));
+	}
+	return out;
+}
+var LOOP = /^\s*(for|while)\b/;
+var loopLabel = (text) => text.trim().replace(/:\s*(#.*)?$/, "");
+/**
+* The tree for frames 0..upto. `label` may rewrite a call's text with the values the run had there (`dfs(v)` →
+* `dfs(3)`), given the frame the call was made from.
+*/
+function execTree(source, frames, upto, label = (c) => c) {
+	const lines = source.split("\n");
+	const nodes = [];
+	const tree = {
+		nodes,
+		current: -1,
+		calls: 0,
+		iterations: 0,
+		maxDepth: 0
+	};
+	if (!frames.length || upto < 0) return tree;
+	const add = (kind, text, line, site, parent, frame) => {
+		const up = parent == null ? null : nodes[parent];
+		const node = {
+			id: nodes.length,
+			kind,
+			label: text,
+			line,
+			site,
+			parent,
+			children: [],
+			depth: up ? up.depth + 1 : 0,
+			callDepth: (up?.callDepth ?? 0) + (kind === "call" && up ? 1 : 0),
+			frame,
+			iterations: kind === "loop" ? 1 : 0,
+			iteration: up?.kind === "loop" ? up.iterations : null,
+			done: false
+		};
+		nodes.push(node);
+		up?.children.push(node.id);
+		if (kind === "call") {
+			tree.calls++;
+			tree.maxDepth = Math.max(tree.maxDepth, node.callDepth);
+		} else tree.iterations++;
+		return node;
+	};
+	const loops = lines.flatMap((t, i) => LOOP.test(t) ? [{
+		line: i + 1,
+		end: blockEnd(lines, i + 1),
+		def: enclosingDef(lines, i + 1)?.line
+	}] : []);
+	const first = frames[0].line, root = enclosingDef(lines, first);
+	let stack = [{
+		call: add("call", root ? label(root.text, 0) : "run", root?.line ?? first, null, null, 0),
+		name: root?.name ?? "",
+		loops: []
+	}];
+	const implicit = !frames.some((fr) => fr.calls !== void 0);
+	const lift = (id, by) => {
+		const n = nodes[id];
+		n.depth += by;
+		n.callDepth += by;
+		tree.maxDepth = Math.max(tree.maxDepth, n.callDepth);
+		n.children.forEach((c) => lift(c, by));
+	};
+	const inner = () => stack[stack.length - 1];
+	const container = () => {
+		const top = inner();
+		return top.loops.length ? top.loops[top.loops.length - 1].node : top.call;
+	};
+	const closeLoops = (top, keepWhile) => {
+		while (top.loops.length && !keepWhile(top.loops[top.loops.length - 1])) top.loops.pop().node.done = true;
+	};
+	let previousDepth = 0;
+	for (let f = 0; f <= Math.min(upto, frames.length - 1); f++) {
+		const { line, calls = [] } = frames[f];
+		const depth = calls.length;
+		let lingering = null;
+		while (stack.length - 1 < depth) {
+			const site = calls[stack.length - 1];
+			closeLoops(inner(), (l) => site <= l.end && site >= l.node.line);
+			const def = enclosingDef(lines, line);
+			const name = def?.name ?? "";
+			const written = name ? callsOn(lines[site - 1] ?? "", name) : [];
+			const made = container().children.filter((id) => nodes[id].kind === "call" && nodes[id].site === site).length;
+			const node = add("call", label(written.length ? written[made % written.length] : `${name || "call"}(…)`, Math.max(0, f - 1)), def?.line ?? line, site, container().id, f);
+			stack.push({
+				call: node,
+				name,
+				loops: []
+			});
+		}
+		while (stack.length - 1 > depth) {
+			const done = stack.pop();
+			closeLoops(done, () => false);
+			done.call.done = true;
+			const own = done.call.line;
+			if (previousDepth > depth && /^\s*return\b/.test(lines[line - 1] ?? "") && line > own && line <= blockEnd(lines, own)) lingering ??= done.call;
+		}
+		previousDepth = depth;
+		if (lingering) {
+			tree.current = lingering.id;
+			continue;
+		}
+		const def = implicit ? enclosingDef(lines, line) : null;
+		if (def && inner().call.line !== def.line) {
+			const at = stack.findIndex((o) => o.call.line === def.line);
+			const prev = f > 0 ? frames[f - 1].line : 0, written = callsOn(lines[prev - 1] ?? "", def.name);
+			const callerLine = lines.findIndex((t, i) => i + 1 > def.line && i + 1 <= blockEnd(lines, def.line) && callsOn(t, stack[0].name).length > 0) + 1;
+			const end = (o) => {
+				closeLoops(o, () => false);
+				o.call.done = true;
+			};
+			if (at >= 0) while (stack.length - 1 > at) end(stack.pop());
+			else if (written.length) {
+				closeLoops(inner(), (l) => prev >= l.node.line && prev <= l.end);
+				stack.push({
+					call: add("call", label(written[0], f - 1), def.line, prev, container().id, f),
+					name: def.name,
+					loops: []
+				});
+			} else if (stack.length === 1 && callerLine > 0) {
+				const callee = stack[0];
+				end(callee);
+				const caller = add("call", label(def.text, f), def.line, null, null, f);
+				callee.call.parent = caller.id;
+				callee.call.site = callerLine;
+				caller.children.push(callee.call.id);
+				lift(callee.call.id, 1);
+				stack = [{
+					call: caller,
+					name: def.name,
+					loops: []
+				}];
+			} else {
+				stack.forEach(end);
+				stack = [{
+					call: add("call", label(def.text, f), def.line, null, null, f),
+					name: def.name,
+					loops: []
+				}];
+			}
+		}
+		const top = inner();
+		closeLoops(top, (l) => line >= l.node.line && line <= l.end);
+		const back = top.loops[top.loops.length - 1];
+		if (back && top.last != null && (line < top.last || line === top.last && line === back.node.line)) {
+			back.node.iterations++;
+			tree.iterations++;
+		}
+		const here = enclosingDef(lines, line)?.line;
+		for (const loop of loops) {
+			if (loop.line > line || loop.end < line || loop.def !== here) continue;
+			if (!top.loops.some((l) => l.node.line === loop.line)) top.loops.push({
+				node: add("loop", loopLabel(lines[loop.line - 1]), loop.line, null, container().id, f),
+				end: loop.end
+			});
+		}
+		top.last = line;
+		tree.current = container().id;
+	}
+	return tree;
+}
+//#endregion
+//#region src/exec-tree-view.ts
+var ROW = 46;
+var H = 22;
+var PAD = 10;
+var CHAR = 6.4;
+var SVG = "http://www.w3.org/2000/svg";
+function svg$2(tag, attrs) {
+	const el = document.createElementNS(SVG, tag);
+	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+	return el;
+}
+/** Each node's column centre: leaves in order, a parent over the middle of its children. */
+function columns(tree) {
+	const x = /* @__PURE__ */ new Map();
+	let next = 0;
+	const place = (id) => {
+		const n = tree.nodes[id];
+		const at = n.children.length ? n.children.map(place).reduce((a, b) => a + b, 0) / n.children.length : next++;
+		x.set(id, at);
+		return at;
+	};
+	for (const n of tree.nodes) if (n.parent == null) place(n.id);
+	return x;
+}
+var short = (text, max) => text.length > max ? `${text.slice(0, max - 1)}…` : text;
+/**
+* A loop by what it walks: `for i, num` (its variables), `while k` (a short condition, else just `while`); the
+* whole header is in its tooltip.
+*/
+function loopName(header) {
+	const each = /^for\s+(.+?)\s+in\b/.exec(header);
+	if (each) return `for ${short(each[1], 10)}`;
+	const cond = /^while\s+(.+)$/.exec(header)?.[1] ?? "";
+	return cond && cond.length <= 10 ? `while ${cond}` : "while";
+}
+function text(n) {
+	return n.kind === "call" ? short(n.label, 22) : `↻ ${loopName(n.label)} ×${n.iterations}`;
+}
+/** Draw the tree into host; the node executing now is scrolled into view. `fresh` is the frame being shown. */
+/**
+* The scrolling view under the summary, kept across redraws (so a pan stays where the reader left it) and
+* dragged with the mouse to pan.
+*/
+function scrollerOf(host) {
+	let scroller = host.querySelector(":scope > .exec-tree-scroll");
+	if (scroller) return scroller;
+	scroller = document.createElement("div");
+	scroller.className = "exec-tree-scroll";
+	scroller.addEventListener("pointerdown", (e) => {
+		if (e.button !== 0) return;
+		const s = scroller, x0 = e.clientX, y0 = e.clientY, left = s.scrollLeft, top = s.scrollTop;
+		s.setPointerCapture(e.pointerId);
+		s.classList.add("panning");
+		const move = (ev) => {
+			s.scrollLeft = left - (ev.clientX - x0);
+			s.scrollTop = top - (ev.clientY - y0);
+		};
+		const up = () => {
+			s.removeEventListener("pointermove", move);
+			s.classList.remove("panning");
+		};
+		s.addEventListener("pointermove", move);
+		s.addEventListener("pointerup", up, { once: true });
+		s.addEventListener("pointercancel", up, { once: true });
+	});
+	return scroller;
+}
+function drawExecTree(host, tree, frame) {
+	const scroller = scrollerOf(host);
+	host.replaceChildren();
+	const summary = document.createElement("div");
+	summary.className = "exec-tree-summary";
+	summary.textContent = tree.nodes.length ? `${tree.calls} call${tree.calls === 1 ? "" : "s"} · ${tree.iterations} loop iteration${tree.iterations === 1 ? "" : "s"} · depth ${tree.maxDepth}` : "No recorded run at this step.";
+	host.append(summary);
+	if (!tree.nodes.length) {
+		scroller.replaceChildren();
+		return;
+	}
+	const x = columns(tree);
+	const COL = Math.max(64, Math.max(...tree.nodes.map((n) => text(n).length)) * CHAR + 18);
+	const width = (Math.max(...x.values()) + 1) * COL + 20, height = (Math.max(...tree.nodes.map((n) => n.depth)) + 1) * ROW + PAD;
+	const root = svg$2("svg", {
+		width,
+		height,
+		viewBox: `0 0 ${width} ${height}`,
+		class: "exec-tree-svg",
+		role: "img",
+		"aria-label": summary.textContent
+	});
+	const cx = (id) => PAD + x.get(id) * COL + COL / 2, cy = (n) => PAD + n.depth * ROW + H / 2;
+	for (const n of tree.nodes) if (n.parent != null) {
+		const p = tree.nodes[n.parent];
+		root.append(svg$2("path", {
+			class: "exec-tree-edge",
+			d: `M${cx(p.id)},${cy(p) + H / 2} C${cx(p.id)},${cy(p) + ROW / 2} ${cx(n.id)},${cy(n) - ROW / 2} ${cx(n.id)},${cy(n) - H / 2}`
+		}));
+	}
+	let current = null;
+	for (const n of tree.nodes) {
+		const g = svg$2("g", {
+			class: `exec-tree-node exec-tree-${n.kind}${n.done ? " done" : ""}${n.id === tree.current ? " current" : ""}${n.frame === frame ? " fresh" : ""}`,
+			transform: `translate(${cx(n.id)},${cy(n)})`
+		});
+		const w = COL - 8;
+		g.append(svg$2("rect", {
+			x: -w / 2,
+			y: -11,
+			width: w,
+			height: H,
+			rx: n.kind === "loop" ? H / 2 : 5
+		}));
+		const label = svg$2("text", {
+			"text-anchor": "middle",
+			dy: "0.35em"
+		});
+		label.textContent = text(n);
+		const tip = svg$2("title", {});
+		tip.textContent = n.kind === "call" ? `${n.label}${n.site ? `, called from line ${n.site}` : ""}${n.iteration ? ` in iteration ${n.iteration}` : ""}${n.done ? ", returned" : ""}` : `${n.label}: ${n.iterations} iteration${n.iterations === 1 ? "" : "s"} so far${n.iteration ? ` (inside iteration ${n.iteration})` : ""}${n.done ? ", ended" : ""}`;
+		g.append(label, tip);
+		root.append(g);
+		if (n.id === tree.current) current = g;
+	}
+	scroller.replaceChildren(root);
+	host.append(scroller);
+	if (current) {
+		const n = tree.nodes[tree.current], nx = cx(n.id), ny = cy(n), w = COL / 2;
+		if (!(nx - w >= scroller.scrollLeft && nx + w <= scroller.scrollLeft + scroller.clientWidth && ny - H >= scroller.scrollTop && ny + H <= scroller.scrollTop + scroller.clientHeight)) scroller.scrollTo({
+			left: Math.max(0, nx - scroller.clientWidth / 2),
+			top: Math.max(0, ny - scroller.clientHeight / 2)
+		});
+	}
+}
+//#endregion
 //#region src/code-highlight.ts
 var cache = /* @__PURE__ */ new Map();
 /** The file's coloured ranges, fetched once per language and source; none when unavailable (offline, unknown language). */
@@ -25950,6 +26285,43 @@ function setupCodePanel() {
 	const tree = document.createElement("div");
 	tree.className = "code-file-tree";
 	tree.setAttribute("aria-label", "Code files");
+	const top = document.createElement("div");
+	top.className = "code-top-pane";
+	const topSwitch = document.createElement("div");
+	topSwitch.className = "code-top-switch";
+	topSwitch.setAttribute("role", "tablist");
+	const execPane = document.createElement("div");
+	execPane.className = "code-exec-tree";
+	execPane.setAttribute("aria-label", "Execution tree");
+	const TOP_KEY = "algebench-code-top-view";
+	let topView = "files";
+	try {
+		if (localStorage.getItem(TOP_KEY) === "tree") topView = "tree";
+	} catch {}
+	const topTabs = ["files", "tree"].map((view) => {
+		const b = document.createElement("button");
+		b.type = "button";
+		b.setAttribute("role", "tab");
+		b.dataset.view = view;
+		b.textContent = view === "files" ? "Files" : "Execution tree";
+		b.title = view === "files" ? "The lesson's code files" : "The run as a tree: each call under its caller, each loop with its iterations, growing with the code";
+		b.addEventListener("click", () => {
+			topView = view;
+			try {
+				localStorage.setItem(TOP_KEY, view);
+			} catch {}
+			paintTop();
+		});
+		return b;
+	});
+	topSwitch.append(...topTabs);
+	top.append(topSwitch, tree, execPane);
+	function paintTop() {
+		for (const b of topTabs) b.setAttribute("aria-selected", String(b.dataset.view === topView));
+		tree.hidden = topView !== "files";
+		execPane.hidden = topView !== "tree";
+		if (topView === "tree") renderExecTree();
+	}
 	const title = document.createElement("div");
 	title.className = "code-file-title";
 	const titleText = document.createElement("span");
@@ -26024,11 +26396,11 @@ function setupCodePanel() {
 	const TREE_KEY = "algebench-code-tree-height";
 	function setTreeHeight(px) {
 		if (px == null) {
-			tree.style.removeProperty("flex");
+			top.style.removeProperty("flex");
 			return;
 		}
 		const max = Math.max(60, host.clientHeight - 160);
-		tree.style.flex = `0 0 ${Math.round(Math.max(60, Math.min(max, px)))}px`;
+		top.style.flex = `0 0 ${Math.round(Math.max(60, Math.min(max, px)))}px`;
 	}
 	try {
 		const saved = Number(localStorage.getItem(TREE_KEY));
@@ -26038,7 +26410,7 @@ function setupCodePanel() {
 		e.preventDefault();
 		split.setPointerCapture(e.pointerId);
 		split.classList.add("dragging");
-		const startY = e.clientY, startH = tree.offsetHeight;
+		const startY = e.clientY, startH = top.offsetHeight;
 		document.body.style.cursor = "row-resize";
 		document.body.style.userSelect = "none";
 		const move = (ev) => setTreeHeight(startH + ev.clientY - startY);
@@ -26048,7 +26420,7 @@ function setupCodePanel() {
 			document.body.style.cursor = "";
 			document.body.style.userSelect = "";
 			try {
-				localStorage.setItem(TREE_KEY, String(tree.offsetHeight));
+				localStorage.setItem(TREE_KEY, String(top.offsetHeight));
 			} catch {}
 		};
 		split.addEventListener("pointermove", move);
@@ -26062,7 +26434,8 @@ function setupCodePanel() {
 		} catch {}
 	});
 	actions.append(selectionLabel, jump, watch, what, watchError);
-	host.append(tree, split, title, execution, body, actions, targets);
+	host.append(top, split, title, execution, body, actions, targets);
+	paintTop();
 	/**
 	* "⋯" in the header: prompts about the active code (code-prompts.ts), so no selection is needed; those about a
 	* line wait for one. They are sent silently: the request carries the whole file and state, so only the tutor's
@@ -26359,6 +26732,48 @@ function setupCodePanel() {
 		renderInline();
 		syncWatchLabels();
 	});
+	/**
+	* The execution tree of this step's run up to the frame shown, read off the trace's line (and calls) column and
+	* the code: nothing is recorded for it. A call is written with the values its arguments had where it was made.
+	*/
+	function renderExecTree() {
+		const scene = state.lessonSpec?.scenes?.[state.currentSceneIndex];
+		const ref = scene?.steps?.[state.currentStepIndex]?.codeRef ?? scene?.codeRef;
+		const table = /^dataTable\('([^']+)', frame, 'line'\)$/.exec(ref?.lineExpr ?? "")?.[1];
+		const callsColumn = /^dataTable\('[^']+', frame, '([^']+)'\)$/.exec(ref?.callsExpr ?? "")?.[1];
+		const rows = table ? (scene?.data)?.[table] : void 0;
+		const file = files.find((f) => f.id === ref?.file);
+		if (!table || !Array.isArray(rows) || !file) {
+			drawExecTree(execPane, execTree("", [], -1), 0);
+			return;
+		}
+		let frame = 0;
+		try {
+			frame = Number(evaluate("frame"));
+		} catch {}
+		const frames = rows.map((r) => ({
+			line: Number(r.line),
+			calls: callsColumn && Array.isArray(r[callsColumn]) ? r[callsColumn] : void 0
+		}));
+		const label = (call, at) => {
+			const row = rows[at] ?? {};
+			const open = call.indexOf("(");
+			const worked = call.slice(open + 1, -1).replace(/(?<![\w.'"])([A-Za-z_]\w*)(?![\w(])/g, (name) => {
+				const v = row[name];
+				return typeof v === "number" || typeof v === "boolean" ? String(v) : typeof v === "string" ? `'${v}'` : name;
+			}).split(",").map((a) => {
+				if (!/^[\d\s+\-*/%().]+$/.test(a) || !/[+\-*/%]/.test(a.trim().slice(1))) return a.trim();
+				const expr = a.trim().replace(/^(.+?)\s*\/\/\s*(.+)$/, "floor(($1) / ($2))");
+				try {
+					return String(evalExpr(compileExpr(expr), 0));
+				} catch {
+					return a.trim();
+				}
+			});
+			return `${call.slice(0, open)}(${worked.join(", ")})`;
+		};
+		drawExecTree(execPane, execTree(file.source, frames, Math.min(frame, frames.length - 1), label), frame);
+	}
 	function evaluate(expr) {
 		if (!compiled.has(expr)) try {
 			compiled.set(expr, compileExpr(expr));
@@ -26438,6 +26853,7 @@ function setupCodePanel() {
 		lastLines = lines;
 		lastPlace = place;
 		markExecutingSection();
+		if (topView === "tree") renderExecTree();
 		veil(running);
 		publishView(running);
 		scheduleInline();
