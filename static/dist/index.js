@@ -25446,30 +25446,46 @@ function repeatedCalls(tree) {
 /**
 * Draws an execution tree (exec-tree.ts) as a top-down node-link diagram: calls as boxes written as the code
 * writes them, loops as pills with their iteration count, the node executing now lit, the ones that finished
-* paler. Each leaf takes a column and a parent sits over its children, so the width is the work fanning out.
+* paler. Each leaf takes a column and a parent sits over its children, so the width is the work fanning out;
+* separate functions are stacked one under another.
 */
 var ROW = 46;
 var H = 22;
 var PAD = 10;
 var CHAR = 6.4;
+/** Rows left empty between separate functions' trees. */
+var ROOT_GAP = .4;
 var SVG = "http://www.w3.org/2000/svg";
 function svg$2(tag, attrs) {
 	const el = document.createElementNS(SVG, tag);
 	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
 	return el;
 }
-/** Each node's column centre: leaves in order, a parent over the middle of its children. */
-function columns(tree) {
-	const x = /* @__PURE__ */ new Map();
-	let next = 0;
+/**
+* Each node's column centre and row: leaves in order, a parent over the middle of its children. Separate
+* functions (roots) are stacked, each tree under the one before it, its columns starting from the left again.
+*/
+function layout(tree) {
+	const x = /* @__PURE__ */ new Map(), row = /* @__PURE__ */ new Map();
+	let next = 0, top = 0, deepest = 0;
 	const place = (id) => {
 		const n = tree.nodes[id];
+		row.set(id, top + n.depth);
+		deepest = Math.max(deepest, n.depth);
 		const at = n.children.length ? n.children.map(place).reduce((a, b) => a + b, 0) / n.children.length : next++;
 		x.set(id, at);
 		return at;
 	};
-	for (const n of tree.nodes) if (n.parent == null) place(n.id);
-	return x;
+	for (const n of tree.nodes) if (n.parent == null) {
+		next = 0;
+		deepest = 0;
+		place(n.id);
+		top += deepest + 1 + ROOT_GAP;
+	}
+	return {
+		x,
+		row
+	};
 }
 var short = (text, max) => text.length > max ? `${text.slice(0, max - 1)}…` : text;
 /**
@@ -25647,9 +25663,9 @@ function drawExecTree(host, build, last, frame, pick, ask, askRepeats) {
 		if (n.kind === "call" || !whole) return text(state(n));
 		return `↻ ${loopName(n.label)} ×${ran(n) ? `${state(n).iterations}/` : ""}${n.iterations}`;
 	};
-	const x = columns(tree);
+	const { x, row } = layout(tree);
 	const COL = Math.max(64, Math.max(...tree.nodes.map((n) => label(n).length)) * CHAR + 18 + (ask ? ASK_W : 0));
-	const width = (Math.max(...x.values()) + 1) * COL + 20, height = (Math.max(...tree.nodes.map((n) => n.depth)) + 1) * ROW + PAD;
+	const width = (Math.max(...x.values()) + 1) * COL + 20, height = (Math.max(...row.values()) + 1) * ROW + PAD;
 	const root = svg$2("svg", {
 		width,
 		height,
@@ -25658,7 +25674,7 @@ function drawExecTree(host, build, last, frame, pick, ask, askRepeats) {
 		role: "img",
 		"aria-label": summary.textContent
 	});
-	const cx = (id) => PAD + x.get(id) * COL + COL / 2, cy = (n) => PAD + n.depth * ROW + H / 2;
+	const cx = (id) => PAD + x.get(id) * COL + COL / 2, cy = (n) => PAD + row.get(n.id) * ROW + H / 2;
 	for (const n of tree.nodes) if (n.parent != null) {
 		const p = tree.nodes[n.parent];
 		root.append(svg$2("path", {
@@ -25730,10 +25746,11 @@ function drawExecTree(host, build, last, frame, pick, ask, askRepeats) {
 		}
 		if (pick) g.addEventListener("click", () => pick(n.frame));
 		if (n.kind === "loop") {
-			const at = Math.max(0, n.starts.filter((f) => f <= frame).length - 1);
+			const starts = full.nodes[n.id]?.starts ?? n.starts;
+			const at = Math.max(0, starts.filter((f) => f <= frame).length - 1);
 			loopOf.set(g, {
 				name: `↻ ${loopName(n.label)}`,
-				starts: n.starts,
+				starts,
 				at,
 				pick
 			});

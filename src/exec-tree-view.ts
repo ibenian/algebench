@@ -1,12 +1,15 @@
 /**
  * Draws an execution tree (exec-tree.ts) as a top-down node-link diagram: calls as boxes written as the code
  * writes them, loops as pills with their iteration count, the node executing now lit, the ones that finished
- * paler. Each leaf takes a column and a parent sits over its children, so the width is the work fanning out.
+ * paler. Each leaf takes a column and a parent sits over its children, so the width is the work fanning out;
+ * separate functions are stacked one under another.
  */
 import { repeatedCalls } from '/exec-tree.js';
 import type { ExecTree, ExecNode } from '/exec-tree.js';
 
 const ROW = 46, H = 22, PAD = 10, CHAR = 6.4;
+/** Rows left empty between separate functions' trees. */
+const ROOT_GAP = 0.4;
 const SVG = 'http://www.w3.org/2000/svg';
 
 function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
@@ -15,18 +18,27 @@ function svg<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string,
     return el;
 }
 
-/** Each node's column centre: leaves in order, a parent over the middle of its children. */
-function columns(tree: ExecTree): Map<number, number> {
-    const x = new Map<number, number>();
-    let next = 0;
+/**
+ * Each node's column centre and row: leaves in order, a parent over the middle of its children. Separate
+ * functions (roots) are stacked, each tree under the one before it, its columns starting from the left again.
+ */
+function layout(tree: ExecTree): { x: Map<number, number>; row: Map<number, number> } {
+    const x = new Map<number, number>(), row = new Map<number, number>();
+    let next = 0, top = 0, deepest = 0;
     const place = (id: number): number => {
         const n = tree.nodes[id]!;
+        row.set(id, top + n.depth);
+        deepest = Math.max(deepest, n.depth);
         const at = n.children.length ? n.children.map(place).reduce((a, b) => a + b, 0) / n.children.length : next++;
         x.set(id, at);
         return at;
     };
-    for (const n of tree.nodes) if (n.parent == null) place(n.id);
-    return x;
+    for (const n of tree.nodes) if (n.parent == null) {
+        next = 0;deepest = 0;
+        place(n.id);
+        top += deepest + 1 + ROOT_GAP;
+    }
+    return { x, row };
 }
 
 const short = (text: string, max: number) => text.length > max ? `${text.slice(0, max - 1)}…` : text;
@@ -174,12 +186,12 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
         if (n.kind === 'call' || !whole) return text(state(n));
         return `↻ ${loopName(n.label)} ×${ran(n) ? `${state(n).iterations}/` : ''}${n.iterations}`;
     };
-    const x = columns(tree);
+    const { x, row } = layout(tree);
     // One column width for all, wide enough for the longest label.
     const COL = Math.max(64, Math.max(...tree.nodes.map(n => label(n).length)) * CHAR + 18 + (ask ? ASK_W : 0));
-    const width = (Math.max(...x.values()) + 1) * COL + PAD * 2, height = (Math.max(...tree.nodes.map(n => n.depth)) + 1) * ROW + PAD;
+    const width = (Math.max(...x.values()) + 1) * COL + PAD * 2, height = (Math.max(...row.values()) + 1) * ROW + PAD;
     const root = svg('svg', { width, height, viewBox: `0 0 ${width} ${height}`, class: 'exec-tree-svg', role: 'img', 'aria-label': summary.textContent });
-    const cx = (id: number) => PAD + x.get(id)! * COL + COL / 2, cy = (n: ExecNode) => PAD + n.depth * ROW + H / 2;
+    const cx = (id: number) => PAD + x.get(id)! * COL + COL / 2, cy = (n: ExecNode) => PAD + row.get(n.id)! * ROW + H / 2;
     for (const n of tree.nodes) if (n.parent != null) {
         const p = tree.nodes[n.parent]!;
         root.append(svg('path', { class: `exec-tree-edge${ran(n) ? '' : ' future'}`, d: `M${cx(p.id)},${cy(p) + H / 2} C${cx(p.id)},${cy(p) + ROW / 2} ${cx(n.id)},${cy(n) - ROW / 2} ${cx(n.id)},${cy(n) - H / 2}` }));
@@ -225,8 +237,10 @@ export function drawExecTree(host: HTMLElement, build: (upto: number) => ExecTre
         if (pick) g.addEventListener('click', () => pick(n.frame));
         if (n.kind === 'loop') {
             // The iteration the run is in now: the last one started by this frame (the first while not reached).
-            const at = Math.max(0, n.starts.filter(f => f <= frame).length - 1);
-            loopOf.set(g, { name: `↻ ${loopName(n.label)}`, starts: n.starts, at, pick });
+            // Its iterations are the whole run's, so in grow mode too it scrubs ahead of the run, not only back.
+            const starts = full.nodes[n.id]?.starts ?? n.starts;
+            const at = Math.max(0, starts.filter(f => f <= frame).length - 1);
+            loopOf.set(g, { name: `↻ ${loopName(n.label)}`, starts, at, pick });
             tip.textContent += ` · drag sideways to pick an iteration`;
         }
         root.append(g);
