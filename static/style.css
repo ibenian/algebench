@@ -5634,6 +5634,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .exec-tree-loop rect { fill: color-mix(in srgb, #4fb39a 16%, var(--panel-bg)); stroke: color-mix(in srgb, #4fb39a 60%, transparent); }
 .exec-tree-node text { font: 10.5px ui-monospace, monospace; fill: var(--text-color); pointer-events: none; user-select: none; }
 .exec-tree-node.done { opacity: .55; }
+.exec-tree-scroll:not(.panning) .exec-tree-node { cursor: pointer; }
+.exec-tree-node:hover rect { stroke-width: 2; }
 .exec-tree-node.current rect { fill: color-mix(in srgb, #f1c65b 45%, var(--panel-bg)); stroke: #f1c65b; stroke-width: 2; }
 .exec-tree-node.current { opacity: 1; }
 .exec-tree-node.fresh { animation: exec-tree-in .35s ease-out; }

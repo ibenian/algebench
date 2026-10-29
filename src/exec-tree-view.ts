@@ -43,7 +43,6 @@ function text(n: ExecNode): string {
     return n.kind === 'call' ? short(n.label, 22) : `↻ ${loopName(n.label)} ×${n.iterations}`;
 }
 
-/** Draw the tree into host; the node executing now is scrolled into view. `fresh` is the frame being shown. */
 /**
  * The scrolling view under the summary, kept across redraws (so a pan stays where the reader left it) and
  * dragged with the mouse to pan.
@@ -52,19 +51,38 @@ function scrollerOf(host: HTMLElement): HTMLDivElement {
     let scroller = host.querySelector<HTMLDivElement>(':scope > .exec-tree-scroll');
     if (scroller) return scroller;
     scroller = document.createElement('div');scroller.className = 'exec-tree-scroll';
+    // A drag pans; a press that does not move is a click, left to the node under it.
     scroller.addEventListener('pointerdown', e => {
         if (e.button !== 0) return;
         const s = scroller!, x0 = e.clientX, y0 = e.clientY, left = s.scrollLeft, top = s.scrollTop;
-        s.setPointerCapture(e.pointerId);s.classList.add('panning');
-        const move = (ev: PointerEvent) => { s.scrollLeft = left - (ev.clientX - x0);s.scrollTop = top - (ev.clientY - y0); };
-        const up = () => { s.removeEventListener('pointermove', move);s.classList.remove('panning'); };
-        s.addEventListener('pointermove', move);
-        s.addEventListener('pointerup', up, {once: true});s.addEventListener('pointercancel', up, {once: true});
+        let panning = false;
+        const move = (ev: PointerEvent) => {
+            if (!panning && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+            if (!panning) { panning = true;s.classList.add('panning'); }
+            s.scrollLeft = left - (ev.clientX - x0);s.scrollTop = top - (ev.clientY - y0);
+        };
+        // Followed on the window, so a release anywhere (outside the panel too) ends the drag.
+        const up = () => {
+            window.removeEventListener('pointermove', move);window.removeEventListener('pointerup', up);window.removeEventListener('pointercancel', up);
+            s.classList.remove('panning');
+            // The click that ends a pan (fired right after the release, if it ended over the panel) is not a pick.
+            if (panning) {
+                const swallow = (ev: Event) => ev.stopPropagation();
+                s.addEventListener('click', swallow, {capture: true, once: true});
+                setTimeout(() => s.removeEventListener('click', swallow, {capture: true}), 0);
+            }
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);window.addEventListener('pointercancel', up);
     });
     return scroller;
 }
 
-export function drawExecTree(host: HTMLElement, tree: ExecTree, frame: number): void {
+/**
+ * Draw the tree into host at the frame shown; the node executing now is scrolled into view. Clicking a node calls
+ * `pick` with the frame it started at.
+ */
+export function drawExecTree(host: HTMLElement, tree: ExecTree, frame: number, pick?: (frame: number) => void): void {
     const scroller = scrollerOf(host);
     host.replaceChildren();
     const summary = document.createElement('div');summary.className = 'exec-tree-summary';
@@ -94,7 +112,9 @@ export function drawExecTree(host: HTMLElement, tree: ExecTree, frame: number): 
         tip.textContent = n.kind === 'call'
             ? `${n.label}${n.site ? `, called from line ${n.site}` : ''}${n.iteration ? ` in iteration ${n.iteration}` : ''}${n.done ? ', returned' : ''}`
             : `${n.label}: ${n.iterations} iteration${n.iterations === 1 ? '' : 's'} so far${n.iteration ? ` (inside iteration ${n.iteration})` : ''}${n.done ? ', ended' : ''}`;
+        tip.textContent += pick ? ` · click to go to frame ${n.frame}` : '';
         g.append(label, tip);
+        if (pick) g.addEventListener('click', () => pick(n.frame));
         root.append(g);
         if (n.id === tree.current) current = g;
     }

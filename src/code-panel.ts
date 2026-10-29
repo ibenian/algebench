@@ -354,7 +354,10 @@ export function setupCodePanel(): void {
             });
             return `${call.slice(0,open)}(${worked.join(', ')})`;
         };
-        drawExecTree(execPane,execTree(file.source,frames,Math.min(frame,frames.length-1),label),frame);
+        // A node is where its call or loop began: clicking it plays the run to that frame.
+        const slider=scene?.stepPlayback?.slider;
+        const pick=slider?(at:number)=>{window.dispatchEvent(new CustomEvent('algebench:playbackpause'));setSliderValue(slider,at);}:undefined;
+        drawExecTree(execPane,execTree(file.source,frames,Math.min(frame,frames.length-1),label),frame,pick);
     }
     function evaluate(expr: string) {
         if(!compiled.has(expr))try{compiled.set(expr,compileExpr(expr));}catch{compiled.set(expr,null);}

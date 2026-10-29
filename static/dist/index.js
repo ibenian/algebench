@@ -25442,7 +25442,6 @@ function loopName(header) {
 function text(n) {
 	return n.kind === "call" ? short(n.label, 22) : `↻ ${loopName(n.label)} ×${n.iterations}`;
 }
-/** Draw the tree into host; the node executing now is scrolled into view. `fresh` is the frame being shown. */
 /**
 * The scrolling view under the summary, kept across redraws (so a pan stays where the reader left it) and
 * dragged with the mouse to pan.
@@ -25455,23 +25454,41 @@ function scrollerOf(host) {
 	scroller.addEventListener("pointerdown", (e) => {
 		if (e.button !== 0) return;
 		const s = scroller, x0 = e.clientX, y0 = e.clientY, left = s.scrollLeft, top = s.scrollTop;
-		s.setPointerCapture(e.pointerId);
-		s.classList.add("panning");
+		let panning = false;
 		const move = (ev) => {
+			if (!panning && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 4) return;
+			if (!panning) {
+				panning = true;
+				s.classList.add("panning");
+			}
 			s.scrollLeft = left - (ev.clientX - x0);
 			s.scrollTop = top - (ev.clientY - y0);
 		};
 		const up = () => {
-			s.removeEventListener("pointermove", move);
+			window.removeEventListener("pointermove", move);
+			window.removeEventListener("pointerup", up);
+			window.removeEventListener("pointercancel", up);
 			s.classList.remove("panning");
+			if (panning) {
+				const swallow = (ev) => ev.stopPropagation();
+				s.addEventListener("click", swallow, {
+					capture: true,
+					once: true
+				});
+				setTimeout(() => s.removeEventListener("click", swallow, { capture: true }), 0);
+			}
 		};
-		s.addEventListener("pointermove", move);
-		s.addEventListener("pointerup", up, { once: true });
-		s.addEventListener("pointercancel", up, { once: true });
+		window.addEventListener("pointermove", move);
+		window.addEventListener("pointerup", up);
+		window.addEventListener("pointercancel", up);
 	});
 	return scroller;
 }
-function drawExecTree(host, tree, frame) {
+/**
+* Draw the tree into host at the frame shown; the node executing now is scrolled into view. Clicking a node calls
+* `pick` with the frame it started at.
+*/
+function drawExecTree(host, tree, frame, pick) {
 	const scroller = scrollerOf(host);
 	host.replaceChildren();
 	const summary = document.createElement("div");
@@ -25522,7 +25539,9 @@ function drawExecTree(host, tree, frame) {
 		label.textContent = text(n);
 		const tip = svg$2("title", {});
 		tip.textContent = n.kind === "call" ? `${n.label}${n.site ? `, called from line ${n.site}` : ""}${n.iteration ? ` in iteration ${n.iteration}` : ""}${n.done ? ", returned" : ""}` : `${n.label}: ${n.iterations} iteration${n.iterations === 1 ? "" : "s"} so far${n.iteration ? ` (inside iteration ${n.iteration})` : ""}${n.done ? ", ended" : ""}`;
+		tip.textContent += pick ? ` · click to go to frame ${n.frame}` : "";
 		g.append(label, tip);
+		if (pick) g.addEventListener("click", () => pick(n.frame));
 		root.append(g);
 		if (n.id === tree.current) current = g;
 	}
@@ -26772,7 +26791,12 @@ function setupCodePanel() {
 			});
 			return `${call.slice(0, open)}(${worked.join(", ")})`;
 		};
-		drawExecTree(execPane, execTree(file.source, frames, Math.min(frame, frames.length - 1), label), frame);
+		const slider = scene?.stepPlayback?.slider;
+		const pick = slider ? (at) => {
+			window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+			setSliderValue(slider, at);
+		} : void 0;
+		drawExecTree(execPane, execTree(file.source, frames, Math.min(frame, frames.length - 1), label), frame, pick);
 	}
 	function evaluate(expr) {
 		if (!compiled.has(expr)) try {
