@@ -6007,7 +6007,15 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-uses-find[aria-pressed="true"] { background: color-mix(in srgb, var(--find) 28%, transparent); border-color: var(--find); }
 .code-uses-find[aria-pressed="true"]::before { background: var(--find); }
 /* Lines a find lit: a tint, and in the gutter one 3px bar per kind of use the line has (code-panel.ts sets them). */
-.code-line.code-found { background: color-mix(in srgb, var(--find-tint) 14%, transparent); box-shadow: var(--find-bars); }
+.code-line.code-found { position: relative; background: color-mix(in srgb, var(--find-tint) 14%, transparent); box-shadow: var(--find-bars); }
+/* Over the bars (a little wider, to be easy to point at): pointing there explains the line's use. */
+.code-find-bars { position: absolute; left: 0; top: 0; bottom: 0; z-index: 2; cursor: help; }
+.code-find-head { font-size: 11px; opacity: .75; margin-bottom: 4px; }
+.code-find-note { display: flex; gap: 6px; align-items: baseline; }
+.code-find-note + .code-find-note { margin-top: 4px; }
+.code-find-note p { margin: 0; }
+.code-find-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--find); align-self: center; }
+.code-find-dot + .code-find-dot { margin-left: -3px; }
 /* Only a ✦ and nothing above: no rule to separate. */
 .code-doc-tooltip > .code-doc-text:only-child { margin-top: 0; padding-top: 0; border-top: 0; }
 /* An unprompted formula beside a recalculated row: the tooltip, with a soft accent edge. */

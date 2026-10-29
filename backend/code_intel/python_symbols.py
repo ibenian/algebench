@@ -110,7 +110,7 @@ def analyze_python(source: str) -> dict:
     references.sort(key=lambda r: (r["line"], r["col"], -(r["endCol"] - r["col"])))
     functions, calls = _functions_and_calls(tree, source, lines)
     return {"variables": sorted(variables), "references": references, "functions": functions, "calls": calls,
-            "uses": _uses(tree, variables), "error": None}
+            "uses": _uses(tree, variables, source), "error": None}
 
 
 def _functions_and_calls(tree: ast.AST, source: str, lines: list[str]) -> tuple[list[dict], list[dict]]:
@@ -157,12 +157,15 @@ def _is_dict(value: ast.AST | None) -> bool:
     return name in _DICTS
 
 
-def _uses(tree: ast.Module, variables: set[str]) -> list[dict]:
+def _uses(tree: ast.Module, variables: set[str], source: str) -> list[dict]:
     """For each variable of each top-level function (or the module), the lines that read, update, grow and shrink it.
 
     A function nested in another shares its scope (it reads the outer one's variables), so scopes are top-level.
     Assigning to a subscript of a dict (one assigned a ``{}``, ``dict()``, ``defaultdict()``, ``Counter()``) may add
-    a key, so it grows the dict; of anything else it only updates it.
+    a key, so it grows the dict; of anything else it only updates it. Each mention also comes as a note: its line,
+    what it does (its kinds), how (``how``: ``bind``, ``loop``, ``augment``, ``delete``, ``set-item``, ``add-key``,
+    ``augment-item``, ``delete-item``, ``set-attr``, ``inside``, ``method:<name>``, ``heap:<name>``, ``read``) and the
+    code doing it, so the panel can say what a line does to the variable.
     """
     scopes: list[tuple[int, int, ast.AST]] = []
     module_body = []
@@ -181,20 +184,27 @@ def _uses(tree: ast.Module, variables: set[str]) -> list[dict]:
         dicts = {t.id for node in ast.walk(scope) if isinstance(node, (ast.Assign, ast.AnnAssign)) and _is_dict(node.value)
                  for t in (node.targets if isinstance(node, ast.Assign) else [node.target]) if isinstance(t, ast.Name)}
         found: dict[str, dict[str, set[int]]] = {}
+        notes: dict[str, list[dict]] = {}
         for node in ast.walk(scope):
             if not isinstance(node, ast.Name) or node.id not in variables:
                 continue
-            kinds = _kinds(node, parent, node.id in dicts)
+            kinds, how, doing = _kinds(node, parent, node.id in dicts)
             lines = found.setdefault(node.id, {"read": set(), "update": set(), "grow": set(), "shrink": set()})
             for kind in kinds:
                 lines[kind].add(node.lineno)
+            code = (ast.get_source_segment(source, doing) or node.id).split("\n")[0]
+            note = {"line": node.lineno, "kinds": list(kinds), "how": how, "code": code if len(code) <= 80 else code[:79] + "…"}
+            if note not in notes.setdefault(node.id, []):
+                notes[node.id].append(note)
         for name, lines in sorted(found.items()):
-            out.append({"name": name, "from": start, "to": end, **{k: sorted(v) for k, v in lines.items()}})
+            out.append({"name": name, "from": start, "to": end, **{k: sorted(v) for k, v in lines.items()},
+                        "notes": sorted(notes[name], key=lambda n: n["line"])})
     return out
 
 
-def _kinds(node: ast.Name, parent: dict[ast.AST, ast.AST], is_dict: bool) -> tuple[str, ...]:
-    """What one mention of a name does to it: reads it, or updates it (and maybe grows or shrinks it).
+def _kinds(node: ast.Name, parent: dict[ast.AST, ast.AST], is_dict: bool) -> tuple[tuple[str, ...], str, ast.AST]:
+    """What one mention of a name does to it: reads it, or updates it (and maybe grows or shrinks it); how, and the
+    code that does it.
 
     Changing something inside it (``grid[r][c] = 1``, ``grid[r].append(x)``) updates it; only a change to the
     container itself (``count[k] = v``, ``stack.pop()``) grows or shrinks it.
@@ -202,31 +212,45 @@ def _kinds(node: ast.Name, parent: dict[ast.AST, ast.AST], is_dict: bool) -> tup
     up = parent.get(node)
     # Bound or rebound (x = ..., for x in ..., del x); x += ... reads the old value too.
     if isinstance(node.ctx, (ast.Store, ast.Del)):
-        return ("read", "update") if isinstance(up, ast.AugAssign) else ("update",)
+        if isinstance(up, ast.AugAssign):
+            return ("read", "update"), "augment", up
+        if isinstance(node.ctx, ast.Del):
+            return ("update",), "delete", node
+        if isinstance(up, (ast.For, ast.AsyncFor, ast.comprehension)) or isinstance(parent.get(up), (ast.For, ast.AsyncFor, ast.comprehension)):
+            return ("update",), "loop", node
+        return ("update",), "bind", up if isinstance(up, (ast.Assign, ast.AnnAssign)) else node
     # The outermost subscript / attribute chain hanging off the name: what the line does to it is done to the name.
     top: ast.AST = node
     while isinstance(parent.get(top), (ast.Subscript, ast.Attribute)) and parent[top].value is top:
         top = parent[top]
     direct = parent.get(node) is top
     if isinstance(top, (ast.Subscript, ast.Attribute)) and isinstance(top.ctx, ast.Del):
-        return ("update", "shrink") if direct and isinstance(top, ast.Subscript) else ("update",)
+        if direct and isinstance(top, ast.Subscript):
+            return ("update", "shrink"), "delete-item", top
+        return ("update",), "inside", top
     if isinstance(top, (ast.Subscript, ast.Attribute)) and isinstance(top.ctx, ast.Store):
-        augmented = isinstance(parent.get(top), ast.AugAssign)
-        grows = direct and isinstance(top, ast.Subscript) and is_dict and not augmented
-        return ("read", "update") if augmented else ("update", "grow") if grows else ("update",)
+        if not direct:
+            return ("update",), "inside", top
+        if isinstance(parent.get(top), ast.AugAssign):
+            return ("read", "update"), "augment-item", top
+        if isinstance(top, ast.Attribute):
+            return ("update",), "set-attr", top
+        return (("update", "grow"), "add-key", top) if is_dict else (("update",), "set-item", top)
     call = parent.get(top)
     if isinstance(top, ast.Attribute) and isinstance(call, ast.Call) and call.func is top:
         on_self = parent.get(node) is top
+        if top.attr in _GROWS | _SHRINKS | _CHANGES and not on_self:
+            return ("update",), "inside", call
         if top.attr in _GROWS:
-            return ("update", "grow") if on_self else ("update",)
+            return ("update", "grow"), f"method:{top.attr}", call
         if top.attr in _SHRINKS:
-            return ("update", "shrink") if on_self else ("update",)
+            return ("update", "shrink"), f"method:{top.attr}", call
         if top.attr in _CHANGES:
-            return ("update",)
-        return ("read",)
+            return ("update",), f"method:{top.attr}", call
+        return ("read",), "read", call
     if isinstance(up, ast.Call) and up.args and up.args[0] is node:
         func = up.func
         name = func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else None
         if name in _HEAP:
-            return ("update", *_HEAP[name])
-    return ("read",)
+            return ("update", *_HEAP[name]), f"heap:{name}", up
+    return ("read",), "read", top if top is not node else up if isinstance(up, ast.Call) else node

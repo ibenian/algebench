@@ -145,3 +145,21 @@ def test_each_top_level_function_has_its_own_uses_and_nested_ones_share_them():
     first, second = (u for u in analyze_python(source)["uses"] if u["name"] == "seen")
     assert (first["from"], first["grow"]) == (1, [4])
     assert (second["from"], second["grow"]) == (6, [8])
+
+
+def test_each_use_says_how_and_with_what_code():
+    source = "\n".join([
+        "def f(nums):",
+        "    count = {}",
+        "    for num in nums:",
+        "        count[num] = count.get(num, 0) + 1",
+        "    return count",
+    ])
+    notes = _uses_of(source, "count")["notes"]
+    assert notes == [
+        {"line": 2, "kinds": ["update"], "how": "bind", "code": "count = {}"},
+        {"line": 4, "kinds": ["update", "grow"], "how": "add-key", "code": "count[num]"},
+        {"line": 4, "kinds": ["read"], "how": "read", "code": "count.get(num, 0)"},
+        {"line": 5, "kinds": ["read"], "how": "read", "code": "count"},
+    ]
+    assert _uses_of(source, "num")["notes"][0]["how"] == "loop"

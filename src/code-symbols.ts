@@ -23,8 +23,41 @@ export interface CodeCall extends CodeFunction { defLine: number; key?: string }
  * Where a variable of one top-level function (lines from–to; 0–0 for the module's own code) is read, updated,
  * grown and shrunk: `count.get(k)` reads, `count[k] = v` updates (and grows a dict), `stack.pop()` updates and shrinks.
  */
-export interface CodeUse { name: string; from: number; to: number; read: number[]; update: number[]; grow: number[]; shrink: number[] }
 export type CodeUseKind = 'read' | 'update' | 'grow' | 'shrink';
+/** One mention of a variable: its line, what it does to it, how (`add-key`, `method:append`, …) and the code doing it. */
+export interface CodeUseNote { line: number; kinds: CodeUseKind[]; how: string; code: string }
+export interface CodeUse { name: string; from: number; to: number; read: number[]; update: number[]; grow: number[]; shrink: number[]; notes?: CodeUseNote[] }
+
+const METHOD_DOES: Record<string, string> = {
+    append: 'adds an item at its end', appendleft: 'adds an item at its front', extend: 'adds every item of another collection at its end',
+    extendleft: 'adds every item of another collection at its front', insert: 'inserts an item at a position', add: 'adds an element (unless it is already there)',
+    setdefault: 'adds the key with a default value if it is missing', update: 'adds or replaces entries from another collection',
+    pop: 'removes an item and gives it back (the last one, or the one at the given index or key)', popleft: 'removes its first item and gives it back',
+    popitem: 'removes an entry and gives it back', remove: 'removes the first item equal to the value', discard: 'removes the element if it is there',
+    clear: 'removes everything', sort: 'sorts it in place', reverse: 'reverses it in place', rotate: 'rotates it in place',
+    heappush: 'pushes an item onto the heap, which grows by one', heappop: 'pops the smallest item off the heap, which shrinks by one',
+    heapify: 'rearranges it into a heap', heappushpop: 'pushes an item, then pops the smallest', heapreplace: 'pops the smallest, then pushes an item',
+};
+
+/** What one mention does to the variable `name`, in a sentence (markdown, the code in backticks). */
+export function useSentence(name: string, note: CodeUseNote): string {
+    const n = `\`${name}\``, code = `\`${note.code}\``;
+    const [how, detail = ''] = note.how.split(':');
+    switch (how) {
+        case 'bind': return `${code} gives ${n} a new value.`;
+        case 'loop': return `${n} takes the next item each time round the loop.`;
+        case 'augment': return `${code} reads ${n}'s value and updates it from it.`;
+        case 'delete': return `\`del ${name}\` deletes ${n}.`;
+        case 'set-item': return `${code} = … replaces one item of ${n}; its size stays the same.`;
+        case 'add-key': return `${code} = … sets the entry for that key: if ${n} does not have the key yet it gains an entry (grows), otherwise its value is replaced.`;
+        case 'augment-item': return `${code} reads one entry of ${n} and updates it; its size stays the same.`;
+        case 'delete-item': return `\`del ${note.code}\` removes one entry of ${n}, which shrinks.`;
+        case 'set-attr': return `${code} = … changes a field of ${n}.`;
+        case 'inside': return `${code} changes something held inside ${n}, not ${n}'s own size.`;
+        case 'method': case 'heap': return `${code} ${METHOD_DOES[detail] ?? 'changes it'}.`;
+        default: return note.code === name ? `Uses the value of ${n} without changing it.` : `${code} reads ${n} without changing it.`;
+    }
+}
 export interface CodeAnalysis { variables: string[]; references: CodeReference[]; functions?: CodeFunction[]; calls?: CodeCall[]; uses?: CodeUse[]; error: string | null }
 
 /** The uses of the variable `name` as seen from `line`: those of the function holding it, else the module's. */

@@ -10,11 +10,11 @@ import { fileTree, markedSegments, relatedLocations, activeCodeLines, lineAction
 import { setCodeFocus } from '/code-focus.js';
 import { execTree, nodeLines, nodePath, treeSize } from '/exec-tree.js';
 import { drawExecTree } from '/exec-tree-view.js';
-import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys, usesAt } from '/code-symbols.js';
+import { analyzeCode, lineReferences, setSymbolHover, hoveredSymbols, hoveredCodeLine, codeLineKey, symbolValues, rowSymbolKeys, usesAt, useSentence } from '/code-symbols.js';
 import { labelsForSymbol, labelsForCodeLine } from '/labels.js';
 import { showCodeSymbolTooltip, hideCodeTooltip } from '/label-tooltip.js';
 import type { CodeTooltipAsk } from '/label-tooltip.js';
-import type { CodeReference, CodeFunction, CodeCall, CodeUse, CodeUseKind } from '/code-symbols.js';
+import type { CodeReference, CodeFunction, CodeCall, CodeUse, CodeUseKind, CodeUseNote } from '/code-symbols.js';
 import type { CodeFile, FileTree } from '/code-panel-model.js';
 import { highlightCode, lineTokens, paintTokens, wrapColumns } from '/code-highlight.js';
 import { CODE_PROMPTS, LINE_PROMPT, LINE_VALUES_PROMPT, codePromptMessage, explainPrompt, execNodePrompt, repeatedCallsPrompt } from '/code-prompts.js';
@@ -89,7 +89,7 @@ export function setupCodePanel(): void {
     let first=0,last=0,excerpt='',active: CompiledExpr|null=null,followed: CodeFile | undefined;
     let references: CodeReference[]=[],codeCalls: CodeCall[]=[],codeUses: CodeUse[]=[];
     // The uses of a variable lit from its tooltip: each kind (Reads, Updates, Grows, Shrinks) switched on with its lines.
-    let finding:{name:string;kinds:Map<CodeUseKind,number[]>}|null=null;
+    let finding:{name:string;kinds:Map<CodeUseKind,number[]>;notes:CodeUseNote[]}|null=null;
     // The annotation of each annotated-expression span, and the rendered markdown of each entry's text.
     const docEntries=new WeakMap<HTMLElement,CodeAnnotation>(),docHtml=new Map<string,string>();
     // What the calls just made returned, by call key (codeRef.returnsExpr); empty when the run records none.
@@ -1099,6 +1099,9 @@ export function setupCodePanel(): void {
             const line=Number(row.dataset.line),kinds=USE_FINDS.map(([kind])=>kind).filter(kind=>!!finding?.kinds.get(kind)?.includes(line));
             for(const [kind] of USE_FINDS)row.classList.toggle(`code-find-${kind}`,kinds.includes(kind));
             row.classList.toggle('code-found',kinds.length>0);
+            // The bars take the pointer: pointing at them says what the line does to the variable.
+            row.querySelector(':scope > .code-find-bars')?.remove();
+            if(kinds.length){const bars=document.createElement('span');bars.className='code-find-bars';bars.style.width=`${3*kinds.length+5}px`;row.prepend(bars);}
             // One 3px bar per kind the line has, side by side in the gutter (the first shadow is drawn on top).
             if(kinds.length){
                 row.style.setProperty('--find-tint',FIND_COLORS[kinds[0]!]);
@@ -1108,8 +1111,8 @@ export function setupCodePanel(): void {
         // With the code hidden under section titles, the sections holding the found lines open.
         if(selected&&settings.structureMode!=='plain')codeSections(selected).forEach(paintReveal);
     }
-    function toggleFind(name:string,kind:CodeUseKind,lines:number[]) {
-        if(finding?.name!==name)finding={name,kinds:new Map()};
+    function toggleFind(name:string,kind:CodeUseKind,lines:number[],notes:CodeUseNote[]) {
+        if(finding?.name!==name)finding={name,kinds:new Map(),notes};
         if(finding.kinds.has(kind))finding.kinds.delete(kind);else finding.kinds.set(kind,lines);
         if(!finding.kinds.size)finding=null;
         paintFind();
@@ -1120,6 +1123,19 @@ export function setupCodePanel(): void {
         }
     }
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&finding){finding=null;paintFind();}});
+    /** What a found line does to the variable, for the kinds switched on: one sentence per mention, after its kinds' dots. */
+    function findBarsHtml(line:number):string|null {
+        if(!finding)return null;
+        const on=USE_FINDS.filter(([kind])=>finding!.kinds.get(kind)?.includes(line));
+        const notes=finding.notes.filter(note=>note.line===line&&note.kinds.some(kind=>on.some(([k])=>k===kind)));
+        if(!notes.length)return null;
+        const esc=(t:string)=>t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
+        const rows=notes.map(note=>{
+            const dots=on.filter(([kind])=>note.kinds.includes(kind)).map(([kind,label])=>`<span class="code-find-dot" style="--find:${FIND_COLORS[kind]}" title="${label}"></span>`).join('');
+            return `<div class="code-find-note">${dots}${renderMarkdown(useSentence(finding!.name,note))}</div>`;
+        });
+        return `<div class="code-find-head">Line ${line} · ${on.map(([,label])=>label).join(', ')} <code>${esc(finding.name)}</code></div>${rows.join('')}`;
+    }
     /** The tooltip's switches for the variable `name` as seen from `line`: one per kind of use, with its count. */
     function usesMenu(name:string,line:number):CodeTooltipAsk|null {
         const uses=usesAt(codeUses,name,line);
@@ -1135,7 +1151,7 @@ export function setupCodePanel(): void {
                 button.title=lines.length?`Light the lines that ${verb} ${name}: ${lines.join(', ')}`:`Nothing here ${verb.split(' ')[0]}s ${name}`;
                 button.setAttribute('aria-pressed',String(on(kind)));
                 button.addEventListener('click',()=>{
-                    toggleFind(name,kind,lines);
+                    toggleFind(name,kind,lines,uses.notes??[]);
                     menu.querySelectorAll<HTMLButtonElement>('.code-uses-find').forEach((b,k)=>b.setAttribute('aria-pressed',String(on(USE_FINDS[k]![0]))));
                 });
                 menu.append(button);
@@ -1151,6 +1167,8 @@ export function setupCodePanel(): void {
     function showHoverTooltip(target:HTMLElement,span:HTMLElement|null,row:HTMLElement|null) {
         const line=row?Number(row.dataset.line):0;
         lightDocBlock(null);
+        const bars=target.closest<HTMLElement>('.code-find-bars'),barsHtml=bars&&finding?findBarsHtml(line):null;
+        if(bars&&barsHtml){showCodeSymbolTooltip(bars,symbolTex(finding!.name,line),barsHtml);return;}
         const call=target.closest<HTMLElement>('.code-call'),key=call?.dataset.call;
         if(call){
             const name=call.textContent??'';

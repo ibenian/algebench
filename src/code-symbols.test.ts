@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rowSymbolKeys, lineReferences, codeLanguage, symbolKey, usesAt } from '/code-symbols.js';
+import { rowSymbolKeys, lineReferences, codeLanguage, symbolKey, usesAt, useSentence } from '/code-symbols.js';
 import type { CodeReference } from '/code-symbols.js';
 
 test('a row names the expressions left of its value, merged marker names included', () => {
@@ -34,4 +34,12 @@ test('a variable\'s uses are those of the function the line is in, else the modu
     assert.deepEqual(usesAt(uses, 'seen', 12)?.grow, [16]);
     assert.deepEqual(usesAt(uses, 'seen', 20)?.read, [20]);
     assert.equal(usesAt(uses, 'count', 12), null);
+});
+
+test('a use says what its line does to the variable', () => {
+    assert.equal(useSentence('count', { line: 16, kinds: ['update', 'grow'], how: 'add-key', code: 'count[prefix]' }),
+        '`count[prefix]` = … sets the entry for that key: if `count` does not have the key yet it gains an entry (grows), otherwise its value is replaced.');
+    assert.equal(useSentence('stack', { line: 3, kinds: ['update', 'shrink'], how: 'method:pop', code: 'stack.pop()' }),
+        '`stack.pop()` removes an item and gives it back (the last one, or the one at the given index or key).');
+    assert.equal(useSentence('total', { line: 7, kinds: ['read'], how: 'read', code: 'total' }), 'Uses the value of `total` without changing it.');
 });

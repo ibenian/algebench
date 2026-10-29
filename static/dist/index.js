@@ -921,6 +921,50 @@ function labelAskMessage(o) {
 }
 //#endregion
 //#region src/code-symbols.ts
+var METHOD_DOES = {
+	append: "adds an item at its end",
+	appendleft: "adds an item at its front",
+	extend: "adds every item of another collection at its end",
+	extendleft: "adds every item of another collection at its front",
+	insert: "inserts an item at a position",
+	add: "adds an element (unless it is already there)",
+	setdefault: "adds the key with a default value if it is missing",
+	update: "adds or replaces entries from another collection",
+	pop: "removes an item and gives it back (the last one, or the one at the given index or key)",
+	popleft: "removes its first item and gives it back",
+	popitem: "removes an entry and gives it back",
+	remove: "removes the first item equal to the value",
+	discard: "removes the element if it is there",
+	clear: "removes everything",
+	sort: "sorts it in place",
+	reverse: "reverses it in place",
+	rotate: "rotates it in place",
+	heappush: "pushes an item onto the heap, which grows by one",
+	heappop: "pops the smallest item off the heap, which shrinks by one",
+	heapify: "rearranges it into a heap",
+	heappushpop: "pushes an item, then pops the smallest",
+	heapreplace: "pops the smallest, then pushes an item"
+};
+/** What one mention does to the variable `name`, in a sentence (markdown, the code in backticks). */
+function useSentence(name, note) {
+	const n = `\`${name}\``, code = `\`${note.code}\``;
+	const [how, detail = ""] = note.how.split(":");
+	switch (how) {
+		case "bind": return `${code} gives ${n} a new value.`;
+		case "loop": return `${n} takes the next item each time round the loop.`;
+		case "augment": return `${code} reads ${n}'s value and updates it from it.`;
+		case "delete": return `\`del ${name}\` deletes ${n}.`;
+		case "set-item": return `${code} = … replaces one item of ${n}; its size stays the same.`;
+		case "add-key": return `${code} = … sets the entry for that key: if ${n} does not have the key yet it gains an entry (grows), otherwise its value is replaced.`;
+		case "augment-item": return `${code} reads one entry of ${n} and updates it; its size stays the same.`;
+		case "delete-item": return `\`del ${note.code}\` removes one entry of ${n}, which shrinks.`;
+		case "set-attr": return `${code} = … changes a field of ${n}.`;
+		case "inside": return `${code} changes something held inside ${n}, not ${n}'s own size.`;
+		case "method":
+		case "heap": return `${code} ${METHOD_DOES[detail] ?? "changes it"}.`;
+		default: return note.code === name ? `Uses the value of ${n} without changing it.` : `${code} reads ${n} without changing it.`;
+	}
+}
 /** The uses of the variable `name` as seen from `line`: those of the function holding it, else the module's. */
 function usesAt(uses, name, line) {
 	return uses.find((u) => u.name === name && u.from > 0 && u.from <= line && line <= u.to) ?? uses.find((u) => u.name === name && u.from === 0) ?? null;
@@ -28169,6 +28213,13 @@ function setupCodePanel() {
 			const line = Number(row.dataset.line), kinds = USE_FINDS.map(([kind]) => kind).filter((kind) => !!finding?.kinds.get(kind)?.includes(line));
 			for (const [kind] of USE_FINDS) row.classList.toggle(`code-find-${kind}`, kinds.includes(kind));
 			row.classList.toggle("code-found", kinds.length > 0);
+			row.querySelector(":scope > .code-find-bars")?.remove();
+			if (kinds.length) {
+				const bars = document.createElement("span");
+				bars.className = "code-find-bars";
+				bars.style.width = `${3 * kinds.length + 5}px`;
+				row.prepend(bars);
+			}
 			if (kinds.length) {
 				row.style.setProperty("--find-tint", FIND_COLORS[kinds[0]]);
 				row.style.setProperty("--find-bars", kinds.map((kind, k) => `inset ${3 * (k + 1)}px 0 0 ${FIND_COLORS[kind]}`).join(", "));
@@ -28179,10 +28230,11 @@ function setupCodePanel() {
 		});
 		if (selected && settings.structureMode !== "plain") codeSections(selected).forEach(paintReveal);
 	}
-	function toggleFind(name, kind, lines) {
+	function toggleFind(name, kind, lines, notes) {
 		if (finding?.name !== name) finding = {
 			name,
-			kinds: /* @__PURE__ */ new Map()
+			kinds: /* @__PURE__ */ new Map(),
+			notes
 		};
 		if (finding.kinds.has(kind)) finding.kinds.delete(kind);
 		else finding.kinds.set(kind, lines);
@@ -28200,6 +28252,23 @@ function setupCodePanel() {
 			paintFind();
 		}
 	});
+	/** What a found line does to the variable, for the kinds switched on: one sentence per mention, after its kinds' dots. */
+	function findBarsHtml(line) {
+		if (!finding) return null;
+		const on = USE_FINDS.filter(([kind]) => finding.kinds.get(kind)?.includes(line));
+		const notes = finding.notes.filter((note) => note.line === line && note.kinds.some((kind) => on.some(([k]) => k === kind)));
+		if (!notes.length) return null;
+		const esc = (t) => t.replace(/[&<>"]/g, (c) => ({
+			"&": "&amp;",
+			"<": "&lt;",
+			">": "&gt;",
+			"\"": "&quot;"
+		})[c]);
+		const rows = notes.map((note) => {
+			return `<div class="code-find-note">${on.filter(([kind]) => note.kinds.includes(kind)).map(([kind, label]) => `<span class="code-find-dot" style="--find:${FIND_COLORS[kind]}" title="${label}"></span>`).join("")}${renderMarkdown$1(useSentence(finding.name, note))}</div>`;
+		});
+		return `<div class="code-find-head">Line ${line} · ${on.map(([, label]) => label).join(", ")} <code>${esc(finding.name)}</code></div>${rows.join("")}`;
+	}
 	/** The tooltip's switches for the variable `name` as seen from `line`: one per kind of use, with its count. */
 	function usesMenu(name, line) {
 		const uses = usesAt(codeUses, name, line);
@@ -28224,7 +28293,7 @@ function setupCodePanel() {
 					button.title = lines.length ? `Light the lines that ${verb} ${name}: ${lines.join(", ")}` : `Nothing here ${verb.split(" ")[0]}s ${name}`;
 					button.setAttribute("aria-pressed", String(on(kind)));
 					button.addEventListener("click", () => {
-						toggleFind(name, kind, lines);
+						toggleFind(name, kind, lines, uses.notes ?? []);
 						menu.querySelectorAll(".code-uses-find").forEach((b, k) => b.setAttribute("aria-pressed", String(on(USE_FINDS[k][0]))));
 					});
 					menu.append(button);
@@ -28241,6 +28310,11 @@ function setupCodePanel() {
 	function showHoverTooltip(target, span, row) {
 		const line = row ? Number(row.dataset.line) : 0;
 		lightDocBlock(null);
+		const bars = target.closest(".code-find-bars"), barsHtml = bars && finding ? findBarsHtml(line) : null;
+		if (bars && barsHtml) {
+			showCodeSymbolTooltip(bars, symbolTex(finding.name, line), barsHtml);
+			return;
+		}
 		const call = target.closest(".code-call"), key = call?.dataset.call;
 		if (call) {
 			const name = call.textContent ?? "";
