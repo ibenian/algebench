@@ -667,6 +667,13 @@ ${MD_TAIL}
             markers: [marker('left', tr('left')), marker('right', tr('right')), marker('right − k', tr('dropped'), PINK)],
         }),
         label('right', `concat('right = ', ${tr('right')})`, [-4, -2.6, 0], ['nums', tr('right')]),
+        // The update on line 5, term by term: what enters (nums[right]) and what leaves (nums[right - k]); before the
+        // loop there is no slide yet.
+        ...((sliding: string) => [
+            label('right-k', `${sliding} ? concat('right - k = ', ${tr('right')} - ${inp('k')}) : 'right - k: —'`, [-4, -2.6, 0], ['nums', `${tr('right')} - ${inp('k')}`]),
+            label('enters', `concat('nums[right] = ', arrayAt(${inp('nums')}, ${tr('right')}))`, [-4, -2.6, 0], ['nums', tr('right')]),
+            label('leaves', `${sliding} ? concat('nums[right - k] = ', arrayAt(${inp('nums')}, ${tr('right')} - ${inp('k')})) : 'nums[right - k]: —'`, [-4, -2.6, 0], ['nums', `${tr('right')} - ${inp('k')}`]),
+        ])(`${tr('right')} >= ${inp('k')}`),
         // window is linked to best; on line 6 a comparison row shows max(best, window), and all three glow on a new best.
         ...((hit: string, comparing: string) => [
             { ...label('window', `concat('window = ', ${tr('window')})`, [-4, -2.6, 0], undefined, hit), connectTo: { object: 'best', pinned: true } },

@@ -4110,6 +4110,27 @@
               "codeRef": {"file": "sliding-window", "lineExpr": "dataTable('trace', frame, 'ln_right')"}
             },
             {
+              "id": "right-k",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "dataTable('trace', frame, 'right') >= dataTable('input', 0, 'k') ? concat('right - k = ', dataTable('trace', frame, 'right') - dataTable('input', 0, 'k')) : 'right - k: —'",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'right') - dataTable('input', 0, 'k')"}
+            },
+            {
+              "id": "enters",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "concat('nums[right] = ', arrayAt(dataTable('input', 0, 'nums'), dataTable('trace', frame, 'right')))",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'right')"}
+            },
+            {
+              "id": "leaves",
+              "type": "expression_label",
+              "position": [-4, -2.6, 0],
+              "textExpr": "dataTable('trace', frame, 'right') >= dataTable('input', 0, 'k') ? concat('nums[right - k] = ', arrayAt(dataTable('input', 0, 'nums'), dataTable('trace', frame, 'right') - dataTable('input', 0, 'k'))) : 'nums[right - k]: —'",
+              "connectTo": {"object": "nums", "indexExpr": "dataTable('trace', frame, 'right') - dataTable('input', 0, 'k')"}
+            },
+            {
               "id": "window",
               "type": "expression_label",
               "position": [-4, -2.6, 0],
