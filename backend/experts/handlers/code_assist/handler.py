@@ -18,6 +18,8 @@ log = logging.getLogger(__name__)
 
 LOG_TAG = "[code_assist]"
 NO_STEPS = "I looked, but had nothing to type here: it may already be complete. Ask the coach to check it."
+NOTHING_TO_FIX = "I don't see anything wrong in what you've typed so far. Keep going!"
+ASK_FIRST = "Tell me what you'd like help with, then send it."
 
 
 def render_inputs(req: CodeAssistRequest) -> dict:
@@ -34,15 +36,22 @@ def render_inputs(req: CodeAssistRequest) -> dict:
         "expected": _numbered(req.expected, req.first_line),
         "section": section,
         "typed": _numbered(req.typed) if req.typed.strip() else "(empty)",
+        "issues": "\n".join(f"line {n.line}: {n.note}" for n in req.issues),
+        "request": req.request.strip(),
     }
 
 
 @register_handler("code_assist", request_model=CodeAssistRequest)
 def code_assist(req: CodeAssistRequest) -> dict:
+    if req.scope == "ask" and not req.request.strip():
+        return {"reason": ASK_FIRST}
     out = assist_code(req.scope, **render_inputs(req))
     if out.error:
         return {"reason": out.error}
     if not out.steps:
-        return {"reason": NO_STEPS}
+        # A fix with nothing to fix, or a question with nothing to type: the answer is all there is.
+        if req.scope in ("fix", "ask", "narrate") and out.closing:
+            return {"reason": out.closing}
+        return {"reason": NOTHING_TO_FIX if req.scope == "fix" else NO_STEPS}
     log.info("%s %s: %d step(s)", LOG_TAG, req.scope, len(out.steps))
     return {"result": out.model_dump(exclude={"error"})}

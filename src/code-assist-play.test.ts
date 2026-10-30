@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { editsBetween, applyEdits, keystrokes, backspaces, keyDelay } from '/code-assist-play.js';
+import { editsBetween, applyEdits, keystrokes, backspaces, keyDelay, findSelection } from '/code-assist-play.js';
 
 const cases: [string, string][] = [
     ['', 'def f(n):\n    return n'],
@@ -36,4 +36,20 @@ test('typing slows after a line and between words, never stalls', () => {
     assert.ok(keyDelay('\n', 'x', mid) > keyDelay('a', 'b', mid));
     assert.ok(keyDelay('a', '\n    ', mid) > keyDelay('a', 'b', mid));
     for (const r of [0, 0.5, 0.99]) assert.ok(keyDelay(' ', 'x', () => r) < 600);
+});
+
+test('a selection is found where it is, after the last one first, and through re-indentation', () => {
+    const text = 'for x in xs:\n    total += x\nfor x in xs:\n    print(x)';
+    assert.deepEqual(findSelection(text, 'for x in xs:'), [0, 12]);
+    assert.deepEqual(findSelection(text, 'for x in xs:', 13), [28, 40], 'the next one on');
+    assert.deepEqual(findSelection(text, 'total += x\n  for x in xs:'), [17, 40], 'indentation aside');
+    assert.equal(findSelection(text, 'while True:'), null);
+});
+
+test('the line the model names picks among several occurrences, and a wrong line falls back', () => {
+    const text = 'total = 0\nfor x in xs:\n    total += x\nreturn total';
+    assert.deepEqual(findSelection(text, 'total', 0, 3), [27, 32], 'the one on line 3');
+    assert.deepEqual(findSelection(text, 'total', 0, 4), [45, 50], 'the one on line 4');
+    assert.deepEqual(findSelection(text, 'total', 0, 2), [0, 5], 'not on line 2: the first');
+    assert.deepEqual(findSelection(text, 'for x in xs:\ntotal += x', 0, 2), [10, 37], 're-indented, from its line');
 });

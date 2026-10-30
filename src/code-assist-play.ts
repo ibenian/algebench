@@ -102,3 +102,30 @@ export function keyDelay(prev: string, key: string, random: () => number = Math.
     if (prev === ' ' && r < 0.12) return 220 + r * 260;   // now and then a pause between words, as if thinking
     return 28 + r * 52;
 }
+
+/**
+ * Where `snippet` (a step's `select`) is in `text`, as [start, end). With `line` (1-based, the line the model says it
+ * starts on), an occurrence starting on that line wins, so a name used on many lines is taken where it was meant.
+ * Otherwise the first occurrence from `from` on (after the last selection), else from the top; failing that, the
+ * lines it spans compared without their indentation (the model may re-indent what it quotes). Null when it isn't there.
+ */
+export function findSelection(text: string, snippet: string, from = 0, line = 0): [number, number] | null {
+    const want = snippet.trim();
+    if (!want) return null;
+    const lines = text.split('\n'), parts = want.split('\n').map(l => l.trim());
+    const offset = (k: number) => lines.slice(0, k).reduce((s, l) => s + l.length + 1, 0);
+    const byLines = (k: number): [number, number] | null => {
+        if (k < 0 || k + parts.length > lines.length || !parts.every((p, j) => lines[k + j]!.trim() === p)) return null;
+        const last = k + parts.length - 1;
+        return [offset(k) + lines[k]!.length - lines[k]!.trimStart().length, offset(last) + lines[last]!.trimEnd().length];
+    };
+    if (line >= 1 && line <= lines.length) {
+        const at = text.indexOf(want, offset(line - 1));
+        if (at >= 0 && at <= offset(line - 1) + lines[line - 1]!.length) return [at, at + want.length];
+        const there = byLines(line - 1);
+        if (there) return there;
+    }
+    for (const start of [text.indexOf(want, from), text.indexOf(want)]) if (start >= 0) return [start, start + want.length];
+    for (let k = 0; k + parts.length <= lines.length; k++) { const found = byLines(k);if (found) return found; }
+    return null;
+}

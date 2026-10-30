@@ -6290,3 +6290,17 @@ body:has(.push-array) #legend { display: none; }
 .cell-link-label { font: 600 10px ui-monospace, monospace; text-anchor: middle; dominant-baseline: central; fill: var(--text-color, #e8e6da); }
 .cell-link-label-pill { fill: var(--panel-bg, #15181d); fill-opacity: .92; stroke-width: 1; }
 .cp-assist-notice { margin-top: 5px; color: color-mix(in srgb, #e0b04a 80%, var(--text-color)); }
+/* Help me in the learner's own words: a line under the label, the choices after it. */
+.cp-help-ask { display: flex; flex: 1 1 100%; gap: 4px; order: 1; }
+.cp-help-label { order: 0; }
+.cp-help-btn { order: 2; }
+.cp-help-input { flex: 1; min-width: 0; padding: 3px 8px; font: inherit; font-size: 12px; color: var(--text-color); background: var(--panel-bg);
+  border: 1px solid color-mix(in srgb, #a78bfa 45%, var(--border-color)); border-radius: 8px; outline: 0; }
+.cp-help-input:focus { border-color: #a78bfa; box-shadow: 0 0 0 2px color-mix(in srgb, #a78bfa 25%, transparent); }
+.cp-help-input::placeholder { color: var(--muted-color); }
+.cp-help-send { padding: 0 9px; font-size: 12px; color: #fff; background: #a78bfa; border: 0; border-radius: 8px; cursor: pointer; }
+/* What the assistant points at while it talks: a selection in its colour, under the code. */
+.cp-ai-selection { position: absolute; inset: 0; pointer-events: none; }
+.cp-ai-sel { position: absolute; background: color-mix(in srgb, #a78bfa 30%, transparent); border-radius: 3px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #a78bfa 55%, transparent); animation: cp-ai-sel-in .25s ease-out; }
+@keyframes cp-ai-sel-in { from { opacity: 0; } }

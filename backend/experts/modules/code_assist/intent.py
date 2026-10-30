@@ -23,7 +23,7 @@ _FENCE = re.compile(r"^\s*```[\w+-]*\n(.*?)\n?```\s*$", re.S)
 
 MAX_STEPS = 14
 #: How many steps each scope may take: "next" is one move (and a fix before it).
-STEP_LIMIT = {"next": 2, "section": MAX_STEPS, "all": MAX_STEPS}
+STEP_LIMIT = {"next": 2, "section": MAX_STEPS, "all": MAX_STEPS, "fix": MAX_STEPS, "ask": MAX_STEPS, "narrate": MAX_STEPS}
 
 #: The learner waits with the keyboard handed over: answer quickly.
 _LM = scoped_lm(reasoning_effort="low")
@@ -78,14 +78,23 @@ def assist_code(scope: str, **inputs) -> CodeAssist:
     for s in out.steps or []:
         if not isinstance(s, AssistStep):
             continue
-        code = clean_code(s.code)
-        # A step that types nothing is talk alone: it joins the next step's thought.
-        if steps and code == steps[-1].code:
+        code, select = clean_code(s.code), str(s.select or "").strip("\n")
+        # Narrating types nothing: its steps only select and talk.
+        if scope == "narrate":
+            code = ""
+        # Typing nothing and pointing at nothing is talk alone: it joins the step before.
+        typed_nothing = not code or (steps and code == steps[-1].code)
+        if steps and typed_nothing and not select:
             steps[-1].explain = " ".join(filter(None, [steps[-1].explain, _clean(s.say), _clean(s.explain)]))
             continue
         draft = clean_code(s.draft) if s.draft else ""
         # A draft is a slip caught: one that is the fix already, or comes with nothing noticed, is no draft.
-        keep = draft and draft != code and _clean(s.notice)
-        steps.append(AssistStep(say=_clean(s.say), code=code, explain=_clean(s.explain),
+        # A fix shows the fix, not a new slip on the way to it.
+        keep = scope not in ("fix", "narrate") and code and draft and draft != code and _clean(s.notice)
+        try:
+            line = max(0, int(s.select_line or 0)) if select else 0
+        except (TypeError, ValueError):
+            line = 0
+        steps.append(AssistStep(say=_clean(s.say), code=code, select=select, select_line=line, explain=_clean(s.explain),
                                 draft=draft if keep else "", notice=_clean(s.notice) if keep else ""))
     return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing))

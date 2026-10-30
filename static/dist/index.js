@@ -28869,6 +28869,35 @@ function keyDelay(prev, key, random = Math.random) {
 	if (prev === " " && r < .12) return 220 + r * 260;
 	return 28 + r * 52;
 }
+/**
+* Where `snippet` (a step's `select`) is in `text`, as [start, end). With `line` (1-based, the line the model says it
+* starts on), an occurrence starting on that line wins, so a name used on many lines is taken where it was meant.
+* Otherwise the first occurrence from `from` on (after the last selection), else from the top; failing that, the
+* lines it spans compared without their indentation (the model may re-indent what it quotes). Null when it isn't there.
+*/
+function findSelection(text, snippet, from = 0, line = 0) {
+	const want = snippet.trim();
+	if (!want) return null;
+	const lines = text.split("\n"), parts = want.split("\n").map((l) => l.trim());
+	const offset = (k) => lines.slice(0, k).reduce((s, l) => s + l.length + 1, 0);
+	const byLines = (k) => {
+		if (k < 0 || k + parts.length > lines.length || !parts.every((p, j) => lines[k + j].trim() === p)) return null;
+		const last = k + parts.length - 1;
+		return [offset(k) + lines[k].length - lines[k].trimStart().length, offset(last) + lines[last].trimEnd().length];
+	};
+	if (line >= 1 && line <= lines.length) {
+		const at = text.indexOf(want, offset(line - 1));
+		if (at >= 0 && at <= offset(line - 1) + lines[line - 1].length) return [at, at + want.length];
+		const there = byLines(line - 1);
+		if (there) return there;
+	}
+	for (const start of [text.indexOf(want, from), text.indexOf(want)]) if (start >= 0) return [start, start + want.length];
+	for (let k = 0; k + parts.length <= lines.length; k++) {
+		const found = byLines(k);
+		if (found) return found;
+	}
+	return null;
+}
 //#endregion
 //#region src/code-practice.ts
 /**
@@ -29739,7 +29768,9 @@ function setupCodePractice() {
 	const aiTag = el("span", "cp-ai-tag");
 	aiTag.textContent = "✦ AI";
 	aiCaret.append(aiTag);
-	stack.append(aiCaret);
+	const aiSelection = el("div", "cp-ai-selection");
+	stack.append(aiSelection, aiCaret);
+	let selectedTo = 0;
 	let assisting = 0, assistSeq = 0, charWidth = 0;
 	class Stopped extends Error {}
 	const sleep = (ms) => new Promise((res) => window.setTimeout(res, ms));
@@ -29752,9 +29783,33 @@ function setupCodePractice() {
 		const row = el("div", "cp-help");
 		const label = el("span", "cp-help-label");
 		label.textContent = "Help me:";
-		row.append(label);
+		const ask = el("form", "cp-help-ask");
+		const words = el("input", "cp-help-input");
+		words.type = "text";
+		words.maxLength = 600;
+		words.placeholder = "say what you need, e.g. \"write the loop\" or \"why {0: 1}?\"";
+		words.setAttribute("aria-label", "Describe the help you want");
+		const send = el("button", "cp-help-send");
+		send.type = "submit";
+		send.textContent = "➤";
+		send.title = "Ask (Enter)";
+		ask.append(words, send);
+		ask.addEventListener("submit", (e) => {
+			e.preventDefault();
+			if (words.value.trim()) assist("ask", words.value.trim());
+		});
+		row.append(label, ask);
 		const focus = focusNow();
 		const choices = [
+			...input.value.trim() ? [[
+				"fix",
+				"Fix errors",
+				"I fix only what is wrong in what you typed, and write nothing new"
+			], [
+				"narrate",
+				"Walk me through it",
+				"I select your code piece by piece and explain it, typing nothing: only what you selected, if you selected some"
+			]] : [],
 			[
 				"next",
 				"Next step",
@@ -29776,7 +29831,7 @@ function setupCodePractice() {
 			b.type = "button";
 			b.textContent = text;
 			b.title = title;
-			b.addEventListener("click", () => void assist(scope));
+			b.addEventListener("click", () => void assist(scope, words.value.trim()));
 			row.append(b);
 		}
 		return row;
@@ -29818,17 +29873,48 @@ function setupCodePractice() {
 		await sleep(300);
 	}
 	/** The assistant's caret at `offset` of the editor, kept in view. */
+	function measure() {
+		if (charWidth) return;
+		const ctx = document.createElement("canvas").getContext("2d");
+		if (ctx) {
+			ctx.font = getComputedStyle(input).font;
+			charWidth = ctx.measureText("M".repeat(10)).width / 10;
+		}
+	}
+	/** Select `snippet` in the editor, as a person points: where it starts on `line` if the model gave one, else the next
+	*  one after the last selection, else the first. */
+	function selectText(snippet, line = 0) {
+		clearSelection();
+		const at = findSelection(input.value, snippet, selectedTo, line);
+		if (!at) return;
+		measure();
+		const [start, end] = at, lines = input.value.split("\n");
+		let offset = 0;
+		lines.forEach((text, k) => {
+			const from = Math.max(start, offset), to = Math.min(end, offset + text.length);
+			const row = paint.children[k];
+			if (row && from <= to && !(from === to && start !== end)) {
+				const a = from - offset === 0 && start < offset ? text.length - text.trimStart().length : from - offset;
+				const box = el("div", "cp-ai-sel");
+				box.style.left = `${row.offsetLeft + a * charWidth}px`;
+				box.style.width = `${Math.max(2, (to - offset - a) * charWidth)}px`;
+				box.style.top = `${row.offsetTop}px`;
+				box.style.height = `${row.offsetHeight}px`;
+				aiSelection.append(box);
+			}
+			offset += text.length + 1;
+		});
+		selectedTo = end;
+		placeCaret(end);
+	}
+	function clearSelection() {
+		aiSelection.replaceChildren();
+	}
 	function placeCaret(offset) {
 		const before = input.value.slice(0, offset).split("\n"), line = before.length - 1, col = before[line].length;
 		const row = paint.children[line];
 		if (!row) return;
-		if (!charWidth) {
-			const ctx = document.createElement("canvas").getContext("2d");
-			if (ctx) {
-				ctx.font = getComputedStyle(input).font;
-				charWidth = ctx.measureText("M".repeat(10)).width / 10;
-			}
-		}
+		measure();
 		aiCaret.hidden = false;
 		aiCaret.style.left = `${row.offsetLeft + col * charWidth}px`;
 		aiCaret.style.top = `${row.offsetTop}px`;
@@ -29877,7 +29963,7 @@ function setupCodePractice() {
 			await sleep(220);
 		}
 	}
-	async function assist(scope) {
+	async function assist(scope, request = "") {
 		if (!current || !score || assisting) return;
 		const run = ++assistSeq, blockKey = key;
 		assisting = run;
@@ -29887,11 +29973,27 @@ function setupCodePractice() {
 		report.querySelectorAll(".cp-help").forEach((h) => h.remove());
 		if (report.hidden) foldReport(false);
 		const focus = focusNow();
-		message("user", Object.assign(el("div", ""), { textContent: {
+		const a = input.selectionStart, b = input.selectionEnd, picked = scope === "narrate" && b > a && input.value.slice(a, b).trim();
+		let span = "";
+		const own = request;
+		if (picked) {
+			const first = input.value.slice(0, a).split("\n").length, last = input.value.slice(0, b).replace(/\n$/, "").split("\n").length;
+			span = first === last ? `line ${first}` : `lines ${first}–${last}`;
+			request = [
+				`Only the part I selected, ${span} (nothing outside it):`,
+				input.value.slice(a, b),
+				request
+			].filter(Boolean).join("\n");
+		}
+		const asked = {
+			fix: "Fix the errors in what I typed, without writing ahead.",
+			narrate: picked ? `Walk me through the selected ${span}.` : "Walk me through my code.",
 			next: "Help me with the next step.",
 			section: `Help me finish “${focus?.title ?? "this section"}”.`,
-			all: "Write it all for me, and talk me through it."
-		}[scope] }));
+			all: "Write it all for me, and talk me through it.",
+			ask: request
+		}[scope];
+		message("user", Object.assign(el("div", ""), { textContent: scope !== "ask" && own ? `${asked} ${own}` : asked }));
 		root.classList.add("cp-assisting");
 		input.readOnly = true;
 		takeBack.hidden = false;
@@ -29914,25 +30016,45 @@ function setupCodePractice() {
 					end: focus.to
 				} : null,
 				typed: input.value,
-				scope
+				scope,
+				request,
+				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
 			});
 			waiting.remove();
 			if (assisting !== run) throw new Stopped();
+			const bubble = (cls) => message("assistant", el("div", `cp-assist ${cls}`)).querySelector(".msg-body");
 			if (!out.result) {
+				if ((scope === "ask" || scope === "fix" || scope === "narrate") && out.reason) {
+					await say(out.reason, bubble("cp-assist-close"), run);
+					ended = true;
+					return;
+				}
 				message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: out.reason ?? "No help came back." }));
 				return;
 			}
 			const r = out.result;
 			reportSummary.textContent = "✦ AI at the keyboard";
-			const bubble = (cls) => message("assistant", el("div", `cp-assist ${cls}`)).querySelector(".msg-body");
 			await say(r.plan, bubble("cp-assist-plan"), run);
+			selectedTo = 0;
 			for (const [k, step] of r.steps.entries()) {
 				const body = bubble("cp-assist-step");
+				const noun = scope === "fix" ? "Fix" : scope === "narrate" ? "Part" : "Step";
 				const head = el("div", "cp-assist-head");
-				head.textContent = r.steps.length > 1 ? `Step ${k + 1} of ${r.steps.length}` : "Next step";
+				head.textContent = r.steps.length > 1 ? `${noun} ${k + 1} of ${r.steps.length}` : scope === "next" ? "Next step" : noun;
 				const thought = el("div", "cp-assist-say");
 				body.append(head, thought);
+				const types = !!step.code && step.code !== input.value;
+				clearSelection();
+				if (!types && step.select) selectText(step.select, step.select_line);
 				await say(step.say, thought, run);
+				if (!types) {
+					if (step.explain) {
+						const why = el("div", "cp-assist-why");
+						body.append(why);
+						await say(step.explain, why, run);
+					}
+					continue;
+				}
 				body.classList.add("typing");
 				if (step.draft && step.notice) {
 					await typeTo(step.draft, run);
@@ -29946,12 +30068,14 @@ function setupCodePractice() {
 				await typeTo(step.code, run);
 				markAssisted(exactBefore);
 				body.classList.remove("typing");
+				if (step.select) selectText(step.select, step.select_line);
 				if (step.explain) {
 					const why = el("div", "cp-assist-why");
 					body.append(why);
 					await say(step.explain, why, run);
 				}
 			}
+			clearSelection();
 			await say(r.closing || "Over to you.", bubble("cp-assist-close"), run);
 			ended = true;
 		} catch (e) {
@@ -29979,6 +30103,7 @@ function setupCodePractice() {
 		takeBack.hidden = true;
 		helpTool.hidden = false;
 		aiCaret.hidden = true;
+		clearSelection();
 		reportSummary.textContent = "";
 		if (key !== blockKey) return;
 		attempt.text = input.value;

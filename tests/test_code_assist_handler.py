@@ -20,6 +20,7 @@ def test_inputs_cover_the_signature_and_number_the_reference_from_its_line():
     assert set(inputs) == set(INPUT_FIELDS)
     assert " 10 | def f(n):" in inputs["expected"]
     assert h.render_inputs(_req(typed=" \n"))["typed"] == "(empty)"
+    assert h.render_inputs(_req(issues=[{"line": 2, "note": "never defined"}]))["issues"] == "line 2: never defined"
 
 
 def _model(steps, plan="Plan.", closing="Over to you."):
@@ -54,3 +55,30 @@ def test_a_draft_is_kept_only_as_a_slip_caught(monkeypatch):
     monkeypatch.setattr(intent, "_assistant", _model(steps))
     out = intent.assist_code("all", language="", expected="", section="", typed="")
     assert [(s.draft, s.notice) for s in out.steps] == [("def f(n):\n    total = 1", "Wait, it starts at zero."), ("", ""), ("", "")]
+
+
+def test_a_fix_has_no_drafts_and_nothing_to_fix_says_so(monkeypatch):
+    steps = [AssistStep(say="a", code="x = 0", draft="x = 1", notice="Wait.")]
+    monkeypatch.setattr(intent, "_assistant", _model(steps))
+    assert intent.assist_code("fix", language="", expected="", section="", typed="", issues="").steps[0].draft == ""
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(closing=""))
+    assert h.code_assist(_req(scope="fix")) == {"reason": h.NOTHING_TO_FIX}
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(closing="All good so far."))
+    assert h.code_assist(_req(scope="fix")) == {"reason": "All good so far."}
+
+
+def test_ask_needs_words_and_a_question_is_answered_without_typing(monkeypatch):
+    assert h.code_assist(_req(scope="ask")) == {"reason": h.ASK_FIRST}
+    assert h.render_inputs(_req(request="  write the loop "))["request"] == "write the loop"
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(closing="Because the empty prefix counts."))
+    assert h.code_assist(_req(scope="ask", request="why {0: 1}?")) == {"reason": "Because the empty prefix counts."}
+
+
+def test_narrating_types_nothing_and_keeps_its_selections(monkeypatch):
+    steps = [AssistStep(say="The loop.", code="for x in xs:", select="for x in xs:", select_line=1),
+             AssistStep(say="Its target.", code="", select="xs", select_line=-3),
+             AssistStep(say="And that is all.", code="")]
+    monkeypatch.setattr(intent, "_assistant", _model(steps))
+    out = intent.assist_code("narrate", language="", expected="", section="", typed="", issues="", request="")
+    assert [(s.code, s.select, s.select_line) for s in out.steps] == [("", "for x in xs:", 1), ("", "xs", 0)]
+    assert out.steps[1].explain == "And that is all.", "talk with nothing selected joins the step before"

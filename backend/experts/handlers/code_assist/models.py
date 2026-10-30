@@ -9,7 +9,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.experts.handlers.code_practice.models import MAX_CODE_CHARS, PracticeSection
+from backend.experts.handlers.code_practice.models import MAX_CODE_CHARS, OpenNote, PracticeSection
 
 
 class CodeAssistRequest(BaseModel):
@@ -21,5 +21,10 @@ class CodeAssistRequest(BaseModel):
     first_line: int = Field(default=1, ge=1)
     section: Optional[PracticeSection] = None
     typed: str = Field(default="", max_length=MAX_CODE_CHARS)
-    #: The next logical piece, the rest of the section, or the rest of the block.
-    scope: Literal["next", "section", "all"] = "next"
+    #: The coach's open remarks on the typed code (its line notes), numbered as in ``typed``.
+    issues: list[OpenNote] = Field(default_factory=list, max_length=40)
+    #: The next logical piece, the rest of the section, the rest of the block, only fixes to what is typed, or what
+    #: the learner asked for in ``request``.
+    scope: Literal["next", "section", "all", "fix", "narrate", "ask"] = "next"
+    #: The learner's own words: what "ask" does, or how to go about another scope.
+    request: str = Field(default="", max_length=600)

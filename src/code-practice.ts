@@ -17,7 +17,7 @@ import { invokeExpert } from '/expert-client.js';
 import { createPracticeStore } from '/practice-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import { renderMarkdown } from '/labels.js';
-import { editsBetween, keystrokes, backspaces, keyDelay } from '/code-assist-play.js';
+import { editsBetween, keystrokes, backspaces, keyDelay, findSelection } from '/code-assist-play.js';
 
 /** The coach looks again after this long without typing. */
 const IDLE_REVIEW_MS = 5000;
@@ -29,8 +29,8 @@ const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practic
  *  `assisted`, the reference lines the AI assistant typed (Help me). */
 interface Attempt { text: string; peeked: number[]; assisted?: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
 /** Help me's reply: how it will go about it, its moves at the keyboard (each the whole editor after it), and its hand-back. */
-interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string}[]; closing: string }
-type AssistScope = 'next' | 'section' | 'all';
+interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string; select?: string; select_line?: number}[]; closing: string }
+type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'ask';
 interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; reminder?: string; line_notes: {line: number; note: string}[] }
 
 const VERDICTS: Record<string, string> = {correct: 'Correct', close: 'Close', partial: 'Partly there', off_track: 'Off track', empty: 'Nothing yet'};
@@ -656,7 +656,10 @@ export function setupCodePractice(): void {
     // Its own caret, as a collaborator's in a shared editor, with its name on it.
     const aiCaret = el('div', 'cp-ai-caret');aiCaret.hidden = true;
     const aiTag = el('span', 'cp-ai-tag');aiTag.textContent = '✦ AI';aiCaret.append(aiTag);
-    stack.append(aiCaret);
+    // What it points at while it talks: its selection, drawn over the code (the textarea's own needs focus).
+    const aiSelection = el('div', 'cp-ai-selection');
+    stack.append(aiSelection, aiCaret);
+    let selectedTo = 0;
     let assisting = 0, assistSeq = 0, charWidth = 0;
     class Stopped extends Error {}
     const sleep = (ms: number) => new Promise<void>(res => window.setTimeout(res, ms));
@@ -669,16 +672,26 @@ export function setupCodePractice(): void {
     function helpChoices(): HTMLElement {
         const row = el('div', 'cp-help');
         const label = el('span', 'cp-help-label');label.textContent = 'Help me:';
-        row.append(label);
+        // In their own words: sent alone (Enter), it is the whole request; with a button, it says how to go about it.
+        const ask = el('form', 'cp-help-ask');
+        const words = el('input', 'cp-help-input');words.type = 'text';words.maxLength = 600;
+        words.placeholder = 'say what you need, e.g. "write the loop" or "why {0: 1}?"';words.setAttribute('aria-label', 'Describe the help you want');
+        const send = el('button', 'cp-help-send');send.type = 'submit';send.textContent = '➤';send.title = 'Ask (Enter)';
+        ask.append(words, send);
+        ask.addEventListener('submit', e => { e.preventDefault();if (words.value.trim()) void assist('ask', words.value.trim()); });
+        row.append(label, ask);
         const focus = focusNow();
         const choices: [AssistScope, string, string][] = [
+            // Only what is typed is fixed: nothing is written ahead.
+            ...(input.value.trim() ? [['fix', 'Fix errors', 'I fix only what is wrong in what you typed, and write nothing new'],
+                ['narrate', 'Walk me through it', 'I select your code piece by piece and explain it, typing nothing: only what you selected, if you selected some']] as [AssistScope, string, string][] : []),
             ['next', 'Next step', 'I take the keyboard for the next logical piece, then hand it back'],
             ...(focus ? [['section', `Finish “${focus.title}”`, 'I write the rest of this section, step by step, talking it through'] as [AssistScope, string, string]] : []),
             ['all', 'Write it all', 'I write the rest of the block, thinking aloud as I go'],
         ];
         for (const [scope, text, title] of choices) {
             const b = el('button', 'cp-help-btn');b.type = 'button';b.textContent = text;b.title = title;
-            b.addEventListener('click', () => void assist(scope));row.append(b);
+            b.addEventListener('click', () => void assist(scope, words.value.trim()));row.append(b);
         }
         return row;
     }
@@ -715,14 +728,42 @@ export function setupCodePractice(): void {
         await sleep(300);
     }
     /** The assistant's caret at `offset` of the editor, kept in view. */
+    function measure() {
+        if (charWidth) return;
+        const ctx = document.createElement('canvas').getContext('2d');
+        if (ctx) { ctx.font = getComputedStyle(input).font;charWidth = ctx.measureText('M'.repeat(10)).width / 10; }
+    }
+    /** Select `snippet` in the editor, as a person points: where it starts on `line` if the model gave one, else the next
+     *  one after the last selection, else the first. */
+    function selectText(snippet: string, line = 0) {
+        clearSelection();
+        const at = findSelection(input.value, snippet, selectedTo, line);
+        if (!at) return;
+        measure();
+        const [start, end] = at, lines = input.value.split('\n');
+        let offset = 0;
+        lines.forEach((text, k) => {
+            const from = Math.max(start, offset), to = Math.min(end, offset + text.length);
+            const row = paint.children[k] as HTMLElement | undefined;
+            if (row && from <= to && !(from === to && start !== end)) {
+                // A line inside the selection is lit from its indentation on, as a selection reads.
+                const a = from - offset === 0 && start < offset ? text.length - text.trimStart().length : from - offset;
+                const box = el('div', 'cp-ai-sel');
+                box.style.left = `${row.offsetLeft + a * charWidth}px`;box.style.width = `${Math.max(2, (to - offset - a) * charWidth)}px`;
+                box.style.top = `${row.offsetTop}px`;box.style.height = `${row.offsetHeight}px`;
+                aiSelection.append(box);
+            }
+            offset += text.length + 1;
+        });
+        selectedTo = end;
+        placeCaret(end);
+    }
+    function clearSelection() { aiSelection.replaceChildren(); }
     function placeCaret(offset: number) {
         const before = input.value.slice(0, offset).split('\n'), line = before.length - 1, col = before[line]!.length;
         const row = paint.children[line] as HTMLElement | undefined;
         if (!row) return;
-        if (!charWidth) {
-            const ctx = document.createElement('canvas').getContext('2d');
-            if (ctx) { ctx.font = getComputedStyle(input).font;charWidth = ctx.measureText('M'.repeat(10)).width / 10; }
-        }
+        measure();
         aiCaret.hidden = false;
         aiCaret.style.left = `${row.offsetLeft + col * charWidth}px`;
         aiCaret.style.top = `${row.offsetTop}px`;aiCaret.style.height = `${row.offsetHeight}px`;
@@ -759,7 +800,7 @@ export function setupCodePractice(): void {
             await sleep(220);
         }
     }
-    async function assist(scope: AssistScope) {
+    async function assist(scope: AssistScope, request = '') {
         if (!current || !score || assisting) return;
         const run = ++assistSeq, blockKey = key;assisting = run;
         clearTimeout(idle);reviewSeq++;   // a review on its way is not shown over the takeover
@@ -767,8 +808,18 @@ export function setupCodePractice(): void {
         report.querySelectorAll('.cp-help').forEach(h => h.remove());
         if (report.hidden) foldReport(false);
         const focus = focusNow();
-        message('user', Object.assign(el('div', ''), {textContent: {next: 'Help me with the next step.',
-            section: `Help me finish “${focus?.title ?? 'this section'}”.`, all: 'Write it all for me, and talk me through it.'}[scope]}));
+        // Walking through: the learner's selection in the editor, if they made one (it outlasts the click), else all of it.
+        const a = input.selectionStart, b = input.selectionEnd, picked = scope === 'narrate' && b > a && input.value.slice(a, b).trim();
+        let span = '';
+        const own = request;
+        if (picked) {
+            const first = input.value.slice(0, a).split('\n').length, last = input.value.slice(0, b).replace(/\n$/, '').split('\n').length;
+            span = first === last ? `line ${first}` : `lines ${first}–${last}`;
+            request = [`Only the part I selected, ${span} (nothing outside it):`, input.value.slice(a, b), request].filter(Boolean).join('\n');
+        }
+        const asked = {fix: 'Fix the errors in what I typed, without writing ahead.', narrate: picked ? `Walk me through the selected ${span}.` : 'Walk me through my code.', next: 'Help me with the next step.',
+            section: `Help me finish “${focus?.title ?? 'this section'}”.`, all: 'Write it all for me, and talk me through it.', ask: request}[scope];
+        message('user', Object.assign(el('div', ''), {textContent: scope !== 'ask' && own ? `${asked} ${own}` : asked}));
         root.classList.add('cp-assisting');input.readOnly = true;takeBack.hidden = false;helpTool.hidden = true;
         reportSummary.textContent = 'taking the keyboard…';
         const exactBefore = new Set(score.lines.filter(l => l.similarity === 1).map(l => l.line));
@@ -780,24 +831,39 @@ export function setupCodePractice(): void {
             const out = await invokeExpert('code_assist', {
                 language: current.file.language ?? '', expected: block, first_line: current.from,
                 section: focus ? {title: focus.title, hint: focus.hint ?? '', start: focus.from, end: focus.to} : null,
-                typed: input.value, scope,
+                typed: input.value, scope, request,
+                // The coach's remarks, while they still number the lines as they are.
+                issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : [],
             }) as {result?: AssistPlan; reason?: string};
             waiting.remove();
             if (assisting !== run) throw new Stopped();
+            const bubble = (cls: string) => message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
             if (!out.result) {
+                // Nothing to type: an answer to a question, or nothing to fix, is said like the rest of its help.
+                if ((scope === 'ask' || scope === 'fix' || scope === 'narrate') && out.reason) { await say(out.reason, bubble('cp-assist-close'), run);ended = true;return; }
                 message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: out.reason ?? 'No help came back.'}));
                 return;
             }
             const r = out.result;
             reportSummary.textContent = '✦ AI at the keyboard';
-            const bubble = (cls: string) => message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
             await say(r.plan, bubble('cp-assist-plan'), run);
+            selectedTo = 0;
             for (const [k, step] of r.steps.entries()) {
                 const body = bubble('cp-assist-step');
-                const head = el('div', 'cp-assist-head');head.textContent = r.steps.length > 1 ? `Step ${k + 1} of ${r.steps.length}` : 'Next step';
+                const noun = scope === 'fix' ? 'Fix' : scope === 'narrate' ? 'Part' : 'Step';
+                const head = el('div', 'cp-assist-head');
+                head.textContent = r.steps.length > 1 ? `${noun} ${k + 1} of ${r.steps.length}` : scope === 'next' ? 'Next step' : noun;
                 const thought = el('div', 'cp-assist-say');
                 body.append(head, thought);
+                // A step that types nothing points first, then talks; one that types points at what it typed, after.
+                const types = !!step.code && step.code !== input.value;
+                clearSelection();
+                if (!types && step.select) selectText(step.select, step.select_line);
                 await say(step.say, thought, run);
+                if (!types) {
+                    if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
+                    continue;
+                }
                 body.classList.add('typing');
                 // A slip and its catch: the first version typed, what is wrong with it said, then the fix.
                 if (step.draft && step.notice) {
@@ -810,8 +876,10 @@ export function setupCodePractice(): void {
                 await typeTo(step.code, run);
                 markAssisted(exactBefore);
                 body.classList.remove('typing');
+                if (step.select) selectText(step.select, step.select_line);
                 if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
             }
+            clearSelection();
             await say(r.closing || 'Over to you.', bubble('cp-assist-close'), run);
             ended = true;
         } catch (e) {
@@ -830,7 +898,7 @@ export function setupCodePractice(): void {
     }
     function handBack(run: number, blockKey: string, exactBefore: Set<number>, assistedBefore: Set<number>, ended: boolean) {
         if (assisting === run) assisting = 0;
-        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;
+        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
         reportSummary.textContent = '';
         if (key !== blockKey) return;   // the lesson moved on meanwhile: that block's report is gone
         attempt.text = input.value;render(false);
