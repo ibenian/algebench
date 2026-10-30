@@ -666,7 +666,10 @@ export function setupCodePractice(): void {
     const aiTag = el('span', 'cp-ai-tag');aiTag.textContent = '✦ AI';aiCaret.append(aiTag);
     // What it points at while it talks: its selection, drawn over the code (the textarea's own needs focus).
     const aiSelection = el('div', 'cp-ai-selection');
-    stack.append(aiSelection, aiCaret);
+    // The learner's own selection, kept on screen once the editor loses focus (a textarea hides it then): they select,
+    // click Walk me through it, and still see what they asked about until the assistant takes over.
+    const keptSelection = el('div', 'cp-ai-selection cp-kept-selection');
+    stack.append(keptSelection, aiSelection, aiCaret);
     let selectedTo = 0;
     let assisting = 0, assistSeq = 0, charWidth = 0;
     // The question waiting for the learner's answer, and the ones asked on this block (so none is asked twice).
@@ -751,8 +754,15 @@ export function setupCodePractice(): void {
         clearSelection();
         const at = findSelection(input.value, snippet, selectedTo, line);
         if (!at) return false;
+        drawRange(aiSelection, at[0], at[1], 'cp-ai-sel');
+        selectedTo = at[1];
+        placeCaret(at[1]);
+        return true;
+    }
+    /** Boxes over the code from `start` to `end`, one per line, into `layer`. */
+    function drawRange(layer: HTMLElement, start: number, end: number, cls: string) {
         measure();
-        const [start, end] = at, lines = input.value.split('\n');
+        const lines = input.value.split('\n');
         let offset = 0;
         lines.forEach((text, k) => {
             const from = Math.max(start, offset), to = Math.min(end, offset + text.length);
@@ -760,17 +770,20 @@ export function setupCodePractice(): void {
             if (row && from <= to && !(from === to && start !== end)) {
                 // A line inside the selection is lit from its indentation on, as a selection reads.
                 const a = from - offset === 0 && start < offset ? text.length - text.trimStart().length : from - offset;
-                const box = el('div', 'cp-ai-sel');
+                const box = el('div', cls);
                 box.style.left = `${row.offsetLeft + a * charWidth}px`;box.style.width = `${Math.max(2, (to - offset - a) * charWidth)}px`;
                 box.style.top = `${row.offsetTop}px`;box.style.height = `${row.offsetHeight}px`;
-                aiSelection.append(box);
+                layer.append(box);
             }
             offset += text.length + 1;
         });
-        selectedTo = end;
-        placeCaret(end);
-        return true;
     }
+    input.addEventListener('blur', () => {
+        keptSelection.replaceChildren();
+        if (!assisting && input.selectionEnd > input.selectionStart) drawRange(keptSelection, input.selectionStart, input.selectionEnd, 'cp-kept-sel');
+    });
+    const dropKept = () => keptSelection.replaceChildren();
+    input.addEventListener('focus', dropKept);input.addEventListener('input', dropKept);
     function clearSelection() { aiSelection.replaceChildren(); }
     function placeCaret(offset: number) {
         const before = input.value.slice(0, offset).split('\n'), line = before.length - 1, col = before[line]!.length;
@@ -864,6 +877,7 @@ export function setupCodePractice(): void {
                 return;
             }
             const r = out.result;
+            dropKept();   // the assistant takes over: its own selections from here
             reportSummary.textContent = scope === 'quiz' ? '✦ setting a question' : scope === 'grade' ? '✦ checking your answer' : '✦ AI at the keyboard';
             if (r.plan) await say(r.plan, bubble('cp-assist-plan'), run);
             selectedTo = 0;

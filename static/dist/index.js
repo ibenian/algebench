@@ -29776,7 +29776,8 @@ function setupCodePractice() {
 	aiTag.textContent = "✦ AI";
 	aiCaret.append(aiTag);
 	const aiSelection = el("div", "cp-ai-selection");
-	stack.append(aiSelection, aiCaret);
+	const keptSelection = el("div", "cp-ai-selection cp-kept-selection");
+	stack.append(keptSelection, aiSelection, aiCaret);
 	let selectedTo = 0;
 	let assisting = 0, assistSeq = 0, charWidth = 0;
 	let quiz = null;
@@ -29901,27 +29902,38 @@ function setupCodePractice() {
 		clearSelection();
 		const at = findSelection(input.value, snippet, selectedTo, line);
 		if (!at) return false;
+		drawRange(aiSelection, at[0], at[1], "cp-ai-sel");
+		selectedTo = at[1];
+		placeCaret(at[1]);
+		return true;
+	}
+	/** Boxes over the code from `start` to `end`, one per line, into `layer`. */
+	function drawRange(layer, start, end, cls) {
 		measure();
-		const [start, end] = at, lines = input.value.split("\n");
+		const lines = input.value.split("\n");
 		let offset = 0;
 		lines.forEach((text, k) => {
 			const from = Math.max(start, offset), to = Math.min(end, offset + text.length);
 			const row = paint.children[k];
 			if (row && from <= to && !(from === to && start !== end)) {
 				const a = from - offset === 0 && start < offset ? text.length - text.trimStart().length : from - offset;
-				const box = el("div", "cp-ai-sel");
+				const box = el("div", cls);
 				box.style.left = `${row.offsetLeft + a * charWidth}px`;
 				box.style.width = `${Math.max(2, (to - offset - a) * charWidth)}px`;
 				box.style.top = `${row.offsetTop}px`;
 				box.style.height = `${row.offsetHeight}px`;
-				aiSelection.append(box);
+				layer.append(box);
 			}
 			offset += text.length + 1;
 		});
-		selectedTo = end;
-		placeCaret(end);
-		return true;
 	}
+	input.addEventListener("blur", () => {
+		keptSelection.replaceChildren();
+		if (!assisting && input.selectionEnd > input.selectionStart) drawRange(keptSelection, input.selectionStart, input.selectionEnd, "cp-kept-sel");
+	});
+	const dropKept = () => keptSelection.replaceChildren();
+	input.addEventListener("focus", dropKept);
+	input.addEventListener("input", dropKept);
 	function clearSelection() {
 		aiSelection.replaceChildren();
 	}
@@ -30076,6 +30088,7 @@ function setupCodePractice() {
 				return;
 			}
 			const r = out.result;
+			dropKept();
 			reportSummary.textContent = scope === "quiz" ? "✦ setting a question" : scope === "grade" ? "✦ checking your answer" : "✦ AI at the keyboard";
 			if (r.plan) await say(r.plan, bubble("cp-assist-plan"), run);
 			selectedTo = 0;

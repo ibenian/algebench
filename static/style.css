@@ -6322,3 +6322,5 @@ body:has(.push-array) #legend { display: none; }
 .cp-verdict.cp-quiz-incorrect { color: #e0705a; border-color: #e0705a; }
 /* Reset, armed: the click that erases the code is the second one. */
 .cp-tool.cp-armed { color: #fff; background: #d0573f; border-color: #d0573f; }
+/* The learner's selection, kept while the editor is unfocused (as the textarea's own would look). */
+.cp-kept-sel { position: absolute; background: color-mix(in srgb, var(--accent-color) 35%, transparent); border-radius: 2px; }
