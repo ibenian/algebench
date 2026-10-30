@@ -29347,6 +29347,7 @@ function setupCodePractice() {
 		block = text;
 		quiz = null;
 		askedQuestions = [];
+		series = null;
 		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
 		const count = v.to - v.from + 1;
 		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
@@ -29782,6 +29783,24 @@ function setupCodePractice() {
 	let assisting = 0, assistSeq = 0, charWidth = 0;
 	let quiz = null;
 	let askedQuestions = [];
+	let series = null;
+	/** The current question is done (judged, shown or skipped): in a quiz, the next one comes. */
+	function quizTurnDone(outcome, answer = "") {
+		const done = quiz;
+		if (!series || !done) return;
+		series.turns.push({
+			question: done.question,
+			kind: done.kind,
+			outcome,
+			answer: answer.slice(0, 1e3)
+		});
+		series.turns = series.turns.slice(-20);
+	}
+	function nextInSeries() {
+		if (series) window.setTimeout(() => {
+			if (series && !assisting && !quiz) assist("quiz", series.topic);
+		}, 900);
+	}
 	class Stopped extends Error {}
 	const sleep = (ms) => new Promise((res) => window.setTimeout(res, ms));
 	function focusNow() {
@@ -29797,8 +29816,9 @@ function setupCodePractice() {
 		const words = el("input", "cp-help-input");
 		words.type = "text";
 		words.maxLength = 600;
-		words.placeholder = "say what you need, e.g. \"write the loop\" or \"why {0: 1}?\"";
-		words.setAttribute("aria-label", "Describe the help you want");
+		const answering = quiz?.kind === "answer";
+		words.placeholder = answering ? "Your answer to the question above (Enter to send)…" : "say what you need, e.g. \"write the loop\" or \"why {0: 1}?\"";
+		words.setAttribute("aria-label", answering ? "Your answer to the question" : "Describe the help you want");
 		const send = el("button", "cp-help-send");
 		send.type = "submit";
 		send.textContent = "➤";
@@ -29806,7 +29826,8 @@ function setupCodePractice() {
 		ask.append(words, send);
 		ask.addEventListener("submit", (e) => {
 			e.preventDefault();
-			if (words.value.trim()) assist("ask", words.value.trim());
+			if (!words.value.trim()) return;
+			assist(quiz?.kind === "answer" ? "grade" : "ask", words.value.trim());
 		});
 		row.append(label, ask);
 		const focus = focusNow();
@@ -29839,6 +29860,11 @@ function setupCodePractice() {
 				"quiz",
 				"Ask me a question",
 				"I ask you a question about the algorithm, setting it up in your code as an interviewer would"
+			],
+			[
+				"series",
+				"Quiz me",
+				"A quiz: question after question, each building on the last, in a teaching order. Any other choice ends it"
 			]
 		];
 		for (const [scope, text, title] of choices) {
@@ -29854,7 +29880,7 @@ function setupCodePractice() {
 	/** Help me sits under the latest message only: an older one's choices would act on code that has moved on. */
 	function offerHelp(msg) {
 		report.querySelectorAll(".cp-help").forEach((h) => h.remove());
-		msg.querySelector(".msg-body")?.append(helpChoices());
+		(msg.classList.contains("msg-body") ? msg : msg.querySelector(".msg-body"))?.append(helpChoices());
 		report.scrollTop = report.scrollHeight;
 	}
 	/** Said aloud (when the speaker is on) while its words appear; otherwise it waits about as long as reading it takes. */
@@ -29887,7 +29913,7 @@ function setupCodePractice() {
 		if (assisting !== run) throw new Stopped();
 		await sleep(300);
 	}
-	/** The assistant's caret at `offset` of the editor, kept in view. */
+	/** The width of one character of the editor's monospace font, measured once. */
 	function measure() {
 		if (charWidth) return;
 		const ctx = document.createElement("canvas").getContext("2d");
@@ -29904,7 +29930,11 @@ function setupCodePractice() {
 		if (!at) return false;
 		drawRange(aiSelection, at[0], at[1], "cp-ai-sel");
 		selectedTo = at[1];
-		placeCaret(at[1]);
+		const boxes = [...aiSelection.children];
+		const left = boxes.length ? Math.min(...boxes.map((b) => b.offsetLeft)) : void 0;
+		placeCaret(at[1], left);
+		const r = aiCaret.getBoundingClientRect(), view = editor.getBoundingClientRect();
+		if (r.right > view.right - 4 || r.left < view.left) placeCaret(at[0], left);
 		return true;
 	}
 	/** Boxes over the code from `start` to `end`, one per line, into `layer`. */
@@ -29937,7 +29967,9 @@ function setupCodePractice() {
 	function clearSelection() {
 		aiSelection.replaceChildren();
 	}
-	function placeCaret(offset) {
+	/** The assistant's caret at `offset`, kept in view; `left`, the left edge of what it points at (a selection), is
+	*  kept in view first: the view pans right only as far as it can without hiding that. */
+	function placeCaret(offset, left) {
 		const before = input.value.slice(0, offset).split("\n"), line = before.length - 1, col = before[line].length;
 		const row = paint.children[line];
 		if (!row) return;
@@ -29951,7 +29983,8 @@ function setupCodePractice() {
 		if (r.bottom > view.bottom - 6) editor.scrollTop += r.bottom - view.bottom + 24;
 		if (r.top < view.top + 6) editor.scrollTop -= view.top - r.top + 24;
 		const x = gutter.offsetWidth + aiCaret.offsetLeft;
-		editor.scrollLeft = x + 40 < editor.clientWidth ? 0 : x + 60 - editor.clientWidth;
+		const need = x + 40 < editor.clientWidth ? 0 : x + 60 - editor.clientWidth;
+		editor.scrollLeft = left === void 0 ? need : Math.max(0, Math.min(need, gutter.offsetWidth + left - 40));
 	}
 	/** Type the change from the editor to `target`: move there, backspace what goes, type what comes. */
 	async function typeTo(target, run) {
@@ -29993,6 +30026,18 @@ function setupCodePractice() {
 	async function assist(scope, request = "") {
 		if (!current || !score || assisting) return;
 		if (scope === "grade" && !quiz) return;
+		const starting = scope === "series";
+		if (starting) {
+			series = {
+				topic: request,
+				turns: []
+			};
+			scope = "quiz";
+		} else if (scope !== "quiz" && scope !== "grade") {
+			series = null;
+			quiz?.card.querySelector(".cp-quiz-controls")?.remove();
+			quiz = null;
+		}
 		const pending = quiz;
 		const run = ++assistSeq, blockKey = key;
 		assisting = run;
@@ -30021,10 +30066,11 @@ function setupCodePractice() {
 			section: `Help me finish “${focus?.title ?? "this section"}”.`,
 			all: "Write it all for me, and talk me through it.",
 			ask: request,
-			quiz: own ? `Ask me a question about this: ${own}` : "Ask me a question.",
+			quiz: starting ? own ? `Quiz me on this: ${own}` : "Quiz me." : own ? `Ask me a question about this: ${own}` : "Ask me a question.",
+			series: "",
 			grade: pending?.kind === "answer" ? own : "Check my answer."
 		}[scope];
-		message("user", Object.assign(el("div", ""), { textContent: ![
+		if (!(scope === "quiz" && series && !starting)) message("user", Object.assign(el("div", ""), { textContent: ![
 			"ask",
 			"quiz",
 			"grade"
@@ -30042,7 +30088,7 @@ function setupCodePractice() {
 		const assistedBefore = new Set(attempt.assisted);
 		const waiting = message("assistant", el("div", "chat-loading"));
 		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
-		let ended = false;
+		let ended = false, nextAfter = false;
 		try {
 			const where = {
 				language: current.file.language ?? "",
@@ -30060,7 +30106,8 @@ function setupCodePractice() {
 				...where,
 				mode: "ask",
 				request,
-				asked: askedQuestions.slice(-20)
+				asked: askedQuestions.slice(-20),
+				history: series?.turns ?? []
 			}) : scope === "grade" ? await invokeExpert("code_quiz", {
 				...where,
 				mode: "grade",
@@ -30157,8 +30204,10 @@ function setupCodePractice() {
 				const text = el("div", "");
 				body.append(badge, text);
 				pending?.card.querySelector(".cp-quiz-controls")?.remove();
+				quizTurnDone(r.verdict ?? "partly", pending?.kind === "answer" ? own : "");
 				quiz = null;
 				await say(r.feedback ?? "", text, run);
+				nextAfter = !!series;
 			} else await say(r.closing || "Over to you.", bubble("cp-assist-close"), run);
 			ended = true;
 		} catch (e) {
@@ -30166,6 +30215,7 @@ function setupCodePractice() {
 			if (!(e instanceof Stopped) && assisting === run) message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: e.message }));
 		} finally {
 			handBack(run, blockKey, exactBefore, assistedBefore, ended);
+			if (ended && nextAfter) nextInSeries();
 		}
 	}
 	/**
@@ -30175,7 +30225,7 @@ function setupCodePractice() {
 	*/
 	async function poseQuestion(q, card, run) {
 		const head = el("div", "cp-assist-head");
-		head.textContent = "Question";
+		head.textContent = series ? `Quiz · question ${series.turns.length + 1}` : "Question";
 		const text = el("div", "cp-quiz-question");
 		card.append(head, text);
 		await say(q.question, text, run);
@@ -30199,22 +30249,41 @@ function setupCodePractice() {
 		const reveal = button("Show answer", "See the answer I expected, without answering", () => {
 			if (!quiz || assisting) return;
 			controls.remove();
-			const key = el("div", "cp-quiz-key");
-			key.innerHTML = renderMarkdown$1(`**Expected:** ${quiz.answerKey}`, {
+			const key = el("div", "cp-quiz-key"), label = el("div", "cp-assist-head"), body = el("div", "");
+			label.textContent = "Expected answer";
+			body.innerHTML = renderMarkdown$1(quiz.answerKey, {
 				untrusted: true,
 				glossary: false
 			});
+			key.append(label, body);
 			card.append(key);
+			quizTurnDone("shown");
 			quiz = null;
-			offerHelp(card);
-			if (speakOn()) window.algebenchSpeakText?.(key.textContent ?? "");
+			const spoken = (body.textContent ?? "").replace(/[`*_]/g, "");
+			if (series) {
+				const next = () => nextInSeries();
+				if (speakOn() && window.algebenchSpeakText) window.algebenchSpeakText(spoken, next);
+				else next();
+			} else {
+				offerHelp(card);
+				if (speakOn()) window.algebenchSpeakText?.(spoken);
+			}
 		});
 		const skip = button("Skip", "Let this question go", () => {
 			if (!quiz || assisting) return;
 			controls.remove();
+			quizTurnDone("skipped");
 			quiz = null;
-			offerHelp(card);
+			if (series) nextInSeries();
+			else offerHelp(card);
 		});
+		const end = button("End quiz", "Stop the quiz here", () => {
+			if (assisting) return;
+			controls.remove();
+			quiz = null;
+			series = null;
+			offerHelp(card);
+		}, "cp-help-btn cp-quiz-end");
 		if (q.kind === "answer") {
 			const answer = el("textarea", "cp-quiz-input");
 			answer.rows = 2;
@@ -30229,11 +30298,11 @@ function setupCodePractice() {
 					send();
 				}
 			});
-			controls.append(answer, button("Answer", "Send your answer (Enter)", send, "cp-help-btn cp-quiz-main"), reveal, skip);
+			controls.append(answer, button("Answer", "Send your answer (Enter)", send, "cp-help-btn cp-quiz-main"), reveal, skip, ...series ? [end] : []);
 		} else {
 			const note = el("div", "cp-quiz-turn");
 			note.textContent = "Your turn: change the code in the editor, then check it.";
-			controls.append(note, button("Check my answer", "I judge what you changed in the editor", () => void assist("grade"), "cp-help-btn cp-quiz-main"), reveal, skip);
+			controls.append(note, button("Check my answer", "I judge what you changed in the editor", () => void assist("grade"), "cp-help-btn cp-quiz-main"), reveal, skip, ...series ? [end] : []);
 		}
 		card.append(controls);
 		report.scrollTop = report.scrollHeight;
@@ -30276,7 +30345,7 @@ function setupCodePractice() {
 			note.textContent = `The ${helped.length === 1 ? "line" : `${helped.length} lines`} I typed count${helped.length === 1 ? "s" : ""} as AI-typed (✦, ${100 * ASSIST_FACTOR}% each). Delete or Reset and type ${helped.length === 1 ? "it" : "them"} from memory for full marks.`;
 			msg.querySelector(".msg-body")?.append(note);
 		}
-		if (!quiz) offerHelp(msg);
+		if (!quiz && !(series && ended)) offerHelp(msg);
 		if (quiz?.kind === "answer") quiz.card.querySelector(".cp-quiz-input")?.focus();
 		else {
 			input.focus();
@@ -30289,6 +30358,7 @@ function setupCodePractice() {
 		if (!assisting) return;
 		assisting = 0;
 		dropped = drop;
+		series = null;
 		root.classList.remove("cp-assisting");
 		input.readOnly = false;
 		takeBack.hidden = true;
@@ -30424,6 +30494,7 @@ function setupCodePractice() {
 		disarmReset();
 		stopAssist(true);
 		quiz = null;
+		series = null;
 		attempt = {
 			text: "",
 			peeked: [],

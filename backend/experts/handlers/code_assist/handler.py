@@ -45,7 +45,7 @@ def render_inputs(req: CodeAssistRequest) -> dict:
 def code_assist(req: CodeAssistRequest) -> dict:
     if req.scope == "ask" and not req.request.strip():
         return {"reason": ASK_FIRST}
-    out = assist_code(req.scope, **render_inputs(req))
+    out = assist_code(req.scope, editor_text=req.typed, **render_inputs(req))
     if out.error:
         return {"reason": out.error}
     if not out.steps:

@@ -30,7 +30,9 @@ const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practic
 interface Attempt { text: string; peeked: number[]; assisted?: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
 /** Help me's reply: how it will go about it, its moves at the keyboard (each the whole editor after it), and its hand-back. */
 interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string; select?: string; select_line?: number}[]; closing: string }
-type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'ask' | 'quiz' | 'grade';
+type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'ask' | 'quiz' | 'series' | 'grade';
+/** One question of a quiz (Quiz me), and how it went: sent with the next ask, so the questions build on each other. */
+interface QuizTurn { question: string; kind: 'type' | 'answer'; outcome: 'correct' | 'partly' | 'incorrect' | 'shown' | 'skipped'; answer: string }
 type AssistStep = AssistPlan['steps'][number];
 /** Ask me a question (the code_quiz expert): the question, how it is answered, and what it expects (kept until judged). */
 interface QuizAsk { plan: string; steps: AssistStep[]; question: string; kind: 'type' | 'answer'; answer_key: string }
@@ -332,7 +334,7 @@ export function setupCodePractice(): void {
         current = v;
         if (next === key) return;
         if (key) hushCoach();
-        key = next;block = text;quiz = null;askedQuestions = [];
+        key = next;block = text;quiz = null;askedQuestions = [];series = null;
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
         const count = v.to - v.from + 1;
         target.textContent = `${v.file.path.split('/').pop()} · lines ${v.from}–${v.to}`;
@@ -675,6 +677,18 @@ export function setupCodePractice(): void {
     // The question waiting for the learner's answer, and the ones asked on this block (so none is asked twice).
     let quiz: {question: string; kind: 'type' | 'answer'; answerKey: string; setup: string; card: HTMLElement} | null = null;
     let askedQuestions: string[] = [];
+    // Quiz me: a series of questions, each asked once the last is done, until another choice (or End quiz) ends it.
+    let series: {topic: string; turns: QuizTurn[]} | null = null;
+    /** The current question is done (judged, shown or skipped): in a quiz, the next one comes. */
+    function quizTurnDone(outcome: QuizTurn['outcome'], answer = '') {
+        const done = quiz;
+        if (!series || !done) return;
+        series.turns.push({question: done.question, kind: done.kind, outcome, answer: answer.slice(0, 1000)});
+        series.turns = series.turns.slice(-20);
+    }
+    function nextInSeries() {
+        if (series) window.setTimeout(() => { if (series && !assisting && !quiz) void assist('quiz', series.topic); }, 900);
+    }
     class Stopped extends Error {}
     const sleep = (ms: number) => new Promise<void>(res => window.setTimeout(res, ms));
 
@@ -689,10 +703,18 @@ export function setupCodePractice(): void {
         // In their own words: sent alone (Enter), it is the whole request; with a button, it says how to go about it.
         const ask = el('form', 'cp-help-ask');
         const words = el('input', 'cp-help-input');words.type = 'text';words.maxLength = 600;
-        words.placeholder = 'say what you need, e.g. "write the loop" or "why {0: 1}?"';words.setAttribute('aria-label', 'Describe the help you want');
+        // With a question waiting for words, what is typed here is its answer: the two boxes look alike, and an
+        // answer sent as a request for help would end the quiz instead of being judged.
+        const answering = quiz?.kind === 'answer';
+        words.placeholder = answering ? 'Your answer to the question above (Enter to send)…' : 'say what you need, e.g. "write the loop" or "why {0: 1}?"';
+        words.setAttribute('aria-label', answering ? 'Your answer to the question' : 'Describe the help you want');
         const send = el('button', 'cp-help-send');send.type = 'submit';send.textContent = '➤';send.title = 'Ask (Enter)';
         ask.append(words, send);
-        ask.addEventListener('submit', e => { e.preventDefault();if (words.value.trim()) void assist('ask', words.value.trim()); });
+        ask.addEventListener('submit', e => {
+            e.preventDefault();
+            if (!words.value.trim()) return;
+            void assist(quiz?.kind === 'answer' ? 'grade' : 'ask', words.value.trim());
+        });
         row.append(label, ask);
         const focus = focusNow();
         const choices: [AssistScope, string, string][] = [
@@ -703,6 +725,7 @@ export function setupCodePractice(): void {
             ...(focus ? [['section', `Finish “${focus.title}”`, 'I write the rest of this section, step by step, talking it through'] as [AssistScope, string, string]] : []),
             ['all', 'Write it all', 'I write the rest of the block, thinking aloud as I go'],
             ['quiz', 'Ask me a question', 'I ask you a question about the algorithm, setting it up in your code as an interviewer would'],
+            ['series', 'Quiz me', 'A quiz: question after question, each building on the last, in a teaching order. Any other choice ends it'],
         ];
         for (const [scope, text, title] of choices) {
             const b = el('button', 'cp-help-btn');b.type = 'button';b.textContent = text;b.title = title;
@@ -713,7 +736,8 @@ export function setupCodePractice(): void {
     /** Help me sits under the latest message only: an older one's choices would act on code that has moved on. */
     function offerHelp(msg: HTMLElement) {
         report.querySelectorAll('.cp-help').forEach(h => h.remove());
-        msg.querySelector('.msg-body')?.append(helpChoices());
+        // A message, or its body itself (a question's card is one).
+        (msg.classList.contains('msg-body') ? msg : msg.querySelector('.msg-body'))?.append(helpChoices());
         report.scrollTop = report.scrollHeight;
     }
     /** Said aloud (when the speaker is on) while its words appear; otherwise it waits about as long as reading it takes. */
@@ -742,7 +766,7 @@ export function setupCodePractice(): void {
         if (assisting !== run) throw new Stopped();
         await sleep(300);
     }
-    /** The assistant's caret at `offset` of the editor, kept in view. */
+    /** The width of one character of the editor's monospace font, measured once. */
     function measure() {
         if (charWidth) return;
         const ctx = document.createElement('canvas').getContext('2d');
@@ -756,7 +780,13 @@ export function setupCodePractice(): void {
         if (!at) return false;
         drawRange(aiSelection, at[0], at[1], 'cp-ai-sel');
         selectedTo = at[1];
-        placeCaret(at[1]);
+        const boxes = [...aiSelection.children] as HTMLElement[];
+        const left = boxes.length ? Math.min(...boxes.map(b => b.offsetLeft)) : undefined;
+        placeCaret(at[1], left);
+        // A selection wider than the view keeps its start in view; its end is then off to the right, so the caret
+        // goes to the start, where it can be seen.
+        const r = aiCaret.getBoundingClientRect(), view = editor.getBoundingClientRect();
+        if (r.right > view.right - 4 || r.left < view.left) placeCaret(at[0], left);
         return true;
     }
     /** Boxes over the code from `start` to `end`, one per line, into `layer`. */
@@ -785,7 +815,9 @@ export function setupCodePractice(): void {
     const dropKept = () => keptSelection.replaceChildren();
     input.addEventListener('focus', dropKept);input.addEventListener('input', dropKept);
     function clearSelection() { aiSelection.replaceChildren(); }
-    function placeCaret(offset: number) {
+    /** The assistant's caret at `offset`, kept in view; `left`, the left edge of what it points at (a selection), is
+     *  kept in view first: the view pans right only as far as it can without hiding that. */
+    function placeCaret(offset: number, left?: number) {
         const before = input.value.slice(0, offset).split('\n'), line = before.length - 1, col = before[line]!.length;
         const row = paint.children[line] as HTMLElement | undefined;
         if (!row) return;
@@ -797,9 +829,11 @@ export function setupCodePractice(): void {
         const r = aiCaret.getBoundingClientRect(), view = editor.getBoundingClientRect();
         if (r.bottom > view.bottom - 6) editor.scrollTop += r.bottom - view.bottom + 24;
         if (r.top < view.top + 6) editor.scrollTop -= view.top - r.top + 24;
-        // Sideways, the line starts stay in view whenever the caret fits; a long line scrolls only as far as it needs.
+        // Sideways, the line starts stay in view whenever the caret fits; a long line scrolls only as far as it needs,
+        // and never so far that the start of a selection goes out of view on the left.
         const x = gutter.offsetWidth + aiCaret.offsetLeft;
-        editor.scrollLeft = x + 40 < editor.clientWidth ? 0 : x + 60 - editor.clientWidth;
+        const need = x + 40 < editor.clientWidth ? 0 : x + 60 - editor.clientWidth;
+        editor.scrollLeft = left === undefined ? need : Math.max(0, Math.min(need, gutter.offsetWidth + left - 40));
     }
     /** Type the change from the editor to `target`: move there, backspace what goes, type what comes. */
     async function typeTo(target: string, run: number) {
@@ -829,6 +863,13 @@ export function setupCodePractice(): void {
     async function assist(scope: AssistScope, request = '') {
         if (!current || !score || assisting) return;
         if (scope === 'grade' && !quiz) return;
+        // Quiz me starts a series; any other choice ends one (the series' own next question and its grading go on).
+        const starting = scope === 'series';
+        if (starting) { series = {topic: request, turns: []};scope = 'quiz'; }
+        else if (scope !== 'quiz' && scope !== 'grade') {
+            // Another choice leaves the quiz, and the question waiting goes with it (the coach speaks again).
+            series = null;quiz?.card.querySelector('.cp-quiz-controls')?.remove();quiz = null;
+        }
         const pending = quiz;
         const run = ++assistSeq, blockKey = key;assisting = run;
         clearTimeout(idle);reviewSeq++;   // a review on its way is not shown over the takeover
@@ -847,8 +888,11 @@ export function setupCodePractice(): void {
         }
         const asked = {fix: 'Fix the errors in what I typed, without writing ahead.', narrate: picked ? `Walk me through the selected ${span}.` : 'Walk me through my code.', next: 'Help me with the next step.',
             section: `Help me finish “${focus?.title ?? 'this section'}”.`, all: 'Write it all for me, and talk me through it.', ask: request,
-            quiz: own ? `Ask me a question about this: ${own}` : 'Ask me a question.', grade: pending?.kind === 'answer' ? own : 'Check my answer.'}[scope];
-        message('user', Object.assign(el('div', ''), {textContent: !['ask', 'quiz', 'grade'].includes(scope) && own ? `${asked} ${own}` : asked}));
+            quiz: starting ? (own ? `Quiz me on this: ${own}` : 'Quiz me.') : own ? `Ask me a question about this: ${own}` : 'Ask me a question.',
+            series: '', grade: pending?.kind === 'answer' ? own : 'Check my answer.'}[scope];
+        // The next question of a quiz comes by itself: no message from the learner for it.
+        if (!(scope === 'quiz' && series && !starting))
+            message('user', Object.assign(el('div', ''), {textContent: !['ask', 'quiz', 'grade'].includes(scope) && own ? `${asked} ${own}` : asked}));
         // A new question replaces one still waiting.
         if (scope === 'quiz') { quiz?.card.querySelector('.cp-quiz-controls')?.remove();quiz = null; }
         root.classList.add('cp-assisting');input.readOnly = true;takeBack.hidden = false;helpTool.hidden = true;
@@ -857,11 +901,11 @@ export function setupCodePractice(): void {
         const assistedBefore = new Set(attempt.assisted);
         const waiting = message('assistant', el('div', 'chat-loading'));
         waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
-        let ended = false;
+        let ended = false, nextAfter = false;
         try {
             const where = {language: current.file.language ?? '', expected: block, first_line: current.from,
                 section: focus ? {title: focus.title, hint: focus.hint ?? '', start: focus.from, end: focus.to} : null, typed: input.value};
-            const out = (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20)})
+            const out = (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
                 : scope === 'grade' ? await invokeExpert('code_quiz', {...where, mode: 'grade', question: pending!.question, kind: pending!.kind,
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
                 : await invokeExpert('code_assist', {...where, scope, request,
@@ -934,8 +978,10 @@ export function setupCodePractice(): void {
                 const badge = el('span', `cp-verdict cp-quiz-${r.verdict}`);badge.textContent = QUIZ_VERDICTS[r.verdict ?? ''] ?? 'Checked';
                 const text = el('div', '');body.append(badge, text);
                 // Answered: its card keeps the question, not its controls.
-                pending?.card.querySelector('.cp-quiz-controls')?.remove();quiz = null;
+                pending?.card.querySelector('.cp-quiz-controls')?.remove();
+                quizTurnDone(r.verdict ?? 'partly', pending?.kind === 'answer' ? own : '');quiz = null;
                 await say(r.feedback ?? '', text, run);
+                nextAfter = !!series;
             }
             else await say(r.closing || 'Over to you.', bubble('cp-assist-close'), run);
             ended = true;
@@ -944,6 +990,8 @@ export function setupCodePractice(): void {
             if (!(e instanceof Stopped) && assisting === run) message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: (e as Error).message}));
         } finally {
             handBack(run, blockKey, exactBefore, assistedBefore, ended);
+            // In a quiz, a judged answer leads to the next question.
+            if (ended && nextAfter) nextInSeries();
         }
     }
     /**
@@ -952,7 +1000,7 @@ export function setupCodePractice(): void {
      * see the expected answer instead, or let it go.
      */
     async function poseQuestion(q: QuizAsk, card: HTMLElement, run: number) {
-        const head = el('div', 'cp-assist-head');head.textContent = 'Question';
+        const head = el('div', 'cp-assist-head');head.textContent = series ? `Quiz · question ${series.turns.length + 1}` : 'Question';
         const text = el('div', 'cp-quiz-question');
         card.append(head, text);
         await say(q.question, text, run);
@@ -965,20 +1013,37 @@ export function setupCodePractice(): void {
         const reveal = button('Show answer', 'See the answer I expected, without answering', () => {
             if (!quiz || assisting) return;
             controls.remove();
-            const key = el('div', 'cp-quiz-key');key.innerHTML = renderMarkdown(`**Expected:** ${quiz.answerKey}`, {untrusted: true, glossary: false});
-            card.append(key);quiz = null;offerHelp(card);
-            if (speakOn()) window.algebenchSpeakText?.(key.textContent ?? '');
+            // The label is for the eye: what is read out is the answer alone.
+            const key = el('div', 'cp-quiz-key'), label = el('div', 'cp-assist-head'), body = el('div', '');
+            label.textContent = 'Expected answer';body.innerHTML = renderMarkdown(quiz.answerKey, {untrusted: true, glossary: false});
+            key.append(label, body);
+            card.append(key);quizTurnDone('shown');quiz = null;
+            const spoken = (body.textContent ?? '').replace(/[`*_]/g, '');
+            if (series) {
+                // In a quiz, the answer is read out, then the next question follows.
+                const next = () => nextInSeries();
+                if (speakOn() && window.algebenchSpeakText) window.algebenchSpeakText(spoken, next);else next();
+            } else { offerHelp(card);if (speakOn()) window.algebenchSpeakText?.(spoken); }
         });
-        const skip = button('Skip', 'Let this question go', () => { if (!quiz || assisting) return;controls.remove();quiz = null;offerHelp(card); });
+        const skip = button('Skip', 'Let this question go', () => {
+            if (!quiz || assisting) return;
+            controls.remove();quizTurnDone('skipped');quiz = null;
+            if (series) nextInSeries();else offerHelp(card);
+        });
+        // A quiz ends here, or with any other choice: the question goes, and Help me comes back.
+        const end = button('End quiz', 'Stop the quiz here', () => {
+            if (assisting) return;
+            controls.remove();quiz = null;series = null;offerHelp(card);
+        }, 'cp-help-btn cp-quiz-end');
         if (q.kind === 'answer') {
             const answer = el('textarea', 'cp-quiz-input');answer.rows = 2;answer.placeholder = 'Your answer… (Enter to send, Shift+Enter for a new line)';
             answer.setAttribute('aria-label', 'Your answer');
             const send = () => { if (answer.value.trim()) void assist('grade', answer.value.trim()); };
             answer.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault();send(); } });
-            controls.append(answer, button('Answer', 'Send your answer (Enter)', send, 'cp-help-btn cp-quiz-main'), reveal, skip);
+            controls.append(answer, button('Answer', 'Send your answer (Enter)', send, 'cp-help-btn cp-quiz-main'), reveal, skip, ...(series ? [end] : []));
         } else {
             const note = el('div', 'cp-quiz-turn');note.textContent = 'Your turn: change the code in the editor, then check it.';
-            controls.append(note, button('Check my answer', 'I judge what you changed in the editor', () => void assist('grade'), 'cp-help-btn cp-quiz-main'), reveal, skip);
+            controls.append(note, button('Check my answer', 'I judge what you changed in the editor', () => void assist('grade'), 'cp-help-btn cp-quiz-main'), reveal, skip, ...(series ? [end] : []));
         }
         card.append(controls);
         report.scrollTop = report.scrollHeight;
@@ -1010,7 +1075,8 @@ export function setupCodePractice(): void {
             msg.querySelector('.msg-body')?.append(note);
         }
         // A question waiting for its answer keeps its own controls; Help me comes back once it is answered.
-        if (!quiz) offerHelp(msg);
+        // In a quiz, the next question is on its way: no choices in between.
+        if (!quiz && !(series && ended)) offerHelp(msg);
         if (quiz?.kind === 'answer') quiz.card.querySelector<HTMLTextAreaElement>('.cp-quiz-input')?.focus();
         else { input.focus();input.setSelectionRange(input.value.length, input.value.length); }
     }
@@ -1018,7 +1084,7 @@ export function setupCodePractice(): void {
     let dropped = false;
     function stopAssist(drop = false) {
         if (!assisting) return;
-        assisting = 0;dropped = drop;
+        assisting = 0;dropped = drop;series = null;   // taking the keyboard back ends a quiz too
         root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
         if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     }
@@ -1113,7 +1179,7 @@ export function setupCodePractice(): void {
         }
         disarmReset();
         // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest (a question too).
-        stopAssist(true);quiz = null;
+        stopAssist(true);quiz = null;series = null;
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
         clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
         if (hintsOn()) void review(false);

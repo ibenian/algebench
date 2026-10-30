@@ -28,7 +28,18 @@ def ask_inputs(req: CodeQuizRequest) -> dict:
     base = assist_inputs(CodeAssistRequest(language=req.language, expected=req.expected, first_line=req.first_line,
                                            section=req.section, typed=req.typed))
     return {"language": base["language"], "expected": base["expected"], "section": base["section"],
-            "typed": base["typed"], "request": req.request.strip(), "asked": "\n".join(q.strip() for q in req.asked)}
+            "typed": base["typed"], "request": req.request.strip(), "asked": "\n".join(q.strip() for q in req.asked),
+            "history": "\n".join(_turn(k, t) for k, t in enumerate(req.history, 1))}
+
+
+OUTCOMES = {"correct": "answered correctly", "partly": "partly right", "incorrect": "answered wrongly",
+            "shown": "asked to see the answer", "skipped": "skipped it"}
+
+
+def _turn(k: int, t) -> str:
+    said = f' (they said: "{t.answer.strip()[:300]}")' if t.answer.strip() and t.kind == "answer" else ""
+    how = "by editing the code" if t.kind == "type" else "in words"
+    return f"{k}. {t.question.strip()} [answered {how}] -> {OUTCOMES[t.outcome]}{said}"
 
 
 def grade_inputs(req: CodeQuizRequest) -> dict:
@@ -44,12 +55,12 @@ def code_quiz(req: CodeQuizRequest) -> dict:
     if req.mode == "grade":
         if req.kind == "answer" and not req.answer.strip():
             return {"reason": NO_ANSWER}
-        out = grade_answer(**grade_inputs(req))
+        out = grade_answer(editor_text=req.typed, **grade_inputs(req))
         if out.error:
             return {"reason": out.error}
         log.info("%s graded: %s", LOG_TAG, out.verdict)
         return {"result": out.model_dump(exclude={"error"})}
-    out = ask_question(**ask_inputs(req))
+    out = ask_question(editor_text=req.typed, **ask_inputs(req))
     if out.error:
         return {"reason": out.error}
     if not out.question:

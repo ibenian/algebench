@@ -4,8 +4,10 @@ Requires DSPy to be configured first (``init_experts()`` / ``configure_dspy()``)
 """
 from __future__ import annotations
 
+import difflib
 import logging
 import re
+import textwrap
 from functools import cache
 
 import dspy
@@ -75,25 +77,49 @@ def clean_code(code: str) -> str:
         pad = " " * len(marks[0].group(0))
         code = "\n".join(_NUMBERED.sub("", line, count=1) if _NUMBERED.match(line)
                          else line[len(pad):] if line.startswith(pad) else line for line in lines)
+        # A space too many after each "|" leaves every line indented by it: code has a line at the margin, so the
+        # indent all lines share is the copy's, not the code's.
+        code = textwrap.dedent(code)
     return "\n".join(line.rstrip() for line in code.replace("\t", "    ").split("\n")).strip("\n")
 
 
-def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True) -> list[AssistStep]:
-    """The model's steps made safe to play: code cleaned, talk with nothing typed or pointed at joined to the step
-    before, drafts kept only as slips caught. ``talk_only``: the steps type nothing (they select and talk)."""
+def keep_lines(code: str, before: str) -> str:
+    """``code`` with every line that is, spacing aside, a line of ``before`` (in the same order) taken from
+    ``before`` as it is. A step's code is the whole editor, copied by the model: copying, it may re-indent or
+    re-space the learner's lines, which would then be erased and retyped. Only what it really changed is typed."""
+    if not code or not before:
+        return code
+    new, old = code.split("\n"), before.split("\n")
+    out = list(new)
+    matcher = difflib.SequenceMatcher(None, [l.strip() for l in old], [l.strip() for l in new], autojunk=False)
+    for op, a1, _, b1, b2 in matcher.get_opcodes():
+        if op == "equal":
+            out[b1:b2] = old[a1:a1 + b2 - b1]
+    return "\n".join(out)
+
+
+def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True, editor: str = "") -> list[AssistStep]:
+    """The model's steps made safe to play: code cleaned, the learner's lines kept as they typed them (``editor``,
+    the editor before the first step), talk with nothing typed or pointed at joined to the step before, drafts kept
+    only as slips caught. ``talk_only``: the steps type nothing (they select and talk)."""
     steps: list[AssistStep] = []
+    before = editor
     for s in raw or []:
         if not isinstance(s, AssistStep):
             continue
         code, select = clean_code(s.code), str(s.select or "").strip("\n")
         if talk_only:
             code = ""
+        if code:
+            code = keep_lines(code, before)
         # Typing nothing and pointing at nothing is talk alone: it joins the step before.
         typed_nothing = not code or (steps and code == steps[-1].code)
         if steps and typed_nothing and not select:
             steps[-1].explain = " ".join(filter(None, [steps[-1].explain, _clean(s.say), _clean(s.explain)]))
             continue
-        draft = clean_code(s.draft) if s.draft else ""
+        draft = keep_lines(clean_code(s.draft), before) if s.draft else ""
+        if code:
+            before = code
         # A draft is a slip caught: one that is the fix already, or comes with nothing noticed, is no draft.
         keep = drafts and code and draft and draft != code and _clean(s.notice)
         try:
@@ -105,7 +131,7 @@ def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True) -> list[As
     return steps
 
 
-def assist_code(scope: str, **inputs) -> CodeAssist:
+def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
     """Ask the model for the steps; one more ask if the answer was malformed."""
     try:
         out = retry_on_parse_error(lambda: _assistant()(scope=scope, **inputs), label="code_assist")
@@ -113,5 +139,5 @@ def assist_code(scope: str, **inputs) -> CodeAssist:
         log.exception("code_assist: the model call failed")
         return CodeAssist(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
     # Narrating types nothing; a fix shows the fix, not a new slip on the way to it.
-    steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate"))
+    steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate"), editor=editor_text)
     return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing))

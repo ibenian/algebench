@@ -92,3 +92,18 @@ def test_line_numbers_copied_from_the_inputs_are_taken_off():
     assert intent.clean_code(many).startswith("x = 1\n# note 0"), "however many lines come unnumbered"
     assert intent.clean_code("x = a | b\ny = 1") == "x = a | b\ny = 1", "only when the lines are numbered"
     assert intent.clean_code("  3 | x\n  7 | y") == "  3 | x\n  7 | y", "not numbered from 1 in order: left as it is"
+
+
+def test_a_numbered_copy_with_an_extra_space_after_the_bar_is_not_left_indented():
+    # An unnumbered line (a comment the model added) lines up with the numbered lines' code.
+    copied = "  1 |  def f(n):\n  2 |      total = 0\n           # a note\n  3 |      return total"
+    assert intent.clean_code(copied) == "def f(n):\n    total = 0\n    # a note\n    return total"
+
+
+def test_the_learners_lines_are_kept_as_typed_whatever_spacing_the_copy_gives_them():
+    typed = "def f(n):\n    total=0   # mine\n    return total"
+    copy = " def f(n):\n      total=0   # mine\n    # trace: total starts at 0\n     return total"
+    assert intent.keep_lines(copy, typed) == "def f(n):\n    total=0   # mine\n    # trace: total starts at 0\n    return total"
+    steps = [AssistStep(say="a", code=copy), AssistStep(say="b", code=copy + "\n# done")]
+    out = intent.clean_steps(steps, editor=typed)
+    assert out[0].code.startswith(typed.split("\n")[0]) and out[1].code.endswith("    return total\n# done")

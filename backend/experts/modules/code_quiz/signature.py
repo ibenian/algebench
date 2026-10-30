@@ -20,6 +20,16 @@ class QuizAskSig(dspy.Signature):
     lines swap; an edge case (an empty list, negative numbers, a repeated value); the running time or space and
     why. Don't repeat a question in `asked`. `request` (may be empty) is what the learner wants to be asked about.
 
+    `history` (may be empty) is a quiz in progress: the questions so far, in order, each with how it went. Then
+    this question is the next one a good teacher would ask, tied to the last where possible:
+    - after a wrong or partly right answer, a smaller question on the same idea that leads them to it (a concrete
+      case, one step of it);
+    - after a right one, the same thread a level deeper (why, what if, the consequence), or, once that thread is
+      done, the next part of the algorithm, in a teaching order: what the data structure holds, how one step
+      updates it, why the order of the lines matters, edge cases, then running time and space;
+    - say the link in `plan` ("You said X. Now...", "Building on that..."), and keep the editor as the questions
+      left it unless this question needs a change of its own.
+
     You may set the question up in the learner's editor first, the way an interviewer edits code on a shared
     screen: select a piece and talk about it, or change the code. `steps` play in order, each with `say`, an
     optional `select` (with `select_line`) and an optional `code`: the WHOLE editor after the step, only when you
@@ -46,12 +56,16 @@ class QuizAskSig(dspy.Signature):
     typed: str = dspy.InputField(desc="the learner's editor now, with line numbers; may be empty")
     request: str = dspy.InputField(desc="what the learner wants to be asked about, in their words; may be empty")
     asked: str = dspy.InputField(desc="questions already asked in this practice, one per line; may be empty")
+    history: str = dspy.InputField(desc="the quiz so far, in order: each question, the answer and how it went; "
+                                        "empty when this is a single question")
 
     plan: str = dspy.OutputField(desc="one short sentence on what you'll test")
     steps: list[AssistStep] = dspy.OutputField(desc="the set-up moves before the question, in order; may be empty")
     question: str = dspy.OutputField(desc="the question, spoken: one or two sentences ending in a question mark")
     kind: str = dspy.OutputField(desc='"type" (they answer by editing the code) or "answer" (they answer in words)')
-    answer_key: str = dspy.OutputField(desc="the answer you expect and why, kept from the learner until judged")
+    answer_key: str = dspy.OutputField(desc="the answer you expect and why, kept from the learner until judged; it "
+                                            "may be shown and read to them, so write it as the answer itself (\"It "
+                                            "counts the empty prefix, so...\"), never \"Expected:\" or \"The learner should\"")
 
 
 class QuizGradeSig(dspy.Signature):

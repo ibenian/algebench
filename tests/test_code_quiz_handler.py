@@ -55,3 +55,24 @@ def test_a_long_answer_key_comes_back_capped_and_is_accepted_when_sent_back(monk
     q = intent.ask_question(language="", expected="", section="", typed="", request="", asked="")
     assert len(q.answer_key) == intent.MAX_TEXT
     _req(mode="grade", question=q.question, answer_key=q.answer_key, answer="2")   # no validation error
+
+
+def test_a_quiz_in_progress_reaches_the_model_in_order_with_how_each_went():
+    hist = [{"question": "What does count hold?", "outcome": "correct", "answer": "sums seen"},
+            {"question": "Put the update back.", "kind": "type", "outcome": "skipped"}]
+    text = h.ask_inputs(_req(history=hist))["history"]
+    assert text.splitlines() == ['1. What does count hold? [answered in words] -> answered correctly (they said: "sums seen")',
+                                 "2. Put the update back. [answered by editing the code] -> skipped it"]
+    assert h.ask_inputs(_req())["history"] == ""
+
+
+def test_the_handler_reaches_the_model_and_keeps_the_learners_lines(monkeypatch):
+    # Through the handler, not around it: its arguments must not collide with the signature's inputs (`editor`).
+    reindented = "\n".join(" " + line for line in EXPECTED.split("\n")) + "\n# done"
+    out = SimpleNamespace(verdict="correct", feedback="Yes.", steps=[AssistStep(say="See.", code=reindented)])
+    monkeypatch.setattr(intent, "_grader", lambda: (lambda **_: out))
+    got = h.code_quiz(_req(mode="grade", answer="it sums them"))["result"]
+    assert got["steps"][0]["code"] == EXPECTED + "\n# done", "the learner's lines as they typed them, the addition after"
+    q = SimpleNamespace(plan="", question="Why?", kind="answer", answer_key="k", steps=[])
+    monkeypatch.setattr(intent, "_asker", lambda: (lambda **_: q))
+    assert h.code_quiz(_req())["result"]["question"] == "Why?"

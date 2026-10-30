@@ -14,6 +14,18 @@ from backend.experts.handlers.code_practice.models import MAX_CODE_CHARS, Practi
 from backend.experts.modules.code_quiz.intent import MAX_TEXT
 
 
+class QuizTurn(BaseModel):
+    """One question of a quiz in progress, and how it went."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(max_length=MAX_TEXT)
+    kind: Literal["type", "answer"] = "answer"
+    #: correct, partly, incorrect; or shown (asked to see the answer) or skipped.
+    outcome: Literal["correct", "partly", "incorrect", "shown", "skipped"]
+    answer: str = Field(default="", max_length=1000)
+
+
 class CodeQuizRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -26,6 +38,8 @@ class CodeQuizRequest(BaseModel):
     #: Ask: what the learner wants to be asked about, and the questions asked already.
     request: str = Field(default="", max_length=600)
     asked: list[str] = Field(default_factory=list, max_length=20)
+    #: Ask, in a quiz: the questions so far, in order, so the next one builds on them.
+    history: list[QuizTurn] = Field(default_factory=list, max_length=20)
     #: Grade: the question as asked, how it is answered, its key, and the editor right after it was set up.
     #: Sent back as the ask returned them (intent.py caps them there), so a long key is never refused here.
     question: str = Field(default="", max_length=MAX_TEXT)

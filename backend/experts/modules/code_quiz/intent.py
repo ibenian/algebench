@@ -68,7 +68,7 @@ def _grader() -> _Predict:
     return _Predict(QuizGradeSig)
 
 
-def ask_question(**inputs) -> QuizQuestion:
+def ask_question(editor_text: str = "", **inputs) -> QuizQuestion:
     """A question and the moves that set it up; one more ask if the answer was malformed."""
     try:
         out = retry_on_parse_error(lambda: _asker()(**inputs), label="code_quiz")
@@ -76,12 +76,12 @@ def ask_question(**inputs) -> QuizQuestion:
         log.exception("code_quiz: the model call failed")
         return QuizQuestion(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
     kind = _clean(out.kind).lower().strip('"')
-    return QuizQuestion(plan=_clean(out.plan), steps=clean_steps(out.steps, drafts=False)[:MAX_SETUP],
+    return QuizQuestion(plan=_clean(out.plan), steps=clean_steps(out.steps, drafts=False, editor=editor_text)[:MAX_SETUP],
                         question=_clean(out.question)[:MAX_TEXT], kind=kind if kind in KINDS else "answer",
                         answer_key=_clean(out.answer_key)[:MAX_TEXT])
 
 
-def grade_answer(**inputs) -> QuizVerdict:
+def grade_answer(editor_text: str = "", **inputs) -> QuizVerdict:
     """The verdict on an answer, and what to point at (and comment or type) while explaining it."""
     try:
         out = retry_on_parse_error(lambda: _grader()(**inputs), label="code_quiz")
@@ -90,4 +90,4 @@ def grade_answer(**inputs) -> QuizVerdict:
         return QuizVerdict(error=model_error_message(e) or f"{GRADE_FAILED} ({type(e).__name__})")
     verdict = _clean(out.verdict).lower().strip('"')
     return QuizVerdict(verdict=verdict if verdict in VERDICTS else "partly",
-                       steps=clean_steps(out.steps, drafts=False)[:MAX_POINTS], feedback=_clean(out.feedback))
+                       steps=clean_steps(out.steps, drafts=False, editor=editor_text)[:MAX_POINTS], feedback=_clean(out.feedback))

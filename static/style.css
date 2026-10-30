@@ -6324,3 +6324,4 @@ body:has(.push-array) #legend { display: none; }
 .cp-tool.cp-armed { color: #fff; background: #d0573f; border-color: #d0573f; }
 /* The learner's selection, kept while the editor is unfocused (as the textarea's own would look). */
 .cp-kept-sel { position: absolute; background: color-mix(in srgb, var(--accent-color) 35%, transparent); border-radius: 2px; }
+.cp-help-btn.cp-quiz-end { margin-left: auto; color: var(--muted-color); background: transparent; border-color: var(--border-color); }
