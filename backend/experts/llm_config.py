@@ -75,8 +75,25 @@ def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
     return dspy.LM(LM_MODEL, **kwargs)
 
 
+class _HeadedChatAdapter(ChatAdapter):
+    """A ``ChatAdapter`` that forgives one formatting slip: a response that begins with its first output field's
+    text but leaves out that field's ``[[ ## name ## ]]`` header (the rest headed as asked). The header is put back
+    and the response parsed again; any other malformed response still raises."""
+
+    def parse(self, signature, completion):
+        try:
+            return super().parse(signature, completion)
+        except AdapterParseError:
+            first = next(iter(signature.output_fields), None)
+            text = (completion or "").lstrip()
+            if first is None or text.startswith("[[") or f"[[ ## {first} ## ]]" in completion:
+                raise
+            log.info("adapter: response left out the [[ ## %s ## ]] header; restored it", first)
+            return super().parse(signature, f"[[ ## {first} ## ]]\n{text}")
+
+
 def make_adapter(*, json_fallback: bool = False,
-                 line_oriented: bool = False) -> ChatAdapter:
+                 line_oriented: bool = False, restore_first_header: bool = False) -> ChatAdapter:
     r"""Build a DSPy adapter. **Both knobs default to the safe setting.**
 
     The single place adapters are constructed, so the project's two wire-format
@@ -108,7 +125,13 @@ def make_adapter(*, json_fallback: bool = False,
     ``term_descriptions``) degrade exactly as before; ``prompt_endpoints``
     re-asks via :func:`retry_on_parse_error`, which is the resilience the
     fallback actually provided, without the escape layer.
+
+    ``restore_first_header`` — forgive a response that starts with its first output field's text without that
+    field's header, by putting the header back (:class:`_HeadedChatAdapter`). A slip some models make on long
+    structured answers, which a re-ask tends to repeat. Plain ``ChatAdapter`` only.
     """
+    if restore_first_header and not line_oriented:
+        return _HeadedChatAdapter(use_json_adapter_fallback=json_fallback)
     cls = LineAdapter if line_oriented else ChatAdapter
     return cls(use_json_adapter_fallback=json_fallback)
 

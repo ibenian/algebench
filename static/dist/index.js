@@ -29764,12 +29764,12 @@ function setupCodePractice() {
 		].filter(Boolean).join(" ").replace(/[`*]/g, ""));
 	}
 	const helpTool = tool("✋ Help me", "Let the assistant take the keyboard: the next step, this section, or the whole block");
-	helpTool.classList.add("cp-coach-only");
+	helpTool.classList.add("cp-coach-only", "cp-help-tool");
 	const takeBack = tool("■ Take back", "Stop the assistant and type yourself again (Esc)");
 	takeBack.classList.add("cp-take-back");
 	takeBack.hidden = true;
 	tools.insertBefore(helpTool, reset);
-	tools.append(takeBack);
+	tools.insertBefore(takeBack, reset);
 	const aiCaret = el("div", "cp-ai-caret");
 	aiCaret.hidden = true;
 	const aiTag = el("span", "cp-ai-tag");
@@ -30375,7 +30375,24 @@ function setupCodePractice() {
 			if (spoken) speakReview(spoken);
 		} else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 	});
+	let resetArmed = 0;
+	const disarmReset = () => {
+		clearTimeout(resetArmed);
+		resetArmed = 0;
+		reset.textContent = "Reset";
+		reset.classList.remove("cp-armed");
+		reset.title = "Start this block again";
+	};
+	reset.addEventListener("blur", disarmReset);
 	reset.addEventListener("click", () => {
+		if (input.value.trim() && !resetArmed) {
+			reset.textContent = "Sure? Reset";
+			reset.classList.add("cp-armed");
+			reset.title = "Click again to erase your code and start this block again";
+			resetArmed = window.setTimeout(disarmReset, 4e3);
+			return;
+		}
+		disarmReset();
 		stopAssist(true);
 		quiz = null;
 		attempt = {

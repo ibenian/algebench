@@ -655,10 +655,12 @@ export function setupCodePractice(): void {
     // It says how it will go about it, then, step by step, thinks aloud, types (the change from the editor to the
     // step's text, at a person's pace: code-assist-play.ts) and says why it works; then it hands the keyboard back.
     const helpTool = tool('✋ Help me', 'Let the assistant take the keyboard: the next step, this section, or the whole block');
-    helpTool.classList.add('cp-coach-only');
+    helpTool.classList.add('cp-coach-only', 'cp-help-tool');
     const takeBack = tool('■ Take back', 'Stop the assistant and type yourself again (Esc)');
     takeBack.classList.add('cp-take-back');takeBack.hidden = true;
-    tools.insertBefore(helpTool, reset);tools.append(takeBack);
+    // Take back takes Help me's place while the assistant works, so nothing moves under the pointer: Reset staying put
+    // means a second click on Take back can't land on it.
+    tools.insertBefore(helpTool, reset);tools.insertBefore(takeBack, reset);
     // Its own caret, as a collaborator's in a shared editor, with its name on it.
     const aiCaret = el('div', 'cp-ai-caret');aiCaret.hidden = true;
     const aiTag = el('span', 'cp-ai-tag');aiTag.textContent = '✦ AI';aiCaret.append(aiTag);
@@ -1071,7 +1073,18 @@ export function setupCodePractice(): void {
         if (speakOn()) { if (spoken) speakReview(spoken); }
         else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     });
+    // Reset throws the typed code away, so it asks once more: the first click arms it ("Sure? Reset"), a second
+    // within a few seconds resets. With nothing typed there is nothing to lose, and it resets at once.
+    let resetArmed = 0;
+    const disarmReset = () => { clearTimeout(resetArmed);resetArmed = 0;reset.textContent = 'Reset';reset.classList.remove('cp-armed');reset.title = 'Start this block again'; };
+    reset.addEventListener('blur', disarmReset);
     reset.addEventListener('click', () => {
+        if (input.value.trim() && !resetArmed) {
+            reset.textContent = 'Sure? Reset';reset.classList.add('cp-armed');reset.title = 'Click again to erase your code and start this block again';
+            resetArmed = window.setTimeout(disarmReset, 4000);
+            return;
+        }
+        disarmReset();
         // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest (a question too).
         stopAssist(true);quiz = null;
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();

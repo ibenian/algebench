@@ -6197,6 +6197,8 @@ body:has(.push-array) #legend { display: none; }
 .code-practice { --ai-tone: #a78bfa; }
 .cp-tool[hidden] { display: none; }
 .cp-take-back { color: var(--ai-tone); border-color: color-mix(in srgb, var(--ai-tone) 60%, transparent); }
+/* The two swap in one place, at one width, so the buttons after them never move. */
+.cp-help-tool, .cp-take-back { min-width: 7.5em; text-align: center; }
 .cp-help { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
 .cp-help-label { font-size: 11px; color: var(--muted-color); margin-right: 2px; }
 .cp-help-btn { padding: 2px 10px; font-size: 11px; line-height: 18px; color: var(--text-color); cursor: pointer; border-radius: 999px;
@@ -6318,3 +6320,5 @@ body:has(.push-array) #legend { display: none; }
 .cp-verdict.cp-quiz-correct { color: #4fb39a; border-color: #4fb39a; }
 .cp-verdict.cp-quiz-partly { color: #e0b04a; border-color: #e0b04a; }
 .cp-verdict.cp-quiz-incorrect { color: #e0705a; border-color: #e0705a; }
+/* Reset, armed: the click that erases the code is the second one. */
+.cp-tool.cp-armed { color: #fff; background: #d0573f; border-color: #d0573f; }

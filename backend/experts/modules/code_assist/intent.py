@@ -47,7 +47,7 @@ class Assistant(dspy.Module):
         self.predict = dspy.Predict(CodeAssistSig)
 
     def forward(self, **inputs):
-        with _LM(), dspy.context(adapter=make_adapter()):
+        with _LM(), dspy.context(adapter=make_adapter(restore_first_header=True)):
             return self.predict(**inputs)
 
 
