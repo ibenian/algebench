@@ -900,7 +900,8 @@ export function setupCodePractice(): void {
         if (assisting === run) assisting = 0;
         root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
         reportSummary.textContent = '';
-        if (key !== blockKey) return;   // the lesson moved on meanwhile: that block's report is gone
+        // The lesson moved on meanwhile (that block's report is gone), or Reset started the block afresh: nothing to hand back.
+        if (key !== blockKey || dropped) { dropped = false;return; }
         attempt.text = input.value;render(false);
         // Not typed by the learner at all: a line the assistant wrote counts a tenth (ASSIST_FACTOR), seen or not.
         markAssisted(exactBefore);
@@ -917,12 +918,15 @@ export function setupCodePractice(): void {
         offerHelp(msg);
         input.focus();input.setSelectionRange(input.value.length, input.value.length);
     }
-    function stopAssist() {
+    /** Stop the assistant; `drop` when its work is being thrown away (Reset), so it hands nothing back. */
+    let dropped = false;
+    function stopAssist(drop = false) {
         if (!assisting) return;
-        assisting = 0;
+        assisting = 0;dropped = drop;
+        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
         if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     }
-    takeBack.addEventListener('click', stopAssist);
+    takeBack.addEventListener('click', () => stopAssist());
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && assisting) { e.preventDefault();stopAssist(); } });
     helpTool.addEventListener('click', () => {
         if (assisting || !current) return;
@@ -1001,6 +1005,8 @@ export function setupCodePractice(): void {
         else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     });
     reset.addEventListener('click', () => {
+        // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest.
+        stopAssist(true);
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
         clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
         if (hintsOn()) void review(false);

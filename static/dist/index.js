@@ -30105,7 +30105,10 @@ function setupCodePractice() {
 		aiCaret.hidden = true;
 		clearSelection();
 		reportSummary.textContent = "";
-		if (key !== blockKey) return;
+		if (key !== blockKey || dropped) {
+			dropped = false;
+			return;
+		}
 		attempt.text = input.value;
 		render(false);
 		markAssisted(exactBefore);
@@ -30124,12 +30127,21 @@ function setupCodePractice() {
 		input.focus();
 		input.setSelectionRange(input.value.length, input.value.length);
 	}
-	function stopAssist() {
+	/** Stop the assistant; `drop` when its work is being thrown away (Reset), so it hands nothing back. */
+	let dropped = false;
+	function stopAssist(drop = false) {
 		if (!assisting) return;
 		assisting = 0;
+		dropped = drop;
+		root.classList.remove("cp-assisting");
+		input.readOnly = false;
+		takeBack.hidden = true;
+		helpTool.hidden = false;
+		aiCaret.hidden = true;
+		clearSelection();
 		if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 	}
-	takeBack.addEventListener("click", stopAssist);
+	takeBack.addEventListener("click", () => stopAssist());
 	document.addEventListener("keydown", (e) => {
 		if (e.key === "Escape" && assisting) {
 			e.preventDefault();
@@ -30237,6 +30249,7 @@ function setupCodePractice() {
 		} else if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 	});
 	reset.addEventListener("click", () => {
+		stopAssist(true);
 		attempt = {
 			text: "",
 			peeked: [],
