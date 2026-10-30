@@ -70,6 +70,10 @@ class QuizGradeSig(dspy.Signature):
     Keep comments short, in the language's comment syntax, inline or just above the line they explain (never a
     long block at the end), and never delete or change the learner's correct code.
 
+    A step that types plays like a teacher at a board: the typing comes first, in silence, then its selection is
+    shown and `say` is spoken, so `say` talks about what is now on screen ("Look at what I wrote here: ..."),
+    never "let me write". A step that only selects shows its selection, then speaks.
+
     Point only at what is in `editor`: `select` must be text it holds (after the step's typing, if it types).
     Code the learner hasn't written yet isn't there to select: to show it, type it as a comment where it will go
     (`# later: seen[num] = i  (number -> its index)`), so they see where it fits without it being written for them.

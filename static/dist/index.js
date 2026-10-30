@@ -30088,8 +30088,24 @@ function setupCodePractice() {
 				body.append(head, thought);
 				const types = !!step.code && step.code !== input.value;
 				clearSelection();
+				if (scope === "grade" && types) {
+					head.hidden = true;
+					thought.hidden = true;
+					await typeTo(step.code, run);
+					markAssisted(exactBefore);
+					if (!step.select || !selectText(step.select, step.select_line)) placeCaret(input.value.length);
+					head.hidden = false;
+					thought.hidden = false;
+					await say(step.say, thought, run);
+					if (step.explain) {
+						const why = el("div", "cp-assist-why");
+						body.append(why);
+						await say(step.explain, why, run);
+					}
+					continue;
+				}
 				const shown = !types && !!step.select && selectText(step.select, step.select_line);
-				head.hidden = scope === "grade" && !types && !shown;
+				head.hidden = scope === "grade" && !shown;
 				await say(step.say, thought, run);
 				if (!types) {
 					if (step.explain) {

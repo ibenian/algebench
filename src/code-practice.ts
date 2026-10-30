@@ -877,9 +877,22 @@ export function setupCodePractice(): void {
                 // A step that types nothing points first, then talks; one that types points at what it typed, after.
                 const types = !!step.code && step.code !== input.value;
                 clearSelection();
+                // Judging an answer explains like a teacher at a board: what it types comes first, in silence, then
+                // it points at it ("Look here") and talks. Elsewhere it thinks aloud first, then types.
+                if (scope === 'grade' && types) {
+                    head.hidden = true;thought.hidden = true;
+                    await typeTo(step.code, run);
+                    markAssisted(exactBefore);
+                    // Pointing at what it means, else at the end of what it typed: either way there is now code to see.
+                    if (!step.select || !selectText(step.select, step.select_line)) placeCaret(input.value.length);
+                    head.hidden = false;thought.hidden = false;
+                    await say(step.say, thought, run);
+                    if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
+                    continue;
+                }
                 const shown = !types && !!step.select && selectText(step.select, step.select_line);
                 // "Look here" only when there is something to look at: a step pointing at nothing is talk.
-                head.hidden = scope === 'grade' && !types && !shown;
+                head.hidden = scope === 'grade' && !shown;
                 await say(step.say, thought, run);
                 if (!types) {
                     if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
