@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 KINDS = ("type", "answer")
 VERDICTS = ("correct", "partly", "incorrect")
-MAX_SETUP, MAX_POINTS = 4, 3
+MAX_SETUP, MAX_POINTS = 4, 4
 #: The longest question or answer key returned: the grade request sends them back, and its model accepts this much.
 MAX_TEXT = 6000
 
@@ -82,7 +82,7 @@ def ask_question(**inputs) -> QuizQuestion:
 
 
 def grade_answer(**inputs) -> QuizVerdict:
-    """The verdict on an answer, and what to point at while explaining it."""
+    """The verdict on an answer, and what to point at (and comment or type) while explaining it."""
     try:
         out = retry_on_parse_error(lambda: _grader()(**inputs), label="code_quiz")
     except Exception as e:
@@ -90,4 +90,4 @@ def grade_answer(**inputs) -> QuizVerdict:
         return QuizVerdict(error=model_error_message(e) or f"{GRADE_FAILED} ({type(e).__name__})")
     verdict = _clean(out.verdict).lower().strip('"')
     return QuizVerdict(verdict=verdict if verdict in VERDICTS else "partly",
-                       steps=clean_steps(out.steps, talk_only=True)[:MAX_POINTS], feedback=_clean(out.feedback))
+                       steps=clean_steps(out.steps, drafts=False)[:MAX_POINTS], feedback=_clean(out.feedback))

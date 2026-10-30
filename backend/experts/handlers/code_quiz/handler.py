@@ -35,7 +35,8 @@ def grade_inputs(req: CodeQuizRequest) -> dict:
     answer = (_numbered(req.typed) if req.typed.strip() else "(empty)") if req.kind == "type" else req.answer.strip()
     return {"language": req.language or "unknown", "expected": _numbered(req.expected, req.first_line),
             "question": req.question, "kind": req.kind, "answer_key": req.answer_key,
-            "setup": _numbered(req.setup) if req.setup.strip() else "(empty)", "answer": answer}
+            "setup": _numbered(req.setup) if req.setup.strip() else "(empty)", "answer": answer,
+            "editor": _numbered(req.typed) if req.typed.strip() else "(empty)"}
 
 
 @register_handler("code_quiz", request_model=CodeQuizRequest)

@@ -82,3 +82,13 @@ def test_narrating_types_nothing_and_keeps_its_selections(monkeypatch):
     out = intent.assist_code("narrate", language="", expected="", section="", typed="", issues="", request="")
     assert [(s.code, s.select, s.select_line) for s in out.steps] == [("", "for x in xs:", 1), ("", "xs", 0)]
     assert out.steps[1].explain == "And that is all.", "talk with nothing selected joins the step before"
+
+
+def test_line_numbers_copied_from_the_inputs_are_taken_off():
+    assert intent.clean_code("  1 | def f(n):\n  2 |     return n  # 3 | not a number") == "def f(n):\n    return n  # 3 | not a number"
+    assert intent.clean_code("  1 | def f(n):\n  2 |     return n\n      # f(2) is 2") == "def f(n):\n    return n\n# f(2) is 2", \
+        "a line added without a number loses the numbering's width"
+    many = "  1 | x = 1\n" + "\n".join(f"# note {k}" for k in range(5))
+    assert intent.clean_code(many).startswith("x = 1\n# note 0"), "however many lines come unnumbered"
+    assert intent.clean_code("x = a | b\ny = 1") == "x = a | b\ny = 1", "only when the lines are numbered"
+    assert intent.clean_code("  3 | x\n  7 | y") == "  3 | x\n  7 | y", "not numbered from 1 in order: left as it is"

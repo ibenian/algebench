@@ -35,11 +35,12 @@ def test_a_question_is_cleaned_and_an_unknown_kind_is_answered_in_words(monkeypa
     assert len(q.steps) == intent.MAX_SETUP and not q.steps[0].draft
 
 
-def test_grading_types_nothing_and_needs_an_answer(monkeypatch):
-    out = SimpleNamespace(verdict="Correct", feedback="Yes.", steps=[AssistStep(say="See.", code="x = 1", select="x")])
+def test_grading_may_type_comments_without_drafts_and_needs_an_answer(monkeypatch):
+    out = SimpleNamespace(verdict="Correct", feedback="Yes.",
+                          steps=[AssistStep(say="See.", code="x = 1  # one", select="x", draft="x = 2", notice="oops")])
     monkeypatch.setattr(intent, "_grader", lambda: (lambda **_: out))
     v = intent.grade_answer(**{f: "" for f in GRADE_FIELDS})
-    assert v.verdict == "correct" and v.steps[0].code == ""
+    assert v.verdict == "correct" and v.steps[0].code == "x = 1  # one" and not v.steps[0].draft
     assert h.code_quiz(_req(mode="grade", kind="answer", answer="  ")) == {"reason": h.NO_ANSWER}
 
 

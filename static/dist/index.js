@@ -29631,7 +29631,7 @@ function setupCodePractice() {
 	/** Only a change to the code itself calls for a review: not Enter's new indented line, nor a move of the cursor. */
 	const reviewKey = (text) => `${hintsOn()}\n${text.split("\n").map((l) => l.trimEnd()).join("\n").trimEnd()}`;
 	async function review(force) {
-		if (assisting || !coachOn() || !current || !score || !input.value.trim() && !hintsOn()) return;
+		if (assisting || quiz || !coachOn() || !current || !score || !input.value.trim() && !hintsOn()) return;
 		const cursor = input.value.slice(0, input.selectionStart).split("\n").length - 1;
 		const focus = focusSection(score, cursor, sections);
 		const signature = reviewKey(input.value);
@@ -29900,7 +29900,7 @@ function setupCodePractice() {
 	function selectText(snippet, line = 0) {
 		clearSelection();
 		const at = findSelection(input.value, snippet, selectedTo, line);
-		if (!at) return;
+		if (!at) return false;
 		measure();
 		const [start, end] = at, lines = input.value.split("\n");
 		let offset = 0;
@@ -29920,6 +29920,7 @@ function setupCodePractice() {
 		});
 		selectedTo = end;
 		placeCaret(end);
+		return true;
 	}
 	function clearSelection() {
 		aiSelection.replaceChildren();
@@ -30087,7 +30088,8 @@ function setupCodePractice() {
 				body.append(head, thought);
 				const types = !!step.code && step.code !== input.value;
 				clearSelection();
-				if (!types && step.select) selectText(step.select, step.select_line);
+				const shown = !types && !!step.select && selectText(step.select, step.select_line);
+				head.hidden = scope === "grade" && !types && !shown;
 				await say(step.say, thought, run);
 				if (!types) {
 					if (step.explain) {

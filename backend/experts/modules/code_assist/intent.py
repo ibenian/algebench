@@ -20,6 +20,8 @@ log = logging.getLogger(__name__)
 
 _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 _FENCE = re.compile(r"^\s*```[\w+-]*\n(.*?)\n?```\s*$", re.S)
+#: The numbering the model is shown its inputs in ("  3 | code", "+   3 | code"), copied back by mistake.
+_NUMBERED = re.compile(r"^[+ ]?\s*\d+ \| ?")
 
 MAX_STEPS = 14
 #: How many steps each scope may take: "next" is one move (and a fix before it).
@@ -59,11 +61,20 @@ def _clean(text) -> str:
 
 
 def clean_code(code: str) -> str:
-    """A step's editor text: no fences, no trailing spaces, no blank lines at the end."""
+    """A step's editor text: no fences, no line numbers copied from the inputs, no trailing spaces, no blank lines
+    at the end."""
     code = _DSPY_MARKER.sub("", str(code or ""))
     m = _FENCE.match(code)
     if m:
         code = m.group(1)
+    lines = code.split("\n")
+    marks = [m for m in (_NUMBERED.match(line) for line in lines) if m]
+    # Numbered 1, 2, 3... in order: the numbering was copied. The numbers go, and a line added without one (a
+    # comment under them) loses as much indent.
+    if marks and [int(m.group(0).strip(" +|")) for m in marks] == list(range(1, len(marks) + 1)):
+        pad = " " * len(marks[0].group(0))
+        code = "\n".join(_NUMBERED.sub("", line, count=1) if _NUMBERED.match(line)
+                         else line[len(pad):] if line.startswith(pad) else line for line in lines)
     return "\n".join(line.rstrip() for line in code.replace("\t", "    ").split("\n")).strip("\n")
 
 

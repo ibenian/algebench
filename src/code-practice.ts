@@ -553,7 +553,8 @@ export function setupCodePractice(): void {
     const reviewKey = (text: string) => `${hintsOn()}\n${text.split('\n').map(l => l.trimEnd()).join('\n').trimEnd()}`;
     async function review(force: boolean) {
         // With hints, an empty editor is a beginning: the coach says how to start.
-        if (assisting || !coachOn() || !current || !score || (!input.value.trim() && !hintsOn())) return;
+        // While a question waits for its answer, the coach holds its tongue: the answer is the learner's own.
+        if (assisting || quiz || !coachOn() || !current || !score || (!input.value.trim() && !hintsOn())) return;
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
         const focus = focusSection(score, cursor, sections);
         const signature = reviewKey(input.value);
@@ -744,10 +745,10 @@ export function setupCodePractice(): void {
     }
     /** Select `snippet` in the editor, as a person points: where it starts on `line` if the model gave one, else the next
      *  one after the last selection, else the first. */
-    function selectText(snippet: string, line = 0) {
+    function selectText(snippet: string, line = 0): boolean {
         clearSelection();
         const at = findSelection(input.value, snippet, selectedTo, line);
-        if (!at) return;
+        if (!at) return false;
         measure();
         const [start, end] = at, lines = input.value.split('\n');
         let offset = 0;
@@ -766,6 +767,7 @@ export function setupCodePractice(): void {
         });
         selectedTo = end;
         placeCaret(end);
+        return true;
     }
     function clearSelection() { aiSelection.replaceChildren(); }
     function placeCaret(offset: number) {
@@ -873,7 +875,9 @@ export function setupCodePractice(): void {
                 // A step that types nothing points first, then talks; one that types points at what it typed, after.
                 const types = !!step.code && step.code !== input.value;
                 clearSelection();
-                if (!types && step.select) selectText(step.select, step.select_line);
+                const shown = !types && !!step.select && selectText(step.select, step.select_line);
+                // "Look here" only when there is something to look at: a step pointing at nothing is talk.
+                head.hidden = scope === 'grade' && !types && !shown;
                 await say(step.say, thought, run);
                 if (!types) {
                     if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }

@@ -61,9 +61,21 @@ class QuizGradeSig(dspy.Signature):
     the editor as you left it: judge what they changed.
 
     `verdict` is "correct", "partly" (on the right track, something missing or a little off) or "incorrect".
-    Then talk them through it as a teacher: `steps` select pieces of the editor (`select`, `select_line`) and say
-    what to see there; they type nothing (empty `code`). One to three steps, or none when the answer was fully
-    right and there is nothing to point at. `feedback` ends: two to four spoken sentences: what they got right,
+    Then explain it at the keyboard, as a teacher at a shared screen: `steps` select pieces of the editor
+    (`select`, `select_line`) and say what to see there, and may type to explain (`code`: the WHOLE editor after
+    the step; empty when the step only selects and talks):
+    - a short comment beside or above a line, saying what it does or holds (`# running_sum is 3 here`);
+    - a tiny worked example in comments, tracing the values for the input the question used;
+    - for an answer that was off, the correction itself, typed where it belongs, so they see it work.
+    Keep comments short, in the language's comment syntax, inline or just above the line they explain (never a
+    long block at the end), and never delete or change the learner's correct code.
+
+    Point only at what is in `editor`: `select` must be text it holds (after the step's typing, if it types).
+    Code the learner hasn't written yet isn't there to select: to show it, type it as a comment where it will go
+    (`# later: seen[num] = i  (number -> its index)`), so they see where it fits without it being written for them.
+    A step that neither selects nor types shows nothing: then say it in `feedback` instead.
+    `code` is plain code, as the editor holds it: never the line numbers the inputs are shown with.
+    One to four steps, or none when the answer was fully right and there is nothing worth showing. `feedback` ends: two to four spoken sentences: what they got right,
     what was missing or wrong and the idea behind it, warmly; with "incorrect", give the right answer and why.
     Speak plainly, in the first person; backticks only briefly.
     """
@@ -74,10 +86,11 @@ class QuizGradeSig(dspy.Signature):
     kind: str = dspy.InputField(desc='"type" (answered by editing the code) or "answer" (answered in words)')
     answer_key: str = dspy.InputField(desc="the answer you expected")
     setup: str = dspy.InputField(desc="the editor right after you set the question up, with line numbers")
+    editor: str = dspy.InputField(desc="the editor now, with line numbers: what your steps select in and type into")
     answer: str = dspy.InputField(desc="the learner's answer: their words, or (for \"type\") their editor now, with line numbers")
 
     verdict: str = dspy.OutputField(desc='"correct", "partly" or "incorrect"')
-    steps: list[AssistStep] = dspy.OutputField(desc="pieces of the editor to point at while explaining; may be empty")
+    steps: list[AssistStep] = dspy.OutputField(desc="pieces to point at, and comments or code to type, while explaining; may be empty")
     feedback: str = dspy.OutputField(desc="two to four spoken sentences judging the answer and teaching the idea")
 
 
