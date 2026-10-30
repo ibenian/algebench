@@ -67,20 +67,15 @@ def clean_code(code: str) -> str:
     return "\n".join(line.rstrip() for line in code.replace("\t", "    ").split("\n")).strip("\n")
 
 
-def assist_code(scope: str, **inputs) -> CodeAssist:
-    """Ask the model for the steps; one more ask if the answer was malformed."""
-    try:
-        out = retry_on_parse_error(lambda: _assistant()(scope=scope, **inputs), label="code_assist")
-    except Exception as e:
-        log.exception("code_assist: the model call failed")
-        return CodeAssist(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
-    steps = []
-    for s in out.steps or []:
+def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True) -> list[AssistStep]:
+    """The model's steps made safe to play: code cleaned, talk with nothing typed or pointed at joined to the step
+    before, drafts kept only as slips caught. ``talk_only``: the steps type nothing (they select and talk)."""
+    steps: list[AssistStep] = []
+    for s in raw or []:
         if not isinstance(s, AssistStep):
             continue
         code, select = clean_code(s.code), str(s.select or "").strip("\n")
-        # Narrating types nothing: its steps only select and talk.
-        if scope == "narrate":
+        if talk_only:
             code = ""
         # Typing nothing and pointing at nothing is talk alone: it joins the step before.
         typed_nothing = not code or (steps and code == steps[-1].code)
@@ -89,12 +84,23 @@ def assist_code(scope: str, **inputs) -> CodeAssist:
             continue
         draft = clean_code(s.draft) if s.draft else ""
         # A draft is a slip caught: one that is the fix already, or comes with nothing noticed, is no draft.
-        # A fix shows the fix, not a new slip on the way to it.
-        keep = scope not in ("fix", "narrate") and code and draft and draft != code and _clean(s.notice)
+        keep = drafts and code and draft and draft != code and _clean(s.notice)
         try:
             line = max(0, int(s.select_line or 0)) if select else 0
         except (TypeError, ValueError):
             line = 0
         steps.append(AssistStep(say=_clean(s.say), code=code, select=select, select_line=line, explain=_clean(s.explain),
                                 draft=draft if keep else "", notice=_clean(s.notice) if keep else ""))
+    return steps
+
+
+def assist_code(scope: str, **inputs) -> CodeAssist:
+    """Ask the model for the steps; one more ask if the answer was malformed."""
+    try:
+        out = retry_on_parse_error(lambda: _assistant()(scope=scope, **inputs), label="code_assist")
+    except Exception as e:
+        log.exception("code_assist: the model call failed")
+        return CodeAssist(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
+    # Narrating types nothing; a fix shows the fix, not a new slip on the way to it.
+    steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate"))
     return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing))

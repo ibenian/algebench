@@ -28912,6 +28912,11 @@ var INDENT = "    ";
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 var LEGACY_KEY = "algebench-code-practice";
 var VIEW_KEY = "algebench-code-practice-view";
+var QUIZ_VERDICTS = {
+	correct: "Correct",
+	partly: "Partly right",
+	incorrect: "Not quite"
+};
 var VERDICTS = {
 	correct: "Correct",
 	close: "Close",
@@ -29340,6 +29345,8 @@ function setupCodePractice() {
 		if (key) hushCoach();
 		key = next;
 		block = text;
+		quiz = null;
+		askedQuestions = [];
 		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
 		const count = v.to - v.from + 1;
 		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
@@ -29772,6 +29779,8 @@ function setupCodePractice() {
 	stack.append(aiSelection, aiCaret);
 	let selectedTo = 0;
 	let assisting = 0, assistSeq = 0, charWidth = 0;
+	let quiz = null;
+	let askedQuestions = [];
 	class Stopped extends Error {}
 	const sleep = (ms) => new Promise((res) => window.setTimeout(res, ms));
 	function focusNow() {
@@ -29824,6 +29833,11 @@ function setupCodePractice() {
 				"all",
 				"Write it all",
 				"I write the rest of the block, thinking aloud as I go"
+			],
+			[
+				"quiz",
+				"Ask me a question",
+				"I ask you a question about the algorithm, setting it up in your code as an interviewer would"
 			]
 		];
 		for (const [scope, text, title] of choices) {
@@ -29965,6 +29979,8 @@ function setupCodePractice() {
 	}
 	async function assist(scope, request = "") {
 		if (!current || !score || assisting) return;
+		if (scope === "grade" && !quiz) return;
+		const pending = quiz;
 		const run = ++assistSeq, blockKey = key;
 		assisting = run;
 		clearTimeout(idle);
@@ -29991,9 +30007,19 @@ function setupCodePractice() {
 			next: "Help me with the next step.",
 			section: `Help me finish “${focus?.title ?? "this section"}”.`,
 			all: "Write it all for me, and talk me through it.",
-			ask: request
+			ask: request,
+			quiz: own ? `Ask me a question about this: ${own}` : "Ask me a question.",
+			grade: pending?.kind === "answer" ? own : "Check my answer."
 		}[scope];
-		message("user", Object.assign(el("div", ""), { textContent: scope !== "ask" && own ? `${asked} ${own}` : asked }));
+		message("user", Object.assign(el("div", ""), { textContent: ![
+			"ask",
+			"quiz",
+			"grade"
+		].includes(scope) && own ? `${asked} ${own}` : asked }));
+		if (scope === "quiz") {
+			quiz?.card.querySelector(".cp-quiz-controls")?.remove();
+			quiz = null;
+		}
 		root.classList.add("cp-assisting");
 		input.readOnly = true;
 		takeBack.hidden = false;
@@ -30005,7 +30031,7 @@ function setupCodePractice() {
 		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
 		let ended = false;
 		try {
-			const out = await invokeExpert("code_assist", {
+			const where = {
 				language: current.file.language ?? "",
 				expected: block,
 				first_line: current.from,
@@ -30015,7 +30041,23 @@ function setupCodePractice() {
 					start: focus.from,
 					end: focus.to
 				} : null,
-				typed: input.value,
+				typed: input.value
+			};
+			const out = scope === "quiz" ? await invokeExpert("code_quiz", {
+				...where,
+				mode: "ask",
+				request,
+				asked: askedQuestions.slice(-20)
+			}) : scope === "grade" ? await invokeExpert("code_quiz", {
+				...where,
+				mode: "grade",
+				question: pending.question,
+				kind: pending.kind,
+				answer_key: pending.answerKey,
+				setup: pending.setup,
+				answer: pending.kind === "answer" ? request : ""
+			}) : await invokeExpert("code_assist", {
+				...where,
 				scope,
 				request,
 				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
@@ -30033,14 +30075,14 @@ function setupCodePractice() {
 				return;
 			}
 			const r = out.result;
-			reportSummary.textContent = "✦ AI at the keyboard";
-			await say(r.plan, bubble("cp-assist-plan"), run);
+			reportSummary.textContent = scope === "quiz" ? "✦ setting a question" : scope === "grade" ? "✦ checking your answer" : "✦ AI at the keyboard";
+			if (r.plan) await say(r.plan, bubble("cp-assist-plan"), run);
 			selectedTo = 0;
 			for (const [k, step] of r.steps.entries()) {
 				const body = bubble("cp-assist-step");
-				const noun = scope === "fix" ? "Fix" : scope === "narrate" ? "Part" : "Step";
+				const noun = scope === "fix" ? "Fix" : scope === "narrate" ? "Part" : scope === "quiz" ? "Setting it up" : scope === "grade" ? "Look here" : "Step";
 				const head = el("div", "cp-assist-head");
-				head.textContent = r.steps.length > 1 ? `${noun} ${k + 1} of ${r.steps.length}` : scope === "next" ? "Next step" : noun;
+				head.textContent = r.steps.length > 1 && scope !== "quiz" && scope !== "grade" ? `${noun} ${k + 1} of ${r.steps.length}` : scope === "next" ? "Next step" : noun;
 				const thought = el("div", "cp-assist-say");
 				body.append(head, thought);
 				const types = !!step.code && step.code !== input.value;
@@ -30076,7 +30118,17 @@ function setupCodePractice() {
 				}
 			}
 			clearSelection();
-			await say(r.closing || "Over to you.", bubble("cp-assist-close"), run);
+			if (scope === "quiz") await poseQuestion(r, bubble("cp-quiz"), run);
+			else if (scope === "grade") {
+				const body = bubble("cp-quiz-verdict");
+				const badge = el("span", `cp-verdict cp-quiz-${r.verdict}`);
+				badge.textContent = QUIZ_VERDICTS[r.verdict ?? ""] ?? "Checked";
+				const text = el("div", "");
+				body.append(badge, text);
+				pending?.card.querySelector(".cp-quiz-controls")?.remove();
+				quiz = null;
+				await say(r.feedback ?? "", text, run);
+			} else await say(r.closing || "Over to you.", bubble("cp-assist-close"), run);
 			ended = true;
 		} catch (e) {
 			waiting.remove();
@@ -30084,6 +30136,76 @@ function setupCodePractice() {
 		} finally {
 			handBack(run, blockKey, exactBefore, assistedBefore, ended);
 		}
+	}
+	/**
+	* Ask me a question: the question is said in its card, then waits for the learner. Answered in words, the card
+	* takes the answer; answered in code, the keyboard is theirs and the card checks the editor. Either way they can
+	* see the expected answer instead, or let it go.
+	*/
+	async function poseQuestion(q, card, run) {
+		const head = el("div", "cp-assist-head");
+		head.textContent = "Question";
+		const text = el("div", "cp-quiz-question");
+		card.append(head, text);
+		await say(q.question, text, run);
+		quiz = {
+			question: q.question,
+			kind: q.kind,
+			answerKey: q.answer_key,
+			setup: input.value,
+			card
+		};
+		askedQuestions.push(q.question);
+		const controls = el("div", "cp-quiz-controls");
+		const button = (label, title, act, cls = "cp-help-btn") => {
+			const b = el("button", cls);
+			b.type = "button";
+			b.textContent = label;
+			b.title = title;
+			b.addEventListener("click", act);
+			return b;
+		};
+		const reveal = button("Show answer", "See the answer I expected, without answering", () => {
+			if (!quiz || assisting) return;
+			controls.remove();
+			const key = el("div", "cp-quiz-key");
+			key.innerHTML = renderMarkdown$1(`**Expected:** ${quiz.answerKey}`, {
+				untrusted: true,
+				glossary: false
+			});
+			card.append(key);
+			quiz = null;
+			offerHelp(card);
+			if (speakOn()) window.algebenchSpeakText?.(key.textContent ?? "");
+		});
+		const skip = button("Skip", "Let this question go", () => {
+			if (!quiz || assisting) return;
+			controls.remove();
+			quiz = null;
+			offerHelp(card);
+		});
+		if (q.kind === "answer") {
+			const answer = el("textarea", "cp-quiz-input");
+			answer.rows = 2;
+			answer.placeholder = "Your answer… (Enter to send, Shift+Enter for a new line)";
+			answer.setAttribute("aria-label", "Your answer");
+			const send = () => {
+				if (answer.value.trim()) assist("grade", answer.value.trim());
+			};
+			answer.addEventListener("keydown", (e) => {
+				if (e.key === "Enter" && !e.shiftKey) {
+					e.preventDefault();
+					send();
+				}
+			});
+			controls.append(answer, button("Answer", "Send your answer (Enter)", send, "cp-help-btn cp-quiz-main"), reveal, skip);
+		} else {
+			const note = el("div", "cp-quiz-turn");
+			note.textContent = "Your turn: change the code in the editor, then check it.";
+			controls.append(note, button("Check my answer", "I judge what you changed in the editor", () => void assist("grade"), "cp-help-btn cp-quiz-main"), reveal, skip);
+		}
+		card.append(controls);
+		report.scrollTop = report.scrollHeight;
 	}
 	/** The keyboard is the learner's again: the lines the assistant typed count as seen, and the coach starts from here. */
 	/** Lines the assistant made exact are marked as its (✦, ASSIST_FACTOR) as soon as it has typed them. */
@@ -30123,9 +30245,12 @@ function setupCodePractice() {
 			note.textContent = `The ${helped.length === 1 ? "line" : `${helped.length} lines`} I typed count${helped.length === 1 ? "s" : ""} as AI-typed (✦, ${100 * ASSIST_FACTOR}% each). Delete or Reset and type ${helped.length === 1 ? "it" : "them"} from memory for full marks.`;
 			msg.querySelector(".msg-body")?.append(note);
 		}
-		offerHelp(msg);
-		input.focus();
-		input.setSelectionRange(input.value.length, input.value.length);
+		if (!quiz) offerHelp(msg);
+		if (quiz?.kind === "answer") quiz.card.querySelector(".cp-quiz-input")?.focus();
+		else {
+			input.focus();
+			input.setSelectionRange(input.value.length, input.value.length);
+		}
 	}
 	/** Stop the assistant; `drop` when its work is being thrown away (Reset), so it hands nothing back. */
 	let dropped = false;
@@ -30250,6 +30375,7 @@ function setupCodePractice() {
 	});
 	reset.addEventListener("click", () => {
 		stopAssist(true);
+		quiz = null;
 		attempt = {
 			text: "",
 			peeked: [],

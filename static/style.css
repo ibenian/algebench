@@ -6304,3 +6304,17 @@ body:has(.push-array) #legend { display: none; }
 .cp-ai-sel { position: absolute; background: color-mix(in srgb, #a78bfa 30%, transparent); border-radius: 3px;
   box-shadow: 0 0 0 1px color-mix(in srgb, #a78bfa 55%, transparent); animation: cp-ai-sel-in .25s ease-out; }
 @keyframes cp-ai-sel-in { from { opacity: 0; } }
+/* Ask me a question: the question's card, its answer box and buttons, and the verdict. */
+.cp-quiz-question { font-weight: 600; }
+.cp-quiz-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
+.code-practice.cp-assisting .cp-quiz-controls { opacity: .5; pointer-events: none; }
+.cp-quiz-input { flex: 1 1 100%; min-height: 2.6em; padding: 4px 8px; font: inherit; font-size: 12px; color: var(--text-color); resize: vertical;
+  background: var(--panel-bg); border: 1px solid color-mix(in srgb, #a78bfa 45%, var(--border-color)); border-radius: 8px; outline: 0; }
+.cp-quiz-input:focus { border-color: #a78bfa; box-shadow: 0 0 0 2px color-mix(in srgb, #a78bfa 25%, transparent); }
+.cp-quiz-turn { flex: 1 1 100%; font-size: 11px; color: var(--muted-color); }
+.cp-help-btn.cp-quiz-main { color: #fff; background: #a78bfa; border-color: #a78bfa; }
+.cp-quiz-key { margin-top: 6px; padding: 5px 8px; border-radius: 6px; background: color-mix(in srgb, #a78bfa 10%, transparent); }
+.cp-quiz-verdict .cp-verdict { display: inline-block; margin-bottom: 4px; }
+.cp-verdict.cp-quiz-correct { color: #4fb39a; border-color: #4fb39a; }
+.cp-verdict.cp-quiz-partly { color: #e0b04a; border-color: #e0b04a; }
+.cp-verdict.cp-quiz-incorrect { color: #e0705a; border-color: #e0705a; }
