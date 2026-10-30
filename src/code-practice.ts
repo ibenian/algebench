@@ -9,7 +9,7 @@ import { codeView, HIDE_CODE_ICON } from '/code-panel.js';
 import type { CodeView } from '/code-panel.js';
 import { codeSections } from '/code-sections.js';
 import type { CodeSection } from '/code-sections.js';
-import { scorePractice, focusSection, isNeutral, PEEK_FACTOR, OTHER_DEPTH } from '/code-practice-core.js';
+import { scorePractice, focusSection, isNeutral, PEEK_FACTOR, ASSIST_FACTOR, OTHER_DEPTH } from '/code-practice-core.js';
 import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
@@ -17,6 +17,7 @@ import { invokeExpert } from '/expert-client.js';
 import { createPracticeStore } from '/practice-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import { renderMarkdown } from '/labels.js';
+import { editsBetween, keystrokes, backspaces, keyDelay } from '/code-assist-play.js';
 
 /** The coach looks again after this long without typing. */
 const IDLE_REVIEW_MS = 5000;
@@ -24,8 +25,12 @@ const INDENT = '    ';
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practice-view';
 
-/** One block's practice. `reviewed` is the text the coach last saw, so the next review knows what just changed. */
-interface Attempt { text: string; peeked: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
+/** One block's practice. `reviewed` is the text the coach last saw, so the next review knows what just changed;
+ *  `assisted`, the reference lines the AI assistant typed (Help me). */
+interface Attempt { text: string; peeked: number[]; assisted?: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
+/** Help me's reply: how it will go about it, its moves at the keyboard (each the whole editor after it), and its hand-back. */
+interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string}[]; closing: string }
+type AssistScope = 'next' | 'section' | 'all';
 interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; reminder?: string; line_notes: {line: number; note: string}[] }
 
 const VERDICTS: Record<string, string> = {correct: 'Correct', close: 'Close', partial: 'Partly there', off_track: 'Off track', empty: 'Nothing yet'};
@@ -49,6 +54,8 @@ const svg = (d: string, size = 13, width = 2): string =>
 /** The side sections' fold chevrons (side-sections.ts), and the two headers' icons: a keyboard, the coach's spark. */
 const ICON_FOLD = svg('<path d="M6 9l6 6 6-6"/>', 12, 2.2), ICON_UNFOLD = svg('<path d="M6 15l6-6 6 6"/>', 12, 2.2);
 const ICON_TYPE = svg('<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8"/>');
+/** A line the AI assistant typed (Help me): its spark, where a seen line has the eye. */
+const ICON_AI = '<svg class="cp-ai-mark" viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-label="typed by the AI"><path d="M12 2l2.4 7.1L22 12l-7.6 2.9L12 22l-2.4-7.1L2 12l7.6-2.9z"/></svg>';
 const ICON_SEEN = '<svg class="cp-eye" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="seen"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_DOC = svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>');
 const ICON_CODE = svg('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>');
@@ -257,7 +264,8 @@ export function setupCodePractice(): void {
     let greeting = '';
     function welcome() {
         if (!current || !coachOn() || input.value.trim()) return;
-        message('assistant', el('div', 'cp-report-text')).querySelector('.msg-body')!.textContent = WELCOME;
+        const msg = message('assistant', el('div', 'cp-report-text'));msg.querySelector('.msg-body')!.textContent = WELCOME;
+        offerHelp(msg);
         greeting = WELCOME;
     }
     /**
@@ -297,6 +305,7 @@ export function setupCodePractice(): void {
 
     /** Leaving a block (a scene or step switch): the coach's word on it is over, spoken or still coming. */
     function hushCoach() {
+        stopAssist();
         reviewSeq++;greeting = '';
         if (spoken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
         spoken = '';
@@ -343,17 +352,20 @@ export function setupCodePractice(): void {
     function render(celebrate = true) {
         if (!current) return;
         const before = score;
-        score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
+        score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections, new Set(attempt.assisted));
         // A seen line the learner deletes is theirs to type again: if they retype it with the code hidden, it
         // scores in full (seen again meanwhile, it is marked again). Seen before it was ever typed, it stays seen.
-        if (before && attempt.peeked.length) {
+        // A line the AI assistant typed is the same: deleted, it is the learner's to type.
+        if (before && (attempt.peeked.length || attempt.assisted?.length)) {
             const was = new Set(before.lines.filter(l => l.similarity === 1).map(l => l.line));
             // Taken apart means removed (no typed line pairs with it any more), not edited: adding a comment, or a
             // keystroke on the way to the same text, leaves the line seen.
             const undone = new Set(score.lines.filter(l => l.typed == null && was.has(l.line)).map(l => l.line));
             if (undone.size) {
-                attempt.peeked = attempt.peeked.filter(line => !undone.has(line));persist();
-                score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections);
+                attempt.peeked = attempt.peeked.filter(line => !undone.has(line));
+                if (attempt.assisted) attempt.assisted = attempt.assisted.filter(line => !undone.has(line));
+                persist();
+                score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections, new Set(attempt.assisted));
             }
         }
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
@@ -368,13 +380,16 @@ export function setupCodePractice(): void {
             const n = el('span', 'cp-n');n.textContent = String(j + 1);
             const mark = el('span', 'cp-status');
             if (t.neutral) row.classList.add('neutral');
-            else if (t.exact) { row.classList.add(line?.peeked ? 'seen' : 'exact');mark.textContent = '✓'; }
+            else if (t.exact) { row.classList.add(line?.assisted ? 'assisted' : line?.peeked ? 'seen' : 'exact');mark.textContent = '✓'; }
             else if (line) { row.classList.add('fuzzy');mark.textContent = `${line.score}`; }
             else if (text.trim()) { row.classList.add('miss');mark.textContent = '✗'; }
             // Seen in the Code panel before it was typed: a small eye after the mark (the line counts half).
             if (line?.peeked) { mark.insertAdjacentHTML('beforeend', ICON_SEEN);row.classList.add('peeked'); }
+            // Typed by the AI assistant: its spark instead (the line counts a tenth).
+            if (line?.assisted) { mark.insertAdjacentHTML('beforeend', ICON_AI);row.classList.add('ai-typed'); }
             row.title = t.neutral ? '' : line
-                ? `Matches line ${line.line}: ${line.score}%${line.peeked ? ' (seen in the Code panel, so at most half)' : ''}`
+                ? `Matches line ${line.line}: ${line.score}%${line.assisted ? ` (typed by the AI assistant, so at most ${100 * ASSIST_FACTOR}%)`
+                    : line.peeked ? ' (seen in the Code panel, so at most half)' : ''}`
                 : 'No line of the code is like this one';
             const note = notes.get(j + 1);
             if (note) { row.classList.add('noted');row.title += `\nCoach: ${note}`; }
@@ -393,9 +408,11 @@ export function setupCodePractice(): void {
         chips.hidden = !score.sections.length;
         const exact = score.lines.filter(l => l.similarity === 1).length;
         // The score is the match from memory: a line seen in the Code panel counts half, so say how many were.
-        const seen = score.lines.filter(l => l.peeked).length;
-        codeSummary.textContent = `${exact} of ${score.lines.length} lines exact${seen ? ` · ${seen} seen (half marks)` : ''}`;
-        codeSummary.title = seen ? 'Lines visible in the Code panel while you practised (marked with an eye) score half. Hide code and type them from memory for full marks.' : '';
+        const seen = score.lines.filter(l => l.peeked).length, helped = score.lines.filter(l => l.assisted).length;
+        codeSummary.textContent = `${exact} of ${score.lines.length} lines exact${seen ? ` · ${seen} seen (half marks)` : ''}${helped ? ` · ${helped} AI-typed (${100 * ASSIST_FACTOR}%)` : ''}`;
+        codeSummary.title = [seen ? 'Lines visible in the Code panel while you practised (marked with an eye) score half.' : '',
+            helped ? `Lines the AI assistant typed (marked with a spark) score ${100 * ASSIST_FACTOR}%.` : '',
+            seen || helped ? 'Hide code and type them from memory for full marks.' : ''].filter(Boolean).join(' ');
         total.textContent = `${score.total}%`;
         total.style.setProperty('--fill', `${score.total * 3.6}deg`);
         total.classList.toggle('done', score.total === 100);
@@ -459,7 +476,7 @@ export function setupCodePractice(): void {
         if (!score) return;
         const lines = score.lines, n = lines.length;
         const exact = lines.filter(l => l.similarity === 1).length, typed = lines.filter(l => l.typed != null).length;
-        const seen = lines.filter(l => l.peeked).length;
+        const seen = lines.filter(l => l.peeked).length, helped = lines.filter(l => l.assisted).length;
         const row = (label: string, value: string) => { const r = el('div', 'cp-tip-row');const a = el('span', '');a.textContent = label;const b = el('b', '');b.textContent = value;r.append(a, b);return r; };
         const p = (text: string) => Object.assign(el('p', ''), {textContent: text});
         const head = el('div', 'cp-tip-head');head.textContent = `Typed from memory: ${score.total}%`;
@@ -468,16 +485,17 @@ export function setupCodePractice(): void {
             'close line: by how few edits it is away, up to 95',
             `right code at the wrong nesting depth: ×${OTHER_DEPTH}`,
             `👁 line seen in the Code panel before you typed it: ×${PEEK_FACTOR}`,
+            `✦ line the AI assistant typed (Help me): ×${ASSIST_FACTOR}`,
             'line not typed yet: 0']) rules.append(Object.assign(el('li', ''), {textContent: t}));
         const now = el('div', 'cp-tip-now');
-        now.append(row('Lines to type', String(n)), row('Exact', String(exact)), row('Close', String(typed - exact)), row('Not typed yet', String(n - typed)), row('Seen (count half)', String(seen)));
+        now.append(row('Lines to type', String(n)), row('Exact', String(exact)), row('Close', String(typed - exact)), row('Not typed yet', String(n - typed)), row('Seen (count half)', String(seen)), row(`AI-typed (count ${100 * ASSIST_FACTOR}%)`, String(helped)));
         const parts: HTMLElement[] = [head, p('The score is the average over the running block\'s lines (blank and comment lines aside):'), rules, now];
         if (score.sections.length) {
             const secs = el('div', 'cp-tip-now');
             for (const x of score.sections) secs.append(row(x.title, `${x.score}%`));
             parts.push(p('By section:'), secs);
         }
-        if (seen) parts.push(p('Hide code, then retype a seen line (or Reset) to earn it in full.'));
+        if (seen || helped) parts.push(p('Hide code, then retype a seen or AI-typed line (or Reset) to earn it in full.'));
         scoreTip.replaceChildren(...parts);
     }
     function showScoreTip() {
@@ -530,7 +548,7 @@ export function setupCodePractice(): void {
     const reviewKey = (text: string) => `${hintsOn()}\n${text.split('\n').map(l => l.trimEnd()).join('\n').trimEnd()}`;
     async function review(force: boolean) {
         // With hints, an empty editor is a beginning: the coach says how to start.
-        if (!coachOn() || !current || !score || (!input.value.trim() && !hintsOn())) return;
+        if (assisting || !coachOn() || !current || !score || (!input.value.trim() && !hintsOn())) return;
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
         const focus = focusSection(score, cursor, sections);
         const signature = reviewKey(input.value);
@@ -619,12 +637,230 @@ export function setupCodePractice(): void {
             body.append(list);
         }
         if (r.direction) md('cp-report-next', `**Next:** ${r.direction}`);
-        message('assistant', body).classList.toggle('cp-msg-perfect', perfect);
+        const msg = message('assistant', body);msg.classList.toggle('cp-msg-perfect', perfect);
+        offerHelp(msg);
         render(false);
         // Read as shown: the answer, the comment, the reminder, each new line issue, then what to do next.
         speakReview([r.reply, r.commentary, r.reminder, ...fresh.map(n => `Line ${n.line}: ${n.note}`), r.direction && `Next: ${r.direction}`]
             .filter(Boolean).join(' ').replace(/[`*]/g, ''));
     }
+
+    // ── Help me: the assistant takes the keyboard (the code_assist expert) ──
+    // It says how it will go about it, then, step by step, thinks aloud, types (the change from the editor to the
+    // step's text, at a person's pace: code-assist-play.ts) and says why it works; then it hands the keyboard back.
+    const helpTool = tool('✋ Help me', 'Let the assistant take the keyboard: the next step, this section, or the whole block');
+    helpTool.classList.add('cp-coach-only');
+    const takeBack = tool('■ Take back', 'Stop the assistant and type yourself again (Esc)');
+    takeBack.classList.add('cp-take-back');takeBack.hidden = true;
+    tools.insertBefore(helpTool, reset);tools.append(takeBack);
+    // Its own caret, as a collaborator's in a shared editor, with its name on it.
+    const aiCaret = el('div', 'cp-ai-caret');aiCaret.hidden = true;
+    const aiTag = el('span', 'cp-ai-tag');aiTag.textContent = '✦ AI';aiCaret.append(aiTag);
+    stack.append(aiCaret);
+    let assisting = 0, assistSeq = 0, charWidth = 0;
+    class Stopped extends Error {}
+    const sleep = (ms: number) => new Promise<void>(res => window.setTimeout(res, ms));
+
+    function focusNow(): CodeSection | null {
+        if (!score) return null;
+        return focusSection(score, input.value.slice(0, input.selectionStart).split('\n').length - 1, sections);
+    }
+    /** What the learner can ask for: the next step, the rest of the section they are on, or the rest of the block. */
+    function helpChoices(): HTMLElement {
+        const row = el('div', 'cp-help');
+        const label = el('span', 'cp-help-label');label.textContent = 'Help me:';
+        row.append(label);
+        const focus = focusNow();
+        const choices: [AssistScope, string, string][] = [
+            ['next', 'Next step', 'I take the keyboard for the next logical piece, then hand it back'],
+            ...(focus ? [['section', `Finish “${focus.title}”`, 'I write the rest of this section, step by step, talking it through'] as [AssistScope, string, string]] : []),
+            ['all', 'Write it all', 'I write the rest of the block, thinking aloud as I go'],
+        ];
+        for (const [scope, text, title] of choices) {
+            const b = el('button', 'cp-help-btn');b.type = 'button';b.textContent = text;b.title = title;
+            b.addEventListener('click', () => void assist(scope));row.append(b);
+        }
+        return row;
+    }
+    /** Help me sits under the latest message only: an older one's choices would act on code that has moved on. */
+    function offerHelp(msg: HTMLElement) {
+        report.querySelectorAll('.cp-help').forEach(h => h.remove());
+        msg.querySelector('.msg-body')?.append(helpChoices());
+        report.scrollTop = report.scrollHeight;
+    }
+    /** Said aloud (when the speaker is on) while its words appear; otherwise it waits about as long as reading it takes. */
+    async function say(text: string, into: HTMLElement, run: number) {
+        if (!text) return;
+        into.classList.add('speaking');
+        const plain = text.replace(/[`*_]/g, '');
+        const words = plain.split(/\s+/).length;
+        const speech = new Promise<void>(res => {
+            const speakNow = window.algebenchSpeakText;
+            if (speakOn() && speakNow) {
+                speakNow(plain, res);
+                // Speech that never reports its end (a failed stream) doesn't hold the keyboard.
+                window.setTimeout(res, 6000 + words * 600);
+            } else window.setTimeout(res, Math.min(6000, Math.max(1200, words * 230)));
+        });
+        let shown = '';
+        for (const part of text.split(/(\s+)/)) {
+            if (assisting !== run) break;
+            shown += part;into.textContent = shown;report.scrollTop = report.scrollHeight;
+            if (part.trim()) await sleep(140);
+        }
+        into.innerHTML = renderMarkdown(text, {untrusted: true, glossary: false});
+        await speech;
+        into.classList.remove('speaking');
+        if (assisting !== run) throw new Stopped();
+        await sleep(300);
+    }
+    /** The assistant's caret at `offset` of the editor, kept in view. */
+    function placeCaret(offset: number) {
+        const before = input.value.slice(0, offset).split('\n'), line = before.length - 1, col = before[line]!.length;
+        const row = paint.children[line] as HTMLElement | undefined;
+        if (!row) return;
+        if (!charWidth) {
+            const ctx = document.createElement('canvas').getContext('2d');
+            if (ctx) { ctx.font = getComputedStyle(input).font;charWidth = ctx.measureText('M'.repeat(10)).width / 10; }
+        }
+        aiCaret.hidden = false;
+        aiCaret.style.left = `${row.offsetLeft + col * charWidth}px`;
+        aiCaret.style.top = `${row.offsetTop}px`;aiCaret.style.height = `${row.offsetHeight}px`;
+        aiCaret.classList.toggle('below', line === 0);
+        const r = aiCaret.getBoundingClientRect(), view = editor.getBoundingClientRect();
+        if (r.bottom > view.bottom - 6) editor.scrollTop += r.bottom - view.bottom + 24;
+        if (r.top < view.top + 6) editor.scrollTop -= view.top - r.top + 24;
+        // Sideways, the line starts stay in view whenever the caret fits; a long line scrolls only as far as it needs.
+        const x = gutter.offsetWidth + aiCaret.offsetLeft;
+        editor.scrollLeft = x + 40 < editor.clientWidth ? 0 : x + 60 - editor.clientWidth;
+    }
+    /** Type the change from the editor to `target`: move there, backspace what goes, type what comes. */
+    async function typeTo(target: string, run: number) {
+        let text = input.value + '\n', caret = input.value.length;
+        const show = (at: number) => { caret = at;input.value = text.slice(0, -1);attempt.text = input.value;render(false);placeCaret(Math.min(at, input.value.length));highlight(); };
+        for (const e of editsBetween(input.value, target)) {
+            const end = e.at + e.remove;
+            if (assisting !== run) throw new Stopped();
+            // A hand moves to the spot first: a moment's pause where the caret jumps.
+            const jump = Math.abs(end - caret) > 2;
+            show(end);await sleep(jump ? 420 : 140);
+            let at = end;
+            for (const n of backspaces(text.slice(0, end), e.remove)) {
+                if (assisting !== run) throw new Stopped();
+                text = text.slice(0, at - n) + text.slice(at);at -= n;show(at);
+                await sleep(n > 1 ? 120 : 45 + Math.random() * 35);
+            }
+            let prev = text[at - 1] ?? '\n';
+            for (const key of keystrokes(e.insert)) {
+                await sleep(keyDelay(prev, key));
+                if (assisting !== run) throw new Stopped();
+                text = text.slice(0, at) + key + text.slice(at);at += key.length;prev = key;show(at);
+            }
+            await sleep(220);
+        }
+    }
+    async function assist(scope: AssistScope) {
+        if (!current || !score || assisting) return;
+        const run = ++assistSeq, blockKey = key;assisting = run;
+        clearTimeout(idle);reviewSeq++;   // a review on its way is not shown over the takeover
+        if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+        report.querySelectorAll('.cp-help').forEach(h => h.remove());
+        if (report.hidden) foldReport(false);
+        const focus = focusNow();
+        message('user', Object.assign(el('div', ''), {textContent: {next: 'Help me with the next step.',
+            section: `Help me finish “${focus?.title ?? 'this section'}”.`, all: 'Write it all for me, and talk me through it.'}[scope]}));
+        root.classList.add('cp-assisting');input.readOnly = true;takeBack.hidden = false;helpTool.hidden = true;
+        reportSummary.textContent = 'taking the keyboard…';
+        const exactBefore = new Set(score.lines.filter(l => l.similarity === 1).map(l => l.line));
+        const assistedBefore = new Set(attempt.assisted);
+        const waiting = message('assistant', el('div', 'chat-loading'));
+        waiting.querySelector('.chat-loading')!.innerHTML = '<span></span><span></span><span></span>';
+        let ended = false;
+        try {
+            const out = await invokeExpert('code_assist', {
+                language: current.file.language ?? '', expected: block, first_line: current.from,
+                section: focus ? {title: focus.title, hint: focus.hint ?? '', start: focus.from, end: focus.to} : null,
+                typed: input.value, scope,
+            }) as {result?: AssistPlan; reason?: string};
+            waiting.remove();
+            if (assisting !== run) throw new Stopped();
+            if (!out.result) {
+                message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: out.reason ?? 'No help came back.'}));
+                return;
+            }
+            const r = out.result;
+            reportSummary.textContent = '✦ AI at the keyboard';
+            const bubble = (cls: string) => message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
+            await say(r.plan, bubble('cp-assist-plan'), run);
+            for (const [k, step] of r.steps.entries()) {
+                const body = bubble('cp-assist-step');
+                const head = el('div', 'cp-assist-head');head.textContent = r.steps.length > 1 ? `Step ${k + 1} of ${r.steps.length}` : 'Next step';
+                const thought = el('div', 'cp-assist-say');
+                body.append(head, thought);
+                await say(step.say, thought, run);
+                body.classList.add('typing');
+                // A slip and its catch: the first version typed, what is wrong with it said, then the fix.
+                if (step.draft && step.notice) {
+                    await typeTo(step.draft, run);
+                    body.classList.remove('typing');
+                    const caught = el('div', 'cp-assist-say cp-assist-notice');body.append(caught);
+                    await sleep(500);await say(step.notice, caught, run);
+                    body.classList.add('typing');
+                }
+                await typeTo(step.code, run);
+                markAssisted(exactBefore);
+                body.classList.remove('typing');
+                if (step.explain) { const why = el('div', 'cp-assist-why');body.append(why);await say(step.explain, why, run); }
+            }
+            await say(r.closing || 'Over to you.', bubble('cp-assist-close'), run);
+            ended = true;
+        } catch (e) {
+            waiting.remove();
+            if (!(e instanceof Stopped) && assisting === run) message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: (e as Error).message}));
+        } finally {
+            handBack(run, blockKey, exactBefore, assistedBefore, ended);
+        }
+    }
+    /** The keyboard is the learner's again: the lines the assistant typed count as seen, and the coach starts from here. */
+    /** Lines the assistant made exact are marked as its (✦, ASSIST_FACTOR) as soon as it has typed them. */
+    function markAssisted(exactBefore: Set<number>) {
+        render(false);
+        const helped = score?.lines.filter(l => l.similarity === 1 && !exactBefore.has(l.line) && !l.assisted).map(l => l.line) ?? [];
+        if (helped.length) { attempt.assisted = [...(attempt.assisted ?? []), ...helped];persist();render(false); }
+    }
+    function handBack(run: number, blockKey: string, exactBefore: Set<number>, assistedBefore: Set<number>, ended: boolean) {
+        if (assisting === run) assisting = 0;
+        root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;
+        reportSummary.textContent = '';
+        if (key !== blockKey) return;   // the lesson moved on meanwhile: that block's report is gone
+        attempt.text = input.value;render(false);
+        // Not typed by the learner at all: a line the assistant wrote counts a tenth (ASSIST_FACTOR), seen or not.
+        markAssisted(exactBefore);
+        const helped = (attempt.assisted ?? []).filter(line => !assistedBefore.has(line));
+        // What the assistant typed isn't news to the coach: its next review starts from here.
+        attempt.reviewed = input.value;lastReviewed = reviewKey(input.value);
+        persist();highlight();
+        const msg = ended ? report.lastElementChild as HTMLElement : message('assistant', Object.assign(el('div', 'cp-assist cp-assist-close'), {textContent: 'OK, the keyboard is yours again.'}));
+        if (helped.length) {
+            const note = el('div', 'cp-assist-note');
+            note.textContent = `The ${helped.length === 1 ? 'line' : `${helped.length} lines`} I typed count${helped.length === 1 ? 's' : ''} as AI-typed (✦, ${100 * ASSIST_FACTOR}% each). Delete or Reset and type ${helped.length === 1 ? 'it' : 'them'} from memory for full marks.`;
+            msg.querySelector('.msg-body')?.append(note);
+        }
+        offerHelp(msg);
+        input.focus();input.setSelectionRange(input.value.length, input.value.length);
+    }
+    function stopAssist() {
+        if (!assisting) return;
+        assisting = 0;
+        if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+    }
+    takeBack.addEventListener('click', stopAssist);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && assisting) { e.preventDefault();stopAssist(); } });
+    helpTool.addEventListener('click', () => {
+        if (assisting || !current) return;
+        if (report.hidden) foldReport(false);
+        offerHelp(message('assistant', Object.assign(el('div', ''), {textContent: 'How much should I take on? I\'ll think aloud as I type, and you can take the keyboard back any time (Esc).'})));
+    });
 
     function insert(text: string) {
         // execCommand keeps the browser's undo history; setRangeText is the fallback.

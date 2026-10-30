@@ -5,12 +5,15 @@
  * A typed line is paired with a reference line by an alignment that keeps both in order, so a skipped or an
  * extra line costs only itself. A pair scores its similarity: 1 for the same code, spacing aside, else the
  * edit-distance ratio. A reference line the learner could see in the Code panel while
- * practising counts for at most PEEK_FACTOR of that: typing it from memory is what scores in full.
+ * practising counts for at most PEEK_FACTOR of that, and one the AI assistant typed (Help me) for at most
+ * ASSIST_FACTOR: typing it from memory is what scores in full.
  */
 import type { CodeSection } from '/code-sections.js';
 
 /** The most a line seen in the Code panel can score. */
 export const PEEK_FACTOR = 0.5;
+/** The most a line the AI assistant typed can score. */
+export const ASSIST_FACTOR = 0.1;
 /** Less alike than this, a typed line is not taken for the reference line. */
 export const MIN_MATCH = 0.4;
 
@@ -95,7 +98,7 @@ export function alignLines(reference: readonly string[], typed: readonly string[
     return pairs.reverse();
 }
 
-export interface LineScore { line: number; typed: number | null; similarity: number; peeked: boolean; score: number }
+export interface LineScore { line: number; typed: number | null; similarity: number; peeked: boolean; assisted: boolean; score: number }
 export interface TypedLine { reference: number | null; similarity: number; exact: boolean; neutral: boolean }
 export interface SectionScore { id: string; title: string; from: number; to: number; score: number; lines: number }
 export interface PracticeScore { lines: LineScore[]; typed: TypedLine[]; sections: SectionScore[]; total: number; typedAll: boolean }
@@ -104,19 +107,22 @@ const mean = (xs: number[]) => xs.length ? Math.round(xs.reduce((a, b) => a + b,
 
 /**
  * Score what was typed against the block of reference code starting at file line `first`. `peeked` holds the
- * file lines that were on screen; `sections` are the file's, and those inside the block are scored too.
+ * file lines that were on screen, `assisted` those the AI assistant typed; `sections` are the file's, and those
+ * inside the block are scored too.
  * `typedAll` says every line was typed exactly, seen or not.
  */
-export function scorePractice(reference: string, first: number, typedText: string, peeked: ReadonlySet<number>, sections: readonly CodeSection[] = []): PracticeScore {
+export function scorePractice(reference: string, first: number, typedText: string, peeked: ReadonlySet<number>, sections: readonly CodeSection[] = [],
+    assisted: ReadonlySet<number> = new Set()): PracticeScore {
     const ref = reference.split('\n'), typed = typedText.split('\n');
     const pairs = alignLines(ref, typed);
     const byRef = new Map(pairs.map(p => [p.reference, p]));
     const lines: LineScore[] = [];
     ref.forEach((text, i) => {
         if (isNeutral(text)) return;
-        const pair = byRef.get(i), line = first + i, seen = peeked.has(line);
+        const pair = byRef.get(i), line = first + i, helped = assisted.has(line), seen = !helped && peeked.has(line);
         const s = pair?.similarity ?? 0;
-        lines.push({line, typed: pair ? pair.typed : null, similarity: s, peeked: seen, score: Math.round(100 * s * (seen ? PEEK_FACTOR : 1))});
+        lines.push({line, typed: pair ? pair.typed : null, similarity: s, peeked: seen, assisted: helped,
+            score: Math.round(100 * s * (helped ? ASSIST_FACTOR : seen ? PEEK_FACTOR : 1))});
     });
     const byTyped = new Map(pairs.map(p => [p.typed, p]));
     const typedLines: TypedLine[] = typed.map((text, j) => {

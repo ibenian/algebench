@@ -6153,6 +6153,9 @@ body:has(.push-array) #legend { display: none; }
 .cp-eye { position: absolute; right: -6px; top: 50%; margin-top: -5px; opacity: .75; color: var(--muted-color); }
 .cp-mark.exact { border-left-color: #4fb39a; } .cp-mark.exact .cp-status { color: #4fb39a; }
 .cp-mark.seen { border-left-color: color-mix(in srgb, #4fb39a 50%, transparent); } .cp-mark.seen .cp-status { color: color-mix(in srgb, #4fb39a 60%, var(--muted-color)); }
+/* A line the AI assistant typed (Help me): its spark where a seen line has the eye, in the assistant's colour. */
+.cp-ai-mark { position: absolute; right: -6px; top: 50%; margin-top: -5px; color: #a78bfa; }
+.cp-mark.assisted { border-left-color: color-mix(in srgb, #a78bfa 55%, transparent); } .cp-mark.assisted .cp-status { color: color-mix(in srgb, #a78bfa 70%, var(--muted-color)); }
 .cp-mark.fuzzy { border-left-color: #e3b04f; } .cp-mark.fuzzy .cp-status { color: #e3b04f; font-weight: 600; font-size: .9em; }
 .cp-mark.miss { border-left-color: #e0645c; } .cp-mark.miss .cp-status { color: #e0645c; }
 .cp-mark.noted .cp-n { opacity: 1; color: #d36ba6; text-decoration: underline dotted; }
@@ -6189,6 +6192,32 @@ body:has(.push-array) #legend { display: none; }
 .cp-report-grip { position: relative; }
 .cp-report-grip:not(.folded):hover::before, .cp-report-grip.dragging::before { background: var(--accent-color); }
 .code-practice.coach-off .cp-report-grip, .code-practice.coach-off .cp-report, .code-practice.coach-off .cp-coach-only { display: none !important; }
+/* Help me: the assistant at the keyboard (code-practice.ts). Its colour marks everything it does: the editor's
+   ring, its caret and name tag, and its messages. */
+.code-practice { --ai-tone: #a78bfa; }
+.cp-tool[hidden] { display: none; }
+.cp-take-back { color: var(--ai-tone); border-color: color-mix(in srgb, var(--ai-tone) 60%, transparent); }
+.cp-help { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
+.cp-help-label { font-size: 11px; color: var(--muted-color); margin-right: 2px; }
+.cp-help-btn { padding: 2px 10px; font-size: 11px; line-height: 18px; color: var(--text-color); cursor: pointer; border-radius: 999px;
+  background: color-mix(in srgb, var(--ai-tone) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ai-tone) 50%, transparent); }
+.cp-help-btn:hover { background: color-mix(in srgb, var(--ai-tone) 28%, transparent); }
+.code-practice.cp-assisting .cp-editor { border-color: var(--ai-tone); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ai-tone) 28%, transparent); }
+.code-practice.cp-assisting .cp-input { caret-color: transparent; cursor: default; }
+.cp-ai-caret { position: absolute; width: 2px; background: var(--ai-tone); pointer-events: none; z-index: 3; border-radius: 1px;
+  transition: left .05s linear, top .12s ease; animation: cp-ai-blink 1.1s steps(1) infinite; }
+.cp-ai-caret[hidden] { display: none; }
+.cp-ai-tag { position: absolute; bottom: 100%; left: 0; padding: 0 5px; font: 600 9px/14px system-ui, sans-serif; color: #fff; white-space: nowrap;
+  background: var(--ai-tone); border-radius: 4px 4px 4px 0; }
+.cp-ai-caret.below .cp-ai-tag { bottom: auto; top: 100%; border-radius: 0 4px 4px 4px; }
+@keyframes cp-ai-blink { 50% { opacity: .35; } }
+.cp-assist { border-left: 2px solid var(--ai-tone); padding-left: 8px; }
+.cp-assist-head { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ai-tone); margin-bottom: 2px; }
+.cp-assist-step.typing .cp-assist-head::after { content: ' · typing…'; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.cp-assist-say { font-style: italic; }
+.cp-assist-why { margin-top: 5px; }
+.cp-assist-note { margin-top: 6px; font-size: 11px; color: var(--muted-color); }
+.cp-assist.speaking::after, .cp-assist .speaking::after { content: ' ●'; color: var(--ai-tone); animation: cp-ai-blink 1s infinite; }
 .cp-code-head { margin-top: -2px; }
 .cp-code-summary { flex: 1; text-align: right; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .74rem; color: var(--muted-color); }
 .cp-report-summary { flex: 1; text-align: right; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .74rem; color: var(--muted-color); }
@@ -6260,3 +6289,4 @@ body:has(.push-array) #legend { display: none; }
 /* A link's label (connectTo labelExpr): small text in a dark pill at the curve's midpoint, edged in the link's colour. */
 .cell-link-label { font: 600 10px ui-monospace, monospace; text-anchor: middle; dominant-baseline: central; fill: var(--text-color, #e8e6da); }
 .cell-link-label-pill { fill: var(--panel-bg, #15181d); fill-opacity: .92; stroke-width: 1; }
+.cp-assist-notice { margin-top: 5px; color: color-mix(in srgb, #e0b04a 80%, var(--text-color)); }

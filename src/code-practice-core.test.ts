@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { similarity, alignLines, scorePractice, focusSection, isNeutral, PEEK_FACTOR } from '/code-practice-core.js';
+import { similarity, alignLines, scorePractice, focusSection, isNeutral, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
 
 const REF = ['def f(n):', '    # sum it', '    total = 0', '    for i in range(n):', '        total += i', '', '    return total'].join('\n');
 const sections = [{id: 'init', title: 'Start at zero', from: 11, to: 12}, {id: 'loop', title: 'Add each', from: 13, to: 14}, {id: 'ret', title: 'Answer', from: 16, to: 16}];
@@ -67,4 +67,11 @@ test('the focus section follows the cursor, else the next one to type', () => {
     assert.equal(focusSection(score, 2, sections)?.id, 'loop');
     assert.equal(focusSection(score, 3, sections)?.id, 'loop', 'a blank line after the loop header: the loop goes on');
     assert.equal(focusSection(scorePractice(REF, 10, '', new Set(), sections), 0, sections)?.id, 'init');
+});
+
+test('a line the AI assistant typed scores at most ASSIST_FACTOR, below a seen one, and is not counted as seen', () => {
+    const line = scorePractice(REF, 10, REF, new Set([12]), sections, new Set([12])).lines.find(l => l.line === 12)!;
+    assert.equal(line.score, 100 * ASSIST_FACTOR);
+    assert.ok(line.assisted && !line.peeked);
+    assert.ok(ASSIST_FACTOR < PEEK_FACTOR);
 });
