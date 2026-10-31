@@ -50,7 +50,7 @@ def grade_inputs(req: CodeQuizRequest) -> dict:
             "editor": _numbered(req.typed) if req.typed.strip() else "(empty)"}
 
 
-@register_handler("code_quiz", request_model=CodeQuizRequest)
+@register_handler("code_quiz", request_model=CodeQuizRequest, speaks=True)
 def code_quiz(req: CodeQuizRequest) -> dict:
     if req.mode == "grade":
         if req.kind == "answer" and not req.answer.strip():

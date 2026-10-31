@@ -7,6 +7,8 @@ import os
 from google.genai import types
 from gemini_live_tools import safe_eval_math, eval_math_sweep, MATH_NAMES, HAS_NUMPY
 
+from backend.util import reply_language
+
 NAVIGATE_TOOL_DECL = types.FunctionDeclaration(
     name="navigate_to",
     description="Navigate to a specific scene and step. When the user says 'next', advance by ONE step within the CURRENT scene (current step + 1). Only change the scene number when the user asks for a different topic. Always check Current State in the system prompt for your current scene and step before navigating.",
@@ -133,6 +135,8 @@ SET_SLIDERS_TOOL_DECL = types.FunctionDeclaration(
 
 
 from gemini_live_tools import safe_eval_math, eval_math_sweep, MATH_NAMES, HAS_NUMPY
+
+from backend.util import reply_language
 
 
 def _build_eval_math_description():
@@ -453,6 +457,23 @@ PRESENT_WALKTHROUGH_TOOL_DECL = types.FunctionDeclaration(
 )
 ALL_TOOL_DECLS.append(PRESENT_WALKTHROUGH_TOOL_DECL)
 
+SET_LANGUAGE_TOOL_DECL = types.FunctionDeclaration(
+    name="set_language",
+    description=(
+        "Change the language you talk to the user in, when they ask for it (\"answer in Turkish\", \"switch to "
+        "Spanish\", \"can we speak German?\"). It changes the app's language setting, so chat replies, hints, "
+        "walk-throughs and speech all follow it. Never call it on your own because the user wrote in another "
+        "language; only when they ask. After the call, reply in the new language."),
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "language": types.Schema(type="STRING", description="The language's name in English, at most 20 characters, e.g. \"Turkish\", \"Spanish\", \"Chinese (Simplified)\", \"English (US)\"."),
+        },
+        required=["language"],
+    ),
+)
+ALL_TOOL_DECLS.append(SET_LANGUAGE_TOOL_DECL)
+
 
 def _make_tools(*exclude_names):
     decls = [d for d in ALL_TOOL_DECLS if d.name not in exclude_names]
@@ -510,7 +531,8 @@ each hint, the first question included.
 
 def build_system_prompt(context, agent_memory=None):
     """Build system prompt with full visualization context."""
-    parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n"]
+    parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n",
+             reply_language.chat_note()]
     # The presenter switch comes first, where it can't be lost in the rest: while it is on, presenting is the default
     # way to answer, not an option among many (left deep in the prompt, the agent kept answering in text).
     if ((context or {}).get('runtime') or {}).get('presenter'):

@@ -61,12 +61,17 @@ class HandlerSpec:
     configures DSPy + discovers handlers/experts (discovery is what populates
     this very registry, so it can't be skipped). The flag documents intent and is
     reserved for a future split of discovery from LM configuration.
+
+    ``speaks`` marks a handler whose output is talk to the user (hints, questions, spoken lines): its LM calls write
+    that text in the request's language (``backend.util.reply_language``). A handler that builds content or anything
+    a program reads (scenes, derivations) leaves it off and stays in English.
     """
 
     name: str
     fn: Callable[[Any], dict]
     request_model: type
     requires_experts: bool = True
+    speaks: bool = False
 
 
 # name -> ExpertSpec
@@ -114,6 +119,7 @@ def register_handler(
     *,
     request_model: type,
     requires_experts: bool = True,
+    speaks: bool = False,
 ) -> Callable[[Callable], Callable]:
     """Decorator: register a function as a handler for ``POST /api/expert/{name}``.
 
@@ -130,6 +136,7 @@ def register_handler(
             fn=fn,
             request_model=request_model,
             requires_experts=requires_experts,
+            speaks=speaks,
         )
         return fn
 

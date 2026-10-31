@@ -25,6 +25,7 @@ from typing import Optional
 
 from google.genai import types
 
+from backend.util import reply_language
 from backend.gemini_sampling import (CHAT_MAX_OUTPUT_TOKENS, gemini_temperature,
                                      hit_output_limit, trim_runaway)
 
@@ -285,6 +286,7 @@ def _proof_chat_system_prompt(proof, current_step=None, allow_edits=False,
         "submission, it's the default-hidden queue — point them to the direct link or the "
         "'Show proofs under review' toggle."
         + edits
+        + "\n" + reply_language.chat_note(can_switch=False)
         + "\n\nDERIVATION\n" + derivation + cur
     )
 

@@ -22,6 +22,7 @@ import { visibleAnnotationTexts } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { presenterOn, presentQuestion, stopPresenting } from '/presenter.js';
 import { invokeExpert, ExpertError } from '/expert-client.js';
+import { setLanguage } from '/language.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
 import { findCamButton } from '/cam-buttons.js';
@@ -1220,6 +1221,10 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
                         // No walk-through after all: the agent's own words, held back for it, are the answer.
                         if (reply.text) { addChatMessage('assistant', reply.text);chatHistory.push({ role: 'assistant', text: reply.text }); }
                     });
+                } else if (tc.name === 'set_language') {
+                    // The user asked to talk in another language: the setting changes, and every request after
+                    // this one (this reply's speech included) carries it.
+                    if (typeof tc.args?.language === 'string') setLanguage(tc.args.language);
                 } else if (tc.name === 'control_coach') {
                     // Drive the guided-tour "Coach": start/stop/reset/goto/next/prev/status.
                     const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
@@ -1543,6 +1548,8 @@ function renderToolCallChip(tc: AlgeBenchChatToolCall): HTMLDivElement {
         friendlyText = step === 0
             ? '📐 Proof: showing goal overview'
             : '📐 Proof: step ' + step + (reason ? ' — ' + e(reason) : '');
+    } else if (tc.name === 'set_language') {
+        friendlyText = '🌐 Language: ' + e(String(tc.args.language || ''));
     } else if (tc.name === 'control_coach') {
         const action = tc.args.action || 'status';
         const step = tc.args.step ? ' → ' + e(String(tc.args.step)) : '';

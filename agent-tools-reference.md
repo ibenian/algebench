@@ -175,6 +175,18 @@ the runtime context (it lists `active`, `currentStepId`, `completed`, `remaining
 
 ---
 
+### `set_language` — Change the language you talk in
+
+```
+set_language(language="Turkish")
+```
+
+Call it when the user asks to talk in another language ("answer in Turkish", "switch to Spanish"); never just
+because they wrote in one. It sets the app's language setting, so replies, hints, walk-throughs and speech follow
+it. Then reply in the new language. Tool arguments, code and LaTeX stay in English.
+
+---
+
 ### math.js Expression Reference
 
 Used in `{{expr}}` overlay placeholders (`set_info_overlay`).

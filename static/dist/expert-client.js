@@ -1,3 +1,89 @@
+//#region src/language.ts
+var DEFAULT_LANGUAGE = "English (US)";
+var HEADER = "X-AlgeBench-Language";
+var STORAGE_KEY = "algebench.language";
+var LANGUAGES = [
+	"English (US)",
+	"English (UK)",
+	"Spanish",
+	"Chinese (Simplified)",
+	"Hindi",
+	"Arabic",
+	"French",
+	"Bengali",
+	"Portuguese",
+	"Russian",
+	"Urdu",
+	"Indonesian",
+	"German",
+	"Japanese",
+	"Turkish",
+	"Korean",
+	"Vietnamese",
+	"Italian",
+	"Persian",
+	"Polish",
+	"Dutch",
+	"Swedish",
+	"Norwegian",
+	"Finnish",
+	"Hungarian",
+	"Hebrew"
+];
+/** ``raw`` as a language name: trimmed, single-spaced, at most LANGUAGE_MAX_CHARS characters; the default if empty. */
+function cleanLanguage(raw) {
+	const text = (raw ?? "").replace(/[^\p{L}\p{N}\s().,'-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 20).trim();
+	if (!text) return DEFAULT_LANGUAGE;
+	return LANGUAGES.find((l) => l.toLowerCase() === text.toLowerCase()) ?? text;
+}
+var current = DEFAULT_LANGUAGE;
+try {
+	current = cleanLanguage(localStorage.getItem(STORAGE_KEY));
+} catch {}
+var listeners = /* @__PURE__ */ new Set();
+function getLanguage() {
+	return current;
+}
+/** Make ``raw`` the language (saved, and sent from the next request on); returns the cleaned name. */
+function setLanguage(raw) {
+	const lang = cleanLanguage(raw);
+	if (lang === current) return lang;
+	current = lang;
+	try {
+		localStorage.setItem(STORAGE_KEY, lang);
+	} catch {}
+	listeners.forEach((fn) => fn(lang));
+	return lang;
+}
+function onLanguageChange(fn) {
+	listeners.add(fn);
+	return () => listeners.delete(fn);
+}
+function isApiRequest(url) {
+	try {
+		const u = new URL(url, location.href);
+		return u.origin === location.origin && u.pathname.startsWith("/api/");
+	} catch {
+		return false;
+	}
+}
+function installLanguageHeader() {
+	const w = window;
+	if (w.__algebenchLanguageFetch) return;
+	w.__algebenchLanguageFetch = true;
+	const original = window.fetch.bind(window);
+	window.fetch = (input, init) => {
+		if (!isApiRequest(typeof input === "string" ? input : input instanceof URL ? input.href : input.url)) return original(input, init);
+		const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : void 0));
+		headers.set(HEADER, encodeURIComponent(current));
+		return original(input, {
+			...init,
+			headers
+		});
+	};
+}
+if (typeof window !== "undefined" && typeof window.fetch === "function") installLanguageHeader();
+//#endregion
 //#region src/expert-client.ts
 var ExpertError = class extends Error {
 	constructor(message, { status = 0, retryAfter = null, detail = null, timedOut = false } = {}) {
@@ -55,6 +141,6 @@ async function invokeExpert(name, body, { timeoutMs = 0 } = {}) {
 	return data;
 }
 //#endregion
-export { ExpertError as n, invokeExpert as r, DERIVE_TIMEOUT_MS as t };
+export { getLanguage as a, LANGUAGES as i, ExpertError as n, onLanguageChange as o, invokeExpert as r, setLanguage as s, DERIVE_TIMEOUT_MS as t };
 
 //# sourceMappingURL=expert-client.js.map

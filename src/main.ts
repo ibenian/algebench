@@ -1,7 +1,9 @@
+import '/language.js';   // first, so every API request carries the AI's language
 import { setupStepPlayer } from '/step-player.js';
 import { setupCodePanel } from '/code-panel.js';
 import { setupCodePractice } from '/code-practice.js';
 import { setupPresenter } from '/presenter.js';
+import { setupChatSettings } from '/chat-settings.js';
 // ============================================================
 // main.js — Application entry point (DOMContentLoaded).
 // Wires all modules together and exposes globals for chat.js
@@ -79,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCodePanel();
     setupCodePractice();
     setupPresenter();
+    setupChatSettings();
     setupStepPlayer();
     setupCaptionDrag();
     setupSceneDescDrag();

@@ -577,7 +577,7 @@ def _format_proof_for_qa(proof: Optional[dict]) -> str:
     return "\n".join(lines) if lines else "(empty derivation)"
 
 
-@register_handler("proof_qa", request_model=ProofQARequest)
+@register_handler("proof_qa", request_model=ProofQARequest, speaks=True)
 def proof_qa(req: ProofQARequest) -> dict:
     """Answer a question grounded ONLY in the current derivation (proof-scoped chat).
 

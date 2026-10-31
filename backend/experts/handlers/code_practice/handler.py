@@ -128,7 +128,7 @@ def render_inputs(req: CodePracticeRequest) -> dict:
     }
 
 
-@register_handler("code_practice", request_model=CodePracticeRequest)
+@register_handler("code_practice", request_model=CodePracticeRequest, speaks=True)
 def code_practice(req: CodePracticeRequest) -> dict:
     if not req.typed.strip() and not req.hints:
         return {"reason": NOTHING_TYPED}

@@ -33,7 +33,7 @@ def render_inputs(req: ScenePresentRequest) -> dict:
     }
 
 
-@register_handler("scene_present", request_model=ScenePresentRequest)
+@register_handler("scene_present", request_model=ScenePresentRequest, speaks=True)
 def scene_present(req: ScenePresentRequest) -> dict:
     out = present({t.ref for t in req.targets}, len(req.frames), **render_inputs(req))
     if out.error:

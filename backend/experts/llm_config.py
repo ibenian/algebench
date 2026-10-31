@@ -19,6 +19,7 @@ from dspy.utils.exceptions import AdapterParseError
 
 from backend.experts.adapters import LineAdapter
 from backend.gemini_sampling import is_gemini3
+from backend.util import reply_language
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +51,18 @@ def _cache_enabled() -> bool:
 _configured = False
 
 
+class LanguageLM(dspy.LM):
+    """A ``dspy.LM`` that, while an expert speaks to the user (``reply_language.speaking``), asks for its
+    user-facing text in the request's language; every other call, and every call in the default language, is sent
+    unchanged."""
+
+    def forward(self, prompt=None, messages=None, **kwargs):
+        return super().forward(prompt, reply_language.expert_messages(messages or [{"role": "user", "content": prompt}]), **kwargs)
+
+    async def aforward(self, prompt=None, messages=None, **kwargs):
+        return await super().aforward(prompt, reply_language.expert_messages(messages or [{"role": "user", "content": prompt}]), **kwargs)
+
+
 def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
     """Construct (but do not install) a DSPy LM for the configured Gemini model.
 
@@ -72,7 +85,7 @@ def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
     effort = os.environ.get("ALGEBENCH_LM_REASONING")
     if effort:
         kwargs["reasoning_effort"] = effort
-    return dspy.LM(LM_MODEL, **kwargs)
+    return LanguageLM(LM_MODEL, **kwargs)
 
 
 class _HeadedChatAdapter(ChatAdapter):
@@ -294,7 +307,7 @@ def _build_scoped(overrides: dict) -> Optional[dspy.LM]:
     if env_temp is not None:
         kwargs["temperature"] = float(env_temp)
     try:
-        return dspy.LM(LM_MODEL, **kwargs)
+        return LanguageLM(LM_MODEL, **kwargs)
     except Exception:
         return None
 

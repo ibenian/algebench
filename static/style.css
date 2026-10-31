@@ -2565,6 +2565,14 @@ body.rotating-axis-z, body.rotating-axis-z * {
     flex: 0 0 auto;
     white-space: nowrap;
 }
+/* The two toggles sit at the end of a crowded toolbar: tighter than the other controls. */
+#presenter-toggle-btn, #proof-toggle-btn {
+    min-height: 28px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.72em;
+}
+#presenter-toggle-btn svg, #proof-toggle-btn svg { margin-right: 3px !important; }
 .chat-control-btn:hover {
     background: var(--btn-bg);
     color: var(--text-color);
@@ -6385,3 +6393,43 @@ body.ai-presenting .ai-present-replay { visibility: hidden; }
 /* The learner can drag a note out of the way, as they do the variables box. */
 .ai-note { pointer-events: auto; cursor: grab; user-select: none; }
 .ai-note.dragging { cursor: grabbing; box-shadow: 0 0 18px rgba(80, 255, 190, .45), 0 6px 18px rgba(0, 0, 0, .55); }
+
+/* Settings popover behind the gear in the chat toolbar (src/chat-settings.ts) */
+.chat-settings-btn { flex: 0 0 auto; }   /* looks like the code panel's ⚙ (.code-view-settings-btn) */
+.chat-settings-popover {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    background: var(--panel-bg);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    z-index: 10050;
+}
+.chat-settings-popover[hidden] { display: none !important; }
+.chat-settings-label { font-size: 0.78em; font-weight: 600; color: var(--text-color); }
+.chat-settings-hint { font-size: 0.72em; opacity: 0.65; }
+.chat-language-list {
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+.chat-language-list[hidden] { display: none; }
+.chat-language-list li {
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 0.8em;
+    cursor: pointer;
+    color: var(--text-color);
+}
+.chat-language-list li:hover,
+.chat-language-list li[aria-selected="true"] { background: color-mix(in srgb, var(--accent-color) 22%, transparent); }

@@ -15,6 +15,7 @@ import { DERIVE_TIMEOUT_MS, invokeExpert, ExpertError } from "/expert-client.js"
 import { applyTheme, initialTheme, wireThemeToggle } from "/theme.js";
 import { BRACES_ICON, CODE_ICON, AI_ICON, USER_ICON } from "/icons.js";
 import { createProofEditTool, type ChatReply as EditToolChatReply } from "/proof-edit-tool.js";
+import "/language.js";   // every API request carries the AI's language
 import {
   ID_DOMAIN_MAX, ID_DOMAIN_MIN, ID_NAME_MAX, ID_NAME_MIN, ID_RESERVED,
   MAX_PROOF_BYTES, formatBytes, idProblem, proofBytes,

@@ -28,8 +28,8 @@
 <link rel="stylesheet" href="/graph-panel/fa-page.css">
 <link rel="stylesheet" href="/proof-animation/proof-animation.css">
   <script type="module" crossorigin src="/dist/index.js?v=__APP_VERSION__"></script>
-  <link rel="modulepreload" crossorigin href="/dist/theme.js">
   <link rel="modulepreload" crossorigin href="/dist/expert-client.js">
+  <link rel="modulepreload" crossorigin href="/dist/theme.js">
 </head>
 <body data-debug-mode="__DEBUG_MODE__" data-skip-tour="__SKIP_TOUR__" data-app-version="__APP_VERSION__">
 <div id="app">
@@ -227,6 +227,7 @@
                     <input type="range" id="ttsVolumeSlider" min="0" max="1" step="0.05" value="0.5" title="TTS Volume">
                     <button id="presenter-toggle-btn" class="chat-control-btn presenter-toggle-btn" aria-pressed="false" aria-label="AI presenter"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><rect x="8" y="3" width="14" height="10" rx="1.5"/><circle cx="4.5" cy="7" r="2"/><path d="M2 21v-5.5a2.5 2.5 0 0 1 5 0V21"/><path d="M6.5 13.5L13 9"/><circle cx="14.6" cy="8" r="1.3" fill="#ff5a4e" stroke="#ff5a4e"/></svg>Present</button>
                     <button id="proof-toggle-btn" class="chat-control-btn" title="Toggle proof panel" style="display:none"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><path d="M5 19L19 19L5 5Z"/><path d="M8.5 15.5l2 2"/></svg>Proof</button>
+                    <button id="chat-settings-btn" class="code-view-settings-btn chat-settings-btn" type="button" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false" title="Settings">⚙</button>
                 </div>
                 <!-- Proof panel (inside chat tab, above chat messages) -->
                 <div id="proof-panel" class="hidden">
@@ -268,6 +269,12 @@
         </div>
     </div>
     <div id="chatCharacterBackdrop" class="style-backdrop" hidden></div>
+    <div id="chat-settings-popover" class="chat-settings-popover" role="dialog" aria-label="Settings" hidden>
+        <label class="chat-settings-label" for="chat-language-input">Language</label>
+        <input id="chat-language-input" class="style-search" type="text" role="combobox" aria-autocomplete="list" aria-controls="chat-language-list" aria-expanded="true" autocomplete="off" spellcheck="false" placeholder="Type or pick a language" />
+        <ul id="chat-language-list" class="chat-language-list" role="listbox" aria-label="Languages"></ul>
+        <div class="chat-settings-hint">The AI talks and speaks to you in this language.</div>
+    </div>
     <div id="lesson-picker-backdrop" class="lesson-picker-backdrop" hidden></div>
     <div id="lesson-picker" class="lesson-picker" role="dialog" aria-modal="true" aria-label="Open lesson" hidden>
         <div class="lesson-picker-head">

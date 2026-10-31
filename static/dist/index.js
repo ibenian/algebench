@@ -1,5 +1,5 @@
+import { a as getLanguage, i as LANGUAGES, n as ExpertError, o as onLanguageChange, r as invokeExpert, s as setLanguage, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 import { C as PREV_ICON, D as USER_ICON, E as UNDOCK_ICON, S as PLAY_ICON, T as TRASH_ICON, _ as GEAR_ICON, a as wireThemeToggle, b as PAUSE_ICON, c as AI_ICON, d as CODE_ICON, f as DOCK_BOTTOM_ICON, g as FUNCTION_ANALYSIS_ICON, l as ANGLE_LOCK_ICON, m as FIRST_ICON, n as applyTheme, o as validateProofData, p as DOCK_LEFT_ICON, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as LAST_ICON, w as SHARE_VIEW_ICON, x as PLAN_ICON, y as NEXT_ICON } from "./theme.js";
-import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
 var __exportAll = (all, no_symbols) => {
@@ -32000,6 +32000,107 @@ function setupCodePractice() {
 	retarget();
 }
 //#endregion
+//#region src/chat-settings.ts
+/** The listed languages that match ``typed``: names starting with it first, then names containing it. */
+function languageSuggestions(typed) {
+	const q = typed.trim().toLowerCase();
+	if (!q) return [...LANGUAGES];
+	const starts = LANGUAGES.filter((l) => l.toLowerCase().startsWith(q));
+	return [...starts, ...LANGUAGES.filter((l) => !starts.includes(l) && l.toLowerCase().includes(q))];
+}
+function setupChatSettings() {
+	const btn = document.getElementById("chat-settings-btn");
+	const pop = document.getElementById("chat-settings-popover");
+	const input = document.getElementById("chat-language-input");
+	const list = document.getElementById("chat-language-list");
+	if (!btn || !pop || !input || !list) return;
+	input.maxLength = 20;
+	const showCurrent = (lang) => {
+		input.value = lang;
+		btn.title = `Settings · language: ${lang}`;
+	};
+	showCurrent(getLanguage());
+	onLanguageChange(showCurrent);
+	let active = -1;
+	const items = () => [...list.querySelectorAll("li")];
+	const highlight = (i) => {
+		const all = items();
+		active = all.length ? (i + all.length) % all.length : -1;
+		all.forEach((li, j) => li.setAttribute("aria-selected", String(j === active)));
+		all[active]?.scrollIntoView({ block: "nearest" });
+		input.setAttribute("aria-activedescendant", all[active]?.id ?? "");
+	};
+	const suggest = (typed) => {
+		list.replaceChildren(...languageSuggestions(typed).map((lang, i) => {
+			const li = document.createElement("li");
+			li.id = `chat-language-option-${i}`;
+			li.role = "option";
+			li.textContent = lang;
+			li.addEventListener("pointerdown", (e) => {
+				e.preventDefault();
+				pick(lang);
+			});
+			return li;
+		}));
+		list.hidden = !list.children.length;
+		active = -1;
+		const q = typed.trim().toLowerCase();
+		const at = q ? items()[0]?.textContent?.toLowerCase().startsWith(q) ? 0 : -1 : items().findIndex((li) => li.textContent === getLanguage());
+		if (at >= 0) highlight(at);
+	};
+	const pick = (lang) => {
+		input.value = lang;
+		close();
+		btn.focus();
+	};
+	const place = () => {
+		const r = btn.getBoundingClientRect();
+		const width = pop.offsetWidth || 260;
+		pop.style.top = `${Math.round(r.bottom + 6)}px`;
+		pop.style.left = `${Math.round(Math.max(8, Math.min(r.right - width, innerWidth - width - 8)))}px`;
+	};
+	const open = () => {
+		pop.hidden = false;
+		btn.setAttribute("aria-expanded", "true");
+		place();
+		suggest("");
+		input.focus();
+		input.select();
+	};
+	const commit = () => showCurrent(setLanguage(input.value));
+	const close = () => {
+		if (pop.hidden) return;
+		commit();
+		pop.hidden = true;
+		btn.setAttribute("aria-expanded", "false");
+	};
+	btn.addEventListener("click", () => pop.hidden ? open() : close());
+	input.addEventListener("input", () => suggest(input.value));
+	input.addEventListener("keydown", (e) => {
+		if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+			e.preventDefault();
+			if (list.hidden) suggest(input.value);
+			highlight(active + (e.key === "ArrowDown" ? 1 : -1));
+		} else if (e.key === "Enter") {
+			e.preventDefault();
+			const chosen = items()[active]?.textContent;
+			pick(chosen && !list.hidden ? chosen : input.value);
+		} else if (e.key === "Escape") {
+			e.preventDefault();
+			showCurrent(getLanguage());
+			close();
+			btn.focus();
+		}
+	});
+	document.addEventListener("pointerdown", (e) => {
+		const t = e.target;
+		if (!pop.hidden && !pop.contains(t) && !btn.contains(t)) close();
+	});
+	addEventListener("resize", () => {
+		if (!pop.hidden) place();
+	});
+}
+//#endregion
 //#region src/view-state.ts
 var CAM_DECIMALS = 4;
 var DEFAULT_UP = [
@@ -36728,6 +36829,8 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 						});
 					}
 				});
+			} else if (tc.name === "set_language") {
+				if (typeof tc.args?.language === "string") setLanguage(tc.args.language);
 			} else if (tc.name === "control_coach") {
 				const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
 				if (engine && typeof engine.control === "function") engine.control(tc.args?.action, { step: tc.args?.step });
@@ -37005,7 +37108,8 @@ function renderToolCallChip(tc) {
 		const step = tc.args.step || 0;
 		const reason = tc.args.reason || "";
 		friendlyText = step === 0 ? "📐 Proof: showing goal overview" : "📐 Proof: step " + step + (reason ? " — " + e(reason) : "");
-	} else if (tc.name === "control_coach") {
+	} else if (tc.name === "set_language") friendlyText = "🌐 Language: " + e(String(tc.args.language || ""));
+	else if (tc.name === "control_coach") {
 		const action = tc.args.action || "status";
 		const step = tc.args.step ? " → " + e(String(tc.args.step)) : "";
 		friendlyText = "🧭 Tour: " + e(action) + step;
@@ -40211,6 +40315,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupCodePanel();
 	setupCodePractice();
 	setupPresenter();
+	setupChatSettings();
 	setupStepPlayer();
 	setupCaptionDrag();
 	setupSceneDescDrag();

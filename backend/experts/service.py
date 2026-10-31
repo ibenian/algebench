@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from backend.util import reply_language
+
 from .context_id import parse
 from .outputs import ExpertResult
 from .registry import EXPERT_REGISTRY, HANDLER_REGISTRY, resolve_context_model
@@ -59,7 +61,8 @@ def run(name: str, body: dict) -> dict:
     spec = HANDLER_REGISTRY.get(name)
     if spec is not None:
         req = spec.request_model.model_validate(body)
-        return spec.fn(req)
+        with reply_language.speaking(spec.speaks):
+            return spec.fn(req)
 
     if name in EXPERT_REGISTRY:
         call = _ExpertCall.model_validate(body)   # ValidationError -> 422 (not KeyError/500)

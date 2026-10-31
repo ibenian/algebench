@@ -65,7 +65,7 @@ def only_starts(code: str, typed: str, expected: str) -> str:
     return "\n".join(out)
 
 
-@register_handler("code_assist", request_model=CodeAssistRequest)
+@register_handler("code_assist", request_model=CodeAssistRequest, speaks=True)
 def code_assist(req: CodeAssistRequest) -> dict:
     if req.scope == "ask" and not req.request.strip():
         return {"reason": ASK_FIRST}

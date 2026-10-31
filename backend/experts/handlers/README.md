@@ -47,3 +47,7 @@ Concurrency/abuse is handled once, at the endpoint, by the shared per-IP
 
 `discover_handlers()` (called by `init_experts()`) imports every subpackage here,
 so the decorator fires at startup.
+
+Pass `speaks=True` when the handler's output is talk to the user (hints, questions, spoken lines, feedback): its LM
+calls then write that text in the language the client sends (`backend/util/reply_language.py`). Leave it off for a
+handler that builds content or anything a program reads (scenes, derivations), which stays in English.

@@ -36,7 +36,7 @@ NOT_COVERED = "AlgeBench doesn't have lessons on that yet."
 NO_PLAN = "I couldn't put a plan together from the lessons for that. Try naming the idea differently."
 
 
-@register_handler("learning_plan", request_model=LearningPlanRequest)
+@register_handler("learning_plan", request_model=LearningPlanRequest, speaks=True)
 def learning_plan(req: LearningPlanRequest) -> dict:
     # An answer to the planner's question can name the actual subject ("explain
     # it" → "terminal velocity"), so it picks lessons along with the target.

@@ -82,7 +82,7 @@ class ExpressionAnalysisRequest(BaseModel):
     asked: list[str] = Field(default_factory=list)
 
 
-@register_handler("expression_analysis", request_model=ExpressionAnalysisRequest)
+@register_handler("expression_analysis", request_model=ExpressionAnalysisRequest, speaks=True)
 def expression_analysis(req: ExpressionAnalysisRequest) -> dict:
     """Dispatch on verb: full analysis, or fresh probes for an existing one."""
     if req.verb == "more_probes":
