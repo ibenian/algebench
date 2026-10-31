@@ -25,9 +25,9 @@ class PresentStep(BaseModel):
     write: str = Field(default="", description="optional: one short line you type on the scratchpad over the view "
                                                "while you say this, as a presenter writes on a board: a calculation "
                                                "with the values on screen, a formula, a bit of code. Plain text as typed "
-                                               "on a keyboard (-, *, <=, or − × ≤) by default; real notation (a "
-                                               "fraction, a sum, a subscript, a Greek letter) between $...$ as KaTeX; "
-                                               "code between backticks. Empty for none")
+                                               "on a keyboard (-, *, <=, or − × ≤) by default; real notation (a matrix "
+                                               "or vector, a fraction, a sum, a subscript, a Greek letter) between $...$ "
+                                               "as KaTeX, never as Python lists; code between backticks. Empty for none")
     write_near: str = Field(default="", description="with `write`: the ref (from `targets`) to write beside; empty "
                                                     "to write beside this beat's target, or in a free corner")
     erase: bool = Field(default=False, description="wipe what you wrote and drew earlier before this beat")
@@ -59,8 +59,10 @@ class ScenePresentSig(dspy.Signature):
     presenter writes on the board as they talk. Use it for what is worth seeing written: the arithmetic with the
     values on screen ("running_sum - target = 1 - 3 = -2"), a key formula, the condition being checked, a
     tiny bit of code. Write it as plain text, the way it would be typed; reach for $...$ (KaTeX, as in the info
-    overlays) only for notation plain text can't show well ($\\frac{a}{b}$, $\\sum_i x_i$, $x_{i-1}$, Greek
-    letters). One line, at most about 40 characters of plain text; write only where it helps, a few
+    overlays) only for notation plain text can't show well: a matrix or vector
+    ($\\begin{pmatrix}1 & 2 \\\\ 3 & 4\\end{pmatrix}$, $\\begin{bmatrix}x \\\\ y\\end{bmatrix}$, never "[[1, 2], [3, 4]]"),
+    a fraction ($\\frac{a}{b}$), a sum ($\\sum_i x_i$), a subscript ($x_{i-1}$), Greek letters. One line, at most
+    about 40 characters of plain text (KaTeX source may be longer); write only where it helps, a few
     times in a walk-through, not on every beat. Put it beside what it is about (`write_near`). What you wrote
     stays until you `erase` it or the walk-through ends.
 

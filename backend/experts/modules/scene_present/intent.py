@@ -22,7 +22,7 @@ _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 MAX_STEPS = 10
 MARKS = ("point", "circle")
 #: The longest line written on the scratchpad.
-MAX_WRITE = 120
+MAX_WRITE = 400
 
 #: The learner waits with the view handed over: answer quickly.
 _LM = scoped_lm(reasoning_effort="low")

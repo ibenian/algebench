@@ -217,11 +217,19 @@ function drawRing(rect: DOMRect | null) {
     ensurePointer();
     if (!ring) return;
     if (!rect) { ring.classList.remove('on');return; }
+    ring.innerHTML = '<ellipse pathLength="1"/>';
+    fitRing(rect);
+    ring.classList.remove('on');void ring.getBoundingClientRect();ring.classList.add('on');
+}
+/** Fit the circle round `rect`: as the view zooms or pans, it keeps hugging its target (the stroke isn't redrawn). */
+function fitRing(rect: DOMRect) {
+    const ellipse = ring?.querySelector('ellipse');
+    if (!ring || !ellipse) return;
     const pad = 8, w = rect.width + pad * 2, h = rect.height + pad * 2;
     ring.style.left = `${rect.left - pad}px`;ring.style.top = `${rect.top - pad}px`;
     ring.setAttribute('width', String(w + 4));ring.setAttribute('height', String(h + 4));
-    ring.innerHTML = `<ellipse cx="${w / 2 + 2}" cy="${h / 2 + 2}" rx="${w / 2}" ry="${h / 2}" pathLength="1"/>`;
-    ring.classList.remove('on');void ring.getBoundingClientRect();ring.classList.add('on');
+    ellipse.setAttribute('cx', String(w / 2 + 2));ellipse.setAttribute('cy', String(h / 2 + 2));
+    ellipse.setAttribute('rx', String(w / 2));ellipse.setAttribute('ry', String(h / 2));
 }
 
 /** Hold the pointer on a target while `until` runs, following it as the view moves; circle it if asked. */
@@ -239,9 +247,7 @@ async function holdOn(ref: string, mark: Beat['mark'], r: number, until: Promise
             t += .05;
             const cx = now.left + now.width / 2 + Math.sin(t * 1.3) * Math.min(6, now.width / 6), cy = now.top + now.height / 2 + Math.cos(t) * Math.min(3, now.height / 6);
             pos.x += (cx - pos.x) * .2;pos.y += (cy - pos.y) * .2;paintPointer();
-            if (mark === 'circle' && ring?.classList.contains('on')) {
-                const pad = 8;ring.style.left = `${now.left - pad}px`;ring.style.top = `${now.top - pad}px`;
-            }
+            if (mark === 'circle' && ring?.classList.contains('on')) fitRing(now);
         }
         await new Promise(res => requestAnimationFrame(res));
     }
@@ -338,11 +344,16 @@ function mathHtml(body: string, open: boolean, katex?: Katex): string {
     const tries = [body];
     if (open) {
         let cut = body;
-        for (let k = 0; k < 3; k++) cut = cut.replace(/\\[A-Za-z]*$/, '').replace(/[\\^_]$/, '');
+        for (let k = 0; k < 3; k++) cut = cut.replace(/\\(begin|end)\{[A-Za-z*]*$/, '').replace(/\\[A-Za-z]*$/, '').replace(/[\\^_]$/, '');
         // Nothing settable yet (a command still being spelled): nothing shows, rather than its letters.
         if (!cut.trim()) return '';
         const depth = [...cut].reduce((d, c, i) => c === '{' && cut[i - 1] !== '\\' ? d + 1 : c === '}' && cut[i - 1] !== '\\' ? Math.max(0, d - 1) : d, 0);
-        tries.push(cut + '}'.repeat(depth));
+        // Environments still open (a matrix being typed, row by row) are ended too.
+        const open = [...cut.matchAll(/\\(begin|end)\{([A-Za-z*]+)\}/g)].reduce<string[]>((stack, m) => {
+            if (m[1] === 'begin') stack.push(m[2]!);else stack.pop();
+            return stack;
+        }, []);
+        tries.push(cut + '}'.repeat(depth) + open.reverse().map(env => `\\end{${env}}`).join(''));
     }
     for (const t of tries) if (t) try { return katex.renderToString(t, {throwOnError: true, displayMode: false}); } catch { /* next */ }
     return `<span class="ai-note-raw">${esc(body)}</span>`;
@@ -350,7 +361,8 @@ function mathHtml(body: string, open: boolean, katex?: Katex): string {
 /** Type `text` as a note over the view at a person's pace: plain text in the typing face, $math$ set key by key. */
 async function typeNote(text: string, near: string, r: number): Promise<HTMLElement> {
     clearTimeout(notesFade);
-    const note = document.createElement('div');note.className = 'ai-note';
+    const note = document.createElement('div');note.className = 'ai-note';note.title = 'Drag to move';
+    makeMovable(note);
     const ink = document.createElement('span');ink.className = 'ai-note-ink';
     const caret = document.createElement('span');caret.className = 'ai-note-caret';
     note.append(ink, caret);notesLayer().append(note);
@@ -385,28 +397,59 @@ function edgeToward(r: DOMRect, x: number, y: number, pad: number): {x: number; 
  * A hand-drawn arrow from one rect to another: a gently bowed, slightly wobbly stroke drawn out from its tail,
  * then its head, two quick strokes. It stays with the notes and goes when they are wiped.
  */
-async function drawArrow(from: DOMRect, to: DOMRect, r: number) {
+// Arrows starting at a note: redrawn when the learner moves the note.
+const arrowsFrom = new WeakMap<Element, (() => void)[]>();
+async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r: number, fromNote: Element | null = null) {
     clearTimeout(notesFade);
-    const fc = {x: from.left + from.width / 2, y: from.top + from.height / 2}, tc = {x: to.left + to.width / 2, y: to.top + to.height / 2};
-    const a = edgeToward(from, tc.x, tc.y, 4), b = edgeToward(to, fc.x, fc.y, 7);
-    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
-    if (len < 12) return;
-    // A bow to one side, and a hand's wobble: two control points off the straight line.
-    const nx = -dy / len, ny = dx / len, bow = (Math.random() < .5 ? -1 : 1) * Math.min(60, len * .18), wob = () => (Math.random() - .5) * Math.min(10, len * .04);
-    const c1 = {x: a.x + dx * .3 + nx * bow + wob(), y: a.y + dy * .3 + ny * bow + wob()};
-    const c2 = {x: a.x + dx * .7 + nx * bow * .8 + wob(), y: a.y + dy * .7 + ny * bow * .8 + wob()};
-    // The head follows the curve's last direction.
-    const ex = b.x - c2.x, ey = b.y - c2.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
-    const wing = (k: number) => { const c = Math.cos(k), s = Math.sin(k);return {x: b.x - head * (ux * c - uy * s), y: b.y - head * (uy * c + ux * s)}; };
-    const w1 = wing(.48), w2 = wing(-.42);
+    // Its hand: which side it bows to, and its wobble, kept so a redraw is the same stroke, moved.
+    const side = Math.random() < .5 ? -1 : 1, jitter = [Math.random() - .5, Math.random() - .5, Math.random() - .5, Math.random() - .5];
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');svg.classList.add('ai-arrow');
-    svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/>`
-        + `<path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${b.x},${b.y} L${w2.x},${w2.y}"/>`;
+    const shape = (): number => {
+        const f = from(), t = to();
+        if (!f || !t) return 0;
+        const fc = {x: f.left + f.width / 2, y: f.top + f.height / 2}, tc = {x: t.left + t.width / 2, y: t.top + t.height / 2};
+        const a = edgeToward(f, tc.x, tc.y, 4), b = edgeToward(t, fc.x, fc.y, 7);
+        const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+        if (len < 12) { svg.innerHTML = '';return 0; }
+        // A bow to one side, and a hand's wobble: two control points off the straight line.
+        const nx = -dy / len, ny = dx / len, bow = side * Math.min(60, len * .18), wob = (k: number) => jitter[k]! * Math.min(10, len * .04);
+        const c1 = {x: a.x + dx * .3 + nx * bow + wob(0), y: a.y + dy * .3 + ny * bow + wob(1)};
+        const c2 = {x: a.x + dx * .7 + nx * bow * .8 + wob(2), y: a.y + dy * .7 + ny * bow * .8 + wob(3)};
+        // The head follows the curve's last direction.
+        const ex = b.x - c2.x, ey = b.y - c2.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
+        const wing = (k: number) => { const c = Math.cos(k), s = Math.sin(k);return {x: b.x - head * (ux * c - uy * s), y: b.y - head * (uy * c + ux * s)}; };
+        const w1 = wing(.48), w2 = wing(-.42);
+        svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/>`
+            + `<path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${b.x},${b.y} L${w2.x},${w2.y}"/>`;
+        return len;
+    };
+    const len = shape();
+    if (!len) return;
     notesLayer().append(svg);notes.push(svg);
+    if (fromNote) arrowsFrom.set(fromNote, [...(arrowsFrom.get(fromNote) ?? []), shape]);
     svg.classList.add('drawing');
     await sleep(Math.min(900, 350 + len * .6));alive(r);
     svg.classList.add('headed');
     await sleep(220);
+}
+/**
+ * The learner may move a note, as they move the variables box: drag it anywhere; arrows from it follow. A moved
+ * note is theirs to keep in place: the presenter's later notes are placed around it.
+ */
+function makeMovable(note: HTMLElement) {
+    note.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
+        e.preventDefault();e.stopPropagation();note.setPointerCapture(e.pointerId);note.classList.add('dragging');
+        const r = note.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+        const move = (ev: PointerEvent) => {
+            note.style.left = `${Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx))}px`;
+            note.style.top = `${Math.max(0, Math.min(innerHeight - r.height, ev.clientY - dy))}px`;
+            for (const redraw of arrowsFrom.get(note) ?? []) redraw();
+        };
+        const up = () => { note.removeEventListener('pointermove', move);note.classList.remove('dragging'); };
+        note.addEventListener('pointermove', move);
+        note.addEventListener('pointerup', up, {once: true});note.addEventListener('pointercancel', up, {once: true});
+    });
 }
 /** Wipe the notes: they fade away. */
 function eraseNotes() {
@@ -508,7 +551,9 @@ export async function presentQuestion(question: string, {joinHistory = true}: {j
                 if (!beat.arrow_to) return;
                 const to = resolveTarget(beat.arrow_to);
                 const from = beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
-                if (from && to) await drawArrow(from, to, r);
+                // Read again on each redraw: a note the learner moves takes its arrow with it.
+                const fromNow = () => beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
+                if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note);
             });
             const both = Promise.all([words, writing]).then(() => undefined);
             if (beat.target) await holdOn(beat.target, beat.mark, r, both);

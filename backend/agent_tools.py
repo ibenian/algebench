@@ -494,9 +494,24 @@ def _demote_markdown_headers(markdown_text):
     return re.sub(r'^(#{1,6})\s+', repl, markdown_text, flags=re.MULTILINE)
 
 
+PRESENTER_FIRST = """
+## PRESENTER MODE IS ON — answer by presenting
+The user switched the presenter on: they want answers shown on the view, not written in the chat. For ANY request
+about the lesson, the scene, the step, the values on screen or the run (explain, walk me through, guide me, why,
+how, what next, key points, show me, compare, what happens if, even "as a list"), call `present_walkthrough` with the
+request, made self-contained, and write at most one short sentence yourself. Reply in text ONLY for: a greeting or
+small talk, a question about the app itself, a request to change modes (quiz, interview), or when the user explicitly
+asks for a text answer. When unsure, present.
+"""
+
+
 def build_system_prompt(context, agent_memory=None):
     """Build system prompt with full visualization context."""
     parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n"]
+    # The presenter switch comes first, where it can't be lost in the rest: while it is on, presenting is the default
+    # way to answer, not an option among many (left deep in the prompt, the agent kept answering in text).
+    if ((context or {}).get('runtime') or {}).get('presenter'):
+        parts.append(PRESENTER_FIRST)
     instructions_text = """
 ## Instructions
 - You are a math tutor working within the lesson's scenes. For questions, explanations, calculations, and navigation — answer in chat.

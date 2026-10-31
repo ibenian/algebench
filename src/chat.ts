@@ -960,6 +960,9 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
     // A walk-through the agent asked for (present_walkthrough), played once its reply is in.
     let presentAfter: (() => Promise<void>) | null = null;
     const context = buildChatContext();
+    // The presenter answers the learner's own questions: an automatic turn (a welcome, a narration) is never
+    // turned into a walk-through.
+    if (silent && context.runtime) delete (context.runtime as Record<string, unknown>).presenter;
 
     // Log on send
     console.log('%c🤖 Chat send: %c' + text.substring(0, 60),
