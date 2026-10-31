@@ -18,7 +18,7 @@ import { invokeExpert } from '/expert-client.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { setSliderValue } from '/sliders.js';
 import { dataToWorld } from '/coords.js';
-import { objectCellAnchor, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
+import { objectCellAnchor, objectChartMarks, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
 import { keyDelay } from '/code-assist-play.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
@@ -66,6 +66,13 @@ export function presentTargets(): Target[] {
                 cells.push({ref: `${id}[${i}]`, about});
             }
             out.push({ref: id, about: `${type} ${name ? `"${name}"` : ''} with ${cells.length} ${spec?.keyExpr ? 'entries' : graph ? 'nodes' : 'cells'}`.replace(/\s+/g, ' ')}, ...cells);
+            continue;
+        }
+        const marks = objectChartMarks(id);
+        if (marks?.length) {
+            // A chart: each bar and point it draws, by its place in that list.
+            out.push({ref: id, about: `chart${name ? ` "${name}"` : ''} with ${marks.length} bars/points`},
+                ...marks.slice(0, MAX_CELLS).map((m, i) => ({ref: `${id}[${i}]`, about: m.about})));
             continue;
         }
         const tensor = objectTensorRegion(id);
@@ -174,6 +181,8 @@ function indexedRect(id: string, index: string): DOMRect | null {
     }
     const cells = cellIndices(index);
     if (!cells) return null;
+    const marks = objectChartMarks(id);
+    if (marks) return cells.every(i => marks[i]) ? rectOf(cells.flatMap(i => marks[i]!.corners.map(c => project(V3(c))))) : null;
     const points = [];
     for (const i of cells) {
         const at = objectCellAnchor(id, i);

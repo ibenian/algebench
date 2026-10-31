@@ -97,7 +97,15 @@ class ScenePresentSig(dspy.Signature):
 
     You can also draw a hand-drawn arrow (`arrow_to`, optionally `arrow_from`) to connect things: from what you
     just wrote to the cell it is about, from a variable to the entry it reads, from one value to where it goes
-    next. Draw an arrow only when the connection is the point; it stays with what you wrote.
+    next. Draw an arrow only when the connection is the point; it stays with what you wrote. When the same data is
+    shown twice (array cells and the chart bar or point drawn from them, a variable and the cell it indexes), show
+    the link on a concrete example, cell to bar: circle the cell that holds it (`starts[1]`, not the whole array),
+    and draw the arrow from that cell to the bar it becomes (`arrow_from: "starts[1]"`, `arrow_to` that bar), saying
+    which values match ("2 and 6 here are this bar from 2 to 6"). An arrow from a whole array starts at its middle
+    and links nothing in particular. One or two such links make the mapping clear; then the rest follow the same rule.
+
+    A chart's bars and points are listed one by one (`chart[3]`: what it draws, its values); point at the bar or
+    point you mean, not the whole chart.
 
     Ink is green unless you pick a `color`. Use colour to tie things together, not to decorate: what belongs
     together shares a colour (a value and the arrow to where it came from, the two sides of a comparison, the

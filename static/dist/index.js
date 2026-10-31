@@ -1345,6 +1345,13 @@ function objectTensorRegion(name) {
 	for (const mesh of match[1].tracker.planeMeshes ?? []) if (mesh.visible && mesh.userData.tensorRegion) return mesh.userData.tensorRegion;
 	return null;
 }
+/** A chart's bars and points, in the order the presenter names them; null for anything else. */
+function objectChartMarks(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	for (const mesh of match[1].tracker.planeMeshes ?? []) if (mesh.visible && mesh.userData.chartMarks) return mesh.userData.chartMarks();
+	return null;
+}
 /** World-space bounds for boundary attachment; never place a wire on centre text. */
 function objectWorldCorners(name) {
 	const match = namedObject(name);
@@ -19249,6 +19256,8 @@ function axisLabelList(axis, hasLabelExpr) {
 function staticTickLabel(list, k) {
 	return list[k] ?? "";
 }
+/** A series with more samples than this is a curve, not points to name one by one. */
+var MAX_NAMED_POINTS = 40;
 /**
 * The bars an interval set draws. `n` is clamped to 0..max (a non-finite count
 * draws nothing); a bar whose start, end or lane is not finite is dropped
@@ -19883,7 +19892,7 @@ function renderChart(el, view) {
 	canvas.width = Math.min(MAX_PAPER_PX, Math.ceil(paperW * pxPer));
 	canvas.height = Math.min(MAX_PAPER_PX, Math.ceil(paperH * pxPer));
 	const ctx = canvas.getContext("2d");
-	let tex = null;
+	let tex = null, paperMesh = null;
 	let paperKey = "";
 	let lastT = 0;
 	const css = (c, a = 1) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${a})`;
@@ -19902,6 +19911,7 @@ function renderChart(el, view) {
 			1,
 			1
 		], opacity, serial, false);
+		paperMesh = paper.mesh;
 		const paperMat = paper.mesh.material;
 		paperMat.map = tex;
 		paperMat.color.set(16777215);
@@ -20353,6 +20363,47 @@ function renderChart(el, view) {
 		for (const b of bands) placeBand(b);
 		for (const v of intervalSets) placeIntervals(v);
 	}
+	const num = (x) => String(Math.round(x * 1e3) / 1e3);
+	const marks = () => {
+		const out = [];
+		const clip = (x, hi) => Math.max(0, Math.min(hi, x));
+		intervalSets.forEach((v, k) => v.bars.forEach((b) => {
+			const [h0] = toPlane(b.s, 0), [h1] = toPlane(b.e, 0);
+			const [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+			if (h1 < 0 || h0 > W || v1 < 0 || v0 > H) return;
+			const lane = yLabelFn ? tickText(yLabelFn, b.lane, 1, lastT) : "";
+			out.push({
+				about: `bar${b.text ? ` "${b.text}"` : ""} [${num(b.s)}, ${num(b.e)}] of ${v.label ?? `interval set ${k}`}, lane ${lane ? `"${lane}"` : num(b.lane)}${b.hl ? " (highlighted)" : ""}`,
+				corners: [
+					at(clip(h0, W), clip(v0, H)),
+					at(clip(h1, W), clip(v0, H)),
+					at(clip(h1, W), clip(v1, H)),
+					at(clip(h0, W), clip(v1, H))
+				].map(dataToWorld)
+			});
+		}));
+		const r = Math.min(W, H) * .03;
+		series.forEach((s, k) => {
+			if (s.n > MAX_NAMED_POINTS) return;
+			for (let i = 0; i < s.n; i++) {
+				const x = s.px[i], y = s.py[i];
+				if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+				const [h, v] = toPlane(x, y);
+				if (h < 0 || h > W || v < 0 || v > H) continue;
+				out.push({
+					about: `point (${num(x)}, ${num(y)}) of ${s.label ?? `series ${k}`}${s.pointLabels[i] ? `: ${s.pointLabels[i]}` : ""}`,
+					corners: [
+						at(h - r, v - r),
+						at(h + r, v - r),
+						at(h + r, v + r),
+						at(h - r, v + r)
+					].map(dataToWorld)
+				});
+			}
+		});
+		return out;
+	};
+	if (paperMesh) paperMesh.userData.chartMarks = marks;
 	const animState = { stopped: false };
 	const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === "string" ? seriesSpecs[0].label : void 0);
 	if (!live) return {
@@ -30774,6 +30825,17 @@ function presentTargets() {
 			}, ...cells);
 			continue;
 		}
+		const marks = objectChartMarks(id);
+		if (marks?.length) {
+			out.push({
+				ref: id,
+				about: `chart${name ? ` "${name}"` : ""} with ${marks.length} bars/points`
+			}, ...marks.slice(0, MAX_CELLS).map((m, i) => ({
+				ref: `${id}[${i}]`,
+				about: m.about
+			})));
+			continue;
+		}
 		const tensor = objectTensorRegion(id);
 		if (tensor) {
 			out.push({
@@ -30908,6 +30970,8 @@ function indexedRect(id, index) {
 	}
 	const cells = cellIndices(index);
 	if (!cells) return null;
+	const marks = objectChartMarks(id);
+	if (marks) return cells.every((i) => marks[i]) ? rectOf(cells.flatMap((i) => marks[i].corners.map((c) => project(V3(c))))) : null;
 	const points = [];
 	for (const i of cells) {
 		const at = objectCellAnchor(id, i);

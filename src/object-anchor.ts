@@ -5,6 +5,7 @@ import type { Vec3 } from '/coords.js';
 import type { Object3D,Vector3,Mesh,BufferGeometry } from 'three';
 import type { ArrayCellTarget } from '/objects/array.js';
 import type { TensorRegion } from '/objects/tensor.js';
+import type { ChartMark } from '/objects/chart.js';
 interface AnchorNode {anchorDataPos?:number[];anchorDataPosFn?:()=>number[];pivotPoints?:number[][]}
 interface AnchorTracker {
     planeMeshes?:Object3D[];
@@ -59,6 +60,14 @@ export function objectTensorRegion(name:string):TensorRegion|null {
     if(!match)return null;
     for(const mesh of (match[1].tracker as AnchorTracker).planeMeshes??[])
         if(mesh.visible&&mesh.userData.tensorRegion)return mesh.userData.tensorRegion as TensorRegion;
+    return null;
+}
+/** A chart's bars and points, in the order the presenter names them; null for anything else. */
+export function objectChartMarks(name:string):ChartMark[]|null {
+    const match=namedObject(name);
+    if(!match)return null;
+    for(const mesh of (match[1].tracker as AnchorTracker).planeMeshes??[])
+        if(mesh.visible&&mesh.userData.chartMarks)return (mesh.userData.chartMarks as ()=>ChartMark[])();
     return null;
 }
 /** World-space bounds for boundary attachment; never place a wire on centre text. */

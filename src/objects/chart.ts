@@ -362,6 +362,10 @@ export function staticTickLabel(list: readonly string[], k: number): string {
 }
 
 export interface IntervalBar { s: number; e: number; lane: number; hl: boolean; text: string }
+/** One thing drawn on a chart that the presenter can point at: a bar or a plotted point, with its world corners. */
+export interface ChartMark { about: string; corners: Vec3[] }
+/** A series with more samples than this is a curve, not points to name one by one. */
+const MAX_NAMED_POINTS = 40;
 type Bar = IntervalBar;
 /**
  * The bars an interval set draws. `n` is clamped to 0..max (a non-finite count
@@ -932,7 +936,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     canvas.width = Math.min(MAX_PAPER_PX, Math.ceil(paperW * pxPer));
     canvas.height = Math.min(MAX_PAPER_PX, Math.ceil(paperH * pxPer));
     const ctx = canvas.getContext('2d');
-    let tex: CanvasTexture | null = null;
+    let tex: CanvasTexture | null = null, paperMesh: Mesh | null = null;
     let paperKey = '';
     let lastT = 0;
     const css = (c: Rgb3, a = 1) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${a})`;
@@ -943,6 +947,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
         tex.magFilter = THREE.LinearFilter;
         tex.generateMipmaps = false;
         const paper = makeQuad([1, 1, 1], opacity, serial, false);
+        paperMesh = paper.mesh;
         const paperMat = paper.mesh.material as MeshBasicMaterial;
         paperMat.map = tex;
         paperMat.color.set(0xffffff);
@@ -1224,6 +1229,37 @@ export function renderChart(el: Element, view: MathBoxNode) {
         for (const b of bands) placeBand(b);
         for (const v of intervalSets) placeIntervals(v);
     }
+
+    // What the presenter can point at: each bar, and each point of a series with few enough to name, read from
+    // the current samples and domains, so a bar that moves or grows is found where it is drawn now.
+    const num = (x: number) => String(Math.round(x * 1000) / 1000);
+    const marks = (): ChartMark[] => {
+        const out: ChartMark[] = [];
+        const clip = (x: number, hi: number) => Math.max(0, Math.min(hi, x));
+        intervalSets.forEach((v, k) => v.bars.forEach(b => {
+            const [h0] = toPlane(b.s, 0), [h1] = toPlane(b.e, 0);
+            const [, v0] = toPlane(0, b.lane - v.thickness / 2), [, v1] = toPlane(0, b.lane + v.thickness / 2);
+            if (h1 < 0 || h0 > W || v1 < 0 || v0 > H) return;
+            const lane = yLabelFn ? tickText(yLabelFn, b.lane, 1, lastT) : '';
+            out.push({about: `bar${b.text ? ` "${b.text}"` : ''} [${num(b.s)}, ${num(b.e)}] of ${v.label ?? `interval set ${k}`}, `
+                + `lane ${lane ? `"${lane}"` : num(b.lane)}${b.hl ? ' (highlighted)' : ''}`,
+                corners: [at(clip(h0, W), clip(v0, H)), at(clip(h1, W), clip(v0, H)), at(clip(h1, W), clip(v1, H)), at(clip(h0, W), clip(v1, H))].map(dataToWorld)});
+        }));
+        const r = Math.min(W, H) * 0.03;
+        series.forEach((s, k) => {
+            if (s.n > MAX_NAMED_POINTS) return;
+            for (let i = 0; i < s.n; i++) {
+                const x = s.px[i]!, y = s.py[i]!;
+                if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+                const [h, v] = toPlane(x, y);
+                if (h < 0 || h > W || v < 0 || v > H) continue;
+                out.push({about: `point (${num(x)}, ${num(y)}) of ${s.label ?? `series ${k}`}${s.pointLabels[i] ? `: ${s.pointLabels[i]}` : ''}`,
+                    corners: [at(h - r, v - r), at(h + r, v - r), at(h + r, v + r), at(h - r, v + r)].map(dataToWorld)});
+            }
+        });
+        return out;
+    };
+    if (paperMesh) paperMesh.userData.chartMarks = marks;
 
     const animState = { stopped: false };
     const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === 'string' ? seriesSpecs[0].label : undefined);
