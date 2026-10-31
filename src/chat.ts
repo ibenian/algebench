@@ -1721,10 +1721,13 @@ window.algebenchResumeTTS = function() {
 /** Whether this browser is speaking (or fetching speech) right now. Callers that
  *  only need to silence *their own* talk check this first: algebenchStopTTS
  *  also tells the server to kill every TTS stream. */
+// A streamed reply can fall silent for a moment between its chunks; that gap is not the end of the speech.
+const TTS_GAP_MS = 500;
+let ttsLastHeard = 0;
 window.algebenchTTSActive = function(): boolean {
-    if (ttsAbortController) return true;
     const p = _ensureTTSPlayer();
-    return !!p && p.isPlaying();
+    if (ttsAbortController || (!!p && p.isPlaying())) { ttsLastHeard = Date.now(); return true; }
+    return Date.now() - ttsLastHeard < TTS_GAP_MS;
 };
 
 window.algebenchStopTTS = function() {
@@ -1749,6 +1752,7 @@ window.algebenchSpeakText = function(text, onEnd) {
     const startTime = Date.now();
     let hasStarted = false;
     let sawNonIdle = false;
+    let quietSince = 0;
     const poll = setInterval(() => {
         if (ttsRequestId !== expectedId) {
             clearInterval(poll); onEnd(); return;
@@ -1756,10 +1760,12 @@ window.algebenchSpeakText = function(text, onEnd) {
         const p = _ensureTTSPlayer();
         if (p && p._state !== 'idle') sawNonIdle = true;
         if (p && p.isPlaying()) hasStarted = true;
-        // Only trigger onEnd after playback has actually started then stopped
-        if (hasStarted && p && !p.isPlaying()) {
-            clearInterval(poll); onEnd(); return;
-        }
+        // Only trigger onEnd after playback has actually started then stopped: stopped for good, the stream done
+        // and no sound for TTS_GAP_MS, not a pause between two chunks of it.
+        if (hasStarted && p && !p.isPlaying() && !ttsAbortController) {
+            quietSince ||= Date.now();
+            if (Date.now() - quietSince >= TTS_GAP_MS) { clearInterval(poll); onEnd(); return; }
+        } else quietSince = 0;
         // Abort/error path: request became active, but the player returned to idle
         // before any audio started, so the button should reset immediately.
         if (!hasStarted && sawNonIdle && p && p._state === 'idle') {

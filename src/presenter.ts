@@ -609,7 +609,7 @@ function speak(text: string, into: HTMLElement, r: number): Promise<void> {
         const reveal = () => { if (r !== run || k >= words.length) return;shown += words[k++];into.textContent = shown;follow();window.setTimeout(reveal, words[k - 1]!.trim() ? 130 : 0); };
         reveal();
         const speakNow = window.algebenchSpeakText;
-        if (speakNow) { speakNow(text, () => { into.textContent = text;end(); });window.setTimeout(end, 6000 + text.split(/\s+/).length * 600); }
+        if (speakNow) { speakNow(text, () => { into.textContent = text;end(); });window.setTimeout(end, 10000 + text.split(/\s+/).length * 700); }
         else window.setTimeout(() => { into.textContent = text;end(); }, Math.max(1500, text.split(/\s+/).length * 260));
     });
 }

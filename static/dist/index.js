@@ -10388,7 +10388,7 @@ function speak$1(text, into, r) {
 				into.textContent = text;
 				end();
 			});
-			window.setTimeout(end, 6e3 + text.split(/\s+/).length * 600);
+			window.setTimeout(end, 1e4 + text.split(/\s+/).length * 700);
 		} else window.setTimeout(() => {
 			into.textContent = text;
 			end();
@@ -21974,7 +21974,7 @@ function viewMatchesRef(view, ref) {
 	return true;
 }
 /** Ids and enum-ish values that end up in selectors and lookups: a plain token. */
-var TOKEN = /^[A-Za-z0-9_.:-]{1,200}$/;
+var TOKEN$1 = /^[A-Za-z0-9_.:-]{1,200}$/;
 /** Longest camera-view key kept — the same bound parseViewState applies to `cv`. */
 var CV_MAX_LEN$1 = 64;
 /** A built-in lesson id: plain-token path segments, e.g. "eigenvalues" or
@@ -21982,7 +21982,7 @@ var CV_MAX_LEN$1 = 64;
 var LESSON_ID = /^(?=.{1,200}$)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:\/[A-Za-z0-9_-][A-Za-z0-9_.-]*)*$/;
 /** A name safe to use as a plain-object key: not one Object.prototype answers
 *  to (`__proto__`, `constructor`, …) — applyViewState looks sliders up by it. */
-var safeKey = (k) => TOKEN.test(k) && !(k in Object.prototype);
+var safeKey = (k) => TOKEN$1.test(k) && !(k in Object.prototype);
 /**
 * `view` reduced to a location the app can apply safely: only the known,
 * non-directive fields, each of the right type — ids as plain tokens,
@@ -22008,14 +22008,14 @@ function navigableView(view) {
 		"fa"
 	]) {
 		const val = src[k];
-		if (typeof val === "string" && TOKEN.test(val)) v[k] = val;
+		if (typeof val === "string" && TOKEN$1.test(val)) v[k] = val;
 	}
 	if (typeof src.cv === "string" && src.cv.length > 0 && src.cv.length <= CV_MAX_LEN$1) v.cv = src.cv;
 	if (typeof src.pp === "boolean") v.pp = src.pp;
 	if (typeof src.dock === "boolean") v.dock = src.dock;
 	if (Number.isFinite(src.oz) && src.oz > 0) v.oz = src.oz;
 	if (Array.isArray(src.nodes)) {
-		const nodes = src.nodes.filter((n) => typeof n === "string" && TOKEN.test(n));
+		const nodes = src.nodes.filter((n) => typeof n === "string" && TOKEN$1.test(n));
 		if (nodes.length) v.nodes = nodes;
 	}
 	if (isObject(src.sliders)) {
@@ -22619,7 +22619,7 @@ function validatePlan(plan, path = "plan", planIds = /* @__PURE__ */ new Set(), 
 					"st",
 					"pf",
 					"ps"
-				].filter((k) => ref[k] !== void 0 && (typeof ref[k] !== "string" || !TOKEN.test(ref[k])));
+				].filter((k) => ref[k] !== void 0 && (typeof ref[k] !== "string" || !TOKEN$1.test(ref[k])));
 				if (bad.length) errs.push(`${at}: ref ${bad.join(", ")} not a plain id`);
 			}
 			const view = step.view;
@@ -22839,7 +22839,7 @@ function whereFromView(vs) {
 		"ps"
 	]) {
 		const v = vs[k];
-		if (typeof v === "string" && TOKEN.test(v)) w[k] = v;
+		if (typeof v === "string" && TOKEN$1.test(v)) w[k] = v;
 	}
 	return w;
 }
@@ -22868,7 +22868,7 @@ function readRef(raw, kind) {
 	]) {
 		const v = r[k];
 		if (v === void 0) continue;
-		if (typeof v !== "string" || !TOKEN.test(v)) return null;
+		if (typeof v !== "string" || !TOKEN$1.test(v)) return null;
 		ref[k] = v;
 	}
 	if (kind === "glossary") {
@@ -29921,7 +29921,8 @@ var mean = (xs) => xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.len
 * `typedAll` says every line was typed exactly, seen or not.
 */
 function scorePractice(reference, first, typedText, peeked, sections = [], assisted = /* @__PURE__ */ new Set(), paired = /* @__PURE__ */ new Map()) {
-	const ref = reference.split("\n"), typed = typedText.split("\n");
+	const own = ownNames(reference, typedText);
+	const ref = reference.split("\n"), typed = own.text.split("\n");
 	const pairs = alignLines(ref, typed);
 	const byRef = new Map(pairs.map((p) => [p.reference, p]));
 	const lines = [];
@@ -29969,7 +29970,8 @@ function scorePractice(reference, first, typedText, peeked, sections = [], assis
 			};
 		}).filter((s) => s.lines > 0),
 		total: mean(lines.map((l) => l.score)),
-		typedAll: lines.length > 0 && lines.every((l) => l.similarity === 1)
+		typedAll: lines.length > 0 && lines.every((l) => l.similarity === 1),
+		renamed: own.renamed
 	};
 }
 /**
@@ -30007,6 +30009,79 @@ function finishLine(reference, first, typedText, j, score) {
 		if (!lines[j]?.trim()) lines.splice(j, 1);
 	} else lines[j] = want;
 	return lines.join("\n");
+}
+var RESERVED = new Set("and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield None True False self cls print len range enumerate zip map filter sorted reversed sum min max abs any all int float str bool list dict set tuple type isinstance iter next round divmod pow ord chr hex bin repr hash object super open input heapq collections deque defaultdict Counter math inf function let const var new this typeof instanceof case switch default do of null undefined true false console Math Array Object Map Set String Number JSON Infinity NaN".split(" "));
+var TOKEN = /[A-Za-z_]\w*|\d+(?:\.\d+)?|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S/g;
+var NAME = /^[A-Za-z_]\w*$/;
+function tokens(code) {
+	const out = [];
+	code.split("\n").forEach((raw, line) => {
+		if (isNeutral(raw)) return;
+		const text = codeOf(raw);
+		for (const m of text.matchAll(TOKEN)) out.push({
+			text: m[0],
+			at: m.index,
+			line,
+			renamable: false
+		});
+	});
+	const defined = /* @__PURE__ */ new Set();
+	out.forEach((t, k) => {
+		if (NAME.test(t.text) && [
+			"def",
+			"class",
+			"function"
+		].includes(out[k - 1]?.text ?? "")) defined.add(t.text);
+	});
+	out.forEach((t, k) => {
+		t.renamable = NAME.test(t.text) && !RESERVED.has(t.text) && out[k - 1]?.text !== "." && (out[k + 1]?.text !== "(" || defined.has(t.text) || [
+			"def",
+			"class",
+			"function"
+		].includes(out[k - 1]?.text ?? ""));
+	});
+	return out;
+}
+/**
+* The learner's code read with the code's own names: when what they typed is the code so far, token for token,
+* but for names they chose themselves (`num` for `x`, `singleNumber` for `single_number`), one for one and
+* consistently, those names are put back so the lines score as the code. Anything else, the text as typed.
+*/
+function ownNames(reference, typed) {
+	const want = tokens(reference), have = tokens(typed);
+	if (!have.length || have.length > want.length) return {
+		text: typed,
+		renamed: false
+	};
+	const to = /* @__PURE__ */ new Map(), from = /* @__PURE__ */ new Map();
+	for (let k = 0; k < have.length; k++) {
+		const a = have[k], b = want[k];
+		if (a.text === b.text && !b.renamable) continue;
+		if (!(b.renamable && NAME.test(a.text) && !RESERVED.has(a.text) && (to.get(a.text) ?? b.text) === b.text && (from.get(b.text) ?? a.text) === a.text)) {
+			if (k === have.length - 1) break;
+			return {
+				text: typed,
+				renamed: false
+			};
+		}
+		to.set(a.text, b.text);
+		from.set(b.text, a.text);
+	}
+	if ([...to].every(([a, b]) => a === b)) return {
+		text: typed,
+		renamed: false
+	};
+	const lines = typed.split("\n");
+	for (const t of [...have].reverse()) {
+		const name = to.get(t.text);
+		if (name === void 0 || name === t.text || !NAME.test(t.text)) continue;
+		const l = lines[t.line];
+		lines[t.line] = l.slice(0, t.at) + name + l.slice(t.at + t.text.length);
+	}
+	return {
+		text: lines.join("\n"),
+		renamed: true
+	};
 }
 //#endregion
 //#region src/practice-store.ts
@@ -30117,7 +30192,8 @@ function createPracticeStore(factory = globalThis.indexedDB) {
 //#endregion
 //#region src/code-practice.ts
 /**
-* Type along: under the Doc, the learner types the code running now (the Code panel's running block) and sees,
+* Type along: under the Doc, the learner types the code running now (the Code panel's running block; in a scene
+* that runs no code, the file open in the Code panel) and sees,
 * as they type, how each line, each section and the whole block matches it (code-practice-core.ts). Lines they
 * could see in the Code panel score less; "Hide code" hides it there. The coach (✦) reviews the typed code by
 * meaning (the code_practice expert): on Check, and while it is on, on each new line and after a pause.
@@ -30228,8 +30304,8 @@ function setupCodePractice() {
 	input.wrap = "off";
 	input.setAttribute("autocapitalize", "off");
 	input.setAttribute("autocomplete", "off");
-	input.setAttribute("aria-label", "Type the running code");
-	input.placeholder = "Type the running code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.";
+	input.setAttribute("aria-label", "Type the code");
+	input.placeholder = "Type the code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.";
 	stack.append(paint, input);
 	editor.append(gutter, stack);
 	const cheer = el("div", "cp-cheer");
@@ -30553,14 +30629,14 @@ function setupCodePractice() {
 	let shownScene = -1;
 	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
 	function retarget() {
-		const v = codeView();
-		root.hidden = !v?.running;
+		const shown = codeView(), v = shown && (shown.running || !sceneHasCode()) ? shown : null;
+		root.hidden = !v;
 		docToggle.hidden = root.hidden;
 		docHead.classList.toggle("side-section-foldable", !root.hidden);
 		foldDoc(!!prefs.docFolded && !root.hidden);
 		const scene = state.currentSceneIndex, left = scene !== shownScene;
 		shownScene = scene;
-		if (!v?.running) {
+		if (!v) {
 			if (current && left) hushCoach();
 			current = null;
 			return;
@@ -30853,8 +30929,12 @@ function setupCodePractice() {
 			}, 4e3);
 		};
 		for (const s of after.sections) if (s.score === 100 && was.get(s.id) !== 100) say(`section:${s.id}`, `🎉 “${s.title}” — 100%, from memory!`);
-		if (after.total === 100 && before.total !== 100) say("block", "🏆 The whole block, typed from memory: 100%! Brilliant.", true);
-		else if (after.typedAll && !before.typedAll && after.total < 100) say("typed", "✓ Every line typed. Hide the code and type it from memory for full marks.");
+		const names = after.renamed ? ", with names of your own" : "";
+		if (after.total === 100 && before.total !== 100) say("block", `🏆 The whole block, typed from memory${names}: 100%! Brilliant.`, true);
+		else if (after.typedAll && !before.typedAll && after.total < 100) {
+			const seen = after.lines.some((l) => l.peeked), helped = after.lines.some((l) => l.assisted || l.paired);
+			say("typed", `✓ Every line right${names}.${seen ? " Hide the code and type it from memory for full marks." : helped ? " Part of it was written with the AI: type it all yourself for full marks." : ""}`);
+		}
 	}
 	/** Lines on screen in the Code panel count as seen, except those already typed exactly before. */
 	function watchPeeks() {
@@ -31496,7 +31576,15 @@ function setupCodePractice() {
 					"pair",
 					"finish"
 				].includes(scope) && out.reason) {
-					await say(out.reason, bubble("cp-assist-close"), run);
+					const body = bubble("cp-assist-close");
+					if (scope === "pair" && out.complete) {
+						body.closest(".chat-msg")?.classList.add("cp-msg-perfect");
+						const badge = el("span", "cp-verdict cp-verdict-correct");
+						badge.textContent = "✓ Correct";
+						const text = el("div", "");
+						body.append(badge, text);
+						await say(out.reason, text, run);
+					} else await say(out.reason, body, run);
 					ended = true;
 					return;
 				}
@@ -37062,10 +37150,15 @@ window.algebenchResumeTTS = function() {
 /** Whether this browser is speaking (or fetching speech) right now. Callers that
 *  only need to silence *their own* talk check this first: algebenchStopTTS
 *  also tells the server to kill every TTS stream. */
+var TTS_GAP_MS = 500;
+var ttsLastHeard = 0;
 window.algebenchTTSActive = function() {
-	if (ttsAbortController) return true;
 	const p = _ensureTTSPlayer();
-	return !!p && p.isPlaying();
+	if (ttsAbortController || !!p && p.isPlaying()) {
+		ttsLastHeard = Date.now();
+		return true;
+	}
+	return Date.now() - ttsLastHeard < TTS_GAP_MS;
 };
 window.algebenchStopTTS = function() {
 	++ttsRequestId;
@@ -37086,6 +37179,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 	const startTime = Date.now();
 	let hasStarted = false;
 	let sawNonIdle = false;
+	let quietSince = 0;
 	const poll = setInterval(() => {
 		if (ttsRequestId !== expectedId) {
 			clearInterval(poll);
@@ -37095,11 +37189,14 @@ window.algebenchSpeakText = function(text, onEnd) {
 		const p = _ensureTTSPlayer();
 		if (p && p._state !== "idle") sawNonIdle = true;
 		if (p && p.isPlaying()) hasStarted = true;
-		if (hasStarted && p && !p.isPlaying()) {
-			clearInterval(poll);
-			onEnd();
-			return;
-		}
+		if (hasStarted && p && !p.isPlaying() && !ttsAbortController) {
+			quietSince ||= Date.now();
+			if (Date.now() - quietSince >= TTS_GAP_MS) {
+				clearInterval(poll);
+				onEnd();
+				return;
+			}
+		} else quietSince = 0;
 		if (!hasStarted && sawNonIdle && p && p._state === "idle") {
 			clearInterval(poll);
 			onEnd();

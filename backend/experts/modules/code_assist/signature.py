@@ -120,6 +120,9 @@ class CodeAssistSig(dspy.Signature):
     scope: str = dspy.InputField(desc='how much to write: "next", "section", "all", "fix" (only fix what is typed), '
                                       '"narrate" (select and explain, type nothing), "pair" (start the next line, or hint at a wrong one), or "ask" (do what `request` says)')
 
+    complete: bool = dspy.OutputField(desc="true only when the learner's editor holds the whole code, complete and "
+                                           "correct: it does what the reference does (names of their own are fine); "
+                                           "false while anything is missing or wrong")
     plan: str = dspy.OutputField(desc="two or three sentences on how you will approach it, said before typing")
     steps: list[AssistStep] = dspy.OutputField(desc="the moves at the keyboard, in order")
     closing: str = dspy.OutputField(desc="one or two sentences handing the keyboard back")

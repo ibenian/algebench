@@ -39,6 +39,8 @@ class CodeAssist(BaseModel):
     plan: str = ""
     steps: list[AssistStep] = Field(default_factory=list)
     closing: str = ""
+    #: The model's word that the learner's code is complete and correct.
+    complete: bool = False
     #: Set when the CALL failed, so a crash isn't played as help.
     error: str = ""
 
@@ -140,4 +142,5 @@ def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
         return CodeAssist(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
     # Narrating types nothing; a fix shows the fix, not a new slip on the way to it.
     steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate", "pair"), editor=editor_text)
-    return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing))
+    return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing),
+                      complete=bool(getattr(out, "complete", False)))

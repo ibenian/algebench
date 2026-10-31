@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { similarity, alignLines, scorePractice, focusSection, finishLine, isNeutral, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
+import { similarity, alignLines, scorePractice, focusSection, finishLine, ownNames, isNeutral, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
 
 const REF = ['def f(n):', '    # sum it', '    total = 0', '    for i in range(n):', '        total += i', '', '    return total'].join('\n');
 const sections = [{id: 'init', title: 'Start at zero', from: 11, to: 12}, {id: 'loop', title: 'Add each', from: 13, to: 14}, {id: 'ret', title: 'Answer', from: 16, to: 16}];
@@ -97,4 +97,22 @@ test('finishing a line rewrites the learner\'s attempt at it, not a blank line b
     assert.equal(finish('def merge(intervals):\n    intervals.sort(lambda k: k[0])\n    ', 2), fixed);
     // A blank line with no attempt anywhere is where the line is written.
     assert.equal(finish('def merge(intervals):\n    intervals.sort(key=lambda iv: iv[0])\n    ', 2), `${fixed}\n    merged = []`);
+});
+
+test('names of the learner\'s own, used one for one, score as the code\'s', () => {
+    const ref = 'def single_number(nums):\n    result = 0\n    for x in nums:\n        result ^= x\n    return result';
+    const mine = 'def singlenumber(nums):\n    result = 0\n    for num in nums:\n        result ^= num\n    return result\n    ';
+    const s = scorePractice(ref, 1, mine, new Set());
+    assert.equal(s.renamed, true);
+    assert.equal(s.total, 100);
+    assert.equal(s.typedAll, true);
+    // Part way through, the names so far count too.
+    assert.equal(ownNames(ref, 'def singlenumber(nums):\n    result = 0\n    for num in nu').text, 'def single_number(nums):\n    result = 0\n    for x in nu');
+    // One name for two of the code's is not a renaming; nor is the language's own name for another.
+    assert.equal(ownNames(ref, 'def f(nums):\n    nums = 0').renamed, false);
+    assert.equal(ownNames('n = max(a)', 'n = min(a)').renamed, false);
+    // A method or a call to something the code does not define is typed as it is.
+    assert.equal(ownNames('xs.append(1)', 'xs.add(1)').renamed, false);
+    assert.equal(ownNames('i = bisect_left(a, x)', 'i = bisect_right(a, x)').renamed, false);
+    assert.equal(ownNames('i = bisect_left(a, x)', 'j = bisect_left(b, y)').text, 'i = bisect_left(a, x)');
 });

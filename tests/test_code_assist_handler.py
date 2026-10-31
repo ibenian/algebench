@@ -121,3 +121,13 @@ def test_pairing_types_only_the_start_of_a_new_line():
 def test_pairing_cuts_a_long_start_too():
     typed = "def f(n):"
     assert h.only_starts(typed + "\n    total = ", typed, EXPECTED) == typed + "\n    total "
+
+
+def test_pairing_done_says_whether_the_code_is_complete(monkeypatch):
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(closing="Done: it returns the lone number.", complete=True))
+    assert h.code_assist(_req(scope="pair")) == {"reason": "Done: it returns the lone number.", "complete": True}
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(closing="Line 4 is off.", complete=False))
+    assert h.code_assist(_req(scope="pair")) == {"reason": "Line 4 is off."}
+    # Only pairing hands back that word: an answer to a question is just an answer.
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(closing="Yes.", complete=True))
+    assert h.code_assist(_req(scope="ask", request="ok?")) == {"reason": "Yes."}

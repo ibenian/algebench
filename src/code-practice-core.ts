@@ -103,7 +103,8 @@ export function alignLines(reference: readonly string[], typed: readonly string[
 export interface LineScore { line: number; typed: number | null; similarity: number; peeked: boolean; assisted: boolean; paired: boolean; share: number; score: number }
 export interface TypedLine { reference: number | null; similarity: number; exact: boolean; neutral: boolean }
 export interface SectionScore { id: string; title: string; from: number; to: number; score: number; lines: number }
-export interface PracticeScore { lines: LineScore[]; typed: TypedLine[]; sections: SectionScore[]; total: number; typedAll: boolean }
+/** `renamed`: the learner's own names for the code's were read as the code's (see ownNames). */
+export interface PracticeScore { lines: LineScore[]; typed: TypedLine[]; sections: SectionScore[]; total: number; typedAll: boolean; renamed: boolean }
 
 const mean = (xs: number[]) => xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0;
 
@@ -116,7 +117,8 @@ const mean = (xs: number[]) => xs.length ? Math.round(xs.reduce((a, b) => a + b,
  */
 export function scorePractice(reference: string, first: number, typedText: string, peeked: ReadonlySet<number>, sections: readonly CodeSection[] = [],
     assisted: ReadonlySet<number> = new Set(), paired: ReadonlyMap<number, number> = new Map()): PracticeScore {
-    const ref = reference.split('\n'), typed = typedText.split('\n');
+    const own = ownNames(reference, typedText);
+    const ref = reference.split('\n'), typed = own.text.split('\n');
     const pairs = alignLines(ref, typed);
     const byRef = new Map(pairs.map(p => [p.reference, p]));
     const lines: LineScore[] = [];
@@ -140,7 +142,8 @@ export function scorePractice(reference: string, first: number, typedText: strin
         const inside = lines.filter(l => l.line >= s.from && l.line <= s.to);
         return {id: s.id, title: s.title, from: s.from, to: s.to, score: mean(inside.map(l => l.score)), lines: inside.length};
     }).filter(s => s.lines > 0);
-    return {lines, typed: typedLines, sections: scored, total: mean(lines.map(l => l.score)), typedAll: lines.length > 0 && lines.every(l => l.similarity === 1)};
+    return {lines, typed: typedLines, sections: scored, total: mean(lines.map(l => l.score)), typedAll: lines.length > 0 && lines.every(l => l.similarity === 1),
+        renamed: own.renamed};
 }
 
 /**
@@ -179,4 +182,65 @@ export function finishLine(reference: string, first: number, typedText: string, 
         if (!lines[j]?.trim()) lines.splice(j, 1);
     } else lines[j] = want;
     return lines.join('\n');
+}
+
+// Names that are the language's, not the code's: a learner writing `max` for `min` is not renaming.
+const RESERVED = new Set(('and as assert async await break class continue def del elif else except finally for from global if '
+    + 'import in is lambda nonlocal not or pass raise return try while with yield None True False self cls print len range '
+    + 'enumerate zip map filter sorted reversed sum min max abs any all int float str bool list dict set tuple type '
+    + 'isinstance iter next round divmod pow ord chr hex bin repr hash object super open input heapq collections deque '
+    + 'defaultdict Counter math inf function let const var new this typeof instanceof case switch default do of null '
+    + 'undefined true false console Math Array Object Map Set String Number JSON Infinity NaN').split(' '));
+const TOKEN = /[A-Za-z_]\w*|\d+(?:\.\d+)?|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S/g;
+const NAME = /^[A-Za-z_]\w*$/;
+interface Tok { text: string; at: number; line: number; renamable: boolean }
+function tokens(code: string): Tok[] {
+    const out: Tok[] = [];
+    code.split('\n').forEach((raw, line) => {
+        if (isNeutral(raw)) return;
+        const text = codeOf(raw);
+        for (const m of text.matchAll(TOKEN)) out.push({text: m[0], at: m.index!, line, renamable: false});
+    });
+    // A name may be the learner's own unless it is the language's, an attribute (`.append`), or a call to something
+    // the code does not define itself (`bisect_left(`): those are typed as they are.
+    const defined = new Set<string>();
+    out.forEach((t, k) => { if (NAME.test(t.text) && ['def', 'class', 'function'].includes(out[k - 1]?.text ?? '')) defined.add(t.text); });
+    out.forEach((t, k) => {
+        t.renamable = NAME.test(t.text) && !RESERVED.has(t.text) && out[k - 1]?.text !== '.'
+            && (out[k + 1]?.text !== '(' || defined.has(t.text) || ['def', 'class', 'function'].includes(out[k - 1]?.text ?? ''));
+    });
+    return out;
+}
+
+/**
+ * The learner's code read with the code's own names: when what they typed is the code so far, token for token,
+ * but for names they chose themselves (`num` for `x`, `singleNumber` for `single_number`), one for one and
+ * consistently, those names are put back so the lines score as the code. Anything else, the text as typed.
+ */
+export function ownNames(reference: string, typed: string): {text: string; renamed: boolean} {
+    const want = tokens(reference), have = tokens(typed);
+    if (!have.length || have.length > want.length) return {text: typed, renamed: false};
+    const to = new Map<string, string>(), from = new Map<string, string>();
+    for (let k = 0; k < have.length; k++) {
+        const a = have[k]!, b = want[k]!;
+        if (a.text === b.text && !b.renamable) continue;
+        const fits = b.renamable && NAME.test(a.text) && !RESERVED.has(a.text)
+            && (to.get(a.text) ?? b.text) === b.text && (from.get(b.text) ?? a.text) === a.text;
+        if (!fits) {
+            // The last token may be a name still being typed: the code before it is what counts.
+            if (k === have.length - 1) break;
+            return {text: typed, renamed: false};
+        }
+        to.set(a.text, b.text);from.set(b.text, a.text);
+    }
+    if ([...to].every(([a, b]) => a === b)) return {text: typed, renamed: false};
+    // Put the code's names in, right to left on each line so the positions stay true.
+    const lines = typed.split('\n');
+    for (const t of [...have].reverse()) {
+        const name = to.get(t.text);
+        if (name === undefined || name === t.text || !NAME.test(t.text)) continue;
+        const l = lines[t.line]!;
+        lines[t.line] = l.slice(0, t.at) + name + l.slice(t.at + t.text.length);
+    }
+    return {text: lines.join('\n'), renamed: true};
 }

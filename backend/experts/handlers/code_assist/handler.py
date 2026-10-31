@@ -1,7 +1,7 @@
 """``POST /api/expert/code_assist``: the steps a pair programmer takes at Type along's keyboard.
 
 Returns ``{"result": {plan, steps: [{say, code, explain}], closing}}``, or ``{"reason": ...}`` when the assistant
-failed. Each step's ``code`` is the whole editor after it; the client types the difference, so a step may add,
+failed or has only words; pairing's last word adds ``"complete": true`` when the learner's code is done and right. Each step's ``code`` is the whole editor after it; the client types the difference, so a step may add,
 change or remove lines anywhere.
 """
 from __future__ import annotations
@@ -75,7 +75,8 @@ def code_assist(req: CodeAssistRequest) -> dict:
     if not out.steps:
         # A fix with nothing to fix, or a question with nothing to type: the answer is all there is.
         if req.scope in ("fix", "ask", "narrate", "pair") and out.closing:
-            return {"reason": out.closing}
+            # Pairing's last word: whether the code is now done and right, for the editor to show.
+            return {"reason": out.closing, **({"complete": True} if req.scope == "pair" and out.complete else {})}
         return {"reason": NOTHING_TO_FIX if req.scope == "fix" else NO_STEPS}
     if req.scope == "pair":
         for step in out.steps:

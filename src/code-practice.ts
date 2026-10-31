@@ -1,5 +1,6 @@
 /**
- * Type along: under the Doc, the learner types the code running now (the Code panel's running block) and sees,
+ * Type along: under the Doc, the learner types the code running now (the Code panel's running block; in a scene
+ * that runs no code, the file open in the Code panel) and sees,
  * as they type, how each line, each section and the whole block matches it (code-practice-core.ts). Lines they
  * could see in the Code panel score less; "Hide code" hides it there. The coach (✦) reviews the typed code by
  * meaning (the code_practice expert): on Check, and while it is on, on each new line and after a pause.
@@ -14,6 +15,7 @@ import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
 import { invokeExpert } from '/expert-client.js';
+import { sceneHasCode } from '/describe-problem.js';
 import { createPracticeStore } from '/practice-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
 import { renderMarkdown } from '/labels.js';
@@ -118,7 +120,7 @@ export function setupCodePractice(): void {
     const paint = el('pre', 'cp-paint');paint.setAttribute('aria-hidden', 'true');
     const input = el('textarea', 'cp-input');
     input.spellcheck = false;input.wrap = 'off';input.setAttribute('autocapitalize', 'off');input.setAttribute('autocomplete', 'off');
-    input.setAttribute('aria-label', 'Type the running code');input.placeholder = 'Type the running code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.';
+    input.setAttribute('aria-label', 'Type the code');input.placeholder = 'Type the code here, from memory if you can. Ask or explain anything in a # comment: the coach answers.';
     stack.append(paint, input);editor.append(gutter, stack);
     const cheer = el('div', 'cp-cheer');cheer.hidden = true;cheer.setAttribute('role', 'status');
     // The review keeps one height, the learner's to drag (its top edge), so a new review never moves the editor.
@@ -330,15 +332,16 @@ export function setupCodePractice(): void {
     let shownScene = -1;
     /** Follow the Code panel to the block running now; each block keeps its own attempt. */
     function retarget() {
-        const v = codeView();
-        // Only where the scene or step runs code: elsewhere there is nothing to type along with.
-        root.hidden = !v?.running;
+        // The block running now; in a scene that runs no code, the file open in the Code panel. A scene that runs
+        // code types only its running block, so a moment between steps that runs nothing doesn't swap the attempt.
+        const shown = codeView(), v = shown && (shown.running || !sceneHasCode()) ? shown : null;
+        root.hidden = !v;
         // Folding the Doc only makes room for Type along: without it, the Doc stays and the switch goes.
         docToggle.hidden = root.hidden;docHead.classList.toggle('side-section-foldable', !root.hidden);
         foldDoc(!!prefs.docFolded && !root.hidden);
         // Another scene ends the coach's word; the view between steps can briefly run nothing, which must not.
         const scene = state.currentSceneIndex, left = scene !== shownScene;shownScene = scene;
-        if (!v?.running) { if (current && left) hushCoach();current = null;return; }
+        if (!v) { if (current && left) hushCoach();current = null;return; }
         const text = v.file.source.split('\n').slice(v.from - 1, v.to).join('\n').replace(/\s+$/, '');
         const next = `${v.file.id}:${v.from}:${hash(text)}`;
         current = v;
@@ -556,8 +559,14 @@ export function setupCodePractice(): void {
             if (!big) cheerTimer = window.setTimeout(() => { cheer.classList.add('fading');cheerTimer = window.setTimeout(() => { cheer.hidden = true; }, 600); }, 4000);
         };
         for (const s of after.sections) if (s.score === 100 && was.get(s.id) !== 100) say(`section:${s.id}`, `🎉 “${s.title}” — 100%, from memory!`);
-        if (after.total === 100 && before.total !== 100) say('block', '🏆 The whole block, typed from memory: 100%! Brilliant.', true);
-        else if (after.typedAll && !before.typedAll && after.total < 100) say('typed', '✓ Every line typed. Hide the code and type it from memory for full marks.');
+        const names = after.renamed ? ', with names of your own' : '';
+        if (after.total === 100 && before.total !== 100) say('block', `🏆 The whole block, typed from memory${names}: 100%! Brilliant.`, true);
+        else if (after.typedAll && !before.typedAll && after.total < 100) {
+            // Right, but not all from memory: say what held the score back, seen code or the AI's part in it.
+            const seen = after.lines.some(l => l.peeked), helped = after.lines.some(l => l.assisted || l.paired);
+            say('typed', `✓ Every line right${names}.${seen ? ' Hide the code and type it from memory for full marks.'
+                : helped ? ' Part of it was written with the AI: type it all yourself for full marks.' : ''}`);
+        }
     }
 
     /** Lines on screen in the Code panel count as seen, except those already typed exactly before. */
@@ -1017,14 +1026,24 @@ export function setupCodePractice(): void {
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
                 : await invokeExpert('code_assist', {...where, scope, request,
                     // The coach's remarks, while they still number the lines as they are.
-                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string};
+                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean};
             waiting.remove();
             if (assisting !== run) throw new Stopped();
             const bubble = (cls: string) => message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
             if (!out.result) {
                 // Nothing to type: an answer to a question, or nothing to fix, is said like the rest of its help.
                 if (scope === 'pair' && out.reason) pairing = false;   // nothing left to write: pairing is done
-                if (['ask', 'fix', 'narrate', 'pair', 'finish'].includes(scope) && out.reason) { await say(out.reason, bubble('cp-assist-close'), run);ended = true;return; }
+                if (['ask', 'fix', 'narrate', 'pair', 'finish'].includes(scope) && out.reason) {
+                    const body = bubble('cp-assist-close');
+                    // Pairing done, and the code right: said as plainly as a perfect review, whatever the names.
+                    if (scope === 'pair' && out.complete) {
+                        body.closest('.chat-msg')?.classList.add('cp-msg-perfect');
+                        const badge = el('span', 'cp-verdict cp-verdict-correct');badge.textContent = '✓ Correct';
+                        const text = el('div', '');body.append(badge, text);
+                        await say(out.reason, text, run);
+                    } else await say(out.reason, body, run);
+                    ended = true;return;
+                }
                 message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: out.reason ?? 'No help came back.'}));
                 return;
             }
