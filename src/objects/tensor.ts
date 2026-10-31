@@ -197,6 +197,14 @@ export interface TensorCellHover {
     cellAt(world: Vec3): { row: number; col: number } | null;
 }
 
+/** What a lattice hangs on its mesh's `userData.tensorRegion`: its drawn size, and the world corners of the block
+ *  of cells from rows r0..r1 and columns c0..c1 (inclusive). */
+export interface TensorRegion {
+    rows: number;
+    cols: number;
+    corners(r0: number, r1: number, c0: number, c1: number): Vec3[];
+}
+
 /** Per-axis metadata, as an author supplies it. `axes[k]` describes `shape[k]`. */
 interface AxisSpec {
     labelBand?: unknown;
@@ -783,6 +791,13 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         },
     } : null;
     if (tensorCell) mesh.userData.tensorCell = tensorCell;
+    // Where a block of cells sits, for the AI presenter to point at a cell, a row, a column or a block.
+    const tensorRegion: TensorRegion = {
+        rows, cols,
+        corners: (r0, r1, c0, c1) => [layout.corner(r0, c0, 0, 1, fill, fill), layout.corner(r0, c1, 1, 1, fill, fill),
+            layout.corner(r1, c0, 0, 0, fill, fill), layout.corner(r1, c1, 1, 0, fill, fill)].map(p => dataToWorld(p)),
+    };
+    mesh.userData.tensorRegion = tensorRegion;
     const serial = el.renderOrder !== undefined ? el.renderOrder : tensorState._planeMeshSerial++;
     mesh.renderOrder = serial;
     tensorState.three.scene.add(mesh);

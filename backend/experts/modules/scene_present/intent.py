@@ -23,6 +23,7 @@ MAX_STEPS = 10
 MARKS = ("point", "circle")
 #: The longest line written on the scratchpad.
 MAX_WRITE = 400
+COLORS = ("green", "yellow", "red", "blue", "purple", "orange", "pink")
 
 #: The learner waits with the view handed over: answer quickly.
 _LM = scoped_lm(reasoning_effort="low")
@@ -55,10 +56,38 @@ def _clean(text) -> str:
     return re.sub(r"[`$]|\*{1,2}(?=\S)|(?<=\S)\*{1,2}", "", _DSPY_MARKER.sub("", str(text or ""))).strip()
 
 
+_INDEXED = re.compile(r"^(.+?)\[([\d\s:,]+)\]$")
+
+
 def _ref(value, refs: set[str]) -> str:
-    """A ref as given, if it is one of the listed targets; else none."""
+    """A ref as given, if it is one of the listed targets; or an index into a listed object: several of an array's,
+    dict's or graph's listed cells (a slice `nums[1:4]`, cells 1 to 3, or a list `g[1,3,4]`), or for an object
+    without listed cells (a tensor) any index, which the client places or drops. Else none."""
     ref = str(value or "").strip().strip("`")
-    return ref if ref in refs else ""
+    if ref in refs:
+        return ref
+    m = _INDEXED.match(ref)
+    if not m or m.group(1) not in refs:
+        return ""
+    base, index = m.group(1), re.sub(r"\s+", "", m.group(2))
+    if f"{base}[0]" not in refs:
+        return f"{base}[{m.group(2).strip()}]"
+    if re.fullmatch(r"\d+:\d+", index):
+        start, stop = map(int, index.split(":"))
+        cells = list(range(start, stop))
+    elif re.fullmatch(r"\d+(,\d+)+", index):
+        cells = [int(i) for i in index.split(",")]
+    else:
+        return ""
+    if not cells or any(f"{base}[{i}]" not in refs for i in cells):
+        return ""
+    return f"{base}[{cells[0]}]" if len(cells) == 1 else f"{base}[{index}]"
+
+
+def _ink(value) -> str:
+    """One of the presenter's colours, or none (green)."""
+    color = str(value or "").strip().lower()
+    return color if color in COLORS and color != "green" else ""
 
 
 def _notes(value) -> list[str]:
@@ -86,19 +115,18 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
     for s in raw or []:
         if not isinstance(s, PresentStep) or not _clean(s.say):
             continue
-        target = str(s.target or "").strip().strip("`")
         try:
             frame = int(s.frame)
         except (TypeError, ValueError):
             frame = -1
         write = _DSPY_MARKER.sub("", str(s.write or "")).strip().splitlines()[0][:MAX_WRITE] if str(s.write or "").strip() else ""
-        near = str(s.write_near or "").strip().strip("`")
-        out.append(PresentStep(say=_clean(s.say), target=target if target in refs else "",
+        out.append(PresentStep(say=_clean(s.say), target=_ref(s.target, refs),
                                mark=s.mark if s.mark in MARKS else "point",
                                frame=frame if 0 <= frame < frames else -1,
-                               write=write, write_near=near if write and near in refs else "", erase=bool(s.erase),
+                               write=write, write_near=_ref(s.write_near, refs) if write else "", erase=bool(s.erase),
                                arrow_to=_ref(s.arrow_to, refs), arrow_from=_ref(s.arrow_from, refs) if _ref(s.arrow_to, refs) else "",
-                               board=_notes(s.board), erase_notes=_notes(s.erase_notes), **_slider_move(s, refs)))
+                               board=_notes(s.board), erase_notes=_notes(s.erase_notes),
+                               color=_ink(s.color), **_slider_move(s, refs)))
     return out[:MAX_STEPS]
 
 

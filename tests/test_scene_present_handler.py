@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None, "board": [], "erase_notes": []}
+    blank = {"write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "color": ""}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -83,3 +83,28 @@ def test_notes_are_sent_to_the_board_or_wiped_by_their_text(monkeypatch):
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
     assert (out[1]["board"], out[1]["erase_notes"]) == (["1 - 3 = -2"], ["old note"])
+
+
+def test_several_cells_are_a_slice_or_a_list_of_listed_cells_and_a_tensor_takes_any_index():
+    refs = {"nums", "nums[0]", "nums[1]", "nums[2]", "nums[3]", "g", "g[0]", "g[1]", "g[2]", "T"}
+    assert intent._ref("nums[1:4]", refs) == "nums[1:4]"
+    assert intent._ref("nums[2:3]", refs) == "nums[2]"   # one cell is that cell
+    assert intent._ref("nums[2:9]", refs) == ""          # runs past the array
+    assert intent._ref("nums[3:1]", refs) == ""
+    assert intent._ref("g[0, 2]", refs) == "g[0,2]"
+    assert intent._ref("g[0,5]", refs) == ""
+    assert intent._ref("other[0:2]", refs) == ""
+    assert intent._ref("T[1, :]", refs) == "T[1, :]"
+    assert intent._ref("T[0:2, 1:3]", refs) == "T[0:2, 1:3]"
+    assert intent._ref("T[x]", refs) == ""
+
+
+def test_a_beat_points_at_a_run_of_cells(monkeypatch):
+    raw = [PresentStep(say="This window.", target="nums[1:3]", mark="circle", write="2 + -2 = 0", write_near="nums[0,2]")]
+    beat, = intent.clean_steps(raw, {"nums", "nums[0]", "nums[1]", "nums[2]"}, 0)
+    assert (beat.target, beat.write_near) == ("nums[1:3]", "nums[0,2]")
+
+
+def test_ink_is_one_of_the_colours_or_green():
+    raw = [PresentStep(say="a", color="Red"), PresentStep(say="b", color="gray"), PresentStep(say="c", color="green")]
+    assert [b.color for b in intent.clean_steps(raw, set(), 0)] == ["red", "", ""]

@@ -4,6 +4,7 @@ import { dataToWorld } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import type { Object3D,Vector3,Mesh,BufferGeometry } from 'three';
 import type { ArrayCellTarget } from '/objects/array.js';
+import type { TensorRegion } from '/objects/tensor.js';
 interface AnchorNode {anchorDataPos?:number[];anchorDataPosFn?:()=>number[];pivotPoints?:number[][]}
 interface AnchorTracker {
     planeMeshes?:Object3D[];
@@ -50,6 +51,14 @@ export function objectCellAnchor(name:string,index:number):{position:Vec3;corner
         const cells=mesh.userData.arrayCellTarget as ArrayCellTarget|undefined;
         if(mesh.visible&&cells){const at=cells.at(index);return at&&{...at,vertical:cells.vertical,graph:cells.graph,round:cells.round,ports:cells.ports?.(index)};}
     }
+    return null;
+}
+/** A tensor's lattice: its size and where a block of its cells sits; null for anything else. */
+export function objectTensorRegion(name:string):TensorRegion|null {
+    const match=namedObject(name);
+    if(!match)return null;
+    for(const mesh of (match[1].tracker as AnchorTracker).planeMeshes??[])
+        if(mesh.visible&&mesh.userData.tensorRegion)return mesh.userData.tensorRegion as TensorRegion;
     return null;
 }
 /** World-space bounds for boundary attachment; never place a wire on centre text. */

@@ -6351,23 +6351,27 @@ body:has(.push-array) #legend { display: none; }
 .ai-present-msg .ai-present-line:last-child { margin-bottom: 0; }
 /* The presenter's scratchpad: lines typed over the view like projected light, fading in and out. */
 #ai-scratchpad { position: fixed; inset: 0; z-index: 8998; pointer-events: none; }
-.ai-note { position: fixed; padding: 3px 8px; font: 600 17px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #7dffcf; white-space: nowrap;
-  text-shadow: 0 0 6px rgba(80, 255, 190, .7), 0 0 14px rgba(80, 255, 190, .35); border-radius: 7px;
+/* A note's ink (--ink): green unless the presenter picks another of its colours, so related notes match. */
+.ai-note, .ai-arrow { --ink: #7dffcf; }
+.ai-ink-yellow { --ink: #ffe08a; } .ai-ink-red { --ink: #ff7a6e; } .ai-ink-blue { --ink: #7ab8ff; }
+.ai-ink-purple { --ink: #c79bff; } .ai-ink-orange { --ink: #ffb066; } .ai-ink-pink { --ink: #ff8fd0; }
+.ai-note { position: fixed; padding: 3px 8px; font: 600 17px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); white-space: nowrap;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--ink) 70%, transparent), 0 0 14px color-mix(in srgb, var(--ink) 35%, transparent); border-radius: 7px;
   /* No border: a dark backdrop, soft at the edges, keeps the light readable over cells, labels and grid. */
   background: rgba(6, 14, 13, .78); box-shadow: 0 0 10px 6px rgba(6, 14, 13, .78);
   opacity: 0; transform: translateY(4px); transition: opacity .3s, transform .3s; }
 .ai-note.on { opacity: 1; transform: none; }
 .ai-note.fading { opacity: 0; transform: translateY(-4px); transition: opacity .7s, transform .7s; }
-.ai-note .katex { font-size: 1.05em; color: #7dffcf; }
+.ai-note .katex { font-size: 1.05em; color: var(--ink); }
 .ai-note code { font: inherit; color: #ffe08a; text-shadow: 0 0 6px rgba(255, 210, 90, .7); background: none; }
-.ai-note-caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 1px; vertical-align: -2px; background: #7dffcf;
-  box-shadow: 0 0 6px #7dffcf; animation: ai-note-blink 1s steps(1) infinite; }
+.ai-note-caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 1px; vertical-align: -2px; background: var(--ink);
+  box-shadow: 0 0 6px var(--ink); animation: ai-note-blink 1s steps(1) infinite; }
 .ai-note.set .ai-note-caret { display: none; }
 @keyframes ai-note-blink { 50% { opacity: 0; } }
 /* A hand-drawn arrow: its shaft drawn out from the tail, then its head, in the scratchpad's light. */
 .ai-arrow { position: fixed; inset: 0; width: 100vw; height: 100vh; overflow: visible; pointer-events: none; transition: opacity .7s; }
-.ai-arrow path { fill: none; stroke: #7dffcf; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
-  filter: drop-shadow(0 0 4px rgba(80, 255, 190, .8)); stroke-dasharray: 1; stroke-dashoffset: 1; }
+.ai-arrow path { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ink) 80%, transparent)); stroke-dasharray: 1; stroke-dashoffset: 1; }
 .ai-arrow.drawing .ai-arrow-shaft { animation: ai-arrow-draw .7s ease-out forwards; }
 .ai-arrow.headed .ai-arrow-head { animation: ai-arrow-draw .22s ease-out forwards; }
 .ai-arrow.fading { opacity: 0; }

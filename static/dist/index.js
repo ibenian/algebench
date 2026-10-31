@@ -1338,6 +1338,13 @@ function objectCellAnchor(name, index) {
 	}
 	return null;
 }
+/** A tensor's lattice: its size and where a block of its cells sits; null for anything else. */
+function objectTensorRegion(name) {
+	const match = namedObject(name);
+	if (!match) return null;
+	for (const mesh of match[1].tracker.planeMeshes ?? []) if (mesh.visible && mesh.userData.tensorRegion) return mesh.userData.tensorRegion;
+	return null;
+}
 /** World-space bounds for boundary attachment; never place a wire on centre text. */
 function objectWorldCorners(name) {
 	const match = namedObject(name);
@@ -10672,6 +10679,17 @@ function renderTensor(el, _view) {
 		}
 	} : null;
 	if (tensorCell) mesh.userData.tensorCell = tensorCell;
+	const tensorRegion = {
+		rows,
+		cols,
+		corners: (r0, r1, c0, c1) => [
+			layout.corner(r0, c0, 0, 1, fill, fill),
+			layout.corner(r0, c1, 1, 1, fill, fill),
+			layout.corner(r1, c0, 0, 0, fill, fill),
+			layout.corner(r1, c1, 1, 0, fill, fill)
+		].map((p) => dataToWorld(p))
+	};
+	mesh.userData.tensorRegion = tensorRegion;
 	const serial = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
 	mesh.renderOrder = serial;
 	tensorState.three.scene.add(mesh);
@@ -30708,7 +30726,8 @@ function setupCodePractice() {
 *
 * Refs the expert may use, all resolved here to a place on screen:
 *   <id>          an element of the scene (its bounds, or its label);
-*   <id>[<i>]     cell i of an array, or entry i of a dict;
+*   <id>[<i>]     cell i of an array, entry i of a dict, node i of a graph; <id>[i:j] a run of them, <id>[i,j,k]
+*                 a few; for a tensor, numpy style: <id>[r, c], <id>[r, :], <id>[:, c], <id>[r0:r1, c0:c1];
 *   row:<id>      an expression label's row in the variables panel;
 *   caption       the step caption;  slider  the execution slider.
 */
@@ -30735,9 +30754,9 @@ function presentTargets() {
 		const type = reg.type ?? spec?.type ?? "object";
 		if (objectCellAnchor(id, 0)) {
 			const valueFn = spec?.valueExpr ? compileExpr(spec.valueExpr) : null, keyFn = spec?.keyExpr ? compileExpr(spec.keyExpr) : null;
-			const cells = [];
+			const cells = [], graph = !!objectCellAnchor(id, 0)?.graph;
 			for (let i = 0; i < MAX_CELLS && objectCellAnchor(id, i); i++) {
-				let about = `${spec?.keyExpr ? "entry" : "cell"} ${i} of ${name || id}`;
+				let about = `${spec?.keyExpr ? "entry" : graph ? "node" : "cell"} ${i} of ${name || id}`;
 				try {
 					const value = valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : void 0;
 					const key = keyFn ? evalExpr(keyFn, 0, { overrideScope: { idx: i } }) : void 0;
@@ -30751,8 +30770,16 @@ function presentTargets() {
 			}
 			out.push({
 				ref: id,
-				about: `${type} ${name ? `"${name}"` : ""} with ${cells.length} ${spec?.keyExpr ? "entries" : "cells"}`.replace(/\s+/g, " ")
+				about: `${type} ${name ? `"${name}"` : ""} with ${cells.length} ${spec?.keyExpr ? "entries" : graph ? "nodes" : "cells"}`.replace(/\s+/g, " ")
 			}, ...cells);
+			continue;
+		}
+		const tensor = objectTensorRegion(id);
+		if (tensor) {
+			out.push({
+				ref: id,
+				about: `tensor${name ? ` "${name}"` : ""}, ${tensor.rows} rows x ${tensor.cols} columns: point at a cell ${id}[r, c], a row ${id}[r, :], a column ${id}[:, c] or a block ${id}[r0:r1, c0:c1] (0-based, ends excluded)`
+			});
 			continue;
 		}
 		const row = objectLabelRow(id);
@@ -30839,6 +30866,56 @@ function rectOf(points) {
 }
 var V3 = (p) => new THREE.Vector3(p[0] ?? 0, p[1] ?? 0, p[2] ?? 0);
 /** A ref's place on screen, re-read each frame (the camera, the panels and the values move). */
+/** The cells an index names, for an array, dict or graph: one (`3`), a slice (`1:4`, end excluded) or a list
+*  (`1,3,4`). Null when it is none of these. */
+function cellIndices(index) {
+	const t = index.replace(/\s+/g, "");
+	if (/^\d+$/.test(t)) return [Number(t)];
+	const slice = /^(\d+):(\d+)$/.exec(t);
+	if (slice) {
+		const from = Number(slice[1]), to = Number(slice[2]);
+		return to > from ? Array.from({ length: Math.min(to - from, MAX_CELLS) }, (_, k) => from + k) : null;
+	}
+	return /^\d+(,\d+)+$/.test(t) ? t.split(",").map(Number) : null;
+}
+/** The rows and columns (first and last, inclusive) a tensor index names, numpy style: `r, c`, `r, :`, `:, c`,
+*  `r0:r1, c0:c1` (ends excluded, either end may be left out). A 1D index is a column of a single row. */
+function tensorBlock(index, rows, cols) {
+	const parts = index.replace(/\s+/g, "").split(",");
+	if (parts.length > 2) return null;
+	if (parts.length === 1) parts.unshift(":");
+	const span = (p, n) => {
+		const m = /^(\d*)(:?)(\d*)$/.exec(p);
+		if (!m) return null;
+		const from = m[1] ? Number(m[1]) : 0;
+		const to = m[2] ? (m[3] ? Number(m[3]) : n) - 1 : m[1] ? from : n - 1;
+		return from <= to && to < n ? [from, to] : null;
+	};
+	const r = span(parts[0], rows), c = span(parts[1], cols);
+	return r && c ? [
+		r[0],
+		r[1],
+		c[0],
+		c[1]
+	] : null;
+}
+/** On screen: a tensor's cell, row, column or block; or an array's, dict's or graph's cells, boxed together. */
+function indexedRect(id, index) {
+	const tensor = objectTensorRegion(id);
+	if (tensor) {
+		const block = tensorBlock(index, tensor.rows, tensor.cols);
+		return block ? rectOf(tensor.corners(...block).map((c) => project(V3(c)))) : null;
+	}
+	const cells = cellIndices(index);
+	if (!cells) return null;
+	const points = [];
+	for (const i of cells) {
+		const at = objectCellAnchor(id, i);
+		if (!at) return null;
+		points.push(...at.corners.length ? at.corners.map((c) => project(V3(dataToWorld(c)))) : [project(V3(dataToWorld(at.position)))]);
+	}
+	return rectOf(points);
+}
 function resolveTarget$1(ref) {
 	if (ref === "caption") {
 		const c = document.getElementById("step-caption");
@@ -30853,12 +30930,8 @@ function resolveTarget$1(ref) {
 		return i ? (i.parentElement ?? i).getBoundingClientRect() : null;
 	}
 	if (ref.startsWith("row:")) return objectLabelRow(ref.slice(4))?.getBoundingClientRect() ?? null;
-	const cell = /^(.+)\[(\d+)\]$/.exec(ref);
-	if (cell) {
-		const at = objectCellAnchor(cell[1], Number(cell[2]));
-		if (!at) return null;
-		return rectOf(at.corners.length ? at.corners.map((c) => project(V3(dataToWorld(c)))) : [project(V3(dataToWorld(at.position)))]);
-	}
+	const indexed = /^(.+?)\[([\d\s:,]+)\]$/.exec(ref);
+	if (indexed) return indexedRect(indexed[1], indexed[2]);
 	const corners = objectWorldCorners(ref);
 	const box = corners.length ? rectOf(corners.map((c) => project(c))) : null;
 	if (box && box.width * box.height > 4) return box;
@@ -31192,10 +31265,20 @@ function mathHtml(body, open, katex) {
 	return `<span class="ai-note-raw">${esc(body)}</span>`;
 }
 /** Type `text` as a note over the view at a person's pace: plain text in the typing face, $math$ set key by key. */
-async function typeNote(text, near, r, onBoard = false) {
+/** The presenter's colours (style.css `.ai-ink-*`); green when none is named. */
+var INKS = /* @__PURE__ */ new Set([
+	"yellow",
+	"red",
+	"blue",
+	"purple",
+	"orange",
+	"pink"
+]);
+var inkClass = (color) => color && INKS.has(color) ? `ai-ink-${color}` : "";
+async function typeNote(text, near, r, onBoard = false, color = "") {
 	clearTimeout(notesFade);
 	const note = document.createElement("div");
-	note.className = "ai-note";
+	note.className = `ai-note ${inkClass(color)}`.trim();
 	note.title = "Drag to move";
 	makeMovable(note);
 	const ink = document.createElement("span");
@@ -31243,7 +31326,7 @@ function edgeToward(r, x, y, pad) {
 * then its head, two quick strokes. It stays with the notes and goes when they are wiped.
 */
 var arrowsFrom = /* @__PURE__ */ new WeakMap();
-async function drawArrow(from, to, r, fromNote = null) {
+async function drawArrow(from, to, r, fromNote = null, color = "") {
 	clearTimeout(notesFade);
 	const side = Math.random() < .5 ? -1 : 1, jitter = [
 		Math.random() - .5,
@@ -31253,6 +31336,7 @@ async function drawArrow(from, to, r, fromNote = null) {
 	];
 	const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 	svg.classList.add("ai-arrow");
+	if (inkClass(color)) svg.classList.add(inkClass(color));
 	const shape = () => {
 		const f = from(), t = to();
 		if (!f || !t) return 0;
@@ -31548,13 +31632,13 @@ async function presentQuestion(question, { joinHistory = true } = {}) {
 			for (const t of beat.board ?? []) {
 				const n = noteByText.get(noteKey(t));
 				if (n?.isConnected && !n.classList.contains("fading")) await sendToBoard(n, r);
-				else await typeNote(t, "", r, true);
+				else await typeNote(t, "", r, true, beat.color);
 			}
 			const line = document.createElement("p");
 			line.className = "ai-present-line";
 			body.append(line);
 			const words = speak$1(beat.say, line, r);
-			const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r) : Promise.resolve(null)).then(async (note) => {
+			const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null)).then(async (note) => {
 				if (beat.arrow_to) await arrowFor(note);
 			});
 			const arrowFor = async (note) => {
@@ -31562,7 +31646,7 @@ async function presentQuestion(question, { joinHistory = true } = {}) {
 				const to = resolveTarget$1(beat.arrow_to);
 				const from = beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
 				const fromNow = () => beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
-				if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note);
+				if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color);
 			};
 			const both = Promise.all([words, writing]).then(() => void 0);
 			if (beat.target) await holdOn(beat.target, beat.mark, r, both);

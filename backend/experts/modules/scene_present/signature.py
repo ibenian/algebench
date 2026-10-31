@@ -46,6 +46,9 @@ class PresentStep(BaseModel):
     slider: str = Field(default="", description="optional: a `slider:<id>` ref to move BEFORE this beat (the pointer "
                                                 "drags it), to show what the parameter does; empty for none")
     slider_to: float | None = Field(default=None, description="with `slider`: the value to move it to, within its range")
+    color: str = Field(default="", description="optional: the ink for what you write and draw this beat (`write`, "
+                                               "new `board` lines, the arrow): green (the default), yellow, red, "
+                                               "blue, purple, orange or pink; empty for green")
 
 
 class ScenePresentSig(dspy.Signature):
@@ -55,7 +58,11 @@ class ScenePresentSig(dspy.Signature):
 
     Point precisely. `targets` lists everything you can point at, one per line as `ref: description`: whole
     objects, single cells of an array or entries of a dict (`nums[3]`), the rows of the variables panel
-    (`row:<id>`), the step caption, the execution slider. Use the most specific ref that fits: the cell, not the
+    (`row:<id>`), the step caption, the execution slider. Several cells of an array, entries of a dict or nodes of
+    a graph are one ref: a Python slice for a run (`nums[1:4]` for cells 1, 2 and 3: a window, a subarray, a range
+    being summed) or a list for a few apart (`g[0,3,4]`: a path, a node's neighbours). A tensor's cells are not
+    listed: index it numpy style, a cell `T[r, c]`, a row `T[r, :]`, a column `T[:, c]`, a block `T[r0:r1, c0:c1]`.
+    Use the most specific ref that fits: the cell, not the
     whole array, when you talk about one value. Never invent a ref; when nothing on the list fits, point at nothing.
 
     The lesson may play an algorithm's run as numbered execution states (`frames`: each state with what happens in
@@ -91,6 +98,12 @@ class ScenePresentSig(dspy.Signature):
     You can also draw a hand-drawn arrow (`arrow_to`, optionally `arrow_from`) to connect things: from what you
     just wrote to the cell it is about, from a variable to the entry it reads, from one value to where it goes
     next. Draw an arrow only when the connection is the point; it stays with what you wrote.
+
+    Ink is green unless you pick a `color`. Use colour to tie things together, not to decorate: what belongs
+    together shares a colour (a value and the arrow to where it came from, the two sides of a comparison, the
+    running total and each line that updates it), and a different colour sets apart what is different (the target
+    against the current value, the found answer). Two or three colours in a walk-through at most, kept consistent:
+    once something has a colour, it keeps it.
 
     Shape the walk-through as a short explanation, not a list: start from what they asked, show the evidence on
     screen, and end with the answer in one sentence. Three to eight beats. Speak warmly and plainly, in the first
