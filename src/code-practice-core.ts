@@ -156,3 +156,27 @@ export function focusSection(score: PracticeScore, cursor: number, sections: rea
     const next = score.lines.find(l => (above == null || l.line > above) && within(l.line));
     return next ? within(next.line) : null;
 }
+
+/**
+ * Finish this line, with the cursor on typed line `j` of `typedText`: the text with that line as the reference
+ * (`reference`, from file line `first`) has it, indentation and all; null when there is no line to finish. On a
+ * blank or unrecognised line, the line to finish is the first one not yet right; when the learner already has an
+ * attempt at it on another line, that attempt is what gets finished, and the blank line the cursor sat on goes, so
+ * the fix lands on their line instead of beside it.
+ */
+export function finishLine(reference: string, first: number, typedText: string, j: number, score: PracticeScore): string | null {
+    const ref = reference.split('\n'), lines = typedText.split('\n'), paired = score.typed[j]?.reference;
+    if (paired != null) {
+        const want = ref[paired - first];
+        if (want == null) return null;
+        lines[j] = want;
+        return lines.join('\n');
+    }
+    const next = score.lines.find(l => l.similarity < 1), want = next ? ref[next.line - first] : undefined;
+    if (!next || want == null) return null;
+    if (next.typed != null && next.typed !== j) {
+        lines[next.typed] = want;
+        if (!lines[j]?.trim()) lines.splice(j, 1);
+    } else lines[j] = want;
+    return lines.join('\n');
+}

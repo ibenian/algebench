@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { similarity, alignLines, scorePractice, focusSection, isNeutral, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
+import { similarity, alignLines, scorePractice, focusSection, finishLine, isNeutral, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
 
 const REF = ['def f(n):', '    # sum it', '    total = 0', '    for i in range(n):', '        total += i', '', '    return total'].join('\n');
 const sections = [{id: 'init', title: 'Start at zero', from: 11, to: 12}, {id: 'loop', title: 'Add each', from: 13, to: 14}, {id: 'ret', title: 'Answer', from: 16, to: 16}];
@@ -84,4 +84,17 @@ test('a line written in pair programming scores the share the learner typed, and
     assert.equal(seenToo.score, 100 * PEEK_FACTOR, 'seen as well: the lower of the two');
     const both = scorePractice(REF, 10, REF, new Set(), sections, new Set([12]), new Map([[12, 0.6]])).lines.find(l => l.line === 12)!;
     assert.equal(both.score, 100 * ASSIST_FACTOR);
+});
+
+test('finishing a line rewrites the learner\'s attempt at it, not a blank line beside it', () => {
+    const ref = 'def merge(intervals):\n    intervals.sort(key=lambda iv: iv[0])\n    merged = []';
+    const fixed = 'def merge(intervals):\n    intervals.sort(key=lambda iv: iv[0])';
+    const finish = (typed: string, j: number) => finishLine(ref, 1, typed, j, scorePractice(ref, 1, typed, new Set()));
+    // On the attempt itself.
+    assert.equal(finish('def merge(intervals):\n    intervals.sort(lambda k: k[0])', 1), fixed);
+    // On a blank line above or below the attempt: the attempt is fixed and the blank line goes.
+    assert.equal(finish('def merge(intervals):\n    \n    intervals.sort(lambda k: k[0])', 1), fixed);
+    assert.equal(finish('def merge(intervals):\n    intervals.sort(lambda k: k[0])\n    ', 2), fixed);
+    // A blank line with no attempt anywhere is where the line is written.
+    assert.equal(finish('def merge(intervals):\n    intervals.sort(key=lambda iv: iv[0])\n    ', 2), `${fixed}\n    merged = []`);
 });

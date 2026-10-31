@@ -9,7 +9,7 @@ import { codeView, HIDE_CODE_ICON } from '/code-panel.js';
 import type { CodeView } from '/code-panel.js';
 import { codeSections } from '/code-sections.js';
 import type { CodeSection } from '/code-sections.js';
-import { scorePractice, focusSection, isNeutral, PEEK_FACTOR, ASSIST_FACTOR, OTHER_DEPTH } from '/code-practice-core.js';
+import { scorePractice, focusSection, finishLine, isNeutral, PEEK_FACTOR, ASSIST_FACTOR, OTHER_DEPTH } from '/code-practice-core.js';
 import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
@@ -280,10 +280,17 @@ export function setupCodePractice(): void {
     }
     /**
      * The attempt for a block: this session's, else the stored one, else one stored under a former key of the lesson
-     * (formerLessonKeys), else one kept in localStorage; an older one moves to the new key now.
+     * (formerLessonKeys), else one kept in localStorage; an older one moves to the new key now. What was seen in the
+     * Code panel counts only in the session it was seen in: an attempt from an earlier one comes back without it.
      */
     async function loadAttempt(lesson: string, file: string, block: string): Promise<Attempt> {
-        const hit = cache.get([lesson, file, block].join('\u0000')) ?? await store.get(lesson, file, block);
+        const here = cache.get([lesson, file, block].join('\u0000'));
+        if (here) return here;
+        const found = await storedAttempt(lesson, file, block);
+        return {...found, peeked: []};
+    }
+    async function storedAttempt(lesson: string, file: string, block: string): Promise<Attempt> {
+        const hit = await store.get(lesson, file, block);
         if (hit) return hit;
         // Keys before lesson ids and file paths: the title with the block alone, or an earlier id with this file.
         for (const former of formerLessonKeys()) {
@@ -359,8 +366,16 @@ export function setupCodePractice(): void {
         });
     }
 
+    let hadText = false;
     function render(celebrate = true) {
         if (!current) return;
+        // Emptying the editor is starting again, as Reset is: what was seen or written with help before goes too. Only
+        // when it held code: lines seen before typing anything still count.
+        const empty = !input.value.trim();
+        if (empty && hadText && (attempt.peeked.length || attempt.assisted?.length || Object.keys(attempt.paired ?? {}).length)) {
+            attempt.peeked = [];delete attempt.assisted;delete attempt.paired;persist();
+        }
+        hadText = !empty;
         const before = score;
         score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections, new Set(attempt.assisted), pairedShares());
         // A seen line the learner deletes is theirs to type again: if they retype it with the code hidden, it
@@ -738,14 +753,6 @@ export function setupCodePractice(): void {
         if (j < 0 || !text.trim()) return;
         void assist('pair', `I just finished line ${j + 1}: \`${text.trim()}\``);
     }
-    /** The line the learner is on, as the reference has it (with its indentation), for Finish this line. */
-    function lineToFinish(j: number): string | null {
-        if (!score || !current) return null;
-        const ref = block.split('\n'), paired = score.typed[j]?.reference;
-        if (paired != null) return ref[paired - current.from] ?? null;
-        const next = score.lines.find(l => l.similarity < 1);
-        return next ? ref[next.line - current.from] ?? null : null;
-    }
     // Quiz me: a series of questions, each asked once the last is done, until another choice (or End quiz) ends it.
     let series: {topic: string; turns: QuizTurn[]} | null = null;
     /** The current question is done (judged, shown or skipped): in a quiz, the next one comes. */
@@ -1002,12 +1009,7 @@ export function setupCodePractice(): void {
             const where = {language: current.file.language ?? '', expected: block, first_line: current.from,
                 section: focus ? {title: focus.title, hint: focus.hint ?? '', start: focus.from, end: focus.to} : null, typed: input.value};
             // Finishing a line needs no model: the reference has the line.
-            const finishTo = finishing ? (() => {
-                const lines = input.value.split('\n'), j = input.value.slice(0, userCaret).split('\n').length - 1, want = lineToFinish(j);
-                if (want == null) return null;
-                lines[j] = want;
-                return lines.join('\n');
-            })() : null;
+            const finishTo = finishing ? finishLine(block, current.from, input.value, input.value.slice(0, userCaret).split('\n').length - 1, score) : null;
             const out = (finishing ? (finishTo != null ? {result: {plan: '', steps: [{say: 'Here is how I would finish it.', code: finishTo, explain: ''}], closing: ''}}
                     : {reason: 'I am not sure which line you mean: put the cursor on it and ask again.'})
                 : (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
