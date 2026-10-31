@@ -21,7 +21,8 @@ import { objectCellAnchor, objectWorldCorners, objectWorldAnchor, objectLabelEle
 import { keyDelay } from '/code-assist-play.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
-interface Beat { say: string; target: string; mark: 'point' | 'circle'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string }
+interface Beat { say: string; target: string; mark: 'point' | 'circle'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string;
+    slider?: string; slider_to?: number | null }
 interface Target { ref: string; about: string }
 
 const PREF_KEY = 'algebench-presenter';
@@ -74,6 +75,13 @@ export function presentTargets(): Target[] {
     const caption = document.getElementById('step-caption');
     if (caption && !caption.classList.contains('hidden') && caption.offsetParent) out.push({ref: 'caption', about: `the step caption: ${caption.textContent?.trim().slice(0, 160) ?? ''}`});
     if (sliderInput()) out.push({ref: 'slider', about: 'the execution slider, which steps through the run'});
+    // The scene's parameters: each slider on screen, with its value and range (the run's own slider is `slider`).
+    const run = playbackSlider()?.id;
+    for (const [id, sl] of Object.entries(state.sceneSliders)) {
+        const s = sl as unknown as {kind?: string; value: number; min: number; max: number; step?: number; label?: string};
+        if (id === run || s.kind === 'tensor' || !paramInput(id)) continue;
+        out.push({ref: `slider:${id}`, about: `slider "${(s.label ?? id).replace(/\$/g, '')}" = ${s.value} (from ${s.min} to ${s.max}${s.step ? `, step ${s.step}` : ''})`});
+    }
     return out.slice(0, 400);
 }
 
@@ -87,6 +95,11 @@ function playbackSlider(): {id: string; min: number; max: number; value: number}
     if (!id || !s) return null;
     const sl = s as unknown as {value: number; min?: number; max?: number};
     return {id, min: sl.min ?? 0, max: sl.max ?? 0, value: Number(sl.value)};
+}
+/** A parameter slider's control, when it is on screen. */
+function paramInput(id: string): HTMLInputElement | null {
+    const el = document.querySelector<HTMLInputElement>(`input[data-slider-id="${CSS.escape(id)}"]`);
+    return el && el.offsetParent ? el : null;
 }
 function sliderInput(): HTMLInputElement | null {
     const el = document.querySelector<HTMLInputElement>('#state-player input[type=range]');
@@ -120,6 +133,7 @@ const V3 = (p: number[]) => new THREE.Vector3(p[0] ?? 0, p[1] ?? 0, p[2] ?? 0);
 export function resolveTarget(ref: string): DOMRect | null {
     if (ref === 'caption') { const c = document.getElementById('step-caption');return c?.offsetParent ? c.getBoundingClientRect() : null; }
     if (ref === 'slider') { const i = sliderInput();return i ? i.getBoundingClientRect() : null; }
+    if (ref.startsWith('slider:')) { const i = paramInput(ref.slice(7));return i ? (i.parentElement ?? i).getBoundingClientRect() : null; }
     if (ref.startsWith('row:')) return objectLabelRow(ref.slice(4))?.getBoundingClientRect() ?? null;
     const cell = /^(.+)\[(\d+)\]$/.exec(ref);
     if (cell) {
@@ -457,6 +471,35 @@ function eraseNotes() {
     for (const n of going) { n.classList.add('fading');window.setTimeout(() => n.remove(), 700); }
 }
 
+/**
+ * Move a parameter slider to `value` as a person would: onto its thumb, press, drag smoothly along the track while
+ * the view follows, release. Off screen (its panel folded), it just takes the value.
+ */
+async function dragParamTo(id: string, value: number, r: number) {
+    const s = state.sceneSliders[id] as unknown as {value: number; min: number; max: number; step?: number} | undefined;
+    if (!s) return;
+    const to = Math.max(s.min, Math.min(s.max, value)), from = Number(s.value), input = paramInput(id);
+    if (!input || s.max <= s.min) { setSliderValue(id, to);return; }
+    const thumb = 14, at = (v: number) => { const rr = input.getBoundingClientRect(), t = (v - s.min) / (s.max - s.min);return {x: rr.left + thumb / 2 + t * (rr.width - thumb), y: rr.top + rr.height / 2}; };
+    const start = at(from);
+    await glide(start.x, start.y, r);
+    ensurePointer().classList.add('pressed');await sleep(180);
+    const dur = Math.min(1800, 500 + Math.abs(to - from) / (s.max - s.min) * 1600), t0 = performance.now();
+    for (;;) {
+        alive(r);
+        const t = Math.min(1, (performance.now() - t0) / dur), e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        let v = from + (to - from) * e;
+        if (s.step) v = Math.round(v / s.step) * s.step;
+        setSliderValue(id, v);
+        const p = at(v);pos.x = p.x;pos.y = p.y;paintPointer();
+        if (t >= 1) break;
+        await new Promise(res => requestAnimationFrame(res));
+    }
+    setSliderValue(id, to);
+    await sleep(160);ensurePointer().classList.remove('pressed');
+    await sleep(300);   // the view settles before the words about it
+}
+
 // ── Speaking ──
 
 function speak(text: string, into: HTMLElement, r: number): Promise<void> {
@@ -541,6 +584,7 @@ export async function presentQuestion(question: string, {joinHistory = true}: {j
         for (const beat of out.result.steps) {
             alive(r);
             if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
+            if (beat.slider?.startsWith('slider:') && typeof beat.slider_to === 'number') await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
             drawRing(null);
             if (beat.erase) eraseNotes();
             const line = document.createElement('p');line.className = 'ai-present-line';body.append(line);

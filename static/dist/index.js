@@ -30777,6 +30777,15 @@ function presentTargets() {
 		ref: "slider",
 		about: "the execution slider, which steps through the run"
 	});
+	const run = playbackSlider()?.id;
+	for (const [id, sl] of Object.entries(state.sceneSliders)) {
+		const s = sl;
+		if (id === run || s.kind === "tensor" || !paramInput(id)) continue;
+		out.push({
+			ref: `slider:${id}`,
+			about: `slider "${(s.label ?? id).replace(/\$/g, "")}" = ${s.value} (from ${s.min} to ${s.max}${s.step ? `, step ${s.step}` : ""})`
+		});
+	}
 	return out.slice(0, 400);
 }
 /** The run's slider: the scene's step playback, else the step's own slider. */
@@ -30791,6 +30800,11 @@ function playbackSlider() {
 		max: sl.max ?? 0,
 		value: Number(sl.value)
 	};
+}
+/** A parameter slider's control, when it is on screen. */
+function paramInput(id) {
+	const el = document.querySelector(`input[data-slider-id="${CSS.escape(id)}"]`);
+	return el && el.offsetParent ? el : null;
 }
 function sliderInput() {
 	const el = document.querySelector("#state-player input[type=range]");
@@ -30833,6 +30847,10 @@ function resolveTarget$1(ref) {
 	if (ref === "slider") {
 		const i = sliderInput();
 		return i ? i.getBoundingClientRect() : null;
+	}
+	if (ref.startsWith("slider:")) {
+		const i = paramInput(ref.slice(7));
+		return i ? (i.parentElement ?? i).getBoundingClientRect() : null;
 	}
 	if (ref.startsWith("row:")) return objectLabelRow(ref.slice(4))?.getBoundingClientRect() ?? null;
 	const cell = /^(.+)\[(\d+)\]$/.exec(ref);
@@ -31310,6 +31328,48 @@ function eraseNotes() {
 		window.setTimeout(() => n.remove(), 700);
 	}
 }
+/**
+* Move a parameter slider to `value` as a person would: onto its thumb, press, drag smoothly along the track while
+* the view follows, release. Off screen (its panel folded), it just takes the value.
+*/
+async function dragParamTo(id, value, r) {
+	const s = state.sceneSliders[id];
+	if (!s) return;
+	const to = Math.max(s.min, Math.min(s.max, value)), from = Number(s.value), input = paramInput(id);
+	if (!input || s.max <= s.min) {
+		setSliderValue(id, to);
+		return;
+	}
+	const thumb = 14, at = (v) => {
+		const rr = input.getBoundingClientRect(), t = (v - s.min) / (s.max - s.min);
+		return {
+			x: rr.left + thumb / 2 + t * (rr.width - thumb),
+			y: rr.top + rr.height / 2
+		};
+	};
+	const start = at(from);
+	await glide(start.x, start.y, r);
+	ensurePointer().classList.add("pressed");
+	await sleep(180);
+	const dur = Math.min(1800, 500 + Math.abs(to - from) / (s.max - s.min) * 1600), t0 = performance.now();
+	for (;;) {
+		alive(r);
+		const t = Math.min(1, (performance.now() - t0) / dur), e = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+		let v = from + (to - from) * e;
+		if (s.step) v = Math.round(v / s.step) * s.step;
+		setSliderValue(id, v);
+		const p = at(v);
+		pos.x = p.x;
+		pos.y = p.y;
+		paintPointer();
+		if (t >= 1) break;
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+	setSliderValue(id, to);
+	await sleep(160);
+	ensurePointer().classList.remove("pressed");
+	await sleep(300);
+}
 function speak$1(text, into, r) {
 	return new Promise((res) => {
 		let finished = false;
@@ -31433,6 +31493,7 @@ async function presentQuestion(question, { joinHistory = true } = {}) {
 		for (const beat of out.result.steps) {
 			alive(r);
 			if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
+			if (beat.slider?.startsWith("slider:") && typeof beat.slider_to === "number") await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
 			drawRing(null);
 			if (beat.erase) eraseNotes();
 			const line = document.createElement("p");

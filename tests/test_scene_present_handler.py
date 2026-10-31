@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": ""}
+    blank = {"write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -65,3 +65,13 @@ def test_an_arrow_runs_between_listed_refs_only(monkeypatch):
 
 def test_spoken_text_loses_math_code_and_emphasis_marks():
     assert intent._clean("so $1 - 3 = -2$ and it *does* matter, `x` **twice** 2 * 3") == "so 1 - 3 = -2 and it does matter, x twice 2 * 3"
+
+
+def test_a_slider_move_needs_a_listed_slider_and_a_number(monkeypatch):
+    raw = [PresentStep(say="Raise it.", slider="slider:theta", slider_to=1.2),
+           PresentStep(say="Not a slider.", slider="nums[2]", slider_to=1),
+           PresentStep(say="No value.", slider="slider:theta")]
+    monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
+    targets = [{"ref": "slider:theta", "about": "angle"}, {"ref": "nums[2]", "about": "-2"}]
+    out = h.scene_present(_req(targets=targets))["result"]["steps"]
+    assert [(s["slider"], s["slider_to"]) for s in out] == [("slider:theta", 1.2), ("", None), ("", None)]

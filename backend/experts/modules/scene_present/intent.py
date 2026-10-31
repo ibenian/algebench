@@ -61,6 +61,18 @@ def _ref(value, refs: set[str]) -> str:
     return ref if ref in refs else ""
 
 
+def _slider_move(s: PresentStep, refs: set[str]) -> dict:
+    """A slider move, when it names a listed slider and a number; else none. The client keeps it within range."""
+    ref = _ref(s.slider, refs)
+    try:
+        value = float(s.slider_to) if s.slider_to is not None else None
+    except (TypeError, ValueError):
+        value = None
+    if not ref.startswith("slider:") or value is None or value != value:   # NaN is no value
+        return {"slider": "", "slider_to": None}
+    return {"slider": ref, "slider_to": value}
+
+
 def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
     """Beats safe to play: a ref not on the list points at nothing, a frame outside the run stays put, a beat with
     nothing to say is dropped."""
@@ -79,7 +91,8 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
                                mark=s.mark if s.mark in MARKS else "point",
                                frame=frame if 0 <= frame < frames else -1,
                                write=write, write_near=near if write and near in refs else "", erase=bool(s.erase),
-                               arrow_to=_ref(s.arrow_to, refs), arrow_from=_ref(s.arrow_from, refs) if _ref(s.arrow_to, refs) else ""))
+                               arrow_to=_ref(s.arrow_to, refs), arrow_from=_ref(s.arrow_from, refs) if _ref(s.arrow_to, refs) else "",
+                               **_slider_move(s, refs)))
     return out[:MAX_STEPS]
 
 

@@ -35,6 +35,9 @@ class PresentStep(BaseModel):
                                                   "while you say this; empty for none")
     arrow_from: str = Field(default="", description="with `arrow_to`: the ref the arrow starts at; empty to start "
                                                     "at what you write this beat, else at this beat's target")
+    slider: str = Field(default="", description="optional: a `slider:<id>` ref to move BEFORE this beat (the pointer "
+                                                "drags it), to show what the parameter does; empty for none")
+    slider_to: float | None = Field(default=None, description="with `slider`: the value to move it to, within its range")
 
 
 class ScenePresentSig(dspy.Signature):
@@ -65,6 +68,11 @@ class ScenePresentSig(dspy.Signature):
     about 40 characters of plain text (KaTeX source may be longer); write only where it helps, a few
     times in a walk-through, not on every beat. Put it beside what it is about (`write_near`). What you wrote
     stays until you `erase` it or the walk-through ends.
+
+    The scene's parameters are sliders (`slider:<id>` in `targets`, each with its label, value and range). Point at
+    one to name it; to SHOW what it does, move it (`slider`, `slider_to`) on the beat where you talk about the
+    effect: the pointer drags it there and the view changes, then you say what to watch ("As I raise the angle,
+    watch the vector swing up"). Move a slider only when the change is the point, within its range.
 
     You can also draw a hand-drawn arrow (`arrow_to`, optionally `arrow_from`) to connect things: from what you
     just wrote to the cell it is about, from a variable to the entry it reads, from one value to where it goes
