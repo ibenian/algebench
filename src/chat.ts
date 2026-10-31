@@ -1214,6 +1214,8 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
                     const question = String(tc.args?.question || text);
                     presentAfter = () => presentQuestion(question, { joinHistory: false }).then(said => {
                         if (said) { chatHistory.push({ role: 'assistant', text: said });return; }
+                        // Stopped before a word (the learner typed on): the turn has moved past it, nothing to show.
+                        if (said === null) return;
                         // No walk-through after all: the agent's own words, held back for it, are the answer.
                         if (reply.text) { addChatMessage('assistant', reply.text);chatHistory.push({ role: 'assistant', text: reply.text }); }
                     });

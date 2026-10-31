@@ -591,11 +591,11 @@ let playing = false;
 export const presenting = () => playing;
 
 /**
- * Answer `question` as a walk-through. Resolves to what was said ('' when there was nothing to present, or it was
- * stopped first). `joinHistory`: add the question and answer to the chat's history (the chat records them itself
+ * Answer `question` as a walk-through. Resolves to what was said, as far as it got when stopped: '' when there was
+ * nothing to present, null when it was stopped before its first word. `joinHistory`: add the question and answer to the chat's history (the chat records them itself
  * when it asked for the walk-through).
  */
-export async function presentQuestion(question: string, {joinHistory = true}: {joinHistory?: boolean} = {}): Promise<string> {
+export async function presentQuestion(question: string, {joinHistory = true}: {joinHistory?: boolean} = {}): Promise<string | null> {
     const r = ++run;
     playing = true;document.body.classList.add('ai-presenting');
     window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
@@ -657,8 +657,14 @@ export async function presentQuestion(question: string, {joinHistory = true}: {j
         if (joinHistory) window.algebenchRecordChatTurn?.(question, said.join(' '));
         return said.join(' ');
     } catch (e) {
-        if (!(e instanceof Stopped)) body.textContent = (e as Error).message || 'The walk-through failed.';
-        return '';
+        if (!(e instanceof Stopped)) { body.textContent = (e as Error).message || 'The walk-through failed.';return ''; }
+        // Stopped (the learner typed on, Esc, a scene change): what was said so far stands; a walk-through stopped
+        // before its first word leaves no bubble behind, never its loading dots.
+        body.querySelector('.chat-loading')?.remove();
+        const spoken = [...body.querySelectorAll('.ai-present-line')].map(l => l.textContent ?? '').join(' ').trim();
+        if (!spoken) msg.remove();
+        else if (joinHistory) window.algebenchRecordChatTurn?.(question, spoken);
+        return spoken || null;
     } finally {
         if (r === run) {
             playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');

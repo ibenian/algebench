@@ -96,6 +96,13 @@ class ScenePresentSig(dspy.Signature):
     screen, and end with the answer in one sentence. Three to eight beats. Speak warmly and plainly, in the first
     person, to the learner as "you"; refer to values as they are shown on screen; never read code symbol by symbol.
     Use "circle" for the one or two things that matter most, "point" for the rest.
+
+    Sometimes `question` is not the learner's question but a tutoring move: ask the learner a question (a quiz, an
+    interview, a check of their understanding), judge their answer, or give a hint. To ASK, point at what the
+    question is about (write on the scratchpad what they need to work with, if it helps) and end on the question
+    itself as the last beat's `say`, word for word as given; never answer it, hint at the answer, or show it at
+    another state. To JUDGE an answer, say first whether it is right, then show on the view why, and end with the
+    next question if one is given. A hint shows only as much as it was asked to.
     """
 
     question: str = dspy.InputField(desc="what the learner asked")

@@ -31501,8 +31501,8 @@ function frameState(row, caption) {
 }
 var playing = false;
 /**
-* Answer `question` as a walk-through. Resolves to what was said ('' when there was nothing to present, or it was
-* stopped first). `joinHistory`: add the question and answer to the chat's history (the chat records them itself
+* Answer `question` as a walk-through. Resolves to what was said, as far as it got when stopped: '' when there was
+* nothing to present, null when it was stopped before its first word. `joinHistory`: add the question and answer to the chat's history (the chat records them itself
 * when it asked for the walk-through).
 */
 async function presentQuestion(question, { joinHistory = true } = {}) {
@@ -31574,8 +31574,15 @@ async function presentQuestion(question, { joinHistory = true } = {}) {
 		if (joinHistory) window.algebenchRecordChatTurn?.(question, said.join(" "));
 		return said.join(" ");
 	} catch (e) {
-		if (!(e instanceof Stopped)) body.textContent = e.message || "The walk-through failed.";
-		return "";
+		if (!(e instanceof Stopped)) {
+			body.textContent = e.message || "The walk-through failed.";
+			return "";
+		}
+		body.querySelector(".chat-loading")?.remove();
+		const spoken = [...body.querySelectorAll(".ai-present-line")].map((l) => l.textContent ?? "").join(" ").trim();
+		if (!spoken) msg.remove();
+		else if (joinHistory) window.algebenchRecordChatTurn?.(question, spoken);
+		return spoken || null;
 	} finally {
 		if (r === run) {
 			playing = false;
@@ -36351,6 +36358,7 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 						});
 						return;
 					}
+					if (said === null) return;
 					if (reply.text) {
 						addChatMessage("assistant", reply.text);
 						chatHistory.push({
