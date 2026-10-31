@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 MAX_STEPS = 10
-MARKS = ("point", "circle")
+MARKS = ("point", "circle", "underline")
 #: The longest line written on the scratchpad.
 MAX_WRITE = 400
 COLORS = ("green", "yellow", "red", "blue", "purple", "orange", "pink")
@@ -96,6 +96,29 @@ def _notes(value) -> list[str]:
     return [str(t).strip()[:MAX_WRITE] for t in items if isinstance(t, str) and t.strip()][:8]
 
 
+def _note_key(text: str) -> str:
+    return " ".join(str(text or "").split())
+
+
+def _note_ref(value, written: set[str]) -> str:
+    """A `note:<text>` ref, when the text is a note written by an earlier beat (or this one); else none."""
+    ref = str(value or "").strip().strip("`")
+    if not ref.startswith("note:"):
+        return ""
+    key = _note_key(ref[5:])
+    return f"note:{key}" if key in written else ""
+
+
+def _target_ref(value, refs: set[str], written: set[str]) -> str:
+    return _note_ref(value, written) or _ref(value, refs)
+
+
+def _part(value, target: str) -> str:
+    """The words of a note pointed at: kept only when the target is a note and they are in it."""
+    part = " ".join(str(value or "").split()).strip("`")
+    return part if part and target.startswith("note:") and part in target[5:] else ""
+
+
 def _slider_move(s: PresentStep, refs: set[str]) -> dict:
     """A slider move, when it names a listed slider and a number; else none. The client keeps it within range."""
     ref = _ref(s.slider, refs)
@@ -112,6 +135,7 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
     """Beats safe to play: a ref not on the list points at nothing, a frame outside the run stays put, a beat with
     nothing to say is dropped."""
     out = []
+    written: set[str] = set()       # the notes on the view so far, by text: a beat may point at them
     for s in raw or []:
         if not isinstance(s, PresentStep) or not _clean(s.say):
             continue
@@ -120,12 +144,16 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
         except (TypeError, ValueError):
             frame = -1
         write = _DSPY_MARKER.sub("", str(s.write or "")).strip().splitlines()[0][:MAX_WRITE] if str(s.write or "").strip() else ""
-        out.append(PresentStep(say=_clean(s.say), target=_ref(s.target, refs),
+        board = _notes(s.board)
+        written |= {_note_key(t) for t in [write, *board] if t}
+        target = _target_ref(s.target, refs, written)
+        out.append(PresentStep(say=_clean(s.say), target=target, part=_part(s.part, target),
                                mark=s.mark if s.mark in MARKS else "point",
                                frame=frame if 0 <= frame < frames else -1,
-                               write=write, write_near=_ref(s.write_near, refs) if write else "", erase=bool(s.erase),
-                               arrow_to=_ref(s.arrow_to, refs), arrow_from=_ref(s.arrow_from, refs) if _ref(s.arrow_to, refs) else "",
-                               board=_notes(s.board), erase_notes=_notes(s.erase_notes),
+                               write=write, write_near=_target_ref(s.write_near, refs, written) if write else "", erase=bool(s.erase),
+                               arrow_to=_target_ref(s.arrow_to, refs, written),
+                               arrow_from=_target_ref(s.arrow_from, refs, written) if _target_ref(s.arrow_to, refs, written) else "",
+                               board=board, erase_notes=_notes(s.erase_notes),
                                color=_ink(s.color), **_slider_move(s, refs)))
     return out[:MAX_STEPS]
 

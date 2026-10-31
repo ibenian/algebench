@@ -9782,7 +9782,8 @@ function indexedRect(id, index) {
 	}
 	return rectOf(points);
 }
-function resolveTarget$1(ref) {
+function resolveTarget$1(ref, part = "") {
+	if (ref.startsWith("note:")) return noteRect(ref.slice(5), part);
 	if (ref === "caption") {
 		const c = document.getElementById("step-caption");
 		return c?.offsetParent ? c.getBoundingClientRect() : null;
@@ -9921,6 +9922,7 @@ var alive = (r) => {
 };
 /** Glide to (x, y): eased, quicker for short hops, as a hand moves. */
 async function glide(x, y, r, ms) {
+	showPointer();
 	const from = { ...pos }, d = Math.hypot(x - from.x, y - from.y), dur = ms ?? Math.min(900, 250 + d * .9);
 	const t0 = performance.now();
 	for (;;) {
@@ -9933,7 +9935,19 @@ async function glide(x, y, r, ms) {
 		await new Promise((res) => requestAnimationFrame(res));
 	}
 }
-function drawRing(rect, color = "") {
+/** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
+function showPointer() {
+	ensurePointer().classList.add("on");
+}
+function restPointer() {
+	if (!pointer?.classList.contains("on")) return;
+	pointer.classList.remove("on");
+	unhover();
+}
+/** How long the pointer stays on what it showed before it goes (the circle or line stays). */
+var REST_MS = 1e3;
+/** Draw a circle round `rect`, or a line under it (`underline`), in the beat's ink; none for no rect. */
+function drawRing(rect, color = "", underline = false) {
 	ensurePointer();
 	if (!ring) return;
 	if (!rect) {
@@ -9941,14 +9955,25 @@ function drawRing(rect, color = "") {
 		return;
 	}
 	ring.setAttribute("class", `ai-pointer-ring ${inkClass(color)}`.trim());
-	ring.innerHTML = "<ellipse pathLength=\"1\"/>";
+	ring.innerHTML = underline ? "<path pathLength=\"1\"/>" : "<ellipse pathLength=\"1\"/>";
 	fitRing(rect);
 	ring.classList.remove("on");
 	ring.getBoundingClientRect();
 	ring.classList.add("on");
 }
-/** Fit the circle round `rect`: as the view zooms or pans, it keeps hugging its target (the stroke isn't redrawn). */
+/** Fit the circle round `rect` (or the line under it): as the view zooms or pans, it keeps hugging its target (the
+* stroke isn't redrawn). */
 function fitRing(rect) {
+	const line = ring?.querySelector("path");
+	if (ring && line) {
+		const w = rect.width + 8;
+		ring.style.left = `${rect.left - 4}px`;
+		ring.style.top = `${rect.bottom}px`;
+		ring.setAttribute("width", String(w + 4));
+		ring.setAttribute("height", "12");
+		line.setAttribute("d", `M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`);
+		return;
+	}
 	const ellipse = ring?.querySelector("ellipse");
 	if (!ring || !ellipse) return;
 	const pad = 8, w = rect.width + 16, h = rect.height + 16;
@@ -9961,27 +9986,41 @@ function fitRing(rect) {
 	ellipse.setAttribute("rx", String(w / 2));
 	ellipse.setAttribute("ry", String(h / 2));
 }
-/** Hold the pointer on a target while `until` runs, following it as the view moves; circle it if asked, in the beat's ink. */
-async function holdOn(ref, mark, r, until, color = "") {
+/**
+* Show a target (or the `part` of a note) while `until` runs: the pointer goes to it, circles it or underlines it if
+* asked (underlining, it runs once under the words as the line is drawn), rests there a second and goes; the circle
+* or line stays, following the target as the view moves, until the next beat.
+*/
+async function holdOn(ref, mark, r, until, color = "", part = "") {
 	let done = false;
 	until.then(() => {
 		done = true;
 	});
-	const at = resolveTarget$1(ref);
-	if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
-	if (mark === "circle") drawRing(resolveTarget$1(ref), color);
-	let t = 0;
+	const under = mark === "underline";
+	showPointer();
+	const at = resolveTarget$1(ref, part);
+	if (at) await glide(under ? at.left : at.left + at.width / 2, under ? at.bottom + 5 : at.top + at.height / 2, r);
+	let drawn = false, since = 0;
+	const t0 = performance.now();
 	while (!done) {
 		alive(r);
-		const now = resolveTarget$1(ref);
+		const now = resolveTarget$1(ref, part);
 		if (now) {
-			t += .05;
-			const cx = now.left + now.width / 2 + Math.sin(t * 1.3) * Math.min(6, now.width / 6), cy = now.top + now.height / 2 + Math.cos(t) * Math.min(3, now.height / 6);
-			pos.x += (cx - pos.x) * .2;
-			pos.y += (cy - pos.y) * .2;
-			paintPointer();
-			if (mark === "circle" && ring?.classList.contains("on")) fitRing(now);
-		}
+			if (!drawn && mark !== "point") {
+				drawRing(now, color, under);
+				drawn = true;
+			} else if (mark !== "point" && ring?.classList.contains("on")) fitRing(now);
+			since ||= performance.now();
+			const t = performance.now() - since;
+			if (pointer?.classList.contains("on")) {
+				const k = Math.min(1, t / 600), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+				const cx = under ? now.left + now.width * e : now.left + now.width / 2, cy = under ? now.bottom + 5 : now.top + now.height / 2;
+				pos.x += (cx - pos.x) * .35;
+				pos.y += (cy - pos.y) * .35;
+				paintPointer();
+				if (t > (under ? 600 : 0) + REST_MS) restPointer();
+			}
+		} else if (performance.now() - t0 > 4e3) restPointer();
 		await new Promise((res) => requestAnimationFrame(res));
 	}
 }
@@ -10012,6 +10051,50 @@ var notesFade = 0;
 var board = [];
 var noteByText = /* @__PURE__ */ new Map();
 var noteKey = (t) => t.replace(/\s+/g, " ").trim();
+/** A note on the view, by what was written, or the `part` of it named (the box round those words); null when gone. */
+function noteRect(text, part = "") {
+	const note = noteByText.get(noteKey(text));
+	if (!note?.isConnected || note.classList.contains("fading")) return null;
+	const ink = note.querySelector(".ai-note-ink") ?? note;
+	return part && textRect(ink, part) || ink.getBoundingClientRect();
+}
+/**
+* Where `part` is in `text`: the first place it stands as a whole word (the `p` of `build_lps(p)` is the parameter,
+* not the last letter of `lps`), else the first place at all; -1 if absent.
+*/
+function partAt(text, part) {
+	const word = /\w/;
+	for (let at = text.indexOf(part); at >= 0; at = text.indexOf(part, at + 1)) {
+		const before = text[at - 1] ?? "", after = text[at + part.length] ?? "";
+		if (!(word.test(part[0]) && word.test(before)) && !(word.test(part.at(-1)) && word.test(after))) return at;
+	}
+	return text.indexOf(part);
+}
+/** The box round `part` (see partAt) in the text shown under `root` (KaTeX's hidden MathML left out); null if absent. */
+function textRect(root, part) {
+	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.parentElement?.closest(".katex-mathml") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+	const nodes = [];
+	let all = "";
+	for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+		nodes.push(n);
+		all += n.nodeValue ?? "";
+	}
+	const at = partAt(all, part);
+	if (at < 0) return null;
+	const range = document.createRange();
+	let seen = 0;
+	for (const n of nodes) {
+		const len = n.nodeValue?.length ?? 0;
+		if (seen <= at && at < seen + len) range.setStart(n, at - seen);
+		if (at + part.length <= seen + len) {
+			range.setEnd(n, at + part.length - seen);
+			break;
+		}
+		seen += len;
+	}
+	const box = range.getBoundingClientRect();
+	return box.width ? box : null;
+}
 function notesLayer() {
 	let layer = document.getElementById("ai-scratchpad");
 	if (!layer) {
@@ -10580,7 +10663,7 @@ async function playBeats(steps, body, r) {
 			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color);
 		};
 		const both = Promise.all([words, writing]).then(() => void 0);
-		if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color);
+		if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color, beat.part);
 		else await both;
 		alive(r);
 		said.push(beat.say);

@@ -17,9 +17,14 @@ class PresentStep(BaseModel):
     say: str = Field(description="what you say at this beat: one or two short spoken sentences, first person, plain "
                                  "words (no markdown, no code blocks)")
     target: str = Field(default="", description="the ref of what you point at while saying it, copied exactly from "
-                                                "`targets`; empty to point at nothing")
-    mark: str = Field(default="point", description='"point" (hold the pointer on it) or "circle" (draw a circle '
-                                                   'around it, for what matters most); ignored without a target')
+                                                "`targets`, or `note:<a note you wrote earlier, exactly as written>`; "
+                                                "empty to point at nothing")
+    part: str = Field(default="", description="with a `note:` target: the words of that note you mean, copied exactly "
+                                              "from it (a name, an operator, one term); empty for the whole note")
+    mark: str = Field(default="point", description='"point" (hold the pointer on it), "circle" (draw a circle '
+                                                   'around it, for what matters most) or "underline" (sweep the '
+                                                   'pointer under it and draw a line there, for a word or a few in a '
+                                                   'note or a label); ignored without a target')
     frame: int = Field(default=-1, description="the execution state to move the slider to BEFORE this beat, from "
                                                "`frames`; -1 to stay where it is")
     write: str = Field(default="", description="optional: one short line you type on the scratchpad over the view "
@@ -104,6 +109,11 @@ class ScenePresentSig(dspy.Signature):
     which values match ("2 and 6 here are this bar from 2 to 6"). An arrow from a whole array starts at its middle
     and links nothing in particular. One or two such links make the mapping clear; then the rest follow the same rule.
 
+    What you wrote is on the view too: point at a note you wrote on an earlier beat as `note:` followed by its text
+    exactly as you wrote it, and at a part of it with `part` (the words you mean, copied from the note): the
+    function's name in `def build_lps(pattern):`, the condition in an `if`, one term of a formula. Underline a part
+    as you talk about it (`mark: "underline"`), or circle it; a note can also be where an arrow starts or ends.
+
     A chart's bars and points are listed one by one (`chart[3]`: what it draws, its values); point at the bar or
     point you mean, not the whole chart.
 
@@ -116,7 +126,8 @@ class ScenePresentSig(dspy.Signature):
     Shape the walk-through as a short explanation, not a list: start from what they asked, show the evidence on
     screen, and end with the answer in one sentence. Three to eight beats. Speak warmly and plainly, in the first
     person, to the learner as "you"; refer to values as they are shown on screen; never read code symbol by symbol.
-    Use "circle" for the one or two things that matter most, "point" for the rest.
+    Use "circle" for the one or two things that matter most, "underline" for a word or a few inside a line (a note's
+    part, a label), "point" for the rest.
 
     Sometimes `question` is not the learner's question but a tutoring move: ask the learner a question (a quiz, an
     interview, a check of their understanding), judge their answer, or give a hint. To ASK, point at what the

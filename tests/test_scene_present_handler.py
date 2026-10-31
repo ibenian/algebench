@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "color": ""}
+    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "color": ""}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -108,3 +108,18 @@ def test_a_beat_points_at_a_run_of_cells(monkeypatch):
 def test_ink_is_one_of_the_colours_or_green():
     raw = [PresentStep(say="a", color="Red"), PresentStep(say="b", color="gray"), PresentStep(say="c", color="green")]
     assert [b.color for b in intent.clean_steps(raw, set(), 0)] == ["red", "", ""]
+
+
+def test_a_beat_points_at_a_note_written_before_it_and_at_words_in_it():
+    raw = [PresentStep(say="Too early.", target="note:def build_lps(nums):"),
+           PresentStep(say="Write.", write="def  build_lps(nums):"),
+           PresentStep(say="This name.", target="note:def build_lps(nums):", part="build_lps", mark="underline"),
+           PresentStep(say="Not in it.", target="note:def build_lps(nums):", part="kmp"),
+           PresentStep(say="A part needs a note.", target="nums[2]", part="build_lps"),
+           PresentStep(say="From the note.", arrow_to="nums[2]", arrow_from="note:def build_lps(nums):"),
+           PresentStep(say="Never written.", target="note:x = 1")]
+    beats = intent.clean_steps(raw, {"nums", "nums[0]", "nums[1]", "nums[2]"}, 0)
+    assert [(b.target, b.part, b.mark) for b in beats] == [
+        ("", "", "point"), ("", "", "point"), ("note:def build_lps(nums):", "build_lps", "underline"),
+        ("note:def build_lps(nums):", "", "point"), ("nums[2]", "", "point"), ("", "", "point"), ("", "", "point")]
+    assert (beats[5].arrow_from, beats[5].arrow_to) == ("note:def build_lps(nums):", "nums[2]")
