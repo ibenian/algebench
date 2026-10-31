@@ -31069,6 +31069,9 @@ async function dragSliderTo(f, r) {
 }
 var notes = [];
 var notesFade = 0;
+var board = [];
+var noteByText = /* @__PURE__ */ new Map();
+var noteKey = (t) => t.replace(/\s+/g, " ").trim();
 function notesLayer() {
 	let layer = document.getElementById("ai-scratchpad");
 	if (!layer) {
@@ -31089,6 +31092,7 @@ function placeNote(w, h, near) {
 	const panels = [...document.querySelectorAll(".annotation-badge, #step-caption, #state-player, .code-step-targets")].filter((el) => el.offsetParent).map((el) => el.getBoundingClientRect());
 	const gap = 16, taken = [
 		...notes.filter((n) => n.classList.contains("ai-note")).map((n) => n.getBoundingClientRect()),
+		...board.map((n) => n.getBoundingClientRect()),
 		...panels,
 		...near ? [near] : []
 	].filter((r) => r.width);
@@ -31188,7 +31192,7 @@ function mathHtml(body, open, katex) {
 	return `<span class="ai-note-raw">${esc(body)}</span>`;
 }
 /** Type `text` as a note over the view at a person's pace: plain text in the typing face, $math$ set key by key. */
-async function typeNote(text, near, r) {
+async function typeNote(text, near, r, onBoard = false) {
 	clearTimeout(notesFade);
 	const note = document.createElement("div");
 	note.className = "ai-note";
@@ -31201,11 +31205,15 @@ async function typeNote(text, near, r) {
 	note.append(ink, caret);
 	notesLayer().append(note);
 	ink.innerHTML = inkHtml(text);
-	const size = note.getBoundingClientRect(), at = placeNote(size.width + 12, size.height, near ? resolveTarget$1(near) : null);
+	const size = note.getBoundingClientRect(), at = onBoard ? boardSlot() : placeNote(size.width + 12, size.height, near ? resolveTarget$1(near) : null);
 	note.style.left = `${at.x}px`;
 	note.style.top = `${at.y}px`;
 	ink.textContent = "";
-	notes.push(note);
+	if (onBoard) {
+		board.push(note);
+		note.classList.add("boarded");
+	} else notes.push(note);
+	noteByText.set(noteKey(text), note);
 	note.classList.add("on");
 	let prev = "\n";
 	for (let k = 1; k <= text.length; k++) {
@@ -31319,14 +31327,47 @@ function makeMovable(note) {
 		note.addEventListener("pointercancel", up, { once: true });
 	});
 }
-/** Wipe the notes: they fade away. */
-function eraseNotes() {
-	const going = notes;
+/** Wipe the notes: they fade away (the board stays; `all` wipes it too). */
+function eraseNotes(all = false) {
+	const going = all ? [...notes, ...board] : notes;
 	notes = [];
+	if (all) {
+		board = [];
+		noteByText.clear();
+	}
 	for (const n of going) {
 		n.classList.add("fading");
 		window.setTimeout(() => n.remove(), 700);
 	}
+}
+/**
+* Send a note to the board: it slides to the top left of the view, under the notes already there, and stays.
+* Arrows from it follow it there.
+*/
+/** The board's next line: the top left of the view, below its own corner buttons, under the lines already there. */
+function boardSlot() {
+	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+	return {
+		x: view.left + 16,
+		y: board.reduce((top, n) => Math.max(top, n.getBoundingClientRect().bottom + 8), view.top + 52)
+	};
+}
+async function sendToBoard(note, r) {
+	if (board.includes(note)) return;
+	notes = notes.filter((n) => n !== note);
+	const slot = boardSlot();
+	board.push(note);
+	note.classList.add("boarded");
+	note.style.transition = "left .65s cubic-bezier(.4, 0, .2, 1), top .65s cubic-bezier(.4, 0, .2, 1), opacity .3s, transform .3s";
+	note.style.left = `${slot.x}px`;
+	note.style.top = `${slot.y}px`;
+	const t0 = performance.now();
+	while (performance.now() - t0 < 700) {
+		alive(r);
+		for (const redraw of arrowsFrom.get(note) ?? []) redraw();
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+	note.style.transition = "";
 }
 /**
 * Move a parameter slider to `value` as a person would: onto its thumb, press, drag smoothly along the track while
@@ -31496,17 +31537,33 @@ async function presentQuestion(question, { joinHistory = true } = {}) {
 			if (beat.slider?.startsWith("slider:") && typeof beat.slider_to === "number") await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
 			drawRing(null);
 			if (beat.erase) eraseNotes();
+			for (const t of beat.erase_notes ?? []) {
+				const n = noteByText.get(noteKey(t));
+				if (!n?.isConnected) continue;
+				notes = notes.filter((x) => x !== n);
+				board = board.filter((x) => x !== n);
+				n.classList.add("fading");
+				window.setTimeout(() => n.remove(), 700);
+			}
+			for (const t of beat.board ?? []) {
+				const n = noteByText.get(noteKey(t));
+				if (n?.isConnected && !n.classList.contains("fading")) await sendToBoard(n, r);
+				else await typeNote(t, "", r, true);
+			}
 			const line = document.createElement("p");
 			line.className = "ai-present-line";
 			body.append(line);
 			const words = speak$1(beat.say, line, r);
 			const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r) : Promise.resolve(null)).then(async (note) => {
+				if (beat.arrow_to) await arrowFor(note);
+			});
+			const arrowFor = async (note) => {
 				if (!beat.arrow_to) return;
 				const to = resolveTarget$1(beat.arrow_to);
 				const from = beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
 				const fromNow = () => beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
 				if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note);
-			});
+			};
 			const both = Promise.all([words, writing]).then(() => void 0);
 			if (beat.target) await holdOn(beat.target, beat.mark, r, both);
 			else await both;
@@ -31526,7 +31583,7 @@ async function presentQuestion(question, { joinHistory = true } = {}) {
 			document.body.classList.remove("ai-presenting");
 			drawRing(null);
 			pointer?.classList.remove("on", "pressed");
-			notesFade = window.setTimeout(eraseNotes, 4e3);
+			notesFade = window.setTimeout(() => eraseNotes(true), 4e3);
 		}
 	}
 }
@@ -31539,7 +31596,7 @@ function stopPresenting() {
 	document.body.classList.remove("ai-presenting");
 	drawRing(null);
 	pointer?.classList.remove("on", "pressed");
-	eraseNotes();
+	eraseNotes(true);
 	if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 }
 var presenterOn = () => document.getElementById("presenter-toggle-btn")?.getAttribute("aria-pressed") === "true";

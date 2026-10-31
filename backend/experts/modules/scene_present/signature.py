@@ -30,7 +30,15 @@ class PresentStep(BaseModel):
                                                "as KaTeX, never as Python lists; code between backticks. Empty for none")
     write_near: str = Field(default="", description="with `write`: the ref (from `targets`) to write beside; empty "
                                                     "to write beside this beat's target, or in a free corner")
-    erase: bool = Field(default=False, description="wipe what you wrote and drew earlier before this beat")
+    erase: bool = Field(default=False, description="wipe everything you wrote and drew earlier, before this beat "
+                                                   "(not the board)")
+    board: list[str] = Field(default_factory=list, description="at the start of this beat, put these lines on the "
+                                                               "board, a stack at the top left that stays for the "
+                                                               "rest of the walk-through: a note you wrote earlier "
+                                                               "(exactly as written) slides up there; any other line "
+                                                               "is written straight onto the board")
+    erase_notes: list[str] = Field(default_factory=list, description="at the start of this beat, wipe these notes "
+                                                                     "(each exactly as written earlier)")
     arrow_to: str = Field(default="", description="optional: draw a hand-drawn arrow to this ref (from `targets`) "
                                                   "while you say this; empty for none")
     arrow_from: str = Field(default="", description="with `arrow_to`: the ref the arrow starts at; empty to start "
@@ -67,7 +75,13 @@ class ScenePresentSig(dspy.Signature):
     a fraction ($\\frac{a}{b}$), a sum ($\\sum_i x_i$), a subscript ($x_{i-1}$), Greek letters. One line, at most
     about 40 characters of plain text (KaTeX source may be longer); write only where it helps, a few
     times in a walk-through, not on every beat. Put it beside what it is about (`write_near`). What you wrote
-    stays until you `erase` it or the walk-through ends.
+    stays until you wipe it or the walk-through ends. Like a presenter tidying the board as they go, on any later
+    beat you may wipe notes you are done with (`erase_notes`, or `erase` for all of them) or move a result worth
+    keeping in view (a value found, a rule, the formula the rest builds on) to the board (`board`): it slides to a
+    stack at the top left, one under another like lines on a blackboard, and stays there through later beats and
+    wiping. Name notes exactly as you wrote them; a line that is no note of yours (a summary such as
+    "subarray_count = 1") is written straight onto the board. Put each line on the board once; it stays. Use the
+    board for the few results that add up to the answer, in the order they build it.
 
     The scene's parameters are sliders (`slider:<id>` in `targets`, each with its label, value and range). Point at
     one to name it; to SHOW what it does, move it (`slider`, `slider_to`) on the beat where you talk about the

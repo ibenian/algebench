@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None}
+    blank = {"write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None, "board": [], "erase_notes": []}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -75,3 +75,11 @@ def test_a_slider_move_needs_a_listed_slider_and_a_number(monkeypatch):
     targets = [{"ref": "slider:theta", "about": "angle"}, {"ref": "nums[2]", "about": "-2"}]
     out = h.scene_present(_req(targets=targets))["result"]["steps"]
     assert [(s["slider"], s["slider_to"]) for s in out] == [("slider:theta", 1.2), ("", None), ("", None)]
+
+
+def test_notes_are_sent_to_the_board_or_wiped_by_their_text(monkeypatch):
+    raw = [PresentStep(say="Write.", write="1 - 3 = -2"),
+           PresentStep(say="Keep it.", board=["1 - 3 = -2", "  "], erase_notes=["old note"])]
+    monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
+    out = h.scene_present(_req())["result"]["steps"]
+    assert (out[1]["board"], out[1]["erase_notes"]) == (["1 - 3 = -2"], ["old note"])

@@ -61,6 +61,12 @@ def _ref(value, refs: set[str]) -> str:
     return ref if ref in refs else ""
 
 
+def _notes(value) -> list[str]:
+    """Notes named by their text: strings only, a few at most."""
+    items = value if isinstance(value, list) else [value] if isinstance(value, str) else []
+    return [str(t).strip()[:MAX_WRITE] for t in items if isinstance(t, str) and t.strip()][:8]
+
+
 def _slider_move(s: PresentStep, refs: set[str]) -> dict:
     """A slider move, when it names a listed slider and a number; else none. The client keeps it within range."""
     ref = _ref(s.slider, refs)
@@ -92,7 +98,7 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
                                frame=frame if 0 <= frame < frames else -1,
                                write=write, write_near=near if write and near in refs else "", erase=bool(s.erase),
                                arrow_to=_ref(s.arrow_to, refs), arrow_from=_ref(s.arrow_from, refs) if _ref(s.arrow_to, refs) else "",
-                               **_slider_move(s, refs)))
+                               board=_notes(s.board), erase_notes=_notes(s.erase_notes), **_slider_move(s, refs)))
     return out[:MAX_STEPS]
 
 
