@@ -20,7 +20,8 @@ log = logging.getLogger(__name__)
 
 _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 MAX_STEPS = 10
-MARKS = ("point", "circle", "underline")
+MARKS = ("point", "circle", "underline", "check", "cross")
+ARROW_KINDS = ("arrow", "line")
 #: The longest line written on the scratchpad.
 MAX_WRITE = 400
 COLORS = ("green", "yellow", "red", "blue", "purple", "orange", "pink")
@@ -153,6 +154,7 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
                                write=write, write_near=_target_ref(s.write_near, refs, written) if write else "", erase=bool(s.erase),
                                arrow_to=_target_ref(s.arrow_to, refs, written),
                                arrow_from=_target_ref(s.arrow_from, refs, written) if _target_ref(s.arrow_to, refs, written) else "",
+                               arrow_kind=s.arrow_kind if s.arrow_kind in ARROW_KINDS else "arrow",
                                board=board, erase_notes=_notes(s.erase_notes),
                                color=_ink(s.color), **_slider_move(s, refs)))
     return out[:MAX_STEPS]

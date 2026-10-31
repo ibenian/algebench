@@ -22,9 +22,11 @@ class PresentStep(BaseModel):
     part: str = Field(default="", description="with a `note:` target: the words of that note you mean, copied exactly "
                                               "from it (a name, an operator, one term); empty for the whole note")
     mark: str = Field(default="point", description='"point" (hold the pointer on it), "circle" (draw a circle '
-                                                   'around it, for what matters most) or "underline" (sweep the '
-                                                   'pointer under it and draw a line there, for a word or a few in a '
-                                                   'note or a label); ignored without a target')
+                                                   'around it, for what matters most), "underline" (draw a line '
+                                                   'under it, for a word or a few in a note or a label), "check" (a '
+                                                   'tick beside it: right, it holds, it matches) or "cross" (a cross '
+                                                   'over it: wrong, ruled out, does not match); ignored without a '
+                                                   'target')
     frame: int = Field(default=-1, description="the execution state to move the slider to BEFORE this beat, from "
                                                "`frames`; -1 to stay where it is")
     write: str = Field(default="", description="optional: one short line you type on the scratchpad over the view "
@@ -48,6 +50,10 @@ class PresentStep(BaseModel):
                                                   "while you say this; empty for none")
     arrow_from: str = Field(default="", description="with `arrow_to`: the ref the arrow starts at; empty to start "
                                                     "at what you write this beat, else at this beat's target")
+    arrow_kind: str = Field(default="arrow", description='with `arrow_to`: "arrow" (a head at `arrow_to`: a direction, '
+                                                         'where a value goes or comes from) or "line" (no head: a plain '
+                                                         'link between two things that belong together, as the same '
+                                                         'value shown twice)')
     slider: str = Field(default="", description="optional: a `slider:<id>` ref to move BEFORE this beat (the pointer "
                                                 "drags it), to show what the parameter does; empty for none")
     slider_to: float | None = Field(default=None, description="with `slider`: the value to move it to, within its range")
@@ -102,7 +108,9 @@ class ScenePresentSig(dspy.Signature):
 
     You can also draw a hand-drawn arrow (`arrow_to`, optionally `arrow_from`) to connect things: from what you
     just wrote to the cell it is about, from a variable to the entry it reads, from one value to where it goes
-    next. Draw an arrow only when the connection is the point; it stays with what you wrote. When the same data is
+    next. Draw an arrow only when the connection is the point; it stays with what you wrote. For a link with no
+    direction (the same value in two places, two things that match) draw a plain line instead (`arrow_kind: "line"`).
+    The pointer runs along the arrow or line as it is drawn, so say what it connects while you draw it. When the same data is
     shown twice (array cells and the chart bar or point drawn from them, a variable and the cell it indexes), show
     the link on a concrete example, cell to bar: circle the cell that holds it (`starts[1]`, not the whole array),
     and draw the arrow from that cell to the bar it becomes (`arrow_from: "starts[1]"`, `arrow_to` that bar), saying
@@ -127,7 +135,9 @@ class ScenePresentSig(dspy.Signature):
     screen, and end with the answer in one sentence. Three to eight beats. Speak warmly and plainly, in the first
     person, to the learner as "you"; refer to values as they are shown on screen; never read code symbol by symbol.
     Use "circle" for the one or two things that matter most, "underline" for a word or a few inside a line (a note's
-    part, a label), "point" for the rest.
+    part, a label), "check" and "cross" to mark what is right or wrong (a learner's answer when judging it, a
+    condition that holds or fails, a candidate kept or ruled out), "point" for the rest. The pointer draws each mark
+    as a hand would; it stays until the next beat.
 
     Sometimes `question` is not the learner's question but a tutoring move: ask the learner a question (a quiz, an
     interview, a check of their understanding), judge their answer, or give a hint. To ASK, point at what the

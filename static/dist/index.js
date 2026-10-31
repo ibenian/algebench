@@ -9935,6 +9935,100 @@ async function glide(x, y, r, ms) {
 		await new Promise((res) => requestAnimationFrame(res));
 	}
 }
+/**
+* Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
+* it began), a line under it, a tick just right of it, a cross over it.
+*/
+function markGeometry(rect, shape) {
+	if (shape === "underline") {
+		const w = rect.width + 8;
+		return {
+			left: rect.left - 4,
+			top: rect.bottom,
+			w: w + 4,
+			h: 12,
+			strokes: [`M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`]
+		};
+	}
+	if (shape === "check") {
+		const s = Math.max(22, Math.min(44, rect.height * 1.3));
+		return {
+			left: rect.right + 4,
+			top: rect.top + rect.height / 2 - s * .6,
+			w: s,
+			h: s,
+			strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]
+		};
+	}
+	if (shape === "cross") {
+		const w = Math.min(rect.width, 160) + 8, h = Math.min(rect.height, 80) + 8;
+		return {
+			left: rect.left + rect.width / 2 - w / 2,
+			top: rect.top + rect.height / 2 - h / 2,
+			w,
+			h,
+			strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]
+		};
+	}
+	const pad = 8, w = rect.width + 16, h = rect.height + 16, rx = w / 2, ry = h / 2, cx = rx + 2, cy = ry + 2;
+	const at = (deg) => {
+		const a = deg * Math.PI / 180;
+		return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
+	};
+	return {
+		left: rect.left - pad,
+		top: rect.top - pad,
+		w: w + 4,
+		h: h + 4,
+		strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 0 1 ${at(-100)}`]
+	};
+}
+var ringShape = "circle";
+/** Put a mark on `rect` in the beat's ink, not drawn yet (traceMark draws it); none for no rect. */
+function drawRing(rect, color = "", shape = "circle") {
+	ensurePointer();
+	if (!ring) return;
+	if (!rect) {
+		ring.classList.remove("on", "drawn");
+		return;
+	}
+	ringShape = shape;
+	ring.setAttribute("class", `ai-pointer-ring ai-mark-${shape} ${inkClass(color)}`.trim());
+	ring.innerHTML = markGeometry(rect, shape).strokes.map(() => "<path pathLength=\"1\"/>").join("");
+	fitRing(rect);
+	ring.classList.add("on");
+}
+/** Fit the mark to `rect`: as the view zooms or pans, it keeps to its target (the stroke isn't redrawn). */
+function fitRing(rect) {
+	if (!ring) return;
+	const g = markGeometry(rect, ringShape);
+	ring.style.left = `${g.left}px`;
+	ring.style.top = `${g.top}px`;
+	ring.setAttribute("width", String(g.w));
+	ring.setAttribute("height", String(g.h));
+	ring.querySelectorAll("path").forEach((p, k) => p.setAttribute("d", g.strokes[k] ?? ""));
+}
+/** Draw the mark as a hand would, the pointer making each stroke: a loop, a line, a tick, the two lines of a cross. */
+async function traceMark(r) {
+	if (!ring) return;
+	for (const path of [...ring.querySelectorAll("path")]) {
+		const box = ring.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
+		await glide(box.left + start.x, box.top + start.y, r, 200);
+		const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
+		for (;;) {
+			alive(r);
+			const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+			path.style.setProperty("stroke-dashoffset", String(1 - k));
+			const b = ring.getBoundingClientRect(), p = path.getPointAtLength(total * k);
+			pos.x = b.left + p.x;
+			pos.y = b.top + p.y;
+			paintPointer();
+			if (t >= 1) break;
+			await new Promise((res) => requestAnimationFrame(res));
+		}
+	}
+	ring.classList.add("drawn");
+}
 /** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
 function showPointer() {
 	ensurePointer().classList.add("on");
@@ -9944,81 +10038,59 @@ function restPointer() {
 	pointer.classList.remove("on");
 	unhover();
 }
-/** How long the pointer stays on what it showed before it goes (the circle or line stays). */
+/** How long the pointer stays on what it showed before it goes (the mark stays). */
 var REST_MS = 1e3;
-/** Draw a circle round `rect`, or a line under it (`underline`), in the beat's ink; none for no rect. */
-function drawRing(rect, color = "", underline = false) {
-	ensurePointer();
-	if (!ring) return;
-	if (!rect) {
-		ring.classList.remove("on");
-		return;
-	}
-	ring.setAttribute("class", `ai-pointer-ring ${inkClass(color)}`.trim());
-	ring.innerHTML = underline ? "<path pathLength=\"1\"/>" : "<ellipse pathLength=\"1\"/>";
-	fitRing(rect);
-	ring.classList.remove("on");
-	ring.getBoundingClientRect();
-	ring.classList.add("on");
-}
-/** Fit the circle round `rect` (or the line under it): as the view zooms or pans, it keeps hugging its target (the
-* stroke isn't redrawn). */
-function fitRing(rect) {
-	const line = ring?.querySelector("path");
-	if (ring && line) {
-		const w = rect.width + 8;
-		ring.style.left = `${rect.left - 4}px`;
-		ring.style.top = `${rect.bottom}px`;
-		ring.setAttribute("width", String(w + 4));
-		ring.setAttribute("height", "12");
-		line.setAttribute("d", `M2 5 Q ${w / 2 + 2} 8 ${w + 2} 4`);
-		return;
-	}
-	const ellipse = ring?.querySelector("ellipse");
-	if (!ring || !ellipse) return;
-	const pad = 8, w = rect.width + 16, h = rect.height + 16;
-	ring.style.left = `${rect.left - pad}px`;
-	ring.style.top = `${rect.top - pad}px`;
-	ring.setAttribute("width", String(w + 4));
-	ring.setAttribute("height", String(h + 4));
-	ellipse.setAttribute("cx", String(w / 2 + 2));
-	ellipse.setAttribute("cy", String(h / 2 + 2));
-	ellipse.setAttribute("rx", String(w / 2));
-	ellipse.setAttribute("ry", String(h / 2));
-}
+var holding = false;
+var drawingArrow = false;
 /**
-* Show a target (or the `part` of a note) while `until` runs: the pointer goes to it, circles it or underlines it if
-* asked (underlining, it runs once under the words as the line is drawn), rests there a second and goes; the circle
-* or line stays, following the target as the view moves, until the next beat.
+* Show a target (or the `part` of a note) while `until` runs: the pointer goes to it and, if asked, draws a mark on
+* it (a circle round it, a line under it, a tick by it, a cross over it), rests there a second and goes; the mark
+* stays, following the target as the view moves, until the next beat.
 */
 async function holdOn(ref, mark, r, until, color = "", part = "") {
 	let done = false;
 	until.then(() => {
 		done = true;
 	});
-	const under = mark === "underline";
+	holding = true;
+	try {
+		await holdPointer(ref, mark, r, () => done, color, part);
+	} finally {
+		holding = false;
+	}
+}
+async function holdPointer(ref, mark, r, done, color, part) {
 	showPointer();
 	const at = resolveTarget$1(ref, part);
-	if (at) await glide(under ? at.left : at.left + at.width / 2, under ? at.bottom + 5 : at.top + at.height / 2, r);
-	let drawn = false, since = 0;
+	if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
+	let drawn = mark === "point", since = 0;
 	const t0 = performance.now();
-	while (!done) {
+	while (!done()) {
 		alive(r);
+		if (drawingArrow) {
+			since = 0;
+			await new Promise((res) => requestAnimationFrame(res));
+			continue;
+		}
 		const now = resolveTarget$1(ref, part);
 		if (now) {
-			if (!drawn && mark !== "point") {
-				drawRing(now, color, under);
+			if (!drawn) {
+				drawRing(now, color, mark);
+				await traceMark(r);
 				drawn = true;
-			} else if (mark !== "point" && ring?.classList.contains("on")) fitRing(now);
+				since = 0;
+				continue;
+			}
+			if (mark !== "point" && ring?.classList.contains("on")) fitRing(now);
 			since ||= performance.now();
-			const t = performance.now() - since;
 			if (pointer?.classList.contains("on")) {
-				const k = Math.min(1, t / 600), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-				const cx = under ? now.left + now.width * e : now.left + now.width / 2, cy = under ? now.bottom + 5 : now.top + now.height / 2;
-				pos.x += (cx - pos.x) * .35;
-				pos.y += (cy - pos.y) * .35;
-				paintPointer();
-				if (t > (under ? 600 : 0) + REST_MS) restPointer();
+				if (mark === "point") {
+					const cx = now.left + now.width / 2, cy = now.top + now.height / 2;
+					pos.x += (cx - pos.x) * .35;
+					pos.y += (cy - pos.y) * .35;
+					paintPointer();
+				}
+				if (performance.now() - since > REST_MS) restPointer();
 			}
 		} else if (performance.now() - t0 > 4e3) restPointer();
 		await new Promise((res) => requestAnimationFrame(res));
@@ -10276,7 +10348,7 @@ function edgeToward(r, x, y, pad) {
 * then its head, two quick strokes. It stays with the notes and goes when they are wiped.
 */
 var arrowsFrom = /* @__PURE__ */ new WeakMap();
-async function drawArrow(from, to, r, fromNote = null, color = "") {
+async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow") {
 	clearTimeout(notesFade);
 	const side = Math.random() < .5 ? -1 : 1, jitter = [
 		Math.random() - .5,
@@ -10287,6 +10359,8 @@ async function drawArrow(from, to, r, fromNote = null, color = "") {
 	const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 	svg.classList.add("ai-arrow");
 	if (inkClass(color)) svg.classList.add(inkClass(color));
+	let drawnSoFar = 0;
+	const shaft = () => svg.querySelector(".ai-arrow-shaft");
 	const shape = () => {
 		const f = from(), t = to();
 		if (!f || !t) return 0;
@@ -10297,7 +10371,7 @@ async function drawArrow(from, to, r, fromNote = null, color = "") {
 			x: t.left + t.width / 2,
 			y: t.top + t.height / 2
 		};
-		const a = edgeToward(f, tc.x, tc.y, 4), b = edgeToward(t, fc.x, fc.y, 7);
+		const a = edgeToward(f, tc.x, tc.y, 4), b = edgeToward(t, fc.x, fc.y, kind === "line" ? 4 : 7);
 		const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
 		if (len < 12) {
 			svg.innerHTML = "";
@@ -10312,16 +10386,20 @@ async function drawArrow(from, to, r, fromNote = null, color = "") {
 			x: a.x + dx * .7 + nx * bow * .8 + wob(2),
 			y: a.y + dy * .7 + ny * bow * .8 + wob(3)
 		};
-		const ex = b.x - c2.x, ey = b.y - c2.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
-		const wing = (k) => {
-			const c = Math.cos(k), s = Math.sin(k);
-			return {
-				x: b.x - head * (ux * c - uy * s),
-				y: b.y - head * (uy * c + ux * s)
+		svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/>`;
+		if (kind === "arrow") {
+			const ex = b.x - c2.x, ey = b.y - c2.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
+			const wing = (k) => {
+				const c = Math.cos(k), s = Math.sin(k);
+				return {
+					x: b.x - head * (ux * c - uy * s),
+					y: b.y - head * (uy * c + ux * s)
+				};
 			};
-		};
-		const w1 = wing(.48), w2 = wing(-.42);
-		svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/><path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${b.x},${b.y} L${w2.x},${w2.y}"/>`;
+			const w1 = wing(.48), w2 = wing(-.42);
+			svg.insertAdjacentHTML("beforeend", `<path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${b.x},${b.y} L${w2.x},${w2.y}"/>`);
+		}
+		if (!svg.classList.contains("drawn")) shaft()?.style.setProperty("stroke-dashoffset", String(1 - drawnSoFar));
 		return len;
 	};
 	const len = shape();
@@ -10329,11 +10407,37 @@ async function drawArrow(from, to, r, fromNote = null, color = "") {
 	notesLayer().append(svg);
 	notes.push(svg);
 	if (fromNote) arrowsFrom.set(fromNote, [...arrowsFrom.get(fromNote) ?? [], shape]);
-	svg.classList.add("drawing");
-	await sleep(Math.min(900, 350 + len * .6));
-	alive(r);
-	svg.classList.add("headed");
-	await sleep(220);
+	drawingArrow = true;
+	try {
+		const start = shaft()?.getPointAtLength(0);
+		if (start) await glide(start.x, start.y, r, 260);
+		const dur = Math.min(900, 350 + len * .6), t0 = performance.now();
+		for (;;) {
+			alive(r);
+			const t = Math.min(1, (performance.now() - t0) / dur);
+			drawnSoFar = 1 - Math.pow(1 - t, 2);
+			const path = shaft();
+			if (path) {
+				path.style.setProperty("stroke-dashoffset", String(1 - drawnSoFar));
+				const p = path.getPointAtLength(path.getTotalLength() * drawnSoFar);
+				pos.x = p.x;
+				pos.y = p.y;
+				paintPointer();
+			}
+			if (t >= 1) break;
+			await new Promise((res) => requestAnimationFrame(res));
+		}
+		svg.classList.add("drawn");
+		if (kind === "arrow") {
+			svg.classList.add("headed");
+			await sleep(220);
+		}
+	} finally {
+		drawingArrow = false;
+	}
+	if (!holding) window.setTimeout(() => {
+		if (!holding && !drawingArrow) restPointer();
+	}, REST_MS);
 }
 /**
 * The learner may move a note, as they move the variables box: drag it anywhere; arrows from it follow. A moved
@@ -10550,7 +10654,18 @@ var markPlaying = (msg) => {
 * nothing to present, null when it was stopped before its first word. `joinHistory`: add the question and answer to the chat's history (the chat records them itself
 * when it asked for the walk-through).
 */
-async function presentQuestion(question, { joinHistory = true, narrating = false } = {}) {
+/**
+* What a walk-through has said so far, as the chat's history keeps it: each beat's words, with what it wrote on the
+* scratchpad or the board, so a follow-up question can refer to it.
+*/
+function transcript(body, beats) {
+	return [...body.querySelectorAll(".ai-present-line")].map((l) => l.textContent ?? "").map((l, i) => beats[i] ?? l).join(" ").replace(/\s+/g, " ").trim();
+}
+/**
+* Present `question` as a walk-through in a new chat bubble. ``onProgress`` hears the transcript after each beat, so
+* the chat's history holds what was said even while it plays (a follow-up asked mid-walk-through sees it).
+*/
+async function presentQuestion(question, { joinHistory = true, narrating = false, onProgress } = {}) {
 	if (narrating) {
 		clearTimeout(notesFade);
 		eraseNotes(true);
@@ -10569,6 +10684,7 @@ async function presentQuestion(question, { joinHistory = true, narrating = false
 	body.classList.add("ai-present-msg");
 	body.innerHTML = "<div class=\"chat-loading\"><span></span><span></span><span></span></div>";
 	let steps = null;
+	let heard = [];
 	try {
 		const out = await invokeExpert("scene_present", describeView(question));
 		alive(r);
@@ -10582,17 +10698,20 @@ async function presentQuestion(question, { joinHistory = true, narrating = false
 			frame: -1,
 			slider: ""
 		})) : out.result.steps;
-		const said = await playBeats(steps, body, r);
+		const said = transcript(body, await playBeats(steps, body, r, (beats) => {
+			heard = beats;
+			onProgress?.(transcript(body, beats));
+		}));
 		addReplay(body, steps, start);
-		if (joinHistory) window.algebenchRecordChatTurn?.(question, said.join(" "));
-		return said.join(" ");
+		if (joinHistory) window.algebenchRecordChatTurn?.(question, said);
+		return said;
 	} catch (e) {
 		if (!(e instanceof Stopped)) {
 			body.textContent = e.message || "The walk-through failed.";
 			return "";
 		}
 		body.querySelector(".chat-loading")?.remove();
-		const spoken = [...body.querySelectorAll(".ai-present-line")].map((l) => l.textContent ?? "").join(" ").trim();
+		const spoken = transcript(body, heard);
 		if (!spoken) msg.remove();
 		else if (joinHistory) window.algebenchRecordChatTurn?.(question, spoken);
 		if (spoken && steps) addReplay(body, steps, start);
@@ -10620,7 +10739,8 @@ function end(r) {
 	notesFade = window.setTimeout(() => eraseNotes(true), 4e3);
 }
 /** Play the beats, each line said into `body`; resolves to what was said. */
-async function playBeats(steps, body, r) {
+/** Play the beats; returns each beat's words with what it wrote, and tells ``onBeat`` the same after each beat. */
+async function playBeats(steps, body, r, onBeat) {
 	const viewport = state.renderer?.domElement.getBoundingClientRect();
 	if (viewport && pos.x < 0) {
 		pos.x = viewport.left + viewport.width / 2;
@@ -10660,13 +10780,15 @@ async function playBeats(steps, body, r) {
 			const to = resolveTarget$1(beat.arrow_to);
 			const from = beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
 			const fromNow = () => beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
-			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color);
+			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind);
 		};
 		const both = Promise.all([words, writing]).then(() => void 0);
 		if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color, beat.part);
 		else await both;
 		alive(r);
-		said.push(beat.say);
+		const wrote = [beat.write, ...beat.board ?? []].filter(Boolean);
+		said.push(wrote.length ? `${beat.say} [wrote: ${wrote.join(" | ")}]` : beat.say);
+		onBeat?.([...said]);
 		await sleep(250);
 	}
 	return said;
@@ -36719,7 +36841,7 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 	console.log("%c🤖 Chat send: %c" + text.substring(0, 60), "color: #8888ff; font-weight: bold", "color: #ccc");
 	const payload = {
 		message: text,
-		history: silent ? chatHistory : chatHistory.slice(0, -1),
+		history: (silent ? chatHistory : chatHistory.slice(0, -1)).filter((h) => h.text),
 		context,
 		...noTools ? { noTools: true } : {},
 		...typed ? { typed: true } : {}
@@ -36895,23 +37017,31 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 				else console.warn("derive_proof_animation: graph view not ready to derive");
 			} else if (tc.name === "present_walkthrough") {
 				const question = String(tc.args?.question || text);
-				presentAfter = () => presentQuestion(question, { joinHistory: false }).then((said) => {
-					if (said) {
-						chatHistory.push({
-							role: "assistant",
-							text: said
-						});
-						return;
-					}
-					if (said === null) return;
-					if (reply.text) {
-						addChatMessage("assistant", reply.text);
-						chatHistory.push({
-							role: "assistant",
-							text: reply.text
-						});
-					}
-				});
+				presentAfter = () => {
+					const turn = {
+						role: "assistant",
+						text: ""
+					};
+					chatHistory.push(turn);
+					return presentQuestion(question, {
+						joinHistory: false,
+						onProgress: (said) => {
+							turn.text = said;
+						}
+					}).then((said) => {
+						if (said) {
+							turn.text = said;
+							return;
+						}
+						if (said === "" && reply.text) {
+							addChatMessage("assistant", reply.text);
+							turn.text = reply.text;
+							return;
+						}
+						const at = chatHistory.indexOf(turn);
+						if (at >= 0) chatHistory.splice(at, 1);
+					});
+				};
 			} else if (tc.name === "set_language") {
 				if (typeof tc.args?.language === "string") setLanguage(tc.args.language);
 			} else if (tc.name === "control_coach") {

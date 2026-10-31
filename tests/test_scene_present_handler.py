@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "color": ""}
+    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "color": ""}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -123,3 +123,15 @@ def test_a_beat_points_at_a_note_written_before_it_and_at_words_in_it():
         ("", "", "point"), ("", "", "point"), ("note:def build_lps(nums):", "build_lps", "underline"),
         ("note:def build_lps(nums):", "", "point"), ("nums[2]", "", "point"), ("", "", "point"), ("", "", "point")]
     assert (beats[5].arrow_from, beats[5].arrow_to) == ("note:def build_lps(nums):", "nums[2]")
+
+
+def test_a_link_is_an_arrow_or_a_plain_line():
+    raw = [PresentStep(say="Same value.", arrow_to="nums[2]", arrow_from="row:count", arrow_kind="line"),
+           PresentStep(say="Goes there.", arrow_to="nums[2]", arrow_kind="zigzag")]
+    beats = intent.clean_steps(raw, {"nums", "nums[2]", "row:count"}, 0)
+    assert [b.arrow_kind for b in beats] == ["line", "arrow"]
+
+
+def test_a_mark_is_one_of_the_known_marks():
+    raw = [PresentStep(say=m.title(), target="nums[2]", mark=m) for m in ("check", "cross", "underline", "star")]
+    assert [b.mark for b in intent.clean_steps(raw, {"nums", "nums[2]"}, 0)] == ["check", "cross", "underline", "point"]

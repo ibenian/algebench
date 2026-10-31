@@ -6351,10 +6351,10 @@ body:has(.push-array) #legend { display: none; }
 .ai-pointer-ring { position: fixed; z-index: 8999; pointer-events: none; overflow: visible; opacity: 0; }
 .ai-pointer-ring.on { opacity: 1; }
 /* Light, not ink: a bright core with a layered glow, as the scratchpad's notes and arrows are lit. */
-.ai-pointer-ring ellipse, .ai-pointer-ring path { fill: none; stroke: var(--ink, #ff7a6e); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+.ai-pointer-ring path { fill: none; stroke: var(--ink, #ff7a6e); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
   filter: drop-shadow(0 0 2px #ff3b30) drop-shadow(0 0 7px rgba(255, 59, 48, .85)) drop-shadow(0 0 16px rgba(255, 59, 48, .5)); }
-.ai-pointer-ring.on ellipse, .ai-pointer-ring.on path { animation: ai-ring-draw .6s ease-out forwards; }
-@keyframes ai-ring-draw { to { stroke-dashoffset: 0; } }
+/* The pointer draws each stroke (presenter.ts sets its dash offset as it goes); drawn, it stays. */
+.ai-pointer-ring.drawn path { stroke-dashoffset: 0 !important; }
 .ai-present-msg .ai-present-line { margin: 0 0 6px; }
 .ai-present-msg .ai-present-line:last-child { margin-bottom: 0; }
 .ai-present-replay { display: flex; align-items: center; gap: 4px; margin: 8px 0 0 auto; padding: 2px 8px; font-size: 11px; color: var(--text-color);
@@ -6386,7 +6386,8 @@ body.ai-presenting .ai-present-replay { visibility: hidden; }
 .ai-arrow { position: fixed; inset: 0; width: 100vw; height: 100vh; overflow: visible; pointer-events: none; transition: opacity .7s; }
 .ai-arrow path { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ink) 80%, transparent)); stroke-dasharray: 1; stroke-dashoffset: 1; }
-.ai-arrow.drawing .ai-arrow-shaft { animation: ai-arrow-draw .7s ease-out forwards; }
+/* The shaft is drawn by the pointer (presenter.ts sets its dash offset as it goes); drawn, it stays. */
+.ai-arrow.drawn .ai-arrow-shaft { stroke-dashoffset: 0 !important; }
 .ai-arrow.headed .ai-arrow-head { animation: ai-arrow-draw .22s ease-out forwards; }
 .ai-arrow.fading { opacity: 0; }
 @keyframes ai-arrow-draw { to { stroke-dashoffset: 0; } }

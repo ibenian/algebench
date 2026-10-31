@@ -973,7 +973,8 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
     const payload = {
         message: text,
         // silent: user wasn't added to chatHistory, so don't slice
-        history: silent ? chatHistory : chatHistory.slice(0, -1),
+        // (A walk-through that hasn't said its first word yet is an empty turn: left out.)
+        history: (silent ? chatHistory : chatHistory.slice(0, -1)).filter(h => h.text),
         context: context,
         ...(noTools ? { noTools: true } : {}),
         ...(typed ? { typed: true } : {}),
@@ -1212,15 +1213,21 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
                     }
                 } else if (tc.name === 'present_walkthrough') {
                     // The agent chose to answer by presenting (the presenter switch is on): play the walk-through
-                    // after this reply; what it says joins the history as the agent's.
+                    // after this reply. What it says is the agent's reply in the history, filled in beat by beat as
+                    // it plays, so a question asked during or after it reads it in place.
                     const question = String(tc.args?.question || text);
-                    presentAfter = () => presentQuestion(question, { joinHistory: false }).then(said => {
-                        if (said) { chatHistory.push({ role: 'assistant', text: said });return; }
-                        // Stopped before a word (the learner typed on): the turn has moved past it, nothing to show.
-                        if (said === null) return;
-                        // No walk-through after all: the agent's own words, held back for it, are the answer.
-                        if (reply.text) { addChatMessage('assistant', reply.text);chatHistory.push({ role: 'assistant', text: reply.text }); }
-                    });
+                    presentAfter = () => {
+                        const turn: ChatHistoryEntry = { role: 'assistant', text: '' };
+                        chatHistory.push(turn);
+                        return presentQuestion(question, { joinHistory: false, onProgress: said => { turn.text = said; } }).then(said => {
+                            if (said) { turn.text = said;return; }
+                            // No walk-through after all: the agent's own words, held back for it, are the answer.
+                            // (Stopped before a word, said === null: the turn has moved past it, nothing to show.)
+                            if (said === '' && reply.text) { addChatMessage('assistant', reply.text);turn.text = reply.text;return; }
+                            const at = chatHistory.indexOf(turn);
+                            if (at >= 0) chatHistory.splice(at, 1);
+                        });
+                    };
                 } else if (tc.name === 'set_language') {
                     // The user asked to talk in another language: the setting changes, and every request after
                     // this one (this reply's speech included) carries it.
