@@ -6353,8 +6353,8 @@ body:has(.push-array) #legend { display: none; }
 #ai-scratchpad { position: fixed; inset: 0; z-index: 8998; pointer-events: none; }
 .ai-note { position: fixed; padding: 3px 8px; font: 600 17px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #7dffcf; white-space: nowrap;
   text-shadow: 0 0 6px rgba(80, 255, 190, .7), 0 0 14px rgba(80, 255, 190, .35); border-radius: 7px;
-  /* Dark enough behind the light to read over anything (cells, labels, grid), with a faint glowing rim. */
-  background: rgba(6, 14, 13, .86); border: 1px solid rgba(125, 255, 207, .45); box-shadow: 0 0 12px rgba(80, 255, 190, .25), 0 4px 14px rgba(0, 0, 0, .45);
+  /* No border: a dark backdrop, soft at the edges, keeps the light readable over cells, labels and grid. */
+  background: rgba(6, 14, 13, .78); box-shadow: 0 0 10px 6px rgba(6, 14, 13, .78);
   opacity: 0; transform: translateY(4px); transition: opacity .3s, transform .3s; }
 .ai-note.on { opacity: 1; transform: none; }
 .ai-note.fading { opacity: 0; transform: translateY(-4px); transition: opacity .7s, transform .7s; }
