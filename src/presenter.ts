@@ -651,8 +651,10 @@ function frameState(row: Record<string, unknown> | undefined, caption: string): 
     return parts.join(', ').slice(0, 700);
 }
 
-let playing = false;
+let playing = false, narratingRun = 0;
 export const presenting = () => playing;
+/** A walk-through narrating playback is about the state it began at: the learner moving the run ends it. */
+export function stopNarrating() { if (playing && narratingRun === run) stopPresenting(); }
 // The chat message whose walk-through is playing: its speaker shows it, and stops it.
 let playingMsg: HTMLElement | null = null;
 const markPlaying = (msg: HTMLElement | null) => { playingMsg?.classList.remove('presenting-now');playingMsg = msg;msg?.classList.add('presenting-now'); };
@@ -662,8 +664,12 @@ const markPlaying = (msg: HTMLElement | null) => { playingMsg?.classList.remove(
  * nothing to present, null when it was stopped before its first word. `joinHistory`: add the question and answer to the chat's history (the chat records them itself
  * when it asked for the walk-through).
  */
-export async function presentQuestion(question: string, {joinHistory = true}: {joinHistory?: boolean} = {}): Promise<string | null> {
-    const r = begin(), start = {scene: state.currentSceneIndex, step: state.currentStepIndex, frame: playbackSlider()?.value ?? -1};
+export async function presentQuestion(question: string, {joinHistory = true, narrating = false}: {joinHistory?: boolean; narrating?: boolean} = {}): Promise<string | null> {
+    // Narrating playback: the run moves on by itself, so the walk-through stays at the state on screen (no slider
+    // moves, no pause) and starts on a clean board; the run moving on ends it.
+    if (narrating) { clearTimeout(notesFade);eraseNotes(true); }
+    const r = begin(!narrating);narratingRun = narrating ? r : 0;
+    const start = {scene: state.currentSceneIndex, step: state.currentStepIndex, frame: playbackSlider()?.value ?? -1};
     const add = window.addChatMessage;
     const msg = add('assistant', '');
     markPlaying(msg);
@@ -676,7 +682,7 @@ export async function presentQuestion(question: string, {joinHistory = true}: {j
         alive(r);
         if (!out.result) { body.textContent = out.reason ?? 'No walk-through came back.';return ''; }
         body.replaceChildren();
-        steps = out.result.steps;
+        steps = narrating ? out.result.steps.map(b => ({...b, frame: -1, slider: ''})) : out.result.steps;
         const said = await playBeats(steps, body, r);
         addReplay(body, steps, start);
         if (joinHistory) window.algebenchRecordChatTurn?.(question, said.join(' '));
@@ -696,11 +702,11 @@ export async function presentQuestion(question: string, {joinHistory = true}: {j
     }
 }
 
-/** A walk-through's start: a new run, the pointer's mode on, the lesson's own playback paused. */
-function begin(): number {
+/** A walk-through's start: a new run, the pointer's mode on, the lesson's own playback paused (unless it narrates it). */
+function begin(pause = true): number {
     const r = ++run;
     playing = true;document.body.classList.add('ai-presenting');
-    window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+    if (pause) window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
     return r;
 }
 function end(r: number) {

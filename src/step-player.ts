@@ -4,7 +4,13 @@ import { setSliderValue } from '/sliders.js';
 import { updateStepCaption } from '/overlay.js';
 import { createNarrator } from '/state-narrator.js';
 import { describeProblem, sceneHasCode } from '/describe-problem.js';
+import { presenterOn, presentQuestion, stopNarrating } from '/presenter.js';
 import type { Scene, StepPlayback } from '/types/lesson.js';
+
+/** The presenter's brief for narrating one state of a run. */
+const NARRATE_PRESENTING='Narrate the execution state on screen now, in one or two short beats: point at what changes at '
+    +'this state and say it with the values shown, and write on the scratchpad what makes it visible (a value in binary, '
+    +'the arithmetic, the condition checked). Stay at this state; say only what is new here; no question.';
 
 /** The player shows the slider's own value over its maximum ("0 / 36"), so the counter
  *  agrees with captions and views that read the slider (Tick 0 is "0 / 36", not "1 / 37"). */
@@ -64,7 +70,9 @@ export function setupStepPlayer(): void {
     },()=>{
         // Narration turned on at a code scene's first state opens with the question: the problem is described there.
         const s=slider(),first=opening;opening=false;
-        return first&&s&&s.value<=s.min&&sceneHasCode()?describeProblem:null;
+        if(first&&s&&s.value<=s.min&&sceneHasCode())return describeProblem;
+        // With the presenter on, each state is a short walk-through: pointed at, and written on the scratchpad.
+        return presenterOn()?()=>presentQuestion(NARRATE_PRESENTING,{joinHistory:false,narrating:true}).then(()=>true):null;
     });
     // opening: the next narration is the first since narration was turned on.
     let opening=false;
@@ -100,8 +108,13 @@ export function setupStepPlayer(): void {
         previous.disabled=p.current<=s.min;next.disabled=p.current>=s.max;
         play.disabled=p.total<=1;
         if(p.current>=s.max)pause();
+        const at=`${state.currentSceneIndex}/${state.currentStepIndex}:${p.current}`;
+        if(renderedAt&&at!==renderedAt)stopNarrating();
+        renderedAt=at;
         narrator.stateChanged();
     }
+    // A walk-through of the state on screen ends when the learner moves the run (playback waits for it instead).
+    let renderedAt='';
     function move(value:number){if(config)setSliderValue(config.slider,value);render();}
     previous.onclick=()=>{pause();const s=slider();if(s)move(s.value-1);};
     next.onclick=()=>{pause();const s=slider();if(s)move(s.value+1);};
