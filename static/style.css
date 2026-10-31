@@ -6328,3 +6328,46 @@ body:has(.push-array) #legend { display: none; }
 /* A line written in pair programming: the AI's spark beside the learner's figure, between the two colours. */
 .cp-pair-mark { position: absolute; right: -10px; top: 50%; margin-top: -5px; }
 .cp-mark.paired { border-left-color: color-mix(in srgb, #a78bfa 30%, #4fb39a); } .cp-mark.paired .cp-status { color: color-mix(in srgb, #a78bfa 40%, #4fb39a); }
+
+/* ── AI presenter (src/presenter.ts): a laser pointer over the view, its circle, and the chat switch ── */
+.presenter-toggle-btn.active { color: #fff; background: color-mix(in srgb, #ff5a4e 70%, transparent); border-color: #ff5a4e; }
+.ai-pointer { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 9000; pointer-events: none; opacity: 0; transition: opacity .25s; }
+.ai-pointer.on { opacity: 1; }
+.ai-pointer-dot, .ai-pointer-trail { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; }
+.ai-pointer-dot { background: radial-gradient(circle, #fff 0 18%, #ff3b30 35%, rgba(255, 59, 48, .55) 60%, transparent 72%);
+  box-shadow: 0 0 14px 5px rgba(255, 59, 48, .55); transition: transform .15s; }
+.ai-pointer.pressed .ai-pointer-dot { transform: scale(.75); box-shadow: 0 0 20px 8px rgba(255, 59, 48, .7); }
+.ai-pointer-trail { background: rgba(255, 59, 48, .22); transform-origin: center; }
+.ai-pointer-trail:nth-child(n+3) { background: rgba(255, 59, 48, .14); }
+.ai-pointer-trail:nth-child(n+5) { background: rgba(255, 59, 48, .07); }
+.ai-pointer-ring { position: fixed; z-index: 8999; pointer-events: none; overflow: visible; opacity: 0; }
+.ai-pointer-ring.on { opacity: 1; }
+.ai-pointer-ring ellipse { fill: none; stroke: #ff3b30; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 59, 48, .6)); }
+.ai-pointer-ring.on ellipse { animation: ai-ring-draw .6s ease-out forwards; }
+@keyframes ai-ring-draw { to { stroke-dashoffset: 0; } }
+.ai-present-msg .ai-present-line { margin: 0 0 6px; }
+.ai-present-msg .ai-present-line:last-child { margin-bottom: 0; }
+/* The presenter's scratchpad: lines typed over the view like projected light, fading in and out. */
+#ai-scratchpad { position: fixed; inset: 0; z-index: 8998; pointer-events: none; }
+.ai-note { position: fixed; padding: 3px 8px; font: 600 17px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #7dffcf; white-space: nowrap;
+  text-shadow: 0 0 6px rgba(80, 255, 190, .7), 0 0 14px rgba(80, 255, 190, .35); border-radius: 7px;
+  /* Dark enough behind the light to read over anything (cells, labels, grid), with a faint glowing rim. */
+  background: rgba(6, 14, 13, .86); border: 1px solid rgba(125, 255, 207, .45); box-shadow: 0 0 12px rgba(80, 255, 190, .25), 0 4px 14px rgba(0, 0, 0, .45);
+  opacity: 0; transform: translateY(4px); transition: opacity .3s, transform .3s; }
+.ai-note.on { opacity: 1; transform: none; }
+.ai-note.fading { opacity: 0; transform: translateY(-4px); transition: opacity .7s, transform .7s; }
+.ai-note .katex { font-size: 1.05em; color: #7dffcf; }
+.ai-note code { font: inherit; color: #ffe08a; text-shadow: 0 0 6px rgba(255, 210, 90, .7); background: none; }
+.ai-note-caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 1px; vertical-align: -2px; background: #7dffcf;
+  box-shadow: 0 0 6px #7dffcf; animation: ai-note-blink 1s steps(1) infinite; }
+.ai-note.set .ai-note-caret { display: none; }
+@keyframes ai-note-blink { 50% { opacity: 0; } }
+/* A hand-drawn arrow: its shaft drawn out from the tail, then its head, in the scratchpad's light. */
+.ai-arrow { position: fixed; inset: 0; width: 100vw; height: 100vh; overflow: visible; pointer-events: none; transition: opacity .7s; }
+.ai-arrow path { fill: none; stroke: #7dffcf; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 0 4px rgba(80, 255, 190, .8)); stroke-dasharray: 1; stroke-dashoffset: 1; }
+.ai-arrow.drawing .ai-arrow-shaft { animation: ai-arrow-draw .7s ease-out forwards; }
+.ai-arrow.headed .ai-arrow-head { animation: ai-arrow-draw .22s ease-out forwards; }
+.ai-arrow.fading { opacity: 0; }
+@keyframes ai-arrow-draw { to { stroke-dashoffset: 0; } }

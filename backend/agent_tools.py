@@ -429,6 +429,31 @@ ALL_TOOL_DECLS = [
     CONTROL_COACH_TOOL_DECL,
 ]
 
+PRESENT_WALKTHROUGH_TOOL_DECL = types.FunctionDeclaration(
+    name="present_walkthrough",
+    description=(
+        "Answer by presenting: take over the view and walk the user through it with a laser pointer, speaking, "
+        "pointing at cells, labels and objects, circling them, typing short lines (math, arithmetic, code) on a "
+        "scratchpad over the view, drawing hand-drawn arrows between things, and moving the execution slider when a "
+        "later state shows it best. "
+        "Only available while the user has the presenter switched on (see `presenter` in the runtime context). Use it "
+        "for any question about what is on screen (why a value is what it is, what a step does, how the run gets "
+        "somewhere); answer in text only what the view can't show (a general concept, small talk, a request for code "
+        "or a definition). It is also how to WRITE or DRAW over the view while the presenter is on: a request to "
+        "write something on the scratchpad, show a calculation, or draw an arrow goes here (say what to write and "
+        "where in `question`), not to set_info_overlay. The walk-through speaks the whole answer, so when you call "
+        "it, write at most one short sentence yourself, never the explanation."),
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "question": types.Schema(type="STRING", description="What to present: the user's question, made self-contained if it refers back to earlier turns."),
+        },
+        required=["question"],
+    ),
+)
+ALL_TOOL_DECLS.append(PRESENT_WALKTHROUGH_TOOL_DECL)
+
+
 def _make_tools(*exclude_names):
     decls = [d for d in ALL_TOOL_DECLS if d.name not in exclude_names]
     return [types.Tool(function_declarations=decls)]
@@ -558,6 +583,13 @@ def build_system_prompt(context, agent_memory=None):
                     "so it is the same number as the tick/frame shown in captions, not a separate one-based "
                     "position or the lesson step number."
                 )
+    if runtime.get('presenter'):
+        parts.append("- PRESENTER MODE IS ON: the user wants questions about the view answered as a walk-through. "
+                     "For any question about what is on screen, call `present_walkthrough` (with the question) "
+                     "instead of explaining in text, and write at most one short sentence yourself. The walk-through "
+                     "can also type on a scratchpad over the view and draw arrows, so a request to write, show a "
+                     "calculation or draw over the view (\"on the scratchpad\", \"write ... next to ...\") goes to "
+                     "`present_walkthrough` too, NOT `set_info_overlay`. Answer in text only what the view can't show.")
     if runtime.get('currentCaption'):
         parts.append(f"- Caption displayed to user: \"{runtime['currentCaption']}\"")
     screen_values = runtime.get('screenValues')

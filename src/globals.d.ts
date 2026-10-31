@@ -466,6 +466,8 @@ interface Window {
   /** Whether state narration (step player) is on. */
   algebenchNarrating?: () => boolean;
   algebenchSpeakText: (text: string, onEnd?: () => void) => void;
+  /** Adds a turn answered outside the chat (the presenter's walk-through) to its history (src/chat.ts). */
+  algebenchRecordChatTurn?: (question: string, answer: string) => void;
   /** Full Gemini transcript of the last turn — a debugging handle. */
   geminiChatHistory?: { systemPrompt?: string; contents: unknown[] };
   /** Raw agent-memory values, read by info-overlay `{{expr}}` bindings. */

@@ -20,6 +20,7 @@ import { playbackPosition } from '/step-player.js';
 import { speechText, extractInlineToolCalls } from '/speech-text.js';
 import { visibleAnnotationTexts } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
+import { presenterOn, presentQuestion, stopPresenting } from '/presenter.js';
 import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
 import type { BuildOp } from '/placement.js';
@@ -171,6 +172,8 @@ const COMMON_PROMPTS: {label: string; prompt: string; display?: string; takesOve
  *  for a narration in flight), so the next state and its narration don't move on and talk over the answer. */
 function sendTyped(text: string): void {
     window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+    // A walk-through still playing gives way to the new question.
+    stopPresenting();
     void sendChatMessage(text, { typed: true });
 }
 
@@ -187,6 +190,7 @@ function usePrompt(text: string, e: MouseEvent, display?: string, takesOver = fa
         // A prompt chip, like an Ask-AI button, is about what is on screen now: playback stops for the answer.
         window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
         if (takesOver) window.dispatchEvent(new CustomEvent('algebench:narrationoff'));
+        stopPresenting();
         sendChatMessage(text, display ? { display } : undefined);
     }
 }
@@ -499,6 +503,9 @@ function buildChatContext(): AlgeBenchChatContext {
             runtime.coach = coachEngine.status();
         }
     } catch {}
+
+    // The presenter switch: on, the agent answers questions about the view with present_walkthrough.
+    if (presenterOn()) (runtime as Record<string, unknown>).presenter = true;
 
     ctx.runtime = runtime;
     return ctx;
@@ -950,6 +957,8 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
     }
 
     const loadingEl = addChatLoading();
+    // A walk-through the agent asked for (present_walkthrough), played once its reply is in.
+    let presentAfter: (() => Promise<void>) | null = null;
     const context = buildChatContext();
 
     // Log on send
@@ -1052,7 +1061,10 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
         for (const call of reply.calls) {
             if (call.name === 'set_preset_prompts' && Array.isArray(call.args.prompts)) setPresetPrompts(call.args.prompts.filter((p): p is string => typeof p === 'string'));
         }
-        if (reply.text) assistantMsg = addChatMessage('assistant', reply.text);
+        // Answered by a walk-through (present_walkthrough): the walk-through is the answer, so the agent's own
+        // words aren't shown or spoken before it (they would say the same thing twice).
+        const presenting = (data.toolCalls ?? []).some(tc => tc.name === 'present_walkthrough');
+        if (reply.text && !presenting) assistantMsg = addChatMessage('assistant', reply.text);
 
         // What a client-executed builder SAID, to be filed after the agent's own
         // reply so the thread reads in the order the user saw it.
@@ -1193,6 +1205,15 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
                     } else {
                         console.warn('derive_proof_animation: graph view not ready to derive');
                     }
+                } else if (tc.name === 'present_walkthrough') {
+                    // The agent chose to answer by presenting (the presenter switch is on): play the walk-through
+                    // after this reply; what it says joins the history as the agent's.
+                    const question = String(tc.args?.question || text);
+                    presentAfter = () => presentQuestion(question, { joinHistory: false }).then(said => {
+                        if (said) { chatHistory.push({ role: 'assistant', text: said });return; }
+                        // No walk-through after all: the agent's own words, held back for it, are the answer.
+                        if (reply.text) { addChatMessage('assistant', reply.text);chatHistory.push({ role: 'assistant', text: reply.text }); }
+                    });
                 } else if (tc.name === 'control_coach') {
                     // Drive the guided-tour "Coach": start/stop/reset/goto/next/prev/status.
                     const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
@@ -1205,8 +1226,10 @@ async function _sendTurn(text: string, { silent, noTools, display, typed }: { si
             }
         }
 
-        chatHistory.push({ role: 'assistant', text: reply.text });
+        // A walk-through files what it said as the reply (presentAfter), in place of the unshown text.
+        if (!presentAfter) chatHistory.push({ role: 'assistant', text: reply.text });
         for (const said of builderTurns) chatHistory.push({ role: 'assistant', text: said });
+        if (presentAfter) void presentAfter();
 
         while (chatHistory.length > CHAT_HISTORY_MAX) {
             chatHistory.shift();
@@ -1489,6 +1512,8 @@ function renderToolCallChip(tc: AlgeBenchChatToolCall): HTMLDivElement {
             const summary = (tc.result && tc.result.summary) || '';
             friendlyText = '💾 memory[\'' + e(key) + '\'] = ' + e(summary);
         }
+    } else if (tc.name === 'present_walkthrough') {
+        friendlyText = '🎯 Presenting: ' + e(String(tc.args?.question || '').slice(0, 80));
     } else if (tc.name === 'set_preset_prompts') {
         const count = (tc.args.prompts || []).length;
         friendlyText = count === 0
@@ -2042,6 +2067,11 @@ window.switchPanelTab = switchPanelTab;
 window.setupChat = setupChat;
 window.initChatTtsControls = initChatTtsControls;
 window.sendChatMessage = sendChatMessage;
+// A turn answered outside the chat (the presenter's walk-through) joins its history, so a follow-up reads in context.
+window.algebenchRecordChatTurn = (question: string, answer: string) => {
+    if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user' && chatHistory[chatHistory.length - 1]!.text === question) chatHistory.pop();
+    chatHistory.push({ role: 'user', text: question }, { role: 'assistant', text: answer });
+};
 window.addChatMessage = addChatMessage;
 window.addChatLoading = addChatLoading;
 window.renderToolCallChip = renderToolCallChip;

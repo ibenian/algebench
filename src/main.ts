@@ -1,6 +1,7 @@
 import { setupStepPlayer } from '/step-player.js';
 import { setupCodePanel } from '/code-panel.js';
 import { setupCodePractice } from '/code-practice.js';
+import { setupPresenter } from '/presenter.js';
 // ============================================================
 // main.js — Application entry point (DOMContentLoaded).
 // Wires all modules together and exposes globals for chat.js
@@ -77,6 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSceneDock();
     setupCodePanel();
     setupCodePractice();
+    setupPresenter();
     setupStepPlayer();
     setupCaptionDrag();
     setupSceneDescDrag();

@@ -1034,19 +1034,19 @@ function lineReferences(references, line) {
 }
 /** A code line, as a row's codeRef resolves it: `fileId:line`. */
 var codeLineKey = (fileId, line) => `${fileId}:${line}`;
-var hovered = [];
+var hovered$1 = [];
 var hoveredLine = null;
 /** Set (or clear, with an empty list and no line) the symbols and the code line being pointed at. */
 function setSymbolHover(keys, line = null) {
-	if (line === hoveredLine && keys.length === hovered.length && keys.every((k, i) => k === hovered[i])) return;
-	hovered = keys;
+	if (line === hoveredLine && keys.length === hovered$1.length && keys.every((k, i) => k === hovered$1[i])) return;
+	hovered$1 = keys;
 	hoveredLine = line;
 	window.dispatchEvent(new CustomEvent("algebench:symbolhover", { detail: {
 		keys,
 		line
 	} }));
 }
-var hoveredSymbols = () => hovered;
+var hoveredSymbols = () => hovered$1;
 var hoveredCodeLine = () => hoveredLine;
 /**
 * What objects in the scene hold for a symbol right now (an array's cells as `[1, 2, 3]`), for the Code panel's
@@ -1084,7 +1084,7 @@ function bindSymbolRow(row, text, code) {
 	row.addEventListener("pointerleave", () => setSymbolHover([]));
 }
 function paintRow(row) {
-	const lit = (row.dataset.symbols?.split("\n").some((k) => hovered.includes(k)) ?? false) || hoveredLine !== null && row.dataset.codeLine === hoveredLine;
+	const lit = (row.dataset.symbols?.split("\n").some((k) => hovered$1.includes(k)) ?? false) || hoveredLine !== null && row.dataset.codeLine === hoveredLine;
 	row.classList.toggle("annotation-row-symbol-hover", lit);
 }
 var listening = false;
@@ -25579,19 +25579,19 @@ function layout(tree) {
 		row
 	};
 }
-var short = (text, max) => text.length > max ? `${text.slice(0, max - 1)}…` : text;
+var short$1 = (text, max) => text.length > max ? `${text.slice(0, max - 1)}…` : text;
 /**
 * A loop by what it walks: `for i, num` (its variables), `while k` (a short condition, else just `while`); the
 * whole header is in its tooltip.
 */
 function loopName(header) {
 	const each = /^for\s+(.+?)\s+in\b/.exec(header);
-	if (each) return `for ${short(each[1], 10)}`;
+	if (each) return `for ${short$1(each[1], 10)}`;
 	const cond = /^while\s+(.+)$/.exec(header)?.[1] ?? "";
 	return cond && cond.length <= 10 ? `while ${cond}` : "while";
 }
 function text(n) {
-	return n.kind === "call" ? short(n.label, 22) : `↻ ${loopName(n.label)} ×${n.iterations}`;
+	return n.kind === "call" ? short$1(n.label, 22) : `↻ ${loopName(n.label)} ×${n.iterations}`;
 }
 /**
 * The scrolling view under the summary, kept across redraws (so a pan stays where the reader left it) and
@@ -30697,6 +30697,765 @@ function setupCodePractice() {
 	retarget();
 }
 //#endregion
+//#region src/presenter.ts
+/**
+* AI presenter: with the presenter switch on (chat toolbar), a question typed in the chat is answered as a
+* walk-through of the view, the way a person at the front of the room would answer it with a laser pointer. The
+* scene_present expert gets the view (the lesson, what is on screen, the run's execution states) and every target
+* the pointer can reach, and answers with beats: move the run to a state (the pointer drags the slider there), point
+* at or circle a target, and say a sentence or two. The beats play here: a red pointer glides over the view, follows
+* its target as the camera moves, and the words appear in the chat as they are spoken.
+*
+* Refs the expert may use, all resolved here to a place on screen:
+*   <id>          an element of the scene (its bounds, or its label);
+*   <id>[<i>]     cell i of an array, or entry i of a dict;
+*   row:<id>      an expression label's row in the variables panel;
+*   caption       the step caption;  slider  the execution slider.
+*/
+var PREF_KEY = "algebench-presenter";
+var MAX_CELLS = 60;
+var sceneNow = () => state.lessonSpec?.scenes?.[state.currentSceneIndex];
+/** The lesson JSON of a live element: the scene's own, else added by a step up to the one on screen. */
+function elementSpec(id) {
+	const scene = sceneNow();
+	const own = scene?.elements ?? [];
+	const added = (scene?.steps ?? []).slice(0, state.currentStepIndex + 1).flatMap((s) => s.add ?? []);
+	return [...own, ...added].reverse().find((e) => e.id === id);
+}
+var short = (v) => {
+	return ((typeof v === "string" ? v : JSON.stringify(v)) ?? "").slice(0, 60);
+};
+/** Everything the pointer can reach now, each with what it is (an array's cells with their values). */
+function presentTargets() {
+	const out = [];
+	for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (!reg || reg.hidden || state.legendToggledOff.has(id)) continue;
+		const spec = elementSpec(id);
+		const name = reg.label ?? spec?.label ?? spec?.title ?? "";
+		const type = reg.type ?? spec?.type ?? "object";
+		if (objectCellAnchor(id, 0)) {
+			const valueFn = spec?.valueExpr ? compileExpr(spec.valueExpr) : null, keyFn = spec?.keyExpr ? compileExpr(spec.keyExpr) : null;
+			const cells = [];
+			for (let i = 0; i < MAX_CELLS && objectCellAnchor(id, i); i++) {
+				let about = `${spec?.keyExpr ? "entry" : "cell"} ${i} of ${name || id}`;
+				try {
+					const value = valueFn ? evalExpr(valueFn, 0, { overrideScope: { idx: i } }) : void 0;
+					const key = keyFn ? evalExpr(keyFn, 0, { overrideScope: { idx: i } }) : void 0;
+					if (keyFn) about += `: key ${short(key)} -> ${short(value)}`;
+					else if (valueFn) about += `: ${short(value)}`;
+				} catch {}
+				cells.push({
+					ref: `${id}[${i}]`,
+					about
+				});
+			}
+			out.push({
+				ref: id,
+				about: `${type} ${name ? `"${name}"` : ""} with ${cells.length} ${spec?.keyExpr ? "entries" : "cells"}`.replace(/\s+/g, " ")
+			}, ...cells);
+			continue;
+		}
+		const row = objectLabelRow(id);
+		if (row) {
+			out.push({
+				ref: `row:${id}`,
+				about: `variables panel row: ${row.textContent?.trim().slice(0, 120) ?? ""}`
+			});
+			continue;
+		}
+		if (objectWorldAnchor(id) || objectLabelElement(id)) out.push({
+			ref: id,
+			about: `${type}${name ? ` "${name}"` : ""}${objectLabelElement(id)?.textContent ? `: ${objectLabelElement(id).textContent.trim().slice(0, 80)}` : ""}`
+		});
+	}
+	const caption = document.getElementById("step-caption");
+	if (caption && !caption.classList.contains("hidden") && caption.offsetParent) out.push({
+		ref: "caption",
+		about: `the step caption: ${caption.textContent?.trim().slice(0, 160) ?? ""}`
+	});
+	if (sliderInput()) out.push({
+		ref: "slider",
+		about: "the execution slider, which steps through the run"
+	});
+	return out.slice(0, 400);
+}
+/** The run's slider: the scene's step playback, else the step's own slider. */
+function playbackSlider() {
+	const id = sceneNow()?.stepPlayback?.slider;
+	const s = id ? state.sceneSliders[id] : void 0;
+	if (!id || !s) return null;
+	const sl = s;
+	return {
+		id,
+		min: sl.min ?? 0,
+		max: sl.max ?? 0,
+		value: Number(sl.value)
+	};
+}
+function sliderInput() {
+	const el = document.querySelector("#state-player input[type=range]");
+	return el && el.offsetParent ? el : null;
+}
+/** Where the slider's thumb sits for frame `f`. */
+function sliderPoint(f) {
+	const input = sliderInput(), s = playbackSlider();
+	if (!input || !s) return null;
+	const r = input.getBoundingClientRect(), t = s.max > s.min ? (f - s.min) / (s.max - s.min) : 0;
+	const thumb = 14;
+	return {
+		x: r.left + thumb / 2 + t * (r.width - thumb),
+		y: r.top + r.height / 2
+	};
+}
+function project(world) {
+	if (!state.camera || !state.renderer) return null;
+	const p = world.clone().project(state.camera);
+	if (p.z < -1 || p.z >= 1) return null;
+	const v = state.renderer.domElement.getBoundingClientRect();
+	return {
+		x: v.left + (p.x * .5 + .5) * v.width,
+		y: v.top + (-p.y * .5 + .5) * v.height
+	};
+}
+function rectOf(points) {
+	const ok = points.filter((p) => !!p);
+	if (!ok.length) return null;
+	const xs = ok.map((p) => p.x), ys = ok.map((p) => p.y);
+	return new DOMRect(Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+}
+var V3 = (p) => new THREE.Vector3(p[0] ?? 0, p[1] ?? 0, p[2] ?? 0);
+/** A ref's place on screen, re-read each frame (the camera, the panels and the values move). */
+function resolveTarget$1(ref) {
+	if (ref === "caption") {
+		const c = document.getElementById("step-caption");
+		return c?.offsetParent ? c.getBoundingClientRect() : null;
+	}
+	if (ref === "slider") {
+		const i = sliderInput();
+		return i ? i.getBoundingClientRect() : null;
+	}
+	if (ref.startsWith("row:")) return objectLabelRow(ref.slice(4))?.getBoundingClientRect() ?? null;
+	const cell = /^(.+)\[(\d+)\]$/.exec(ref);
+	if (cell) {
+		const at = objectCellAnchor(cell[1], Number(cell[2]));
+		if (!at) return null;
+		return rectOf(at.corners.length ? at.corners.map((c) => project(V3(dataToWorld(c)))) : [project(V3(dataToWorld(at.position)))]);
+	}
+	const corners = objectWorldCorners(ref);
+	const box = corners.length ? rectOf(corners.map((c) => project(c))) : null;
+	if (box && box.width * box.height > 4) return box;
+	const label = objectLabelElement(ref);
+	if (label?.offsetParent) return label.getBoundingClientRect();
+	const anchor = objectWorldAnchor(ref), p = anchor ? project(anchor) : null;
+	return p ? new DOMRect(p.x - 6, p.y - 6, 12, 12) : box;
+}
+var pointer = null;
+var ring = null;
+var pos = {
+	x: -100,
+	y: -100
+};
+function ensurePointer() {
+	if (pointer?.isConnected) return pointer;
+	pointer = document.createElement("div");
+	pointer.className = "ai-pointer";
+	pointer.setAttribute("aria-hidden", "true");
+	for (let k = 0; k < 6; k++) {
+		const t = document.createElement("span");
+		t.className = "ai-pointer-trail";
+		pointer.append(t);
+	}
+	const dot = document.createElement("span");
+	dot.className = "ai-pointer-dot";
+	pointer.append(dot);
+	ring = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	ring.classList.add("ai-pointer-ring");
+	ring.setAttribute("aria-hidden", "true");
+	document.body.append(pointer, ring);
+	return pointer;
+}
+var hovered = [];
+var learnerPressing = false;
+for (const [type, down] of [
+	["pointerdown", true],
+	["pointerup", false],
+	["pointercancel", false]
+]) window.addEventListener(type, (e) => {
+	if (e.isTrusted) learnerPressing = down;
+}, true);
+var chain = (el) => {
+	const out = [];
+	for (let e = el; e; e = e.parentElement) out.push(e);
+	return out;
+};
+function fire(el, type, x, y, bubbles) {
+	const init = {
+		bubbles,
+		cancelable: true,
+		clientX: x,
+		clientY: y,
+		view: window
+	};
+	el.dispatchEvent(type.startsWith("pointer") ? new PointerEvent(type, {
+		...init,
+		pointerId: 9001,
+		pointerType: "mouse",
+		isPrimary: false
+	}) : new MouseEvent(type, init));
+}
+function hoverAt(x, y) {
+	if (learnerPressing) return;
+	const under = document.elementFromPoint(x, y);
+	const now = chain(under), was = hovered;
+	if (under !== was[0]) {
+		if (was[0]) {
+			fire(was[0], "pointerout", x, y, true);
+			fire(was[0], "mouseout", x, y, true);
+		}
+		for (const el of was) if (!now.includes(el)) {
+			fire(el, "pointerleave", x, y, false);
+			fire(el, "mouseleave", x, y, false);
+		}
+		for (const el of [...now].reverse()) if (!was.includes(el)) {
+			fire(el, "pointerenter", x, y, false);
+			fire(el, "mouseenter", x, y, false);
+		}
+		if (under) {
+			fire(under, "pointerover", x, y, true);
+			fire(under, "mouseover", x, y, true);
+		}
+		hovered = now;
+	}
+	if (under) {
+		fire(under, "pointermove", x, y, true);
+		fire(under, "mousemove", x, y, true);
+	}
+}
+/** The pointer has gone: whatever it hovered is left, as when a mouse moves away. */
+function unhover() {
+	const x = pos.x, y = pos.y;
+	if (hovered[0]) {
+		fire(hovered[0], "pointerout", x, y, true);
+		fire(hovered[0], "mouseout", x, y, true);
+	}
+	for (const el of hovered) {
+		fire(el, "pointerleave", x, y, false);
+		fire(el, "mouseleave", x, y, false);
+	}
+	hovered = [];
+}
+var trail = [];
+function paintPointer() {
+	if (playing) hoverAt(pos.x, pos.y);
+	const el = ensurePointer();
+	el.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+	trail.unshift({ ...pos });
+	trail.length = Math.min(trail.length, 7);
+	[...el.querySelectorAll(".ai-pointer-trail")].forEach((t, k) => {
+		const p = trail[k + 1] ?? pos;
+		t.style.transform = `translate(${p.x - pos.x}px, ${p.y - pos.y}px)`;
+	});
+}
+var sleep = (ms) => new Promise((res) => window.setTimeout(res, ms));
+var Stopped = class extends Error {};
+var run = 0;
+var alive = (r) => {
+	if (r !== run) throw new Stopped();
+};
+/** Glide to (x, y): eased, quicker for short hops, as a hand moves. */
+async function glide(x, y, r, ms) {
+	const from = { ...pos }, d = Math.hypot(x - from.x, y - from.y), dur = ms ?? Math.min(900, 250 + d * .9);
+	const t0 = performance.now();
+	for (;;) {
+		alive(r);
+		const t = Math.min(1, (performance.now() - t0) / dur), e = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+		pos.x = from.x + (x - from.x) * e;
+		pos.y = from.y + (y - from.y) * e;
+		paintPointer();
+		if (t >= 1) return;
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+}
+function drawRing(rect) {
+	ensurePointer();
+	if (!ring) return;
+	if (!rect) {
+		ring.classList.remove("on");
+		return;
+	}
+	const pad = 8, w = rect.width + 16, h = rect.height + 16;
+	ring.style.left = `${rect.left - pad}px`;
+	ring.style.top = `${rect.top - pad}px`;
+	ring.setAttribute("width", String(w + 4));
+	ring.setAttribute("height", String(h + 4));
+	ring.innerHTML = `<ellipse cx="${w / 2 + 2}" cy="${h / 2 + 2}" rx="${w / 2}" ry="${h / 2}" pathLength="1"/>`;
+	ring.classList.remove("on");
+	ring.getBoundingClientRect();
+	ring.classList.add("on");
+}
+/** Hold the pointer on a target while `until` runs, following it as the view moves; circle it if asked. */
+async function holdOn(ref, mark, r, until) {
+	let done = false;
+	until.then(() => {
+		done = true;
+	});
+	const at = resolveTarget$1(ref);
+	if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
+	if (mark === "circle") drawRing(resolveTarget$1(ref));
+	let t = 0;
+	while (!done) {
+		alive(r);
+		const now = resolveTarget$1(ref);
+		if (now) {
+			t += .05;
+			const cx = now.left + now.width / 2 + Math.sin(t * 1.3) * Math.min(6, now.width / 6), cy = now.top + now.height / 2 + Math.cos(t) * Math.min(3, now.height / 6);
+			pos.x += (cx - pos.x) * .2;
+			pos.y += (cy - pos.y) * .2;
+			paintPointer();
+			if (mark === "circle" && ring?.classList.contains("on")) {
+				const pad = 8;
+				ring.style.left = `${now.left - pad}px`;
+				ring.style.top = `${now.top - pad}px`;
+			}
+		}
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+}
+/** Move the run to frame `f` as a person would: onto the slider's thumb, press, drag along the track, release. */
+async function dragSliderTo(f, r) {
+	const s = playbackSlider(), from = s ? sliderPoint(s.value) : null, to = sliderPoint(f);
+	if (!s || !from || !to) {
+		if (s) setSliderValue(s.id, f);
+		return;
+	}
+	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+	await glide(from.x, from.y, r);
+	ensurePointer().classList.add("pressed");
+	await sleep(180);
+	const steps = Math.abs(f - s.value), dir = Math.sign(f - s.value);
+	for (let k = 1; k <= steps; k++) {
+		alive(r);
+		const v = s.value + dir * k, p = sliderPoint(v);
+		await glide(p.x, p.y, r, Math.max(40, Math.min(160, 900 / steps)));
+		setSliderValue(s.id, v);
+	}
+	await sleep(160);
+	ensurePointer().classList.remove("pressed");
+	await sleep(350);
+}
+var notes = [];
+var notesFade = 0;
+function notesLayer() {
+	let layer = document.getElementById("ai-scratchpad");
+	if (!layer) {
+		layer = document.createElement("div");
+		layer.id = "ai-scratchpad";
+		layer.setAttribute("aria-live", "polite");
+		document.body.append(layer);
+	}
+	return layer;
+}
+var overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+/**
+* Where a note of size w×h goes: beside `near` (right, else left, above, below), within the view and clear of the
+* notes already written; with nothing to sit beside, down the view's top-left corner.
+*/
+function placeNote(w, h, near) {
+	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+	const panels = [...document.querySelectorAll(".annotation-badge, #step-caption, #state-player, .code-step-targets")].filter((el) => el.offsetParent).map((el) => el.getBoundingClientRect());
+	const gap = 16, taken = [
+		...notes.filter((n) => n.classList.contains("ai-note")).map((n) => n.getBoundingClientRect()),
+		...panels,
+		...near ? [near] : []
+	].filter((r) => r.width);
+	const fits = (x, y) => {
+		const r = new DOMRect(x, y, w, h);
+		return x >= view.left + 6 && y >= view.top + 6 && x + w <= view.right - 6 && y + h <= view.bottom - 6 && !taken.some((t) => overlaps(r, t));
+	};
+	const host = near ? panels.find((p) => near.left >= p.left - 1 && near.right <= p.right + 1 && near.top >= p.top - 1 && near.bottom <= p.bottom + 1) : void 0;
+	if (near && host) {
+		const cy = near.top + near.height / 2 - h / 2;
+		for (const [x, y] of [
+			[host.right + gap, cy],
+			[host.left - gap - w, cy],
+			[host.left, host.top - gap - h],
+			[host.left, host.bottom + gap]
+		]) if (fits(x, y)) return {
+			x,
+			y
+		};
+	}
+	if (near) {
+		const cy = near.top + near.height / 2 - h / 2, cx = near.left + near.width / 2 - w / 2;
+		for (const [x, y] of [
+			[near.right + gap, cy],
+			[near.left - gap - w, cy],
+			[cx, near.top - gap - h],
+			[cx, near.bottom + gap],
+			[near.right + gap, cy + h + 8],
+			[near.right + gap, cy - h - 8]
+		]) if (fits(x, y)) return {
+			x,
+			y
+		};
+	}
+	for (const x of [view.left + 24, view.right - w - 24]) for (let y = view.top + 56; y + h < view.bottom - 6; y += h + 10) if (fits(x, y)) return {
+		x,
+		y
+	};
+	return {
+		x: view.left + 24,
+		y: view.top + 56
+	};
+}
+var esc = (t) => t.replace(/[&<>"]/g, (c) => ({
+	"&": "&amp;",
+	"<": "&lt;",
+	">": "&gt;",
+	"\"": "&quot;"
+})[c]);
+/**
+* A note's text as shown: plain text in the typing face, `code` in code colours, and $math$, when a note needs real
+* notation, set by KaTeX as the info overlays are (an unclosed one too, as it is being typed).
+*/
+function inkHtml(src) {
+	const katex = window.katex;
+	let out = "", i = 0;
+	while (i < src.length) {
+		const mark = src[i];
+		if (mark === "$" || mark === "`") {
+			const end = src.indexOf(mark, i + 1), body = src.slice(i + 1, end < 0 ? src.length : end);
+			if (mark === "`") out += `<code>${esc(body)}</code>`;
+			else if (body) out += mathHtml(body, end < 0, katex);
+			i = end < 0 ? src.length : end + 1;
+			continue;
+		}
+		const next = src.slice(i).search(/[$`]/), plain = next < 0 ? src.slice(i) : src.slice(i, i + next);
+		out += esc(plain);
+		i += plain.length;
+	}
+	return out;
+}
+/**
+* Math set by KaTeX. Being typed (`open`), it is set as far as it goes: a command still being spelled is left out
+* and the braces still open are closed, so `\frac{1}{2` already reads as a fraction.
+*/
+function mathHtml(body, open, katex) {
+	if (!katex) return esc(body);
+	const tries = [body];
+	if (open) {
+		let cut = body;
+		for (let k = 0; k < 3; k++) cut = cut.replace(/\\[A-Za-z]*$/, "").replace(/[\\^_]$/, "");
+		if (!cut.trim()) return "";
+		const depth = [...cut].reduce((d, c, i) => c === "{" && cut[i - 1] !== "\\" ? d + 1 : c === "}" && cut[i - 1] !== "\\" ? Math.max(0, d - 1) : d, 0);
+		tries.push(cut + "}".repeat(depth));
+	}
+	for (const t of tries) if (t) try {
+		return katex.renderToString(t, {
+			throwOnError: true,
+			displayMode: false
+		});
+	} catch {}
+	return `<span class="ai-note-raw">${esc(body)}</span>`;
+}
+/** Type `text` as a note over the view at a person's pace: plain text in the typing face, $math$ set key by key. */
+async function typeNote(text, near, r) {
+	clearTimeout(notesFade);
+	const note = document.createElement("div");
+	note.className = "ai-note";
+	const ink = document.createElement("span");
+	ink.className = "ai-note-ink";
+	const caret = document.createElement("span");
+	caret.className = "ai-note-caret";
+	note.append(ink, caret);
+	notesLayer().append(note);
+	ink.innerHTML = inkHtml(text);
+	const size = note.getBoundingClientRect(), at = placeNote(size.width + 12, size.height, near ? resolveTarget$1(near) : null);
+	note.style.left = `${at.x}px`;
+	note.style.top = `${at.y}px`;
+	ink.textContent = "";
+	notes.push(note);
+	note.classList.add("on");
+	let prev = "\n";
+	for (let k = 1; k <= text.length; k++) {
+		const ch = text[k - 1];
+		if (ch === "$" || ch === "`") continue;
+		alive(r);
+		await sleep(keyDelay(prev, ch));
+		ink.innerHTML = inkHtml(text.slice(0, k));
+		prev = ch;
+	}
+	await sleep(250);
+	note.classList.add("set");
+	return note;
+}
+/** The point where the line from a rect's centre towards (x, y) leaves the rect, `pad` outside it. */
+function edgeToward(r, x, y, pad) {
+	const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = x - cx, dy = y - cy;
+	const hw = r.width / 2 + pad, hh = r.height / 2 + pad;
+	const t = Math.min(Math.abs(dx) > 1e-6 ? hw / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-6 ? hh / Math.abs(dy) : Infinity, 1);
+	return {
+		x: cx + dx * t,
+		y: cy + dy * t
+	};
+}
+/**
+* A hand-drawn arrow from one rect to another: a gently bowed, slightly wobbly stroke drawn out from its tail,
+* then its head, two quick strokes. It stays with the notes and goes when they are wiped.
+*/
+async function drawArrow(from, to, r) {
+	clearTimeout(notesFade);
+	const fc = {
+		x: from.left + from.width / 2,
+		y: from.top + from.height / 2
+	}, tc = {
+		x: to.left + to.width / 2,
+		y: to.top + to.height / 2
+	};
+	const a = edgeToward(from, tc.x, tc.y, 4), b = edgeToward(to, fc.x, fc.y, 7);
+	const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+	if (len < 12) return;
+	const nx = -dy / len, ny = dx / len, bow = (Math.random() < .5 ? -1 : 1) * Math.min(60, len * .18), wob = () => (Math.random() - .5) * Math.min(10, len * .04);
+	const c1 = {
+		x: a.x + dx * .3 + nx * bow + wob(),
+		y: a.y + dy * .3 + ny * bow + wob()
+	};
+	const c2 = {
+		x: a.x + dx * .7 + nx * bow * .8 + wob(),
+		y: a.y + dy * .7 + ny * bow * .8 + wob()
+	};
+	const ex = b.x - c2.x, ey = b.y - c2.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
+	const wing = (k) => {
+		const c = Math.cos(k), s = Math.sin(k);
+		return {
+			x: b.x - head * (ux * c - uy * s),
+			y: b.y - head * (uy * c + ux * s)
+		};
+	};
+	const w1 = wing(.48), w2 = wing(-.42);
+	const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	svg.classList.add("ai-arrow");
+	svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/><path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${b.x},${b.y} L${w2.x},${w2.y}"/>`;
+	notesLayer().append(svg);
+	notes.push(svg);
+	svg.classList.add("drawing");
+	await sleep(Math.min(900, 350 + len * .6));
+	alive(r);
+	svg.classList.add("headed");
+	await sleep(220);
+}
+/** Wipe the notes: they fade away. */
+function eraseNotes() {
+	const going = notes;
+	notes = [];
+	for (const n of going) {
+		n.classList.add("fading");
+		window.setTimeout(() => n.remove(), 700);
+	}
+}
+function speak$1(text, into, r) {
+	return new Promise((res) => {
+		let finished = false;
+		const end = () => {
+			if (!finished) {
+				finished = true;
+				res();
+			}
+		};
+		const words = text.split(/(\s+)/);
+		let shown = "", k = 0;
+		const follow = () => into.scrollIntoView({ block: "nearest" });
+		const reveal = () => {
+			if (r !== run || k >= words.length) return;
+			shown += words[k++];
+			into.textContent = shown;
+			follow();
+			window.setTimeout(reveal, words[k - 1].trim() ? 130 : 0);
+		};
+		reveal();
+		const speakNow = window.algebenchSpeakText;
+		if (speakNow) {
+			speakNow(text, () => {
+				into.textContent = text;
+				end();
+			});
+			window.setTimeout(end, 6e3 + text.split(/\s+/).length * 600);
+		} else window.setTimeout(() => {
+			into.textContent = text;
+			end();
+		}, Math.max(1500, text.split(/\s+/).length * 260));
+	});
+}
+/** What the expert is told about the view: the lesson around it, what is on screen, and the run's states. */
+function describeView(question) {
+	const ctx = window.algebenchBuildChatContext?.();
+	const scene = sceneNow();
+	const step = scene?.steps?.[state.currentStepIndex];
+	const lesson = [
+		`Lesson: ${ctx?.lessonTitle ?? ""}`,
+		`Scene: ${scene?.title ?? ""}`,
+		step ? `Step: ${step.title ?? ""}${step.description ? ` (${step.description})` : ""}` : "",
+		(scene?.markdown ?? "").slice(0, 3500)
+	].filter(Boolean).join("\n");
+	const rt = ctx?.runtime;
+	const view = [
+		rt?.currentCaption ? `Caption: ${rt.currentCaption}` : "",
+		rt?.screenValues?.length ? `Values on screen:\n${rt.screenValues.join("\n")}` : "",
+		rt?.simulationState ? `State:\n${rt.simulationState.slice(0, 2500)}` : ""
+	].filter(Boolean).join("\n");
+	const frames = [];
+	const s = playbackSlider(), m = /dataTable\(\s*'([^']+)'\s*,\s*frame\s*,\s*'([^']+)'\s*\)/.exec(step?.descriptionExpr ?? "");
+	const rows = m ? scene?.data?.[m[1]] : void 0;
+	if (s && Array.isArray(rows)) for (let n = s.min; n <= s.max && n < rows.length; n++) frames.push({
+		n,
+		text: String(rows[n]?.[m[2]] ?? "").slice(0, 400),
+		state: frameState(rows[n], m[2])
+	});
+	return {
+		question,
+		lesson,
+		view,
+		frames,
+		frame: s && frames.length ? s.value : -1,
+		targets: presentTargets()
+	};
+}
+/**
+* A state's values, from its row of the run's table: what the presenter needs to talk about a state it moves to,
+* as it has the values on screen for the one shown. The caption column and the view's own bookkeeping (tooltips,
+* line links, status) are left out.
+*/
+function frameState(row, caption) {
+	if (!row) return "";
+	const skip = /* @__PURE__ */ new Set([
+		caption,
+		"line",
+		"status",
+		"running",
+		"message"
+	]);
+	const parts = [];
+	for (const [k, v] of Object.entries(row)) {
+		if (skip.has(k) || /^(tip_|ln_)/.test(k) || v === "" || v === null || typeof v === "object" && !Array.isArray(v)) continue;
+		parts.push(`${k}=${Array.isArray(v) ? `[${v.map((x) => typeof x === "object" ? JSON.stringify(x) : String(x)).join(", ")}]` : String(v)}`);
+	}
+	return parts.join(", ").slice(0, 700);
+}
+var playing = false;
+/**
+* Answer `question` as a walk-through. Resolves to what was said ('' when there was nothing to present, or it was
+* stopped first). `joinHistory`: add the question and answer to the chat's history (the chat records them itself
+* when it asked for the walk-through).
+*/
+async function presentQuestion(question, { joinHistory = true } = {}) {
+	const r = ++run;
+	playing = true;
+	document.body.classList.add("ai-presenting");
+	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+	const add = window.addChatMessage;
+	const msg = add("assistant", "");
+	const body = msg.querySelector(".msg-body") ?? msg;
+	body.classList.add("ai-present-msg");
+	body.innerHTML = "<div class=\"chat-loading\"><span></span><span></span><span></span></div>";
+	try {
+		const out = await invokeExpert("scene_present", describeView(question));
+		alive(r);
+		if (!out.result) {
+			body.textContent = out.reason ?? "No walk-through came back.";
+			return "";
+		}
+		body.replaceChildren();
+		const viewport = state.renderer?.domElement.getBoundingClientRect();
+		if (viewport && pos.x < 0) {
+			pos.x = viewport.left + viewport.width / 2;
+			pos.y = viewport.top + viewport.height * .4;
+			paintPointer();
+		}
+		ensurePointer().classList.add("on");
+		const said = [];
+		for (const beat of out.result.steps) {
+			alive(r);
+			if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
+			drawRing(null);
+			if (beat.erase) eraseNotes();
+			const line = document.createElement("p");
+			line.className = "ai-present-line";
+			body.append(line);
+			const words = speak$1(beat.say, line, r);
+			const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r) : Promise.resolve(null)).then(async (note) => {
+				if (!beat.arrow_to) return;
+				const to = resolveTarget$1(beat.arrow_to);
+				const from = beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
+				if (from && to) await drawArrow(from, to, r);
+			});
+			const both = Promise.all([words, writing]).then(() => void 0);
+			if (beat.target) await holdOn(beat.target, beat.mark, r, both);
+			else await both;
+			alive(r);
+			said.push(beat.say);
+			await sleep(250);
+		}
+		if (joinHistory) window.algebenchRecordChatTurn?.(question, said.join(" "));
+		return said.join(" ");
+	} catch (e) {
+		if (!(e instanceof Stopped)) body.textContent = e.message || "The walk-through failed.";
+		return "";
+	} finally {
+		if (r === run) {
+			playing = false;
+			unhover();
+			document.body.classList.remove("ai-presenting");
+			drawRing(null);
+			pointer?.classList.remove("on", "pressed");
+			notesFade = window.setTimeout(eraseNotes, 4e3);
+		}
+	}
+}
+/** Stop a walk-through now: the pointer goes, and so does the voice. */
+function stopPresenting() {
+	if (!playing) return;
+	run++;
+	playing = false;
+	unhover();
+	document.body.classList.remove("ai-presenting");
+	drawRing(null);
+	pointer?.classList.remove("on", "pressed");
+	eraseNotes();
+	if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
+}
+var presenterOn = () => document.getElementById("presenter-toggle-btn")?.getAttribute("aria-pressed") === "true";
+function setupPresenter() {
+	const btn = document.getElementById("presenter-toggle-btn");
+	if (!btn) return;
+	let on = false;
+	try {
+		on = localStorage.getItem(PREF_KEY) === "1";
+	} catch {}
+	const paint = () => {
+		btn.setAttribute("aria-pressed", String(on));
+		btn.classList.toggle("active", on);
+		btn.title = on ? "AI presenter is on: questions about the view are answered as a walk-through with a pointer (click to turn off)" : "AI presenter: answer questions about the view as a spoken walk-through with a laser pointer";
+	};
+	paint();
+	btn.addEventListener("click", () => {
+		on = !on;
+		paint();
+		try {
+			localStorage.setItem(PREF_KEY, on ? "1" : "0");
+		} catch {}
+		if (!on) stopPresenting();
+	});
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && playing) {
+			e.preventDefault();
+			stopPresenting();
+		}
+	});
+	window.addEventListener("algebench:navchange", () => {
+		if (playing) stopPresenting();
+	});
+}
+//#endregion
 //#region src/view-state.ts
 var CAM_DECIMALS = 4;
 var DEFAULT_UP = [
@@ -34643,6 +35402,7 @@ var COMMON_PROMPTS = [
 *  for a narration in flight), so the next state and its narration don't move on and talk over the answer. */
 function sendTyped(text) {
 	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+	stopPresenting();
 	sendChatMessage$1(text, { typed: true });
 }
 /** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
@@ -34657,6 +35417,7 @@ function usePrompt(text, e, display, takesOver = false) {
 	} else {
 		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
 		if (takesOver) window.dispatchEvent(new CustomEvent("algebench:narrationoff"));
+		stopPresenting();
 		sendChatMessage$1(text, display ? { display } : void 0);
 	}
 }
@@ -34885,6 +35646,7 @@ function buildChatContext() {
 		const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
 		if (coachEngine && typeof coachEngine.status === "function") runtime.coach = coachEngine.status();
 	} catch {}
+	if (presenterOn()) runtime.presenter = true;
 	ctx.runtime = runtime;
 	return ctx;
 }
@@ -35223,6 +35985,7 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 		if (display) chatHistory[chatHistory.length - 1].text = text;
 	}
 	const loadingEl = addChatLoading();
+	let presentAfter = null;
 	const context = buildChatContext();
 	console.log("%c🤖 Chat send: %c" + text.substring(0, 60), "color: #8888ff; font-weight: bold", "color: #ccc");
 	const payload = {
@@ -35288,7 +36051,8 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 		let assistantMsg = null;
 		const reply = extractInlineToolCalls(data.response ?? "");
 		for (const call of reply.calls) if (call.name === "set_preset_prompts" && Array.isArray(call.args.prompts)) setPresetPrompts$1(call.args.prompts.filter((p) => typeof p === "string"));
-		if (reply.text) assistantMsg = addChatMessage("assistant", reply.text);
+		const presenting = (data.toolCalls ?? []).some((tc) => tc.name === "present_walkthrough");
+		if (reply.text && !presenting) assistantMsg = addChatMessage("assistant", reply.text);
 		const builderTurns = [];
 		if (data.toolCalls && data.toolCalls.length > 0) {
 			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
@@ -35400,13 +36164,31 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 				if (tc.result && tc.result.status !== "success") console.log("derive_proof_animation: skipped —", tc.result.error || "not permitted");
 				else if (typeof window.algebenchDeriveProof === "function") window.algebenchDeriveProof(tc.args || {});
 				else console.warn("derive_proof_animation: graph view not ready to derive");
+			} else if (tc.name === "present_walkthrough") {
+				const question = String(tc.args?.question || text);
+				presentAfter = () => presentQuestion(question, { joinHistory: false }).then((said) => {
+					if (said) {
+						chatHistory.push({
+							role: "assistant",
+							text: said
+						});
+						return;
+					}
+					if (reply.text) {
+						addChatMessage("assistant", reply.text);
+						chatHistory.push({
+							role: "assistant",
+							text: reply.text
+						});
+					}
+				});
 			} else if (tc.name === "control_coach") {
 				const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
 				if (engine && typeof engine.control === "function") engine.control(tc.args?.action, { step: tc.args?.step });
 				else console.warn("control_coach: coach engine not available");
 			}
 		}
-		chatHistory.push({
+		if (!presentAfter) chatHistory.push({
 			role: "assistant",
 			text: reply.text
 		});
@@ -35414,6 +36196,7 @@ async function _sendTurn(text, { silent, noTools, display, typed }) {
 			role: "assistant",
 			text: said
 		});
+		if (presentAfter) presentAfter();
 		while (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
 		const memToolNames = [
 			"eval_math",
@@ -35650,7 +36433,8 @@ function renderToolCallChip(tc) {
 			const summary = tc.result && tc.result.summary || "";
 			friendlyText = "💾 memory['" + e(key) + "'] = " + e(summary);
 		}
-	} else if (tc.name === "set_preset_prompts") {
+	} else if (tc.name === "present_walkthrough") friendlyText = "🎯 Presenting: " + e(String(tc.args?.question || "").slice(0, 80));
+	else if (tc.name === "set_preset_prompts") {
 		const count = (tc.args.prompts || []).length;
 		friendlyText = count === 0 ? "💬 Cleared preset prompts" : "💬 Set " + count + " preset prompt" + (count === 1 ? "" : "s");
 	} else if (tc.name === "set_info_overlay") {
@@ -36065,6 +36849,16 @@ window.switchPanelTab = switchPanelTab$1;
 window.setupChat = setupChat;
 window.initChatTtsControls = initChatTtsControls;
 window.sendChatMessage = sendChatMessage$1;
+window.algebenchRecordChatTurn = (question, answer) => {
+	if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user" && chatHistory[chatHistory.length - 1].text === question) chatHistory.pop();
+	chatHistory.push({
+		role: "user",
+		text: question
+	}, {
+		role: "assistant",
+		text: answer
+	});
+};
 window.addChatMessage = addChatMessage;
 window.addChatLoading = addChatLoading;
 window.renderToolCallChip = renderToolCallChip;
@@ -38850,6 +39644,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupSceneDock();
 	setupCodePanel();
 	setupCodePractice();
+	setupPresenter();
 	setupStepPlayer();
 	setupCaptionDrag();
 	setupSceneDescDrag();

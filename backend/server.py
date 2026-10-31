@@ -1265,7 +1265,8 @@ def _call_gemini_chat(message, history, context, no_tools, typed=False):
 
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
-        tools=[] if no_tools else _make_tools(),
+        # present_walkthrough only while the user has the presenter switched on.
+        tools=[] if no_tools else _make_tools(*(() if (context.get('runtime') or {}).get('presenter') else ('present_walkthrough',))),
         # Gemini 3 is tuned for its default temperature; lower values can loop.
         temperature=gemini_temperature(GEMINI_MODEL, 0.7),
         max_output_tokens=CHAT_MAX_OUTPUT_TOKENS,
@@ -1625,6 +1626,16 @@ def _call_gemini_chat(message, history, context, no_tools, typed=False):
                         print(f"   ∴ derive_proof_animation: target={target[:60]!r} "
                               f"start={ (tc_args.get('start_latex') or '')[:40]!r} "
                               f"prompt={ (tc_args.get('prompt') or '')[:40]!r} reason={reason}")
+                elif tc_name == 'present_walkthrough':
+                    # Client-executed: the browser plays a laser-pointer walk-through (scene_present expert).
+                    tc_result = {
+                        "status": "success",
+                        "started": True,
+                        "message": ("The walk-through is playing: it points and speaks the answer. Do NOT write "
+                                    "the explanation; at most one short sentence, or nothing."),
+                    }
+                    if DEBUG_MODE:
+                        print(f"   🎯 present_walkthrough: {(tc_args.get('question') or '')[:80]!r}")
                 elif tc_name == 'control_coach':
                     # Client-executed: the browser drives the guided-tour Coach overlay.
                     action = tc_args.get('action', '')
