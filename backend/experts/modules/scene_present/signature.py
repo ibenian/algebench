@@ -47,7 +47,7 @@ class PresentStep(BaseModel):
                                                 "drags it), to show what the parameter does; empty for none")
     slider_to: float | None = Field(default=None, description="with `slider`: the value to move it to, within its range")
     color: str = Field(default="", description="optional: the ink for what you write and draw this beat (`write`, "
-                                               "new `board` lines, the arrow): green (the default), yellow, red, "
+                                               "new `board` lines, the arrow, the circle): green (the default), yellow, red, "
                                                "blue, purple, orange or pink; empty for green")
 
 

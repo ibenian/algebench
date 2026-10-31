@@ -31067,13 +31067,14 @@ async function glide(x, y, r, ms) {
 		await new Promise((res) => requestAnimationFrame(res));
 	}
 }
-function drawRing(rect) {
+function drawRing(rect, color = "") {
 	ensurePointer();
 	if (!ring) return;
 	if (!rect) {
 		ring.classList.remove("on");
 		return;
 	}
+	ring.setAttribute("class", `ai-pointer-ring ${inkClass(color)}`.trim());
 	ring.innerHTML = "<ellipse pathLength=\"1\"/>";
 	fitRing(rect);
 	ring.classList.remove("on");
@@ -31094,15 +31095,15 @@ function fitRing(rect) {
 	ellipse.setAttribute("rx", String(w / 2));
 	ellipse.setAttribute("ry", String(h / 2));
 }
-/** Hold the pointer on a target while `until` runs, following it as the view moves; circle it if asked. */
-async function holdOn(ref, mark, r, until) {
+/** Hold the pointer on a target while `until` runs, following it as the view moves; circle it if asked, in the beat's ink. */
+async function holdOn(ref, mark, r, until, color = "") {
 	let done = false;
 	until.then(() => {
 		done = true;
 	});
 	const at = resolveTarget$1(ref);
 	if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
-	if (mark === "circle") drawRing(resolveTarget$1(ref));
+	if (mark === "circle") drawRing(resolveTarget$1(ref), color);
 	let t = 0;
 	while (!done) {
 		alive(r);
@@ -31649,7 +31650,7 @@ async function presentQuestion(question, { joinHistory = true } = {}) {
 				if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color);
 			};
 			const both = Promise.all([words, writing]).then(() => void 0);
-			if (beat.target) await holdOn(beat.target, beat.mark, r, both);
+			if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color);
 			else await both;
 			alive(r);
 			said.push(beat.say);

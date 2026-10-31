@@ -276,10 +276,11 @@ async function glide(x: number, y: number, r: number, ms?: number) {
         await new Promise(res => requestAnimationFrame(res));
     }
 }
-function drawRing(rect: DOMRect | null) {
+function drawRing(rect: DOMRect | null, color = '') {
     ensurePointer();
     if (!ring) return;
     if (!rect) { ring.classList.remove('on');return; }
+    ring.setAttribute('class', `ai-pointer-ring ${inkClass(color)}`.trim());
     ring.innerHTML = '<ellipse pathLength="1"/>';
     fitRing(rect);
     ring.classList.remove('on');void ring.getBoundingClientRect();ring.classList.add('on');
@@ -295,12 +296,12 @@ function fitRing(rect: DOMRect) {
     ellipse.setAttribute('rx', String(w / 2));ellipse.setAttribute('ry', String(h / 2));
 }
 
-/** Hold the pointer on a target while `until` runs, following it as the view moves; circle it if asked. */
-async function holdOn(ref: string, mark: Beat['mark'], r: number, until: Promise<void>) {
+/** Hold the pointer on a target while `until` runs, following it as the view moves; circle it if asked, in the beat's ink. */
+async function holdOn(ref: string, mark: Beat['mark'], r: number, until: Promise<void>, color = '') {
     let done = false;void until.then(() => { done = true; });
     const at = resolveTarget(ref);
     if (at) await glide(at.left + at.width / 2, at.top + at.height / 2, r);
-    if (mark === 'circle') drawRing(resolveTarget(ref));
+    if (mark === 'circle') drawRing(resolveTarget(ref), color);
     let t = 0;
     while (!done) {
         alive(r);
@@ -702,7 +703,7 @@ export async function presentQuestion(question: string, {joinHistory = true}: {j
                 if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note, beat.color);
             };
             const both = Promise.all([words, writing]).then(() => undefined);
-            if (beat.target) await holdOn(beat.target, beat.mark, r, both);
+            if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color);
             else await both;
             alive(r);
             said.push(beat.say);
