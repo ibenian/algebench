@@ -27,7 +27,7 @@ _NUMBERED = re.compile(r"^[+ ]?\s*\d+ \| ?")
 
 MAX_STEPS = 14
 #: How many steps each scope may take: "next" is one move (and a fix before it).
-STEP_LIMIT = {"next": 2, "section": MAX_STEPS, "all": MAX_STEPS, "fix": MAX_STEPS, "ask": MAX_STEPS, "narrate": MAX_STEPS}
+STEP_LIMIT = {"next": 2, "section": MAX_STEPS, "all": MAX_STEPS, "fix": MAX_STEPS, "ask": MAX_STEPS, "narrate": MAX_STEPS, "pair": 1}
 
 #: The learner waits with the keyboard handed over: answer quickly.
 _LM = scoped_lm(reasoning_effort="low")
@@ -139,5 +139,5 @@ def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
         log.exception("code_assist: the model call failed")
         return CodeAssist(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
     # Narrating types nothing; a fix shows the fix, not a new slip on the way to it.
-    steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate"), editor=editor_text)
+    steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate", "pair"), editor=editor_text)
     return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing))

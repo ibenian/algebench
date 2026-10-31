@@ -107,3 +107,17 @@ def test_the_learners_lines_are_kept_as_typed_whatever_spacing_the_copy_gives_th
     steps = [AssistStep(say="a", code=copy), AssistStep(say="b", code=copy + "\n# done")]
     out = intent.clean_steps(steps, editor=typed)
     assert out[0].code.startswith(typed.split("\n")[0]) and out[1].code.endswith("    return total\n# done")
+
+
+def test_pairing_types_only_the_start_of_a_new_line():
+    typed = "def f(n):\n    total = 0"
+    full = typed + "\n    for i in range(n):"
+    assert h.only_starts(full, typed, EXPECTED) == typed + "\n    for "
+    assert h.only_starts(typed + "\n    return total", typed, EXPECTED) == typed + "\n    return "
+    assert h.only_starts(typed + "\n    for ", typed, EXPECTED) == typed + "\n    for ", "a start is left as it is"
+    assert h.only_starts(typed + "\n    # think", typed, EXPECTED) == typed + "\n    # think", "not a line of the code"
+
+
+def test_pairing_cuts_a_long_start_too():
+    typed = "def f(n):"
+    assert h.only_starts(typed + "\n    total = ", typed, EXPECTED) == typed + "\n    total "

@@ -7,6 +7,7 @@ change or remove lines anywhere.
 from __future__ import annotations
 
 import logging
+import re
 
 from backend.experts.handlers.code_practice.handler import _numbered
 from backend.experts.modules.code_assist.intent import assist_code
@@ -41,6 +42,29 @@ def render_inputs(req: CodeAssistRequest) -> dict:
     }
 
 
+#: The start a pair-programming step may type of a line: its indentation and first word or two.
+_START = re.compile(r"^(\s*)((?:[A-Za-z_][\w.]*|[\[\](){}]|\S)(?:\s*[\[(]|\s+(?=\S))?)")
+
+
+def only_starts(code: str, typed: str, expected: str) -> str:
+    """In pair programming the learner writes the lines: a step that types a line of the reference, or a long start
+    of one, is cut to the line's start (indentation and first word), so there is still something for them to write."""
+    reference = {line.strip() for line in expected.split("\n") if line.strip()}
+    have = {line.strip() for line in typed.split("\n")}
+    out = []
+    for line in code.split("\n"):
+        text = line.strip()
+        # A new line that is a reference line, or most of one: only its start stays.
+        if text and text not in have and any(ref.startswith(text) for ref in reference):
+            m = _START.match(line)
+            start = (m.group(1) + m.group(2)) if m else line[:len(line) - len(line.lstrip())]
+            # Already no more than a start (trailing space aside): left as it is.
+            if len(line.rstrip()) > len(start.rstrip()):
+                line = start
+        out.append(line)
+    return "\n".join(out)
+
+
 @register_handler("code_assist", request_model=CodeAssistRequest)
 def code_assist(req: CodeAssistRequest) -> dict:
     if req.scope == "ask" and not req.request.strip():
@@ -50,8 +74,12 @@ def code_assist(req: CodeAssistRequest) -> dict:
         return {"reason": out.error}
     if not out.steps:
         # A fix with nothing to fix, or a question with nothing to type: the answer is all there is.
-        if req.scope in ("fix", "ask", "narrate") and out.closing:
+        if req.scope in ("fix", "ask", "narrate", "pair") and out.closing:
             return {"reason": out.closing}
         return {"reason": NOTHING_TO_FIX if req.scope == "fix" else NO_STEPS}
+    if req.scope == "pair":
+        for step in out.steps:
+            if step.code:
+                step.code = only_starts(step.code, req.typed, req.expected)
     log.info("%s %s: %d step(s)", LOG_TAG, req.scope, len(out.steps))
     return {"result": out.model_dump(exclude={"error"})}

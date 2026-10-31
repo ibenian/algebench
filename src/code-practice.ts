@@ -26,11 +26,12 @@ const INDENT = '    ';
 const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practice-view';
 
 /** One block's practice. `reviewed` is the text the coach last saw, so the next review knows what just changed;
- *  `assisted`, the reference lines the AI assistant typed (Help me). */
-interface Attempt { text: string; peeked: number[]; assisted?: number[]; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
+ *  `assisted`, the reference lines the AI assistant typed (Help me); `paired`, those written in pair programming,
+ *  each with the share of it the learner typed. */
+interface Attempt { text: string; peeked: number[]; assisted?: number[]; paired?: Record<number, number>; reviews: Record<string, number>; celebrated: string[]; reviewed?: string; issues?: {line: number; note: string}[] }
 /** Help me's reply: how it will go about it, its moves at the keyboard (each the whole editor after it), and its hand-back. */
 interface AssistPlan { plan: string; steps: {say: string; code: string; explain: string; draft?: string; notice?: string; select?: string; select_line?: number}[]; closing: string }
-type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'ask' | 'quiz' | 'series' | 'grade';
+type AssistScope = 'next' | 'section' | 'all' | 'fix' | 'narrate' | 'ask' | 'quiz' | 'series' | 'grade' | 'pairing' | 'pair' | 'hint' | 'finish';
 /** One question of a quiz (Quiz me), and how it went: sent with the next ask, so the questions build on each other. */
 interface QuizTurn { question: string; kind: 'type' | 'answer'; outcome: 'correct' | 'partly' | 'incorrect' | 'shown' | 'skipped'; answer: string }
 type AssistStep = AssistPlan['steps'][number];
@@ -63,6 +64,8 @@ const ICON_FOLD = svg('<path d="M6 9l6 6 6-6"/>', 12, 2.2), ICON_UNFOLD = svg('<
 const ICON_TYPE = svg('<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8"/>');
 /** A line the AI assistant typed (Help me): its spark, where a seen line has the eye. */
 const ICON_AI = '<svg class="cp-ai-mark" viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-label="typed by the AI"><path d="M12 2l2.4 7.1L22 12l-7.6 2.9L12 22l-2.4-7.1L2 12l7.6-2.9z"/></svg>';
+/** A line written in pair programming: the assistant's spark and the learner's figure, side by side. */
+const ICON_PAIR = '<svg class="cp-pair-mark" viewBox="0 0 34 24" width="14" height="10" aria-label="written with the AI"><path fill="#a78bfa" d="M10 2l2.1 6.4L18 11l-5.9 2.6L10 20l-2.1-6.4L2 11l5.9-2.6z"/><circle cx="26" cy="7" r="4" fill="#4fb39a"/><path fill="#4fb39a" d="M19 21c0-4.4 3.1-7 7-7s7 2.6 7 7z"/></svg>';
 const ICON_SEEN = '<svg class="cp-eye" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="seen"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_DOC = svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>');
 const ICON_CODE = svg('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>');
@@ -334,7 +337,7 @@ export function setupCodePractice(): void {
         current = v;
         if (next === key) return;
         if (key) hushCoach();
-        key = next;block = text;quiz = null;askedQuestions = [];series = null;
+        key = next;block = text;quiz = null;askedQuestions = [];series = null;pairing = false;clearTimeout(pairIdle);
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
         const count = v.to - v.from + 1;
         target.textContent = `${v.file.path.split('/').pop()} · lines ${v.from}–${v.to}`;
@@ -359,11 +362,11 @@ export function setupCodePractice(): void {
     function render(celebrate = true) {
         if (!current) return;
         const before = score;
-        score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections, new Set(attempt.assisted));
+        score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections, new Set(attempt.assisted), pairedShares());
         // A seen line the learner deletes is theirs to type again: if they retype it with the code hidden, it
         // scores in full (seen again meanwhile, it is marked again). Seen before it was ever typed, it stays seen.
         // A line the AI assistant typed is the same: deleted, it is the learner's to type.
-        if (before && (attempt.peeked.length || attempt.assisted?.length)) {
+        if (before && (attempt.peeked.length || attempt.assisted?.length || Object.keys(attempt.paired ?? {}).length)) {
             const was = new Set(before.lines.filter(l => l.similarity === 1).map(l => l.line));
             // Taken apart means removed (no typed line pairs with it any more), not edited: adding a comment, or a
             // keystroke on the way to the same text, leaves the line seen.
@@ -371,8 +374,9 @@ export function setupCodePractice(): void {
             if (undone.size) {
                 attempt.peeked = attempt.peeked.filter(line => !undone.has(line));
                 if (attempt.assisted) attempt.assisted = attempt.assisted.filter(line => !undone.has(line));
+                if (attempt.paired) for (const line of undone) delete attempt.paired[line];
                 persist();
-                score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections, new Set(attempt.assisted));
+                score = scorePractice(block, current.from, input.value, new Set(attempt.peeked), sections, new Set(attempt.assisted), pairedShares());
             }
         }
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
@@ -387,15 +391,18 @@ export function setupCodePractice(): void {
             const n = el('span', 'cp-n');n.textContent = String(j + 1);
             const mark = el('span', 'cp-status');
             if (t.neutral) row.classList.add('neutral');
-            else if (t.exact) { row.classList.add(line?.assisted ? 'assisted' : line?.peeked ? 'seen' : 'exact');mark.textContent = '✓'; }
+            else if (t.exact) { row.classList.add(line?.assisted ? 'assisted' : line?.paired ? 'paired' : line?.peeked ? 'seen' : 'exact');mark.textContent = '✓'; }
             else if (line) { row.classList.add('fuzzy');mark.textContent = `${line.score}`; }
             else if (text.trim()) { row.classList.add('miss');mark.textContent = '✗'; }
             // Seen in the Code panel before it was typed: a small eye after the mark (the line counts half).
             if (line?.peeked) { mark.insertAdjacentHTML('beforeend', ICON_SEEN);row.classList.add('peeked'); }
             // Typed by the AI assistant: its spark instead (the line counts a tenth).
             if (line?.assisted) { mark.insertAdjacentHTML('beforeend', ICON_AI);row.classList.add('ai-typed'); }
+            // Written in pair programming: the AI and the learner together (the line counts half).
+            if (line?.paired) { mark.insertAdjacentHTML('beforeend', ICON_PAIR);row.classList.add('pair-typed'); }
             row.title = t.neutral ? '' : line
                 ? `Matches line ${line.line}: ${line.score}%${line.assisted ? ` (typed by the AI assistant, so at most ${100 * ASSIST_FACTOR}%)`
+                    : line.paired ? ` (written with the AI: you typed ${Math.round(100 * line.share)}% of it)`
                     : line.peeked ? ' (seen in the Code panel, so at most half)' : ''}`
                 : 'No line of the code is like this one';
             const note = notes.get(j + 1);
@@ -415,11 +422,12 @@ export function setupCodePractice(): void {
         chips.hidden = !score.sections.length;
         const exact = score.lines.filter(l => l.similarity === 1).length;
         // The score is the match from memory: a line seen in the Code panel counts half, so say how many were.
-        const seen = score.lines.filter(l => l.peeked).length, helped = score.lines.filter(l => l.assisted).length;
-        codeSummary.textContent = `${exact} of ${score.lines.length} lines exact${seen ? ` · ${seen} seen (half marks)` : ''}${helped ? ` · ${helped} AI-typed (${100 * ASSIST_FACTOR}%)` : ''}`;
+        const seen = score.lines.filter(l => l.peeked).length, helped = score.lines.filter(l => l.assisted).length, together = score.lines.filter(l => l.paired).length;
+        codeSummary.textContent = `${exact} of ${score.lines.length} lines exact${seen ? ` · ${seen} seen (half marks)` : ''}${together ? ` · ${together} AI + you` : ''}${helped ? ` · ${helped} AI-typed (${100 * ASSIST_FACTOR}%)` : ''}`;
         codeSummary.title = [seen ? 'Lines visible in the Code panel while you practised (marked with an eye) score half.' : '',
+            together ? 'Lines written with the AI in pair programming (spark and figure) score the share of them you typed.' : '',
             helped ? `Lines the AI assistant typed (marked with a spark) score ${100 * ASSIST_FACTOR}%.` : '',
-            seen || helped ? 'Hide code and type them from memory for full marks.' : ''].filter(Boolean).join(' ');
+            seen || helped || together ? 'Hide code and type them from memory for full marks.' : ''].filter(Boolean).join(' ');
         total.textContent = `${score.total}%`;
         total.style.setProperty('--fill', `${score.total * 3.6}deg`);
         total.classList.toggle('done', score.total === 100);
@@ -483,7 +491,7 @@ export function setupCodePractice(): void {
         if (!score) return;
         const lines = score.lines, n = lines.length;
         const exact = lines.filter(l => l.similarity === 1).length, typed = lines.filter(l => l.typed != null).length;
-        const seen = lines.filter(l => l.peeked).length, helped = lines.filter(l => l.assisted).length;
+        const seen = lines.filter(l => l.peeked).length, helped = lines.filter(l => l.assisted).length, together = lines.filter(l => l.paired).length;
         const row = (label: string, value: string) => { const r = el('div', 'cp-tip-row');const a = el('span', '');a.textContent = label;const b = el('b', '');b.textContent = value;r.append(a, b);return r; };
         const p = (text: string) => Object.assign(el('p', ''), {textContent: text});
         const head = el('div', 'cp-tip-head');head.textContent = `Typed from memory: ${score.total}%`;
@@ -492,17 +500,18 @@ export function setupCodePractice(): void {
             'close line: by how few edits it is away, up to 95',
             `right code at the wrong nesting depth: ×${OTHER_DEPTH}`,
             `👁 line seen in the Code panel before you typed it: ×${PEEK_FACTOR}`,
+            '✦👤 line written with the AI (Pair with me): × the share of it you typed',
             `✦ line the AI assistant typed (Help me): ×${ASSIST_FACTOR}`,
             'line not typed yet: 0']) rules.append(Object.assign(el('li', ''), {textContent: t}));
         const now = el('div', 'cp-tip-now');
-        now.append(row('Lines to type', String(n)), row('Exact', String(exact)), row('Close', String(typed - exact)), row('Not typed yet', String(n - typed)), row('Seen (count half)', String(seen)), row(`AI-typed (count ${100 * ASSIST_FACTOR}%)`, String(helped)));
+        now.append(row('Lines to type', String(n)), row('Exact', String(exact)), row('Close', String(typed - exact)), row('Not typed yet', String(n - typed)), row('Seen (count half)', String(seen)), row('AI + you (count your share)', String(together)), row(`AI-typed (count ${100 * ASSIST_FACTOR}%)`, String(helped)));
         const parts: HTMLElement[] = [head, p('The score is the average over the running block\'s lines (blank and comment lines aside):'), rules, now];
         if (score.sections.length) {
             const secs = el('div', 'cp-tip-now');
             for (const x of score.sections) secs.append(row(x.title, `${x.score}%`));
             parts.push(p('By section:'), secs);
         }
-        if (seen || helped) parts.push(p('Hide code, then retype a seen or AI-typed line (or Reset) to earn it in full.'));
+        if (seen || helped || together) parts.push(p('Hide code, then retype a seen, paired or AI-typed line (or Reset) to earn it in full.'));
         scoreTip.replaceChildren(...parts);
     }
     function showScoreTip() {
@@ -556,7 +565,7 @@ export function setupCodePractice(): void {
     async function review(force: boolean) {
         // With hints, an empty editor is a beginning: the coach says how to start.
         // While a question waits for its answer, the coach holds its tongue: the answer is the learner's own.
-        if (assisting || quiz || !coachOn() || !current || !score || (!input.value.trim() && !hintsOn())) return;
+        if (assisting || quiz || pairing || !coachOn() || !current || !score || (!input.value.trim() && !hintsOn())) return;
         const cursor = input.value.slice(0, input.selectionStart).split('\n').length - 1;
         const focus = focusSection(score, cursor, sections);
         const signature = reviewKey(input.value);
@@ -677,6 +686,66 @@ export function setupCodePractice(): void {
     // The question waiting for the learner's answer, and the ones asked on this block (so none is asked twice).
     let quiz: {question: string; kind: 'type' | 'answer'; answerKey: string; setup: string; card: HTMLElement} | null = null;
     let askedQuestions: string[] = [];
+    // Pair with me: the learner types, the assistant starts each line, checks it when finished (Enter), hints when they
+    // are wrong or stuck, finishes a line on request, and offers help after a long pause. Asking a question keeps it;
+    // any other choice (or End pairing, Take back, Reset) ends it.
+    let pairing = false, pairNudged = -1, pairIdle = 0, resumeAt = -1, userCaretAt = 0;
+    // The lines exact when pairing began, and how many characters the assistant typed of each line it started (by
+    // the line's place in the editor): a started line the learner then finishes is written together.
+    let pairBase = new Set<number>();
+    const pairStarted = new Map<number, number>();
+    /** The paired lines' shares, as the scoring takes them (an attempt from before shares had a list: half each). */
+    function pairedShares(): Map<number, number> {
+        const p = attempt.paired as Record<number, number> | number[] | undefined;
+        if (Array.isArray(p)) return new Map(p.map(line => [line, 0.5]));
+        return new Map(Object.entries(p ?? {}).map(([line, share]) => [Number(line), share]));
+    }
+    /** While pairing, a line the assistant started and the learner made exact scores the share of it they typed. */
+    function markPaired() {
+        if (!pairing || !score) return;
+        const lines = input.value.split('\n');
+        let added = false;
+        for (const l of score.lines) {
+            if (l.similarity !== 1 || l.typed == null || pairBase.has(l.line) || l.assisted || l.paired) continue;
+            const ai = pairStarted.get(l.typed) ?? 0, total = (lines[l.typed] ?? '').trim().length;
+            if (!ai || !total) continue;   // typed all by the learner: theirs in full
+            if (Array.isArray(attempt.paired)) attempt.paired = Object.fromEntries(pairedShares());
+            attempt.paired = {...(attempt.paired ?? {}), [l.line]: Math.max(0, 1 - ai / total)};
+            added = true;
+        }
+        if (added) { persist();render(false); }
+    }
+    const PAIR_IDLE_MS = 25000;
+    const caretLine = () => input.value.slice(0, input.selectionStart).split('\n').length - 1;
+    function pairWait() {
+        clearTimeout(pairIdle);
+        if (pairing) pairIdle = window.setTimeout(pairNudge, PAIR_IDLE_MS);
+    }
+    /** A long pause on a line: the assistant offers help with it, once a line. */
+    function pairNudge() {
+        if (!pairing || assisting || quiz) return;
+        const line = caretLine();
+        if (pairNudged === line) return;
+        pairNudged = line;
+        const text = 'Need a hand with this line? I can give you a hint, or finish it.';
+        offerHelp(message('assistant', Object.assign(el('div', 'cp-assist cp-assist-close'), {textContent: text})));
+        if (speakOn()) window.algebenchSpeakText?.(text);
+    }
+    /** A line finished (Enter): the assistant looks at it, then hints or starts the next. */
+    function pairLineDone() {
+        if (!pairing || assisting) return;
+        const lines = input.value.split('\n'), j = caretLine() - 1, text = lines[j] ?? '';
+        if (j < 0 || !text.trim()) return;
+        void assist('pair', `I just finished line ${j + 1}: \`${text.trim()}\``);
+    }
+    /** The line the learner is on, as the reference has it (with its indentation), for Finish this line. */
+    function lineToFinish(j: number): string | null {
+        if (!score || !current) return null;
+        const ref = block.split('\n'), paired = score.typed[j]?.reference;
+        if (paired != null) return ref[paired - current.from] ?? null;
+        const next = score.lines.find(l => l.similarity < 1);
+        return next ? ref[next.line - current.from] ?? null : null;
+    }
     // Quiz me: a series of questions, each asked once the last is done, until another choice (or End quiz) ends it.
     let series: {topic: string; turns: QuizTurn[]} | null = null;
     /** The current question is done (judged, shown or skipped): in a quiz, the next one comes. */
@@ -706,7 +775,8 @@ export function setupCodePractice(): void {
         // With a question waiting for words, what is typed here is its answer: the two boxes look alike, and an
         // answer sent as a request for help would end the quiz instead of being judged.
         const answering = quiz?.kind === 'answer';
-        words.placeholder = answering ? 'Your answer to the question above (Enter to send)…' : 'say what you need, e.g. "write the loop" or "why {0: 1}?"';
+        words.placeholder = answering ? 'Your answer to the question above (Enter to send)…'
+            : pairing ? 'Ask me anything about this line…' : 'say what you need, e.g. "write the loop" or "why {0: 1}?"';
         words.setAttribute('aria-label', answering ? 'Your answer to the question' : 'Describe the help you want');
         const send = el('button', 'cp-help-send');send.type = 'submit';send.textContent = '➤';send.title = 'Ask (Enter)';
         ask.append(words, send);
@@ -716,6 +786,19 @@ export function setupCodePractice(): void {
             void assist(quiz?.kind === 'answer' ? 'grade' : 'ask', words.value.trim());
         });
         row.append(label, ask);
+        if (pairing) {
+            // Pairing: help with the line at hand, or stop pairing.
+            const line = (scope: AssistScope, text: string, title: string) => {
+                const b = el('button', 'cp-help-btn');b.type = 'button';b.textContent = text;b.title = title;
+                b.addEventListener('click', () => void assist(scope, words.value.trim()));row.append(b);
+            };
+            line('hint', 'Give me a hint', 'A hint for the line you are on, not the code');
+            line('finish', 'Finish this line', 'I finish the line you are on (it counts as AI-typed), then start the next');
+            const end = el('button', 'cp-help-btn cp-quiz-end');end.type = 'button';end.textContent = 'End pairing';end.title = 'Stop pairing';
+            end.addEventListener('click', () => { pairing = false;clearTimeout(pairIdle);offerHelp(message('assistant', Object.assign(el('div', ''), {textContent: 'OK, no more pairing. Here if you need me.'}))); });
+            row.append(end);
+            return row;
+        }
         const focus = focusNow();
         const choices: [AssistScope, string, string][] = [
             // Only what is typed is fixed: nothing is written ahead.
@@ -726,6 +809,7 @@ export function setupCodePractice(): void {
             ['all', 'Write it all', 'I write the rest of the block, thinking aloud as I go'],
             ['quiz', 'Ask me a question', 'I ask you a question about the algorithm, setting it up in your code as an interviewer would'],
             ['series', 'Quiz me', 'A quiz: question after question, each building on the last, in a teaching order. Any other choice ends it'],
+            ['pairing', 'Pair with me', 'You type, I start each line and help when you are stuck: a hint, or I finish the line'],
         ];
         for (const [scope, text, title] of choices) {
             const b = el('button', 'cp-help-btn');b.type = 'button';b.textContent = text;b.title = title;
@@ -838,7 +922,7 @@ export function setupCodePractice(): void {
     /** Type the change from the editor to `target`: move there, backspace what goes, type what comes. */
     async function typeTo(target: string, run: number) {
         let text = input.value + '\n', caret = input.value.length;
-        const show = (at: number) => { caret = at;input.value = text.slice(0, -1);attempt.text = input.value;render(false);placeCaret(Math.min(at, input.value.length));highlight(); };
+        const show = (at: number) => { caret = at;resumeAt = at;input.value = text.slice(0, -1);attempt.text = input.value;render(false);placeCaret(Math.min(at, input.value.length));highlight(); };
         for (const e of editsBetween(input.value, target)) {
             const end = e.at + e.remove;
             if (assisting !== run) throw new Stopped();
@@ -864,6 +948,15 @@ export function setupCodePractice(): void {
         if (!current || !score || assisting) return;
         if (scope === 'grade' && !quiz) return;
         // Quiz me starts a series; any other choice ends one (the series' own next question and its grading go on).
+        // Pair with me starts pairing; a question, a hint or finishing a line keep it; anything else ends it.
+        const pairStart = scope === 'pairing', userCaret = input.selectionStart;userCaretAt = userCaret;resumeAt = -1;
+        if (pairStart) { pairing = true;pairNudged = -1;scope = 'pair';pairStarted.clear();pairBase = new Set(score.lines.filter(l => l.similarity === 1).map(l => l.line)); }
+        else if (!['pair', 'hint', 'finish', 'ask'].includes(scope)) pairing = false;
+        clearTimeout(pairIdle);
+        if (scope === 'hint') {
+            const j = caretLine();
+            request = `I'm stuck on line ${j + 1}: \`${(input.value.split('\n')[j] ?? '').trim()}\`. Give me a hint, not the code.`;
+        }
         const starting = scope === 'series';
         if (starting) { series = {topic: request, turns: []};scope = 'quiz'; }
         else if (scope !== 'quiz' && scope !== 'grade') {
@@ -889,9 +982,12 @@ export function setupCodePractice(): void {
         const asked = {fix: 'Fix the errors in what I typed, without writing ahead.', narrate: picked ? `Walk me through the selected ${span}.` : 'Walk me through my code.', next: 'Help me with the next step.',
             section: `Help me finish “${focus?.title ?? 'this section'}”.`, all: 'Write it all for me, and talk me through it.', ask: request,
             quiz: starting ? (own ? `Quiz me on this: ${own}` : 'Quiz me.') : own ? `Ask me a question about this: ${own}` : 'Ask me a question.',
-            series: '', grade: pending?.kind === 'answer' ? own : 'Check my answer.'}[scope];
-        // The next question of a quiz comes by itself: no message from the learner for it.
-        if (!(scope === 'quiz' && series && !starting))
+            series: '', grade: pending?.kind === 'answer' ? own : 'Check my answer.',
+            pairing: '', pair: 'Let\'s pair: you type, and I\'ll help when you need it.', hint: 'Give me a hint.', finish: 'Finish this line for me.'}[scope];
+        // The next question of a quiz, and pairing's next line, come by themselves: no message from the learner for them.
+        const finishing = scope === 'finish';
+        if (scope === 'hint') scope = 'pair';
+        if (!(scope === 'quiz' && series && !starting) && !(scope === 'pair' && !pairStart && asked !== 'Give me a hint.'))
             message('user', Object.assign(el('div', ''), {textContent: !['ask', 'quiz', 'grade'].includes(scope) && own ? `${asked} ${own}` : asked}));
         // A new question replaces one still waiting.
         if (scope === 'quiz') { quiz?.card.querySelector('.cp-quiz-controls')?.remove();quiz = null; }
@@ -905,29 +1001,41 @@ export function setupCodePractice(): void {
         try {
             const where = {language: current.file.language ?? '', expected: block, first_line: current.from,
                 section: focus ? {title: focus.title, hint: focus.hint ?? '', start: focus.from, end: focus.to} : null, typed: input.value};
-            const out = (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
+            // Finishing a line needs no model: the reference has the line.
+            const finishTo = finishing ? (() => {
+                const lines = input.value.split('\n'), j = input.value.slice(0, userCaret).split('\n').length - 1, want = lineToFinish(j);
+                if (want == null) return null;
+                lines[j] = want;
+                return lines.join('\n');
+            })() : null;
+            const out = (finishing ? (finishTo != null ? {result: {plan: '', steps: [{say: 'Here is how I would finish it.', code: finishTo, explain: ''}], closing: ''}}
+                    : {reason: 'I am not sure which line you mean: put the cursor on it and ask again.'})
+                : (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
                 : scope === 'grade' ? await invokeExpert('code_quiz', {...where, mode: 'grade', question: pending!.question, kind: pending!.kind,
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
                 : await invokeExpert('code_assist', {...where, scope, request,
                     // The coach's remarks, while they still number the lines as they are.
-                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []})) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string};
+                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string};
             waiting.remove();
             if (assisting !== run) throw new Stopped();
             const bubble = (cls: string) => message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
             if (!out.result) {
                 // Nothing to type: an answer to a question, or nothing to fix, is said like the rest of its help.
-                if ((scope === 'ask' || scope === 'fix' || scope === 'narrate') && out.reason) { await say(out.reason, bubble('cp-assist-close'), run);ended = true;return; }
+                if (scope === 'pair' && out.reason) pairing = false;   // nothing left to write: pairing is done
+                if (['ask', 'fix', 'narrate', 'pair', 'finish'].includes(scope) && out.reason) { await say(out.reason, bubble('cp-assist-close'), run);ended = true;return; }
                 message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: out.reason ?? 'No help came back.'}));
                 return;
             }
             const r = out.result;
             dropKept();   // the assistant takes over: its own selections from here
             reportSummary.textContent = scope === 'quiz' ? '✦ setting a question' : scope === 'grade' ? '✦ checking your answer' : '✦ AI at the keyboard';
-            if (r.plan) await say(r.plan, bubble('cp-assist-plan'), run);
+            // Pairing says what each line is for in that line's step: no plan before it.
+            if (r.plan && scope !== 'pair' && scope !== 'finish') await say(r.plan, bubble('cp-assist-plan'), run);
             selectedTo = 0;
             for (const [k, step] of r.steps.entries()) {
                 const body = bubble('cp-assist-step');
-                const noun = scope === 'fix' ? 'Fix' : scope === 'narrate' ? 'Part' : scope === 'quiz' ? 'Setting it up' : scope === 'grade' ? 'Look here' : 'Step';
+                const noun = scope === 'fix' ? 'Fix' : scope === 'narrate' ? 'Part' : scope === 'quiz' ? 'Setting it up' : scope === 'grade' ? 'Look here'
+                    : scope === 'pair' ? (step.code ? 'Next line' : 'Hint') : scope === 'finish' ? 'Finishing the line' : 'Step';
                 const head = el('div', 'cp-assist-head');
                 head.textContent = r.steps.length > 1 && scope !== 'quiz' && scope !== 'grade' ? `${noun} ${k + 1} of ${r.steps.length}` : scope === 'next' ? 'Next step' : noun;
                 const thought = el('div', 'cp-assist-say');
@@ -983,6 +1091,8 @@ export function setupCodePractice(): void {
                 await say(r.feedback ?? '', text, run);
                 nextAfter = !!series;
             }
+            // Pairing hands the keyboard back without a word: the learner carries on with the line.
+            else if (scope === 'pair' || scope === 'finish') { if (r.closing && !r.steps.length) { pairing = false;await say(r.closing, bubble('cp-assist-close'), run); } }
             else await say(r.closing || 'Over to you.', bubble('cp-assist-close'), run);
             ended = true;
         } catch (e) {
@@ -990,8 +1100,10 @@ export function setupCodePractice(): void {
             if (!(e instanceof Stopped) && assisting === run) message('assistant', Object.assign(el('div', 'cp-report-reason'), {textContent: (e as Error).message}));
         } finally {
             handBack(run, blockKey, exactBefore, assistedBefore, ended);
-            // In a quiz, a judged answer leads to the next question.
+            // In a quiz, a judged answer leads to the next question; pairing, a finished line to the next line.
             if (ended && nextAfter) nextInSeries();
+            if (ended && finishing && pairing) window.setTimeout(() => { if (pairing && !assisting) void assist('pair'); }, 700);
+            else if (pairing) pairWait();
         }
     }
     /**
@@ -1078,13 +1190,25 @@ export function setupCodePractice(): void {
         // In a quiz, the next question is on its way: no choices in between.
         if (!quiz && !(series && ended)) offerHelp(msg);
         if (quiz?.kind === 'answer') quiz.card.querySelector<HTMLTextAreaElement>('.cp-quiz-input')?.focus();
+        else if (pairing) {
+            // Pairing: at the end of the line the assistant started, else where the learner was.
+            let at = resumeAt >= 0 ? Math.min(resumeAt, input.value.length) : Math.min(userCaretAt, input.value.length);
+            if (resumeAt >= 0) {
+                const end = input.value.indexOf('\n', at);at = end < 0 ? input.value.length : end;
+                // The line it started: how much of it is the assistant's, for the learner's share once they finish it.
+                const j = input.value.slice(0, at).split('\n').length - 1, started = (input.value.split('\n')[j] ?? '').trim();
+                if (started && !pairStarted.has(j)) pairStarted.set(j, started.length);
+            }
+            input.focus();input.setSelectionRange(at, at);
+        }
         else { input.focus();input.setSelectionRange(input.value.length, input.value.length); }
+        resumeAt = -1;
     }
     /** Stop the assistant; `drop` when its work is being thrown away (Reset), so it hands nothing back. */
     let dropped = false;
     function stopAssist(drop = false) {
         if (!assisting) return;
-        assisting = 0;dropped = drop;series = null;   // taking the keyboard back ends a quiz too
+        assisting = 0;dropped = drop;series = null;pairing = false;clearTimeout(pairIdle);   // taking the keyboard back ends a quiz, and pairing
         root.classList.remove('cp-assisting');input.readOnly = false;takeBack.hidden = true;helpTool.hidden = false;aiCaret.hidden = true;clearSelection();
         if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
     }
@@ -1115,14 +1239,16 @@ export function setupCodePractice(): void {
             const line = input.value.slice(start, input.selectionStart);
             const indent = /^\s*/.exec(line)![0] + (/[:{[(]\s*$/.test(line) ? INDENT : '');
             insert('\n' + indent);
-            if (coachOn()) void review(false);
+            if (pairing) pairLineDone();
+            else if (coachOn()) void review(false);
         }
     });
     input.addEventListener('input', () => {
         attempt.text = input.value;persist();
-        render();highlight();
+        render();highlight();markPaired();
         clearTimeout(idle);
         if (coachOn()) idle = window.setTimeout(() => void review(false), IDLE_REVIEW_MS);
+        pairWait();
     });
     input.addEventListener('keyup', e => { if (e.key.startsWith('Arrow')) render(false); });
     input.addEventListener('click', () => render(false));
@@ -1179,7 +1305,7 @@ export function setupCodePractice(): void {
         }
         disarmReset();
         // Starting afresh ends Help me too: the assistant stops, and its work goes with the rest (a question too).
-        stopAssist(true);quiz = null;series = null;
+        stopAssist(true);quiz = null;series = null;pairing = false;clearTimeout(pairIdle);
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';notes = new Map();
         clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
         if (hintsOn()) void review(false);

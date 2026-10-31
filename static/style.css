@@ -6325,3 +6325,6 @@ body:has(.push-array) #legend { display: none; }
 /* The learner's selection, kept while the editor is unfocused (as the textarea's own would look). */
 .cp-kept-sel { position: absolute; background: color-mix(in srgb, var(--accent-color) 35%, transparent); border-radius: 2px; }
 .cp-help-btn.cp-quiz-end { margin-left: auto; color: var(--muted-color); background: transparent; border-color: var(--border-color); }
+/* A line written in pair programming: the AI's spark beside the learner's figure, between the two colours. */
+.cp-pair-mark { position: absolute; right: -10px; top: 50%; margin-top: -5px; }
+.cp-mark.paired { border-left-color: color-mix(in srgb, #a78bfa 30%, #4fb39a); } .cp-mark.paired .cp-status { color: color-mix(in srgb, #a78bfa 40%, #4fb39a); }

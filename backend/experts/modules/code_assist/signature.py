@@ -60,6 +60,15 @@ class CodeAssistSig(dspy.Signature):
       `select`, and `say` (plus `explain` when there is more) on what it does and why it is needed there. A piece is
       a line or a few lines, or an expression inside one when that is the point. Say plainly what is wrong if a
       piece is wrong, but don't fix it.
+    - "pair": pair programming, the learner at the keyboard. You only start lines; they finish them. ONE step:
+      - if `request` names a line the learner just finished and it is wrong, type nothing: `select` the part that
+        is off and `say` a short hint toward it, never the fix;
+      - if `request` says they are stuck on a line, type nothing: `say` a hint for it (what it must do, which
+        name or idea to reach for), never the line itself;
+      - otherwise, the next line of the code: `say` in one or two short sentences what it does and why it comes
+        now, and in `code` START it: its indentation and its first word or two (`for `, `count[`, `return `),
+        never the whole line, so the learner writes the rest. A line already started is theirs: don't type in it.
+      When the code is complete, no steps: say so in `closing`.
     - "ask": do what `request` asks, in the learner's own words, and no more ("write the loop" is the loop alone;
       "my lookup is wrong, fix it" is that fix). A question that needs no typing ("why {0: 1}?") gets no steps:
       answer it in `closing`.
@@ -109,7 +118,7 @@ class CodeAssistSig(dspy.Signature):
     issues: str = dspy.InputField(desc="problems the coach already pointed out in the typed code, by line; may be empty")
     request: str = dspy.InputField(desc="the learner's own words on the help they want; may be empty")
     scope: str = dspy.InputField(desc='how much to write: "next", "section", "all", "fix" (only fix what is typed), '
-                                      '"narrate" (select and explain, type nothing), or "ask" (do what `request` says)')
+                                      '"narrate" (select and explain, type nothing), "pair" (start the next line, or hint at a wrong one), or "ask" (do what `request` says)')
 
     plan: str = dspy.OutputField(desc="two or three sentences on how you will approach it, said before typing")
     steps: list[AssistStep] = dspy.OutputField(desc="the moves at the keyboard, in order")

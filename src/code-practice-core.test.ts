@@ -75,3 +75,13 @@ test('a line the AI assistant typed scores at most ASSIST_FACTOR, below a seen o
     assert.ok(line.assisted && !line.peeked);
     assert.ok(ASSIST_FACTOR < PEEK_FACTOR);
 });
+
+test('a line written in pair programming scores the share the learner typed, and an AI-typed mark wins over it', () => {
+    const paired = scorePractice(REF, 10, REF, new Set(), sections, new Set(), new Map([[12, 0.6]])).lines.find(l => l.line === 12)!;
+    assert.equal(paired.score, 60);
+    assert.ok(paired.paired && !paired.peeked && !paired.assisted && paired.share === 0.6);
+    const seenToo = scorePractice(REF, 10, REF, new Set([12]), sections, new Set(), new Map([[12, 0.8]])).lines.find(l => l.line === 12)!;
+    assert.equal(seenToo.score, 100 * PEEK_FACTOR, 'seen as well: the lower of the two');
+    const both = scorePractice(REF, 10, REF, new Set(), sections, new Set([12]), new Map([[12, 0.6]])).lines.find(l => l.line === 12)!;
+    assert.equal(both.score, 100 * ASSIST_FACTOR);
+});

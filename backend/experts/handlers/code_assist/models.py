@@ -25,6 +25,6 @@ class CodeAssistRequest(BaseModel):
     issues: list[OpenNote] = Field(default_factory=list, max_length=40)
     #: The next logical piece, the rest of the section, the rest of the block, only fixes to what is typed, or what
     #: the learner asked for in ``request``.
-    scope: Literal["next", "section", "all", "fix", "narrate", "ask"] = "next"
+    scope: Literal["next", "section", "all", "fix", "narrate", "pair", "ask"] = "next"
     #: The learner's own words: what "ask" does, or how to go about another scope.
     request: str = Field(default="", max_length=600)
