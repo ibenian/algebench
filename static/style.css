@@ -3492,14 +3492,14 @@ body.rotating-axis-z, body.rotating-axis-z * {
     background: color-mix(in srgb, var(--accent-color) 20%, transparent);
     border-color: var(--border-color);
 }
-.msg-speak-btn.active {
+.msg-speak-btn.active, .chat-msg.presenting-now .msg-speak-btn {
     color: var(--text-color) !important;
     background: color-mix(in srgb, var(--accent-color) 25%, transparent);
     border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
     opacity: 1 !important;
     animation: speak-pulse 1.2s ease-in-out infinite;
 }
-.msg-speak-btn.active::after {
+.msg-speak-btn.active::after, .chat-msg.presenting-now .msg-speak-btn::after {
     content: '';
     position: absolute;
     inset: -3px;
@@ -6349,6 +6349,12 @@ body:has(.push-array) #legend { display: none; }
 @keyframes ai-ring-draw { to { stroke-dashoffset: 0; } }
 .ai-present-msg .ai-present-line { margin: 0 0 6px; }
 .ai-present-msg .ai-present-line:last-child { margin-bottom: 0; }
+.ai-present-replay { display: flex; align-items: center; gap: 4px; margin: 8px 0 0 auto; padding: 2px 8px; font-size: 11px; color: var(--text-color);
+    background: transparent; border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer; opacity: .65; }
+.ai-present-replay svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ai-present-replay:hover:not(:disabled) { opacity: 1; background: var(--panel-bg); }
+.ai-present-replay:disabled { opacity: .3; cursor: default; }
+body.ai-presenting .ai-present-replay { visibility: hidden; }
 /* The presenter's scratchpad: lines typed over the view like projected light, fading in and out. */
 #ai-scratchpad { position: fixed; inset: 0; z-index: 8998; pointer-events: none; }
 /* A note's ink (--ink): green unless the presenter picks another of its colours, so related notes match. */

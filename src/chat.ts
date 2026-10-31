@@ -77,6 +77,7 @@ interface SpeakButton extends HTMLButtonElement {
 /** A rendered chat message; assistant messages carry their own speak starter. */
 interface ChatMessageElement extends HTMLDivElement {
     _startSpeak?: () => void;
+    _replay?: () => void;   // a presenter walk-through: plays it again (presenter.ts)
 }
 
 // ----- Chat State -----
@@ -1379,6 +1380,9 @@ function addChatMessage(role: string, content: string, toolCalls?: AlgeBenchChat
                 speakBtn._ignoreNextClick = false;
                 return;
             }
+            // A walk-through's speaker stops it while it plays, and plays it again (pointer and all) after.
+            if (msgDiv.classList.contains('presenting-now')) { stopPresenting();return; }
+            if (msgDiv._replay) { stopOtherBtn();if (activeSpeakBtn) stopAndReset();msgDiv._replay();return; }
             // If currently active (loading or playing), stop
             if (activeSpeakBtn === speakBtn) {
                 stopAndReset();
@@ -1390,6 +1394,7 @@ function addChatMessage(role: string, content: string, toolCalls?: AlgeBenchChat
         // Double click: restart from beginning
         speakBtn.addEventListener('dblclick', (e) => {
             e.preventDefault();
+            if (msgDiv._replay || msgDiv.classList.contains('presenting-now')) return;   // its clicks did it
             speakBtn._ignoreNextClick = true;
             stopAndReset();
             startPlay();

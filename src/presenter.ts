@@ -644,6 +644,9 @@ function frameState(row: Record<string, unknown> | undefined, caption: string): 
 
 let playing = false;
 export const presenting = () => playing;
+// The chat message whose walk-through is playing: its speaker shows it, and stops it.
+let playingMsg: HTMLElement | null = null;
+const markPlaying = (msg: HTMLElement | null) => { playingMsg?.classList.remove('presenting-now');playingMsg = msg;msg?.classList.add('presenting-now'); };
 
 /**
  * Answer `question` as a walk-through. Resolves to what was said, as far as it got when stopped: '' when there was
@@ -651,64 +654,22 @@ export const presenting = () => playing;
  * when it asked for the walk-through).
  */
 export async function presentQuestion(question: string, {joinHistory = true}: {joinHistory?: boolean} = {}): Promise<string | null> {
-    const r = ++run;
-    playing = true;document.body.classList.add('ai-presenting');
-    window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+    const r = begin(), start = {scene: state.currentSceneIndex, step: state.currentStepIndex, frame: playbackSlider()?.value ?? -1};
     const add = window.addChatMessage;
     const msg = add('assistant', '');
+    markPlaying(msg);
     const body = (msg.querySelector('.msg-body') ?? msg) as HTMLElement;
     body.classList.add('ai-present-msg');
     body.innerHTML = '<div class="chat-loading"><span></span><span></span><span></span></div>';
+    let steps: Beat[] | null = null;
     try {
         const out = await invokeExpert('scene_present', describeView(question)) as {result?: {steps: Beat[]}; reason?: string};
         alive(r);
         if (!out.result) { body.textContent = out.reason ?? 'No walk-through came back.';return ''; }
         body.replaceChildren();
-        const viewport = state.renderer?.domElement.getBoundingClientRect();
-        if (viewport && pos.x < 0) { pos.x = viewport.left + viewport.width / 2;pos.y = viewport.top + viewport.height * .4;paintPointer(); }
-        ensurePointer().classList.add('on');
-        const said: string[] = [];
-        for (const beat of out.result.steps) {
-            alive(r);
-            if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
-            if (beat.slider?.startsWith('slider:') && typeof beat.slider_to === 'number') await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
-            drawRing(null);
-            if (beat.erase) eraseNotes();
-            // Tidying the board before going on: notes named by their text are wiped, or slide to the top-left stack.
-            for (const t of beat.erase_notes ?? []) {
-                const n = noteByText.get(noteKey(t));
-                if (!n?.isConnected) continue;
-                notes = notes.filter(x => x !== n);board = board.filter(x => x !== n);
-                n.classList.add('fading');window.setTimeout(() => n.remove(), 700);
-            }
-            // Kept on the board: a note written earlier slides up there; a line not written yet is written there.
-            for (const t of beat.board ?? []) {
-                const n = noteByText.get(noteKey(t));
-                if (n?.isConnected && !n.classList.contains('fading')) await sendToBoard(n, r);
-                else await typeNote(t, '', r, true, beat.color);
-            }
-            const line = document.createElement('p');line.className = 'ai-present-line';body.append(line);
-            // Talking while writing, as at a board: the beat ends when both are done.
-            const words = speak(beat.say, line, r);
-            // What it writes, then an arrow from it (or from what it names) to what it points out.
-            const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null)).then(async note => {
-                if (beat.arrow_to) await arrowFor(note);
-            });
-            const arrowFor = async (note: HTMLElement | null) => {
-                if (!beat.arrow_to) return;
-                const to = resolveTarget(beat.arrow_to);
-                const from = beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
-                // Read again on each redraw: a note the learner moves takes its arrow with it.
-                const fromNow = () => beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
-                if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note, beat.color);
-            };
-            const both = Promise.all([words, writing]).then(() => undefined);
-            if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color);
-            else await both;
-            alive(r);
-            said.push(beat.say);
-            await sleep(250);
-        }
+        steps = out.result.steps;
+        const said = await playBeats(steps, body, r);
+        addReplay(body, steps, start);
         if (joinHistory) window.algebenchRecordChatTurn?.(question, said.join(' '));
         return said.join(' ');
     } catch (e) {
@@ -719,20 +680,123 @@ export async function presentQuestion(question: string, {joinHistory = true}: {j
         const spoken = [...body.querySelectorAll('.ai-present-line')].map(l => l.textContent ?? '').join(' ').trim();
         if (!spoken) msg.remove();
         else if (joinHistory) window.algebenchRecordChatTurn?.(question, spoken);
+        if (spoken && steps) addReplay(body, steps, start);
         return spoken || null;
     } finally {
-        if (r === run) {
-            playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');
-            // What was written stays a moment after the last word, then fades.
-            notesFade = window.setTimeout(() => eraseNotes(true), 4000);
-        }
+        end(r);
     }
+}
+
+/** A walk-through's start: a new run, the pointer's mode on, the lesson's own playback paused. */
+function begin(): number {
+    const r = ++run;
+    playing = true;document.body.classList.add('ai-presenting');
+    window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+    return r;
+}
+function end(r: number) {
+    if (r !== run) return;
+    markPlaying(null);
+    playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');
+    // What was written stays a moment after the last word, then fades.
+    notesFade = window.setTimeout(() => eraseNotes(true), 4000);
+}
+
+/** Play the beats, each line said into `body`; resolves to what was said. */
+async function playBeats(steps: Beat[], body: HTMLElement, r: number): Promise<string[]> {
+    const viewport = state.renderer?.domElement.getBoundingClientRect();
+    if (viewport && pos.x < 0) { pos.x = viewport.left + viewport.width / 2;pos.y = viewport.top + viewport.height * .4;paintPointer(); }
+    ensurePointer().classList.add('on');
+    const said: string[] = [];
+    for (const beat of steps) {
+        alive(r);
+        if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
+        if (beat.slider?.startsWith('slider:') && typeof beat.slider_to === 'number') await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
+        drawRing(null);
+        if (beat.erase) eraseNotes();
+        // Tidying the board before going on: notes named by their text are wiped, or slide to the top-left stack.
+        for (const t of beat.erase_notes ?? []) {
+            const n = noteByText.get(noteKey(t));
+            if (!n?.isConnected) continue;
+            notes = notes.filter(x => x !== n);board = board.filter(x => x !== n);
+            n.classList.add('fading');window.setTimeout(() => n.remove(), 700);
+        }
+        // Kept on the board: a note written earlier slides up there; a line not written yet is written there.
+        for (const t of beat.board ?? []) {
+            const n = noteByText.get(noteKey(t));
+            if (n?.isConnected && !n.classList.contains('fading')) await sendToBoard(n, r);
+            else await typeNote(t, '', r, true, beat.color);
+        }
+        const line = document.createElement('p');line.className = 'ai-present-line';body.append(line);
+        // Talking while writing, as at a board: the beat ends when both are done.
+        const words = speak(beat.say, line, r);
+        // What it writes, then an arrow from it (or from what it names) to what it points out.
+        const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null)).then(async note => {
+            if (beat.arrow_to) await arrowFor(note);
+        });
+        const arrowFor = async (note: HTMLElement | null) => {
+            if (!beat.arrow_to) return;
+            const to = resolveTarget(beat.arrow_to);
+            const from = beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
+            // Read again on each redraw: a note the learner moves takes its arrow with it.
+            const fromNow = () => beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
+            if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note, beat.color);
+        };
+        const both = Promise.all([words, writing]).then(() => undefined);
+        if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color);
+        else await both;
+        alive(r);
+        said.push(beat.say);
+        await sleep(250);
+    }
+    return said;
+}
+
+type Start = {scene: number; step: number; frame: number};
+/**
+ * A replay button under a walk-through, for a learner who missed it: the same beats again, from the state they
+ * started at, without asking again. Only while the view is still on the step it was about. The message's speaker
+ * button replays it too (chat.ts reads `_replay`).
+ */
+function addReplay(body: HTMLElement, steps: Beat[], start: Start) {
+    if (body.querySelector('.ai-present-replay')) return;
+    const btn = document.createElement('button');btn.type = 'button';btn.className = 'ai-present-replay';
+    btn.title = 'Play this walk-through again';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Replay</span>';
+    const msg = body.closest('.chat-msg') as (HTMLElement & {_replay?: () => void}) | null;
+    const replay = async () => {
+        if (state.currentSceneIndex !== start.scene || state.currentStepIndex !== start.step) {
+            btn.disabled = true;btn.title = 'The view has moved on from the step this was about';return;
+        }
+        stopPresenting();
+        clearTimeout(notesFade);eraseNotes(true);
+        const r = begin(), kept = [...body.childNodes];
+        markPlaying(msg);
+        body.replaceChildren();
+        let whole = false;
+        try {
+            if (start.frame >= 0 && playbackSlider()?.value !== start.frame) await dragSliderTo(start.frame, r);
+            await playBeats(steps, body, r);
+            whole = true;
+        } catch (e) {
+            if (!(e instanceof Stopped)) throw e;
+        } finally {
+            // Played through, the whole walk-through stays to read (even if the first time was cut short); stopped
+            // partway, what was there before comes back.
+            if (whole) body.append(btn);
+            else body.replaceChildren(...kept);
+            end(r);
+        }
+    };
+    btn.addEventListener('click', () => void replay());
+    if (msg) msg._replay = () => void replay();
+    body.append(btn);
 }
 
 /** Stop a walk-through now: the pointer goes, and so does the voice. */
 export function stopPresenting() {
     if (!playing) return;
-    run++;playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');eraseNotes(true);
+    run++;markPlaying(null);playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');eraseNotes(true);
     if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 }
 
