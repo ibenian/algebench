@@ -49,7 +49,7 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
         example: `nums = ${list(IN.prefix.nums)}: ${IN.prefix.queries.map(([i, j]) => `sum(${i}..${j}) = ${IN.prefix.nums.slice(i, j + 1).reduce((a, b) => a + b, 0)}`).join(', ')}.` },
     'hash-map': { problem: 'Given an unsorted list and a target, find two numbers that add up to the target, and return their indices.',
         example: `nums = ${list(IN.hashMap.nums)}, target = ${IN.hashMap.target} → ${end(twoSumTrace(IN.hashMap.nums, IN.hashMap.target)).result}.` },
-    'two-pointers': { problem: 'Given a sorted array and a target, find two numbers that add up to the target, and return their indices.',
+    'two-pointers': { problem: 'Two Sum on a sorted array: given a sorted array and a target, find two numbers that add up to the target, and return their indices.',
         example: (() => { const f = end(twoPointersTrace(IN.twoPointers.nums, IN.twoPointers.target)); return `nums = ${list(IN.twoPointers.nums)}, target = ${IN.twoPointers.target} → indices ${f.left} and ${f.right} (${IN.twoPointers.nums[f.left as number]} + ${IN.twoPointers.nums[f.right as number]}).`; })() },
     'dp-2d': { problem: 'Given two strings, find the length of their longest common subsequence: letters in the same order, not necessarily adjacent.',
         example: `a = "${IN.lcs.a}", b = "${IN.lcs.b}" → ${(end(lcsTrace(IN.lcs.a, IN.lcs.b))[`r${IN.lcs.b.length}`] as number[])[IN.lcs.a.length]}.` },
@@ -618,6 +618,8 @@ pattern({
 
 **Signal:** a **sorted** array and a question about a pair (or triple) of elements.
 
+This is **Two Sum** again, solved the other way. The hash-map scene ("Remember what you've seen") finds the pair in one pass with a dict: O(n) time, O(n) extra space. When the array is sorted, the order itself does the dict's job: two pointers find the pair in O(n) time with **O(1)** space. On unsorted input, sorting first costs O(n log n) and shuffles the indices you have to return, so the dict is the better choice there.
+
 Put \`left\` at the smallest value and \`right\` at the largest. Compare their sum with the target:
 
 - **Too small:** \`nums[right]\` is the largest value still available, so \`nums[left]\` cannot reach the target with anything. Discard it: \`left += 1\`.
@@ -628,7 +630,7 @@ Each step rules out one element for good, so the scan is O(n) with O(1) space, c
 ${MD_TAIL}
 
 **Practice:** Two Sum II, 3Sum, Container With Most Water.`,
-    prompt: 'Explain why moving a pointer never skips a valid pair: the discarded element cannot be part of any solution. Ask the learner to predict which pointer moves before each step.',
+    prompt: 'This is Two Sum on a sorted array, the alternative to the hash-map solution: compare the two (time, space, and when each fits). Explain why moving a pointer never skips a valid pair: the discarded element cannot be part of any solution. Ask the learner to predict which pointer moves before each step.',
     elements: [
         array('nums', 'nums', [-4.5, 1.2, 0], {
             from: inp('nums'), highlightExpr: `idx == ${tr('left')} or idx == ${tr('right')}`,
