@@ -1763,7 +1763,6 @@ window.algebenchSpeakText = function(text, onEnd) {
 
     if (typeof onEnd !== 'function') return;
 
-    const startTime = Date.now();
     let hasStarted = false;
     let sawNonIdle = false;
     let quietSince = 0;
@@ -1785,7 +1784,8 @@ window.algebenchSpeakText = function(text, onEnd) {
         if (!hasStarted && sawNonIdle && p && p._state === 'idle') {
             clearInterval(poll); onEnd(); return;
         }
-        if (Date.now() - startTime > 60000) {
+        // No player, or the stream over (failed, or nothing to say) with no sound ever played: it is done.
+        if (!p || (!hasStarted && !ttsAbortController && p._state === 'idle')) {
             clearInterval(poll); onEnd();
         }
     }, 80);

@@ -33052,10 +33052,8 @@ function setupCodePractice() {
 		const words = plain.split(/\s+/).length;
 		const speech = new Promise((res) => {
 			const speakNow = window.algebenchSpeakText;
-			if (speakOn() && speakNow) {
-				speakNow(plain, res);
-				window.setTimeout(res, 6e3 + words * 600);
-			} else window.setTimeout(res, Math.min(6e3, Math.max(1200, words * 230)));
+			if (speakOn() && speakNow) speakNow(plain, res);
+			else window.setTimeout(res, Math.min(6e3, Math.max(1200, words * 230)));
 		});
 		let shown = "";
 		for (const part of text.split(/(\s+)/)) {
@@ -39044,7 +39042,6 @@ window.algebenchSpeakText = function(text, onEnd) {
 	const expectedId = ttsRequestId + 1;
 	speakText(text, { explicit: true });
 	if (typeof onEnd !== "function") return;
-	const startTime = Date.now();
 	let hasStarted = false;
 	let sawNonIdle = false;
 	let quietSince = 0;
@@ -39070,7 +39067,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 			onEnd();
 			return;
 		}
-		if (Date.now() - startTime > 6e4) {
+		if (!p || !hasStarted && !ttsAbortController && p._state === "idle") {
 			clearInterval(poll);
 			onEnd();
 		}

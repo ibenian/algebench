@@ -930,9 +930,9 @@ export function setupCodePractice(): void {
         const speech = new Promise<void>(res => {
             const speakNow = window.algebenchSpeakText;
             if (speakOn() && speakNow) {
+                // The speech reports its end (a failed or cut-off stream's too): the next step waits for it, however
+                // long its voice takes to prepare and say.
                 speakNow(plain, res);
-                // Speech that never reports its end (a failed stream) doesn't hold the keyboard.
-                window.setTimeout(res, 6000 + words * 600);
             } else window.setTimeout(res, Math.min(6000, Math.max(1200, words * 230)));
         });
         let shown = '';
