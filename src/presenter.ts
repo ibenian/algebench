@@ -20,10 +20,11 @@ import { setSliderValue } from '/sliders.js';
 import { dataToWorld } from '/coords.js';
 import { objectCellAnchor, objectChartMarks, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
 import { keyDelay } from '/code-assist-play.js';
+import { LINKS, SHAPES, edgePoint, layoutShapes, shapeStroke, type DrawSpec, type Drawing, type Point } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
 interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line';
-    slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; color?: string }
+    slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; erase_draw?: string[]; color?: string; draw?: Drawing | null }
 interface Target { ref: string; about: string }
 
 const PREF_KEY = 'algebench-presenter';
@@ -194,6 +195,7 @@ function indexedRect(id: string, index: string): DOMRect | null {
 
 export function resolveTarget(ref: string, part = ''): DOMRect | null {
     if (ref.startsWith('note:')) return noteRect(ref.slice(5), part);
+    if (ref.startsWith('draw:')) return drawnRect(ref.slice(5), part);
     if (ref === 'caption') { const c = document.getElementById('step-caption');return c?.offsetParent ? c.getBoundingClientRect() : null; }
     if (ref === 'slider') { const i = sliderInput();return i ? i.getBoundingClientRect() : null; }
     if (ref.startsWith('slider:')) { const i = paramInput(ref.slice(7));return i ? (i.parentElement ?? i).getBoundingClientRect() : null; }
@@ -483,7 +485,7 @@ function placeNote(w: number, h: number, near: DOMRect | null): {x: number; y: n
     // variables box, the step caption, the player): a note on top of them would hide what it explains.
     const panels = [...document.querySelectorAll<HTMLElement>('.annotation-badge, #step-caption, #state-player, .code-step-targets')]
         .filter(el => el.offsetParent).map(el => el.getBoundingClientRect());
-    const gap = 16, taken = [...notes.filter(n => n.classList.contains('ai-note')).map(n => n.getBoundingClientRect()),
+    const gap = 16, taken = [...notes.filter(n => n.classList.contains('ai-note') || n.classList.contains('ai-drawing')).map(n => n.getBoundingClientRect()),
         ...board.map(n => n.getBoundingClientRect()), ...panels, ...(near ? [near] : [])]
         .filter(r => r.width);
     const fits = (x: number, y: number) => {
@@ -660,6 +662,217 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
     // With no target to go back to, the pointer rests at the arrow's end a moment and goes.
     if (!holding) window.setTimeout(() => { if (!holding && !drawingArrow) restPointer(); }, REST_MS);
 }
+// ── Drawing: a small diagram the pointer sketches over the view (a beat's `draw`) ──
+
+interface Drawn { spec: DrawSpec; paths: SVGPathElement[]; label: HTMLElement | null; place: () => void; local: () => DOMRect | null }
+/** The walk-through's drawing board: one box over the view that every beat's drawing adds to. */
+let sketch: {el: HTMLDivElement; svg: SVGSVGElement; w: number; h: number; layout: string; specs: DrawSpec[]; at: Map<string, Point>; items: Map<string, Drawn>; all: Drawn[]} | null = null;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const LABEL_FONT = '600 15px ui-monospace, SFMono-Regular, Menlo, monospace';
+let measurer: CanvasRenderingContext2D | null = null;
+const textWidth = (t: string) => { measurer ??= document.createElement('canvas').getContext('2d');if (!measurer) return t.length * 9;measurer.font = LABEL_FONT;return measurer.measureText(t).width; };
+
+/** The board, made on the first drawing: a wide box (3 by 2) in a free part of the view, clear of notes and panels. */
+function sketchBoard(): NonNullable<typeof sketch> {
+    if (sketch?.el.isConnected && !sketch.el.classList.contains('fading')) return sketch;
+    const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+    const w = Math.round(Math.max(300, Math.min(560, view.width * .62, (view.height - 120) * 1.5))), h = Math.round(w * 2 / 3);
+    const el = document.createElement('div');el.className = 'ai-drawing';
+    const at = placeNote(w, h, null);
+    el.style.left = `${at.x}px`;el.style.top = `${at.y}px`;el.style.width = `${w}px`;el.style.height = `${h}px`;
+    const svg = document.createElementNS(SVG_NS, 'svg');svg.setAttribute('width', String(w));svg.setAttribute('height', String(h));
+    el.append(svg);notesLayer().append(el);notes.push(el);
+    sketch = {el, svg, w, h, layout: '', specs: [], at: new Map(), items: new Map(), all: []};
+    return sketch;
+}
+/** A drawn shape's box on screen, or the `part` of its label; null when it's gone. */
+function drawnRect(id: string, part = ''): DOMRect | null {
+    const item = sketch?.el.isConnected ? sketch.items.get(id) : undefined;
+    if (!item || !sketch) return null;
+    if (part && item.label) { const t = textRect(item.label, part);if (t) return t; }
+    const l = item.local(), o = sketch.el.getBoundingClientRect();
+    return l ? new DOMRect(o.left + l.left, o.top + l.top, l.width, l.height) : null;
+}
+/** Where a link's end is, in the board's own coordinates: a drawn shape (its type, centre and size) or a ref on the view. */
+function linkEnd(name: string): {type: string; cx: number; cy: number; w: number; h: number} | null {
+    if (!sketch) return null;
+    const item = sketch.items.get(name), o = sketch.el.getBoundingClientRect();
+    const r = item ? item.local() : (() => { const v = resolveTarget(name);return v ? new DOMRect(v.left - o.left, v.top - o.top, v.width, v.height) : null; })();
+    if (!r) return null;
+    return {type: item && SHAPES.has(item.spec.type) ? item.spec.type : 'rectangle', cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height};
+}
+/** The pointer draws `path` (in the board's coordinates) as a hand would: onto its start, then along it as it appears. */
+async function traceStroke(path: SVGPathElement, r: number, speed = 1) {
+    if (!sketch) return;
+    const board = sketch.el, total = path.getTotalLength(), s0 = path.getPointAtLength(0);
+    let o = board.getBoundingClientRect();
+    await glide(o.left + s0.x, o.top + s0.y, r, 220);
+    const dur = Math.min(900, 200 + total * 1.3) / speed, t0 = performance.now();
+    for (;;) {
+        alive(r);
+        const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        path.style.setProperty('stroke-dashoffset', String(1 - k));
+        o = board.getBoundingClientRect();
+        const p = path.getPointAtLength(total * k);
+        pos.x = o.left + p.x;pos.y = o.top + p.y;paintPointer();
+        if (t >= 1) break;
+        await new Promise(res => requestAnimationFrame(res));
+    }
+    path.classList.add('drawn');
+}
+/** Write a label key by key, quicker than a note, the pointer moving along with the words. */
+async function typeLabel(el: HTMLElement, text: string, r: number) {
+    el.textContent = '';
+    let prev = '\n';
+    for (const ch of text) {
+        alive(r);
+        await sleep(keyDelay(prev, ch) * .45);
+        el.textContent += ch;prev = ch;
+        const b = el.getBoundingClientRect();
+        pos.x += (b.right - pos.x) * .5;pos.y += (b.bottom - 2 - pos.y) * .5;paintPointer();
+    }
+}
+const newPath = (cls: string, color: string) => {
+    const p = document.createElementNS(SVG_NS, 'path');p.setAttribute('pathLength', '1');
+    p.setAttribute('class', `${cls} ${inkClass(color)}`.trim());
+    return p;
+};
+
+/** Draw a beat's drawing on the board: each element in turn, the pointer making its strokes and writing its words. */
+async function drawSketch(d: Drawing, color: string, r: number) {
+    const b = sketchBoard();
+    // What is on the board already (a beat repeating the drawing so far) stays as it is: only the new is drawn.
+    const fresh = d.elements.filter(e => !e.id || !b.items.has(e.id));
+    b.specs.push(...fresh);
+    if (d.layout) b.layout = d.layout;
+    // Laid out again with each new shape: what is already drawn moves to its new place.
+    const relayout = () => { b.at = layoutShapes(b.specs, b.layout);for (const item of b.all) item.place(); };
+    relayout();
+    drawingArrow = true;
+    try {
+        for (const spec of fresh) {
+            alive(r);
+            const ink = spec.color || color;
+            if (SHAPES.has(spec.type) && spec.id) {
+                const label = spec.label ?? '', tw = textWidth(label);
+                const size = () => {
+                    const w = spec.w ? spec.w / 100 * b.w : spec.type === 'diamond' ? tw + 40 : spec.type === 'ellipse' ? Math.max(34, tw + 22) : Math.max(34, tw + 22);
+                    const h = spec.h ? spec.h / 100 * b.h : spec.type === 'diamond' ? 44 : spec.type === 'ellipse' ? (tw < 30 ? Math.max(34, w) : 36) : 32;
+                    return {w, h};
+                };
+                const jitter = [Math.random() - .5, Math.random() - .5, Math.random() - .5, Math.random() - .5];
+                const path = newPath('ai-draw-stroke', ink);b.svg.append(path);
+                const lab = label ? Object.assign(document.createElement('div'), {className: `ai-draw-label ${inkClass(ink)}`.trim()}) : null;
+                if (lab) b.el.append(lab);
+                const local = () => {
+                    const c = (b.at.get(spec.id!) ?? {x: 50, y: 50}), {w, h} = size();
+                    return new DOMRect(c.x / 100 * b.w - w / 2, c.y / 100 * b.h - h / 2, w, h);
+                };
+                const place = () => {
+                    const l = local();
+                    path.setAttribute('d', shapeStroke(spec.type, l.left + l.width / 2, l.top + l.height / 2, l.width, l.height, jitter));
+                    if (lab) { lab.style.left = `${l.left + l.width / 2}px`;lab.style.top = `${l.top + l.height / 2}px`; }
+                };
+                const item: Drawn = {spec, paths: [path], label: lab, place, local};
+                b.items.set(spec.id, item);b.all.push(item);
+                relayout();
+                await traceStroke(path, r);
+                if (lab) await typeLabel(lab, label, r);
+            } else if (LINKS.has(spec.type) && spec.start && spec.end) {
+                const shaft = newPath('ai-draw-stroke', ink), head = spec.type === 'arrow' ? newPath('ai-draw-stroke', ink) : null;
+                b.svg.append(shaft);if (head) b.svg.append(head);
+                const bow = (Math.random() - .5) * .25;
+                const place = () => {
+                    const s = linkEnd(spec.start!), e = linkEnd(spec.end!);
+                    if (!s || !e) return;
+                    const a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {x: e.cx, y: e.cy}), z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {x: s.cx, y: s.cy}, head ? 5 : 3);
+                    const dx = z.x - a.x, dy = z.y - a.y, mx = (a.x + z.x) / 2 - dy * bow, my = (a.y + z.y) / 2 + dx * bow;
+                    shaft.setAttribute('d', `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
+                    if (head) {
+                        const ex = z.x - mx, ey = z.y - my, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
+                        const wing = (k: number) => { const c = Math.cos(k), si = Math.sin(k);return `${z.x - len * (ux * c - uy * si)} ${z.y - len * (uy * c + ux * si)}`; };
+                        head.setAttribute('d', `M${wing(.5)} L${z.x} ${z.y} L${wing(-.45)}`);
+                    }
+                };
+                const local = () => { const bb = shaft.getBBox();return new DOMRect(bb.x, bb.y, bb.width, bb.height); };
+                const item: Drawn = {spec, paths: head ? [shaft, head] : [shaft], label: null, place, local};
+                if (spec.id) b.items.set(spec.id, item);
+                b.all.push(item);
+                place();
+                await traceStroke(shaft, r);
+                if (head) await traceStroke(head, r, 2.5);
+            } else if (spec.type === 'text' && spec.label) {
+                const lab = Object.assign(document.createElement('div'), {className: `ai-draw-label ai-draw-text ${inkClass(ink)}`.trim()});
+                b.el.append(lab);
+                const local = () => lab.offsetWidth ? new DOMRect(lab.offsetLeft, lab.offsetTop, lab.offsetWidth, lab.offsetHeight) : null;
+                const place = () => {
+                    if (typeof spec.x === 'number' && typeof spec.y === 'number') { lab.style.left = `${spec.x / 100 * b.w}px`;lab.style.top = `${spec.y / 100 * b.h}px`;lab.classList.remove('beside');return; }
+                    const n = spec.near ? linkEnd(spec.near) : null;
+                    // Beside what it is about: just right of it, level with it.
+                    lab.classList.add('beside');
+                    lab.style.left = `${n ? n.cx + n.w / 2 + 8 : b.w / 2}px`;lab.style.top = `${n ? n.cy : b.h - 14}px`;
+                };
+                const item: Drawn = {spec, paths: [], label: lab, place, local};
+                if (spec.id) b.items.set(spec.id, item);
+                b.all.push(item);
+                place();
+                const p0 = lab.getBoundingClientRect();
+                await glide(p0.left, p0.top + p0.height / 2, r, 260);
+                await typeLabel(lab, spec.label, r);
+            }
+        }
+    } finally {
+        drawingArrow = false;
+    }
+    if (!holding) window.setTimeout(() => { if (!holding && !drawingArrow) restPointer(); }, REST_MS);
+}
+
+/**
+ * Rub out drawn shapes as with an eraser: the pointer scrubs back and forth over each while it fades. The links
+ * and text joined to a shape go with it; what stays is laid out again without it.
+ */
+async function eraseSketch(ids: string[], r: number) {
+    const b = sketch;
+    if (!b?.el.isConnected || !ids.length) return;
+    const gone = new Set(ids.filter(id => b.items.has(id)));
+    if (!gone.size) return;
+    const joined = (item: Drawn) => [item.spec.start, item.spec.end, item.spec.near].some(e => e && gone.has(e));
+    const going = b.all.filter(item => (item.spec.id && gone.has(item.spec.id)) || joined(item));
+    drawingArrow = true;
+    try {
+        for (const item of going) {
+            alive(r);
+            const l = item.local();
+            const parts: Element[] = [...item.paths, ...(item.label ? [item.label] : [])];
+            if (l && l.width + l.height > 0) {
+                const o = b.el.getBoundingClientRect(), pad = 6;
+                const x0 = o.left + l.left - pad, x1 = o.left + l.right + pad, y0 = o.top + l.top - pad, h = l.height + 2 * pad;
+                await glide(x0, y0, r, 220);
+                // Back and forth, a little lower each pass, as an eraser goes over a mark.
+                const passes = 5, dur = 650, t0 = performance.now();
+                for (;;) {
+                    alive(r);
+                    const t = Math.min(1, (performance.now() - t0) / dur), u = t * passes, leg = Math.floor(u), f = u - leg;
+                    pos.x = leg % 2 ? x1 - (x1 - x0) * f : x0 + (x1 - x0) * f;
+                    pos.y = y0 + h * Math.min(1, (leg + f) / passes);paintPointer();
+                    for (const el of parts) (el as HTMLElement).style.opacity = String(1 - t);
+                    if (t >= 1) break;
+                    await new Promise(res => requestAnimationFrame(res));
+                }
+            }
+            for (const el of parts) el.remove();
+        }
+    } finally {
+        drawingArrow = false;
+    }
+    b.all = b.all.filter(item => !going.includes(item));
+    b.specs = b.specs.filter(spec => !going.some(item => item.spec === spec));
+    for (const item of going) if (item.spec.id && b.items.get(item.spec.id) === item) b.items.delete(item.spec.id);
+    b.at = layoutShapes(b.specs, b.layout);
+    for (const item of b.all) item.place();
+    if (!holding) window.setTimeout(() => { if (!holding && !drawingArrow) restPointer(); }, REST_MS);
+}
+
 /**
  * The learner may move a note, as they move the variables box: drag it anywhere; arrows from it follow. A moved
  * note is theirs to keep in place: the presenter's later notes are placed around it.
@@ -682,6 +895,7 @@ function makeMovable(note: HTMLElement) {
 /** Wipe the notes: they fade away (the board stays; `all` wipes it too). */
 function eraseNotes(all = false) {
     const going = all ? [...notes, ...board] : notes;
+    if (sketch && going.includes(sketch.el)) sketch = null;
     notes = [];if (all) { board = [];noteByText.clear(); }
     for (const n of going) { n.classList.add('fading');window.setTimeout(() => n.remove(), 700); }
 }
@@ -895,6 +1109,7 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
             notes = notes.filter(x => x !== n);board = board.filter(x => x !== n);
             n.classList.add('fading');window.setTimeout(() => n.remove(), 700);
         }
+        if (beat.erase_draw?.length) await eraseSketch(beat.erase_draw, r);
         // Kept on the board: a note written earlier slides up there; a line not written yet is written there.
         for (const t of beat.board ?? []) {
             const n = noteByText.get(noteKey(t));
@@ -906,6 +1121,7 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         const words = speak(beat.say, line, r);
         // What it writes, then an arrow from it (or from what it names) to what it points out.
         const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null)).then(async note => {
+            if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? '', r);
             if (beat.arrow_to) await arrowFor(note);
         });
         const arrowFor = async (note: HTMLElement | null) => {
@@ -921,7 +1137,10 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         else await both;
         alive(r);
         const wrote = [beat.write, ...(beat.board ?? [])].filter(Boolean);
-        said.push(wrote.length ? `${beat.say} [wrote: ${wrote.join(' | ')}]` : beat.say);
+        // What it drew, as words: the shapes by their labels, the links by their ends.
+        const drew = (beat.draw?.elements ?? []).map(e => LINKS.has(e.type) ? `${e.start} ${e.type === 'arrow' ? '->' : '-'} ${e.end}` : `${e.type} "${e.label ?? ''}"`);
+        const rubbed = beat.erase_draw?.length ? ` [erased: ${beat.erase_draw.join(', ')}]` : '';
+        said.push(beat.say + rubbed + (wrote.length ? ` [wrote: ${wrote.join(' | ')}]` : '') + (drew.length ? ` [drew: ${drew.join(', ')}]` : ''));
         onBeat?.([...said]);
         await sleep(250);
     }

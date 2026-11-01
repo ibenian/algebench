@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "color": ""}
+    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "erase_draw": [], "draw": None, "color": ""}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -135,3 +135,46 @@ def test_a_link_is_an_arrow_or_a_plain_line():
 def test_a_mark_is_one_of_the_known_marks():
     raw = [PresentStep(say=m.title(), target="nums[2]", mark=m) for m in ("check", "cross", "underline", "star")]
     assert [b.mark for b in intent.clean_steps(raw, {"nums", "nums[2]"}, 0)] == ["check", "cross", "underline", "point"]
+
+
+def test_a_drawing_keeps_known_shapes_and_links_between_what_is_drawn_or_listed():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="A tree.", draw=Drawing(layout="tree", elements=[
+               E(type="ellipse", id="root", label="8"), E(type="ellipse", id="l", label="3"),
+               E(type="arrow", start="root", end="l"), E(type="arrow", start="root", end="ghost"),
+               E(type="star", id="s"), E(type="rectangle", id="box!", label="cell", x=150, y=-4),
+               E(type="arrow", start="box", end="nums[2]"), E(type="text", label="smaller", near="l")])),
+           PresentStep(say="Its root.", target="draw:root", mark="circle", part="8"),
+           PresentStep(say="Grow it.", draw=Drawing(layout="weird", elements=[E(type="ellipse", id="r", label="10"),
+                                                                             E(type="line", start="root", end="r")]))]
+    beats = intent.clean_steps(raw, {"nums", "nums[2]"}, 0)
+    d = beats[0].draw
+    assert d.layout == "tree"
+    assert [(e.type, e.id, e.start, e.end) for e in d.elements] == [
+        ("ellipse", "root", "", ""), ("ellipse", "l", "", ""), ("arrow", "root_l", "root", "l"),
+        ("rectangle", "box", "", ""), ("arrow", "box_nums2", "box", "nums[2]"), ("text", "", "", "")]
+    assert (d.elements[3].x, d.elements[3].y, d.elements[5].near) == (100.0, 0.0, "l")
+    assert (beats[1].target, beats[1].part) == ("draw:root", "8")
+    assert beats[2].draw.layout == "" and beats[2].draw.elements[1].start == "root"
+
+
+def test_a_beat_repeating_the_drawing_so_far_adds_only_what_is_new():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    first = [E(type="ellipse", id="a", label="8")]
+    raw = [PresentStep(say="Root.", draw=Drawing(layout="tree", elements=first)),
+           PresentStep(say="Child.", draw=Drawing(layout="tree", elements=[*first, E(type="ellipse", id="b", label="3"),
+                                                                           E(type="arrow", start="a", end="b")]))]
+    beats = intent.clean_steps(raw, set(), 0)
+    assert [e.id for e in beats[1].draw.elements] == ["b", "a_b"]
+
+
+def test_rubbing_out_a_shape_takes_its_links_and_lets_it_be_drawn_again():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="Tree.", draw=Drawing(layout="tree", elements=[E(type="ellipse", id="a", label="8"), E(type="ellipse", id="b", label="3"),
+                                                                          E(type="arrow", start="a", end="b"), E(type="text", id="t", label="leaf", near="b")])),
+           PresentStep(say="Gone.", erase_draw=["b", "nope"], target="draw:b"),
+           PresentStep(say="Back.", draw=Drawing(elements=[E(type="ellipse", id="b", label="5")]), target="draw:b")]
+    beats = intent.clean_steps(raw, set(), 0)
+    assert beats[1].erase_draw == ["b"] and beats[1].target == ""
+    assert [e.id for e in beats[2].draw.elements] == ["b"] and beats[2].target == "draw:b"
+    assert intent.clean_steps([*raw[:1], PresentStep(say="All.", erase=True, draw=Drawing(elements=[E(type="ellipse", id="a", label="8")]))], set(), 0)[1].draw.elements[0].id == "a"

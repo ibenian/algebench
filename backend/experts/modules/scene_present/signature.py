@@ -9,6 +9,42 @@ import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class DrawElement(BaseModel):
+    """One shape of a drawing, an Excalidraw-like element: drawn by the pointer in list order."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: str = Field(description='"rectangle", "ellipse", "diamond" (a box, a circle, a decision), "arrow", "line" '
+                                  '(a link from `start` to `end`) or "text" (words on their own)')
+    id: str = Field(default="", description="a short name for it (letters, digits, _), to link to it, point at it later "
+                                            "(`draw:<id>`), or place text near it; needed on a shape an arrow joins")
+    label: str = Field(default="", description="for a shape: the few words or the value written inside it; for "
+                                               "`text`: the words")
+    x: float | None = Field(default=None, description="the centre's place across the drawing, 0 (left) to 100 (right); "
+                                                      "leave out with a layout")
+    y: float | None = Field(default=None, description="the centre's place down the drawing, 0 (top) to 100 (bottom); "
+                                                      "leave out with a layout")
+    w: float | None = Field(default=None, description="optional width, 0 to 100 of the drawing; empty to fit the label")
+    h: float | None = Field(default=None, description="optional height, 0 to 100 of the drawing; empty to fit the label")
+    start: str = Field(default="", description="for an arrow or line: where it starts, the id of a shape drawn before "
+                                               "it or a ref from `targets`")
+    end: str = Field(default="", description="for an arrow or line: where it ends (the head), as `start`")
+    near: str = Field(default="", description='for text without x/y: the id (or ref) it goes beside')
+    color: str = Field(default="", description="optional ink for this element; empty for the beat's colour")
+
+
+class Drawing(BaseModel):
+    """A small diagram the pointer draws over the view, shape by shape, like a teacher at a board."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    layout: str = Field(default="", description='"tree" to have the shapes placed for you as a tree (parents above '
+                                                'their children, from the arrows), "row" for a left-to-right chain; '
+                                                'empty to place them yourself with x and y')
+    elements: list[DrawElement] = Field(default_factory=list, description="the shapes, in the order they are drawn: "
+                                                                          "nodes first, then the links between them")
+
+
 class PresentStep(BaseModel):
     """One beat of the presentation: optionally move to a state, point, and say one or two sentences."""
 
@@ -46,6 +82,9 @@ class PresentStep(BaseModel):
                                                                "is written straight onto the board")
     erase_notes: list[str] = Field(default_factory=list, description="at the start of this beat, wipe these notes "
                                                                      "(each exactly as written earlier)")
+    erase_draw: list[str] = Field(default_factory=list, description="at the start of this beat, rub out these drawn "
+                                                                    "shapes, by id (the links and text joined to "
+                                                                    "them go with them)")
     arrow_to: str = Field(default="", description="optional: draw a hand-drawn arrow to this ref (from `targets`) "
                                                   "while you say this; empty for none")
     arrow_from: str = Field(default="", description="with `arrow_to`: the ref the arrow starts at; empty to start "
@@ -57,6 +96,8 @@ class PresentStep(BaseModel):
     slider: str = Field(default="", description="optional: a `slider:<id>` ref to move BEFORE this beat (the pointer "
                                                 "drags it), to show what the parameter does; empty for none")
     slider_to: float | None = Field(default=None, description="with `slider`: the value to move it to, within its range")
+    draw: Drawing | None = Field(default=None, description="optional: a small diagram to draw on this beat (a tree, "
+                                                           "boxes and arrows, a flow), while you say what it shows")
     color: str = Field(default="", description="optional: the ink for what you write and draw this beat (`write`, "
                                                "new `board` lines, the arrow, the circle): green (the default), yellow, red, "
                                                "blue, purple, orange or pink; empty for green")
@@ -121,6 +162,23 @@ class ScenePresentSig(dspy.Signature):
     exactly as you wrote it, and at a part of it with `part` (the words you mean, copied from the note): the
     function's name in `def build_lps(pattern):`, the condition in an `if`, one term of a formula. Underline a part
     as you talk about it (`mark: "underline"`), or circle it; a note can also be where an arrow starts or ends.
+
+    You can also draw, as a teacher sketches an idea at the board: a small diagram (`draw`) of simple shapes,
+    drawn one by one by the pointer while you talk. Boxes (`rectangle`), circles (`ellipse`) and decisions
+    (`diamond`) with a label inside, `arrow`s and `line`s between them, and `text` on its own. Draw when a picture
+    explains better than the view: a tree, a recursion, the pieces of an idea and how they connect, a flow of
+    steps. Give each shape an `id`; an arrow joins two ids (`start` -> `end`), or a shape and a ref from `targets`
+    (a box that points at the cell it stands for). List the shapes in the order you would draw them: the nodes,
+    then the links. For a tree use `layout: "tree"` and leave out x and y; for a chain, `layout: "row"`; otherwise
+    place each shape on a 0 to 100 grid (x across, y down) in a wide box, about 3 wide for 2 high. Keep it small:
+    up to a dozen shapes, labels of a few words. All drawings of a walk-through share one board: a later beat may
+    add shapes and links to it (earlier ids stay; with a layout, the whole drawing is laid out again), so a big
+    diagram can grow over beats, each part said as it appears. A later beat lists only what it adds, never what is
+    drawn already. Circles suit the nodes of a tree or a graph, boxes the steps or parts of a flow. Drawn shapes can be pointed
+    at, circled, checked or crossed on later beats as `draw:<id>`; give a shape its own `color` to group it.
+    The pointer can rub out drawn shapes too, as with an eraser (`erase_draw`: their ids, with the links joined
+    to them): a node taken out of a tree, a step that is done, a wrong guess. Say what goes as it goes; an id
+    rubbed out may be drawn again later, anew.
 
     A chart's bars and points are listed one by one (`chart[3]`: what it draws, its values); point at the bar or
     point you mean, not the whole chart.

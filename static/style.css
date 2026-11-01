@@ -6434,3 +6434,16 @@ body.ai-presenting .ai-present-replay { visibility: hidden; }
 }
 .chat-language-list li:hover,
 .chat-language-list li[aria-selected="true"] { background: color-mix(in srgb, var(--accent-color) 22%, transparent); }
+
+/* The presenter's drawings (presenter.ts drawSketch): shapes and links sketched by the pointer, lit like its notes. */
+.ai-drawing { position: fixed; --ink: #7dffcf; pointer-events: none; transition: opacity .7s; }
+.ai-drawing.fading { opacity: 0; }
+.ai-drawing svg { position: absolute; inset: 0; overflow: visible; }
+.ai-draw-stroke { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ink) 80%, transparent)); }
+.ai-draw-stroke.drawn { stroke-dashoffset: 0 !important; }
+.ai-draw-label { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; color: var(--ink);
+  font: 600 15px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--ink) 70%, transparent), 0 0 12px rgba(6, 14, 13, .9); }
+.ai-draw-label.beside { transform: translate(0, -50%); }
+.ai-draw-text { font-size: 14px; }

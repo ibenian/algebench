@@ -9568,6 +9568,106 @@ function findSelection(text, snippet, from = 0, line = 0) {
 	return null;
 }
 //#endregion
+//#region src/drawing-layout.ts
+var SHAPES = /* @__PURE__ */ new Set([
+	"rectangle",
+	"ellipse",
+	"diamond"
+]);
+var LINKS = /* @__PURE__ */ new Set(["arrow", "line"]);
+var placed = (e) => typeof e.x === "number" && typeof e.y === "number";
+/** The centre of every shape with an id, on the 0-100 grid. */
+function layoutShapes(elements, layout = "") {
+	const shapes = elements.filter((e) => SHAPES.has(e.type) && e.id);
+	const out = /* @__PURE__ */ new Map();
+	for (const e of shapes) if (placed(e)) out.set(e.id, {
+		x: e.x,
+		y: e.y
+	});
+	const free = shapes.filter((e) => !out.has(e.id));
+	if (!free.length) return out;
+	if (layout === "tree") {
+		for (const [id, p] of treeLayout(free.map((e) => e.id), elements)) out.set(id, p);
+		return out;
+	}
+	const y = out.size ? Math.min(90, Math.max(...[...out.values()].map((p) => p.y)) + 25) : 50;
+	free.forEach((e, i) => out.set(e.id, {
+		x: (i + .5) / free.length * 100,
+		y
+	}));
+	return out;
+}
+/**
+* A tidy tree: the links (start -> end) among `ids` make parent -> child; the roots are the ids no link ends at, in
+* the order they were drawn. Leaves take the next slot across; a parent sits over the middle of its children; each
+* level is a row down.
+*/
+function treeLayout(ids, elements) {
+	const known = new Set(ids), children = /* @__PURE__ */ new Map(), parent = /* @__PURE__ */ new Map();
+	for (const e of elements) {
+		if (!LINKS.has(e.type) || !e.start || !e.end || !known.has(e.start) || !known.has(e.end)) continue;
+		if (parent.has(e.end) || e.start === e.end) continue;
+		parent.set(e.end, e.start);
+		children.set(e.start, [...children.get(e.start) ?? [], e.end]);
+	}
+	const slot = /* @__PURE__ */ new Map(), depth = /* @__PURE__ */ new Map();
+	let leaves = 0, deepest = 0;
+	const visit = (id, d, seen) => {
+		if (seen.has(id)) return slot.get(id) ?? 0;
+		seen.add(id);
+		depth.set(id, d);
+		deepest = Math.max(deepest, d);
+		const kids = (children.get(id) ?? []).filter((k) => !seen.has(k));
+		const at = kids.length ? kids.map((k) => visit(k, d + 1, seen)).reduce((a, b) => a + b, 0) / kids.length : leaves++;
+		slot.set(id, at);
+		return at;
+	};
+	const seen = /* @__PURE__ */ new Set();
+	for (const id of ids) if (!parent.has(id)) visit(id, 0, seen);
+	for (const id of ids) if (!seen.has(id)) visit(id, 0, seen);
+	const out = /* @__PURE__ */ new Map();
+	for (const id of ids) out.set(id, {
+		x: (slot.get(id) + .5) / Math.max(1, leaves) * 100,
+		y: (depth.get(id) + .5) / (deepest + 1) * 100
+	});
+	return out;
+}
+/**
+* The stroke of a shape centred at (cx, cy), w by h, as a hand draws it: a box from its top left round and a little
+* past the corner, a circle from the top left once round and on, a diamond from its top point. `j` (-.5..5 each)
+* is the hand's wobble, kept so a redraw is the same stroke.
+*/
+function shapeStroke(type, cx, cy, w, h, j = [
+	0,
+	0,
+	0,
+	0
+]) {
+	const x0 = cx - w / 2, x1 = cx + w / 2, y0 = cy - h / 2, y1 = cy + h / 2, k = (i) => (j[i] ?? 0) * 3;
+	if (type === "ellipse") {
+		const rx = w / 2, ry = h / 2, at = (deg) => {
+			const a = deg * Math.PI / 180;
+			return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
+		};
+		return `M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 0 1 ${at(-100)}`;
+	}
+	if (type === "diamond") return `M${cx + k(0)} ${y0} L${x1} ${cy + k(1)} L${cx + k(2)} ${y1} L${x0} ${cy + k(3)} L${cx + 4} ${y0 + 2}`;
+	return `M${x0 + k(0)} ${y0} L${x1} ${y0 + k(1)} L${x1 + k(2)} ${y1} L${x0} ${y1 + k(3)} L${x0} ${y0 - 3}`;
+}
+/** The point where the line from a box's centre towards `p` leaves the box (an ellipse's or diamond's own edge). */
+function edgePoint(type, cx, cy, w, h, p, pad = 3) {
+	const dx = p.x - cx, dy = p.y - cy, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+	const rx = w / 2 + pad, ry = h / 2 + pad;
+	let t;
+	if (type === "ellipse") t = 1 / Math.sqrt((ux / rx) ** 2 + (uy / ry) ** 2);
+	else if (type === "diamond") t = 1 / (Math.abs(ux) / rx + Math.abs(uy) / ry);
+	else t = Math.min(Math.abs(ux) > 1e-9 ? rx / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-9 ? ry / Math.abs(uy) : Infinity);
+	return {
+		x: cx + ux * t,
+		y: cy + uy * t
+	};
+}
+//#endregion
 //#region src/presenter.ts
 /**
 * AI presenter: with the presenter switch on (chat toolbar), a question typed in the chat is answered as a
@@ -9784,6 +9884,7 @@ function indexedRect(id, index) {
 }
 function resolveTarget$1(ref, part = "") {
 	if (ref.startsWith("note:")) return noteRect(ref.slice(5), part);
+	if (ref.startsWith("draw:")) return drawnRect(ref.slice(5), part);
 	if (ref === "caption") {
 		const c = document.getElementById("step-caption");
 		return c?.offsetParent ? c.getBoundingClientRect() : null;
@@ -10186,7 +10287,7 @@ function placeNote(w, h, near) {
 	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
 	const panels = [...document.querySelectorAll(".annotation-badge, #step-caption, #state-player, .code-step-targets")].filter((el) => el.offsetParent).map((el) => el.getBoundingClientRect());
 	const gap = 16, taken = [
-		...notes.filter((n) => n.classList.contains("ai-note")).map((n) => n.getBoundingClientRect()),
+		...notes.filter((n) => n.classList.contains("ai-note") || n.classList.contains("ai-drawing")).map((n) => n.getBoundingClientRect()),
 		...board.map((n) => n.getBoundingClientRect()),
 		...panels,
 		...near ? [near] : []
@@ -10439,6 +10540,311 @@ async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow
 		if (!holding && !drawingArrow) restPointer();
 	}, REST_MS);
 }
+/** The walk-through's drawing board: one box over the view that every beat's drawing adds to. */
+var sketch = null;
+var SVG_NS = "http://www.w3.org/2000/svg";
+var LABEL_FONT = "600 15px ui-monospace, SFMono-Regular, Menlo, monospace";
+var measurer = null;
+var textWidth = (t) => {
+	measurer ??= document.createElement("canvas").getContext("2d");
+	if (!measurer) return t.length * 9;
+	measurer.font = LABEL_FONT;
+	return measurer.measureText(t).width;
+};
+/** The board, made on the first drawing: a wide box (3 by 2) in a free part of the view, clear of notes and panels. */
+function sketchBoard() {
+	if (sketch?.el.isConnected && !sketch.el.classList.contains("fading")) return sketch;
+	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+	const w = Math.round(Math.max(300, Math.min(560, view.width * .62, (view.height - 120) * 1.5))), h = Math.round(w * 2 / 3);
+	const el = document.createElement("div");
+	el.className = "ai-drawing";
+	const at = placeNote(w, h, null);
+	el.style.left = `${at.x}px`;
+	el.style.top = `${at.y}px`;
+	el.style.width = `${w}px`;
+	el.style.height = `${h}px`;
+	const svg = document.createElementNS(SVG_NS, "svg");
+	svg.setAttribute("width", String(w));
+	svg.setAttribute("height", String(h));
+	el.append(svg);
+	notesLayer().append(el);
+	notes.push(el);
+	sketch = {
+		el,
+		svg,
+		w,
+		h,
+		layout: "",
+		specs: [],
+		at: /* @__PURE__ */ new Map(),
+		items: /* @__PURE__ */ new Map(),
+		all: []
+	};
+	return sketch;
+}
+/** A drawn shape's box on screen, or the `part` of its label; null when it's gone. */
+function drawnRect(id, part = "") {
+	const item = sketch?.el.isConnected ? sketch.items.get(id) : void 0;
+	if (!item || !sketch) return null;
+	if (part && item.label) {
+		const t = textRect(item.label, part);
+		if (t) return t;
+	}
+	const l = item.local(), o = sketch.el.getBoundingClientRect();
+	return l ? new DOMRect(o.left + l.left, o.top + l.top, l.width, l.height) : null;
+}
+/** Where a link's end is, in the board's own coordinates: a drawn shape (its type, centre and size) or a ref on the view. */
+function linkEnd(name) {
+	if (!sketch) return null;
+	const item = sketch.items.get(name), o = sketch.el.getBoundingClientRect();
+	const r = item ? item.local() : (() => {
+		const v = resolveTarget$1(name);
+		return v ? new DOMRect(v.left - o.left, v.top - o.top, v.width, v.height) : null;
+	})();
+	if (!r) return null;
+	return {
+		type: item && SHAPES.has(item.spec.type) ? item.spec.type : "rectangle",
+		cx: r.left + r.width / 2,
+		cy: r.top + r.height / 2,
+		w: r.width,
+		h: r.height
+	};
+}
+/** The pointer draws `path` (in the board's coordinates) as a hand would: onto its start, then along it as it appears. */
+async function traceStroke(path, r, speed = 1) {
+	if (!sketch) return;
+	const board = sketch.el, total = path.getTotalLength(), s0 = path.getPointAtLength(0);
+	let o = board.getBoundingClientRect();
+	await glide(o.left + s0.x, o.top + s0.y, r, 220);
+	const dur = Math.min(900, 200 + total * 1.3) / speed, t0 = performance.now();
+	for (;;) {
+		alive(r);
+		const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+		path.style.setProperty("stroke-dashoffset", String(1 - k));
+		o = board.getBoundingClientRect();
+		const p = path.getPointAtLength(total * k);
+		pos.x = o.left + p.x;
+		pos.y = o.top + p.y;
+		paintPointer();
+		if (t >= 1) break;
+		await new Promise((res) => requestAnimationFrame(res));
+	}
+	path.classList.add("drawn");
+}
+/** Write a label key by key, quicker than a note, the pointer moving along with the words. */
+async function typeLabel(el, text, r) {
+	el.textContent = "";
+	let prev = "\n";
+	for (const ch of text) {
+		alive(r);
+		await sleep(keyDelay(prev, ch) * .45);
+		el.textContent += ch;
+		prev = ch;
+		const b = el.getBoundingClientRect();
+		pos.x += (b.right - pos.x) * .5;
+		pos.y += (b.bottom - 2 - pos.y) * .5;
+		paintPointer();
+	}
+}
+var newPath = (cls, color) => {
+	const p = document.createElementNS(SVG_NS, "path");
+	p.setAttribute("pathLength", "1");
+	p.setAttribute("class", `${cls} ${inkClass(color)}`.trim());
+	return p;
+};
+/** Draw a beat's drawing on the board: each element in turn, the pointer making its strokes and writing its words. */
+async function drawSketch(d, color, r) {
+	const b = sketchBoard();
+	const fresh = d.elements.filter((e) => !e.id || !b.items.has(e.id));
+	b.specs.push(...fresh);
+	if (d.layout) b.layout = d.layout;
+	const relayout = () => {
+		b.at = layoutShapes(b.specs, b.layout);
+		for (const item of b.all) item.place();
+	};
+	relayout();
+	drawingArrow = true;
+	try {
+		for (const spec of fresh) {
+			alive(r);
+			const ink = spec.color || color;
+			if (SHAPES.has(spec.type) && spec.id) {
+				const label = spec.label ?? "", tw = textWidth(label);
+				const size = () => {
+					const w = spec.w ? spec.w / 100 * b.w : spec.type === "diamond" ? tw + 40 : spec.type === "ellipse" ? Math.max(34, tw + 22) : Math.max(34, tw + 22);
+					return {
+						w,
+						h: spec.h ? spec.h / 100 * b.h : spec.type === "diamond" ? 44 : spec.type === "ellipse" ? tw < 30 ? Math.max(34, w) : 36 : 32
+					};
+				};
+				const jitter = [
+					Math.random() - .5,
+					Math.random() - .5,
+					Math.random() - .5,
+					Math.random() - .5
+				];
+				const path = newPath("ai-draw-stroke", ink);
+				b.svg.append(path);
+				const lab = label ? Object.assign(document.createElement("div"), { className: `ai-draw-label ${inkClass(ink)}`.trim() }) : null;
+				if (lab) b.el.append(lab);
+				const local = () => {
+					const c = b.at.get(spec.id) ?? {
+						x: 50,
+						y: 50
+					}, { w, h } = size();
+					return new DOMRect(c.x / 100 * b.w - w / 2, c.y / 100 * b.h - h / 2, w, h);
+				};
+				const place = () => {
+					const l = local();
+					path.setAttribute("d", shapeStroke(spec.type, l.left + l.width / 2, l.top + l.height / 2, l.width, l.height, jitter));
+					if (lab) {
+						lab.style.left = `${l.left + l.width / 2}px`;
+						lab.style.top = `${l.top + l.height / 2}px`;
+					}
+				};
+				const item = {
+					spec,
+					paths: [path],
+					label: lab,
+					place,
+					local
+				};
+				b.items.set(spec.id, item);
+				b.all.push(item);
+				relayout();
+				await traceStroke(path, r);
+				if (lab) await typeLabel(lab, label, r);
+			} else if (LINKS.has(spec.type) && spec.start && spec.end) {
+				const shaft = newPath("ai-draw-stroke", ink), head = spec.type === "arrow" ? newPath("ai-draw-stroke", ink) : null;
+				b.svg.append(shaft);
+				if (head) b.svg.append(head);
+				const bow = (Math.random() - .5) * .25;
+				const place = () => {
+					const s = linkEnd(spec.start), e = linkEnd(spec.end);
+					if (!s || !e) return;
+					const a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {
+						x: e.cx,
+						y: e.cy
+					}), z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {
+						x: s.cx,
+						y: s.cy
+					}, head ? 5 : 3);
+					const dx = z.x - a.x, dy = z.y - a.y, mx = (a.x + z.x) / 2 - dy * bow, my = (a.y + z.y) / 2 + dx * bow;
+					shaft.setAttribute("d", `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
+					if (head) {
+						const ex = z.x - mx, ey = z.y - my, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
+						const wing = (k) => {
+							const c = Math.cos(k), si = Math.sin(k);
+							return `${z.x - len * (ux * c - uy * si)} ${z.y - len * (uy * c + ux * si)}`;
+						};
+						head.setAttribute("d", `M${wing(.5)} L${z.x} ${z.y} L${wing(-.45)}`);
+					}
+				};
+				const local = () => {
+					const bb = shaft.getBBox();
+					return new DOMRect(bb.x, bb.y, bb.width, bb.height);
+				};
+				const item = {
+					spec,
+					paths: head ? [shaft, head] : [shaft],
+					label: null,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				await traceStroke(shaft, r);
+				if (head) await traceStroke(head, r, 2.5);
+			} else if (spec.type === "text" && spec.label) {
+				const lab = Object.assign(document.createElement("div"), { className: `ai-draw-label ai-draw-text ${inkClass(ink)}`.trim() });
+				b.el.append(lab);
+				const local = () => lab.offsetWidth ? new DOMRect(lab.offsetLeft, lab.offsetTop, lab.offsetWidth, lab.offsetHeight) : null;
+				const place = () => {
+					if (typeof spec.x === "number" && typeof spec.y === "number") {
+						lab.style.left = `${spec.x / 100 * b.w}px`;
+						lab.style.top = `${spec.y / 100 * b.h}px`;
+						lab.classList.remove("beside");
+						return;
+					}
+					const n = spec.near ? linkEnd(spec.near) : null;
+					lab.classList.add("beside");
+					lab.style.left = `${n ? n.cx + n.w / 2 + 8 : b.w / 2}px`;
+					lab.style.top = `${n ? n.cy : b.h - 14}px`;
+				};
+				const item = {
+					spec,
+					paths: [],
+					label: lab,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				const p0 = lab.getBoundingClientRect();
+				await glide(p0.left, p0.top + p0.height / 2, r, 260);
+				await typeLabel(lab, spec.label, r);
+			}
+		}
+	} finally {
+		drawingArrow = false;
+	}
+	if (!holding) window.setTimeout(() => {
+		if (!holding && !drawingArrow) restPointer();
+	}, REST_MS);
+}
+/**
+* Rub out drawn shapes as with an eraser: the pointer scrubs back and forth over each while it fades. The links
+* and text joined to a shape go with it; what stays is laid out again without it.
+*/
+async function eraseSketch(ids, r) {
+	const b = sketch;
+	if (!b?.el.isConnected || !ids.length) return;
+	const gone = new Set(ids.filter((id) => b.items.has(id)));
+	if (!gone.size) return;
+	const joined = (item) => [
+		item.spec.start,
+		item.spec.end,
+		item.spec.near
+	].some((e) => e && gone.has(e));
+	const going = b.all.filter((item) => item.spec.id && gone.has(item.spec.id) || joined(item));
+	drawingArrow = true;
+	try {
+		for (const item of going) {
+			alive(r);
+			const l = item.local();
+			const parts = [...item.paths, ...item.label ? [item.label] : []];
+			if (l && l.width + l.height > 0) {
+				const o = b.el.getBoundingClientRect(), pad = 6;
+				const x0 = o.left + l.left - pad, x1 = o.left + l.right + pad, y0 = o.top + l.top - pad, h = l.height + 12;
+				await glide(x0, y0, r, 220);
+				const passes = 5, dur = 650, t0 = performance.now();
+				for (;;) {
+					alive(r);
+					const t = Math.min(1, (performance.now() - t0) / dur), u = t * passes, leg = Math.floor(u), f = u - leg;
+					pos.x = leg % 2 ? x1 - (x1 - x0) * f : x0 + (x1 - x0) * f;
+					pos.y = y0 + h * Math.min(1, (leg + f) / passes);
+					paintPointer();
+					for (const el of parts) el.style.opacity = String(1 - t);
+					if (t >= 1) break;
+					await new Promise((res) => requestAnimationFrame(res));
+				}
+			}
+			for (const el of parts) el.remove();
+		}
+	} finally {
+		drawingArrow = false;
+	}
+	b.all = b.all.filter((item) => !going.includes(item));
+	b.specs = b.specs.filter((spec) => !going.some((item) => item.spec === spec));
+	for (const item of going) if (item.spec.id && b.items.get(item.spec.id) === item) b.items.delete(item.spec.id);
+	b.at = layoutShapes(b.specs, b.layout);
+	for (const item of b.all) item.place();
+	if (!holding) window.setTimeout(() => {
+		if (!holding && !drawingArrow) restPointer();
+	}, REST_MS);
+}
 /**
 * The learner may move a note, as they move the variables box: drag it anywhere; arrows from it follow. A moved
 * note is theirs to keep in place: the presenter's later notes are placed around it.
@@ -10468,6 +10874,7 @@ function makeMovable(note) {
 /** Wipe the notes: they fade away (the board stays; `all` wipes it too). */
 function eraseNotes(all = false) {
 	const going = all ? [...notes, ...board] : notes;
+	if (sketch && going.includes(sketch.el)) sketch = null;
 	notes = [];
 	if (all) {
 		board = [];
@@ -10763,6 +11170,7 @@ async function playBeats(steps, body, r, onBeat) {
 			n.classList.add("fading");
 			window.setTimeout(() => n.remove(), 700);
 		}
+		if (beat.erase_draw?.length) await eraseSketch(beat.erase_draw, r);
 		for (const t of beat.board ?? []) {
 			const n = noteByText.get(noteKey(t));
 			if (n?.isConnected && !n.classList.contains("fading")) await sendToBoard(n, r);
@@ -10773,6 +11181,7 @@ async function playBeats(steps, body, r, onBeat) {
 		body.append(line);
 		const words = speak$1(beat.say, line, r);
 		const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null)).then(async (note) => {
+			if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? "", r);
 			if (beat.arrow_to) await arrowFor(note);
 		});
 		const arrowFor = async (note) => {
@@ -10787,7 +11196,9 @@ async function playBeats(steps, body, r, onBeat) {
 		else await both;
 		alive(r);
 		const wrote = [beat.write, ...beat.board ?? []].filter(Boolean);
-		said.push(wrote.length ? `${beat.say} [wrote: ${wrote.join(" | ")}]` : beat.say);
+		const drew = (beat.draw?.elements ?? []).map((e) => LINKS.has(e.type) ? `${e.start} ${e.type === "arrow" ? "->" : "-"} ${e.end}` : `${e.type} "${e.label ?? ""}"`);
+		const rubbed = beat.erase_draw?.length ? ` [erased: ${beat.erase_draw.join(", ")}]` : "";
+		said.push(beat.say + rubbed + (wrote.length ? ` [wrote: ${wrote.join(" | ")}]` : "") + (drew.length ? ` [drew: ${drew.join(", ")}]` : ""));
 		onBeat?.([...said]);
 		await sleep(250);
 	}

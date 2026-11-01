@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from backend.experts.llm_config import make_adapter, retry_on_parse_error, scoped_lm
 from backend.util.model_errors import model_error_message
 
-from .signature import PresentStep, ScenePresentSig
+from .signature import DrawElement, Drawing, PresentStep, ScenePresentSig
 
 log = logging.getLogger(__name__)
 
@@ -110,14 +110,79 @@ def _note_ref(value, written: set[str]) -> str:
     return f"note:{key}" if key in written else ""
 
 
-def _target_ref(value, refs: set[str], written: set[str]) -> str:
+def _target_ref(value, refs: set[str], written: set[str], drawn: dict[str, str] | None = None) -> str:
+    ref = str(value or "").strip().strip("`")
+    if drawn and ref.startswith("draw:") and ref[5:] in drawn:
+        return ref
     return _note_ref(value, written) or _ref(value, refs)
 
 
-def _part(value, target: str) -> str:
-    """The words of a note pointed at: kept only when the target is a note and they are in it."""
+def _part(value, target: str, drawn: dict[str, str] | None = None) -> str:
+    """The words of a note (or a drawn shape's label) pointed at: kept only when they are in it."""
     part = " ".join(str(value or "").split()).strip("`")
-    return part if part and target.startswith("note:") and part in target[5:] else ""
+    text = target[5:] if target.startswith("note:") else (drawn or {}).get(target[5:], "") if target.startswith("draw:") else ""
+    return part if part and part in text else ""
+
+
+SHAPES = ("rectangle", "ellipse", "diamond")
+LINKS = ("arrow", "line")
+LAYOUTS = ("tree", "row")
+#: The most elements one beat draws, and the longest label.
+MAX_ELEMENTS = 24
+MAX_LABEL = 60
+_ID = re.compile(r"[^A-Za-z0-9_-]")
+
+
+def _grid(value) -> float | None:
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    return min(100.0, max(0.0, v)) if v == v else None
+
+
+def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str]) -> Drawing | None:
+    """A drawing safe to draw: known element types, ids of letters and digits, places on the 0-100 grid, and links
+    whose ends are shapes drawn before them (on this beat or an earlier one) or refs from the list. ``drawn``
+    collects the ids it adds, with their labels, so later beats can link to them and point at them."""
+    if not isinstance(d, Drawing):
+        return None
+    out: list[DrawElement] = []
+    for e in d.elements[:MAX_ELEMENTS]:
+        if not isinstance(e, DrawElement) or e.type not in (*SHAPES, *LINKS, "text"):
+            continue
+        eid = _ID.sub("", str(e.id or ""))[:24]
+        label = _clean(e.label)[:MAX_LABEL]
+        end = lambda v: _ID.sub("", str(v or "")) if _ID.sub("", str(v or "")) in drawn else _target_ref(v, refs, written)
+        start_ref, end_ref = (end(e.start), end(e.end)) if e.type in LINKS else ("", "")
+        if e.type in LINKS and not (start_ref and end_ref):
+            continue
+        if e.type == "text" and not label:
+            continue
+        if e.type in LINKS and not eid:
+            eid = _ID.sub("", f"{start_ref}_{end_ref}")[:24]
+        # Drawn already (a beat repeating the drawing so far): it stays as it is, not drawn twice.
+        if eid and eid in drawn:
+            continue
+        near = (_ID.sub("", str(e.near or "")) if _ID.sub("", str(e.near or "")) in drawn else _target_ref(e.near, refs, written)) if e.type == "text" else ""
+        out.append(DrawElement(type=e.type, id=eid, label=label, x=_grid(e.x), y=_grid(e.y), w=_grid(e.w), h=_grid(e.h),
+                               start=start_ref, end=end_ref, near=near, color=_ink(e.color)))
+        if eid:
+            drawn[eid] = label
+    if not out:
+        return None
+    return Drawing(layout=d.layout if d.layout in LAYOUTS else "", elements=out)
+
+
+def _rub_out(value, drawn: dict[str, str], links: dict[str, tuple[str, str]]) -> list[str]:
+    """The drawn ids a beat rubs out, and with them the links joined to them; all of them leave ``drawn``."""
+    ids = [i for i in dict.fromkeys(_ID.sub("", str(v or ""))[:24] for v in (value or [])) if i in drawn]
+    gone = set(ids)
+    ids += [lid for lid, ends in links.items() if lid not in gone and gone & set(ends)]
+    for i in ids:
+        drawn.pop(i, None)
+        links.pop(i, None)
+    return [i for i in ids if i in gone]
 
 
 def _slider_move(s: PresentStep, refs: set[str]) -> dict:
@@ -137,6 +202,8 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
     nothing to say is dropped."""
     out = []
     written: set[str] = set()       # the notes on the view so far, by text: a beat may point at them
+    drawn: dict[str, str] = {}      # what was drawn so far, id -> label: a beat may link to it or point at it
+    links: dict[str, tuple[str, str]] = {}   # the drawn links and texts, id -> what they join: rubbed out with it
     for s in raw or []:
         if not isinstance(s, PresentStep) or not _clean(s.say):
             continue
@@ -147,15 +214,23 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
         write = _DSPY_MARKER.sub("", str(s.write or "")).strip().splitlines()[0][:MAX_WRITE] if str(s.write or "").strip() else ""
         board = _notes(s.board)
         written |= {_note_key(t) for t in [write, *board] if t}
-        target = _target_ref(s.target, refs, written)
-        out.append(PresentStep(say=_clean(s.say), target=target, part=_part(s.part, target),
+        if s.erase:
+            drawn.clear();links.clear()
+        rubbed = _rub_out(s.erase_draw, drawn, links)
+        drawing = _drawing(s.draw, refs, written, drawn)
+        for e in drawing.elements if drawing else []:
+            if e.id and (e.start or e.near):
+                links[e.id] = (e.start, e.end) if e.start else (e.near,)
+        target = _target_ref(s.target, refs, written, drawn)
+        out.append(PresentStep(say=_clean(s.say), target=target, part=_part(s.part, target, drawn),
                                mark=s.mark if s.mark in MARKS else "point",
                                frame=frame if 0 <= frame < frames else -1,
                                write=write, write_near=_target_ref(s.write_near, refs, written) if write else "", erase=bool(s.erase),
-                               arrow_to=_target_ref(s.arrow_to, refs, written),
-                               arrow_from=_target_ref(s.arrow_from, refs, written) if _target_ref(s.arrow_to, refs, written) else "",
+                               arrow_to=_target_ref(s.arrow_to, refs, written, drawn),
+                               arrow_from=_target_ref(s.arrow_from, refs, written, drawn) if _target_ref(s.arrow_to, refs, written, drawn) else "",
+                               draw=drawing,
                                arrow_kind=s.arrow_kind if s.arrow_kind in ARROW_KINDS else "arrow",
-                               board=board, erase_notes=_notes(s.erase_notes),
+                               board=board, erase_notes=_notes(s.erase_notes), erase_draw=rubbed,
                                color=_ink(s.color), **_slider_move(s, refs)))
     return out[:MAX_STEPS]
 
