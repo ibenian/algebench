@@ -187,6 +187,21 @@
       "path": "patterns/sliding_window.py",
       "language": "python",
       "source": "def max_window_sum(nums, k):\n    window = sum(nums[:k])\n    best = window\n    for right in range(k, len(nums)):\n        window += nums[right] - nums[right - k]\n        best = max(best, window)\n    return best",
+      "sections": [
+        {"id": "sw-first", "title": "Sum the first window", "from": 1, "to": 3, "hint": "Add up the first k numbers once; that window is the best so far."},
+        {"id": "sw-slide", "title": "Slide: add the new number, drop the old one", "from": 4, "to": 5, "hint": "Moving one step right brings in nums[right] and lets go of nums[right − k]: two operations, not k.", "prompt": "Explain why updating the window with one addition and one subtraction gives the same sum as adding up all k numbers again, and what that does to the cost."},
+        {"id": "sw-best", "title": "Keep the best window", "from": 6, "to": 7, "hint": "After each slide, keep the larger of the best so far and this window."}
+      ],
+      "annotations": [
+        {"name": "max_window_sum", "text": "`max_window_sum(nums, k)` returns the largest sum of k consecutive numbers. O(n): each number enters and leaves the window once."},
+        {"name": "nums", "text": "The input numbers."},
+        {"name": "k", "text": "The window size: how many consecutive numbers are summed."},
+        {"name": "window", "text": "The sum of the k numbers in the current window."},
+        {"name": "best", "text": "The largest window sum seen so far."},
+        {"name": "right", "text": "The index of the number entering the window; the window is `nums[right − k + 1 .. right]`."},
+        {"line": 2, "col": 13, "endCol": 26, "text": "The first window, summed once in full."},
+        {"line": 5, "col": 18, "endCol": 47, "text": "In comes `nums[right]`, out goes `nums[right − k]`, the number that just left the window."}
+      ],
       "locations": [
         {"line": 2, "scene": "sliding-window", "step": "run", "snapshot": 0, "label": "Slide a window (sliding window) · Sum the first window, nums[0..2]: 8."},
         {"line": 3, "scene": "sliding-window", "step": "run", "snapshot": 1, "label": "Slide a window (sliding window) · best = 8."},
@@ -213,6 +228,20 @@
       "path": "patterns/kadane.py",
       "language": "python",
       "source": "def max_subarray(nums):\n    cur = best = nums[0]\n    for i in range(1, len(nums)):\n        cur = max(nums[i], cur + nums[i])\n        best = max(best, cur)\n    return best",
+      "sections": [
+        {"id": "kd-start", "title": "Start from the first number", "from": 1, "to": 2, "hint": "The best subarray ending at index 0 is nums[0] itself, and so is the best so far."},
+        {"id": "kd-extend", "title": "Extend the run, or start over here", "from": 3, "to": 4, "hint": "A run with a negative sum only drags the next number down: then it is better to start again at nums[i].", "prompt": "Explain why cur = max(nums[i], cur + nums[i]) is the best sum of a subarray ending at i, and when the run starts over."},
+        {"id": "kd-best", "title": "Keep the best run", "from": 5, "to": 6, "hint": "The answer ends somewhere: keep the largest cur seen at any index."}
+      ],
+      "annotations": [
+        {"name": "max_subarray", "text": "`max_subarray(nums)` returns the largest sum of a contiguous, non-empty subarray. O(n) time, O(1) space."},
+        {"name": "nums", "text": "The input numbers, negatives included."},
+        {"name": "cur", "text": "The largest sum of a subarray that ends exactly at the current index."},
+        {"name": "best", "text": "The largest subarray sum found so far, ending anywhere."},
+        {"name": "i", "text": "The index being added."},
+        {"line": 4, "col": 27, "endCol": 40, "text": "Extend the best run ending at i − 1 by `nums[i]`."},
+        {"line": 4, "col": 18, "endCol": 25, "text": "Or start a new run here, when the old run's sum is negative."}
+      ],
       "locations": [
         {"line": 2, "scene": "kadane", "step": "run", "snapshot": 0, "label": "Keep the best running sum (Kadane) · Start with the first number: the best subarray ending at index 0 is just [-2]."},
         {"line": 3, "scene": "kadane", "step": "run", "snapshot": 1, "label": "Keep the best running sum (Kadane) · Index 1 (value 1): end a subarray here, either fresh or by extending the run."},
@@ -247,6 +276,24 @@
       "path": "patterns/rotated_search.py",
       "language": "python",
       "source": "def search_rotated(nums, target):\n    lo, hi = 0, len(nums) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if nums[mid] == target:\n            return mid\n        if nums[lo] <= nums[mid]:\n            if nums[lo] <= target < nums[mid]:\n                hi = mid - 1\n            else:\n                lo = mid + 1\n        else:\n            if nums[mid] < target <= nums[hi]:\n                lo = mid + 1\n            else:\n                hi = mid - 1\n    return -1",
+      "sections": [
+        {"id": "rs-range", "title": "Search the whole array", "from": 1, "to": 2, "hint": "lo and hi bound the part of nums the target can still be in."},
+        {"id": "rs-mid", "title": "Look at the middle", "from": 3, "to": 6, "hint": "Halve the range at mid; if nums[mid] is the target, done."},
+        {"id": "rs-left", "title": "Left half sorted: is the target in it?", "from": 7, "to": 11, "hint": "When nums[lo] ≤ nums[mid], the left half is in order, so one range check says whether the target lies there.", "prompt": "Explain why, in a rotated sorted array, at least one half around mid is always sorted, and how nums[lo] <= nums[mid] tells which."},
+        {"id": "rs-right", "title": "Otherwise the right half is sorted", "from": 12, "to": 16, "hint": "The rotation point is on the left, so the right half is in order: check the target against it."},
+        {"id": "rs-none", "title": "The range is empty: not found", "from": 17, "to": 17, "hint": "lo passed hi: every place the target could be was ruled out."}
+      ],
+      "annotations": [
+        {"name": "search_rotated", "text": "`search_rotated(nums, target)` returns the index of `target` in a sorted array rotated at an unknown point, or −1. O(log n)."},
+        {"name": "nums", "text": "A sorted array rotated at some index, so it rises, drops once, then rises again."},
+        {"name": "target", "text": "The value to find."},
+        {"name": "lo", "text": "The first index still in the search range."},
+        {"name": "hi", "text": "The last index still in the search range."},
+        {"name": "mid", "text": "The middle of the range, where it is split in two."},
+        {"line": 7, "col": 11, "endCol": 32, "text": "No drop between lo and mid: the left half is sorted."},
+        {"line": 8, "col": 15, "endCol": 45, "text": "The target falls inside the sorted left half: search there."},
+        {"line": 13, "col": 15, "endCol": 45, "text": "The target falls inside the sorted right half: search there."}
+      ],
       "locations": [
         {"line": 2, "scene": "rotated-search", "step": "run", "snapshot": 0, "label": "Halve the search (binary search) · Search all of nums: lo = 0, hi = 9."},
         {"line": 3, "scene": "rotated-search", "step": "run", "snapshot": 1, "label": "Halve the search (binary search) · lo ≤ hi, so 10 candidates remain."},
@@ -272,6 +319,23 @@
       "path": "patterns/merge_intervals.py",
       "language": "python",
       "source": "def merge(intervals):\n    intervals.sort(key=lambda iv: iv[0])\n    merged = []\n    for start, end in intervals:\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged",
+      "sections": [
+        {"id": "mi-sort", "title": "Sort by start", "from": 1, "to": 2, "hint": "Sorted by start, intervals that overlap sit next to each other.", "prompt": "Explain why sorting by start means an interval can only overlap the last merged one, never an earlier one."},
+        {"id": "mi-walk", "title": "Walk the intervals, building merged", "from": 3, "to": 4, "hint": "merged holds the result so far; its last interval is the only one the next can touch."},
+        {"id": "mi-overlap", "title": "Overlap: stretch the last interval", "from": 5, "to": 6, "hint": "It starts before the last one ends: they merge, and the end is the later of the two."},
+        {"id": "mi-new", "title": "No overlap: start a new interval", "from": 7, "to": 8, "hint": "A gap before it: it begins a new merged interval."},
+        {"id": "mi-done", "title": "Return the merged list", "from": 9, "to": 9, "hint": "O(n log n) for the sort, then one pass."}
+      ],
+      "annotations": [
+        {"name": "merge", "text": "`merge(intervals)` returns the intervals with every overlapping group joined into one, sorted by start. O(n log n)."},
+        {"name": "intervals", "text": "The input intervals, each `[start, end]`."},
+        {"name": "merged", "text": "The merged intervals so far, in order; only the last one can still grow."},
+        {"name": "start", "text": "Where the current interval begins."},
+        {"name": "end", "text": "Where the current interval ends."},
+        {"line": 2, "col": 19, "endCol": 39, "text": "Order by start point."},
+        {"line": 5, "col": 22, "endCol": 44, "text": "It begins before (or where) the last merged interval ends: they overlap."},
+        {"line": 6, "col": 28, "endCol": 51, "text": "The later end: an interval inside the last one must not shrink it."}
+      ],
       "locations": [
         {"line": 1, "scene": "merge-intervals", "step": "run", "snapshot": 0, "label": "Merge overlapping ranges (intervals) · The input intervals, in the order given. Each column is one interval."},
         {"line": 2, "scene": "merge-intervals", "step": "run", "snapshot": 1, "label": "Merge overlapping ranges (intervals) · Sort by start. Now any interval that overlaps the current group must come right after it."},
@@ -299,6 +363,20 @@
       "path": "patterns/greedy.py",
       "language": "python",
       "source": "def can_jump(nums):\n    reach = 0\n    for i, jump in enumerate(nums):\n        if i > reach:\n            return False\n        reach = max(reach, i + jump)\n    return True",
+      "sections": [
+        {"id": "gr-start", "title": "Start: only index 0 is reachable", "from": 1, "to": 2, "hint": "reach is the farthest index known to be reachable."},
+        {"id": "gr-stuck", "title": "An index past reach: stuck", "from": 3, "to": 5, "hint": "If i is beyond reach, no earlier jump gets here, so the end can never be reached."},
+        {"id": "gr-reach", "title": "Push the reach as far as it goes", "from": 6, "to": 7, "hint": "From i you can land anywhere up to i + jump: keep the farthest. Every index was reachable, so the end is too.", "prompt": "Explain why tracking only the farthest reachable index is enough, with no need to try each jump length (the greedy choice)."}
+      ],
+      "annotations": [
+        {"name": "can_jump", "text": "`can_jump(nums)` says whether you can get from index 0 to the last index, where `nums[i]` is the longest jump from i. O(n)."},
+        {"name": "nums", "text": "`nums[i]`: the farthest you can jump from index i."},
+        {"name": "reach", "text": "The farthest index reachable using the indices seen so far."},
+        {"name": "i", "text": "The index being stood on."},
+        {"name": "jump", "text": "The longest jump from index i: `nums[i]`."},
+        {"line": 4, "col": 11, "endCol": 20, "text": "No jump so far lands on i: there is a gap."},
+        {"line": 6, "col": 27, "endCol": 35, "text": "The farthest index a jump from i can land on."}
+      ],
       "locations": [
         {"line": 2, "scene": "greedy", "step": "run", "snapshot": 0, "label": "Take the best step now (greedy) · reach is the farthest index we know we can get to. At first, only index 0."},
         {"line": 3, "scene": "greedy", "step": "run", "snapshot": 1, "label": "Take the best step now (greedy) · Stand on index 0; it allows a jump of up to 3."},
@@ -323,6 +401,18 @@
       "path": "patterns/single_number.py",
       "language": "python",
       "source": "def single_number(nums):\n    result = 0\n    for x in nums:\n        result ^= x\n    return result",
+      "sections": [
+        {"id": "bt-start", "title": "Start from 0", "from": 1, "to": 2, "hint": "x ^ 0 is x: 0 changes nothing."},
+        {"id": "bt-xor", "title": "XOR every number in", "from": 3, "to": 4, "hint": "A number XORed in twice cancels out (x ^ x = 0), so only the one that appears once is left.", "prompt": "Explain why XOR-ing all the numbers leaves the single one, using x ^ x = 0, x ^ 0 = x, and that the order does not matter."},
+        {"id": "bt-done", "title": "What is left is the single number", "from": 5, "to": 5, "hint": "O(n) time, O(1) space: no set needed."}
+      ],
+      "annotations": [
+        {"name": "single_number", "text": "`single_number(nums)` returns the one number that appears once when every other appears twice. O(n) time, O(1) space."},
+        {"name": "nums", "text": "The input: every number twice, except one."},
+        {"name": "result", "text": "The XOR of the numbers so far: the pairs cancel, leaving the unmatched ones."},
+        {"name": "x", "text": "The number being XORed in."},
+        {"line": 4, "col": 15, "endCol": 17, "text": "XOR: a bit is 1 when the two bits differ. Twice the same x flips the same bits back."}
+      ],
       "locations": [
         {"line": 2, "scene": "bit-manipulation", "step": "run", "snapshot": 0, "label": "Flip bits (bit manipulation) · result starts at 0. XOR rules: a ^ a = 0 and a ^ 0 = a, in any order."},
         {"line": 3, "scene": "bit-manipulation", "step": "run", "snapshot": 1, "label": "Flip bits (bit manipulation) · Take nums[0] = 4, binary 100."},
@@ -343,6 +433,38 @@
       "path": "patterns/kmp.py",
       "language": "python",
       "source": "def build_lps(p):\n    lps, k = [0] * len(p), 0\n    for i in range(1, len(p)):\n        while k and p[i] != p[k]:\n            k = lps[k - 1]\n        if p[i] == p[k]:\n            k += 1\n        lps[i] = k\n    return lps\n\ndef kmp_search(text, p):\n    lps, k, hits = build_lps(p), 0, []\n    for i, ch in enumerate(text):\n        while k and ch != p[k]:\n            k = lps[k - 1]\n        if ch == p[k]:\n            k += 1\n        if k == len(p):\n            hits.append(i - k + 1)\n            k = lps[k - 1]\n    return hits",
+      "sections": [
+        {"id": "kmp-lps-start", "title": "Start the table with no borders", "from": 1, "to": 2, "hint": "lps[0] is 0: one character has no proper border. k, the border being grown, starts empty."},
+        {"id": "kmp-lps-fall", "title": "Mismatch: fall back to a shorter border", "from": 3, "to": 5, "hint": "While p[i] cannot extend the border p[0..k−1], shrink it to that border's own longest border, lps[k − 1].", "prompt": "Explain why lps[k − 1] is the next border worth trying when p[i] does not extend the border of length k, and why no border in between can work."},
+        {"id": "kmp-lps-grow", "title": "Extend the border and record it", "from": 6, "to": 10, "hint": "If p[i] continues the border it grows by one; either way lps[i] is the border's length now."},
+        {"id": "kmp-start", "title": "Build the table, then scan the text", "from": 11, "to": 12, "hint": "The table comes from the pattern alone; k counts how much of p matches the text so far."},
+        {"id": "kmp-fall", "title": "Mismatch: keep the longest border", "from": 13, "to": 15, "hint": "The text pointer never moves back: on a mismatch only k shrinks, to lps[k − 1].", "prompt": "Explain why, on a mismatch, the text pointer can stay where it is and only k falls back to lps[k − 1], and why that makes the scan O(n)."},
+        {"id": "kmp-grow", "title": "Match: one more character", "from": 16, "to": 17, "hint": "ch continues the match: k grows by one."},
+        {"id": "kmp-hit", "title": "All of p matched: record it, keep the overlap", "from": 18, "to": 20, "hint": "A match ends at i, so it starts at i − k + 1; falling back to lps[k − 1] still finds overlapping matches.", "prompt": "Explain why, after a full match, k falls back to lps[k − 1] instead of 0, with an example of overlapping matches."},
+        {"id": "kmp-done", "title": "Return every start", "from": 21, "to": 21, "hint": "One pass over the text: O(n + m) with the table."}
+      ],
+      "annotations": [
+        {"name": "build_lps", "text": "`build_lps(p)` returns the `lps` table of the pattern: for each prefix `p[0..i]`, the length of its longest proper prefix that is also a suffix (its longest border). O(m)."},
+        {"name": "kmp_search", "text": "`kmp_search(text, p)` returns every index where `p` starts in `text`, overlaps included. O(n + m)."},
+        {"name": "p", "text": "The pattern to find."},
+        {"name": "text", "text": "The text searched, read once from left to right."},
+        {"name": "lps", "text": "`lps[i]`: the length of the longest proper prefix of `p[0..i]` that is also its suffix. After a mismatch it says how much of the match can be kept."},
+        {"name": "hits", "text": "The indices where a match of `p` starts, in order."},
+        {"name": "ch", "text": "The text character being read: `text[i]`."},
+        {"name": "i", "line": 1, "endLine": 9, "text": "The pattern position whose `lps` entry is being worked out."},
+        {"name": "k", "line": 1, "endLine": 9, "text": "The length of the border being grown: `p[0..k−1]` matches the characters just before `p[i]`."},
+        {"name": "i", "line": 11, "endLine": 21, "text": "The index of the text character being read. It only moves forward."},
+        {"name": "k", "line": 11, "endLine": 21, "text": "How many characters of `p` match the text ending just before `ch`."},
+        {"line": 2, "col": 13, "endCol": 25, "text": "One entry per prefix of `p`; `lps[0]` stays 0."},
+        {"line": 4, "col": 20, "endCol": 32, "text": "`p[i]` does not continue the border `p[0..k−1]`."},
+        {"line": 5, "col": 16, "endCol": 26, "text": "The border of the border: the next shorter prefix that still ends right here."},
+        {"line": 8, "col": 8, "endCol": 18, "text": "The longest border of `p[0..i]` is `k` long."},
+        {"line": 14, "col": 20, "endCol": 30, "text": "`ch` does not continue the `k` characters matched so far."},
+        {"line": 14, "endLine": 15, "text": "k grows by at most 1 per character and each fallback shrinks it, so all the fallbacks together cost at most n steps: the scan stays O(n)."},
+        {"line": 18, "col": 11, "endCol": 22, "text": "Every character of `p` matched."},
+        {"line": 19, "col": 24, "endCol": 33, "text": "The match ends at `i` and is `k` long, so it starts at `i − k + 1`."},
+        {"line": 20, "col": 16, "endCol": 26, "text": "Keep the longest border of the whole match, so a match overlapping this one is still found."}
+      ],
       "locations": [
         {"line": 2, "scene": "string-matching", "step": "run", "snapshot": 0, "label": "Find a word fast (KMP string matching) · Phase 1: lps[i] = length of the longest proper prefix of p that is also a suffix of p[0..i]."},
         {"line": 3, "scene": "string-matching", "step": "run", "snapshot": 1, "label": "Find a word fast (KMP string matching) · Extend to p[1] = a."},

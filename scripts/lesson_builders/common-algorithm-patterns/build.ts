@@ -651,6 +651,25 @@ ${MD_TAIL}
 pattern({
     id: 'sliding-window', title: 'Slide a window (sliding window)', file: 'sliding_window.py', source: SLIDING_WINDOW_SOURCE,
     input: { nums: IN.slidingWindow.nums, k: IN.slidingWindow.k }, trace: slidingWindowTrace(IN.slidingWindow.nums, IN.slidingWindow.k),
+    sections: [
+        section(SLIDING_WINDOW_SOURCE, 'sw-first', 'Sum the first window', 'def max_window_sum(', 'best = window', {
+            hint: 'Add up the first k numbers once; that window is the best so far.' }),
+        section(SLIDING_WINDOW_SOURCE, 'sw-slide', 'Slide: add the new number, drop the old one', 'for right in range', 'window += nums[right]', {
+            hint: 'Moving one step right brings in nums[right] and lets go of nums[right − k]: two operations, not k.',
+            prompt: 'Explain why updating the window with one addition and one subtraction gives the same sum as adding up all k numbers again, and what that does to the cost.' }),
+        section(SLIDING_WINDOW_SOURCE, 'sw-best', 'Keep the best window', 'best = max(best, window)', 'return best', {
+            hint: 'After each slide, keep the larger of the best so far and this window.' }),
+    ],
+    annotations: [
+        doc('max_window_sum', '`max_window_sum(nums, k)` returns the largest sum of k consecutive numbers. O(n): each number enters and leaves the window once.'),
+        doc('nums', 'The input numbers.'),
+        doc('k', 'The window size: how many consecutive numbers are summed.'),
+        doc('window', 'The sum of the k numbers in the current window.'),
+        doc('best', 'The largest window sum seen so far.'),
+        doc('right', 'The index of the number entering the window; the window is `nums[right − k + 1 .. right]`.'),
+        docExpr(SLIDING_WINDOW_SOURCE, 'window = sum(', 'sum(nums[:k])', 'The first window, summed once in full.'),
+        docExpr(SLIDING_WINDOW_SOURCE, 'window += nums[right]', 'nums[right] - nums[right - k]', 'In comes `nums[right]`, out goes `nums[right − k]`, the number that just left the window.'),
+    ],
     markdown: `# Slide a window (sliding window)
 
 **Signal:** the best (largest, smallest, longest) **contiguous** subarray or substring.
@@ -691,6 +710,24 @@ ${MD_TAIL}
 pattern({
     id: 'kadane', title: 'Keep the best running sum (Kadane)', file: 'kadane.py', source: KADANE_SOURCE,
     input: { nums: IN.kadane.nums }, trace: kadaneTrace(IN.kadane.nums),
+    sections: [
+        section(KADANE_SOURCE, 'kd-start', 'Start from the first number', 'def max_subarray(', 'cur = best = nums[0]', {
+            hint: 'The best subarray ending at index 0 is nums[0] itself, and so is the best so far.' }),
+        section(KADANE_SOURCE, 'kd-extend', 'Extend the run, or start over here', 'for i in range(1', 'cur = max(nums[i]', {
+            hint: 'A run with a negative sum only drags the next number down: then it is better to start again at nums[i].',
+            prompt: 'Explain why cur = max(nums[i], cur + nums[i]) is the best sum of a subarray ending at i, and when the run starts over.' }),
+        section(KADANE_SOURCE, 'kd-best', 'Keep the best run', 'best = max(best, cur)', 'return best', {
+            hint: 'The answer ends somewhere: keep the largest cur seen at any index.' }),
+    ],
+    annotations: [
+        doc('max_subarray', '`max_subarray(nums)` returns the largest sum of a contiguous, non-empty subarray. O(n) time, O(1) space.'),
+        doc('nums', 'The input numbers, negatives included.'),
+        doc('cur', 'The largest sum of a subarray that ends exactly at the current index.'),
+        doc('best', 'The largest subarray sum found so far, ending anywhere.'),
+        doc('i', 'The index being added.'),
+        docExpr(KADANE_SOURCE, 'cur = max(nums[i]', 'cur + nums[i]', 'Extend the best run ending at i − 1 by `nums[i]`.'),
+        docExpr(KADANE_SOURCE, 'cur = max(nums[i]', 'nums[i]', 'Or start a new run here, when the old run\'s sum is negative.'),
+    ],
     markdown: `# Keep the best running sum (Kadane)
 
 **Signal:** the largest (or smallest) sum of a contiguous subarray, of any length; or the best profit from one buy and one sell.
@@ -905,6 +942,32 @@ const MID_HIT = `${tr('comparing')} == 1 and arrayAt(${inp('nums')}, ${tr('mid')
 pattern({
     id: 'rotated-search', title: 'Halve the search (binary search)', file: 'rotated_search.py', source: ROTATED_SEARCH_SOURCE,
     input: { nums: IN.rotated.nums, target: IN.rotated.target }, trace: rotatedSearchTrace(IN.rotated.nums, IN.rotated.target),
+    sections: [
+        section(ROTATED_SEARCH_SOURCE, 'rs-range', 'Search the whole array', 'def search_rotated(', 'lo, hi = 0', {
+            hint: 'lo and hi bound the part of nums the target can still be in.' }),
+        section(ROTATED_SEARCH_SOURCE, 'rs-mid', 'Look at the middle', 'while lo <= hi', 'return mid', {
+            hint: 'Halve the range at mid; if nums[mid] is the target, done.' }),
+        section(ROTATED_SEARCH_SOURCE, 'rs-left', 'Left half sorted: is the target in it?', 'if nums[lo] <= nums[mid]', 'lo = mid + 1', {
+            hint: 'When nums[lo] ≤ nums[mid], the left half is in order, so one range check says whether the target lies there.',
+            prompt: 'Explain why, in a rotated sorted array, at least one half around mid is always sorted, and how nums[lo] <= nums[mid] tells which.' }),
+        // The outer else (the inner one, under the left half, comes first in the file).
+        { ...section(ROTATED_SEARCH_SOURCE, 'rs-right', 'Otherwise the right half is sorted', 'else:', 'hi = mid - 1', {
+            hint: 'The rotation point is on the left, so the right half is in order: check the target against it.' }),
+            from: lineOf(ROTATED_SEARCH_SOURCE, 'else:', 'lo = mid + 1') },
+        section(ROTATED_SEARCH_SOURCE, 'rs-none', 'The range is empty: not found', 'return -1', null, {
+            hint: 'lo passed hi: every place the target could be was ruled out.' }),
+    ],
+    annotations: [
+        doc('search_rotated', '`search_rotated(nums, target)` returns the index of `target` in a sorted array rotated at an unknown point, or −1. O(log n).'),
+        doc('nums', 'A sorted array rotated at some index, so it rises, drops once, then rises again.'),
+        doc('target', 'The value to find.'),
+        doc('lo', 'The first index still in the search range.'),
+        doc('hi', 'The last index still in the search range.'),
+        doc('mid', 'The middle of the range, where it is split in two.'),
+        docExpr(ROTATED_SEARCH_SOURCE, 'if nums[lo] <= nums[mid]', 'nums[lo] <= nums[mid]', 'No drop between lo and mid: the left half is sorted.'),
+        docExpr(ROTATED_SEARCH_SOURCE, 'if nums[lo] <= target', 'nums[lo] <= target < nums[mid]', 'The target falls inside the sorted left half: search there.'),
+        docExpr(ROTATED_SEARCH_SOURCE, 'if nums[mid] < target', 'nums[mid] < target <= nums[hi]', 'The target falls inside the sorted right half: search there.'),
+    ],
     markdown: `# Halve the search (binary search)
 
 **Signal:** data that is sorted *with a twist* (rotated, sorted rows and columns, or a monotone yes/no condition) and an O(log n) expectation.
@@ -956,6 +1019,29 @@ const intervalChart = {
 pattern({
     id: 'merge-intervals', title: 'Merge overlapping ranges (intervals)', file: 'merge_intervals.py', source: MERGE_INTERVALS_SOURCE,
     input: { intervals: ivs.map(([s, e]) => `[${s},${e}]`) }, trace: mergeIntervalsTrace(ivs), cameraX: -1,
+    sections: [
+        section(MERGE_INTERVALS_SOURCE, 'mi-sort', 'Sort by start', 'def merge(', 'intervals.sort(', {
+            hint: 'Sorted by start, intervals that overlap sit next to each other.',
+            prompt: 'Explain why sorting by start means an interval can only overlap the last merged one, never an earlier one.' }),
+        section(MERGE_INTERVALS_SOURCE, 'mi-walk', 'Walk the intervals, building merged', 'merged = []', 'for start, end in', {
+            hint: 'merged holds the result so far; its last interval is the only one the next can touch.' }),
+        section(MERGE_INTERVALS_SOURCE, 'mi-overlap', 'Overlap: stretch the last interval', 'if merged and start', 'merged[-1][1] = max(', {
+            hint: 'It starts before the last one ends: they merge, and the end is the later of the two.' }),
+        section(MERGE_INTERVALS_SOURCE, 'mi-new', 'No overlap: start a new interval', 'else:', 'merged.append(', {
+            hint: 'A gap before it: it begins a new merged interval.' }),
+        section(MERGE_INTERVALS_SOURCE, 'mi-done', 'Return the merged list', 'return merged', null, {
+            hint: 'O(n log n) for the sort, then one pass.' }),
+    ],
+    annotations: [
+        doc('merge', '`merge(intervals)` returns the intervals with every overlapping group joined into one, sorted by start. O(n log n).'),
+        doc('intervals', 'The input intervals, each `[start, end]`.'),
+        doc('merged', 'The merged intervals so far, in order; only the last one can still grow.'),
+        doc('start', 'Where the current interval begins.'),
+        doc('end', 'Where the current interval ends.'),
+        docExpr(MERGE_INTERVALS_SOURCE, 'intervals.sort(', 'key=lambda iv: iv[0]', 'Order by start point.'),
+        docExpr(MERGE_INTERVALS_SOURCE, 'if merged and start', 'start <= merged[-1][1]', 'It begins before (or where) the last merged interval ends: they overlap.'),
+        docExpr(MERGE_INTERVALS_SOURCE, 'merged[-1][1] = max(', 'max(merged[-1][1], end)', 'The later end: an interval inside the last one must not shrink it.'),
+    ],
     markdown: `# Merge overlapping ranges (intervals)
 
 **Signal:** meetings, bookings, ranges, or anything with a start and an end.
@@ -1156,6 +1242,24 @@ ${MD_TAIL}
 pattern({
     id: 'greedy', title: 'Take the best step now (greedy)', file: 'greedy.py', source: GREEDY_SOURCE,
     input: { nums: IN.greedy.nums }, trace: greedyTrace(IN.greedy.nums),
+    sections: [
+        section(GREEDY_SOURCE, 'gr-start', 'Start: only index 0 is reachable', 'def can_jump(', 'reach = 0', {
+            hint: 'reach is the farthest index known to be reachable.' }),
+        section(GREEDY_SOURCE, 'gr-stuck', 'An index past reach: stuck', 'for i, jump in', 'return False', {
+            hint: 'If i is beyond reach, no earlier jump gets here, so the end can never be reached.' }),
+        section(GREEDY_SOURCE, 'gr-reach', 'Push the reach as far as it goes', 'reach = max(reach, i + jump)', 'return True', {
+            hint: 'From i you can land anywhere up to i + jump: keep the farthest. Every index was reachable, so the end is too.',
+            prompt: 'Explain why tracking only the farthest reachable index is enough, with no need to try each jump length (the greedy choice).' }),
+    ],
+    annotations: [
+        doc('can_jump', '`can_jump(nums)` says whether you can get from index 0 to the last index, where `nums[i]` is the longest jump from i. O(n).'),
+        doc('nums', '`nums[i]`: the farthest you can jump from index i.'),
+        doc('reach', 'The farthest index reachable using the indices seen so far.'),
+        doc('i', 'The index being stood on.'),
+        doc('jump', 'The longest jump from index i: `nums[i]`.'),
+        docExpr(GREEDY_SOURCE, 'if i > reach', 'i > reach', 'No jump so far lands on i: there is a gap.'),
+        docExpr(GREEDY_SOURCE, 'reach = max(reach, i + jump)', 'i + jump', 'The farthest index a jump from i can land on.'),
+    ],
     markdown: `# Take the best step now (greedy)
 
 **Signal:** a sequence of choices where the locally best choice never hurts later ones, often "can you reach…", "minimum number of…", or scheduling.
@@ -1183,6 +1287,22 @@ ${MD_TAIL}
 pattern({
     id: 'bit-manipulation', title: 'Flip bits (bit manipulation)', file: 'single_number.py', source: BITS_SOURCE,
     input: { nums: IN.bits.nums }, trace: bitsTrace(IN.bits.nums),
+    sections: [
+        section(BITS_SOURCE, 'bt-start', 'Start from 0', 'def single_number(', 'result = 0', {
+            hint: 'x ^ 0 is x: 0 changes nothing.' }),
+        section(BITS_SOURCE, 'bt-xor', 'XOR every number in', 'for x in nums', 'result ^= x', {
+            hint: 'A number XORed in twice cancels out (x ^ x = 0), so only the one that appears once is left.',
+            prompt: 'Explain why XOR-ing all the numbers leaves the single one, using x ^ x = 0, x ^ 0 = x, and that the order does not matter.' }),
+        section(BITS_SOURCE, 'bt-done', 'What is left is the single number', 'return result', null, {
+            hint: 'O(n) time, O(1) space: no set needed.' }),
+    ],
+    annotations: [
+        doc('single_number', '`single_number(nums)` returns the one number that appears once when every other appears twice. O(n) time, O(1) space.'),
+        doc('nums', 'The input: every number twice, except one.'),
+        doc('result', 'The XOR of the numbers so far: the pairs cancel, leaving the unmatched ones.'),
+        doc('x', 'The number being XORed in.'),
+        docExpr(BITS_SOURCE, 'result ^= x', '^=', 'XOR: a bit is 1 when the two bits differ. Twice the same x flips the same bits back.'),
+    ],
     markdown: `# Flip bits (bit manipulation)
 
 **Signal:** "appears once / twice", parity, subsets as bitmasks, powers of two, or an O(1)-space requirement on integers.
@@ -1211,6 +1331,50 @@ ${MD_TAIL}
 pattern({
     id: 'string-matching', title: 'Find a word fast (KMP string matching)', file: 'kmp.py', source: KMP_SOURCE,
     input: { text: [...IN.kmp.text], pattern: [...IN.kmp.pattern] }, trace: kmpTrace(IN.kmp.text, IN.kmp.pattern),
+    sections: [
+        section(KMP_SOURCE, 'kmp-lps-start', 'Start the table with no borders', 'def build_lps(', 'lps, k = [0]', {
+            hint: 'lps[0] is 0: one character has no proper border. k, the border being grown, starts empty.' }),
+        section(KMP_SOURCE, 'kmp-lps-fall', 'Mismatch: fall back to a shorter border', 'for i in range(1', 'k = lps[k - 1]', {
+            hint: 'While p[i] cannot extend the border p[0..k−1], shrink it to that border\'s own longest border, lps[k − 1].',
+            prompt: 'Explain why lps[k − 1] is the next border worth trying when p[i] does not extend the border of length k, and why no border in between can work.' }),
+        section(KMP_SOURCE, 'kmp-lps-grow', 'Extend the border and record it', 'if p[i] == p[k]', 'return lps', {
+            hint: 'If p[i] continues the border it grows by one; either way lps[i] is the border\'s length now.' }),
+        section(KMP_SOURCE, 'kmp-start', 'Build the table, then scan the text', 'def kmp_search(', 'lps, k, hits =', {
+            hint: 'The table comes from the pattern alone; k counts how much of p matches the text so far.' }),
+        section(KMP_SOURCE, 'kmp-fall', 'Mismatch: keep the longest border', 'for i, ch in enumerate', 'k = lps[k - 1]', {
+            hint: 'The text pointer never moves back: on a mismatch only k shrinks, to lps[k − 1].',
+            prompt: 'Explain why, on a mismatch, the text pointer can stay where it is and only k falls back to lps[k − 1], and why that makes the scan O(n).' }),
+        section(KMP_SOURCE, 'kmp-grow', 'Match: one more character', 'if ch == p[k]', 'k += 1', {
+            hint: 'ch continues the match: k grows by one.' }),
+        section(KMP_SOURCE, 'kmp-hit', 'All of p matched: record it, keep the overlap', 'if k == len(p)', 'k = lps[k - 1]', {
+            hint: 'A match ends at i, so it starts at i − k + 1; falling back to lps[k − 1] still finds overlapping matches.',
+            prompt: 'Explain why, after a full match, k falls back to lps[k − 1] instead of 0, with an example of overlapping matches.' }),
+        section(KMP_SOURCE, 'kmp-done', 'Return every start', 'return hits', null, {
+            hint: 'One pass over the text: O(n + m) with the table.' }),
+    ],
+    annotations: [
+        doc('build_lps', '`build_lps(p)` returns the `lps` table of the pattern: for each prefix `p[0..i]`, the length of its longest proper prefix that is also a suffix (its longest border). O(m).'),
+        doc('kmp_search', '`kmp_search(text, p)` returns every index where `p` starts in `text`, overlaps included. O(n + m).'),
+        doc('p', 'The pattern to find.'),
+        doc('text', 'The text searched, read once from left to right.'),
+        doc('lps', '`lps[i]`: the length of the longest proper prefix of `p[0..i]` that is also its suffix. After a mismatch it says how much of the match can be kept.'),
+        doc('hits', 'The indices where a match of `p` starts, in order.'),
+        doc('ch', 'The text character being read: `text[i]`.'),
+        doc('i', 'The pattern position whose `lps` entry is being worked out.', { source: KMP_SOURCE, start: 'def build_lps(', end: 'return lps' }),
+        doc('k', 'The length of the border being grown: `p[0..k−1]` matches the characters just before `p[i]`.', { source: KMP_SOURCE, start: 'def build_lps(', end: 'return lps' }),
+        doc('i', 'The index of the text character being read. It only moves forward.', { source: KMP_SOURCE, start: 'def kmp_search(', end: 'return hits' }),
+        doc('k', 'How many characters of `p` match the text ending just before `ch`.', { source: KMP_SOURCE, start: 'def kmp_search(', end: 'return hits' }),
+        docExpr(KMP_SOURCE, 'lps, k = [0]', '[0] * len(p)', 'One entry per prefix of `p`; `lps[0]` stays 0.'),
+        docExpr(KMP_SOURCE, 'while k and p[i] != p[k]', 'p[i] != p[k]', '`p[i]` does not continue the border `p[0..k−1]`.'),
+        docExpr(KMP_SOURCE, 'k = lps[k - 1]', 'lps[k - 1]', 'The border of the border: the next shorter prefix that still ends right here.'),
+        docExpr(KMP_SOURCE, 'lps[i] = k', 'lps[i] = k', 'The longest border of `p[0..i]` is `k` long.'),
+        docExpr(KMP_SOURCE, 'while k and ch != p[k]', 'ch != p[k]', '`ch` does not continue the `k` characters matched so far.'),
+        docBlock(KMP_SOURCE, 'while k and ch != p[k]', 'k = lps[k - 1]', 'k grows by at most 1 per character and each fallback shrinks it, so all the fallbacks together cost at most n steps: the scan stays O(n).'),
+        docExpr(KMP_SOURCE, 'if k == len(p)', 'k == len(p)', 'Every character of `p` matched.'),
+        docExpr(KMP_SOURCE, 'hits.append(i - k + 1)', 'i - k + 1', 'The match ends at `i` and is `k` long, so it starts at `i − k + 1`.'),
+        (() => { const line = lineOf(KMP_SOURCE, 'k = lps[k - 1]', 'hits.append'), col = KMP_SOURCE.split('\n')[line - 1]!.indexOf('lps[k - 1]');
+            return { line, col, endCol: col + 'lps[k - 1]'.length, text: 'Keep the longest border of the whole match, so a match overlapping this one is still found.' }; })(),
+    ],
     markdown: `# Find a word fast (KMP string matching)
 
 **Signal:** find every occurrence of a pattern in a text, repeated-substring questions, or "longest prefix that is also a suffix".
