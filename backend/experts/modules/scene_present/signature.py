@@ -16,7 +16,8 @@ class DrawElement(BaseModel):
 
     type: str = Field(description='"rectangle", "ellipse", "diamond" (a box, a circle, a decision), "text" (words on '
                                   'their own), "arrow", "line" (a link from `start` to `end`), "path" (a free stroke '
-                                  'through `points`), or "group" (a box that lays out what is in it; not drawn)')
+                                  'through `points`), "outline" (a contour drawn round the things in `around`) or '
+                                  '"group" (a box that lays out what is in it; not drawn)')
     id: str = Field(default="", description="a short name for it (letters, digits, _), to link to it, put things in it, "
                                             "point at it later (`draw:<id>`); needed on anything linked or grouped")
     label: str = Field(default="", description="for a shape: the few words or the value written inside it; for an "
@@ -24,6 +25,9 @@ class DrawElement(BaseModel):
                                                "words; for a group: its title")
     group: str = Field(default="", description="the id of the group it sits in (listed before it); empty for the "
                                                "drawing itself")
+    around: list[str] = Field(default_factory=list, description='for an "outline": the ids of things drawn before it to '
+                                                                'pick out together; the contour round them is drawn '
+                                                                'for you, so give only the ids')
     layout: str = Field(default="", description='for a group: how it lays out what is in it: "row", "column", "grid", '
                                                 '"tree" (top down, from the links), "flow" (left to right, from the '
                                                 'links), "graph" (any graph, cycles too) or "free" (each at its own '
@@ -76,6 +80,10 @@ class PresentStep(BaseModel):
     target: str = Field(default="", description="the ref of what you point at while saying it, copied exactly from "
                                                 "`targets`, or `note:<a note you wrote earlier, exactly as written>`; "
                                                 "empty to point at nothing")
+    together: list[str] = Field(default_factory=list, description="optional: more refs marked with `target` as one "
+                                                                  "(one circle round 10 and 30, one underline under "
+                                                                  "two cells): the mark goes round all of them; it "
+                                                                  "goes when the beat ends, as any mark")
     part: str = Field(default="", description="with a `note:` target: the words of that note you mean, copied exactly "
                                               "from it (a name, an operator, one term); empty for the whole note")
     mark: str = Field(default="point", description='"point" (hold the pointer on it), "circle" (draw a circle '
@@ -207,7 +215,10 @@ class ScenePresentSig(dspy.Signature):
     lists only what it adds, never what is drawn already. Circles suit the nodes of a tree or a graph, boxes the
     steps or parts of a flow. Drawn things are targets like anything on the view, as `draw:<id>`: point at them,
     circle, underline, check or cross them (or a word of their label, with `part`), write a note beside one
-    (`write_near`), or join one to something on the view with the beat's arrow. Draw in colour: give each element
+    (`write_near`), or join one to something on the view with the beat's arrow. To pick out several of them
+    together (the nodes of a level, a subtree, the boxes a step touches), add an `outline` with their ids in
+    `around` and a short `label` saying what they are: a contour is drawn round just them, wherever they are; never
+    a rectangle or circle of your own for that. Draw in colour: give each element
     the `color` of what it is (a red light red, the nodes visited one colour and the rest another, each group of
     like things its own colour), so the picture reads at a glance; one colour for a whole drawing only when it
     is all one kind of thing.
@@ -224,6 +235,9 @@ class ScenePresentSig(dspy.Signature):
     start clean when it is about something else (`erase` on the first beat wipes the notes and the drawing;
     `erase_notes` takes board lines too). When you are about to draw something new, say whether the old drawing
     goes or stays. Leave on the view what the learner may want to look at after you finish.
+    A mark (circle, underline, check, cross) is for the moment you talk about something and goes with the beat;
+    to mark several things as one, name the first as `target` and the rest in `together`: one circle round them
+    all. An `outline` stays: use it only for a group you will keep coming back to.
     The pointer can rub out drawn things too, as with an eraser (`erase_draw`: their ids; the links joined to
     them, and what is in a group, go with them): a node taken out of a tree, a step that is done, a wrong guess. Say what goes as it goes; an id
     rubbed out may be drawn again later, anew.

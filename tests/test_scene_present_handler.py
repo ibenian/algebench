@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "erase_draw": [], "draw": None, "color": ""}
+    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "erase_draw": [], "together": [], "draw": None, "color": ""}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -250,3 +250,40 @@ def test_an_arrow_keeps_known_heads_and_a_beat_arrow_may_point_both_ways():
     beat = intent.clean_steps(raw, {"row:count"}, 0)[0]
     assert [e.heads for e in beat.draw.elements[2:]] == ["both", "", ""]
     assert beat.arrow_kind == "both"
+
+
+def test_an_outline_round_drawn_things_keeps_only_them_and_goes_with_them():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="Leaves.", draw=Drawing(layout="tree", elements=[
+               E(type="ellipse", id="r", label="20"), E(type="ellipse", id="a", label="10"), E(type="ellipse", id="b", label="30"),
+               E(type="outline", id="sel", label="leaves", around=["a", "b", "ghost"]),
+               E(type="outline", id="none", around=["ghost"]), E(type="arrow", id="x", start="r", end="a", around=["b"])])),
+           PresentStep(say="One goes.", erase_draw=["a"], target="draw:sel")]
+    beats = intent.clean_steps(raw, set(), 0)
+    els = {e.id: e for e in beats[0].draw.elements}
+    assert els["sel"].around == ["a", "b"] and "none" not in els and els["x"].around == []
+    assert beats[1].target == ""            # the outline went with what it held
+
+
+def test_ids_named_as_targets_with_draw_in_front_still_count():
+    from backend.experts.handlers.scene_present.models import ScenePresentRequest
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    left = ScenePresentRequest(question="q", on_view={"drawn": [{"id": "n10", "type": "ellipse", "label": "10"},
+                                                                {"id": "n30", "type": "ellipse", "label": "30"}]}).on_view
+    raw = [PresentStep(say="Both.", draw=Drawing(elements=[E(type="outline", id="s", around=["draw:n10", "draw:n30"]),
+                                                           E(type="arrow", start="draw:n10", end="draw:n30")])),
+           PresentStep(say="Gone.", erase_draw=["draw:s"])]
+    beats = intent.clean_steps(raw, set(), 0, left)
+    els = beats[0].draw.elements
+    assert els[0].around == ["n10", "n30"] and (els[1].start, els[1].end) == ("n10", "n30")
+    assert beats[1].erase_draw == ["s"]
+
+
+def test_a_mark_can_take_more_refs_together_and_a_bare_drawn_id_counts():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="Tree.", draw=Drawing(layout="tree", elements=[E(type="ellipse", id="n10", label="10"), E(type="ellipse", id="n30", label="30")])),
+           PresentStep(say="Both.", target="draw:n10", mark="circle", together=["n30", "draw:n10", "ghost", "row:count"]),
+           PresentStep(say="None.", together=["n30"])]
+    beats = intent.clean_steps(raw, {"row:count"}, 0)
+    assert beats[1].together == ["draw:n30", "row:count"]
+    assert beats[2].together == []          # nothing to go with

@@ -22,6 +22,8 @@ export interface DrawSpec {
     closed?: boolean;
     /** The group it sits in. */
     group?: string;
+    /** For an "outline": the ids it is drawn around, a contour fitted to them, not laid out. */
+    around?: string[];
     /** For a group: how it arranges what is in it, and how it lines them up across. */
     layout?: string;
     align?: string;
@@ -44,7 +46,10 @@ export interface Measure { box: Size; sizeOf: (e: DrawSpec, within: Size) => Siz
 const GAP = 28;
 const guess: Measure = {box: {w: 600, h: 400}, sizeOf: () => ({w: 40, h: 30})};
 
-/** What a layout places: shapes, groups, and text on its own (text `near` something goes beside that instead). */
+/**
+ * What a layout places: shapes, groups, and text on its own. Text `near` something goes beside that instead, and a
+ * an "outline" is drawn round what it picks out.
+ */
 const isNode = (e: DrawSpec) => SHAPES.has(e.type) || e.type === 'group' || (e.type === 'text' && !e.near);
 
 export interface Laid {
@@ -322,4 +327,29 @@ export function edgePoint(type: string, cx: number, cy: number, w: number, h: nu
     else if (type === 'diamond') t = 1 / (Math.abs(ux) / rx + Math.abs(uy) / ry);
     else t = Math.min(Math.abs(ux) > 1e-9 ? rx / Math.abs(ux) : Infinity, Math.abs(uy) > 1e-9 ? ry / Math.abs(uy) : Infinity);
     return {x: cx + ux * t, y: cy + uy * t};
+}
+
+/**
+ * A contour round `boxes`: the convex hull of their corners, each rounded off `pad` out, as the points of a closed
+ * stroke (smoothPath draws it). It holds just them, never what lies beside them.
+ */
+export function hullAround(boxes: Rect[], pad = 12): Point[] {
+    const pts: Point[] = [];
+    for (const b of boxes) for (const [cx, cy] of [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]] as const)
+        for (let k = 0; k < 8; k++) pts.push({x: cx + pad * Math.cos(k * Math.PI / 4), y: cy + pad * Math.sin(k * Math.PI / 4)});
+    if (pts.length < 3) return pts;
+    // Monotone chain.
+    pts.sort((a, b) => a.x - b.x || a.y - b.y);
+    const cross = (o: Point, a: Point, b: Point) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const half = (list: Point[]) => {
+        const h: Point[] = [];
+        for (const p of list) { while (h.length >= 2 && cross(h[h.length - 2]!, h[h.length - 1]!, p) <= 0) h.pop();h.push(p); }
+        h.pop();
+        return h;
+    };
+    const hull = [...half(pts), ...half([...pts].reverse())];
+    // Fewer, evener points for a hand's stroke: drop those closer than a few px to the last kept.
+    const out: Point[] = [];
+    for (const p of hull) if (!out.length || Math.hypot(p.x - out[out.length - 1]!.x, p.y - out[out.length - 1]!.y) > 6) out.push(p);
+    return out;
 }

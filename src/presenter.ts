@@ -20,11 +20,11 @@ import { setSliderValue } from '/sliders.js';
 import { dataToWorld } from '/coords.js';
 import { objectCellAnchor, objectChartMarks, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
 import { keyDelay } from '/code-assist-play.js';
-import { LINKS, SHAPES, edgePoint, layoutDrawing, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Laid, type Point, type Rect } from '/drawing-layout.js';
+import { LINKS, SHAPES, edgePoint, hullAround, layoutDrawing, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Laid, type Point, type Rect } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
 interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line' | 'both';
-    slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; erase_draw?: string[]; color?: string; draw?: Drawing | null }
+    slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; erase_draw?: string[]; together?: string[]; color?: string; draw?: Drawing | null }
 interface Target { ref: string; about: string }
 
 const PREF_KEY = 'algebench-presenter';
@@ -194,6 +194,13 @@ function indexedRect(id: string, index: string): DOMRect | null {
 }
 
 export function resolveTarget(ref: string, part = ''): DOMRect | null {
+    // Several marked as one (a beat's target with what it's `together` with, a line each): the box round all shown.
+    if (ref.includes('\n')) {
+        const rs = ref.split('\n').map(x => resolveTarget(x, '')).filter((x): x is DOMRect => !!x);
+        if (!rs.length) return null;
+        const x0 = Math.min(...rs.map(r => r.left)), y0 = Math.min(...rs.map(r => r.top)), x1 = Math.max(...rs.map(r => r.right)), y1 = Math.max(...rs.map(r => r.bottom));
+        return new DOMRect(x0, y0, x1 - x0, y1 - y0);
+    }
     if (ref.startsWith('note:')) return noteRect(ref.slice(5), part);
     if (ref.startsWith('draw:')) return drawnRect(ref.slice(5), part);
     if (ref === 'caption') { const c = document.getElementById('step-caption');return c?.offsetParent ? c.getBoundingClientRect() : null; }
@@ -342,6 +349,7 @@ async function traceMark(r: number) {
     for (const path of [...ring.querySelectorAll('path')]) {
         const box = ring.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
         await glide(box.left + start.x, box.top + start.y, r, 200);
+        path.classList.add('tracing');
         const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
         for (;;) {
             alive(r);
@@ -640,6 +648,7 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
     try {
         const start = shaft()?.getPointAtLength(0);
         if (start) await glide(start.x, start.y, r, 260);
+        svg.classList.add('tracing');
         const dur = Math.min(900, 350 + len * .6), t0 = performance.now();
         for (;;) {
             alive(r);
@@ -834,6 +843,7 @@ function groupHandle(b: Sketch, g: DrawSpec): HTMLDivElement {
     draggable(title, (dx, dy) => {
         if (g !== b.root) { nudge(b, g, dx, dy);return; }
         b.el.style.left = `${parseFloat(b.el.style.left) + dx}px`;b.el.style.top = `${parseFloat(b.el.style.top) + dy}px`;
+        placeAll(b);   // links to the view stay on what they join there
     }, el);
     // Parents first, so a group inside another is on top of it.
     b.canvas.insertBefore(el, b.svg);
@@ -870,6 +880,23 @@ function sketchBoard(): Sketch {
     groupHandle(sketch, sketch.root).classList.add('ai-draw-root');
     return sketch;
 }
+/**
+ * Links with an end on the view (a cell, a chart bar, a note), not on the board: what they join there moves as the
+ * scene plays, turns or is resized, so they are put in place again every frame while there are any.
+ */
+const linksToView = (b: Sketch) => b.all.filter(d => LINKS.has(d.spec.type) && [d.spec.start, d.spec.end].some(e => e && !b.items.has(e)));
+let followingView = false;
+function followView(b: Sketch) {
+    if (followingView) return;
+    followingView = true;
+    const tick = () => {
+        const live = sketch === b && b.el.isConnected && !b.el.classList.contains('fading') ? linksToView(b) : [];
+        if (!live.length) { followingView = false;return; }
+        if (!b.glide) for (const d of live) d.place();
+        requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+}
 /** A drawn shape's box on screen, or the `part` of its label; null when it's gone. */
 function drawnRect(id: string, part = ''): DOMRect | null {
     const b = sketch, item = b?.el.isConnected ? b.items.get(id) : undefined;
@@ -898,6 +925,7 @@ async function traceStroke(path: SVGPathElement, r: number, speed = 1) {
     if (!b) return;
     const total = path.getTotalLength(), s0 = path.getPointAtLength(0), p0 = toScreen(b, s0.x, s0.y);
     await glide(p0.x, p0.y, r, 220);
+    path.classList.add('tracing');
     const dur = Math.min(900, 200 + total * b.view.s * 1.3) / speed, t0 = performance.now();
     for (;;) {
         alive(r);
@@ -972,6 +1000,24 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                 await traceStroke(path, r);
                 if (lab) await typeLabel(lab, label, r);
                 nodeHandle(b, spec);placeAll(b);
+            } else if (spec.type === 'outline' && spec.around?.length) {
+                // A contour round what it picks out, wherever they are now; its label just above it.
+                const path = newPath('ai-draw-stroke', ink);b.svg.append(path);
+                const lab = spec.label ? newLabel(b, '', ink) : null;
+                const hull = () => hullAround(spec.around!.map(id => b.items.get(id)?.local()).filter((x): x is DOMRect => !!x).map(x => ({x: x.left, y: x.top, w: x.width, h: x.height})));
+                const place = () => {
+                    const h = hull();
+                    if (h.length < 3) return;
+                    path.setAttribute('d', smoothPath(h, true));
+                    if (lab) { const top = Math.min(...h.map(p => p.y)), mid = h.reduce((a, p) => a + p.x, 0) / h.length;lab.style.left = `${mid}px`;lab.style.top = `${top - 12}px`; }
+                };
+                const local = () => { const bb = path.getBBox();return bb.width ? new DOMRect(bb.x, bb.y, bb.width, bb.height) : null; };
+                const item: Drawn = {spec, paths: [path], label: lab, place, local};
+                if (spec.id) b.items.set(spec.id, item);
+                b.all.push(item);
+                place();
+                await traceStroke(path, r);
+                if (lab) await typeLabel(lab, spec.label!, r);
             } else if (LINKS.has(spec.type) && ((spec.start && spec.end) || (spec.points?.length ?? 0) >= 2)) {
                 // Its heads: at the end (an arrow's default), the start, both, or none (a line).
                 const heads = spec.type === 'line' ? 'none' : spec.heads || 'end';
@@ -1026,6 +1072,7 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                 await traceStroke(shaft, r);
                 if (head) await traceStroke(head, r, 2.5);
                 if (tail) await traceStroke(tail, r, 2.5);
+                followView(b);
                 if (lab) await typeLabel(lab, spec.label!, r);
             } else if (spec.type === 'path' && (spec.points?.length ?? 0) >= 2) {
                 // A free stroke (a smile, a wave, a curve): through its points on its group's grid, smoothed.
@@ -1380,10 +1427,9 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         // Talking while writing, as at a board: the beat ends when both are done.
         const words = speak(beat.say, line, r);
         // What it writes, then an arrow from it (or from what it names) to what it points out.
-        const writing = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null)).then(async note => {
-            if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? '', r);
-            if (beat.arrow_to) await arrowFor(note);
-        });
+        const noted = beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null);
+        const sketched = noted.then(async note => { if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? '', r);return note; });
+        const writing = sketched.then(async note => { if (beat.arrow_to) await arrowFor(note); });
         const arrowFor = async (note: HTMLElement | null) => {
             if (!beat.arrow_to) return;
             // Joining something drawn: a link on the board, whose ends are found again as the drawing is laid out
@@ -1401,7 +1447,13 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
             if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind);
         };
         const both = Promise.all([words, writing]).then(() => undefined);
-        if (beat.target) await holdOn(beat.target, beat.mark, r, both, beat.color, beat.part);
+        // A target this beat draws is marked once it is drawn, where it ends up (not where it was still being made).
+        if ([beat.target, ...(beat.together ?? [])].some(t => t?.startsWith('draw:') && beat.draw?.elements?.some(e => e.id === t.slice(5)))) {
+            await sketched;
+            for (let t0 = performance.now(); sketch?.glide && performance.now() - t0 < GLIDE_MS + 100;) await new Promise(res => requestAnimationFrame(res));
+        }
+        const marked = beat.together?.length ? [beat.target, ...beat.together].join('\n') : beat.target;
+        if (beat.target) await holdOn(marked, beat.mark, r, both, beat.color, beat.together?.length ? '' : beat.part);
         else await both;
         alive(r);
         const wrote = [beat.write, ...(beat.board ?? [])].filter(Boolean);

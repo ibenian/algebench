@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutDrawing, shapeStroke, edgePoint, smoothPath, type DrawSpec } from '/drawing-layout.js';
+import { layoutDrawing, hullAround, shapeStroke, edgePoint, smoothPath, type DrawSpec } from '/drawing-layout.js';
 
 const node = (id: string, extra: Partial<DrawSpec> = {}): DrawSpec => ({type: 'ellipse', id, label: id, ...extra});
 const link = (start: string, end: string): DrawSpec => ({type: 'arrow', start, end});
@@ -87,4 +87,14 @@ test('a graph with a cycle is laid out with no two boxes overlapping, the same w
     const laid = layoutDrawing(els, 'graph', sized), b = (id: string) => boxOf(laid, els, id);
     for (const x of ids) for (const y of ids) if (x < y) assert.ok(apart(b(x), b(y)), `${x} and ${y} overlap`);
     assert.deepEqual(layoutDrawing(els, 'graph', sized).boxes.get(els[0]!), laid.boxes.get(els[0]!));
+});
+
+test('an outline holds what it picks out and not what lies between them', () => {
+    const a = {x: 0, y: 0, w: 20, h: 20}, c = {x: 100, y: 100, w: 20, h: 20}, b = {x: 100, y: 0, w: 20, h: 20};
+    const hull = hullAround([a, c], 8);
+    const inside = (p: {x: number; y: number}) => hull.every((q, i) => { const r = hull[(i + 1) % hull.length]!;return (r.x - q.x) * (p.y - q.y) - (r.y - q.y) * (p.x - q.x) >= -1e-6; });
+    assert.ok(inside({x: 10, y: 10}) && inside({x: 110, y: 110}), 'holds both');
+    assert.ok(!inside({x: 110, y: 10}), 'not the corner box between them');
+    assert.ok(!layoutDrawing([node('s', {type: 'outline', around: ['x']})], '', sized).boxes.size);
+    void b;
 });
