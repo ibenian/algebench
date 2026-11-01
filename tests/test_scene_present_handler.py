@@ -178,3 +178,27 @@ def test_rubbing_out_a_shape_takes_its_links_and_lets_it_be_drawn_again():
     assert beats[1].erase_draw == ["b"] and beats[1].target == ""
     assert [e.id for e in beats[2].draw.elements] == ["b"] and beats[2].target == "draw:b"
     assert intent.clean_steps([*raw[:1], PresentStep(say="All.", erase=True, draw=Drawing(elements=[E(type="ellipse", id="a", label="8")]))], set(), 0)[1].draw.elements[0].id == "a"
+
+
+def test_a_path_keeps_its_points_on_the_grid_and_needs_two():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="Smile.", draw=Drawing(elements=[
+        E(type="ellipse", id="face", x=50, y=50, w=40, h=60),
+        E(type="path", id="smile", points=[[35, 60], [50, 72], [65, 160], [1]], closed=True),
+        E(type="path", id="dot", points=[[10, 10]]),
+        E(type="line", start="face", end="face", points=[[1, 2], [3, 4]], closed=True)]))]
+    els = intent.clean_steps(raw, set(), 0)[0].draw.elements
+    assert [e.id for e in els] == ["face", "smile", "face_face"]
+    assert els[1].points == [[35, 60], [50, 72], [65, 100]] and els[1].closed
+    assert els[2].points == [] and not els[2].closed
+
+
+def test_a_free_arrow_runs_through_its_points_and_a_bad_one_is_dropped():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="Add.", draw=Drawing(elements=[
+        E(type="arrow", id="a", label="a", points=[[10, 80], [50, 60]]),
+        E(type="arrow", id="b", label="b", start="nowhere", points=[[50, 60], [70, 20]]),
+        E(type="line", id="c", points=[[1, 1]])]))]
+    els = intent.clean_steps(raw, set(), 0)[0].draw.elements
+    assert [(e.id, e.start, e.label) for e in els] == [("a", "", "a"), ("b", "", "b")]
+    assert els[1].points == [[50, 60], [70, 20]]

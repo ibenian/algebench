@@ -9654,6 +9654,21 @@ function shapeStroke(type, cx, cy, w, h, j = [
 	if (type === "diamond") return `M${cx + k(0)} ${y0} L${x1} ${cy + k(1)} L${cx + k(2)} ${y1} L${x0} ${cy + k(3)} L${cx + 4} ${y0 + 2}`;
 	return `M${x0 + k(0)} ${y0} L${x1} ${y0 + k(1)} L${x1 + k(2)} ${y1} L${x0} ${y1 + k(3)} L${x0} ${y0 - 3}`;
 }
+/**
+* A free stroke through `pts` as one smooth curve (Catmull-Rom, as cubic Béziers): it passes through every point,
+* bending between them as a hand does. `closed` carries on from the last point round to the first.
+*/
+function smoothPath(pts, closed = false) {
+	if (pts.length < 2) return "";
+	const n = pts.length, at = (i) => closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))];
+	const f = (v) => +v.toFixed(2);
+	let d = `M${f(at(0).x)} ${f(at(0).y)}`;
+	for (let i = 0; i < (closed ? n : n - 1); i++) {
+		const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+		d += ` C${f(p1.x + (p2.x - p0.x) / 6)} ${f(p1.y + (p2.y - p0.y) / 6)} ${f(p2.x - (p3.x - p1.x) / 6)} ${f(p2.y - (p3.y - p1.y) / 6)} ${f(p2.x)} ${f(p2.y)}`;
+	}
+	return d;
+}
 /** The point where the line from a box's centre towards `p` leaves the box (an ellipse's or diamond's own edge). */
 function edgePoint(type, cx, cy, w, h, p, pad = 3) {
 	const dx = p.x - cx, dy = p.y - cy, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
@@ -10671,7 +10686,7 @@ async function drawSketch(d, color, r) {
 			if (SHAPES.has(spec.type) && spec.id) {
 				const label = spec.label ?? "", tw = textWidth(label);
 				const size = () => {
-					const w = spec.w ? spec.w / 100 * b.w : spec.type === "diamond" ? tw + 40 : spec.type === "ellipse" ? Math.max(34, tw + 22) : Math.max(34, tw + 22);
+					const w = spec.w ? spec.w / 100 * b.h : spec.type === "diamond" ? tw + 40 : spec.type === "ellipse" ? Math.max(34, tw + 22) : Math.max(34, tw + 22);
 					return {
 						w,
 						h: spec.h ? spec.h / 100 * b.h : spec.type === "diamond" ? 44 : spec.type === "ellipse" ? tw < 30 ? Math.max(34, w) : 36 : 32
@@ -10714,23 +10729,48 @@ async function drawSketch(d, color, r) {
 				relayout();
 				await traceStroke(path, r);
 				if (lab) await typeLabel(lab, label, r);
-			} else if (LINKS.has(spec.type) && spec.start && spec.end) {
+			} else if (LINKS.has(spec.type) && (spec.start && spec.end || (spec.points?.length ?? 0) >= 2)) {
 				const shaft = newPath("ai-draw-stroke", ink), head = spec.type === "arrow" ? newPath("ai-draw-stroke", ink) : null;
 				b.svg.append(shaft);
 				if (head) b.svg.append(head);
+				const lab = spec.label ? Object.assign(document.createElement("div"), { className: `ai-draw-label ${inkClass(ink)}`.trim() }) : null;
+				if (lab) b.el.append(lab);
 				const bow = (Math.random() - .5) * .25;
+				const free = !(spec.start && spec.end);
+				const grid = () => spec.points.map(([x = 0, y = 0]) => ({
+					x: x / 100 * b.w,
+					y: y / 100 * b.h
+				}));
 				const place = () => {
-					const s = linkEnd(spec.start), e = linkEnd(spec.end);
-					if (!s || !e) return;
-					const a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {
-						x: e.cx,
-						y: e.cy
-					}), z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {
-						x: s.cx,
-						y: s.cy
-					}, head ? 5 : 3);
-					const dx = z.x - a.x, dy = z.y - a.y, mx = (a.x + z.x) / 2 - dy * bow, my = (a.y + z.y) / 2 + dx * bow;
-					shaft.setAttribute("d", `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
+					let a, z, mx, my;
+					if (free) {
+						const pts = grid();
+						a = pts[0];
+						z = pts[pts.length - 1];
+						if (pts.length > 2) {
+							shaft.setAttribute("d", smoothPath(pts));
+							({x: mx, y: my} = pts[pts.length - 2]);
+						} else {
+							mx = (a.x + z.x) / 2;
+							my = (a.y + z.y) / 2;
+							shaft.setAttribute("d", `M${a.x} ${a.y} L${z.x} ${z.y}`);
+						}
+					} else {
+						const s = linkEnd(spec.start), e = linkEnd(spec.end);
+						if (!s || !e) return;
+						a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {
+							x: e.cx,
+							y: e.cy
+						});
+						z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {
+							x: s.cx,
+							y: s.cy
+						}, head ? 5 : 3);
+						const dx = z.x - a.x, dy = z.y - a.y;
+						mx = (a.x + z.x) / 2 - dy * bow;
+						my = (a.y + z.y) / 2 + dx * bow;
+						shaft.setAttribute("d", `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
+					}
 					if (head) {
 						const ex = z.x - mx, ey = z.y - my, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
 						const wing = (k) => {
@@ -10738,6 +10778,11 @@ async function drawSketch(d, color, r) {
 							return `${z.x - len * (ux * c - uy * si)} ${z.y - len * (uy * c + ux * si)}`;
 						};
 						head.setAttribute("d", `M${wing(.5)} L${z.x} ${z.y} L${wing(-.45)}`);
+					}
+					if (lab) {
+						const m = shaft.getPointAtLength(shaft.getTotalLength() / 2), dx = z.x - a.x, dy = z.y - a.y, l = Math.hypot(dx, dy) || 1;
+						lab.style.left = `${m.x + dy / l * 14}px`;
+						lab.style.top = `${m.y - dx / l * 14}px`;
 					}
 				};
 				const local = () => {
@@ -10747,7 +10792,7 @@ async function drawSketch(d, color, r) {
 				const item = {
 					spec,
 					paths: head ? [shaft, head] : [shaft],
-					label: null,
+					label: lab,
 					place,
 					local
 				};
@@ -10756,6 +10801,29 @@ async function drawSketch(d, color, r) {
 				place();
 				await traceStroke(shaft, r);
 				if (head) await traceStroke(head, r, 2.5);
+				if (lab) await typeLabel(lab, spec.label, r);
+			} else if (spec.type === "path" && (spec.points?.length ?? 0) >= 2) {
+				const path = newPath("ai-draw-stroke", ink);
+				b.svg.append(path);
+				const place = () => path.setAttribute("d", smoothPath(spec.points.map(([x = 0, y = 0]) => ({
+					x: x / 100 * b.w,
+					y: y / 100 * b.h
+				})), spec.closed));
+				const local = () => {
+					const bb = path.getBBox();
+					return new DOMRect(bb.x, bb.y, bb.width, bb.height);
+				};
+				const item = {
+					spec,
+					paths: [path],
+					label: null,
+					place,
+					local
+				};
+				if (spec.id) b.items.set(spec.id, item);
+				b.all.push(item);
+				place();
+				await traceStroke(path, r);
 			} else if (spec.type === "text" && spec.label) {
 				const lab = Object.assign(document.createElement("div"), { className: `ai-draw-label ai-draw-text ${inkClass(ink)}`.trim() });
 				b.el.append(lab);
@@ -11196,7 +11264,7 @@ async function playBeats(steps, body, r, onBeat) {
 		else await both;
 		alive(r);
 		const wrote = [beat.write, ...beat.board ?? []].filter(Boolean);
-		const drew = (beat.draw?.elements ?? []).map((e) => LINKS.has(e.type) ? `${e.start} ${e.type === "arrow" ? "->" : "-"} ${e.end}` : `${e.type} "${e.label ?? ""}"`);
+		const drew = (beat.draw?.elements ?? []).map((e) => LINKS.has(e.type) && e.start ? `${e.start} ${e.type === "arrow" ? "->" : "-"} ${e.end}` : `${e.type} "${e.label || e.id || ""}"`);
 		const rubbed = beat.erase_draw?.length ? ` [erased: ${beat.erase_draw.join(", ")}]` : "";
 		said.push(beat.say + rubbed + (wrote.length ? ` [wrote: ${wrote.join(" | ")}]` : "") + (drew.length ? ` [drew: ${drew.join(", ")}]` : ""));
 		onBeat?.([...said]);

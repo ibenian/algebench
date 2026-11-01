@@ -130,6 +130,8 @@ LAYOUTS = ("tree", "row")
 #: The most elements one beat draws, and the longest label.
 MAX_ELEMENTS = 24
 MAX_LABEL = 60
+#: The most points a path runs through.
+MAX_POINTS = 32
 _ID = re.compile(r"[^A-Za-z0-9_-]")
 
 
@@ -149,24 +151,31 @@ def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str]) -> Dra
         return None
     out: list[DrawElement] = []
     for e in d.elements[:MAX_ELEMENTS]:
-        if not isinstance(e, DrawElement) or e.type not in (*SHAPES, *LINKS, "text"):
+        if not isinstance(e, DrawElement) or e.type not in (*SHAPES, *LINKS, "path", "text"):
             continue
         eid = _ID.sub("", str(e.id or ""))[:24]
         label = _clean(e.label)[:MAX_LABEL]
         end = lambda v: _ID.sub("", str(v or "")) if _ID.sub("", str(v or "")) in drawn else _target_ref(v, refs, written)
         start_ref, end_ref = (end(e.start), end(e.end)) if e.type in LINKS else ("", "")
-        if e.type in LINKS and not (start_ref and end_ref):
-            continue
         if e.type == "text" and not label:
             continue
-        if e.type in LINKS and not eid:
+        # A path's stroke, or a free arrow or line (a vector from one place to another) when it joins no shapes.
+        free = e.type == "path" or (e.type in LINKS and not (start_ref and end_ref))
+        points = [[_grid(p[0]), _grid(p[1])] for p in e.points[:MAX_POINTS] if isinstance(p, list) and len(p) >= 2] if free else []
+        points = [p for p in points if None not in p]
+        if free and len(points) < 2:
+            continue
+        if free:
+            start_ref = end_ref = ""
+        if e.type in LINKS and not eid and start_ref:
             eid = _ID.sub("", f"{start_ref}_{end_ref}")[:24]
         # Drawn already (a beat repeating the drawing so far): it stays as it is, not drawn twice.
         if eid and eid in drawn:
             continue
         near = (_ID.sub("", str(e.near or "")) if _ID.sub("", str(e.near or "")) in drawn else _target_ref(e.near, refs, written)) if e.type == "text" else ""
         out.append(DrawElement(type=e.type, id=eid, label=label, x=_grid(e.x), y=_grid(e.y), w=_grid(e.w), h=_grid(e.h),
-                               start=start_ref, end=end_ref, near=near, color=_ink(e.color)))
+                               start=start_ref, end=end_ref, near=near, points=points,
+                               closed=bool(e.closed) and e.type == "path" and len(points) > 2, color=_ink(e.color)))
         if eid:
             drawn[eid] = label
     if not out:

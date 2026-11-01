@@ -17,6 +17,8 @@ export interface DrawSpec {
     end?: string;
     near?: string;
     color?: string;
+    points?: number[][];
+    closed?: boolean;
 }
 export interface Drawing { layout?: string; elements: DrawSpec[] }
 export interface Point { x: number; y: number }
@@ -86,6 +88,22 @@ export function shapeStroke(type: string, cx: number, cy: number, w: number, h: 
     }
     if (type === 'diamond') return `M${cx + k(0)} ${y0} L${x1} ${cy + k(1)} L${cx + k(2)} ${y1} L${x0} ${cy + k(3)} L${cx + 4} ${y0 + 2}`;
     return `M${x0 + k(0)} ${y0} L${x1} ${y0 + k(1)} L${x1 + k(2)} ${y1} L${x0} ${y1 + k(3)} L${x0} ${y0 - 3}`;
+}
+
+/**
+ * A free stroke through `pts` as one smooth curve (Catmull-Rom, as cubic Béziers): it passes through every point,
+ * bending between them as a hand does. `closed` carries on from the last point round to the first.
+ */
+export function smoothPath(pts: Point[], closed = false): string {
+    if (pts.length < 2) return '';
+    const n = pts.length, at = (i: number): Point => (closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))])!;
+    const f = (v: number) => +v.toFixed(2);
+    let d = `M${f(at(0).x)} ${f(at(0).y)}`;
+    for (let i = 0; i < (closed ? n : n - 1); i++) {
+        const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+        d += ` C${f(p1.x + (p2.x - p0.x) / 6)} ${f(p1.y + (p2.y - p0.y) / 6)} ${f(p2.x - (p3.x - p1.x) / 6)} ${f(p2.y - (p3.y - p1.y) / 6)} ${f(p2.x)} ${f(p2.y)}`;
+    }
+    return d;
 }
 
 /** The point where the line from a box's centre towards `p` leaves the box (an ellipse's or diamond's own edge). */

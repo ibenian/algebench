@@ -15,21 +15,29 @@ class DrawElement(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     type: str = Field(description='"rectangle", "ellipse", "diamond" (a box, a circle, a decision), "arrow", "line" '
-                                  '(a link from `start` to `end`) or "text" (words on their own)')
+                                  '(a link from `start` to `end`), "path" (a free stroke through `points`) or "text" '
+                                  '(words on their own)')
     id: str = Field(default="", description="a short name for it (letters, digits, _), to link to it, point at it later "
                                             "(`draw:<id>`), or place text near it; needed on a shape an arrow joins")
-    label: str = Field(default="", description="for a shape: the few words or the value written inside it; for "
-                                               "`text`: the words")
+    label: str = Field(default="", description="for a shape: the few words or the value written inside it; for an "
+                                               "arrow or line: a name written beside its middle; for `text`: the words")
     x: float | None = Field(default=None, description="the centre's place across the drawing, 0 (left) to 100 (right); "
                                                       "leave out with a layout")
     y: float | None = Field(default=None, description="the centre's place down the drawing, 0 (top) to 100 (bottom); "
                                                       "leave out with a layout")
-    w: float | None = Field(default=None, description="optional width, 0 to 100 of the drawing; empty to fit the label")
-    h: float | None = Field(default=None, description="optional height, 0 to 100 of the drawing; empty to fit the label")
+    w: float | None = Field(default=None, description="optional width, where 100 is the drawing's height (so the same "
+                                                      "w and h make a circle or a square); empty to fit the label")
+    h: float | None = Field(default=None, description="optional height, 100 being the drawing's height; empty to fit "
+                                                      "the label")
     start: str = Field(default="", description="for an arrow or line: where it starts, the id of a shape drawn before "
-                                               "it or a ref from `targets`")
+                                               "it or a ref from `targets`; empty for a free one drawn through `points`")
     end: str = Field(default="", description="for an arrow or line: where it ends (the head), as `start`")
     near: str = Field(default="", description='for text without x/y: the id (or ref) it goes beside')
+    points: list[list[float]] = Field(default_factory=list, description="for a path, or a free arrow or line (a "
+                                                                         "vector): the [x, y] places it runs "
+                                                                         "through, in order, on the drawing's 0-100 "
+                                                                         "grid; drawn as one smooth stroke")
+    closed: bool = Field(default=False, description="for a path: join the last point back to the first")
     color: str = Field(default="", description="optional ink for this element; empty for the beat's colour")
 
 
@@ -176,6 +184,12 @@ class ScenePresentSig(dspy.Signature):
     diagram can grow over beats, each part said as it appears. A later beat lists only what it adds, never what is
     drawn already. Circles suit the nodes of a tree or a graph, boxes the steps or parts of a flow. Drawn shapes can be pointed
     at, circled, checked or crossed on later beats as `draw:<id>`; give a shape its own `color` to group it.
+    Anything else is a `path`: one free stroke through a few points (a smile, a wave, a curve, a bracket, a
+    star, a squiggle), smoothed as a hand draws it; `closed` for a loop. With paths and circles you can draw any
+    simple picture: a smiley face is a big circle, two small ones for the eyes and a path for the smile. An arrow
+    or line can be free too, from one place to another through its `points` (a vector, a force, an axis), with
+    its `label` written beside it: head to tail vectors are free arrows, each starting at the last one's head.
+    Place such pictures yourself, with x and y on the grid, not with a layout.
     The pointer can rub out drawn shapes too, as with an eraser (`erase_draw`: their ids, with the links joined
     to them): a node taken out of a tree, a step that is done, a wrong guess. Say what goes as it goes; an id
     rubbed out may be drawn again later, anew.

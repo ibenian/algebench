@@ -20,7 +20,7 @@ import { setSliderValue } from '/sliders.js';
 import { dataToWorld } from '/coords.js';
 import { objectCellAnchor, objectChartMarks, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
 import { keyDelay } from '/code-assist-play.js';
-import { LINKS, SHAPES, edgePoint, layoutShapes, shapeStroke, type DrawSpec, type Drawing, type Point } from '/drawing-layout.js';
+import { LINKS, SHAPES, edgePoint, layoutShapes, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Point } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
 interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line';
@@ -756,7 +756,7 @@ async function drawSketch(d: Drawing, color: string, r: number) {
             if (SHAPES.has(spec.type) && spec.id) {
                 const label = spec.label ?? '', tw = textWidth(label);
                 const size = () => {
-                    const w = spec.w ? spec.w / 100 * b.w : spec.type === 'diamond' ? tw + 40 : spec.type === 'ellipse' ? Math.max(34, tw + 22) : Math.max(34, tw + 22);
+                    const w = spec.w ? spec.w / 100 * b.h : spec.type === 'diamond' ? tw + 40 : spec.type === 'ellipse' ? Math.max(34, tw + 22) : Math.max(34, tw + 22);
                     const h = spec.h ? spec.h / 100 * b.h : spec.type === 'diamond' ? 44 : spec.type === 'ellipse' ? (tw < 30 ? Math.max(34, w) : 36) : 32;
                     return {w, h};
                 };
@@ -778,29 +778,65 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                 relayout();
                 await traceStroke(path, r);
                 if (lab) await typeLabel(lab, label, r);
-            } else if (LINKS.has(spec.type) && spec.start && spec.end) {
+            } else if (LINKS.has(spec.type) && ((spec.start && spec.end) || (spec.points?.length ?? 0) >= 2)) {
                 const shaft = newPath('ai-draw-stroke', ink), head = spec.type === 'arrow' ? newPath('ai-draw-stroke', ink) : null;
                 b.svg.append(shaft);if (head) b.svg.append(head);
+                // A name beside it (a vector's "a"), written once it's drawn, off the middle of the shaft.
+                const lab = spec.label ? Object.assign(document.createElement('div'), {className: `ai-draw-label ${inkClass(ink)}`.trim()}) : null;
+                if (lab) b.el.append(lab);
                 const bow = (Math.random() - .5) * .25;
+                const free = !(spec.start && spec.end);
+                const grid = () => spec.points!.map(([x = 0, y = 0]) => ({x: x / 100 * b.w, y: y / 100 * b.h}));
                 const place = () => {
-                    const s = linkEnd(spec.start!), e = linkEnd(spec.end!);
-                    if (!s || !e) return;
-                    const a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {x: e.cx, y: e.cy}), z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {x: s.cx, y: s.cy}, head ? 5 : 3);
-                    const dx = z.x - a.x, dy = z.y - a.y, mx = (a.x + z.x) / 2 - dy * bow, my = (a.y + z.y) / 2 + dx * bow;
-                    shaft.setAttribute('d', `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
+                    // The shaft from a to z; (mx, my) is where it comes into z from, for the head.
+                    let a: Point, z: Point, mx: number, my: number;
+                    if (free) {
+                        const pts = grid();
+                        a = pts[0]!;z = pts[pts.length - 1]!;
+                        if (pts.length > 2) {
+                            shaft.setAttribute('d', smoothPath(pts));
+                            ({x: mx, y: my} = pts[pts.length - 2]!);
+                        } else {
+                            mx = (a.x + z.x) / 2;my = (a.y + z.y) / 2;
+                            shaft.setAttribute('d', `M${a.x} ${a.y} L${z.x} ${z.y}`);
+                        }
+                    } else {
+                        const s = linkEnd(spec.start!), e = linkEnd(spec.end!);
+                        if (!s || !e) return;
+                        a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {x: e.cx, y: e.cy});z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {x: s.cx, y: s.cy}, head ? 5 : 3);
+                        const dx = z.x - a.x, dy = z.y - a.y;
+                        mx = (a.x + z.x) / 2 - dy * bow;my = (a.y + z.y) / 2 + dx * bow;
+                        shaft.setAttribute('d', `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
+                    }
                     if (head) {
                         const ex = z.x - mx, ey = z.y - my, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
                         const wing = (k: number) => { const c = Math.cos(k), si = Math.sin(k);return `${z.x - len * (ux * c - uy * si)} ${z.y - len * (uy * c + ux * si)}`; };
                         head.setAttribute('d', `M${wing(.5)} L${z.x} ${z.y} L${wing(-.45)}`);
                     }
+                    if (lab) {
+                        const m = shaft.getPointAtLength(shaft.getTotalLength() / 2), dx = z.x - a.x, dy = z.y - a.y, l = Math.hypot(dx, dy) || 1;
+                        // To the left of the way it goes (above a rightward arrow), clear of the stroke.
+                        lab.style.left = `${m.x + dy / l * 14}px`;lab.style.top = `${m.y - dx / l * 14}px`;
+                    }
                 };
                 const local = () => { const bb = shaft.getBBox();return new DOMRect(bb.x, bb.y, bb.width, bb.height); };
-                const item: Drawn = {spec, paths: head ? [shaft, head] : [shaft], label: null, place, local};
+                const item: Drawn = {spec, paths: head ? [shaft, head] : [shaft], label: lab, place, local};
                 if (spec.id) b.items.set(spec.id, item);
                 b.all.push(item);
                 place();
                 await traceStroke(shaft, r);
                 if (head) await traceStroke(head, r, 2.5);
+                if (lab) await typeLabel(lab, spec.label!, r);
+            } else if (spec.type === 'path' && (spec.points?.length ?? 0) >= 2) {
+                // A free stroke (a smile, a wave, a curve): through its points on the grid, smoothed.
+                const path = newPath('ai-draw-stroke', ink);b.svg.append(path);
+                const place = () => path.setAttribute('d', smoothPath(spec.points!.map(([x = 0, y = 0]) => ({x: x / 100 * b.w, y: y / 100 * b.h})), spec.closed));
+                const local = () => { const bb = path.getBBox();return new DOMRect(bb.x, bb.y, bb.width, bb.height); };
+                const item: Drawn = {spec, paths: [path], label: null, place, local};
+                if (spec.id) b.items.set(spec.id, item);
+                b.all.push(item);
+                place();
+                await traceStroke(path, r);
             } else if (spec.type === 'text' && spec.label) {
                 const lab = Object.assign(document.createElement('div'), {className: `ai-draw-label ai-draw-text ${inkClass(ink)}`.trim()});
                 b.el.append(lab);
@@ -1138,7 +1174,7 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         alive(r);
         const wrote = [beat.write, ...(beat.board ?? [])].filter(Boolean);
         // What it drew, as words: the shapes by their labels, the links by their ends.
-        const drew = (beat.draw?.elements ?? []).map(e => LINKS.has(e.type) ? `${e.start} ${e.type === 'arrow' ? '->' : '-'} ${e.end}` : `${e.type} "${e.label ?? ''}"`);
+        const drew = (beat.draw?.elements ?? []).map(e => LINKS.has(e.type) && e.start ? `${e.start} ${e.type === 'arrow' ? '->' : '-'} ${e.end}` : `${e.type} "${e.label || e.id || ''}"`);
         const rubbed = beat.erase_draw?.length ? ` [erased: ${beat.erase_draw.join(', ')}]` : '';
         said.push(beat.say + rubbed + (wrote.length ? ` [wrote: ${wrote.join(' | ')}]` : '') + (drew.length ? ` [drew: ${drew.join(', ')}]` : ''));
         onBeat?.([...said]);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutShapes, treeLayout, shapeStroke, edgePoint, type DrawSpec } from '/drawing-layout.js';
+import { layoutShapes, treeLayout, shapeStroke, edgePoint, smoothPath, type DrawSpec } from '/drawing-layout.js';
 
 const node = (id: string, extra: Partial<DrawSpec> = {}): DrawSpec => ({type: 'ellipse', id, label: id, ...extra});
 const link = (start: string, end: string): DrawSpec => ({type: 'arrow', start, end});
@@ -36,4 +36,11 @@ test('a stroke starts where a hand starts, and a link meets each shape at its ed
     assert.deepEqual(e, {x: 10, y: 0});
     const c = edgePoint('ellipse', 0, 0, 20, 20, {x: 0, y: 50}, 0);
     assert.ok(Math.abs(c.y - 10) < 1e-9 && Math.abs(c.x) < 1e-9);
+});
+
+test('a free stroke runs through each point, and a closed one comes back to the start', () => {
+    const open = smoothPath([{x: 0, y: 0}, {x: 10, y: 10}, {x: 20, y: 0}]);
+    assert.match(open, /^M0 0 C[^C]+ 10 10 C[^C]+ 20 0$/);
+    assert.match(smoothPath([{x: 0, y: 0}, {x: 10, y: 10}, {x: 20, y: 0}], true), / 0 0$/);
+    assert.equal(smoothPath([{x: 1, y: 1}]), '');
 });
