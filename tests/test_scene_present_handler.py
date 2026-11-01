@@ -202,3 +202,51 @@ def test_a_free_arrow_runs_through_its_points_and_a_bad_one_is_dropped():
     els = intent.clean_steps(raw, set(), 0)[0].draw.elements
     assert [(e.id, e.start, e.label) for e in els] == [("a", "", "a"), ("b", "", "b")]
     assert els[1].points == [[50, 60], [70, 20]]
+
+
+def test_what_an_earlier_walk_through_left_can_be_pointed_at_built_on_and_rubbed_out():
+    from backend.experts.handlers.scene_present.handler import render_inputs
+    from backend.experts.handlers.scene_present.models import ScenePresentRequest
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    req = ScenePresentRequest(question="and now?", on_view={"notes": ["x = 3"], "drawn": [
+        {"id": "a", "type": "ellipse", "label": "8"}, {"id": "b", "type": "ellipse", "label": "3"},
+        {"id": "a_b", "type": "arrow", "joins": ["a", "b"]}]})
+    assert render_inputs(req)["on_view"].splitlines() == ["note: x = 3", "draw:a: ellipse '8'", "draw:b: ellipse '3'", "draw:a_b: arrow (a -> b)"]
+    assert render_inputs(ScenePresentRequest(question="q"))["on_view"].startswith("(nothing")
+    raw = [PresentStep(say="That root.", target="draw:a", part="8"),
+           PresentStep(say="That note.", target="note:x = 3"),
+           PresentStep(say="Child.", draw=Drawing(elements=[E(type="ellipse", id="c", label="10"), E(type="arrow", start="a", end="c"), E(type="ellipse", id="a")])),
+           PresentStep(say="Go.", erase_draw=["b"], target="draw:a_b")]
+    beats = intent.clean_steps(raw, set(), 0, req.on_view)
+    assert (beats[0].target, beats[0].part, beats[1].target) == ("draw:a", "8", "note:x = 3")
+    assert [e.id for e in beats[2].draw.elements] == ["c", "a_c"]
+    assert beats[3].erase_draw == ["b"] and beats[3].target == ""      # its link went with it
+
+
+def test_groups_hold_what_names_them_and_rubbing_one_out_takes_what_is_in_it():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="Two parts.", draw=Drawing(layout="row", elements=[
+               E(type="group", id="tree", layout="tree", label="BST", align="sideways"), E(type="ellipse", id="n8", label="8", group="tree"),
+               E(type="group", id="flow", layout="nope"), E(type="rectangle", id="b", label="hash", group="flow"),
+               E(type="rectangle", id="c", label="lost", group="nowhere"), E(type="group", label="no id"),
+               E(type="arrow", start="n8", end="b"), E(type="arrow", start="tree", end="flow")])),
+           PresentStep(say="Tree goes.", erase_draw=["tree"]),
+           PresentStep(say="Back.", target="draw:n8", draw=Drawing(elements=[E(type="ellipse", id="n9", group="tree")]))]
+    beats = intent.clean_steps(raw, set(), 0)
+    els = {e.id: e for e in beats[0].draw.elements}
+    assert list(els) == ["tree", "n8", "flow", "b", "c", "n8_b", "tree_flow"] and beats[0].draw.layout == "row"
+    assert (els["tree"].layout, els["tree"].align, els["tree"].label, els["n8"].group) == ("tree", "", "BST", "tree")
+    assert (els["flow"].layout, els["b"].group, els["c"].group) == ("", "flow", "")
+    assert beats[1].erase_draw == ["tree"]
+    assert beats[2].target == "" and beats[2].draw.elements[0].group == ""      # n8 and the group went with it
+
+
+def test_an_arrow_keeps_known_heads_and_a_beat_arrow_may_point_both_ways():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="Swap.", arrow_to="row:count", arrow_kind="both", draw=Drawing(elements=[
+        E(type="rectangle", id="a", label="a"), E(type="rectangle", id="b", label="b"),
+        E(type="arrow", start="a", end="b", heads="both"), E(type="arrow", start="b", end="a", heads="sideways"),
+        E(type="line", id="l", start="a", end="b", heads="both")]))]
+    beat = intent.clean_steps(raw, {"row:count"}, 0)[0]
+    assert [e.heads for e in beat.draw.elements[2:]] == ["both", "", ""]
+    assert beat.arrow_kind == "both"

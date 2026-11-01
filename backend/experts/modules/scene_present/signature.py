@@ -10,33 +10,45 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class DrawElement(BaseModel):
-    """One shape of a drawing, an Excalidraw-like element: drawn by the pointer in list order."""
+    """One element of a drawing, Excalidraw-like: drawn by the pointer in list order."""
 
     model_config = ConfigDict(extra="ignore")
 
-    type: str = Field(description='"rectangle", "ellipse", "diamond" (a box, a circle, a decision), "arrow", "line" '
-                                  '(a link from `start` to `end`), "path" (a free stroke through `points`) or "text" '
-                                  '(words on their own)')
-    id: str = Field(default="", description="a short name for it (letters, digits, _), to link to it, point at it later "
-                                            "(`draw:<id>`), or place text near it; needed on a shape an arrow joins")
+    type: str = Field(description='"rectangle", "ellipse", "diamond" (a box, a circle, a decision), "text" (words on '
+                                  'their own), "arrow", "line" (a link from `start` to `end`), "path" (a free stroke '
+                                  'through `points`), or "group" (a box that lays out what is in it; not drawn)')
+    id: str = Field(default="", description="a short name for it (letters, digits, _), to link to it, put things in it, "
+                                            "point at it later (`draw:<id>`); needed on anything linked or grouped")
     label: str = Field(default="", description="for a shape: the few words or the value written inside it; for an "
-                                               "arrow or line: a name written beside its middle; for `text`: the words")
-    x: float | None = Field(default=None, description="the centre's place across the drawing, 0 (left) to 100 (right); "
-                                                      "leave out with a layout")
-    y: float | None = Field(default=None, description="the centre's place down the drawing, 0 (top) to 100 (bottom); "
-                                                      "leave out with a layout")
-    w: float | None = Field(default=None, description="optional width, where 100 is the drawing's height (so the same "
-                                                      "w and h make a circle or a square); empty to fit the label")
-    h: float | None = Field(default=None, description="optional height, 100 being the drawing's height; empty to fit "
-                                                      "the label")
-    start: str = Field(default="", description="for an arrow or line: where it starts, the id of a shape drawn before "
-                                               "it or a ref from `targets`; empty for a free one drawn through `points`")
-    end: str = Field(default="", description="for an arrow or line: where it ends (the head), as `start`")
-    near: str = Field(default="", description='for text without x/y: the id (or ref) it goes beside')
+                                               "arrow or line: a name written beside its middle; for `text`: the "
+                                               "words; for a group: its title")
+    group: str = Field(default="", description="the id of the group it sits in (listed before it); empty for the "
+                                               "drawing itself")
+    layout: str = Field(default="", description='for a group: how it lays out what is in it: "row", "column", "grid", '
+                                                '"tree" (top down, from the links), "flow" (left to right, from the '
+                                                'links), "graph" (any graph, cycles too) or "free" (each at its own '
+                                                'x and y); empty to choose for you')
+    align: str = Field(default="", description='for a row or column group: "start", "center" (the default) or "end"')
+    x: float | None = Field(default=None, description="only in a free group (or a picture): the centre's place across "
+                                                      "it, 0 (left) to 100 (right)")
+    y: float | None = Field(default=None, description="only in a free group (or a picture): the centre's place down "
+                                                      "it, 0 (top) to 100 (bottom)")
+    w: float | None = Field(default=None, description="optional width, 0 to 100 across its free group (for a free group "
+                                                      "itself, of the board); never narrower than its label; an ellipse "
+                                                      "with only a w is a circle")
+    h: float | None = Field(default=None, description="optional height, 0 to 100 down, as w; empty to fit the label")
+    start: str = Field(default="", description="for an arrow or line: where it starts, the id of anything drawn (a "
+                                               "shape, a group, text) or a ref from `targets`; empty for a free one "
+                                               "through `points`")
+    end: str = Field(default="", description="for an arrow or line: where it ends, as `start`")
+    heads: str = Field(default="", description='for an arrow: where its heads go: "end" (the default: from start to '
+                                               'end), "start" (back to start), "both" (each way: the two depend on '
+                                               'each other, a swap) or "none" (a plain line)')
+    near: str = Field(default="", description="for text: the id (or ref) it goes beside, instead of being laid out")
     points: list[list[float]] = Field(default_factory=list, description="for a path, or a free arrow or line (a "
                                                                          "vector): the [x, y] places it runs "
-                                                                         "through, in order, on the drawing's 0-100 "
-                                                                         "grid; drawn as one smooth stroke")
+                                                                         "through, in order, 0 to 100 across and "
+                                                                         "down its group; drawn as one smooth stroke")
     closed: bool = Field(default=False, description="for a path: join the last point back to the first")
     color: str = Field(default="", description="optional ink for this element; empty for the beat's colour")
 
@@ -46,11 +58,12 @@ class Drawing(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    layout: str = Field(default="", description='"tree" to have the shapes placed for you as a tree (parents above '
-                                                'their children, from the arrows), "row" for a left-to-right chain; '
-                                                'empty to place them yourself with x and y')
-    elements: list[DrawElement] = Field(default_factory=list, description="the shapes, in the order they are drawn: "
-                                                                          "nodes first, then the links between them")
+    layout: str = Field(default="", description='how the drawing itself lays out what is not in a group, as a '
+                                                'group\'s `layout`: "row", "column", "grid", "tree", "flow", "graph" '
+                                                'or "free"')
+    elements: list[DrawElement] = Field(default_factory=list, description="in the order they are drawn: groups before "
+                                                                          "what is in them, shapes before the links "
+                                                                          "between them")
 
 
 class PresentStep(BaseModel):
@@ -79,7 +92,7 @@ class PresentStep(BaseModel):
                                                "on a keyboard (-, *, <=, or − × ≤) by default; real notation (a matrix "
                                                "or vector, a fraction, a sum, a subscript, a Greek letter) between $...$ "
                                                "as KaTeX, never as Python lists; code between backticks. Empty for none")
-    write_near: str = Field(default="", description="with `write`: the ref (from `targets`) to write beside; empty "
+    write_near: str = Field(default="", description="with `write`: the ref (from `targets`, or `draw:<id>`) to write beside; empty "
                                                     "to write beside this beat's target, or in a free corner")
     erase: bool = Field(default=False, description="wipe everything you wrote and drew earlier, before this beat "
                                                    "(not the board)")
@@ -98,9 +111,10 @@ class PresentStep(BaseModel):
     arrow_from: str = Field(default="", description="with `arrow_to`: the ref the arrow starts at; empty to start "
                                                     "at what you write this beat, else at this beat's target")
     arrow_kind: str = Field(default="arrow", description='with `arrow_to`: "arrow" (a head at `arrow_to`: a direction, '
-                                                         'where a value goes or comes from) or "line" (no head: a plain '
-                                                         'link between two things that belong together, as the same '
-                                                         'value shown twice)')
+                                                         'where a value goes or comes from), "both" (a head at each '
+                                                         'end: a swap, two things that feed each other) or "line" (no '
+                                                         'head: a plain link between two things that belong together, '
+                                                         'as the same value shown twice)')
     slider: str = Field(default="", description="optional: a `slider:<id>` ref to move BEFORE this beat (the pointer "
                                                 "drags it), to show what the parameter does; empty for none")
     slider_to: float | None = Field(default=None, description="with `slider`: the value to move it to, within its range")
@@ -173,25 +187,45 @@ class ScenePresentSig(dspy.Signature):
 
     You can also draw, as a teacher sketches an idea at the board: a small diagram (`draw`) of simple shapes,
     drawn one by one by the pointer while you talk. Boxes (`rectangle`), circles (`ellipse`) and decisions
-    (`diamond`) with a label inside, `arrow`s and `line`s between them, and `text` on its own. Draw when a picture
-    explains better than the view: a tree, a recursion, the pieces of an idea and how they connect, a flow of
-    steps. Give each shape an `id`; an arrow joins two ids (`start` -> `end`), or a shape and a ref from `targets`
-    (a box that points at the cell it stands for). List the shapes in the order you would draw them: the nodes,
-    then the links. For a tree use `layout: "tree"` and leave out x and y; for a chain, `layout: "row"`; otherwise
-    place each shape on a 0 to 100 grid (x across, y down) in a wide box, about 3 wide for 2 high. Keep it small:
-    up to a dozen shapes, labels of a few words. All drawings of a walk-through share one board: a later beat may
-    add shapes and links to it (earlier ids stay; with a layout, the whole drawing is laid out again), so a big
-    diagram can grow over beats, each part said as it appears. A later beat lists only what it adds, never what is
-    drawn already. Circles suit the nodes of a tree or a graph, boxes the steps or parts of a flow. Drawn shapes can be pointed
-    at, circled, checked or crossed on later beats as `draw:<id>`; give a shape its own `color` to group it.
+    (`diamond`) with a label inside, `text` on its own, and `arrow`s and `line`s between any two things drawn (or
+    a thing and a ref from `targets`: a box that points at the cell it stands for); an arrow's `heads` puts its
+    head at the end, the start, both ends or none. Draw when a picture explains
+    better than the view: a tree, a recursion, the pieces of an idea and how they connect, a flow of steps.
+    Places are relative: you never measure, and never give x or y to anything linked (linked things are laid out
+    for you; `free` is only for a picture with no links). Put things that belong together in a `group` and say how it lays them
+    out (`row`, `column`, `grid`, `tree` top down from its links, `flow` left to right from its links, `graph` for
+    a graph with no up or down: cycles, a network, a state machine); use `tree` or `flow` when there is a
+    hierarchy or an order, as they show it; each group
+    is sized by what is in it and placed by the group it sits in (or the drawing's own `layout`), so groups nest:
+    a tree beside a block diagram is a drawing with `layout: "row"` holding a tree group and a flow group, and an
+    arrow can run from a node of the tree to a block of the other. Give a group a short title (`label`); the
+    learner can drag any group, or any shape, somewhere else. Links find their ends wherever things end up.
+    Give everything an `id`. List groups before what is in them, and shapes before the links between them, in the
+    order you would draw them. Keep it small: up to a dozen shapes, labels of a few words. All drawings of a
+    walk-through share one board: a later beat may add shapes, groups and links to it (earlier ids stay, the
+    whole is laid out again), so a big diagram can grow over beats, each part said as it appears. A later beat
+    lists only what it adds, never what is drawn already. Circles suit the nodes of a tree or a graph, boxes the
+    steps or parts of a flow. Drawn things are targets like anything on the view, as `draw:<id>`: point at them,
+    circle, underline, check or cross them (or a word of their label, with `part`), write a note beside one
+    (`write_near`), or join one to something on the view with the beat's arrow. Draw in colour: give each element
+    the `color` of what it is (a red light red, the nodes visited one colour and the rest another, each group of
+    like things its own colour), so the picture reads at a glance; one colour for a whole drawing only when it
+    is all one kind of thing.
     Anything else is a `path`: one free stroke through a few points (a smile, a wave, a curve, a bracket, a
     star, a squiggle), smoothed as a hand draws it; `closed` for a loop. With paths and circles you can draw any
-    simple picture: a smiley face is a big circle, two small ones for the eyes and a path for the smile. An arrow
-    or line can be free too, from one place to another through its `points` (a vector, a force, an axis), with
-    its `label` written beside it: head to tail vectors are free arrows, each starting at the last one's head.
-    Place such pictures yourself, with x and y on the grid, not with a layout.
-    The pointer can rub out drawn shapes too, as with an eraser (`erase_draw`: their ids, with the links joined
-    to them): a node taken out of a tree, a step that is done, a wrong guess. Say what goes as it goes; an id
+    simple picture in a `free` group: each thing at its x and y, 0 to 100 across and down the group, whose own
+    `w` and `h` (of the board) give its size. A face is a free group: a big circle, small ones for the eyes, a
+    path for the mouth (a free group is as wide as `w`, as tall as `h`: for a circle give only `w`). An arrow or
+    line can be free too, through its `points` (a vector, a force, an axis), with its `label` written beside it:
+    head to tail vectors are free arrows, each starting at the last one's head.
+    Nothing you write or draw fades on its own: it stays on the view after the walk-through, until you wipe it,
+    and `on_view` lists what earlier walk-throughs left there. So decide at the start of each walk-through: build
+    on what is there when the question follows on from it (point at it, add to the drawing, rub out a part), or
+    start clean when it is about something else (`erase` on the first beat wipes the notes and the drawing;
+    `erase_notes` takes board lines too). When you are about to draw something new, say whether the old drawing
+    goes or stays. Leave on the view what the learner may want to look at after you finish.
+    The pointer can rub out drawn things too, as with an eraser (`erase_draw`: their ids; the links joined to
+    them, and what is in a group, go with them): a node taken out of a tree, a step that is done, a wrong guess. Say what goes as it goes; an id
     rubbed out may be drawn again later, anew.
 
     A chart's bars and points are listed one by one (`chart[3]`: what it draws, its values); point at the bar or
@@ -225,6 +259,8 @@ class ScenePresentSig(dspy.Signature):
     frames: str = dspy.InputField(desc="the execution states, one per line as `n: what happens  [the values in that "
                                        "state]`, and which is on screen; may be empty when the step has none")
     targets: str = dspy.InputField(desc="what you can point at, one per line as `ref: description`")
+    on_view: str = dspy.InputField(desc="what your earlier walk-throughs left on the view, still there: notes, board "
+                                        "lines and drawn shapes (`draw:<id>`), one per line")
 
     steps: list[PresentStep] = dspy.OutputField(desc="the beats of the walk-through, in order")
 

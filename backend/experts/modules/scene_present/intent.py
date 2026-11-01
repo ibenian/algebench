@@ -21,7 +21,8 @@ log = logging.getLogger(__name__)
 _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 MAX_STEPS = 10
 MARKS = ("point", "circle", "underline", "check", "cross")
-ARROW_KINDS = ("arrow", "line")
+ARROW_KINDS = ("arrow", "line", "both")
+HEADS = ("end", "start", "both", "none")
 #: The longest line written on the scratchpad.
 MAX_WRITE = 400
 COLORS = ("green", "yellow", "red", "blue", "purple", "orange", "pink")
@@ -126,7 +127,8 @@ def _part(value, target: str, drawn: dict[str, str] | None = None) -> str:
 
 SHAPES = ("rectangle", "ellipse", "diamond")
 LINKS = ("arrow", "line")
-LAYOUTS = ("tree", "row")
+LAYOUTS = ("row", "column", "grid", "tree", "flow", "graph", "free")
+ALIGNS = ("start", "center", "end")
 #: The most elements one beat draws, and the longest label.
 MAX_ELEMENTS = 24
 MAX_LABEL = 60
@@ -143,22 +145,25 @@ def _grid(value) -> float | None:
     return min(100.0, max(0.0, v)) if v == v else None
 
 
-def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str]) -> Drawing | None:
+def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str], groups: set[str]) -> Drawing | None:
     """A drawing safe to draw: known element types, ids of letters and digits, places on the 0-100 grid, and links
     whose ends are shapes drawn before them (on this beat or an earlier one) or refs from the list. ``drawn``
-    collects the ids it adds, with their labels, so later beats can link to them and point at them."""
+    collects the ids it adds, with their labels, so later beats can link to them and point at them; ``groups``
+    the ids of the groups among them, which later elements may sit in."""
     if not isinstance(d, Drawing):
         return None
     out: list[DrawElement] = []
     for e in d.elements[:MAX_ELEMENTS]:
-        if not isinstance(e, DrawElement) or e.type not in (*SHAPES, *LINKS, "path", "text"):
+        if not isinstance(e, DrawElement) or e.type not in (*SHAPES, *LINKS, "path", "text", "group"):
             continue
         eid = _ID.sub("", str(e.id or ""))[:24]
         label = _clean(e.label)[:MAX_LABEL]
         end = lambda v: _ID.sub("", str(v or "")) if _ID.sub("", str(v or "")) in drawn else _target_ref(v, refs, written)
         start_ref, end_ref = (end(e.start), end(e.end)) if e.type in LINKS else ("", "")
-        if e.type == "text" and not label:
+        if (e.type == "text" and not label) or (e.type == "group" and not eid):
             continue
+        group = _ID.sub("", str(e.group or ""))[:24]
+        group = group if group in groups and group != eid else ""
         # A path's stroke, or a free arrow or line (a vector from one place to another) when it joins no shapes.
         free = e.type == "path" or (e.type in LINKS and not (start_ref and end_ref))
         points = [[_grid(p[0]), _grid(p[1])] for p in e.points[:MAX_POINTS] if isinstance(p, list) and len(p) >= 2] if free else []
@@ -174,24 +179,31 @@ def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str]) -> Dra
             continue
         near = (_ID.sub("", str(e.near or "")) if _ID.sub("", str(e.near or "")) in drawn else _target_ref(e.near, refs, written)) if e.type == "text" else ""
         out.append(DrawElement(type=e.type, id=eid, label=label, x=_grid(e.x), y=_grid(e.y), w=_grid(e.w), h=_grid(e.h),
-                               start=start_ref, end=end_ref, near=near, points=points,
+                               start=start_ref, end=end_ref, near=near, points=points, group=group,
+                               layout=e.layout if e.type == "group" and e.layout in LAYOUTS else "",
+                               align=e.align if e.type == "group" and e.align in ALIGNS else "",
+                               heads=e.heads if e.type == "arrow" and e.heads in HEADS else "",
                                closed=bool(e.closed) and e.type == "path" and len(points) > 2, color=_ink(e.color)))
         if eid:
             drawn[eid] = label
+            if e.type == "group":
+                groups.add(eid)
     if not out:
         return None
     return Drawing(layout=d.layout if d.layout in LAYOUTS else "", elements=out)
 
 
 def _rub_out(value, drawn: dict[str, str], links: dict[str, tuple[str, str]]) -> list[str]:
-    """The drawn ids a beat rubs out, and with them the links joined to them; all of them leave ``drawn``."""
+    """The drawn ids a beat rubs out; with them go the links joined to them and what sits in them (and so on): all
+    of it leaves ``drawn``."""
     ids = [i for i in dict.fromkeys(_ID.sub("", str(v or ""))[:24] for v in (value or [])) if i in drawn]
     gone = set(ids)
-    ids += [lid for lid, ends in links.items() if lid not in gone and gone & set(ends)]
-    for i in ids:
+    while more := {lid for lid, ends in links.items() if lid not in gone and gone & set(ends)}:
+        gone |= more
+    for i in gone:
         drawn.pop(i, None)
         links.pop(i, None)
-    return [i for i in ids if i in gone]
+    return ids
 
 
 def _slider_move(s: PresentStep, refs: set[str]) -> dict:
@@ -206,13 +218,25 @@ def _slider_move(s: PresentStep, refs: set[str]) -> dict:
     return {"slider": ref, "slider_to": value}
 
 
-def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
+def clean_steps(raw, refs: set[str], frames: int, left=None) -> list[PresentStep]:
     """Beats safe to play: a ref not on the list points at nothing, a frame outside the run stays put, a beat with
-    nothing to say is dropped."""
+    nothing to say is dropped. ``left`` is what earlier walk-throughs left on the view (notes, board lines, drawn
+    shapes): the beats may point at it, build on it or wipe it."""
     out = []
     written: set[str] = set()       # the notes on the view so far, by text: a beat may point at them
     drawn: dict[str, str] = {}      # what was drawn so far, id -> label: a beat may link to it or point at it
-    links: dict[str, tuple[str, str]] = {}   # the drawn links and texts, id -> what they join: rubbed out with it
+    links: dict[str, tuple[str, ...]] = {}   # the drawn links, texts and grouped things, id -> what they hang on
+    groups: set[str] = set()        # the drawn groups' ids: what a later element may sit in
+    if left is not None:
+        written |= {_note_key(t) for t in [*left.notes, *left.board] if t.strip()}
+        for d in left.drawn:
+            eid = _ID.sub("", d.id)[:24]
+            if eid:
+                drawn[eid] = _clean(d.label)[:MAX_LABEL]
+                if d.type == "group":
+                    groups.add(eid)
+                if d.joins:
+                    links[eid] = tuple(_ID.sub("", j)[:24] for j in d.joins)
     for s in raw or []:
         if not isinstance(s, PresentStep) or not _clean(s.say):
             continue
@@ -224,17 +248,18 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
         board = _notes(s.board)
         written |= {_note_key(t) for t in [write, *board] if t}
         if s.erase:
-            drawn.clear();links.clear()
+            drawn.clear();links.clear();groups.clear()
         rubbed = _rub_out(s.erase_draw, drawn, links)
-        drawing = _drawing(s.draw, refs, written, drawn)
+        groups &= set(drawn)
+        drawing = _drawing(s.draw, refs, written, drawn, groups)
         for e in drawing.elements if drawing else []:
-            if e.id and (e.start or e.near):
-                links[e.id] = (e.start, e.end) if e.start else (e.near,)
+            if e.id and (e.start or e.near or e.group):
+                links[e.id] = (e.start, e.end) if e.start else (e.near,) if e.near else (e.group,)
         target = _target_ref(s.target, refs, written, drawn)
         out.append(PresentStep(say=_clean(s.say), target=target, part=_part(s.part, target, drawn),
                                mark=s.mark if s.mark in MARKS else "point",
                                frame=frame if 0 <= frame < frames else -1,
-                               write=write, write_near=_target_ref(s.write_near, refs, written) if write else "", erase=bool(s.erase),
+                               write=write, write_near=_target_ref(s.write_near, refs, written, drawn) if write else "", erase=bool(s.erase),
                                arrow_to=_target_ref(s.arrow_to, refs, written, drawn),
                                arrow_from=_target_ref(s.arrow_from, refs, written, drawn) if _target_ref(s.arrow_to, refs, written, drawn) else "",
                                draw=drawing,
@@ -244,11 +269,11 @@ def clean_steps(raw, refs: set[str], frames: int) -> list[PresentStep]:
     return out[:MAX_STEPS]
 
 
-def present(target_refs: set[str], frame_count: int, **inputs) -> Presentation:
+def present(target_refs: set[str], frame_count: int, left=None, **inputs) -> Presentation:
     """Ask the model for the beats; one more ask if the answer was malformed."""
     try:
         out = retry_on_parse_error(lambda: _presenter()(**inputs), label="scene_present")
     except Exception as e:
         log.exception("scene_present: the model call failed")
         return Presentation(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
-    return Presentation(steps=clean_steps(out.steps, target_refs, frame_count))
+    return Presentation(steps=clean_steps(out.steps, target_refs, frame_count, left))

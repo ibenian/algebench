@@ -1,9 +1,8 @@
 // The presenter's drawings (a beat's `draw`, an Excalidraw-like list of elements): where the shapes go and the
 // strokes that draw them. Pure: presenter.ts measures, renders and has the pointer trace these strokes.
 //
-// Places are on a 0-100 grid across and down the drawing's box. A shape the model placed keeps its x and y; the
-// others are placed by the layout: "tree" (parents above children, from the links), "row" (left to right), or,
-// with none, in a row under the placed ones.
+// Places are relative: a drawing is groups of shapes (rows, columns, trees, flows, free pictures), each group placed
+// by the one it sits in and sized by what is in it, so nothing is measured by the model.
 
 export interface DrawSpec {
     type: string;
@@ -15,64 +14,272 @@ export interface DrawSpec {
     h?: number | null;
     start?: string;
     end?: string;
+    /** For an arrow: "end" (the default), "start", "both" or "none". */
+    heads?: string;
     near?: string;
     color?: string;
     points?: number[][];
     closed?: boolean;
+    /** The group it sits in. */
+    group?: string;
+    /** For a group: how it arranges what is in it, and how it lines them up across. */
+    layout?: string;
+    align?: string;
 }
 export interface Drawing { layout?: string; elements: DrawSpec[] }
 export interface Point { x: number; y: number }
 
 export const SHAPES = new Set(['rectangle', 'ellipse', 'diamond']);
 export const LINKS = new Set(['arrow', 'line']);
+export const LAYOUTS = new Set(['row', 'column', 'grid', 'tree', 'flow', 'graph', 'free']);
 const placed = (e: DrawSpec) => typeof e.x === 'number' && typeof e.y === 'number';
 
-/** The centre of every shape with an id, on the 0-100 grid. */
-export function layoutShapes(elements: DrawSpec[], layout = ''): Map<string, Point> {
-    const shapes = elements.filter(e => SHAPES.has(e.type) && e.id);
-    const out = new Map<string, Point>();
-    for (const e of shapes) if (placed(e)) out.set(e.id!, {x: e.x!, y: e.y!});
-    const free = shapes.filter(e => !out.has(e.id!));
-    if (!free.length) return out;
-    if (layout === 'tree') {
-        for (const [id, p] of treeLayout(free.map(e => e.id!), elements)) out.set(id, p);
-        return out;
-    }
-    // A row: across the middle, or under the placed shapes when there are some.
-    const y = out.size ? Math.min(90, Math.max(...[...out.values()].map(p => p.y)) + 25) : 50;
-    free.forEach((e, i) => out.set(e.id!, {x: (i + .5) / free.length * 100, y}));
-    return out;
+export interface Size { w: number; h: number }
+export interface Rect { x: number; y: number; w: number; h: number }
+/**
+ * The board's size in px, and a shape's size within a box (its w and h are on that box's grid). Without, a box is
+ * 600 by 400 and a shape 40 by 30.
+ */
+export interface Measure { box: Size; sizeOf: (e: DrawSpec, within: Size) => Size }
+const GAP = 28;
+const guess: Measure = {box: {w: 600, h: 400}, sizeOf: () => ({w: 40, h: 30})};
+
+/** What a layout places: shapes, groups, and text on its own (text `near` something goes beside that instead). */
+const isNode = (e: DrawSpec) => SHAPES.has(e.type) || e.type === 'group' || (e.type === 'text' && !e.near);
+
+export interface Laid {
+    /** Each placed element's box, in px of the drawing's own space (top left at 0, 0). */
+    boxes: Map<DrawSpec, Rect>;
+    /** The whole drawing's box: scaled to fit the board by the caller when it's bigger. */
+    w: number; h: number;
 }
 
 /**
- * A tidy tree: the links (start -> end) among `ids` make parent -> child; the roots are the ids no link ends at, in
- * the order they were drawn. Leaves take the next slot across; a parent sits over the middle of its children; each
- * level is a row down.
+ * Lay a drawing out. Every element sits in a group (`group`, a group's id) or in the drawing itself, the outermost
+ * group, whose layout is `layout`. A group arranges what is in it: "row", "column", "grid", "tree" (top down, from
+ * the links), "flow" (left to right, from the links), "graph" (any graph, cycles too: linked things pulled
+ * together, all of them pushed apart) or "free" (each at its own x and y, 0 to 100 across and down
+ * the group's box). Its size comes from what is in it (a free group's from its w and h), and its place from the
+ * group it is in: so places are always relative, and nothing is measured by the model. With no layout, a group
+ * whose things are linked is a flow, one with things given places is free, any other a row.
  */
-export function treeLayout(ids: string[], elements: DrawSpec[]): Map<string, Point> {
-    const known = new Set(ids), children = new Map<string, string[]>(), parent = new Map<string, string>();
-    for (const e of elements) {
-        if (!LINKS.has(e.type) || !e.start || !e.end || !known.has(e.start) || !known.has(e.end)) continue;
-        if (parent.has(e.end) || e.start === e.end) continue;
-        parent.set(e.end, e.start);
-        children.set(e.start, [...(children.get(e.start) ?? []), e.end]);
+export function layoutDrawing(elements: DrawSpec[], layout = '', m: Measure = guess): Laid {
+    const nodes = elements.filter(isNode);
+    const groups = new Map(nodes.filter(e => e.type === 'group' && e.id).map(e => [e.id!, e]));
+    const byId = new Map(nodes.filter(e => e.id).map(e => [e.id!, e]));
+    // Each node's group (null: the drawing), never one inside itself.
+    const parent = new Map<DrawSpec, DrawSpec | null>();
+    for (const e of nodes) {
+        let g = e.group ? groups.get(e.group) ?? null : null;
+        for (let up = g, i = 0; up && i < 50; up = up.group ? groups.get(up.group) ?? null : null, i++) if (up === e) { g = null;break; }
+        parent.set(e, g);
     }
-    const slot = new Map<string, number>(), depth = new Map<string, number>();
-    let leaves = 0, deepest = 0;
-    const visit = (id: string, d: number, seen: Set<string>): number => {
-        if (seen.has(id)) return slot.get(id) ?? 0;
-        seen.add(id);depth.set(id, d);deepest = Math.max(deepest, d);
-        const kids = (children.get(id) ?? []).filter(k => !seen.has(k));
-        const at = kids.length ? kids.map(k => visit(k, d + 1, seen)).reduce((a, b) => a + b, 0) / kids.length : leaves++;
-        slot.set(id, at);
+    const kids = (g: DrawSpec | null) => nodes.filter(e => parent.get(e) === g);
+    // A link's end, as the one of `among` it is in (itself or a group holding it).
+    const holder = (id: string | undefined, among: Set<DrawSpec>): DrawSpec | null => {
+        for (let e = id ? byId.get(id) ?? null : null, i = 0; e && i < 50; e = parent.get(e) ?? null, i++) if (among.has(e)) return e;
+        return null;
+    };
+    const linksAmong = (among: DrawSpec[]): [DrawSpec, DrawSpec][] => {
+        const set = new Set(among), seen = new Set<string>(), out: [DrawSpec, DrawSpec][] = [];
+        for (const l of elements) {
+            if (!LINKS.has(l.type)) continue;
+            const a = holder(l.start, set), z = holder(l.end, set);
+            if (!a || !z || a === z) continue;
+            const k = `${among.indexOf(a)}>${among.indexOf(z)}`;
+            if (!seen.has(k)) { seen.add(k);out.push([a, z]); }
+        }
+        return out;
+    };
+
+    const local = new Map<DrawSpec, Rect>();      // each node's box within its group
+    const sizes = new Map<DrawSpec, Size>();
+    const freeBox = (g: DrawSpec | null): Size => g ? {w: (g.w ?? 50) / 100 * m.box.w, h: (g.h ?? 50) / 100 * m.box.h} : m.box;
+    const kindOf = (g: DrawSpec | null, inside: DrawSpec[]): string => {
+        const asked = g ? g.layout ?? '' : layout;
+        // Linked things are a diagram, never placed by hand: "free" is for pictures only.
+        if (asked === 'free' && linksAmong(inside).length) return 'flow';
+        if (LAYOUTS.has(asked)) return asked;
+        if (linksAmong(inside).length) return 'flow';
+        return inside.some(placed) ? 'free' : 'row';
+    };
+    const measure = (g: DrawSpec | null): Size => {
+        const inside = kids(g), kind = kindOf(g, inside);
+        const within = kind === 'free' ? freeBox(g) : m.box;
+        for (const e of inside) sizes.set(e, e.type === 'group' ? measure(e) : m.sizeOf(e, within));
+        const size = (e: DrawSpec) => sizes.get(e)!;
+        let at: Map<DrawSpec, Point>, span: Size;
+        if (kind === 'free') {
+            at = new Map(inside.map(e => [e, {x: (e.x ?? 50) / 100 * within.w, y: (e.y ?? 50) / 100 * within.h}]));
+            span = within;
+        } else if (kind === 'tree') ({at, span} = treePx(inside, linksAmong(inside), size));
+        else if (kind === 'flow') ({at, span} = flowPx(inside, linksAmong(inside), size));
+        else if (kind === 'graph') ({at, span} = graphPx(inside, linksAmong(inside), size));
+        else ({at, span} = linePx(inside, kind, size, g?.align ?? 'center'));
+        for (const e of inside) { const c = at.get(e)!, s = size(e);local.set(e, {x: c.x - s.w / 2, y: c.y - s.h / 2, w: s.w, h: s.h}); }
+        return span;
+    };
+    const whole = measure(null);
+    // Down from the drawing: a box's place is its group's place plus its place in the group.
+    const boxes = new Map<DrawSpec, Rect>();
+    const place = (g: DrawSpec | null, ox: number, oy: number) => {
+        for (const e of kids(g)) {
+            const l = local.get(e)!, r = {x: ox + l.x, y: oy + l.y, w: l.w, h: l.h};
+            boxes.set(e, r);
+            if (e.type === 'group') place(e, r.x, r.y);
+        }
+    };
+    place(null, 0, 0);
+    return {boxes, w: whole.w, h: whole.h};
+}
+
+/** Side by side ("row"), one under another ("column"), or in a square-ish grid; lined up by `align` across. */
+function linePx(items: DrawSpec[], kind: string, size: (e: DrawSpec) => Size, align: string) {
+    const at = new Map<DrawSpec, Point>();
+    if (!items.length) return {at, span: {w: 0, h: 0}};
+    if (kind === 'grid') {
+        const cols = Math.ceil(Math.sqrt(items.length)), cw = Math.max(...items.map(e => size(e).w)), ch = Math.max(...items.map(e => size(e).h));
+        items.forEach((e, i) => at.set(e, {x: (i % cols) * (cw + GAP) + cw / 2, y: Math.floor(i / cols) * (ch + GAP) + ch / 2}));
+        const rows = Math.ceil(items.length / cols);
+        return {at, span: {w: cols * cw + (cols - 1) * GAP, h: rows * ch + (rows - 1) * GAP}};
+    }
+    const across = kind === 'column';
+    const along = (s: Size) => across ? s.h : s.w, cross = (s: Size) => across ? s.w : s.h;
+    const thick = Math.max(...items.map(e => cross(size(e))));
+    let run = 0;
+    for (const e of items) {
+        const s = size(e), c = align === 'start' ? cross(s) / 2 : align === 'end' ? thick - cross(s) / 2 : thick / 2;
+        const p = run + along(s) / 2;
+        at.set(e, across ? {x: c, y: p} : {x: p, y: c});
+        run += along(s) + GAP;
+    }
+    run -= GAP;
+    return {at, span: across ? {w: thick, h: run} : {w: run, h: thick}};
+}
+
+/**
+ * A tidy tree from the links (parent -> child); the roots are what no link ends at, in drawing order. Leaves go
+ * across side by side, each as wide as it is; a parent sits over the middle of its children; a level per row.
+ */
+function treePx(items: DrawSpec[], links: [DrawSpec, DrawSpec][], size: (e: DrawSpec) => Size) {
+    const children = new Map<DrawSpec, DrawSpec[]>(), parent = new Map<DrawSpec, DrawSpec>();
+    for (const [a, z] of links) {
+        if (parent.has(z)) continue;
+        parent.set(z, a);
+        children.set(a, [...(children.get(a) ?? []), z]);
+    }
+    const cx = new Map<DrawSpec, number>(), depth = new Map<DrawSpec, number>(), rowH: number[] = [];
+    let cursor = 0;
+    const visit = (e: DrawSpec, d: number, seen: Set<DrawSpec>): number => {
+        if (seen.has(e)) return cx.get(e) ?? 0;
+        seen.add(e);depth.set(e, d);rowH[d] = Math.max(rowH[d] ?? 0, size(e).h);
+        const ks = (children.get(e) ?? []).filter(k => !seen.has(k));
+        let at: number;
+        if (ks.length) {
+            const xs = ks.map(k => visit(k, d + 1, seen));
+            at = (Math.min(...xs) + Math.max(...xs)) / 2;
+            cursor = Math.max(cursor, at + size(e).w / 2 + GAP);
+        } else {
+            at = cursor + size(e).w / 2;cursor += size(e).w + GAP;
+        }
+        cx.set(e, at);
         return at;
     };
-    const seen = new Set<string>();
-    for (const id of ids) if (!parent.has(id)) visit(id, 0, seen);
-    for (const id of ids) if (!seen.has(id)) visit(id, 0, seen);   // a cycle: start it where it was drawn
-    const out = new Map<string, Point>();
-    for (const id of ids) out.set(id, {x: (slot.get(id)! + .5) / Math.max(1, leaves) * 100, y: (depth.get(id)! + .5) / (deepest + 1) * 100});
-    return out;
+    const seen = new Set<DrawSpec>();
+    for (const e of items) if (!parent.has(e)) visit(e, 0, seen);
+    for (const e of items) if (!seen.has(e)) visit(e, 0, seen);   // a cycle: start it where it was drawn
+    const rowY: number[] = [], vgap = GAP * 1.6;
+    let y = 0;
+    for (const h of rowH) { rowY.push(y + h / 2);y += h + vgap; }
+    const at = new Map<DrawSpec, Point>();
+    for (const e of items) at.set(e, {x: cx.get(e)!, y: rowY[depth.get(e)!]!});
+    return {at, span: {w: Math.max(0, cursor - GAP), h: Math.max(0, y - vgap)}};
+}
+
+/**
+ * Any graph, cycles and all: a force layout. Things start round a circle (in drawing order, so the same graph is
+ * always drawn the same way); every pair pushes apart, every link pulls its two ends to a rest length; then the
+ * boxes still touching are pushed clear of each other, measured as they are.
+ */
+function graphPx(items: DrawSpec[], links: [DrawSpec, DrawSpec][], size: (e: DrawSpec) => Size) {
+    const n = items.length, at = new Map<DrawSpec, Point>();
+    if (!n) return {at, span: {w: 0, h: 0}};
+    const sz = items.map(size), idx = new Map(items.map((e, i) => [e, i]));
+    const avg = sz.reduce((a, s) => a + Math.max(s.w, s.h), 0) / n, rest = avg + GAP * 2.2;
+    const r0 = Math.max(rest, rest * n / (2 * Math.PI));
+    const p = items.map((_, i) => ({x: r0 * Math.cos(2 * Math.PI * i / n - Math.PI / 2), y: r0 * Math.sin(2 * Math.PI * i / n - Math.PI / 2)}));
+    const edges = links.map(([a, z]) => [idx.get(a)!, idx.get(z)!] as const);
+    for (let it = 0, heat = rest; it < 300; it++, heat *= .985) {
+        const f = p.map(() => ({x: 0, y: 0}));
+        for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+            let dx = p[i]!.x - p[j]!.x, dy = p[i]!.y - p[j]!.y;
+            if (!dx && !dy) { dx = .1 * (i - j);dy = .1; }
+            const d = Math.hypot(dx, dy), push = rest * rest / d;
+            f[i]!.x += dx / d * push;f[i]!.y += dy / d * push;f[j]!.x -= dx / d * push;f[j]!.y -= dy / d * push;
+        }
+        for (const [i, j] of edges) {
+            const dx = p[j]!.x - p[i]!.x, dy = p[j]!.y - p[i]!.y, d = Math.hypot(dx, dy) || 1, pull = d * d / rest;
+            f[i]!.x += dx / d * pull;f[i]!.y += dy / d * pull;f[j]!.x -= dx / d * pull;f[j]!.y -= dy / d * pull;
+        }
+        for (let i = 0; i < n; i++) {
+            const m = Math.hypot(f[i]!.x, f[i]!.y) || 1, step = Math.min(m, heat);
+            p[i]!.x += f[i]!.x / m * step;p[i]!.y += f[i]!.y / m * step;
+        }
+    }
+    // Boxes, not points: push apart any two that still overlap (with a gap), along the shorter way out.
+    for (let pass = 0; pass < 60; pass++) {
+        let moved = false;
+        for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+            const ox = (sz[i]!.w + sz[j]!.w) / 2 + GAP * .8 - Math.abs(p[i]!.x - p[j]!.x);
+            const oy = (sz[i]!.h + sz[j]!.h) / 2 + GAP * .8 - Math.abs(p[i]!.y - p[j]!.y);
+            if (ox <= 0 || oy <= 0) continue;
+            moved = true;
+            if (ox < oy) { const s = (p[i]!.x < p[j]!.x ? -1 : 1) * ox / 2;p[i]!.x += s;p[j]!.x -= s; }
+            else { const s = (p[i]!.y < p[j]!.y ? -1 : 1) * oy / 2;p[i]!.y += s;p[j]!.y -= s; }
+        }
+        if (!moved) break;
+    }
+    const x0 = Math.min(...p.map((q, i) => q.x - sz[i]!.w / 2)), y0 = Math.min(...p.map((q, i) => q.y - sz[i]!.h / 2));
+    const x1 = Math.max(...p.map((q, i) => q.x + sz[i]!.w / 2)), y1 = Math.max(...p.map((q, i) => q.y + sz[i]!.h / 2));
+    items.forEach((e, i) => at.set(e, {x: p[i]!.x - x0, y: p[i]!.y - y0}));
+    return {at, span: {w: x1 - x0, h: y1 - y0}};
+}
+
+/** A flow left to right: each a column after what leads to it (the longest way in), a column stacked in the order of what leads to it. */
+function flowPx(items: DrawSpec[], links: [DrawSpec, DrawSpec][], size: (e: DrawSpec) => Size) {
+    const ins = new Map<DrawSpec, DrawSpec[]>(items.map(e => [e, []]));
+    for (const [a, z] of links) ins.get(z)!.push(a);
+    const rank = new Map<DrawSpec, number>();
+    const rankOf = (e: DrawSpec, path: Set<DrawSpec>): number => {
+        if (rank.has(e)) return rank.get(e)!;
+        if (path.has(e)) return 0;                                   // a cycle: cut it here
+        path.add(e);
+        const r = Math.max(-1, ...ins.get(e)!.map(p => rankOf(p, path))) + 1;
+        path.delete(e);rank.set(e, r);
+        return r;
+    };
+    for (const e of items) rankOf(e, new Set());
+    const cols: DrawSpec[][] = [];
+    for (const e of items) (cols[rank.get(e)!] ??= []).push(e);
+    const order = new Map<DrawSpec, number>();
+    for (const col of cols) {
+        if (!col) continue;
+        const key = (e: DrawSpec) => { const ps = ins.get(e)!.filter(p => order.has(p));return ps.length ? ps.reduce((a, p) => a + order.get(p)!, 0) / ps.length : Infinity; };
+        col.sort((a, b) => key(a) - key(b) || items.indexOf(a) - items.indexOf(b));
+        col.forEach((e, i) => order.set(e, i));
+    }
+    const full = cols.filter(Boolean);
+    const heights = full.map(col => col.reduce((a, e) => a + size(e).h, 0) + GAP * (col.length - 1));
+    const tall = Math.max(0, ...heights), hgap = GAP * 1.4;
+    const at = new Map<DrawSpec, Point>();
+    let x = 0;
+    full.forEach((col, c) => {
+        const w = Math.max(...col.map(e => size(e).w));
+        let y = (tall - heights[c]!) / 2;
+        for (const e of col) { const s = size(e);at.set(e, {x: x + w / 2, y: y + s.h / 2});y += s.h + GAP; }
+        x += w + hgap;
+    });
+    return {at, span: {w: Math.max(0, x - hgap), h: tall}};
 }
 
 /**

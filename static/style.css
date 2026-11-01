@@ -6438,7 +6438,23 @@ body.ai-presenting .ai-present-replay { visibility: hidden; }
 /* The presenter's drawings (presenter.ts drawSketch): shapes and links sketched by the pointer, lit like its notes. */
 .ai-drawing { position: fixed; --ink: #7dffcf; pointer-events: none; transition: opacity .7s; }
 .ai-drawing.fading { opacity: 0; }
-.ai-drawing svg { position: absolute; inset: 0; overflow: visible; }
+.ai-drawing-canvas { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.ai-drawing svg { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+/* A group's handle, under its shapes: pointed at, it lights up behind them so they read over a busy scene; dragged,
+   the group moves. */
+.ai-draw-group { position: absolute; pointer-events: auto; border-radius: 12px; border: 1px solid transparent;
+  transition: background-color .18s, border-color .18s, box-shadow .18s; }
+.ai-draw-group:hover, .ai-draw-group.lit, .ai-draw-group.dragging { background: rgba(7, 12, 12, .8);
+  border-color: color-mix(in srgb, var(--ink) 30%, transparent); box-shadow: 0 6px 24px rgba(0, 0, 0, .45); backdrop-filter: blur(3px); }
+.ai-draw-group-title { position: absolute; left: 0; right: 0; top: 0; height: 26px; padding: 0 10px; border-radius: 12px 12px 0 0;
+  font: 600 12px/26px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); opacity: 0; cursor: grab;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .18s;
+  background: color-mix(in srgb, var(--ink) 14%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
+.ai-draw-group:hover > .ai-draw-group-title, .ai-draw-group.lit > .ai-draw-group-title, .ai-draw-group.dragging > .ai-draw-group-title { opacity: 1; }
+.ai-draw-group.dragging .ai-draw-group-title { cursor: grabbing; }
+.ai-draw-hit { position: absolute; pointer-events: auto; cursor: grab; border-radius: 8px; }
+.ai-draw-hit:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.ai-draw-hit.dragging { cursor: grabbing; }
 .ai-draw-stroke { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ink) 80%, transparent)); }
 .ai-draw-stroke.drawn { stroke-dashoffset: 0 !important; }

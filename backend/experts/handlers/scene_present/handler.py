@@ -30,12 +30,23 @@ def render_inputs(req: ScenePresentRequest) -> dict:
         "view": req.view.strip() or "(nothing described)",
         "frames": frames,
         "targets": "\n".join(f"{t.ref}: {t.about.strip()}" if t.about.strip() else t.ref for t in req.targets),
+        "on_view": _on_view(req),
     }
+
+
+def _on_view(req: ScenePresentRequest) -> str:
+    """What earlier walk-throughs left on the view, one per line: notes, board lines, drawn shapes by id."""
+    v = req.on_view
+    lines = [f"note: {t}" for t in v.notes] + [f"board: {t}" for t in v.board]
+    for d in v.drawn:
+        joins = f" ({' -> '.join(d.joins)})" if d.joins else ""
+        lines.append(f"draw:{d.id}: {d.type}{f' {d.label!r}' if d.label else ''}{joins}")
+    return "\n".join(lines) or "(nothing: the view is clean)"
 
 
 @register_handler("scene_present", request_model=ScenePresentRequest, speaks=True)
 def scene_present(req: ScenePresentRequest) -> dict:
-    out = present({t.ref for t in req.targets}, len(req.frames), **render_inputs(req))
+    out = present({t.ref for t in req.targets}, len(req.frames), left=req.on_view, **render_inputs(req))
     if out.error:
         return {"reason": out.error}
     if not out.steps:

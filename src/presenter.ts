@@ -20,10 +20,10 @@ import { setSliderValue } from '/sliders.js';
 import { dataToWorld } from '/coords.js';
 import { objectCellAnchor, objectChartMarks, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
 import { keyDelay } from '/code-assist-play.js';
-import { LINKS, SHAPES, edgePoint, layoutShapes, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Point } from '/drawing-layout.js';
+import { LINKS, SHAPES, edgePoint, layoutDrawing, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Laid, type Point, type Rect } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
-interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line';
+interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line' | 'both';
     slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; erase_draw?: string[]; color?: string; draw?: Drawing | null }
 interface Target { ref: string; about: string }
 
@@ -426,7 +426,7 @@ async function dragSliderTo(f: number, r: number) {
 
 // ── The scratchpad: lines typed over the view, as a presenter writes on the board ──
 
-let notes: Element[] = [], notesFade = 0;
+let notes: Element[] = [];
 // The board: notes sent to the top left, stacked like lines on a blackboard; erasing leaves them, the end clears them.
 let board: HTMLElement[] = [];
 // Each note by what was written, so a later beat can name it to wipe or to keep on the board.
@@ -560,7 +560,6 @@ const INKS = new Set(['yellow', 'red', 'blue', 'purple', 'orange', 'pink']);
 const inkClass = (color?: string) => color && INKS.has(color) ? `ai-ink-${color}` : '';
 
 async function typeNote(text: string, near: string, r: number, onBoard = false, color = ''): Promise<HTMLElement> {
-    clearTimeout(notesFade);
     const note = document.createElement('div');note.className = `ai-note ${inkClass(color)}`.trim();note.title = 'Drag to move';
     makeMovable(note);
     const ink = document.createElement('span');ink.className = 'ai-note-ink';
@@ -600,8 +599,7 @@ function edgeToward(r: DOMRect, x: number, y: number, pad: number): {x: number; 
  */
 // Arrows starting at a note: redrawn when the learner moves the note.
 const arrowsFrom = new WeakMap<Element, (() => void)[]>();
-async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r: number, fromNote: Element | null = null, color = '', kind: 'arrow' | 'line' = 'arrow') {
-    clearTimeout(notesFade);
+async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r: number, fromNote: Element | null = null, color = '', kind: 'arrow' | 'line' | 'both' = 'arrow') {
     // Its hand: which side it bows to, and its wobble, kept so a redraw is the same stroke, moved.
     const side = Math.random() < .5 ? -1 : 1, jitter = [Math.random() - .5, Math.random() - .5, Math.random() - .5, Math.random() - .5];
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');svg.classList.add('ai-arrow');
@@ -613,7 +611,7 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
         const f = from(), t = to();
         if (!f || !t) return 0;
         const fc = {x: f.left + f.width / 2, y: f.top + f.height / 2}, tc = {x: t.left + t.width / 2, y: t.top + t.height / 2};
-        const a = edgeToward(f, tc.x, tc.y, 4), b = edgeToward(t, fc.x, fc.y, kind === 'line' ? 4 : 7);
+        const a = edgeToward(f, tc.x, tc.y, kind === 'both' ? 7 : 4), b = edgeToward(t, fc.x, fc.y, kind === 'line' ? 4 : 7);
         const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
         if (len < 12) { svg.innerHTML = '';return 0; }
         // A bow to one side, and a hand's wobble: two control points off the straight line.
@@ -621,13 +619,15 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
         const c1 = {x: a.x + dx * .3 + nx * bow + wob(0), y: a.y + dy * .3 + ny * bow + wob(1)};
         const c2 = {x: a.x + dx * .7 + nx * bow * .8 + wob(2), y: a.y + dy * .7 + ny * bow * .8 + wob(3)};
         svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/>`;
-        if (kind === 'arrow') {
-            // The head follows the curve's last direction.
-            const ex = b.x - c2.x, ey = b.y - c2.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
-            const wing = (k: number) => { const c = Math.cos(k), s = Math.sin(k);return {x: b.x - head * (ux * c - uy * s), y: b.y - head * (uy * c + ux * s)}; };
+        // A head follows the curve's direction into its tip: at the end, and for "both" at the start too.
+        const headAt = (tip: Point, from: Point) => {
+            const ex = tip.x - from.x, ey = tip.y - from.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
+            const wing = (k: number) => { const c = Math.cos(k), s = Math.sin(k);return {x: tip.x - head * (ux * c - uy * s), y: tip.y - head * (uy * c + ux * s)}; };
             const w1 = wing(.48), w2 = wing(-.42);
-            svg.insertAdjacentHTML('beforeend', `<path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${b.x},${b.y} L${w2.x},${w2.y}"/>`);
-        }
+            svg.insertAdjacentHTML('beforeend', `<path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${tip.x},${tip.y} L${w2.x},${w2.y}"/>`);
+        };
+        if (kind !== 'line') headAt(b, c2);
+        if (kind === 'both') headAt(a, c1);
         if (!svg.classList.contains('drawn')) shaft()?.style.setProperty('stroke-dashoffset', String(1 - drawnSoFar));
         return len;
     };
@@ -655,7 +655,7 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
             await new Promise(res => requestAnimationFrame(res));
         }
         svg.classList.add('drawn');
-        if (kind === 'arrow') { svg.classList.add('headed');await sleep(220); }
+        if (kind !== 'line') { svg.classList.add('headed');await sleep(220); }
     } finally {
         drawingArrow = false;
     }
@@ -665,56 +665,246 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
 // ── Drawing: a small diagram the pointer sketches over the view (a beat's `draw`) ──
 
 interface Drawn { spec: DrawSpec; paths: SVGPathElement[]; label: HTMLElement | null; place: () => void; local: () => DOMRect | null }
-/** The walk-through's drawing board: one box over the view that every beat's drawing adds to. */
-let sketch: {el: HTMLDivElement; svg: SVGSVGElement; w: number; h: number; layout: string; specs: DrawSpec[]; at: Map<string, Point>; items: Map<string, Drawn>; all: Drawn[]} | null = null;
+/**
+ * The walk-through's drawing board: one box over the view that every beat's drawing adds to. The drawing is laid
+ * out in its own space (`canvas`), fitted into the board by `view` (scaled down when it's bigger, centred); a group
+ * the learner dragged keeps its offset (`moved`).
+ */
+interface Sketch {
+    el: HTMLDivElement; canvas: HTMLDivElement; svg: SVGSVGElement; w: number; h: number; layout: string;
+    specs: DrawSpec[]; laid: Laid; view: {ox: number; oy: number; s: number}; moved: Map<DrawSpec, Point>;
+    items: Map<string, Drawn>; all: Drawn[]; groups: Map<DrawSpec, HTMLDivElement>; hits: Map<DrawSpec, HTMLDivElement>;
+    /** The drawing itself, a group around all of it: its title drags the whole board. */
+    root: DrawSpec;
+    /** Laid out again: where things were and how the board was fitted, as they glide to their new places. */
+    glide: {from: Map<DrawSpec, Rect>; view: {ox: number; oy: number; s: number}; to: {ox: number; oy: number; s: number}; t0: number} | null;
+}
+let sketch: Sketch | null = null;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const LABEL_FONT = '600 15px ui-monospace, SFMono-Regular, Menlo, monospace';
 let measurer: CanvasRenderingContext2D | null = null;
 const textWidth = (t: string) => { measurer ??= document.createElement('canvas').getContext('2d');if (!measurer) return t.length * 9;measurer.font = LABEL_FONT;return measurer.measureText(t).width; };
 
+/**
+ * A shape's size in px within a box `within` (its group's, or the board): w and h on that box's grid, never
+ * smaller than its label; a circle with only a w is round. Text is as big as its words.
+ */
+function shapeSize(spec: DrawSpec, within: {w: number; h: number}): {w: number; h: number} {
+    const tw = textWidth(spec.label ?? '');
+    if (spec.type === 'text') return {w: tw * 14 / 15 + 6, h: 20};
+    // An ellipse holds less than its box: wide enough that a line of text inside clears its curve.
+    const fit = spec.type === 'diamond' ? tw * 1.6 + 30 : spec.type === 'ellipse' ? Math.max(36, tw * 1.22 + 26) : Math.max(34, tw + 22);
+    const w = Math.max(fit, spec.w ? spec.w / 100 * within.w : 0);
+    const h = spec.h ? Math.max(spec.h / 100 * within.h, 30) : spec.type === 'diamond' ? 46 : spec.type === 'ellipse' ? (spec.w || tw < 20 ? w : 42) : 32;
+    return {w, h};
+}
+/** The group a spec sits in, if it names one on the board. */
+const groupOf = (b: Sketch, e: DrawSpec) => e.group ? b.specs.find(g => g.type === 'group' && g.id === e.group) ?? null : null;
+/** How far the learner dragged it: its own drag and its groups'. */
+function offsetOf(b: Sketch, e: DrawSpec): Point {
+    const o = {x: 0, y: 0};
+    for (let g: DrawSpec | null = e, i = 0; g && i < 50; g = groupOf(b, g), i++) { const m = b.moved.get(g);if (m) { o.x += m.x;o.y += m.y; } }
+    return o;
+}
+/** A laid-out element's box in the drawing's space, where the learner left it. */
+function boxOf(b: Sketch, e: DrawSpec): DOMRect | null {
+    const r = laidBox(b, e);
+    if (!r) return null;
+    const o = offsetOf(b, e);
+    return new DOMRect(r.x + o.x, r.y + o.y, r.w, r.h);
+}
+/** How long things take to glide to where a new layout puts them, and how far along they are. */
+const GLIDE_MS = 480;
+const glideK = (b: Sketch) => { if (!b.glide) return 1;const t = Math.min(1, (performance.now() - b.glide.t0) / GLIDE_MS);return 1 - Math.pow(1 - t, 3); };
+const mix = (a: number, z: number, k: number) => a + (z - a) * k;
+/** Where the layout has it now: on its way from its old place to its new one while a new layout glides in. */
+function laidBox(b: Sketch, e: DrawSpec): Rect | null {
+    const r = b.laid.boxes.get(e), f = b.glide?.from.get(e);
+    if (!r || !f) return r ?? null;
+    const k = glideK(b);
+    return {x: mix(f.x, r.x, k), y: mix(f.y, r.y, k), w: mix(f.w, r.w, k), h: mix(f.h, r.h, k)};
+}
+/**
+ * A group's box as it is now: where it was laid out, grown to hold what is in it wherever the learner dragged it.
+ * Its background and the links to it use this.
+ */
+function extentOf(b: Sketch, g: DrawSpec, depth = 0): DOMRect | null {
+    const root = g === b.root;
+    let r = root ? new DOMRect(0, 0, b.laid.w, b.laid.h) : boxOf(b, g);
+    if (!r || depth > 20) return r;
+    for (const e of b.specs) {
+        if ((root ? groupOf(b, e) !== null : groupOf(b, e) !== g) || e.type === 'path' || LINKS.has(e.type)) continue;
+        const c = e.type === 'group' ? extentOf(b, e, depth + 1) : b.all.find(d => d.spec === e)?.local() ?? null;
+        if (!c) continue;
+        const x0 = Math.min(r.left, c.left), y0 = Math.min(r.top, c.top), x1 = Math.max(r.right, c.right), y1 = Math.max(r.bottom, c.bottom);
+        r = new DOMRect(x0, y0, x1 - x0, y1 - y0);
+    }
+    return r;
+}
+/** The box a picture's points are on: its group's, or the whole drawing's. */
+function frameOf(b: Sketch, e: DrawSpec): DOMRect {
+    const g = groupOf(b, e);
+    return (g && boxOf(b, g)) || new DOMRect(0, 0, b.laid.w, b.laid.h);
+}
+const toScreen = (b: Sketch, x: number, y: number) => {
+    const o = b.el.getBoundingClientRect();
+    return {x: o.left + b.view.ox + x * b.view.s, y: o.top + b.view.oy + y * b.view.s};
+};
+const fromScreen = (b: Sketch, r: DOMRect) => {
+    const o = b.el.getBoundingClientRect(), s = b.view.s;
+    return new DOMRect((r.left - o.left - b.view.ox) / s, (r.top - o.top - b.view.oy) / s, r.width / s, r.height / s);
+};
+
+/** Lay the drawing out again, fit it to the board, and put everything where it now goes. */
+function layoutBoard(b: Sketch) {
+    // What is drawn glides from where it is now; what is new starts in its place.
+    const from = new Map<DrawSpec, Rect>();
+    for (const e of b.laid.boxes.keys()) { const r = laidBox(b, e);if (r) from.set(e, r); }
+    const first = !from.size;
+    b.laid = layoutDrawing(b.specs, b.layout, {box: {w: b.w, h: b.h}, sizeOf: shapeSize});
+    const pad = 12, s = Math.min(1, (b.w - 2 * pad) / Math.max(1, b.laid.w), (b.h - 2 * pad) / Math.max(1, b.laid.h));
+    const to = {ox: (b.w - b.laid.w * s) / 2, oy: (b.h - b.laid.h * s) / 2, s};
+    if (first) {
+        b.glide = null;b.view = to;fitCanvas(b);placeAll(b);
+        return;
+    }
+    const running = !!b.glide;
+    b.glide = {from, view: {...b.view}, to, t0: performance.now()};
+    if (running) return;
+    const tick = () => {
+        if (!b.glide || !b.el.isConnected) return;
+        const k = glideK(b), {view: v, to: z} = b.glide;
+        b.view = {ox: mix(v.ox, z.ox, k), oy: mix(v.oy, z.oy, k), s: mix(v.s, z.s, k)};
+        fitCanvas(b);placeAll(b);
+        if (k < 1) requestAnimationFrame(tick);
+        else b.glide = null;
+    };
+    tick();
+}
+const fitCanvas = (b: Sketch) => { b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`; };
+function placeAll(b: Sketch) {
+    for (const item of b.all) item.place();
+    for (const [g, el] of b.groups) {
+        const r = extentOf(b, g);
+        if (!r) continue;
+        // Room above for its title.
+        el.style.left = `${r.left - 12}px`;el.style.top = `${r.top - 34}px`;el.style.width = `${r.width + 24}px`;el.style.height = `${r.height + 46}px`;
+    }
+    for (const [e, el] of b.hits) {
+        const r = b.all.find(d => d.spec === e)?.local();
+        if (!r) continue;
+        el.style.left = `${r.left - 4}px`;el.style.top = `${r.top - 4}px`;el.style.width = `${r.width + 8}px`;el.style.height = `${r.height + 8}px`;
+    }
+}
+
+/** Drag `el` to move what it holds: `drag` gets each step of the move in screen px. */
+function draggable(el: HTMLElement, drag: (dx: number, dy: number) => void, lit: HTMLElement = el) {
+    el.addEventListener('pointerdown', e => {
+        if (e.button !== 0) return;
+        e.preventDefault();e.stopPropagation();el.setPointerCapture(e.pointerId);lit.classList.add('dragging');
+        let x = e.clientX, y = e.clientY;
+        const move = (ev: PointerEvent) => { drag(ev.clientX - x, ev.clientY - y);x = ev.clientX;y = ev.clientY; };
+        const up = () => { el.removeEventListener('pointermove', move);lit.classList.remove('dragging'); };
+        el.addEventListener('pointermove', move);
+        el.addEventListener('pointerup', up, {once: true});el.addEventListener('pointercancel', up, {once: true});
+    });
+}
+/** Move a drawn element (and what is in it) by a drag of (dx, dy) screen px; the links to it follow. */
+function nudge(b: Sketch, e: DrawSpec, dx: number, dy: number) {
+    const m = b.moved.get(e) ?? {x: 0, y: 0};
+    b.moved.set(e, {x: m.x + dx / b.view.s, y: m.y + dy / b.view.s});
+    placeAll(b);
+}
+/** The groups `e` sits in, innermost first. */
+function groupsAround(b: Sketch, e: DrawSpec): DrawSpec[] {
+    const out: DrawSpec[] = [];
+    for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) out.push(g);
+    return out;
+}
+/**
+ * A group's handle, under its shapes: pointed at (or anything in it), it lights up behind them, the scene dimmed,
+ * so they read over a busy view, and shows its title; the title drags the whole group.
+ */
+function groupHandle(b: Sketch, g: DrawSpec): HTMLDivElement {
+    const el = document.createElement('div');el.className = 'ai-draw-group';
+    const title = document.createElement('div');title.className = 'ai-draw-group-title';
+    title.textContent = g.label || g.id || '';title.title = 'Drag to move';
+    el.append(title);
+    // The drawing's own title moves the board; a group's moves the group.
+    draggable(title, (dx, dy) => {
+        if (g !== b.root) { nudge(b, g, dx, dy);return; }
+        b.el.style.left = `${parseFloat(b.el.style.left) + dx}px`;b.el.style.top = `${parseFloat(b.el.style.top) + dy}px`;
+    }, el);
+    // Parents first, so a group inside another is on top of it.
+    b.canvas.insertBefore(el, b.svg);
+    b.groups.set(g, el);
+    return el;
+}
+/** A shape's or a word's own handle, over it: drag it anywhere, and it lights its groups while pointed at. */
+function nodeHandle(b: Sketch, e: DrawSpec): HTMLDivElement {
+    const el = document.createElement('div');el.className = 'ai-draw-hit';el.title = 'Drag to move';
+    draggable(el, (dx, dy) => nudge(b, e, dx, dy));
+    const light = (on: boolean) => { for (const g of [...groupsAround(b, e), b.root]) b.groups.get(g)?.classList.toggle('lit', on); };
+    // The learner's own mouse only: the presenter's pointer hovers the view with made-up events, and must not light
+    // the drawing it draws.
+    el.addEventListener('pointerenter', e => { if (e.isTrusted) light(true); });
+    el.addEventListener('pointerleave', e => { if (e.isTrusted) light(false); });
+    b.canvas.append(el);
+    b.hits.set(e, el);
+    return el;
+}
+
 /** The board, made on the first drawing: a wide box (3 by 2) in a free part of the view, clear of notes and panels. */
-function sketchBoard(): NonNullable<typeof sketch> {
+function sketchBoard(): Sketch {
     if (sketch?.el.isConnected && !sketch.el.classList.contains('fading')) return sketch;
     const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
     const w = Math.round(Math.max(300, Math.min(560, view.width * .62, (view.height - 120) * 1.5))), h = Math.round(w * 2 / 3);
     const el = document.createElement('div');el.className = 'ai-drawing';
     const at = placeNote(w, h, null);
     el.style.left = `${at.x}px`;el.style.top = `${at.y}px`;el.style.width = `${w}px`;el.style.height = `${h}px`;
-    const svg = document.createElementNS(SVG_NS, 'svg');svg.setAttribute('width', String(w));svg.setAttribute('height', String(h));
-    el.append(svg);notesLayer().append(el);notes.push(el);
-    sketch = {el, svg, w, h, layout: '', specs: [], at: new Map(), items: new Map(), all: []};
+    const canvas = document.createElement('div');canvas.className = 'ai-drawing-canvas';
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    canvas.append(svg);el.append(canvas);notesLayer().append(el);notes.push(el);
+    sketch = {el, canvas, svg, w, h, layout: '', specs: [], laid: {boxes: new Map(), w, h}, view: {ox: 0, oy: 0, s: 1}, moved: new Map(),
+        items: new Map(), all: [], groups: new Map(), hits: new Map(), root: {type: 'group', label: 'Drawing'}, glide: null};
+    groupHandle(sketch, sketch.root).classList.add('ai-draw-root');
     return sketch;
 }
 /** A drawn shape's box on screen, or the `part` of its label; null when it's gone. */
 function drawnRect(id: string, part = ''): DOMRect | null {
-    const item = sketch?.el.isConnected ? sketch.items.get(id) : undefined;
-    if (!item || !sketch) return null;
+    const b = sketch, item = b?.el.isConnected ? b.items.get(id) : undefined;
+    if (!item || !b) return null;
     if (part && item.label) { const t = textRect(item.label, part);if (t) return t; }
-    const l = item.local(), o = sketch.el.getBoundingClientRect();
-    return l ? new DOMRect(o.left + l.left, o.top + l.top, l.width, l.height) : null;
+    const l = item.local();
+    if (!l) return null;
+    const p = toScreen(b, l.left, l.top);
+    return new DOMRect(p.x, p.y, l.width * b.view.s, l.height * b.view.s);
 }
-/** Where a link's end is, in the board's own coordinates: a drawn shape (its type, centre and size) or a ref on the view. */
+/**
+ * Where a link's end is now, in the drawing's space: anything drawn (a shape, a group, text, another link) by its
+ * id, or a ref on the view. Read on every redraw, so a link follows what it joins as it's laid out or dragged.
+ */
 function linkEnd(name: string): {type: string; cx: number; cy: number; w: number; h: number} | null {
-    if (!sketch) return null;
-    const item = sketch.items.get(name), o = sketch.el.getBoundingClientRect();
-    const r = item ? item.local() : (() => { const v = resolveTarget(name);return v ? new DOMRect(v.left - o.left, v.top - o.top, v.width, v.height) : null; })();
+    const b = sketch;
+    if (!b) return null;
+    const item = b.items.get(name);
+    const r = item ? item.local() : (() => { const v = resolveTarget(name);return v ? fromScreen(b, v) : null; })();
     if (!r) return null;
     return {type: item && SHAPES.has(item.spec.type) ? item.spec.type : 'rectangle', cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height};
 }
-/** The pointer draws `path` (in the board's coordinates) as a hand would: onto its start, then along it as it appears. */
+/** The pointer draws `path` (in the drawing's space) as a hand would: onto its start, then along it as it appears. */
 async function traceStroke(path: SVGPathElement, r: number, speed = 1) {
-    if (!sketch) return;
-    const board = sketch.el, total = path.getTotalLength(), s0 = path.getPointAtLength(0);
-    let o = board.getBoundingClientRect();
-    await glide(o.left + s0.x, o.top + s0.y, r, 220);
-    const dur = Math.min(900, 200 + total * 1.3) / speed, t0 = performance.now();
+    const b = sketch;
+    if (!b) return;
+    const total = path.getTotalLength(), s0 = path.getPointAtLength(0), p0 = toScreen(b, s0.x, s0.y);
+    await glide(p0.x, p0.y, r, 220);
+    const dur = Math.min(900, 200 + total * b.view.s * 1.3) / speed, t0 = performance.now();
     for (;;) {
         alive(r);
         const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         path.style.setProperty('stroke-dashoffset', String(1 - k));
-        o = board.getBoundingClientRect();
-        const p = path.getPointAtLength(total * k);
-        pos.x = o.left + p.x;pos.y = o.top + p.y;paintPointer();
+        const p = path.getPointAtLength(total * k), at = toScreen(b, p.x, p.y);
+        pos.x = at.x;pos.y = at.y;paintPointer();
         if (t >= 1) break;
         await new Promise(res => requestAnimationFrame(res));
     }
@@ -737,6 +927,11 @@ const newPath = (cls: string, color: string) => {
     p.setAttribute('class', `${cls} ${inkClass(color)}`.trim());
     return p;
 };
+const newLabel = (b: Sketch, cls: string, ink: string) => {
+    const lab = Object.assign(document.createElement('div'), {className: `ai-draw-label ${cls} ${inkClass(ink)}`.replace(/\s+/g, ' ').trim()});
+    b.canvas.append(lab);
+    return lab;
+};
 
 /** Draw a beat's drawing on the board: each element in turn, the pointer making its strokes and writing its words. */
 async function drawSketch(d: Drawing, color: string, r: number) {
@@ -745,74 +940,78 @@ async function drawSketch(d: Drawing, color: string, r: number) {
     const fresh = d.elements.filter(e => !e.id || !b.items.has(e.id));
     b.specs.push(...fresh);
     if (d.layout) b.layout = d.layout;
-    // Laid out again with each new shape: what is already drawn moves to its new place.
-    const relayout = () => { b.at = layoutShapes(b.specs, b.layout);for (const item of b.all) item.place(); };
-    relayout();
+    // Laid out with everything this beat adds, before any of it is drawn: what is already drawn moves once, to
+    // where it goes, and each new thing is drawn in its place.
+    for (const g of fresh) if (g.type === 'group' && g.id) {
+        groupHandle(b, g);
+        const item: Drawn = {spec: g, paths: [], label: null, place: () => undefined, local: () => extentOf(b, g)};
+        b.items.set(g.id, item);b.all.push(item);
+    }
+    layoutBoard(b);
     drawingArrow = true;
     try {
         for (const spec of fresh) {
             alive(r);
             const ink = spec.color || color;
-            if (SHAPES.has(spec.type) && spec.id) {
-                const label = spec.label ?? '', tw = textWidth(label);
-                const size = () => {
-                    const w = spec.w ? spec.w / 100 * b.h : spec.type === 'diamond' ? tw + 40 : spec.type === 'ellipse' ? Math.max(34, tw + 22) : Math.max(34, tw + 22);
-                    const h = spec.h ? spec.h / 100 * b.h : spec.type === 'diamond' ? 44 : spec.type === 'ellipse' ? (tw < 30 ? Math.max(34, w) : 36) : 32;
-                    return {w, h};
-                };
+            if (SHAPES.has(spec.type)) {
+                const label = spec.label ?? '';
                 const jitter = [Math.random() - .5, Math.random() - .5, Math.random() - .5, Math.random() - .5];
                 const path = newPath('ai-draw-stroke', ink);b.svg.append(path);
-                const lab = label ? Object.assign(document.createElement('div'), {className: `ai-draw-label ${inkClass(ink)}`.trim()}) : null;
-                if (lab) b.el.append(lab);
-                const local = () => {
-                    const c = (b.at.get(spec.id!) ?? {x: 50, y: 50}), {w, h} = size();
-                    return new DOMRect(c.x / 100 * b.w - w / 2, c.y / 100 * b.h - h / 2, w, h);
-                };
+                const lab = label ? newLabel(b, '', ink) : null;
+                const local = () => boxOf(b, spec);
                 const place = () => {
                     const l = local();
+                    if (!l) return;
                     path.setAttribute('d', shapeStroke(spec.type, l.left + l.width / 2, l.top + l.height / 2, l.width, l.height, jitter));
                     if (lab) { lab.style.left = `${l.left + l.width / 2}px`;lab.style.top = `${l.top + l.height / 2}px`; }
                 };
                 const item: Drawn = {spec, paths: [path], label: lab, place, local};
-                b.items.set(spec.id, item);b.all.push(item);
-                relayout();
+                if (spec.id) b.items.set(spec.id, item);
+                b.all.push(item);
+                place();
                 await traceStroke(path, r);
                 if (lab) await typeLabel(lab, label, r);
+                nodeHandle(b, spec);placeAll(b);
             } else if (LINKS.has(spec.type) && ((spec.start && spec.end) || (spec.points?.length ?? 0) >= 2)) {
-                const shaft = newPath('ai-draw-stroke', ink), head = spec.type === 'arrow' ? newPath('ai-draw-stroke', ink) : null;
-                b.svg.append(shaft);if (head) b.svg.append(head);
+                // Its heads: at the end (an arrow's default), the start, both, or none (a line).
+                const heads = spec.type === 'line' ? 'none' : spec.heads || 'end';
+                const atEnd = heads === 'end' || heads === 'both', atStart = heads === 'start' || heads === 'both';
+                const shaft = newPath('ai-draw-stroke', ink);
+                const head = atEnd ? newPath('ai-draw-stroke', ink) : null, tail = atStart ? newPath('ai-draw-stroke', ink) : null;
+                b.svg.append(shaft);if (head) b.svg.append(head);if (tail) b.svg.append(tail);
                 // A name beside it (a vector's "a"), written once it's drawn, off the middle of the shaft.
-                const lab = spec.label ? Object.assign(document.createElement('div'), {className: `ai-draw-label ${inkClass(ink)}`.trim()}) : null;
-                if (lab) b.el.append(lab);
+                const lab = spec.label ? newLabel(b, '', ink) : null;
                 const bow = (Math.random() - .5) * .25;
                 const free = !(spec.start && spec.end);
-                const grid = () => spec.points!.map(([x = 0, y = 0]) => ({x: x / 100 * b.w, y: y / 100 * b.h}));
+                const pts = () => { const f = frameOf(b, spec);return spec.points!.map(([x = 0, y = 0]) => ({x: f.left + x / 100 * f.width, y: f.top + y / 100 * f.height})); };
                 const place = () => {
-                    // The shaft from a to z; (mx, my) is where it comes into z from, for the head.
-                    let a: Point, z: Point, mx: number, my: number;
+                    // The shaft from a to z; (mx, my) is where it comes into z from, (nx, ny) where it leaves a towards.
+                    let a: Point, z: Point, mx: number, my: number, nx: number, ny: number;
                     if (free) {
-                        const pts = grid();
-                        a = pts[0]!;z = pts[pts.length - 1]!;
-                        if (pts.length > 2) {
-                            shaft.setAttribute('d', smoothPath(pts));
-                            ({x: mx, y: my} = pts[pts.length - 2]!);
+                        const ps = pts();
+                        a = ps[0]!;z = ps[ps.length - 1]!;
+                        if (ps.length > 2) {
+                            shaft.setAttribute('d', smoothPath(ps));
+                            ({x: mx, y: my} = ps[ps.length - 2]!);({x: nx, y: ny} = ps[1]!);
                         } else {
-                            mx = (a.x + z.x) / 2;my = (a.y + z.y) / 2;
+                            mx = nx = (a.x + z.x) / 2;my = ny = (a.y + z.y) / 2;
                             shaft.setAttribute('d', `M${a.x} ${a.y} L${z.x} ${z.y}`);
                         }
                     } else {
                         const s = linkEnd(spec.start!), e = linkEnd(spec.end!);
                         if (!s || !e) return;
-                        a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {x: e.cx, y: e.cy});z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {x: s.cx, y: s.cy}, head ? 5 : 3);
+                        a = edgePoint(s.type, s.cx, s.cy, s.w, s.h, {x: e.cx, y: e.cy}, tail ? 5 : 3);z = edgePoint(e.type, e.cx, e.cy, e.w, e.h, {x: s.cx, y: s.cy}, head ? 5 : 3);
                         const dx = z.x - a.x, dy = z.y - a.y;
-                        mx = (a.x + z.x) / 2 - dy * bow;my = (a.y + z.y) / 2 + dx * bow;
+                        mx = nx = (a.x + z.x) / 2 - dy * bow;my = ny = (a.y + z.y) / 2 + dx * bow;
                         shaft.setAttribute('d', `M${a.x} ${a.y} Q${mx} ${my} ${z.x} ${z.y}`);
                     }
-                    if (head) {
-                        const ex = z.x - mx, ey = z.y - my, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
-                        const wing = (k: number) => { const c = Math.cos(k), si = Math.sin(k);return `${z.x - len * (ux * c - uy * si)} ${z.y - len * (uy * c + ux * si)}`; };
-                        head.setAttribute('d', `M${wing(.5)} L${z.x} ${z.y} L${wing(-.45)}`);
-                    }
+                    const headAt = (path: SVGPathElement, tip: Point, fx: number, fy: number) => {
+                        const ex = tip.x - fx, ey = tip.y - fy, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, len = 11;
+                        const wing = (k: number) => { const c = Math.cos(k), si = Math.sin(k);return `${tip.x - len * (ux * c - uy * si)} ${tip.y - len * (uy * c + ux * si)}`; };
+                        path.setAttribute('d', `M${wing(.5)} L${tip.x} ${tip.y} L${wing(-.45)}`);
+                    };
+                    if (head) headAt(head, z, mx, my);
+                    if (tail) headAt(tail, a, nx, ny);
                     if (lab) {
                         const m = shaft.getPointAtLength(shaft.getTotalLength() / 2), dx = z.x - a.x, dy = z.y - a.y, l = Math.hypot(dx, dy) || 1;
                         // To the left of the way it goes (above a rightward arrow), clear of the stroke.
@@ -820,17 +1019,18 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                     }
                 };
                 const local = () => { const bb = shaft.getBBox();return new DOMRect(bb.x, bb.y, bb.width, bb.height); };
-                const item: Drawn = {spec, paths: head ? [shaft, head] : [shaft], label: lab, place, local};
+                const item: Drawn = {spec, paths: [shaft, ...(head ? [head] : []), ...(tail ? [tail] : [])], label: lab, place, local};
                 if (spec.id) b.items.set(spec.id, item);
                 b.all.push(item);
                 place();
                 await traceStroke(shaft, r);
                 if (head) await traceStroke(head, r, 2.5);
+                if (tail) await traceStroke(tail, r, 2.5);
                 if (lab) await typeLabel(lab, spec.label!, r);
             } else if (spec.type === 'path' && (spec.points?.length ?? 0) >= 2) {
-                // A free stroke (a smile, a wave, a curve): through its points on the grid, smoothed.
+                // A free stroke (a smile, a wave, a curve): through its points on its group's grid, smoothed.
                 const path = newPath('ai-draw-stroke', ink);b.svg.append(path);
-                const place = () => path.setAttribute('d', smoothPath(spec.points!.map(([x = 0, y = 0]) => ({x: x / 100 * b.w, y: y / 100 * b.h})), spec.closed));
+                const place = () => { const f = frameOf(b, spec);path.setAttribute('d', smoothPath(spec.points!.map(([x = 0, y = 0]) => ({x: f.left + x / 100 * f.width, y: f.top + y / 100 * f.height})), spec.closed)); };
                 const local = () => { const bb = path.getBBox();return new DOMRect(bb.x, bb.y, bb.width, bb.height); };
                 const item: Drawn = {spec, paths: [path], label: null, place, local};
                 if (spec.id) b.items.set(spec.id, item);
@@ -838,15 +1038,21 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                 place();
                 await traceStroke(path, r);
             } else if (spec.type === 'text' && spec.label) {
-                const lab = Object.assign(document.createElement('div'), {className: `ai-draw-label ai-draw-text ${inkClass(ink)}`.trim()});
-                b.el.append(lab);
-                const local = () => lab.offsetWidth ? new DOMRect(lab.offsetLeft, lab.offsetTop, lab.offsetWidth, lab.offsetHeight) : null;
+                const lab = newLabel(b, `ai-draw-text${spec.near ? ' beside' : ''}`, ink);
+                // Laid out like a shape; or `near` something: just right of it, level with it.
+                const local = () => {
+                    if (!spec.near) return boxOf(b, spec);
+                    const w = lab.offsetWidth, h = lab.offsetHeight;
+                    return w ? new DOMRect(lab.offsetLeft, lab.offsetTop - h / 2, w, h) : null;
+                };
                 const place = () => {
-                    if (typeof spec.x === 'number' && typeof spec.y === 'number') { lab.style.left = `${spec.x / 100 * b.w}px`;lab.style.top = `${spec.y / 100 * b.h}px`;lab.classList.remove('beside');return; }
-                    const n = spec.near ? linkEnd(spec.near) : null;
-                    // Beside what it is about: just right of it, level with it.
-                    lab.classList.add('beside');
-                    lab.style.left = `${n ? n.cx + n.w / 2 + 8 : b.w / 2}px`;lab.style.top = `${n ? n.cy : b.h - 14}px`;
+                    if (!spec.near) {
+                        const l = boxOf(b, spec);
+                        if (l) { lab.style.left = `${l.left + l.width / 2}px`;lab.style.top = `${l.top + l.height / 2}px`; }
+                        return;
+                    }
+                    const n = linkEnd(spec.near);
+                    lab.style.left = `${n ? n.cx + n.w / 2 + 8 : b.laid.w / 2}px`;lab.style.top = `${n ? n.cy : b.laid.h - 14}px`;
                 };
                 const item: Drawn = {spec, paths: [], label: lab, place, local};
                 if (spec.id) b.items.set(spec.id, item);
@@ -855,6 +1061,7 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                 const p0 = lab.getBoundingClientRect();
                 await glide(p0.left, p0.top + p0.height / 2, r, 260);
                 await typeLabel(lab, spec.label, r);
+                if (!spec.near) { nodeHandle(b, spec);placeAll(b); }
             }
         }
     } finally {
@@ -864,25 +1071,31 @@ async function drawSketch(d: Drawing, color: string, r: number) {
 }
 
 /**
- * Rub out drawn shapes as with an eraser: the pointer scrubs back and forth over each while it fades. The links
- * and text joined to a shape go with it; what stays is laid out again without it.
+ * Rub out drawn things as with an eraser: the pointer scrubs back and forth over each while it fades. The links
+ * and text joined to one go with it, and what is in a group goes with the group; what stays is laid out again.
  */
 async function eraseSketch(ids: string[], r: number) {
     const b = sketch;
     if (!b?.el.isConnected || !ids.length) return;
     const gone = new Set(ids.filter(id => b.items.has(id)));
     if (!gone.size) return;
+    // What is in a group that goes, goes too (and what is in that, and so on).
+    for (let grew = true; grew;) {
+        grew = false;
+        for (const e of b.specs) if (e.id && e.group && gone.has(e.group) && !gone.has(e.id)) { gone.add(e.id);grew = true; }
+    }
+    const inGone = (e: DrawSpec) => !!e.group && gone.has(e.group);
     const joined = (item: Drawn) => [item.spec.start, item.spec.end, item.spec.near].some(e => e && gone.has(e));
-    const going = b.all.filter(item => (item.spec.id && gone.has(item.spec.id)) || joined(item));
+    const going = b.all.filter(item => (item.spec.id && gone.has(item.spec.id)) || joined(item) || inGone(item.spec));
     drawingArrow = true;
     try {
         for (const item of going) {
             alive(r);
             const l = item.local();
             const parts: Element[] = [...item.paths, ...(item.label ? [item.label] : [])];
-            if (l && l.width + l.height > 0) {
-                const o = b.el.getBoundingClientRect(), pad = 6;
-                const x0 = o.left + l.left - pad, x1 = o.left + l.right + pad, y0 = o.top + l.top - pad, h = l.height + 2 * pad;
+            if (l && l.width + l.height > 0 && parts.length) {
+                const tl = toScreen(b, l.left, l.top), br = toScreen(b, l.right, l.bottom), pad = 6;
+                const x0 = tl.x - pad, x1 = br.x + pad, y0 = tl.y - pad, h = br.y - tl.y + 2 * pad;
                 await glide(x0, y0, r, 220);
                 // Back and forth, a little lower each pass, as an eraser goes over a mark.
                 const passes = 5, dur = 650, t0 = performance.now();
@@ -897,6 +1110,8 @@ async function eraseSketch(ids: string[], r: number) {
                 }
             }
             for (const el of parts) el.remove();
+            b.groups.get(item.spec)?.remove();b.groups.delete(item.spec);
+            b.hits.get(item.spec)?.remove();b.hits.delete(item.spec);
         }
     } finally {
         drawingArrow = false;
@@ -904,8 +1119,7 @@ async function eraseSketch(ids: string[], r: number) {
     b.all = b.all.filter(item => !going.includes(item));
     b.specs = b.specs.filter(spec => !going.some(item => item.spec === spec));
     for (const item of going) if (item.spec.id && b.items.get(item.spec.id) === item) b.items.delete(item.spec.id);
-    b.at = layoutShapes(b.specs, b.layout);
-    for (const item of b.all) item.place();
+    layoutBoard(b);
     if (!holding) window.setTimeout(() => { if (!holding && !drawingArrow) restPointer(); }, REST_MS);
 }
 
@@ -1025,7 +1239,18 @@ function describeView(question: string) {
     const rows = m ? ((scene as {data?: Record<string, unknown>} | undefined)?.data?.[m[1]!] as Record<string, unknown>[] | undefined) : undefined;
     if (s && Array.isArray(rows)) for (let n = s.min; n <= s.max && n < rows.length; n++)
         frames.push({n, text: String(rows[n]?.[m![2]!] ?? '').slice(0, 400), state: frameState(rows[n], m![2]!)});
-    return {question, lesson, view, frames, frame: s && frames.length ? s.value : -1, targets: presentTargets()};
+    return {question, lesson, view, frames, frame: s && frames.length ? s.value : -1, targets: presentTargets(), on_view: onView()};
+}
+
+/** What earlier walk-throughs left on the view (it stays until the presenter wipes it): notes, board lines, shapes. */
+function onView() {
+    const here = (n: Element) => n.isConnected && !n.classList.contains('fading');
+    const texts = (list: Element[]) => [...noteByText].filter(([, n]) => list.includes(n) && here(n)).map(([t]) => t.slice(0, 200)).slice(0, 40);
+    const drawn = sketch && here(sketch.el) ? sketch.all.filter(d => d.spec.id).slice(0, 80).map(({spec}) => ({
+        id: spec.id!.slice(0, 40), type: spec.type, label: (spec.label ?? '').slice(0, 120),
+        joins: (spec.start && spec.end ? [spec.start, spec.end] : spec.near ? [spec.near] : spec.group ? [spec.group] : []).map(j => j.slice(0, 120)),
+    })) : [];
+    return {notes: texts(notes), board: texts(board), drawn};
 }
 
 /**
@@ -1074,7 +1299,7 @@ function transcript(body: HTMLElement, beats: string[]): string {
 export async function presentQuestion(question: string, {joinHistory = true, narrating = false, onProgress}: {joinHistory?: boolean; narrating?: boolean; onProgress?: (said: string) => void} = {}): Promise<string | null> {
     // Narrating playback: the run moves on by itself, so the walk-through stays at the state on screen (no slider
     // moves, no pause) and starts on a clean board; the run moving on ends it.
-    if (narrating) { clearTimeout(notesFade);eraseNotes(true); }
+    if (narrating) { eraseNotes(true); }
     const r = begin(!narrating);narratingRun = narrating ? r : 0;
     const start = {scene: state.currentSceneIndex, step: state.currentStepIndex, frame: playbackSlider()?.value ?? -1};
     const add = window.addChatMessage;
@@ -1121,8 +1346,7 @@ function end(r: number) {
     if (r !== run) return;
     markPlaying(null);
     playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');
-    // What was written stays a moment after the last word, then fades.
-    notesFade = window.setTimeout(() => eraseNotes(true), 4000);
+    // What was written and drawn stays: the presenter wipes it on a later walk-through when it's done with it.
 }
 
 /** Play the beats, each line said into `body`; resolves to what was said. */
@@ -1162,6 +1386,14 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         });
         const arrowFor = async (note: HTMLElement | null) => {
             if (!beat.arrow_to) return;
+            // Joining something drawn: a link on the board, whose ends are found again as the drawing is laid out
+            // or dragged.
+            const fromRef = beat.arrow_from || (note ? '' : beat.target);
+            if (sketch?.el.isConnected && fromRef && [beat.arrow_to, fromRef].some(x => x.startsWith('draw:'))) {
+                const end = (x: string) => x.startsWith('draw:') ? x.slice(5) : x;
+                await drawSketch({elements: [{type: beat.arrow_kind === 'line' ? 'line' : 'arrow', heads: beat.arrow_kind === 'both' ? 'both' : '', start: end(fromRef), end: end(beat.arrow_to)}]}, beat.color ?? '', r);
+                return;
+            }
             const to = resolveTarget(beat.arrow_to);
             const from = beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
             // Read again on each redraw: a note the learner moves takes its arrow with it.
@@ -1174,7 +1406,7 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         alive(r);
         const wrote = [beat.write, ...(beat.board ?? [])].filter(Boolean);
         // What it drew, as words: the shapes by their labels, the links by their ends.
-        const drew = (beat.draw?.elements ?? []).map(e => LINKS.has(e.type) && e.start ? `${e.start} ${e.type === 'arrow' ? '->' : '-'} ${e.end}` : `${e.type} "${e.label || e.id || ''}"`);
+        const drew = (beat.draw?.elements ?? []).map(e => LINKS.has(e.type) && e.start ? `${e.start} ${e.type === 'line' || e.heads === 'none' ? '-' : e.heads === 'both' ? '<->' : e.heads === 'start' ? '<-' : '->'} ${e.end}` : `${e.type} "${e.label || e.id || ''}"`);
         const rubbed = beat.erase_draw?.length ? ` [erased: ${beat.erase_draw.join(', ')}]` : '';
         said.push(beat.say + rubbed + (wrote.length ? ` [wrote: ${wrote.join(' | ')}]` : '') + (drew.length ? ` [drew: ${drew.join(', ')}]` : ''));
         onBeat?.([...said]);
@@ -1200,7 +1432,7 @@ function addReplay(body: HTMLElement, steps: Beat[], start: Start) {
             btn.disabled = true;btn.title = 'The view has moved on from the step this was about';return;
         }
         stopPresenting();
-        clearTimeout(notesFade);eraseNotes(true);
+        eraseNotes(true);
         const r = begin(), kept = [...body.childNodes];
         markPlaying(msg);
         body.replaceChildren();
@@ -1224,10 +1456,10 @@ function addReplay(body: HTMLElement, steps: Beat[], start: Start) {
     body.append(btn);
 }
 
-/** Stop a walk-through now: the pointer goes, and so does the voice. */
+/** Stop a walk-through now: the pointer goes, and so does the voice; what it wrote and drew stays. */
 export function stopPresenting() {
     if (!playing) return;
-    run++;markPlaying(null);playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');eraseNotes(true);
+    run++;markPlaying(null);playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');
     if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 }
 
@@ -1249,9 +1481,13 @@ export function setupPresenter(): void {
     btn.addEventListener('click', () => {
         on = !on;paint();
         try { localStorage.setItem(PREF_KEY, on ? '1' : '0'); } catch { /* storage off: this session only */ }
-        if (!on) stopPresenting();
+        if (!on) { stopPresenting();eraseNotes(true); }
     });
-    // Esc, or a scene change, ends a walk-through.
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && playing) { e.preventDefault();stopPresenting(); } });
-    window.addEventListener('algebench:navchange', () => { if (playing) stopPresenting(); });
+    // Esc ends a walk-through; what it wrote and drew stays for the next one to build on or wipe. Esc with none
+    // playing wipes it. A scene or step change ends it and wipes it: it was about the view that's gone.
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        if (playing) { e.preventDefault();stopPresenting(); } else if (notes.length || board.length) eraseNotes(true);
+    });
+    window.addEventListener('algebench:navchange', () => { stopPresenting();eraseNotes(true); });
 }
