@@ -151,3 +151,20 @@ def test_a_concept_goes_to_the_chat_only_with_the_presenter_on(monkeypatch):
     assert seen["presenter"] == "on"
     assert h.code_practice(_req(hints=True))["result"]["show"] == ""
     assert seen["presenter"] == "off"
+
+
+def test_code_with_a_line_still_missing_is_never_correct(monkeypatch):
+    seen = {}
+
+    def stub(**inputs):
+        seen.update(inputs)
+        return CodeReview(score=100, verdict="correct", commentary="Great.")
+
+    monkeypatch.setattr(h, "review_code", stub)
+    lines = EXPECTED.split("\n")
+    some = [{"typed": k + 1, "reference": 10 + k, "score": 100} for k in range(len(lines) - 1)]
+    out = h.code_practice(_req(match=some))["result"]
+    assert (out["verdict"], out["score"]) == ("close", 90)
+    assert f"line {9 + len(lines)}" in seen["missing"]
+    every = [{"typed": k + 1, "reference": 10 + k, "score": 100} for k in range(len(lines))]
+    assert h.code_practice(_req(match=every))["result"]["verdict"] == "correct"

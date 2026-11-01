@@ -60,6 +60,11 @@ class CodePracticeSig(dspy.Signature):
     `commentary` and give that line a `line_notes` entry, even if the line
     itself did not change, and never call the rename that caused it correct.
 
+    `missing` lists reference lines no typed line stands for yet (found by
+    analysis): the section isn't finished while any is left, so its verdict
+    is never "correct" nor its score 100, even on a follow-up about one
+    good line. With hints on, `direction` points to what is still missing.
+
     `open_issues` are problems you pointed out before, on lines the learner
     hasn't touched since: they are still there. Don't explain them again;
     in `reminder`, nudge the learner back to them with a short hint each
@@ -109,6 +114,8 @@ class CodePracticeSig(dspy.Signature):
              "'first review' when there was none. After the first review, comment ONLY on these lines")
     name_issues: str = dspy.InputField(
         desc="names read but never defined in the typed code, by line (found by analysis); may be empty")
+    missing: str = dspy.InputField(
+        desc="reference lines of the section no typed line stands for yet, by line (found by analysis); may be empty")
     open_issues: str = dspy.InputField(
         desc="issues from your earlier reviews still open on untouched lines, by line; may be empty")
     notes: str = dspy.InputField(

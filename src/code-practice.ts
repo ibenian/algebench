@@ -98,6 +98,16 @@ export function setupCodePractice(): void {
     const title = el('span', 'side-section-title');title.textContent = 'Type along';
     const toggle = foldButton();
     const target = el('span', 'cp-target');
+    const targetText = el('span', '');
+    const picker = document.createElement('select');picker.className = 'cp-target-pick';picker.hidden = true;
+    picker.setAttribute('aria-label', 'Function to type');
+    target.append(targetText, picker);
+    // The header folds on a click: choosing a function must not.
+    picker.addEventListener('click', e => e.stopPropagation());
+    picker.addEventListener('change', () => {
+        const block = current?.blocks().find(b => String(b.from) === picker.value);
+        if (block && current) current.jumpTo(block);
+    });
     const total = el('span', 'cp-total');total.setAttribute('role', 'status');
     const tools = el('div', 'cp-tools');
     const hide = tool('Hide code', 'Hide the code in the Code panel: lines typed without seeing them score in full');
@@ -376,6 +386,22 @@ export function setupCodePractice(): void {
         if (spoken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
         spoken = '';
     }
+    /**
+     * What is being typed: the file and the block's lines. A step whose run goes through several functions offers
+     * them to pick from; picking one moves the run to where it first runs, and Type along follows it there.
+     */
+    function showTarget(v: CodeView) {
+        const name = v.file.path.split('/').pop(), blocks = v.running ? v.blocks() : [];
+        const label = (from: number, to: number) => `${name} · lines ${from}–${to}`;
+        if (blocks.length < 2) { picker.hidden = true;targetText.hidden = false;targetText.textContent = label(v.from, v.to);return; }
+        const options = blocks.map(b => `${b.from}:${b.to}:${b.name}`).join('|');
+        if (picker.dataset.options !== options) {
+            picker.dataset.options = options;
+            picker.replaceChildren(...blocks.map(b => Object.assign(document.createElement('option'), {value: String(b.from), textContent: `${b.name} · ${b.from}–${b.to}`})));
+        }
+        picker.value = String(v.from);targetText.hidden = true;picker.hidden = false;
+        picker.title = `${name}: the functions this step runs. Pick one to go to where it first runs.`;
+    }
     let shownScene = -1;
     /** Follow the Code panel to the block running now; each block keeps its own attempt. */
     function retarget() {
@@ -392,12 +418,12 @@ export function setupCodePractice(): void {
         const text = v.file.source.split('\n').slice(v.from - 1, v.to).join('\n').replace(/\s+$/, '');
         const next = `${v.file.id}:${v.from}:${hash(text)}`;
         current = v;
+        showTarget(v);
         if (next === key) return;
         if (key) hushCoach();
         key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;clearTimeout(pairIdle);
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
         const count = v.to - v.from + 1;
-        target.textContent = `${v.file.path.split('/').pop()} · lines ${v.from}–${v.to}`;
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
         // Empty until the stored attempt arrives; a move to another block meanwhile leaves it unused.
         attempt = {text: '', peeked: [], reviews: {}, celebrated: []};input.value = '';input.disabled = true;
@@ -799,9 +825,10 @@ export function setupCodePractice(): void {
         clearTimeout(pairIdle);
         if (pairing) pairIdle = window.setTimeout(pairNudge, PAIR_IDLE_MS);
     }
-    /** A long pause on a line: the assistant offers help with it, once a line. */
+    /** A long pause on a line: the assistant offers help with it, once a line, once nothing is being said (the coach's word or the chat's). */
     function pairNudge() {
         if (!pairing || assisting || quiz) return;
+        if (window.algebenchTTSActive?.() || chatTalking() || held) { pairIdle = window.setTimeout(pairNudge, 1000);return; }   // typing meanwhile resets the wait
         const line = caretLine();
         if (pairNudged === line) return;
         pairNudged = line;

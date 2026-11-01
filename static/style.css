@@ -6126,6 +6126,7 @@ body:has(.push-array) #legend { display: none; }
 .code-practice.open .cp-head { border-bottom: 1px solid var(--border-color); }
 .cp-chevron { display: inline-block; transition: transform .15s; }
 .cp-target { color: var(--muted-color); font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-target-pick { font: inherit; color: var(--text-color, #ddd); background: transparent; border: 1px solid var(--border-color, rgba(255,255,255,.18)); border-radius: 4px; padding: 1px 4px; max-width: 100%; cursor: pointer; }
 .cp-total { --fill: 0deg; flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font: 600 8.5px ui-monospace, monospace; letter-spacing: 0; color: var(--text-color);
     background: radial-gradient(closest-side, var(--panel-bg) 76%, transparent 78%), conic-gradient(var(--accent-color) var(--fill), color-mix(in srgb, var(--text-color) 14%, transparent) 0); }
 .cp-total.done { background: radial-gradient(closest-side, var(--panel-bg) 76%, transparent 78%), conic-gradient(#e3b04f 360deg, #e3b04f 0); box-shadow: 0 0 12px #e3b04f88; }

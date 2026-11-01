@@ -101,6 +101,19 @@ def changed_lines(previous: str | None, typed: str) -> set[int] | None:
     return added if rows else None
 
 
+def missing_lines(req: CodePracticeRequest) -> list[tuple[int, str]]:
+    """The reference lines of the section (or the whole block) that no typed line stands for, by the client's
+    match: ``(file line, text)``. Blank and comment lines aside. Code still missing them is not finished."""
+    lines = req.expected.split("\n")
+    a, b = req.first_line, req.first_line + len(lines) - 1
+    if req.section:
+        a, b = max(a, req.section.start), min(b, req.section.end)
+    covered = {m.reference for m in req.match if m.reference}
+    return [(n, lines[n - req.first_line].strip()) for n in range(a, b + 1)
+            if n not in covered and lines[n - req.first_line].strip()
+            and not lines[n - req.first_line].lstrip().startswith(("#", "//"))]
+
+
 def render_inputs(req: CodePracticeRequest) -> dict:
     """The coach's inputs, all ``str``, in the reference file's own line numbers."""
     lines = req.expected.split("\n")
@@ -125,6 +138,7 @@ def render_inputs(req: CodePracticeRequest) -> dict:
         "notes": learner_notes(req.typed, changed_lines(req.previous, req.typed)),
         "changes": changes_since(req.previous, req.typed),
         "name_issues": "\n".join(f"line {line}: {msg}" for line, msg in undefined_names(req.typed, req.expected, req.language)),
+        "missing": "\n".join(f"line {n}: {text}" for n, text in missing_lines(req)),
         "open_issues": "\n".join(f"line {n.line}: {n.note}" for n in carried_notes(req.previous, req.typed, req.open_notes)),
     }
 
@@ -151,6 +165,11 @@ def code_practice(req: CodePracticeRequest) -> dict:
         review.line_notes = sorted(fresh + still, key=lambda n: n.line)
     if not inputs["open_issues"]:
         review.reminder = ""
+    if missing_lines(req) and req.match:
+        # A line still to write: not correct, nor 100, however right the rest is.
+        review.score = min(review.score, 90)
+        if review.verdict == "correct":
+            review.verdict = "close"
     if not req.present:
         # No presenter to show it: the coach explains in words.
         review.show = ""

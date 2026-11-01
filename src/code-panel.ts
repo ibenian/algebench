@@ -62,7 +62,9 @@ const MODE_INFO:Record<StructureMode,{title:string;icon:string}>={
  * What the type-along practice (code-practice.ts) reads of the panel: the open file, the block running now (the
  * whole file when nothing runs, `running` false), the lines a reader can see on screen, and a way to hide the code while typing.
  */
-export interface CodeView { file: CodeFile; from: number; to: number; running: boolean; tone(sectionId: string): string | undefined; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
+/** A top-level block of the code (a function, or code outside any), named by its `def` when it has one. */
+export interface CodeBlock { name: string; from: number; to: number }
+export interface CodeView { file: CodeFile; from: number; to: number; running: boolean; blocks(): CodeBlock[]; jumpTo(block: CodeBlock): void; tone(sectionId: string): string | undefined; shown(): Set<number>; hidden(): boolean; setHidden(on: boolean): void }
 let view: CodeView | null = null;
 export const codeView = (): CodeView | null => view;
 
@@ -508,9 +510,27 @@ export function setupCodePanel(): void {
         // A lesson without code files has no view: say so, or Type along keeps the last lesson's.
         if(!selected){view=null;if(lastViewKey){lastViewKey='';window.dispatchEvent(new CustomEvent('algebench:codeview'));}return;}
         const file=selected,scope=running??{from:1,to:file.source.split('\n').length};
-        view={file,...scope,running:!!running,tone:id=>tones.get(id),shown:shownLines,hidden:()=>veiled,setHidden};
+        view={file,...scope,running:!!running,tone:id=>tones.get(id),shown:shownLines,hidden:()=>veiled,setHidden,blocks:()=>runBlocks(file.source),jumpTo};
         const key=`${file.id}:${scope.from}-${scope.to}:${!!running}`;
         if(key!==lastViewKey){lastViewKey=key;window.dispatchEvent(new CustomEvent('algebench:codeview'));}
+    }
+    /** The top-level blocks the step's run goes through, in file order: what Type along can practise in this step. */
+    function runBlocks(source:string):CodeBlock[] {
+        const out=new Map<number,CodeBlock>(),lines=source.split('\n');
+        for(const line of new Set(runLines)){
+            const scope=inlineScope(source,new Set([line]));
+            if(!scope||out.has(scope.from))continue;
+            const def=/^\s*(?:async\s+)?(?:def|function|class)\s+([A-Za-z_]\w*)/.exec(lines[scope.from-1]??'');
+            out.set(scope.from,{name:def?def[1]!:`lines ${scope.from}–${scope.to}`,...scope});
+        }
+        return [...out.values()].sort((a,b)=>a.from-b.from);
+    }
+    /** Move the run to the first state where `block` runs (its block then becomes the running one). */
+    function jumpTo(block:CodeBlock) {
+        const at=runLines.findIndex(line=>line>=block.from&&line<=block.to);
+        if(at<0||!runSlider)return;
+        window.dispatchEvent(new CustomEvent('algebench:playbackpause'));
+        setSliderValue(runSlider.id,runSlider.min+at*runSlider.step);
     }
     /** The run's step into the current state: from the line at the previous state to the current one, or null. */
     function stepInto():{from:number;to:number}|null {

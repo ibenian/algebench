@@ -30289,13 +30289,36 @@ function setupCodePanel() {
 			tone: (id) => tones.get(id),
 			shown: shownLines,
 			hidden: () => veiled,
-			setHidden
+			setHidden,
+			blocks: () => runBlocks(file.source),
+			jumpTo
 		};
 		const key = `${file.id}:${scope.from}-${scope.to}:${!!running}`;
 		if (key !== lastViewKey) {
 			lastViewKey = key;
 			window.dispatchEvent(new CustomEvent("algebench:codeview"));
 		}
+	}
+	/** The top-level blocks the step's run goes through, in file order: what Type along can practise in this step. */
+	function runBlocks(source) {
+		const out = /* @__PURE__ */ new Map(), lines = source.split("\n");
+		for (const line of new Set(runLines)) {
+			const scope = inlineScope(source, /* @__PURE__ */ new Set([line]));
+			if (!scope || out.has(scope.from)) continue;
+			const def = /^\s*(?:async\s+)?(?:def|function|class)\s+([A-Za-z_]\w*)/.exec(lines[scope.from - 1] ?? "");
+			out.set(scope.from, {
+				name: def ? def[1] : `lines ${scope.from}–${scope.to}`,
+				...scope
+			});
+		}
+		return [...out.values()].sort((a, b) => a.from - b.from);
+	}
+	/** Move the run to the first state where `block` runs (its block then becomes the running one). */
+	function jumpTo(block) {
+		const at = runLines.findIndex((line) => line >= block.from && line <= block.to);
+		if (at < 0 || !runSlider) return;
+		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+		setSliderValue(runSlider.id, runSlider.min + at * runSlider.step);
 	}
 	/** The run's step into the current state: from the line at the previous state to the current one, or null. */
 	function stepInto() {
@@ -31882,6 +31905,17 @@ function setupCodePractice() {
 	title.textContent = "Type along";
 	const toggle = foldButton();
 	const target = el("span", "cp-target");
+	const targetText = el("span", "");
+	const picker = document.createElement("select");
+	picker.className = "cp-target-pick";
+	picker.hidden = true;
+	picker.setAttribute("aria-label", "Function to type");
+	target.append(targetText, picker);
+	picker.addEventListener("click", (e) => e.stopPropagation());
+	picker.addEventListener("change", () => {
+		const block = current?.blocks().find((b) => String(b.from) === picker.value);
+		if (block && current) current.jumpTo(block);
+	});
 	const total = el("span", "cp-total");
 	total.setAttribute("role", "status");
 	const tools = el("div", "cp-tools");
@@ -32302,6 +32336,32 @@ function setupCodePractice() {
 		if (spoken && window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 		spoken = "";
 	}
+	/**
+	* What is being typed: the file and the block's lines. A step whose run goes through several functions offers
+	* them to pick from; picking one moves the run to where it first runs, and Type along follows it there.
+	*/
+	function showTarget(v) {
+		const name = v.file.path.split("/").pop(), blocks = v.running ? v.blocks() : [];
+		const label = (from, to) => `${name} · lines ${from}–${to}`;
+		if (blocks.length < 2) {
+			picker.hidden = true;
+			targetText.hidden = false;
+			targetText.textContent = label(v.from, v.to);
+			return;
+		}
+		const options = blocks.map((b) => `${b.from}:${b.to}:${b.name}`).join("|");
+		if (picker.dataset.options !== options) {
+			picker.dataset.options = options;
+			picker.replaceChildren(...blocks.map((b) => Object.assign(document.createElement("option"), {
+				value: String(b.from),
+				textContent: `${b.name} · ${b.from}–${b.to}`
+			})));
+		}
+		picker.value = String(v.from);
+		targetText.hidden = true;
+		picker.hidden = false;
+		picker.title = `${name}: the functions this step runs. Pick one to go to where it first runs.`;
+	}
 	let shownScene = -1;
 	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
 	function retarget() {
@@ -32320,6 +32380,7 @@ function setupCodePractice() {
 		const text = v.file.source.split("\n").slice(v.from - 1, v.to).join("\n").replace(/\s+$/, "");
 		const next = `${v.file.id}:${v.from}:${hash(text)}`;
 		current = v;
+		showTarget(v);
 		if (next === key) return;
 		if (key) hushCoach();
 		key = next;
@@ -32332,7 +32393,6 @@ function setupCodePractice() {
 		clearTimeout(pairIdle);
 		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
 		const count = v.to - v.from + 1;
-		target.textContent = `${v.file.path.split("/").pop()} · lines ${v.from}–${v.to}`;
 		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
 		attempt = {
 			text: "",
@@ -32835,9 +32895,13 @@ function setupCodePractice() {
 		clearTimeout(pairIdle);
 		if (pairing) pairIdle = window.setTimeout(pairNudge, PAIR_IDLE_MS);
 	}
-	/** A long pause on a line: the assistant offers help with it, once a line. */
+	/** A long pause on a line: the assistant offers help with it, once a line, once nothing is being said (the coach's word or the chat's). */
 	function pairNudge() {
 		if (!pairing || assisting || quiz) return;
+		if (window.algebenchTTSActive?.() || chatTalking() || held) {
+			pairIdle = window.setTimeout(pairNudge, 1e3);
+			return;
+		}
 		const line = caretLine();
 		if (pairNudged === line) return;
 		pairNudged = line;
