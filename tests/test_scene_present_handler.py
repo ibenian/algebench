@@ -287,3 +287,14 @@ def test_a_mark_can_take_more_refs_together_and_a_bare_drawn_id_counts():
     beats = intent.clean_steps(raw, {"row:count"}, 0)
     assert beats[1].together == ["draw:n30", "row:count"]
     assert beats[2].together == []          # nothing to go with
+
+
+def test_an_array_is_drawn_as_a_row_of_cells_each_its_own_thing():
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    raw = [PresentStep(say="The table.", draw=Drawing(elements=[E(type="array", id="lps", label="lps", values=["0", "0", "1", "2"], color="yellow")])),
+           PresentStep(say="This one.", target="draw:lps_2", mark="circle")]
+    beats = intent.clean_steps(raw, set(), 0)
+    els = beats[0].draw.elements
+    assert [(e.type, e.id, e.group) for e in els] == [("group", "lps", ""), ("text", "lps_name", "lps")] + [("rectangle", f"lps_{i}", "lps") for i in range(4)]
+    assert els[0].layout == "cells" and [e.label for e in els[2:]] == ["0", "0", "1", "2"] and els[2].color == "yellow"
+    assert beats[1].target == "draw:lps_2"

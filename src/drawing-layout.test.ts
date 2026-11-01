@@ -98,3 +98,13 @@ test('an outline holds what it picks out and not what lies between them', () => 
     assert.ok(!layoutDrawing([node('s', {type: 'outline', around: ['x']})], '', sized).boxes.size);
     void b;
 });
+
+test('an array\'s cells sit side by side with no gap, all one size, its name before them', () => {
+    const els: DrawSpec[] = [{type: 'group', id: 'lps', layout: 'cells'}, {type: 'text', id: 'lps_name', label: 'lps', group: 'lps'},
+        node('lps_0', {type: 'rectangle', label: '0', group: 'lps'}), node('lps_1', {type: 'rectangle', label: '10', group: 'lps'}), node('lps_2', {type: 'rectangle', label: '2', group: 'lps'})];
+    const laid = layoutDrawing(els, '', sized), b = (id: string) => boxOf(laid, els, id);
+    assert.equal(b('lps_0').x + b('lps_0').w, b('lps_1').x);
+    assert.equal(b('lps_1').x + b('lps_1').w, b('lps_2').x);
+    assert.deepEqual([b('lps_0').w, b('lps_0').h], [b('lps_1').w, b('lps_1').h]);
+    assert.ok(b('lps_name').x + b('lps_name').w < b('lps_0').x);
+});

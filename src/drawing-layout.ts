@@ -33,7 +33,7 @@ export interface Point { x: number; y: number }
 
 export const SHAPES = new Set(['rectangle', 'ellipse', 'diamond']);
 export const LINKS = new Set(['arrow', 'line']);
-export const LAYOUTS = new Set(['row', 'column', 'grid', 'tree', 'flow', 'graph', 'free']);
+export const LAYOUTS = new Set(['row', 'column', 'grid', 'cells', 'tree', 'flow', 'graph', 'free']);
 const placed = (e: DrawSpec) => typeof e.x === 'number' && typeof e.y === 'number';
 
 export interface Size { w: number; h: number }
@@ -113,15 +113,16 @@ export function layoutDrawing(elements: DrawSpec[], layout = '', m: Measure = gu
         const within = kind === 'free' ? freeBox(g) : m.box;
         for (const e of inside) sizes.set(e, e.type === 'group' ? measure(e) : m.sizeOf(e, within));
         const size = (e: DrawSpec) => sizes.get(e)!;
-        let at: Map<DrawSpec, Point>, span: Size;
+        let at: Map<DrawSpec, Point>, span: Size, resized: Map<DrawSpec, Size> | undefined;
         if (kind === 'free') {
             at = new Map(inside.map(e => [e, {x: (e.x ?? 50) / 100 * within.w, y: (e.y ?? 50) / 100 * within.h}]));
             span = within;
         } else if (kind === 'tree') ({at, span} = treePx(inside, linksAmong(inside), size));
         else if (kind === 'flow') ({at, span} = flowPx(inside, linksAmong(inside), size));
         else if (kind === 'graph') ({at, span} = graphPx(inside, linksAmong(inside), size));
+        else if (kind === 'cells') ({at, span, resized} = cellsPx(inside, size));
         else ({at, span} = linePx(inside, kind, size, g?.align ?? 'center'));
-        for (const e of inside) { const c = at.get(e)!, s = size(e);local.set(e, {x: c.x - s.w / 2, y: c.y - s.h / 2, w: s.w, h: s.h}); }
+        for (const e of inside) { const c = at.get(e)!, s = resized?.get(e) ?? size(e);local.set(e, {x: c.x - s.w / 2, y: c.y - s.h / 2, w: s.w, h: s.h}); }
         return span;
     };
     const whole = measure(null);
@@ -138,6 +139,22 @@ export function layoutDrawing(elements: DrawSpec[], layout = '', m: Measure = gu
     return {boxes, w: whole.w, h: whole.h};
 }
 
+/**
+ * An array's cells: side by side with no gap, all as wide and tall as the widest and tallest, so they read as one
+ * row of boxes; words (its name) stand before them with a gap.
+ */
+function cellsPx(items: DrawSpec[], size: (e: DrawSpec) => Size) {
+    const at = new Map<DrawSpec, Point>(), resized = new Map<DrawSpec, Size>();
+    const cells = items.filter(e => SHAPES.has(e.type));
+    const cw = Math.max(34, ...cells.map(e => size(e).w)), ch = Math.max(30, ...cells.map(e => size(e).h));
+    let x = 0;
+    for (const e of items) {
+        if (SHAPES.has(e.type)) { at.set(e, {x: x + cw / 2, y: ch / 2});resized.set(e, {w: cw, h: ch});x += cw;continue; }
+        const s = size(e);
+        at.set(e, {x: x + s.w / 2, y: ch / 2});x += s.w + GAP * .5;
+    }
+    return {at, span: {w: x, h: ch}, resized};
+}
 /** Side by side ("row"), one under another ("column"), or in a square-ish grid; lined up by `align` across. */
 function linePx(items: DrawSpec[], kind: string, size: (e: DrawSpec) => Size, align: string) {
     const at = new Map<DrawSpec, Point>();

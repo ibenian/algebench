@@ -9579,6 +9579,7 @@ var LAYOUTS = /* @__PURE__ */ new Set([
 	"row",
 	"column",
 	"grid",
+	"cells",
 	"tree",
 	"flow",
 	"graph",
@@ -9660,7 +9661,7 @@ function layoutDrawing(elements, layout = "", m = guess) {
 		const within = kind === "free" ? freeBox(g) : m.box;
 		for (const e of inside) sizes.set(e, e.type === "group" ? measure(e) : m.sizeOf(e, within));
 		const size = (e) => sizes.get(e);
-		let at, span;
+		let at, span, resized;
 		if (kind === "free") {
 			at = new Map(inside.map((e) => [e, {
 				x: (e.x ?? 50) / 100 * within.w,
@@ -9670,9 +9671,10 @@ function layoutDrawing(elements, layout = "", m = guess) {
 		} else if (kind === "tree") ({at, span} = treePx(inside, linksAmong(inside), size));
 		else if (kind === "flow") ({at, span} = flowPx(inside, linksAmong(inside), size));
 		else if (kind === "graph") ({at, span} = graphPx(inside, linksAmong(inside), size));
+		else if (kind === "cells") ({at, span, resized} = cellsPx(inside, size));
 		else ({at, span} = linePx(inside, kind, size, g?.align ?? "center"));
 		for (const e of inside) {
-			const c = at.get(e), s = size(e);
+			const c = at.get(e), s = resized?.get(e) ?? size(e);
 			local.set(e, {
 				x: c.x - s.w / 2,
 				y: c.y - s.h / 2,
@@ -9701,6 +9703,44 @@ function layoutDrawing(elements, layout = "", m = guess) {
 		boxes,
 		w: whole.w,
 		h: whole.h
+	};
+}
+/**
+* An array's cells: side by side with no gap, all as wide and tall as the widest and tallest, so they read as one
+* row of boxes; words (its name) stand before them with a gap.
+*/
+function cellsPx(items, size) {
+	const at = /* @__PURE__ */ new Map(), resized = /* @__PURE__ */ new Map();
+	const cells = items.filter((e) => SHAPES.has(e.type));
+	const cw = Math.max(34, ...cells.map((e) => size(e).w)), ch = Math.max(30, ...cells.map((e) => size(e).h));
+	let x = 0;
+	for (const e of items) {
+		if (SHAPES.has(e.type)) {
+			at.set(e, {
+				x: x + cw / 2,
+				y: ch / 2
+			});
+			resized.set(e, {
+				w: cw,
+				h: ch
+			});
+			x += cw;
+			continue;
+		}
+		const s = size(e);
+		at.set(e, {
+			x: x + s.w / 2,
+			y: ch / 2
+		});
+		x += s.w + GAP * .5;
+	}
+	return {
+		at,
+		span: {
+			w: x,
+			h: ch
+		},
+		resized
 	};
 }
 /** Side by side ("row"), one under another ("column"), or in a square-ish grid; lined up by `align` across. */
@@ -10244,6 +10284,23 @@ function indexedRect(id, index) {
 	}
 	return rectOf(points);
 }
+/**
+* The box of what an element reads, without its buttons: a label row ends in small Ask-AI, code and wire buttons
+* that show on hover, and a mark round the whole row would sit off to their side.
+*/
+function inkRect(el) {
+	const rs = [];
+	for (const n of el.childNodes) if (n.nodeType === Node.TEXT_NODE) {
+		if (!n.textContent?.trim()) continue;
+		const range = document.createRange();
+		range.selectNodeContents(n);
+		rs.push(range.getBoundingClientRect());
+	} else if (n instanceof HTMLElement && !n.matches("button, .ai-ask-btn, .expression-wire-toggle") && n.offsetWidth) rs.push(n.getBoundingClientRect());
+	const shown = rs.filter((r) => r.width && r.height);
+	if (!shown.length) return el.getBoundingClientRect();
+	const x0 = Math.min(...shown.map((r) => r.left)), y0 = Math.min(...shown.map((r) => r.top)), x1 = Math.max(...shown.map((r) => r.right)), y1 = Math.max(...shown.map((r) => r.bottom));
+	return new DOMRect(x0, y0, x1 - x0, y1 - y0);
+}
 function resolveTarget$1(ref, part = "") {
 	if (ref.includes("\n")) {
 		const rs = ref.split("\n").map((x) => resolveTarget$1(x, "")).filter((x) => !!x);
@@ -10265,7 +10322,10 @@ function resolveTarget$1(ref, part = "") {
 		const i = paramInput(ref.slice(7));
 		return i ? (i.parentElement ?? i).getBoundingClientRect() : null;
 	}
-	if (ref.startsWith("row:")) return objectLabelRow(ref.slice(4))?.getBoundingClientRect() ?? null;
+	if (ref.startsWith("row:")) {
+		const row = objectLabelRow(ref.slice(4));
+		return row ? inkRect(row) : null;
+	}
 	const indexed = /^(.+?)\[([\d\s:,]+)\]$/.exec(ref);
 	if (indexed) return indexedRect(indexed[1], indexed[2]);
 	const corners = objectWorldCorners(ref);
@@ -10457,6 +10517,9 @@ var ringShape = "circle";
 function drawRing(rect, color = "", shape = "circle") {
 	ensurePointer();
 	if (!ring) return;
+	for (const extra of [...moreRings, ...markLinks]) extra.remove();
+	moreRings = [];
+	markLinks = [];
 	if (!rect) {
 		ring.classList.remove("on", "drawn");
 		return;
@@ -10468,20 +10531,114 @@ function drawRing(rect, color = "", shape = "circle") {
 	ring.classList.add("on");
 }
 /** Fit the mark to `rect`: as the view zooms or pans, it keeps to its target (the stroke isn't redrawn). */
-function fitRing(rect) {
-	if (!ring) return;
+function fitRing(rect, el = ring) {
+	if (!el) return;
 	const g = markGeometry(rect, ringShape);
-	ring.style.left = `${g.left}px`;
-	ring.style.top = `${g.top}px`;
-	ring.setAttribute("width", String(g.w));
-	ring.setAttribute("height", String(g.h));
-	ring.querySelectorAll("path").forEach((p, k) => p.setAttribute("d", g.strokes[k] ?? ""));
+	el.style.left = `${g.left}px`;
+	el.style.top = `${g.top}px`;
+	el.setAttribute("width", String(g.w));
+	el.setAttribute("height", String(g.h));
+	el.querySelectorAll("path").forEach((p, k) => p.setAttribute("d", g.strokes[k] ?? ""));
+}
+/** Marks on several things at once (a beat's `together`), one per cluster of them: the rings after the first. */
+var moreRings = [];
+/** And for rings apart, the lines that join them, one from each ring to the next: what is marked belongs together. */
+var markLinks = [];
+/** A slightly bowed line from ring `a`'s edge to ring `b`'s (each ring is its target's box, padded as markGeometry does). */
+function linkGeometry(a, b) {
+	const ca = {
+		x: a.left + a.width / 2,
+		y: a.top + a.height / 2
+	}, cb = {
+		x: b.left + b.width / 2,
+		y: b.top + b.height / 2
+	};
+	const p = edgePoint("ellipse", ca.x, ca.y, a.width + 16, a.height + 16, cb, 3), q = edgePoint("ellipse", cb.x, cb.y, b.width + 16, b.height + 16, ca, 3);
+	const dx = q.x - p.x, dy = q.y - p.y, m = {
+		x: (p.x + q.x) / 2 - dy * .12,
+		y: (p.y + q.y) / 2 + dx * .12
+	};
+	const left = Math.min(p.x, q.x, m.x) - 6, top = Math.min(p.y, q.y, m.y) - 6;
+	return {
+		left,
+		top,
+		w: Math.max(p.x, q.x, m.x) - left + 6,
+		h: Math.max(p.y, q.y, m.y) - top + 6,
+		d: `M${p.x - left} ${p.y - top} Q${m.x - left} ${m.y - top} ${q.x - left} ${q.y - top}`
+	};
+}
+function fitLink(el, a, b) {
+	const g = linkGeometry(a, b);
+	el.style.left = `${g.left}px`;
+	el.style.top = `${g.top}px`;
+	el.setAttribute("width", String(g.w));
+	el.setAttribute("height", String(g.h));
+	el.querySelector("path")?.setAttribute("d", g.d);
+}
+/** Put marks on `rects`, one each, in the beat's ink: the first is the ring, the rest go alongside it. */
+function drawRings(rects, color, shape) {
+	drawRing(rects[0] ?? null, color, shape);
+	if (!ring) return;
+	for (const r of rects.slice(1)) {
+		const el = ring.cloneNode(false);
+		el.innerHTML = markGeometry(r, shape).strokes.map(() => "<path pathLength=\"1\"/>").join("");
+		ring.parentElement?.append(el);
+		moreRings.push(el);
+		fitRing(r, el);
+	}
+	if (shape !== "circle") return;
+	for (let k = 1; k < rects.length; k++) {
+		const el = ring.cloneNode(false);
+		el.innerHTML = "<path pathLength=\"1\"/>";
+		ring.parentElement?.append(el);
+		markLinks.push(el);
+		fitLink(el, rects[k - 1], rects[k]);
+	}
+}
+function fitRings(rects) {
+	if (rects[0]) fitRing(rects[0]);
+	moreRings.forEach((el, k) => {
+		if (rects[k + 1]) fitRing(rects[k + 1], el);
+	});
+	markLinks.forEach((el, k) => {
+		if (rects[k] && rects[k + 1]) fitLink(el, rects[k], rects[k + 1]);
+	});
+}
+/**
+* What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
+* things side by side share one ring, things apart get one each (a ring round both would take in all between).
+*/
+function markRects(ref, part) {
+	if (!ref.includes("\n")) {
+		const r = resolveTarget$1(ref, part);
+		return r ? [r] : [];
+	}
+	const clusters = ref.split("\n").map((x) => resolveTarget$1(x, "")).filter((x) => !!x);
+	const near = (a, b) => {
+		return Math.max(0, Math.max(a.left, b.left) - Math.min(a.right, b.right), Math.max(a.top, b.top) - Math.min(a.bottom, b.bottom)) <= Math.max(24, Math.min(a.height, b.height) * .8);
+	};
+	for (let merged = true; merged;) {
+		merged = false;
+		for (let i = 0; i < clusters.length && !merged; i++) for (let j = i + 1; j < clusters.length && !merged; j++) {
+			const a = clusters[i], b = clusters[j];
+			if (!near(a, b)) continue;
+			const x0 = Math.min(a.left, b.left), y0 = Math.min(a.top, b.top);
+			clusters[i] = new DOMRect(x0, y0, Math.max(a.right, b.right) - x0, Math.max(a.bottom, b.bottom) - y0);
+			clusters.splice(j, 1);
+			merged = true;
+		}
+	}
+	return clusters;
 }
 /** Draw the mark as a hand would, the pointer making each stroke: a loop, a line, a tick, the two lines of a cross. */
 async function traceMark(r) {
 	if (!ring) return;
-	for (const path of [...ring.querySelectorAll("path")]) {
-		const box = ring.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
+	for (const el of [
+		ring,
+		...moreRings,
+		...markLinks
+	]) for (const path of [...el.querySelectorAll("path")]) {
+		const box = el.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
 		await glide(box.left + start.x, box.top + start.y, r, 200);
 		path.classList.add("tracing");
 		const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
@@ -10489,7 +10646,7 @@ async function traceMark(r) {
 			alive(r);
 			const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 			path.style.setProperty("stroke-dashoffset", String(1 - k));
-			const b = ring.getBoundingClientRect(), p = path.getPointAtLength(total * k);
+			const b = el.getBoundingClientRect(), p = path.getPointAtLength(total * k);
 			pos.x = b.left + p.x;
 			pos.y = b.top + p.y;
 			paintPointer();
@@ -10497,7 +10654,11 @@ async function traceMark(r) {
 			await new Promise((res) => requestAnimationFrame(res));
 		}
 	}
-	ring.classList.add("drawn");
+	for (const el of [
+		ring,
+		...moreRings,
+		...markLinks
+	]) el.classList.add("drawn");
 }
 /** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
 function showPointer() {
@@ -10545,13 +10706,13 @@ async function holdPointer(ref, mark, r, done, color, part) {
 		const now = resolveTarget$1(ref, part);
 		if (now) {
 			if (!drawn) {
-				drawRing(now, color, mark);
+				drawRings(markRects(ref, part), color, mark);
 				await traceMark(r);
 				drawn = true;
 				since = 0;
 				continue;
 			}
-			if (mark !== "point" && ring?.classList.contains("on")) fitRing(now);
+			if (mark !== "point" && ring?.classList.contains("on")) fitRings(markRects(ref, part));
 			since ||= performance.now();
 			if (pointer?.classList.contains("on")) {
 				if (mark === "point") {

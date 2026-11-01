@@ -193,6 +193,24 @@ function indexedRect(id: string, index: string): DOMRect | null {
     return rectOf(points);
 }
 
+/**
+ * The box of what an element reads, without its buttons: a label row ends in small Ask-AI, code and wire buttons
+ * that show on hover, and a mark round the whole row would sit off to their side.
+ */
+function inkRect(el: HTMLElement): DOMRect {
+    const rs: DOMRect[] = [];
+    for (const n of el.childNodes) {
+        if (n.nodeType === Node.TEXT_NODE) {
+            if (!n.textContent?.trim()) continue;
+            const range = document.createRange();range.selectNodeContents(n);
+            rs.push(range.getBoundingClientRect());
+        } else if (n instanceof HTMLElement && !n.matches('button, .ai-ask-btn, .expression-wire-toggle') && n.offsetWidth) rs.push(n.getBoundingClientRect());
+    }
+    const shown = rs.filter(r => r.width && r.height);
+    if (!shown.length) return el.getBoundingClientRect();
+    const x0 = Math.min(...shown.map(r => r.left)), y0 = Math.min(...shown.map(r => r.top)), x1 = Math.max(...shown.map(r => r.right)), y1 = Math.max(...shown.map(r => r.bottom));
+    return new DOMRect(x0, y0, x1 - x0, y1 - y0);
+}
 export function resolveTarget(ref: string, part = ''): DOMRect | null {
     // Several marked as one (a beat's target with what it's `together` with, a line each): the box round all shown.
     if (ref.includes('\n')) {
@@ -206,7 +224,7 @@ export function resolveTarget(ref: string, part = ''): DOMRect | null {
     if (ref === 'caption') { const c = document.getElementById('step-caption');return c?.offsetParent ? c.getBoundingClientRect() : null; }
     if (ref === 'slider') { const i = sliderInput();return i ? i.getBoundingClientRect() : null; }
     if (ref.startsWith('slider:')) { const i = paramInput(ref.slice(7));return i ? (i.parentElement ?? i).getBoundingClientRect() : null; }
-    if (ref.startsWith('row:')) return objectLabelRow(ref.slice(4))?.getBoundingClientRect() ?? null;
+    if (ref.startsWith('row:')) { const row = objectLabelRow(ref.slice(4));return row ? inkRect(row) : null; }
     const indexed = /^(.+?)\[([\d\s:,]+)\]$/.exec(ref);
     if (indexed) return indexedRect(indexed[1]!, indexed[2]!);
     const corners = objectWorldCorners(ref);
@@ -328,6 +346,8 @@ let ringShape: MarkShape = 'circle';
 function drawRing(rect: DOMRect | null, color = '', shape: MarkShape = 'circle') {
     ensurePointer();
     if (!ring) return;
+    for (const extra of [...moreRings, ...markLinks]) extra.remove();
+    moreRings = [];markLinks = [];
     if (!rect) { ring.classList.remove('on', 'drawn');return; }
     ringShape = shape;
     ring.setAttribute('class', `ai-pointer-ring ai-mark-${shape} ${inkClass(color)}`.trim());
@@ -336,18 +356,83 @@ function drawRing(rect: DOMRect | null, color = '', shape: MarkShape = 'circle')
     ring.classList.add('on');
 }
 /** Fit the mark to `rect`: as the view zooms or pans, it keeps to its target (the stroke isn't redrawn). */
-function fitRing(rect: DOMRect) {
-    if (!ring) return;
+function fitRing(rect: DOMRect, el: SVGSVGElement | null = ring) {
+    if (!el) return;
     const g = markGeometry(rect, ringShape);
-    ring.style.left = `${g.left}px`;ring.style.top = `${g.top}px`;
-    ring.setAttribute('width', String(g.w));ring.setAttribute('height', String(g.h));
-    ring.querySelectorAll('path').forEach((p, k) => p.setAttribute('d', g.strokes[k] ?? ''));
+    el.style.left = `${g.left}px`;el.style.top = `${g.top}px`;
+    el.setAttribute('width', String(g.w));el.setAttribute('height', String(g.h));
+    el.querySelectorAll('path').forEach((p, k) => p.setAttribute('d', g.strokes[k] ?? ''));
+}
+/** Marks on several things at once (a beat's `together`), one per cluster of them: the rings after the first. */
+let moreRings: SVGSVGElement[] = [];
+/** And for rings apart, the lines that join them, one from each ring to the next: what is marked belongs together. */
+let markLinks: SVGSVGElement[] = [];
+/** A slightly bowed line from ring `a`'s edge to ring `b`'s (each ring is its target's box, padded as markGeometry does). */
+function linkGeometry(a: DOMRect, b: DOMRect): {left: number; top: number; w: number; h: number; d: string} {
+    const ca = {x: a.left + a.width / 2, y: a.top + a.height / 2}, cb = {x: b.left + b.width / 2, y: b.top + b.height / 2};
+    const p = edgePoint('ellipse', ca.x, ca.y, a.width + 16, a.height + 16, cb, 3), q = edgePoint('ellipse', cb.x, cb.y, b.width + 16, b.height + 16, ca, 3);
+    const dx = q.x - p.x, dy = q.y - p.y, m = {x: (p.x + q.x) / 2 - dy * .12, y: (p.y + q.y) / 2 + dx * .12};
+    const left = Math.min(p.x, q.x, m.x) - 6, top = Math.min(p.y, q.y, m.y) - 6;
+    const w = Math.max(p.x, q.x, m.x) - left + 6, h = Math.max(p.y, q.y, m.y) - top + 6;
+    return {left, top, w, h, d: `M${p.x - left} ${p.y - top} Q${m.x - left} ${m.y - top} ${q.x - left} ${q.y - top}`};
+}
+function fitLink(el: SVGSVGElement, a: DOMRect, b: DOMRect) {
+    const g = linkGeometry(a, b);
+    el.style.left = `${g.left}px`;el.style.top = `${g.top}px`;
+    el.setAttribute('width', String(g.w));el.setAttribute('height', String(g.h));
+    el.querySelector('path')?.setAttribute('d', g.d);
+}
+/** Put marks on `rects`, one each, in the beat's ink: the first is the ring, the rest go alongside it. */
+function drawRings(rects: DOMRect[], color: string, shape: MarkShape) {
+    drawRing(rects[0] ?? null, color, shape);
+    if (!ring) return;
+    for (const r of rects.slice(1)) {
+        const el = ring.cloneNode(false) as SVGSVGElement;
+        el.innerHTML = markGeometry(r, shape).strokes.map(() => '<path pathLength="1"/>').join('');
+        ring.parentElement?.append(el);moreRings.push(el);
+        fitRing(r, el);
+    }
+    if (shape !== 'circle') return;
+    for (let k = 1; k < rects.length; k++) {
+        const el = ring.cloneNode(false) as SVGSVGElement;
+        el.innerHTML = '<path pathLength="1"/>';
+        ring.parentElement?.append(el);markLinks.push(el);
+        fitLink(el, rects[k - 1]!, rects[k]!);
+    }
+}
+function fitRings(rects: DOMRect[]) {
+    if (rects[0]) fitRing(rects[0]);
+    moreRings.forEach((el, k) => { if (rects[k + 1]) fitRing(rects[k + 1]!, el); });
+    markLinks.forEach((el, k) => { if (rects[k] && rects[k + 1]) fitLink(el, rects[k]!, rects[k + 1]!); });
+}
+/**
+ * What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
+ * things side by side share one ring, things apart get one each (a ring round both would take in all between).
+ */
+function markRects(ref: string, part: string): DOMRect[] {
+    if (!ref.includes('\n')) { const r = resolveTarget(ref, part);return r ? [r] : []; }
+    const clusters = ref.split('\n').map(x => resolveTarget(x, '')).filter((x): x is DOMRect => !!x);
+    const near = (a: DOMRect, b: DOMRect) => {
+        const gap = Math.max(0, Math.max(a.left, b.left) - Math.min(a.right, b.right), Math.max(a.top, b.top) - Math.min(a.bottom, b.bottom));
+        return gap <= Math.max(24, Math.min(a.height, b.height) * .8);
+    };
+    for (let merged = true; merged;) {
+        merged = false;
+        for (let i = 0; i < clusters.length && !merged; i++) for (let j = i + 1; j < clusters.length && !merged; j++) {
+            const a = clusters[i]!, b = clusters[j]!;
+            if (!near(a, b)) continue;
+            const x0 = Math.min(a.left, b.left), y0 = Math.min(a.top, b.top);
+            clusters[i] = new DOMRect(x0, y0, Math.max(a.right, b.right) - x0, Math.max(a.bottom, b.bottom) - y0);
+            clusters.splice(j, 1);merged = true;
+        }
+    }
+    return clusters;
 }
 /** Draw the mark as a hand would, the pointer making each stroke: a loop, a line, a tick, the two lines of a cross. */
 async function traceMark(r: number) {
     if (!ring) return;
-    for (const path of [...ring.querySelectorAll('path')]) {
-        const box = ring.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
+    for (const el of [ring, ...moreRings, ...markLinks]) for (const path of [...el.querySelectorAll('path')]) {
+        const box = el.getBoundingClientRect(), total = path.getTotalLength(), start = path.getPointAtLength(0);
         await glide(box.left + start.x, box.top + start.y, r, 200);
         path.classList.add('tracing');
         const dur = Math.min(800, 220 + total * 1.6), t0 = performance.now();
@@ -355,13 +440,13 @@ async function traceMark(r: number) {
             alive(r);
             const t = Math.min(1, (performance.now() - t0) / dur), k = t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
             path.style.setProperty('stroke-dashoffset', String(1 - k));
-            const b = ring.getBoundingClientRect(), p = path.getPointAtLength(total * k);
+            const b = el.getBoundingClientRect(), p = path.getPointAtLength(total * k);
             pos.x = b.left + p.x;pos.y = b.top + p.y;paintPointer();
             if (t >= 1) break;
             await new Promise(res => requestAnimationFrame(res));
         }
     }
-    ring.classList.add('drawn');
+    for (const el of [ring, ...moreRings, ...markLinks]) el.classList.add('drawn');
 }
 /** The pointer shows while it moves and shows something; resting on what it showed, it goes after a moment. */
 function showPointer() { ensurePointer().classList.add('on'); }
@@ -398,8 +483,8 @@ async function holdPointer(ref: string, mark: Beat['mark'], r: number, done: () 
         const now = resolveTarget(ref, part);
         if (now) {
             // A note written this beat appears while the pointer waits for it: its mark is drawn once it's there.
-            if (!drawn) { drawRing(now, color, mark as MarkShape);await traceMark(r);drawn = true;since = 0;continue; }
-            if (mark !== 'point' && ring?.classList.contains('on')) fitRing(now);
+            if (!drawn) { drawRings(markRects(ref, part), color, mark as MarkShape);await traceMark(r);drawn = true;since = 0;continue; }
+            if (mark !== 'point' && ring?.classList.contains('on')) fitRings(markRects(ref, part));
             since ||= performance.now();
             if (pointer?.classList.contains('on')) {
                 // Held where it finished: the centre, or the end of the mark it drew.

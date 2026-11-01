@@ -131,7 +131,7 @@ def _part(value, target: str, drawn: dict[str, str] | None = None) -> str:
 
 SHAPES = ("rectangle", "ellipse", "diamond")
 LINKS = ("arrow", "line")
-LAYOUTS = ("row", "column", "grid", "tree", "flow", "graph", "free")
+LAYOUTS = ("row", "column", "grid", "cells", "tree", "flow", "graph", "free")
 ALIGNS = ("start", "center", "end")
 #: The most elements one beat draws, and the longest label.
 MAX_ELEMENTS = 24
@@ -155,6 +155,29 @@ def _grid(value) -> float | None:
     return min(100.0, max(0.0, v)) if v == v else None
 
 
+#: The most cells an array draws.
+MAX_CELLS = 24
+
+
+def _arrays(elements) -> list:
+    """An `array` as what it is drawn with: a group of cells side by side (`<id>_0`, `<id>_1`, ...), its name before
+    them; the cells are shapes like any other, to point at, outline and link to."""
+    out = []
+    for e in elements:
+        if not isinstance(e, DrawElement) or e.type != "array":
+            out.append(e)
+            continue
+        aid = _did(e.id)
+        if not aid:
+            continue
+        out.append(DrawElement(type="group", id=aid, layout="cells", label=e.label, group=e.group))
+        if _clean(e.label):
+            out.append(DrawElement(type="text", id=f"{aid}_name"[:24], label=e.label, group=aid, color=e.color))
+        out += [DrawElement(type="rectangle", id=f"{aid}_{i}"[:24], label=str(v), group=aid, color=e.color)
+                for i, v in enumerate((e.values or [])[:MAX_CELLS])]
+    return out
+
+
 def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str], groups: set[str]) -> Drawing | None:
     """A drawing safe to draw: known element types, ids of letters and digits, places on the 0-100 grid, and links
     whose ends are shapes drawn before them (on this beat or an earlier one) or refs from the list. ``drawn``
@@ -163,7 +186,7 @@ def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str], groups
     if not isinstance(d, Drawing):
         return None
     out: list[DrawElement] = []
-    for e in d.elements[:MAX_ELEMENTS]:
+    for e in _arrays(d.elements[:MAX_ELEMENTS]):
         if not isinstance(e, DrawElement) or e.type not in (*SHAPES, *LINKS, "path", "text", "group", "outline"):
             continue
         eid = _did(e.id)
