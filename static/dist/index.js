@@ -12018,6 +12018,7 @@ function frameState(row, caption) {
 }
 var playing = false;
 var narratingRun = 0;
+var presenting = () => playing;
 /** A walk-through narrating playback is about the state it began at: the learner moving the run ends it. */
 function stopNarrating() {
 	if (playing && narratingRun === run) stopPresenting();
@@ -32135,13 +32136,82 @@ function setupCodePractice() {
 	}
 	/** The review as it is spoken: the commentary and what to do next, without markdown. */
 	let spoken = "";
-	function speakReview(text) {
+	let coachTalking = false;
+	/** The lesson's chat is answering, presenting or speaking (its voice, not the coach's). */
+	const chatTalking = () => !!window.algebenchChatBusy?.() || presenting() || !coachTalking && !!window.algebenchTTSActive?.();
+	/**
+	* Speak the review, then `then`. While the chat is talking the coach doesn't talk over it: it waits, and speaks
+	* once the chat is done (the newest review, if more came meanwhile). `interrupt`: a review handing a concept to
+	* the chat may cut it off, since what it hands over goes next anyway.
+	*/
+	let held = null, holdTimer = 0;
+	function speakReview(text, then, interrupt = false) {
 		if (greeting && text) {
 			text = `${greeting} ${text}`;
 			greeting = "";
 		}
 		spoken = text;
-		if (speakOn() && text) window.algebenchSpeakText?.(text);
+		if (!interrupt && chatTalking()) {
+			const before = held?.then;
+			held = {
+				text,
+				then: before && then ? () => {
+					before();
+					then();
+				} : then ?? before
+			};
+			if (!holdTimer) {
+				let quiet = 0;
+				holdTimer = window.setInterval(() => {
+					quiet = chatTalking() ? 0 : quiet + 1;
+					if (quiet < 3) return;
+					clearInterval(holdTimer);
+					holdTimer = 0;
+					const next = held;
+					held = null;
+					if (next) speakReview(next.text, next.then);
+				}, 400);
+			}
+			return;
+		}
+		if (interrupt && chatTalking()) {
+			stopPresenting();
+			window.algebenchStopTTS?.();
+		}
+		if (!speakOn() || !text || !window.algebenchSpeakText) {
+			then?.();
+			return;
+		}
+		coachTalking = true;
+		window.algebenchSpeakText(text, () => {
+			coachTalking = false;
+			then?.();
+		});
+	}
+	/** What the coach has handed to the chat on this block: a concept is shown once. */
+	const shownInChat = /* @__PURE__ */ new Set();
+	/**
+	* The coach asks the chat to show a concept on the view (pointing, writing, drawing on the scratchpad): only with
+	* the presenter on, once the review has been said, and not over the chat's own answer.
+	*/
+	function showInChat(request, body) {
+		if (!request || shownInChat.has(request) || !presenterOn()) return null;
+		shownInChat.add(request);
+		const note = el("div", "cp-report-show");
+		note.textContent = "🎯 Showing it in the chat…";
+		body.append(note);
+		return async () => {
+			if (!presenterOn() || typeof window.sendChatMessage !== "function") {
+				note.textContent = "🎯 The presenter is off: ask the chat to show this.";
+				return;
+			}
+			for (let waited = 0; window.algebenchChatBusy?.() && waited < 60; waited++) await sleep(500);
+			if (window.algebenchChatBusy?.()) {
+				note.textContent = "🎯 The chat was busy: ask it to show this later.";
+				return;
+			}
+			window.sendChatMessage(request);
+		};
 	}
 	/**
 	* Turning the coach on with nothing typed yet, it says hello and how to talk to it (once per switch, not on
@@ -32256,6 +32326,7 @@ function setupCodePractice() {
 		block = text;
 		quiz = null;
 		askedQuestions = [];
+		shownInChat.clear();
 		series = null;
 		pairing = false;
 		clearTimeout(pairIdle);
@@ -32609,7 +32680,8 @@ function setupCodePractice() {
 					...t.reference != null ? { reference: t.reference } : {}
 				})).filter((_, j) => !score.typed[j].neutral).slice(0, 400),
 				attempts: attempt.reviews[id] ?? 0,
-				hints: hintsOn()
+				hints: hintsOn(),
+				present: presenterOn()
 			});
 			waiting.remove();
 			if (seq !== reviewSeq) return;
@@ -32695,6 +32767,7 @@ function setupCodePractice() {
 			body.append(list);
 		}
 		if (r.direction) md("cp-report-next", `**Next:** ${r.direction}`);
+		const show = showInChat(r.show ?? "", body);
 		const msg = message("assistant", body);
 		msg.classList.toggle("cp-msg-perfect", perfect);
 		offerHelp(msg);
@@ -32705,7 +32778,7 @@ function setupCodePractice() {
 			r.reminder,
 			...fresh.map((n) => `Line ${n.line}: ${n.note}`),
 			r.direction && `Next: ${r.direction}`
-		].filter(Boolean).join(" ").replace(/[`*]/g, ""));
+		].filter(Boolean).join(" ").replace(/[`*]/g, ""), show ?? void 0, !!show);
 	}
 	const helpTool = tool("✋ Help me", "Let the assistant take the keyboard: the next step, this section, or the whole block");
 	helpTool.classList.add("cp-coach-only", "cp-help-tool");
@@ -33180,6 +33253,7 @@ function setupCodePractice() {
 				...where,
 				scope,
 				request,
+				cursor: input.value.slice(0, userCaret).split("\n").length,
 				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
 			});
 			waiting.remove();

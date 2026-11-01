@@ -131,3 +131,40 @@ def test_pairing_done_says_whether_the_code_is_complete(monkeypatch):
     # Only pairing hands back that word: an answer to a question is just an answer.
     monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(closing="Yes.", complete=True))
     assert h.code_assist(_req(scope="ask", request="ok?")) == {"reason": "Yes."}
+
+
+def test_a_step_sending_only_its_new_line_keeps_the_learners_code():
+    typed = "def build_lps(text):\n    lps = [0] * len(text)\n    k = 0\n    for i in range(1, len(text)):\n        \n    "
+    piece = "        while k and text[i] != text[k]:"
+    out, = intent.clean_steps([AssistStep(say="a", code=piece)], editor=typed)
+    assert out.code == "\n".join(typed.split("\n")[:4] + [piece])
+
+
+def test_a_line_is_erased_only_when_the_step_says_so():
+    typed = "def f(n):\n    total = 0\n    print(n)\n    return total"
+    dropped = "def f(n):\n    total = 0\n    return total"
+    out, = intent.clean_steps([AssistStep(say="a", code=dropped)], editor=typed)
+    assert out.code == typed
+    out, = intent.clean_steps([AssistStep(say="a", code=dropped, erase=[3])], editor=typed)
+    assert out.code == dropped
+    # A line rewritten in place is a fix, not a loss.
+    fixed = "def f(n):\n    total = 1\n    print(n)\n    return total"
+    out, = intent.clean_steps([AssistStep(say="a", code=fixed)], editor=typed)
+    assert out.code == fixed
+
+
+def test_pairing_starts_the_new_line_where_the_learner_is_not_at_the_end():
+    typed = "def lps(text):\n    \n    while k and text[i] != text[k]:\n        k = lps[k - 1]\n"
+    at_end = "def lps(text):\n    while k and text[i] != text[k]:\n        k = lps[k - 1]\n    lps"
+    assert h.at_cursor(at_end, typed, 2) == "def lps(text):\n    lps\n    while k and text[i] != text[k]:\n        k = lps[k - 1]"
+    # On a line with code, the new one goes after it; a step that changes a line is left as it is.
+    assert h.at_cursor("a\nb\nc", "a\nb", 1) == "a\nc\nb"
+    assert h.at_cursor("a\nB\nc", "a\nb", 1) == "a\nB\nc"
+
+
+
+def test_a_step_sending_part_of_the_editor_is_caught_unless_it_erases_on_purpose():
+    typed = "def f(n):\n    total = 0\n    return total"
+    steps = [AssistStep(say="a", code="    for i in range(n):"), AssistStep(say="b", code="def f(n):\n    return total", erase=[2])]
+    assert intent.partial_steps(steps[:1], typed) == [1]
+    assert intent.partial_steps(steps[1:], typed) == []

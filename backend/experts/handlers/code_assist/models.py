@@ -28,3 +28,5 @@ class CodeAssistRequest(BaseModel):
     scope: Literal["next", "section", "all", "fix", "narrate", "pair", "ask"] = "next"
     #: The learner's own words: what "ask" does, or how to go about another scope.
     request: str = Field(default="", max_length=600)
+    #: The line of ``typed`` the learner's cursor is on (from 1); 0 when not known.
+    cursor: int = Field(default=0, ge=0, le=10_000)

@@ -75,6 +75,21 @@ class CodePracticeSig(dspy.Signature):
     a request for help, so answer it even with hints off, but explain the idea
     rather than writing their code for them. Never count a note as a mistake
     in the code.
+
+    When `presenter` is on, the lesson's AI chat can explain on the view
+    itself: pointing at the scene's objects as it talks, and writing and
+    drawing on a scratchpad over it. When a concept the learner is stuck on
+    would be far clearer shown than told (how a fallback jumps back along an
+    array, why a pointer never moves back, what a table holds), put a request
+    for it in `show`, in English, addressed to that chat: what to explain and
+    how to show it, e.g. "On the scratchpad, show why k falls back to
+    lps[k - 1] after a mismatch, with p = 'aaba'." or "Show on the scene how
+    i never moves back while k falls back, stepping through a mismatch."
+    It explains the idea, never the learner's code: don't ask it to write
+    their next line. Use it rarely: for a real conceptual gap (a question in
+    `notes`, or the same misunderstanding again), not for a typo or a step
+    they are getting right. Empty otherwise, and always empty when
+    `presenter` is off.
     """
 
     language: str = dspy.InputField(desc="the programming language")
@@ -88,6 +103,7 @@ class CodePracticeSig(dspy.Signature):
         desc="how closely each typed line matches the reference, measured by text alone")
     attempts: str = dspy.InputField(desc="how many times this section has been reviewed before")
     hints: str = dspy.InputField(desc="on: guide the next step; off: comment only on what is typed")
+    presenter: str = dspy.InputField(desc="on: the AI chat can show a concept on the view and its scratchpad; off: it can't")
     changes: str = dspy.InputField(
         desc="what changed in the typed code since your last review, as + added and - removed lines; "
              "'first review' when there was none. After the first review, comment ONLY on these lines")
@@ -116,6 +132,9 @@ class CodePracticeSig(dspy.Signature):
     reply: str = dspy.OutputField(
         desc="your answer to the learner's notes, two to four sentences, addressing them directly; "
              "markdown, code in backticks; empty when there are no notes")
+    show: str = dspy.OutputField(
+        desc="with the presenter on, and only for a real conceptual gap: a request in English to the AI chat "
+             "to explain a concept by showing it on the scene or the scratchpad; empty almost always")
     line_notes: list[LineNote] = dspy.OutputField(
         desc="remarks on specific typed lines that are wrong; empty when none are")
 

@@ -6,10 +6,12 @@ change or remove lines anywhere.
 """
 from __future__ import annotations
 
+import difflib
 import logging
 import re
 
 from backend.experts.handlers.code_practice.handler import _numbered
+from backend.experts.handlers.code_practice.names import undefined_names
 from backend.experts.modules.code_assist.intent import assist_code
 from backend.experts.registry import register_handler
 
@@ -39,6 +41,8 @@ def render_inputs(req: CodeAssistRequest) -> dict:
         "typed": _numbered(req.typed) if req.typed.strip() else "(empty)",
         "issues": "\n".join(f"line {n.line}: {n.note}" for n in req.issues),
         "request": req.request.strip(),
+        "cursor": f"line {req.cursor}" if req.cursor else "unknown",
+        "problems": "\n".join(f"line {line}: {msg}" for line, msg in undefined_names(req.typed, req.expected, req.language)),
     }
 
 
@@ -65,6 +69,28 @@ def only_starts(code: str, typed: str, expected: str) -> str:
     return "\n".join(out)
 
 
+def at_cursor(code: str, typed: str, cursor: int) -> str:
+    """Pairing starts a line where the learner is: the lines a step only adds go on the ``cursor`` line of ``typed``
+    (in place of it when it is blank, else after it), wherever the model put them (it tends to add at the end)."""
+    if not cursor or not typed.strip():
+        return code
+    old, new = typed.split("\n"), code.split("\n")
+    added: list[str] = []
+    for op, a1, a2, b1, b2 in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes():
+        if op == "equal":
+            continue
+        if any(line.strip() for line in old[a1:a2]):
+            return code   # it changed or dropped a line of theirs, not only added: as it is
+        added += new[b1:b2]   # added, maybe on a blank line
+    added = [line for line in added if line.strip()]
+    if not added or cursor > len(old):
+        return code
+    blank = not old[cursor - 1].strip()
+    lines = [line for line in old]
+    lines[cursor - 1:cursor] = added if blank else [old[cursor - 1], *added]
+    return "\n".join(lines).rstrip("\n ")
+
+
 @register_handler("code_assist", request_model=CodeAssistRequest, speaks=True)
 def code_assist(req: CodeAssistRequest) -> dict:
     if req.scope == "ask" and not req.request.strip():
@@ -81,6 +107,6 @@ def code_assist(req: CodeAssistRequest) -> dict:
     if req.scope == "pair":
         for step in out.steps:
             if step.code:
-                step.code = only_starts(step.code, req.typed, req.expected)
+                step.code = only_starts(at_cursor(step.code, req.typed, req.cursor), req.typed, req.expected)
     log.info("%s %s: %d step(s)", LOG_TAG, req.scope, len(out.steps))
     return {"result": out.model_dump(exclude={"error"})}

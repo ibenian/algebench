@@ -121,6 +121,7 @@ def render_inputs(req: CodePracticeRequest) -> dict:
         "match": match or "not measured",
         "attempts": str(req.attempts),
         "hints": "on" if req.hints else "off",
+        "presenter": "on" if req.present else "off",
         "notes": learner_notes(req.typed, changed_lines(req.previous, req.typed)),
         "changes": changes_since(req.previous, req.typed),
         "name_issues": "\n".join(f"line {line}: {msg}" for line, msg in undefined_names(req.typed, req.expected, req.language)),
@@ -150,6 +151,9 @@ def code_practice(req: CodePracticeRequest) -> dict:
         review.line_notes = sorted(fresh + still, key=lambda n: n.line)
     if not inputs["open_issues"]:
         review.reminder = ""
+    if not req.present:
+        # No presenter to show it: the coach explains in words.
+        review.show = ""
     if not req.hints:
         # Asked for no guidance: what to write next is never shown, whatever the model said.
         review.direction = ""

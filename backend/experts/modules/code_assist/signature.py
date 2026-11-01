@@ -19,6 +19,11 @@ class AssistStep(BaseModel):
     code: str = Field(default="", description="the WHOLE editor contents after this step, every line, exactly as it should "
                                               "read (plain code, no line numbers, no fences); empty when this step types "
                                               "nothing and only selects and talks")
+    erase: list[int] = Field(default_factory=list, description="the lines this step deletes or rewrites on purpose, "
+                                                               "numbered as the editor before it (`typed` for the first "
+                                                               "step, your previous step's code after that); a line "
+                                                               "left out of `code` but not listed here is put back. "
+                                                               "Empty when you only add")
     select: str = Field(default="", description="optional: a piece of the editor (as it is after this step) to select "
                                                 "while you talk about it, copied character for character: a line, a "
                                                 "condition, an expression, a few lines; empty for none")
@@ -61,6 +66,10 @@ class CodeAssistSig(dspy.Signature):
       a line or a few lines, or an expression inside one when that is the point. Say plainly what is wrong if a
       piece is wrong, but don't fix it.
     - "pair": pair programming, the learner at the keyboard. You only start lines; they finish them. ONE step:
+      - first read ALL of `typed`, not only the line they are on: if any line is wrong or out of place (a name
+        never defined, see `problems`; a statement outside the loop or block it belongs in; lines in the wrong
+        order; a name clash), type nothing: `select` it and `say` what is off and that it needs fixing before the
+        next line, as a hint, never the fix. Only once the code so far is sound, go on;
       - if `request` names a line the learner just finished and it is wrong, type nothing: `select` the part that
         is off and `say` a short hint toward it, never the fix;
       - if `request` says they are stuck on a line, type nothing: `say` a hint for it (what it must do, which
@@ -68,6 +77,8 @@ class CodeAssistSig(dspy.Signature):
       - otherwise, the next line of the code: `say` in one or two short sentences what it does and why it comes
         now, and in `code` START it: its indentation and its first word or two (`for `, `count[`, `return `),
         never the whole line, so the learner writes the rest. A line already started is theirs: don't type in it.
+        Start it where the learner is: on the line `cursor` names (most often the empty line they just opened),
+        not at the end of the code, which may hold lines they typed ahead or out of order.
       When the code is complete, no steps: say so in `closing`.
     - "ask": do what `request` asks, in the learner's own words, and no more ("write the loop" is the loop alone;
       "my lookup is wrong, fix it" is that fix). A question that needs no typing ("why {0: 1}?") gets no steps:
@@ -90,7 +101,10 @@ class CodeAssistSig(dspy.Signature):
     The final step's code must be right.
 
     Each step's `code` is the whole editor after it: copy every line already there, changed only where this step
-    types. Use the indentation of `expected`. Write no comments in the code: speak instead.
+    types. Use the indentation of `expected`. The editor is made to match it by typing in front of the learner, so
+    a line you take out is erased before their eyes. Erase or rewrite a line only when you mean to (it is wrong, or
+    in the way): list it in `erase` and say so in `say` ("this line has to go: ..."). A line missing from `code`
+    that `erase` doesn't list was left out by mistake, and is kept. Write no comments in the code: speak instead.
 
     `plan` opens: two or three sentences on how you will approach it, before any typing. `closing` ends: one or two
     sentences, handing the keyboard back.
@@ -117,6 +131,8 @@ class CodeAssistSig(dspy.Signature):
     typed: str = dspy.InputField(desc="the learner's editor now, with line numbers; may be empty")
     issues: str = dspy.InputField(desc="problems the coach already pointed out in the typed code, by line; may be empty")
     request: str = dspy.InputField(desc="the learner's own words on the help they want; may be empty")
+    problems: str = dspy.InputField(desc="names the typed code reads but never defines, by line (found by analysis); may be empty")
+    cursor: str = dspy.InputField(desc="the line of `typed` the learner's cursor is on, where they are writing; may be unknown")
     scope: str = dspy.InputField(desc='how much to write: "next", "section", "all", "fix" (only fix what is typed), '
                                       '"narrate" (select and explain, type nothing), "pair" (start the next line, or hint at a wrong one), or "ask" (do what `request` says)')
 

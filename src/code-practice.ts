@@ -15,6 +15,7 @@ import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
 import { invokeExpert } from '/expert-client.js';
+import { presenterOn, presenting, stopPresenting } from '/presenter.js';
 import { sceneHasCode } from '/describe-problem.js';
 import { createPracticeStore } from '/practice-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
@@ -41,7 +42,7 @@ type AssistStep = AssistPlan['steps'][number];
 interface QuizAsk { plan: string; steps: AssistStep[]; question: string; kind: 'type' | 'answer'; answer_key: string }
 interface QuizGrade { verdict: 'correct' | 'partly' | 'incorrect'; steps: AssistStep[]; feedback: string }
 const QUIZ_VERDICTS: Record<string, string> = {correct: 'Correct', partly: 'Partly right', incorrect: 'Not quite'};
-interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; reminder?: string; line_notes: {line: number; note: string}[] }
+interface Review { score: number; verdict: string; commentary: string; direction: string; reply?: string; reminder?: string; show?: string; line_notes: {line: number; note: string}[] }
 
 const VERDICTS: Record<string, string> = {correct: 'Correct', close: 'Close', partial: 'Partly there', off_track: 'Off track', empty: 'Nothing yet'};
 
@@ -262,11 +263,57 @@ export function setupCodePractice(): void {
     }
     /** The review as it is spoken: the commentary and what to do next, without markdown. */
     let spoken = '';
-    function speakReview(text: string) {
+    let coachTalking = false;
+    /** The lesson's chat is answering, presenting or speaking (its voice, not the coach's). */
+    const chatTalking = () => !!window.algebenchChatBusy?.() || presenting() || (!coachTalking && !!window.algebenchTTSActive?.());
+    /**
+     * Speak the review, then `then`. While the chat is talking the coach doesn't talk over it: it waits, and speaks
+     * once the chat is done (the newest review, if more came meanwhile). `interrupt`: a review handing a concept to
+     * the chat may cut it off, since what it hands over goes next anyway.
+     */
+    let held: {text: string; then?: () => void} | null = null, holdTimer = 0;
+    function speakReview(text: string, then?: () => void, interrupt = false) {
         // A greeting not yet heard goes first, so the first review doesn't cut it off.
         if (greeting && text) { text = `${greeting} ${text}`;greeting = ''; }
         spoken = text;
-        if (speakOn() && text) window.algebenchSpeakText?.(text);
+        if (!interrupt && chatTalking()) {
+            // A newer review replaces the one waiting, but a concept that one was to hand over still goes.
+            const before = held?.then;
+            held = {text, then: before && then ? () => { before();then(); } : then ?? before};
+            if (!holdTimer) {
+                let quiet = 0;
+                holdTimer = window.setInterval(() => {
+                    quiet = chatTalking() ? 0 : quiet + 1;
+                    if (quiet < 3) return;   // quiet for a moment, not a pause between two beats
+                    clearInterval(holdTimer);holdTimer = 0;
+                    const next = held;held = null;
+                    if (next) speakReview(next.text, next.then);
+                }, 400);
+            }
+            return;
+        }
+        if (interrupt && chatTalking()) { stopPresenting();window.algebenchStopTTS?.(); }
+        if (!speakOn() || !text || !window.algebenchSpeakText) { then?.();return; }
+        coachTalking = true;
+        window.algebenchSpeakText(text, () => { coachTalking = false;then?.(); });
+    }
+    /** What the coach has handed to the chat on this block: a concept is shown once. */
+    const shownInChat = new Set<string>();
+    /**
+     * The coach asks the chat to show a concept on the view (pointing, writing, drawing on the scratchpad): only with
+     * the presenter on, once the review has been said, and not over the chat's own answer.
+     */
+    function showInChat(request: string, body: HTMLElement) {
+        if (!request || shownInChat.has(request) || !presenterOn()) return null;
+        shownInChat.add(request);
+        const note = el('div', 'cp-report-show');note.textContent = '🎯 Showing it in the chat…';body.append(note);
+        return async () => {
+            if (!presenterOn() || typeof window.sendChatMessage !== 'function') { note.textContent = '🎯 The presenter is off: ask the chat to show this.';return; }
+            // An answer still on its way can't be cut short: the request goes once it is in.
+            for (let waited = 0;window.algebenchChatBusy?.() && waited < 60;waited++) await sleep(500);
+            if (window.algebenchChatBusy?.()) { note.textContent = '🎯 The chat was busy: ask it to show this later.';return; }
+            void window.sendChatMessage(request);
+        };
     }
     /**
      * Turning the coach on with nothing typed yet, it says hello and how to talk to it (once per switch, not on
@@ -347,7 +394,7 @@ export function setupCodePractice(): void {
         current = v;
         if (next === key) return;
         if (key) hushCoach();
-        key = next;block = text;quiz = null;askedQuestions = [];series = null;pairing = false;clearTimeout(pairIdle);
+        key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;clearTimeout(pairIdle);
         sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
         const count = v.to - v.from + 1;
         target.textContent = `${v.file.path.split('/').pop()} · lines ${v.from}–${v.to}`;
@@ -615,7 +662,7 @@ export function setupCodePractice(): void {
                 typed: input.value, ...(attempt.reviewed != null ? {previous: attempt.reviewed, open_notes: (attempt.issues ?? []).slice(0, 40)} : {}),
                 match: score.typed.map((t, j) => ({typed: j + 1, score: Math.round(100 * t.similarity), ...(t.reference != null ? {reference: t.reference} : {})}))
                     .filter((_, j) => !score!.typed[j]!.neutral).slice(0, 400),
-                attempts: attempt.reviews[id] ?? 0, hints: hintsOn(),
+                attempts: attempt.reviews[id] ?? 0, hints: hintsOn(), present: presenterOn(),
             }) as {result?: Review; reason?: string};
             waiting.remove();
             if (seq !== reviewSeq) return;
@@ -684,12 +731,13 @@ export function setupCodePractice(): void {
             body.append(list);
         }
         if (r.direction) md('cp-report-next', `**Next:** ${r.direction}`);
+        const show = showInChat(r.show ?? '', body);
         const msg = message('assistant', body);msg.classList.toggle('cp-msg-perfect', perfect);
         offerHelp(msg);
         render(false);
         // Read as shown: the answer, the comment, the reminder, each new line issue, then what to do next.
         speakReview([r.reply, r.commentary, r.reminder, ...fresh.map(n => `Line ${n.line}: ${n.note}`), r.direction && `Next: ${r.direction}`]
-            .filter(Boolean).join(' ').replace(/[`*]/g, ''));
+            .filter(Boolean).join(' ').replace(/[`*]/g, ''), show ?? undefined, !!show);
     }
 
     // ── Help me: the assistant takes the keyboard (the code_assist expert) ──
@@ -1030,7 +1078,7 @@ export function setupCodePractice(): void {
                 : (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
                 : scope === 'grade' ? await invokeExpert('code_quiz', {...where, mode: 'grade', question: pending!.question, kind: pending!.kind,
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
-                : await invokeExpert('code_assist', {...where, scope, request,
+                : await invokeExpert('code_assist', {...where, scope, request, cursor: input.value.slice(0, userCaret).split('\n').length,
                     // The coach's remarks, while they still number the lines as they are.
                     issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean};
             waiting.remove();

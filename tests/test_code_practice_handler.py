@@ -44,7 +44,7 @@ def test_a_review_is_returned_without_its_error_field(monkeypatch):
     monkeypatch.setattr(h, "review_code", stub)
     out = h.code_practice(_req(hints=True))
     assert out == {"result": {"score": 40, "verdict": "partial", "commentary": "Good start.",
-                              "direction": "Add the loop.", "reply": "", "reminder": "",
+                              "direction": "Add the loop.", "reply": "", "reminder": "", "show": "",
                               "line_notes": [{"line": 2, "note": "fine"}]}}
     assert set(seen) == set(INPUT_FIELDS)
 
@@ -137,3 +137,17 @@ def test_inputs_use_the_files_line_numbers_and_name_the_section():
                                               " 12 |     for i in range(n):", " 13 |         total += i"]
     assert inputs["match"] == "typed line 1: 100% like reference line 10\ntyped line 2: no matching reference line"
     assert inputs["typed"].splitlines()[1] == "  2 |     total = 0"
+
+
+def test_a_concept_goes_to_the_chat_only_with_the_presenter_on(monkeypatch):
+    seen = {}
+
+    def stub(**inputs):
+        seen.update(inputs)
+        return CodeReview(score=40, verdict="partial", show="On the scratchpad, show why k falls back to lps[k - 1].")
+
+    monkeypatch.setattr(h, "review_code", stub)
+    assert h.code_practice(_req(hints=True, present=True))["result"]["show"].startswith("On the scratchpad")
+    assert seen["presenter"] == "on"
+    assert h.code_practice(_req(hints=True))["result"]["show"] == ""
+    assert seen["presenter"] == "off"

@@ -60,3 +60,5 @@ class CodePracticeRequest(BaseModel):
     attempts: int = Field(default=0, ge=0, le=1000)
     #: Guide the next step (and how to begin, before anything is typed); off, only review what is typed.
     hints: bool = False
+    #: The AI presenter is on: the coach may hand a concept to the chat, to be shown on the view or the scratchpad.
+    present: bool = False

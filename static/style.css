@@ -6254,6 +6254,7 @@ body:has(.push-array) #legend { display: none; }
 .cp-report-reply { margin: 4px 0 8px; }
 .cp-report-reminder { margin: 6px 0 2px; color: #e3b04f; }
 .cp-report-reminder > :first-child::before { content: '↺ '; }
+.cp-report-show { margin: 6px 0 2px; font-size: .92em; opacity: .8; }
 .cp-report-reply > :first-child::before { content: '💬 '; }
 .cp-report-reply p { margin: 2px 0; }
 .cp-report-notes { margin: 4px 0 0; padding-left: 18px; color: #d36ba6; }

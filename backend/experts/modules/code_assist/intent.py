@@ -100,6 +100,24 @@ def keep_lines(code: str, before: str) -> str:
     return "\n".join(out)
 
 
+def keep_unerased(code: str, before: str, erase: set[int]) -> str:
+    """``code`` with the lines of ``before`` it drops put back, unless ``erase`` lists them (numbered from 1): a step
+    sending only its new line (pairing's next line) must not wipe the learner's code, though a step may erase a line
+    on purpose. A dropped line that a new line in its place resembles was rewritten, not dropped; a blank one goes."""
+    if not code or not before:
+        return code
+    old, new = before.split("\n"), code.split("\n")
+    out: list[str] = []
+    matcher = difflib.SequenceMatcher(None, [l.strip() for l in old], [l.strip() for l in new], autojunk=False)
+    for op, a1, a2, b1, b2 in matcher.get_opcodes():
+        if op in ("delete", "replace"):
+            out += [line for k, line in enumerate(old[a1:a2], a1 + 1) if line.strip() and k not in erase
+                    and not any(difflib.SequenceMatcher(None, line.strip(), n.strip()).ratio() >= .6 for n in new[b1:b2])]
+        if op != "delete":
+            out += new[b1:b2]
+    return "\n".join(out)
+
+
 def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True, editor: str = "") -> list[AssistStep]:
     """The model's steps made safe to play: code cleaned, the learner's lines kept as they typed them (``editor``,
     the editor before the first step), talk with nothing typed or pointed at joined to the step before, drafts kept
@@ -112,14 +130,15 @@ def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True, editor: st
         code, select = clean_code(s.code), str(s.select or "").strip("\n")
         if talk_only:
             code = ""
+        erase = {int(k) for k in (s.erase or []) if str(k).lstrip("-").isdigit()}
         if code:
-            code = keep_lines(code, before)
+            code = keep_lines(keep_unerased(code, before, erase), before)
         # Typing nothing and pointing at nothing is talk alone: it joins the step before.
         typed_nothing = not code or (steps and code == steps[-1].code)
         if steps and typed_nothing and not select:
             steps[-1].explain = " ".join(filter(None, [steps[-1].explain, _clean(s.say), _clean(s.explain)]))
             continue
-        draft = keep_lines(clean_code(s.draft), before) if s.draft else ""
+        draft = keep_lines(keep_unerased(clean_code(s.draft), before, erase), before) if s.draft else ""
         if code:
             before = code
         # A draft is a slip caught: one that is the fix already, or comes with nothing noticed, is no draft.
@@ -133,10 +152,34 @@ def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True, editor: st
     return steps
 
 
+def partial_steps(raw, editor: str) -> list[int]:
+    """The steps (from 1) whose code leaves out lines of the editor before them that their ``erase`` doesn't list:
+    part of the editor sent for the whole of it."""
+    out, before = [], editor
+    for k, s in enumerate(raw or [], 1):
+        if not isinstance(s, AssistStep) or not clean_code(s.code):
+            continue
+        code = clean_code(s.code)
+        erase = {int(n) for n in (s.erase or []) if str(n).lstrip("-").isdigit()}
+        if keep_unerased(code, before, erase) != code:
+            out.append(k)
+        before = code
+    return out
+
+
 def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
-    """Ask the model for the steps; one more ask if the answer was malformed."""
+    """Ask the model for the steps; one more ask if the answer was malformed, or sent part of the editor for the
+    whole of it (the code must stay whole: lines leave only when a step erases them on purpose)."""
     try:
         out = retry_on_parse_error(lambda: _assistant()(scope=scope, **inputs), label="code_assist")
+        partial = [] if scope == "narrate" else partial_steps(out.steps, editor_text)
+        if partial:
+            log.info("code_assist: step(s) %s sent part of the editor; asking again", partial)
+            again = {**inputs, "request": "\n".join(filter(None, [inputs.get("request", ""),
+                     f"(Your last answer's step(s) {', '.join(map(str, partial))} left out lines of the editor without "
+                     "listing them in `erase`. Each step's `code` must be the WHOLE editor: every line, changed only "
+                     "where the step types.)"]))}
+            out = retry_on_parse_error(lambda: _assistant()(scope=scope, **again), label="code_assist")
     except Exception as e:
         log.exception("code_assist: the model call failed")
         return CodeAssist(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
