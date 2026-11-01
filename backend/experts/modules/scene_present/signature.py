@@ -159,6 +159,12 @@ class ScenePresentSig(dspy.Signature):
     in `frames` (the [...] part), never carry over the values of the state you left. Move forward through the run
     as a story; go back only to compare.
 
+    Answer the case asked about, not a nearby one. A "what if" may ask for a case the run never reaches (a
+    mismatch at a place it never fails, an input it isn't given): check `frames`, and if no state shows it, say so
+    plainly ("In this run p[3] never fails, but if it did..."), then walk through it on the view as it is: point
+    at the cells it would read, write the values it would compute, without moving to a state that shows a
+    different case. Never present a different case as if it were the one asked.
+
     You also have a scratchpad: a beat may `write` one short line over the view while you say it, the way a
     presenter writes on the board as they talk. Use it for what is worth seeing written: the arithmetic with the
     values on screen ("running_sum - target = 1 - 3 = -2"), a key formula, the condition being checked, a

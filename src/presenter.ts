@@ -318,7 +318,7 @@ async function glide(x: number, y: number, r: number, ms?: number) {
 type MarkShape = 'circle' | 'underline' | 'check' | 'cross';
 /**
  * Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
- * it began), a line under it, a tick just right of it, a cross over it.
+ * it began), a line under it, a tick or a cross over it (beside it, a tick on a row of cells reads as the next cell's).
  */
 function markGeometry(rect: DOMRect, shape: MarkShape): {left: number; top: number; w: number; h: number; strokes: string[]} {
     if (shape === 'underline') {
@@ -327,7 +327,7 @@ function markGeometry(rect: DOMRect, shape: MarkShape): {left: number; top: numb
     }
     if (shape === 'check') {
         const s = Math.max(22, Math.min(44, rect.height * 1.3));
-        return {left: rect.right + 4, top: rect.top + rect.height / 2 - s * .6, w: s, h: s,
+        return {left: rect.left + rect.width / 2 - s / 2, top: rect.top + rect.height / 2 - s / 2, w: s, h: s,
             strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]};
     }
     if (shape === 'cross') {

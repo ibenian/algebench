@@ -10466,7 +10466,7 @@ async function glide(x, y, r, ms) {
 }
 /**
 * Where a mark goes and its strokes, in the mark's own box: a circle round `rect` (a hand's loop, a little past where
-* it began), a line under it, a tick just right of it, a cross over it.
+* it began), a line under it, a tick or a cross over it (beside it, a tick on a row of cells reads as the next cell's).
 */
 function markGeometry(rect, shape) {
 	if (shape === "underline") {
@@ -10482,8 +10482,8 @@ function markGeometry(rect, shape) {
 	if (shape === "check") {
 		const s = Math.max(22, Math.min(44, rect.height * 1.3));
 		return {
-			left: rect.right + 4,
-			top: rect.top + rect.height / 2 - s * .6,
+			left: rect.left + rect.width / 2 - s / 2,
+			top: rect.top + rect.height / 2 - s / 2,
 			w: s,
 			h: s,
 			strokes: [`M${s * .08} ${s * .55} L${s * .38} ${s * .88} L${s * .95} ${s * .1}`]
@@ -32542,15 +32542,27 @@ function setupCodePractice() {
 			say("typed", `✓ Every line right${names}.${seen ? " Hide the code and type it from memory for full marks." : helped ? " Part of it was written with the AI: type it all yourself for full marks." : ""}`);
 		}
 	}
-	/** Lines on screen in the Code panel count as seen, except those already typed exactly before. */
+	/** Since when each line has been on screen without a break: a glimpse (opening Type along before hiding the code, a redraw) isn't a read. */
+	const inView = /* @__PURE__ */ new Map();
+	const PEEK_MS = 1500;
+	/** Lines on screen in the Code panel long enough to read count as seen, except those already typed exactly before. */
 	function watchPeeks() {
-		if (!current || !root.classList.contains("open")) return;
+		if (!current || !root.classList.contains("open")) {
+			inView.clear();
+			return;
+		}
 		hide.setAttribute("aria-pressed", String(current.hidden()));
 		const seen = new Set(attempt.peeked), done = new Set(score?.lines.filter((l) => l.similarity === 1).map((l) => l.line));
-		const reference = block.split("\n");
+		const reference = block.split("\n"), shown = current.shown(), now = performance.now();
+		for (const line of inView.keys()) if (!shown.has(line)) inView.delete(line);
 		let added = false;
-		for (const line of current.shown()) {
+		for (const line of shown) {
 			if (line < current.from || line > current.to || seen.has(line) || done.has(line) || isNeutral(reference[line - current.from] ?? "")) continue;
+			if (!inView.has(line)) {
+				inView.set(line, now);
+				continue;
+			}
+			if (now - inView.get(line) < PEEK_MS) continue;
 			attempt.peeked.push(line);
 			added = true;
 		}

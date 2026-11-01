@@ -569,15 +569,21 @@ export function setupCodePractice(): void {
         }
     }
 
-    /** Lines on screen in the Code panel count as seen, except those already typed exactly before. */
+    /** Since when each line has been on screen without a break: a glimpse (opening Type along before hiding the code, a redraw) isn't a read. */
+    const inView = new Map<number, number>();
+    const PEEK_MS = 1500;
+    /** Lines on screen in the Code panel long enough to read count as seen, except those already typed exactly before. */
     function watchPeeks() {
-        if (!current || !root.classList.contains('open')) return;
+        if (!current || !root.classList.contains('open')) { inView.clear();return; }
         hide.setAttribute('aria-pressed', String(current.hidden()));
         const seen = new Set(attempt.peeked), done = new Set(score?.lines.filter(l => l.similarity === 1).map(l => l.line));
-        const reference = block.split('\n');
+        const reference = block.split('\n'), shown = current.shown(), now = performance.now();
+        for (const line of inView.keys()) if (!shown.has(line)) inView.delete(line);
         let added = false;
-        for (const line of current.shown()) {
+        for (const line of shown) {
             if (line < current.from || line > current.to || seen.has(line) || done.has(line) || isNeutral(reference[line - current.from] ?? '')) continue;
+            if (!inView.has(line)) { inView.set(line, now);continue; }
+            if (now - inView.get(line)! < PEEK_MS) continue;
             attempt.peeked.push(line);added = true;
         }
         if (added) { persist();render(false); }
