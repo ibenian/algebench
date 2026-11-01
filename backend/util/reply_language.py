@@ -116,7 +116,9 @@ def expert_note(lang: str | None = None) -> str:
     lang = lang or current()
     return (
         f"\n\nLanguage: write the text meant for the learner to read or hear (spoken lines, explanations, hints, "
-        f"questions, feedback) in {lang}. Everything else stays exactly as specified, in English: the field names "
+        f"questions, feedback) in {lang}, every sentence from its first word. The inputs may be in English, even "
+        f"words the app writes for the learner (\"I just finished line 5: ...\"): don't carry their wording or their "
+        f"language over. Everything else stays exactly as specified, in English: the field names "
         "and their [[ ## ... ## ]] markers, values chosen from a fixed set, refs and ids, code and its comments and "
         "identifiers, expressions, LaTeX and JSON."
     )
