@@ -11055,7 +11055,6 @@ async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow
 			x: a.x + dx * .7 + nx * bow * .8 + wob(2),
 			y: a.y + dy * .7 + ny * bow * .8 + wob(3)
 		};
-		svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/>`;
 		const headAt = (tip, from) => {
 			const ex = tip.x - from.x, ey = tip.y - from.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
 			const wing = (k) => {
@@ -11066,10 +11065,14 @@ async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow
 				};
 			};
 			const w1 = wing(.48), w2 = wing(-.42);
-			svg.insertAdjacentHTML("beforeend", `<path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${tip.x},${tip.y} L${w2.x},${w2.y}"/>`);
+			return `M${w1.x},${w1.y} L${tip.x},${tip.y} L${w2.x},${w2.y}`;
 		};
-		if (kind !== "line") headAt(b, c2);
-		if (kind === "both") headAt(a, c1);
+		const heads = [...kind !== "line" ? [headAt(b, c2)] : [], ...kind === "both" ? [headAt(a, c1)] : []];
+		const d = `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, drawnHeads = svg.querySelectorAll(".ai-arrow-head");
+		if (shaft() && drawnHeads.length === heads.length) {
+			shaft().setAttribute("d", d);
+			drawnHeads.forEach((h, k) => h.setAttribute("d", heads[k]));
+		} else svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="${d}"/>` + heads.map((h) => `<path class="ai-arrow-head" pathLength="1" d="${h}"/>`).join("");
 		if (!svg.classList.contains("drawn")) shaft()?.style.setProperty("stroke-dashoffset", String(1 - drawnSoFar));
 		return len;
 	};
@@ -11078,6 +11081,26 @@ async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow
 	notesLayer().append(svg);
 	notes.push(svg);
 	if (fromNote) arrowsFrom.set(fromNote, [...arrowsFrom.get(fromNote) ?? [], shape]);
+	let was = "";
+	const follow = () => {
+		if (!svg.isConnected) return;
+		const f = from(), t = to(), now = f && t ? [
+			f.left,
+			f.top,
+			f.width,
+			f.height,
+			t.left,
+			t.top,
+			t.width,
+			t.height
+		].map(Math.round).join() : "";
+		if (now && now !== was) {
+			was = now;
+			shape();
+		}
+		requestAnimationFrame(follow);
+	};
+	requestAnimationFrame(follow);
 	drawingArrow = true;
 	try {
 		const start = shaft()?.getPointAtLength(0);

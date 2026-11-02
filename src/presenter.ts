@@ -741,16 +741,20 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
         const nx = -dy / len, ny = dx / len, bow = side * Math.min(60, len * .18), wob = (k: number) => jitter[k]! * Math.min(10, len * .04);
         const c1 = {x: a.x + dx * .3 + nx * bow + wob(0), y: a.y + dy * .3 + ny * bow + wob(1)};
         const c2 = {x: a.x + dx * .7 + nx * bow * .8 + wob(2), y: a.y + dy * .7 + ny * bow * .8 + wob(3)};
-        svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}"/>`;
         // A head follows the curve's direction into its tip: at the end, and for "both" at the start too.
         const headAt = (tip: Point, from: Point) => {
             const ex = tip.x - from.x, ey = tip.y - from.y, el = Math.hypot(ex, ey) || 1, ux = ex / el, uy = ey / el, head = 13;
             const wing = (k: number) => { const c = Math.cos(k), s = Math.sin(k);return {x: tip.x - head * (ux * c - uy * s), y: tip.y - head * (uy * c + ux * s)}; };
             const w1 = wing(.48), w2 = wing(-.42);
-            svg.insertAdjacentHTML('beforeend', `<path class="ai-arrow-head" pathLength="1" d="M${w1.x},${w1.y} L${tip.x},${tip.y} L${w2.x},${w2.y}"/>`);
+            return `M${w1.x},${w1.y} L${tip.x},${tip.y} L${w2.x},${w2.y}`;
         };
-        if (kind !== 'line') headAt(b, c2);
-        if (kind === 'both') headAt(a, c1);
+        const heads = [...(kind !== 'line' ? [headAt(b, c2)] : []), ...(kind === 'both' ? [headAt(a, c1)] : [])];
+        const d = `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, drawnHeads = svg.querySelectorAll('.ai-arrow-head');
+        // Moved, it keeps its strokes and only reshapes them: new ones would draw their heads again.
+        if (shaft() && drawnHeads.length === heads.length) {
+            shaft()!.setAttribute('d', d);
+            drawnHeads.forEach((h, k) => h.setAttribute('d', heads[k]!));
+        } else svg.innerHTML = `<path class="ai-arrow-shaft" pathLength="1" d="${d}"/>` + heads.map(h => `<path class="ai-arrow-head" pathLength="1" d="${h}"/>`).join('');
         if (!svg.classList.contains('drawn')) shaft()?.style.setProperty('stroke-dashoffset', String(1 - drawnSoFar));
         return len;
     };
@@ -758,6 +762,16 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
     if (!len) return;
     notesLayer().append(svg);notes.push(svg);
     if (fromNote) arrowsFrom.set(fromNote, [...(arrowsFrom.get(fromNote) ?? []), shape]);
+    // What it joins on the view moves as the scene plays, turns or is resized: put it in place again every frame
+    // while it's up (only when an end moved).
+    let was = '';
+    const follow = () => {
+        if (!svg.isConnected) return;
+        const f = from(), t = to(), now = f && t ? [f.left, f.top, f.width, f.height, t.left, t.top, t.width, t.height].map(Math.round).join() : '';
+        if (now && now !== was) { was = now;shape(); }
+        requestAnimationFrame(follow);
+    };
+    requestAnimationFrame(follow);
     // The pointer draws it: onto its start, then along the stroke as it appears; then the beat has it back.
     drawingArrow = true;
     try {
