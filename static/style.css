@@ -6350,6 +6350,10 @@ body:has(.push-array) #legend { display: none; }
 .ai-pointer-trail { background: rgba(255, 59, 48, .22); transform-origin: center; }
 .ai-pointer-trail:nth-child(n+3) { background: rgba(255, 59, 48, .14); }
 .ai-pointer-trail:nth-child(n+5) { background: rgba(255, 59, 48, .07); }
+/* A busy view dims round what is marked, for the beat: over the notes, under the marks and the pointer. */
+.ai-spotlight { position: fixed; z-index: 8998; pointer-events: none; opacity: 0; transition: opacity .6s ease-in-out; }
+.ai-spotlight.on { opacity: 1; }
+.ai-spotlight-dim { fill: rgba(0, 0, 0, .55); }
 .ai-pointer-ring { position: fixed; z-index: 8999; pointer-events: none; overflow: visible; opacity: 0; }
 .ai-pointer-ring.on { opacity: 1; }
 /* A tick or cross sits over what it marks: see-through, so what's under it still reads. A dark contour round its
@@ -6376,10 +6380,10 @@ body:has(.push-array) #legend { display: none; }
 .ai-present-replay:disabled { opacity: .3; cursor: default; }
 body.ai-presenting .ai-present-replay { visibility: hidden; }
 /* The presenter's scratchpad: lines typed over the view like projected light, fading in and out. */
-#ai-scratchpad { position: fixed; inset: 0; z-index: 8998; pointer-events: none; }
+#ai-scratchpad { position: fixed; inset: 0; z-index: 8997; pointer-events: none; }
 /* The walk-through is drawn over the 3D view: while the graph takes its place (not docked beside it), its notes,
    marks and pointer wait unseen. */
-body:has(#viewport:not(.graph-docked) #graph-viewport:not(.hidden)) :is(#ai-scratchpad, .ai-pointer, .ai-pointer-ring) { visibility: hidden; }
+body:has(#viewport:not(.graph-docked) #graph-viewport:not(.hidden)) :is(#ai-scratchpad, .ai-pointer, .ai-pointer-ring, .ai-spotlight) { visibility: hidden; }
 /* A note's ink (--ink): green unless the presenter picks another of its colours, so related notes match. */
 .ai-note, .ai-arrow { --ink: #7dffcf; }
 .ai-ink-yellow { --ink: #ffe08a; } .ai-ink-red { --ink: #ff7a6e; } .ai-ink-blue { --ink: #7ab8ff; }

@@ -97,6 +97,10 @@ class PresentStep(BaseModel):
                                                    'tick beside it: right, it holds, it matches) or "cross" (a cross '
                                                    'over it: wrong, ruled out, does not match); ignored without a '
                                                    'target')
+    spotlight: bool = Field(default=False, description="with a circle, underline, check or cross: dim the view round "
+                                                       "what you mark, for this beat, when the view is busy (many "
+                                                       "boxes, notes and links) and the eye would not find it at once; "
+                                                       "false on a clear view")
     frame: int = Field(default=-1, description="the execution state to move the slider to BEFORE this beat, from "
                                                "`frames`; -1 to stay where it is")
     write: str = Field(default="", description="optional: one short line you type on the scratchpad over the view "
@@ -256,7 +260,9 @@ class ScenePresentSig(dspy.Signature):
     A mark (circle, underline, check, cross) is for the moment you talk about something and goes with the beat;
     to mark several things at once, name the first as `target` and the rest in `together`: those side by side
     share one circle, those apart get one each, joined by a line (two cells compared: a circle on each, a line
-    between). An `outline` stays: use it only for a group you will keep coming back to.
+    between). An `outline` stays: use it only for a group you will keep coming back to. On a busy view, where a
+    mark alone would get lost among the rest, add `spotlight` to that beat: the view dims round what you mark, for
+    a moment, so the eye goes straight to it. Keep it for the beats that need it, not every one.
     The pointer can rub out drawn things too, as with an eraser (`erase_draw`: their ids; the links joined to
     them, and what is in a group, go with them): a node taken out of a tree, a step that is done, a wrong guess. Say what goes as it goes; an id
     rubbed out may be drawn again later, anew.

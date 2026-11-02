@@ -23,7 +23,7 @@ import { keyDelay } from '/code-assist-play.js';
 import { LINKS, SHAPES, edgePoint, hullAround, layoutDrawing, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Laid, type Point, type Rect } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
-interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line' | 'both';
+interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line' | 'both'; spotlight?: boolean;
     slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; erase_draw?: string[]; together?: string[]; color?: string; draw?: Drawing | null }
 interface Target { ref: string; about: string }
 
@@ -359,7 +359,7 @@ function drawRing(rect: DOMRect | null, color = '', shape: MarkShape = 'circle')
     if (!ring) return;
     for (const extra of [...moreRings, ...markLinks]) extra.remove();
     moreRings = [];markLinks = [];
-    if (!rect) { ring.classList.remove('on', 'drawn');return; }
+    if (!rect) { ring.classList.remove('on', 'drawn');if (!spotlightBeat) hideSpotlight();return; }
     ringShape = shape;
     ring.setAttribute('class', `ai-pointer-ring ai-mark-${shape} ${inkClass(color)}`.trim());
     ring.innerHTML = markGeometry(rect, shape).strokes.map(() => '<path pathLength="1"/>').join('');
@@ -398,6 +398,7 @@ function fitLink(el: SVGSVGElement, a: DOMRect, b: DOMRect) {
 function drawRings(rects: DOMRect[], color: string, shape: MarkShape) {
     drawRing(rects[0] ?? null, color, shape);
     if (!ring) return;
+    if (spotlightBeat && rects.length) showSpotlight(rects, shape);
     for (const r of rects.slice(1)) {
         const el = ring.cloneNode(false) as SVGSVGElement;
         el.innerHTML = markGeometry(r, shape).strokes.map(() => '<path pathLength="1"/>').join('');
@@ -414,8 +415,75 @@ function drawRings(rects: DOMRect[], color: string, shape: MarkShape) {
 }
 function fitRings(rects: DOMRect[]) {
     if (rects[0]) fitRing(rects[0]);
+    if (spot?.classList.contains('on')) fitSpotlight(rects);
     moreRings.forEach((el, k) => { if (rects[k + 1]) fitRing(rects[k + 1]!, el); });
     markLinks.forEach((el, k) => { if (rects[k] && rects[k + 1]) fitLink(el, rects[k]!, rects[k + 1]!); });
+}
+// ── Spotlight: on a busy view, the 3D view dims round what is marked, for the beat ──
+/**
+ * Whether this beat dims the view round its marks (the presenter's `spotlight`, for a crowded view). Set as the beat
+ * starts, so the dimming of one beat carries on into the next that has it too: its hole moves on, not off and on.
+ */
+let spotlightBeat = false;
+let spot: SVGSVGElement | null = null, spotShape: MarkShape = 'circle';
+/** A hole in the dimming, in the view's space: a rounded box, an ellipse being one whose corners are round all the way. */
+interface Hole { x: number; y: number; w: number; h: number; rx: number; ry: number }
+/** What the holes show now, and where they are going: a move from `from` that began at `t0` (none when still). */
+let spotHoles: Hole[] = [], spotRects: DOMRect[] = [], spotMove: {from: Hole[]; t0: number} | null = null;
+const SPOT_MOVE_MS = 650;
+function showSpotlight(rects: DOMRect[], shape: MarkShape) {
+    if (!spot?.isConnected) {
+        spot = document.createElementNS(SVG_NS, 'svg');spot.classList.add('ai-spotlight');spot.setAttribute('aria-hidden', 'true');
+        spot.innerHTML = '<defs><mask id="ai-spotlight-mask" maskUnits="userSpaceOnUse"><rect class="ai-spotlight-all" fill="white"/><g class="ai-spotlight-holes"/></mask></defs>'
+            + '<rect class="ai-spotlight-dim" mask="url(#ai-spotlight-mask)"/>';
+        document.body.append(spot);
+    }
+    // Already dimmed (the beat before had it): the hole glides from what it showed to what this beat marks.
+    const lit = spot.classList.contains('on') && spotHoles.length > 0;
+    spotMove = lit ? {from: spotHoles, t0: performance.now()} : null;
+    spotShape = shape;spotRects = rects;
+    fitSpotlight(rects);
+    if (spotMove) requestAnimationFrame(moveSpotlight);
+    // Laid out unlit first, so it fades in rather than appearing.
+    void spot.getBoundingClientRect();
+    spot.classList.add('on');
+}
+/** Step the hole's glide each frame until it arrives (the marks' own refits keep it on target after). */
+function moveSpotlight() {
+    if (!spotMove || !spot?.classList.contains('on')) return;
+    fitSpotlight(spotRects);
+    if (spotMove) requestAnimationFrame(moveSpotlight);
+}
+function hideSpotlight() { spot?.classList.remove('on');spotMove = null; }
+/** The hole for a mark on `rect`: the ring's own ellipse for a circle, else the box it is drawn on (an underline's takes in its line). */
+function holeFor(rect: DOMRect, view: DOMRect): Hole {
+    const x = rect.left - view.left, y = rect.top - view.top;
+    if (spotShape === 'circle') {
+        const {rx, ry} = ringRadii(rect);
+        return {x: x + rect.width / 2 - rx, y: y + rect.height / 2 - ry, w: rx * 2, h: ry * 2, rx, ry};
+    }
+    const pad = 6, below = spotShape === 'underline' ? 12 : 0;
+    return {x: x - pad, y: y - pad, w: rect.width + pad * 2, h: rect.height + pad * 2 + below, rx: 6, ry: 6};
+}
+/** Lay the dimming over the 3D view, and nowhere else, with a hole for each mark, partway there while it glides. */
+function fitSpotlight(rects: DOMRect[]) {
+    const view = state.renderer?.domElement.getBoundingClientRect();
+    if (!spot || !view) return;
+    spotRects = rects;
+    spot.style.left = `${view.left}px`;spot.style.top = `${view.top}px`;
+    spot.setAttribute('width', String(view.width));spot.setAttribute('height', String(view.height));
+    for (const r of spot.querySelectorAll('.ai-spotlight-all, .ai-spotlight-dim')) { r.setAttribute('width', String(view.width));r.setAttribute('height', String(view.height)); }
+    let holes = rects.map(rect => holeFor(rect, view));
+    if (spotMove) {
+        const t = Math.min(1, (performance.now() - spotMove.t0) / SPOT_MOVE_MS), k = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        // Each new hole comes from an old one (the last, when there are more now); old ones beyond them close.
+        const from = spotMove.from, lerp = (a: number, b: number) => a + (b - a) * k;
+        holes = holes.map((h, i) => { const f = from[Math.min(i, from.length - 1)]!;return {x: lerp(f.x, h.x), y: lerp(f.y, h.y), w: lerp(f.w, h.w), h: lerp(f.h, h.h), rx: lerp(f.rx, h.rx), ry: lerp(f.ry, h.ry)}; });
+        if (t >= 1) spotMove = null;
+    }
+    spotHoles = holes;
+    spot.querySelector('.ai-spotlight-holes')!.innerHTML = holes.map(h =>
+        `<rect fill="black" x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" rx="${Math.min(h.rx, h.w / 2)}" ry="${Math.min(h.ry, h.h / 2)}"/>`).join('');
 }
 /**
  * What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
@@ -1595,7 +1663,7 @@ function begin(pause = true): number {
 function end(r: number) {
     if (r !== run) return;
     markPlaying(null);
-    playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');
+    playing = false;unhover();document.body.classList.remove('ai-presenting');spotlightBeat = false;drawRing(null);pointer?.classList.remove('on', 'pressed');
     // What was written and drawn stays: the presenter wipes it on a later walk-through when it's done with it.
 }
 
@@ -1610,6 +1678,7 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         alive(r);
         if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
         if (beat.slider?.startsWith('slider:') && typeof beat.slider_to === 'number') await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
+        spotlightBeat = !!beat.spotlight && !!beat.target && beat.mark !== 'point';
         drawRing(null);
         if (beat.erase) eraseNotes();
         // Tidying the board before going on: notes named by their text are wiped, or slide to the top-left stack.
@@ -1714,7 +1783,7 @@ function addReplay(body: HTMLElement, steps: Beat[], start: Start) {
 /** Stop a walk-through now: the pointer goes, and so does the voice; what it wrote and drew stays. */
 export function stopPresenting() {
     if (!playing) return;
-    run++;markPlaying(null);playing = false;unhover();document.body.classList.remove('ai-presenting');drawRing(null);pointer?.classList.remove('on', 'pressed');
+    run++;markPlaying(null);playing = false;unhover();document.body.classList.remove('ai-presenting');spotlightBeat = false;drawRing(null);pointer?.classList.remove('on', 'pressed');
     if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();
 }
 

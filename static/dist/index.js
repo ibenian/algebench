@@ -10534,6 +10534,7 @@ function drawRing(rect, color = "", shape = "circle") {
 	markLinks = [];
 	if (!rect) {
 		ring.classList.remove("on", "drawn");
+		if (!spotlightBeat) hideSpotlight();
 		return;
 	}
 	ringShape = shape;
@@ -10592,6 +10593,7 @@ function fitLink(el, a, b) {
 function drawRings(rects, color, shape) {
 	drawRing(rects[0] ?? null, color, shape);
 	if (!ring) return;
+	if (spotlightBeat && rects.length) showSpotlight(rects, shape);
 	for (const r of rects.slice(1)) {
 		const el = ring.cloneNode(false);
 		el.innerHTML = markGeometry(r, shape).strokes.map(() => "<path pathLength=\"1\"/>").join("");
@@ -10610,12 +10612,111 @@ function drawRings(rects, color, shape) {
 }
 function fitRings(rects) {
 	if (rects[0]) fitRing(rects[0]);
+	if (spot?.classList.contains("on")) fitSpotlight(rects);
 	moreRings.forEach((el, k) => {
 		if (rects[k + 1]) fitRing(rects[k + 1], el);
 	});
 	markLinks.forEach((el, k) => {
 		if (rects[k] && rects[k + 1]) fitLink(el, rects[k], rects[k + 1]);
 	});
+}
+/**
+* Whether this beat dims the view round its marks (the presenter's `spotlight`, for a crowded view). Set as the beat
+* starts, so the dimming of one beat carries on into the next that has it too: its hole moves on, not off and on.
+*/
+var spotlightBeat = false;
+var spot = null;
+var spotShape = "circle";
+/** What the holes show now, and where they are going: a move from `from` that began at `t0` (none when still). */
+var spotHoles = [];
+var spotRects = [];
+var spotMove = null;
+var SPOT_MOVE_MS = 650;
+function showSpotlight(rects, shape) {
+	if (!spot?.isConnected) {
+		spot = document.createElementNS(SVG_NS, "svg");
+		spot.classList.add("ai-spotlight");
+		spot.setAttribute("aria-hidden", "true");
+		spot.innerHTML = "<defs><mask id=\"ai-spotlight-mask\" maskUnits=\"userSpaceOnUse\"><rect class=\"ai-spotlight-all\" fill=\"white\"/><g class=\"ai-spotlight-holes\"/></mask></defs><rect class=\"ai-spotlight-dim\" mask=\"url(#ai-spotlight-mask)\"/>";
+		document.body.append(spot);
+	}
+	spotMove = spot.classList.contains("on") && spotHoles.length > 0 ? {
+		from: spotHoles,
+		t0: performance.now()
+	} : null;
+	spotShape = shape;
+	spotRects = rects;
+	fitSpotlight(rects);
+	if (spotMove) requestAnimationFrame(moveSpotlight);
+	spot.getBoundingClientRect();
+	spot.classList.add("on");
+}
+/** Step the hole's glide each frame until it arrives (the marks' own refits keep it on target after). */
+function moveSpotlight() {
+	if (!spotMove || !spot?.classList.contains("on")) return;
+	fitSpotlight(spotRects);
+	if (spotMove) requestAnimationFrame(moveSpotlight);
+}
+function hideSpotlight() {
+	spot?.classList.remove("on");
+	spotMove = null;
+}
+/** The hole for a mark on `rect`: the ring's own ellipse for a circle, else the box it is drawn on (an underline's takes in its line). */
+function holeFor(rect, view) {
+	const x = rect.left - view.left, y = rect.top - view.top;
+	if (spotShape === "circle") {
+		const { rx, ry } = ringRadii(rect);
+		return {
+			x: x + rect.width / 2 - rx,
+			y: y + rect.height / 2 - ry,
+			w: rx * 2,
+			h: ry * 2,
+			rx,
+			ry
+		};
+	}
+	const pad = 6, below = spotShape === "underline" ? 12 : 0;
+	return {
+		x: x - pad,
+		y: y - pad,
+		w: rect.width + 12,
+		h: rect.height + 12 + below,
+		rx: 6,
+		ry: 6
+	};
+}
+/** Lay the dimming over the 3D view, and nowhere else, with a hole for each mark, partway there while it glides. */
+function fitSpotlight(rects) {
+	const view = state.renderer?.domElement.getBoundingClientRect();
+	if (!spot || !view) return;
+	spotRects = rects;
+	spot.style.left = `${view.left}px`;
+	spot.style.top = `${view.top}px`;
+	spot.setAttribute("width", String(view.width));
+	spot.setAttribute("height", String(view.height));
+	for (const r of spot.querySelectorAll(".ai-spotlight-all, .ai-spotlight-dim")) {
+		r.setAttribute("width", String(view.width));
+		r.setAttribute("height", String(view.height));
+	}
+	let holes = rects.map((rect) => holeFor(rect, view));
+	if (spotMove) {
+		const t = Math.min(1, (performance.now() - spotMove.t0) / SPOT_MOVE_MS), k = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+		const from = spotMove.from, lerp = (a, b) => a + (b - a) * k;
+		holes = holes.map((h, i) => {
+			const f = from[Math.min(i, from.length - 1)];
+			return {
+				x: lerp(f.x, h.x),
+				y: lerp(f.y, h.y),
+				w: lerp(f.w, h.w),
+				h: lerp(f.h, h.h),
+				rx: lerp(f.rx, h.rx),
+				ry: lerp(f.ry, h.ry)
+			};
+		});
+		if (t >= 1) spotMove = null;
+	}
+	spotHoles = holes;
+	spot.querySelector(".ai-spotlight-holes").innerHTML = holes.map((h) => `<rect fill="black" x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" rx="${Math.min(h.rx, h.w / 2)}" ry="${Math.min(h.ry, h.h / 2)}"/>`).join("");
 }
 /**
 * What a mark goes round: the target, or with things `together` with it (a line each) the clusters they make:
@@ -12259,6 +12360,7 @@ function end(r) {
 	playing = false;
 	unhover();
 	document.body.classList.remove("ai-presenting");
+	spotlightBeat = false;
 	drawRing(null);
 	pointer?.classList.remove("on", "pressed");
 }
@@ -12277,6 +12379,7 @@ async function playBeats(steps, body, r, onBeat) {
 		alive(r);
 		if (beat.frame >= 0) await dragSliderTo(beat.frame, r);
 		if (beat.slider?.startsWith("slider:") && typeof beat.slider_to === "number") await dragParamTo(beat.slider.slice(7), beat.slider_to, r);
+		spotlightBeat = !!beat.spotlight && !!beat.target && beat.mark !== "point";
 		drawRing(null);
 		if (beat.erase) eraseNotes();
 		for (const t of beat.erase_notes ?? []) {
@@ -12389,6 +12492,7 @@ function stopPresenting() {
 	playing = false;
 	unhover();
 	document.body.classList.remove("ai-presenting");
+	spotlightBeat = false;
 	drawRing(null);
 	pointer?.classList.remove("on", "pressed");
 	if (window.algebenchTTSActive?.()) window.algebenchStopTTS?.();

@@ -32,9 +32,17 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "erase_draw": [], "together": [], "draw": None, "color": ""}
+    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "erase_draw": [], "together": [], "draw": None, "color": "", "spotlight": False}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
+
+
+def test_spotlight_is_kept_only_on_a_beat_that_marks_something(monkeypatch):
+    raw = [PresentStep(say="This one.", target="nums[2]", mark="circle", spotlight=True),
+           PresentStep(say="Just look.", target="nums[2]", mark="point", spotlight=True),
+           PresentStep(say="Nothing here.", target="", mark="circle", spotlight=True)]
+    monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
+    assert [s["spotlight"] for s in h.scene_present(_req())["result"]["steps"]] == [True, False, False]
 
 
 def test_failure_and_nothing_to_show_are_reasons(monkeypatch):

@@ -310,6 +310,7 @@ def clean_steps(raw, refs: set[str], frames: int, left=None, problems: list[str]
         together = [t for t in dict.fromkeys(_target_ref(v, refs, written, drawn) for v in (s.together or [])[:12]) if t and t != target] if target else []
         out.append(PresentStep(say=_clean(s.say), target=target, part=_part(s.part, target, drawn),
                                mark=s.mark if s.mark in MARKS else "point",
+                               spotlight=bool(s.spotlight) and bool(target) and s.mark in MARKS and s.mark != "point",
                                frame=frame if 0 <= frame < frames else -1,
                                write=write, write_near=_target_ref(s.write_near, refs, written, drawn) if write else "", erase=bool(s.erase),
                                arrow_to=_target_ref(s.arrow_to, refs, written, drawn),
