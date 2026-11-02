@@ -1372,6 +1372,8 @@ export function setupCodePractice(): void {
         const open = root.classList.contains('open');
         head.classList.toggle('side-section-folded', !open);
         paintFold(toggle, !open, open ? 'Fold Type along down to its header' : 'Show Type along');
+        // The Code panel's titles-only view stops opening the running section by itself while the learner types.
+        window.dispatchEvent(new CustomEvent('algebench:practiceopen', {detail: {open}}));
     };
     const flipOpen = () => {
         root.classList.toggle('open');paintOpen();savePrefs();

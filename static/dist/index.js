@@ -30667,10 +30667,11 @@ function setupCodePanel() {
 	const revealed = /* @__PURE__ */ new Set();
 	const shut = /* @__PURE__ */ new Set();
 	let running = /* @__PURE__ */ new Set();
+	const practising = () => !!document.querySelector(".code-practice.open");
 	const revealKey = (section) => `${selected?.id}:${section.id}`;
 	const isOpen = (section) => {
 		const key = revealKey(section);
-		return revealed.has(key) || settings.structureMode === "outline" && running.has(section.id) && !shut.has(key) || [...finding?.kinds.values() ?? []].some((lines) => lines.some((line) => line >= section.from && line <= section.to));
+		return revealed.has(key) || settings.structureMode === "outline" && running.has(section.id) && !shut.has(key) && !practising() || [...finding?.kinds.values() ?? []].some((lines) => lines.some((line) => line >= section.from && line <= section.to));
 	};
 	/** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
 	function paintReveal(section) {
@@ -31602,6 +31603,9 @@ function setupCodePanel() {
 	});
 	window.addEventListener("algebench:navchange", refresh);
 	window.addEventListener("algebench:labelshidden", scheduleInline);
+	window.addEventListener("algebench:practiceopen", () => {
+		if (selected && settings.structureMode !== "plain") codeSections(selected).forEach(paintReveal);
+	});
 	window.addEventListener("algebench:sliderchange", () => refreshBinding());
 	paintBlur();
 	refresh();
@@ -36332,6 +36336,7 @@ function setupCodePractice() {
 		const open = root.classList.contains("open");
 		head.classList.toggle("side-section-folded", !open);
 		paintFold(toggle, !open, open ? "Fold Type along down to its header" : "Show Type along");
+		window.dispatchEvent(new CustomEvent("algebench:practiceopen", { detail: { open } }));
 	};
 	const flipOpen = () => {
 		root.classList.toggle("open");

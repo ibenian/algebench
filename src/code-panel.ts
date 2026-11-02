@@ -677,11 +677,13 @@ export function setupCodePanel(): void {
     // ones the reader closed anyway, until they stop running.
     const shut=new Set<string>();
     let running=new Set<string>();
+    const practising=()=>!!document.querySelector('.code-practice.open');
     const revealKey=(section:CodeSection)=>`${selected?.id}:${section.id}`;
     const isOpen=(section:CodeSection)=>{
         const key=revealKey(section);
         // A section holding a found line (a variable's uses, from its tooltip) shows it too.
-        return revealed.has(key)||(settings.structureMode==='outline'&&running.has(section.id)&&!shut.has(key))
+        // The running one opens by itself, except while Type along is open: its code would be shown, unasked, to the one typing it.
+        return revealed.has(key)||(settings.structureMode==='outline'&&running.has(section.id)&&!shut.has(key)&&!practising())
             ||[...finding?.kinds.values()??[]].some(lines=>lines.some(line=>line>=section.from&&line<=section.to));
     };
     /** Show or hide one section's code in the hidden-code modes (its title's chevron says which). */
@@ -1325,6 +1327,7 @@ export function setupCodePanel(): void {
     window.addEventListener('algebench:navchange',refresh);
     // A step's removed labels fade out before they hide: until then their values would still show inline.
     window.addEventListener('algebench:labelshidden',scheduleInline);
+    window.addEventListener('algebench:practiceopen',()=>{if(selected&&settings.structureMode!=='plain')codeSections(selected).forEach(paintReveal);});
     window.addEventListener('algebench:sliderchange',()=>refreshBinding());
     paintBlur();
     refresh();
