@@ -1871,6 +1871,50 @@ ${MD_TAIL}
 
 **Practice:** Implement Trie, Design Add and Search Words Data Structure, Word Search II, Longest Common Prefix, Replace Words.`,
         prompt: 'Explain shared prefixes and the end-of-word marker. Ask the learner to predict which nodes an insert creates, where a starts_with walk fails, and why search("ca") is False while starts_with("ca") is True, before the player reveals it.',
+        sections: [
+            section(TRIE_SOURCE, 'trie-node', 'A node: children and an end mark', 'class Node:', 'self.end = False', {
+                hint: 'Each node maps a letter to the child below it, and records whether a word ends here.' }),
+            section(TRIE_SOURCE, 'trie-insert-start', 'Insert each word from the root', 'def build(', 'node = root', {
+                hint: 'Every insert starts at the root, which stands for the empty prefix.' }),
+            section(TRIE_SOURCE, 'trie-insert-walk', 'Walk the word, creating missing nodes', 'for ch in word:', 'node = node.children[ch]', {
+                hint: 'Follow the child for each letter; create it only if it is missing, so shared prefixes are stored once.',
+                prompt: 'Explain why an insert creates nodes only after the first letter that is not yet a child, using "cart" after "car" as the example.' }),
+            section(TRIE_SOURCE, 'trie-insert-end', 'Mark where the word ends', 'node.end = True', 'return root', {
+                hint: 'The last node of the word gets the end mark, even if longer words continue below it.' }),
+            section(TRIE_SOURCE, 'trie-prefix', 'starts_with: walk the prefix', 'def starts_with(', 'return True', {
+                hint: 'A missing letter means no word starts with the prefix; reaching the end means some word does.' }),
+            section(TRIE_SOURCE, 'trie-search-walk', 'search: walk the word', 'def search(', 'node = node.children[ch]', {
+                hint: 'The same walk as starts_with: fail at the first missing letter.' }),
+            section(TRIE_SOURCE, 'trie-search-end', 'search: a word must end here', 'return node.end', null, {
+                hint: 'A path alone is only a prefix; the end mark says a whole word stops here.',
+                prompt: 'Explain why search returns node.end rather than True, with "ca" as the example: a prefix of "car", but not a stored word.' }),
+        ],
+        annotations: [
+            doc('Node', 'One trie node: one prefix of the stored words.'),
+            doc('children', 'A dict from a letter to the child node that extends this prefix by that letter.'),
+            doc('end', '`True` when a stored word ends at this node: "do" ends inside "dog".'),
+            doc('build', '`build(words)` returns the root of a trie holding every word. O(total letters).'),
+            doc('starts_with', '`starts_with(root, prefix)` says whether some stored word starts with `prefix`. O(len(prefix)).'),
+            doc('search', '`search(root, word)` says whether `word` itself is stored, not just as a prefix. O(len(word)).'),
+            doc('words', 'The words to store.'),
+            doc('root', 'The root node: the empty prefix every walk starts from.'),
+            doc('node', 'The node the walk is at: the prefix read so far.'),
+            doc('ch', 'The letter being followed.'),
+            doc('prefix', 'The prefix looked up.'),
+            doc('word', 'The word being inserted.', { source: TRIE_SOURCE, start: 'def build(', end: 'return root' }),
+            doc('word', 'The word looked up.', { source: TRIE_SOURCE, start: 'def search(', end: 'return node.end' }),
+            docExpr(TRIE_SOURCE, 'self.children = {}', '{}', 'No children yet: a new node is a leaf.'),
+            docExpr(TRIE_SOURCE, 'if ch not in node.children', 'ch not in node.children', 'No node for this letter below the current prefix yet.'),
+            docExpr(TRIE_SOURCE, 'node.children[ch] = Node()', 'Node()', 'A new node: the prefix extended by `ch`, stored once for every word that shares it.'),
+            docBlock(TRIE_SOURCE, 'for ch in word:', 'node = node.children[ch]', 'One step per letter, however many words are stored: O(len(word)).'),
+            docExpr(TRIE_SOURCE, 'node.end = True', 'node.end = True', 'A word stops here; longer words may still continue below.'),
+            (() => { const line = lineOf(TRIE_SOURCE, 'return False'), col = TRIE_SOURCE.split('\n')[line - 1]!.indexOf('False');
+                return { line, col, endCol: col + 5, text: 'A letter of the prefix is missing: no stored word starts with it.' }; })(),
+            docExpr(TRIE_SOURCE, 'return True', 'True', 'Every letter of the prefix is a path from the root: some stored word starts with it.'),
+            (() => { const line = lineOf(TRIE_SOURCE, 'return False', 'def search('), col = TRIE_SOURCE.split('\n')[line - 1]!.indexOf('False');
+                return { line, col, endCol: col + 5, text: 'A letter is missing: the word is not stored, nor any word starting with it.' }; })(),
+            docExpr(TRIE_SOURCE, 'return node.end', 'node.end', 'The path exists; it is a stored word only if one ends here. `search("ca")` is False, though `starts_with("ca")` is True.'),
+        ],
         elements: [
             array('words', 'words', [-5.4, 2.9, 0], { from: inp('words'), itemType: 'string', labelSide: 'top', highlightExpr: `idx == ${tr('wi')}` }),
             array('queries', 'queries', [-5.4, 0.6, 0], { from: inp('queries'), itemType: 'string', labelSide: 'top', highlightExpr: `idx == ${tr('qi')}` }),
