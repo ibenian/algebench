@@ -632,8 +632,26 @@ function inkHtml(src: string): string {
             continue;
         }
         const next = src.slice(i).search(/[$`]/), plain = next < 0 ? src.slice(i) : src.slice(i, i + next);
-        out += esc(plain);i += plain.length;
+        out += /\\[A-Za-z]/.test(plain) ? strayMath(plain, katex) : esc(plain);i += plain.length;
     }
+    return out;
+}
+/**
+ * Plain text holding LaTeX commands the model wrote without $...$ ("temps[2]=75 \\ge temps[3]=71"): its formula runs
+ * (words with a command, a digit, a bracket or an operator, and single letters) set as math, the words between as text.
+ */
+function strayMath(plain: string, katex?: Katex): string {
+    const mathy = (w: string) => /\\[A-Za-z]|[\d=<>^_[\](){}+*|]/.test(w) || /^[A-Za-z]$/.test(w);
+    let out = '', run: string[] = [];
+    const flush = () => { if (run.length) out += mathHtml(run.join(' '), true, katex);run = []; };
+    for (const part of plain.split(/(\s+)/)) {
+        if (!part) continue;
+        if (!part.trim()) { if (!run.length) out += esc(part);continue; }
+        if (mathy(part)) { run.push(part);continue; }
+        const after = run.length > 0;
+        flush();out += (after ? ' ' : '') + esc(part);
+    }
+    flush();
     return out;
 }
 /**

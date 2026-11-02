@@ -6352,8 +6352,12 @@ body:has(.push-array) #legend { display: none; }
 .ai-pointer-trail:nth-child(n+5) { background: rgba(255, 59, 48, .07); }
 .ai-pointer-ring { position: fixed; z-index: 8999; pointer-events: none; overflow: visible; opacity: 0; }
 .ai-pointer-ring.on { opacity: 1; }
-/* A tick or cross sits over what it marks: see-through, so what's under it still reads. */
-.ai-pointer-ring.ai-mark-check.on, .ai-pointer-ring.ai-mark-cross.on { opacity: .6; }
+/* A tick or cross sits over what it marks: see-through, so what's under it still reads. A dark contour round its
+   lit core keeps it clear on any box (a glow alone is lost on a bright fill), and the glow goes round both. */
+.ai-pointer-ring.ai-mark-check.on, .ai-pointer-ring.ai-mark-cross.on { opacity: .85; }
+.ai-pointer-ring.ai-mark-check path, .ai-pointer-ring.ai-mark-cross path { stroke-width: 3.5;
+  filter: drop-shadow(0 0 .7px rgba(0, 0, 0, .95)) drop-shadow(0 0 .7px rgba(0, 0, 0, .95)) drop-shadow(0 0 1px rgba(0, 0, 0, .8))
+    drop-shadow(0 0 5px color-mix(in srgb, var(--ink, #ff7a6e) 85%, transparent)) drop-shadow(0 0 13px color-mix(in srgb, var(--ink, #ff7a6e) 50%, transparent)); }
 /* Light, not ink: a bright core with a layered glow, as the scratchpad's notes and arrows are lit. */
 .ai-pointer-ring path { fill: none; stroke: var(--ink, #ff7a6e); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
   filter: drop-shadow(0 0 2px #ff3b30) drop-shadow(0 0 7px rgba(255, 59, 48, .85)) drop-shadow(0 0 16px rgba(255, 59, 48, .5)); }

@@ -104,7 +104,8 @@ class PresentStep(BaseModel):
                                                "with the values on screen, a formula, a bit of code. A formula between "
                                                "$...$ as KaTeX ($f_1(x) = \\frac{4}{\\pi}\\sin x$, never \"(4/pi) * sin(x)\"; "
                                                "a matrix, never a Python list); code between backticks; plain text only "
-                                               "for arithmetic of the values on screen. Empty for none")
+                                               "for arithmetic of the values on screen; words as plain text in their own "
+                                               "letters, outside $...$, never LaTeX accents. Empty for none")
     write_near: str = Field(default="", description="with `write`: the ref (from `targets`, or `draw:<id>`) to write beside; empty "
                                                     "to write beside this beat's target, or in a free corner")
     erase: bool = Field(default=False, description="wipe everything you wrote and drew earlier, before this beat "
@@ -173,7 +174,9 @@ class ScenePresentSig(dspy.Signature):
     formula with variables, a subscript, a power, a fraction, a Greek letter or a function
     ($f_1(x) = \\frac{4}{\\pi}\\sin x$, never "f_1(x) = (4/pi) * sin(x)"), a matrix or vector
     ($\\begin{pmatrix}1 & 2 \\\\ 3 & 4\\end{pmatrix}$, never "[[1, 2], [3, 4]]"), a sum ($\\sum_i x_i$).
-    Plain text only for code (in `backticks`) and for arithmetic of the values on screen ("1 - 3 = -2"). One line, at most
+    Plain text only for code (in `backticks`) and for arithmetic of the values on screen ("1 - 3 = -2"). Words
+    are plain text outside $...$, in their own letters ("yığın", "henüz"), never LaTeX accents ("y\\i\\u{g}",
+    "hen\\"uz") or \\text{...}; only the formula goes between $...$. One line, at most
     about 40 characters of plain text (KaTeX source may be longer); write only where it helps, a few
     times in a walk-through, not on every beat. Put it beside what it is about (`write_near`). What you wrote
     stays until you wipe it or the walk-through ends. Like a presenter tidying the board as they go, on any later

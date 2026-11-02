@@ -903,6 +903,32 @@ ${MD_TAIL}
 pattern({
     id: 'monotonic-stack', title: 'Next bigger value (monotonic stack)', file: 'monotonic_stack.py', source: MONOTONIC_STACK_SOURCE,
     input: { temps: IN.monotonic.temps }, trace: monotonicStackTrace(IN.monotonic.temps), cameraX: 1,
+    sections: [
+        section(MONOTONIC_STACK_SOURCE, 'mono-setup', 'Every day waits; the stack starts empty', 'def daily_temperatures(', 'stack = []', {
+            hint: 'answer[i] stays 0 unless a warmer day comes; the stack will hold the days still waiting for one.' }),
+        section(MONOTONIC_STACK_SOURCE, 'mono-pop', 'A warmer day answers the days waiting below it', 'for i, t in enumerate', 'answer[j] = i - j', {
+            hint: 'While today is warmer than the day on top, that day has found its answer: pop it and record the distance.',
+            prompt: 'Explain why only the top of the stack needs comparing with today, and why each popped day\'s answer is final.' }),
+        section(MONOTONIC_STACK_SOURCE, 'mono-push', 'Today waits too', 'stack.append(i)', null, {
+            hint: 'Today goes on the stack; the temperatures on it still never increase from bottom to top.' }),
+        section(MONOTONIC_STACK_SOURCE, 'mono-done', 'Days left on the stack keep 0', 'return answer', null, {
+            hint: 'Each day is pushed and popped at most once: O(n).' }),
+    ],
+    annotations: [
+        doc('daily_temperatures', '`daily_temperatures(temps)` returns, for each day, how many days until a warmer one (0 if never). O(n).'),
+        doc('temps', 'The temperature of each day.'),
+        doc('answer', '`answer[j]`: how many days day `j` waits for a warmer one; 0 while none has come.'),
+        doc('stack', 'The indices of the days still waiting for a warmer day. Their temperatures never increase from bottom to top.'),
+        doc('i', 'Today: the index of the day being read.'),
+        doc('t', "Today's temperature, `temps[i]`."),
+        doc('j', 'A day just popped: today is its first warmer day.'),
+        docExpr(MONOTONIC_STACK_SOURCE, 'answer = [0]', '[0] * len(temps)', 'One answer per day, 0 until a warmer day is found.'),
+        docExpr(MONOTONIC_STACK_SOURCE, 'while stack and', 'stack[-1]', 'The day on top of the stack: the most recent day still waiting, and the coldest of them.'),
+        docExpr(MONOTONIC_STACK_SOURCE, 'while stack and', 'temps[stack[-1]] < t', 'Today is warmer than the day on top: that day stops waiting.'),
+        docExpr(MONOTONIC_STACK_SOURCE, 'answer[j] = i - j', 'i - j', 'The number of days from day `j` to today, its first warmer day.'),
+        docBlock(MONOTONIC_STACK_SOURCE, 'while stack and', 'answer[j] = i - j', 'Every day is popped at most once in the whole run, so all these pops together cost O(n).'),
+        docExpr(MONOTONIC_STACK_SOURCE, 'stack.append(i)', 'stack.append(i)', 'Today waits for a warmer day too. It is the coldest on the stack now, so the order still holds.'),
+    ],
     markdown: `# Next bigger value (monotonic stack)
 
 **Signal:** "next greater element", "next smaller element", or "how far until…".

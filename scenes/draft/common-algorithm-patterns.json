@@ -734,6 +734,27 @@
       "path": "patterns/monotonic_stack.py",
       "language": "python",
       "source": "def daily_temperatures(temps):\n    answer = [0] * len(temps)\n    stack = []\n    for i, t in enumerate(temps):\n        while stack and temps[stack[-1]] < t:\n            j = stack.pop()\n            answer[j] = i - j\n        stack.append(i)\n    return answer",
+      "sections": [
+        {"id": "mono-setup", "title": "Every day waits; the stack starts empty", "from": 1, "to": 3, "hint": "answer[i] stays 0 unless a warmer day comes; the stack will hold the days still waiting for one."},
+        {"id": "mono-pop", "title": "A warmer day answers the days waiting below it", "from": 4, "to": 7, "hint": "While today is warmer than the day on top, that day has found its answer: pop it and record the distance.", "prompt": "Explain why only the top of the stack needs comparing with today, and why each popped day's answer is final."},
+        {"id": "mono-push", "title": "Today waits too", "from": 8, "to": 8, "hint": "Today goes on the stack; the temperatures on it still never increase from bottom to top."},
+        {"id": "mono-done", "title": "Days left on the stack keep 0", "from": 9, "to": 9, "hint": "Each day is pushed and popped at most once: O(n)."}
+      ],
+      "annotations": [
+        {"name": "daily_temperatures", "text": "`daily_temperatures(temps)` returns, for each day, how many days until a warmer one (0 if never). O(n)."},
+        {"name": "temps", "text": "The temperature of each day."},
+        {"name": "answer", "text": "`answer[j]`: how many days day `j` waits for a warmer one; 0 while none has come."},
+        {"name": "stack", "text": "The indices of the days still waiting for a warmer day. Their temperatures never increase from bottom to top."},
+        {"name": "i", "text": "Today: the index of the day being read."},
+        {"name": "t", "text": "Today's temperature, `temps[i]`."},
+        {"name": "j", "text": "A day just popped: today is its first warmer day."},
+        {"line": 2, "col": 13, "endCol": 29, "text": "One answer per day, 0 until a warmer day is found."},
+        {"line": 5, "col": 30, "endCol": 39, "text": "The day on top of the stack: the most recent day still waiting, and the coldest of them."},
+        {"line": 5, "col": 24, "endCol": 44, "text": "Today is warmer than the day on top: that day stops waiting."},
+        {"line": 7, "col": 24, "endCol": 29, "text": "The number of days from day `j` to today, its first warmer day."},
+        {"line": 5, "endLine": 7, "text": "Every day is popped at most once in the whole run, so all these pops together cost O(n)."},
+        {"line": 8, "col": 8, "endCol": 23, "text": "Today waits for a warmer day too. It is the coldest on the stack now, so the order still holds."}
+      ],
       "locations": [
         {"line": 2, "scene": "monotonic-stack", "step": "run", "snapshot": 0, "label": "Next bigger value (monotonic stack) · Every answer starts at 0, meaning no warmer day yet."},
         {"line": 3, "scene": "monotonic-stack", "step": "run", "snapshot": 1, "label": "Next bigger value (monotonic stack) · The stack holds days still waiting for a warmer day. Their temperatures never increase from bottom to top."},
