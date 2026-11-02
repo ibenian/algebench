@@ -6377,6 +6377,9 @@ body:has(.push-array) #legend { display: none; }
 body.ai-presenting .ai-present-replay { visibility: hidden; }
 /* The presenter's scratchpad: lines typed over the view like projected light, fading in and out. */
 #ai-scratchpad { position: fixed; inset: 0; z-index: 8998; pointer-events: none; }
+/* The walk-through is drawn over the 3D view: while the graph takes its place (not docked beside it), its notes,
+   marks and pointer wait unseen. */
+body:has(#viewport:not(.graph-docked) #graph-viewport:not(.hidden)) :is(#ai-scratchpad, .ai-pointer, .ai-pointer-ring) { visibility: hidden; }
 /* A note's ink (--ink): green unless the presenter picks another of its colours, so related notes match. */
 .ai-note, .ai-arrow { --ink: #7dffcf; }
 .ai-ink-yellow { --ink: #ffe08a; } .ai-ink-red { --ink: #ff7a6e; } .ai-ink-blue { --ink: #7ab8ff; }
