@@ -80,6 +80,13 @@ class CodeAssistSig(dspy.Signature):
         Start it where the learner is: on the line `cursor` names (most often the empty line they just opened),
         not at the end of the code, which may hold lines they typed ahead or out of order.
       When the code is complete, no steps: say so in `closing`.
+    - Showing instead of telling: when `presenter` is on and the learner asks to see an idea drawn, shown on the
+      scene or on the scratchpad ("draw it", "show me on the scene"), or a question about an idea would be far
+      clearer shown than told, don't explain it here. The lesson's AI chat can point at the scene's objects as it
+      talks and write and draw on a scratchpad over them: put a request for it in `show`, in English, saying what to
+      explain and how to show it (e.g. "On the scratchpad, draw how k falls back along lps after a mismatch in the
+      while loop, with p = 'aaba'."), give no steps, and say in `closing`, in one sentence, that you'll show it
+      there. It explains the idea, not their code to write. With `presenter` off, `show` stays empty.
     - "ask": do what `request` asks, in the learner's own words, and no more ("write the loop" is the loop alone;
       "my lookup is wrong, fix it" is that fix). A question that needs no typing ("why {0: 1}?") gets no steps:
       answer it in `closing`.
@@ -133,6 +140,7 @@ class CodeAssistSig(dspy.Signature):
     request: str = dspy.InputField(desc="the learner's own words on the help they want; may be empty")
     problems: str = dspy.InputField(desc="names the typed code reads but never defines, by line (found by analysis); may be empty")
     cursor: str = dspy.InputField(desc="the line of `typed` the learner's cursor is on, where they are writing; may be unknown")
+    presenter: str = dspy.InputField(desc="on: the lesson's AI chat can show an idea on the scene and its scratchpad; off: it can't")
     scope: str = dspy.InputField(desc='how much to write: "next", "section", "all", "fix" (only fix what is typed), '
                                       '"narrate" (select and explain, type nothing), "pair" (start the next line, or hint at a wrong one), or "ask" (do what `request` says)')
 
@@ -142,6 +150,8 @@ class CodeAssistSig(dspy.Signature):
     plan: str = dspy.OutputField(desc="two or three sentences on how you will approach it, said before typing")
     steps: list[AssistStep] = dspy.OutputField(desc="the moves at the keyboard, in order")
     closing: str = dspy.OutputField(desc="one or two sentences handing the keyboard back")
+    show: str = dspy.OutputField(desc="with the presenter on, when the idea is to be shown on the scene or the "
+                                      "scratchpad: a request in English to the lesson's AI chat to show it; else empty")
 
 
 INPUT_FIELDS = tuple(CodeAssistSig.input_fields)

@@ -51,6 +51,6 @@ def scene_present(req: ScenePresentRequest) -> dict:
         return {"reason": out.error}
     if not out.steps:
         return {"reason": NOTHING}
-    log.info("%s %d beat(s), %d pointing, %d moving", LOG_TAG, len(out.steps),
-             sum(bool(s.target) for s in out.steps), sum(s.frame >= 0 for s in out.steps))
+    log.info("%s %d beat(s), %d pointing, %d moving, %d drawing", LOG_TAG, len(out.steps),
+             sum(bool(s.target) for s in out.steps), sum(s.frame >= 0 for s in out.steps), sum(bool(s.draw) for s in out.steps))
     return {"result": out.model_dump(exclude={"error"})}

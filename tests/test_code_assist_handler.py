@@ -168,3 +168,11 @@ def test_a_step_sending_part_of_the_editor_is_caught_unless_it_erases_on_purpose
     steps = [AssistStep(say="a", code="    for i in range(n):"), AssistStep(say="b", code="def f(n):\n    return total", erase=[2])]
     assert intent.partial_steps(steps[:1], typed) == [1]
     assert intent.partial_steps(steps[1:], typed) == []
+
+
+def test_an_idea_to_draw_goes_to_the_chat_only_with_the_presenter_on(monkeypatch):
+    req = dict(language="python", expected=EXPECTED, typed="", scope="ask", request="draw it")
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: intent.CodeAssist(
+        closing="I'll show it on the scene.", show="On the scratchpad, draw the loop.", steps=[AssistStep(say="a", code="x")]))
+    assert h.code_assist(CodeAssistRequest(**req, present=True)) == {"reason": "I'll show it on the scene.", "show": "On the scratchpad, draw the loop."}
+    assert "show" not in h.code_assist(CodeAssistRequest(**req))

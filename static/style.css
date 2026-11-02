@@ -6460,6 +6460,10 @@ body.ai-presenting .ai-present-replay { visibility: hidden; }
   background: color-mix(in srgb, var(--ink) 14%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); }
 .ai-draw-group:hover > .ai-draw-group-title, .ai-draw-group.lit > .ai-draw-group-title, .ai-draw-group.dragging > .ai-draw-group-title { opacity: 1; }
 .ai-draw-group.dragging .ai-draw-group-title { cursor: grabbing; }
+/* The drawing's corner: drag it to make the board bigger or smaller (what is drawn is fitted to it again). */
+.ai-draw-resize { position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; cursor: nwse-resize; opacity: 0; transition: opacity .18s;
+  background: linear-gradient(135deg, transparent 50%, color-mix(in srgb, var(--ink) 70%, transparent) 50% 60%, transparent 60% 72%, color-mix(in srgb, var(--ink) 70%, transparent) 72% 82%, transparent 82%); }
+.ai-draw-group:hover > .ai-draw-resize, .ai-draw-group.lit > .ai-draw-resize, .ai-draw-group.dragging > .ai-draw-resize { opacity: 1; }
 .ai-draw-hit { position: absolute; pointer-events: auto; cursor: grab; border-radius: 8px; }
 .ai-draw-hit:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
 .ai-draw-hit.dragging { cursor: grabbing; }

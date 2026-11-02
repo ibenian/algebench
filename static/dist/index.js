@@ -11119,7 +11119,17 @@ function boxOf(b, e) {
 	const r = laidBox(b, e);
 	if (!r) return null;
 	const o = offsetOf(b, e);
-	return new DOMRect(r.x + o.x, r.y + o.y, r.w, r.h);
+	let x = r.x + o.x, y = r.y + o.y, w = r.w, h = r.h;
+	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) {
+		const z = b.zoom.get(g), gr = z && z !== 1 ? laidBox(b, g) : null;
+		if (!z || !gr) continue;
+		const go = offsetOf(b, g), gx = gr.x + go.x, gy = gr.y + go.y;
+		x = gx + (x - gx) * z;
+		y = gy + (y - gy) * z;
+		w *= z;
+		h *= z;
+	}
+	return new DOMRect(x, y, w, h);
 }
 /** How long things take to glide to where a new layout puts them, and how far along they are. */
 var GLIDE_MS = 480;
@@ -11175,7 +11185,7 @@ var fromScreen = (b, r) => {
 	return new DOMRect((r.left - o.left - b.view.ox) / s, (r.top - o.top - b.view.oy) / s, r.width / s, r.height / s);
 };
 /** Lay the drawing out again, fit it to the board, and put everything where it now goes. */
-function layoutBoard(b) {
+function layoutBoard(b, grow = true) {
 	const from = /* @__PURE__ */ new Map();
 	for (const e of b.laid.boxes.keys()) {
 		const r = laidBox(b, e);
@@ -11189,11 +11199,25 @@ function layoutBoard(b) {
 		},
 		sizeOf: shapeSize$1
 	});
-	const s = Math.min(1, (b.w - 24) / Math.max(1, b.laid.w), (b.h - 24) / Math.max(1, b.laid.h));
+	const pad = 12, fit = () => Math.min(b.sized ? 4 : 1, (b.w - 24) / Math.max(1, b.laid.w), (b.h - 24) / Math.max(1, b.laid.h));
+	if (grow && fit() < MIN_SCALE) {
+		const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+		const w = Math.min(view.width * .92, Math.max(b.w, b.laid.w * MIN_SCALE + 24)), h = Math.min(view.height * .88, Math.max(b.h, b.laid.h * MIN_SCALE + 24));
+		if (w > b.w + 1 || h > b.h + 1) {
+			sizeBoard(b, w, h);
+			b.laid = layoutDrawing(b.specs, b.layout, {
+				box: {
+					w: b.w,
+					h: b.h
+				},
+				sizeOf: shapeSize$1
+			});
+		}
+	}
 	const to = {
-		ox: (b.w - b.laid.w * s) / 2,
-		oy: (b.h - b.laid.h * s) / 2,
-		s
+		ox: pad,
+		oy: pad,
+		s: fit()
 	};
 	if (first) {
 		b.glide = null;
@@ -11225,6 +11249,16 @@ function layoutBoard(b) {
 	};
 	tick();
 }
+/** Below this the drawing would be too small to read: the board grows instead. */
+var MIN_SCALE = .75;
+/** The board's size in px: its top left stays put, and it grows no further than the window's edge. */
+function sizeBoard(b, w, h) {
+	const left = parseFloat(b.el.style.left), top = parseFloat(b.el.style.top);
+	b.w = Math.round(Math.max(80, Math.min(w, innerWidth - 8 - left)));
+	b.h = Math.round(Math.max(60, Math.min(h, innerHeight - 8 - top)));
+	b.el.style.width = `${b.w}px`;
+	b.el.style.height = `${b.h}px`;
+}
 var fitCanvas = (b) => {
 	b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`;
 };
@@ -11233,10 +11267,11 @@ function placeAll(b) {
 	for (const [g, el] of b.groups) {
 		const r = extentOf(b, g);
 		if (!r) continue;
-		el.style.left = `${r.left - 12}px`;
-		el.style.top = `${r.top - 34}px`;
-		el.style.width = `${r.width + 24}px`;
-		el.style.height = `${r.height + 46}px`;
+		const n = nesting(b, g), side = 12 + 10 * n, head = 34 + 30 * n;
+		el.style.left = `${r.left - side}px`;
+		el.style.top = `${r.top - head}px`;
+		el.style.width = `${r.width + 2 * side}px`;
+		el.style.height = `${r.height + head + side}px`;
 	}
 	for (const [e, el] of b.hits) {
 		const r = b.all.find((d) => d.spec === e)?.local();
@@ -11282,6 +11317,12 @@ function nudge(b, e, dx, dy) {
 	});
 	placeAll(b);
 }
+/** How deep the groups inside `g` go: 0 when it holds none. */
+function nesting(b, g, depth = 0) {
+	if (depth > 20) return 0;
+	const inner = b.specs.filter((e) => e.type === "group" && (g === b.root ? !groupOf(b, e) : groupOf(b, e) === g));
+	return inner.length ? 1 + Math.max(...inner.map((e) => nesting(b, e, depth + 1))) : 0;
+}
 /** The groups `e` sits in, innermost first. */
 function groupsAround(b, e) {
 	const out = [];
@@ -11308,6 +11349,41 @@ function groupHandle(b, g) {
 		b.el.style.left = `${parseFloat(b.el.style.left) + dx}px`;
 		b.el.style.top = `${parseFloat(b.el.style.top) + dy}px`;
 		placeAll(b);
+	}, el);
+	const light = (on) => {
+		for (const o of g === b.root ? [] : [...groupsAround(b, g), b.root]) b.groups.get(o)?.classList.toggle("lit", on);
+	};
+	el.addEventListener("pointerenter", (e) => {
+		if (e.isTrusted) light(true);
+	});
+	el.addEventListener("pointerleave", (e) => {
+		if (e.isTrusted) light(false);
+	});
+	const grip = document.createElement("div");
+	grip.className = "ai-draw-resize";
+	grip.title = "Drag to resize";
+	el.append(grip);
+	if (g !== b.root) draggable(grip, (dx, dy) => {
+		const r = extentOf(b, g);
+		if (!r || r.width < 1 || r.height < 1) return;
+		const f = Math.max((r.width + dx / b.view.s) / r.width, (r.height + dy / b.view.s) / r.height);
+		b.zoom.set(g, Math.min(4, Math.max(.3, (b.zoom.get(g) ?? 1) * f)));
+		placeAll(b);
+	}, el);
+	if (g === b.root) draggable(grip, (dx, dy) => {
+		if (!b.sized) {
+			b.w = b.laid.w * b.view.s + 24;
+			b.h = b.laid.h * b.view.s + 24;
+			b.sized = true;
+		}
+		sizeBoard(b, b.w + dx, b.h + dy);
+		b.glide = null;
+		b.laid = {
+			boxes: /* @__PURE__ */ new Map(),
+			w: b.w,
+			h: b.h
+		};
+		layoutBoard(b, false);
 	}, el);
 	b.canvas.insertBefore(el, b.svg);
 	b.groups.set(g, el);
@@ -11378,7 +11454,8 @@ function sketchBoard() {
 			type: "group",
 			label: "Drawing"
 		},
-		glide: null
+		glide: null,
+		zoom: /* @__PURE__ */ new Map()
 	};
 	groupHandle(sketch, sketch.root).classList.add("ai-draw-root");
 	return sketch;
@@ -11932,13 +12009,11 @@ function speak$1(text, into, r) {
 		};
 		reveal();
 		const speakNow = window.algebenchSpeakText;
-		if (speakNow) {
-			speakNow(text, () => {
-				into.textContent = text;
-				end();
-			});
-			window.setTimeout(end, 1e4 + text.split(/\s+/).length * 700);
-		} else window.setTimeout(() => {
+		if (speakNow) speakNow(text, () => {
+			into.textContent = text;
+			end();
+		});
+		else window.setTimeout(() => {
 			into.textContent = text;
 			end();
 		}, Math.max(1500, text.split(/\s+/).length * 260));
@@ -31714,6 +31789,2521 @@ function ownNames(reference, typed) {
 	};
 }
 //#endregion
+//#region src/speech-text.ts
+/**
+* Text for speech. Chat replies are markdown with LaTeX; read aloud verbatim, the voice pronounces the markup
+* ("asterisk asterisk", "dollar"), so speech gets the words only. The model also sometimes writes a tool call
+* into its reply as a processing-instruction tag (`<?set_preset_prompts prompts=[...] ?>`) instead of calling
+* the tool: the chat bubble hides it as HTML, but speech would read it, so it is removed (and can be honoured).
+*/
+var INLINE_TOOL = /<\?\s*([a-z_]+)\b([\s\S]*?)\?>|<call:([a-z_]+)\b([\s\S]*?)\/?>/gi;
+/** Pull `<?name key=json ...?>` tags out of a reply. Arguments that are not valid JSON are dropped. */
+function extractInlineToolCalls(text) {
+	const calls = [];
+	return {
+		text: text.replace(INLINE_TOOL, (_, piName, piBody, callName, callBody) => {
+			const name = piName ?? callName, body = piBody ?? callBody ?? "";
+			const args = {};
+			for (const m of body.matchAll(/([a-z_]+)\s*=\s*(\[[\s\S]*?\](?=\s*(?:[a-z_]+\s*=|$))|"(?:[^"\\]|\\.)*"|[^\s]+)/gi)) try {
+				args[m[1]] = JSON.parse(m[2]);
+			} catch {}
+			calls.push({
+				name,
+				args
+			});
+			return "";
+		}).replace(/[ \t]+\n/g, "\n").trim(),
+		calls
+	};
+}
+/** Plain words for a markdown + LaTeX reply. */
+function speechText(text) {
+	return extractInlineToolCalls(text).text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\)/g, (_, a, b, c) => speechMath(a ?? b ?? c)).replace(/`([^`]+)`/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/(^|\W)[*_]([^*_\n]+)[*_](?=\W|$)/g, "$1$2").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*>\s?/gm, "").replace(/[📍🤖👤]/gu, "").replace(/([^.!?:;,\s])[ \t]*\n+\s*/g, "$1. ").replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim();
+}
+var MATH_WORDS = {
+	le: "≤",
+	leq: "≤",
+	ge: "≥",
+	geq: "≥",
+	ne: "≠",
+	neq: "≠",
+	times: "×",
+	cdot: "·",
+	to: "→",
+	rightarrow: "→",
+	approx: "≈",
+	infty: "infinity",
+	pm: "±",
+	ldots: "…",
+	dots: "…",
+	cdots: "…"
+};
+/** Inline math as readable symbols: `74 > 73`, `\text{total} = 18` → `total = 18`. */
+function speechMath(tex) {
+	return tex.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^}]*)\}/g, "$1").replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1 over $2").replace(/\\([a-zA-Z]+)/g, (_, w) => MATH_WORDS[w] ?? w).replace(/[{}]/g, "").trim();
+}
+//#endregion
+//#region src/lesson-placement.ts
+/** Thrown when an op cannot be applied. Callers discard and clear history. */
+var PlacementError = class extends Error {};
+/**
+* Guarantee a `LessonFormat` to build into, promoting a displayed single scene.
+*
+* Extracted from the lesson-wrapper bootstrap in src/chat.ts, and now called by
+* `runBuildSceneTool` there. It is simultaneously the empty-app case AND the
+* SingleSceneFormat -> LessonFormat normalization — one function, not two.
+*/
+function ensureLessonFormat(lesson, displayedScene) {
+	if (lesson && Array.isArray(lesson.scenes)) return {
+		lesson,
+		bootstrap: {
+			previousLesson: lesson,
+			promotedScene: null,
+			bootstrapped: false
+		}
+	};
+	const source = displayedScene || (lesson && !lesson.scenes ? lesson : null);
+	let promoted = source;
+	const rootOnly = {};
+	if (source) {
+		const { import: imports, unsafe, unsafeExplanation, ...sceneOnly } = source;
+		if (imports !== void 0) rootOnly.import = imports;
+		if (unsafe !== void 0) rootOnly.unsafe = unsafe;
+		if (unsafeExplanation !== void 0) rootOnly.unsafeExplanation = unsafeExplanation;
+		promoted = sceneOnly;
+	}
+	return {
+		lesson: {
+			title: "Lesson",
+			...rootOnly,
+			scenes: promoted ? [promoted] : []
+		},
+		bootstrap: {
+			previousLesson: null,
+			promotedScene: source || null,
+			bootstrapped: true
+		}
+	};
+}
+/**
+* Resolve the container a node of `kind` lives in.
+*
+* The container is DERIVED from the kind rather than named by the placement, so
+* a mismatched pair (a Scene addressed into a step's array, say) cannot be
+* expressed at all — see the note on `Placement`.
+*
+* `proof` is `oneOf: [proof, proof[]]` in the schema and is a bare object in
+* most published occurrences, so it is normalized to a one-element array here
+* and collapsed back by `collapseProof` on write. Without that collapse the
+* model round-trip test fails on every bare-object lesson.
+*/
+function resolveContainer(lesson, kind, at) {
+	if (kind === "scene") return lesson.scenes;
+	if (kind === "proof" && at.scene == null && at.step != null) throw new PlacementError("a step-level proof placement needs a scene");
+	if (kind === "proof" && at.scene == null) {
+		const root = lesson;
+		if (root.proof == null) root.proof = [];
+		else if (!Array.isArray(root.proof)) root.proof = [root.proof];
+		return root.proof;
+	}
+	const scene = at.scene != null ? lesson.scenes[at.scene] : void 0;
+	if (!scene) throw new PlacementError(`placement names scene ${at.scene}, which does not exist`);
+	if (kind === "step") {
+		if (!Array.isArray(scene.steps)) scene.steps = [];
+		return scene.steps;
+	}
+	if (kind === "proof") {
+		const holder = at.step != null ? (scene.steps || [])[at.step] : scene;
+		if (!holder) throw new PlacementError(`placement names step ${at.step}, which does not exist`);
+		if (holder.proof == null) holder.proof = [];
+		else if (!Array.isArray(holder.proof)) holder.proof = [holder.proof];
+		return holder.proof;
+	}
+	throw new PlacementError(`no container is defined for kind '${kind}'`);
+}
+/**
+* Collapse a one-element `proof` array back to a bare object.
+*
+* The published corpus writes `proof` as a bare object far more often than as an
+* array; preserving that is required for lossless round-tripping.
+*/
+function tidyContainer(lesson, kind, at, arrivedAsArray) {
+	if (kind === "step" && at.scene != null) {
+		const scene = lesson.scenes[at.scene];
+		if (scene && Array.isArray(scene.steps) && scene.steps.length === 0) delete scene.steps;
+		return;
+	}
+	if (kind !== "proof") return;
+	const holder = proofHolder(lesson, at);
+	if (!holder) return;
+	if (!Array.isArray(holder.proof)) return;
+	if (holder.proof.length === 0) {
+		delete holder.proof;
+		return;
+	}
+	if (holder.proof.length === 1 && !arrivedAsArray) holder.proof = holder.proof[0];
+}
+/** The object holding a `proof` for this placement, or undefined. */
+function proofHolder(lesson, at) {
+	if (at.scene == null) return lesson;
+	const scene = lesson.scenes[at.scene];
+	if (!scene) return void 0;
+	return at.step != null ? (scene.steps || [])[at.step] : scene;
+}
+/**
+* Snapshot a container field so a REFUSED op leaves no trace of itself.
+*
+* `resolveContainer` has two side effects: it creates a missing `steps` array,
+* and it normalizes a bare `proof` object into a one-element array. If the op is
+* then rejected, those changes have already landed with no inverse to undo them
+* — the lesson is quietly reshaped by an operation the caller was told did not
+* apply, which makes the all-or-nothing guarantee false even for a single op.
+*/
+function captureContainerShape(lesson, kind, at) {
+	let holder;
+	let key;
+	if (kind === "proof") {
+		holder = proofHolder(lesson, at);
+		key = "proof";
+	} else if (kind === "step") {
+		holder = at.scene != null ? lesson.scenes[at.scene] : void 0;
+		key = "steps";
+	} else return () => {};
+	if (!holder) return () => {};
+	const had = key in holder;
+	const original = holder[key];
+	return () => {
+		if (!had) delete holder[key];
+		else holder[key] = original;
+	};
+}
+/** Assert the node at `index` is still the one the op was computed against. */
+function verifyIdentity(node, at) {
+	if (at.id === void 0) return;
+	const actual = node?.id;
+	if (actual !== at.id) throw new PlacementError(`stale placement: expected id ${at.id} at index ${at.index}, found ${String(actual)}`);
+}
+function requireIndex(at) {
+	if (typeof at.index !== "number" || !Number.isInteger(at.index) || at.index < 0) throw new PlacementError(`placement needs a non-negative integer index, got ${String(at.index)}`);
+	return at.index;
+}
+/**
+* Apply build ops in order, returning the INVERSE ops.
+*
+* The inverse list is REVERSED: applying several ops shifts indices, so each
+* captured inverse is only valid in the frame it was captured. Unwinding in
+* reverse order restores that frame. Without it, a two-insert result undoes to
+* the wrong positions.
+*
+* Redo needs no special case — applying an inverse returns the forward ops,
+* reconstructed against live state.
+*/
+function applyBuildOps(lesson, ops) {
+	const inverse = [];
+	try {
+		return applyEach(lesson, ops, inverse);
+	} catch (err) {
+		for (const undo of [...inverse].reverse()) try {
+			applyEach(lesson, [undo], []);
+		} catch {}
+		throw err;
+	}
+}
+function applyEach(lesson, ops, inverse) {
+	for (const op of ops) {
+		const index = requireIndex(op.at);
+		const restoreShape = captureContainerShape(lesson, op.kind, op.at);
+		const proofWasArray = op.kind === "proof" && Array.isArray((proofHolder(lesson, op.at) || {}).proof);
+		let arr;
+		try {
+			arr = resolveContainer(lesson, op.kind, op.at);
+		} catch (err) {
+			restoreShape();
+			throw err;
+		}
+		if (op.op === "insert") {
+			if (op.at.id !== void 0) {
+				restoreShape();
+				throw new PlacementError("an insert placement must not carry an id — there is nothing yet to verify");
+			}
+			if (index > arr.length) {
+				restoreShape();
+				throw new PlacementError(`insert index ${index} is past the end (${arr.length})`);
+			}
+			arr.splice(index, 0, op.node);
+			const insertedId = op.node?.id;
+			inverse.push({
+				op: "delete",
+				kind: op.kind,
+				at: {
+					...op.at,
+					id: insertedId
+				}
+			});
+		} else if (op.op === "replace") {
+			const old = arr[index];
+			if (old === void 0) {
+				restoreShape();
+				throw new PlacementError(`replace index ${index} does not exist`);
+			}
+			try {
+				verifyIdentity(old, op.at);
+			} catch (e) {
+				restoreShape();
+				throw e;
+			}
+			const replacementId = op.node?.id;
+			inverse.push({
+				op: "replace",
+				kind: op.kind,
+				at: {
+					...op.at,
+					id: replacementId
+				},
+				node: old
+			});
+			arr[index] = op.node;
+		} else {
+			const old = arr[index];
+			if (old === void 0) {
+				restoreShape();
+				throw new PlacementError(`delete index ${index} does not exist`);
+			}
+			try {
+				verifyIdentity(old, op.at);
+			} catch (e) {
+				restoreShape();
+				throw e;
+			}
+			inverse.push({
+				op: "insert",
+				kind: op.kind,
+				at: op.at,
+				node: old
+			});
+			arr.splice(index, 1);
+		}
+		tidyContainer(lesson, op.kind, op.at, proofWasArray);
+	}
+	return inverse.reverse();
+}
+//#endregion
+//#region src/chat-flight.ts
+function singleFlightSender(isBusy, sendTurn) {
+	const queued = [];
+	let active = null;
+	function sendNext() {
+		const next = queued.shift();
+		if (next) send(next.text, {
+			noTools: next.noTools,
+			display: next.display,
+			typed: next.typed
+		}).then(next.resolve, () => next.resolve(false));
+	}
+	function send(text, { silent = false, noTools = false, display, typed } = {}) {
+		if (isBusy()) {
+			if (silent) return Promise.resolve(false);
+			if (active && active.text === text && active.noTools === noTools) return active.done;
+			const waiting = queued.find((q) => q.text === text && q.noTools === noTools);
+			if (waiting) return waiting.done;
+			let resolve;
+			const done = new Promise((r) => {
+				resolve = r;
+			});
+			queued.push({
+				text,
+				noTools,
+				display,
+				typed,
+				done,
+				resolve
+			});
+			return done;
+		}
+		const turn = {
+			text,
+			noTools,
+			done: Promise.resolve(false)
+		};
+		const settle = () => {
+			if (active === turn) active = null;
+			sendNext();
+		};
+		turn.done = sendTurn(text, {
+			silent,
+			noTools,
+			...display !== void 0 ? { display } : {},
+			...typed ? { typed } : {}
+		}).then(() => {
+			settle();
+			return true;
+		}, (err) => {
+			settle();
+			throw err;
+		});
+		if (!silent) active = turn;
+		return turn.done;
+	}
+	return send;
+}
+//#endregion
+//#region src/view-state.ts
+var CAM_DECIMALS = 4;
+var DEFAULT_UP = [
+	0,
+	1,
+	0
+];
+var CV_MAX_LEN = 64;
+/** Round to `dp` decimals and stringify, dropping trailing zeros. */
+function fmtNum(n, dp = CAM_DECIMALS) {
+	if (!Number.isFinite(n)) return "0";
+	const f = Math.pow(10, dp);
+	return String(Math.round(n * f) / f);
+}
+function encMin(v) {
+	return encodeURIComponent(String(v)).replace(/%2C/gi, ",").replace(/%7E/gi, "~");
+}
+function buildQuery(pairs) {
+	return pairs.filter(([, v]) => v !== void 0 && v !== null && v !== "").map(([k, v]) => `${k}=${encMin(v)}`).join("&");
+}
+/**
+* Stable slug from a human title: lowercase, non-alphanumerics -> '-',
+* collapse/trim hyphens. Empty input yields ''.
+*/
+function slugify(title) {
+	return String(title == null ? "" : title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+/**
+* Deterministic, collision-free ids for an array of {id?, title?} — how the
+* `sc=` / `st=` / `ps=` params resolve (id -> slug(title) -> index). Mirrored by
+* `build_ids` in backend/lesson_ids.py.
+*/
+function buildIds(items, titleKey) {
+	const used = /* @__PURE__ */ new Set();
+	return (items || []).map((it, i) => {
+		let base = it && it.id ? String(it.id) : slugify(it && it[titleKey]);
+		if (!base) base = String(i);
+		let id = base, n = 2;
+		while (used.has(id)) id = `${base}-${n++}`;
+		used.add(id);
+		return id;
+	});
+}
+/** Encode camera to compact `px,py,pz,tx,ty,tz[,ux,uy,uz]` (data-space). */
+function encodeCamera(cam) {
+	if (!cam || !Array.isArray(cam.position) || !Array.isArray(cam.target)) return "";
+	const p = cam.position, t = cam.target;
+	const nums = [
+		p[0],
+		p[1],
+		p[2],
+		t[0],
+		t[1],
+		t[2]
+	];
+	const up = Array.isArray(cam.up) ? cam.up : null;
+	if (up && !(up[0] === DEFAULT_UP[0] && up[1] === DEFAULT_UP[1] && up[2] === DEFAULT_UP[2])) nums.push(up[0], up[1], up[2]);
+	return nums.map((n) => fmtNum(Number(n))).join(",");
+}
+/** Decode `px,py,pz,tx,ty,tz[,ux,uy,uz]` back to a camera object, or null. */
+function decodeCamera(str) {
+	if (!str) return null;
+	const segs = String(str).split(",");
+	if (segs.length !== 6 && segs.length !== 9) return null;
+	if (segs.some((s) => s.trim() === "")) return null;
+	const parts = segs.map(Number);
+	if (parts.some((n) => !Number.isFinite(n))) return null;
+	const cam = {
+		position: [
+			parts[0],
+			parts[1],
+			parts[2]
+		],
+		target: [
+			parts[3],
+			parts[4],
+			parts[5]
+		]
+	};
+	if (parts.length === 9) cam.up = [
+		parts[6],
+		parts[7],
+		parts[8]
+	];
+	return cam;
+}
+/** Serialize a ViewState to a query string (no leading '?'). */
+function serializeViewState(vs) {
+	if (!vs) return "";
+	const pairs = [];
+	if (vs.builtin) pairs.push(["builtin", vs.builtin]);
+	else if (vs.scene) pairs.push(["scene", vs.scene]);
+	if (vs.view && vs.view !== "scene") pairs.push(["view", vs.view]);
+	if (vs.panel && vs.panel !== "doc") pairs.push(["panel", vs.panel]);
+	if (vs.pp) pairs.push(["pp", "1"]);
+	if (vs.dock === true) pairs.push(["dock", "1"]);
+	if (vs.sc != null && vs.sc !== "") pairs.push(["sc", vs.sc]);
+	if (vs.st != null && vs.st !== "") pairs.push(["st", vs.st]);
+	if (vs.pf != null && vs.pf !== "") pairs.push(["pf", vs.pf]);
+	if (vs.ps != null && vs.ps !== "") pairs.push(["ps", vs.ps]);
+	if (vs.fa != null && vs.fa !== "") pairs.push(["fa", vs.fa]);
+	if (Array.isArray(vs.nodes) && vs.nodes.length) pairs.push(["nodes", vs.nodes.map((id) => String(id)).join(",")]);
+	if (vs.sliders && typeof vs.sliders === "object") {
+		const packed = Object.entries(vs.sliders).filter(([, val]) => Number.isFinite(Number(val))).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([id, val]) => `${id}~${fmtNum(Number(val))}`).join(",");
+		if (packed) pairs.push(["sl", packed]);
+	}
+	if (vs.cv) pairs.push(["cv", vs.cv]);
+	if (vs.proj && vs.proj !== "perspective") pairs.push(["proj", vs.proj]);
+	if (Number.isFinite(vs.oz)) pairs.push(["oz", fmtNum(vs.oz)]);
+	if (vs.cam) {
+		const enc = encodeCamera(vs.cam);
+		if (enc) pairs.push(["cam", enc]);
+	}
+	return buildQuery(pairs);
+}
+/** Parse a query string (or URLSearchParams) into a ViewState. */
+function parseViewState(search) {
+	let params;
+	if (search instanceof URLSearchParams) params = search;
+	else {
+		const s = String(search == null ? "" : search).replace(/^\?/, "");
+		params = new URLSearchParams(s);
+	}
+	const vs = {};
+	const builtin = params.get("builtin");
+	const scene = params.get("scene");
+	if (builtin) vs.builtin = builtin;
+	else if (scene) vs.scene = scene;
+	const view = params.get("view");
+	if (view) vs.view = view;
+	const panel = params.get("panel");
+	if (panel) vs.panel = panel;
+	const aa = params.get("aa");
+	if (aa) vs.aa = String(aa).slice(0, 2e3);
+	const pa = params.get("pa");
+	if (pa && /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/.test(pa)) vs.pa = pa;
+	const pas = params.get("pas");
+	if (pas != null && /^\d{1,4}$/.test(pas)) vs.pas = Number(pas);
+	const pp = params.get("pp");
+	if (pp === "1" || pp === "true") vs.pp = true;
+	const dock = params.get("dock");
+	if (dock === "1" || dock === "true") vs.dock = true;
+	else if (dock === "0" || dock === "false") vs.dock = false;
+	const sc = params.get("sc");
+	const st = params.get("st");
+	const pf = params.get("pf");
+	const ps = params.get("ps");
+	if (sc) vs.sc = sc;
+	if (st) vs.st = st;
+	if (pf) vs.pf = pf;
+	if (ps) vs.ps = ps;
+	const fa = params.get("fa");
+	if (fa) vs.fa = String(fa).slice(0, 200);
+	const fax = params.get("fax");
+	if (fax) vs.fax = String(fax).slice(0, 1e3);
+	const nodes = params.get("nodes");
+	if (nodes) {
+		const ids = nodes.split(",").map((s) => s.trim()).filter(Boolean);
+		if (ids.length) vs.nodes = ids;
+	}
+	const sl = params.get("sl");
+	if (sl) {
+		const sliders = {};
+		for (const pair of sl.split(",")) {
+			const idx = pair.indexOf("~");
+			if (idx <= 0) continue;
+			const id = pair.slice(0, idx);
+			const val = Number(pair.slice(idx + 1));
+			if (id && Number.isFinite(val)) sliders[id] = val;
+		}
+		if (Object.keys(sliders).length) vs.sliders = sliders;
+	}
+	const cv = params.get("cv");
+	if (cv && cv.length <= CV_MAX_LEN) vs.cv = cv;
+	const proj = params.get("proj");
+	if (proj) vs.proj = proj;
+	const oz = params.get("oz");
+	if (oz != null && oz !== "") {
+		const n = Number(oz);
+		if (Number.isFinite(n)) vs.oz = n;
+	}
+	const cam = decodeCamera(params.get("cam"));
+	if (cam) vs.cam = cam;
+	return vs;
+}
+var MAX_INTENT_CHARS = 2e3;
+function scenesOf(lesson) {
+	const l = lesson;
+	if (l && Array.isArray(l.scenes)) return l.scenes.filter((s) => s && typeof s === "object");
+	return l && (l.title || l.elements) ? [l] : [];
+}
+function elementsOf(scene) {
+	const out = (scene.elements || []).filter(Boolean);
+	for (const step of scene.steps || []) for (const el of step.add || []) if (el) out.push(el);
+	return out;
+}
+function firstLine(text, limit = 200) {
+	if (typeof text !== "string" || !text.trim()) return "";
+	return text.trim().split("\n")[0].slice(0, limit);
+}
+function deriveConventions(scenes) {
+	const colors = [];
+	let latex = 0, labelled = 0, prompts = 0;
+	for (const scene of scenes) for (const el of elementsOf(scene)) {
+		const c = el.color;
+		if (typeof c === "string" && c.startsWith("#") && !colors.includes(c)) colors.push(c);
+		const label = el.label;
+		if (typeof label === "string" && label) {
+			labelled++;
+			if (label.includes("$")) latex++;
+		}
+		if (el.prompt) prompts++;
+	}
+	return {
+		colors: colors.slice(0, 12),
+		labelsAreLatex: labelled > 0 && latex * 2 > labelled,
+		elementsCarryPrompts: prompts > 0
+	};
+}
+function collectSliderIds(scenes) {
+	const ids = [];
+	for (const scene of scenes) for (const step of scene.steps || []) for (const s of step.sliders || []) if (typeof s?.id === "string" && s.id && !ids.includes(s.id)) ids.push(s.id);
+	return ids;
+}
+/** Deterministically decide what the builder sees. No I/O, no mutation. */
+function assembleBuildSceneRequest(opts) {
+	const scenes = scenesOf(opts.lesson);
+	const omitted = [];
+	let target;
+	if (opts.op === "replace") {
+		if (opts.sceneIndex == null || opts.sceneIndex < 0 || opts.sceneIndex >= scenes.length) throw new Error(`replace needs an existing scene index, got ${opts.sceneIndex}`);
+		target = opts.sceneIndex;
+	} else target = opts.sceneIndex == null ? scenes.length : Math.max(0, Math.min(opts.sceneIndex, scenes.length));
+	const intent = (opts.intent || "").trim().slice(0, MAX_INTENT_CHARS);
+	if (!intent) throw new Error("a build needs an intent; got an empty one");
+	const summarised = scenes.slice(0, 40);
+	if (scenes.length > 40) omitted.push(`${scenes.length - 40} scene summaries`);
+	const right = opts.op === "replace" ? target + 1 : target;
+	const around = [target - 1, right].filter((i) => i >= 0 && i < scenes.length);
+	const lesson = opts.lesson || {};
+	return {
+		op: opts.op,
+		sceneIndex: target,
+		intent,
+		clarifications: opts.clarifications || [],
+		lesson: {
+			title: typeof lesson.title === "string" ? lesson.title : "",
+			description: firstLine(lesson.description),
+			sceneSummaries: summarised.map((s, index) => ({
+				index,
+				title: typeof s.title === "string" ? s.title : "",
+				description: firstLine(s.description)
+			})),
+			sceneIds: buildIds(scenes, "title")
+		},
+		conventions: deriveConventions(scenes),
+		neighbours: around.map((i) => scenes[i]),
+		current: opts.op === "replace" ? scenes[target] : null,
+		memory: opts.memory || [],
+		sliderVocabulary: collectSliderIds(scenes),
+		omitted,
+		messages: (opts.messages || []).slice(-12).map((m) => ({
+			role: String(m && m.role || "user"),
+			text: String(m && m.text || "")
+		}))
+	};
+}
+//#endregion
+//#region src/build-scene-tool.ts
+/**
+* Translate the agent's 1-based scene number into a 0-based index.
+*
+* The agent's whole world is 1-based — `navigate_to` takes "scene 2" and means
+* the second scene — while the wire contract and `applyBuildOps` are 0-based.
+* Converting here, once, is why nothing downstream has to remember which
+* convention it is holding. `undefined` stays `undefined`: on insert that means
+* "append", which is a different instruction from "insert at 0".
+*/
+function sceneIndexFromArgs(scene) {
+	if (scene == null || scene === "") return void 0;
+	const n = typeof scene === "number" ? scene : parseInt(String(scene), 10);
+	if (!Number.isFinite(n)) return void 0;
+	const idx = Math.trunc(n);
+	return idx === 0 ? 0 : idx - 1;
+}
+/** Build the request body for a `build_scene` tool call. Throws on a hopeless one. */
+function buildSceneRequestFromToolCall(args, lesson, thread = [], memory = []) {
+	const op = args.op === "replace" ? "replace" : "insert";
+	return assembleBuildSceneRequest({
+		lesson,
+		intent: typeof args.intent === "string" ? args.intent : "",
+		op,
+		sceneIndex: sceneIndexFromArgs(args.scene),
+		memory,
+		messages: thread
+	});
+}
+/** One line naming what landed, for the chat log. */
+function summarise(ops) {
+	if (!ops.length) return "Nothing to apply.";
+	const op = ops[0];
+	const title = op.op === "delete" ? "" : op.node?.title;
+	const name = typeof title === "string" && title.trim() ? `“${title.trim()}”` : "a scene";
+	return op.op === "replace" ? `Rebuilt ${name}.` : `Added ${name}.`;
+}
+/**
+* Read the handler's reply into the contract's tagged union.
+*
+* The four outcomes are mutually exclusive on the wire, so this reads them in
+* the order the handler produces them and never merges two. An unrecognized
+* reply becomes `refused` rather than `passthrough`: a reply we cannot read is
+* a bug to surface, not a question to hand back to the tutor as if the user had
+* asked something conversational.
+*/
+function interpretBuildSceneReply(reply) {
+	const r = reply || {};
+	const focusIndex = typeof r.focus === "number" && Number.isInteger(r.focus) && r.focus >= 0 ? r.focus : null;
+	const focus = focusIndex == null ? void 0 : { index: focusIndex };
+	if (r.fallback_to_chat) return { kind: "passthrough" };
+	if (typeof r.question === "string" && r.question.trim()) return {
+		kind: "question",
+		question: r.question.trim(),
+		focus
+	};
+	if (typeof r.reason === "string" && r.reason.trim()) return {
+		kind: "refused",
+		reason: r.reason.trim(),
+		focus
+	};
+	const ops = r.result && Array.isArray(r.result.ops) ? r.result.ops : null;
+	if (ops && ops.length) return {
+		kind: "result",
+		result: {
+			ops,
+			summary: summarise(ops),
+			focus: focus || null
+		}
+	};
+	return {
+		kind: "refused",
+		reason: "The scene builder returned nothing usable.",
+		focus
+	};
+}
+//#endregion
+//#region src/build-progress.ts
+/** Ids are minted here so `at.id` can verify the slot is still ours. */
+var seq = 0;
+/**
+* A scene that says "this is being built", and where.
+*
+* Deliberately EMPTY rather than a guess at what is coming: a placeholder that
+* draws axes and a vector reads as a finished scene that came out wrong. The
+* caption carries the intent, so the slot explains itself while it waits.
+*/
+function placeholderScene(intent) {
+	seq += 1;
+	const asked = (intent || "").trim().replace(/\s+/g, " ");
+	return {
+		id: `building-${seq}`,
+		title: "Building…",
+		description: asked ? `Building: ${asked}` : "Building a new scene…",
+		elements: []
+	};
+}
+/**
+* The step to arrive on: the first one that HAS something.
+*
+* Sliders first, because a scene whose interactive part is the point renders
+* inert without them; then the first step that adds any element; then the root.
+*
+* Not `steps[0]`. `_pull_sliders_forward` in compose.py deliberately puts a
+* slider on the step that first USES it, which is routinely step 1 or later — so
+* checking only step 0 landed the reader on an empty root and the scene they had
+* just asked for appeared to render nothing. That is the exact symptom this
+* feature kept producing for other reasons; it must not be reintroduced by the
+* navigation.
+*/
+function landingStep(scene) {
+	const steps = scene && Array.isArray(scene.steps) ? scene.steps : [];
+	const withSliders = steps.findIndex((s) => Array.isArray(s?.sliders) && s.sliders.length);
+	if (withSliders >= 0) return withSliders;
+	const withContent = steps.findIndex((s) => Array.isArray(s?.add) && s.add.length);
+	return withContent >= 0 ? withContent : -1;
+}
+/**
+* The slot turned into a REPORT of why the build failed.
+*
+* A refused build used to take its placeholder with it: the scene vanished from
+* the tree, one sentence went past in chat, and there was nothing left to look
+* at. The reason is the most useful thing the expert produces when it cannot
+* build — it names the element and the field — so it should sit where the scene
+* would have been, not scroll away.
+*
+* It is an ordinary scene, so it appears in the tree, can be navigated to, and
+* can be deleted like any other. Deliberately NOT a special UI state: a state
+* has to be dismissed, remembered and rendered somewhere, and the thing the
+* reader wants is simply to read what went wrong at their own pace.
+*/
+function failedScene(intent, reason) {
+	seq += 1;
+	const asked = (intent || "").trim().replace(/\s+/g, " ");
+	return {
+		id: `unbuilt-${seq}`,
+		title: "Couldn’t build this scene",
+		description: `**${reason}**\n\nAsked for: ${asked || "(nothing)"}`,
+		elements: []
+	};
+}
+/** True for a scene this module put in the lesson — a placeholder or a report. */
+function isPlaceholder(scene) {
+	const id = scene?.id;
+	return typeof id === "string" && (id.startsWith("building-") || id.startsWith("unbuilt-"));
+}
+/**
+* Where the placeholder is NOW, or -1 if it is gone.
+*
+* Not the index it was reserved at. A build takes tens of seconds and the lesson
+* can move under it — another build landing, the user deleting a scene. Both
+* finishing moves address the slot by IDENTITY and only then by position, so a
+* shifted lesson relocates the slot instead of operating on its old neighbour.
+*/
+function slotIndex(scenes, placeholder) {
+	const id = placeholder.id;
+	return scenes.findIndex((s) => s?.id === id);
+}
+/** The op that puts a placeholder at `index`. */
+function reserveOp(index, placeholder) {
+	return {
+		op: "insert",
+		kind: "scene",
+		at: { index },
+		node: placeholder
+	};
+}
+/**
+* Turn the expert's op into one that lands ON the reserved slot.
+*
+* The expert does not know a placeholder exists — it answers the request it was
+* sent, which for an insert is "insert at N". Applying that verbatim after
+* reserving N would leave TWO scenes: the real one and the placeholder pushed
+* down beside it. So an insert becomes a replace of the slot we made.
+*
+* `at.id` carries the placeholder's id, so if anything moved the lesson while
+* the build was in flight the replace is REFUSED rather than overwriting a
+* scene the user meant to keep.
+*/
+function landOnSlot(op, placeholder, index) {
+	const id = placeholder.id;
+	if (index < 0 || op.op === "delete") return op;
+	return {
+		op: "replace",
+		kind: op.kind,
+		at: {
+			index,
+			id
+		},
+		node: op.node
+	};
+}
+/**
+* The op that takes the placeholder away again when nothing was built.
+*
+* `null` when the slot is already gone — there is nothing to remove, and an op
+* addressing a vanished index would delete a scene that is not ours.
+*/
+function releaseOp(index, placeholder) {
+	const id = placeholder.id;
+	if (index < 0) return null;
+	return {
+		op: "delete",
+		kind: "scene",
+		at: {
+			index,
+			id
+		}
+	};
+}
+/**
+* Show the in-flight pill over the 3D viewport.
+*
+* Same markup and classes as the proof-derivation pill so the two read as one
+* idea rather than two indicators that happen to spin. Returns its own remover:
+* a caller that forgets to call it leaves a pill spinning over a finished scene,
+* so there is exactly one thing to remember and no id to look up.
+*/
+function showBuildPill(text = "Building scene…") {
+	const vp = typeof document !== "undefined" ? document.getElementById("viewport") : null;
+	if (!vp) return () => {};
+	let stack = vp.querySelector(".build-indicator-stack");
+	if (!stack) {
+		stack = document.createElement("div");
+		stack.className = "graph-enrich-indicator-stack build-indicator-stack";
+		vp.appendChild(stack);
+	}
+	const el = document.createElement("div");
+	el.className = "graph-enrich-indicator";
+	el.setAttribute("role", "status");
+	const dots = document.createElement("span");
+	dots.className = "gei-dots";
+	for (let i = 0; i < 3; i += 1) dots.appendChild(document.createElement("span"));
+	const label = document.createElement("span");
+	label.className = "gei-text";
+	label.textContent = text;
+	el.appendChild(dots);
+	el.appendChild(label);
+	stack.appendChild(el);
+	const empty = document.getElementById("empty-state");
+	const store = stack;
+	if (empty && store._emptyWas === void 0) store._emptyWas = empty.style.display;
+	if (empty) empty.style.display = "none";
+	let removed = false;
+	return () => {
+		if (removed) return;
+		removed = true;
+		if (el.parentNode) el.parentNode.removeChild(el);
+		if (stack && !stack.childNodes.length) {
+			if (empty && store._emptyWas !== void 0) empty.style.display = store._emptyWas;
+			if (stack.parentNode) stack.parentNode.removeChild(stack);
+		}
+	};
+}
+//#endregion
+//#region src/chat.ts
+/**
+* How long to wait for a scene build.
+*
+* Shorter than DERIVE_TIMEOUT_MS: a build is ONE LM call with no verify-and-retry
+* loop behind it, so the 6-minute derivation budget would leave a user staring at
+* a dead chat for minutes after the request had already failed.
+*/
+var BUILD_SCENE_TIMEOUT_MS = 9e4;
+var chatHistory = [];
+var chatAvailable$1 = false;
+/** Whether AI chat works here (a key is configured). Others — the learning
+*  plan's guide — read it, and hear 'algebench:chatavailability' when known. */
+window.algebenchChatAvailable = () => chatAvailable$1;
+function announceChatAvailability() {
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:chatavailability", { detail: { available: chatAvailable$1 } }));
+	} catch (_) {}
+}
+var chatSending = false;
+/**
+* The one place `chatSending` changes. It's app-wide state — every AI ask
+* button reflects it — so each change is announced (`algebench:chatbusy`,
+* detail `{ busy }`) and readable via window.algebenchChatBusy().
+*/
+function setChatSending(busy) {
+	chatSending = busy;
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:chatbusy", { detail: { busy } }));
+	} catch (_) {}
+}
+window.algebenchChatBusy = () => chatSending;
+var activeSpeakBtn = null;
+var welcomeInFlight = false;
+var memorySnapshot = null;
+var ttsCharacterPicker = null;
+var selectedTtsCharacter = "joker";
+var selectedTtsVoice = "Charon";
+var selectedTtsMode = "read";
+var CHAT_HISTORY_MAX = Infinity;
+function _escHtml$1(s) {
+	const d = document.createElement("div");
+	d.textContent = s;
+	return d.innerHTML;
+}
+var _presetPrompts = [];
+var _lastFocusedSurface = null;
+function _classifyFocusTarget(target) {
+	const el = target;
+	if (!el || !el.closest) return null;
+	if (el.closest("#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip")) return "graph";
+	if (el.closest("#mathbox-container, #mathbox-overlay, canvas")) return "viewport";
+	if (el.closest(".explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts")) return "panel";
+	return null;
+}
+if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) => {
+	const surface = _classifyFocusTarget(e.target);
+	if (surface) _lastFocusedSurface = surface;
+}, true);
+/**
+* Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
+* shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
+*/
+/** takesOver: the prompt starts a conversation the reader drives (it waits for their answers), so playback stops
+*  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
+var COMMON_PROMPTS = [
+	DESCRIBE_PROBLEM,
+	{
+		label: "1-sentence gist",
+		prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."
+	},
+	{
+		label: "Gist as bullets",
+		prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."
+	},
+	{
+		label: "Rephrase from first principles",
+		prompt: "Take what you just explained and say it again from first principles, in the plainest words you can: what is really going on underneath, stripped of jargon, notation and caveats. Rough and loose is fine as long as the core idea lands. Don't add anything new; keep it short."
+	},
+	{
+		label: "Walk me through this view",
+		prompt: "Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate."
+	},
+	{
+		label: "Walk me through key points",
+		prompt: "Walk me through the key points of this scene, one at a time, as a short list."
+	},
+	{
+		label: "Guide me",
+		takesOver: true,
+		prompt: "Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on."
+	},
+	{
+		label: "Ask me about the current step",
+		takesOver: true,
+		prompt: "Ask me one question about the current step to check my understanding. Wait for my answer before explaining."
+	},
+	{
+		label: "Ask me about the current scene",
+		takesOver: true,
+		prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."
+	},
+	{
+		label: "Quiz mode",
+		takesOver: true,
+		prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."
+	},
+	{
+		label: "Interview mode",
+		display: "🎤 Interview mode",
+		takesOver: true,
+		prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."
+	},
+	{
+		label: "Surprise me!",
+		prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."
+	}
+];
+/** A question the learner typed is about what is on screen now: playback stops at once (even while the turn waits
+*  for a narration in flight), so the next state and its narration don't move on and talk over the answer. */
+function sendTyped(text) {
+	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+	stopPresenting();
+	sendChatMessage$1(text, { typed: true });
+}
+/** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
+function usePrompt(text, e, display, takesOver = false) {
+	if (e.metaKey || e.ctrlKey) {
+		const input = document.getElementById("chat-input");
+		if (input) {
+			input.value = text;
+			input.focus();
+			input.dispatchEvent(new Event("input"));
+		}
+	} else {
+		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
+		if (takesOver) window.dispatchEvent(new CustomEvent("algebench:narrationoff"));
+		stopPresenting();
+		sendChatMessage$1(text, display ? { display } : void 0);
+	}
+}
+function setPresetPrompts$1(prompts) {
+	_presetPrompts = prompts || [];
+	const container = document.getElementById("preset-prompts");
+	if (!container) return;
+	container.innerHTML = "";
+	container.classList.remove("hidden");
+	for (const text of _presetPrompts) {
+		const btn = document.createElement("button");
+		btn.className = "preset-prompt-btn";
+		btn.textContent = text;
+		btn.title = text + "\n\nClick to send · ⌘/Ctrl-click to edit";
+		btn.addEventListener("click", (e) => usePrompt(text, e));
+		container.appendChild(btn);
+	}
+	container.appendChild(morePromptsMenu());
+}
+/** A small chip that opens a menu of COMMON_PROMPTS above it. */
+function morePromptsMenu() {
+	const wrap = document.createElement("div");
+	wrap.className = "preset-more";
+	const toggle = document.createElement("button");
+	toggle.type = "button";
+	toggle.className = "preset-prompt-btn preset-more-btn";
+	toggle.textContent = "⋯";
+	toggle.title = "More prompts";
+	toggle.setAttribute("aria-label", "More prompts");
+	toggle.setAttribute("aria-haspopup", "menu");
+	toggle.setAttribute("aria-expanded", "false");
+	const menu = document.createElement("div");
+	menu.className = "preset-more-menu";
+	menu.setAttribute("role", "menu");
+	menu.hidden = true;
+	const close = () => {
+		menu.hidden = true;
+		toggle.setAttribute("aria-expanded", "false");
+		document.removeEventListener("pointerdown", outside, true);
+		document.removeEventListener("keydown", escape, true);
+	};
+	const outside = (e) => {
+		if (!wrap.contains(e.target)) close();
+	};
+	const escape = (e) => {
+		if (e.key === "Escape") {
+			close();
+			toggle.focus();
+		}
+	};
+	for (const { label, prompt, display, takesOver } of COMMON_PROMPTS) {
+		const item = document.createElement("button");
+		item.type = "button";
+		item.className = "preset-more-item";
+		item.setAttribute("role", "menuitem");
+		item.textContent = label;
+		item.title = prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
+		item.addEventListener("click", (e) => {
+			close();
+			usePrompt(prompt, e, display, takesOver);
+		});
+		menu.appendChild(item);
+	}
+	toggle.addEventListener("click", () => {
+		if (!menu.hidden) {
+			close();
+			return;
+		}
+		menu.hidden = false;
+		menu.style.left = "0px";
+		menu.style.maxWidth = "";
+		const bounds = (wrap.closest(".tab-content") ?? document.documentElement).getBoundingClientRect();
+		const anchor = wrap.getBoundingClientRect().left;
+		const { offset, maxWidth } = menuPlacement(anchor, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
+		menu.style.maxWidth = `${maxWidth}px`;
+		menu.style.left = `${offset}px`;
+		toggle.setAttribute("aria-expanded", "true");
+		document.addEventListener("pointerdown", outside, true);
+		document.addEventListener("keydown", escape, true);
+		menu.querySelector("button")?.focus();
+	});
+	wrap.append(toggle, menu);
+	return wrap;
+}
+/** Until this time (ms), the Chat-tab welcome is skipped — see suppressChatWelcome. */
+var _welcomeSuppressedUntil = 0;
+/**
+* Skip the Chat-tab welcome for the next `ms`. The learning plan's AI guide
+* calls this before it navigates: a plan jump to a proof step opens the Chat
+* tab (where the proof panel lives), and the guide is about to explain that
+* very screen — the welcome would talk over it with a second explanation.
+*/
+function suppressChatWelcome(ms = 5e3) {
+	_welcomeSuppressedUntil = Math.max(_welcomeSuppressedUntil, Date.now() + ms);
+}
+/** The welcome is said once, ever: after that the Chat tab opens quietly (remembered in this browser). */
+var WELCOMED_KEY = "algebench.chatWelcomed";
+function welcomedBefore() {
+	try {
+		return localStorage.getItem(WELCOMED_KEY) === "1";
+	} catch {
+		return false;
+	}
+}
+function shouldSkipWelcome() {
+	return welcomedBefore() || chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
+}
+/** How long the Chat tab waits before greeting, so anything the learner starts first wins. */
+var WELCOME_DELAY_MS = 1e3;
+/** Nothing else has started since the Chat tab opened: still on it, the box empty, no speech, no narration. */
+function welcomeStillWanted() {
+	if (!document.getElementById("tab-chat")?.classList.contains("active")) return false;
+	if (document.getElementById("chat-input")?.value.trim()) return false;
+	if (window.algebenchTTSActive?.()) return false;
+	return !window.algebenchNarrating?.();
+}
+function buildChatContext() {
+	const ctx = {};
+	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.title) ctx.lessonTitle = lessonSpec.title;
+	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes) {
+		ctx.totalScenes = lessonSpec.scenes.length;
+		const idx = typeof currentSceneIndex !== "undefined" ? currentSceneIndex : 0;
+		ctx.sceneNumber = idx + 1;
+		const scene = lessonSpec.scenes[idx];
+		if (scene) ctx.currentScene = scene;
+		ctx.sceneTree = lessonSpec.scenes.map((s, i) => {
+			const entry = {
+				sceneNumber: i + 1,
+				title: s.title || "Scene " + (i + 1)
+			};
+			if (s.steps && s.steps.length > 0) entry.steps = s.steps.map((st, j) => ({
+				stepNumber: j + 1,
+				title: st.title || "Step " + (j + 1),
+				description: st.description || ""
+			}));
+			return entry;
+		});
+	}
+	const runtime = {};
+	runtime.stepNumber = (typeof currentStepIndex !== "undefined" ? currentStepIndex : -1) + 1;
+	if (typeof camera !== "undefined" && camera) runtime.cameraPosition = {
+		x: +camera.position.x.toFixed(2),
+		y: +camera.position.y.toFixed(2),
+		z: +camera.position.z.toFixed(2)
+	};
+	if (typeof controls !== "undefined" && controls && controls.target) runtime.cameraTarget = {
+		x: +controls.target.x.toFixed(2),
+		y: +controls.target.y.toFixed(2),
+		z: +controls.target.z.toFixed(2)
+	};
+	if (typeof CAMERA_VIEWS !== "undefined") {
+		const viewNames = Object.keys(CAMERA_VIEWS).filter((k) => k !== "__agent" && k !== "_step" && k !== "reset");
+		if (viewNames.length > 0) runtime.cameraViews = viewNames;
+	}
+	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes && typeof getAllElements === "function") {
+		const scene = lessonSpec.scenes[currentSceneIndex];
+		if (scene) {
+			const els = getAllElements(scene, currentStepIndex);
+			const NON_VISUAL_TYPES = /* @__PURE__ */ new Set([
+				"slider",
+				"info",
+				"preset_prompts"
+			]);
+			runtime.visibleElements = els.filter((el) => {
+				if (NON_VISUAL_TYPES.has(el.type)) return false;
+				if (typeof elementRegistry !== "undefined" && el.id && elementRegistry[el.id]) return !elementRegistry[el.id].hidden;
+				return true;
+			}).map((el) => ({
+				label: el.label || el.id || el.type,
+				type: el.type
+			}));
+		}
+	}
+	if (typeof sceneSliders !== "undefined" && sceneSliders) {
+		const sliders = {};
+		for (const [id, s] of Object.entries(sceneSliders)) sliders[id] = {
+			value: s.value,
+			min: s.min,
+			max: s.max,
+			step: s.step,
+			label: s.label || id,
+			...s.kind === "tensor" && s.shape && s.values ? {
+				shape: s.shape,
+				values: s.values
+			} : {}
+		};
+		if (Object.keys(sliders).length > 0) runtime.sliders = sliders;
+	}
+	const playback = ctx.currentScene?.stepPlayback;
+	const executionSlider = playback ? runtime.sliders?.[playback.slider] : void 0;
+	if (playback && executionSlider && Number.isFinite(executionSlider.value) && Number.isInteger(executionSlider.min) && Number.isInteger(executionSlider.max) && executionSlider.max >= executionSlider.min) {
+		const position = playbackPosition(executionSlider.value, executionSlider.min, executionSlider.max);
+		runtime.playback = {
+			slider: playback.slider,
+			value: position.current,
+			min: executionSlider.min,
+			max: executionSlider.max,
+			total: position.total,
+			displayedPosition: position.display
+		};
+	}
+	const promptExpr = ctx.currentScene?.promptExpr;
+	if (promptExpr) try {
+		const value = evalExpr(compileExpr(promptExpr), 0);
+		if (value !== null && value !== void 0 && value !== "") runtime.simulationState = String(value).slice(0, 6e3);
+	} catch {}
+	const screenValues = visibleAnnotationTexts();
+	if (screenValues.length) runtime.screenValues = screenValues;
+	const captionEl = document.getElementById("step-caption");
+	if (captionEl && !captionEl.classList.contains("hidden")) runtime.currentCaption = (captionEl.dataset.markdown || captionEl.textContent).trim();
+	const activeTab = document.querySelector(".tab-content.active");
+	if (activeTab) runtime.activeTab = activeTab.id.replace("tab-", "");
+	if (typeof currentProjection !== "undefined") runtime.projection = currentProjection;
+	if (typeof getProofContext === "function") {
+		const proofCtx = getProofContext();
+		if (proofCtx) runtime.proof = proofCtx;
+	}
+	if (typeof window.algebenchGetGraphPanelState === "function") try {
+		const gp = window.algebenchGetGraphPanelState();
+		if (gp) runtime.graphPanel = gp;
+	} catch (e) {
+		console.warn("[chat] failed to read graph panel state:", e);
+	}
+	if (_lastFocusedSurface) runtime.lastFocusedSurface = _lastFocusedSurface;
+	const viewing = [];
+	const graphActive = runtime.graphPanel && runtime.graphPanel.open;
+	viewing.push(graphActive ? "semantic graph" : "scene");
+	if (runtime.activeTab === "chat") {
+		viewing.push("chat");
+		const proofPanel = document.getElementById("proof-panel");
+		if (proofPanel && !proofPanel.classList.contains("hidden")) viewing.push("proof");
+	} else if (runtime.activeTab === "doc") viewing.push("doc");
+	runtime.userViewing = viewing;
+	try {
+		const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+		if (coachEngine && typeof coachEngine.status === "function") runtime.coach = coachEngine.status();
+	} catch {}
+	if (presenterOn()) runtime.presenter = true;
+	ctx.runtime = runtime;
+	return ctx;
+}
+window.algebenchBuildChatContext = buildChatContext;
+function switchPanelTab$1(tabName) {
+	document.querySelectorAll(".panel-tab").forEach((btn) => {
+		btn.classList.toggle("active", btn.dataset.tab === tabName);
+	});
+	document.querySelectorAll(".tab-content").forEach((el) => {
+		el.classList.toggle("active", el.id === "tab-" + tabName);
+	});
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:panelchange"));
+	} catch (_) {}
+	if (tabName === "chat") {
+		if (typeof refreshProofPanel === "function") refreshProofPanel();
+		const input = document.getElementById("chat-input");
+		if (input) setTimeout(() => input.focus(), 50);
+		if (chatAvailable$1 && !welcomeInFlight && !shouldSkipWelcome()) setTimeout(() => {
+			if (!welcomeInFlight && !shouldSkipWelcome() && welcomeStillWanted()) sendWelcomeMessage();
+		}, WELCOME_DELAY_MS);
+	}
+}
+function setupChat() {
+	fetch("/api/chat/available").then((r) => r.json()).then((data) => {
+		chatAvailable$1 = data.available;
+		announceChatAvailability();
+		if (!chatAvailable$1) {
+			const msg = document.getElementById("chat-unavailable-msg");
+			const tab = document.getElementById("tab-chat");
+			if (msg) msg.classList.remove("hidden");
+			if (tab) tab.classList.add("unavailable");
+		}
+	}).catch(() => {
+		chatAvailable$1 = false;
+		announceChatAvailability();
+		const msg = document.getElementById("chat-unavailable-msg");
+		const tab = document.getElementById("tab-chat");
+		if (msg) msg.classList.remove("hidden");
+		if (tab) tab.classList.add("unavailable");
+	});
+	document.querySelectorAll(".panel-tab").forEach((btn) => {
+		btn.addEventListener("click", () => {
+			switchPanelTab$1(btn.dataset.tab);
+		});
+	});
+	document.addEventListener("keydown", (e) => {
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+		if (e.key === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			const panel = document.getElementById("explanation-panel");
+			const toggle = document.getElementById("explain-toggle");
+			const handle = document.getElementById("panel-resize-handle");
+			if (panel.classList.contains("hidden")) {
+				panel.classList.remove("hidden");
+				handle.style.display = "block";
+				toggle.style.display = "block";
+				toggle.classList.add("active");
+				setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+			}
+			switchPanelTab$1("chat");
+		}
+	});
+	const input = document.getElementById("chat-input");
+	const sendBtn = document.getElementById("chat-send");
+	initChatTtsControls();
+	input.addEventListener("keydown", (e) => {
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			const text = input.value.trim();
+			if (text && !chatSending) {
+				input.value = "";
+				input.style.height = "auto";
+				sendTyped(text);
+			}
+		}
+	});
+	input.addEventListener("input", () => {
+		input.style.height = "auto";
+		input.style.height = Math.min(input.scrollHeight, 120) + "px";
+	});
+	sendBtn.addEventListener("click", () => {
+		const text = input.value.trim();
+		if (text && !chatSending) {
+			input.value = "";
+			input.style.height = "auto";
+			sendTyped(text);
+		}
+	});
+}
+function initChatTtsControls() {
+	const lib = window.GeminiVoiceCharacterSelector;
+	if (!lib) return;
+	const characterBtn = document.getElementById("chatCharacterBtn");
+	const characterPalette = document.getElementById("chatCharacterPalette");
+	const characterSearch = document.getElementById("chatCharacterSearch");
+	const characterList = document.getElementById("chatCharacterList");
+	const characterBackdrop = document.getElementById("chatCharacterBackdrop");
+	const voiceSelect = document.getElementById("chatVoiceSelect");
+	if (!characterBtn || !characterPalette || !characterSearch || !characterList || !characterBackdrop || !voiceSelect) return;
+	if (characterPalette.parentElement !== document.body) document.body.appendChild(characterPalette);
+	if (characterBackdrop.parentElement !== document.body) document.body.appendChild(characterBackdrop);
+	selectedTtsVoice = lib.setupVoiceSelect(voiceSelect, {
+		includeSystem: false,
+		storageKey: "algebenchTtsVoice",
+		defaultValue: "Charon"
+	});
+	ttsCharacterPicker = new lib.CharacterPicker({
+		buttonEl: characterBtn,
+		paletteEl: characterPalette,
+		searchEl: characterSearch,
+		listEl: characterList,
+		backdropEl: characterBackdrop,
+		options: lib.CHARACTER_OPTIONS,
+		groupMap: lib.CHARACTER_GROUPS,
+		groupOrder: lib.CHARACTER_GROUP_ORDER,
+		storageKey: "algebenchTtsCharacter",
+		recentsKey: "algebenchTtsCharacterRecents",
+		defaultId: "joker",
+		hotkey: "k",
+		onChange: (characterId) => {
+			selectedTtsCharacter = characterId;
+			const opt = lib.CHARACTER_OPTIONS.find((o) => o.id === characterId);
+			if (opt && opt.defaultVoice && voiceSelect) {
+				voiceSelect.value = opt.defaultVoice;
+				selectedTtsVoice = opt.defaultVoice;
+				localStorage.setItem("algebenchTtsVoice", opt.defaultVoice);
+			}
+		}
+	});
+	selectedTtsCharacter = ttsCharacterPicker.init();
+	voiceSelect.addEventListener("change", () => {
+		selectedTtsVoice = voiceSelect.value || "Charon";
+	});
+	const ttsModeSelect = document.getElementById("chatTtsModeSelect");
+	if (ttsModeSelect) {
+		selectedTtsMode = localStorage.getItem("algebenchTtsMode") || "read";
+		ttsModeSelect.value = selectedTtsMode;
+		ttsModeSelect.addEventListener("change", () => {
+			selectedTtsMode = ttsModeSelect.value;
+			localStorage.setItem("algebenchTtsMode", selectedTtsMode);
+		});
+	}
+}
+/**
+* Run one `build_scene` tool call: assemble, ask the expert, apply, navigate.
+*
+* Returns the assistant text that must join `chatHistory`, or '' when there is
+* nothing to record. The CALLER pushes it, after the agent's own reply — order
+* matters. A clarifying question is recovered next turn by pairing an assistant
+* turn ending in '?' with the user's next turn, so a question filed BEFORE the
+* agent's reply has that reply sitting between it and the answer, the pair is
+* never made, and the expert asks the same question forever.
+*/
+async function runBuildSceneTool(tc) {
+	const args = tc.args || {};
+	let body;
+	try {
+		body = buildSceneRequestFromToolCall(args, typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, chatHistory, memoryRefs());
+	} catch (e) {
+		const why = e instanceof Error ? e.message : String(e);
+		console.warn("build_scene: not sent —", why);
+		const said = `I couldn't build that: ${why}`;
+		addChatMessage("assistant", said);
+		return said;
+	}
+	console.log("%c🎬 build_scene:", "color: #ffaa00; font-weight: bold", body.op, "at index", body.sceneIndex, "|", body.intent.slice(0, 120));
+	const { lesson, bootstrap } = ensureLessonFormat(typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, typeof currentSpec !== "undefined" && currentSpec ? currentSpec : null);
+	const target = body.sceneIndex;
+	const placeholder = body.op === "insert" ? placeholderScene(body.intent) : null;
+	let reserveFailure = "";
+	if (placeholder) try {
+		applyBuildOps(lesson, [reserveOp(target, placeholder)]);
+	} catch (e) {
+		console.error("build_scene: could not reserve a slot", e);
+		reserveFailure = `I couldn't make room for that scene: ${String(e)}`;
+		addChatMessage("assistant", reserveFailure);
+	}
+	if (reserveFailure) return reserveFailure;
+	lessonSpec = lesson;
+	if (bootstrap.bootstrapped && bootstrap.promotedScene) {
+		currentSceneIndex = 0;
+		currentStepIndex = -1;
+	}
+	showBuiltScene(lesson, target, -1);
+	const hidePill = showBuildPill(body.op === "replace" ? "Rebuilding scene…" : "Building scene…");
+	/**
+	* Leave the reason WHERE THE SCENE WOULD HAVE BEEN.
+	*
+	* A failed build used to release its slot: the scene vanished from the tree,
+	* one sentence went past in chat, and there was nothing left to inspect. The
+	* expert's reason names the element and the field it objected to, which is
+	* the most useful thing it produces when it cannot build — so the slot
+	* becomes a report the reader can navigate to and read at their own pace,
+	* and delete like any other scene.
+	*
+	* Returns false when there was no slot to convert — a `replace`, which
+	* reserves nothing because the reader is already looking at the scene being
+	* rebuilt, and which leaves that scene untouched on failure.
+	*/
+	const reportFailure = (reason) => {
+		if (!placeholder) return false;
+		const at = slotIndex(lesson.scenes, placeholder);
+		if (at < 0) return false;
+		try {
+			applyBuildOps(lesson, [{
+				op: "replace",
+				kind: "scene",
+				at: {
+					index: at,
+					id: placeholder.id
+				},
+				node: failedScene(body.intent, reason)
+			}]);
+		} catch (e) {
+			console.error("build_scene: could not report the failure in place", e);
+			return false;
+		}
+		showBuiltScene(lesson, at, -1);
+		return true;
+	};
+	/** Undo the reservation, for outcomes that are not failures. */
+	const release = () => {
+		if (!placeholder) return;
+		const at = releaseOp(slotIndex(lesson.scenes, placeholder), placeholder);
+		if (!at) return;
+		try {
+			applyBuildOps(lesson, [at]);
+			showBuiltScene(lesson, Math.max(0, (at.at.index ?? 1) - 1), -1);
+		} catch (e) {
+			console.error("build_scene: could not release the reserved slot", e);
+		}
+	};
+	let reply;
+	try {
+		reply = await invokeExpert("build_scene", body, { timeoutMs: BUILD_SCENE_TIMEOUT_MS });
+	} catch (e) {
+		hidePill();
+		const msg = e instanceof ExpertError ? e.message : "The scene builder could not be reached.";
+		console.error("build_scene: request failed", e);
+		reportFailure(msg);
+		addChatMessage("assistant", msg);
+		return msg;
+	}
+	hidePill();
+	const outcome = interpretBuildSceneReply(reply);
+	if (outcome.kind === "passthrough") {
+		console.log("build_scene: not a build → chat");
+		release();
+		const said = "That reads more like a question than a scene to build — tell me what should be visible and I'll build it.";
+		addChatMessage("assistant", said);
+		return said;
+	}
+	if (outcome.kind === "question") {
+		console.log("build_scene: asking —", outcome.question);
+		release();
+		addChatMessage("assistant", outcome.question);
+		return outcome.question;
+	}
+	if (outcome.kind === "refused") {
+		console.warn("build_scene: refused —", outcome.reason);
+		reportFailure(outcome.reason);
+		const said = `I couldn't build that: ${outcome.reason}`;
+		addChatMessage("assistant", said);
+		return said;
+	}
+	const { ops, summary } = outcome.result;
+	const at = placeholder ? slotIndex(lesson.scenes, placeholder) : -1;
+	const landed = placeholder ? ops.map((op) => landOnSlot(op, placeholder, at)) : ops;
+	try {
+		applyBuildOps(lesson, landed);
+	} catch (e) {
+		const why = e instanceof PlacementError ? e.message : String(e);
+		console.error("build_scene: could not apply", e);
+		const said = `The scene was built but wouldn't fit the lesson: ${why}`;
+		reportFailure(said);
+		addChatMessage("assistant", said);
+		return said;
+	}
+	showBuiltScene(lesson, landed[0].at.index ?? target);
+	console.log("%c🎬 build_scene complete", "color: #44ff44; font-weight: bold", summary);
+	addChatMessage("assistant", summary);
+	return summary;
+}
+/**
+* Agent-memory KEYS and their shapes — never their values.
+*
+* `MemoryRef` is `extra="forbid"` on the backend precisely so a ref carrying its
+* `value` is refused at the door: a computed 400-point array must not reach a
+* prompt. The builder only needs to know a key EXISTS and roughly what is in it
+* to reference one.
+*
+* Without this the field was always `[]` in the real client flow, so the whole
+* design was inert — the expert could never mention a stored value.
+*/
+function memoryRefs() {
+	if (!memorySnapshot) return [];
+	return Object.entries(memorySnapshot).map(([key, entry]) => ({
+		key,
+		shape: entry && typeof entry.summary === "string" ? entry.summary : ""
+	}));
+}
+/**
+* Rebuild the scene tree and put the user on scene `index`.
+*
+* `step` defaults to "whichever step carries the sliders", because a scene whose
+* interactive part IS the point renders inert at its root view. Pass an explicit
+* step for the placeholder, which has none.
+*/
+function showBuiltScene(lesson, index, step) {
+	const scene = lesson.scenes[index];
+	const targetStep = step !== void 0 ? step : landingStep(scene);
+	try {
+		if (typeof buildSceneTree === "function") buildSceneTree(lessonSpec);
+		if (typeof updateDockVisibility === "function") updateDockVisibility();
+		if (index === currentSceneIndex) currentSceneIndex = -1;
+		if (typeof navigateTo === "function") navigateTo(index, targetStep);
+		if (isPlaceholder(lesson.scenes[index])) {
+			const empty = document.getElementById("empty-state");
+			if (empty) empty.style.display = "none";
+		}
+		if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
+	} catch (e) {
+		console.error("build_scene: navigation/render failed:", e);
+	}
+}
+/**
+* Send one chat turn. Single-flight (chat-flight.ts): mid-turn, a visible ask
+* is queued and a silent one is turned away with `false`.
+*/
+var sendChatMessage$1 = singleFlightSender(() => chatSending, _sendTurn);
+async function _sendTurn(text, { silent, noTools, display, typed }) {
+	setChatSending(true);
+	if (!silent) {
+		addChatMessage("user", display ?? text);
+		if (display) chatHistory[chatHistory.length - 1].text = text;
+	}
+	const loadingEl = addChatLoading();
+	let presentAfter = null;
+	const context = buildChatContext();
+	if (silent && context.runtime) delete context.runtime.presenter;
+	console.log("%c🤖 Chat send: %c" + text.substring(0, 60), "color: #8888ff; font-weight: bold", "color: #ccc");
+	const payload = {
+		message: text,
+		history: (silent ? chatHistory : chatHistory.slice(0, -1)).filter((h) => h.text),
+		context,
+		...noTools ? { noTools: true } : {},
+		...typed ? { typed: true } : {}
+	};
+	try {
+		const res = await fetch("/api/chat", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		});
+		loadingEl.remove();
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({ error: "Request failed" }));
+			const rawMsg = err.detail ?? err.error;
+			const msg = typeof rawMsg === "string" ? rawMsg : rawMsg != null ? JSON.stringify(rawMsg) : "";
+			console.error("%c🤖 Chat error: %c" + res.status + " — " + (msg || "unknown"), "color: #ff4444; font-weight: bold", "color: #ccc");
+			addChatMessage("assistant", msg || "Something went wrong. Please try again.");
+			if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
+			setChatSending(false);
+			return;
+		}
+		const data = await res.json();
+		if (noTools) data.toolCalls = [];
+		const tcNames = (data.toolCalls || []).map((tc) => tc.name).join(", ");
+		console.log("%c🤖 Chat response: %c" + data.response.length + " chars" + (tcNames ? " | tools: " + tcNames : ""), "color: #88ff88; font-weight: bold", "color: #ccc");
+		if (data.toolCalls && data.toolCalls.length > 0) for (const tc of data.toolCalls) {
+			console.groupCollapsed("%c🔧 TOOL CALL: " + tc.name, "color: #ff8844; font-weight: bold");
+			console.log("%cRequest rawArgs:", "color: #aaa; font-weight: bold", tc.rawArgs || tc.args);
+			console.log("%cRequest exec args:", "color: #aaa; font-weight: bold", tc.args);
+			console.log("%cResult:", "color: #aaa; font-weight: bold", tc.result);
+			console.groupEnd();
+		}
+		if (data.debug) {
+			const contents = data.debug.contents || [];
+			const modelParts = [{ text: data.response }];
+			if (data.toolCalls && data.toolCalls.length > 0) for (const tc of data.toolCalls) modelParts.push({ functionCall: {
+				name: tc.name,
+				args: tc.rawArgs || tc.args
+			} });
+			contents.push({
+				role: "model",
+				parts: modelParts
+			});
+			window.geminiChatHistory = {
+				systemPrompt: data.debug.systemPrompt,
+				contents
+			};
+			try {
+				localStorage.setItem("geminiChatHistory", JSON.stringify(window.geminiChatHistory));
+			} catch (e) {}
+			console.log("%c📋 geminiChatHistory: %c" + (window.geminiChatHistory.systemPrompt || "").length + " char prompt, " + contents.length + " messages (window.geminiChatHistory)", "color: #ffaa44; font-weight: bold", "color: #ccc");
+		}
+		if (data.toolCalls && data.toolCalls.length > 0) {
+			const messagesEl = document.getElementById("chat-messages");
+			for (const tc of data.toolCalls) messagesEl.appendChild(renderToolCallChip(tc));
+			messagesEl.scrollTop = messagesEl.scrollHeight;
+		}
+		let assistantMsg = null;
+		const reply = extractInlineToolCalls(data.response ?? "");
+		for (const call of reply.calls) if (call.name === "set_preset_prompts" && Array.isArray(call.args.prompts)) setPresetPrompts$1(call.args.prompts.filter((p) => typeof p === "string"));
+		const presenting = (data.toolCalls ?? []).some((tc) => tc.name === "present_walkthrough");
+		if (reply.text && !presenting) assistantMsg = addChatMessage("assistant", reply.text);
+		const builderTurns = [];
+		if (data.toolCalls && data.toolCalls.length > 0) {
+			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
+				const agentScene = Math.round(Number(tc.args.scene) || 1);
+				const agentStep = tc.args.step !== void 0 ? Math.round(Number(tc.args.step)) : 0;
+				const internalScene = agentScene - 1;
+				const internalStep = agentStep - 1;
+				const totalScenes = typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes ? lessonSpec.scenes.length : 0;
+				const beforeScene = currentSceneIndex;
+				const beforeStep = currentStepIndex;
+				console.log("%c📍 navigate_to: %cagent: scene=" + agentScene + " step=" + agentStep + " → internal: scene=" + internalScene + " step=" + internalStep + " | before: scene=" + (beforeScene + 1) + " step=" + (beforeStep + 1) + " | totalScenes=" + totalScenes, "color: #ff8844; font-weight: bold", "color: #ccc");
+				if (internalScene < 0 || internalScene >= totalScenes) console.error("📍 navigate_to REJECTED: scene " + agentScene + " out of bounds (1-" + totalScenes + ")");
+				else if (typeof navigateTo === "function") {
+					navigateTo(internalScene, internalStep);
+					if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
+					console.log("%c📍 navigate_to result: %cnow at scene " + (currentSceneIndex + 1) + " step " + (currentStepIndex + 1) + (currentSceneIndex === beforeScene && currentStepIndex === beforeStep ? " ⚠️ NO CHANGE" : ""), "color: #ff8844; font-weight: bold", "color: #ccc");
+				}
+			} else if (tc.name === "set_camera") {
+				const viewName = tc.args.view;
+				if (viewName && typeof CAMERA_VIEWS !== "undefined") {
+					const key = viewName.toLowerCase().replace(/\s+/g, "-");
+					if (CAMERA_VIEWS[key]) animateCamera(key, 800);
+					else {
+						const btn = findCamButton(key);
+						if (btn) btn.click();
+					}
+				} else if (tc.args.position || tc.args.target) {
+					const tgt = tc.args.target || [
+						0,
+						0,
+						0
+					];
+					let pos = tc.args.position;
+					const zoom = tc.args.zoom;
+					if (!pos && typeof camera !== "undefined" && typeof controls !== "undefined" && typeof worldCameraToData === "function") {
+						const curPosData = worldCameraToData([
+							camera.position.x,
+							camera.position.y,
+							camera.position.z
+						]);
+						const curTgtData = worldCameraToData([
+							controls.target.x,
+							controls.target.y,
+							controls.target.z
+						]);
+						pos = [
+							tgt[0] + (curPosData[0] - curTgtData[0]),
+							tgt[1] + (curPosData[1] - curTgtData[1]),
+							tgt[2] + (curPosData[2] - curTgtData[2])
+						];
+					} else if (!pos) pos = [
+						tgt[0],
+						tgt[1] + 50,
+						tgt[2] + 50
+					];
+					if (pos) {
+						const dx = pos[0] - tgt[0], dy = pos[1] - tgt[1], dz = pos[2] - tgt[2];
+						Math.sqrt(dx * dx + dy * dy + dz * dz);
+						if (zoom != null && zoom > 0) {
+							const s = 1 / zoom;
+							pos = [
+								tgt[0] + dx * s,
+								tgt[1] + dy * s,
+								tgt[2] + dz * s
+							];
+						}
+					}
+					if (typeof CAMERA_VIEWS !== "undefined" && typeof animateCamera === "function") {
+						const wPos = typeof dataCameraToWorld === "function" ? dataCameraToWorld(pos) : pos;
+						const wTgt = typeof dataCameraToWorld === "function" ? dataCameraToWorld(tgt) : tgt;
+						const sceneUp = typeof camera !== "undefined" && camera ? [
+							camera.up.x,
+							camera.up.y,
+							camera.up.z
+						] : [
+							0,
+							1,
+							0
+						];
+						CAMERA_VIEWS["__agent"] = {
+							position: wPos,
+							target: wTgt,
+							up: sceneUp
+						};
+						animateCamera("__agent", 800);
+					}
+				}
+			} else if (tc.name === "build_scene") {
+				if (tc.result && tc.result.status === "error") console.log("build_scene: skipped —", tc.result.error || "refused by the server");
+				else {
+					const said = await runBuildSceneTool(tc);
+					if (said) builderTurns.push(said);
+				}
+			} else if (tc.name === "set_sliders") {
+				const values = tc.args.values || {};
+				const promises = Object.entries(values).map(([id, target]) => typeof animateSlider === "function" ? animateSlider(id, parseFloat(String(target)), 800) : Promise.resolve(false));
+				await Promise.all(promises);
+			} else if (tc.name === "set_preset_prompts") setPresetPrompts$1(tc.args.prompts || []);
+			else if (tc.name === "set_info_overlay") {
+				if (tc.args.id) {
+					if (typeof addInfoOverlay === "function") addInfoOverlay(tc.args.id, tc.args.content || "", tc.args.position || "top-left");
+				} else console.warn("set_info_overlay: tool call missing required `id`; dropping", { args: tc.args });
+			} else if (tc.name === "clear_info_overlays") {
+				if (typeof removeAllInfoOverlays === "function") removeAllInfoOverlays();
+			} else if (tc.name === "navigate_proof") {
+				const proofStep = parseInt(String(tc.result?.step ?? tc.args?.step ?? 0));
+				if (typeof navigateProof === "function") navigateProof(proofStep - 1);
+			} else if (tc.name === "derive_proof_animation") {
+				if (tc.result && tc.result.status !== "success") console.log("derive_proof_animation: skipped —", tc.result.error || "not permitted");
+				else if (typeof window.algebenchDeriveProof === "function") window.algebenchDeriveProof(tc.args || {});
+				else console.warn("derive_proof_animation: graph view not ready to derive");
+			} else if (tc.name === "present_walkthrough") {
+				const question = String(tc.args?.question || text);
+				presentAfter = () => {
+					const turn = {
+						role: "assistant",
+						text: ""
+					};
+					chatHistory.push(turn);
+					return presentQuestion(question, {
+						joinHistory: false,
+						onProgress: (said) => {
+							turn.text = said;
+						}
+					}).then((said) => {
+						if (said) {
+							turn.text = said;
+							return;
+						}
+						if (said === "" && reply.text) {
+							addChatMessage("assistant", reply.text);
+							turn.text = reply.text;
+							return;
+						}
+						const at = chatHistory.indexOf(turn);
+						if (at >= 0) chatHistory.splice(at, 1);
+					});
+				};
+			} else if (tc.name === "set_language") {
+				if (typeof tc.args?.language === "string") setLanguage(tc.args.language);
+			} else if (tc.name === "control_coach") {
+				const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+				if (engine && typeof engine.control === "function") engine.control(tc.args?.action, { step: tc.args?.step });
+				else console.warn("control_coach: coach engine not available");
+			}
+		}
+		if (!presentAfter) chatHistory.push({
+			role: "assistant",
+			text: reply.text
+		});
+		for (const said of builderTurns) chatHistory.push({
+			role: "assistant",
+			text: said
+		});
+		if (presentAfter) presentAfter();
+		while (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
+		const memToolNames = [
+			"eval_math",
+			"mem_get",
+			"mem_set"
+		];
+		if ((data.toolCalls || []).some((tc) => memToolNames.includes(tc.name))) updateMemoryStatus();
+		if (assistantMsg && typeof assistantMsg._startSpeak === "function" && data.response && selectedTtsMode !== "silent") assistantMsg._startSpeak();
+		if (typeof window.algebenchRefreshPromptContext === "function") window.algebenchRefreshPromptContext("chat-turn");
+	} catch (err) {
+		loadingEl.remove();
+		console.error("%c🤖 Chat error: %c" + err, "color: #ff4444; font-weight: bold", "color: #ccc", err);
+		addChatMessage("assistant", err instanceof TypeError && /fetch|network|connect/i.test(err.message) ? "Failed to reach AI service. Check your connection." : "Error processing response: " + err.message);
+		if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
+	}
+	setChatSending(false);
+}
+function addChatMessage(role, content, toolCalls) {
+	const messagesEl = document.getElementById("chat-messages");
+	const msgDiv = document.createElement("div");
+	msgDiv.className = "chat-msg " + role;
+	const avatar = document.createElement("div");
+	avatar.className = "msg-avatar";
+	const _icons = window.algebenchIcons;
+	if (_icons) avatar.innerHTML = role === "user" ? _icons.user : _icons.ai;
+	else avatar.textContent = role === "user" ? "👤" : "🤖";
+	msgDiv.appendChild(avatar);
+	const body = document.createElement("div");
+	body.className = "msg-body";
+	if (typeof renderKaTeX === "function" && typeof renderMarkdown === "function") body.innerHTML = role === "user" ? renderKaTeX(content, false) : renderMarkdown(content, { untrusted: true });
+	else body.textContent = content;
+	body.dataset.markdown = stripGlossaryMarkers(content);
+	msgDiv.appendChild(body);
+	if (role === "assistant") {
+		const SVG_SPEAKER = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"12\" height=\"12\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z\"/></svg>";
+		const speakBtn = document.createElement("button");
+		speakBtn.className = "msg-speak-btn";
+		speakBtn.title = "Read aloud";
+		speakBtn.innerHTML = SVG_SPEAKER;
+		const setBtnState = (state) => {
+			speakBtn.classList.remove("active", "loading", "idle");
+			if (state) speakBtn.classList.add(state);
+			else speakBtn.classList.add("idle");
+			msgDiv.classList.remove("tts-speaking", "tts-loading");
+			if (state === "active") msgDiv.classList.add("tts-speaking");
+			if (state === "loading") msgDiv.classList.add("tts-loading");
+			if (state === "loading") {
+				speakBtn.textContent = "...";
+				speakBtn.title = "Loading audio (click to cancel)";
+			} else if (state === "active") {
+				speakBtn.innerHTML = SVG_SPEAKER;
+				speakBtn.title = "Playing (click to stop, double-click to restart)";
+			} else {
+				speakBtn.innerHTML = SVG_SPEAKER;
+				speakBtn.title = "Read aloud (click to play)";
+			}
+		};
+		const stopOtherBtn = () => {
+			if (activeSpeakBtn && activeSpeakBtn !== speakBtn) {
+				if (activeSpeakBtn._ttsLoadPoll) {
+					clearInterval(activeSpeakBtn._ttsLoadPoll);
+					activeSpeakBtn._ttsLoadPoll = null;
+				}
+				if (activeSpeakBtn._ttsStatePoll) {
+					clearInterval(activeSpeakBtn._ttsStatePoll);
+					activeSpeakBtn._ttsStatePoll = null;
+				}
+				if (typeof activeSpeakBtn._setBtnState === "function") activeSpeakBtn._setBtnState(null);
+				if (activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = "none";
+				activeSpeakBtn = null;
+			}
+		};
+		const stopAndReset = () => {
+			if (typeof window.algebenchStopTTS === "function") window.algebenchStopTTS();
+			if (speakBtn._ttsStatePoll) {
+				clearInterval(speakBtn._ttsStatePoll);
+				speakBtn._ttsStatePoll = null;
+			}
+			setBtnState(null);
+			if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
+		};
+		const startPlay = () => {
+			stopOtherBtn();
+			if (typeof window.algebenchSpeakText !== "function") return;
+			if (speakBtn._ttsStatePoll) {
+				clearInterval(speakBtn._ttsStatePoll);
+				speakBtn._ttsStatePoll = null;
+			}
+			setBtnState("loading");
+			activeSpeakBtn = speakBtn;
+			window.algebenchSpeakText(body.dataset.markdown || content, () => {
+				if (speakBtn._ttsStatePoll) {
+					clearInterval(speakBtn._ttsStatePoll);
+					speakBtn._ttsStatePoll = null;
+				}
+				setBtnState(null);
+				if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
+			});
+			speakBtn._ttsStatePoll = setInterval(() => {
+				if (activeSpeakBtn !== speakBtn) {
+					clearInterval(speakBtn._ttsStatePoll);
+					speakBtn._ttsStatePoll = null;
+					return;
+				}
+				const p = typeof _ensureTTSPlayer === "function" ? _ensureTTSPlayer() : null;
+				if (!p) return;
+				const playerState = p._state;
+				if (playerState === "loading") {
+					if (!speakBtn.classList.contains("loading")) setBtnState("loading");
+				} else if (playerState === "playing") {
+					if (!speakBtn.classList.contains("active")) setBtnState("active");
+				}
+			}, 80);
+		};
+		speakBtn._setBtnState = setBtnState;
+		msgDiv._startSpeak = startPlay;
+		speakBtn.addEventListener("click", () => {
+			if (speakBtn._ignoreNextClick) {
+				speakBtn._ignoreNextClick = false;
+				return;
+			}
+			if (msgDiv.classList.contains("presenting-now")) {
+				stopPresenting();
+				return;
+			}
+			if (msgDiv._replay) {
+				stopOtherBtn();
+				if (activeSpeakBtn) stopAndReset();
+				msgDiv._replay();
+				return;
+			}
+			if (activeSpeakBtn === speakBtn) {
+				stopAndReset();
+				return;
+			}
+			startPlay();
+		});
+		speakBtn.addEventListener("dblclick", (e) => {
+			e.preventDefault();
+			if (msgDiv._replay || msgDiv.classList.contains("presenting-now")) return;
+			speakBtn._ignoreNextClick = true;
+			stopAndReset();
+			startPlay();
+		});
+		const downloadBtn = document.createElement("a");
+		downloadBtn.className = "tts-download-btn";
+		downloadBtn.href = "/api/tts/download";
+		downloadBtn.download = "";
+		downloadBtn.title = "Download audio";
+		downloadBtn.innerHTML = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"11\" height=\"11\"><path d=\"M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z\"/></svg>";
+		downloadBtn.style.display = "none";
+		speakBtn._downloadBtn = downloadBtn;
+		const speakCol = document.createElement("div");
+		speakCol.className = "tts-speak-col";
+		speakCol.appendChild(speakBtn);
+		speakCol.appendChild(downloadBtn);
+		msgDiv.appendChild(speakCol);
+	}
+	messagesEl.appendChild(msgDiv);
+	messagesEl.scrollTop = messagesEl.scrollHeight;
+	if (role === "user") chatHistory.push({
+		role: "user",
+		text: content
+	});
+	return msgDiv;
+}
+function addChatLoading() {
+	const messagesEl = document.getElementById("chat-messages");
+	const loadingDiv = document.createElement("div");
+	loadingDiv.className = "chat-msg assistant";
+	const avatar = document.createElement("div");
+	avatar.className = "msg-avatar";
+	if (window.algebenchIcons) avatar.innerHTML = window.algebenchIcons.ai;
+	else avatar.textContent = "🤖";
+	loadingDiv.appendChild(avatar);
+	const body = document.createElement("div");
+	body.className = "msg-body chat-loading";
+	body.innerHTML = "<span></span><span></span><span></span>";
+	loadingDiv.appendChild(body);
+	messagesEl.appendChild(loadingDiv);
+	messagesEl.scrollTop = messagesEl.scrollHeight;
+	return loadingDiv;
+}
+function renderToolCallChip(tc) {
+	const chip = document.createElement("div");
+	chip.className = "chat-tool-call";
+	const rawArgs = tc.rawArgs || tc.args;
+	const e = _escHtml$1;
+	let friendlyText = e(tc.name);
+	if (tc.name === "navigate_to") {
+		const reason = tc.args.reason || "";
+		const agentScene = Math.round(Number(tc.args.scene) || 1);
+		const agentStep = tc.args.step !== void 0 ? Math.round(Number(tc.args.step)) : 0;
+		let sceneTitle = "Scene " + agentScene;
+		let stepTitle = "";
+		if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes) {
+			const s = lessonSpec.scenes[agentScene - 1];
+			if (s) {
+				sceneTitle = s.title || sceneTitle;
+				if (agentStep >= 1 && s.steps && s.steps[agentStep - 1]) stepTitle = s.steps[agentStep - 1].title || "Step " + agentStep;
+				else if (agentStep === 0) stepTitle = "Root";
+			}
+		}
+		friendlyText = "📍 Navigated to \"" + e(sceneTitle) + "\"";
+		if (stepTitle) friendlyText += ", " + e(stepTitle);
+		if (reason) friendlyText += " — " + e(reason);
+	} else if (tc.name === "set_camera") {
+		const reason = tc.args.reason || "better viewing angle";
+		friendlyText = "🎥 Camera adjusted" + (tc.args.view ? " (" + e(tc.args.view) + ")" : "") + " — " + e(reason);
+	} else if (tc.name === "build_scene") friendlyText = "🎬 " + (tc.args.op === "replace" ? "Rebuilding scene" : "Building a scene") + " — " + e(String(tc.args.intent || "new visualization"));
+	else if (tc.name === "set_sliders") {
+		const vals = tc.args.values || {};
+		const parts = Object.entries(vals).map(([id, v]) => e(id) + "→" + e(String(v)));
+		friendlyText = "🎚️ Set " + (parts.length > 0 ? parts.join(", ") : "sliders");
+	} else if (tc.name === "eval_math") {
+		const expr = tc.args.expression || "";
+		const result = tc.result && tc.result.result !== void 0 ? tc.result.result : null;
+		const storedAs = tc.result && tc.result.stored_as;
+		const err = tc.result && tc.result.error;
+		if (err) friendlyText = "🧮 eval: " + e(expr) + " → ❌ " + e(err);
+		else if (storedAs) {
+			const summary = tc.result && tc.result.summary || "";
+			friendlyText = "🧮 " + e(expr) + " → 💾 memory['" + e(storedAs) + "'] " + e(summary);
+		} else if (Array.isArray(result) && result.length > 3) friendlyText = "🧮 " + e(expr) + " → [" + result.length + " points]";
+		else {
+			const val = typeof result === "number" ? Number.isInteger(result) ? result : +result.toFixed(6) : JSON.stringify(result);
+			friendlyText = "🧮 " + e(expr) + " = " + e(String(val));
+		}
+	} else if (tc.name === "mem_get") {
+		const key = tc.args.key || "";
+		const err = tc.result && tc.result.error;
+		if (key === "?") {
+			const keys = tc.result && tc.result.keys;
+			friendlyText = "🗂️ memory keys: " + e(keys && typeof keys === "object" ? Object.keys(keys).join(", ") : "(empty)");
+		} else if (err) friendlyText = "🗂️ memory['" + e(key) + "'] → ❌ not found";
+		else {
+			const summary = tc.result && tc.result.summary || "";
+			friendlyText = "🗂️ memory['" + e(key) + "'] → " + e(summary);
+		}
+	} else if (tc.name === "mem_set") {
+		const key = tc.args.key || "";
+		const err = tc.result && tc.result.error;
+		if (err) friendlyText = "💾 mem_set['" + e(key) + "'] → ❌ " + e(err);
+		else {
+			const summary = tc.result && tc.result.summary || "";
+			friendlyText = "💾 memory['" + e(key) + "'] = " + e(summary);
+		}
+	} else if (tc.name === "present_walkthrough") friendlyText = "🎯 Presenting: " + e(String(tc.args?.question || "").slice(0, 80));
+	else if (tc.name === "set_preset_prompts") {
+		const count = (tc.args.prompts || []).length;
+		friendlyText = count === 0 ? "💬 Cleared preset prompts" : "💬 Set " + count + " preset prompt" + (count === 1 ? "" : "s");
+	} else if (tc.name === "set_info_overlay") {
+		if (tc.args.clear) friendlyText = "🖼️ Cleared info overlays";
+		else {
+			const id = tc.args.id || "overlay";
+			const pos = tc.args.position || "top-left";
+			friendlyText = "🖼️ Info overlay \"" + e(id) + "\" @ " + e(pos);
+		}
+	} else if (tc.name === "navigate_proof") {
+		const step = tc.args.step || 0;
+		const reason = tc.args.reason || "";
+		friendlyText = step === 0 ? "📐 Proof: showing goal overview" : "📐 Proof: step " + step + (reason ? " — " + e(reason) : "");
+	} else if (tc.name === "set_language") friendlyText = "🌐 Language: " + e(String(tc.args.language || ""));
+	else if (tc.name === "control_coach") {
+		const action = tc.args.action || "status";
+		const step = tc.args.step ? " → " + e(String(tc.args.step)) : "";
+		friendlyText = "🧭 Tour: " + e(action) + step;
+	}
+	const header = document.createElement("div");
+	header.style.cssText = "display:flex;align-items:flex-start;justify-content:space-between;gap:8px;";
+	chip.appendChild(header);
+	const summary = document.createElement("div");
+	summary.className = "tool-call-summary";
+	summary.style.flex = "1";
+	if (typeof renderMarkdown === "function") summary.innerHTML = renderMarkdown(friendlyText, { untrusted: true });
+	else summary.textContent = friendlyText;
+	header.appendChild(summary);
+	const resolvedBtn = document.createElement("button");
+	resolvedBtn.type = "button";
+	resolvedBtn.title = "View resolved args/result";
+	resolvedBtn.textContent = "ⓘ";
+	resolvedBtn.style.cssText = "border:1px solid rgba(255,255,255,0.2);background:transparent;color:#9aa0a6;border-radius:999px;width:18px;height:18px;line-height:16px;font-size:11px;cursor:pointer;padding:0;flex-shrink:0;";
+	header.appendChild(resolvedBtn);
+	const details = document.createElement("div");
+	details.className = "tool-call-details hidden";
+	details.textContent = JSON.stringify({ functionCall: {
+		name: tc.name,
+		args: rawArgs
+	} }, null, 2);
+	chip.appendChild(details);
+	const resultPreview = document.createElement("div");
+	resultPreview.className = "tool-call-details hidden";
+	resultPreview.style.cssText = "margin-top:4px;font-size:11px;color:#7f8790;";
+	const r = tc.result || {};
+	if (typeof r.message === "string" && r.message.trim()) resultPreview.textContent = r.message.trim();
+	else if (typeof r.error === "string" && r.error.trim()) resultPreview.textContent = "Error: " + r.error.trim();
+	else if (typeof r.summary === "string" && r.summary.trim()) resultPreview.textContent = r.summary.trim();
+	else if (r.status) resultPreview.textContent = "Status: " + r.status;
+	chip.appendChild(resultPreview);
+	const resolvedBackdrop = document.createElement("div");
+	resolvedBackdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;";
+	const resolvedPanel = document.createElement("div");
+	resolvedPanel.style.cssText = "width:min(760px,92vw);max-height:82vh;overflow:auto;background:#11161d;border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:10px 12px;";
+	resolvedBackdrop.appendChild(resolvedPanel);
+	const resolvedHeader = document.createElement("div");
+	resolvedHeader.style.cssText = "position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;margin:-10px -12px 8px -12px;padding:10px 12px;background:#11161d;border-bottom:1px solid rgba(255,255,255,0.12);color:#cfd6df;font-size:12px;";
+	resolvedHeader.textContent = "Resolved args/result";
+	resolvedPanel.appendChild(resolvedHeader);
+	const closeBtn = document.createElement("button");
+	closeBtn.type = "button";
+	closeBtn.textContent = "✕";
+	closeBtn.style.cssText = "border:1px solid rgba(255,255,255,0.25);background:transparent;color:#cfd6df;border-radius:6px;padding:1px 6px;cursor:pointer;";
+	resolvedHeader.appendChild(closeBtn);
+	const resolvedBody = document.createElement("pre");
+	resolvedBody.style.cssText = "margin:0;font-size:12px;line-height:1.35;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;";
+	resolvedBody.textContent = JSON.stringify({
+		functionCall: {
+			name: tc.name,
+			args: tc.args
+		},
+		result: tc.result
+	}, null, 2);
+	resolvedPanel.appendChild(resolvedBody);
+	document.body.appendChild(resolvedBackdrop);
+	summary.addEventListener("click", () => {
+		details.classList.toggle("hidden");
+		resultPreview.classList.toggle("hidden");
+	});
+	const hideResolvedPopup = () => {
+		resolvedBackdrop.style.display = "none";
+	};
+	const onResolvedPopupKeydown = (e) => {
+		if (e.key === "Escape" && resolvedBackdrop.style.display !== "none") hideResolvedPopup();
+	};
+	resolvedBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		resolvedBackdrop.style.display = "flex";
+	});
+	closeBtn.addEventListener("click", hideResolvedPopup);
+	resolvedBackdrop.addEventListener("click", (e) => {
+		if (e.target === resolvedBackdrop) hideResolvedPopup();
+	});
+	document.addEventListener("keydown", onResolvedPopupKeydown);
+	return chip;
+}
+var _SVG_UNMUTED = "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"currentColor\"><path d=\"M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3.74 2.04a4.5 4.5 0 010 9.32l-.55-.96a3.5 3.5 0 000-7.4l.55-.96zm-.93 2.17a2.5 2.5 0 010 4.98l-.55-.96a1.5 1.5 0 000-3.06l.55-.96z\"/></svg>";
+var _SVG_MUTED = "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"currentColor\"><path d=\"M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3 4.2l1.5 1.5L14 5.5l.7.7L13.2 7.7l1.5 1.5-.7.7L12.5 8.4 11 9.9l-.7-.7 1.5-1.5L10.3 6.2l.7-.7z\"/></svg>";
+var ttsRequestId = 0;
+var ttsPausedByUser = false;
+var ttsPlayer = null;
+var ttsHasOutputFile = false;
+var ttsAbortController = null;
+function _ensureTTSPlayer() {
+	if (!ttsPlayer && window.GeminiTTSPlayer) {
+		ttsPlayer = new window.GeminiTTSPlayer.TTSAudioPlayer({
+			volume: .5,
+			persistKey: "algebenchTTS",
+			onVolumeChange(vol, muted) {
+				const slider = document.getElementById("ttsVolumeSlider");
+				const icon = document.getElementById("ttsVolumeIcon");
+				if (slider) slider.value = String(muted ? 0 : vol);
+				if (icon) icon.innerHTML = muted ? _SVG_MUTED : _SVG_UNMUTED;
+			}
+		});
+		const slider = document.getElementById("ttsVolumeSlider");
+		const icon = document.getElementById("ttsVolumeIcon");
+		if (slider) {
+			slider.value = String(ttsPlayer.isMuted() ? 0 : ttsPlayer.getVolume());
+			slider.addEventListener("input", () => ttsPlayer.setVolume(parseFloat(slider.value)));
+		}
+		if (icon) {
+			icon.innerHTML = ttsPlayer.isMuted() ? _SVG_MUTED : _SVG_UNMUTED;
+			icon.addEventListener("click", () => ttsPlayer.toggleMute());
+		}
+	}
+	return ttsPlayer;
+}
+window.algebenchGetTTSAudioStream = function() {
+	const p = _ensureTTSPlayer();
+	return p ? p.getMediaStream() : null;
+};
+window.algebenchIsTTSSpeaking = function() {
+	if (ttsPausedByUser) return false;
+	const p = _ensureTTSPlayer();
+	return p ? p._state === "playing" : false;
+};
+window.algebenchIsTTSPaused = function() {
+	return ttsPausedByUser;
+};
+window.algebenchIsTTSLoading = function() {
+	const p = _ensureTTSPlayer();
+	return p ? p._state === "loading" : false;
+};
+window.algebenchPauseTTS = function() {
+	const p = _ensureTTSPlayer();
+	if (!p || !p._ctx) return;
+	ttsPausedByUser = true;
+	p._ctx.suspend().catch(() => {});
+};
+window.algebenchResumeTTS = function() {
+	const p = _ensureTTSPlayer();
+	if (!p || !p._ctx) return;
+	ttsPausedByUser = false;
+	p._ctx.resume().catch(() => {});
+};
+/** Whether this browser is speaking (or fetching speech) right now. Callers that
+*  only need to silence *their own* talk check this first: algebenchStopTTS
+*  also tells the server to kill every TTS stream. */
+var TTS_GAP_MS = 500;
+var ttsLastHeard = 0;
+window.algebenchTTSActive = function() {
+	const p = _ensureTTSPlayer();
+	if (ttsAbortController || !!p && p.isPlaying()) {
+		ttsLastHeard = Date.now();
+		return true;
+	}
+	return Date.now() - ttsLastHeard < TTS_GAP_MS;
+};
+window.algebenchStopTTS = function() {
+	++ttsRequestId;
+	ttsPausedByUser = false;
+	ttsHasOutputFile = false;
+	if (ttsAbortController) {
+		ttsAbortController.abort();
+		ttsAbortController = null;
+	}
+	const p = _ensureTTSPlayer();
+	if (p) p.stop();
+	fetch("/api/tts/kill", { method: "POST" }).catch(() => {});
+};
+window.algebenchSpeakText = function(text, onEnd) {
+	const expectedId = ttsRequestId + 1;
+	speakText(text, { explicit: true });
+	if (typeof onEnd !== "function") return;
+	let hasStarted = false;
+	let sawNonIdle = false;
+	let quietSince = 0;
+	const poll = setInterval(() => {
+		if (ttsRequestId !== expectedId) {
+			clearInterval(poll);
+			onEnd();
+			return;
+		}
+		const p = _ensureTTSPlayer();
+		if (p && p._state !== "idle") sawNonIdle = true;
+		if (p && p.isPlaying()) hasStarted = true;
+		if (hasStarted && p && !p.isPlaying() && !ttsAbortController) {
+			quietSince ||= Date.now();
+			if (Date.now() - quietSince >= TTS_GAP_MS) {
+				clearInterval(poll);
+				onEnd();
+				return;
+			}
+		} else quietSince = 0;
+		if (!hasStarted && sawNonIdle && p && p._state === "idle") {
+			clearInterval(poll);
+			onEnd();
+			return;
+		}
+		if (!p || !hasStarted && !ttsAbortController && p._state === "idle") {
+			clearInterval(poll);
+			onEnd();
+		}
+	}, 80);
+};
+async function speakText(text, { explicit = false } = {}) {
+	if (selectedTtsMode === "silent" && !explicit) return;
+	const clean = speechText(stripGlossaryMarkers(text));
+	if (!clean) return;
+	const myId = ++ttsRequestId;
+	ttsPausedByUser = false;
+	ttsHasOutputFile = false;
+	if (activeSpeakBtn && activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = "none";
+	const myDownloadBtn = activeSpeakBtn ? activeSpeakBtn._downloadBtn : null;
+	const player = _ensureTTSPlayer();
+	if (!player) return;
+	if (ttsAbortController) {
+		ttsAbortController.abort();
+		ttsAbortController = null;
+	}
+	const abort = new AbortController();
+	ttsAbortController = abort;
+	let response;
+	try {
+		response = await fetch("/api/tts/stream", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			signal: abort.signal,
+			body: JSON.stringify({
+				text: clean,
+				character: selectedTtsCharacter || "joker",
+				voice: selectedTtsVoice || "Charon",
+				mode: selectedTtsMode === "silent" ? "perform" : selectedTtsMode || "read"
+			})
+		});
+		if (!response.ok || ttsRequestId !== myId) return;
+		ttsHasOutputFile = response.headers.get("X-TTS-Has-Output-File") === "1";
+		await player.playStreamWithAbort(response, abort);
+		if (ttsRequestId === myId && ttsHasOutputFile && myDownloadBtn) myDownloadBtn.style.display = "flex";
+	} catch (err) {
+		return;
+	} finally {
+		if (ttsAbortController === abort) ttsAbortController = null;
+	}
+}
+(function _initTTSKillListener() {
+	let es = null;
+	function connect() {
+		es = new EventSource("/api/tts/events");
+		es.addEventListener("kill", () => {
+			++ttsRequestId;
+			ttsPausedByUser = false;
+			ttsHasOutputFile = false;
+			if (ttsAbortController) {
+				ttsAbortController.abort();
+				ttsAbortController = null;
+			}
+			const p = _ensureTTSPlayer();
+			if (p) p.stop();
+		});
+		es.onerror = () => {
+			es.close();
+			setTimeout(connect, 3e3);
+		};
+	}
+	if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", connect);
+	else connect();
+})();
+var _lastContextJson = "";
+function logContextIfChanged() {
+	const context = buildChatContext();
+	const json = JSON.stringify(context, null, 2);
+	if (json === _lastContextJson) return;
+	_lastContextJson = json;
+	localStorage.setItem("algebench-chat-context", json);
+	window.dispatchEvent(new CustomEvent("algebench-context-changed", { detail: {
+		context,
+		json
+	} }));
+	const scene = context.currentScene || {};
+	const rt = context.runtime || {};
+	const sceneParts = [
+		scene.title ? `"${scene.title}"` : null,
+		scene.steps ? `${scene.steps.length} steps` : null,
+		scene.prompt ? "has prompt" : null
+	].filter(Boolean).join(", ");
+	const rtParts = [
+		rt.stepNumber !== void 0 ? `step ${rt.stepNumber}` : null,
+		rt.sliders ? `${Object.keys(rt.sliders).length} sliders` : null,
+		rt.activeTab || null
+	].filter(Boolean).join(", ");
+	if (document.body.dataset.debugMode === "true") console.log(`%c🤖 Chat context updated: %cscene=[${sceneParts}] runtime=[${rtParts}] (${json.length} chars)`, "color: #8888ff; font-weight: bold", "color: #ccc");
+}
+var _contextPollId = null;
+function startContextPolling() {
+	if (_contextPollId) return;
+	_contextPollId = setInterval(logContextIfChanged, 1e3);
+}
+function sendWelcomeMessage() {
+	if (!chatAvailable$1 || shouldSkipWelcome() || welcomeInFlight) return;
+	welcomeInFlight = true;
+	try {
+		localStorage.setItem(WELCOMED_KEY, "1");
+	} catch {}
+	sendChatMessage$1("**LENGTH OVERRIDE FOR THIS REPLY ONLY:** the usual brevity rule does NOT apply to this welcome. Subsequent replies revert to normal brevity.\n\nThe user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. *Actually explain what is on screen* — do not just acknowledge it. Structure:\n\n1. ONE short sentence acknowledging the surface (e.g. \"You are looking at the semantic graph for step 3\" or \"You are on the 3D scene of …\").\n2. A SUBSTANTIVE explanation (3–6 sentences) of what is on screen right now:\n   - If a graph node is selected: explain that node — what the symbol means in context, what role it plays in the equation, and how it relates to the surrounding nodes (use the incoming/outgoing neighbors from Active Semantic Graph).\n   - If the semantic graph is open with no node selected: walk through the structure of the graph (root operator, key operands, the relationship the graph encodes).\n   - If on the 3D scene: explain the visible elements and what the current step is demonstrating.\n3. End with ONE concrete follow-up question the user is most likely to ask next, phrased as an offer (e.g. \"Want me to walk through how … relates to … ?\").\n\nDo not be generic. Do not list capabilities. Use the specific names, symbols, and relationships from the Active Semantic Graph / Active Proof Step / Current Scene Definition sections of the system prompt.", { silent: true }).finally(() => {
+		welcomeInFlight = false;
+	});
+}
+function renderMemoryPopup(mem, queryText) {
+	const body = document.getElementById("memory-popup-body");
+	if (!body) return;
+	body.innerHTML = "";
+	if (!mem || Object.keys(mem).length === 0) {
+		const empty = document.createElement("div");
+		empty.id = "memory-popup-empty";
+		empty.textContent = "No keys stored yet.";
+		body.appendChild(empty);
+		return;
+	}
+	const q = (queryText || "").trim().toLowerCase();
+	let matchCount = 0;
+	for (const key of Object.keys(mem)) {
+		const entry = mem[key] || {};
+		const summary = entry.summary || "";
+		const val = entry.value;
+		let previewText = "";
+		if (val !== null && val !== void 0) {
+			previewText = JSON.stringify(val);
+			if (previewText.length > 120) previewText = previewText.slice(0, 120) + "…";
+		}
+		if (q) {
+			if (!`${key}\n${summary}\n${previewText}`.toLowerCase().includes(q)) continue;
+		}
+		matchCount++;
+		const div = document.createElement("div");
+		div.className = "memory-entry";
+		const keyEl = document.createElement("span");
+		keyEl.className = "memory-entry-key";
+		keyEl.textContent = key;
+		div.appendChild(keyEl);
+		const sep = document.createElement("span");
+		sep.style.color = "rgba(120,200,255,0.4)";
+		sep.textContent = " → ";
+		div.appendChild(sep);
+		const summaryEl = document.createElement("span");
+		summaryEl.className = "memory-entry-summary";
+		summaryEl.textContent = summary;
+		div.appendChild(summaryEl);
+		if (previewText) {
+			const preview = document.createElement("div");
+			preview.className = "memory-entry-preview";
+			preview.textContent = previewText;
+			div.appendChild(preview);
+		}
+		body.appendChild(div);
+	}
+	if (matchCount === 0) {
+		const noRes = document.createElement("div");
+		noRes.id = "memory-popup-no-results";
+		noRes.textContent = "No matching memory entries.";
+		body.appendChild(noRes);
+	}
+}
+function updateMemoryStatus() {
+	fetch("/api/memory").then((r) => r.ok ? r.json() : null).then((mem) => {
+		if (!mem) return;
+		memorySnapshot = mem;
+		window.agentMemoryValues = Object.fromEntries(Object.entries(mem).map(([k, v]) => [k, v && Object.prototype.hasOwnProperty.call(v, "value") ? v.value : void 0]));
+		if (typeof updateInfoOverlays === "function") try {
+			updateInfoOverlays();
+		} catch (_e) {}
+		const keys = Object.keys(mem);
+		const pill = document.getElementById("memory-status");
+		const countEl = pill && pill.querySelector(".memory-status-count");
+		const searchInput = document.getElementById("memory-popup-search");
+		if (!pill) return;
+		if (keys.length === 0) {
+			pill.classList.add("hidden");
+			const popup = document.getElementById("memory-popup");
+			if (popup) popup.classList.add("hidden");
+			return;
+		}
+		if (countEl) countEl.textContent = String(keys.length);
+		pill.classList.remove("hidden");
+		const bar = document.getElementById("status-bar");
+		if (bar) bar.classList.remove("hidden");
+		renderMemoryPopup(mem, searchInput ? searchInput.value : "");
+	}).catch(() => {});
+}
+document.addEventListener("DOMContentLoaded", () => {
+	setupChat();
+	startContextPolling();
+	const memPill = document.getElementById("memory-status");
+	const memPopup = document.getElementById("memory-popup");
+	const memClose = document.getElementById("memory-popup-close");
+	const memSearch = document.getElementById("memory-popup-search");
+	if (memPill && memPopup) memPill.addEventListener("click", () => {
+		memPopup.classList.toggle("hidden");
+	});
+	if (memClose && memPopup) memClose.addEventListener("click", () => {
+		memPopup.classList.add("hidden");
+	});
+	if (memSearch) memSearch.addEventListener("input", () => {
+		renderMemoryPopup(memorySnapshot, memSearch.value);
+	});
+});
+window._escHtml = _escHtml$1;
+window._classifyFocusTarget = _classifyFocusTarget;
+window.setPresetPrompts = setPresetPrompts$1;
+window.shouldSkipWelcome = shouldSkipWelcome;
+window.buildChatContext = buildChatContext;
+window.switchPanelTab = switchPanelTab$1;
+window.setupChat = setupChat;
+window.initChatTtsControls = initChatTtsControls;
+window.sendChatMessage = sendChatMessage$1;
+window.algebenchRecordChatTurn = (question, answer) => {
+	if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user" && chatHistory[chatHistory.length - 1].text === question) chatHistory.pop();
+	chatHistory.push({
+		role: "user",
+		text: question
+	}, {
+		role: "assistant",
+		text: answer
+	});
+};
+window.addChatMessage = addChatMessage;
+window.addChatLoading = addChatLoading;
+window.renderToolCallChip = renderToolCallChip;
+window._ensureTTSPlayer = _ensureTTSPlayer;
+window.speakText = speakText;
+window.logContextIfChanged = logContextIfChanged;
+window.startContextPolling = startContextPolling;
+window.sendWelcomeMessage = sendWelcomeMessage;
+window.renderMemoryPopup = renderMemoryPopup;
+window.updateMemoryStatus = updateMemoryStatus;
+//#endregion
 //#region src/practice-store.ts
 var DB_NAME$1 = "algebench-practice";
 var DB_VERSION$1 = 1;
@@ -32175,17 +34765,16 @@ function setupCodePractice() {
 	const chatTalking = () => !!window.algebenchChatBusy?.() || presenting() || !coachTalking && !!window.algebenchTTSActive?.();
 	/**
 	* Speak the review, then `then`. While the chat is talking the coach doesn't talk over it: it waits, and speaks
-	* once the chat is done (the newest review, if more came meanwhile). `interrupt`: a review handing a concept to
-	* the chat may cut it off, since what it hands over goes next anyway.
+	* once the chat is done (the newest review, if more came meanwhile).
 	*/
 	let held = null, holdTimer = 0;
-	function speakReview(text, then, interrupt = false) {
+	function speakReview(text, then) {
 		if (greeting && text) {
 			text = `${greeting} ${text}`;
 			greeting = "";
 		}
 		spoken = text;
-		if (!interrupt && chatTalking()) {
+		if (chatTalking()) {
 			const before = held?.then;
 			held = {
 				text,
@@ -32208,10 +34797,6 @@ function setupCodePractice() {
 			}
 			return;
 		}
-		if (interrupt && chatTalking()) {
-			stopPresenting();
-			window.algebenchStopTTS?.();
-		}
 		if (!speakOn() || !text || !window.algebenchSpeakText) {
 			then?.();
 			return;
@@ -32228,8 +34813,8 @@ function setupCodePractice() {
 	* The coach asks the chat to show a concept on the view (pointing, writing, drawing on the scratchpad): only with
 	* the presenter on, once the review has been said, and not over the chat's own answer.
 	*/
-	function showInChat(request, body) {
-		if (!request || shownInChat.has(request) || !presenterOn()) return null;
+	function showInChat(request, body, asked = false) {
+		if (!request || !asked && shownInChat.has(request) || !presenterOn()) return null;
 		shownInChat.add(request);
 		const note = el("div", "cp-report-show");
 		note.textContent = "🎯 Showing it in the chat…";
@@ -32239,11 +34824,12 @@ function setupCodePractice() {
 				note.textContent = "🎯 The presenter is off: ask the chat to show this.";
 				return;
 			}
-			for (let waited = 0; window.algebenchChatBusy?.() && waited < 60; waited++) await sleep(500);
-			if (window.algebenchChatBusy?.()) {
-				note.textContent = "🎯 The chat was busy: ask it to show this later.";
-				return;
+			suppressChatWelcome(6e4);
+			for (let quiet = 0; quiet < 3;) {
+				await sleep(400);
+				quiet = chatTalking() || coachTalking ? 0 : quiet + 1;
 			}
+			window.switchPanelTab?.("chat");
 			window.sendChatMessage(request);
 		};
 	}
@@ -32838,7 +35424,7 @@ function setupCodePractice() {
 			r.reminder,
 			...fresh.map((n) => `Line ${n.line}: ${n.note}`),
 			r.direction && `Next: ${r.direction}`
-		].filter(Boolean).join(" ").replace(/[`*]/g, ""), show ?? void 0, !!show);
+		].filter(Boolean).join(" ").replace(/[`*]/g, ""), show ?? void 0);
 	}
 	const helpTool = tool("✋ Help me", "Let the assistant take the keyboard: the next step, this section, or the whole block");
 	helpTool.classList.add("cp-coach-only", "cp-help-tool");
@@ -33315,6 +35901,7 @@ function setupCodePractice() {
 				...where,
 				scope,
 				request,
+				present: presenterOn(),
 				cursor: input.value.slice(0, userCaret).split("\n").length,
 				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
 			});
@@ -33323,6 +35910,16 @@ function setupCodePractice() {
 			const bubble = (cls) => message("assistant", el("div", `cp-assist ${cls}`)).querySelector(".msg-body");
 			if (!out.result) {
 				if (scope === "pair" && out.reason) pairing = false;
+				if (out.show && out.reason) {
+					const body = bubble("cp-assist-close");
+					body.innerHTML = renderMarkdown$1(out.reason, {
+						untrusted: true,
+						glossary: false
+					});
+					showInChat(out.show, body, true)?.();
+					ended = true;
+					return;
+				}
 				if ([
 					"ask",
 					"fix",
@@ -33853,192 +36450,6 @@ function setupChatSettings() {
 	addEventListener("resize", () => {
 		if (!pop.hidden) place();
 	});
-}
-//#endregion
-//#region src/view-state.ts
-var CAM_DECIMALS = 4;
-var DEFAULT_UP = [
-	0,
-	1,
-	0
-];
-var CV_MAX_LEN = 64;
-/** Round to `dp` decimals and stringify, dropping trailing zeros. */
-function fmtNum(n, dp = CAM_DECIMALS) {
-	if (!Number.isFinite(n)) return "0";
-	const f = Math.pow(10, dp);
-	return String(Math.round(n * f) / f);
-}
-function encMin(v) {
-	return encodeURIComponent(String(v)).replace(/%2C/gi, ",").replace(/%7E/gi, "~");
-}
-function buildQuery(pairs) {
-	return pairs.filter(([, v]) => v !== void 0 && v !== null && v !== "").map(([k, v]) => `${k}=${encMin(v)}`).join("&");
-}
-/**
-* Stable slug from a human title: lowercase, non-alphanumerics -> '-',
-* collapse/trim hyphens. Empty input yields ''.
-*/
-function slugify(title) {
-	return String(title == null ? "" : title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-/**
-* Deterministic, collision-free ids for an array of {id?, title?} — how the
-* `sc=` / `st=` / `ps=` params resolve (id -> slug(title) -> index). Mirrored by
-* `build_ids` in backend/lesson_ids.py.
-*/
-function buildIds(items, titleKey) {
-	const used = /* @__PURE__ */ new Set();
-	return (items || []).map((it, i) => {
-		let base = it && it.id ? String(it.id) : slugify(it && it[titleKey]);
-		if (!base) base = String(i);
-		let id = base, n = 2;
-		while (used.has(id)) id = `${base}-${n++}`;
-		used.add(id);
-		return id;
-	});
-}
-/** Encode camera to compact `px,py,pz,tx,ty,tz[,ux,uy,uz]` (data-space). */
-function encodeCamera(cam) {
-	if (!cam || !Array.isArray(cam.position) || !Array.isArray(cam.target)) return "";
-	const p = cam.position, t = cam.target;
-	const nums = [
-		p[0],
-		p[1],
-		p[2],
-		t[0],
-		t[1],
-		t[2]
-	];
-	const up = Array.isArray(cam.up) ? cam.up : null;
-	if (up && !(up[0] === DEFAULT_UP[0] && up[1] === DEFAULT_UP[1] && up[2] === DEFAULT_UP[2])) nums.push(up[0], up[1], up[2]);
-	return nums.map((n) => fmtNum(Number(n))).join(",");
-}
-/** Decode `px,py,pz,tx,ty,tz[,ux,uy,uz]` back to a camera object, or null. */
-function decodeCamera(str) {
-	if (!str) return null;
-	const segs = String(str).split(",");
-	if (segs.length !== 6 && segs.length !== 9) return null;
-	if (segs.some((s) => s.trim() === "")) return null;
-	const parts = segs.map(Number);
-	if (parts.some((n) => !Number.isFinite(n))) return null;
-	const cam = {
-		position: [
-			parts[0],
-			parts[1],
-			parts[2]
-		],
-		target: [
-			parts[3],
-			parts[4],
-			parts[5]
-		]
-	};
-	if (parts.length === 9) cam.up = [
-		parts[6],
-		parts[7],
-		parts[8]
-	];
-	return cam;
-}
-/** Serialize a ViewState to a query string (no leading '?'). */
-function serializeViewState(vs) {
-	if (!vs) return "";
-	const pairs = [];
-	if (vs.builtin) pairs.push(["builtin", vs.builtin]);
-	else if (vs.scene) pairs.push(["scene", vs.scene]);
-	if (vs.view && vs.view !== "scene") pairs.push(["view", vs.view]);
-	if (vs.panel && vs.panel !== "doc") pairs.push(["panel", vs.panel]);
-	if (vs.pp) pairs.push(["pp", "1"]);
-	if (vs.dock === true) pairs.push(["dock", "1"]);
-	if (vs.sc != null && vs.sc !== "") pairs.push(["sc", vs.sc]);
-	if (vs.st != null && vs.st !== "") pairs.push(["st", vs.st]);
-	if (vs.pf != null && vs.pf !== "") pairs.push(["pf", vs.pf]);
-	if (vs.ps != null && vs.ps !== "") pairs.push(["ps", vs.ps]);
-	if (vs.fa != null && vs.fa !== "") pairs.push(["fa", vs.fa]);
-	if (Array.isArray(vs.nodes) && vs.nodes.length) pairs.push(["nodes", vs.nodes.map((id) => String(id)).join(",")]);
-	if (vs.sliders && typeof vs.sliders === "object") {
-		const packed = Object.entries(vs.sliders).filter(([, val]) => Number.isFinite(Number(val))).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([id, val]) => `${id}~${fmtNum(Number(val))}`).join(",");
-		if (packed) pairs.push(["sl", packed]);
-	}
-	if (vs.cv) pairs.push(["cv", vs.cv]);
-	if (vs.proj && vs.proj !== "perspective") pairs.push(["proj", vs.proj]);
-	if (Number.isFinite(vs.oz)) pairs.push(["oz", fmtNum(vs.oz)]);
-	if (vs.cam) {
-		const enc = encodeCamera(vs.cam);
-		if (enc) pairs.push(["cam", enc]);
-	}
-	return buildQuery(pairs);
-}
-/** Parse a query string (or URLSearchParams) into a ViewState. */
-function parseViewState(search) {
-	let params;
-	if (search instanceof URLSearchParams) params = search;
-	else {
-		const s = String(search == null ? "" : search).replace(/^\?/, "");
-		params = new URLSearchParams(s);
-	}
-	const vs = {};
-	const builtin = params.get("builtin");
-	const scene = params.get("scene");
-	if (builtin) vs.builtin = builtin;
-	else if (scene) vs.scene = scene;
-	const view = params.get("view");
-	if (view) vs.view = view;
-	const panel = params.get("panel");
-	if (panel) vs.panel = panel;
-	const aa = params.get("aa");
-	if (aa) vs.aa = String(aa).slice(0, 2e3);
-	const pa = params.get("pa");
-	if (pa && /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/.test(pa)) vs.pa = pa;
-	const pas = params.get("pas");
-	if (pas != null && /^\d{1,4}$/.test(pas)) vs.pas = Number(pas);
-	const pp = params.get("pp");
-	if (pp === "1" || pp === "true") vs.pp = true;
-	const dock = params.get("dock");
-	if (dock === "1" || dock === "true") vs.dock = true;
-	else if (dock === "0" || dock === "false") vs.dock = false;
-	const sc = params.get("sc");
-	const st = params.get("st");
-	const pf = params.get("pf");
-	const ps = params.get("ps");
-	if (sc) vs.sc = sc;
-	if (st) vs.st = st;
-	if (pf) vs.pf = pf;
-	if (ps) vs.ps = ps;
-	const fa = params.get("fa");
-	if (fa) vs.fa = String(fa).slice(0, 200);
-	const fax = params.get("fax");
-	if (fax) vs.fax = String(fax).slice(0, 1e3);
-	const nodes = params.get("nodes");
-	if (nodes) {
-		const ids = nodes.split(",").map((s) => s.trim()).filter(Boolean);
-		if (ids.length) vs.nodes = ids;
-	}
-	const sl = params.get("sl");
-	if (sl) {
-		const sliders = {};
-		for (const pair of sl.split(",")) {
-			const idx = pair.indexOf("~");
-			if (idx <= 0) continue;
-			const id = pair.slice(0, idx);
-			const val = Number(pair.slice(idx + 1));
-			if (id && Number.isFinite(val)) sliders[id] = val;
-		}
-		if (Object.keys(sliders).length) vs.sliders = sliders;
-	}
-	const cv = params.get("cv");
-	if (cv && cv.length <= CV_MAX_LEN) vs.cv = cv;
-	const proj = params.get("proj");
-	if (proj) vs.proj = proj;
-	const oz = params.get("oz");
-	if (oz != null && oz !== "") {
-		const n = Number(oz);
-		if (Number.isFinite(n)) vs.oz = n;
-	}
-	const cam = decodeCamera(params.get("cam"));
-	if (cam) vs.cam = cam;
-	return vs;
 }
 //#endregion
 //#region src/lesson-picker.ts
@@ -35169,15 +37580,15 @@ function _toggleJsIssuesPanel(panel) {
 	const trusted = browserState._sceneJsTrustState === "trusted";
 	const stateLabel = trusted ? "⚡ JS Trusted — expressions are running natively" : "⚠ JS Disabled — expressions are no-ops (returning 0 / \"?\")";
 	const stateClass = trusted ? "js-issues-state-trusted" : "js-issues-state-untrusted";
-	const explanationBlock = browserState._sceneUnsafeExplanation ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml$1(browserState._sceneUnsafeExplanation)}</div>` : "";
+	const explanationBlock = browserState._sceneUnsafeExplanation ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml(browserState._sceneUnsafeExplanation)}</div>` : "";
 	const unsafeBanner = browserState._sceneIsUnsafe ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>` : "";
 	const rows = browserState._sceneJsIssues.map(({ path, expr, type }) => {
 		const truncExpr = expr.length > 60 ? expr.slice(0, 57) + "…" : expr;
 		const typeLabel = type === "template" ? "{{…}} template" : "expr field";
 		const action = trusted ? "✅ Running" : "🚫 Disabled";
 		return `<tr>
-            <td class="ji-path" title="${_escHtml$1(path)}">${_escHtml$1(path)}</td>
-            <td class="ji-expr" title="${_escHtml$1(expr)}"><code>${_escHtml$1(truncExpr)}</code></td>
+            <td class="ji-path" title="${_escHtml(path)}">${_escHtml(path)}</td>
+            <td class="ji-expr" title="${_escHtml(expr)}"><code>${_escHtml(truncExpr)}</code></td>
             <td class="ji-type">${typeLabel}</td>
             <td class="ji-action ${trusted ? "ji-running" : "ji-disabled"}">${action}</td>
         </tr>`;
@@ -35186,7 +37597,7 @@ function _toggleJsIssuesPanel(panel) {
 	panel.innerHTML = `<div class="ji-header ${stateClass}">${stateLabel}</div>` + explanationBlock + unsafeBanner + `<div class="ji-scroll"><table class="ji-table"><thead><tr><th>JSON Path</th><th>Expression</th><th>Type</th><th>Action</th></tr></thead><tbody>${rows || noRows}</tbody></table></div>`;
 	panel.classList.remove("hidden");
 }
-function _escHtml$1(str) {
+function _escHtml(str) {
 	return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 var _JT_TYPE_ICONS = {
@@ -35788,7 +38199,7 @@ function setupJsonViewer() {
 		}
 		const imports = json && Array.isArray(json.import) ? json.import : [];
 		if (imports.length > 0 && importsBar) {
-			importsBar.innerHTML = "<span class=\"imports-label\">Imports</span>" + imports.map((name) => `<a href="/api/domains/${encodeURIComponent(String(name))}" target="_blank" rel="noopener">${_escHtml$1(name)} ↗</a>`).join("");
+			importsBar.innerHTML = "<span class=\"imports-label\">Imports</span>" + imports.map((name) => `<a href="/api/domains/${encodeURIComponent(String(name))}" target="_blank" rel="noopener">${_escHtml(name)} ↗</a>`).join("");
 			importsBar.classList.remove("hidden");
 		} else if (importsBar) importsBar.classList.add("hidden");
 		const s = _computeSceneSummary(json);
@@ -36983,2323 +39394,6 @@ function setupShareButton() {
 		} else flashToast("Couldn’t copy automatically — the shareable link is in your address bar");
 	});
 }
-//#endregion
-//#region src/speech-text.ts
-/**
-* Text for speech. Chat replies are markdown with LaTeX; read aloud verbatim, the voice pronounces the markup
-* ("asterisk asterisk", "dollar"), so speech gets the words only. The model also sometimes writes a tool call
-* into its reply as a processing-instruction tag (`<?set_preset_prompts prompts=[...] ?>`) instead of calling
-* the tool: the chat bubble hides it as HTML, but speech would read it, so it is removed (and can be honoured).
-*/
-var INLINE_TOOL = /<\?\s*([a-z_]+)\b([\s\S]*?)\?>|<call:([a-z_]+)\b([\s\S]*?)\/?>/gi;
-/** Pull `<?name key=json ...?>` tags out of a reply. Arguments that are not valid JSON are dropped. */
-function extractInlineToolCalls(text) {
-	const calls = [];
-	return {
-		text: text.replace(INLINE_TOOL, (_, piName, piBody, callName, callBody) => {
-			const name = piName ?? callName, body = piBody ?? callBody ?? "";
-			const args = {};
-			for (const m of body.matchAll(/([a-z_]+)\s*=\s*(\[[\s\S]*?\](?=\s*(?:[a-z_]+\s*=|$))|"(?:[^"\\]|\\.)*"|[^\s]+)/gi)) try {
-				args[m[1]] = JSON.parse(m[2]);
-			} catch {}
-			calls.push({
-				name,
-				args
-			});
-			return "";
-		}).replace(/[ \t]+\n/g, "\n").trim(),
-		calls
-	};
-}
-/** Plain words for a markdown + LaTeX reply. */
-function speechText(text) {
-	return extractInlineToolCalls(text).text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\)/g, (_, a, b, c) => speechMath(a ?? b ?? c)).replace(/`([^`]+)`/g, "$1").replace(/(\*\*|__)(.+?)\1/g, "$2").replace(/(^|\W)[*_]([^*_\n]+)[*_](?=\W|$)/g, "$1$2").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*>\s?/gm, "").replace(/[📍🤖👤]/gu, "").replace(/([^.!?:;,\s])[ \t]*\n+\s*/g, "$1. ").replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim();
-}
-var MATH_WORDS = {
-	le: "≤",
-	leq: "≤",
-	ge: "≥",
-	geq: "≥",
-	ne: "≠",
-	neq: "≠",
-	times: "×",
-	cdot: "·",
-	to: "→",
-	rightarrow: "→",
-	approx: "≈",
-	infty: "infinity",
-	pm: "±",
-	ldots: "…",
-	dots: "…",
-	cdots: "…"
-};
-/** Inline math as readable symbols: `74 > 73`, `\text{total} = 18` → `total = 18`. */
-function speechMath(tex) {
-	return tex.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^}]*)\}/g, "$1").replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1 over $2").replace(/\\([a-zA-Z]+)/g, (_, w) => MATH_WORDS[w] ?? w).replace(/[{}]/g, "").trim();
-}
-//#endregion
-//#region src/lesson-placement.ts
-/** Thrown when an op cannot be applied. Callers discard and clear history. */
-var PlacementError = class extends Error {};
-/**
-* Guarantee a `LessonFormat` to build into, promoting a displayed single scene.
-*
-* Extracted from the lesson-wrapper bootstrap in src/chat.ts, and now called by
-* `runBuildSceneTool` there. It is simultaneously the empty-app case AND the
-* SingleSceneFormat -> LessonFormat normalization — one function, not two.
-*/
-function ensureLessonFormat(lesson, displayedScene) {
-	if (lesson && Array.isArray(lesson.scenes)) return {
-		lesson,
-		bootstrap: {
-			previousLesson: lesson,
-			promotedScene: null,
-			bootstrapped: false
-		}
-	};
-	const source = displayedScene || (lesson && !lesson.scenes ? lesson : null);
-	let promoted = source;
-	const rootOnly = {};
-	if (source) {
-		const { import: imports, unsafe, unsafeExplanation, ...sceneOnly } = source;
-		if (imports !== void 0) rootOnly.import = imports;
-		if (unsafe !== void 0) rootOnly.unsafe = unsafe;
-		if (unsafeExplanation !== void 0) rootOnly.unsafeExplanation = unsafeExplanation;
-		promoted = sceneOnly;
-	}
-	return {
-		lesson: {
-			title: "Lesson",
-			...rootOnly,
-			scenes: promoted ? [promoted] : []
-		},
-		bootstrap: {
-			previousLesson: null,
-			promotedScene: source || null,
-			bootstrapped: true
-		}
-	};
-}
-/**
-* Resolve the container a node of `kind` lives in.
-*
-* The container is DERIVED from the kind rather than named by the placement, so
-* a mismatched pair (a Scene addressed into a step's array, say) cannot be
-* expressed at all — see the note on `Placement`.
-*
-* `proof` is `oneOf: [proof, proof[]]` in the schema and is a bare object in
-* most published occurrences, so it is normalized to a one-element array here
-* and collapsed back by `collapseProof` on write. Without that collapse the
-* model round-trip test fails on every bare-object lesson.
-*/
-function resolveContainer(lesson, kind, at) {
-	if (kind === "scene") return lesson.scenes;
-	if (kind === "proof" && at.scene == null && at.step != null) throw new PlacementError("a step-level proof placement needs a scene");
-	if (kind === "proof" && at.scene == null) {
-		const root = lesson;
-		if (root.proof == null) root.proof = [];
-		else if (!Array.isArray(root.proof)) root.proof = [root.proof];
-		return root.proof;
-	}
-	const scene = at.scene != null ? lesson.scenes[at.scene] : void 0;
-	if (!scene) throw new PlacementError(`placement names scene ${at.scene}, which does not exist`);
-	if (kind === "step") {
-		if (!Array.isArray(scene.steps)) scene.steps = [];
-		return scene.steps;
-	}
-	if (kind === "proof") {
-		const holder = at.step != null ? (scene.steps || [])[at.step] : scene;
-		if (!holder) throw new PlacementError(`placement names step ${at.step}, which does not exist`);
-		if (holder.proof == null) holder.proof = [];
-		else if (!Array.isArray(holder.proof)) holder.proof = [holder.proof];
-		return holder.proof;
-	}
-	throw new PlacementError(`no container is defined for kind '${kind}'`);
-}
-/**
-* Collapse a one-element `proof` array back to a bare object.
-*
-* The published corpus writes `proof` as a bare object far more often than as an
-* array; preserving that is required for lossless round-tripping.
-*/
-function tidyContainer(lesson, kind, at, arrivedAsArray) {
-	if (kind === "step" && at.scene != null) {
-		const scene = lesson.scenes[at.scene];
-		if (scene && Array.isArray(scene.steps) && scene.steps.length === 0) delete scene.steps;
-		return;
-	}
-	if (kind !== "proof") return;
-	const holder = proofHolder(lesson, at);
-	if (!holder) return;
-	if (!Array.isArray(holder.proof)) return;
-	if (holder.proof.length === 0) {
-		delete holder.proof;
-		return;
-	}
-	if (holder.proof.length === 1 && !arrivedAsArray) holder.proof = holder.proof[0];
-}
-/** The object holding a `proof` for this placement, or undefined. */
-function proofHolder(lesson, at) {
-	if (at.scene == null) return lesson;
-	const scene = lesson.scenes[at.scene];
-	if (!scene) return void 0;
-	return at.step != null ? (scene.steps || [])[at.step] : scene;
-}
-/**
-* Snapshot a container field so a REFUSED op leaves no trace of itself.
-*
-* `resolveContainer` has two side effects: it creates a missing `steps` array,
-* and it normalizes a bare `proof` object into a one-element array. If the op is
-* then rejected, those changes have already landed with no inverse to undo them
-* — the lesson is quietly reshaped by an operation the caller was told did not
-* apply, which makes the all-or-nothing guarantee false even for a single op.
-*/
-function captureContainerShape(lesson, kind, at) {
-	let holder;
-	let key;
-	if (kind === "proof") {
-		holder = proofHolder(lesson, at);
-		key = "proof";
-	} else if (kind === "step") {
-		holder = at.scene != null ? lesson.scenes[at.scene] : void 0;
-		key = "steps";
-	} else return () => {};
-	if (!holder) return () => {};
-	const had = key in holder;
-	const original = holder[key];
-	return () => {
-		if (!had) delete holder[key];
-		else holder[key] = original;
-	};
-}
-/** Assert the node at `index` is still the one the op was computed against. */
-function verifyIdentity(node, at) {
-	if (at.id === void 0) return;
-	const actual = node?.id;
-	if (actual !== at.id) throw new PlacementError(`stale placement: expected id ${at.id} at index ${at.index}, found ${String(actual)}`);
-}
-function requireIndex(at) {
-	if (typeof at.index !== "number" || !Number.isInteger(at.index) || at.index < 0) throw new PlacementError(`placement needs a non-negative integer index, got ${String(at.index)}`);
-	return at.index;
-}
-/**
-* Apply build ops in order, returning the INVERSE ops.
-*
-* The inverse list is REVERSED: applying several ops shifts indices, so each
-* captured inverse is only valid in the frame it was captured. Unwinding in
-* reverse order restores that frame. Without it, a two-insert result undoes to
-* the wrong positions.
-*
-* Redo needs no special case — applying an inverse returns the forward ops,
-* reconstructed against live state.
-*/
-function applyBuildOps(lesson, ops) {
-	const inverse = [];
-	try {
-		return applyEach(lesson, ops, inverse);
-	} catch (err) {
-		for (const undo of [...inverse].reverse()) try {
-			applyEach(lesson, [undo], []);
-		} catch {}
-		throw err;
-	}
-}
-function applyEach(lesson, ops, inverse) {
-	for (const op of ops) {
-		const index = requireIndex(op.at);
-		const restoreShape = captureContainerShape(lesson, op.kind, op.at);
-		const proofWasArray = op.kind === "proof" && Array.isArray((proofHolder(lesson, op.at) || {}).proof);
-		let arr;
-		try {
-			arr = resolveContainer(lesson, op.kind, op.at);
-		} catch (err) {
-			restoreShape();
-			throw err;
-		}
-		if (op.op === "insert") {
-			if (op.at.id !== void 0) {
-				restoreShape();
-				throw new PlacementError("an insert placement must not carry an id — there is nothing yet to verify");
-			}
-			if (index > arr.length) {
-				restoreShape();
-				throw new PlacementError(`insert index ${index} is past the end (${arr.length})`);
-			}
-			arr.splice(index, 0, op.node);
-			const insertedId = op.node?.id;
-			inverse.push({
-				op: "delete",
-				kind: op.kind,
-				at: {
-					...op.at,
-					id: insertedId
-				}
-			});
-		} else if (op.op === "replace") {
-			const old = arr[index];
-			if (old === void 0) {
-				restoreShape();
-				throw new PlacementError(`replace index ${index} does not exist`);
-			}
-			try {
-				verifyIdentity(old, op.at);
-			} catch (e) {
-				restoreShape();
-				throw e;
-			}
-			const replacementId = op.node?.id;
-			inverse.push({
-				op: "replace",
-				kind: op.kind,
-				at: {
-					...op.at,
-					id: replacementId
-				},
-				node: old
-			});
-			arr[index] = op.node;
-		} else {
-			const old = arr[index];
-			if (old === void 0) {
-				restoreShape();
-				throw new PlacementError(`delete index ${index} does not exist`);
-			}
-			try {
-				verifyIdentity(old, op.at);
-			} catch (e) {
-				restoreShape();
-				throw e;
-			}
-			inverse.push({
-				op: "insert",
-				kind: op.kind,
-				at: op.at,
-				node: old
-			});
-			arr.splice(index, 1);
-		}
-		tidyContainer(lesson, op.kind, op.at, proofWasArray);
-	}
-	return inverse.reverse();
-}
-//#endregion
-//#region src/chat-flight.ts
-function singleFlightSender(isBusy, sendTurn) {
-	const queued = [];
-	let active = null;
-	function sendNext() {
-		const next = queued.shift();
-		if (next) send(next.text, {
-			noTools: next.noTools,
-			display: next.display,
-			typed: next.typed
-		}).then(next.resolve, () => next.resolve(false));
-	}
-	function send(text, { silent = false, noTools = false, display, typed } = {}) {
-		if (isBusy()) {
-			if (silent) return Promise.resolve(false);
-			if (active && active.text === text && active.noTools === noTools) return active.done;
-			const waiting = queued.find((q) => q.text === text && q.noTools === noTools);
-			if (waiting) return waiting.done;
-			let resolve;
-			const done = new Promise((r) => {
-				resolve = r;
-			});
-			queued.push({
-				text,
-				noTools,
-				display,
-				typed,
-				done,
-				resolve
-			});
-			return done;
-		}
-		const turn = {
-			text,
-			noTools,
-			done: Promise.resolve(false)
-		};
-		const settle = () => {
-			if (active === turn) active = null;
-			sendNext();
-		};
-		turn.done = sendTurn(text, {
-			silent,
-			noTools,
-			...display !== void 0 ? { display } : {},
-			...typed ? { typed } : {}
-		}).then(() => {
-			settle();
-			return true;
-		}, (err) => {
-			settle();
-			throw err;
-		});
-		if (!silent) active = turn;
-		return turn.done;
-	}
-	return send;
-}
-var MAX_INTENT_CHARS = 2e3;
-function scenesOf(lesson) {
-	const l = lesson;
-	if (l && Array.isArray(l.scenes)) return l.scenes.filter((s) => s && typeof s === "object");
-	return l && (l.title || l.elements) ? [l] : [];
-}
-function elementsOf(scene) {
-	const out = (scene.elements || []).filter(Boolean);
-	for (const step of scene.steps || []) for (const el of step.add || []) if (el) out.push(el);
-	return out;
-}
-function firstLine(text, limit = 200) {
-	if (typeof text !== "string" || !text.trim()) return "";
-	return text.trim().split("\n")[0].slice(0, limit);
-}
-function deriveConventions(scenes) {
-	const colors = [];
-	let latex = 0, labelled = 0, prompts = 0;
-	for (const scene of scenes) for (const el of elementsOf(scene)) {
-		const c = el.color;
-		if (typeof c === "string" && c.startsWith("#") && !colors.includes(c)) colors.push(c);
-		const label = el.label;
-		if (typeof label === "string" && label) {
-			labelled++;
-			if (label.includes("$")) latex++;
-		}
-		if (el.prompt) prompts++;
-	}
-	return {
-		colors: colors.slice(0, 12),
-		labelsAreLatex: labelled > 0 && latex * 2 > labelled,
-		elementsCarryPrompts: prompts > 0
-	};
-}
-function collectSliderIds(scenes) {
-	const ids = [];
-	for (const scene of scenes) for (const step of scene.steps || []) for (const s of step.sliders || []) if (typeof s?.id === "string" && s.id && !ids.includes(s.id)) ids.push(s.id);
-	return ids;
-}
-/** Deterministically decide what the builder sees. No I/O, no mutation. */
-function assembleBuildSceneRequest(opts) {
-	const scenes = scenesOf(opts.lesson);
-	const omitted = [];
-	let target;
-	if (opts.op === "replace") {
-		if (opts.sceneIndex == null || opts.sceneIndex < 0 || opts.sceneIndex >= scenes.length) throw new Error(`replace needs an existing scene index, got ${opts.sceneIndex}`);
-		target = opts.sceneIndex;
-	} else target = opts.sceneIndex == null ? scenes.length : Math.max(0, Math.min(opts.sceneIndex, scenes.length));
-	const intent = (opts.intent || "").trim().slice(0, MAX_INTENT_CHARS);
-	if (!intent) throw new Error("a build needs an intent; got an empty one");
-	const summarised = scenes.slice(0, 40);
-	if (scenes.length > 40) omitted.push(`${scenes.length - 40} scene summaries`);
-	const right = opts.op === "replace" ? target + 1 : target;
-	const around = [target - 1, right].filter((i) => i >= 0 && i < scenes.length);
-	const lesson = opts.lesson || {};
-	return {
-		op: opts.op,
-		sceneIndex: target,
-		intent,
-		clarifications: opts.clarifications || [],
-		lesson: {
-			title: typeof lesson.title === "string" ? lesson.title : "",
-			description: firstLine(lesson.description),
-			sceneSummaries: summarised.map((s, index) => ({
-				index,
-				title: typeof s.title === "string" ? s.title : "",
-				description: firstLine(s.description)
-			})),
-			sceneIds: buildIds(scenes, "title")
-		},
-		conventions: deriveConventions(scenes),
-		neighbours: around.map((i) => scenes[i]),
-		current: opts.op === "replace" ? scenes[target] : null,
-		memory: opts.memory || [],
-		sliderVocabulary: collectSliderIds(scenes),
-		omitted,
-		messages: (opts.messages || []).slice(-12).map((m) => ({
-			role: String(m && m.role || "user"),
-			text: String(m && m.text || "")
-		}))
-	};
-}
-//#endregion
-//#region src/build-scene-tool.ts
-/**
-* Translate the agent's 1-based scene number into a 0-based index.
-*
-* The agent's whole world is 1-based — `navigate_to` takes "scene 2" and means
-* the second scene — while the wire contract and `applyBuildOps` are 0-based.
-* Converting here, once, is why nothing downstream has to remember which
-* convention it is holding. `undefined` stays `undefined`: on insert that means
-* "append", which is a different instruction from "insert at 0".
-*/
-function sceneIndexFromArgs(scene) {
-	if (scene == null || scene === "") return void 0;
-	const n = typeof scene === "number" ? scene : parseInt(String(scene), 10);
-	if (!Number.isFinite(n)) return void 0;
-	const idx = Math.trunc(n);
-	return idx === 0 ? 0 : idx - 1;
-}
-/** Build the request body for a `build_scene` tool call. Throws on a hopeless one. */
-function buildSceneRequestFromToolCall(args, lesson, thread = [], memory = []) {
-	const op = args.op === "replace" ? "replace" : "insert";
-	return assembleBuildSceneRequest({
-		lesson,
-		intent: typeof args.intent === "string" ? args.intent : "",
-		op,
-		sceneIndex: sceneIndexFromArgs(args.scene),
-		memory,
-		messages: thread
-	});
-}
-/** One line naming what landed, for the chat log. */
-function summarise(ops) {
-	if (!ops.length) return "Nothing to apply.";
-	const op = ops[0];
-	const title = op.op === "delete" ? "" : op.node?.title;
-	const name = typeof title === "string" && title.trim() ? `“${title.trim()}”` : "a scene";
-	return op.op === "replace" ? `Rebuilt ${name}.` : `Added ${name}.`;
-}
-/**
-* Read the handler's reply into the contract's tagged union.
-*
-* The four outcomes are mutually exclusive on the wire, so this reads them in
-* the order the handler produces them and never merges two. An unrecognized
-* reply becomes `refused` rather than `passthrough`: a reply we cannot read is
-* a bug to surface, not a question to hand back to the tutor as if the user had
-* asked something conversational.
-*/
-function interpretBuildSceneReply(reply) {
-	const r = reply || {};
-	const focusIndex = typeof r.focus === "number" && Number.isInteger(r.focus) && r.focus >= 0 ? r.focus : null;
-	const focus = focusIndex == null ? void 0 : { index: focusIndex };
-	if (r.fallback_to_chat) return { kind: "passthrough" };
-	if (typeof r.question === "string" && r.question.trim()) return {
-		kind: "question",
-		question: r.question.trim(),
-		focus
-	};
-	if (typeof r.reason === "string" && r.reason.trim()) return {
-		kind: "refused",
-		reason: r.reason.trim(),
-		focus
-	};
-	const ops = r.result && Array.isArray(r.result.ops) ? r.result.ops : null;
-	if (ops && ops.length) return {
-		kind: "result",
-		result: {
-			ops,
-			summary: summarise(ops),
-			focus: focus || null
-		}
-	};
-	return {
-		kind: "refused",
-		reason: "The scene builder returned nothing usable.",
-		focus
-	};
-}
-//#endregion
-//#region src/build-progress.ts
-/** Ids are minted here so `at.id` can verify the slot is still ours. */
-var seq = 0;
-/**
-* A scene that says "this is being built", and where.
-*
-* Deliberately EMPTY rather than a guess at what is coming: a placeholder that
-* draws axes and a vector reads as a finished scene that came out wrong. The
-* caption carries the intent, so the slot explains itself while it waits.
-*/
-function placeholderScene(intent) {
-	seq += 1;
-	const asked = (intent || "").trim().replace(/\s+/g, " ");
-	return {
-		id: `building-${seq}`,
-		title: "Building…",
-		description: asked ? `Building: ${asked}` : "Building a new scene…",
-		elements: []
-	};
-}
-/**
-* The step to arrive on: the first one that HAS something.
-*
-* Sliders first, because a scene whose interactive part is the point renders
-* inert without them; then the first step that adds any element; then the root.
-*
-* Not `steps[0]`. `_pull_sliders_forward` in compose.py deliberately puts a
-* slider on the step that first USES it, which is routinely step 1 or later — so
-* checking only step 0 landed the reader on an empty root and the scene they had
-* just asked for appeared to render nothing. That is the exact symptom this
-* feature kept producing for other reasons; it must not be reintroduced by the
-* navigation.
-*/
-function landingStep(scene) {
-	const steps = scene && Array.isArray(scene.steps) ? scene.steps : [];
-	const withSliders = steps.findIndex((s) => Array.isArray(s?.sliders) && s.sliders.length);
-	if (withSliders >= 0) return withSliders;
-	const withContent = steps.findIndex((s) => Array.isArray(s?.add) && s.add.length);
-	return withContent >= 0 ? withContent : -1;
-}
-/**
-* The slot turned into a REPORT of why the build failed.
-*
-* A refused build used to take its placeholder with it: the scene vanished from
-* the tree, one sentence went past in chat, and there was nothing left to look
-* at. The reason is the most useful thing the expert produces when it cannot
-* build — it names the element and the field — so it should sit where the scene
-* would have been, not scroll away.
-*
-* It is an ordinary scene, so it appears in the tree, can be navigated to, and
-* can be deleted like any other. Deliberately NOT a special UI state: a state
-* has to be dismissed, remembered and rendered somewhere, and the thing the
-* reader wants is simply to read what went wrong at their own pace.
-*/
-function failedScene(intent, reason) {
-	seq += 1;
-	const asked = (intent || "").trim().replace(/\s+/g, " ");
-	return {
-		id: `unbuilt-${seq}`,
-		title: "Couldn’t build this scene",
-		description: `**${reason}**\n\nAsked for: ${asked || "(nothing)"}`,
-		elements: []
-	};
-}
-/** True for a scene this module put in the lesson — a placeholder or a report. */
-function isPlaceholder(scene) {
-	const id = scene?.id;
-	return typeof id === "string" && (id.startsWith("building-") || id.startsWith("unbuilt-"));
-}
-/**
-* Where the placeholder is NOW, or -1 if it is gone.
-*
-* Not the index it was reserved at. A build takes tens of seconds and the lesson
-* can move under it — another build landing, the user deleting a scene. Both
-* finishing moves address the slot by IDENTITY and only then by position, so a
-* shifted lesson relocates the slot instead of operating on its old neighbour.
-*/
-function slotIndex(scenes, placeholder) {
-	const id = placeholder.id;
-	return scenes.findIndex((s) => s?.id === id);
-}
-/** The op that puts a placeholder at `index`. */
-function reserveOp(index, placeholder) {
-	return {
-		op: "insert",
-		kind: "scene",
-		at: { index },
-		node: placeholder
-	};
-}
-/**
-* Turn the expert's op into one that lands ON the reserved slot.
-*
-* The expert does not know a placeholder exists — it answers the request it was
-* sent, which for an insert is "insert at N". Applying that verbatim after
-* reserving N would leave TWO scenes: the real one and the placeholder pushed
-* down beside it. So an insert becomes a replace of the slot we made.
-*
-* `at.id` carries the placeholder's id, so if anything moved the lesson while
-* the build was in flight the replace is REFUSED rather than overwriting a
-* scene the user meant to keep.
-*/
-function landOnSlot(op, placeholder, index) {
-	const id = placeholder.id;
-	if (index < 0 || op.op === "delete") return op;
-	return {
-		op: "replace",
-		kind: op.kind,
-		at: {
-			index,
-			id
-		},
-		node: op.node
-	};
-}
-/**
-* The op that takes the placeholder away again when nothing was built.
-*
-* `null` when the slot is already gone — there is nothing to remove, and an op
-* addressing a vanished index would delete a scene that is not ours.
-*/
-function releaseOp(index, placeholder) {
-	const id = placeholder.id;
-	if (index < 0) return null;
-	return {
-		op: "delete",
-		kind: "scene",
-		at: {
-			index,
-			id
-		}
-	};
-}
-/**
-* Show the in-flight pill over the 3D viewport.
-*
-* Same markup and classes as the proof-derivation pill so the two read as one
-* idea rather than two indicators that happen to spin. Returns its own remover:
-* a caller that forgets to call it leaves a pill spinning over a finished scene,
-* so there is exactly one thing to remember and no id to look up.
-*/
-function showBuildPill(text = "Building scene…") {
-	const vp = typeof document !== "undefined" ? document.getElementById("viewport") : null;
-	if (!vp) return () => {};
-	let stack = vp.querySelector(".build-indicator-stack");
-	if (!stack) {
-		stack = document.createElement("div");
-		stack.className = "graph-enrich-indicator-stack build-indicator-stack";
-		vp.appendChild(stack);
-	}
-	const el = document.createElement("div");
-	el.className = "graph-enrich-indicator";
-	el.setAttribute("role", "status");
-	const dots = document.createElement("span");
-	dots.className = "gei-dots";
-	for (let i = 0; i < 3; i += 1) dots.appendChild(document.createElement("span"));
-	const label = document.createElement("span");
-	label.className = "gei-text";
-	label.textContent = text;
-	el.appendChild(dots);
-	el.appendChild(label);
-	stack.appendChild(el);
-	const empty = document.getElementById("empty-state");
-	const store = stack;
-	if (empty && store._emptyWas === void 0) store._emptyWas = empty.style.display;
-	if (empty) empty.style.display = "none";
-	let removed = false;
-	return () => {
-		if (removed) return;
-		removed = true;
-		if (el.parentNode) el.parentNode.removeChild(el);
-		if (stack && !stack.childNodes.length) {
-			if (empty && store._emptyWas !== void 0) empty.style.display = store._emptyWas;
-			if (stack.parentNode) stack.parentNode.removeChild(stack);
-		}
-	};
-}
-//#endregion
-//#region src/chat.ts
-/**
-* How long to wait for a scene build.
-*
-* Shorter than DERIVE_TIMEOUT_MS: a build is ONE LM call with no verify-and-retry
-* loop behind it, so the 6-minute derivation budget would leave a user staring at
-* a dead chat for minutes after the request had already failed.
-*/
-var BUILD_SCENE_TIMEOUT_MS = 9e4;
-var chatHistory = [];
-var chatAvailable$1 = false;
-/** Whether AI chat works here (a key is configured). Others — the learning
-*  plan's guide — read it, and hear 'algebench:chatavailability' when known. */
-window.algebenchChatAvailable = () => chatAvailable$1;
-function announceChatAvailability() {
-	try {
-		window.dispatchEvent(new CustomEvent("algebench:chatavailability", { detail: { available: chatAvailable$1 } }));
-	} catch (_) {}
-}
-var chatSending = false;
-/**
-* The one place `chatSending` changes. It's app-wide state — every AI ask
-* button reflects it — so each change is announced (`algebench:chatbusy`,
-* detail `{ busy }`) and readable via window.algebenchChatBusy().
-*/
-function setChatSending(busy) {
-	chatSending = busy;
-	try {
-		window.dispatchEvent(new CustomEvent("algebench:chatbusy", { detail: { busy } }));
-	} catch (_) {}
-}
-window.algebenchChatBusy = () => chatSending;
-var activeSpeakBtn = null;
-var welcomeInFlight = false;
-var memorySnapshot = null;
-var ttsCharacterPicker = null;
-var selectedTtsCharacter = "joker";
-var selectedTtsVoice = "Charon";
-var selectedTtsMode = "read";
-var CHAT_HISTORY_MAX = Infinity;
-function _escHtml(s) {
-	const d = document.createElement("div");
-	d.textContent = s;
-	return d.innerHTML;
-}
-var _presetPrompts = [];
-var _lastFocusedSurface = null;
-function _classifyFocusTarget(target) {
-	const el = target;
-	if (!el || !el.closest) return null;
-	if (el.closest("#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip")) return "graph";
-	if (el.closest("#mathbox-container, #mathbox-overlay, canvas")) return "viewport";
-	if (el.closest(".explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts")) return "panel";
-	return null;
-}
-if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) => {
-	const surface = _classifyFocusTarget(e.target);
-	if (surface) _lastFocusedSurface = surface;
-}, true);
-/**
-* Common prompts that suit any view, behind the "More prompts" chip at the end of the preset row. The menu
-* shows the short label; the tutor gets the fuller request, since a bare "Guide me" is too vague to act on.
-*/
-/** takesOver: the prompt starts a conversation the reader drives (it waits for their answers), so playback stops
-*  and narration turns off first: otherwise each new state's narration would be asked and answered over it. */
-var COMMON_PROMPTS = [
-	DESCRIBE_PROBLEM,
-	{
-		label: "1-sentence gist",
-		prompt: "In one sentence, tell me what is happening right now in this scene at its current step and state: the specific values on screen and what the algorithm or system is doing with them at this moment, not a general summary of the topic."
-	},
-	{
-		label: "Gist as bullets",
-		prompt: "Give me the gist of what is happening right now in this scene at its current step and state, as the shortest possible bulleted list: a few words per bullet, using the specific values on screen, no intro or outro."
-	},
-	{
-		label: "Rephrase from first principles",
-		prompt: "Take what you just explained and say it again from first principles, in the plainest words you can: what is really going on underneath, stripped of jargon, notation and caveats. Rough and loose is fine as long as the core idea lands. Don't add anything new; keep it short."
-	},
-	{
-		label: "Walk me through this view",
-		prompt: "Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate."
-	},
-	{
-		label: "Walk me through key points",
-		prompt: "Walk me through the key points of this scene, one at a time, as a short list."
-	},
-	{
-		label: "Guide me",
-		takesOver: true,
-		prompt: "Guide me through this scene from where I am: tell me the one thing to look at or try next (step forward, move a slider, read a line of code), then wait for me before going on."
-	},
-	{
-		label: "Ask me about the current step",
-		takesOver: true,
-		prompt: "Ask me one question about the current step to check my understanding. Wait for my answer before explaining."
-	},
-	{
-		label: "Ask me about the current scene",
-		takesOver: true,
-		prompt: "Ask me one question about this scene's main idea. Wait for my answer before explaining."
-	},
-	{
-		label: "Quiz mode",
-		takesOver: true,
-		prompt: "Switch to quiz mode: ask me one question at a time about this lesson, starting with what is on screen. After each answer, tell me briefly whether I'm right and why, then ask the next question, a little harder each time. Keep quizzing me until I ask for something else."
-	},
-	{
-		label: "Interview mode",
-		display: "🎤 Interview mode",
-		takesOver: true,
-		prompt: "Switch to interview mode: act as a friendly but rigorous technical interviewer for the problem in this scene, and stay in role until I ask for something else. Read where I am from the scene, step and execution state. At the start (the first step, or the first execution state), present the question as an interviewer would: a short, natural problem statement with a small example, then ask how I'd approach it, without hinting at the pattern. Mid-run, treat the current state as where we are in my solution: ask one guiding question at a time about the next key decision the algorithm makes (what to check, what to store, why it's correct), wait for my answer, and react like an interviewer: confirm what's right, probe what's vague, and nudge me back when I drift, without handing over the answer. You know the algorithm's key steps, so pace the interview through them, raise an edge case or ask for the complexity when it fits, and close by summarizing how I did. After every reply, call set_preset_prompts with 2 to 4 short options that fit the moment. They are things I can ask of you as the candidate, such as 'Give me a hint', 'Edge cases?', 'Check my approach', 'What's the complexity?' or 'I'm stuck', never possible answers to your question: no option may name the technique, an action the algorithm takes, or the next step."
-	},
-	{
-		label: "Surprise me!",
-		prompt: "Surprise me with an interesting fact, connection or what-if about what I'm looking at."
-	}
-];
-/** A question the learner typed is about what is on screen now: playback stops at once (even while the turn waits
-*  for a narration in flight), so the next state and its narration don't move on and talk over the answer. */
-function sendTyped(text) {
-	window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
-	stopPresenting();
-	sendChatMessage$1(text, { typed: true });
-}
-/** Send a prompt, or with ⌘/Ctrl held put it in the input to edit first. */
-function usePrompt(text, e, display, takesOver = false) {
-	if (e.metaKey || e.ctrlKey) {
-		const input = document.getElementById("chat-input");
-		if (input) {
-			input.value = text;
-			input.focus();
-			input.dispatchEvent(new Event("input"));
-		}
-	} else {
-		window.dispatchEvent(new CustomEvent("algebench:playbackpause"));
-		if (takesOver) window.dispatchEvent(new CustomEvent("algebench:narrationoff"));
-		stopPresenting();
-		sendChatMessage$1(text, display ? { display } : void 0);
-	}
-}
-function setPresetPrompts$1(prompts) {
-	_presetPrompts = prompts || [];
-	const container = document.getElementById("preset-prompts");
-	if (!container) return;
-	container.innerHTML = "";
-	container.classList.remove("hidden");
-	for (const text of _presetPrompts) {
-		const btn = document.createElement("button");
-		btn.className = "preset-prompt-btn";
-		btn.textContent = text;
-		btn.title = text + "\n\nClick to send · ⌘/Ctrl-click to edit";
-		btn.addEventListener("click", (e) => usePrompt(text, e));
-		container.appendChild(btn);
-	}
-	container.appendChild(morePromptsMenu());
-}
-/** A small chip that opens a menu of COMMON_PROMPTS above it. */
-function morePromptsMenu() {
-	const wrap = document.createElement("div");
-	wrap.className = "preset-more";
-	const toggle = document.createElement("button");
-	toggle.type = "button";
-	toggle.className = "preset-prompt-btn preset-more-btn";
-	toggle.textContent = "⋯";
-	toggle.title = "More prompts";
-	toggle.setAttribute("aria-label", "More prompts");
-	toggle.setAttribute("aria-haspopup", "menu");
-	toggle.setAttribute("aria-expanded", "false");
-	const menu = document.createElement("div");
-	menu.className = "preset-more-menu";
-	menu.setAttribute("role", "menu");
-	menu.hidden = true;
-	const close = () => {
-		menu.hidden = true;
-		toggle.setAttribute("aria-expanded", "false");
-		document.removeEventListener("pointerdown", outside, true);
-		document.removeEventListener("keydown", escape, true);
-	};
-	const outside = (e) => {
-		if (!wrap.contains(e.target)) close();
-	};
-	const escape = (e) => {
-		if (e.key === "Escape") {
-			close();
-			toggle.focus();
-		}
-	};
-	for (const { label, prompt, display, takesOver } of COMMON_PROMPTS) {
-		const item = document.createElement("button");
-		item.type = "button";
-		item.className = "preset-more-item";
-		item.setAttribute("role", "menuitem");
-		item.textContent = label;
-		item.title = prompt + "\n\nClick to send · ⌘/Ctrl-click to edit";
-		item.addEventListener("click", (e) => {
-			close();
-			usePrompt(prompt, e, display, takesOver);
-		});
-		menu.appendChild(item);
-	}
-	toggle.addEventListener("click", () => {
-		if (!menu.hidden) {
-			close();
-			return;
-		}
-		menu.hidden = false;
-		menu.style.left = "0px";
-		menu.style.maxWidth = "";
-		const bounds = (wrap.closest(".tab-content") ?? document.documentElement).getBoundingClientRect();
-		const anchor = wrap.getBoundingClientRect().left;
-		const { offset, maxWidth } = menuPlacement(anchor, menu.getBoundingClientRect().width, Math.max(0, bounds.left), Math.min(bounds.right, document.documentElement.clientWidth));
-		menu.style.maxWidth = `${maxWidth}px`;
-		menu.style.left = `${offset}px`;
-		toggle.setAttribute("aria-expanded", "true");
-		document.addEventListener("pointerdown", outside, true);
-		document.addEventListener("keydown", escape, true);
-		menu.querySelector("button")?.focus();
-	});
-	wrap.append(toggle, menu);
-	return wrap;
-}
-/** Until this time (ms), the Chat-tab welcome is skipped — see suppressChatWelcome. */
-var _welcomeSuppressedUntil = 0;
-/**
-* Skip the Chat-tab welcome for the next `ms`. The learning plan's AI guide
-* calls this before it navigates: a plan jump to a proof step opens the Chat
-* tab (where the proof panel lives), and the guide is about to explain that
-* very screen — the welcome would talk over it with a second explanation.
-*/
-function suppressChatWelcome(ms = 5e3) {
-	_welcomeSuppressedUntil = Math.max(_welcomeSuppressedUntil, Date.now() + ms);
-}
-function shouldSkipWelcome() {
-	return chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
-}
-/** How long the Chat tab waits before greeting, so anything the learner starts first wins. */
-var WELCOME_DELAY_MS = 1e3;
-/** Nothing else has started since the Chat tab opened: still on it, the box empty, no speech, no narration. */
-function welcomeStillWanted() {
-	if (!document.getElementById("tab-chat")?.classList.contains("active")) return false;
-	if (document.getElementById("chat-input")?.value.trim()) return false;
-	if (window.algebenchTTSActive?.()) return false;
-	return !window.algebenchNarrating?.();
-}
-function buildChatContext() {
-	const ctx = {};
-	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.title) ctx.lessonTitle = lessonSpec.title;
-	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes) {
-		ctx.totalScenes = lessonSpec.scenes.length;
-		const idx = typeof currentSceneIndex !== "undefined" ? currentSceneIndex : 0;
-		ctx.sceneNumber = idx + 1;
-		const scene = lessonSpec.scenes[idx];
-		if (scene) ctx.currentScene = scene;
-		ctx.sceneTree = lessonSpec.scenes.map((s, i) => {
-			const entry = {
-				sceneNumber: i + 1,
-				title: s.title || "Scene " + (i + 1)
-			};
-			if (s.steps && s.steps.length > 0) entry.steps = s.steps.map((st, j) => ({
-				stepNumber: j + 1,
-				title: st.title || "Step " + (j + 1),
-				description: st.description || ""
-			}));
-			return entry;
-		});
-	}
-	const runtime = {};
-	runtime.stepNumber = (typeof currentStepIndex !== "undefined" ? currentStepIndex : -1) + 1;
-	if (typeof camera !== "undefined" && camera) runtime.cameraPosition = {
-		x: +camera.position.x.toFixed(2),
-		y: +camera.position.y.toFixed(2),
-		z: +camera.position.z.toFixed(2)
-	};
-	if (typeof controls !== "undefined" && controls && controls.target) runtime.cameraTarget = {
-		x: +controls.target.x.toFixed(2),
-		y: +controls.target.y.toFixed(2),
-		z: +controls.target.z.toFixed(2)
-	};
-	if (typeof CAMERA_VIEWS !== "undefined") {
-		const viewNames = Object.keys(CAMERA_VIEWS).filter((k) => k !== "__agent" && k !== "_step" && k !== "reset");
-		if (viewNames.length > 0) runtime.cameraViews = viewNames;
-	}
-	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes && typeof getAllElements === "function") {
-		const scene = lessonSpec.scenes[currentSceneIndex];
-		if (scene) {
-			const els = getAllElements(scene, currentStepIndex);
-			const NON_VISUAL_TYPES = /* @__PURE__ */ new Set([
-				"slider",
-				"info",
-				"preset_prompts"
-			]);
-			runtime.visibleElements = els.filter((el) => {
-				if (NON_VISUAL_TYPES.has(el.type)) return false;
-				if (typeof elementRegistry !== "undefined" && el.id && elementRegistry[el.id]) return !elementRegistry[el.id].hidden;
-				return true;
-			}).map((el) => ({
-				label: el.label || el.id || el.type,
-				type: el.type
-			}));
-		}
-	}
-	if (typeof sceneSliders !== "undefined" && sceneSliders) {
-		const sliders = {};
-		for (const [id, s] of Object.entries(sceneSliders)) sliders[id] = {
-			value: s.value,
-			min: s.min,
-			max: s.max,
-			step: s.step,
-			label: s.label || id,
-			...s.kind === "tensor" && s.shape && s.values ? {
-				shape: s.shape,
-				values: s.values
-			} : {}
-		};
-		if (Object.keys(sliders).length > 0) runtime.sliders = sliders;
-	}
-	const playback = ctx.currentScene?.stepPlayback;
-	const executionSlider = playback ? runtime.sliders?.[playback.slider] : void 0;
-	if (playback && executionSlider && Number.isFinite(executionSlider.value) && Number.isInteger(executionSlider.min) && Number.isInteger(executionSlider.max) && executionSlider.max >= executionSlider.min) {
-		const position = playbackPosition(executionSlider.value, executionSlider.min, executionSlider.max);
-		runtime.playback = {
-			slider: playback.slider,
-			value: position.current,
-			min: executionSlider.min,
-			max: executionSlider.max,
-			total: position.total,
-			displayedPosition: position.display
-		};
-	}
-	const promptExpr = ctx.currentScene?.promptExpr;
-	if (promptExpr) try {
-		const value = evalExpr(compileExpr(promptExpr), 0);
-		if (value !== null && value !== void 0 && value !== "") runtime.simulationState = String(value).slice(0, 6e3);
-	} catch {}
-	const screenValues = visibleAnnotationTexts();
-	if (screenValues.length) runtime.screenValues = screenValues;
-	const captionEl = document.getElementById("step-caption");
-	if (captionEl && !captionEl.classList.contains("hidden")) runtime.currentCaption = (captionEl.dataset.markdown || captionEl.textContent).trim();
-	const activeTab = document.querySelector(".tab-content.active");
-	if (activeTab) runtime.activeTab = activeTab.id.replace("tab-", "");
-	if (typeof currentProjection !== "undefined") runtime.projection = currentProjection;
-	if (typeof getProofContext === "function") {
-		const proofCtx = getProofContext();
-		if (proofCtx) runtime.proof = proofCtx;
-	}
-	if (typeof window.algebenchGetGraphPanelState === "function") try {
-		const gp = window.algebenchGetGraphPanelState();
-		if (gp) runtime.graphPanel = gp;
-	} catch (e) {
-		console.warn("[chat] failed to read graph panel state:", e);
-	}
-	if (_lastFocusedSurface) runtime.lastFocusedSurface = _lastFocusedSurface;
-	const viewing = [];
-	const graphActive = runtime.graphPanel && runtime.graphPanel.open;
-	viewing.push(graphActive ? "semantic graph" : "scene");
-	if (runtime.activeTab === "chat") {
-		viewing.push("chat");
-		const proofPanel = document.getElementById("proof-panel");
-		if (proofPanel && !proofPanel.classList.contains("hidden")) viewing.push("proof");
-	} else if (runtime.activeTab === "doc") viewing.push("doc");
-	runtime.userViewing = viewing;
-	try {
-		const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
-		if (coachEngine && typeof coachEngine.status === "function") runtime.coach = coachEngine.status();
-	} catch {}
-	if (presenterOn()) runtime.presenter = true;
-	ctx.runtime = runtime;
-	return ctx;
-}
-window.algebenchBuildChatContext = buildChatContext;
-function switchPanelTab$1(tabName) {
-	document.querySelectorAll(".panel-tab").forEach((btn) => {
-		btn.classList.toggle("active", btn.dataset.tab === tabName);
-	});
-	document.querySelectorAll(".tab-content").forEach((el) => {
-		el.classList.toggle("active", el.id === "tab-" + tabName);
-	});
-	try {
-		window.dispatchEvent(new CustomEvent("algebench:panelchange"));
-	} catch (_) {}
-	if (tabName === "chat") {
-		if (typeof refreshProofPanel === "function") refreshProofPanel();
-		const input = document.getElementById("chat-input");
-		if (input) setTimeout(() => input.focus(), 50);
-		if (chatAvailable$1 && !welcomeInFlight && !shouldSkipWelcome()) setTimeout(() => {
-			if (!welcomeInFlight && !shouldSkipWelcome() && welcomeStillWanted()) sendWelcomeMessage();
-		}, WELCOME_DELAY_MS);
-	}
-}
-function setupChat() {
-	fetch("/api/chat/available").then((r) => r.json()).then((data) => {
-		chatAvailable$1 = data.available;
-		announceChatAvailability();
-		if (!chatAvailable$1) {
-			const msg = document.getElementById("chat-unavailable-msg");
-			const tab = document.getElementById("tab-chat");
-			if (msg) msg.classList.remove("hidden");
-			if (tab) tab.classList.add("unavailable");
-		}
-	}).catch(() => {
-		chatAvailable$1 = false;
-		announceChatAvailability();
-		const msg = document.getElementById("chat-unavailable-msg");
-		const tab = document.getElementById("tab-chat");
-		if (msg) msg.classList.remove("hidden");
-		if (tab) tab.classList.add("unavailable");
-	});
-	document.querySelectorAll(".panel-tab").forEach((btn) => {
-		btn.addEventListener("click", () => {
-			switchPanelTab$1(btn.dataset.tab);
-		});
-	});
-	document.addEventListener("keydown", (e) => {
-		const target = e.target;
-		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-		if (e.key === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-			const panel = document.getElementById("explanation-panel");
-			const toggle = document.getElementById("explain-toggle");
-			const handle = document.getElementById("panel-resize-handle");
-			if (panel.classList.contains("hidden")) {
-				panel.classList.remove("hidden");
-				handle.style.display = "block";
-				toggle.style.display = "block";
-				toggle.classList.add("active");
-				setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-			}
-			switchPanelTab$1("chat");
-		}
-	});
-	const input = document.getElementById("chat-input");
-	const sendBtn = document.getElementById("chat-send");
-	initChatTtsControls();
-	input.addEventListener("keydown", (e) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			const text = input.value.trim();
-			if (text && !chatSending) {
-				input.value = "";
-				input.style.height = "auto";
-				sendTyped(text);
-			}
-		}
-	});
-	input.addEventListener("input", () => {
-		input.style.height = "auto";
-		input.style.height = Math.min(input.scrollHeight, 120) + "px";
-	});
-	sendBtn.addEventListener("click", () => {
-		const text = input.value.trim();
-		if (text && !chatSending) {
-			input.value = "";
-			input.style.height = "auto";
-			sendTyped(text);
-		}
-	});
-}
-function initChatTtsControls() {
-	const lib = window.GeminiVoiceCharacterSelector;
-	if (!lib) return;
-	const characterBtn = document.getElementById("chatCharacterBtn");
-	const characterPalette = document.getElementById("chatCharacterPalette");
-	const characterSearch = document.getElementById("chatCharacterSearch");
-	const characterList = document.getElementById("chatCharacterList");
-	const characterBackdrop = document.getElementById("chatCharacterBackdrop");
-	const voiceSelect = document.getElementById("chatVoiceSelect");
-	if (!characterBtn || !characterPalette || !characterSearch || !characterList || !characterBackdrop || !voiceSelect) return;
-	if (characterPalette.parentElement !== document.body) document.body.appendChild(characterPalette);
-	if (characterBackdrop.parentElement !== document.body) document.body.appendChild(characterBackdrop);
-	selectedTtsVoice = lib.setupVoiceSelect(voiceSelect, {
-		includeSystem: false,
-		storageKey: "algebenchTtsVoice",
-		defaultValue: "Charon"
-	});
-	ttsCharacterPicker = new lib.CharacterPicker({
-		buttonEl: characterBtn,
-		paletteEl: characterPalette,
-		searchEl: characterSearch,
-		listEl: characterList,
-		backdropEl: characterBackdrop,
-		options: lib.CHARACTER_OPTIONS,
-		groupMap: lib.CHARACTER_GROUPS,
-		groupOrder: lib.CHARACTER_GROUP_ORDER,
-		storageKey: "algebenchTtsCharacter",
-		recentsKey: "algebenchTtsCharacterRecents",
-		defaultId: "joker",
-		hotkey: "k",
-		onChange: (characterId) => {
-			selectedTtsCharacter = characterId;
-			const opt = lib.CHARACTER_OPTIONS.find((o) => o.id === characterId);
-			if (opt && opt.defaultVoice && voiceSelect) {
-				voiceSelect.value = opt.defaultVoice;
-				selectedTtsVoice = opt.defaultVoice;
-				localStorage.setItem("algebenchTtsVoice", opt.defaultVoice);
-			}
-		}
-	});
-	selectedTtsCharacter = ttsCharacterPicker.init();
-	voiceSelect.addEventListener("change", () => {
-		selectedTtsVoice = voiceSelect.value || "Charon";
-	});
-	const ttsModeSelect = document.getElementById("chatTtsModeSelect");
-	if (ttsModeSelect) {
-		selectedTtsMode = localStorage.getItem("algebenchTtsMode") || "read";
-		ttsModeSelect.value = selectedTtsMode;
-		ttsModeSelect.addEventListener("change", () => {
-			selectedTtsMode = ttsModeSelect.value;
-			localStorage.setItem("algebenchTtsMode", selectedTtsMode);
-		});
-	}
-}
-/**
-* Run one `build_scene` tool call: assemble, ask the expert, apply, navigate.
-*
-* Returns the assistant text that must join `chatHistory`, or '' when there is
-* nothing to record. The CALLER pushes it, after the agent's own reply — order
-* matters. A clarifying question is recovered next turn by pairing an assistant
-* turn ending in '?' with the user's next turn, so a question filed BEFORE the
-* agent's reply has that reply sitting between it and the answer, the pair is
-* never made, and the expert asks the same question forever.
-*/
-async function runBuildSceneTool(tc) {
-	const args = tc.args || {};
-	let body;
-	try {
-		body = buildSceneRequestFromToolCall(args, typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, chatHistory, memoryRefs());
-	} catch (e) {
-		const why = e instanceof Error ? e.message : String(e);
-		console.warn("build_scene: not sent —", why);
-		const said = `I couldn't build that: ${why}`;
-		addChatMessage("assistant", said);
-		return said;
-	}
-	console.log("%c🎬 build_scene:", "color: #ffaa00; font-weight: bold", body.op, "at index", body.sceneIndex, "|", body.intent.slice(0, 120));
-	const { lesson, bootstrap } = ensureLessonFormat(typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, typeof currentSpec !== "undefined" && currentSpec ? currentSpec : null);
-	const target = body.sceneIndex;
-	const placeholder = body.op === "insert" ? placeholderScene(body.intent) : null;
-	let reserveFailure = "";
-	if (placeholder) try {
-		applyBuildOps(lesson, [reserveOp(target, placeholder)]);
-	} catch (e) {
-		console.error("build_scene: could not reserve a slot", e);
-		reserveFailure = `I couldn't make room for that scene: ${String(e)}`;
-		addChatMessage("assistant", reserveFailure);
-	}
-	if (reserveFailure) return reserveFailure;
-	lessonSpec = lesson;
-	if (bootstrap.bootstrapped && bootstrap.promotedScene) {
-		currentSceneIndex = 0;
-		currentStepIndex = -1;
-	}
-	showBuiltScene(lesson, target, -1);
-	const hidePill = showBuildPill(body.op === "replace" ? "Rebuilding scene…" : "Building scene…");
-	/**
-	* Leave the reason WHERE THE SCENE WOULD HAVE BEEN.
-	*
-	* A failed build used to release its slot: the scene vanished from the tree,
-	* one sentence went past in chat, and there was nothing left to inspect. The
-	* expert's reason names the element and the field it objected to, which is
-	* the most useful thing it produces when it cannot build — so the slot
-	* becomes a report the reader can navigate to and read at their own pace,
-	* and delete like any other scene.
-	*
-	* Returns false when there was no slot to convert — a `replace`, which
-	* reserves nothing because the reader is already looking at the scene being
-	* rebuilt, and which leaves that scene untouched on failure.
-	*/
-	const reportFailure = (reason) => {
-		if (!placeholder) return false;
-		const at = slotIndex(lesson.scenes, placeholder);
-		if (at < 0) return false;
-		try {
-			applyBuildOps(lesson, [{
-				op: "replace",
-				kind: "scene",
-				at: {
-					index: at,
-					id: placeholder.id
-				},
-				node: failedScene(body.intent, reason)
-			}]);
-		} catch (e) {
-			console.error("build_scene: could not report the failure in place", e);
-			return false;
-		}
-		showBuiltScene(lesson, at, -1);
-		return true;
-	};
-	/** Undo the reservation, for outcomes that are not failures. */
-	const release = () => {
-		if (!placeholder) return;
-		const at = releaseOp(slotIndex(lesson.scenes, placeholder), placeholder);
-		if (!at) return;
-		try {
-			applyBuildOps(lesson, [at]);
-			showBuiltScene(lesson, Math.max(0, (at.at.index ?? 1) - 1), -1);
-		} catch (e) {
-			console.error("build_scene: could not release the reserved slot", e);
-		}
-	};
-	let reply;
-	try {
-		reply = await invokeExpert("build_scene", body, { timeoutMs: BUILD_SCENE_TIMEOUT_MS });
-	} catch (e) {
-		hidePill();
-		const msg = e instanceof ExpertError ? e.message : "The scene builder could not be reached.";
-		console.error("build_scene: request failed", e);
-		reportFailure(msg);
-		addChatMessage("assistant", msg);
-		return msg;
-	}
-	hidePill();
-	const outcome = interpretBuildSceneReply(reply);
-	if (outcome.kind === "passthrough") {
-		console.log("build_scene: not a build → chat");
-		release();
-		const said = "That reads more like a question than a scene to build — tell me what should be visible and I'll build it.";
-		addChatMessage("assistant", said);
-		return said;
-	}
-	if (outcome.kind === "question") {
-		console.log("build_scene: asking —", outcome.question);
-		release();
-		addChatMessage("assistant", outcome.question);
-		return outcome.question;
-	}
-	if (outcome.kind === "refused") {
-		console.warn("build_scene: refused —", outcome.reason);
-		reportFailure(outcome.reason);
-		const said = `I couldn't build that: ${outcome.reason}`;
-		addChatMessage("assistant", said);
-		return said;
-	}
-	const { ops, summary } = outcome.result;
-	const at = placeholder ? slotIndex(lesson.scenes, placeholder) : -1;
-	const landed = placeholder ? ops.map((op) => landOnSlot(op, placeholder, at)) : ops;
-	try {
-		applyBuildOps(lesson, landed);
-	} catch (e) {
-		const why = e instanceof PlacementError ? e.message : String(e);
-		console.error("build_scene: could not apply", e);
-		const said = `The scene was built but wouldn't fit the lesson: ${why}`;
-		reportFailure(said);
-		addChatMessage("assistant", said);
-		return said;
-	}
-	showBuiltScene(lesson, landed[0].at.index ?? target);
-	console.log("%c🎬 build_scene complete", "color: #44ff44; font-weight: bold", summary);
-	addChatMessage("assistant", summary);
-	return summary;
-}
-/**
-* Agent-memory KEYS and their shapes — never their values.
-*
-* `MemoryRef` is `extra="forbid"` on the backend precisely so a ref carrying its
-* `value` is refused at the door: a computed 400-point array must not reach a
-* prompt. The builder only needs to know a key EXISTS and roughly what is in it
-* to reference one.
-*
-* Without this the field was always `[]` in the real client flow, so the whole
-* design was inert — the expert could never mention a stored value.
-*/
-function memoryRefs() {
-	if (!memorySnapshot) return [];
-	return Object.entries(memorySnapshot).map(([key, entry]) => ({
-		key,
-		shape: entry && typeof entry.summary === "string" ? entry.summary : ""
-	}));
-}
-/**
-* Rebuild the scene tree and put the user on scene `index`.
-*
-* `step` defaults to "whichever step carries the sliders", because a scene whose
-* interactive part IS the point renders inert at its root view. Pass an explicit
-* step for the placeholder, which has none.
-*/
-function showBuiltScene(lesson, index, step) {
-	const scene = lesson.scenes[index];
-	const targetStep = step !== void 0 ? step : landingStep(scene);
-	try {
-		if (typeof buildSceneTree === "function") buildSceneTree(lessonSpec);
-		if (typeof updateDockVisibility === "function") updateDockVisibility();
-		if (index === currentSceneIndex) currentSceneIndex = -1;
-		if (typeof navigateTo === "function") navigateTo(index, targetStep);
-		if (isPlaceholder(lesson.scenes[index])) {
-			const empty = document.getElementById("empty-state");
-			if (empty) empty.style.display = "none";
-		}
-		if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
-	} catch (e) {
-		console.error("build_scene: navigation/render failed:", e);
-	}
-}
-/**
-* Send one chat turn. Single-flight (chat-flight.ts): mid-turn, a visible ask
-* is queued and a silent one is turned away with `false`.
-*/
-var sendChatMessage$1 = singleFlightSender(() => chatSending, _sendTurn);
-async function _sendTurn(text, { silent, noTools, display, typed }) {
-	setChatSending(true);
-	if (!silent) {
-		addChatMessage("user", display ?? text);
-		if (display) chatHistory[chatHistory.length - 1].text = text;
-	}
-	const loadingEl = addChatLoading();
-	let presentAfter = null;
-	const context = buildChatContext();
-	if (silent && context.runtime) delete context.runtime.presenter;
-	console.log("%c🤖 Chat send: %c" + text.substring(0, 60), "color: #8888ff; font-weight: bold", "color: #ccc");
-	const payload = {
-		message: text,
-		history: (silent ? chatHistory : chatHistory.slice(0, -1)).filter((h) => h.text),
-		context,
-		...noTools ? { noTools: true } : {},
-		...typed ? { typed: true } : {}
-	};
-	try {
-		const res = await fetch("/api/chat", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(payload)
-		});
-		loadingEl.remove();
-		if (!res.ok) {
-			const err = await res.json().catch(() => ({ error: "Request failed" }));
-			const rawMsg = err.detail ?? err.error;
-			const msg = typeof rawMsg === "string" ? rawMsg : rawMsg != null ? JSON.stringify(rawMsg) : "";
-			console.error("%c🤖 Chat error: %c" + res.status + " — " + (msg || "unknown"), "color: #ff4444; font-weight: bold", "color: #ccc");
-			addChatMessage("assistant", msg || "Something went wrong. Please try again.");
-			if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
-			setChatSending(false);
-			return;
-		}
-		const data = await res.json();
-		if (noTools) data.toolCalls = [];
-		const tcNames = (data.toolCalls || []).map((tc) => tc.name).join(", ");
-		console.log("%c🤖 Chat response: %c" + data.response.length + " chars" + (tcNames ? " | tools: " + tcNames : ""), "color: #88ff88; font-weight: bold", "color: #ccc");
-		if (data.toolCalls && data.toolCalls.length > 0) for (const tc of data.toolCalls) {
-			console.groupCollapsed("%c🔧 TOOL CALL: " + tc.name, "color: #ff8844; font-weight: bold");
-			console.log("%cRequest rawArgs:", "color: #aaa; font-weight: bold", tc.rawArgs || tc.args);
-			console.log("%cRequest exec args:", "color: #aaa; font-weight: bold", tc.args);
-			console.log("%cResult:", "color: #aaa; font-weight: bold", tc.result);
-			console.groupEnd();
-		}
-		if (data.debug) {
-			const contents = data.debug.contents || [];
-			const modelParts = [{ text: data.response }];
-			if (data.toolCalls && data.toolCalls.length > 0) for (const tc of data.toolCalls) modelParts.push({ functionCall: {
-				name: tc.name,
-				args: tc.rawArgs || tc.args
-			} });
-			contents.push({
-				role: "model",
-				parts: modelParts
-			});
-			window.geminiChatHistory = {
-				systemPrompt: data.debug.systemPrompt,
-				contents
-			};
-			try {
-				localStorage.setItem("geminiChatHistory", JSON.stringify(window.geminiChatHistory));
-			} catch (e) {}
-			console.log("%c📋 geminiChatHistory: %c" + (window.geminiChatHistory.systemPrompt || "").length + " char prompt, " + contents.length + " messages (window.geminiChatHistory)", "color: #ffaa44; font-weight: bold", "color: #ccc");
-		}
-		if (data.toolCalls && data.toolCalls.length > 0) {
-			const messagesEl = document.getElementById("chat-messages");
-			for (const tc of data.toolCalls) messagesEl.appendChild(renderToolCallChip(tc));
-			messagesEl.scrollTop = messagesEl.scrollHeight;
-		}
-		let assistantMsg = null;
-		const reply = extractInlineToolCalls(data.response ?? "");
-		for (const call of reply.calls) if (call.name === "set_preset_prompts" && Array.isArray(call.args.prompts)) setPresetPrompts$1(call.args.prompts.filter((p) => typeof p === "string"));
-		const presenting = (data.toolCalls ?? []).some((tc) => tc.name === "present_walkthrough");
-		if (reply.text && !presenting) assistantMsg = addChatMessage("assistant", reply.text);
-		const builderTurns = [];
-		if (data.toolCalls && data.toolCalls.length > 0) {
-			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
-				const agentScene = Math.round(Number(tc.args.scene) || 1);
-				const agentStep = tc.args.step !== void 0 ? Math.round(Number(tc.args.step)) : 0;
-				const internalScene = agentScene - 1;
-				const internalStep = agentStep - 1;
-				const totalScenes = typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes ? lessonSpec.scenes.length : 0;
-				const beforeScene = currentSceneIndex;
-				const beforeStep = currentStepIndex;
-				console.log("%c📍 navigate_to: %cagent: scene=" + agentScene + " step=" + agentStep + " → internal: scene=" + internalScene + " step=" + internalStep + " | before: scene=" + (beforeScene + 1) + " step=" + (beforeStep + 1) + " | totalScenes=" + totalScenes, "color: #ff8844; font-weight: bold", "color: #ccc");
-				if (internalScene < 0 || internalScene >= totalScenes) console.error("📍 navigate_to REJECTED: scene " + agentScene + " out of bounds (1-" + totalScenes + ")");
-				else if (typeof navigateTo === "function") {
-					navigateTo(internalScene, internalStep);
-					if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
-					console.log("%c📍 navigate_to result: %cnow at scene " + (currentSceneIndex + 1) + " step " + (currentStepIndex + 1) + (currentSceneIndex === beforeScene && currentStepIndex === beforeStep ? " ⚠️ NO CHANGE" : ""), "color: #ff8844; font-weight: bold", "color: #ccc");
-				}
-			} else if (tc.name === "set_camera") {
-				const viewName = tc.args.view;
-				if (viewName && typeof CAMERA_VIEWS !== "undefined") {
-					const key = viewName.toLowerCase().replace(/\s+/g, "-");
-					if (CAMERA_VIEWS[key]) animateCamera(key, 800);
-					else {
-						const btn = findCamButton(key);
-						if (btn) btn.click();
-					}
-				} else if (tc.args.position || tc.args.target) {
-					const tgt = tc.args.target || [
-						0,
-						0,
-						0
-					];
-					let pos = tc.args.position;
-					const zoom = tc.args.zoom;
-					if (!pos && typeof camera !== "undefined" && typeof controls !== "undefined" && typeof worldCameraToData === "function") {
-						const curPosData = worldCameraToData([
-							camera.position.x,
-							camera.position.y,
-							camera.position.z
-						]);
-						const curTgtData = worldCameraToData([
-							controls.target.x,
-							controls.target.y,
-							controls.target.z
-						]);
-						pos = [
-							tgt[0] + (curPosData[0] - curTgtData[0]),
-							tgt[1] + (curPosData[1] - curTgtData[1]),
-							tgt[2] + (curPosData[2] - curTgtData[2])
-						];
-					} else if (!pos) pos = [
-						tgt[0],
-						tgt[1] + 50,
-						tgt[2] + 50
-					];
-					if (pos) {
-						const dx = pos[0] - tgt[0], dy = pos[1] - tgt[1], dz = pos[2] - tgt[2];
-						Math.sqrt(dx * dx + dy * dy + dz * dz);
-						if (zoom != null && zoom > 0) {
-							const s = 1 / zoom;
-							pos = [
-								tgt[0] + dx * s,
-								tgt[1] + dy * s,
-								tgt[2] + dz * s
-							];
-						}
-					}
-					if (typeof CAMERA_VIEWS !== "undefined" && typeof animateCamera === "function") {
-						const wPos = typeof dataCameraToWorld === "function" ? dataCameraToWorld(pos) : pos;
-						const wTgt = typeof dataCameraToWorld === "function" ? dataCameraToWorld(tgt) : tgt;
-						const sceneUp = typeof camera !== "undefined" && camera ? [
-							camera.up.x,
-							camera.up.y,
-							camera.up.z
-						] : [
-							0,
-							1,
-							0
-						];
-						CAMERA_VIEWS["__agent"] = {
-							position: wPos,
-							target: wTgt,
-							up: sceneUp
-						};
-						animateCamera("__agent", 800);
-					}
-				}
-			} else if (tc.name === "build_scene") {
-				if (tc.result && tc.result.status === "error") console.log("build_scene: skipped —", tc.result.error || "refused by the server");
-				else {
-					const said = await runBuildSceneTool(tc);
-					if (said) builderTurns.push(said);
-				}
-			} else if (tc.name === "set_sliders") {
-				const values = tc.args.values || {};
-				const promises = Object.entries(values).map(([id, target]) => typeof animateSlider === "function" ? animateSlider(id, parseFloat(String(target)), 800) : Promise.resolve(false));
-				await Promise.all(promises);
-			} else if (tc.name === "set_preset_prompts") setPresetPrompts$1(tc.args.prompts || []);
-			else if (tc.name === "set_info_overlay") {
-				if (tc.args.id) {
-					if (typeof addInfoOverlay === "function") addInfoOverlay(tc.args.id, tc.args.content || "", tc.args.position || "top-left");
-				} else console.warn("set_info_overlay: tool call missing required `id`; dropping", { args: tc.args });
-			} else if (tc.name === "clear_info_overlays") {
-				if (typeof removeAllInfoOverlays === "function") removeAllInfoOverlays();
-			} else if (tc.name === "navigate_proof") {
-				const proofStep = parseInt(String(tc.result?.step ?? tc.args?.step ?? 0));
-				if (typeof navigateProof === "function") navigateProof(proofStep - 1);
-			} else if (tc.name === "derive_proof_animation") {
-				if (tc.result && tc.result.status !== "success") console.log("derive_proof_animation: skipped —", tc.result.error || "not permitted");
-				else if (typeof window.algebenchDeriveProof === "function") window.algebenchDeriveProof(tc.args || {});
-				else console.warn("derive_proof_animation: graph view not ready to derive");
-			} else if (tc.name === "present_walkthrough") {
-				const question = String(tc.args?.question || text);
-				presentAfter = () => {
-					const turn = {
-						role: "assistant",
-						text: ""
-					};
-					chatHistory.push(turn);
-					return presentQuestion(question, {
-						joinHistory: false,
-						onProgress: (said) => {
-							turn.text = said;
-						}
-					}).then((said) => {
-						if (said) {
-							turn.text = said;
-							return;
-						}
-						if (said === "" && reply.text) {
-							addChatMessage("assistant", reply.text);
-							turn.text = reply.text;
-							return;
-						}
-						const at = chatHistory.indexOf(turn);
-						if (at >= 0) chatHistory.splice(at, 1);
-					});
-				};
-			} else if (tc.name === "set_language") {
-				if (typeof tc.args?.language === "string") setLanguage(tc.args.language);
-			} else if (tc.name === "control_coach") {
-				const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
-				if (engine && typeof engine.control === "function") engine.control(tc.args?.action, { step: tc.args?.step });
-				else console.warn("control_coach: coach engine not available");
-			}
-		}
-		if (!presentAfter) chatHistory.push({
-			role: "assistant",
-			text: reply.text
-		});
-		for (const said of builderTurns) chatHistory.push({
-			role: "assistant",
-			text: said
-		});
-		if (presentAfter) presentAfter();
-		while (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
-		const memToolNames = [
-			"eval_math",
-			"mem_get",
-			"mem_set"
-		];
-		if ((data.toolCalls || []).some((tc) => memToolNames.includes(tc.name))) updateMemoryStatus();
-		if (assistantMsg && typeof assistantMsg._startSpeak === "function" && data.response && selectedTtsMode !== "silent") assistantMsg._startSpeak();
-		if (typeof window.algebenchRefreshPromptContext === "function") window.algebenchRefreshPromptContext("chat-turn");
-	} catch (err) {
-		loadingEl.remove();
-		console.error("%c🤖 Chat error: %c" + err, "color: #ff4444; font-weight: bold", "color: #ccc", err);
-		addChatMessage("assistant", err instanceof TypeError && /fetch|network|connect/i.test(err.message) ? "Failed to reach AI service. Check your connection." : "Error processing response: " + err.message);
-		if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
-	}
-	setChatSending(false);
-}
-function addChatMessage(role, content, toolCalls) {
-	const messagesEl = document.getElementById("chat-messages");
-	const msgDiv = document.createElement("div");
-	msgDiv.className = "chat-msg " + role;
-	const avatar = document.createElement("div");
-	avatar.className = "msg-avatar";
-	const _icons = window.algebenchIcons;
-	if (_icons) avatar.innerHTML = role === "user" ? _icons.user : _icons.ai;
-	else avatar.textContent = role === "user" ? "👤" : "🤖";
-	msgDiv.appendChild(avatar);
-	const body = document.createElement("div");
-	body.className = "msg-body";
-	if (typeof renderKaTeX === "function" && typeof renderMarkdown === "function") body.innerHTML = role === "user" ? renderKaTeX(content, false) : renderMarkdown(content, { untrusted: true });
-	else body.textContent = content;
-	body.dataset.markdown = stripGlossaryMarkers(content);
-	msgDiv.appendChild(body);
-	if (role === "assistant") {
-		const SVG_SPEAKER = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"12\" height=\"12\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z\"/></svg>";
-		const speakBtn = document.createElement("button");
-		speakBtn.className = "msg-speak-btn";
-		speakBtn.title = "Read aloud";
-		speakBtn.innerHTML = SVG_SPEAKER;
-		const setBtnState = (state) => {
-			speakBtn.classList.remove("active", "loading", "idle");
-			if (state) speakBtn.classList.add(state);
-			else speakBtn.classList.add("idle");
-			msgDiv.classList.remove("tts-speaking", "tts-loading");
-			if (state === "active") msgDiv.classList.add("tts-speaking");
-			if (state === "loading") msgDiv.classList.add("tts-loading");
-			if (state === "loading") {
-				speakBtn.textContent = "...";
-				speakBtn.title = "Loading audio (click to cancel)";
-			} else if (state === "active") {
-				speakBtn.innerHTML = SVG_SPEAKER;
-				speakBtn.title = "Playing (click to stop, double-click to restart)";
-			} else {
-				speakBtn.innerHTML = SVG_SPEAKER;
-				speakBtn.title = "Read aloud (click to play)";
-			}
-		};
-		const stopOtherBtn = () => {
-			if (activeSpeakBtn && activeSpeakBtn !== speakBtn) {
-				if (activeSpeakBtn._ttsLoadPoll) {
-					clearInterval(activeSpeakBtn._ttsLoadPoll);
-					activeSpeakBtn._ttsLoadPoll = null;
-				}
-				if (activeSpeakBtn._ttsStatePoll) {
-					clearInterval(activeSpeakBtn._ttsStatePoll);
-					activeSpeakBtn._ttsStatePoll = null;
-				}
-				if (typeof activeSpeakBtn._setBtnState === "function") activeSpeakBtn._setBtnState(null);
-				if (activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = "none";
-				activeSpeakBtn = null;
-			}
-		};
-		const stopAndReset = () => {
-			if (typeof window.algebenchStopTTS === "function") window.algebenchStopTTS();
-			if (speakBtn._ttsStatePoll) {
-				clearInterval(speakBtn._ttsStatePoll);
-				speakBtn._ttsStatePoll = null;
-			}
-			setBtnState(null);
-			if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
-		};
-		const startPlay = () => {
-			stopOtherBtn();
-			if (typeof window.algebenchSpeakText !== "function") return;
-			if (speakBtn._ttsStatePoll) {
-				clearInterval(speakBtn._ttsStatePoll);
-				speakBtn._ttsStatePoll = null;
-			}
-			setBtnState("loading");
-			activeSpeakBtn = speakBtn;
-			window.algebenchSpeakText(body.dataset.markdown || content, () => {
-				if (speakBtn._ttsStatePoll) {
-					clearInterval(speakBtn._ttsStatePoll);
-					speakBtn._ttsStatePoll = null;
-				}
-				setBtnState(null);
-				if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
-			});
-			speakBtn._ttsStatePoll = setInterval(() => {
-				if (activeSpeakBtn !== speakBtn) {
-					clearInterval(speakBtn._ttsStatePoll);
-					speakBtn._ttsStatePoll = null;
-					return;
-				}
-				const p = typeof _ensureTTSPlayer === "function" ? _ensureTTSPlayer() : null;
-				if (!p) return;
-				const playerState = p._state;
-				if (playerState === "loading") {
-					if (!speakBtn.classList.contains("loading")) setBtnState("loading");
-				} else if (playerState === "playing") {
-					if (!speakBtn.classList.contains("active")) setBtnState("active");
-				}
-			}, 80);
-		};
-		speakBtn._setBtnState = setBtnState;
-		msgDiv._startSpeak = startPlay;
-		speakBtn.addEventListener("click", () => {
-			if (speakBtn._ignoreNextClick) {
-				speakBtn._ignoreNextClick = false;
-				return;
-			}
-			if (msgDiv.classList.contains("presenting-now")) {
-				stopPresenting();
-				return;
-			}
-			if (msgDiv._replay) {
-				stopOtherBtn();
-				if (activeSpeakBtn) stopAndReset();
-				msgDiv._replay();
-				return;
-			}
-			if (activeSpeakBtn === speakBtn) {
-				stopAndReset();
-				return;
-			}
-			startPlay();
-		});
-		speakBtn.addEventListener("dblclick", (e) => {
-			e.preventDefault();
-			if (msgDiv._replay || msgDiv.classList.contains("presenting-now")) return;
-			speakBtn._ignoreNextClick = true;
-			stopAndReset();
-			startPlay();
-		});
-		const downloadBtn = document.createElement("a");
-		downloadBtn.className = "tts-download-btn";
-		downloadBtn.href = "/api/tts/download";
-		downloadBtn.download = "";
-		downloadBtn.title = "Download audio";
-		downloadBtn.innerHTML = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"11\" height=\"11\"><path d=\"M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z\"/></svg>";
-		downloadBtn.style.display = "none";
-		speakBtn._downloadBtn = downloadBtn;
-		const speakCol = document.createElement("div");
-		speakCol.className = "tts-speak-col";
-		speakCol.appendChild(speakBtn);
-		speakCol.appendChild(downloadBtn);
-		msgDiv.appendChild(speakCol);
-	}
-	messagesEl.appendChild(msgDiv);
-	messagesEl.scrollTop = messagesEl.scrollHeight;
-	if (role === "user") chatHistory.push({
-		role: "user",
-		text: content
-	});
-	return msgDiv;
-}
-function addChatLoading() {
-	const messagesEl = document.getElementById("chat-messages");
-	const loadingDiv = document.createElement("div");
-	loadingDiv.className = "chat-msg assistant";
-	const avatar = document.createElement("div");
-	avatar.className = "msg-avatar";
-	if (window.algebenchIcons) avatar.innerHTML = window.algebenchIcons.ai;
-	else avatar.textContent = "🤖";
-	loadingDiv.appendChild(avatar);
-	const body = document.createElement("div");
-	body.className = "msg-body chat-loading";
-	body.innerHTML = "<span></span><span></span><span></span>";
-	loadingDiv.appendChild(body);
-	messagesEl.appendChild(loadingDiv);
-	messagesEl.scrollTop = messagesEl.scrollHeight;
-	return loadingDiv;
-}
-function renderToolCallChip(tc) {
-	const chip = document.createElement("div");
-	chip.className = "chat-tool-call";
-	const rawArgs = tc.rawArgs || tc.args;
-	const e = _escHtml;
-	let friendlyText = e(tc.name);
-	if (tc.name === "navigate_to") {
-		const reason = tc.args.reason || "";
-		const agentScene = Math.round(Number(tc.args.scene) || 1);
-		const agentStep = tc.args.step !== void 0 ? Math.round(Number(tc.args.step)) : 0;
-		let sceneTitle = "Scene " + agentScene;
-		let stepTitle = "";
-		if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes) {
-			const s = lessonSpec.scenes[agentScene - 1];
-			if (s) {
-				sceneTitle = s.title || sceneTitle;
-				if (agentStep >= 1 && s.steps && s.steps[agentStep - 1]) stepTitle = s.steps[agentStep - 1].title || "Step " + agentStep;
-				else if (agentStep === 0) stepTitle = "Root";
-			}
-		}
-		friendlyText = "📍 Navigated to \"" + e(sceneTitle) + "\"";
-		if (stepTitle) friendlyText += ", " + e(stepTitle);
-		if (reason) friendlyText += " — " + e(reason);
-	} else if (tc.name === "set_camera") {
-		const reason = tc.args.reason || "better viewing angle";
-		friendlyText = "🎥 Camera adjusted" + (tc.args.view ? " (" + e(tc.args.view) + ")" : "") + " — " + e(reason);
-	} else if (tc.name === "build_scene") friendlyText = "🎬 " + (tc.args.op === "replace" ? "Rebuilding scene" : "Building a scene") + " — " + e(String(tc.args.intent || "new visualization"));
-	else if (tc.name === "set_sliders") {
-		const vals = tc.args.values || {};
-		const parts = Object.entries(vals).map(([id, v]) => e(id) + "→" + e(String(v)));
-		friendlyText = "🎚️ Set " + (parts.length > 0 ? parts.join(", ") : "sliders");
-	} else if (tc.name === "eval_math") {
-		const expr = tc.args.expression || "";
-		const result = tc.result && tc.result.result !== void 0 ? tc.result.result : null;
-		const storedAs = tc.result && tc.result.stored_as;
-		const err = tc.result && tc.result.error;
-		if (err) friendlyText = "🧮 eval: " + e(expr) + " → ❌ " + e(err);
-		else if (storedAs) {
-			const summary = tc.result && tc.result.summary || "";
-			friendlyText = "🧮 " + e(expr) + " → 💾 memory['" + e(storedAs) + "'] " + e(summary);
-		} else if (Array.isArray(result) && result.length > 3) friendlyText = "🧮 " + e(expr) + " → [" + result.length + " points]";
-		else {
-			const val = typeof result === "number" ? Number.isInteger(result) ? result : +result.toFixed(6) : JSON.stringify(result);
-			friendlyText = "🧮 " + e(expr) + " = " + e(String(val));
-		}
-	} else if (tc.name === "mem_get") {
-		const key = tc.args.key || "";
-		const err = tc.result && tc.result.error;
-		if (key === "?") {
-			const keys = tc.result && tc.result.keys;
-			friendlyText = "🗂️ memory keys: " + e(keys && typeof keys === "object" ? Object.keys(keys).join(", ") : "(empty)");
-		} else if (err) friendlyText = "🗂️ memory['" + e(key) + "'] → ❌ not found";
-		else {
-			const summary = tc.result && tc.result.summary || "";
-			friendlyText = "🗂️ memory['" + e(key) + "'] → " + e(summary);
-		}
-	} else if (tc.name === "mem_set") {
-		const key = tc.args.key || "";
-		const err = tc.result && tc.result.error;
-		if (err) friendlyText = "💾 mem_set['" + e(key) + "'] → ❌ " + e(err);
-		else {
-			const summary = tc.result && tc.result.summary || "";
-			friendlyText = "💾 memory['" + e(key) + "'] = " + e(summary);
-		}
-	} else if (tc.name === "present_walkthrough") friendlyText = "🎯 Presenting: " + e(String(tc.args?.question || "").slice(0, 80));
-	else if (tc.name === "set_preset_prompts") {
-		const count = (tc.args.prompts || []).length;
-		friendlyText = count === 0 ? "💬 Cleared preset prompts" : "💬 Set " + count + " preset prompt" + (count === 1 ? "" : "s");
-	} else if (tc.name === "set_info_overlay") {
-		if (tc.args.clear) friendlyText = "🖼️ Cleared info overlays";
-		else {
-			const id = tc.args.id || "overlay";
-			const pos = tc.args.position || "top-left";
-			friendlyText = "🖼️ Info overlay \"" + e(id) + "\" @ " + e(pos);
-		}
-	} else if (tc.name === "navigate_proof") {
-		const step = tc.args.step || 0;
-		const reason = tc.args.reason || "";
-		friendlyText = step === 0 ? "📐 Proof: showing goal overview" : "📐 Proof: step " + step + (reason ? " — " + e(reason) : "");
-	} else if (tc.name === "set_language") friendlyText = "🌐 Language: " + e(String(tc.args.language || ""));
-	else if (tc.name === "control_coach") {
-		const action = tc.args.action || "status";
-		const step = tc.args.step ? " → " + e(String(tc.args.step)) : "";
-		friendlyText = "🧭 Tour: " + e(action) + step;
-	}
-	const header = document.createElement("div");
-	header.style.cssText = "display:flex;align-items:flex-start;justify-content:space-between;gap:8px;";
-	chip.appendChild(header);
-	const summary = document.createElement("div");
-	summary.className = "tool-call-summary";
-	summary.style.flex = "1";
-	if (typeof renderMarkdown === "function") summary.innerHTML = renderMarkdown(friendlyText, { untrusted: true });
-	else summary.textContent = friendlyText;
-	header.appendChild(summary);
-	const resolvedBtn = document.createElement("button");
-	resolvedBtn.type = "button";
-	resolvedBtn.title = "View resolved args/result";
-	resolvedBtn.textContent = "ⓘ";
-	resolvedBtn.style.cssText = "border:1px solid rgba(255,255,255,0.2);background:transparent;color:#9aa0a6;border-radius:999px;width:18px;height:18px;line-height:16px;font-size:11px;cursor:pointer;padding:0;flex-shrink:0;";
-	header.appendChild(resolvedBtn);
-	const details = document.createElement("div");
-	details.className = "tool-call-details hidden";
-	details.textContent = JSON.stringify({ functionCall: {
-		name: tc.name,
-		args: rawArgs
-	} }, null, 2);
-	chip.appendChild(details);
-	const resultPreview = document.createElement("div");
-	resultPreview.className = "tool-call-details hidden";
-	resultPreview.style.cssText = "margin-top:4px;font-size:11px;color:#7f8790;";
-	const r = tc.result || {};
-	if (typeof r.message === "string" && r.message.trim()) resultPreview.textContent = r.message.trim();
-	else if (typeof r.error === "string" && r.error.trim()) resultPreview.textContent = "Error: " + r.error.trim();
-	else if (typeof r.summary === "string" && r.summary.trim()) resultPreview.textContent = r.summary.trim();
-	else if (r.status) resultPreview.textContent = "Status: " + r.status;
-	chip.appendChild(resultPreview);
-	const resolvedBackdrop = document.createElement("div");
-	resolvedBackdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;";
-	const resolvedPanel = document.createElement("div");
-	resolvedPanel.style.cssText = "width:min(760px,92vw);max-height:82vh;overflow:auto;background:#11161d;border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:10px 12px;";
-	resolvedBackdrop.appendChild(resolvedPanel);
-	const resolvedHeader = document.createElement("div");
-	resolvedHeader.style.cssText = "position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;margin:-10px -12px 8px -12px;padding:10px 12px;background:#11161d;border-bottom:1px solid rgba(255,255,255,0.12);color:#cfd6df;font-size:12px;";
-	resolvedHeader.textContent = "Resolved args/result";
-	resolvedPanel.appendChild(resolvedHeader);
-	const closeBtn = document.createElement("button");
-	closeBtn.type = "button";
-	closeBtn.textContent = "✕";
-	closeBtn.style.cssText = "border:1px solid rgba(255,255,255,0.25);background:transparent;color:#cfd6df;border-radius:6px;padding:1px 6px;cursor:pointer;";
-	resolvedHeader.appendChild(closeBtn);
-	const resolvedBody = document.createElement("pre");
-	resolvedBody.style.cssText = "margin:0;font-size:12px;line-height:1.35;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;";
-	resolvedBody.textContent = JSON.stringify({
-		functionCall: {
-			name: tc.name,
-			args: tc.args
-		},
-		result: tc.result
-	}, null, 2);
-	resolvedPanel.appendChild(resolvedBody);
-	document.body.appendChild(resolvedBackdrop);
-	summary.addEventListener("click", () => {
-		details.classList.toggle("hidden");
-		resultPreview.classList.toggle("hidden");
-	});
-	const hideResolvedPopup = () => {
-		resolvedBackdrop.style.display = "none";
-	};
-	const onResolvedPopupKeydown = (e) => {
-		if (e.key === "Escape" && resolvedBackdrop.style.display !== "none") hideResolvedPopup();
-	};
-	resolvedBtn.addEventListener("click", (e) => {
-		e.stopPropagation();
-		resolvedBackdrop.style.display = "flex";
-	});
-	closeBtn.addEventListener("click", hideResolvedPopup);
-	resolvedBackdrop.addEventListener("click", (e) => {
-		if (e.target === resolvedBackdrop) hideResolvedPopup();
-	});
-	document.addEventListener("keydown", onResolvedPopupKeydown);
-	return chip;
-}
-var _SVG_UNMUTED = "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"currentColor\"><path d=\"M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3.74 2.04a4.5 4.5 0 010 9.32l-.55-.96a3.5 3.5 0 000-7.4l.55-.96zm-.93 2.17a2.5 2.5 0 010 4.98l-.55-.96a1.5 1.5 0 000-3.06l.55-.96z\"/></svg>";
-var _SVG_MUTED = "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"currentColor\"><path d=\"M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3 4.2l1.5 1.5L14 5.5l.7.7L13.2 7.7l1.5 1.5-.7.7L12.5 8.4 11 9.9l-.7-.7 1.5-1.5L10.3 6.2l.7-.7z\"/></svg>";
-var ttsRequestId = 0;
-var ttsPausedByUser = false;
-var ttsPlayer = null;
-var ttsHasOutputFile = false;
-var ttsAbortController = null;
-function _ensureTTSPlayer() {
-	if (!ttsPlayer && window.GeminiTTSPlayer) {
-		ttsPlayer = new window.GeminiTTSPlayer.TTSAudioPlayer({
-			volume: .5,
-			persistKey: "algebenchTTS",
-			onVolumeChange(vol, muted) {
-				const slider = document.getElementById("ttsVolumeSlider");
-				const icon = document.getElementById("ttsVolumeIcon");
-				if (slider) slider.value = String(muted ? 0 : vol);
-				if (icon) icon.innerHTML = muted ? _SVG_MUTED : _SVG_UNMUTED;
-			}
-		});
-		const slider = document.getElementById("ttsVolumeSlider");
-		const icon = document.getElementById("ttsVolumeIcon");
-		if (slider) {
-			slider.value = String(ttsPlayer.isMuted() ? 0 : ttsPlayer.getVolume());
-			slider.addEventListener("input", () => ttsPlayer.setVolume(parseFloat(slider.value)));
-		}
-		if (icon) {
-			icon.innerHTML = ttsPlayer.isMuted() ? _SVG_MUTED : _SVG_UNMUTED;
-			icon.addEventListener("click", () => ttsPlayer.toggleMute());
-		}
-	}
-	return ttsPlayer;
-}
-window.algebenchGetTTSAudioStream = function() {
-	const p = _ensureTTSPlayer();
-	return p ? p.getMediaStream() : null;
-};
-window.algebenchIsTTSSpeaking = function() {
-	if (ttsPausedByUser) return false;
-	const p = _ensureTTSPlayer();
-	return p ? p._state === "playing" : false;
-};
-window.algebenchIsTTSPaused = function() {
-	return ttsPausedByUser;
-};
-window.algebenchIsTTSLoading = function() {
-	const p = _ensureTTSPlayer();
-	return p ? p._state === "loading" : false;
-};
-window.algebenchPauseTTS = function() {
-	const p = _ensureTTSPlayer();
-	if (!p || !p._ctx) return;
-	ttsPausedByUser = true;
-	p._ctx.suspend().catch(() => {});
-};
-window.algebenchResumeTTS = function() {
-	const p = _ensureTTSPlayer();
-	if (!p || !p._ctx) return;
-	ttsPausedByUser = false;
-	p._ctx.resume().catch(() => {});
-};
-/** Whether this browser is speaking (or fetching speech) right now. Callers that
-*  only need to silence *their own* talk check this first: algebenchStopTTS
-*  also tells the server to kill every TTS stream. */
-var TTS_GAP_MS = 500;
-var ttsLastHeard = 0;
-window.algebenchTTSActive = function() {
-	const p = _ensureTTSPlayer();
-	if (ttsAbortController || !!p && p.isPlaying()) {
-		ttsLastHeard = Date.now();
-		return true;
-	}
-	return Date.now() - ttsLastHeard < TTS_GAP_MS;
-};
-window.algebenchStopTTS = function() {
-	++ttsRequestId;
-	ttsPausedByUser = false;
-	ttsHasOutputFile = false;
-	if (ttsAbortController) {
-		ttsAbortController.abort();
-		ttsAbortController = null;
-	}
-	const p = _ensureTTSPlayer();
-	if (p) p.stop();
-	fetch("/api/tts/kill", { method: "POST" }).catch(() => {});
-};
-window.algebenchSpeakText = function(text, onEnd) {
-	const expectedId = ttsRequestId + 1;
-	speakText(text, { explicit: true });
-	if (typeof onEnd !== "function") return;
-	let hasStarted = false;
-	let sawNonIdle = false;
-	let quietSince = 0;
-	const poll = setInterval(() => {
-		if (ttsRequestId !== expectedId) {
-			clearInterval(poll);
-			onEnd();
-			return;
-		}
-		const p = _ensureTTSPlayer();
-		if (p && p._state !== "idle") sawNonIdle = true;
-		if (p && p.isPlaying()) hasStarted = true;
-		if (hasStarted && p && !p.isPlaying() && !ttsAbortController) {
-			quietSince ||= Date.now();
-			if (Date.now() - quietSince >= TTS_GAP_MS) {
-				clearInterval(poll);
-				onEnd();
-				return;
-			}
-		} else quietSince = 0;
-		if (!hasStarted && sawNonIdle && p && p._state === "idle") {
-			clearInterval(poll);
-			onEnd();
-			return;
-		}
-		if (!p || !hasStarted && !ttsAbortController && p._state === "idle") {
-			clearInterval(poll);
-			onEnd();
-		}
-	}, 80);
-};
-async function speakText(text, { explicit = false } = {}) {
-	if (selectedTtsMode === "silent" && !explicit) return;
-	const clean = speechText(stripGlossaryMarkers(text));
-	if (!clean) return;
-	const myId = ++ttsRequestId;
-	ttsPausedByUser = false;
-	ttsHasOutputFile = false;
-	if (activeSpeakBtn && activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = "none";
-	const myDownloadBtn = activeSpeakBtn ? activeSpeakBtn._downloadBtn : null;
-	const player = _ensureTTSPlayer();
-	if (!player) return;
-	if (ttsAbortController) {
-		ttsAbortController.abort();
-		ttsAbortController = null;
-	}
-	const abort = new AbortController();
-	ttsAbortController = abort;
-	let response;
-	try {
-		response = await fetch("/api/tts/stream", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			signal: abort.signal,
-			body: JSON.stringify({
-				text: clean,
-				character: selectedTtsCharacter || "joker",
-				voice: selectedTtsVoice || "Charon",
-				mode: selectedTtsMode === "silent" ? "perform" : selectedTtsMode || "read"
-			})
-		});
-		if (!response.ok || ttsRequestId !== myId) return;
-		ttsHasOutputFile = response.headers.get("X-TTS-Has-Output-File") === "1";
-		await player.playStreamWithAbort(response, abort);
-		if (ttsRequestId === myId && ttsHasOutputFile && myDownloadBtn) myDownloadBtn.style.display = "flex";
-	} catch (err) {
-		return;
-	} finally {
-		if (ttsAbortController === abort) ttsAbortController = null;
-	}
-}
-(function _initTTSKillListener() {
-	let es = null;
-	function connect() {
-		es = new EventSource("/api/tts/events");
-		es.addEventListener("kill", () => {
-			++ttsRequestId;
-			ttsPausedByUser = false;
-			ttsHasOutputFile = false;
-			if (ttsAbortController) {
-				ttsAbortController.abort();
-				ttsAbortController = null;
-			}
-			const p = _ensureTTSPlayer();
-			if (p) p.stop();
-		});
-		es.onerror = () => {
-			es.close();
-			setTimeout(connect, 3e3);
-		};
-	}
-	if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", connect);
-	else connect();
-})();
-var _lastContextJson = "";
-function logContextIfChanged() {
-	const context = buildChatContext();
-	const json = JSON.stringify(context, null, 2);
-	if (json === _lastContextJson) return;
-	_lastContextJson = json;
-	localStorage.setItem("algebench-chat-context", json);
-	window.dispatchEvent(new CustomEvent("algebench-context-changed", { detail: {
-		context,
-		json
-	} }));
-	const scene = context.currentScene || {};
-	const rt = context.runtime || {};
-	const sceneParts = [
-		scene.title ? `"${scene.title}"` : null,
-		scene.steps ? `${scene.steps.length} steps` : null,
-		scene.prompt ? "has prompt" : null
-	].filter(Boolean).join(", ");
-	const rtParts = [
-		rt.stepNumber !== void 0 ? `step ${rt.stepNumber}` : null,
-		rt.sliders ? `${Object.keys(rt.sliders).length} sliders` : null,
-		rt.activeTab || null
-	].filter(Boolean).join(", ");
-	if (document.body.dataset.debugMode === "true") console.log(`%c🤖 Chat context updated: %cscene=[${sceneParts}] runtime=[${rtParts}] (${json.length} chars)`, "color: #8888ff; font-weight: bold", "color: #ccc");
-}
-var _contextPollId = null;
-function startContextPolling() {
-	if (_contextPollId) return;
-	_contextPollId = setInterval(logContextIfChanged, 1e3);
-}
-function sendWelcomeMessage() {
-	if (!chatAvailable$1 || shouldSkipWelcome() || welcomeInFlight) return;
-	welcomeInFlight = true;
-	sendChatMessage$1("**LENGTH OVERRIDE FOR THIS REPLY ONLY:** the usual brevity rule does NOT apply to this welcome. Subsequent replies revert to normal brevity.\n\nThe user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. *Actually explain what is on screen* — do not just acknowledge it. Structure:\n\n1. ONE short sentence acknowledging the surface (e.g. \"You are looking at the semantic graph for step 3\" or \"You are on the 3D scene of …\").\n2. A SUBSTANTIVE explanation (3–6 sentences) of what is on screen right now:\n   - If a graph node is selected: explain that node — what the symbol means in context, what role it plays in the equation, and how it relates to the surrounding nodes (use the incoming/outgoing neighbors from Active Semantic Graph).\n   - If the semantic graph is open with no node selected: walk through the structure of the graph (root operator, key operands, the relationship the graph encodes).\n   - If on the 3D scene: explain the visible elements and what the current step is demonstrating.\n3. End with ONE concrete follow-up question the user is most likely to ask next, phrased as an offer (e.g. \"Want me to walk through how … relates to … ?\").\n\nDo not be generic. Do not list capabilities. Use the specific names, symbols, and relationships from the Active Semantic Graph / Active Proof Step / Current Scene Definition sections of the system prompt.", { silent: true }).finally(() => {
-		welcomeInFlight = false;
-	});
-}
-function renderMemoryPopup(mem, queryText) {
-	const body = document.getElementById("memory-popup-body");
-	if (!body) return;
-	body.innerHTML = "";
-	if (!mem || Object.keys(mem).length === 0) {
-		const empty = document.createElement("div");
-		empty.id = "memory-popup-empty";
-		empty.textContent = "No keys stored yet.";
-		body.appendChild(empty);
-		return;
-	}
-	const q = (queryText || "").trim().toLowerCase();
-	let matchCount = 0;
-	for (const key of Object.keys(mem)) {
-		const entry = mem[key] || {};
-		const summary = entry.summary || "";
-		const val = entry.value;
-		let previewText = "";
-		if (val !== null && val !== void 0) {
-			previewText = JSON.stringify(val);
-			if (previewText.length > 120) previewText = previewText.slice(0, 120) + "…";
-		}
-		if (q) {
-			if (!`${key}\n${summary}\n${previewText}`.toLowerCase().includes(q)) continue;
-		}
-		matchCount++;
-		const div = document.createElement("div");
-		div.className = "memory-entry";
-		const keyEl = document.createElement("span");
-		keyEl.className = "memory-entry-key";
-		keyEl.textContent = key;
-		div.appendChild(keyEl);
-		const sep = document.createElement("span");
-		sep.style.color = "rgba(120,200,255,0.4)";
-		sep.textContent = " → ";
-		div.appendChild(sep);
-		const summaryEl = document.createElement("span");
-		summaryEl.className = "memory-entry-summary";
-		summaryEl.textContent = summary;
-		div.appendChild(summaryEl);
-		if (previewText) {
-			const preview = document.createElement("div");
-			preview.className = "memory-entry-preview";
-			preview.textContent = previewText;
-			div.appendChild(preview);
-		}
-		body.appendChild(div);
-	}
-	if (matchCount === 0) {
-		const noRes = document.createElement("div");
-		noRes.id = "memory-popup-no-results";
-		noRes.textContent = "No matching memory entries.";
-		body.appendChild(noRes);
-	}
-}
-function updateMemoryStatus() {
-	fetch("/api/memory").then((r) => r.ok ? r.json() : null).then((mem) => {
-		if (!mem) return;
-		memorySnapshot = mem;
-		window.agentMemoryValues = Object.fromEntries(Object.entries(mem).map(([k, v]) => [k, v && Object.prototype.hasOwnProperty.call(v, "value") ? v.value : void 0]));
-		if (typeof updateInfoOverlays === "function") try {
-			updateInfoOverlays();
-		} catch (_e) {}
-		const keys = Object.keys(mem);
-		const pill = document.getElementById("memory-status");
-		const countEl = pill && pill.querySelector(".memory-status-count");
-		const searchInput = document.getElementById("memory-popup-search");
-		if (!pill) return;
-		if (keys.length === 0) {
-			pill.classList.add("hidden");
-			const popup = document.getElementById("memory-popup");
-			if (popup) popup.classList.add("hidden");
-			return;
-		}
-		if (countEl) countEl.textContent = String(keys.length);
-		pill.classList.remove("hidden");
-		const bar = document.getElementById("status-bar");
-		if (bar) bar.classList.remove("hidden");
-		renderMemoryPopup(mem, searchInput ? searchInput.value : "");
-	}).catch(() => {});
-}
-document.addEventListener("DOMContentLoaded", () => {
-	setupChat();
-	startContextPolling();
-	const memPill = document.getElementById("memory-status");
-	const memPopup = document.getElementById("memory-popup");
-	const memClose = document.getElementById("memory-popup-close");
-	const memSearch = document.getElementById("memory-popup-search");
-	if (memPill && memPopup) memPill.addEventListener("click", () => {
-		memPopup.classList.toggle("hidden");
-	});
-	if (memClose && memPopup) memClose.addEventListener("click", () => {
-		memPopup.classList.add("hidden");
-	});
-	if (memSearch) memSearch.addEventListener("input", () => {
-		renderMemoryPopup(memorySnapshot, memSearch.value);
-	});
-});
-window._escHtml = _escHtml;
-window._classifyFocusTarget = _classifyFocusTarget;
-window.setPresetPrompts = setPresetPrompts$1;
-window.shouldSkipWelcome = shouldSkipWelcome;
-window.buildChatContext = buildChatContext;
-window.switchPanelTab = switchPanelTab$1;
-window.setupChat = setupChat;
-window.initChatTtsControls = initChatTtsControls;
-window.sendChatMessage = sendChatMessage$1;
-window.algebenchRecordChatTurn = (question, answer) => {
-	if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user" && chatHistory[chatHistory.length - 1].text === question) chatHistory.pop();
-	chatHistory.push({
-		role: "user",
-		text: question
-	}, {
-		role: "assistant",
-		text: answer
-	});
-};
-window.addChatMessage = addChatMessage;
-window.addChatLoading = addChatLoading;
-window.renderToolCallChip = renderToolCallChip;
-window._ensureTTSPlayer = _ensureTTSPlayer;
-window.speakText = speakText;
-window.logContextIfChanged = logContextIfChanged;
-window.startContextPolling = startContextPolling;
-window.sendWelcomeMessage = sendWelcomeMessage;
-window.renderMemoryPopup = renderMemoryPopup;
-window.updateMemoryStatus = updateMemoryStatus;
 //#endregion
 //#region src/plan-text.ts
 /** Fill `e` with `text`: math through KaTeX, the rest as text nodes. Returns `e`. */

@@ -282,8 +282,13 @@ export function suppressChatWelcome(ms = 5000): void {
     _welcomeSuppressedUntil = Math.max(_welcomeSuppressedUntil, Date.now() + ms);
 }
 
+/** The welcome is said once, ever: after that the Chat tab opens quietly (remembered in this browser). */
+const WELCOMED_KEY = 'algebench.chatWelcomed';
+function welcomedBefore(): boolean {
+    try { return localStorage.getItem(WELCOMED_KEY) === '1'; } catch { return false; }
+}
 function shouldSkipWelcome(): boolean {
-    return chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
+    return welcomedBefore() || chatHistory.length > 0 || chatSending || Date.now() < _welcomeSuppressedUntil;
 }
 
 /** How long the Chat tab waits before greeting, so anything the learner starts first wins. */
@@ -1915,6 +1920,7 @@ function startContextPolling(): void {
 function sendWelcomeMessage(): void {
     if (!chatAvailable || shouldSkipWelcome() || welcomeInFlight) return;
     welcomeInFlight = true;
+    try { localStorage.setItem(WELCOMED_KEY, '1'); } catch { /* no storage: it may greet again next time */ }
     sendChatMessage(
         '**LENGTH OVERRIDE FOR THIS REPLY ONLY:** the usual brevity rule does NOT apply to this welcome. Subsequent replies revert to normal brevity.\n\n' +
         'The user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. *Actually explain what is on screen* — do not just acknowledge it. Structure:\n\n' +

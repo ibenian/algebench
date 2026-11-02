@@ -23,6 +23,7 @@ LOG_TAG = "[code_assist]"
 NO_STEPS = "I looked, but had nothing to type here: it may already be complete. Ask the coach to check it."
 NOTHING_TO_FIX = "I don't see anything wrong in what you've typed so far. Keep going!"
 ASK_FIRST = "Tell me what you'd like help with, then send it."
+SHOWING = "Let me show you that on the scene."
 
 
 def render_inputs(req: CodeAssistRequest) -> dict:
@@ -42,6 +43,7 @@ def render_inputs(req: CodeAssistRequest) -> dict:
         "issues": "\n".join(f"line {n.line}: {n.note}" for n in req.issues),
         "request": req.request.strip(),
         "cursor": f"line {req.cursor}" if req.cursor else "unknown",
+        "presenter": "on" if req.present else "off",
         "problems": "\n".join(f"line {line}: {msg}" for line, msg in undefined_names(req.typed, req.expected, req.language)),
     }
 
@@ -98,6 +100,9 @@ def code_assist(req: CodeAssistRequest) -> dict:
     out = assist_code(req.scope, editor_text=req.typed, **render_inputs(req))
     if out.error:
         return {"reason": out.error}
+    if out.show and req.present:
+        # Shown on the view by the chat, not typed here: what was said, and the request for it.
+        return {"reason": out.closing or SHOWING, "show": out.show}
     if not out.steps:
         # A fix with nothing to fix, or a question with nothing to type: the answer is all there is.
         if req.scope in ("fix", "ask", "narrate", "pair") and out.closing:

@@ -289,6 +289,10 @@ def clean_steps(raw, refs: set[str], frames: int, left=None) -> list[PresentStep
         rubbed = _rub_out(s.erase_draw, drawn, links)
         groups &= set(drawn)
         drawing = _drawing(s.draw, refs, written, drawn, groups)
+        sent = len(s.draw.elements) if isinstance(s.draw, Drawing) else 0
+        if sent and len(drawing.elements if drawing else []) < sent:
+            log.info("scene_present: beat %d drew %d of its %d element(s): %s", len(out) + 1,
+                     len(drawing.elements) if drawing else 0, sent, [e.model_dump(exclude_defaults=True) for e in s.draw.elements[:6]])
         for e in drawing.elements if drawing else []:
             if e.id and (e.start or e.near or e.group or e.around):
                 links[e.id] = (e.start, e.end) if e.start else (e.near,) if e.near else tuple(e.around) or (e.group,)

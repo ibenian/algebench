@@ -15,7 +15,8 @@ import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
 import { invokeExpert } from '/expert-client.js';
-import { presenterOn, presenting, stopPresenting } from '/presenter.js';
+import { presenterOn, presenting } from '/presenter.js';
+import { suppressChatWelcome } from '/chat.js';
 import { sceneHasCode } from '/describe-problem.js';
 import { createPracticeStore } from '/practice-store.js';
 import { lessonId, formerLessonKeys } from '/lesson-id.js';
@@ -278,15 +279,14 @@ export function setupCodePractice(): void {
     const chatTalking = () => !!window.algebenchChatBusy?.() || presenting() || (!coachTalking && !!window.algebenchTTSActive?.());
     /**
      * Speak the review, then `then`. While the chat is talking the coach doesn't talk over it: it waits, and speaks
-     * once the chat is done (the newest review, if more came meanwhile). `interrupt`: a review handing a concept to
-     * the chat may cut it off, since what it hands over goes next anyway.
+     * once the chat is done (the newest review, if more came meanwhile).
      */
     let held: {text: string; then?: () => void} | null = null, holdTimer = 0;
-    function speakReview(text: string, then?: () => void, interrupt = false) {
+    function speakReview(text: string, then?: () => void) {
         // A greeting not yet heard goes first, so the first review doesn't cut it off.
         if (greeting && text) { text = `${greeting} ${text}`;greeting = ''; }
         spoken = text;
-        if (!interrupt && chatTalking()) {
+        if (chatTalking()) {
             // A newer review replaces the one waiting, but a concept that one was to hand over still goes.
             const before = held?.then;
             held = {text, then: before && then ? () => { before();then(); } : then ?? before};
@@ -302,7 +302,6 @@ export function setupCodePractice(): void {
             }
             return;
         }
-        if (interrupt && chatTalking()) { stopPresenting();window.algebenchStopTTS?.(); }
         if (!speakOn() || !text || !window.algebenchSpeakText) { then?.();return; }
         coachTalking = true;
         window.algebenchSpeakText(text, () => { coachTalking = false;then?.(); });
@@ -313,15 +312,18 @@ export function setupCodePractice(): void {
      * The coach asks the chat to show a concept on the view (pointing, writing, drawing on the scratchpad): only with
      * the presenter on, once the review has been said, and not over the chat's own answer.
      */
-    function showInChat(request: string, body: HTMLElement) {
-        if (!request || shownInChat.has(request) || !presenterOn()) return null;
+    function showInChat(request: string, body: HTMLElement, asked = false) {
+        // The learner's own ask always goes; the coach's own idea goes once a block.
+        if (!request || (!asked && shownInChat.has(request)) || !presenterOn()) return null;
         shownInChat.add(request);
         const note = el('div', 'cp-report-show');note.textContent = '🎯 Showing it in the chat…';body.append(note);
         return async () => {
             if (!presenterOn() || typeof window.sendChatMessage !== 'function') { note.textContent = '🎯 The presenter is off: ask the chat to show this.';return; }
-            // An answer still on its way can't be cut short: the request goes once it is in.
-            for (let waited = 0;window.algebenchChatBusy?.() && waited < 60;waited++) await sleep(500);
-            if (window.algebenchChatBusy?.()) { note.textContent = '🎯 The chat was busy: ask it to show this later.';return; }
+            // A message is on its way: the Chat tab's welcome must not greet first and hold it up.
+            suppressChatWelcome(60000);
+            // The chat finishes what it is saying or presenting first (quiet for a moment, not a pause between beats).
+            for (let quiet = 0;quiet < 3;) { await sleep(400);quiet = chatTalking() || coachTalking ? 0 : quiet + 1; }
+            window.switchPanelTab?.('chat');   // where the answer comes
             void window.sendChatMessage(request);
         };
     }
@@ -763,7 +765,7 @@ export function setupCodePractice(): void {
         render(false);
         // Read as shown: the answer, the comment, the reminder, each new line issue, then what to do next.
         speakReview([r.reply, r.commentary, r.reminder, ...fresh.map(n => `Line ${n.line}: ${n.note}`), r.direction && `Next: ${r.direction}`]
-            .filter(Boolean).join(' ').replace(/[`*]/g, ''), show ?? undefined, !!show);
+            .filter(Boolean).join(' ').replace(/[`*]/g, ''), show ?? undefined);
     }
 
     // ── Help me: the assistant takes the keyboard (the code_assist expert) ──
@@ -1105,15 +1107,22 @@ export function setupCodePractice(): void {
                 : (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
                 : scope === 'grade' ? await invokeExpert('code_quiz', {...where, mode: 'grade', question: pending!.question, kind: pending!.kind,
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
-                : await invokeExpert('code_assist', {...where, scope, request, cursor: input.value.slice(0, userCaret).split('\n').length,
+                : await invokeExpert('code_assist', {...where, scope, request, present: presenterOn(), cursor: input.value.slice(0, userCaret).split('\n').length,
                     // The coach's remarks, while they still number the lines as they are.
-                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean};
+                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean; show?: string};
             waiting.remove();
             if (assisting !== run) throw new Stopped();
             const bubble = (cls: string) => message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
             if (!out.result) {
                 // Nothing to type: an answer to a question, or nothing to fix, is said like the rest of its help.
                 if (scope === 'pair' && out.reason) pairing = false;   // nothing left to write: pairing is done
+                if (out.show && out.reason) {
+                    // Shown on the view by the chat, at once: the chat does the talking, so here it is only written.
+                    const body = bubble('cp-assist-close');
+                    body.innerHTML = renderMarkdown(out.reason, {untrusted: true, glossary: false});
+                    void showInChat(out.show, body, true)?.();
+                    ended = true;return;
+                }
                 if (['ask', 'fix', 'narrate', 'pair', 'finish'].includes(scope) && out.reason) {
                     const body = bubble('cp-assist-close');
                     // Pairing done, and the code right: said as plainly as a perfect review, whatever the names.

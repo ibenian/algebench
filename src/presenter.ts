@@ -770,6 +770,10 @@ interface Sketch {
     items: Map<string, Drawn>; all: Drawn[]; groups: Map<DrawSpec, HTMLDivElement>; hits: Map<DrawSpec, HTMLDivElement>;
     /** The drawing itself, a group around all of it: its title drags the whole board. */
     root: DrawSpec;
+    /** Sized by the learner (its corner dragged): the drawing then fills the board, larger than drawn if need be. */
+    sized?: boolean;
+    /** Groups the learner resized by their corner: how much what is in each is scaled, about the group's top left. */
+    zoom: Map<DrawSpec, number>;
     /** Laid out again: where things were and how the board was fitted, as they glide to their new places. */
     glide: {from: Map<DrawSpec, Rect>; view: {ox: number; oy: number; s: number}; to: {ox: number; oy: number; s: number}; t0: number} | null;
 }
@@ -805,7 +809,15 @@ function boxOf(b: Sketch, e: DrawSpec): DOMRect | null {
     const r = laidBox(b, e);
     if (!r) return null;
     const o = offsetOf(b, e);
-    return new DOMRect(r.x + o.x, r.y + o.y, r.w, r.h);
+    let x = r.x + o.x, y = r.y + o.y, w = r.w, h = r.h;
+    // Each group around it that the learner resized scales it about that group's top left, innermost first.
+    for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) {
+        const z = b.zoom.get(g), gr = z && z !== 1 ? laidBox(b, g) : null;
+        if (!z || !gr) continue;
+        const go = offsetOf(b, g), gx = gr.x + go.x, gy = gr.y + go.y;
+        x = gx + (x - gx) * z;y = gy + (y - gy) * z;w *= z;h *= z;
+    }
+    return new DOMRect(x, y, w, h);
 }
 /** How long things take to glide to where a new layout puts them, and how far along they are. */
 const GLIDE_MS = 480;
@@ -850,14 +862,24 @@ const fromScreen = (b: Sketch, r: DOMRect) => {
 };
 
 /** Lay the drawing out again, fit it to the board, and put everything where it now goes. */
-function layoutBoard(b: Sketch) {
+function layoutBoard(b: Sketch, grow = true) {
     // What is drawn glides from where it is now; what is new starts in its place.
     const from = new Map<DrawSpec, Rect>();
     for (const e of b.laid.boxes.keys()) { const r = laidBox(b, e);if (r) from.set(e, r); }
     const first = !from.size;
     b.laid = layoutDrawing(b.specs, b.layout, {box: {w: b.w, h: b.h}, sizeOf: shapeSize});
-    const pad = 12, s = Math.min(1, (b.w - 2 * pad) / Math.max(1, b.laid.w), (b.h - 2 * pad) / Math.max(1, b.laid.h));
-    const to = {ox: (b.w - b.laid.w * s) / 2, oy: (b.h - b.laid.h * s) / 2, s};
+    const pad = 12, fit = () => Math.min(b.sized ? 4 : 1, (b.w - 2 * pad) / Math.max(1, b.laid.w), (b.h - 2 * pad) / Math.max(1, b.laid.h));
+    // Grown too big to read at this size: the board grows (as far as the view allows) rather than shrink it further.
+    // Not while the learner sizes it: a board they make small stays small.
+    if (grow && fit() < MIN_SCALE) {
+        const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
+        const w = Math.min(view.width * .92, Math.max(b.w, b.laid.w * MIN_SCALE + 2 * pad)), h = Math.min(view.height * .88, Math.max(b.h, b.laid.h * MIN_SCALE + 2 * pad));
+        if (w > b.w + 1 || h > b.h + 1) { sizeBoard(b, w, h);b.laid = layoutDrawing(b.specs, b.layout, {box: {w: b.w, h: b.h}, sizeOf: shapeSize}); }
+    }
+    const s = fit();
+    // Held at the board's top left: the board grows (by itself, or by its corner) to the right and down, and what is
+    // drawn stays where it is.
+    const to = {ox: pad, oy: pad, s};
     if (first) {
         b.glide = null;b.view = to;fitCanvas(b);placeAll(b);
         return;
@@ -875,14 +897,24 @@ function layoutBoard(b: Sketch) {
     };
     tick();
 }
+/** Below this the drawing would be too small to read: the board grows instead. */
+const MIN_SCALE = .75;
+/** The board's size in px: its top left stays put, and it grows no further than the window's edge. */
+function sizeBoard(b: Sketch, w: number, h: number) {
+    const left = parseFloat(b.el.style.left), top = parseFloat(b.el.style.top);
+    b.w = Math.round(Math.max(80, Math.min(w, innerWidth - 8 - left)));b.h = Math.round(Math.max(60, Math.min(h, innerHeight - 8 - top)));
+    b.el.style.width = `${b.w}px`;b.el.style.height = `${b.h}px`;
+}
 const fitCanvas = (b: Sketch) => { b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`; };
 function placeAll(b: Sketch) {
     for (const item of b.all) item.place();
     for (const [g, el] of b.groups) {
         const r = extentOf(b, g);
         if (!r) continue;
-        // Room above for its title.
-        el.style.left = `${r.left - 12}px`;el.style.top = `${r.top - 34}px`;el.style.width = `${r.width + 24}px`;el.style.height = `${r.height + 46}px`;
+        // Room above for its title; a group holding groups has more room round them, so its edge and corner stay
+        // outside theirs, where they can be reached.
+        const n = nesting(b, g), side = 12 + 10 * n, head = 34 + 30 * n;
+        el.style.left = `${r.left - side}px`;el.style.top = `${r.top - head}px`;el.style.width = `${r.width + 2 * side}px`;el.style.height = `${r.height + head + side}px`;
     }
     for (const [e, el] of b.hits) {
         const r = b.all.find(d => d.spec === e)?.local();
@@ -909,6 +941,12 @@ function nudge(b: Sketch, e: DrawSpec, dx: number, dy: number) {
     b.moved.set(e, {x: m.x + dx / b.view.s, y: m.y + dy / b.view.s});
     placeAll(b);
 }
+/** How deep the groups inside `g` go: 0 when it holds none. */
+function nesting(b: Sketch, g: DrawSpec, depth = 0): number {
+    if (depth > 20) return 0;
+    const inner = b.specs.filter(e => e.type === 'group' && (g === b.root ? !groupOf(b, e) : groupOf(b, e) === g));
+    return inner.length ? 1 + Math.max(...inner.map(e => nesting(b, e, depth + 1))) : 0;
+}
 /** The groups `e` sits in, innermost first. */
 function groupsAround(b: Sketch, e: DrawSpec): DrawSpec[] {
     const out: DrawSpec[] = [];
@@ -930,6 +968,30 @@ function groupHandle(b: Sketch, g: DrawSpec): HTMLDivElement {
         b.el.style.left = `${parseFloat(b.el.style.left) + dx}px`;b.el.style.top = `${parseFloat(b.el.style.top) + dy}px`;
         placeAll(b);   // links to the view stay on what they join there
     }, el);
+    // Pointed at, the groups around it light too (and the drawing), so their titles and corners can be reached.
+    const light = (on: boolean) => { for (const o of g === b.root ? [] : [...groupsAround(b, g), b.root]) b.groups.get(o)?.classList.toggle('lit', on); };
+    el.addEventListener('pointerenter', e => { if (e.isTrusted) light(true); });
+    el.addEventListener('pointerleave', e => { if (e.isTrusted) light(false); });
+    const grip = document.createElement('div');grip.className = 'ai-draw-resize';grip.title = 'Drag to resize';
+    el.append(grip);
+    // A group's corner scales what is in it, about its top left; the container grows with it.
+    if (g !== b.root) draggable(grip, (dx, dy) => {
+        const r = extentOf(b, g);
+        if (!r || r.width < 1 || r.height < 1) return;
+        const f = Math.max((r.width + dx / b.view.s) / r.width, (r.height + dy / b.view.s) / r.height);
+        b.zoom.set(g, Math.min(4, Math.max(.3, (b.zoom.get(g) ?? 1) * f)));
+        placeAll(b);
+    }, el);
+    // The drawing's corner resizes the board: what is drawn is laid out and fitted to it again.
+    if (g === b.root) {
+        draggable(grip, (dx, dy) => {
+            if (!b.sized) {
+                // First, the board shrinks to the drawing as it is now, so the drag scales what is seen, with no jump.
+                const pad = 12;
+                b.w = b.laid.w * b.view.s + 2 * pad;b.h = b.laid.h * b.view.s + 2 * pad;b.sized = true;
+            }
+            sizeBoard(b, b.w + dx, b.h + dy);b.glide = null;b.laid = {boxes: new Map(), w: b.w, h: b.h};layoutBoard(b, false); }, el);
+    }
     // Parents first, so a group inside another is on top of it.
     b.canvas.insertBefore(el, b.svg);
     b.groups.set(g, el);
@@ -961,7 +1023,7 @@ function sketchBoard(): Sketch {
     const svg = document.createElementNS(SVG_NS, 'svg');
     canvas.append(svg);el.append(canvas);notesLayer().append(el);notes.push(el);
     sketch = {el, canvas, svg, w, h, layout: '', specs: [], laid: {boxes: new Map(), w, h}, view: {ox: 0, oy: 0, s: 1}, moved: new Map(),
-        items: new Map(), all: [], groups: new Map(), hits: new Map(), root: {type: 'group', label: 'Drawing'}, glide: null};
+        items: new Map(), all: [], groups: new Map(), hits: new Map(), root: {type: 'group', label: 'Drawing'}, glide: null, zoom: new Map()};
     groupHandle(sketch, sketch.root).classList.add('ai-draw-root');
     return sketch;
 }
@@ -1348,7 +1410,9 @@ function speak(text: string, into: HTMLElement, r: number): Promise<void> {
         const reveal = () => { if (r !== run || k >= words.length) return;shown += words[k++];into.textContent = shown;follow();window.setTimeout(reveal, words[k - 1]!.trim() ? 130 : 0); };
         reveal();
         const speakNow = window.algebenchSpeakText;
-        if (speakNow) { speakNow(text, () => { into.textContent = text;end(); });window.setTimeout(end, 10000 + text.split(/\s+/).length * 700); }
+        // The next beat waits for the speech's own end (a failed or cut-off stream reports one too), however long
+        // its voice takes to prepare and say: no guess at its length.
+        if (speakNow) speakNow(text, () => { into.textContent = text;end(); });
         else window.setTimeout(() => { into.textContent = text;end(); }, Math.max(1500, text.split(/\s+/).length * 260));
     });
 }

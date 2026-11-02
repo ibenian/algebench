@@ -139,11 +139,11 @@ class CodePracticeSig(dspy.Signature):
     reply: str = dspy.OutputField(
         desc="your answer to the learner's notes, two to four sentences, addressing them directly; "
              "markdown, code in backticks; empty when there are no notes")
+    line_notes: list[LineNote] = dspy.OutputField(
+        desc="remarks on specific typed lines that are wrong, as a JSON list; [] when none are")
     show: str = dspy.OutputField(
         desc="with the presenter on, and only for a real conceptual gap: a request in English to the AI chat "
              "to explain a concept by showing it on the scene or the scratchpad; empty almost always")
-    line_notes: list[LineNote] = dspy.OutputField(
-        desc="remarks on specific typed lines that are wrong; empty when none are")
 
 
 INPUT_FIELDS = tuple(CodePracticeSig.input_fields)
