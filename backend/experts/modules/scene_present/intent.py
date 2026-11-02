@@ -190,7 +190,8 @@ def _drawing(d, refs: set[str], written: set[str], drawn: dict[str, str], groups
         if not isinstance(e, DrawElement) or e.type not in (*SHAPES, *LINKS, "path", "text", "group", "outline"):
             continue
         eid = _did(e.id)
-        label = _clean(e.label)[:MAX_LABEL]
+        # Written, not spoken: its $math$ and `code` stay, for the board to set as the scratchpad does.
+        label = _DSPY_MARKER.sub("", str(e.label or "")).strip()[:MAX_LABEL]
         end = lambda v: _did(v) if _did(v) in drawn else _target_ref(v, refs, written)
         start_ref, end_ref = (end(e.start), end(e.end)) if e.type in LINKS else ("", "")
         if (e.type == "text" and not label) or (e.type == "group" and not eid):

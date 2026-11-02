@@ -11085,7 +11085,7 @@ var textWidth = (t) => {
 * smaller than its label; a circle with only a w is round. Text is as big as its words.
 */
 function shapeSize$1(spec, within) {
-	const tw = textWidth(spec.label ?? "");
+	const tw = textWidth((spec.label ?? "").replace(/\$([^$]*)\$?/g, (_, m) => m.replace(/\\[a-zA-Z]+\s*/g, "x").replace(/[{}_^\\]/g, "")));
 	if (spec.type === "text") return {
 		w: tw * 14 / 15 + 6,
 		h: 20
@@ -11544,11 +11544,12 @@ async function traceStroke(path, r, speed = 1) {
 /** Write a label key by key, quicker than a note, the pointer moving along with the words. */
 async function typeLabel(el, text, r) {
 	el.textContent = "";
-	let prev = "\n";
+	let prev = "\n", shown = "";
 	for (const ch of text) {
 		alive(r);
 		await sleep(keyDelay(prev, ch) * .45);
-		el.textContent += ch;
+		shown += ch;
+		el.innerHTML = inkHtml(shown);
 		prev = ch;
 		const b = el.getBoundingClientRect();
 		pos.x += (b.right - pos.x) * .5;

@@ -23,7 +23,8 @@ class DrawElement(BaseModel):
                                             "point at it later (`draw:<id>`); needed on anything linked or grouped")
     label: str = Field(default="", description="for a shape: the few words or the value written inside it; for an "
                                                "arrow or line: a name written beside its middle; for `text`: the "
-                                               "words; for a group: its title")
+                                               "words; for a group: its title. Math goes in $...$ (KaTeX), as on "
+                                               "the scratchpad: $A_n \\sin(n\\omega t)$, never bare LaTeX")
     group: str = Field(default="", description="the id of the group it sits in (listed before it); empty for the "
                                                "drawing itself")
     around: list[str] = Field(default_factory=list, description='for an "outline": the ids of things drawn before it to '

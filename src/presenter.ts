@@ -788,7 +788,9 @@ const textWidth = (t: string) => { measurer ??= document.createElement('canvas')
  * smaller than its label; a circle with only a w is round. Text is as big as its words.
  */
 function shapeSize(spec: DrawSpec, within: {w: number; h: number}): {w: number; h: number} {
-    const tw = textWidth(spec.label ?? '');
+    // $math$ measured about as it shows: a command (\omega) as one symbol, no braces or scripts' marks.
+    const shown = (spec.label ?? '').replace(/\$([^$]*)\$?/g, (_, m: string) => m.replace(/\\[a-zA-Z]+\s*/g, 'x').replace(/[{}_^\\]/g, ''));
+    const tw = textWidth(shown);
     if (spec.type === 'text') return {w: tw * 14 / 15 + 6, h: 20};
     // An ellipse holds less than its box: wide enough that a line of text inside clears its curve.
     const fit = spec.type === 'diamond' ? tw * 1.6 + 30 : spec.type === 'ellipse' ? Math.max(36, tw * 1.22 + 26) : Math.max(34, tw + 22);
@@ -1095,11 +1097,12 @@ async function traceStroke(path: SVGPathElement, r: number, speed = 1) {
 /** Write a label key by key, quicker than a note, the pointer moving along with the words. */
 async function typeLabel(el: HTMLElement, text: string, r: number) {
     el.textContent = '';
-    let prev = '\n';
+    let prev = '\n', shown = '';
     for (const ch of text) {
         alive(r);
         await sleep(keyDelay(prev, ch) * .45);
-        el.textContent += ch;prev = ch;
+        // As a note is: $math$ set by KaTeX (an unclosed one too, as it is being typed), `code` in code colours.
+        shown += ch;el.innerHTML = inkHtml(shown);prev = ch;
         const b = el.getBoundingClientRect();
         pos.x += (b.right - pos.x) * .5;pos.y += (b.bottom - 2 - pos.y) * .5;paintPointer();
     }
