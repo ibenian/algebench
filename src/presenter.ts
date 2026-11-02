@@ -913,7 +913,8 @@ function placeAll(b: Sketch) {
         if (!r) continue;
         // Room above for its title; a group holding groups has more room round them, so its edge and corner stay
         // outside theirs, where they can be reached.
-        const n = nesting(b, g), side = 12 + 10 * n, head = 34 + 30 * n;
+        // In screen px whatever the scale: scaled with the drawing, its top left would move as the board is resized.
+        const n = nesting(b, g), side = (12 + 10 * n) / b.view.s, head = (34 + 30 * n) / b.view.s;
         el.style.left = `${r.left - side}px`;el.style.top = `${r.top - head}px`;el.style.width = `${r.width + 2 * side}px`;el.style.height = `${r.height + head + side}px`;
     }
     for (const [e, el] of b.hits) {
@@ -946,6 +947,12 @@ function nesting(b: Sketch, g: DrawSpec, depth = 0): number {
     if (depth > 20) return 0;
     const inner = b.specs.filter(e => e.type === 'group' && (g === b.root ? !groupOf(b, e) : groupOf(b, e) === g));
     return inner.length ? 1 + Math.max(...inner.map(e => nesting(b, e, depth + 1))) : 0;
+}
+/** How much the groups around `e` that the learner resized scale it: its words grow and shrink with its box. */
+function zoomOf(b: Sketch, e: DrawSpec): number {
+    let z = 1;
+    for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) z *= b.zoom.get(g) ?? 1;
+    return z;
 }
 /** The groups `e` sits in, innermost first. */
 function groupsAround(b: Sketch, e: DrawSpec): DrawSpec[] {
@@ -1138,7 +1145,7 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                     const l = local();
                     if (!l) return;
                     path.setAttribute('d', shapeStroke(spec.type, l.left + l.width / 2, l.top + l.height / 2, l.width, l.height, jitter));
-                    if (lab) { lab.style.left = `${l.left + l.width / 2}px`;lab.style.top = `${l.top + l.height / 2}px`; }
+                    if (lab) { lab.style.left = `${l.left + l.width / 2}px`;lab.style.top = `${l.top + l.height / 2}px`;lab.style.scale = String(zoomOf(b, spec)); }
                 };
                 const item: Drawn = {spec, paths: [path], label: lab, place, local};
                 if (spec.id) b.items.set(spec.id, item);
@@ -1242,7 +1249,7 @@ async function drawSketch(d: Drawing, color: string, r: number) {
                 const place = () => {
                     if (!spec.near) {
                         const l = boxOf(b, spec);
-                        if (l) { lab.style.left = `${l.left + l.width / 2}px`;lab.style.top = `${l.top + l.height / 2}px`; }
+                        if (l) { lab.style.left = `${l.left + l.width / 2}px`;lab.style.top = `${l.top + l.height / 2}px`;lab.style.scale = String(zoomOf(b, spec)); }
                         return;
                     }
                     const n = linkEnd(spec.near);

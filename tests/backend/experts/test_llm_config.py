@@ -297,3 +297,11 @@ def test_retry_helper_raises_after_exhausting_attempts():
     with pytest.raises(AdapterParseError):
         C.retry_on_parse_error(call, attempts=3)
     assert len(calls) == 3
+
+
+def test_gemini_3_thinks_as_little_as_it_can_where_thinking_was_turned_off(monkeypatch):
+    # Gemini 3 rejects reasoning_effort="disable" (a 400): the experts measured with it think "low" there instead.
+    monkeypatch.setattr(C, "LM_MODEL", "gemini/gemini-3.8-flash")
+    assert C._effort("disable") == "low" and C._effort("low") == "low"
+    monkeypatch.setattr(C, "LM_MODEL", "gemini/gemini-2.5-flash")
+    assert C._effort("disable") == "disable"

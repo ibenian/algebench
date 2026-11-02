@@ -15,7 +15,7 @@ import type { PracticeScore } from '/code-practice-core.js';
 import { lineTokens, paintTokens } from '/code-highlight.js';
 import type { CodeToken } from '/code-highlight.js';
 import { invokeExpert } from '/expert-client.js';
-import { presenterOn, presenting } from '/presenter.js';
+import { presenterOn, presenting, presentQuestion } from '/presenter.js';
 import { suppressChatWelcome } from '/chat.js';
 import { sceneHasCode } from '/describe-problem.js';
 import { createPracticeStore } from '/practice-store.js';
@@ -318,13 +318,16 @@ export function setupCodePractice(): void {
         shownInChat.add(request);
         const note = el('div', 'cp-report-show');note.textContent = '🎯 Showing it in the chat…';body.append(note);
         return async () => {
-            if (!presenterOn() || typeof window.sendChatMessage !== 'function') { note.textContent = '🎯 The presenter is off: ask the chat to show this.';return; }
+            if (!presenterOn()) { note.textContent = '🎯 The presenter is off: ask the chat to show this.';return; }
             // A message is on its way: the Chat tab's welcome must not greet first and hold it up.
             suppressChatWelcome(60000);
             // The chat finishes what it is saying or presenting first (quiet for a moment, not a pause between beats).
             for (let quiet = 0;quiet < 3;) { await sleep(400);quiet = chatTalking() || coachTalking ? 0 : quiet + 1; }
             window.switchPanelTab?.('chat');   // where the answer comes
-            void window.sendChatMessage(request);
+            // Straight to the presenter, in its own words: the chat would retell it, and may drop how to show it
+            // ("draw it on the scratchpad" came out as "show it", and the scene's own animation was played instead).
+            window.addChatMessage?.('user', request);
+            void presentQuestion(request);
         };
     }
     /**

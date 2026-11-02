@@ -25,9 +25,16 @@ log = logging.getLogger(__name__)
 
 # The expert emits large structured trajectories, so it needs a model with a
 # generous output-token budget (gemini-2.0-flash caps at 8192 and truncates).
-# Default to gemini-2.5-flash; override with ALGEBENCH_LM_MODEL (a full litellm
-# model string, e.g. ``gemini/gemini-2.5-pro``).
-_DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+# Default to the chat's own model, gemini-3.8-flash (gemini-2.5-flash drew shapes of
+# types it was never given and sent half an editor for the whole); override with
+# ALGEBENCH_LM_MODEL (a full litellm model string, e.g. ``gemini/gemini-2.5-pro``).
+_DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+
+
+def _effort(effort: str) -> str:
+    """A ``reasoning_effort`` the model takes: Gemini 3 can't turn thinking off ("disable", measured on 2.5, is a
+    400 there), so it thinks as little as it can, "low"."""
+    return "low" if is_gemini3(LM_MODEL) and effort in ("disable", "none", "minimal") else effort
 LM_MODEL = os.environ.get("ALGEBENCH_LM_MODEL") or f"gemini/{_DEFAULT_GEMINI_MODEL}"
 
 
@@ -84,7 +91,7 @@ def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
                   cache=_cache_enabled())
     effort = os.environ.get("ALGEBENCH_LM_REASONING")
     if effort:
-        kwargs["reasoning_effort"] = effort
+        kwargs["reasoning_effort"] = _effort(effort)
     return LanguageLM(LM_MODEL, **kwargs)
 
 
@@ -301,6 +308,8 @@ def _build_scoped(overrides: dict) -> Optional[dspy.LM]:
         kwargs["api_key"] = (os.environ.get("GEMINI_API_KEY")
                              or os.environ.get("GOOGLE_API_KEY"))
     kwargs.update(overrides)
+    if "reasoning_effort" in kwargs:
+        kwargs["reasoning_effort"] = _effort(kwargs["reasoning_effort"])
     # An explicit ALGEBENCH_LM_TEMPERATURE wins over every default and override,
     # as in ``make_lm`` -- a deterministic eval must reach the scoped experts too.
     env_temp = os.environ.get("ALGEBENCH_LM_TEMPERATURE")

@@ -298,3 +298,14 @@ def test_an_array_is_drawn_as_a_row_of_cells_each_its_own_thing():
     assert [(e.type, e.id, e.group) for e in els] == [("group", "lps", ""), ("text", "lps_name", "lps")] + [("rectangle", f"lps_{i}", "lps") for i in range(4)]
     assert els[0].layout == "cells" and [e.label for e in els[2:]] == ["0", "0", "1", "2"] and els[2].color == "yellow"
     assert beats[1].target == "draw:lps_2"
+
+
+def test_a_presentation_that_loses_drawn_elements_is_asked_again(monkeypatch):
+    from backend.experts.modules.scene_present.signature import DrawElement as E, Drawing
+    bad = SimpleNamespace(steps=[PresentStep(say="A node.", draw=Drawing(elements=[E(type="blob", id="r", label="root")]))])
+    good = SimpleNamespace(steps=[PresentStep(say="A node.", draw=Drawing(elements=[E(type="ellipse", id="r", label="root")]))])
+    asked = []
+    monkeypatch.setattr(intent, "_presenter", lambda: lambda **inputs: (asked.append(inputs["question"]), bad if len(asked) == 1 else good)[1])
+    out = intent.present(set(), 0, question="draw it")
+    assert len(asked) == 2 and "blob r" in asked[1]
+    assert [e.type for e in out.steps[0].draw.elements] == ["ellipse"]

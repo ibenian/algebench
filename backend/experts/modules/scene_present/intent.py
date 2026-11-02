@@ -255,10 +255,11 @@ def _slider_move(s: PresentStep, refs: set[str]) -> dict:
     return {"slider": ref, "slider_to": value}
 
 
-def clean_steps(raw, refs: set[str], frames: int, left=None) -> list[PresentStep]:
+def clean_steps(raw, refs: set[str], frames: int, left=None, problems: list[str] | None = None) -> list[PresentStep]:
     """Beats safe to play: a ref not on the list points at nothing, a frame outside the run stays put, a beat with
     nothing to say is dropped. ``left`` is what earlier walk-throughs left on the view (notes, board lines, drawn
-    shapes): the beats may point at it, build on it or wipe it."""
+    shapes): the beats may point at it, build on it or wipe it. ``problems`` collects the drawn elements that could
+    not be drawn, for the model to be told."""
     out = []
     written: set[str] = set()       # the notes on the view so far, by text: a beat may point at them
     drawn: dict[str, str] = {}      # what was drawn so far, id -> label: a beat may link to it or point at it
@@ -293,6 +294,14 @@ def clean_steps(raw, refs: set[str], frames: int, left=None) -> list[PresentStep
         if sent and len(drawing.elements if drawing else []) < sent:
             log.info("scene_present: beat %d drew %d of its %d element(s): %s", len(out) + 1,
                      len(drawing.elements) if drawing else 0, sent, [e.model_dump(exclude_defaults=True) for e in s.draw.elements[:6]])
+            if problems is not None:
+                # A shape is lost when its id didn't make it; a link, when an end it hangs on was lost with it.
+                kept = {e.id for e in (drawing.elements if drawing else []) if e.id}
+                gone = {_did(e.id) for e in s.draw.elements if isinstance(e, DrawElement) and e.id and e.type != "array" and _did(e.id) not in kept}
+                lost = [e for e in s.draw.elements if isinstance(e, DrawElement)
+                        and (_did(e.id) in gone if e.id else bool({_did(e.start), _did(e.end)} & gone))]
+                problems += [f"beat {len(out) + 1}: " + ", ".join(
+                    f"{e.type} {e.id or f'{e.start} -> {e.end}'}" for e in lost[:6])] if lost else []
         for e in drawing.elements if drawing else []:
             if e.id and (e.start or e.near or e.group or e.around):
                 links[e.id] = (e.start, e.end) if e.start else (e.near,) if e.near else tuple(e.around) or (e.group,)
@@ -312,10 +321,24 @@ def clean_steps(raw, refs: set[str], frames: int, left=None) -> list[PresentStep
 
 
 def present(target_refs: set[str], frame_count: int, left=None, **inputs) -> Presentation:
-    """Ask the model for the beats; one more ask if the answer was malformed."""
+    """Ask the model for the beats; one more ask if the answer was malformed, or drew things that can't be drawn
+    (told what they were, so a drawing isn't silently lost)."""
     try:
         out = retry_on_parse_error(lambda: _presenter()(**inputs), label="scene_present")
+        problems: list[str] = []
+        steps = clean_steps(out.steps, target_refs, frame_count, left, problems)
+        if problems:
+            log.info("scene_present: elements that can't be drawn (%s); asking again", "; ".join(problems))
+            note = ("(Your last answer drew elements the board could not draw, so they and the links to them were lost: "
+                    + "; ".join(problems) + ". Element types are exactly rectangle, ellipse (a circle), diamond, text, arrow, "
+                    "line, path, outline, array and group; a link's start and end are ids drawn before it, or refs from "
+                    "the list. Draw it again so that every element is drawn.)")
+            again = retry_on_parse_error(lambda: _presenter()(**{**inputs, "question": f"{inputs.get('question', '')}\n\n{note}"}), label="scene_present")
+            retried: list[str] = []
+            second = clean_steps(again.steps, target_refs, frame_count, left, retried)
+            if second and len(retried) < len(problems):
+                steps = second
     except Exception as e:
         log.exception("scene_present: the model call failed")
         return Presentation(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
-    return Presentation(steps=clean_steps(out.steps, target_refs, frame_count, left))
+    return Presentation(steps=steps)

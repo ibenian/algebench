@@ -84,8 +84,10 @@ class CodeAssistSig(dspy.Signature):
       scene or on the scratchpad ("draw it", "show me on the scene"), or a question about an idea would be far
       clearer shown than told, don't explain it here. The lesson's AI chat can point at the scene's objects as it
       talks and write and draw on a scratchpad over them: put a request for it in `show`, in English, saying what to
-      explain and how to show it (e.g. "On the scratchpad, draw how k falls back along lps after a mismatch in the
-      while loop, with p = 'aaba'."), give no steps, and say in `closing`, in one sentence, that you'll show it
+      explain and how to show it, keeping the way the learner asked for: asked to draw, it says "Draw on the
+      scratchpad ...", never "show" or "on the scratchpad or scene" (the scene's own animation would be played
+      instead); asked for the scene, it says "On the scene ..." (e.g. "Draw on the scratchpad how k falls back along
+      lps after a mismatch in the while loop, with p = 'aaba'."), give no steps, and say in `closing`, in one sentence, that you'll show it
       there. It explains the idea, not their code to write. With `presenter` off, `show` stays empty.
     - "ask": do what `request` asks, in the learner's own words, and no more ("write the loop" is the loop alone;
       "my lookup is wrong, fix it" is that fix). A question that needs no typing ("why {0: 1}?") gets no steps:

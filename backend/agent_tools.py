@@ -450,7 +450,7 @@ PRESENT_WALKTHROUGH_TOOL_DECL = types.FunctionDeclaration(
     parameters=types.Schema(
         type="OBJECT",
         properties={
-            "question": types.Schema(type="STRING", description="What to present: the user's question, made self-contained if it refers back to earlier turns."),
+            "question": types.Schema(type="STRING", description="What to present: the user's question, made self-contained if it refers back to earlier turns. Keep how the user asked for it to be shown: asked to draw, it says to draw it on the scratchpad; asked for the scene, on the scene. Without that the walk-through may only point and step through the run."),
         },
         required=["question"],
     ),

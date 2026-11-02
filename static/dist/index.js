@@ -11267,7 +11267,7 @@ function placeAll(b) {
 	for (const [g, el] of b.groups) {
 		const r = extentOf(b, g);
 		if (!r) continue;
-		const n = nesting(b, g), side = 12 + 10 * n, head = 34 + 30 * n;
+		const n = nesting(b, g), side = (12 + 10 * n) / b.view.s, head = (34 + 30 * n) / b.view.s;
 		el.style.left = `${r.left - side}px`;
 		el.style.top = `${r.top - head}px`;
 		el.style.width = `${r.width + 2 * side}px`;
@@ -11322,6 +11322,12 @@ function nesting(b, g, depth = 0) {
 	if (depth > 20) return 0;
 	const inner = b.specs.filter((e) => e.type === "group" && (g === b.root ? !groupOf(b, e) : groupOf(b, e) === g));
 	return inner.length ? 1 + Math.max(...inner.map((e) => nesting(b, e, depth + 1))) : 0;
+}
+/** How much the groups around `e` that the learner resized scale it: its words grow and shrink with its box. */
+function zoomOf(b, e) {
+	let z = 1;
+	for (let g = groupOf(b, e), i = 0; g && i < 50; g = groupOf(b, g), i++) z *= b.zoom.get(g) ?? 1;
+	return z;
 }
 /** The groups `e` sits in, innermost first. */
 function groupsAround(b, e) {
@@ -11604,6 +11610,7 @@ async function drawSketch(d, color, r) {
 					if (lab) {
 						lab.style.left = `${l.left + l.width / 2}px`;
 						lab.style.top = `${l.top + l.height / 2}px`;
+						lab.style.scale = String(zoomOf(b, spec));
 					}
 				};
 				const item = {
@@ -11782,6 +11789,7 @@ async function drawSketch(d, color, r) {
 						if (l) {
 							lab.style.left = `${l.left + l.width / 2}px`;
 							lab.style.top = `${l.top + l.height / 2}px`;
+							lab.style.scale = String(zoomOf(b, spec));
 						}
 						return;
 					}
@@ -34820,7 +34828,7 @@ function setupCodePractice() {
 		note.textContent = "🎯 Showing it in the chat…";
 		body.append(note);
 		return async () => {
-			if (!presenterOn() || typeof window.sendChatMessage !== "function") {
+			if (!presenterOn()) {
 				note.textContent = "🎯 The presenter is off: ask the chat to show this.";
 				return;
 			}
@@ -34830,7 +34838,8 @@ function setupCodePractice() {
 				quiet = chatTalking() || coachTalking ? 0 : quiet + 1;
 			}
 			window.switchPanelTab?.("chat");
-			window.sendChatMessage(request);
+			window.addChatMessage?.("user", request);
+			presentQuestion(request);
 		};
 	}
 	/**
