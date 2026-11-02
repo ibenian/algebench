@@ -4,7 +4,7 @@
 import {
     prefixSumTrace, PREFIX_SOURCE, twoPointersTrace, TWO_POINTERS_SOURCE, slidingWindowTrace, SLIDING_WINDOW_SOURCE,
     fastSlowTrace, fastSlowProofTrace, rhoShape, FAST_SLOW_SOURCE, monotonicStackTrace, MONOTONIC_STACK_SOURCE, rotatedSearchTrace, ROTATED_SEARCH_SOURCE,
-    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE, topoLine, twoSumTrace, subarraySumTrace, HASH_MAP_SOURCE, hashLine,
+    mergeIntervalsTrace, MERGE_INTERVALS_SOURCE, houseRobberTrace, HOUSE_ROBBER_SOURCE, kadaneTrace, KADANE_SOURCE, lcsTrace, LCS_SOURCE, topKTrace, TOP_K_SOURCE, trieTrace, trieSearchTrace, TRIE_SOURCE, linkedListTrace, LINKED_LIST_SOURCE, treeTraversalTrace, TREE_TRAVERSAL_SOURCE, islandsTrace, ISLANDS_SOURCE, powerTrace, fibTrace, RECURSION_SOURCE, subsetsTrace, SUBSETS_SOURCE, topoTrace, topoDfsTrace, TOPO_SOURCE, topoLine, twoSumTrace, subarraySumTrace, HASH_MAP_SOURCE, hashLine,
     monotonicQueueTrace, MONOTONIC_QUEUE_SOURCE, greedyTrace, GREEDY_SOURCE, bitsTrace, BITS_SOURCE,
     unionFindTrace, UNION_FIND_SOURCE, kmpTrace, KMP_SOURCE,
 } from './algorithms.js';
@@ -67,8 +67,8 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
         example: `nums = ${list(IN.bits.nums)} → ${end(bitsTrace(IN.bits.nums)).result}.` },
     'string-matching': { problem: 'Find every index where a pattern occurs in a text, overlaps included.',
         example: `text = "${IN.kmp.text}", p = "${IN.kmp.pattern}" → ${list(end(kmpTrace(IN.kmp.text, IN.kmp.pattern)).hits)}.` },
-    'trie': { problem: 'Build a trie from a list of words, then check which prefixes it contains.',
-        example: `words = ${IN.trie.words.map(w => `"${w}"`).join(', ')}: ${IN.trie.queries.map(q => `starts_with("${q}") → ${IN.trie.words.some(w => w.startsWith(q)) ? 'True' : 'False'}`).join(', ')}.` },
+    'trie': { problem: 'Build a trie from a list of words, then check which prefixes and which whole words it contains.',
+        example: `words = ${IN.trie.words.map(w => `"${w}"`).join(', ')}: ${IN.trie.queries.map(q => `starts_with("${q}") → ${IN.trie.words.some(w => w.startsWith(q)) ? 'True' : 'False'}`).join(', ')}; ${IN.trie.searches.map(q => `search("${q}") → ${IN.trie.words.includes(q) ? 'True' : 'False'}`).join(', ')}.` },
     'monotonic-stack': { problem: 'Given daily temperatures, find for each day how many days you must wait for a warmer one (0 if never).',
         example: `temps = ${list(IN.monotonic.temps)} → ${list(end(monotonicStackTrace(IN.monotonic.temps)).answer)}.` },
     'monotonic-queue': { problem: 'Return the maximum of every window of k consecutive numbers.',
@@ -1807,45 +1807,77 @@ ${MD_TAIL}
 
 // ── Trie ──
 (() => {
-    const { words, queries } = IN.trie;
-    const { trace, nodes } = trieTrace(words, queries);
+    const { words, queries, searches } = IN.trie;
+    const { trace, nodes } = trieTrace(words, queries), lookups = trieSearchTrace(words, searches);
     // Each node's letter and parent; the graph lays the nodes made so far out as a tidy tree (treeLayout), so
     // the trie re-lays itself as an insert adds a branch.
     const table = nodes.map(n => ({ ch: n.ch, parent: n.parent }));
     const nd = (col: string) => `dataTable('trieNodes', idx, '${col}')`;
-    const onPath = `arrayAt(${tr('onPath')}, idx) == 1`;
+    // The trie over one run's columns: one node per prefix, its letter inside; teal where a word ends, gold where
+    // the code is. The walk from the root to the current node is lit.
+    const trie = (c: (col: string) => string): Json => {
+        const onPath = `arrayAt(${c('onPath')}, idx) == 1`;
+        return {
+            id: 'root', type: 'graph', label: 'trie', lengthExpr: c('count'), valueExpr: nd('ch'),
+            treeLayout: { type: 'tidy', parentExpr: nd('parent'), origin: [4.9, 3.3, 0], spacing: 1.35, levelGap: 1.25 },
+            nodeShape: 'rect', nodeWidth: 0.8, nodeHeight: 0.8, nodeCornerRadius: 0.4, valueLabel: 'inside', showIndices: false,
+            colorExpr: `idx == ${c('cur')} ? '${GOLD}' : (arrayAt(${c('ends')}, idx) == 1 ? '${TEAL}' : '')`,
+            connectTo: { indexExpr: nd('parent'), pinned: true, bendExpr: '0', color: '#7f93aa',
+                colorExpr: `${onPath} ? '${GOLD}' : ''`, highlightExpr: onPath },
+            markers: [marker('node', c('cur'), PINK)],
+        };
+    };
+    const sr = (col: string) => `dataTable('trie_search', frame, '${col}')`;
+    const searchLine = (text: string) => lineOf(TRIE_SOURCE, text, 'def search');
+    // On a return line of a lookup (math.js compares strings as numbers, so test the line, not the result).
+    const returned = `(${sr('line')} == ${searchLine('return False')} or ${sr('line')} == ${searchLine('return node.end')}) and ${sr('qi')} >= 0`;
+    const searchElements: Json[] = [
+        array('searches', 'searches', [-5.4, 2.9, 0], { from: inp('searches'), itemType: 'string', labelSide: 'top', highlightExpr: `idx == ${sr('qi')}` }),
+        array('word', 'word', [-3.4, -0.2, 0], { from: sr('text'), itemType: 'character', markers: [marker('ch', sr('ci'), PINK, `${sr('ci')} >= 0`)] }),
+        trie(sr),
+        { ...label('ch', `${sr('ci')} < 0 ? 'ch: —' : concat('ch = ', ${sr('ch')})`, [-3.6, -4.0, 0]),
+            connectTo: [{ object: 'word', indexExpr: sr('ci') }], codeRef: { file: 'trie', line: searchLine('for ch in word') } },
+        { ...label('cond', `${sr('cond')} < 0 ? 'ch in node.children: —' : (${sr('cond')} == 1 ? 'ch in node.children → True' : 'ch in node.children → False')`, [-3.6, -4.0, 0], undefined, `${sr('line')} == ${searchLine('if ch not in')}`),
+            codeRef: { file: 'trie', line: searchLine('if ch not in') } },
+        { ...label('end', `${sr('line')} == ${searchLine('return node.end')} and ${sr('qi')} >= 0 ? concat('node.end = ', ${sr('result')}) : 'node.end: —'`, [4.6, -4.0, 0], undefined, `${sr('line')} == ${searchLine('return node.end')} and ${sr('qi')} >= 0`),
+            codeRef: { file: 'trie', line: searchLine('return node.end') } },
+        { ...label('answer', `${returned} ? concat('search(', arrayAt(${inp('searches')}, ${sr('qi')}), ') → ', ${sr('result')}) : 'search: —'`, [4.6, -4.0, 0], undefined, returned),
+            codeRef: { file: 'trie', lineExpr: `${sr('line')} == ${searchLine('return False')} ? ${searchLine('return False')} : ${searchLine('return node.end')}` } },
+    ];
     pattern({
         id: 'trie', title: 'Build trie', file: 'trie.py', source: TRIE_SOURCE,
-        input: { words, queries }, trace, cameraX: 0.5, more: { data: { trieNodes: table }, steps: [], locations: [] },
+        input: { words, queries, searches }, trace, cameraX: 0.5,
+        more: {
+            data: { trieNodes: table, trie_search: lookups },
+            steps: [{
+                id: 'search', title: 'Search for whole words', description: 'search walks the word like starts_with, then checks that a word ends at the last node.',
+                descriptionExpr: `dataTable('trie_search', frame, 'message')`,
+                remove: [{ id: '*' }, { type: 'slider' }],
+                sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: lookups.length - 1, step: 1, default: 0 }],
+                codeRef: { file: 'trie', lineExpr: `dataTable('trie_search', frame, 'line')` },
+                add: searchElements,
+            }],
+            locations: lookups.map((f, snapshot) => ({ line: f.line, scene: 'trie', step: 'search', snapshot, label: `search · ${f.message}` })),
+        },
         markdown: `# Build trie
 
 **Signal:** autocomplete, "starts with", word search over many words, or longest common prefix.
 
 A **trie** stores words letter by letter down a tree: each node maps a letter to a child, so a path from the root spells a prefix, and words that share a prefix share that path. A node also records whether a word **ends** there (teal): "do" ends inside "dog".
 
-Inserting walks the word from the root, creating the nodes that are missing; \`starts_with\` walks the prefix and fails at the first missing letter. Both cost O(length of the word), however many words are stored. Here ${words.length} words need ${nodes.length - 1} letter nodes instead of ${words.reduce((n, w) => n + w.length, 0)} letters.
+Inserting walks the word from the root, creating the nodes that are missing; \`starts_with\` walks the prefix and fails at the first missing letter. \`search\` (next step) walks the same way, then also needs a word to **end** at the last node: "ca" is a prefix here, but not a stored word. All three cost O(length of the word), however many words are stored. Here ${words.length} words need ${nodes.length - 1} letter nodes instead of ${words.reduce((n, w) => n + w.length, 0)} letters.
 
 ${MD_TAIL}
 
 **Practice:** Implement Trie, Design Add and Search Words Data Structure, Word Search II, Longest Common Prefix, Replace Words.`,
-        prompt: 'Explain shared prefixes and the end-of-word marker. Ask the learner to predict which nodes an insert creates, and where a starts_with walk fails, before the player reveals it.',
+        prompt: 'Explain shared prefixes and the end-of-word marker. Ask the learner to predict which nodes an insert creates, where a starts_with walk fails, and why search("ca") is False while starts_with("ca") is True, before the player reveals it.',
         elements: [
             array('words', 'words', [-5.4, 2.9, 0], { from: inp('words'), itemType: 'string', labelSide: 'top', highlightExpr: `idx == ${tr('wi')}` }),
             array('queries', 'queries', [-5.4, 0.6, 0], { from: inp('queries'), itemType: 'string', labelSide: 'top', highlightExpr: `idx == ${tr('qi')}` }),
             // The letters being walked: the word while building, the prefix while searching.
             { ...array('word', 'word', [-3.4, -1.7, 0], { from: tr('text'), itemType: 'character', markers: [marker('ch', tr('ci'), PINK, `${tr('ci')} >= 0`)] }), visibleExpr: `${tr('phase')} == 0` },
             { ...array('prefix', 'prefix', [-3.4, -1.7, 0], { from: tr('text'), itemType: 'character', markers: [marker('ch', tr('ci'), PINK, `${tr('ci')} >= 0`)] }), visibleExpr: `${tr('phase')} == 1` },
-            // The trie: one node per prefix, its letter inside; teal where a word ends, gold where the code is.
-            // The walk from the root to the current node is lit.
-            {
-                id: 'root', type: 'graph', label: 'trie', lengthExpr: tr('count'), valueExpr: nd('ch'),
-                treeLayout: { type: 'tidy', parentExpr: nd('parent'), origin: [4.9, 3.3, 0], spacing: 1.35, levelGap: 1.25 },
-                nodeShape: 'rect', nodeWidth: 0.8, nodeHeight: 0.8, nodeCornerRadius: 0.4, valueLabel: 'inside', showIndices: false,
-                colorExpr: `idx == ${tr('cur')} ? '${GOLD}' : (arrayAt(${tr('ends')}, idx) == 1 ? '${TEAL}' : '')`,
-                connectTo: { indexExpr: nd('parent'), pinned: true, bendExpr: '0', color: '#7f93aa',
-                    colorExpr: `${onPath} ? '${GOLD}' : ''`, highlightExpr: onPath },
-                markers: [marker('node', tr('cur'), PINK)],
-            },
+            trie(tr),
             // ch, wired to its letter in whichever row is being walked.
             { ...label('ch', `${tr('ci')} < 0 ? 'ch: —' : concat('ch = ', ${tr('ch')})`, [-3.6, -4.0, 0]),
                 connectTo: [{ object: 'word', indexExpr: `${tr('phase')} == 0 ? ${tr('ci')} : -1` }, { object: 'prefix', indexExpr: `${tr('phase')} == 1 ? ${tr('ci')} : -1` }],
@@ -1856,6 +1888,8 @@ ${MD_TAIL}
                 codeRef: { file: 'trie', lineExpr: `${tr('line')} == 21 ? 21 : 23` } },
         ],
     });
+    const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
+    Object.assign(first, { title: 'Build and check prefixes', description: 'Insert each word, then walk each query with starts_with.' });
 })();
 // ── Topological sort: DFS post-order, then Kahn's in-degrees, on one course graph ──
 (() => {

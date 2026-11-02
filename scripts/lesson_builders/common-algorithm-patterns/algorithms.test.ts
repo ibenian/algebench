@@ -5,7 +5,7 @@ import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../../../src/array-operations.js';
 import {
-    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,topoTrace,topoDfsTrace,twoSumTrace,subarraySumTrace,
+    prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,trieSearchTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,topoTrace,topoDfsTrace,twoSumTrace,subarraySumTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
     MONOTONIC_QUEUE_SOURCE,GREEDY_SOURCE,BITS_SOURCE,UNION_FIND_SOURCE,KMP_SOURCE,
     PREFIX_SOURCE,TWO_POINTERS_SOURCE,SLIDING_WINDOW_SOURCE,FAST_SLOW_SOURCE,MONOTONIC_STACK_SOURCE,ROTATED_SEARCH_SOURCE,MERGE_INTERVALS_SOURCE,HOUSE_ROBBER_SOURCE,KADANE_SOURCE,LCS_SOURCE,TOP_K_SOURCE,TRIE_SOURCE,LINKED_LIST_SOURCE,TREE_TRAVERSAL_SOURCE,ISLANDS_SOURCE,RECURSION_SOURCE,SUBSETS_SOURCE,TOPO_SOURCE,HASH_MAP_SOURCE,
@@ -317,10 +317,18 @@ test('KMP finds every occurrence, including overlaps, and builds lps',()=>{
  assert.deepEqual(last(kmpTrace('abcabd','abcabd')).lps,[0,0,0,1,2,0]);
  for(const f of kmpTrace(text,pattern))if((f.lo as number)>=0)assert.equal(text.slice(f.lo as number,(f.hi as number)+1),pattern.slice(0,(f.hi as number)-(f.lo as number)+1));
 });
+test('trie search finds whole words only, over the finished trie',()=>{
+ const {words,searches}=IN.trie,trace=trieSearchTrace(words,searches),{nodes}=trieTrace(words,[]);
+ const answers=trace.filter(fr=>fr.status==='Running'&&(fr.line===29||fr.line===31)).map(fr=>fr.result);
+ assert.deepEqual(answers,searches.map(q=>words.includes(q)?'True':'False'));
+ // A prefix that is not a word is the case search exists for.
+ assert.ok(searches.some(q=>!words.includes(q)&&words.some(w=>w.startsWith(q))));
+ for(const fr of trace)assert.equal(fr.count,nodes.length);
+});
 test('every trace frame has the same keys and ends Done',()=>{
  for(const trace of [prefixSumTrace(IN.prefix.nums,IN.prefix.queries),twoPointersTrace(IN.twoPointers.nums,IN.twoPointers.target),
   slidingWindowTrace(IN.slidingWindow.nums,IN.slidingWindow.k),fastSlowTrace(IN.fastSlow.nums),monotonicStackTrace(IN.monotonic.temps),
-  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),powerTrace(IN.recursion.x,IN.recursion.n).trace,fibTrace(IN.recursion.fib).trace,subsetsTrace(IN.subsets.nums).trace,topoTrace(IN.topo.n,IN.topo.prerequisites).trace,topoDfsTrace(IN.topo.n,IN.topo.prerequisites).trace,twoSumTrace(IN.hashMap.nums,IN.hashMap.target),subarraySumTrace(IN.hashMap.sums,IN.hashMap.sumTarget),
+  rotatedSearchTrace(IN.rotated.nums,IN.rotated.target),mergeIntervalsTrace(IN.intervals.input),houseRobberTrace(IN.dp.houses),kadaneTrace(IN.kadane.nums),lcsTrace(IN.lcs.a,IN.lcs.b),topKTrace(IN.topK.nums,IN.topK.k),trieTrace(IN.trie.words,IN.trie.queries).trace,trieSearchTrace(IN.trie.words,IN.trie.searches),linkedListTrace(IN.linkedList.values),...(['preorder','inorder','postorder','level'] as const).map(o=>treeTraversalTrace(o,IN.tree.values,IN.tree.parents,IN.tree.sides)),islandsTrace(IN.islands.grid),powerTrace(IN.recursion.x,IN.recursion.n).trace,fibTrace(IN.recursion.fib).trace,subsetsTrace(IN.subsets.nums).trace,topoTrace(IN.topo.n,IN.topo.prerequisites).trace,topoDfsTrace(IN.topo.n,IN.topo.prerequisites).trace,twoSumTrace(IN.hashMap.nums,IN.hashMap.target),subarraySumTrace(IN.hashMap.sums,IN.hashMap.sumTarget),
   monotonicQueueTrace(IN.monoQueue.nums,IN.monoQueue.k),greedyTrace(IN.greedy.nums),bitsTrace(IN.bits.nums),
   unionFindTrace(IN.unionFind.n,IN.unionFind.edges),kmpTrace(IN.kmp.text,IN.kmp.pattern)]){
   const keys=Object.keys(trace[0]!).sort();

@@ -66,6 +66,12 @@ def _clean(text) -> str:
     return _DSPY_MARKER.sub("", str(text or "")).strip()
 
 
+def _request(text) -> str:
+    """A request to another AI, empty when the model wrote a null for "no request" ("None", "null")."""
+    text = _clean(text)
+    return "" if text.casefold() in {"none", "null", "n/a"} else text
+
+
 def clean_code(code: str) -> str:
     """A step's editor text: no fences, no line numbers copied from the inputs, no trailing spaces, no blank lines
     at the end."""
@@ -188,4 +194,4 @@ def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
     # Narrating types nothing; a fix shows the fix, not a new slip on the way to it.
     steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate", "pair"), editor=editor_text)
     return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing),
-                      complete=bool(getattr(out, "complete", False)), show=_clean(getattr(out, "show", "")))
+                      complete=bool(getattr(out, "complete", False)), show=_request(getattr(out, "show", "")))

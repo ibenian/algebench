@@ -63,6 +63,12 @@ def _clean(text) -> str:
     return _DSPY_MARKER.sub("", str(text or "")).strip()
 
 
+def _request(text) -> str:
+    """A request to another AI, empty when the model wrote a null for "no request" ("None", "null")."""
+    text = _clean(text)
+    return "" if text.casefold() in {"none", "null", "n/a"} else text
+
+
 def review_code(**inputs) -> CodeReview:
     """Ask the model for a review; one more ask if the answer was malformed."""
     try:
@@ -82,6 +88,6 @@ def review_code(**inputs) -> CodeReview:
         direction=_clean(out.direction),
         reply=_clean(out.reply),
         reminder=_clean(out.reminder),
-        show=_clean(getattr(out, "show", "")),
+        show=_request(getattr(out, "show", "")),
         line_notes=[n for n in (out.line_notes or []) if isinstance(n, LineNote)][:MAX_NOTES],
     )

@@ -1110,7 +1110,9 @@ export function setupCodePractice(): void {
                 : (scope === 'quiz' ? await invokeExpert('code_quiz', {...where, mode: 'ask', request, asked: askedQuestions.slice(-20), history: series?.turns ?? []})
                 : scope === 'grade' ? await invokeExpert('code_quiz', {...where, mode: 'grade', question: pending!.question, kind: pending!.kind,
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
-                : await invokeExpert('code_assist', {...where, scope, request, present: presenterOn(), cursor: input.value.slice(0, userCaret).split('\n').length,
+                // While pairing, the scene is shown only when the learner asks for something: a presentation of its
+                // own pulls them away from the line they are typing.
+                : await invokeExpert('code_assist', {...where, scope, request, present: presenterOn() && (!pairing || scope === 'ask'), cursor: input.value.slice(0, userCaret).split('\n').length,
                     // The coach's remarks, while they still number the lines as they are.
                     issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean; show?: string};
             waiting.remove();
@@ -1118,7 +1120,6 @@ export function setupCodePractice(): void {
             const bubble = (cls: string) => message('assistant', el('div', `cp-assist ${cls}`)).querySelector<HTMLElement>('.msg-body')!;
             if (!out.result) {
                 // Nothing to type: an answer to a question, or nothing to fix, is said like the rest of its help.
-                if (scope === 'pair' && out.reason) pairing = false;   // nothing left to write: pairing is done
                 if (out.show && out.reason) {
                     // Shown on the view by the chat, at once: the chat does the talking, so here it is only written.
                     const body = bubble('cp-assist-close');
@@ -1126,6 +1127,7 @@ export function setupCodePractice(): void {
                     void showInChat(out.show, body, true)?.();
                     ended = true;return;
                 }
+                if (scope === 'pair' && out.reason) pairing = false;   // nothing left to write: pairing is done
                 if (['ask', 'fix', 'narrate', 'pair', 'finish'].includes(scope) && out.reason) {
                     const body = bubble('cp-assist-close');
                     // Pairing done, and the code right: said as plainly as a perfect review, whatever the names.

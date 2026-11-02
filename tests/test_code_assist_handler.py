@@ -176,3 +176,8 @@ def test_an_idea_to_draw_goes_to_the_chat_only_with_the_presenter_on(monkeypatch
         closing="I'll show it on the scene.", show="On the scratchpad, draw the loop.", steps=[AssistStep(say="a", code="x")]))
     assert h.code_assist(CodeAssistRequest(**req, present=True)) == {"reason": "I'll show it on the scene.", "show": "On the scratchpad, draw the loop."}
     assert "show" not in h.code_assist(CodeAssistRequest(**req))
+
+
+def test_a_null_written_for_no_request_shows_nothing():
+    assert intent._request("None") == "" and intent._request(" null ") == ""
+    assert intent._request("Draw the loop.") == "Draw the loop."

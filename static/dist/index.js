@@ -10499,17 +10499,29 @@ function markGeometry(rect, shape) {
 			strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]
 		};
 	}
-	const pad = 8, w = rect.width + 16, h = rect.height + 16, rx = w / 2, ry = h / 2, cx = rx + 2, cy = ry + 2;
+	const { rx, ry } = ringRadii(rect), cx = rx + 2, cy = ry + 2;
 	const at = (deg) => {
 		const a = deg * Math.PI / 180;
 		return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`;
 	};
 	return {
-		left: rect.left - pad,
-		top: rect.top - pad,
-		w: w + 4,
-		h: h + 4,
-		strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 0 1 ${at(-100)}`]
+		left: rect.left + rect.width / 2 - rx - 2,
+		top: rect.top + rect.height / 2 - ry - 2,
+		w: rx * 2 + 4,
+		h: ry * 2 + 4,
+		strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 1 1 ${at(-100)}`]
+	};
+}
+/**
+* A ring's half-axes round `rect`: an ellipse just touching a box leaves its corners outside, so the line would cross
+* what it rings (most of all on a wide label). A little wider than the box, and as tall as it must be for the corners
+* to sit inside, with a margin.
+*/
+function ringRadii(rect) {
+	const hw = rect.width / 2, hh = rect.height / 2, rx = hw + Math.max(12, rect.width * .12);
+	return {
+		rx,
+		ry: hh / Math.sqrt(1 - (hw / rx) ** 2) + 4
 	};
 }
 var ringShape = "circle";
@@ -10553,7 +10565,8 @@ function linkGeometry(a, b) {
 		x: b.left + b.width / 2,
 		y: b.top + b.height / 2
 	};
-	const p = edgePoint("ellipse", ca.x, ca.y, a.width + 16, a.height + 16, cb, 3), q = edgePoint("ellipse", cb.x, cb.y, b.width + 16, b.height + 16, ca, 3);
+	const ra = ringRadii(a), rb = ringRadii(b);
+	const p = edgePoint("ellipse", ca.x, ca.y, ra.rx * 2, ra.ry * 2, cb, 3), q = edgePoint("ellipse", cb.x, cb.y, rb.rx * 2, rb.ry * 2, ca, 3);
 	const dx = q.x - p.x, dy = q.y - p.y, m = {
 		x: (p.x + q.x) / 2 - dy * .12,
 		y: (p.y + q.y) / 2 + dx * .12
@@ -35911,7 +35924,7 @@ function setupCodePractice() {
 				...where,
 				scope,
 				request,
-				present: presenterOn(),
+				present: presenterOn() && (!pairing || scope === "ask"),
 				cursor: input.value.slice(0, userCaret).split("\n").length,
 				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
 			});
@@ -35919,7 +35932,6 @@ function setupCodePractice() {
 			if (assisting !== run) throw new Stopped();
 			const bubble = (cls) => message("assistant", el("div", `cp-assist ${cls}`)).querySelector(".msg-body");
 			if (!out.result) {
-				if (scope === "pair" && out.reason) pairing = false;
 				if (out.show && out.reason) {
 					const body = bubble("cp-assist-close");
 					body.innerHTML = renderMarkdown$1(out.reason, {
@@ -35930,6 +35942,7 @@ function setupCodePractice() {
 					ended = true;
 					return;
 				}
+				if (scope === "pair" && out.reason) pairing = false;
 				if ([
 					"ask",
 					"fix",

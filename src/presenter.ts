@@ -335,11 +335,22 @@ function markGeometry(rect: DOMRect, shape: MarkShape): {left: number; top: numb
         const left = rect.left + rect.width / 2 - w / 2, top = rect.top + rect.height / 2 - h / 2;
         return {left, top, w, h, strokes: [`M2 2 L${w - 2} ${h - 2}`, `M${w - 2} 2 L2 ${h - 2}`]};
     }
-    const pad = 8, w = rect.width + pad * 2, h = rect.height + pad * 2, rx = w / 2, ry = h / 2, cx = rx + 2, cy = ry + 2;
+    const {rx, ry} = ringRadii(rect), cx = rx + 2, cy = ry + 2;
     const at = (deg: number) => { const a = deg * Math.PI / 180;return `${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`; };
     // From the top left, once round clockwise and a little on.
-    return {left: rect.left - pad, top: rect.top - pad, w: w + 4, h: h + 4,
-        strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 0 1 ${at(-100)}`]};
+    return {left: rect.left + rect.width / 2 - rx - 2, top: rect.top + rect.height / 2 - ry - 2, w: rx * 2 + 4, h: ry * 2 + 4,
+        // Both arcs on the one ellipse: the second runs 200° (60° round to -100°), so it is a large arc too; flagged small,
+        // SVG fits it on another ellipse, shifted, and the ring cuts across what it rings.
+        strokes: [`M${at(-120)} A${rx} ${ry} 0 1 1 ${at(60)} A${rx} ${ry} 0 1 1 ${at(-100)}`]};
+}
+/**
+ * A ring's half-axes round `rect`: an ellipse just touching a box leaves its corners outside, so the line would cross
+ * what it rings (most of all on a wide label). A little wider than the box, and as tall as it must be for the corners
+ * to sit inside, with a margin.
+ */
+function ringRadii(rect: DOMRect): {rx: number; ry: number} {
+    const hw = rect.width / 2, hh = rect.height / 2, rx = hw + Math.max(12, rect.width * .12);
+    return {rx, ry: hh / Math.sqrt(1 - (hw / rx) ** 2) + 4};
 }
 let ringShape: MarkShape = 'circle';
 /** Put a mark on `rect` in the beat's ink, not drawn yet (traceMark draws it); none for no rect. */
@@ -370,7 +381,8 @@ let markLinks: SVGSVGElement[] = [];
 /** A slightly bowed line from ring `a`'s edge to ring `b`'s (each ring is its target's box, padded as markGeometry does). */
 function linkGeometry(a: DOMRect, b: DOMRect): {left: number; top: number; w: number; h: number; d: string} {
     const ca = {x: a.left + a.width / 2, y: a.top + a.height / 2}, cb = {x: b.left + b.width / 2, y: b.top + b.height / 2};
-    const p = edgePoint('ellipse', ca.x, ca.y, a.width + 16, a.height + 16, cb, 3), q = edgePoint('ellipse', cb.x, cb.y, b.width + 16, b.height + 16, ca, 3);
+    const ra = ringRadii(a), rb = ringRadii(b);
+    const p = edgePoint('ellipse', ca.x, ca.y, ra.rx * 2, ra.ry * 2, cb, 3), q = edgePoint('ellipse', cb.x, cb.y, rb.rx * 2, rb.ry * 2, ca, 3);
     const dx = q.x - p.x, dy = q.y - p.y, m = {x: (p.x + q.x) / 2 - dy * .12, y: (p.y + q.y) / 2 + dx * .12};
     const left = Math.min(p.x, q.x, m.x) - 6, top = Math.min(p.y, q.y, m.y) - 6;
     const w = Math.max(p.x, q.x, m.x) - left + 6, h = Math.max(p.y, q.y, m.y) - top + 6;

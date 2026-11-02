@@ -101,10 +101,10 @@ class PresentStep(BaseModel):
                                                "`frames`; -1 to stay where it is")
     write: str = Field(default="", description="optional: one short line you type on the scratchpad over the view "
                                                "while you say this, as a presenter writes on a board: a calculation "
-                                               "with the values on screen, a formula, a bit of code. Plain text as typed "
-                                               "on a keyboard (-, *, <=, or − × ≤) by default; real notation (a matrix "
-                                               "or vector, a fraction, a sum, a subscript, a Greek letter) between $...$ "
-                                               "as KaTeX, never as Python lists; code between backticks. Empty for none")
+                                               "with the values on screen, a formula, a bit of code. A formula between "
+                                               "$...$ as KaTeX ($f_1(x) = \\frac{4}{\\pi}\\sin x$, never \"(4/pi) * sin(x)\"; "
+                                               "a matrix, never a Python list); code between backticks; plain text only "
+                                               "for arithmetic of the values on screen. Empty for none")
     write_near: str = Field(default="", description="with `write`: the ref (from `targets`, or `draw:<id>`) to write beside; empty "
                                                     "to write beside this beat's target, or in a free corner")
     erase: bool = Field(default=False, description="wipe everything you wrote and drew earlier, before this beat "
@@ -169,10 +169,11 @@ class ScenePresentSig(dspy.Signature):
     You also have a scratchpad: a beat may `write` one short line over the view while you say it, the way a
     presenter writes on the board as they talk. Use it for what is worth seeing written: the arithmetic with the
     values on screen ("running_sum - target = 1 - 3 = -2"), a key formula, the condition being checked, a
-    tiny bit of code. Write it as plain text, the way it would be typed; reach for $...$ (KaTeX, as in the info
-    overlays) only for notation plain text can't show well: a matrix or vector
-    ($\\begin{pmatrix}1 & 2 \\\\ 3 & 4\\end{pmatrix}$, $\\begin{bmatrix}x \\\\ y\\end{bmatrix}$, never "[[1, 2], [3, 4]]"),
-    a fraction ($\\frac{a}{b}$), a sum ($\\sum_i x_i$), a subscript ($x_{i-1}$), Greek letters. One line, at most
+    tiny bit of code. Math is set in $...$ (KaTeX, as in the info overlays), as it would be on a board: any
+    formula with variables, a subscript, a power, a fraction, a Greek letter or a function
+    ($f_1(x) = \\frac{4}{\\pi}\\sin x$, never "f_1(x) = (4/pi) * sin(x)"), a matrix or vector
+    ($\\begin{pmatrix}1 & 2 \\\\ 3 & 4\\end{pmatrix}$, never "[[1, 2], [3, 4]]"), a sum ($\\sum_i x_i$).
+    Plain text only for code (in `backticks`) and for arithmetic of the values on screen ("1 - 3 = -2"). One line, at most
     about 40 characters of plain text (KaTeX source may be longer); write only where it helps, a few
     times in a walk-through, not on every beat. Put it beside what it is about (`write_near`). What you wrote
     stays until you wipe it or the walk-through ends. Like a presenter tidying the board as they go, on any later

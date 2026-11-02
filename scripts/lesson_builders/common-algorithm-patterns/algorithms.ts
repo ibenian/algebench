@@ -599,7 +599,15 @@ def starts_with(root, prefix):
         if ch not in node.children:
             return False
         node = node.children[ch]
-    return True`;
+    return True
+
+def search(root, word):
+    node = root
+    for ch in word:
+        if ch not in node.children:
+            return False
+        node = node.children[ch]
+    return node.end`;
 /**
  * Build a trie from words, then answer starts_with for each query. Nodes are numbered in creation order
  * (the root is 0), and `nodes` describes the finished trie: each node's letter, parent and depth, so a view can
@@ -607,17 +615,26 @@ def starts_with(root, prefix):
  * cond, line 11's / 20's `ch in node.children` (-1 before it runs); ends and onPath, 0/1 per node (end of a
  * word; on the walk from the root to cur); text, the word or prefix being walked, ci its letter.
  */
-export function trieTrace(words: string[], queries: string[]) {
+/** The finished trie for words: each node's letter, parent and depth in creation order, its children, and 0/1 word ends. */
+function buildTrie(words: string[]) {
     const nodes: { ch: string; parent: number; depth: number }[] = [{ ch: '', parent: -1, depth: 0 }];
     const children: Map<string, number>[] = [new Map()];
-    // The finished trie first, so every frame can mark nodes by their final index.
+    const endAt: number[] = [];
     for (const w of words) {
         let n = 0;
         for (const ch of w) {
             if (!children[n]!.has(ch)) { children[n]!.set(ch, nodes.length); nodes.push({ ch, parent: n, depth: nodes[n]!.depth + 1 }); children.push(new Map()); }
             n = children[n]!.get(ch)!;
         }
+        endAt.push(n);
     }
+    const ends = Array<number>(nodes.length).fill(0);
+    for (const n of endAt) ends[n] = 1;
+    return { nodes, children, ends };
+}
+export function trieTrace(words: string[], queries: string[]) {
+    // The finished trie first, so every frame can mark nodes by their final index.
+    const { nodes, children } = buildTrie(words);
     const total = nodes.length, made = new Set<number>([0]), ends = Array<number>(total).fill(0);
     const v = { phase: 0, wi: -1, qi: -1, ci: -1, ch: '', text: [] as string[], cur: 0, count: 1, cond: -1, ends: ends.slice(), onPath: Array<number>(total).fill(0), result: '' };
     const { trace, emit } = recorder(v);
@@ -657,6 +674,40 @@ export function trieTrace(words: string[], queries: string[]) {
     v.phase = 2; v.qi = -1; v.text = []; v.ci = -1; v.ch = ''; v.cond = -1; v.cur = 0; path.length = 0; sync();
     emit(23, `Done: ${words.length} words share ${total - 1} letter nodes instead of ${words.reduce((s, w) => s + w.length, 0)} letters, because shared prefixes are stored once.`, 'Done');
     return { trace, nodes };
+}
+
+/**
+ * search over the finished trie, one word at a time: the same walk as starts_with, but the answer is whether a
+ * word ends at the last node. Columns match trieTrace's (phase is 3), so a view can reuse its elements; the
+ * trie is complete in every frame.
+ */
+export function trieSearchTrace(words: string[], searches: string[]) {
+    const { nodes, children, ends } = buildTrie(words);
+    const total = nodes.length, path: number[] = [0];
+    const v = { phase: 3, wi: -1, qi: -1, ci: -1, ch: '', text: [] as string[], cur: 0, count: total, cond: -1, ends: ends.slice(), onPath: Array<number>(total).fill(0), result: '' };
+    const { trace, emit } = recorder(v);
+    const sync = () => { v.onPath = Array.from({ length: total }, (_, i) => path.includes(i) ? 1 : 0); };
+    sync();
+    emit(25, `The trie holds ${words.length} words. search asks whether a whole word is stored, not just a prefix.`);
+    searches.forEach((q, qi) => {
+        v.qi = qi; v.text = [...q]; v.ci = -1; v.ch = ''; v.cur = 0; v.cond = -1; v.result = ''; path.length = 0; path.push(0); sync();
+        emit(26, `search("${q}"): start at the root.`);
+        for (const [ci, ch] of [...q].entries()) {
+            const next = children[v.cur]!.get(ch);
+            v.ci = ci; v.ch = ch; v.cond = next !== undefined ? 1 : 0;
+            emit(28, next !== undefined ? `"${ch}" is a child: keep going.` : `No "${ch}" child: "${q}" is not stored.`);
+            if (next === undefined) { v.result = 'False'; emit(29, `Return False for "${q}".`); return; }
+            v.cur = next; path.push(next); v.cond = -1; sync();
+            emit(30, `Step down to "${ch}".`);
+        }
+        v.ci = -1; v.result = ends[v.cur] ? 'True' : 'False';
+        emit(31, ends[v.cur]
+            ? `"${q}" is a path and a word ends here: return True.`
+            : `"${q}" is a path, but no word ends here: return False. starts_with("${q}") would be True; the end mark is the difference.`);
+    });
+    v.qi = -1; v.text = []; v.ci = -1; v.ch = ''; v.cond = -1; v.cur = 0; path.length = 0; sync();
+    emit(31, 'Done: search and starts_with walk the same path in O(length); search also checks the end mark.', 'Done');
+    return trace;
 }
 
 export const LINKED_LIST_SOURCE = `class Node:
