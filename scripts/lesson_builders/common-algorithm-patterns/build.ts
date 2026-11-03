@@ -108,7 +108,7 @@ const TIPS: Record<string, Record<string, string>> = {
     'prefix-sum': { last: 'tip_last', answer: 'tip_answer' },
     'two-pointers': { left: 'tip_left', right: 'tip_right', total: 'tip_total', compare: 'tip_cmp' },
     'sliding-window': { right: 'tip_right', window: 'tip_window', best: 'tip_best', 'best-compare': 'tip_cmp' },
-    'fast-slow': { slow: 'tip_slow', fast: 'tip_fast' },
+    'fast-slow': { slow: 'tip_slow', fast: 'tip_fast', compare: 'tip_cmp' },
     'monotonic-stack': { t: 'tip_t', j: 'tip_j' },
     'rotated-search': { lo: 'tip_lo', mid: 'tip_mid', hi: 'tip_hi', half: 'tip_half', compare: 'tip_cmp' },
     'merge-intervals': { m: 'tip_m', compare: 'tip_cmp' },
@@ -925,6 +925,9 @@ ${MD_TAIL}
         label('slow', `concat('slow = ', ${tr('slow')})`, [-4, -3.4, 0], ['nums', tr('slow')]),
         label('fast', `concat('fast = ', ${tr('fast')})`, [-4, -3.4, 0], ['nums', tr('fast')]),
         label('phase', `concat('phase = ', ${tr('phase')})`, [4, -3.4, 0]),
+        // The loop's test, on the lines that make it: slow == fast in phase 1, slow != fast in phase 2.
+        label('compare', `${tr('line')} == 6 ? concat('slow == fast? ', ${tr('slow')}, ${tr('slow')} == ${tr('fast')} ? ' = ' : ' ≠ ', ${tr('fast')}, ${tr('slow')} == ${tr('fast')} ? ': they meet' : ': not yet') : (${tr('line')} == 9 ? concat('slow != fast? ', ${tr('slow')}, ${tr('slow')} == ${tr('fast')} ? ' = ' : ' ≠ ', ${tr('fast')}, ${tr('slow')} == ${tr('fast')} ? ': stop, the entrance' : ': keep moving') : 'compare: —')`,
+            [4, -4.4, 0], undefined, `(${tr('line')} == 6 or ${tr('line')} == 9) and ${tr('slow')} == ${tr('fast')}`),
     ],
 });
 
