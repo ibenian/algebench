@@ -704,7 +704,9 @@ export function setupCodePanel(): void {
         body.querySelectorAll('.code-section-head').forEach(n=>n.remove());
         const all=selected?codeSections(selected):[];
         const scope=structureScope(lines);
-        const sections=scope?all.filter(s=>s.from>=scope.from&&s.to<=scope.to):all;
+        // Kept to the structured function: a section running into it from outside (the first, taking the imports)
+        // keeps its part inside, so the function's opening lines still have their title.
+        const sections=scope?all.filter(s=>s.to>=scope.from&&s.from<=scope.to).map(s=>s.from<scope.from||s.to>scope.to?{...s,from:Math.max(s.from,scope.from),to:Math.min(s.to,scope.to)}:s):all;
         body.querySelectorAll<HTMLElement>('.code-line').forEach(row=>{
             row.classList.remove('code-in-section','code-section-first','code-section-last','code-section-revealed');row.style.removeProperty('--section-tone');delete row.dataset.section;
             // Outside the structured function, or in no section (no title could reveal it), the code stays plain.

@@ -1220,6 +1220,35 @@ ${MD_TAIL}
 pattern({
     id: 'monotonic-queue', title: 'Max of every window (monotonic queue)', file: 'monotonic_queue.py', source: MONOTONIC_QUEUE_SOURCE,
     input: { nums: IN.monoQueue.nums, k: IN.monoQueue.k }, trace: monotonicQueueTrace(IN.monoQueue.nums, IN.monoQueue.k),
+    sections: [
+        section(MONOTONIC_QUEUE_SOURCE, 'mq-setup', 'An empty deque of indices', 'def max_sliding_window(', 'dq, out = deque(), []', {
+            hint: 'The deque will hold indices, not values: an index also says when it leaves the window.' }),
+        section(MONOTONIC_QUEUE_SOURCE, 'mq-back', 'A new value evicts the smaller ones behind it', 'for i, x in enumerate', 'dq.append(i)', {
+            hint: 'Pop from the back while the value there is no bigger than x: none of them can be a maximum while x is in the window.',
+            prompt: 'Explain why a smaller value behind a newer, bigger one can never be a window maximum again.' }),
+        section(MONOTONIC_QUEUE_SOURCE, 'mq-front', 'The front leaves once it slides out', 'if dq[0] <= i - k', 'dq.popleft()', {
+            hint: 'The front is the oldest index kept; once it is k or more steps back it is outside the window.' }),
+        section(MONOTONIC_QUEUE_SOURCE, 'mq-out', 'A full window reports its front', 'if i >= k - 1', 'out.append(nums[dq[0]])', {
+            hint: 'From the k-th number on, every step closes a window; its maximum is the value at the front.' }),
+        section(MONOTONIC_QUEUE_SOURCE, 'mq-done', 'One maximum per window', 'return out', null, {
+            hint: 'Each index enters and leaves the deque at most once: O(n) for all windows.' }),
+    ],
+    annotations: [
+        doc('max_sliding_window', '`max_sliding_window(nums, k)` returns the maximum of every window of `k` consecutive numbers. O(n).'),
+        doc('nums', 'The numbers the window slides over.'),
+        doc('k', 'The window size.'),
+        doc('dq', 'Indices of the numbers that may still be a window maximum. Their values decrease from front to back; the front is the maximum.'),
+        doc('out', 'The maximum of each full window, in order.'),
+        doc('i', 'The index of the number entering the window.'),
+        doc('x', 'The number entering the window, `nums[i]`.'),
+        doc('deque', 'A double-ended queue: O(1) push and pop at both ends.'),
+        docExpr(MONOTONIC_QUEUE_SOURCE, 'while dq and', 'nums[dq[-1]] <= x', 'The value at the back is no bigger than the newcomer: it can never be a maximum again.'),
+        docBlock(MONOTONIC_QUEUE_SOURCE, 'while dq and', 'dq.pop()', 'Every index is popped at most once in the whole run, so all these pops together cost O(n).'),
+        docExpr(MONOTONIC_QUEUE_SOURCE, 'if dq[0] <= i - k', 'i - k', 'The last index that has slid out: the window is now `i - k + 1 .. i`.'),
+        docExpr(MONOTONIC_QUEUE_SOURCE, 'if dq[0] <= i - k', 'dq[0] <= i - k', 'The front index is outside the window, so it is dropped.'),
+        docExpr(MONOTONIC_QUEUE_SOURCE, 'if i >= k - 1', 'i >= k - 1', 'The window is full: it holds `k` numbers.'),
+        docExpr(MONOTONIC_QUEUE_SOURCE, 'out.append(nums[dq[0]])', 'nums[dq[0]]', 'The value at the front: the maximum of this window.'),
+    ],
     markdown: `# Max of every window (monotonic queue)
 
 **Signal:** the maximum (or minimum) of every window of size k, or "the best value within the last k steps".

@@ -427,7 +427,9 @@ export function setupCodePractice(): void {
         if (next === key) return;
         if (key) hushCoach();
         key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;clearTimeout(pairIdle);
-        sections = codeSections(v.file).filter(s => s.from >= v.from && s.to <= v.to);
+        // The block's sections, kept to it: the first may start above it (taking the imports).
+        sections = codeSections(v.file).filter(s => s.to >= v.from && s.from <= v.to)
+            .map(s => s.from < v.from || s.to > v.to ? {...s, from: Math.max(s.from, v.from), to: Math.min(s.to, v.to)} : s);
         const count = v.to - v.from + 1;
         target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ''}`;
         // Empty until the stored attempt arrives; a move to another block meanwhile leaves it unused.

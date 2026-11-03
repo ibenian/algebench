@@ -808,6 +808,29 @@
       "path": "patterns/monotonic_queue.py",
       "language": "python",
       "source": "from collections import deque\n\ndef max_sliding_window(nums, k):\n    dq, out = deque(), []\n    for i, x in enumerate(nums):\n        while dq and nums[dq[-1]] <= x:\n            dq.pop()\n        dq.append(i)\n        if dq[0] <= i - k:\n            dq.popleft()\n        if i >= k - 1:\n            out.append(nums[dq[0]])\n    return out",
+      "sections": [
+        {"id": "mq-setup", "title": "An empty deque of indices", "from": 1, "to": 4, "hint": "The deque will hold indices, not values: an index also says when it leaves the window."},
+        {"id": "mq-back", "title": "A new value evicts the smaller ones behind it", "from": 5, "to": 8, "hint": "Pop from the back while the value there is no bigger than x: none of them can be a maximum while x is in the window.", "prompt": "Explain why a smaller value behind a newer, bigger one can never be a window maximum again."},
+        {"id": "mq-front", "title": "The front leaves once it slides out", "from": 9, "to": 10, "hint": "The front is the oldest index kept; once it is k or more steps back it is outside the window."},
+        {"id": "mq-out", "title": "A full window reports its front", "from": 11, "to": 12, "hint": "From the k-th number on, every step closes a window; its maximum is the value at the front."},
+        {"id": "mq-done", "title": "One maximum per window", "from": 13, "to": 13, "hint": "Each index enters and leaves the deque at most once: O(n) for all windows."}
+      ],
+      "annotations": [
+        {"name": "max_sliding_window", "text": "`max_sliding_window(nums, k)` returns the maximum of every window of `k` consecutive numbers. O(n)."},
+        {"name": "nums", "text": "The numbers the window slides over."},
+        {"name": "k", "text": "The window size."},
+        {"name": "dq", "text": "Indices of the numbers that may still be a window maximum. Their values decrease from front to back; the front is the maximum."},
+        {"name": "out", "text": "The maximum of each full window, in order."},
+        {"name": "i", "text": "The index of the number entering the window."},
+        {"name": "x", "text": "The number entering the window, `nums[i]`."},
+        {"name": "deque", "text": "A double-ended queue: O(1) push and pop at both ends."},
+        {"line": 6, "col": 21, "endCol": 38, "text": "The value at the back is no bigger than the newcomer: it can never be a maximum again."},
+        {"line": 6, "endLine": 7, "text": "Every index is popped at most once in the whole run, so all these pops together cost O(n)."},
+        {"line": 9, "col": 20, "endCol": 25, "text": "The last index that has slid out: the window is now `i - k + 1 .. i`."},
+        {"line": 9, "col": 11, "endCol": 25, "text": "The front index is outside the window, so it is dropped."},
+        {"line": 11, "col": 11, "endCol": 21, "text": "The window is full: it holds `k` numbers."},
+        {"line": 12, "col": 23, "endCol": 34, "text": "The value at the front: the maximum of this window."}
+      ],
       "locations": [
         {"line": 4, "scene": "monotonic-queue", "step": "run", "snapshot": 0, "label": "Max of every window (monotonic queue) · The deque holds indices whose values decrease from front to back. The front is always the window maximum."},
         {"line": 5, "scene": "monotonic-queue", "step": "run", "snapshot": 1, "label": "Max of every window (monotonic queue) · Index 0: 1 enters the window nums[0..0]."},

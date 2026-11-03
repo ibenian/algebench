@@ -30866,7 +30866,11 @@ function setupCodePanel() {
 		body.querySelectorAll(".code-section-head").forEach((n) => n.remove());
 		const all = selected ? codeSections(selected) : [];
 		const scope = structureScope(lines);
-		const sections = scope ? all.filter((s) => s.from >= scope.from && s.to <= scope.to) : all;
+		const sections = scope ? all.filter((s) => s.to >= scope.from && s.from <= scope.to).map((s) => s.from < scope.from || s.to > scope.to ? {
+			...s,
+			from: Math.max(s.from, scope.from),
+			to: Math.min(s.to, scope.to)
+		} : s) : all;
 		body.querySelectorAll(".code-line").forEach((row) => {
 			row.classList.remove("code-in-section", "code-section-first", "code-section-last", "code-section-revealed");
 			row.style.removeProperty("--section-tone");
@@ -35229,7 +35233,11 @@ function setupCodePractice() {
 		series = null;
 		pairing = false;
 		clearTimeout(pairIdle);
-		sections = codeSections(v.file).filter((s) => s.from >= v.from && s.to <= v.to);
+		sections = codeSections(v.file).filter((s) => s.to >= v.from && s.from <= v.to).map((s) => s.from < v.from || s.to > v.to ? {
+			...s,
+			from: Math.max(s.from, v.from),
+			to: Math.min(s.to, v.to)
+		} : s);
 		const count = v.to - v.from + 1;
 		target.title = `${count} lines${sections.length ? `, ${sections.length} sections` : ""}`;
 		attempt = {
