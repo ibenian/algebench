@@ -901,6 +901,25 @@
       "path": "patterns/top_k.py",
       "language": "python",
       "source": "import heapq\n\ndef kth_largest(nums, k):\n    heap = []\n    for x in nums:\n        heapq.heappush(heap, x)\n        if len(heap) > k:\n            heapq.heappop(heap)\n    return heap[0]",
+      "sections": [
+        {"id": "heap-setup", "title": "An empty min-heap", "from": 1, "to": 4, "hint": "A min-heap keeps its smallest value at heap[0]; it will hold the k largest seen so far."},
+        {"id": "heap-push", "title": "Every number joins the heap", "from": 5, "to": 6, "hint": "Push each number: it sifts up past bigger parents until the smallest is at the root again."},
+        {"id": "heap-trim", "title": "One too many: drop the smallest", "from": 7, "to": 8, "hint": "With k + 1 values, the root is the smallest of them, so it cannot be among the k largest.", "prompt": "Explain why popping the root keeps exactly the k largest numbers seen so far."},
+        {"id": "heap-done", "title": "The root is the k-th largest", "from": 9, "to": 9, "hint": "The heap holds the k largest; the smallest of them, at the root, is the k-th largest. O(n log k)."}
+      ],
+      "annotations": [
+        {"name": "kth_largest", "text": "`kth_largest(nums, k)` returns the k-th largest number. O(n log k) time, O(k) space."},
+        {"name": "nums", "text": "The numbers to scan."},
+        {"name": "k", "text": "Which largest is wanted: 1 is the maximum."},
+        {"name": "heap", "text": "A min-heap of at most k numbers: the k largest seen so far, the smallest of them at `heap[0]`."},
+        {"name": "x", "text": "The number being read."},
+        {"name": "heapq", "text": "Python's binary heap: a list kept so every parent is no bigger than its children."},
+        {"line": 6, "col": 8, "endCol": 31, "text": "Append x and sift it up: O(log k)."},
+        {"line": 7, "col": 11, "endCol": 24, "text": "One more than k: the extra one is the smallest."},
+        {"line": 8, "col": 12, "endCol": 31, "text": "Remove the root, the smallest; the last value moves to the root and sifts down: O(log k)."},
+        {"line": 5, "endLine": 8, "text": "n numbers, each a push and at most one pop on a heap of size k: O(n log k)."},
+        {"line": 9, "col": 11, "endCol": 18, "text": "The root: the smallest of the k largest, which is the k-th largest."}
+      ],
       "locations": [
         {"line": 4, "scene": "top-k", "step": "run", "snapshot": 0, "label": "Keep the best k (heap) · Start with an empty min-heap. It will hold the 3 largest values seen so far, smallest on top."},
         {"line": 5, "scene": "top-k", "step": "run", "snapshot": 1, "label": "Keep the best k (heap) · Next value: x = 7."},

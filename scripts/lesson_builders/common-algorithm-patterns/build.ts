@@ -1652,6 +1652,30 @@ ${MD_TAIL}
     pattern({
         id: 'top-k', title: 'Keep the best k (heap)', file: 'top_k.py', source: TOP_K_SOURCE,
         input: { nums, k }, trace,
+        sections: [
+            section(TOP_K_SOURCE, 'heap-setup', 'An empty min-heap', 'def kth_largest(', 'heap = []', {
+                hint: 'A min-heap keeps its smallest value at heap[0]; it will hold the k largest seen so far.' }),
+            section(TOP_K_SOURCE, 'heap-push', 'Every number joins the heap', 'for x in nums', 'heapq.heappush(heap, x)', {
+                hint: 'Push each number: it sifts up past bigger parents until the smallest is at the root again.' }),
+            section(TOP_K_SOURCE, 'heap-trim', 'One too many: drop the smallest', 'if len(heap) > k', 'heapq.heappop(heap)', {
+                hint: 'With k + 1 values, the root is the smallest of them, so it cannot be among the k largest.',
+                prompt: 'Explain why popping the root keeps exactly the k largest numbers seen so far.' }),
+            section(TOP_K_SOURCE, 'heap-done', 'The root is the k-th largest', 'return heap[0]', null, {
+                hint: 'The heap holds the k largest; the smallest of them, at the root, is the k-th largest. O(n log k).' }),
+        ],
+        annotations: [
+            doc('kth_largest', '`kth_largest(nums, k)` returns the k-th largest number. O(n log k) time, O(k) space.'),
+            doc('nums', 'The numbers to scan.'),
+            doc('k', 'Which largest is wanted: 1 is the maximum.'),
+            doc('heap', 'A min-heap of at most k numbers: the k largest seen so far, the smallest of them at `heap[0]`.'),
+            doc('x', 'The number being read.'),
+            doc('heapq', "Python's binary heap: a list kept so every parent is no bigger than its children."),
+            docExpr(TOP_K_SOURCE, 'heapq.heappush(heap, x)', 'heapq.heappush(heap, x)', 'Append x and sift it up: O(log k).'),
+            docExpr(TOP_K_SOURCE, 'if len(heap) > k', 'len(heap) > k', 'One more than k: the extra one is the smallest.'),
+            docExpr(TOP_K_SOURCE, 'heapq.heappop(heap)', 'heapq.heappop(heap)', 'Remove the root, the smallest; the last value moves to the root and sifts down: O(log k).'),
+            docBlock(TOP_K_SOURCE, 'for x in nums', 'heapq.heappop(heap)', 'n numbers, each a push and at most one pop on a heap of size k: O(n log k).'),
+            docExpr(TOP_K_SOURCE, 'return heap[0]', 'heap[0]', 'The root: the smallest of the k largest, which is the k-th largest.'),
+        ],
         markdown: `# Keep the best k (heap)
 
 **Signal:** the k largest, k smallest, or k most frequent items; or "the best so far" from a stream.
