@@ -2282,6 +2282,96 @@ function placeCallouts() {
 * ones show only while the toggle is hovered.
 */
 var sets = /* @__PURE__ */ new Map();
+/**
+* A failing lamp's flicker, never twice the same: it drops and catches at random moments, each catch weaker on the
+* whole, and snaps between them rather than fading. The offsets and strengths are random; the end is always dark.
+*/
+function randomFlicker() {
+	const catches = 3 + Math.floor(Math.random() * 4), frames = [{
+		offset: 0,
+		opacity: 1
+	}];
+	let at = 0;
+	for (let k = 0; k < catches; k++) {
+		const left = catches - k, dark = at + (.9 - at) / left * (.3 + Math.random() * .4), lit = dark + (.9 - dark) / left * (.3 + Math.random() * .5);
+		frames.push({
+			offset: dark,
+			opacity: Math.random() * .15
+		}, {
+			offset: lit,
+			opacity: (1 - k / catches) * (.5 + Math.random() * .5)
+		});
+		at = lit;
+	}
+	frames.push({
+		offset: Math.min(.97, at + .03 + Math.random() * .05),
+		opacity: 0
+	}, {
+		offset: 1,
+		opacity: 0
+	});
+	return {
+		frames: frames.map((f) => ({
+			...f,
+			easing: "step-end"
+		})),
+		ms: 450 + Math.random() * 500
+	};
+}
+var SVG_NS$1 = "http://www.w3.org/2000/svg";
+/** How long a new link takes to fade in. */
+var BORN_MS = 350;
+var linkKey = (group, i, j) => `${group.to}:${i}>${j}`;
+var newLayer = (container) => {
+	const svg = document.createElementNS(SVG_NS$1, "svg");
+	svg.classList.add("cell-link-layer");
+	svg.setAttribute("aria-hidden", "true");
+	Object.assign(svg.style, {
+		position: "absolute",
+		inset: "0",
+		width: "100%",
+		height: "100%",
+		overflow: "visible",
+		pointerEvents: "none",
+		zIndex: "5"
+	});
+	container.append(svg);
+	return svg;
+};
+/** A link gone from the state flickers where it last stood, like a failing halogen lamp, then goes. */
+function flickerOut(set, container, gone) {
+	if (!set.ghosts?.isConnected) set.ghosts = newLayer(container);
+	const path = document.createElementNS(SVG_NS$1, "path");
+	path.setAttribute("d", gone.d);
+	path.setAttribute("fill", "none");
+	path.setAttribute("stroke", gone.color);
+	path.setAttribute("stroke-width", String(Math.max(gone.width ?? 0, 2)));
+	path.setAttribute("stroke-linecap", "round");
+	const parts = [path];
+	if (gone.head) {
+		const tip = document.createElementNS(SVG_NS$1, "path");
+		tip.setAttribute("d", gone.head);
+		tip.setAttribute("fill", gone.color);
+		parts.push(tip);
+	}
+	const { frames, ms } = randomFlicker();
+	for (const part of parts) {
+		part.classList.add("cell-link-dying");
+		part.style.filter = `drop-shadow(0 0 4px ${gone.color})`;
+		part.style.opacity = "0";
+		set.ghosts.append(part);
+		part.animate(frames, {
+			duration: ms,
+			fill: "forwards"
+		});
+	}
+	set.dying.get(gone.key)?.forEach((el) => el.remove());
+	set.dying.set(gone.key, parts);
+	window.setTimeout(() => {
+		parts.forEach((el) => el.remove());
+		if (set.dying.get(gone.key) === parts) set.dying.delete(gone.key);
+	}, ms);
+}
 /** Replace the links drawn from array `from`. `pinned` sets the toggle's first state only; the reader owns it after. */
 function setCellLinks(from, groups, pinned) {
 	const set = sets.get(from);
@@ -2292,7 +2382,11 @@ function setCellLinks(from, groups, pinned) {
 		drawn: "",
 		pinned,
 		hovered: false,
-		toggle: null
+		toggle: null,
+		last: /* @__PURE__ */ new Map(),
+		dying: /* @__PURE__ */ new Map(),
+		ghosts: null,
+		born: /* @__PURE__ */ new Map()
 	});
 }
 /** Paint every link set; a set whose array left the scene is removed with its SVG. */
@@ -2301,6 +2395,7 @@ function paintCellLinks() {
 	for (const [from, set] of sets) {
 		if (!state.elementRegistry?.[from]) {
 			set.svg?.remove();
+			set.ghosts?.remove();
 			set.toggle?.remove();
 			sets.delete(from);
 			continue;
@@ -2421,6 +2516,7 @@ function paintCellLinks() {
 			const style = group.styles?.[p];
 			const width = style?.width;
 			paths.push({
+				key: linkKey(group, i, j),
 				d: curve.d,
 				color: style?.color || group.color,
 				lit: !!style?.lit,
@@ -2433,26 +2529,36 @@ function paintCellLinks() {
 		const shown = set.pinned || set.hovered;
 		const drawn = JSON.stringify(shown ? paths : []);
 		if (!set.svg?.isConnected) {
-			const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-			svg.classList.add("cell-link-layer");
-			svg.setAttribute("aria-hidden", "true");
-			Object.assign(svg.style, {
-				position: "absolute",
-				inset: "0",
-				width: "100%",
-				height: "100%",
-				overflow: "visible",
-				pointerEvents: "none",
-				zIndex: "5"
-			});
-			container.append(svg);
-			set.svg = svg;
+			set.svg = newLayer(container);
 			set.drawn = "";
 		}
 		if (drawn === set.drawn) continue;
 		set.drawn = drawn;
+		const live = new Set(set.groups.flatMap((g) => g.pairs.map(([i, j]) => linkKey(g, i, j))));
+		if (shown) {
+			for (const [key, was] of set.last) if (!live.has(key)) flickerOut(set, container, was);
+		}
+		for (const key of live) {
+			set.dying.get(key)?.forEach((el) => el.remove());
+			set.dying.delete(key);
+		}
+		const now = performance.now();
+		if (shown && set.last.size) {
+			for (const { key } of paths) if (!set.last.has(key)) set.born.set(key, now);
+		}
+		const fadeIn = (key, el) => {
+			const born = set.born.get(key);
+			if (born === void 0) return;
+			if (now - born < BORN_MS) el.animate([{ opacity: 0 }, { opacity: 1 }], {
+				duration: BORN_MS,
+				delay: born - now,
+				easing: "ease-out"
+			});
+			else set.born.delete(key);
+		};
+		set.last = new Map(shown ? paths.map((p) => [p.key, p]) : []);
 		const labelled = [];
-		set.svg.replaceChildren(...(shown ? paths : []).flatMap(({ d, color, head, lit, width, label }) => {
+		set.svg.replaceChildren(...(shown ? paths : []).flatMap(({ key, d, color, head, lit, width, label }) => {
 			const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 			path.setAttribute("d", d);
 			path.setAttribute("fill", "none");
@@ -2466,11 +2572,13 @@ function paintCellLinks() {
 				color
 			});
 			if (lit) path.style.filter = `drop-shadow(0 0 3px ${color})`;
+			fadeIn(key, path);
 			if (!head) return [path];
 			const tip = document.createElementNS("http://www.w3.org/2000/svg", "path");
 			tip.setAttribute("d", head);
 			tip.setAttribute("fill", color);
 			tip.setAttribute("fill-opacity", lit ? "1" : ".8");
+			fadeIn(key, tip);
 			return [path, tip];
 		}));
 		for (const { path, text, color } of labelled) {

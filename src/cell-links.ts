@@ -23,28 +23,85 @@ export interface CellLinkGroup {
     /** Graph edges: how much they bow, as a fraction of their length. */
     bend?: number;
 }
-interface LinkSet { groups: CellLinkGroup[]; svg: SVGSVGElement | null; drawn: string; pinned: boolean; hovered: boolean; toggle: HTMLButtonElement | null }
+type Painted = {key: string; d: string; color: string; head?: string; lit?: boolean; width?: number; label?: string};
+interface LinkSet { groups: CellLinkGroup[]; svg: SVGSVGElement | null; drawn: string; pinned: boolean; hovered: boolean; toggle: HTMLButtonElement | null;
+    /** What was last drawn by link, and the links on their way out, flickering in a layer of their own. */
+    last: Map<string, Painted>; dying: Map<string, SVGElement[]>; ghosts: SVGSVGElement | null;
+    /** When each link still fading in appeared: a redraw mid-fade (the camera turning) carries on from there. */
+    born: Map<string, number> }
 const sets = new Map<string, LinkSet>();
+/**
+ * A failing lamp's flicker, never twice the same: it drops and catches at random moments, each catch weaker on the
+ * whole, and snaps between them rather than fading. The offsets and strengths are random; the end is always dark.
+ */
+function randomFlicker(): {frames: Keyframe[]; ms: number} {
+    const catches = 3 + Math.floor(Math.random() * 4), frames: Keyframe[] = [{offset: 0, opacity: 1}];
+    let at = 0;
+    for (let k = 0; k < catches; k++) {
+        const left = catches - k, dark = at + (.9 - at) / left * (.3 + Math.random() * .4), lit = dark + (.9 - dark) / left * (.3 + Math.random() * .5);
+        frames.push({offset: dark, opacity: Math.random() * .15}, {offset: lit, opacity: (1 - k / catches) * (.5 + Math.random() * .5)});
+        at = lit;
+    }
+    frames.push({offset: Math.min(.97, at + .03 + Math.random() * .05), opacity: 0}, {offset: 1, opacity: 0});
+    return {frames: frames.map(f => ({...f, easing: 'step-end'})), ms: 450 + Math.random() * 500};
+}
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** How long a new link takes to fade in. */
+const BORN_MS = 350;
+const linkKey = (group: CellLinkGroup, i: number, j: number) => `${group.to}:${i}>${j}`;
+const newLayer = (container: HTMLElement) => {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.classList.add('cell-link-layer'); svg.setAttribute('aria-hidden', 'true');
+    Object.assign(svg.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: '5' });
+    container.append(svg);
+    return svg;
+};
+/** A link gone from the state flickers where it last stood, like a failing halogen lamp, then goes. */
+function flickerOut(set: LinkSet, container: HTMLElement, gone: Painted) {
+    if (!set.ghosts?.isConnected) set.ghosts = newLayer(container);
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', gone.d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', gone.color);
+    path.setAttribute('stroke-width', String(Math.max(gone.width ?? 0, 2))); path.setAttribute('stroke-linecap', 'round');
+    const parts: SVGElement[] = [path];
+    if (gone.head) {
+        const tip = document.createElementNS(SVG_NS, 'path');
+        tip.setAttribute('d', gone.head); tip.setAttribute('fill', gone.color);
+        parts.push(tip);
+    }
+    // The line and its head are one lamp: they flicker together.
+    const {frames, ms} = randomFlicker();
+    for (const part of parts) {
+        part.classList.add('cell-link-dying');part.style.filter = `drop-shadow(0 0 4px ${gone.color})`;part.style.opacity = '0';
+        set.ghosts.append(part);
+        part.animate(frames, {duration: ms, fill: 'forwards'});
+    }
+    set.dying.get(gone.key)?.forEach(el => el.remove());
+    set.dying.set(gone.key, parts);
+    window.setTimeout(() => {
+        parts.forEach(el => el.remove());
+        if (set.dying.get(gone.key) === parts) set.dying.delete(gone.key);
+    }, ms);
+}
 
 /** Replace the links drawn from array `from`. `pinned` sets the toggle's first state only; the reader owns it after. */
 export function setCellLinks(from: string, groups: CellLinkGroup[], pinned: boolean): void {
     const set = sets.get(from);
     if (set) set.groups = groups;
-    else sets.set(from, { groups, svg: null, drawn: '', pinned, hovered: false, toggle: null });
+    else sets.set(from, { groups, svg: null, drawn: '', pinned, hovered: false, toggle: null, last: new Map(), dying: new Map(), ghosts: null, born: new Map() });
 }
 
 /** Paint every link set; a set whose array left the scene is removed with its SVG. */
 export function paintCellLinks(): void {
     const camera = state.camera, canvas = state.renderer?.domElement, container = document.getElementById('labels-container');
     for (const [from, set] of sets) {
-        if (!state.elementRegistry?.[from]) { set.svg?.remove(); set.toggle?.remove(); sets.delete(from); continue; }
+        if (!state.elementRegistry?.[from]) { set.svg?.remove(); set.ghosts?.remove(); set.toggle?.remove(); sets.delete(from); continue; }
         if (!camera || !canvas || !container) continue;
         const rect = container.getBoundingClientRect(), viewport = canvas.getBoundingClientRect();
         const screen = (p: number[]) => {
             const v = new THREE.Vector3(...dataToWorld(p as [number, number, number])).project(camera);
             return { x: viewport.left - rect.left + (v.x * .5 + .5) * viewport.width, y: viewport.top - rect.top + (-v.y * .5 + .5) * viewport.height, z: v.z };
         };
-        const paths: {d: string; color: string; head?: string; lit?: boolean; width?: number; label?: string}[] = [];
+        const paths: Painted[] = [];
         let centre: {x: number; y: number} | null = null;   // a graph's centre, for which side its edges bow to
         let linked = false;
         // A whole object's outline, projected: its world bounds' corners.
@@ -121,30 +178,41 @@ export function paintCellLinks(): void {
             }
             const style = group.styles?.[p];
             const width = style?.width;
-            paths.push({ d: curve.d, color: style?.color || group.color, lit: !!style?.lit, ...(width ? {width} : {}), ...(style?.label ? {label: style.label} : {}),
+            paths.push({ key: linkKey(group, i, j), d: curve.d, color: style?.color || group.color, lit: !!style?.lit, ...(width ? {width} : {}), ...(style?.label ? {label: style.label} : {}),
                 ...(group.arrow ? {head: arrowHeadPath(end, curve.arrive, Math.max(style?.lit ? 8 : 6, (width ?? 0) * 2.4))} : {}) });
         });
         paintToggle(set, container, linked ? outsideRight(from, screen) : null);
         const shown = set.pinned || set.hovered;
         const drawn = JSON.stringify(shown ? paths : []);
-        if (!set.svg?.isConnected) {
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.classList.add('cell-link-layer'); svg.setAttribute('aria-hidden', 'true');
-            Object.assign(svg.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none', zIndex: '5' });
-            container.append(svg); set.svg = svg; set.drawn = '';
-        }
+        if (!set.svg?.isConnected) { set.svg = newLayer(container); set.drawn = ''; }
         if (drawn === set.drawn) continue;
         set.drawn = drawn;
+        // Gone from the state, not just turned out of view or unpinned: a link back again stops flickering.
+        const live = new Set(set.groups.flatMap(g => g.pairs.map(([i, j]) => linkKey(g, i, j))));
+        if (shown) for (const [key, was] of set.last) if (!live.has(key)) flickerOut(set, container, was);
+        for (const key of live) { set.dying.get(key)?.forEach(el => el.remove());set.dying.delete(key); }
+        // New beside links already drawn: the first paint of a set (a scene opening, links pinned) just shows.
+        const now = performance.now();
+        if (shown && set.last.size) for (const {key} of paths) if (!set.last.has(key)) set.born.set(key, now);
+        const fadeIn = (key: string, el: SVGElement) => {
+            const born = set.born.get(key);
+            if (born === undefined) return;
+            if (now - born < BORN_MS) el.animate([{opacity: 0}, {opacity: 1}], {duration: BORN_MS, delay: born - now, easing: 'ease-out'});
+            else set.born.delete(key);
+        };
+        set.last = new Map(shown ? paths.map(p => [p.key, p]) : []);
         const labelled: {path: SVGPathElement; text: string; color: string}[] = [];
-        set.svg!.replaceChildren(...(shown ? paths : []).flatMap(({d, color, head, lit, width, label}) => {
+        set.svg!.replaceChildren(...(shown ? paths : []).flatMap(({key, d, color, head, lit, width, label}) => {
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', color);
             path.setAttribute('stroke-opacity', lit ? '1' : '.6'); path.setAttribute('stroke-width', String(width ?? (lit ? 3 : 1.4))); path.setAttribute('stroke-linecap', 'round');
             if (label) labelled.push({path, text: label, color});
             if (lit) path.style.filter = `drop-shadow(0 0 3px ${color})`;
+            fadeIn(key, path);
             if (!head) return [path];
             const tip = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             tip.setAttribute('d', head); tip.setAttribute('fill', color); tip.setAttribute('fill-opacity', lit ? '1' : '.8');
+            fadeIn(key, tip);
             return [path, tip];
         }));
         // Labels at each link's midpoint, once the paths are in the document to be measured: a small pill over the
