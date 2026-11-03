@@ -6361,6 +6361,9 @@ body:has(.push-array) #legend { display: none; }
 .ai-pointer-ring.on { opacity: 1; }
 /* A tick or cross sits over what it marks: see-through, so what's under it still reads. A dark contour round its
    lit core keeps it clear on any box (a glow alone is lost on a bright fill), and the glow goes round both. */
+/* Their colour is their meaning, whatever ink the beat picked: a tick is green, a cross red. */
+.ai-pointer-ring.ai-mark-check { --ink: #7dffcf; }
+.ai-pointer-ring.ai-mark-cross { --ink: #ff7a6e; }
 .ai-pointer-ring.ai-mark-check.on, .ai-pointer-ring.ai-mark-cross.on { opacity: .85; }
 .ai-pointer-ring.ai-mark-check path, .ai-pointer-ring.ai-mark-cross path { stroke-width: 3.5;
   filter: drop-shadow(0 0 .7px rgba(0, 0, 0, .95)) drop-shadow(0 0 .7px rgba(0, 0, 0, .95)) drop-shadow(0 0 1px rgba(0, 0, 0, .8))
@@ -6417,7 +6420,9 @@ body:has(#viewport:not(.graph-docked) #graph-viewport:not(.hidden)) :is(#ai-scra
 .ai-note { pointer-events: auto; cursor: grab; user-select: none; }
 /* Ask AI about a finished note: beside it on hover, as on the view's other objects. */
 .ai-note .ai-note-ask { position: absolute; left: 100%; top: 50%; margin: 0 0 0 2px; transform: translateY(-50%); pointer-events: none; text-shadow: none; }
-.ai-note.set:hover .ai-note-ask { opacity: 1; pointer-events: auto; }
+.ai-note.set:hover .ai-note-ask { z-index: 1; opacity: 1; pointer-events: auto; }
+/* A bridge from the note to the button, so the way across never leaves the note and takes the button away. */
+.ai-note.set:hover::after { content: ''; position: absolute; left: 100%; top: 0; bottom: 0; width: 23px; }
 .ai-note.dragging { cursor: grabbing; box-shadow: 0 0 18px rgba(80, 255, 190, .45), 0 6px 18px rgba(0, 0, 0, .55); }
 
 /* Settings popover behind the gear in the chat toolbar (src/chat-settings.ts) */
