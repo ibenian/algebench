@@ -112,6 +112,11 @@ class PresentStep(BaseModel):
                                                "letters, outside $...$, never LaTeX accents. Empty for none")
     write_near: str = Field(default="", description="with `write`: the ref (from `targets`, or `draw:<id>`) to write beside; empty "
                                                     "to write beside this beat's target, or in a free corner")
+    write_side: str = Field(default="", description='with `write`: where it goes. "right", "left", "above" or '
+                                                    '"below" to write on that side of what it is beside (`write_near`, '
+                                                    'else the target), where it stays as the view turns or plays; empty '
+                                                    'for whichever side is clear; "free" for a general line about the '
+                                                    'whole view, beside nothing, put in a free spot near the top')
     erase: bool = Field(default=False, description="wipe everything you wrote and drew earlier, before this beat "
                                                    "(not the board)")
     board: list[str] = Field(default_factory=list, description="at the start of this beat, put these lines on the "
@@ -182,7 +187,10 @@ class ScenePresentSig(dspy.Signature):
     are plain text outside $...$, in their own letters ("yığın", "henüz"), never LaTeX accents ("y\\i\\u{g}",
     "hen\\"uz") or \\text{...}; only the formula goes between $...$. One line, at most
     about 40 characters of plain text (KaTeX source may be longer); write only where it helps, a few
-    times in a walk-through, not on every beat. Put it beside what it is about (`write_near`). What you wrote
+    times in a walk-through, not on every beat. Put it beside what it is about (`write_near`), on the side where
+    it reads best and doesn't cover what it explains (`write_side`: a value under its cell, a note left of a row):
+    it is placed against that thing as it is drawn, and stays with it as the view moves. A general line about the
+    whole view, tied to nothing on it, is `write_side: "free"`. What you wrote
     stays until you wipe it or the walk-through ends. Like a presenter tidying the board as they go, on any later
     beat you may wipe notes you are done with (`erase_notes`, or `erase` for all of them) or move a result worth
     keeping in view (a value found, a rule, the formula the rest builds on) to the board (`board`): it slides to a
@@ -254,9 +262,13 @@ class ScenePresentSig(dspy.Signature):
     Nothing you write or draw fades on its own: it stays on the view after the walk-through, until you wipe it,
     and `on_view` lists what earlier walk-throughs left there. So decide at the start of each walk-through: build
     on what is there when the question follows on from it (point at it, add to the drawing, rub out a part), or
-    start clean when it is about something else (`erase` on the first beat wipes the notes and the drawing;
+    start clean when it is about something else: `keep` names what stays, the rest goes (`erase` on the first beat wipes the notes and the drawing;
     `erase_notes` takes board lines too). When you are about to draw something new, say whether the old drawing
     goes or stays. Leave on the view what the learner may want to look at after you finish.
+    The view is the learner's to read: as little noise, as much meaning as you can. Every line on it should
+    still be saying something now; a note whose point is made, a step that is done, a guess that is ruled out
+    goes (`erase_notes`, `erase_draw`) as you move on, and what the rest builds on goes to the board. A few
+    things on the view at a time, each clearly about what you are saying, teach more than a full one.
     A mark (circle, underline, check, cross) is for the moment you talk about something and goes with the beat;
     to mark several things at once, name the first as `target` and the rest in `together`: those side by side
     share one circle, those apart get one each, joined by a line (two cells compared: a circle on each, a line
@@ -301,6 +313,11 @@ class ScenePresentSig(dspy.Signature):
     on_view: str = dspy.InputField(desc="what your earlier walk-throughs left on the view, still there: notes, board "
                                         "lines and drawn shapes (`draw:<id>`), one per line")
 
+    keep: list[str] = dspy.OutputField(desc="decided first, from `on_view`: what earlier walk-throughs left that "
+                                       "this one still needs, each copied exactly from `on_view` (a note's or a "
+                                       "board line's text, or `draw:<id>`); everything else there is wiped before "
+                                       "the first beat. Keep only what you will point at, build on, or what the "
+                                       "learner needs in view; empty for a clean view")
     steps: list[PresentStep] = dspy.OutputField(desc="the beats of the walk-through, in order")
 
 

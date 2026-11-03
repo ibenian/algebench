@@ -32,7 +32,7 @@ def test_beats_point_only_at_listed_refs_and_move_only_within_the_run(monkeypatc
            PresentStep(say="  ", target="nums[2]")]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     out = h.scene_present(_req())["result"]["steps"]
-    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "erase_draw": [], "together": [], "draw": None, "color": "", "spotlight": False}
+    blank = {"part": "", "write": "", "write_near": "", "erase": False, "arrow_to": "", "arrow_from": "", "arrow_kind": "arrow", "slider": "", "slider_to": None, "board": [], "erase_notes": [], "erase_draw": [], "together": [], "draw": None, "color": "", "spotlight": False, "write_side": ""}
     assert out == [{"say": "Look at this cell.", "target": "nums[2]", "mark": "circle", "frame": 1, **blank},
                    {"say": "And this.", "target": "", "mark": "point", "frame": -1, **blank}]
 
@@ -43,6 +43,35 @@ def test_spotlight_is_kept_only_on_a_beat_that_marks_something(monkeypatch):
            PresentStep(say="Nothing here.", target="", mark="circle", spotlight=True)]
     monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
     assert [s["spotlight"] for s in h.scene_present(_req())["result"]["steps"]] == [True, False, False]
+
+
+def test_a_note_side_is_kept_only_when_known_and_written(monkeypatch):
+    raw = [PresentStep(say="Below it.", target="nums[2]", write="x = 1", write_side="below"),
+           PresentStep(say="Free.", write="the run so far", write_side="free"),
+           PresentStep(say="Odd.", target="nums[2]", write="y", write_side="diagonal"),
+           PresentStep(say="Nothing written.", target="nums[2]", write_side="left")]
+    monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: SimpleNamespace(steps=raw)))
+    assert [s["write_side"] for s in h.scene_present(_req())["result"]["steps"]] == ["below", "free", "", ""]
+
+
+def test_the_first_beat_wipes_what_earlier_walk_throughs_left_unless_kept(monkeypatch):
+    raw = [PresentStep(say="Here.", target="nums[2]"), PresentStep(say="And on.", target="nums[2]")]
+    left = {"notes": ["x = 1", "y = 2"], "board": ["sum = 3"], "drawn": [{"id": "tree", "type": "group"}]}
+
+    def first(keep, **kw):
+        out = SimpleNamespace(steps=raw) if keep is None else SimpleNamespace(steps=raw, keep=keep)
+        monkeypatch.setattr(intent, "_presenter", lambda: (lambda **_: out))
+        steps = h.scene_present(_req(**kw))["result"]["steps"]
+        assert not steps[1]["erase"] and not steps[1]["erase_notes"]
+        return {k: steps[0][k] for k in ("erase", "erase_notes", "erase_draw")}
+
+    # Nothing kept (or no answer): all of it goes, the board lines too.
+    assert first([], on_view=left) == first(None, on_view=left) == {"erase": True, "erase_notes": ["sum = 3"], "erase_draw": []}
+    # Some kept, named as `on_view` lists them: only the rest goes.
+    assert first(["note: y = 2", "board: sum = 3", "draw:tree"], on_view=left) == {"erase": False, "erase_notes": ["x = 1"], "erase_draw": []}
+    assert first(["x = 1"], on_view=left) == {"erase": False, "erase_notes": ["y = 2", "sum = 3"], "erase_draw": ["tree"]}
+    # A clean view: nothing to wipe.
+    assert first([]) == {"erase": False, "erase_notes": [], "erase_draw": []}
 
 
 def test_failure_and_nothing_to_show_are_reasons(monkeypatch):

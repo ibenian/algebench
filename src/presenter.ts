@@ -23,7 +23,7 @@ import { keyDelay } from '/code-assist-play.js';
 import { LINKS, SHAPES, edgePoint, hullAround, layoutDrawing, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Laid, type Point, type Rect } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
-interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line' | 'both'; spotlight?: boolean;
+interface Beat { say: string; target: string; part?: string; mark: 'point' | 'circle' | 'underline' | 'check' | 'cross'; frame: number; write?: string; write_near?: string; write_side?: NoteSide | 'free' | ''; erase?: boolean; arrow_to?: string; arrow_from?: string; arrow_kind?: 'arrow' | 'line' | 'both'; spotlight?: boolean;
     slider?: string; slider_to?: number | null; board?: string[]; erase_notes?: string[]; erase_draw?: string[]; together?: string[]; color?: string; draw?: Drawing | null }
 interface Target { ref: string; about: string }
 
@@ -232,6 +232,9 @@ export function resolveTarget(ref: string, part = ''): DOMRect | null {
     if (box && box.width * box.height > 4) return box;
     const label = objectLabelElement(ref);
     if (label?.offsetParent) return label.getBoundingClientRect();
+    // A value shown as a row of the variables box (no shape of its own in the view): the row is where it is.
+    const row = objectLabelRow(ref);
+    if (row) return inkRect(row);
     const anchor = objectWorldAnchor(ref), p = anchor ? project(anchor) : null;
     return p ? new DOMRect(p.x - 6, p.y - 6, 12, 12) : box;
 }
@@ -652,7 +655,19 @@ const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.righ
  * Where a note of size w×h goes: beside `near` (right, else left, above, below), within the view and clear of the
  * notes already written; with nothing to sit beside, down the view's top-left corner.
  */
-function placeNote(w: number, h: number, near: DOMRect | null): {x: number; y: number} {
+type NoteSide = 'right' | 'left' | 'above' | 'below';
+/** Where a w×h note on `side` of `near` sits, before any shift to keep it clear: level with it, `gap` off its edge. */
+function besideAt(near: DOMRect, side: NoteSide, w: number, h: number, gap = 16): {x: number; y: number} {
+    const cy = near.top + near.height / 2 - h / 2, cx = near.left + near.width / 2 - w / 2;
+    return side === 'right' ? {x: near.right + gap, y: cy} : side === 'left' ? {x: near.left - gap - w, y: cy}
+        : side === 'above' ? {x: cx, y: near.top - gap - h} : {x: cx, y: near.bottom + gap};
+}
+/**
+ * Where a note of size w×h goes: beside `near` on `side` when it fits there, else on the side that does (right,
+ * left, above, below), within the view and clear of the notes already written; with nothing to sit beside, down
+ * the view's top-left corner. Says which side it took, for a note that follows what it is beside.
+ */
+function placeNote(w: number, h: number, near: DOMRect | null, side: NoteSide | '' = ''): {x: number; y: number; side: NoteSide | ''} {
     const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
     // Kept clear: the notes already written, what the note is about, and the panels drawn over the view (the
     // variables box, the step caption, the player): a note on top of them would hide what it explains.
@@ -665,21 +680,24 @@ function placeNote(w: number, h: number, near: DOMRect | null): {x: number; y: n
         const r = new DOMRect(x, y, w, h);
         return x >= view.left + 6 && y >= view.top + 6 && x + w <= view.right - 6 && y + h <= view.bottom - 6 && !taken.some(t => overlaps(r, t));
     };
+    const sides: NoteSide[] = ['right', 'left', 'above', 'below'];
+    const order = side ? [side, ...sides.filter(s => s !== side)] : sides;
     // Something inside a panel (a variables row) is written beside the panel, level with the row.
     const host = near ? panels.find(p => near.left >= p.left - 1 && near.right <= p.right + 1 && near.top >= p.top - 1 && near.bottom <= p.bottom + 1) : undefined;
     if (near && host) {
         const cy = near.top + near.height / 2 - h / 2;
-        for (const [x, y] of [[host.right + gap, cy], [host.left - gap - w, cy], [host.left, host.top - gap - h], [host.left, host.bottom + gap]] as [number, number][])
-            if (fits(x, y)) return {x, y};
+        const at: Record<NoteSide, [number, number]> = {right: [host.right + gap, cy], left: [host.left - gap - w, cy], above: [host.left, host.top - gap - h], below: [host.left, host.bottom + gap]};
+        for (const s of order) if (fits(...at[s])) return {x: at[s][0], y: at[s][1], side: s};
     }
     if (near) {
-        const cy = near.top + near.height / 2 - h / 2, cx = near.left + near.width / 2 - w / 2;
-        for (const [x, y] of [[near.right + gap, cy], [near.left - gap - w, cy], [cx, near.top - gap - h], [cx, near.bottom + gap],
-            [near.right + gap, cy + h + 8], [near.right + gap, cy - h - 8]] as [number, number][]) if (fits(x, y)) return {x, y};
+        for (const s of order) { const p = besideAt(near, s, w, h, gap);if (fits(p.x, p.y)) return {...p, side: s}; }
+        // Crowded round it: a little along its right side, below or above where the first would go.
+        const p = besideAt(near, 'right', w, h, gap);
+        for (const y of [p.y + h + 8, p.y - h - 8]) if (fits(p.x, y)) return {x: p.x, y, side: 'right'};
     }
     // A free spot down the left of the view, then down its right.
-    for (const x of [view.left + 24, view.right - w - 24]) for (let y = view.top + 56;y + h < view.bottom - 6;y += h + 10) if (fits(x, y)) return {x, y};
-    return {x: view.left + 24, y: view.top + 56};
+    for (const x of [view.left + 24, view.right - w - 24]) for (let y = view.top + 56;y + h < view.bottom - 6;y += h + 10) if (fits(x, y)) return {x, y, side: ''};
+    return {x: view.left + 24, y: view.top + 56, side: ''};
 }
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]!));
 type Katex = {renderToString(t: string, o: object): string};
@@ -750,7 +768,9 @@ function mathHtml(body: string, open: boolean, katex?: Katex): string {
 const INKS = new Set(['yellow', 'red', 'blue', 'purple', 'orange', 'pink']);
 const inkClass = (color?: string) => color && INKS.has(color) ? `ai-ink-${color}` : '';
 
-async function typeNote(text: string, near: string, r: number, onBoard = false, color = ''): Promise<HTMLElement> {
+async function typeNote(text: string, near: string, r: number, onBoard = false, color = '', side: NoteSide | 'free' | '' = ''): Promise<HTMLElement> {
+    // A general line about the whole view isn't beside anything: it goes in a free spot.
+    if (side === 'free') near = '';
     const note = document.createElement('div');note.className = `ai-note ${inkClass(color)}`.trim();note.title = 'Drag to move';
     makeMovable(note);
     const ink = document.createElement('span');ink.className = 'ai-note-ink';
@@ -758,8 +778,10 @@ async function typeNote(text: string, near: string, r: number, onBoard = false, 
     note.append(ink, caret);notesLayer().append(note);
     // Its place, from its full size: measured fully set, then emptied to be typed.
     ink.innerHTML = inkHtml(text);
-    const size = note.getBoundingClientRect(), at = onBoard ? boardSlot() : placeNote(size.width + 12, size.height, near ? resolveTarget(near) : null);
+    const size = note.getBoundingClientRect(), anchor = near ? resolveTarget(near) : null;
+    const at = onBoard ? {...boardSlot(), side: '' as const} : placeNote(size.width + 12, size.height, anchor, side === 'free' ? '' : side);
     note.style.left = `${at.x}px`;note.style.top = `${at.y}px`;ink.textContent = '';
+    if (!onBoard && anchor && at.side) followAnchor(note, near, at.side, size.width + 12, size.height, at);
     if (onBoard) { board.push(note);note.classList.add('boarded'); } else notes.push(note);
     noteByText.set(noteKey(text), note);
     note.classList.add('on');
@@ -777,6 +799,26 @@ async function typeNote(text: string, near: string, r: number, onBoard = false, 
     note.classList.add('set');
     return note;
 }
+/**
+ * A note written beside something stays beside it as the view turns, zooms or plays: on the side it took, as far
+ * along it as it was put, every frame while it's up. Once the learner moves it, it stays where they put it.
+ */
+function followAnchor(note: HTMLElement, ref: string, side: NoteSide, w: number, h: number, at: {x: number; y: number}) {
+    const first = resolveTarget(ref);
+    if (!first) return;
+    const base = besideAt(first, side, w, h), dx = at.x - base.x, dy = at.y - base.y;
+    let was = '';
+    const tick = () => {
+        if (!note.isConnected || note.classList.contains('fading') || note.classList.contains('boarded') || note.dataset.moved) return;
+        const now = resolveTarget(ref);
+        if (now) {
+            const p = besideAt(now, side, w, h), key = `${Math.round(p.x + dx)},${Math.round(p.y + dy)}`;
+            if (key !== was) { was = key;note.style.left = `${p.x + dx}px`;note.style.top = `${p.y + dy}px`; }
+        }
+        requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+}
 /** The point where the line from a rect's centre towards (x, y) leaves the rect, `pad` outside it. */
 function edgeToward(r: DOMRect, x: number, y: number, pad: number): {x: number; y: number} {
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = x - cx, dy = y - cy;
@@ -788,8 +830,8 @@ function edgeToward(r: DOMRect, x: number, y: number, pad: number): {x: number; 
  * A hand-drawn arrow from one rect to another: a gently bowed, slightly wobbly stroke drawn out from its tail,
  * then its head, two quick strokes. It stays with the notes and goes when they are wiped.
  */
-// Arrows starting at a note: redrawn when the learner moves the note.
-const arrowsFrom = new WeakMap<Element, (() => void)[]>();
+// Arrows starting at a note: redrawn when the learner moves the note, wiped with it.
+const arrowsFrom = new WeakMap<Element, (() => void)[]>(), arrowEls = new WeakMap<Element, SVGSVGElement[]>();
 async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r: number, fromNote: Element | null = null, color = '', kind: 'arrow' | 'line' | 'both' = 'arrow') {
     // Its hand: which side it bows to, and its wobble, kept so a redraw is the same stroke, moved.
     const side = Math.random() < .5 ? -1 : 1, jitter = [Math.random() - .5, Math.random() - .5, Math.random() - .5, Math.random() - .5];
@@ -829,7 +871,7 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
     const len = shape();
     if (!len) return;
     notesLayer().append(svg);notes.push(svg);
-    if (fromNote) arrowsFrom.set(fromNote, [...(arrowsFrom.get(fromNote) ?? []), shape]);
+    if (fromNote) { arrowsFrom.set(fromNote, [...(arrowsFrom.get(fromNote) ?? []), shape]);arrowEls.set(fromNote, [...(arrowEls.get(fromNote) ?? []), svg]); }
     // What it joins on the view moves as the scene plays, turns or is resized: put it in place again every frame
     // while it's up (only when an end moved).
     let was = '';
@@ -1449,6 +1491,7 @@ function makeMovable(note: HTMLElement) {
         e.preventDefault();e.stopPropagation();note.setPointerCapture(e.pointerId);note.classList.add('dragging');
         const r = note.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
         const move = (ev: PointerEvent) => {
+            note.dataset.moved = '1';
             note.style.left = `${Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx))}px`;
             note.style.top = `${Math.max(0, Math.min(innerHeight - r.height, ev.clientY - dy))}px`;
             for (const redraw of arrowsFrom.get(note) ?? []) redraw();
@@ -1685,8 +1728,10 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         for (const t of beat.erase_notes ?? []) {
             const n = noteByText.get(noteKey(t));
             if (!n?.isConnected) continue;
-            notes = notes.filter(x => x !== n);board = board.filter(x => x !== n);
-            n.classList.add('fading');window.setTimeout(() => n.remove(), 700);
+            // Its arrows go with it: from a note no longer there, they point from nothing.
+            const going = [n, ...(arrowEls.get(n) ?? [])];
+            notes = notes.filter(x => !going.includes(x as never));board = board.filter(x => x !== n);
+            for (const el of going) { el.classList.add('fading');window.setTimeout(() => el.remove(), 700); }
         }
         if (beat.erase_draw?.length) await eraseSketch(beat.erase_draw, r);
         // Kept on the board: a note written earlier slides up there; a line not written yet is written there.
@@ -1699,7 +1744,7 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         // Talking while writing, as at a board: the beat ends when both are done.
         const words = speak(beat.say, line, r);
         // What it writes, then an arrow from it (or from what it names) to what it points out.
-        const noted = beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null);
+        const noted = beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color, beat.write_side ?? '') : Promise.resolve(null);
         const sketched = noted.then(async note => { if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? '', r);return note; });
         const writing = sketched.then(async note => { if (beat.arrow_to) await arrowFor(note); });
         const arrowFor = async (note: HTMLElement | null) => {

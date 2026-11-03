@@ -10333,6 +10333,8 @@ function resolveTarget$1(ref, part = "") {
 	if (box && box.width * box.height > 4) return box;
 	const label = objectLabelElement(ref);
 	if (label?.offsetParent) return label.getBoundingClientRect();
+	const row = objectLabelRow(ref);
+	if (row) return inkRect(row);
 	const anchor = objectWorldAnchor(ref), p = anchor ? project(anchor) : null;
 	return p ? new DOMRect(p.x - 6, p.y - 6, 12, 12) : box;
 }
@@ -10922,11 +10924,29 @@ function notesLayer() {
 	return layer;
 }
 var overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+/** Where a w×h note on `side` of `near` sits, before any shift to keep it clear: level with it, `gap` off its edge. */
+function besideAt(near, side, w, h, gap = 16) {
+	const cy = near.top + near.height / 2 - h / 2, cx = near.left + near.width / 2 - w / 2;
+	return side === "right" ? {
+		x: near.right + gap,
+		y: cy
+	} : side === "left" ? {
+		x: near.left - gap - w,
+		y: cy
+	} : side === "above" ? {
+		x: cx,
+		y: near.top - gap - h
+	} : {
+		x: cx,
+		y: near.bottom + gap
+	};
+}
 /**
-* Where a note of size w×h goes: beside `near` (right, else left, above, below), within the view and clear of the
-* notes already written; with nothing to sit beside, down the view's top-left corner.
+* Where a note of size w×h goes: beside `near` on `side` when it fits there, else on the side that does (right,
+* left, above, below), within the view and clear of the notes already written; with nothing to sit beside, down
+* the view's top-left corner. Says which side it took, for a note that follows what it is beside.
 */
-function placeNote(w, h, near) {
+function placeNote(w, h, near, side = "") {
 	const view = state.renderer?.domElement.getBoundingClientRect() ?? new DOMRect(0, 0, innerWidth, innerHeight);
 	const panels = [...document.querySelectorAll(".annotation-badge, #step-caption, #state-player, .code-step-targets")].filter((el) => el.offsetParent).map((el) => el.getBoundingClientRect());
 	const gap = 16, taken = [
@@ -10939,40 +10959,52 @@ function placeNote(w, h, near) {
 		const r = new DOMRect(x, y, w, h);
 		return x >= view.left + 6 && y >= view.top + 6 && x + w <= view.right - 6 && y + h <= view.bottom - 6 && !taken.some((t) => overlaps(r, t));
 	};
+	const sides = [
+		"right",
+		"left",
+		"above",
+		"below"
+	];
+	const order = side ? [side, ...sides.filter((s) => s !== side)] : sides;
 	const host = near ? panels.find((p) => near.left >= p.left - 1 && near.right <= p.right + 1 && near.top >= p.top - 1 && near.bottom <= p.bottom + 1) : void 0;
 	if (near && host) {
 		const cy = near.top + near.height / 2 - h / 2;
-		for (const [x, y] of [
-			[host.right + gap, cy],
-			[host.left - gap - w, cy],
-			[host.left, host.top - gap - h],
-			[host.left, host.bottom + gap]
-		]) if (fits(x, y)) return {
-			x,
-			y
+		const at = {
+			right: [host.right + gap, cy],
+			left: [host.left - gap - w, cy],
+			above: [host.left, host.top - gap - h],
+			below: [host.left, host.bottom + gap]
+		};
+		for (const s of order) if (fits(...at[s])) return {
+			x: at[s][0],
+			y: at[s][1],
+			side: s
 		};
 	}
 	if (near) {
-		const cy = near.top + near.height / 2 - h / 2, cx = near.left + near.width / 2 - w / 2;
-		for (const [x, y] of [
-			[near.right + gap, cy],
-			[near.left - gap - w, cy],
-			[cx, near.top - gap - h],
-			[cx, near.bottom + gap],
-			[near.right + gap, cy + h + 8],
-			[near.right + gap, cy - h - 8]
-		]) if (fits(x, y)) return {
-			x,
-			y
+		for (const s of order) {
+			const p = besideAt(near, s, w, h, gap);
+			if (fits(p.x, p.y)) return {
+				...p,
+				side: s
+			};
+		}
+		const p = besideAt(near, "right", w, h, gap);
+		for (const y of [p.y + h + 8, p.y - h - 8]) if (fits(p.x, y)) return {
+			x: p.x,
+			y,
+			side: "right"
 		};
 	}
 	for (const x of [view.left + 24, view.right - w - 24]) for (let y = view.top + 56; y + h < view.bottom - 6; y += h + 10) if (fits(x, y)) return {
 		x,
-		y
+		y,
+		side: ""
 	};
 	return {
 		x: view.left + 24,
-		y: view.top + 56
+		y: view.top + 56,
+		side: ""
 	};
 }
 var esc = (t) => t.replace(/[&<>"]/g, (c) => ({
@@ -11069,7 +11101,8 @@ var INKS = /* @__PURE__ */ new Set([
 	"pink"
 ]);
 var inkClass = (color) => color && INKS.has(color) ? `ai-ink-${color}` : "";
-async function typeNote(text, near, r, onBoard = false, color = "") {
+async function typeNote(text, near, r, onBoard = false, color = "", side = "") {
+	if (side === "free") near = "";
 	const note = document.createElement("div");
 	note.className = `ai-note ${inkClass(color)}`.trim();
 	note.title = "Drag to move";
@@ -11081,10 +11114,15 @@ async function typeNote(text, near, r, onBoard = false, color = "") {
 	note.append(ink, caret);
 	notesLayer().append(note);
 	ink.innerHTML = inkHtml(text);
-	const size = note.getBoundingClientRect(), at = onBoard ? boardSlot() : placeNote(size.width + 12, size.height, near ? resolveTarget$1(near) : null);
+	const size = note.getBoundingClientRect(), anchor = near ? resolveTarget$1(near) : null;
+	const at = onBoard ? {
+		...boardSlot(),
+		side: ""
+	} : placeNote(size.width + 12, size.height, anchor, side === "free" ? "" : side);
 	note.style.left = `${at.x}px`;
 	note.style.top = `${at.y}px`;
 	ink.textContent = "";
+	if (!onBoard && anchor && at.side) followAnchor(note, near, at.side, size.width + 12, size.height, at);
 	if (onBoard) {
 		board.push(note);
 		note.classList.add("boarded");
@@ -11104,6 +11142,30 @@ async function typeNote(text, near, r, onBoard = false, color = "") {
 	note.classList.add("set");
 	return note;
 }
+/**
+* A note written beside something stays beside it as the view turns, zooms or plays: on the side it took, as far
+* along it as it was put, every frame while it's up. Once the learner moves it, it stays where they put it.
+*/
+function followAnchor(note, ref, side, w, h, at) {
+	const first = resolveTarget$1(ref);
+	if (!first) return;
+	const base = besideAt(first, side, w, h), dx = at.x - base.x, dy = at.y - base.y;
+	let was = "";
+	const tick = () => {
+		if (!note.isConnected || note.classList.contains("fading") || note.classList.contains("boarded") || note.dataset.moved) return;
+		const now = resolveTarget$1(ref);
+		if (now) {
+			const p = besideAt(now, side, w, h), key = `${Math.round(p.x + dx)},${Math.round(p.y + dy)}`;
+			if (key !== was) {
+				was = key;
+				note.style.left = `${p.x + dx}px`;
+				note.style.top = `${p.y + dy}px`;
+			}
+		}
+		requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
+}
 /** The point where the line from a rect's centre towards (x, y) leaves the rect, `pad` outside it. */
 function edgeToward(r, x, y, pad) {
 	const cx = r.left + r.width / 2, cy = r.top + r.height / 2, dx = x - cx, dy = y - cy;
@@ -11119,6 +11181,7 @@ function edgeToward(r, x, y, pad) {
 * then its head, two quick strokes. It stays with the notes and goes when they are wiped.
 */
 var arrowsFrom = /* @__PURE__ */ new WeakMap();
+var arrowEls = /* @__PURE__ */ new WeakMap();
 async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow") {
 	const side = Math.random() < .5 ? -1 : 1, jitter = [
 		Math.random() - .5,
@@ -11181,7 +11244,10 @@ async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow
 	if (!len) return;
 	notesLayer().append(svg);
 	notes.push(svg);
-	if (fromNote) arrowsFrom.set(fromNote, [...arrowsFrom.get(fromNote) ?? [], shape]);
+	if (fromNote) {
+		arrowsFrom.set(fromNote, [...arrowsFrom.get(fromNote) ?? [], shape]);
+		arrowEls.set(fromNote, [...arrowEls.get(fromNote) ?? [], svg]);
+	}
 	let was = "";
 	const follow = () => {
 		if (!svg.isConnected) return;
@@ -12064,6 +12130,7 @@ function makeMovable(note) {
 		note.classList.add("dragging");
 		const r = note.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
 		const move = (ev) => {
+			note.dataset.moved = "1";
 			note.style.left = `${Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx))}px`;
 			note.style.top = `${Math.max(0, Math.min(innerHeight - r.height, ev.clientY - dy))}px`;
 			for (const redraw of arrowsFrom.get(note) ?? []) redraw();
@@ -12385,10 +12452,13 @@ async function playBeats(steps, body, r, onBeat) {
 		for (const t of beat.erase_notes ?? []) {
 			const n = noteByText.get(noteKey(t));
 			if (!n?.isConnected) continue;
-			notes = notes.filter((x) => x !== n);
+			const going = [n, ...arrowEls.get(n) ?? []];
+			notes = notes.filter((x) => !going.includes(x));
 			board = board.filter((x) => x !== n);
-			n.classList.add("fading");
-			window.setTimeout(() => n.remove(), 700);
+			for (const el of going) {
+				el.classList.add("fading");
+				window.setTimeout(() => el.remove(), 700);
+			}
 		}
 		if (beat.erase_draw?.length) await eraseSketch(beat.erase_draw, r);
 		for (const t of beat.board ?? []) {
@@ -12400,7 +12470,7 @@ async function playBeats(steps, body, r, onBeat) {
 		line.className = "ai-present-line";
 		body.append(line);
 		const words = speak$1(beat.say, line, r);
-		const sketched = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color) : Promise.resolve(null)).then(async (note) => {
+		const sketched = (beat.write ? typeNote(beat.write, beat.write_near || beat.target, r, false, beat.color, beat.write_side ?? "") : Promise.resolve(null)).then(async (note) => {
 			if (beat.draw?.elements?.length) await drawSketch(beat.draw, beat.color ?? "", r);
 			return note;
 		});

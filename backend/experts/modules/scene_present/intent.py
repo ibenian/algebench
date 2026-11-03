@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 MAX_STEPS = 10
 MARKS = ("point", "circle", "underline", "check", "cross")
+NOTE_SIDES = ("right", "left", "above", "below", "free")
 ARROW_KINDS = ("arrow", "line", "both")
 HEADS = ("end", "start", "both", "none")
 #: The longest line written on the scratchpad.
@@ -312,7 +313,8 @@ def clean_steps(raw, refs: set[str], frames: int, left=None, problems: list[str]
                                mark=s.mark if s.mark in MARKS else "point",
                                spotlight=bool(s.spotlight) and bool(target) and s.mark in MARKS and s.mark != "point",
                                frame=frame if 0 <= frame < frames else -1,
-                               write=write, write_near=_target_ref(s.write_near, refs, written, drawn) if write else "", erase=bool(s.erase),
+                               write=write, write_near=_target_ref(s.write_near, refs, written, drawn) if write else "",
+                               write_side=s.write_side if write and s.write_side in NOTE_SIDES else "", erase=bool(s.erase),
                                arrow_to=_target_ref(s.arrow_to, refs, written, drawn),
                                arrow_from=_target_ref(s.arrow_from, refs, written, drawn) if _target_ref(s.arrow_to, refs, written, drawn) else "",
                                draw=drawing,
@@ -329,6 +331,7 @@ def present(target_refs: set[str], frame_count: int, left=None, **inputs) -> Pre
         out = retry_on_parse_error(lambda: _presenter()(**inputs), label="scene_present")
         problems: list[str] = []
         steps = clean_steps(out.steps, target_refs, frame_count, left, problems)
+        keep = getattr(out, "keep", None)
         if problems:
             log.info("scene_present: elements that can't be drawn (%s); asking again", "; ".join(problems))
             note = ("(Your last answer drew elements the board could not draw, so they and the links to them were lost: "
@@ -340,7 +343,28 @@ def present(target_refs: set[str], frame_count: int, left=None, **inputs) -> Pre
             second = clean_steps(again.steps, target_refs, frame_count, left, retried)
             if second and len(retried) < len(problems):
                 steps = second
+                keep = getattr(again, "keep", None)
     except Exception as e:
         log.exception("scene_present: the model call failed")
         return Presentation(error=model_error_message(e) or f"{CALL_FAILED} ({type(e).__name__})")
+    if steps and left is not None:
+        steps[0] = _tidy_first(steps[0], left, keep)
     return Presentation(steps=steps)
+
+
+def _tidy_first(first: PresentStep, left, keep) -> PresentStep:
+    """The first beat starts by wiping what earlier walk-throughs left and this one doesn't `keep`: with nothing
+    of theirs kept, all of it (the arrows too); else the notes, board lines and drawn shapes not named."""
+    if not (left.notes or left.board or left.drawn):
+        return first
+    named = {_note_key(re.sub(r"^\s*(note|board):\s*", "", str(k))) for k in (keep if isinstance(keep, list) else []) if isinstance(k, str)}
+    ids = {k[5:] for k in named if k.startswith("draw:")}
+    notes = [t for t in left.notes if _note_key(t) not in named]
+    board = [t for t in left.board if _note_key(t) not in named]
+    drawn = [d.id for d in left.drawn if d.id not in ids]
+    if len(notes) == len(left.notes) and len(drawn) == len(left.drawn):
+        # Nothing of what they wrote or drew stays: one wipe, which takes their arrows with it (unlisted, as they
+        # are drawn between things rather than named).
+        return first.model_copy(update={"erase": True, "erase_notes": [*dict.fromkeys([*board, *first.erase_notes])]})
+    return first.model_copy(update={"erase_notes": [*dict.fromkeys([*notes, *board, *first.erase_notes])],
+                                    "erase_draw": [*dict.fromkeys([*drawn, *first.erase_draw])]})
