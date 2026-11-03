@@ -11130,13 +11130,24 @@ async function typeNote(text, near, r, onBoard = false, color = "", side = "") {
 	noteByText.set(noteKey(text), note);
 	note.classList.add("on");
 	let prev = "\n";
-	for (let k = 1; k <= text.length; k++) {
-		const ch = text[k - 1];
-		if (ch === "$" || ch === "`") continue;
-		alive(r);
-		await sleep(keyDelay(prev, ch));
-		ink.innerHTML = inkHtml(text.slice(0, k));
-		prev = ch;
+	try {
+		for (let k = 1; k <= text.length; k++) {
+			const ch = text[k - 1];
+			if (ch === "$" || ch === "`") continue;
+			alive(r);
+			await sleep(keyDelay(prev, ch));
+			ink.innerHTML = inkHtml(text.slice(0, k));
+			prev = ch;
+		}
+	} catch (stop) {
+		note.classList.add("set");
+		if (!ink.textContent) {
+			notes = notes.filter((n) => n !== note);
+			board = board.filter((n) => n !== note);
+			if (noteByText.get(noteKey(text)) === note) noteByText.delete(noteKey(text));
+			note.remove();
+		}
+		throw stop;
 	}
 	await sleep(250);
 	note.classList.add("set");
@@ -12496,6 +12507,7 @@ async function playBeats(steps, body, r, onBeat) {
 			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind);
 		};
 		const both = Promise.all([words, writing]).then(() => void 0);
+		both.catch(() => void 0);
 		if ([beat.target, ...beat.together ?? []].some((t) => t?.startsWith("draw:") && beat.draw?.elements?.some((e) => e.id === t.slice(5)))) {
 			await sketched;
 			for (let t0 = performance.now(); sketch?.glide && performance.now() - t0 < 580;) await new Promise((res) => requestAnimationFrame(res));

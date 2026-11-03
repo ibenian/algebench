@@ -787,12 +787,23 @@ async function typeNote(text: string, near: string, r: number, onBoard = false, 
     note.classList.add('on');
     // Each key shows what is typed so far; the $ and backtick marks aren't keys anyone sees pressed.
     let prev = '\n';
-    for (let k = 1; k <= text.length; k++) {
-        const ch = text[k - 1]!;
-        if (ch === '$' || ch === '`') continue;
-        alive(r);
-        await sleep(keyDelay(prev, ch));
-        ink.innerHTML = inkHtml(text.slice(0, k));prev = ch;
+    try {
+        for (let k = 1; k <= text.length; k++) {
+            const ch = text[k - 1]!;
+            if (ch === '$' || ch === '`') continue;
+            alive(r);
+            await sleep(keyDelay(prev, ch));
+            ink.innerHTML = inkHtml(text.slice(0, k));prev = ch;
+        }
+    } catch (stop) {
+        // Stopped mid-line: what was typed stays, without a caret blinking on; a note still empty goes.
+        note.classList.add('set');
+        if (!ink.textContent) {
+            notes = notes.filter(n => n !== note);board = board.filter(n => n !== note);
+            if (noteByText.get(noteKey(text)) === note) noteByText.delete(noteKey(text));
+            note.remove();
+        }
+        throw stop;
     }
     // Typed: it stays as it was typed (the typing face reads best on the view); only the caret goes.
     await sleep(250);
@@ -1764,6 +1775,8 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
             if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind);
         };
         const both = Promise.all([words, writing]).then(() => undefined);
+        // A stop can end the beat before both settle (the mark's wait throws first): their Stopped is expected then.
+        both.catch(() => undefined);
         // A target this beat draws is marked once it is drawn, where it ends up (not where it was still being made).
         if ([beat.target, ...(beat.together ?? [])].some(t => t?.startsWith('draw:') && beat.draw?.elements?.some(e => e.id === t.slice(5)))) {
             await sketched;
