@@ -1777,13 +1777,14 @@ ${MD_TAIL}
             id: o.order, title: o.title, description: `${o.title}: ${o.what}.`, descriptionExpr: `dataTable('${o.table}', frame, 'message')`,
             remove: [{ id: '*' }, { type: 'slider' }],
             sliders: [{ id: 'frame', label: 'Execution state', min: 0, max: run.length - 1, step: 1, default: 0 }],
-            codeRef: { file: 'tree-traversal', lineExpr: `dataTable('${o.table}', frame, 'line')` },
+            codeRef: { file: 'tree-traversal', lineExpr: `dataTable('${o.table}', frame, 'line')`,
+                ...(o.order === 'level' ? {} : { callsExpr: `dataTable('${o.table}', frame, 'calls')`, callEntryLine: o.order === 'inorder' ? 11 : 18 }) },
             add: elements(o.table, o.order === 'level'),
         };
     });
     pattern({
         id: 'tree-traversal', title: 'Walk a tree (traversal orders)', file: 'tree_traversal.py', source: TREE_TRAVERSAL_SOURCE,
-        input: { values }, trace: runs[0]!,
+        input: { values }, trace: runs[0]!, callEntryLine: 4,
         more: {
             data: { treeNodes: table, ...Object.fromEntries(ORDERS.slice(1).map((o, k) => [o.table, runs[k + 1]])) },
             steps,

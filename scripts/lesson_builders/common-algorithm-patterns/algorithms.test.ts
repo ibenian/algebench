@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import * as mathjs from 'mathjs';
 import {create,all} from 'mathjs';
 import {arrayAt,arrayCount} from '../../../src/array-operations.js';
+import {execTree} from '../../../src/exec-tree.ts';
 import {
     prefixSumTrace,twoPointersTrace,slidingWindowTrace,fastSlowTrace,fastSlowProofTrace,rhoShape,monotonicStackTrace,rotatedSearchTrace,mergeIntervalsTrace,intervalLanes,houseRobberTrace,kadaneTrace,lcsTrace,topKTrace,trieTrace,trieSearchTrace,linkedListTrace,treeTraversalTrace,islandsTrace,powerTrace,fibTrace,subsetsTrace,topoTrace,topoDfsTrace,twoSumTrace,subarraySumTrace,
     monotonicQueueTrace,greedyTrace,bitsTrace,unionFindTrace,kmpTrace,
@@ -169,6 +170,12 @@ test('tree traversals visit every node once, in the textbook orders',()=>{
  assert.deepEqual(out('inorder'),[1,2,3,4,6,8,10,12,14],'inorder reads a BST sorted');
  assert.deepEqual(out('postorder'),[1,3,2,6,4,10,14,12,8]);
  assert.deepEqual(out('level'),[8,4,12,2,6,10,14,1,3]);
+ // The execution tree reads the recursion off calls: one call per node, each under its parent, at every order.
+ for(const o of ['preorder','inorder','postorder'] as const){
+  const run=treeTraversalTrace(o,values,parents,sides),tree=execTree(TREE_TRAVERSAL_SOURCE,run as never,run.length-1);
+  assert.equal(tree.calls,values.length,o);
+  for(const f of run)assert.equal((f.calls as number[]).length,Math.max(0,(f.stack as number[]).length-1),o);
+ }
  for(const o of ['preorder','inorder','postorder'] as const)for(const f of treeTraversalTrace(o,values,parents,sides)){
   // The call stack is always a root-to-node path.
   const st=f.stack as number[];

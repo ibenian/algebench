@@ -366,7 +366,7 @@ export function setupCodePanel(): void {
         const label=(call:string,at:number)=>{
             const row=rows[at]??{};
             const open=call.indexOf('(');
-            const args=call.slice(open+1,-1).replace(/(?<![\w.'"])([A-Za-z_]\w*)(?![\w(])/g,(name:string)=>{
+            const args=call.slice(open+1,-1).replace(/(?<![\w.'"])([A-Za-z_][\w.]*)(?![\w(])/g,(name:string)=>{
                 const v=row[name];return typeof v==='number'||typeof v==='boolean'?String(v):typeof v==='string'?`'${v}'`:name;
             });
             // Arithmetic of known values is worked out: fib(4 - 1) reads fib(3).

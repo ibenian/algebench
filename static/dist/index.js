@@ -30576,7 +30576,7 @@ function setupCodePanel() {
 		const label = (call, at) => {
 			const row = rows[at] ?? {};
 			const open = call.indexOf("(");
-			const worked = call.slice(open + 1, -1).replace(/(?<![\w.'"])([A-Za-z_]\w*)(?![\w(])/g, (name) => {
+			const worked = call.slice(open + 1, -1).replace(/(?<![\w.'"])([A-Za-z_][\w.]*)(?![\w(])/g, (name) => {
 				const v = row[name];
 				return typeof v === "number" || typeof v === "boolean" ? String(v) : typeof v === "string" ? `'${v}'` : name;
 			}).split(",").map((a) => {

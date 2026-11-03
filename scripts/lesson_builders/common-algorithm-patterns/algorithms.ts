@@ -1056,15 +1056,18 @@ export type TreeOrder = 'preorder' | 'inorder' | 'postorder' | 'level';
  * One traversal of a binary tree (node i: values[i], parent parents[i], side sides[i]). Per frame: cur, the
  * node the code is at (−1 none); stack, the recursion's nodes from the root call down (DFS) or queue, the nodes
  * waiting (BFS), both as node indexes; waiting, 0/1 per node on either; visited, 0/1 per node; out, the values
- * appended so far.
+ * appended so far; calls, the call-site lines of the recursive calls not yet returned, for the execution tree;
+ * node, node.left and node.right, the values the tree labels its calls with.
  */
 export function treeTraversalTrace(order: TreeOrder, values: number[], parents: number[], sides: number[]) {
     const n = values.length;
     const child = (i: number, side: number) => parents.findIndex((p, c) => p === i && sides[c] === side);
     const visited = Array<number>(n).fill(0), out: number[] = [], stack: number[] = [], queue: number[] = [];
-    const v = { cur: -1, stack: [] as number[], queue: [] as number[], waiting: Array<number>(n).fill(0), visited: visited.slice(), out: [] as number[] };
+    const v = { cur: -1, stack: [] as number[], queue: [] as number[], waiting: Array<number>(n).fill(0), visited: visited.slice(), out: [] as number[], calls: [] as number[], node: -1, 'node.left': -1, 'node.right': -1 };
     const { trace, emit } = recorder(v);
+    const sites: number[] = [];
     const sync = () => {
+        v.calls = sites.slice(); v.node = v.cur >= 0 ? values[v.cur]! : -1;
         v.stack = stack.slice(); v.queue = queue.slice(); v.visited = visited.slice(); v.out = out.slice();
         v.waiting = Array.from({ length: n }, (_, i) => stack.includes(i) || queue.includes(i) ? 1 : 0);
     };
@@ -1092,18 +1095,22 @@ export function treeTraversalTrace(order: TreeOrder, values: number[], parents: 
         return trace;
     }
     const lines = L[order];
-    const walk = (i: number) => {
+    const walk = (i: number, site?: number) => {
+        if (site) sites.push(site);
         stack.push(i); v.cur = i; sync();
         emit(lines.check, `${order}(${values[i]}): not None, so ${order === 'preorder' ? 'visit it, then go left, then right' : order === 'inorder' ? 'go left first' : 'go left, then right, and visit it last'}.`);
         if (order === 'preorder') visit(i, lines.visit, ', on the way down');
         const left = child(i, 0);
-        if (left >= 0) { v.cur = i; sync(); emit(lines.left, `Go left to ${values[left]}.`); walk(left); }
+        v['node.left'] = left >= 0 ? values[left]! : -1;
+        if (left >= 0) { v.cur = i; sync(); emit(lines.left, `Go left to ${values[left]}.`); walk(left, lines.left); }
         v.cur = i; sync();
         if (order === 'inorder') visit(i, lines.visit, ', after everything on its left');
         const right = child(i, 1);
-        if (right >= 0) { v.cur = i; sync(); emit(lines.right, `Go right to ${values[right]}.`); walk(right); }
+        v['node.right'] = right >= 0 ? values[right]! : -1;
+        if (right >= 0) { v.cur = i; sync(); emit(lines.right, `Go right to ${values[right]}.`); walk(right, lines.right); }
         v.cur = i; sync();
         if (order === 'postorder') visit(i, lines.visit, ', after both children');
+        if (site) sites.pop();
         stack.pop(); v.cur = stack.at(-1) ?? -1; sync();
     };
     walk(root);
