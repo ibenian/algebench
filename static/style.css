@@ -2521,12 +2521,12 @@ body.rotating-axis-z, body.rotating-axis-z * {
     display: flex;
     gap: 8px;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     padding: 10px 14px 12px;
     border-bottom: 1px solid var(--border-color);
     background: var(--panel-bg);
     flex-shrink: 0;
-    overflow-x: auto;
 }
 .chat-control-btn {
     min-height: 34px;
@@ -2543,7 +2543,7 @@ body.rotating-axis-z, body.rotating-axis-z * {
 }
 .style-picker {
     position: relative;
-    flex: 1 1 0;
+    flex: 1 1 90px;
     min-width: 0;
 }
 .style-btn {
@@ -2579,6 +2579,8 @@ body.rotating-axis-z, body.rotating-axis-z * {
     border-color: color-mix(in srgb, var(--accent-color) 30%, transparent);
     transform: translateY(-1px);
 }
+/* The icon and its slider wrap as one. */
+.tts-volume { display: flex; flex: none; align-items: center; gap: 8px; }
 .tts-volume-icon {
     font-size: 14px;
     opacity: 0.6;
