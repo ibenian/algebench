@@ -872,6 +872,32 @@ function fastSlowProofStep(nums: number[]) {
 pattern({
     id: 'fast-slow', title: 'Tortoise and hare (fast & slow pointers)', file: 'fast_slow.py', source: FAST_SLOW_SOURCE,
     input: { nums: fsNums }, trace: fastSlowTrace(fsNums), more: fastSlowProofStep(fsNums),
+    sections: [
+        section(FAST_SLOW_SOURCE, 'fs-setup', 'Both pointers start at index 0', 'def find_duplicate(', 'slow = fast = 0', {
+            hint: 'Each value is a pointer to the index it names, so `nums` is a linked list that starts at index 0.' }),
+        section(FAST_SLOW_SOURCE, 'fs-race', 'Fast gains a step every move, so they meet in the loop', 'while True', 'break', {
+            hint: 'Slow moves one hop, fast two. Once both are in the loop, the gap between them shrinks by one each move.' }),
+        section(FAST_SLOW_SOURCE, 'fs-entrance', 'Restart slow; at the same pace they meet at the entrance', 'slow = 0', 'fast = nums[fast]', {
+            hint: 'The start is as far from the entrance as the meeting point is, counting whole laps, so moving both one hop at a time brings them together there.',
+            prompt: 'Explain why restarting slow from 0 and moving both pointers one hop at a time makes them meet exactly at the loop\'s entrance.' }),
+        section(FAST_SLOW_SOURCE, 'fs-done', 'The entrance is the duplicate', 'return slow', null, {
+            hint: 'Two indices point to the entrance, so its index is the value that repeats.' }),
+    ],
+    annotations: [
+        doc('find_duplicate', '`find_duplicate(nums)` returns the value that repeats in `nums`. O(n) time, O(1) extra space.'),
+        doc('nums', 'Values from 1 to n − 1 in n cells. Read cell `i` as a pointer to index `nums[i]`.'),
+        doc('slow', 'The tortoise: one hop per move.'),
+        doc('fast', 'The hare: two hops per move in phase 1, one in phase 2.'),
+        docExpr(FAST_SLOW_SOURCE, 'slow = nums[slow]', 'nums[slow]', 'One hop: the index the current cell points to.'),
+        docExpr(FAST_SLOW_SOURCE, 'fast = nums[nums[fast]]', 'nums[nums[fast]]', 'Two hops in one move: follow the pointer, then follow it again.'),
+        docExpr(FAST_SLOW_SOURCE, 'if slow == fast', 'slow == fast', 'They meet: both are inside the loop, on the same cell.'),
+        docBlock(FAST_SLOW_SOURCE, 'while True', 'break', 'Once fast is in the loop it gains one cell per move, so it catches slow within one lap: O(n) moves.'),
+        docExpr(FAST_SLOW_SOURCE, 'slow = 0', 'slow = 0', 'Slow goes back to the start; fast stays at the meeting point.'),
+        docExpr(FAST_SLOW_SOURCE, 'while slow != fast', 'slow != fast', 'Both move one hop at a time now; they first agree at the loop\'s entrance.'),
+        docExpr(FAST_SLOW_SOURCE, 'fast = nums[fast]', 'nums[fast]', 'One hop now, not two: the same pace as slow.'),
+        docBlock(FAST_SLOW_SOURCE, 'while slow != fast', 'fast = nums[fast]', 'With $A$ the path to the entrance, $B$ the entrance to the meeting point and $C$ the loop length, $A \\equiv -B \\pmod C$: $A$ hops from the meeting point also land on the entrance.'),
+        docExpr(FAST_SLOW_SOURCE, 'return slow', 'slow', 'The entrance: two indices point to it, so it is the duplicate.'),
+    ],
     markdown: `# Tortoise and hare (fast & slow pointers)
 
 **Signal:** a cycle in a linked structure, or "find the duplicate" with O(1) extra space.

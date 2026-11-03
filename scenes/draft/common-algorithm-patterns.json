@@ -989,6 +989,27 @@
       "path": "patterns/fast_slow.py",
       "language": "python",
       "source": "def find_duplicate(nums):\n    slow = fast = 0\n    while True:\n        slow = nums[slow]\n        fast = nums[nums[fast]]\n        if slow == fast:\n            break\n    slow = 0\n    while slow != fast:\n        slow = nums[slow]\n        fast = nums[fast]\n    return slow",
+      "sections": [
+        {"id": "fs-setup", "title": "Both pointers start at index 0", "from": 1, "to": 2, "hint": "Each value is a pointer to the index it names, so `nums` is a linked list that starts at index 0."},
+        {"id": "fs-race", "title": "Fast gains a step every move, so they meet in the loop", "from": 3, "to": 7, "hint": "Slow moves one hop, fast two. Once both are in the loop, the gap between them shrinks by one each move."},
+        {"id": "fs-entrance", "title": "Restart slow; at the same pace they meet at the entrance", "from": 8, "to": 11, "hint": "The start is as far from the entrance as the meeting point is, counting whole laps, so moving both one hop at a time brings them together there.", "prompt": "Explain why restarting slow from 0 and moving both pointers one hop at a time makes them meet exactly at the loop's entrance."},
+        {"id": "fs-done", "title": "The entrance is the duplicate", "from": 12, "to": 12, "hint": "Two indices point to the entrance, so its index is the value that repeats."}
+      ],
+      "annotations": [
+        {"name": "find_duplicate", "text": "`find_duplicate(nums)` returns the value that repeats in `nums`. O(n) time, O(1) extra space."},
+        {"name": "nums", "text": "Values from 1 to n − 1 in n cells. Read cell `i` as a pointer to index `nums[i]`."},
+        {"name": "slow", "text": "The tortoise: one hop per move."},
+        {"name": "fast", "text": "The hare: two hops per move in phase 1, one in phase 2."},
+        {"line": 4, "col": 15, "endCol": 25, "text": "One hop: the index the current cell points to."},
+        {"line": 5, "col": 15, "endCol": 31, "text": "Two hops in one move: follow the pointer, then follow it again."},
+        {"line": 6, "col": 11, "endCol": 23, "text": "They meet: both are inside the loop, on the same cell."},
+        {"line": 3, "endLine": 7, "text": "Once fast is in the loop it gains one cell per move, so it catches slow within one lap: O(n) moves."},
+        {"line": 8, "col": 4, "endCol": 12, "text": "Slow goes back to the start; fast stays at the meeting point."},
+        {"line": 9, "col": 10, "endCol": 22, "text": "Both move one hop at a time now; they first agree at the loop's entrance."},
+        {"line": 11, "col": 15, "endCol": 25, "text": "One hop now, not two: the same pace as slow."},
+        {"line": 9, "endLine": 11, "text": "With $A$ the path to the entrance, $B$ the entrance to the meeting point and $C$ the loop length, $A \\equiv -B \\pmod C$: $A$ hops from the meeting point also land on the entrance."},
+        {"line": 12, "col": 11, "endCol": 15, "text": "The entrance: two indices point to it, so it is the duplicate."}
+      ],
       "locations": [
         {"line": 2, "scene": "fast-slow", "step": "run", "snapshot": 0, "label": "Tortoise and hare (fast & slow pointers) · Both pointers start at index 0. Read each value as a pointer to the index it names."},
         {"line": 3, "scene": "fast-slow", "step": "run", "snapshot": 1, "label": "Tortoise and hare (fast & slow pointers) · Phase 1: slow moves one hop, fast moves two, until they meet."},
