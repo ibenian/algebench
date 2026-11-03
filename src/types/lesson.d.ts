@@ -946,11 +946,11 @@ export type Element = {
      */
     stepExpr?: string;
     /**
-     * goToScene: a scene id of this lesson.
+     * goToScene: a scene id of this lesson, or '<lesson>#<scene>' for a scene of another lesson (draft/graph-algorithms#dijkstra).
      */
     scene?: string;
     /**
-     * goToScene: an expression giving the scene id, with idx and value bound.
+     * goToScene: an expression giving the scene id (as for scene), with idx and value bound.
      */
     sceneExpr?: string;
   }[];

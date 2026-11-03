@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pickBox, isClick } from '/objects/node-click.js';
+import { pickBox, isClick, otherLessonUrl } from '/objects/node-click.js';
 
 const box = (index: number, minX: number, minY: number, maxX: number, maxY: number, depth = 0.5) => ({index, minX, minY, maxX, maxY, depth});
 
@@ -17,4 +17,11 @@ test('a press released where it started is a click; one dragged away is not', ()
     assert.equal(isClick({x: 10, y: 10}, {x: 13, y: 12}), true);
     assert.equal(isClick({x: 10, y: 10}, {x: 30, y: 10}), false, 'orbiting the view');
     assert.equal(isClick(null, {x: 0, y: 0}), false, 'no press on the canvas');
+});
+
+test('otherLessonUrl: only <lesson>#<scene> leaves the lesson', () => {
+    assert.equal(otherLessonUrl('draft/graph-algorithms#dijkstra'), '?builtin=draft%2Fgraph-algorithms&sc=dijkstra');
+    assert.equal(otherLessonUrl('top-k'), null, 'a scene of this lesson');
+    assert.equal(otherLessonUrl(''), null);
+    assert.equal(otherLessonUrl('//evil.example/x#y'), null, 'never another site');
 });

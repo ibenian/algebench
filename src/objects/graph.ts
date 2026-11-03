@@ -11,7 +11,7 @@ import { dataToWorld } from '/coords.js';
 import { addLabel3D, parseColor } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { registerAnimExpr, setSliderValue } from '/sliders.js';
-import { pickBox, isClick } from '/objects/node-click.js';
+import { pickBox, isClick, otherLessonUrl } from '/objects/node-click.js';
 import type { ScreenBox } from '/objects/node-click.js';
 import type { AnimExprEntry } from '/sliders.js';
 import type { Element } from '/types/lesson.js';
@@ -301,6 +301,8 @@ export function renderGraph(el: Element, view: MathBoxNode) {
                     else if (a.action === 'goToScene') {
                         // A scene of this lesson, by id; an empty or unknown id does nothing.
                         const id = a.scene ?? (a.sceneFn ? String(evalExpr(a.sceneFn, 0, scope)) : '');
+                        const other = otherLessonUrl(id);
+                        if (other) { window.location.assign(other);return; }
                         const at = (state.lessonSpec?.scenes ?? []).findIndex(sc => (sc as {id?: string}).id === id);
                         if (id && at >= 0) navigateTo(at, 0);
                     }

@@ -6,7 +6,8 @@
  * Actions, run in order with the node's idx and value bound:
  *   {action: 'setSlider', slider: 'problem', valueExpr: '…'}   set a slider to the expression's value
  *   {action: 'goToStep', step: 'branch-2'} | {stepExpr: '…'}    go to a step of the current scene, by id
- *   {action: 'goToScene', scene: 'top-k'} | {sceneExpr: '…'}   open another scene of the lesson, by id
+ *   {action: 'goToScene', scene: 'top-k'} | {sceneExpr: '…'}   open another scene of the lesson, by id,
+ *       or of another lesson, by '<lesson>#<scene>' ('draft/graph-algorithms#dijkstra')
  */
 export interface ClickAction { action: 'setSlider' | 'goToStep' | 'goToScene'; slider?: string; valueExpr?: string; step?: string; stepExpr?: string; scene?: string; sceneExpr?: string }
 export interface ScreenBox { index: number; minX: number; minY: number; maxX: number; maxY: number; depth: number }
@@ -19,6 +20,12 @@ export function pickBox(boxes: readonly ScreenBox[], x: number, y: number): numb
         if (!best || b.depth < best.depth) best = b;
     }
     return best ? best.index : null;
+}
+
+/** The address of a scene in another lesson, from '<lesson>#<scene>'; null for a scene of this lesson. */
+export function otherLessonUrl(id: string): string | null {
+    const m = /^([\w-]+(?:\/[\w-]+)*)#([\w-]+)$/.exec(id);
+    return m ? `?${new URLSearchParams({builtin: m[1]!, sc: m[2]!})}` : null;
 }
 
 /** A press that moved this far before release is a drag, not a click (CSS px). */

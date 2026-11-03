@@ -1473,8 +1473,8 @@
               "valueExpr": {"type": "string", "description": "setSlider: the value, with idx and value bound."},
               "step": {"type": "string", "description": "goToStep: a step id of the current scene."},
               "stepExpr": {"type": "string", "description": "goToStep: an expression giving the step id, with idx and value bound."},
-              "scene": {"type": "string", "description": "goToScene: a scene id of this lesson."},
-              "sceneExpr": {"type": "string", "description": "goToScene: an expression giving the scene id, with idx and value bound."}
+              "scene": {"type": "string", "description": "goToScene: a scene id of this lesson, or '<lesson>#<scene>' for a scene of another lesson (draft/graph-algorithms#dijkstra)."},
+              "sceneExpr": {"type": "string", "description": "goToScene: an expression giving the scene id (as for scene), with idx and value bound."}
             },
             "required": ["action"],
             "additionalProperties": false

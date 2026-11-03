@@ -17411,6 +17411,14 @@ function pickBox(boxes, x, y) {
 	}
 	return best ? best.index : null;
 }
+/** The address of a scene in another lesson, from '<lesson>#<scene>'; null for a scene of this lesson. */
+function otherLessonUrl(id) {
+	const m = /^([\w-]+(?:\/[\w-]+)*)#([\w-]+)$/.exec(id);
+	return m ? `?${new URLSearchParams({
+		builtin: m[1],
+		sc: m[2]
+	})}` : null;
+}
 function isClick(down, up) {
 	return !!down && Math.hypot(up.x - down.x, up.y - down.y) <= 6;
 }
@@ -18030,6 +18038,11 @@ function renderGraph(el, view) {
 				if (a.action === "setSlider" && a.slider && a.valueFn) setSliderValue(a.slider, Number(evalExpr(a.valueFn, 0, scope)));
 				else if (a.action === "goToScene") {
 					const id = a.scene ?? (a.sceneFn ? String(evalExpr(a.sceneFn, 0, scope)) : "");
+					const other = otherLessonUrl(id);
+					if (other) {
+						window.location.assign(other);
+						return;
+					}
 					const at = (state.lessonSpec?.scenes ?? []).findIndex((sc) => sc.id === id);
 					if (id && at >= 0) navigateTo(at, 0);
 				} else if (a.action === "goToStep") {

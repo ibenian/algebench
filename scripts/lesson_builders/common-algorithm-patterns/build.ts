@@ -85,7 +85,6 @@ const PROBLEMS: Record<string, { problem: string; example?: string }> = {
         example: `${IN.islands.grid.map(r => r.join('')).join(' / ')} → ${end(islandsTrace(IN.islands.grid)).count}.` },
     'topological-sort': { problem: 'Courses have prerequisites. Find an order in which to take every course, or report that none exists.',
         example: `${IN.topo.n} courses with prerequisites [${IN.topo.prerequisites.map(([c, p]) => `[${c}, ${p}]`).join(', ')}] → ${topoTrace(IN.topo.n, IN.topo.prerequisites).trace.at(-1)!.result}.` },
-    'shortest-path': { problem: 'A network has directed edges with travel times. How long does a signal from one node take to reach every node?' },
     'union-find': { problem: 'Given n nodes and a list of undirected edges, count the connected components.',
         example: `n = ${IN.unionFind.n}, edges = ${IN.unionFind.edges.map(e => `${e[0]}–${e[1]}`).join(', ')} → ${end(unionFindTrace(IN.unionFind.n, IN.unionFind.edges)).count}.` },
     'recursion': { problem: 'Compute x to the power n using O(log n) multiplications.',
@@ -232,14 +231,6 @@ function pattern(p: PatternScene) {
         locations: [...p.trace.map((f, snapshot) => ({ line: f.line, scene: p.id, step: 'run', snapshot, label: `${p.title} · ${f.message}` })), ...(p.more?.locations ?? [])],
     });
 }
-function placeholder(id: string, title: string, markdown: string, prompt: string) {
-    scenes.push({
-        id, title, description: PROBLEMS[id]!.problem, range: RANGE, camera: { position: [1.5, 0, 15], target: [1.5, 0, 0] },
-        markdown: withProblem(id, markdown), prompt,
-        elements: [grid, { id: 'placeholder', type: 'text', text: 'Visualization coming soon', position: [1.5, 0, 0], color: BLUE }],
-    });
-}
-
 const MD_TAIL = 'Use the execution player to step through, or open **Code** to see the active Python line. The code is display-only; every view reads the same recorded execution snapshot.';
 
 // ── Overview: a decision tree from what the problem gives you, through the signal, to the pattern ──
@@ -276,7 +267,7 @@ const DECISIONS: { category: string; signals: { signal: string; pattern: string;
         { signal: 'grid of cells?', pattern: 'Grid DFS / BFS', scene: 'matrix-traversal', problems: ['Number of Islands', 'Rotting Oranges'] },
         { signal: 'join as edges come?', pattern: 'Union-find', scene: 'union-find', problems: ['Redundant Connection'] },
         { signal: 'dependencies?', pattern: 'Topological sort', scene: 'topological-sort', problems: ['Course Schedule'] },
-        { signal: 'cheapest path?', pattern: 'Dijkstra', scene: 'shortest-path', problems: ['Network Delay Time'] } ] },
+        { signal: 'cheapest path?', pattern: 'Dijkstra', scene: 'draft/graph-algorithms#dijkstra', problems: ['Network Delay Time'] } ] },
     { category: 'Choices', signals: [
         { signal: 'reuse sub-answers?', pattern: 'Dynamic prog.', scene: 'dynamic-programming', problems: ['House Robber', 'Coin Change'] },
         { signal: 'two sequences?', pattern: '2D DP', scene: 'dp-2d', problems: ['Longest Common Subsequence', 'Edit Distance'] },
@@ -377,7 +368,7 @@ Most interview problems are variations on a small set of patterns. The skill is 
 | Level by level, or shortest path in steps (BFS) | Walk a tree (traversal orders) | O(V + E) |
 | Grid of cells, islands, flood fill | Explore a grid (matrix traversal) | O(rows × cols) |
 | Prerequisites, build order, or "is there a cycle?" | Order by dependencies (topological sort) | O(V + E) |
-| Cheapest path with weighted edges | Cheapest route (Dijkstra) | O((V + E) log V) |
+| Cheapest path with weighted edges | Dijkstra (in the Graph algorithms lesson) | O((V + E) log V) |
 | Connectivity as edges arrive, counting groups | Group connected items (union-find) | ≈ O(1) per operation |
 | A problem built from smaller copies of itself | Solve smaller copies (recursion) | Depends on the recurrence |
 | All permutations, subsets, placements | Try, undo, retry (backtracking) | Exponential, pruned |
@@ -386,7 +377,7 @@ Most interview problems are variations on a small set of patterns. The skill is 
 
 The steps here walk the same map as a **decision tree**: start from what the problem gives you, ask which signal it shows, and follow it to the pattern. Move **Problem** to see real interview problems take their path, or click a node: a category or a signal picks a problem that shows it, and a pattern opens its scene.
 
-Each following scene runs one pattern on a small example. Scenes marked *coming soon* are placeholders until AlgeBench has the data structure they need.`,
+Each following scene runs one pattern on a small example.`,
     prompt: 'Help the learner recognize which pattern fits a problem. Ask them to name the signal (sorted input, contiguous range, cycle, next-greater, overlapping subproblems) before naming a pattern. Encourage predicting the pattern before revealing it.',
     data: overview.data, steps: overview.steps,
 });
@@ -1631,7 +1622,6 @@ The **See the forest** step shows the run twice: the input graph on the left, it
 });
 
 // ── Placeholders for patterns that need data structures AlgeBench does not render yet ──
-const SOON = 'This pattern needs a data structure AlgeBench cannot draw yet, so this scene is a placeholder.';
 // ── Linked list reversal ──
 (() => {
     const { values } = IN.linkedList;
@@ -2159,16 +2149,6 @@ ${MD_TAIL}
     const scene = scenes.at(-1)!, first = (scene.steps as Json[])[0]!;
     Object.assign(first, { title: 'Depth-first search (DFS)', description: 'Depth-first search: finish everything that depends on a course, then append it; reverse at the end.' });
 })();
-placeholder('shortest-path', 'Cheapest route (Dijkstra)', `# Cheapest route (Dijkstra)
-
-**Signal:** shortest or cheapest path when edges have non-negative weights: network delay, cheapest flights, minimum effort.
-
-Dijkstra keeps a **min-heap** of (distance, node). It repeatedly takes the closest unsettled node, which is final, and relaxes its edges. It is BFS with a priority queue in place of a plain queue. O((V + E) log V).
-
-${SOON} *(Needs a weighted graph object and a heap view.)*
-
-**Practice:** Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops.`,
-    'Explain why the closest unsettled node is final with non-negative weights. This scene has no visualization yet.');
 // ── Recursion: the call tree, growing as calls are made ──
 (() => {
     const { x, n, fib } = IN.recursion;
@@ -2241,7 +2221,7 @@ const ORDER = ['overview',
     'string-matching', 'trie',                                                                                        // strings
     'monotonic-stack', 'monotonic-queue', 'top-k',                                                                    // stack, queue, heap
     'fast-slow', 'linked-list-reversal',                                                                              // linked structures
-    'tree-traversal', 'matrix-traversal', 'topological-sort', 'shortest-path', 'union-find',            // trees and graphs
+    'tree-traversal', 'matrix-traversal', 'topological-sort', 'union-find',            // trees and graphs
     'recursion', 'backtracking', 'dynamic-programming', 'dp-2d'];                                                              // searching over choices                                                // searching over choices
 scenes.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
 codeFiles.sort((a, b) => ORDER.indexOf(a.id as string) - ORDER.indexOf(b.id as string));
