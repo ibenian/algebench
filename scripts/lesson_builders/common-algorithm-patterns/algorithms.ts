@@ -159,17 +159,20 @@ export const FAST_SLOW_SOURCE = `def find_duplicate(nums):
     return slow`;
 export function fastSlowTrace(nums: number[]) {
     // Index 0 is the start: no value is 0, so nothing points back to it and it is never inside the loop.
-    const v = { slow: 0, fast: 0, phase: 1, hop: -1, tip_slow: `${tt('slow')} = 0`, tip_fast: `${tt('fast')} = 0` };
+    // slow_from / fast_from / fast_mid: the cells the hop of this frame leaves (-1: no hop), so its arcs can light.
+    const v = { slow: 0, fast: 0, phase: 1, hop: -1, slow_from: -1, fast_from: -1, fast_mid: -1, tip_slow: `${tt('slow')} = 0`, tip_fast: `${tt('fast')} = 0` };
     const { trace, emit } = recorder(v);
     emit(2, 'Both pointers start at index 0. Read each value as a pointer to the index it names.');
     while (true) {
         emit(3, 'Phase 1: slow moves one hop, fast moves two, until they meet.');
         const s = v.slow; v.slow = nums[s]!; v.tip_slow = `${tt('slow')} = ${at('nums', s)} = ${v.slow}`;
+        v.slow_from = s;
         emit(4, `slow takes one hop: nums[${s}] = ${v.slow}.`);
         const f = v.fast; v.hop = nums[f]!; v.fast = nums[v.hop]!;
+        v.slow_from = -1; v.fast_from = f; v.fast_mid = v.hop;
         v.tip_fast = String.raw`${tt('fast')} = ${tt('nums')}\lbrack ${at('nums', f)}\rbrack = ${at('nums', v.hop)} = ${v.fast}`;
         emit(5, `fast takes two hops: nums[${f}] = ${v.hop}, then nums[${v.hop}] = ${v.fast}.`);
-        v.hop = -1;
+        v.hop = -1; v.fast_from = -1; v.fast_mid = -1;
         emit(6, `Do they meet? slow = ${v.slow}, fast = ${v.fast}.`);
         if (v.slow === v.fast) { emit(7, `They meet at index ${v.slow}, somewhere inside the cycle.`); break; }
     }
@@ -179,9 +182,12 @@ export function fastSlowTrace(nums: number[]) {
         emit(9, v.slow !== v.fast ? `slow = ${v.slow}, fast = ${v.fast}: not yet equal.` : `slow = fast = ${v.slow}.`);
         if (v.slow === v.fast) break;
         const s = v.slow; v.slow = nums[s]!; v.tip_slow = `${tt('slow')} = ${at('nums', s)} = ${v.slow}`;
+        v.slow_from = s;
         emit(10, `slow: nums[${s}] = ${v.slow}.`);
         const f = v.fast; v.fast = nums[f]!; v.tip_fast = `${tt('fast')} = ${at('nums', f)} = ${v.fast}`;
+        v.slow_from = -1; v.fast_from = f;
         emit(11, `fast: nums[${f}] = ${v.fast}.`);
+        v.fast_from = -1;
     }
     emit(12, `They meet at the cycle entrance, ${v.slow}. Two indices point to it, so ${v.slow} is the duplicate.`, 'Done');
     return trace;

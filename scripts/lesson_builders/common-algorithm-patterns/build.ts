@@ -916,7 +916,10 @@ ${MD_TAIL}
         array('nums', 'nums', fsOrigin, {
             from: inp('nums'), highlightExpr: `idx == ${tr('slow')} or idx == ${tr('fast')}`,
             // Each cell points at the index it holds: arcs over the row go forward, under it go back.
-            connectTo: { object: 'nums', indexExpr: 'value', pinned: true, arrow: true, color: '#8aa0b8' },
+            // The arcs a hop takes light in its pointer's colour while it moves.
+            connectTo: { object: 'nums', indexExpr: 'value', pinned: true, arrow: true, color: '#8aa0b8',
+                colorExpr: `idx == ${tr('slow_from')} ? '${GOLD}' : (idx == ${tr('fast_from')} or idx == ${tr('fast_mid')} ? '${PINK}' : '')`,
+                highlightExpr: `idx == ${tr('slow_from')} or idx == ${tr('fast_from')} or idx == ${tr('fast_mid')}` },
             markers: [marker('slow', tr('slow')), marker('fast', tr('fast'), PINK), marker('fast (mid-hop)', tr('hop'), BLUE)],
         }),
         label('slow', `concat('slow = ', ${tr('slow')})`, [-4, -3.4, 0], ['nums', tr('slow')]),
