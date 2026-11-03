@@ -20,6 +20,8 @@ import { setSliderValue } from '/sliders.js';
 import { dataToWorld } from '/coords.js';
 import { objectCellAnchor, objectChartMarks, objectTensorRegion, objectWorldCorners, objectWorldAnchor, objectLabelElement, objectLabelRow } from '/object-anchor.js';
 import { keyDelay } from '/code-assist-play.js';
+import { makeAiAskButton } from '/labels.js';
+import { labelAskMessage } from '/annotation-layout.js';
 import { LINKS, SHAPES, edgePoint, hullAround, layoutDrawing, shapeStroke, smoothPath, type DrawSpec, type Drawing, type Laid, type Point, type Rect } from '/drawing-layout.js';
 import type { Element as LessonElement, Scene } from '/types/lesson.js';
 
@@ -775,7 +777,10 @@ async function typeNote(text: string, near: string, r: number, onBoard = false, 
     makeMovable(note);
     const ink = document.createElement('span');ink.className = 'ai-note-ink';
     const caret = document.createElement('span');caret.className = 'ai-note-caret';
-    note.append(ink, caret);notesLayer().append(note);
+    const ask = makeAiAskButton('ai-ask-btn ai-note-ask', 'Ask AI about this', () => labelAskMessage({text}));
+    // The note starts a drag on pointerdown; the button must not.
+    ask.addEventListener('pointerdown', e => e.stopPropagation());
+    note.append(ink, caret, ask);notesLayer().append(note);
     // Its place, from its full size: measured fully set, then emptied to be typed.
     ink.innerHTML = inkHtml(text);
     const size = note.getBoundingClientRect(), anchor = near ? resolveTarget(near) : null;
@@ -1072,7 +1077,7 @@ function sizeBoard(b: Sketch, w: number, h: number) {
     b.w = Math.round(Math.max(80, Math.min(w, innerWidth - 8 - left)));b.h = Math.round(Math.max(60, Math.min(h, innerHeight - 8 - top)));
     b.el.style.width = `${b.w}px`;b.el.style.height = `${b.h}px`;
 }
-const fitCanvas = (b: Sketch) => { b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`; };
+const fitCanvas = (b: Sketch) => { b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`;b.canvas.style.setProperty('--draw-scale', String(b.view.s)); };
 function placeAll(b: Sketch) {
     for (const item of b.all) item.place();
     for (const [g, el] of b.groups) {
@@ -1087,7 +1092,9 @@ function placeAll(b: Sketch) {
     for (const [e, el] of b.hits) {
         const r = b.all.find(d => d.spec === e)?.local();
         if (!r) continue;
-        el.style.left = `${r.left - 4}px`;el.style.top = `${r.top - 4}px`;el.style.width = `${r.width + 8}px`;el.style.height = `${r.height + 8}px`;
+        // 4 screen px round it whatever the scale, so it stays clear of the corners of the groups around it.
+        const pad = 4 / b.view.s;
+        el.style.left = `${r.left - pad}px`;el.style.top = `${r.top - pad}px`;el.style.width = `${r.width + 2 * pad}px`;el.style.height = `${r.height + 2 * pad}px`;
     }
 }
 
@@ -1097,10 +1104,17 @@ function draggable(el: HTMLElement, drag: (dx: number, dy: number) => void, lit:
         if (e.button !== 0) return;
         e.preventDefault();e.stopPropagation();el.setPointerCapture(e.pointerId);lit.classList.add('dragging');
         let x = e.clientX, y = e.clientY;
-        const move = (ev: PointerEvent) => { drag(ev.clientX - x, ev.clientY - y);x = ev.clientX;y = ev.clientY; };
-        const up = () => { el.removeEventListener('pointermove', move);lit.classList.remove('dragging'); };
+        const move = (ev: PointerEvent) => {
+            // No button down: the release went unseen (let go outside the window), so this is a hover, not a drag.
+            if (!ev.buttons) { up();return; }
+            drag(ev.clientX - x, ev.clientY - y);x = ev.clientX;y = ev.clientY;
+        };
+        const up = () => {
+            el.removeEventListener('pointermove', move);el.removeEventListener('pointerup', up);el.removeEventListener('pointercancel', up);el.removeEventListener('lostpointercapture', up);
+            lit.classList.remove('dragging');
+        };
         el.addEventListener('pointermove', move);
-        el.addEventListener('pointerup', up, {once: true});el.addEventListener('pointercancel', up, {once: true});
+        el.addEventListener('pointerup', up);el.addEventListener('pointercancel', up);el.addEventListener('lostpointercapture', up);
     });
 }
 /** Move a drawn element (and what is in it) by a drag of (dx, dy) screen px; the links to it follow. */
@@ -1502,14 +1516,19 @@ function makeMovable(note: HTMLElement) {
         e.preventDefault();e.stopPropagation();note.setPointerCapture(e.pointerId);note.classList.add('dragging');
         const r = note.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
         const move = (ev: PointerEvent) => {
+            // No button down: the release went unseen (let go outside the window), so this is a hover, not a drag.
+            if (!ev.buttons) { up();return; }
             note.dataset.moved = '1';
             note.style.left = `${Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx))}px`;
             note.style.top = `${Math.max(0, Math.min(innerHeight - r.height, ev.clientY - dy))}px`;
             for (const redraw of arrowsFrom.get(note) ?? []) redraw();
         };
-        const up = () => { note.removeEventListener('pointermove', move);note.classList.remove('dragging'); };
+        const up = () => {
+            note.removeEventListener('pointermove', move);note.removeEventListener('pointerup', up);note.removeEventListener('pointercancel', up);note.removeEventListener('lostpointercapture', up);
+            note.classList.remove('dragging');
+        };
         note.addEventListener('pointermove', move);
-        note.addEventListener('pointerup', up, {once: true});note.addEventListener('pointercancel', up, {once: true});
+        note.addEventListener('pointerup', up);note.addEventListener('pointercancel', up);note.addEventListener('lostpointercapture', up);
     });
 }
 /** Wipe the notes: they fade away (the board stays; `all` wipes it too). */

@@ -11111,7 +11111,9 @@ async function typeNote(text, near, r, onBoard = false, color = "", side = "") {
 	ink.className = "ai-note-ink";
 	const caret = document.createElement("span");
 	caret.className = "ai-note-caret";
-	note.append(ink, caret);
+	const ask = makeAiAskButton("ai-ask-btn ai-note-ask", "Ask AI about this", () => labelAskMessage({ text }));
+	ask.addEventListener("pointerdown", (e) => e.stopPropagation());
+	note.append(ink, caret, ask);
 	notesLayer().append(note);
 	ink.innerHTML = inkHtml(text);
 	const size = note.getBoundingClientRect(), anchor = near ? resolveTarget$1(near) : null;
@@ -11503,6 +11505,7 @@ function sizeBoard(b, w, h) {
 }
 var fitCanvas = (b) => {
 	b.canvas.style.transform = `translate(${b.view.ox}px, ${b.view.oy}px) scale(${b.view.s})`;
+	b.canvas.style.setProperty("--draw-scale", String(b.view.s));
 };
 function placeAll(b) {
 	for (const item of b.all) item.place();
@@ -11518,10 +11521,11 @@ function placeAll(b) {
 	for (const [e, el] of b.hits) {
 		const r = b.all.find((d) => d.spec === e)?.local();
 		if (!r) continue;
-		el.style.left = `${r.left - 4}px`;
-		el.style.top = `${r.top - 4}px`;
-		el.style.width = `${r.width + 8}px`;
-		el.style.height = `${r.height + 8}px`;
+		const pad = 4 / b.view.s;
+		el.style.left = `${r.left - pad}px`;
+		el.style.top = `${r.top - pad}px`;
+		el.style.width = `${r.width + 2 * pad}px`;
+		el.style.height = `${r.height + 2 * pad}px`;
 	}
 }
 /** Drag `el` to move what it holds: `drag` gets each step of the move in screen px. */
@@ -11534,17 +11538,25 @@ function draggable(el, drag, lit = el) {
 		lit.classList.add("dragging");
 		let x = e.clientX, y = e.clientY;
 		const move = (ev) => {
+			if (!ev.buttons) {
+				up();
+				return;
+			}
 			drag(ev.clientX - x, ev.clientY - y);
 			x = ev.clientX;
 			y = ev.clientY;
 		};
 		const up = () => {
 			el.removeEventListener("pointermove", move);
+			el.removeEventListener("pointerup", up);
+			el.removeEventListener("pointercancel", up);
+			el.removeEventListener("lostpointercapture", up);
 			lit.classList.remove("dragging");
 		};
 		el.addEventListener("pointermove", move);
-		el.addEventListener("pointerup", up, { once: true });
-		el.addEventListener("pointercancel", up, { once: true });
+		el.addEventListener("pointerup", up);
+		el.addEventListener("pointercancel", up);
+		el.addEventListener("lostpointercapture", up);
 	});
 }
 /** Move a drawn element (and what is in it) by a drag of (dx, dy) screen px; the links to it follow. */
@@ -12141,6 +12153,10 @@ function makeMovable(note) {
 		note.classList.add("dragging");
 		const r = note.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
 		const move = (ev) => {
+			if (!ev.buttons) {
+				up();
+				return;
+			}
 			note.dataset.moved = "1";
 			note.style.left = `${Math.max(0, Math.min(innerWidth - r.width, ev.clientX - dx))}px`;
 			note.style.top = `${Math.max(0, Math.min(innerHeight - r.height, ev.clientY - dy))}px`;
@@ -12148,11 +12164,15 @@ function makeMovable(note) {
 		};
 		const up = () => {
 			note.removeEventListener("pointermove", move);
+			note.removeEventListener("pointerup", up);
+			note.removeEventListener("pointercancel", up);
+			note.removeEventListener("lostpointercapture", up);
 			note.classList.remove("dragging");
 		};
 		note.addEventListener("pointermove", move);
-		note.addEventListener("pointerup", up, { once: true });
-		note.addEventListener("pointercancel", up, { once: true });
+		note.addEventListener("pointerup", up);
+		note.addEventListener("pointercancel", up);
+		note.addEventListener("lostpointercapture", up);
 	});
 }
 /** Wipe the notes: they fade away (the board stays; `all` wipes it too). */
