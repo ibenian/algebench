@@ -30060,7 +30060,10 @@ function setupCodePanel() {
 		if (selected) setHidden(!veiled);
 	});
 	const copyFile = copyButton("code-copy-file", "Copy the whole file", () => selected?.source ?? "");
-	title.append(titleText, modes, hideCode, copyFile, ask, codePromptsMenu(), viewSettingsMenu());
+	const titleTools = document.createElement("div");
+	titleTools.className = "code-file-tools";
+	titleTools.append(modes, hideCode, copyFile, ask, codePromptsMenu(), viewSettingsMenu());
+	title.append(titleText, titleTools);
 	const split = document.createElement("div");
 	split.className = "code-tree-resize";
 	split.setAttribute("role", "separator");

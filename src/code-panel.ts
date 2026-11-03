@@ -136,7 +136,10 @@ export function setupCodePanel(): void {
     hideCode.innerHTML=HIDE_CODE_ICON;
     hideCode.addEventListener('click',()=>{if(selected)setHidden(!veiled);});
     const copyFile=copyButton('code-copy-file','Copy the whole file',()=>selected?.source??'');
-    title.append(titleText,modes,hideCode,copyFile,ask,codePromptsMenu(),viewSettingsMenu());
+    // The path on the left, its controls in a column of their own that wraps within itself when the pane is narrow.
+    const titleTools=document.createElement('div');titleTools.className='code-file-tools';
+    titleTools.append(modes,hideCode,copyFile,ask,codePromptsMenu(),viewSettingsMenu());
+    title.append(titleText,titleTools);
     // The edge between the file list and the code resizes them, as Type along's top edge does: the code starts at
     // its usual height; a drag gives it more or less room (kept per browser), a double-click restores it.
     const split=document.createElement('div');split.className='code-tree-resize';split.setAttribute('role','separator');

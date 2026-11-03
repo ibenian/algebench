@@ -5696,7 +5696,8 @@ html[data-theme*="light"] .plan-panel { --plan-done: #2f8a55; }
 .code-file-tree button { display: block; text-align: left; width: 100%; padding: 6px 10px; color: var(--text-color); background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
 .code-file-tree button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent-color) 20%, transparent); }
 .code-file-title { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; font: 11px monospace; }
-.code-file-path { flex: 1; min-width: 0; overflow-wrap: anywhere; opacity: .8; }
+.code-file-path { flex: 1 1 16ch; min-width: 10ch; overflow-wrap: anywhere; opacity: .8; }
+.code-file-tools { display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; min-width: min-content; }
 /* View settings: a gear at the title's right, opening a small menu of checkboxes below it. */
 .code-view-settings { position: relative; flex: none; }
 /* Hide code (eye): pressed, the eye is struck through and lit, as Type along's Hide code. */
