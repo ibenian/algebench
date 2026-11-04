@@ -33167,8 +33167,8 @@ var COMMON_PROMPTS = [
 		prompt: "Walk me through what is on screen right now: what each object, label and highlight shows, and how they relate."
 	},
 	{
-		label: "Walk me through key points",
-		prompt: "Walk me through the key points of this scene, one at a time, as a short list."
+		label: "Walk me through end to end",
+		prompt: "Walk me through this scene end to end, from the start of the run to its result, whichever state is on screen now: go in order through the few states where something important happens, show what happens at each one and why it matters, skip the routine states in between, and finish on the result. If this scene has no run to step through, cover its key points in order, from start to finish."
 	},
 	{
 		label: "Guide me",
