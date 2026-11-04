@@ -2174,6 +2174,68 @@ ${MD_TAIL}
     pattern({
         id: 'topological-sort', title: 'Order by dependencies (topological sort)', file: 'course_order.py', source: TOPO_SOURCE,
         input: { n, prerequisites }, trace: dfs.trace, callEntryLine: dfsLine('def dfs(node)'),
+        sections: [
+            section(TOPO_SOURCE, 'topo-dfs-setup', 'DFS: build the graph, every course new', 'def find_order_dfs(', 'order = []', {
+                hint: 'Each prerequisite becomes an edge from the earlier course to the later one. A course can be new, on the current path, or done.' }),
+            section(TOPO_SOURCE, 'topo-dfs-seen', 'Met before: a cycle, or already done', 'def dfs(node)', 'return True', {
+                hint: 'A course on the current path means the path has looped back on itself. A finished course needs no more work.',
+                prompt: 'Explain why meeting a course on the current path means a cycle, while meeting a finished course does not.' }),
+            section(TOPO_SOURCE, 'topo-dfs-visit', 'Finish everything that depends on it first', 'state[node] = 1', 'return False', {
+                hint: 'Put the course on the path, then search each course that needs it. A cycle found below stops the whole search.' }),
+            section(TOPO_SOURCE, 'topo-dfs-post', 'Then append it', 'state[node] = 2', 'return True', {
+                hint: 'A course goes into the list only after everything that depends on it is already there.',
+                prompt: 'Explain why appending a course after everything that depends on it, then reversing the list, puts every prerequisite first.' }),
+            section(TOPO_SOURCE, 'topo-dfs-run', 'Search from every course, then reverse', 'for c in range(n)', 'return order[::-1]', {
+                hint: 'One start may not reach every course, so try them all. The list holds dependents first, so reverse it.' }),
+            section(TOPO_SOURCE, 'topo-kahn-count', 'Kahn: build the graph and count what each course waits on', 'def find_order(', 'indegree[course] += 1', {
+                hint: 'Each prerequisite adds an edge, and adds one to the count of the course that needs it.' }),
+            section(TOPO_SOURCE, 'topo-kahn-start', 'Queue the courses that wait on nothing', 'queue = deque', 'order = []', {
+                hint: 'A course with no prerequisites left can be taken right away.' }),
+            section(TOPO_SOURCE, 'topo-kahn-walk', 'Take a course, free the ones waiting on it', 'while queue', 'queue.append(nxt)', {
+                hint: 'Taking a course removes it from the count of each course that needs it. A count that reaches zero means that course is ready.',
+                prompt: 'Explain why every course taken from the queue already has all its prerequisites in order.' }),
+            section(TOPO_SOURCE, 'topo-kahn-done', 'Courses left out mean a cycle', 'return order if len', null, {
+                hint: 'Courses in a cycle wait on each other forever, so they never join the queue.',
+                prompt: 'Explain why comparing len(order) with n detects a cycle.' }),
+        ],
+        annotations: [
+            doc('deque', 'A double-ended queue from `collections`: taking from the front and adding at the back are both O(1).'),
+            doc('find_order_dfs', '`find_order_dfs(n, prerequisites)` returns a valid course order by depth-first search, or `[]` if there is a cycle. O(V + E).'),
+            doc('find_order', '`find_order(n, prerequisites)` returns a valid course order by counting in-degrees (Kahn), or `[]` if there is a cycle. O(V + E).'),
+            doc('dfs', '`dfs(node)` finishes `node` and every course that depends on it. It returns `False` if it finds a cycle.'),
+            doc('n', 'The number of courses, numbered `0` to `n − 1`.'),
+            doc('prerequisites', 'Pairs `[course, pre]`: `pre` must come before `course`.'),
+            doc('course', 'The course that has the prerequisite.'),
+            doc('pre', 'The course to take first.'),
+            doc('graph', '`graph[pre]` lists the courses that depend on `pre`: the edges pre → course.'),
+            doc('state', 'Per course: 0 new, 1 on the current path, 2 done.'),
+            doc('indegree', '`indegree[c]` counts the prerequisites of `c` not yet in `order`.'),
+            doc('queue', 'The courses ready to take: they wait on nothing.'),
+            doc('nxt', 'A course that depends on `node`.'),
+            doc('c', 'The course to start a search from.'),
+            doc('c', 'A course, kept if it waits on nothing.', { source: TOPO_SOURCE, start: 'queue = deque' }),
+            doc('order', 'Courses in post-order: each one after everything that depends on it.', { source: TOPO_SOURCE, start: 'def find_order_dfs(', end: 'return order[::-1]' }),
+            doc('order', 'Courses in the order they were taken: every prerequisite comes first.', { source: TOPO_SOURCE, start: 'def find_order(', end: 'return order if len' }),
+            doc('node', 'The course this call visits.', { source: TOPO_SOURCE, start: 'def dfs(node)', end: 'order.append(node)' }),
+            doc('node', 'The course taken from the queue.', { source: TOPO_SOURCE, start: 'while queue', end: 'queue.append(nxt)' }),
+            docExpr(TOPO_SOURCE, 'state = [0] * n', '[0] * n', 'Every course starts new.'),
+            docExpr(TOPO_SOURCE, 'if state[node] == 1', 'state[node] == 1', 'This course is on the path that led here, so the path has looped back: a cycle.'),
+            docExpr(TOPO_SOURCE, 'if state[node] == 2', 'state[node] == 2', 'An earlier search finished this course. Skipping it keeps the whole run O(V + E).'),
+            docExpr(TOPO_SOURCE, 'state[node] = 1', 'state[node] = 1', 'On the path now, before going deeper.'),
+            docExpr(TOPO_SOURCE, 'if not dfs(nxt)', 'dfs(nxt)', 'Finish the course that depends on this one first. `False` means a cycle below, and it passes straight up.'),
+            docBlock(TOPO_SOURCE, 'for nxt in graph[node]', 'return False', 'A course is searched only once, so each edge is followed once in the whole run: O(V + E).'),
+            docExpr(TOPO_SOURCE, 'state[node] = 2', 'state[node] = 2', 'Off the path, and never searched again.'),
+            docExpr(TOPO_SOURCE, 'order.append(node)', 'order.append(node)', 'Everything that depends on `node` is already in `order`, so `node` lands after it.'),
+            docExpr(TOPO_SOURCE, 'if not dfs(c)', 'dfs(c)', 'One start may not reach every course. A course already done returns at once.'),
+            docExpr(TOPO_SOURCE, 'return order[::-1]', 'order[::-1]', 'Reversed, so each course comes before everything that depends on it.'),
+            docExpr(TOPO_SOURCE, 'indegree[course] += 1', 'indegree[course] += 1', 'One more prerequisite for this course to wait on.'),
+            docExpr(TOPO_SOURCE, 'queue = deque', 'c for c in range(n) if indegree[c] == 0', 'The courses with no prerequisites: they can go first.'),
+            docExpr(TOPO_SOURCE, 'node = queue.popleft()', 'queue.popleft()', 'A ready course: all its prerequisites are already in `order`.'),
+            docExpr(TOPO_SOURCE, 'indegree[nxt] -= 1', 'indegree[nxt] -= 1', 'One prerequisite of `nxt` is now in `order`.'),
+            docExpr(TOPO_SOURCE, 'if indegree[nxt] == 0', 'indegree[nxt] == 0', 'That was its last prerequisite, so it is ready.'),
+            docBlock(TOPO_SOURCE, 'while queue', 'queue.append(nxt)', 'Each course is taken once and each edge is counted down once: O(V + E).'),
+            docExpr(TOPO_SOURCE, 'return order if len', 'len(order) == n', 'Every course got in. Courses in a cycle never reach in-degree 0, so a cycle leaves `order` short.'),
+        ],
         more: {
             data: { topoNodes: nodes, topo_kahn: kahn.trace },
             steps: [{
