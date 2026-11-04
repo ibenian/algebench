@@ -1849,6 +1849,9 @@ ${MD_TAIL}
                 connectTo: { indexExpr: cell('from'), pinned: true, arrow: true, bendExpr: '0', color: '#e8e6da' },
                 markers: [marker('scan', tr('scan'), BLUE, `${tr('scan')} >= 0 and ${tr('cur')} < 0`)],
             },
+            // Row and column numbers, so a cell reads as its (r, c).
+            ...grid.map((_, r) => ({ id: `row-${r}`, type: 'text', text: String(r), position: [x0 - 0.8, y0 - r * size, 0], color: '#8aa0b8', fontSize: 12 })),
+            ...grid[0]!.map((_, c) => ({ id: `col-${c}`, type: 'text', text: String(c), position: [x0 + c * size, y0 + 0.75, 0], color: '#8aa0b8', fontSize: 12 })),
             label('count', `concat('count = ', ${tr('count')})`, [4.4, 1.6, 0]),
             { ...label('rc', `${tr('r')} < 0 ? '(r, c): —' : concat('(r, c) = (', ${tr('r')}, ', ', ${tr('c')}, ')')`, [4.4, 1.6, 0],
                 ['grid', `${tr('r')} < 0 ? -1 : ${tr('r')} * ${cols} + ${tr('c')}`]) },
