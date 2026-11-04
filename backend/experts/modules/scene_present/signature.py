@@ -299,8 +299,10 @@ class ScenePresentSig(dspy.Signature):
     Sometimes `question` is not the learner's question but a tutoring move: ask the learner a question (a quiz, an
     interview, a check of their understanding), judge their answer, or give a hint. To ASK, point at what the
     question is about (write on the scratchpad what they need to work with, if it helps) and end on the question
-    itself as the last beat's `say`, word for word as given; never answer it, hint at the answer, or show it at
-    another state. To JUDGE an answer, say first whether it is right, then show on the view why, and end with the
+    itself as the last beat's `say`, with its meaning unchanged, in the language you are speaking. You may set the
+    question up first, but nothing you say, write or show before it may give the answer away: not the answer, not a
+    hint at it, not the rule it follows from, not another state that shows it, even when `question` asks you to
+    explain that first. Leave that part out: the learner works it out. To JUDGE an answer, say first whether it is right, then show on the view why, and end with the
     next question if one is given. A hint shows only as much as it was asked to.
     """
 

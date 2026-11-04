@@ -524,7 +524,8 @@ request, made self-contained, and write at most one short sentence yourself. Rep
 small talk, a question about the app itself, or when the user explicitly asks for a text answer. When unsure, present.
 In a mode that lasts (quiz, interview, guide me, a question to check understanding), keep presenting every turn:
 call `present_walkthrough` to ask each question (give the exact question in `question` and say it must be asked, not
-answered), to judge each answer (the learner's answer, whether it is right and why, and the next question) and to give
+answered; it may set the question up, but never ask it to explain the idea the question checks, as that gives the
+answer away), to judge each answer (the learner's answer, whether it is right and why, and the next question) and to give
 each hint, the first question included.
 """
 
