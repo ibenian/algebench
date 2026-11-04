@@ -608,7 +608,7 @@ let notes: Element[] = [];
 // The board: notes sent to the top left, stacked like lines on a blackboard; erasing leaves them, the end clears them.
 let board: HTMLElement[] = [];
 // Each note by what was written, so a later beat can name it to wipe or to keep on the board.
-const noteByText = new Map<string, HTMLElement>();
+const noteByText = new Map<string, HTMLElement | SVGSVGElement>();
 const noteKey = (t: string) => t.replace(/\s+/g, ' ').trim();
 /** A note on the view, by what was written, or the `part` of it named (the box round those words); null when gone. */
 function noteRect(text: string, part = ''): DOMRect | null {
@@ -848,7 +848,7 @@ function edgeToward(r: DOMRect, x: number, y: number, pad: number): {x: number; 
  */
 // Arrows starting at a note: redrawn when the learner moves the note, wiped with it.
 const arrowsFrom = new WeakMap<Element, (() => void)[]>(), arrowEls = new WeakMap<Element, SVGSVGElement[]>();
-async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r: number, fromNote: Element | null = null, color = '', kind: 'arrow' | 'line' | 'both' = 'arrow') {
+async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r: number, fromNote: Element | null = null, color = '', kind: 'arrow' | 'line' | 'both' = 'arrow', name = '') {
     // Its hand: which side it bows to, and its wobble, kept so a redraw is the same stroke, moved.
     const side = Math.random() < .5 ? -1 : 1, jitter = [Math.random() - .5, Math.random() - .5, Math.random() - .5, Math.random() - .5];
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');svg.classList.add('ai-arrow');
@@ -887,6 +887,7 @@ async function drawArrow(from: () => DOMRect | null, to: () => DOMRect | null, r
     const len = shape();
     if (!len) return;
     notesLayer().append(svg);notes.push(svg);
+    if (name) noteByText.set(noteKey(name), svg);
     if (fromNote) { arrowsFrom.set(fromNote, [...(arrowsFrom.get(fromNote) ?? []), shape]);arrowEls.set(fromNote, [...(arrowEls.get(fromNote) ?? []), svg]); }
     // What it joins on the view moves as the scene plays, turns or is resized: put it in place again every frame
     // while it's up (only when an end moved).
@@ -1767,7 +1768,7 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
         // Kept on the board: a note written earlier slides up there; a line not written yet is written there.
         for (const t of beat.board ?? []) {
             const n = noteByText.get(noteKey(t));
-            if (n?.isConnected && !n.classList.contains('fading')) await sendToBoard(n, r);
+            if (n instanceof HTMLElement && n.isConnected && !n.classList.contains('fading')) await sendToBoard(n, r);
             else await typeNote(t, '', r, true, beat.color);
         }
         const line = document.createElement('p');line.className = 'ai-present-line';body.append(line);
@@ -1791,7 +1792,9 @@ async function playBeats(steps: Beat[], body: HTMLElement, r: number, onBeat?: (
             const from = beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
             // Read again on each redraw: a note the learner moves takes its arrow with it.
             const fromNow = () => beat.arrow_from ? resolveTarget(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget(beat.target) : null;
-            if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind);
+            // Named by what it joins, as a note is by its text: `on_view` lists it, and it can be kept or wiped by that name.
+            const name = `arrow: ${beat.arrow_from || (note ? noteKey(beat.write ?? '') : beat.target)} -> ${beat.arrow_to}`;
+            if (from && to) await drawArrow(fromNow, () => resolveTarget(beat.arrow_to!), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind, name);
         };
         const both = Promise.all([words, writing]).then(() => undefined);
         // A stop can end the beat before both settle (the mark's wait throws first): their Stopped is expected then.

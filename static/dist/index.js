@@ -11303,7 +11303,7 @@ function edgeToward(r, x, y, pad) {
 */
 var arrowsFrom = /* @__PURE__ */ new WeakMap();
 var arrowEls = /* @__PURE__ */ new WeakMap();
-async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow") {
+async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow", name = "") {
 	const side = Math.random() < .5 ? -1 : 1, jitter = [
 		Math.random() - .5,
 		Math.random() - .5,
@@ -11365,6 +11365,7 @@ async function drawArrow(from, to, r, fromNote = null, color = "", kind = "arrow
 	if (!len) return;
 	notesLayer().append(svg);
 	notes.push(svg);
+	if (name) noteByText.set(noteKey(name), svg);
 	if (fromNote) {
 		arrowsFrom.set(fromNote, [...arrowsFrom.get(fromNote) ?? [], shape]);
 		arrowEls.set(fromNote, [...arrowEls.get(fromNote) ?? [], svg]);
@@ -12602,7 +12603,7 @@ async function playBeats(steps, body, r, onBeat) {
 		if (beat.erase_draw?.length) await eraseSketch(beat.erase_draw, r);
 		for (const t of beat.board ?? []) {
 			const n = noteByText.get(noteKey(t));
-			if (n?.isConnected && !n.classList.contains("fading")) await sendToBoard(n, r);
+			if (n instanceof HTMLElement && n.isConnected && !n.classList.contains("fading")) await sendToBoard(n, r);
 			else await typeNote(t, "", r, true, beat.color);
 		}
 		const line = document.createElement("p");
@@ -12632,7 +12633,8 @@ async function playBeats(steps, body, r, onBeat) {
 			const to = resolveTarget$1(beat.arrow_to);
 			const from = beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
 			const fromNow = () => beat.arrow_from ? resolveTarget$1(beat.arrow_from) : note ? note.getBoundingClientRect() : beat.target ? resolveTarget$1(beat.target) : null;
-			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind);
+			const name = `arrow: ${beat.arrow_from || (note ? noteKey(beat.write ?? "") : beat.target)} -> ${beat.arrow_to}`;
+			if (from && to) await drawArrow(fromNow, () => resolveTarget$1(beat.arrow_to), r, beat.arrow_from ? null : note, beat.color, beat.arrow_kind, name);
 		};
 		const both = Promise.all([words, writing]).then(() => void 0);
 		both.catch(() => void 0);

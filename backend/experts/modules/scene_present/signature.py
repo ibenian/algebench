@@ -310,12 +310,12 @@ class ScenePresentSig(dspy.Signature):
     frames: str = dspy.InputField(desc="the execution states, one per line as `n: what happens  [the values in that "
                                        "state]`, and which is on screen; may be empty when the step has none")
     targets: str = dspy.InputField(desc="what you can point at, one per line as `ref: description`")
-    on_view: str = dspy.InputField(desc="what your earlier walk-throughs left on the view, still there: notes, board "
-                                        "lines and drawn shapes (`draw:<id>`), one per line")
+    on_view: str = dspy.InputField(desc="what your earlier walk-throughs left on the view, still there: notes, arrows "
+                                        "(`arrow: from -> to`), board lines and drawn shapes (`draw:<id>`), one per line")
 
     keep: list[str] = dspy.OutputField(desc="decided first, from `on_view`: what earlier walk-throughs left that "
                                        "this one still needs, each copied exactly from `on_view` (a note's or a "
-                                       "board line's text, or `draw:<id>`); everything else there is wiped before "
+                                       "board line's text, an `arrow: from -> to`, or `draw:<id>`); everything else there is wiped before "
                                        "the first beat. Keep only what you will point at, build on, or what the "
                                        "learner needs in view; empty for a clean view")
     steps: list[PresentStep] = dspy.OutputField(desc="the beats of the walk-through, in order")

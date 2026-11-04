@@ -37,7 +37,8 @@ def render_inputs(req: ScenePresentRequest) -> dict:
 def _on_view(req: ScenePresentRequest) -> str:
     """What earlier walk-throughs left on the view, one per line: notes, board lines, drawn shapes by id."""
     v = req.on_view
-    lines = [f"note: {t}" for t in v.notes] + [f"board: {t}" for t in v.board]
+    # An arrow comes with the notes, named by what it joins ("arrow: a -> b").
+    lines = [t if t.startswith("arrow: ") else f"note: {t}" for t in v.notes] + [f"board: {t}" for t in v.board]
     for d in v.drawn:
         joins = f" ({' -> '.join(d.joins)})" if d.joins else ""
         lines.append(f"draw:{d.id}: {d.type}{f' {d.label!r}' if d.label else ''}{joins}")

@@ -70,6 +70,12 @@ def test_the_first_beat_wipes_what_earlier_walk_throughs_left_unless_kept(monkey
     # Some kept, named as `on_view` lists them: only the rest goes.
     assert first(["note: y = 2", "board: sum = 3", "draw:tree"], on_view=left) == {"erase": False, "erase_notes": ["x = 1"], "erase_draw": []}
     assert first(["x = 1"], on_view=left) == {"erase": False, "erase_notes": ["y = 2", "sum = 3"], "erase_draw": ["tree"]}
+    # An arrow is listed by what it joins: alone it's still something to wipe, and it can be kept by that name.
+    arrow = {"notes": ["arrow: stack[0] -> tree[1]"], "board": [], "drawn": []}
+    assert first([], on_view=arrow) == {"erase": True, "erase_notes": [], "erase_draw": []}
+    assert first(["arrow: stack[0] -> tree[1]"], on_view=arrow) == {"erase": False, "erase_notes": [], "erase_draw": []}
+    both = {"notes": ["x = 1", "arrow: a -> b"], "board": [], "drawn": []}
+    assert first(["x = 1"], on_view=both) == {"erase": False, "erase_notes": ["arrow: a -> b"], "erase_draw": []}
     # A clean view: nothing to wipe.
     assert first([]) == {"erase": False, "erase_notes": [], "erase_draw": []}
 
