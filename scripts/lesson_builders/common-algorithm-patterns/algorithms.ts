@@ -968,7 +968,8 @@ export function topoTrace(n: number, prerequisites: [number, number][]) {
  * (post-order), so the reversed list puts every prerequisite first. state per node: 0 new, 1 on the current path,
  * 2 done; meeting a course that is on the path is a cycle. Per frame: state, order (post-order), node and nxt
  * (−1 none), from/to (the edge being followed), seen (per node, edges followed), c (the outer loop's course),
- * calls (call-site lines of the dfs calls not yet returned), result (the answer once done, '—' before).
+ * stack (the courses of the dfs calls not yet returned, outermost first), calls (those calls' call-site lines),
+ * result (the answer once done, '—' before).
  */
 export function topoDfsTrace(n: number, prerequisites: [number, number][]) {
     // L(text): the DFS function's line containing text; L(text, line): the first such line after `line`.
@@ -976,11 +977,11 @@ export function topoDfsTrace(n: number, prerequisites: [number, number][]) {
     const graph: number[][] = Array.from({ length: n }, () => []);
     for (const [course, pre] of prerequisites) graph[pre]!.push(course);
     const v = { state: new Array(n).fill(0) as number[], order: [] as number[], node: -1, nxt: -1, from: -1, to: -1,
-        seen: new Array(n).fill(0) as number[], c: -1, calls: [] as number[], result: '—' };
+        seen: new Array(n).fill(0) as number[], c: -1, stack: [] as number[], calls: [] as number[], result: '—' };
     const { trace, emit } = recorder(v);
     const list = (xs: number[]) => `[${xs.join(', ')}]`;
     const stack: number[] = [];   // the nodes of the dfs calls not yet returned, outermost first
-    const where = () => { v.node = stack.at(-1) ?? -1; };
+    const where = () => { v.node = stack.at(-1) ?? -1; v.stack = stack.slice(); };
     emit(L('graph[pre].append'), `Build the graph: ${prerequisites.length} edges pre → course. No in-degrees this time.`);
     emit(L('state = [0] * n'), 'Every course starts new (state 0).');
     emit(L('order = []'), 'order will collect courses after everything that depends on them is done.');

@@ -2148,6 +2148,9 @@ ${MD_TAIL}
         courses(c),
         array('state', 'state', [-4.2, -1.3, 0], { from: c('state'), markers: [marker('node', c('node'), GOLD, `${c('node')} >= 0`)] }),
         array('order', 'order', [-4.2, -2.8, 0], { from: c('order'), color: '#b69bea', highlightExpr: `idx == count(${c('order')}) - 1 and ${c('line')} == ${dfsLine('order.append(node)')}` }),
+        // The dfs calls waiting, the running course on top: the path the pink courses trace on the graph.
+        { id: 'stack', type: 'stack', itemType: 'number', origin: [8.4, -1.2, 0], cellSize: 0.9, fontSize: 14, showIndices: false,
+            lengthExpr: `arrayCount(${c('stack')})`, valueExpr: `arrayAt(${c('stack')}, idx)`, color: PINK, label: 'call stack', containerColor: TEAL },
         { ...label('result', `concat('order[::-1] = ', ${c('result')})`, [4.6, -3.6, 0]), codeRef: ref(dfsLine('return order[::-1]')) },
         { ...label('c', `${c('c')} < 0 ? 'c: —' : concat('c = ', ${c('c')})`, [4.6, -3.6, 0], ['courses', c('c')]), codeRef: ref(dfsLine('for c in range(n)')) },
         { ...label('node', `${c('node')} < 0 ? 'node: —' : concat('node = ', ${c('node')})`, [4.6, -3.6, 0], ['courses', c('node')]), codeRef: ref(dfsLine('def dfs(node)')) },

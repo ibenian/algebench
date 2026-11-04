@@ -246,6 +246,8 @@ test('topological sort by DFS reverses the post-order, with no in-degrees, and f
  for(const [c,p] of pre)assert.ok(order.indexOf(p)<order.indexOf(c),`${p} before ${c}`);
  assert.deepEqual([...(f.order as number[])].reverse(),order);assert.deepEqual(f.state,[2,2,2,2,2,2]);
  assert.deepEqual(f.calls,[],'every dfs call returned');
+ // The call stack holds one course per waiting call, with the running course on top.
+ for(const t of trace){const stack=t.stack as number[];assert.equal(stack.length,(t.calls as number[]).length);assert.equal(stack.at(-1)??-1,t.node);}
  // A course is appended only after everything that depends on it.
  for(const [c,p] of pre)assert.ok((f.order as number[]).indexOf(c)<(f.order as number[]).indexOf(p));
  // The waiting calls match the courses on the path (state 1), one each.
