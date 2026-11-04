@@ -1629,6 +1629,38 @@ The **See the forest** step shows the run twice: the input graph on the left, it
     pattern({
         id: 'linked-list-reversal', title: 'Flip the links (linked list reversal)', file: 'reverse_list.py', source: LINKED_LIST_SOURCE,
         input: { values }, trace: linkedListTrace(values),
+        sections: [
+            section(LINKED_LIST_SOURCE, 'll-node', 'A node: a value and a link', 'class Node:', 'self.next = next', {
+                hint: 'A node knows its value and the one node after it. Nothing points backwards, so reversing means rewriting the links.' }),
+            section(LINKED_LIST_SOURCE, 'll-start', 'Nothing is reversed yet', 'def reverse(', 'curr = head', {
+                hint: 'The reversed part starts empty, and the walk starts at the first node.' }),
+            section(LINKED_LIST_SOURCE, 'll-flip', 'Save the rest, then flip the link', 'while curr', 'curr.next = prev', {
+                hint: 'A node holds the only link to the rest of the list, so keep that link before pointing the node backwards.',
+                prompt: 'Explain why nxt must be saved before curr.next is overwritten, showing what would be lost on this list without it.' }),
+            section(LINKED_LIST_SOURCE, 'll-advance', 'Move both pointers one node on', 'prev = curr', 'curr = nxt', {
+                hint: 'The flipped node joins the reversed part, and the walk continues with the saved rest.' }),
+            section(LINKED_LIST_SOURCE, 'll-done', 'prev is the new head', 'return prev', null, {
+                hint: 'The walk ends past the old tail, which is the first node of the reversed list.' }),
+        ],
+        annotations: [
+            doc('Node', 'One list node: a value and a link to the node after it.'),
+            doc('val', 'The value this node stores.'),
+            doc('next', 'The node after this one; `None` at the tail.'),
+            doc('reverse', '`reverse(head)` reverses the list in place and returns its new head. O(n) time, O(1) space.'),
+            doc('head', 'The first node of the list.'),
+            doc('prev', 'The front of the reversed part: the node `curr` will point back to.'),
+            doc('curr', 'The node being flipped.'),
+            doc('nxt', 'The rest of the list, saved before the link to it is overwritten.'),
+            docExpr(LINKED_LIST_SOURCE, 'def __init__', 'next=None', 'A new node links to nothing unless told otherwise.'),
+            docExpr(LINKED_LIST_SOURCE, 'prev = None', 'None', 'The first node becomes the tail, so its link must end up as `None`.'),
+            docExpr(LINKED_LIST_SOURCE, 'while curr', 'while curr', 'Nodes remain to flip. `curr` is `None` once it has passed the old tail.'),
+            docExpr(LINKED_LIST_SOURCE, 'nxt = curr.next', 'curr.next', 'The only way to reach the rest of the list, and the next line overwrites it.'),
+            docExpr(LINKED_LIST_SOURCE, 'curr.next = prev', 'curr.next = prev', 'The flip: this node now points back at the reversed part.'),
+            docExpr(LINKED_LIST_SOURCE, 'prev = curr', 'prev = curr', 'This node is the new front of the reversed part.'),
+            docExpr(LINKED_LIST_SOURCE, 'curr = nxt', 'curr = nxt', 'On to the saved rest. `prev` has to move first, or it would pick up the wrong node.'),
+            docExpr(LINKED_LIST_SOURCE, 'return prev', 'return prev', '`curr` is `None` now, so `prev` holds the old tail: the new head.'),
+            docBlock(LINKED_LIST_SOURCE, 'while curr', 'curr = nxt', 'One flip per node: O(n) time. Only three pointers are extra: O(1) space.'),
+        ],
         markdown: `# Flip the links (linked list reversal)
 
 **Signal:** reverse a list or a sublist, swap pairs, or reorder nodes, with O(1) extra space.
@@ -1785,6 +1817,49 @@ ${MD_TAIL}
     pattern({
         id: 'tree-traversal', title: 'Walk a tree (traversal orders)', file: 'tree_traversal.py', source: TREE_TRAVERSAL_SOURCE,
         input: { values }, trace: runs[0]!, callEntryLine: 4,
+        sections: [
+            section(TREE_TRAVERSAL_SOURCE, 'tt-pre', 'Preorder: the node, then left, then right', 'def preorder(', 'preorder(node.right, out)', {
+                hint: 'Stop at an empty subtree. Otherwise a node is visited before anything below it.' }),
+            section(TREE_TRAVERSAL_SOURCE, 'tt-in', 'Inorder: left, then the node, then right', 'def inorder(', 'inorder(node.right, out)', {
+                hint: 'A node is visited after its whole left subtree and before its right one.',
+                prompt: 'Explain why inorder visits a binary search tree in sorted order.' }),
+            section(TREE_TRAVERSAL_SOURCE, 'tt-post', 'Postorder: left, then right, then the node', 'def postorder(', 'out.append(node.val)', {
+                hint: 'A node is visited after everything below it.' }),
+            section(TREE_TRAVERSAL_SOURCE, 'tt-level-start', 'Level order: the root waits in a queue', 'def level_order(', 'out, queue =', {
+                hint: 'No recursion here: a queue holds the nodes still to visit, starting with the root.' }),
+            section(TREE_TRAVERSAL_SOURCE, 'tt-level-walk', 'Take the oldest node, queue its children', 'while queue', 'queue.append(child)', {
+                hint: 'Children join behind everything already waiting, so a whole level leaves before the next one starts.',
+                prompt: 'Explain why a first-in, first-out queue gives level order, and what a stack would give instead.' }),
+            section(TREE_TRAVERSAL_SOURCE, 'tt-level-done', 'Return the values in visiting order', 'return out', null, {
+                hint: 'The queue is empty, so every node has been visited.' }),
+        ],
+        annotations: [
+            doc('deque', 'A double-ended queue from `collections`: taking from the front and adding at the back are both O(1).'),
+            doc('preorder', '`preorder(node, out)` appends a subtree\'s values to `out`, each node before its children. O(n) time, O(height) stack.'),
+            doc('inorder', '`inorder(node, out)` appends a subtree\'s values to `out`, each node between its left and right subtrees. O(n) time, O(height) stack.'),
+            doc('postorder', '`postorder(node, out)` appends a subtree\'s values to `out`, each node after its children. O(n) time, O(height) stack.'),
+            doc('level_order', '`level_order(root)` returns the values level by level, top down, left to right. O(n).'),
+            doc('node', 'The root of the subtree this call walks; `None` past a leaf.'),
+            doc('node', 'The node taken from the queue.', { source: TREE_TRAVERSAL_SOURCE, start: 'def level_order(', end: 'return out' }),
+            doc('out', 'The values visited so far, in visiting order.'),
+            doc('val', 'The value this node stores.'),
+            doc('left', 'The left child; `None` if there is none.'),
+            doc('right', 'The right child; `None` if there is none.'),
+            doc('root', 'The top node of the tree.'),
+            doc('queue', 'The nodes waiting to be visited, oldest at the front.'),
+            doc('child', 'One child of the node, left first; `None` if it is missing.'),
+            docExpr(TREE_TRAVERSAL_SOURCE, 'if node is None', 'node is None', 'An empty subtree: nothing to visit. This base case ends the recursion.'),
+            docBlock(TREE_TRAVERSAL_SOURCE, 'out.append(node.val)', 'preorder(node.right, out)', 'The visit comes first, so a parent is always output before anything below it. This order can rebuild or copy a tree.'),
+            docBlock(TREE_TRAVERSAL_SOURCE, 'inorder(node.left, out)', 'inorder(node.right, out)', 'Everything on the left, then the node, then everything on the right. On a binary search tree, that is sorted order.'),
+            docBlock(TREE_TRAVERSAL_SOURCE, 'postorder(node.left, out)', 'out.append(node.val)', 'The visit comes last, so a parent is output after everything below it. Use this order when a node needs its children\'s results, such as subtree sizes.'),
+            docExpr(TREE_TRAVERSAL_SOURCE, 'out, queue =', 'deque([root])', 'The queue starts with the root alone.'),
+            docExpr(TREE_TRAVERSAL_SOURCE, 'while queue', 'while queue', 'Nodes are still waiting. The queue empties once every node has been taken.'),
+            docExpr(TREE_TRAVERSAL_SOURCE, 'node = queue.popleft()', 'queue.popleft()', 'The oldest node waiting. O(1) on a deque; `list.pop(0)` would be O(n).'),
+            docExpr(TREE_TRAVERSAL_SOURCE, 'for child in', '(node.left, node.right)', 'Left before right, so each level reads left to right.'),
+            docExpr(TREE_TRAVERSAL_SOURCE, 'if child:', 'if child', 'Skip a missing child: `None` never joins the queue.'),
+            docExpr(TREE_TRAVERSAL_SOURCE, 'queue.append(child)', 'queue.append(child)', 'Behind everything already waiting: the rest of this level goes first.'),
+            docBlock(TREE_TRAVERSAL_SOURCE, 'while queue', 'queue.append(child)', 'Each node is queued once and taken once: O(n).'),
+        ],
         more: {
             data: { treeNodes: table, ...Object.fromEntries(ORDERS.slice(1).map((o, k) => [o.table, runs[k + 1]])) },
             steps,
