@@ -36226,6 +36226,7 @@ function setupCodePractice() {
 	/** What the last pairing turn said has to be fixed first, until the learner edits: Finish does that fix before the line. */
 	let fixProposed = "";
 	const PAIR_IDLE_MS = 25e3;
+	report.addEventListener("input", () => pairWait());
 	const caretLine = () => input.value.slice(0, input.selectionStart).split("\n").length - 1;
 	function pairWait() {
 		clearTimeout(pairIdle);
@@ -36236,6 +36237,11 @@ function setupCodePractice() {
 		if (!pairing || assisting || quiz) return;
 		if (window.algebenchTTSActive?.() || chatTalking() || held) {
 			pairIdle = window.setTimeout(pairNudge, 1e3);
+			return;
+		}
+		const active = document.activeElement;
+		if (!!active && report.contains(active) && active.matches("input, textarea") || [...report.querySelectorAll(".cp-help-input, .cp-quiz-input")].some((box) => box.value.trim())) {
+			pairWait();
 			return;
 		}
 		const line = caretLine();
@@ -37060,7 +37066,7 @@ function setupCodePractice() {
 				input.setSelectionRange(start, start + lead);
 				insert("");
 			}
-		} else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+		} else if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !pairing) {
 			e.preventDefault();
 			review(true);
 		} else if (e.key === "Enter" && !e.isComposing) {
@@ -37068,10 +37074,11 @@ function setupCodePractice() {
 			const start = input.value.lastIndexOf("\n", input.selectionStart - 1) + 1;
 			const line = input.value.slice(start, input.selectionStart);
 			insert("\n" + (/^\s*/.exec(line)[0] + (/[:{[(]\s*$/.test(line) ? INDENT : "")));
+			const quiet = e.shiftKey || e.metaKey || e.ctrlKey;
 			if (pairing) {
 				trimPairTail();
-				if (line.trim()) pairLineDone();
-			} else if (coachOn()) review(false);
+				if (line.trim() && !quiet) pairLineDone();
+			} else if (coachOn() && !quiet) review(false);
 		}
 	});
 	input.addEventListener("input", () => {

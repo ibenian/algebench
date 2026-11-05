@@ -873,6 +873,8 @@ export function setupCodePractice(): void {
     /** What the last pairing turn said has to be fixed first, until the learner edits: Finish does that fix before the line. */
     let fixProposed = '';
     const PAIR_IDLE_MS = 25000;
+    // Typing in the answer box counts as much as typing in the editor.
+    report.addEventListener('input', () => pairWait());
     const caretLine = () => input.value.slice(0, input.selectionStart).split('\n').length - 1;
     function pairWait() {
         clearTimeout(pairIdle);
@@ -882,6 +884,11 @@ export function setupCodePractice(): void {
     function pairNudge() {
         if (!pairing || assisting || quiz) return;
         if (window.algebenchTTSActive?.() || chatTalking() || held) { pairIdle = window.setTimeout(pairNudge, 1000);return; }   // typing meanwhile resets the wait
+        // In the answer box, or with words waiting there, they aren't stuck: another round. (The offer would wipe the words.)
+        const active = document.activeElement;
+        const answering = (!!active && report.contains(active) && active.matches('input, textarea'))
+            || [...report.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('.cp-help-input, .cp-quiz-input')].some(box => box.value.trim());
+        if (answering) { pairWait();return; }
         const line = caretLine();
         if (pairNudged === line) return;
         pairNudged = line;
@@ -1448,7 +1455,7 @@ export function setupCodePractice(): void {
             const start = input.value.lastIndexOf('\n', input.selectionStart - 1) + 1;
             const lead = /^ {1,4}/.exec(input.value.slice(start))?.[0].length ?? 0;
             if (lead) { input.setSelectionRange(start, start + lead);insert(''); }
-        } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !pairing) {
             e.preventDefault();void review(true);
         } else if (e.key === 'Enter' && !e.isComposing) {
             e.preventDefault();
@@ -1456,8 +1463,10 @@ export function setupCodePractice(): void {
             const line = input.value.slice(start, input.selectionStart);
             const indent = /^\s*/.exec(line)![0] + (/[:{[(]\s*$/.test(line) ? INDENT : '');
             insert('\n' + indent);
-            if (pairing) { trimPairTail();if (line.trim()) pairLineDone(); }
-            else if (coachOn()) void review(false);
+            // With Shift (or, while pairing, Cmd/Ctrl) it is only a new line: the AI doesn't take a turn.
+            const quiet = e.shiftKey || e.metaKey || e.ctrlKey;
+            if (pairing) { trimPairTail();if (line.trim() && !quiet) pairLineDone(); }
+            else if (coachOn() && !quiet) void review(false);
         }
     });
     input.addEventListener('input', () => {
