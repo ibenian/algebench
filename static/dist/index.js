@@ -32412,6 +32412,35 @@ function ownNames(reference, typed) {
 		renamed: true
 	};
 }
+/**
+* The empty lines at the end of the code, tidied while pairing: only the one the cursor is on stays, with its
+* indentation, for the line being written; with the cursor higher up, none do. Returns the range to replace, what
+* goes there and where the cursor lands, or null when there is nothing to tidy.
+*/
+function trimTrailingBlanks(text, caret) {
+	const lines = text.split("\n");
+	let first = lines.length;
+	while (first > 0 && !lines[first - 1].trim()) first--;
+	const run = lines.length - first;
+	if (!run) return null;
+	const at = text.slice(0, caret).split("\n").length - 1;
+	const from = lines.slice(0, first).join("\n").length, to = text.length;
+	if (at < first) return {
+		from,
+		to,
+		insert: "",
+		caret
+	};
+	const column = caret - (text.lastIndexOf("\n", caret - 1) + 1);
+	const insert = (first ? "\n" : "") + lines[at];
+	if (run === 1) return null;
+	return {
+		from,
+		to,
+		insert,
+		caret: from + (first ? 1 : 0) + column
+	};
+}
 //#endregion
 //#region src/speech-text.ts
 /**
@@ -35054,6 +35083,36 @@ var FOCUS_KEYS = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘⇧Enter" : "C
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 var LEGACY_KEY = "algebench-code-practice";
 var VIEW_KEY = "algebench-code-practice-view";
+var HINT_LEVELS = [
+	{
+		level: "direct",
+		label: "Direct",
+		title: "I start each line, and hint plainly when you ask or a line goes wrong",
+		start: "",
+		noun: "Hint"
+	},
+	{
+		level: "point",
+		label: "Point",
+		title: "I select the code and ask about it, then leave your cursor where to work. I write no code, at most an example in a comment",
+		start: "OK, you type. After each line you finish, I'll point at the code and ask about it, without writing it.",
+		noun: "Look here"
+	},
+	{
+		level: "question",
+		label: "Question",
+		title: "I only ask a question, for you to reason it out",
+		start: "OK, you type. After each line you finish, I'll only ask you a question to reason through.",
+		noun: "Question"
+	},
+	{
+		level: "vague",
+		label: "Vague",
+		title: "I only say what may break, not where or how to fix it",
+		start: "OK, you type. After each line you finish, I'll only say what may break, not where.",
+		noun: "Think about"
+	}
+];
 var QUIZ_VERDICTS = {
 	correct: "Correct",
 	partly: "Partly right",
@@ -35394,7 +35453,9 @@ function setupCodePractice() {
 		docFolded: prefs.docFolded,
 		focusReportHeight: prefs.focusReportHeight,
 		font: prefs.font,
-		focusFont: prefs.focusFont
+		focusFont: prefs.focusFont,
+		hintLevel: prefs.hintLevel,
+		pairKey: pairing ? key : void 0
 	});
 	function paintSpeak(on) {
 		speak.setAttribute("aria-pressed", String(on));
@@ -35558,6 +35619,7 @@ function setupCodePractice() {
 	window.addEventListener("pagehide", () => {
 		clearTimeout(saveTimer);
 		pendingSave?.();
+		savePrefs();
 	});
 	/** Leaving a block (a scene or step switch): the coach's word on it is over, spoken or still coming. */
 	function hushCoach() {
@@ -35653,6 +35715,17 @@ function setupCodePractice() {
 			lastReviewed = attempt.reviewed != null ? reviewKey(attempt.reviewed) : "";
 			render(false);
 			highlight();
+			if (prefs.pairKey === wanted) {
+				prefs.pairKey = void 0;
+				pairing = true;
+				pairNudged = -1;
+				pairStarted.clear();
+				pairBase = new Set(score?.lines.filter((l) => l.similarity === 1).map((l) => l.line));
+				trimPairTail();
+				offerHelp(message("assistant", Object.assign(el("div", "cp-assist cp-assist-close"), { textContent: "Still pairing. Finish a line and I'll take my turn." })));
+				pairWait();
+				return;
+			}
 			if (hintsOn() && !input.value.trim() && root.classList.contains("open")) review(true);
 		});
 	}
@@ -36091,7 +36164,7 @@ function setupCodePractice() {
 	const aiSelection = el("div", "cp-ai-selection");
 	const keptSelection = el("div", "cp-ai-selection cp-kept-selection");
 	stack.append(keptSelection, aiSelection, aiCaret);
-	let selectedTo = 0, selection = null, caretAt = 0;
+	let selectedTo = 0, selection = null, kept = null, caretAt = 0;
 	let assisting = 0, assistSeq = 0, charWidth = 0;
 	let quiz = null;
 	let askedQuestions = [];
@@ -36125,6 +36198,33 @@ function setupCodePractice() {
 			render(false);
 		}
 	}
+	const hintLevel = () => HINT_LEVELS.some((h) => h.level === prefs.hintLevel) ? prefs.hintLevel : "direct";
+	/** The hint level's picker: on the row with Pair with me, and while pairing, where a change counts from the next turn. */
+	function hintPicker() {
+		const box = el("label", "cp-help-level");
+		box.textContent = "Hints";
+		const pick = document.createElement("select");
+		pick.className = "cp-help-level-pick";
+		pick.append(...HINT_LEVELS.map((h) => Object.assign(document.createElement("option"), {
+			value: h.level,
+			textContent: h.label,
+			title: h.title
+		})));
+		const paint = () => {
+			pick.value = hintLevel();
+			box.title = HINT_LEVELS.find((h) => h.level === hintLevel()).title;
+		};
+		paint();
+		pick.addEventListener("change", () => {
+			prefs.hintLevel = pick.value;
+			savePrefs();
+			paint();
+		});
+		box.append(pick);
+		return box;
+	}
+	/** What the last pairing turn said has to be fixed first, until the learner edits: Finish does that fix before the line. */
+	let fixProposed = "";
 	const PAIR_IDLE_MS = 25e3;
 	const caretLine = () => input.value.slice(0, input.selectionStart).split("\n").length - 1;
 	function pairWait() {
@@ -36208,8 +36308,10 @@ function setupCodePractice() {
 				b.addEventListener("click", () => void assist(scope, words.value.trim()));
 				row.append(b);
 			};
+			row.append(hintPicker());
 			line("hint", "Give me a hint", "A hint for the line you are on, not the code");
 			line("finish", "Finish this line", "I finish the line you are on (it counts as AI-typed), then start the next");
+			line("fix", "Fix it", "I fix what is wrong in your code, deleting what doesn't belong, and write nothing new. We keep pairing");
 			const end = el("button", "cp-help-btn cp-quiz-end");
 			end.type = "button";
 			end.textContent = "End pairing";
@@ -36261,7 +36363,7 @@ function setupCodePractice() {
 			[
 				"pairing",
 				"Pair with me",
-				"You type, I start each line and help when you are stuck: a hint, or I finish the line"
+				"You type, and I help as much as the Hints level says: from starting each line, down to only saying what may break"
 			]
 		];
 		for (const [scope, text, title] of choices) {
@@ -36272,6 +36374,7 @@ function setupCodePractice() {
 			b.addEventListener("click", () => void assist(scope, words.value.trim()));
 			row.append(b);
 		}
+		row.append(hintPicker());
 		return row;
 	}
 	/** Help me sits under the latest message only: an older one's choices would act on code that has moved on. */
@@ -36355,14 +36458,35 @@ function setupCodePractice() {
 	}
 	input.addEventListener("blur", () => {
 		keptSelection.replaceChildren();
-		if (!assisting && input.selectionEnd > input.selectionStart) drawRange(keptSelection, input.selectionStart, input.selectionEnd, "cp-kept-sel");
+		kept = null;
+		if (!assisting && input.selectionEnd > input.selectionStart) {
+			kept = [input.selectionStart, input.selectionEnd];
+			drawRange(keptSelection, kept[0], kept[1], "cp-kept-sel");
+		}
 	});
-	const dropKept = () => keptSelection.replaceChildren();
+	const dropKept = () => {
+		keptSelection.replaceChildren();
+		kept = null;
+	};
 	input.addEventListener("focus", dropKept);
 	input.addEventListener("input", dropKept);
 	function clearSelection() {
 		aiSelection.replaceChildren();
 		selection = null;
+	}
+	/** After a pointing hint: the cursor at the end of the line to work on, what was asked about lit until they type. */
+	function leavePointing(range, line) {
+		const lines = input.value.split("\n");
+		if (line >= 1 && line <= lines.length) {
+			const at = lines.slice(0, line).join("\n").length;
+			input.focus();
+			input.setSelectionRange(at, at);
+		}
+		if (range) {
+			keptSelection.replaceChildren();
+			kept = range;
+			drawRange(keptSelection, range[0], range[1], "cp-kept-sel");
+		}
 	}
 	/** Drawn in px of the font it was drawn at: another font size draws what is showing again. */
 	function redrawMarks() {
@@ -36370,9 +36494,9 @@ function setupCodePractice() {
 			aiSelection.replaceChildren();
 			drawRange(aiSelection, selection[0], selection[1], "cp-ai-sel");
 		}
-		if (keptSelection.children.length) {
+		if (kept) {
 			keptSelection.replaceChildren();
-			drawRange(keptSelection, input.selectionStart, input.selectionEnd, "cp-kept-sel");
+			drawRange(keptSelection, kept[0], kept[1], "cp-kept-sel");
 		}
 		if (aiCaret.hidden) return;
 		const boxes = [...aiSelection.children];
@@ -36422,7 +36546,7 @@ function setupCodePractice() {
 				text = text.slice(0, at - n) + text.slice(at);
 				at -= n;
 				show(at);
-				await sleep(n > 1 ? 120 : 45 + Math.random() * 35);
+				await sleep(n > 1 ? 75 : 28 + Math.random() * 22);
 			}
 			let prev = text[at - 1] ?? "\n";
 			for (const key of keystrokes(e.insert)) {
@@ -36452,13 +36576,29 @@ function setupCodePractice() {
 			"pair",
 			"hint",
 			"finish",
-			"ask"
+			"ask",
+			"fix"
 		].includes(scope)) pairing = false;
 		clearTimeout(pairIdle);
+		if (pairStart && hintLevel() !== "direct") {
+			series = null;
+			quiz?.card.querySelector(".cp-quiz-controls")?.remove();
+			quiz = null;
+			const text = HINT_LEVELS.find((h) => h.level === hintLevel()).start;
+			offerHelp(message("assistant", Object.assign(el("div", "cp-assist cp-assist-close"), { textContent: text })));
+			if (speakOn()) window.algebenchSpeakText?.(text);
+			input.focus();
+			input.setSelectionRange(userCaret, userCaret);
+			pairWait();
+			return;
+		}
 		if (scope === "hint") {
 			const j = caretLine();
 			request = `I'm stuck on line ${j + 1}: \`${(input.value.split("\n")[j] ?? "").trim()}\`. Give me a hint, not the code.`;
 		}
+		const proposed = scope === "finish" ? fixProposed : "";
+		if (proposed) scope = "fix";
+		fixProposed = "";
 		const starting = scope === "series";
 		if (starting) {
 			series = {
@@ -36527,7 +36667,8 @@ function setupCodePractice() {
 		const assistedBefore = new Set(attempt.assisted);
 		const waiting = message("assistant", el("div", "chat-loading"));
 		waiting.querySelector(".chat-loading").innerHTML = "<span></span><span></span><span></span>";
-		let ended = false, nextAfter = false;
+		let ended = false, nextAfter = false, pointed = null, leaveOn = 0, proposal = "";
+		const hintWas = asked === "Give me a hint.";
 		try {
 			const where = {
 				language: current.file.language ?? "",
@@ -36567,13 +36708,19 @@ function setupCodePractice() {
 			}) : await invokeExpert("code_assist", {
 				...where,
 				scope,
-				request,
+				request: proposed ? `Do the fix you just proposed: ${proposed}` : request,
 				present: presenterOn() && (!pairing || scope === "ask"),
+				hint_level: scope === "pair" ? hintLevel() : "direct",
 				cursor: input.value.slice(0, userCaret).split("\n").length,
 				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
 			});
 			waiting.remove();
 			if (assisting !== run) throw new Stopped();
+			if (out.quiet) {
+				if (hintWas) await say("Nothing looks off so far: keep going.", message("assistant", el("div", "cp-assist cp-assist-close")).querySelector(".msg-body"), run);
+				ended = true;
+				return;
+			}
 			const bubble = (cls) => message("assistant", el("div", `cp-assist ${cls}`)).querySelector(".msg-body");
 			if (!out.result) {
 				if (out.show && out.reason) {
@@ -36586,7 +36733,7 @@ function setupCodePractice() {
 					ended = true;
 					return;
 				}
-				if (scope === "pair" && out.reason) pairing = false;
+				if (scope === "pair" && out.reason && (out.complete || hintLevel() === "direct")) pairing = false;
 				if ([
 					"ask",
 					"fix",
@@ -36610,13 +36757,14 @@ function setupCodePractice() {
 				return;
 			}
 			const r = out.result;
+			if (scope === "pair" && r.needs_fix) proposal = r.steps[r.steps.length - 1]?.say ?? "";
 			dropKept();
 			reportSummary.textContent = scope === "quiz" ? "✦ setting a question" : scope === "grade" ? "✦ checking your answer" : "✦ AI at the keyboard";
 			if (r.plan && scope !== "pair" && scope !== "finish") await say(r.plan, bubble("cp-assist-plan"), run);
 			selectedTo = 0;
 			for (const [k, step] of r.steps.entries()) {
 				const body = bubble("cp-assist-step");
-				const noun = scope === "fix" ? "Fix" : scope === "narrate" ? "Part" : scope === "quiz" ? "Setting it up" : scope === "grade" ? "Look here" : scope === "pair" ? step.code ? "Next line" : "Hint" : scope === "finish" ? "Finishing the line" : "Step";
+				const noun = scope === "fix" ? "Fix" : scope === "narrate" ? "Part" : scope === "quiz" ? "Setting it up" : scope === "grade" ? "Look here" : scope === "pair" ? hintLevel() !== "direct" ? HINT_LEVELS.find((h) => h.level === hintLevel()).noun : step.code ? "Next line" : "Hint" : scope === "finish" ? "Finishing the line" : "Step";
 				const head = el("div", "cp-assist-head");
 				head.textContent = r.steps.length > 1 && scope !== "quiz" && scope !== "grade" ? `${noun} ${k + 1} of ${r.steps.length}` : scope === "next" ? "Next step" : noun;
 				const thought = el("div", "cp-assist-say");
@@ -36670,6 +36818,10 @@ function setupCodePractice() {
 					await say(step.explain, why, run);
 				}
 			}
+			if (scope === "pair" && hintLevel() === "point") {
+				pointed = selection;
+				leaveOn = r.steps[r.steps.length - 1]?.cursor_line ?? 0;
+			}
 			clearSelection();
 			if (scope === "quiz") await poseQuestion(r, bubble("cp-quiz"), run);
 			else if (scope === "grade") {
@@ -36695,8 +36847,13 @@ function setupCodePractice() {
 			if (!(e instanceof Stopped) && assisting === run) message("assistant", Object.assign(el("div", "cp-report-reason"), { textContent: e.message }));
 		} finally {
 			handBack(run, blockKey, exactBefore, assistedBefore, ended);
+			if (ended && pairing && key === blockKey) {
+				leavePointing(pointed, leaveOn);
+				trimPairTail();
+				fixProposed = proposal;
+			}
 			if (ended && nextAfter) nextInSeries();
-			if (ended && finishing && pairing) window.setTimeout(() => {
+			if (ended && (finishing || proposed && hintLevel() === "direct") && pairing) window.setTimeout(() => {
 				if (pairing && !assisting) assist("pair");
 			}, 700);
 			else if (pairing) pairWait();
@@ -36876,6 +37033,14 @@ function setupCodePractice() {
 		if (report.hidden) foldReport(false);
 		offerHelp(message("assistant", Object.assign(el("div", ""), { textContent: "How much should I take on? I'll think aloud as I type, and you can take the keyboard back any time (Esc)." })));
 	});
+	/** While pairing, the empty lines at the end go: only the one being written on stays. */
+	function trimPairTail() {
+		const cut = trimTrailingBlanks(input.value, input.selectionStart);
+		if (!cut) return;
+		input.setSelectionRange(cut.from, cut.to);
+		insert(cut.insert);
+		input.setSelectionRange(cut.caret, cut.caret);
+	}
 	function insert(text) {
 		if (!document.execCommand("insertText", false, text)) {
 			input.setRangeText(text, input.selectionStart, input.selectionEnd, "end");
@@ -36903,11 +37068,14 @@ function setupCodePractice() {
 			const start = input.value.lastIndexOf("\n", input.selectionStart - 1) + 1;
 			const line = input.value.slice(start, input.selectionStart);
 			insert("\n" + (/^\s*/.exec(line)[0] + (/[:{[(]\s*$/.test(line) ? INDENT : "")));
-			if (pairing) pairLineDone();
-			else if (coachOn()) review(false);
+			if (pairing) {
+				trimPairTail();
+				if (line.trim()) pairLineDone();
+			} else if (coachOn()) review(false);
 		}
 	});
 	input.addEventListener("input", () => {
+		fixProposed = "";
 		attempt.text = input.value;
 		persist();
 		render();

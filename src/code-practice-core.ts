@@ -244,3 +244,25 @@ export function ownNames(reference: string, typed: string): {text: string; renam
     }
     return {text: lines.join('\n'), renamed: true};
 }
+
+/**
+ * The empty lines at the end of the code, tidied while pairing: only the one the cursor is on stays, with its
+ * indentation, for the line being written; with the cursor higher up, none do. Returns the range to replace, what
+ * goes there and where the cursor lands, or null when there is nothing to tidy.
+ */
+export function trimTrailingBlanks(text: string, caret: number): {from: number; to: number; insert: string; caret: number} | null {
+    const lines = text.split('\n');
+    let first = lines.length;
+    while (first > 0 && !lines[first - 1]!.trim()) first--;
+    const run = lines.length - first;
+    if (!run) return null;
+    const at = text.slice(0, caret).split('\n').length - 1;
+    const head = lines.slice(0, first).join('\n');
+    const from = head.length, to = text.length;
+    if (at < first) return {from, to, insert: '', caret};
+    const column = caret - (text.lastIndexOf('\n', caret - 1) + 1);
+    const insert = (first ? '\n' : '') + lines[at]!;
+    if (run === 1) return null;
+    return {from, to, insert, caret: from + (first ? 1 : 0) + column};
+}
+

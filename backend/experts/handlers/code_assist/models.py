@@ -30,5 +30,7 @@ class CodeAssistRequest(BaseModel):
     request: str = Field(default="", max_length=600)
     #: The line of ``typed`` the learner's cursor is on (from 1); 0 when not known.
     cursor: int = Field(default=0, ge=0, le=10_000)
+    #: How much a pairing turn helps: starts lines and hints plainly, points without writing, only asks, or only warns.
+    hint_level: Literal["direct", "point", "question", "vague"] = "direct"
     #: The AI presenter is on: an idea can be handed to the chat, to show on the scene or its scratchpad.
     present: bool = False

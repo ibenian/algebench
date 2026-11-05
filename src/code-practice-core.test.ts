@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { similarity, alignLines, scorePractice, focusSection, finishLine, ownNames, isNeutral, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
+import { similarity, alignLines, scorePractice, focusSection, finishLine, ownNames, isNeutral, trimTrailingBlanks, PEEK_FACTOR, ASSIST_FACTOR } from '/code-practice-core.js';
 
 const REF = ['def f(n):', '    # sum it', '    total = 0', '    for i in range(n):', '        total += i', '', '    return total'].join('\n');
 const sections = [{id: 'init', title: 'Start at zero', from: 11, to: 12}, {id: 'loop', title: 'Add each', from: 13, to: 14}, {id: 'ret', title: 'Answer', from: 16, to: 16}];
@@ -116,3 +116,13 @@ test('names of the learner\'s own, used one for one, score as the code\'s', () =
     assert.equal(ownNames('i = bisect_left(a, x)', 'i = bisect_right(a, x)').renamed, false);
     assert.equal(ownNames('i = bisect_left(a, x)', 'j = bisect_left(b, y)').text, 'i = bisect_left(a, x)');
 });
+
+test('pairing keeps one empty line at the end: the one the cursor is on', () => {
+    assert.equal(trimTrailingBlanks('a\n    ', 6), null, 'already one');
+    assert.equal(trimTrailingBlanks('a\nb', 1), null, 'none');
+    assert.deepEqual(trimTrailingBlanks('a\n\n    \n', 7), {from: 1, to: 8, insert: '\n    ', caret: 6}, 'the cursor\'s, with its indentation');
+    assert.deepEqual(trimTrailingBlanks('a\n\n', 1), {from: 1, to: 3, insert: '', caret: 1}, 'the cursor is above them: none stay');
+    assert.deepEqual(trimTrailingBlanks('a\n', 1), {from: 1, to: 2, insert: '', caret: 1}, 'not even one');
+    assert.deepEqual(trimTrailingBlanks('\n  \n', 3), {from: 0, to: 4, insert: '  ', caret: 2}, 'nothing typed yet');
+});
+

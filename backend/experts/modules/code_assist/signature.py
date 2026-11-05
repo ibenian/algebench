@@ -35,6 +35,9 @@ class AssistStep(BaseModel):
                                                "straight away)")
     notice: str = Field(default="", description="with a draft: what you notice is wrong with it, said aloud before "
                                                 "fixing it to `code`; empty without a draft")
+    cursor_line: int = Field(default=0, description="pairing at hint_level \"point\": the line of the editor (as numbered "
+                                                    "after this step) to leave the learner's cursor on, where they "
+                                                    "should work next; 0 to leave it where it is")
     explain: str = Field(default="", description="after typing: one or two sentences on what you typed and why it works; "
                                                  "may be empty for a trivial step")
 
@@ -58,7 +61,8 @@ class CodeAssistSig(dspy.Signature):
       never defined, a line in the wrong place), one fix per step, saying what was wrong. Write nothing ahead:
       what is merely not written yet is not an error, so never add the next lines of the implementation. Add a
       line only when a typed line cannot work without it (a variable used but never set). `issues` lists what the
-      coach already pointed out: fix those that are real. No drafts with "fix". When nothing typed is wrong,
+      coach already pointed out: fix those that are real. A line that doesn't belong is deleted (listed in `erase`).
+      A line only begun (`for`) is unfinished, not wrong: leave it. No drafts with "fix". When nothing typed is wrong,
       answer with no steps, and say so in `closing`.
     - "narrate": type nothing; walk the learner through the code in the editor (or the part `request` names), in
       the order it runs or reads best: one step per meaningful piece, each with an empty `code`, the piece in
@@ -76,10 +80,28 @@ class CodeAssistSig(dspy.Signature):
         name or idea to reach for), never the line itself;
       - otherwise, the next line of the code: `say` in one or two short sentences what it does and why it comes
         now, and in `code` START it: its indentation and its first word or two (`for `, `count[`, `return `),
-        never the whole line, so the learner writes the rest. A line already started is theirs: don't type in it.
+        never the whole line, so the learner writes the rest. Every line they typed is theirs, finished or not, and
+        so are their names: don't change or rename one in passing.
+      - a line of theirs that has to go (a stray or duplicate line, a leftover): you may delete it, with the next line
+        or on its own. List exactly that line in `erase`, say why, and leave every other line as it is. A line not
+        listed is put back. Anything else wrong gets the hint above, not an edit;
         Start it where the learner is: on the line `cursor` names (most often the empty line they just opened),
         not at the end of the code, which may hold lines they typed ahead or out of order.
       When the code is complete, no steps: say so in `closing`.
+      `hint_level` says how much a pair turn may help. The rules above are "direct". The other levels never start a
+      line and never name the fix, but they take their turn each time, like the pair they are: on what is wrong if
+      something is, on the hint if one is asked for, and otherwise on what the next line has to do:
+      - "point": ONE step that `select`s the code in question (or, with nothing wrong, the code the next line builds on)
+        and, in `say`, asks about it, leading them to the right place without saying what to write. Set `cursor_line`
+        to the line they should work on. `code` stays empty,
+        unless a concrete scenario would help: then `code` adds one comment line with an example to try (`# nums = [2, 7]:
+        what should prefix[1] be here?`), in the language's comment syntax, and nothing else.
+      - "question": ONE step whose `say` is a single question that makes them reason it out (what is true at this
+        point, what happens next, why this and not that). It doesn't say what is wrong or where, and the question
+        doesn't hold its own answer or the idea they are missing. No `code`, no `select`.
+      - "vague": ONE step whose `say` gives one or two examples of what may break or may go wrong (an input, an edge
+        case, an order of events) to try. It stops there: not where the problem is, what the code gives instead, what
+        the right result would be, or how to fix it. No `code`, no `select`.
     - Showing instead of telling: when `presenter` is on and the learner asks to see an idea drawn, shown on the
       scene or on the scratchpad ("draw it", "show me on the scene"), or a question about an idea would be far
       clearer shown than told, don't explain it here. The lesson's AI chat can point at the scene's objects as it
@@ -143,12 +165,16 @@ class CodeAssistSig(dspy.Signature):
     problems: str = dspy.InputField(desc="names the typed code reads but never defines, by line (found by analysis); may be empty")
     cursor: str = dspy.InputField(desc="the line of `typed` the learner's cursor is on, where they are writing; may be unknown")
     presenter: str = dspy.InputField(desc="on: the lesson's AI chat can show an idea on the scene and its scratchpad; off: it can't")
+    hint_level: str = dspy.InputField(desc='with scope "pair", how much to help: "direct", "point", "question" or "vague"')
     scope: str = dspy.InputField(desc='how much to write: "next", "section", "all", "fix" (only fix what is typed), '
                                       '"narrate" (select and explain, type nothing), "pair" (start the next line, or hint at a wrong one), or "ask" (do what `request` says)')
 
     complete: bool = dspy.OutputField(desc="true only when the learner's editor holds the whole code, complete and "
                                            "correct: it does what the reference does (names of their own are fine); "
                                            "false while anything is missing or wrong")
+    needs_fix: bool = dspy.OutputField(desc='with scope "pair": true when this turn points at something in the typed code '
+                                            'that has to be fixed or deleted before going on; false for a hint on a line '
+                                            'being written, the next line, or nothing to say')
     plan: str = dspy.OutputField(desc="two or three sentences on how you will approach it, said before typing")
     steps: list[AssistStep] = dspy.OutputField(desc="the moves at the keyboard, in order")
     closing: str = dspy.OutputField(desc="one or two sentences handing the keyboard back")

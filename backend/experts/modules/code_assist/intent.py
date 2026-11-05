@@ -41,6 +41,8 @@ class CodeAssist(BaseModel):
     closing: str = ""
     #: The model's word that the learner's code is complete and correct.
     complete: bool = False
+    #: The model's word that this pairing turn points at code to fix first: Finish does that fix before the line.
+    needs_fix: bool = False
     #: A request to the lesson's AI chat to show the idea on the scene or its scratchpad, instead of steps here.
     show: str = ""
     #: Set when the CALL failed, so a crash isn't played as help.
@@ -155,8 +157,8 @@ def clean_steps(raw, *, talk_only: bool = False, drafts: bool = True, editor: st
             line = max(0, int(s.select_line or 0)) if select else 0
         except (TypeError, ValueError):
             line = 0
-        steps.append(AssistStep(say=_clean(s.say), code=code, select=select, select_line=line, explain=_clean(s.explain),
-                                draft=draft if keep else "", notice=_clean(s.notice) if keep else ""))
+        steps.append(AssistStep(say=_clean(s.say), code=code, erase=sorted(erase), select=select, select_line=line, explain=_clean(s.explain),
+                                cursor_line=max(0, int(s.cursor_line or 0)), draft=draft if keep else "", notice=_clean(s.notice) if keep else ""))
     return steps
 
 
@@ -194,4 +196,4 @@ def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
     # Narrating types nothing; a fix shows the fix, not a new slip on the way to it.
     steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate", "pair"), editor=editor_text)
     return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing),
-                      complete=bool(getattr(out, "complete", False)), show=_request(getattr(out, "show", "")))
+                      complete=bool(getattr(out, "complete", False)), needs_fix=bool(getattr(out, "needs_fix", False)), show=_request(getattr(out, "show", "")))

@@ -181,3 +181,94 @@ def test_an_idea_to_draw_goes_to_the_chat_only_with_the_presenter_on(monkeypatch
 def test_a_null_written_for_no_request_shows_nothing():
     assert intent._request("None") == "" and intent._request(" null ") == ""
     assert intent._request("Draw the loop.") == "Draw the loop."
+
+
+def _stub_steps(monkeypatch, *steps, closing="", complete=False):
+    out = intent.CodeAssist(steps=list(steps), closing=closing, complete=complete)
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: out)
+
+
+def _hint(level):
+    return _req(scope="pair", hint_level=level, typed="def f(n):\n    total = 1")
+
+
+def test_hint_level_reaches_the_model_and_defaults_to_direct():
+    assert h.render_inputs(_req())["hint_level"] == "direct"
+    assert h.render_inputs(_hint("vague"))["hint_level"] == "vague"
+
+
+def test_below_direct_nothing_to_say_is_quiet(monkeypatch):
+    _stub_steps(monkeypatch)
+    assert h.code_assist(_hint("question")) == {"quiet": True}
+    # Direct keeps its old answer, and a last word at any level stays a word.
+    assert "reason" in h.code_assist(_hint("direct"))
+    _stub_steps(monkeypatch, closing="All done.", complete=True)
+    assert h.code_assist(_hint("vague")) == {"reason": "All done.", "complete": True}
+
+
+def test_question_and_vague_are_words_alone(monkeypatch):
+    for level in ("question", "vague"):
+        _stub_steps(monkeypatch, AssistStep(say="Why 1?", code="def f(n):\n    total = 0", select="total", select_line=2, cursor_line=2))
+        step = h.code_assist(_hint(level))["result"]["steps"][0]
+        assert (step["say"], step["code"], step["select"], step["select_line"], step["cursor_line"]) == ("Why 1?", "", "", 0, 0)
+
+
+def test_point_keeps_its_pointing_and_a_comment_but_no_code(monkeypatch):
+    typed = "def f(n):\n    total = 1"
+    comment = typed + "\n    # n = 0: what should it return?"
+    _stub_steps(monkeypatch, AssistStep(say="What does this start at?", code=comment, select="total = 1", select_line=2, cursor_line=2))
+    step = h.code_assist(_hint("point"))["result"]["steps"][0]
+    assert (step["code"], step["select"], step["cursor_line"]) == (comment, "total = 1", 2)
+    # Code among the comment, or a change to their line: nothing is typed, and the pointing stays.
+    for code in (typed + "\n    for i in range(n):", "def f(n):\n    total = 0\n    # try it"):
+        _stub_steps(monkeypatch, AssistStep(say="Look.", code=code, select="total = 1", select_line=2, cursor_line=2))
+        step = h.code_assist(_hint("point"))["result"]["steps"][0]
+        assert (step["code"], step["select"], step["cursor_line"]) == ("", "total = 1", 0)
+
+
+def test_direct_still_only_starts_lines(monkeypatch):
+    typed = "def f(n):\n    total = 0"
+    _stub_steps(monkeypatch, AssistStep(say="Next.", code=typed + "\n    for i in range(n):"))
+    step = h.code_assist(_req(scope="pair", typed=typed))["result"]["steps"][0]
+    assert step["code"] == typed + "\n    for "
+
+
+def _pair_code(monkeypatch, typed, code, expected="def build(nums):\n    prefix = [0]\n    for x in nums:", erase=(), cursor=0):
+    _stub_steps(monkeypatch, AssistStep(say="Next.", code=code, erase=list(erase)))
+    return h.code_assist(_req(scope="pair", expected=expected, typed=typed, cursor=cursor))["result"]["steps"][0]["code"]
+
+
+def test_pairing_puts_back_a_line_it_changed_without_listing_it(monkeypatch):
+    # The model renamed their parameter on its way to the next line: cut to a start, that left only "def ".
+    typed = "def build(prerequisites):\n    prefix = [0]\n    "
+    code = "def build(nums):\n    prefix = [0]\n    for x in nums:"
+    assert _pair_code(monkeypatch, typed, code, cursor=3) == "def build(prerequisites):\n    prefix = [0]\n    for "
+    # A line they only started stays as far as they got; a blank line can be filled.
+    assert h.keep_their_lines("def f(n):\n    for i in range(n):", "def f(n):\n    for", set())[0] == "def f(n):\n    for"
+    assert h.keep_their_lines("a\nb\nc", "a\n\nc", set())[0] == "a\nb\nc"
+    assert h.keep_their_lines("a", " ", set())[0] == "a"
+
+
+def test_pairing_deletes_exactly_the_lines_it_lists(monkeypatch):
+    typed = "def build(nums):\n    junk = 1\n    prefix = [0]\n    other = 2"
+    keep_two = "def build(nums):\n    prefix = [0]\n    other = 2"
+    assert _pair_code(monkeypatch, typed, keep_two, erase=[2]) == keep_two
+    # Dropping a line it didn't list, or listing a line it didn't touch: the line stays.
+    assert _pair_code(monkeypatch, typed, keep_two) == typed
+    assert _pair_code(monkeypatch, typed, keep_two, erase=[4]) == typed
+    # Deleting a line and starting the next in one step.
+    assert _pair_code(monkeypatch, "def build(nums):\n    junk = 1\n    prefix = [0]", "def build(nums):\n    prefix = [0]\n    for x in nums:",
+                      erase=[2]) == "def build(nums):\n    prefix = [0]\n    for "
+
+
+def test_pairing_types_a_listed_rewrite_whole(monkeypatch):
+    typed = "def build(prerequisites):\n    prefix = [0]"
+    code = "def build(nums):\n    prefix = [0]"
+    assert _pair_code(monkeypatch, typed, code, erase=[1]) == code
+
+
+def test_a_pairing_turn_says_when_it_proposes_a_fix(monkeypatch):
+    out = intent.CodeAssist(steps=[AssistStep(say="Line 2 has to go.", select="junk", select_line=2)], needs_fix=True)
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: out)
+    assert h.code_assist(_req(scope="pair"))["result"]["needs_fix"] is True
+
