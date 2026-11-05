@@ -20,3 +20,18 @@ test('per-link routes: a finite arc centre makes an arc, NaN leaves the bend', (
     const [group] = evaluateLinkTargets(targets, [0, 0]);
     assert.deepEqual(group!.styles!.map(s => [s?.bend, s?.arcCentre]), [[0, [1, 2, 0]], [0, undefined]]);
 });
+
+test('a link group carries how its links leave, only when the entry says', () => {
+    const [plain] = evaluateLinkTargets(compileLinkTargets({object: 'a', indexExpr: 'idx'}, 'g', false), [0]);
+    assert.ok(!('exit' in plain!) && !('exitMs' in plain!));
+    const [set] = evaluateLinkTargets(compileLinkTargets({object: 'a', indexExpr: 'idx', exit: 'fade', exitMs: 0}, 'g', false), [0]);
+    assert.equal(set!.exit, 'fade');
+    assert.equal(set!.exitMs, 0);
+});
+
+test('an owner gives its links a default exit, and an entry that names one wins', () => {
+    const [owner] = evaluateLinkTargets(compileLinkTargets({object: 'a', indexExpr: 'idx'}, 'g', false), [0], {exit: 'flicker'});
+    assert.equal(owner!.exit, 'flicker');
+    const [entry] = evaluateLinkTargets(compileLinkTargets({object: 'a', indexExpr: 'idx', exit: 'none'}, 'g', false), [0], {exit: 'flicker'});
+    assert.equal(entry!.exit, 'none');
+});

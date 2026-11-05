@@ -181,7 +181,7 @@ export function renderGraph(el: Element, view: MathBoxNode) {
         if (glide && moves) glide.moved(moves, p => before?.get(p) ?? null);
         paint();
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
-        if (links.length) setCellLinks(el.id!, evaluateLinkTargets(links, next.map(n => n.value), {bend: Number(el.edgeBend ?? .12)}), links.some(l => l.pinned));
+        if (links.length) setCellLinks(el.id!, evaluateLinkTargets(links, next.map(n => n.value), {bend: Number(el.edgeBend ?? .12), exit: 'flicker'}), links.some(l => l.pinned));
     };
     // Draw the nodes where their values are now: home, or on their way there while they glide. Index tags,
     // markers and links belong to the node's place, so they stay put.

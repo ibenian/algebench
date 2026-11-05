@@ -3041,6 +3041,15 @@
                   "default": false,
                   "description": "Show the wire without hovering. The reader can still unpin it."
                 },
+                "exit": {
+                  "enum": ["flicker", "fade", "none"],
+                  "description": "How a link leaves when it goes from the state: a random lamp-like flicker, a fade, or at once. Default: flicker for an array or graph, none for a stack."
+                },
+                "exitMs": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "With exit flicker or fade: how long it takes, in ms; 0 means at once. Default: 300 for a fade, a random 450 to 950 for a flicker."
+                },
                 "color": {
                   "$ref": "#/$defs/color",
                   "description": "ARRAY / STACK cell links only: this target's link colour (default light blue)."
@@ -3103,6 +3112,15 @@
                   "type": "boolean",
                   "default": false,
                   "description": "Show the links without hovering. The reader can still unpin them."
+                },
+                "exit": {
+                  "enum": ["flicker", "fade", "none"],
+                  "description": "How a link leaves when it goes from the state: a random lamp-like flicker, a fade, or at once. Default: flicker for an array or graph, none for a stack."
+                },
+                "exitMs": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "With exit flicker or fade: how long it takes, in ms; 0 means at once. Default: 300 for a fade, a random 450 to 950 for a flicker."
                 },
                 "color": {
                   "$ref": "#/$defs/color",
@@ -3169,6 +3187,15 @@
                   "type": "boolean",
                   "default": false,
                   "description": "Show the links from the start."
+                },
+                "exit": {
+                  "enum": ["flicker", "fade", "none"],
+                  "description": "How a link leaves when it goes from the state: a random lamp-like flicker, a fade, or at once. Default: flicker for an array or graph, none for a stack."
+                },
+                "exitMs": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "With exit flicker or fade: how long it takes, in ms; 0 means at once. Default: 300 for a fade, a random 450 to 950 for a flicker."
                 },
                 "color": {
                   "$ref": "#/$defs/color"

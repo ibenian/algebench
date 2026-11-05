@@ -9,11 +9,12 @@
 import { compileExpr, evalExpr } from '/expr.js';
 import { colorToCSS } from '/labels.js';
 import type { CellLinkGroup } from '/cell-links.js';
+import type { LinkExit } from '/objects/link-exit.js';
 import type { Element } from '/types/lesson.js';
 
 type Target = Exclude<NonNullable<Element['connectTo']>, unknown[]>;
 type Fn = ReturnType<typeof compileExpr>;
-interface Compiled { object: string; objectFn?: Fn; index: Fn | null; color?: Fn; lit?: Fn; bend?: Fn; arc?: Fn[]; port?: Fn; width?: Fn; label?: Fn; base: string; arrow: boolean; pinned: boolean; sources: string[] }
+interface Compiled { object: string; objectFn?: Fn; index: Fn | null; color?: Fn; lit?: Fn; bend?: Fn; arc?: Fn[]; port?: Fn; width?: Fn; label?: Fn; base: string; arrow: boolean; pinned: boolean; exit?: LinkExit; exitMs?: number; sources: string[] }
 
 /** Compile the entries that link cells; `self` is the owner's id, used where an entry names no object. */
 export function compileLinkTargets(connectTo: Element['connectTo'], self: string | undefined, allowSelf: boolean): Compiled[] {
@@ -33,7 +34,7 @@ export function compileLinkTargets(connectTo: Element['connectTo'], self: string
             color: color ? compileExpr(color) : undefined, lit: lit ? compileExpr(lit) : undefined,
             bend: bend ? compileExpr(bend) : undefined, arc: arc?.length === 3 ? arc.map(e => compileExpr(e)) : undefined, port: port ? compileExpr(port) : undefined,
             width: width ? compileExpr(width) : undefined, label: label ? compileExpr(label) : undefined,
-            arrow: !!c.arrow, pinned: !!c.pinned, sources: [objectExpr, indexExpr, color, lit, bend, port, width, label, ...(arc ?? [])].filter((s): s is string => !!s),
+            arrow: !!c.arrow, pinned: !!c.pinned, ...('exit' in c && c.exit ? {exit: c.exit} : {}), ...('exitMs' in c && c.exitMs !== undefined ? {exitMs: c.exitMs} : {}), sources: [objectExpr, indexExpr, color, lit, bend, port, width, label, ...(arc ?? [])].filter((s): s is string => !!s),
         }];
     });
 }
@@ -84,6 +85,6 @@ export function evaluateLinkTargets(targets: Compiled[], values: unknown[], extr
             });
         });
         return [...groups].map(([to, g]) => ({to, pairs: g.pairs, color: t.base, ...(t.arrow ? {arrow: true} : {}), ...(!t.index ? {whole: true} : {}),
-            ...(g.styles.some(Boolean) ? {styles: g.styles} : {}), ...extra}));
+            ...(g.styles.some(Boolean) ? {styles: g.styles} : {}), ...extra, ...(t.exit ? {exit: t.exit} : {}), ...(t.exitMs !== undefined ? {exitMs: t.exitMs} : {})}));
     });
 }

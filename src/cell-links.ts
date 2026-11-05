@@ -7,6 +7,7 @@
  * ones show only while the toggle is hovered.
  */
 import { state } from '/state.js';
+import { linkExitAnimation, type LinkExit } from '/objects/link-exit.js';
 import { dataToWorld } from '/coords.js';
 import { objectCellAnchor, objectWorldCorners } from '/object-anchor.js';
 import { cellEdgeAnchor } from '/cell-attachment.js';
@@ -22,29 +23,16 @@ export interface CellLinkGroup {
     styles?: ({color?: string; lit?: boolean; bend?: number; arcCentre?: number[]; port?: number; width?: number; label?: string} | null)[];
     /** Graph edges: how much they bow, as a fraction of their length. */
     bend?: number;
+    /** How these links leave when they go from the state, and how long that takes. */
+    exit?: LinkExit; exitMs?: number;
 }
-type Painted = {key: string; d: string; color: string; head?: string; lit?: boolean; width?: number; label?: string};
+type Painted = {key: string; d: string; color: string; head?: string; lit?: boolean; width?: number; label?: string; exit?: LinkExit; exitMs?: number};
 interface LinkSet { groups: CellLinkGroup[]; svg: SVGSVGElement | null; drawn: string; pinned: boolean; hovered: boolean; toggle: HTMLButtonElement | null;
     /** What was last drawn by link, and the links on their way out, flickering in a layer of their own. */
     last: Map<string, Painted>; dying: Map<string, SVGElement[]>; ghosts: SVGSVGElement | null;
     /** When each link still fading in appeared: a redraw mid-fade (the camera turning) carries on from there. */
     born: Map<string, number> }
 const sets = new Map<string, LinkSet>();
-/**
- * A failing lamp's flicker, never twice the same: it drops and catches at random moments, each catch weaker on the
- * whole, and snaps between them rather than fading. The offsets and strengths are random; the end is always dark.
- */
-function randomFlicker(): {frames: Keyframe[]; ms: number} {
-    const catches = 3 + Math.floor(Math.random() * 4), frames: Keyframe[] = [{offset: 0, opacity: 1}];
-    let at = 0;
-    for (let k = 0; k < catches; k++) {
-        const left = catches - k, dark = at + (.9 - at) / left * (.3 + Math.random() * .4), lit = dark + (.9 - dark) / left * (.3 + Math.random() * .5);
-        frames.push({offset: dark, opacity: Math.random() * .15}, {offset: lit, opacity: (1 - k / catches) * (.5 + Math.random() * .5)});
-        at = lit;
-    }
-    frames.push({offset: Math.min(.97, at + .03 + Math.random() * .05), opacity: 0}, {offset: 1, opacity: 0});
-    return {frames: frames.map(f => ({...f, easing: 'step-end'})), ms: 450 + Math.random() * 500};
-}
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** How long a new link takes to fade in. */
 const BORN_MS = 350;
@@ -56,8 +44,10 @@ const newLayer = (container: HTMLElement) => {
     container.append(svg);
     return svg;
 };
-/** A link gone from the state flickers where it last stood, like a failing halogen lamp, then goes. */
-function flickerOut(set: LinkSet, container: HTMLElement, gone: Painted) {
+/** A link gone from the state plays the exit its lesson asked for where it last stood, then goes. */
+function playExit(set: LinkSet, container: HTMLElement, gone: Painted) {
+    const exit = linkExitAnimation(gone.exit, gone.exitMs);
+    if (!exit) return;
     if (!set.ghosts?.isConnected) set.ghosts = newLayer(container);
     const path = document.createElementNS(SVG_NS, 'path');
     path.setAttribute('d', gone.d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', gone.color);
@@ -68,8 +58,8 @@ function flickerOut(set: LinkSet, container: HTMLElement, gone: Painted) {
         tip.setAttribute('d', gone.head); tip.setAttribute('fill', gone.color);
         parts.push(tip);
     }
-    // The line and its head are one lamp: they flicker together.
-    const {frames, ms} = randomFlicker();
+    // The line and its head are one lamp: they go together.
+    const {frames, ms} = exit;
     for (const part of parts) {
         part.classList.add('cell-link-dying');part.style.filter = `drop-shadow(0 0 4px ${gone.color})`;part.style.opacity = '0';
         set.ghosts.append(part);
@@ -178,7 +168,7 @@ export function paintCellLinks(): void {
             }
             const style = group.styles?.[p];
             const width = style?.width;
-            paths.push({ key: linkKey(group, i, j), d: curve.d, color: style?.color || group.color, lit: !!style?.lit, ...(width ? {width} : {}), ...(style?.label ? {label: style.label} : {}),
+            paths.push({ key: linkKey(group, i, j), d: curve.d, color: style?.color || group.color, lit: !!style?.lit, ...(width ? {width} : {}), ...(style?.label ? {label: style.label} : {}), ...(group.exit ? {exit: group.exit} : {}), ...(group.exitMs !== undefined ? {exitMs: group.exitMs} : {}),
                 ...(group.arrow ? {head: arrowHeadPath(end, curve.arrive, Math.max(style?.lit ? 8 : 6, (width ?? 0) * 2.4))} : {}) });
         });
         paintToggle(set, container, linked ? outsideRight(from, screen) : null);
@@ -189,7 +179,7 @@ export function paintCellLinks(): void {
         set.drawn = drawn;
         // Gone from the state, not just turned out of view or unpinned: a link back again stops flickering.
         const live = new Set(set.groups.flatMap(g => g.pairs.map(([i, j]) => linkKey(g, i, j))));
-        if (shown) for (const [key, was] of set.last) if (!live.has(key)) flickerOut(set, container, was);
+        if (shown) for (const [key, was] of set.last) if (!live.has(key)) playExit(set, container, was);
         for (const key of live) { set.dying.get(key)?.forEach(el => el.remove());set.dying.delete(key); }
         // New beside links already drawn: the first paint of a set (a scene opening, links pinned) just shows.
         const now = performance.now();

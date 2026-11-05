@@ -2272,16 +2272,9 @@ function placeCallouts() {
 	}
 }
 //#endregion
-//#region src/cell-links.ts
-/**
-* Array cell links (an array's connectTo): a curve from each cell to the cell of another object it names,
-* e.g. a deque of indices to the values in `nums`. An array may connect to several objects; each target is
-* one link group with its own colour. The owning array evaluates the pairs on state changes (setCellLinks);
-* this module only projects and paints them, each frame, beside label wires. Like a label's wire, each array
-* has one pin toggle (just outside its right edge) for all its groups: pinned links always show; unpinned
-* ones show only while the toggle is hovered.
-*/
-var sets = /* @__PURE__ */ new Map();
+//#region src/objects/link-exit.ts
+/** How long a fade takes when the lesson doesn't say. */
+var FADE_MS = 300;
 /**
 * A failing lamp's flicker, never twice the same: it drops and catches at random moments, each catch weaker on the
 * whole, and snaps between them rather than fading. The offsets and strengths are random; the end is always dark.
@@ -2318,6 +2311,30 @@ function randomFlicker() {
 		ms: 450 + Math.random() * 500
 	};
 }
+/** The keyframes and duration of a link's exit; null when it just goes, the default. exitMs sets the time. */
+function linkExitAnimation(exit = "none", exitMs) {
+	if (exit === "none" || exitMs === 0) return null;
+	if (exit === "fade") return {
+		frames: [{ opacity: 1 }, { opacity: 0 }],
+		ms: exitMs ?? FADE_MS
+	};
+	const flicker = randomFlicker();
+	return {
+		frames: flicker.frames,
+		ms: exitMs ?? flicker.ms
+	};
+}
+//#endregion
+//#region src/cell-links.ts
+/**
+* Array cell links (an array's connectTo): a curve from each cell to the cell of another object it names,
+* e.g. a deque of indices to the values in `nums`. An array may connect to several objects; each target is
+* one link group with its own colour. The owning array evaluates the pairs on state changes (setCellLinks);
+* this module only projects and paints them, each frame, beside label wires. Like a label's wire, each array
+* has one pin toggle (just outside its right edge) for all its groups: pinned links always show; unpinned
+* ones show only while the toggle is hovered.
+*/
+var sets = /* @__PURE__ */ new Map();
 var SVG_NS$1 = "http://www.w3.org/2000/svg";
 /** How long a new link takes to fade in. */
 var BORN_MS = 350;
@@ -2338,8 +2355,10 @@ var newLayer = (container) => {
 	container.append(svg);
 	return svg;
 };
-/** A link gone from the state flickers where it last stood, like a failing halogen lamp, then goes. */
-function flickerOut(set, container, gone) {
+/** A link gone from the state plays the exit its lesson asked for where it last stood, then goes. */
+function playExit(set, container, gone) {
+	const exit = linkExitAnimation(gone.exit, gone.exitMs);
+	if (!exit) return;
 	if (!set.ghosts?.isConnected) set.ghosts = newLayer(container);
 	const path = document.createElementNS(SVG_NS$1, "path");
 	path.setAttribute("d", gone.d);
@@ -2354,7 +2373,7 @@ function flickerOut(set, container, gone) {
 		tip.setAttribute("fill", gone.color);
 		parts.push(tip);
 	}
-	const { frames, ms } = randomFlicker();
+	const { frames, ms } = exit;
 	for (const part of parts) {
 		part.classList.add("cell-link-dying");
 		part.style.filter = `drop-shadow(0 0 4px ${gone.color})`;
@@ -2522,6 +2541,8 @@ function paintCellLinks() {
 				lit: !!style?.lit,
 				...width ? { width } : {},
 				...style?.label ? { label: style.label } : {},
+				...group.exit ? { exit: group.exit } : {},
+				...group.exitMs !== void 0 ? { exitMs: group.exitMs } : {},
 				...group.arrow ? { head: arrowHeadPath(end, curve.arrive, Math.max(style?.lit ? 8 : 6, (width ?? 0) * 2.4)) } : {}
 			});
 		});
@@ -2536,7 +2557,7 @@ function paintCellLinks() {
 		set.drawn = drawn;
 		const live = new Set(set.groups.flatMap((g) => g.pairs.map(([i, j]) => linkKey(g, i, j))));
 		if (shown) {
-			for (const [key, was] of set.last) if (!live.has(key)) flickerOut(set, container, was);
+			for (const [key, was] of set.last) if (!live.has(key)) playExit(set, container, was);
 		}
 		for (const key of live) {
 			set.dying.get(key)?.forEach((el) => el.remove());
@@ -16391,6 +16412,8 @@ function compileLinkTargets(connectTo, self, allowSelf) {
 			label: label ? compileExpr(label) : void 0,
 			arrow: !!c.arrow,
 			pinned: !!c.pinned,
+			..."exit" in c && c.exit ? { exit: c.exit } : {},
+			..."exitMs" in c && c.exitMs !== void 0 ? { exitMs: c.exitMs } : {},
 			sources: [
 				objectExpr,
 				indexExpr,
@@ -16499,7 +16522,9 @@ function evaluateLinkTargets(targets, values, extra = {}) {
 			...t.arrow ? { arrow: true } : {},
 			...!t.index ? { whole: true } : {},
 			...g.styles.some(Boolean) ? { styles: g.styles } : {},
-			...extra
+			...extra,
+			...t.exit ? { exit: t.exit } : {},
+			...t.exitMs !== void 0 ? { exitMs: t.exitMs } : {}
 		}));
 	});
 }
@@ -17000,7 +17025,7 @@ function renderArray(el, _view, decorate) {
 			lastSliders = sliders;
 			updateTitle();
 			decoration?.resize(next);
-			if (connections.length) setCellLinks(el.id, evaluateLinkTargets(connections, cells.map(({ cell }) => cell.value)), connections.some((c) => c.pinned));
+			if (connections.length) setCellLinks(el.id, evaluateLinkTargets(connections, cells.map(({ cell }) => cell.value), { exit: el.type === "stack" ? "none" : "flicker" }), connections.some((c) => c.pinned));
 			for (const marker of markers) marker._animExprEntry._rebuildFn?.();
 			if (popped && decoration?.removed && el.showTop === true && markers.length) markers.at(-1).label.forceHidden = true;
 			let dirty = false;
@@ -18025,7 +18050,10 @@ function renderGraph(el, view) {
 		if (glide && moves) glide.moved(moves, (p) => before?.get(p) ?? null);
 		paint();
 		for (const marker of markers) marker._animExprEntry._rebuildFn?.();
-		if (links.length) setCellLinks(el.id, evaluateLinkTargets(links, next.map((n) => n.value), { bend: Number(el.edgeBend ?? .12) }), links.some((l) => l.pinned));
+		if (links.length) setCellLinks(el.id, evaluateLinkTargets(links, next.map((n) => n.value), {
+			bend: Number(el.edgeBend ?? .12),
+			exit: "flicker"
+		}), links.some((l) => l.pinned));
 	};
 	const paint = () => {
 		const next = nodes;

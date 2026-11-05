@@ -1281,6 +1281,14 @@ export type ConnectTarget =
        */
       pinned?: boolean;
       /**
+       * How a link leaves when it goes from the state: a random lamp-like flicker, a fade, or at once. Default: flicker for an array or graph, none for a stack.
+       */
+      exit?: 'flicker' | 'fade' | 'none';
+      /**
+       * With exit flicker or fade: how long it takes, in ms; 0 means at once. Default: 300 for a fade, a random 450 to 950 for a flicker.
+       */
+      exitMs?: number;
+      /**
        * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
        */
       color?: string | [number, number, number];
@@ -1334,6 +1342,14 @@ export type ConnectTarget =
        */
       pinned?: boolean;
       /**
+       * How a link leaves when it goes from the state: a random lamp-like flicker, a fade, or at once. Default: flicker for an array or graph, none for a stack.
+       */
+      exit?: 'flicker' | 'fade' | 'none';
+      /**
+       * With exit flicker or fade: how long it takes, in ms; 0 means at once. Default: 300 for a fade, a random 450 to 950 for a flicker.
+       */
+      exitMs?: number;
+      /**
        * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
        */
       color?: string | [number, number, number];
@@ -1378,6 +1394,14 @@ export type ConnectTarget =
        * Show the links from the start.
        */
       pinned?: boolean;
+      /**
+       * How a link leaves when it goes from the state: a random lamp-like flicker, a fade, or at once. Default: flicker for an array or graph, none for a stack.
+       */
+      exit?: 'flicker' | 'fade' | 'none';
+      /**
+       * With exit flicker or fade: how long it takes, in ms; 0 means at once. Default: 300 for a fade, a random 450 to 950 for a flicker.
+       */
+      exitMs?: number;
       color?: Color;
       /**
        * Draw an arrowhead at the target end.

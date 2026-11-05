@@ -344,7 +344,8 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         updateTitle();
         decoration?.resize(next);
         if(connections.length){
-            setCellLinks(el.id!,evaluateLinkTargets(connections,cells.map(({cell})=>cell.value)),connections.some(c=>c.pinned));
+            // An array's links flicker out unless the lesson says otherwise; a stack's just go.
+            setCellLinks(el.id!,evaluateLinkTargets(connections,cells.map(({cell})=>cell.value),{exit:el.type==='stack'?'none':'flicker'}),connections.some(c=>c.pinned));
         }
         for (const marker of markers) marker._animExprEntry._rebuildFn?.();
         // The stack's top marker (its last) would sit over the bubble and the cell it points at: it gives way.
