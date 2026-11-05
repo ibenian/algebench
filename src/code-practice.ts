@@ -448,7 +448,7 @@ export function setupCodePractice(): void {
         showTarget(v);
         if (next === key) return;
         if (key) hushCoach();
-        key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;clearTimeout(pairIdle);
+        key = next;block = text;quiz = null;askedQuestions = [];shownInChat.clear();series = null;pairing = false;pairSaid = '';clearTimeout(pairIdle);
         // The block's sections, kept to it: the first may start above it (taking the imports).
         sections = codeSections(v.file).filter(s => s.to >= v.from && s.from <= v.to)
             .map(s => s.from < v.from || s.to > v.to ? {...s, from: Math.max(s.from, v.from), to: Math.min(s.to, v.to)} : s);
@@ -872,6 +872,8 @@ export function setupCodePractice(): void {
     }
     /** What the last pairing turn said has to be fixed first, until the learner edits: Finish does that fix before the line. */
     let fixProposed = '';
+    /** What the assistant last said while pairing: what the answer box's words may be replying to. */
+    let pairSaid = '';
     const PAIR_IDLE_MS = 25000;
     // Typing in the answer box counts as much as typing in the editor.
     report.addEventListener('input', () => pairWait());
@@ -1148,6 +1150,7 @@ export function setupCodePractice(): void {
         }
         const proposed = scope === 'finish' ? fixProposed : '';
         if (proposed) scope = 'fix';
+        const proposedBefore = fixProposed, said = pairing && scope === 'ask' ? pairSaid : '';
         fixProposed = '';
         const starting = scope === 'series';
         if (starting) { series = {topic: request, turns: []};scope = 'quiz'; }
@@ -1203,11 +1206,13 @@ export function setupCodePractice(): void {
                     answer_key: pending!.answerKey, setup: pending!.setup, answer: pending!.kind === 'answer' ? request : ''})
                 // While pairing, the scene is shown only when the learner asks for something: a presentation of its
                 // own pulls them away from the line they are typing.
-                : await invokeExpert('code_assist', {...where, scope, request: proposed ? `Do the fix you just proposed: ${proposed}` : request, present: presenterOn() && (!pairing || scope === 'ask'), hint_level: scope === 'pair' ? hintLevel() : 'direct', cursor: input.value.slice(0, userCaret).split('\n').length,
+                : await invokeExpert('code_assist', {...where, scope, request: proposed ? `Do the fix you just proposed: ${proposed}` : request, present: presenterOn() && (!pairing || scope === 'ask'), hint_level: pairing ? hintLevel() : 'direct', last_said: said.slice(0, 600), cursor: input.value.slice(0, userCaret).split('\n').length,
                     // The coach's remarks, while they still number the lines as they are.
-                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean; show?: string; quiet?: boolean};
+                    issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []}))) as {result?: AssistPlan & Partial<QuizAsk> & Partial<QuizGrade>; reason?: string; complete?: boolean; show?: string; quiet?: boolean; answered?: boolean};
             waiting.remove();
             if (assisting !== run) throw new Stopped();
+            if (out.answered) proposal = proposedBefore;   // a fix it proposed still stands
+            if (pairing && (scope === 'pair' || scope === 'ask')) pairSaid = out.reason ?? out.result?.steps.at(-1)?.say ?? '';
             if (out.quiet) {
                 // Nothing to say at this level. Asked for a hint, it still answers.
                 if (hintWas) await say('Nothing looks off so far: keep going.', message('assistant', el('div', 'cp-assist cp-assist-close')).querySelector<HTMLElement>('.msg-body')!, run);

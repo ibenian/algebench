@@ -43,6 +43,8 @@ class CodeAssist(BaseModel):
     complete: bool = False
     #: The model's word that this pairing turn points at code to fix first: Finish does that fix before the line.
     needs_fix: bool = False
+    #: The learner's words were their answer to what the assistant said: judged, nothing written.
+    answered: bool = False
     #: A request to the lesson's AI chat to show the idea on the scene or its scratchpad, instead of steps here.
     show: str = ""
     #: Set when the CALL failed, so a crash isn't played as help.
@@ -196,4 +198,4 @@ def assist_code(scope: str, editor_text: str = "", **inputs) -> CodeAssist:
     # Narrating types nothing; a fix shows the fix, not a new slip on the way to it.
     steps = clean_steps(out.steps, talk_only=scope == "narrate", drafts=scope not in ("fix", "narrate", "pair"), editor=editor_text)
     return CodeAssist(plan=_clean(out.plan), steps=steps[:STEP_LIMIT.get(scope, MAX_STEPS)], closing=_clean(out.closing),
-                      complete=bool(getattr(out, "complete", False)), needs_fix=bool(getattr(out, "needs_fix", False)), show=_request(getattr(out, "show", "")))
+                      complete=bool(getattr(out, "complete", False)), needs_fix=bool(getattr(out, "needs_fix", False)), answered=bool(getattr(out, "answered", False)), show=_request(getattr(out, "show", "")))

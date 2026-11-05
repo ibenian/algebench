@@ -35684,6 +35684,7 @@ function setupCodePractice() {
 		shownInChat.clear();
 		series = null;
 		pairing = false;
+		pairSaid = "";
 		clearTimeout(pairIdle);
 		sections = codeSections(v.file).filter((s) => s.to >= v.from && s.from <= v.to).map((s) => s.from < v.from || s.to > v.to ? {
 			...s,
@@ -36225,6 +36226,8 @@ function setupCodePractice() {
 	}
 	/** What the last pairing turn said has to be fixed first, until the learner edits: Finish does that fix before the line. */
 	let fixProposed = "";
+	/** What the assistant last said while pairing: what the answer box's words may be replying to. */
+	let pairSaid = "";
 	const PAIR_IDLE_MS = 25e3;
 	report.addEventListener("input", () => pairWait());
 	const caretLine = () => input.value.slice(0, input.selectionStart).split("\n").length - 1;
@@ -36604,6 +36607,7 @@ function setupCodePractice() {
 		}
 		const proposed = scope === "finish" ? fixProposed : "";
 		if (proposed) scope = "fix";
+		const proposedBefore = fixProposed, said = pairing && scope === "ask" ? pairSaid : "";
 		fixProposed = "";
 		const starting = scope === "series";
 		if (starting) {
@@ -36716,12 +36720,15 @@ function setupCodePractice() {
 				scope,
 				request: proposed ? `Do the fix you just proposed: ${proposed}` : request,
 				present: presenterOn() && (!pairing || scope === "ask"),
-				hint_level: scope === "pair" ? hintLevel() : "direct",
+				hint_level: pairing ? hintLevel() : "direct",
+				last_said: said.slice(0, 600),
 				cursor: input.value.slice(0, userCaret).split("\n").length,
 				issues: attempt.reviewed === input.value ? (attempt.issues ?? []).slice(0, 40) : []
 			});
 			waiting.remove();
 			if (assisting !== run) throw new Stopped();
+			if (out.answered) proposal = proposedBefore;
+			if (pairing && (scope === "pair" || scope === "ask")) pairSaid = out.reason ?? out.result?.steps.at(-1)?.say ?? "";
 			if (out.quiet) {
 				if (hintWas) await say("Nothing looks off so far: keep going.", message("assistant", el("div", "cp-assist cp-assist-close")).querySelector(".msg-body"), run);
 				ended = true;

@@ -272,3 +272,16 @@ def test_a_pairing_turn_says_when_it_proposes_a_fix(monkeypatch):
     monkeypatch.setattr(h, "assist_code", lambda scope, **_: out)
     assert h.code_assist(_req(scope="pair"))["result"]["needs_fix"] is True
 
+
+def test_an_answer_to_what_it_said_is_judged_not_implemented(monkeypatch):
+    said = dict(scope="ask", request="append the sum", last_said="What should each new entry hold?")
+    assert h.render_inputs(_req(**said))["last_said"] == said["last_said"]
+    # Whatever the model typed along with its word, nothing is typed.
+    out = intent.CodeAssist(steps=[AssistStep(say="Yes.", code="def f(n):\n    total = 0")], closing="Right: go ahead.", answered=True)
+    monkeypatch.setattr(h, "assist_code", lambda scope, **_: out)
+    assert h.code_assist(_req(**said)) == {"reason": "Right: go ahead.", "answered": True}
+    # Without anything said before, or when the model reads it as a request, it is done as asked.
+    assert "result" in h.code_assist(_req(scope="ask", request="append the sum"))
+    out.answered = False
+    assert "result" in h.code_assist(_req(**said))
+

@@ -32,5 +32,7 @@ class CodeAssistRequest(BaseModel):
     cursor: int = Field(default=0, ge=0, le=10_000)
     #: How much a pairing turn helps: starts lines and hints plainly, points without writing, only asks, or only warns.
     hint_level: Literal["direct", "point", "question", "vague"] = "direct"
+    #: Pairing: what the assistant just said to the learner, so that ``request`` can be read as a reply to it.
+    last_said: str = Field(default="", max_length=600)
     #: The AI presenter is on: an idea can be handed to the chat, to show on the scene or its scratchpad.
     present: bool = False

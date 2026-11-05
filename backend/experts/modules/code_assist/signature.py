@@ -114,6 +114,13 @@ class CodeAssistSig(dspy.Signature):
     - "ask": do what `request` asks, in the learner's own words, and no more ("write the loop" is the loop alone;
       "my lookup is wrong, fix it" is that fix). A question that needs no typing ("why {0: 1}?") gets no steps:
       answer it in `closing`.
+      `last_said`, when not empty, is what you just said to the learner while pairing. If `request` answers a question
+      in it or replies to your hint, it is their answer, not an instruction, even when it reads like one ("use a loop",
+      "append the sum"): set `answered` true, give no steps and judge it in `closing`, in one or two sentences: right,
+      partly right or off, and why. If it is right, tell them to go ahead and write it. If it isn't, follow `hint_level`:
+      "direct" may say what to look at; below that never name the fix, and end on a further question or what may break.
+      Only words that plainly ask you to act ("write it for me", "finish this") or ask something new are not an answer:
+      do those as usual, with `answered` false.
 
     Any step may `select` what it talks about, as a person points at the screen: a fix selects the part that is
     wrong, a typed line the part worth a second look. Select only text that is in the editor after that step.
@@ -165,13 +172,15 @@ class CodeAssistSig(dspy.Signature):
     problems: str = dspy.InputField(desc="names the typed code reads but never defines, by line (found by analysis); may be empty")
     cursor: str = dspy.InputField(desc="the line of `typed` the learner's cursor is on, where they are writing; may be unknown")
     presenter: str = dspy.InputField(desc="on: the lesson's AI chat can show an idea on the scene and its scratchpad; off: it can't")
-    hint_level: str = dspy.InputField(desc='with scope "pair", how much to help: "direct", "point", "question" or "vague"')
+    hint_level: str = dspy.InputField(desc='while pairing, how much to help: "direct", "point", "question" or "vague"')
+    last_said: str = dspy.InputField(desc="while pairing, what you just said to the learner, which `request` may be replying to; may be empty")
     scope: str = dspy.InputField(desc='how much to write: "next", "section", "all", "fix" (only fix what is typed), '
                                       '"narrate" (select and explain, type nothing), "pair" (start the next line, or hint at a wrong one), or "ask" (do what `request` says)')
 
     complete: bool = dspy.OutputField(desc="true only when the learner's editor holds the whole code, complete and "
                                            "correct: it does what the reference does (names of their own are fine); "
                                            "false while anything is missing or wrong")
+    answered: bool = dspy.OutputField(desc='with `last_said`: true when `request` is the learner answering it, which you judge and never implement')
     needs_fix: bool = dspy.OutputField(desc='with scope "pair": true when this turn points at something in the typed code '
                                             'that has to be fixed or deleted before going on; false for a hint on a line '
                                             'being written, the next line, or nothing to say')

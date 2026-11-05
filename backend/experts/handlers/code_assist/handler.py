@@ -46,6 +46,7 @@ def render_inputs(req: CodeAssistRequest) -> dict:
         "cursor": f"line {req.cursor}" if req.cursor else "unknown",
         "presenter": "on" if req.present else "off",
         "hint_level": req.hint_level,
+        "last_said": req.last_said.strip(),
         "problems": "\n".join(f"line {line}: {msg}" for line, msg in undefined_names(req.typed, req.expected, req.language)),
     }
 
@@ -160,6 +161,11 @@ def code_assist(req: CodeAssistRequest) -> dict:
     if out.show and req.present:
         # Shown on the view by the chat, not typed here: what was said, and the request for it.
         return {"reason": out.closing or SHOWING, "show": out.show}
+    # An answer is judged, whatever the model sent with it: nothing is typed.
+    answered = bool(req.scope == "ask" and req.last_said.strip() and out.answered)
+    if answered:
+        word = out.closing or " ".join(s.say for s in out.steps)
+        return {"reason": word or NO_STEPS, "answered": True}
     hinting = req.scope == "pair" and req.hint_level != "direct"
     if hinting and not out.steps and not out.closing:
         return {"quiet": True}   # nothing to say at this level: the learner carries on
