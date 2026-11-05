@@ -35045,6 +35045,12 @@ function createPracticeStore(factory = globalThis.indexedDB) {
 /** The coach looks again after this long without typing. */
 var IDLE_REVIEW_MS = 5e3;
 var INDENT = "    ";
+/** The editor's font size in px: by default, and in focus mode (twice it); the range the learner can choose from. */
+var BASE_FONT = 12;
+var FOCUS_FONT = 24;
+var MIN_FONT = 9;
+var MAX_FONT = 48;
+var FOCUS_KEYS = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘⇧Enter" : "Ctrl+Shift+Enter";
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 var LEGACY_KEY = "algebench-code-practice";
 var VIEW_KEY = "algebench-code-practice-view";
@@ -35090,6 +35096,8 @@ var ICON_PAIR = "<svg class=\"cp-pair-mark\" viewBox=\"0 0 34 24\" width=\"14\" 
 var ICON_SEEN = "<svg class=\"cp-eye\" viewBox=\"0 0 24 24\" width=\"10\" height=\"10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-label=\"seen\"><path d=\"M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>";
 var ICON_DOC = svg$1("<path d=\"M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z\"/><path d=\"M14 3v5h5M9 13h6M9 17h6\"/>");
 var ICON_CODE = svg$1("<path d=\"M8 7l-5 5 5 5M16 7l5 5-5 5\"/>");
+var ICON_FOCUS = svg$1("<path d=\"M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5\"/>", 12, 2.2);
+var ICON_FOCUS_EXIT = svg$1("<path d=\"M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5\"/>", 12, 2.2);
 var ICON_COACH = svg$1("<path d=\"M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z\"/>");
 function foldButton() {
 	const b = document.createElement("button");
@@ -35271,7 +35279,8 @@ function setupCodePractice() {
 			reportGrip.classList.remove("dragging");
 			document.body.style.cursor = "";
 			document.body.style.userSelect = "";
-			prefs.reportHeight = report.offsetHeight;
+			if (focused) prefs.focusReportHeight = report.offsetHeight;
+			else prefs.reportHeight = report.offsetHeight;
 			savePrefs();
 		};
 		reportGrip.addEventListener("pointermove", move);
@@ -35329,11 +35338,18 @@ function setupCodePractice() {
 	});
 	reportGrip.addEventListener("dblclick", (e) => {
 		if (e.target.closest("button")) return;
-		prefs.reportHeight = void 0;
-		setReportHeight(REPORT_HEIGHT);
+		if (focused) {
+			prefs.focusReportHeight = void 0;
+			setReportHeight(focusReportDefault());
+		} else {
+			prefs.reportHeight = void 0;
+			setReportHeight(REPORT_HEIGHT);
+		}
 		savePrefs();
 	});
 	let current = null, key = "", block = "", sections = [];
+	let focused = false, setFocus = () => {};
+	const focusReportDefault = () => Math.round(window.innerHeight * .34);
 	let attempt = {
 		text: "",
 		peeked: [],
@@ -35375,7 +35391,10 @@ function setupCodePractice() {
 		height: prefs.height,
 		reportHeight: prefs.reportHeight,
 		reportFolded: prefs.reportFolded,
-		docFolded: prefs.docFolded
+		docFolded: prefs.docFolded,
+		focusReportHeight: prefs.focusReportHeight,
+		font: prefs.font,
+		focusFont: prefs.focusFont
 	});
 	function paintSpeak(on) {
 		speak.setAttribute("aria-pressed", String(on));
@@ -35453,6 +35472,7 @@ function setupCodePractice() {
 				await sleep(400);
 				quiet = chatTalking() || coachTalking ? 0 : quiet + 1;
 			}
+			setFocus(false);
 			window.switchPanelTab?.("chat");
 			window.addChatMessage?.("user", request);
 			presentQuestion(request);
@@ -35577,7 +35597,8 @@ function setupCodePractice() {
 	/** Follow the Code panel to the block running now; each block keeps its own attempt. */
 	function retarget() {
 		const shown = codeView(), v = shown && (shown.running || !sceneHasCode()) ? shown : null;
-		root.hidden = !v;
+		if (!v && focused && state.currentSceneIndex !== shownScene) setFocus(false);
+		root.hidden = !v && !focused;
 		docToggle.hidden = root.hidden;
 		docHead.classList.toggle("side-section-foldable", !root.hidden);
 		foldDoc(!!prefs.docFolded && !root.hidden);
@@ -35893,7 +35914,7 @@ function setupCodePractice() {
 	const PEEK_MS = 1500;
 	/** Lines on screen in the Code panel long enough to read count as seen, except those already typed exactly before. */
 	function watchPeeks() {
-		if (!current || !root.classList.contains("open")) {
+		if (!current || !root.classList.contains("open") || focused) {
 			inView.clear();
 			return;
 		}
@@ -36901,7 +36922,7 @@ function setupCodePractice() {
 		flipOpen();
 	});
 	head.addEventListener("click", (e) => {
-		if (!e.target.closest("button")) flipOpen();
+		if (!focused && !e.target.closest("button, select")) flipOpen();
 	});
 	paintOpen();
 	hide.addEventListener("click", () => {
@@ -36976,6 +36997,66 @@ function setupCodePractice() {
 		input.focus();
 		if (hintsOn()) review(false);
 	});
+	const fontSize = () => (focused ? prefs.focusFont : prefs.font) ?? (focused ? FOCUS_FONT : BASE_FONT);
+	const fontDown = tool("A−", "Smaller code"), fontSizeBtn = tool("", "Back to the default size"), fontUp = tool("A+", "Larger code");
+	const fontTools = el("span", "cp-font");
+	fontTools.append(fontDown, fontSizeBtn, fontUp);
+	codeHead.append(fontTools);
+	function paintFont() {
+		root.style.setProperty("--cp-font", `${fontSize()}px`);
+		fontSizeBtn.textContent = String(fontSize());
+		fontDown.disabled = fontSize() <= MIN_FONT;
+		fontUp.disabled = fontSize() >= MAX_FONT;
+		charWidth = 0;
+	}
+	function setFont(size) {
+		const next = size === void 0 ? void 0 : Math.max(MIN_FONT, Math.min(MAX_FONT, size));
+		if (focused) prefs.focusFont = next;
+		else prefs.font = next;
+		paintFont();
+		savePrefs();
+	}
+	fontDown.addEventListener("click", () => setFont(fontSize() - (focused ? 2 : 1)));
+	fontUp.addEventListener("click", () => setFont(fontSize() + (focused ? 2 : 1)));
+	fontSizeBtn.addEventListener("click", () => setFont(void 0));
+	const focusBtn = foldButton();
+	head.insertBefore(focusBtn, toggle);
+	hide.classList.add("cp-hide-tool");
+	function paintFocus() {
+		focusBtn.innerHTML = focused ? ICON_FOCUS_EXIT : ICON_FOCUS;
+		focusBtn.title = focused ? `Leave focus mode (Esc or ${FOCUS_KEYS})` : `Focus mode: only Type along and the coach, the code and the coach's words at twice the size (${FOCUS_KEYS})`;
+		focusBtn.setAttribute("aria-label", focusBtn.title);
+		focusBtn.setAttribute("aria-pressed", String(focused));
+	}
+	setFocus = (on) => {
+		if (on === focused) return;
+		focused = on;
+		if (on && !root.classList.contains("open")) flipOpen();
+		root.classList.toggle("cp-focus", on);
+		document.body.classList.toggle("cp-focus-mode", on);
+		head.classList.toggle("side-section-foldable", !on);
+		toggle.hidden = on;
+		paintFocus();
+		paintFont();
+		setReportHeight(on ? prefs.focusReportHeight ?? focusReportDefault() : prefs.reportHeight ?? REPORT_HEIGHT);
+		if (!root.hidden) input.focus();
+		retarget();
+	};
+	focusBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		setFocus(!focused);
+	});
+	document.addEventListener("keydown", (e) => {
+		if (e.key !== "Enter" || !e.shiftKey || !(e.metaKey || e.ctrlKey) || root.hidden && !focused) return;
+		e.preventDefault();
+		e.stopPropagation();
+		setFocus(!focused);
+	}, true);
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && focused && !e.defaultPrevented) setFocus(false);
+	});
+	paintFocus();
+	paintFont();
 	window.addEventListener("algebench:codeview", retarget);
 	window.addEventListener("algebench:navchange", retarget);
 	retarget();

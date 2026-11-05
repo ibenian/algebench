@@ -26,6 +26,9 @@ import { editsBetween, keystrokes, backspaces, keyDelay, findSelection } from '/
 /** The coach looks again after this long without typing. */
 const IDLE_REVIEW_MS = 5000;
 const INDENT = '    ';
+/** The editor's font size in px: by default, and in focus mode (twice it); the range the learner can choose from. */
+const BASE_FONT = 12, FOCUS_FONT = 24, MIN_FONT = 9, MAX_FONT = 48;
+const FOCUS_KEYS = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘⇧Enter' : 'Ctrl+Shift+Enter';
 /** Where attempts were kept before IndexedDB: read to move them, emptied as they go. */
 const LEGACY_KEY = 'algebench-code-practice', VIEW_KEY = 'algebench-code-practice-view';
 
@@ -73,6 +76,7 @@ const ICON_PAIR = '<svg class="cp-pair-mark" viewBox="0 0 34 24" width="14" heig
 const ICON_SEEN = '<svg class="cp-eye" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="seen"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_DOC = svg('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>');
 const ICON_CODE = svg('<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>');
+const ICON_FOCUS = svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', 12, 2.2), ICON_FOCUS_EXIT = svg('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>', 12, 2.2);
 const ICON_COACH = svg('<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/>');
 
 function foldButton(): HTMLButtonElement {
@@ -86,7 +90,7 @@ function paintFold(b: HTMLButtonElement, folded: boolean, title: string) {
 export function setupCodePractice(): void {
     const doc = document.getElementById('tab-doc');
     if (!doc) return;
-    const prefs = loadJson<{open?: boolean; coach?: boolean; hints?: boolean; speak?: boolean; height?: number; reportHeight?: number; reportFolded?: boolean; docFolded?: boolean}>(VIEW_KEY, {});
+    const prefs = loadJson<{open?: boolean; coach?: boolean; hints?: boolean; speak?: boolean; height?: number; reportHeight?: number; reportFolded?: boolean; docFolded?: boolean; focusReportHeight?: number; font?: number; focusFont?: number}>(VIEW_KEY, {});
     // Attempts live in IndexedDB (practice-store.ts), one per lesson and block; this session's are cached here.
     const store = createPracticeStore<Attempt>();
     const cache = new Map<string, Attempt>();
@@ -211,7 +215,8 @@ export function setupCodePractice(): void {
             if (!dragged) return;
             reportGrip.classList.remove('dragging');
             document.body.style.cursor = '';document.body.style.userSelect = '';
-            prefs.reportHeight = report.offsetHeight;savePrefs();
+            if (focused) prefs.focusReportHeight = report.offsetHeight;else prefs.reportHeight = report.offsetHeight;
+            savePrefs();
         };
         reportGrip.addEventListener('pointermove', move);
         reportGrip.addEventListener('pointerup', up, {once: true});
@@ -242,9 +247,15 @@ export function setupCodePractice(): void {
     docToggle.addEventListener('click', e => { e.stopPropagation();flipDoc(); });
     docHead.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) flipDoc(); });
     reportGrip.addEventListener('dblclick', e => {
-        if ((e.target as HTMLElement).closest('button')) return; prefs.reportHeight = undefined;setReportHeight(REPORT_HEIGHT);savePrefs(); });
+        if ((e.target as HTMLElement).closest('button')) return;
+        if (focused) { prefs.focusReportHeight = undefined;setReportHeight(focusReportDefault()); }
+        else { prefs.reportHeight = undefined;setReportHeight(REPORT_HEIGHT); }
+        savePrefs();
+    });
 
     let current: CodeView | null = null, key = '', block = '', sections: CodeSection[] = [];
+    let focused = false, setFocus: (on: boolean) => void = () => {};
+    const focusReportDefault = () => Math.round(window.innerHeight * .34);
     let attempt: Attempt = {text: '', peeked: [], reviews: {}, celebrated: []};
     let score: PracticeScore | null = null, tokens: CodeToken[] = [], tokenText = '';
     let notes = new Map<number, string>(), cheerTimer = 0, reviewSeq = 0, lastReviewed = '', idle = 0, highlightTimer = 0;
@@ -266,7 +277,7 @@ export function setupCodePractice(): void {
     const speakOn = () => speak.getAttribute('aria-pressed') === 'true';
     const hintsOn = () => hint.getAttribute('aria-pressed') === 'true';
     const savePrefs = () => saveJson(VIEW_KEY, {open: root.classList.contains('open'), coach: coachOn(), hints: hintsOn(), speak: speakOn(), height: prefs.height, reportHeight: prefs.reportHeight,
-        reportFolded: prefs.reportFolded, docFolded: prefs.docFolded});
+        reportFolded: prefs.reportFolded, docFolded: prefs.docFolded, focusReportHeight: prefs.focusReportHeight, font: prefs.font, focusFont: prefs.focusFont});
     function paintSpeak(on: boolean) {
         speak.setAttribute('aria-pressed', String(on));
         speak.title = on ? 'Reading the coach aloud · click to stop' : 'Read the coach\'s commentary aloud';
@@ -323,6 +334,7 @@ export function setupCodePractice(): void {
             suppressChatWelcome(60000);
             // The chat finishes what it is saying or presenting first (quiet for a moment, not a pause between beats).
             for (let quiet = 0;quiet < 3;) { await sleep(400);quiet = chatTalking() || coachTalking ? 0 : quiet + 1; }
+            setFocus(false);   // what it shows is in the scene and the chat, which focus mode hides
             window.switchPanelTab?.('chat');   // where the answer comes
             // Straight to the presenter, in its own words: the chat would retell it, and may drop how to show it
             // ("draw it on the scratchpad" came out as "show it", and the scene's own animation was played instead).
@@ -413,7 +425,9 @@ export function setupCodePractice(): void {
         // The block running now; in a scene that runs no code, the file open in the Code panel. A scene that runs
         // code types only its running block, so a moment between steps that runs nothing doesn't swap the attempt.
         const shown = codeView(), v = shown && (shown.running || !sceneHasCode()) ? shown : null;
-        root.hidden = !v;
+        // Focus mode stays through a moment between steps that runs nothing; another scene without a block ends it.
+        if (!v && focused && state.currentSceneIndex !== shownScene) setFocus(false);
+        root.hidden = !v && !focused;
         // Folding the Doc only makes room for Type along: without it, the Doc stays and the switch goes.
         docToggle.hidden = root.hidden;docHead.classList.toggle('side-section-foldable', !root.hidden);
         foldDoc(!!prefs.docFolded && !root.hidden);
@@ -654,7 +668,8 @@ export function setupCodePractice(): void {
     const PEEK_MS = 1500;
     /** Lines on screen in the Code panel long enough to read count as seen, except those already typed exactly before. */
     function watchPeeks() {
-        if (!current || !root.classList.contains('open')) { inView.clear();return; }
+        // Focus mode covers the Code panel: nothing in it can be read.
+        if (!current || !root.classList.contains('open') || focused) { inView.clear();return; }
         hide.setAttribute('aria-pressed', String(current.hidden()));
         const seen = new Set(attempt.peeked), done = new Set(score?.lines.filter(l => l.similarity === 1).map(l => l.line));
         const reference = block.split('\n'), shown = current.shown(), now = performance.now();
@@ -1386,7 +1401,7 @@ export function setupCodePractice(): void {
         else hushCoach();
     };
     toggle.addEventListener('click', e => { e.stopPropagation();flipOpen(); });
-    head.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) flipOpen(); });
+    head.addEventListener('click', e => { if (!focused && !(e.target as HTMLElement).closest('button, select')) flipOpen(); });
     paintOpen();
     hide.addEventListener('click', () => { if (!current) return;current.setHidden(!current.hidden()); });
     // The Code panel's own Hide code button flips the same switch.
@@ -1430,6 +1445,56 @@ export function setupCodePractice(): void {
         clearReport();cheer.hidden = true;lastReviewed = '';persist();render(false);input.focus();
         if (hintsOn()) void review(false);
     });
+    // The editor's font size, one for each mode: A− and A+ on its header, the size between them back to the default.
+    const fontSize = () => (focused ? prefs.focusFont : prefs.font) ?? (focused ? FOCUS_FONT : BASE_FONT);
+    const fontDown = tool('A−', 'Smaller code'), fontSizeBtn = tool('', 'Back to the default size'), fontUp = tool('A+', 'Larger code');
+    const fontTools = el('span', 'cp-font');fontTools.append(fontDown, fontSizeBtn, fontUp);
+    codeHead.append(fontTools);
+    function paintFont() {
+        root.style.setProperty('--cp-font', `${fontSize()}px`);
+        fontSizeBtn.textContent = String(fontSize());
+        fontDown.disabled = fontSize() <= MIN_FONT;fontUp.disabled = fontSize() >= MAX_FONT;
+        charWidth = 0;   // the assistant's caret measures the font again
+    }
+    function setFont(size: number | undefined) {
+        const next = size === undefined ? undefined : Math.max(MIN_FONT, Math.min(MAX_FONT, size));
+        if (focused) prefs.focusFont = next;else prefs.font = next;
+        paintFont();savePrefs();
+    }
+    fontDown.addEventListener('click', () => setFont(fontSize() - (focused ? 2 : 1)));
+    fontUp.addEventListener('click', () => setFont(fontSize() + (focused ? 2 : 1)));
+    fontSizeBtn.addEventListener('click', () => setFont(undefined));
+    // Focus mode: Type along and its coach over the whole page, what is read at twice the size. A switch on the header (shown
+    // folded too), Cmd/Ctrl+Shift+Enter from anywhere; Esc leaves, once it has no assistant to stop first.
+    const focusBtn = foldButton();
+    head.insertBefore(focusBtn, toggle);
+    hide.classList.add('cp-hide-tool');
+    function paintFocus() {
+        focusBtn.innerHTML = focused ? ICON_FOCUS_EXIT : ICON_FOCUS;
+        focusBtn.title = focused ? `Leave focus mode (Esc or ${FOCUS_KEYS})` : `Focus mode: only Type along and the coach, the code and the coach's words at twice the size (${FOCUS_KEYS})`;
+        focusBtn.setAttribute('aria-label', focusBtn.title);focusBtn.setAttribute('aria-pressed', String(focused));
+    }
+    setFocus = (on: boolean) => {
+        if (on === focused) return;
+        focused = on;
+        // Without the folded panel's body there would be nothing to focus on: entering opens it, and it stays open.
+        if (on && !root.classList.contains('open')) flipOpen();
+        root.classList.toggle('cp-focus', on);document.body.classList.toggle('cp-focus-mode', on);
+        head.classList.toggle('side-section-foldable', !on);toggle.hidden = on;
+        paintFocus();paintFont();
+        setReportHeight(on ? prefs.focusReportHeight ?? focusReportDefault() : prefs.reportHeight ?? REPORT_HEIGHT);
+        if (!root.hidden) input.focus();
+        retarget();
+    };
+    focusBtn.addEventListener('click', e => { e.stopPropagation();setFocus(!focused); });
+    // In capture, ahead of the editor's own Cmd/Ctrl+Enter (Check) and Enter.
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' || !e.shiftKey || !(e.metaKey || e.ctrlKey) || (root.hidden && !focused)) return;
+        e.preventDefault();e.stopPropagation();setFocus(!focused);
+    }, true);
+    // Registered after the assistant's Esc, which marks the key as used.
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && focused && !e.defaultPrevented) setFocus(false); });
+    paintFocus();paintFont();
     window.addEventListener('algebench:codeview', retarget);
     window.addEventListener('algebench:navchange', retarget);
     retarget();
