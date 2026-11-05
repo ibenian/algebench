@@ -1440,11 +1440,12 @@ export const UNION_FIND_SOURCE = `def count_components(n, edges):
     return n`;
 export function unionFindTrace(n: number, edges: [number, number][]) {
     const v = { e: -1, a: -1, b: -1, x: -1, ra: -1, rb: -1, parent: Array.from({ length: n }, (_, i) => i), count: n,
-        tip_count: `n = ${n}`, tip_edge: '' };
+        tip_count: `n = ${n}`, tip_edge: '', calls: [] as number[] };
     const { trace, emit } = recorder(v);
     emit(2, `Each of the ${n} nodes starts as its own root: ${n} components.`);
+    // calls: the waiting call site, so the execution tree shows find under count_components, once per call.
     const find = (start: number) => {
-        v.x = start;
+        v.x = start; v.calls = [8];
         while (true) {
             const p = v.parent[v.x]!;
             emit(4, p === v.x ? `parent[${v.x}] = ${v.x}: ${v.x} is a root.` : `parent[${v.x}] = ${p}: not a root, keep climbing.`);
@@ -1453,12 +1454,14 @@ export function unionFindTrace(n: number, edges: [number, number][]) {
             emit(5, `Climb to ${v.x}.`);
         }
         emit(6, `find(${start}) = ${v.x}.`);
-        const root = v.x; v.x = -1; return root;
+        const root = v.x; v.x = -1; v.calls = []; return root;
     };
     edges.forEach(([a, b], e) => {
         v.e = e; v.a = a; v.b = b; v.ra = v.rb = -1; v.tip_edge = String.raw`a, b = ${at('edges', e)} = (${a}, ${b})`;
         emit(7, `Edge ${a}–${b}.`);
-        v.ra = find(a); v.rb = find(b);
+        v.ra = find(a);
+        emit(8, `ra = ${v.ra}.`);
+        v.rb = find(b);
         emit(8, `ra = ${v.ra}, rb = ${v.rb}.`);
         emit(9, v.ra !== v.rb ? 'Different roots: two separate components meet.' : 'Same root: already connected, so this edge changes nothing.');
         if (v.ra !== v.rb) {
@@ -1469,7 +1472,7 @@ export function unionFindTrace(n: number, edges: [number, number][]) {
         }
     });
     v.e = v.a = v.b = v.ra = v.rb = -1; v.tip_edge = '';
-    emit(12, `${v.count} connected components. With path compression and union by rank, each find is nearly O(1).`, 'Done');
+    emit(12, `${v.count} connected components. Add path compression and union by rank, and each find becomes nearly O(1).`, 'Done');
     return trace;
 }
 

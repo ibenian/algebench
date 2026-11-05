@@ -516,3 +516,12 @@ test('the fast-slow proof step measures A, B and C and plays its own table',()=>
   for(const o of step.info)assert.doesNotThrow(()=>ev(o.visibleExpr),`proof info ${o.id}`);
  }
 });
+
+test('union-find: one count_components, with each find under the loop that made it',()=>{
+ const trace=unionFindTrace(IN.unionFind.n,IN.unionFind.edges) as unknown as {line:number;calls:number[]}[];
+ const {nodes}=execTree(UNION_FIND_SOURCE,trace,trace.length-1);
+ assert.equal(nodes.filter(n=>n.parent===null).length,1);
+ const finds=nodes.filter(n=>n.kind==='call'&&n.parent!==null);
+ assert.equal(finds.length,IN.unionFind.edges.length*2);
+ assert.deepEqual(finds.slice(0,2).map(n=>n.label),['find(a)','find(b)']);
+});

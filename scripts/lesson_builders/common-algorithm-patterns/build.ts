@@ -1588,7 +1588,42 @@ function unionFindForestStep(n: number, run: ReturnType<typeof unionFindTrace>) 
 }
 pattern({
     id: 'union-find', title: 'Group connected items (union-find)', file: 'union_find.py', source: UNION_FIND_SOURCE,
-    input: { from: IN.unionFind.edges.map(e => e[0]), to: IN.unionFind.edges.map(e => e[1]) }, trace: ufRun,
+    input: { from: IN.unionFind.edges.map(e => e[0]), to: IN.unionFind.edges.map(e => e[1]) }, trace: ufRun, callEntryLine: lineOf(UNION_FIND_SOURCE, 'def find('),
+    sections: [
+        section(UNION_FIND_SOURCE, 'uf-start', 'Every node starts as its own root', 'def count_components(', 'parent = list(range(n))', {
+            hint: 'Before any edge, each node is a group of one, so there are n groups.' }),
+        section(UNION_FIND_SOURCE, 'uf-find', 'find: climb to the root', 'def find(', 'return x', {
+            hint: 'Follow parents upward until a node is its own parent. That root names the whole group.',
+            prompt: 'Explain why two nodes are in the same group exactly when find returns the same root for both.' }),
+        section(UNION_FIND_SOURCE, 'uf-edge', 'For each edge, find both roots', 'for a, b in edges', 'ra, rb =', {
+            hint: 'An edge joins the groups of its two ends, so first find which groups those are.' }),
+        section(UNION_FIND_SOURCE, 'uf-union', 'Different roots: join them, one group fewer', 'if ra != rb', 'n -= 1', {
+            hint: 'Hang one root under the other. An edge inside one group changes nothing.',
+            prompt: 'Explain why the code links the two roots rather than a and b themselves, and what would break if it linked a and b.' }),
+        section(UNION_FIND_SOURCE, 'uf-done', 'What is left is the number of groups', 'return n', null, {
+            hint: 'The count started at the number of nodes and lost one for each merge.' }),
+    ],
+    annotations: [
+        doc('count_components', '`count_components(n, edges)` returns how many connected groups `n` nodes form under `edges`.'),
+        doc('n', 'The number of nodes at first; each merge takes off one, so it always holds the number of groups.'),
+        doc('edges', 'Pairs of nodes that are connected.'),
+        doc('parent', '`parent[i]` is the node above `i` in its tree; a root is its own parent.'),
+        doc('find', '`find(x)` returns the root of `x`\'s tree: the one node that names its group.'),
+        doc('x', 'The node the climb is at.'),
+        doc('a', 'One end of the edge.'),
+        doc('b', 'The other end of the edge.'),
+        doc('ra', 'The root of `a`\'s group.'),
+        doc('rb', 'The root of `b`\'s group.'),
+        docExpr(UNION_FIND_SOURCE, 'parent = list(range(n))', 'list(range(n))', '`parent[i] = i` for every node: each one is its own root.'),
+        docExpr(UNION_FIND_SOURCE, 'while parent[x] != x', 'parent[x] != x', 'Not a root yet: only a root is its own parent.'),
+        docExpr(UNION_FIND_SOURCE, 'x = parent[x]', 'x = parent[x]', 'One step up the tree.'),
+        docBlock(UNION_FIND_SOURCE, 'while parent[x] != x', 'x = parent[x]', 'As many steps as the tree is deep: O(n) at worst here, since nothing keeps the tree flat. Path compression and union by rank bring it close to O(1).'),
+        docExpr(UNION_FIND_SOURCE, 'ra, rb =', 'find(a), find(b)', 'The group of each end of the edge.'),
+        docExpr(UNION_FIND_SOURCE, 'if ra != rb', 'ra != rb', 'Two separate groups. With the same root, the two ends are already connected and the edge adds nothing.'),
+        docExpr(UNION_FIND_SOURCE, 'parent[rb] = ra', 'parent[rb] = ra', 'One write merges two whole groups: everything under `rb` now climbs on to `ra`.'),
+        docExpr(UNION_FIND_SOURCE, 'n -= 1', 'n -= 1', 'Two groups became one.'),
+        docExpr(UNION_FIND_SOURCE, 'return n', 'return n', 'The number of groups left after every edge.'),
+    ],
     more: unionFindForestStep(ufN, ufRun),
     markdown: `# Group connected items (union-find)
 
