@@ -807,7 +807,7 @@ export function setupCodePractice(): void {
     // click Walk me through it, and still see what they asked about until the assistant takes over.
     const keptSelection = el('div', 'cp-ai-selection cp-kept-selection');
     stack.append(keptSelection, aiSelection, aiCaret);
-    let selectedTo = 0;
+    let selectedTo = 0, selection: [number, number] | null = null, caretAt = 0;
     let assisting = 0, assistSeq = 0, charWidth = 0;
     // The question waiting for the learner's answer, and the ones asked on this block (so none is asked twice).
     let quiz: {question: string; kind: 'type' | 'answer'; answerKey: string; setup: string; card: HTMLElement} | null = null;
@@ -982,6 +982,7 @@ export function setupCodePractice(): void {
         const at = findSelection(input.value, snippet, selectedTo, line);
         if (!at) return false;
         drawRange(aiSelection, at[0], at[1], 'cp-ai-sel');
+        selection = [at[0], at[1]];
         selectedTo = at[1];
         const boxes = [...aiSelection.children] as HTMLElement[];
         const left = boxes.length ? Math.min(...boxes.map(b => b.offsetLeft)) : undefined;
@@ -1017,7 +1018,15 @@ export function setupCodePractice(): void {
     });
     const dropKept = () => keptSelection.replaceChildren();
     input.addEventListener('focus', dropKept);input.addEventListener('input', dropKept);
-    function clearSelection() { aiSelection.replaceChildren(); }
+    function clearSelection() { aiSelection.replaceChildren();selection = null; }
+    /** Drawn in px of the font it was drawn at: another font size draws what is showing again. */
+    function redrawMarks() {
+        if (selection) { aiSelection.replaceChildren();drawRange(aiSelection, selection[0], selection[1], 'cp-ai-sel'); }
+        if (keptSelection.children.length) { keptSelection.replaceChildren();drawRange(keptSelection, input.selectionStart, input.selectionEnd, 'cp-kept-sel'); }
+        if (aiCaret.hidden) return;
+        const boxes = [...aiSelection.children] as HTMLElement[];
+        placeCaret(Math.min(caretAt, input.value.length), boxes.length ? Math.min(...boxes.map(b => b.offsetLeft)) : undefined);
+    }
     /** The assistant's caret at `offset`, kept in view; `left`, the left edge of what it points at (a selection), is
      *  kept in view first: the view pans right only as far as it can without hiding that. */
     function placeCaret(offset: number, left?: number) {
@@ -1025,6 +1034,7 @@ export function setupCodePractice(): void {
         const row = paint.children[line] as HTMLElement | undefined;
         if (!row) return;
         measure();
+        caretAt = offset;
         aiCaret.hidden = false;
         aiCaret.style.left = `${row.offsetLeft + col * charWidth}px`;
         aiCaret.style.top = `${row.offsetTop}px`;aiCaret.style.height = `${row.offsetHeight}px`;
@@ -1454,7 +1464,8 @@ export function setupCodePractice(): void {
         root.style.setProperty('--cp-font', `${fontSize()}px`);
         fontSizeBtn.textContent = String(fontSize());
         fontDown.disabled = fontSize() <= MIN_FONT;fontUp.disabled = fontSize() >= MAX_FONT;
-        charWidth = 0;   // the assistant's caret measures the font again
+        charWidth = 0;   // measured again for what is drawn over the code
+        redrawMarks();
     }
     function setFont(size: number | undefined) {
         const next = size === undefined ? undefined : Math.max(MIN_FONT, Math.min(MAX_FONT, size));
@@ -1481,6 +1492,8 @@ export function setupCodePractice(): void {
         if (on && !root.classList.contains('open')) flipOpen();
         root.classList.toggle('cp-focus', on);document.body.classList.toggle('cp-focus-mode', on);
         head.classList.toggle('side-section-foldable', !on);toggle.hidden = on;
+        // It doesn't fold here, so its header has the room: the toolbar moves up onto it.
+        if (on) head.insertBefore(tools, total);else bodyEl.prepend(tools);
         paintFocus();paintFont();
         setReportHeight(on ? prefs.focusReportHeight ?? focusReportDefault() : prefs.reportHeight ?? REPORT_HEIGHT);
         if (!root.hidden) input.focus();

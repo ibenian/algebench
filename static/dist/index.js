@@ -36091,7 +36091,7 @@ function setupCodePractice() {
 	const aiSelection = el("div", "cp-ai-selection");
 	const keptSelection = el("div", "cp-ai-selection cp-kept-selection");
 	stack.append(keptSelection, aiSelection, aiCaret);
-	let selectedTo = 0;
+	let selectedTo = 0, selection = null, caretAt = 0;
 	let assisting = 0, assistSeq = 0, charWidth = 0;
 	let quiz = null;
 	let askedQuestions = [];
@@ -36324,6 +36324,7 @@ function setupCodePractice() {
 		const at = findSelection(input.value, snippet, selectedTo, line);
 		if (!at) return false;
 		drawRange(aiSelection, at[0], at[1], "cp-ai-sel");
+		selection = [at[0], at[1]];
 		selectedTo = at[1];
 		const boxes = [...aiSelection.children];
 		const left = boxes.length ? Math.min(...boxes.map((b) => b.offsetLeft)) : void 0;
@@ -36361,6 +36362,21 @@ function setupCodePractice() {
 	input.addEventListener("input", dropKept);
 	function clearSelection() {
 		aiSelection.replaceChildren();
+		selection = null;
+	}
+	/** Drawn in px of the font it was drawn at: another font size draws what is showing again. */
+	function redrawMarks() {
+		if (selection) {
+			aiSelection.replaceChildren();
+			drawRange(aiSelection, selection[0], selection[1], "cp-ai-sel");
+		}
+		if (keptSelection.children.length) {
+			keptSelection.replaceChildren();
+			drawRange(keptSelection, input.selectionStart, input.selectionEnd, "cp-kept-sel");
+		}
+		if (aiCaret.hidden) return;
+		const boxes = [...aiSelection.children];
+		placeCaret(Math.min(caretAt, input.value.length), boxes.length ? Math.min(...boxes.map((b) => b.offsetLeft)) : void 0);
 	}
 	/** The assistant's caret at `offset`, kept in view; `left`, the left edge of what it points at (a selection), is
 	*  kept in view first: the view pans right only as far as it can without hiding that. */
@@ -36369,6 +36385,7 @@ function setupCodePractice() {
 		const row = paint.children[line];
 		if (!row) return;
 		measure();
+		caretAt = offset;
 		aiCaret.hidden = false;
 		aiCaret.style.left = `${row.offsetLeft + col * charWidth}px`;
 		aiCaret.style.top = `${row.offsetTop}px`;
@@ -37008,6 +37025,7 @@ function setupCodePractice() {
 		fontDown.disabled = fontSize() <= MIN_FONT;
 		fontUp.disabled = fontSize() >= MAX_FONT;
 		charWidth = 0;
+		redrawMarks();
 	}
 	function setFont(size) {
 		const next = size === void 0 ? void 0 : Math.max(MIN_FONT, Math.min(MAX_FONT, size));
@@ -37036,6 +37054,8 @@ function setupCodePractice() {
 		document.body.classList.toggle("cp-focus-mode", on);
 		head.classList.toggle("side-section-foldable", !on);
 		toggle.hidden = on;
+		if (on) head.insertBefore(tools, total);
+		else bodyEl.prepend(tools);
 		paintFocus();
 		paintFont();
 		setReportHeight(on ? prefs.focusReportHeight ?? focusReportDefault() : prefs.reportHeight ?? REPORT_HEIGHT);

@@ -6222,6 +6222,8 @@ body.cp-focus-mode #explanation-panel, body.cp-focus-mode #tab-doc { display: fl
 body.cp-focus-mode #main-content { z-index: 9500; }   /* its stacking context holds the panel: lift it over the title bar */
 .code-practice.cp-focus { position: fixed; inset: 0; z-index: 9500; flex: none !important; max-height: none !important; min-height: 0; border-top: 0; background: var(--page-bg); }
 .cp-focus .cp-resize, .cp-focus .cp-hide-tool { display: none; }
+.cp-focus .cp-head .cp-tools { flex: none; flex-wrap: nowrap; }
+.cp-focus .cp-head .cp-tool { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .cp-focus .cp-cheer, .cp-focus .cp-report > *, .cp-focus .cp-ai-tag { zoom: 2; }
 .cp-focus .cp-help, .cp-focus .cp-quiz-controls { zoom: .5; }   /* a message's buttons: back to their own size */
 /* Help me: the assistant at the keyboard (code-practice.ts). Its colour marks everything it does: the editor's
