@@ -16650,14 +16650,16 @@ function renderArray(el, _view, decorate) {
 	state.three.scene.add(mesh);
 	state.planeMeshes.push(mesh);
 	const decoration = decorate?.(n, origin, pitch, mesh);
+	const HALO = .7;
 	const glowMaterial = new THREE.ShaderMaterial({
 		transparent: true,
 		depthWrite: false,
 		side: THREE.DoubleSide,
+		blending: THREE.AdditiveBlending,
 		uniforms: {
 			opacity: { value: 1 },
 			phase: { value: 0 },
-			quad: { value: new THREE.Vector2(pitch * .455, cellHeight() * .584) },
+			quad: { value: new THREE.Vector2(pitch * .39 + HALO, cellHeight() * .5 + HALO) },
 			cell: { value: new THREE.Vector2(pitch * .39, cellHeight() * .5) },
 			radius: { value: Math.min(Number(el.cellCornerRadius ?? 0), pitch * .39, cellHeight() * .5) }
 		},
@@ -16668,10 +16670,11 @@ function renderArray(el, _view, decorate) {
             varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){vec2 q=abs(rimUV*quad)-cell+radius;
                 float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-radius;
-                float rim=exp(-pow(d/0.045,2.0));
-                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float beat=0.6+0.4*cos(6.2831853*phase);
-                float alpha=rim*mix(0.85*beat,0.35,removedCell)*opacity*stackOpacity;
+                // A thin bright edge on the cell, spreading outward into a halo that dies before the quad's edge.
+                float rim=d>0.0?(0.6*exp(-d/0.12)+0.4*exp(-d/0.32))*(1.0-smoothstep(${(HALO * .55).toFixed(3)},${HALO.toFixed(3)},d)):exp(-pow(d/0.03,2.0));
+                vec3 light=mix(vec3(1.0,0.78,0.32),vec3(0.65,0.80,0.92),removedCell);
+                float beat=0.8+0.2*cos(6.2831853*phase);
+                float alpha=rim*mix(beat,0.4,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`
 	});
 	const glowMesh = new THREE.Mesh(new THREE.BufferGeometry(), glowMaterial);
@@ -16700,7 +16703,7 @@ function renderArray(el, _view, decorate) {
 	function illuminate(changed, removed) {
 		const positions = [], uv = [], removedFlags = [], rimOpacity = [];
 		rimCells = [];
-		glowMaterial.uniforms.quad.value.set(pitch * .455, cellHeight() * .584);
+		glowMaterial.uniforms.quad.value.set(pitch * .39 + HALO, cellHeight() * .5 + HALO);
 		glowMaterial.uniforms.cell.value.set(pitch * .39, cellHeight() * .5);
 		glowMaterial.uniforms.radius.value = Math.min(Number(el.cellCornerRadius ?? 0), pitch * .39, cellHeight() * .5);
 		const corners = [
@@ -16715,8 +16718,8 @@ function renderArray(el, _view, decorate) {
 			const c = centre(i);
 			for (const [x, y] of corners) {
 				positions.push(...dataToWorld([
-					c[0] + x * pitch * .455,
-					c[1] + y * cellHeight() * .584,
+					c[0] + x * (pitch * .39 + HALO),
+					c[1] + y * (cellHeight() * .5 + HALO),
 					c[2] + .125
 				]));
 				uv.push((x + 1) / 2, (y + 1) / 2);

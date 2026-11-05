@@ -98,13 +98,14 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     const keyAt=(c:number[]):[number,number,number]=>keysLeft?[c[0]!-pitch*.78,c[1]!,c[2]!+.14]:[c[0]!,c[1]!-.34-.175,c[2]!+.14];
     state.three.scene.add(mesh);state.planeMeshes.push(mesh);
     const decoration=decorate?.(n,origin,pitch,mesh);
-    // A world-space soft rim follows the cells without screen overlays or frame evaluation.
+    // A world-space halo follows the cells without screen overlays or frame evaluation.
+    const HALO=.7;
     const glowMaterial=new THREE.ShaderMaterial({
-        transparent:true,depthWrite:false,side:THREE.DoubleSide,
+        transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,
         // The rim traces the cell's own edge, in data units: a rounded rectangle (radius 0 for a box). quad is the
         // glow quad's half size, cell the cell's.
         // phase: where the changed cells' rim is in its breath, one per second (as the system DAG's pipe flow).
-        uniforms:{opacity:{value:1},phase:{value:0},quad:{value:new THREE.Vector2(pitch*.455,cellHeight()*.584)},cell:{value:new THREE.Vector2(pitch*.39,cellHeight()*.5)},
+        uniforms:{opacity:{value:1},phase:{value:0},quad:{value:new THREE.Vector2(pitch*.39+HALO,cellHeight()*.5+HALO)},cell:{value:new THREE.Vector2(pitch*.39,cellHeight()*.5)},
             radius:{value:Math.min(Number(el.cellCornerRadius??0),pitch*.39,cellHeight()*.5)}},
         vertexShader:`attribute float removed; attribute float cellOpacity; varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){rimUV=uv*2.0-1.0;removedCell=removed;stackOpacity=cellOpacity;
@@ -113,10 +114,11 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
             varying float stackOpacity; varying vec2 rimUV; varying float removedCell;
             void main(){vec2 q=abs(rimUV*quad)-cell+radius;
                 float d=length(max(q,0.0))+min(max(q.x,q.y),0.0)-radius;
-                float rim=exp(-pow(d/0.045,2.0));
-                vec3 light=mix(vec3(1.0,0.88,0.55),vec3(0.65,0.80,0.92),removedCell);
-                float beat=0.6+0.4*cos(6.2831853*phase);
-                float alpha=rim*mix(0.85*beat,0.35,removedCell)*opacity*stackOpacity;
+                // A thin bright edge on the cell, spreading outward into a halo that dies before the quad's edge.
+                float rim=d>0.0?(0.6*exp(-d/0.12)+0.4*exp(-d/0.32))*(1.0-smoothstep(${(HALO*.55).toFixed(3)},${HALO.toFixed(3)},d)):exp(-pow(d/0.03,2.0));
+                vec3 light=mix(vec3(1.0,0.78,0.32),vec3(0.65,0.80,0.92),removedCell);
+                float beat=0.8+0.2*cos(6.2831853*phase);
+                float alpha=rim*mix(beat,0.4,removedCell)*opacity*stackOpacity;
                 if(alpha<0.01)discard; gl_FragColor=vec4(light,alpha);}`,
     });
     const glowMesh=new THREE.Mesh(new THREE.BufferGeometry(),glowMaterial);
@@ -125,7 +127,7 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
     // Decorative rims must not alter wire anchors or capture object picking.
     glowMesh.userData.annotationTextPlane=true;glowMesh.raycast=()=>{};
     state.three.scene.add(glowMesh);state.planeMeshes.push(glowMesh);
-    // A changed value's rim breathes softly, once a second, while it stays lit.
+    // A changed value's halo breathes softly, once a second, while it stays lit.
     registerAnimUpdater({animState:{get stopped(){return animState.stopped;}},updateFrame(nowMs){
         if(glowMesh.visible)glowMaterial.uniforms.phase!.value=pipeFlowPhase(nowMs);
     }});
@@ -137,13 +139,13 @@ export function renderArray(el:Element,_view:MathBoxNode,decorate?:(length:numbe
         const positions:number[]=[],uv:number[]=[],removedFlags:number[]=[],rimOpacity:number[]=[];
         rimCells = [];
         // A wrapped grid's cells change height as rows are added: keep the rim on the cell's current edge.
-        glowMaterial.uniforms.quad!.value.set(pitch*.455,cellHeight()*.584);glowMaterial.uniforms.cell!.value.set(pitch*.39,cellHeight()*.5);
+        glowMaterial.uniforms.quad!.value.set(pitch*.39+HALO,cellHeight()*.5+HALO);glowMaterial.uniforms.cell!.value.set(pitch*.39,cellHeight()*.5);
         glowMaterial.uniforms.radius!.value=Math.min(Number(el.cellCornerRadius??0),pitch*.39,cellHeight()*.5);
         const corners=[[-1,-1],[1,-1],[1,1],[-1,-1],[1,1],[-1,1]];
         for(const [indices,isRemoved] of [[changed,0],[removed,1]] as const)for(const i of indices){
             const c=centre(i);
             for(const [x,y] of corners){
-                positions.push(...dataToWorld([c[0]+x!*pitch*.455,c[1]+y!*cellHeight()*.584,c[2]+.125]));
+                positions.push(...dataToWorld([c[0]+x!*(pitch*.39+HALO),c[1]+y!*(cellHeight()*.5+HALO),c[2]+.125]));
                 uv.push((x!+1)/2,(y!+1)/2);removedFlags.push(isRemoved);rimCells.push(i);rimOpacity.push(hoverOpacity[i] ?? 1);
             }
         }
